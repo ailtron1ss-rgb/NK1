@@ -571,6 +571,18 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
+  // Restore can replace the canonical row set or revise content under an existing ID.
+  // Keep derived embedding vectors/retry state only when their canonical ID and content
+  // hash still match the restored source of truth.
+  const restoredById=new Map(this.state.items.map(item=>[item.id,item]));
+  for(const [id,row] of this.semanticEmbeddingIndex){
+   const item=restoredById.get(id);
+   if(!item||row.contentHash!==memoContentHash(item.content))this.semanticEmbeddingIndex.delete(id);
+  }
+  for(const [id,retry] of this.semanticEmbeddingRetry){
+   const item=restoredById.get(id);
+   if(!item||retry.contentHash!==memoContentHash(item.content))this.semanticEmbeddingRetry.delete(id);
+  }
  }
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
