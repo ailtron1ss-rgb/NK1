@@ -1,3 +1,9 @@
+## [NK1][WorkPass478] Preserve persisted P23 trace-cache recency on restore (2026-10-27)
+
+- P23 restore constructed deduplication caches from durable rows before persisted cache entries, which could move an older row to the head and discard the cache's newest-first order.
+- Restore now preserves validated persisted cache order first and reconciles trace IDs recoverable from durable experience/replay rows afterward. Missing caches still recover IDs from their persisted rows.
+- Updated the WorkPass310 restore regression to assert newest-first ordering plus durable replay-ID reconciliation. Learning uplift is not claimed.
+
 ## [NK1][WorkPass467] Add bounded conflict-gated interleaved learning (2026-10-27)
 
 - Implemented the `P26TrueLearningEngine.trainInterleaved` API already exercised by the sequential-learning benchmark.
