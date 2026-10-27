@@ -1,3 +1,9 @@
+## [NK1][WorkPass457] Keep canonical trust and Hexis belief mirror aligned (2026-10-27)
+
+- `registerOrUpdateBelief()` previously returned an existing mirror untouched on every re-import. When canonical MemoryOS confidence/source authority was corrected downward, the Hexis mirror could therefore retain stale higher confidence and trust.
+- Existing mirrors now reconcile only downward: confidence and trust use the minimum of stored and incoming values, omitted trust is preserved, and equal values remain a no-op. This path does not add evidence keys or append belief-audit entries, so importing is not treated as independent evidence or a promotion path.
+- The update is recorded under the HMX owner token with an undo closure; the new integration regression proves downward reconciliation, no upward re-import, no invented evidence, and rollback to the exact prior mirror after a failed import. Exact-head runtime tests/typecheck/CI remain unverified.
+
 ## [NK1][WorkPass457] Undo owned projection deltas after foreign-write conflicts (2026-10-27)
 
 - Added compare-before-undo callbacks to source-scoped semantic node/edge mutations and Hexis temporal/belief projection changes. If a whole-state rollback is blocked by a foreign write, NK1 unwinds its own transaction-owned deltas in reverse order, but only where each row still matches the exact post-state produced by that mutation.
