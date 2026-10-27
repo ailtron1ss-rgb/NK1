@@ -1,3 +1,9 @@
+## [NK1][WorkPass465] Reconcile MemoryOS byte totals after atomic lifecycle writes (2026-10-27)
+
+- Status and trust/signal mutation paths now recompute `estimatedBytes` from the transaction-start item snapshot and the final item, rather than mixing an intermediate `recordRevision()` adjustment with a second full-row delta. This avoids double-counting revision-history growth.
+- Extended the post-write exception regressions to assert the byte-accounting baseline is restored together with canonical content/status/signals and lifecycle counters.
+- This pass is statically inspected but not executed locally; hosted runtime tests, typecheck and CI remain unconfirmed. `main` and the canonical Release ZIP remain untouched.
+
 ## [NK1][WorkPass464] Make canonical MemoryOS status and signal writes exception-atomic (2026-10-27)
 
 - `MemoryOS2.revise()`, `updateSignals()`, and `restoreSignalsForCompensation()` now retain an exact in-place snapshot of the canonical item and the affected memory accounting counters before mutation. If revision-history/evidence/bookkeeping throws after fields have been changed, the item and counters are restored before the error propagates.
