@@ -749,6 +749,39 @@ export class MemoryOS2{
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
+ /**
+  * Record the canonical read only after the cognitive selector has chosen its final
+  * lexical or semantic result. Preview search may run several speculative paths;
+  * only this method is allowed to advance access/freshness signals for the selected IDs.
+  */
+ recordSelectedRetrieval(query:string,ids:string[],goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}):MemoryItem2[]{
+   const wallClockNow=Date.now();
+   const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
+   const temporalMode:MemoryTemporalMode=temporalOptions.temporalMode??'current';
+   const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
+   this.state.semanticQueries++;
+   const contextCausal=/\\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
+   const contextTemporal=/\\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
+   this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
+   this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
+   const selected:MemoryItem2[]=[];
+   const seen=new Set<string>();
+   for(const id of (Array.isArray(ids)?ids:[]).slice(0,32)){
+     if(typeof id!=='string'||seen.has(id))continue;
+     seen.add(id);
+     const item=this.itemIndex.get(id);
+     if(!item||item.dormant||item.epistemicStatus==='quarantined')continue;
+     if(temporalMode!=='all'&&((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null)||!this.validAt(item,now))){
+       this.state.staleRetrievalsAvoided++;
+       continue;
+     }
+     item.temperature01=memoryTemperature(item,now);
+     item.lastAccessAt=now;
+     item.retrievalCount++;
+     selected.push(item);
+   }
+   return selected.map(item=>structuredClone(item));
+ }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
    const qTokens=this.tokensFor(query);
    const conceptQuery=expandMemoryQueryConcepts(qTokens);
