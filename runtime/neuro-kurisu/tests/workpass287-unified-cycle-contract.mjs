@@ -71,7 +71,7 @@ assert.equal(reconciled.completeCycles,8);
 assert.equal(reconciled.incompleteCycles,2);
 assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
-assert.equal(reconciled.lastComplete,false);
+assert.equal(reconciled.lastComplete,true,'aggregate counter reconciliation must not rewrite the independently valid latest-cycle completion flag');
 
 
 const undercountRestore=new UnifiedCognitiveCycle();
