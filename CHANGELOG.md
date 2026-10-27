@@ -1,3 +1,10 @@
+## [NK1][WorkPass487] Preserve update magnitude after adding context features — 2026-10-27
+
+- The first context-feature regression run established perfect context-aware synthetic accuracy, but exposed a new regression: the shared feature-vector norm slowed post-hoc replay recovery.
+- Updated gradient normalization in both regular sample training and causal feature training: appended context hinges contribute 0.25 of their squared magnitude to the normalizer, while still receiving the normal gradient update.
+- This prevents new binary basis dimensions from shrinking every existing policy feature's learning step; no task-performance threshold was changed.
+- Validation: latest-head Core regression and P26 workflows pending.
+
 ## [NK1][WorkPass485] Add explicit state-context interaction features — 2026-10-27
 
 - Core regression showed that replay-cadence/cursor fixes alone did not preserve the old task in the context-aware synthetic benchmark.
