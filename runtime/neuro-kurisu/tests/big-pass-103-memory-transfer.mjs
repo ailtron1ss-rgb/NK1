@@ -28,11 +28,37 @@ const ul=new UnifiedLearningSubstrate();
 const replaySignal=ul.ingestExternalSignal({taskId:'replay:m103',action:'reflect',reward01:.5,success01:.5,surprise01:.7,novelty01:.6,causalStrength01:.67,transferPotential01:.65,provenance:'experience-replay'});
 assert.ok(replaySignal.learningOpportunity01>.4);
 const probe=ul.beginTransferProbe({sourceTaskId:'source-X',targetTaskId:'target-Y',baseline01:.48,contextKey:'holdout-1',at:1600});
-ul.recordTransferProbe({...probe,postScore01:.66,independentVerified:true,holdout:true});
-ul.recordTransferProbe({...probe,id:probe.id+'-2',postScore01:.64,independentVerified:true,holdout:true});
+assert.ok(probe);
+const transferInput={...probe,postScore01:.66,independentVerified:true,holdout:true};
+const firstTransfer=ul.recordTransferProbe(transferInput);
+assert.ok(firstTransfer);
+assert.deepEqual(ul.recordTransferProbe(transferInput),firstTransfer,'repeated evidence ID with identical payload must be idempotent');
+assert.equal(ul.transferDiagnostics().validatedSamples,1,'an exact retry must not mint a second validated transfer sample');
+assert.equal(ul.recordTransferProbe({...transferInput,postScore01:.91}),null,'reusing an evidence ID with a conflicting outcome must be rejected');
+assert.equal(ul.recordTransferProbe({...transferInput,id:'bad-nan-transfer',postScore01:Number.NaN}),null,'non-finite scores must not be clamped into valid transfer evidence');
+assert.equal(ul.recordTransferProbe({...transferInput,id:'bad-control-transfer\\n',postScore01:.66}),null,'control-bearing IDs must not enter the evidence ledger');
+const secondTransfer=ul.recordTransferProbe({...probe,id:probe.id+'-2',postScore01:.64,independentVerified:true,holdout:true});
+assert.ok(secondTransfer);
 const td=ul.transferDiagnostics();
 assert.equal(td.validatedSamples,2); assert.equal(td.positiveSamples,2); assert.equal(td.negativeSamples,0); assert.ok(td.crossTaskTransfer01>0);
 const diag=ul.diagnostics(); assert.equal(diag.version,2); assert.equal(diag.provenanceCounts.experienceReplay,1);
+
+// Recent transfer rows are bounded, but stable evidence IDs remain reserved after eviction.
+for(let i=0;i<105;i++){
+  assert.ok(ul.recordTransferProbe({id:'ledger-fill-'+i,sourceTaskId:'fill-source',targetTaskId:'fill-target',
+    baseline01:.4,postScore01:.41,independentVerified:false,holdout:false,contextKey:'fill-context-'+i,at:2000+i}));
+}
+assert.ok(!ul.snapshot().transferProbes.some(row=>row.id===probe.id),'the original probe must leave the 96-row recent window');
+const ledgerCredit=ul.transferDiagnostics().validatedSamples;
+assert.equal(ul.recordTransferProbe(transferInput),null,'an evicted but remembered ID must not re-enter the transfer evidence window');
+assert.equal(ul.transferDiagnostics().validatedSamples,ledgerCredit,'an evicted retry must not increment transfer credit');
+const ulRestored=new UnifiedLearningSubstrate(); ulRestored.restore(ul.snapshot());
+assert.equal(ulRestored.recordTransferProbe(transferInput),null,'the transfer ID registry must survive snapshot restoration');
+assert.ok(ulRestored.snapshot().transferProbeLedger.length<=4096,'the transfer evidence registry must remain bounded');
+const poisonedSnapshot=ul.snapshot();
+poisonedSnapshot.transferProbes=[{id:'poisoned-restored',sourceTaskId:'x',targetTaskId:'y',baseline01:.2,postScore01:.9,delta01:.01,independentVerified:true,holdout:true,contextKey:'restored-context',at:9}];
+const poisonedRestore=new UnifiedLearningSubstrate(); poisonedRestore.restore(poisonedSnapshot);
+assert.equal(poisonedRestore.snapshot().transferProbes.some(row=>row.id==='poisoned-restored'),false,'restored probe rows with inconsistent deltas must be rejected');
 
 console.log('BIG_PASS_103_MEMORY_TRANSFER=PASS',JSON.stringify({
   replayValidated:f.snapshot().replay.validated,
