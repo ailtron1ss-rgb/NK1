@@ -28,6 +28,32 @@ export interface ContinualFamilySummary {
   averageForgetting: number;
   averageBackwardTransfer: number;
 }
+
+/** Counts for matched sample-level pass/fail transitions between two checkpoints. */
+export interface SampleTransitionSummary {
+  fromStageId: string;
+  toStageId: string;
+  fromMethod: string;
+  toMethod: string;
+  sampleCount: number;
+  passedToFailed: number;
+  failedToPassed: number;
+  retainedPass: number;
+  retainedFail: number;
+  /** Pass -> fail divided by samples passing at the source checkpoint; null if denominator is zero. */
+  forgettingRate: number | null;
+  /** Fail -> pass divided by samples failing at the source checkpoint; null if denominator is zero. */
+  recoveryRate: number | null;
+  /** Net pass transition divided by matched samples; descriptive, not causal. */
+  netTransferRate: number;
+}
+export interface TaskSampleTransitionSummary extends SampleTransitionSummary {
+  taskId: string;
+  family: string;
+}
+export interface FamilySampleTransitionSummary extends SampleTransitionSummary {
+  family: string;
+}
 export interface ContinualOutcomeMatrix {
   manifestFingerprint: string;
   split: EvaluationSplit;
@@ -38,6 +64,12 @@ export interface ContinualOutcomeMatrix {
   /** Per-task/per-stage outcome detail, including sample counts and uncertainty. */
   cells: ContinualOutcomeCell[];
   familySummaries: ContinualFamilySummary[];
+  /** Matched sample transitions: baseline-to-first checkpoint (when available) and adjacent checkpoints. */
+  sampleTransitions: SampleTransitionSummary[];
+  /** Same transitions broken down by task, without treating tasks as independent seeds. */
+  taskSampleTransitions: TaskSampleTransitionSummary[];
+  /** Same transition counts stratified by task family. */
+  familySampleTransitions: FamilySampleTransitionSummary[];
   metrics: ContinualLearningMetrics;
   evidence: {
     outcomeCount: number;
@@ -152,6 +184,60 @@ export function buildContinualOutcomeMatrix(
   const taskVersions: Record<string,string> = {}, taskFamilies: Record<string,string> = {};
   for (const task of tasksInSplit) { taskVersions[task.taskId] = task.version; taskFamilies[task.taskId] = task.family; }
   const metrics = evaluateContinualLearning(tasks, referenceScore);
+
+  const transitionPairs:Array<{fromStageId:string;fromMethod:string;toStageId:string;toMethod:string}>=[
+    ...(options.preTrainingMethod?[{
+      fromStageId:options.preTrainingMethod,fromMethod:options.preTrainingMethod,
+      toStageId:stages[0]!.stageId,toMethod:stages[0]!.method,
+    }]:[]),
+    ...stages.slice(1).map((stage,index)=>({
+      fromStageId:stages[index]!.stageId,fromMethod:stages[index]!.method,
+      toStageId:stage.stageId,toMethod:stage.method,
+    })),
+  ];
+  const withTransitionRates=(pair:{fromStageId:string;fromMethod:string;toStageId:string;toMethod:string},counts:{
+    sampleCount:number;passedToFailed:number;failedToPassed:number;retainedPass:number;retainedFail:number;
+  }):SampleTransitionSummary=>{
+    const sourcePass=counts.passedToFailed+counts.retainedPass;
+    const sourceFail=counts.failedToPassed+counts.retainedFail;
+    return {
+      ...pair,...counts,
+      forgettingRate:sourcePass?counts.passedToFailed/sourcePass:null,
+      recoveryRate:sourceFail?counts.failedToPassed/sourceFail:null,
+      netTransferRate:counts.sampleCount?(counts.failedToPassed-counts.passedToFailed)/counts.sampleCount:0,
+    };
+  };
+  const taskSampleTransitions:TaskSampleTransitionSummary[]=transitionPairs.flatMap(pair=>tasksInSplit.map(task=>{
+    const before=cell.get(JSON.stringify([task.taskId,pair.fromMethod]));
+    const after=cell.get(JSON.stringify([task.taskId,pair.toMethod]));
+    if(!before||!after)throw new Error(`missing matched sample transitions for ${task.taskId}: ${pair.fromMethod} -> ${pair.toMethod}`);
+    let sampleCount=0,passedToFailed=0,failedToPassed=0,retainedPass=0,retainedFail=0;
+    for(const seed of canonicalSeeds){
+      const was=before.get(seed),now=after.get(seed);
+      if(typeof was!=='boolean'||typeof now!=='boolean')throw new Error(`incomplete matched sample transition for ${task.taskId}/${seed}`);
+      sampleCount++;
+      if(was&&!now)passedToFailed++;
+      else if(!was&&now)failedToPassed++;
+      else if(was&&now)retainedPass++;
+      else retainedFail++;
+    }
+    return {taskId:task.taskId,family:task.family,...withTransitionRates(pair,{sampleCount,passedToFailed,failedToPassed,retainedPass,retainedFail})};
+  }));
+  const aggregateTransitions=(pair:{fromStageId:string;fromMethod:string;toStageId:string;toMethod:string},rows:SampleTransitionSummary[]):SampleTransitionSummary=>{
+    const sum=(key:'sampleCount'|'passedToFailed'|'failedToPassed'|'retainedPass'|'retainedFail')=>rows.reduce((total,row)=>total+row[key],0);
+    return withTransitionRates(pair,{
+      sampleCount:sum('sampleCount'),passedToFailed:sum('passedToFailed'),failedToPassed:sum('failedToPassed'),
+      retainedPass:sum('retainedPass'),retainedFail:sum('retainedFail'),
+    });
+  };
+  const sampleTransitions=transitionPairs.map(pair=>aggregateTransitions(pair,
+    taskSampleTransitions.filter(row=>row.fromMethod===pair.fromMethod&&row.toMethod===pair.toMethod)));
+  const families=[...new Set(tasksInSplit.map(task=>task.family))].sort();
+  const familySampleTransitions:FamilySampleTransitionSummary[]=transitionPairs.flatMap(pair=>families.map(family=>({
+    family,
+    ...aggregateTransitions(pair,taskSampleTransitions.filter(row=>
+      row.family===family&&row.fromMethod===pair.fromMethod&&row.toMethod===pair.toMethod)),
+  })));
   const taskMetricById = new Map(metrics.perTask.map(item => [item.taskId, item]));
   const familySummaries: ContinualFamilySummary[] = [...new Set(tasksInSplit.map(task => task.family))].sort().map(family => {
     const familyTasks = tasksInSplit.filter(task => task.family === family);
@@ -174,6 +260,7 @@ export function buildContinualOutcomeMatrix(
   return {
     manifestFingerprint: ledger.manifestFingerprint(), split, stages: stages.map(stage => ({...stage})),
     seedCount: canonicalSeeds.length, taskCount: tasks.length, tasks, cells, familySummaries,
+    sampleTransitions, taskSampleTransitions, familySampleTransitions,
     metrics,
     evidence: { outcomeCount: eligible.length, authorityCounts, seedIds: canonicalSeeds, taskVersions, taskFamilies },
   };
