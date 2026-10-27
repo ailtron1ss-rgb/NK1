@@ -543,11 +543,28 @@ assert.ok(linkSupportCacheRuntime.memoryOS.linkSupportCache instanceof Map,
 assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCache.get(linkSupportCacheTarget.id), .18,
   'the target should initially receive the source row causal-support contribution');
 const linkCacheVersionBeforeRemoval = linkSupportCacheRuntime.memoryOS.linkSupportCacheVersion;
+linkSupportCacheRuntime.memoryOS.semanticEmbeddingIndex.set(linkSupportCacheTarget.id, {
+  contentHash: String(linkSupportCacheTarget.contentHash ?? ''),
+  providerId: 'wp440-test-provider',
+  vector: [1, 0],
+  lastUsedAt: Date.now(),
+});
+linkSupportCacheRuntime.memoryOS.semanticEmbeddingRetry.set(linkSupportCacheTarget.id, {
+  contentHash: String(linkSupportCacheTarget.contentHash ?? ''),
+  attempts: 1,
+  retryAt: Date.now() + 60_000,
+});
+assert.equal(linkSupportCacheRuntime.memoryOS.semanticEmbeddingIndex.has(linkSupportCacheTarget.id), true);
+assert.equal(linkSupportCacheRuntime.memoryOS.semanticEmbeddingRetry.has(linkSupportCacheTarget.id), true);
 assert.equal(linkSupportCacheRuntime.fabric.forgetById(linkSupportCacheTarget.id, 'workpass440-cache-invalidation'), true);
 assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCache, null,
   'removing a canonical target must invalidate cached semantic support');
 assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCacheVersion, -1,
   'cache invalidation must not depend on the linkUpdates counter changing');
+assert.equal(linkSupportCacheRuntime.memoryOS.semanticEmbeddingIndex.has(linkSupportCacheTarget.id), false,
+  'canonical removal must not retain a derived embedding for a dead memory ID');
+assert.equal(linkSupportCacheRuntime.memoryOS.semanticEmbeddingRetry.has(linkSupportCacheTarget.id), false,
+  'canonical removal must clear any scheduled embedding retry for a dead memory ID');
 assert.equal(linkCacheVersionBeforeRemoval, linkSupportCacheRuntime.memoryOS.snapshot().linkUpdates,
   'the regression must cover removal without a linkUpdates version bump');
 
