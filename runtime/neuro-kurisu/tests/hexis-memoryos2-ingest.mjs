@@ -55,6 +55,7 @@ const sameLineageCopy = {
   ...evidence,
   evidenceId: 'hex-evidence-2',
   sourceRef: 'tool:second-wrapper-for-same-run',
+  independenceKey: 'tool-run:independent-1',
 };
 const sourcesBeforeSameLineageReplay = memory.get(target.id)?.evidenceSources?.length ?? 0;
 const sameLineageResult = applyReviewedHexisEvidence(memory, target.id, sameLineageCopy, { reviewed: true });
