@@ -1183,7 +1183,7 @@ export class MemoryOS2{
     if(before)this.restore(before);
     return false;
    }
-  }catch(error){
+  }catch{
    if(before)this.restore(before,{allowOverCapacity:true});
    return false;
   }
