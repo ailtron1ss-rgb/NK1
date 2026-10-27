@@ -1,3 +1,17 @@
+## [NK1][WorkPass473] Recompute poisoned rolling metrics from trusted evidence (2026-10-27)
+
+- Updated the WorkPass110 restore regression so an external-only snapshot recomputes learning-opportunity to zero instead of preserving a caller-poisoned value. Only grounded runtime outcomes may repopulate behavioral/learning aggregates.
+
+## [NK1][WorkPass472] Return persisted trusted shadow registration context (2026-10-27)
+
+- Changed the Core-owned trusted shadow registration hook to return the canonical registry result, including its persisted registration timestamp. This satisfies the restart/idempotency consumer contract.
+- The return type is compatible with the coordinator after WorkPass471 made its registrar interface accept synchronous results and explicitly await registration before launching the learner process.
+
+## [NK1][WorkPass471] Normalize trusted shadow coordinator failure semantics (2026-10-27)
+
+- Made the trusted shadow coordinator asynchronous so rejected lane/configuration checks surface as Promise rejections, matching the public Promise contract and callers using assert.rejects.
+- The registrar contract now accepts synchronous or asynchronous persistence return values; coordinator registration is always awaited, and no process is spawned unless it succeeds.
+
 ## [NK1][WorkPass442] Fix trusted registrar typing and lineage regression matcher (2026-10-27)
 
 - The actual runtime typecheck on HEAD `53cd565d28d3a22c5d0e7d9a5a4cddda8091d8ae` had narrowed to one error: `OrganismCore` returned the registry's `TrustedSkillShadowRunContext` from a host interface declared as a side-effect registration capability. The method now declares `: void` and performs registration without leaking the registry object.
