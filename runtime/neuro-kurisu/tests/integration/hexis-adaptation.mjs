@@ -1725,6 +1725,100 @@ assert.equal(compensationThrowLedger.snapshot().temporal.length, 0);
 assert.equal(compensationThrowLedger.getHmxStage(compensationThrowStage.stagingId)?.status, 'accepted');
 assert.equal(compensationThrowRuntime.fabric.inspect().pendingSignalCompensations, 0);
 
+// The MemoryOS compensation can itself throw after restoring its snapshot. The
+// HMX projector must report the missing lifecycle receipt, preserve the exact canonical
+// pre-state, unwind graph/ledger writes, and revoke the one-shot token.
+const signalCompensationThrowRuntime = new MemorySubsystemRuntime();
+const signalCompensationThrowLedger = new HexisAdaptationFabric();
+let failAfterBeliefMirrorWrite = false;
+const signalCompensationThrowLedgerAdapter = new Proxy(signalCompensationThrowLedger, {
+  get(target, property) {
+    if (property === 'registerOrUpdateBelief') {
+      return (...args) => {
+        const result = target.registerOrUpdateBelief(...args);
+        if (failAfterBeliefMirrorWrite) {
+          failAfterBeliefMirrorWrite = false;
+          throw new Error('injected-temporal-mirror-after-write');
+        }
+        return result;
+      };
+    }
+    const value = Reflect.get(target, property, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+});
+const signalCompensationThrowProjector = new HexisCanonicalMemoryProjector(
+  signalCompensationThrowRuntime.fabric,
+  signalCompensationThrowRuntime.semanticMemory,
+  signalCompensationThrowLedgerAdapter,
+);
+signalCompensationThrowLedger.bindCanonicalMemoryApply(stage => signalCompensationThrowProjector.apply(stage));
+const signalCompensationThrowExportId = 'exp_0000000000009208';
+const signalCompensationThrowContent = 'Compensation that throws after restoring must preserve exact canonical state.';
+const signalCompensationSeedStage = signalCompensationThrowLedger.stageHmx({
+  document: makeHmxDocument(signalCompensationThrowExportId, {
+    memories: [{
+      ref: signalCompensationThrowExportId + ':memory-existing',
+      type: 'semantic',
+      content: signalCompensationThrowContent,
+      status: 'active',
+      trust_level: 0.95,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(signalCompensationThrowLedger.decideHmx(signalCompensationSeedStage.stagingId, 'accept')?.status, 'accepted');
+assert.equal(signalCompensationThrowLedger.decideHmx(signalCompensationSeedStage.stagingId, 'apply')?.status, 'applied');
+const signalCompensationSeed = signalCompensationThrowRuntime.fabric.canonicalSnapshot().items.find(
+  item => item.content === signalCompensationThrowContent,
+);
+assert(signalCompensationSeed);
+const signalCompensationBefore = signalSnapshot(signalCompensationSeed);
+const signalCompensationOS = signalCompensationThrowRuntime.fabric.memoryOS;
+const originalMemoryOSCompensation = signalCompensationOS.restoreSignalsForCompensation.bind(signalCompensationOS);
+let injectAfterCompensationWrite = true;
+signalCompensationOS.restoreSignalsForCompensation = (...args) => {
+  const restored = originalMemoryOSCompensation(...args);
+  if (injectAfterCompensationWrite) {
+    injectAfterCompensationWrite = false;
+    throw new Error('injected-signal-compensation-after-write');
+  }
+  return restored;
+};
+const signalCompensationRetryStage = signalCompensationThrowLedger.stageHmx({
+  document: makeHmxDocument(signalCompensationThrowExportId, {
+    memories: [{
+      ref: signalCompensationThrowExportId + ':memory-existing',
+      type: 'semantic',
+      content: signalCompensationThrowContent,
+      status: 'active',
+      trust_level: 0.35,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(signalCompensationThrowLedger.decideHmx(signalCompensationRetryStage.stagingId, 'accept')?.status, 'accepted');
+failAfterBeliefMirrorWrite = true;
+assert.throws(
+  () => signalCompensationThrowLedger.decideHmx(signalCompensationRetryStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-temporal-mirror-after-write;rollback-failures=signal-restore:injected-signal-compensation-after-write/,
+  'a post-write compensation exception must remain visible as incomplete lifecycle acknowledgement',
+);
+const signalCompensationAfterFailure = signalCompensationThrowRuntime.fabric.canonicalSnapshot().items.find(
+  item => item.id === signalCompensationSeed.id,
+);
+assert(signalCompensationAfterFailure);
+assert.deepEqual(
+  signalSnapshot(signalCompensationAfterFailure),
+  signalCompensationBefore,
+  'a compensation exception after the restore must not leave the canonical memory half-modified',
+);
+assert.equal(signalCompensationThrowRuntime.fabric.inspect().pendingSignalCompensations, 0,
+  'a token consumed by a compensation that throws must not remain replayable');
+assert.equal(signalCompensationThrowLedger.getHmxStage(signalCompensationRetryStage.stagingId)?.status, 'accepted');
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
