@@ -1,3 +1,9 @@
+## [NK1][WorkPass446] Keep the replay buffer compatible with Node 22 type stripping (2026-10-27)
+
+- P26's recovery benchmark, continual-learning matrix, skill-learning benchmark and Hermes candidate gate all passed; the next replay test then failed during Node 22's strip-only TypeScript parsing because `ContinualReplayBuffer` used a constructor parameter property (`readonly capacity`).
+- Replaced the parameter property with an explicit readonly field and constructor assignment. Behavior and public `capacity` access are preserved, while the source can be imported by `node --experimental-strip-types` without requiring a TypeScript transform.
+- The current-head P26 rerun must verify the replay regression and subsequent steps after this compatibility fix.
+
 ## [NK1][WorkPass445] Enforce atomic, finite parametric-policy updates (2026-10-27)
 
 - Fixed the first real failure in `tests/p26-learning-input-integrity.mjs`: the learner had clamped `NaN`/infinite training targets and rates into plausible values instead of rejecting the data.
