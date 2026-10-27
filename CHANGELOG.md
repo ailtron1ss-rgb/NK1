@@ -1,3 +1,10 @@
+## [NK1][memory] Keep the cognitive cycle resilient to semantic-provider failure (2026-10-27)
+
+- Route synchronous embedding-adapter throws and rejected provider promises through the same bounded semantic-recall path instead of allowing a provider failure to reject the foreground cognition cycle.
+- Preserve canonical lexical recall as the fallback for failed and slow semantic work; keep in-flight tracking until the underlying provider settles so concurrent calls do not fan out requests.
+- Added a runtime regression for provider rejection, synchronous throw, timeout fallback and late in-flight cleanup; wired it into `test:rebuild-recovered`.
+- Validation status: regression authored and CI wiring committed, but exact-head execution/typecheck is not confirmed in this change. No retrieval-quality uplift is claimed.
+
 ## [NK1][verification] Mem0 integration closure CI evidence (2026-10-27)
 
 - GitHub Actions run [40530677372](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40530677372) completed successfully on the PR merge ref.
