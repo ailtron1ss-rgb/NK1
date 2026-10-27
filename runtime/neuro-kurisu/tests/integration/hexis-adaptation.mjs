@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { refreshHmxStageLifecycleDigest } from '../../src/organism/integration/hexis/HexisStageIntegrity.mjs';
 import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
+import { canonicalizeMemoryContent, stableMemoryId } from '../../src/organism/developmental/MemoInspiredMemoryPrimitives.ts';
 import { AdaptiveMemoryPolicy } from '../../src/organism/developmental/AdaptiveMemoryPolicy.ts';
 
 const fabric = new HexisAdaptationFabric();
@@ -371,6 +372,52 @@ assert.equal(contentRevisionReplay?.id, contentRevisionAfterRetry.id,
   'replaying the same correction must return the established revision');
 assert.equal(contentRevisionAtomicMemory.snapshot().items.length, 2,
   'replaying a content correction must not append duplicate revision rows');
+
+
+// A corrupted/stale snapshot can already contain the deterministic revision ID
+// claimed by another lineage. Fail closed before encode(forceDistinct) can re-use
+// that row and silently splice it into the new revision chain.
+const revisionCollisionMemory = new MemoryOS2({ embeddingProvider: null });
+const revisionCollisionSeed = revisionCollisionMemory.encode({
+  ...restoreAtomicSeedInput,
+  content: 'revision ID collision source memory',
+  source: 'test:memoryos-revision-id-collision',
+});
+const collisionTargetContent = canonicalizeMemoryContent('revision ID collision target text');
+const collisionGroup = revisionCollisionSeed.revisionGroupId ?? revisionCollisionSeed.id;
+const collisionRevisionId = stableMemoryId(
+  `${collisionTargetContent}\\0revision:${collisionGroup}\\0${2}\\0${revisionCollisionSeed.id}`,
+  revisionCollisionSeed.kind,
+  revisionCollisionSeed.source,
+);
+const revisionCollisionClaimant = revisionCollisionMemory.encode({
+  ...restoreAtomicSeedInput,
+  id: collisionRevisionId,
+  content: 'unrelated row occupying a revision identifier',
+  source: 'test:memoryos-revision-id-collision-claimant',
+  revisionGroupId: 'unrelated-revision-lineage',
+});
+const revisionCollisionBaseline = revisionCollisionMemory.snapshot();
+const collisionParentRef = revisionCollisionMemory.itemIndex.get(revisionCollisionSeed.id);
+const collisionClaimantRef = revisionCollisionMemory.itemIndex.get(revisionCollisionClaimant.id);
+assert.throws(
+  () => revisionCollisionMemory.reviseContent(
+    revisionCollisionSeed.id,
+    collisionTargetContent,
+    { validAt: revisionCollisionSeed.createdAt + 100 },
+  ),
+  /memory-revision-id-collision$/,
+  'revision creation must reject a deterministic ID already owned by another row/lineage',
+);
+assert.deepEqual(
+  revisionCollisionMemory.snapshot(),
+  revisionCollisionBaseline,
+  'revision-ID collision rejection must leave canonical state unchanged',
+);
+assert.strictEqual(revisionCollisionMemory.itemIndex.get(revisionCollisionSeed.id), collisionParentRef);
+assert.strictEqual(revisionCollisionMemory.itemIndex.get(collisionRevisionId), collisionClaimantRef);
+assert.equal(revisionCollisionMemory.temporalChain(revisionCollisionSeed.id).length, 1,
+  'a conflicting row must not be linked into the source revision chain');
 
 const persistedPolicyGuard = new MemoryOS2({ embeddingProvider: null });
 const corruptedPersistedPolicyState = persistedPolicyGuard.snapshot();
