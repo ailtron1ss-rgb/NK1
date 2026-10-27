@@ -1,3 +1,12 @@
+## [NK1][WorkPass490] Integrate Hexis evidence lineage through canonical memory (2026-10-27)
+
+- Added a bounded provenance envelope for declared source identity, capture time, evidence class, and content fingerprint. A matching SHA-256 fingerprint is an integrity check, not source authentication.
+- Routed Hexis evidence through the existing MemoryFabric mutation gateway; MemoryOS2 remains the canonical memory owner. Added explicit idempotent duplicate detection and strict rejection of inference/model echoes as independent observations.
+- Persisted the Hexis-specific source monitor with the root OrganismCore projection and added request-bound validation that rejects accessor-backed request/trace properties.
+- Added focused lineage regressions and a server restart test covering first acceptance, identical replay, fingerprint tampering, and root-snapshot restoration.
+- WorkPass491: evidence is now written through a dedicated MemoryOS2/MemoryFabric `attach-evidence` lifecycle command with canonical command receipts; `updateSignals` remains restricted to signal fields, and identical evidence replays remain idempotent.
+- The first integration attempt was based on a stale pre-WorkPass461–489 tree and was superseded; this pass is rebased on the then-current `workpass70-source` head. Exact-head CI is required before promotion; no retrieval uplift or release readiness is claimed.
+
 ## [NK1][WorkPass489] Align cycle-order assertion with the runtime-owned snapshot API (2026-10-27)
 
 - The broad source regression moved past the embodiment-order check and exposed another stale WorkPass319 symbol: the test expected `setUnifiedCognitiveCycle`, while the current runtime persists the completed snapshot through `setRuntimeUnifiedCognitiveCycle`.

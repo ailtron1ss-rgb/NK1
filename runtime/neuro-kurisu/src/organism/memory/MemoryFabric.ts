@@ -1,7 +1,7 @@
 import type { OrganismEvent } from './EventSourcing.ts';
 import { EventLog, makeEvent } from './EventSourcing.ts';
 import { createHash } from 'node:crypto';
-import { MemoryOS2, type MemoryItem2, type MemoryOSState2, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
+import { MemoryOS2, type MemoryEvidenceSource, type MemoryItem2, type MemoryOSState2, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
 import { MultiTimescaleMemory, type MemoryRecord } from './MultiTimescaleMemory.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
 import { UnifiedMemorySystem, type MemoryDevelopmentState } from '../developmental/UnifiedMemorySystem.ts';
@@ -12,13 +12,14 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'attach-evidence'|'forget';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
+  | { action:'attach-evidence'; id:string; source:MemoryEvidenceSource; reason?:string; commandId?:string; tick?:number }
   | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
 
 interface MemoryLifecycleReceipt {
@@ -252,6 +253,16 @@ export class MemoryFabric {
         result=context; memoryId=before.id;
         outcome=context?'applied':'noop';
         if(context)eventPayload={action,memoryId:before.id,fields:changedEntries.map(([key])=>key),commandId:commandId||undefined};
+        break;
+      }
+      case 'attach-evidence': {
+        const before=this.findCanonical(command.id);
+        if(!before){result=null;break;}
+        const item=this.memoryOS.attachEvidenceSource(command.id,command.source,command.reason??'evidence-lineage');
+        result=item;memoryId=item?.id;
+        const changed=Boolean(before&&item&&(JSON.stringify(before.evidenceSources??[])!==JSON.stringify(item.evidenceSources??[])||JSON.stringify(before.evidenceLineageKeys??[])!==JSON.stringify(item.evidenceLineageKeys??[])));
+        outcome=changed?'applied':'noop';
+        if(changed&&item){this.touchHot(item.id);eventPayload={action,memoryId:item.id,fields:['evidenceSources','evidenceLineageKeys'],reason:String(command.reason??'evidence-lineage').slice(0,240),commandId:commandId||undefined};}
         break;
       }
       case 'forget': {
@@ -523,7 +534,7 @@ export class MemoryFabric {
       this.retiredMutationReceiptBloomCorrupt=true;
     }
     for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
-      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
+      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','attach-evidence','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
       this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
     }
   }
@@ -558,6 +569,10 @@ export class MemoryFabric {
 
   updateContext(id:string, patch:Record<string,string|undefined>, context:{tick?:number;commandId?:string}={}){
     return this.applyLifecycleCommand({action:'update-context',id,patch,...context}) as Record<string,string> | null;
+  }
+
+  attachEvidenceSource(id:string, source:MemoryEvidenceSource, reason='evidence-lineage', context:{tick?:number;commandId?:string}={}){
+    return this.applyLifecycleCommand({action:'attach-evidence',id,source,reason,...context}) as MemoryItem2|null;
   }
 
   markDormant(id:string,dormant=true,reason='memory-economy',context:{tick?:number;commandId?:string}={}){

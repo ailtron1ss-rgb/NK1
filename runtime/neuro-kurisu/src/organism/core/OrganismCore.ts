@@ -8,6 +8,7 @@ import { buildGradedTraitSalience } from '../language/GradedTraitSalience.ts';
 import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, type MemoryRetrievalBenchmarkOptions } from '../memory/MemoryRetrievalBenchmark.ts';
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
+import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
@@ -850,6 +851,7 @@ function defaultAdvancedFacet(): import('./types.ts').AdvancedDevelopmentFacet {
         memoryFabric: { version: 2, stats: { encodes: 0, newItems: 0, reconsolidations: 0, retrievals: 0, retrievalHits: 0, maintenanceRuns: 0, compatibilityProjections: 0 }, hotIds: [] }, memoryLifecycleAuthority: undefined,
         groundedWorld: defaultGroundedWorldState(),
         unifiedLatentWorldState: defaultUnifiedLatentWorldState(),
+        hexisSourceMonitor: { traces: [], conflicts: 0, unattributed: 0 },
         memoryOS: defaultMemoryOS2(), worldModel2: defaultWorldModel2(), regret: defaultRegretState(), semanticScars: defaultSemanticScarState(),
         valueProvenance: defaultValueProvenance(), commitmentRepair: defaultCommitmentRepair(), modelSwitch: defaultModelSwitchContinuity(), advancedResilience: defaultAdvancedResilience(),
         microDreams: defaultMicroDream(), developmentalForks: defaultDevelopmentalForks(), relationshipSelf: defaultRelationshipSelf(), multiHypothesisPersonality: defaultMultiHypothesisPersonality(), futureSimulator: defaultFutureSimulator(), longTermSocialMind: defaultLongTermSocialMind(), socialMind: defaultSocialMindState(), selfGovernance: defaultSelfGovernance(), futureSelf: defaultFutureSelf(), consequenceAttribution: [], unifiedMemory: defaultUnifiedMemory(), socialDevelopment: defaultSocialDevelopment(), longitudinal: defaultLongitudinalOrganism(), adaptiveDevelopment: defaultAdaptiveDevelopment(), temporalContinuity: defaultTemporalContinuity(), p24: defaultP24WorldIdentity(),
@@ -1936,6 +1938,8 @@ export class OrganismCore {
     private syncPersistenceProjection(includeAdvanced = true, forceAllAdvanced = false) {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
         this.persistence.persistenceProjectionCoordinator.sync(this.persisted, this.projectionContext(), includeAdvanced, forceAllAdvanced);
+        // Persist Hexis evidence provenance separately from inferred cognition sources.
+        this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
     }
     private syncHotPersistenceProjection() {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
@@ -2828,6 +2832,74 @@ export class OrganismCore {
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return review;
     }
+    hexisIngestEvidenceLineage(input: unknown) {
+        const reject = (reason: string) => ({ accepted: false as const, added: false as const, reason });
+        const asOwnDataRecord = (value: unknown): Record<string, unknown> | null => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+            const keys = Object.keys(value);
+            if (keys.length > 32) return null;
+            const out = Object.create(null) as Record<string, unknown>;
+            for (const key of keys) {
+                const descriptor = Object.getOwnPropertyDescriptor(value, key);
+                if (!descriptor || !('value' in descriptor)) return null;
+                out[key] = descriptor.value;
+            }
+            return out;
+        };
+        const request = asOwnDataRecord(input);
+        if (!request) return reject('invalid-evidence-request');
+        const memoryId = request.memoryId;
+        const sourceContent = request.sourceContent;
+        const rawTrace = request.trace;
+        if (typeof memoryId !== 'string' || !memoryId.trim() || memoryId !== memoryId.trim() ||
+            memoryId.length > 192 || /[\x00-\x1f\x7f-\x9f]/u.test(memoryId)) return reject('memory-identity-invalid');
+        if (typeof sourceContent !== 'string' || sourceContent.length < 1 || sourceContent.length > 65536) return reject('source-content-invalid');
+        const trace = asOwnDataRecord(rawTrace);
+        if (!trace) return reject('source-trace-invalid');
+        const id = trace.id;
+        const source = trace.source;
+        const kind = trace.kind;
+        const confidence = trace.confidence;
+        const epistemicStatus = trace.epistemicStatus;
+        const at = trace.at;
+        const provenance = normalizeEvidenceLineageProvenance(trace.provenance);
+        if (typeof id !== 'string' || !id.trim() || id !== id.trim() || id.length > 192 ||
+            /[\x00-\x1f\x7f-\x9f]/u.test(id)) return reject('source-trace-id-invalid');
+        if (!['user', 'system', 'world', 'tool'].includes(String(source))) return reject('source-not-independent');
+        if (typeof kind !== 'string' || !kind.trim() || kind !== kind.trim() || kind.length > 64 ||
+            /[\x00-\x1f\x7f-\x9f]/u.test(kind)) return reject('source-kind-invalid');
+        if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) return reject('observation-confidence-invalid');
+        if (epistemicStatus !== 'observation' && epistemicStatus !== 'fact') return reject('epistemic-status-not-observation');
+        if (typeof at !== 'number' || !Number.isSafeInteger(at) || at < 0 || at > Date.now() + 5 * 60_000) return reject('observation-time-invalid');
+        if (!provenance) return reject('provenance-envelope-invalid');
+        if (provenance.evidenceClass !== 'direct-observation' && provenance.evidenceClass !== 'corroborated') return reject('provenance-class-not-eligible');
+        if (provenance.capturedAt > Date.now() + 5 * 60_000) return reject('provenance-capture-time-in-future');
+        const actualFingerprint = createHash('sha256').update(sourceContent).digest('hex');
+        if (actualFingerprint !== provenance.contentFingerprint) return reject('source-content-fingerprint-mismatch');
+        const canonical = this.memorySubsystem.fabric.canonicalSnapshot(false).items.find(row => row.id === memoryId);
+        if (!canonical) return reject('canonical-memory-not-found');
+        const existing = this.memorySubsystem.sourceMonitor.lineage(id, 8);
+        if (existing.length) {
+            const previous = existing[0]!;
+            if (previous.source !== source || previous.kind !== kind || previous.confidence !== confidence ||
+                previous.epistemicStatus !== epistemicStatus || previous.at !== at ||
+                previous.provenance?.sourceId !== provenance.sourceId ||
+                previous.provenance?.sourceKind !== provenance.sourceKind ||
+                previous.provenance?.capturedAt !== provenance.capturedAt ||
+                previous.provenance?.evidenceClass !== provenance.evidenceClass ||
+                previous.provenance?.contentFingerprint !== provenance.contentFingerprint) return reject('source-trace-id-conflict');
+        } else {
+            this.memorySubsystem.sourceMonitor.record({
+                id, source: source as 'user' | 'system' | 'world' | 'tool', kind, confidence, epistemicStatus, at, provenance,
+            });
+        }
+        const result = this.memorySubsystem.hexisCanonicalEvidenceBridge.recordSourceTrace(memoryId, id);
+        this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
+        this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+        return result;
+    }
+
     hexisDecideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string) {
         const before = this.hexisAdaptation.snapshot();
         const review = before.learningReviews.find((x) => x.id === reviewId);
