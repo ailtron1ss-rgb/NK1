@@ -9,6 +9,7 @@ const runtime = new MemorySubsystemRuntime();
 const canonicalBaseline = runtime.fabric.canonicalSnapshot().items;
 const temporalState = { assertions: [], beliefs: [] };
 let failFirstAssertion = true;
+let concurrentRowId = null;
 const temporalLedger = {
   snapshot() { return structuredClone(temporalState); },
   restore(snapshot) {
@@ -20,6 +21,48 @@ const temporalLedger = {
     temporalState.assertions.push(structuredClone(assertion));
     if (failFirstAssertion) {
       failFirstAssertion = false;
+      // Model an interleaved import from the same export while this stage is
+      // unwinding. The concurrent row has a distinct stage/attempt and must survive
+      // this transaction's reconciliation scan even though its ID was absent from
+      // the original beforeIds snapshot.
+      concurrentRowId = 'hexis-memory:parallel-stage-import';
+      const now = Date.now();
+      runtime.fabric.encode({
+        id: concurrentRowId,
+        content: 'Concurrent Hexis stage row must survive another stage rollback.',
+        tags: ['hexis-concurrency-regression'],
+        context: {
+          hexisExportId: stage.exportId,
+          hexisImportStageId: 'stage-concurrent-peer',
+          hexisImportAttempt: '1',
+          hexisMemoryRef: stage.exportId + ':parallel-peer',
+          hexisSourceLineageId: stage.sourceLineageId,
+          hexisOriginalType: 'semantic',
+        },
+        kind: 'concept',
+        salience: 0.3,
+        emotionalWeight: 0.1,
+        identityRelevance: 0.05,
+        goalRelevance: 0.05,
+        socialRelevance: 0.05,
+        predictionError: 0,
+        confidence: 0.7,
+        epistemicStatus: 'belief',
+        source: 'hexis:parallel-peer',
+        entities: [],
+        semanticLinks: [],
+        temporalLinks: [],
+        causalLinks: [],
+        contradictionLinks: [],
+        provenanceClass: 'external',
+        sourceAuthority01: 0.5,
+        independenceKey: 'hexis-parallel-stage-peer',
+        observedAt: now,
+        evidenceFreshnessAt: now,
+        validFromAt: now,
+        validUntilAt: null,
+        evidenceSources: [],
+      }, { commandId: 'wp433:parallel-stage-injection', forceDistinct: true, syncCompatibility: false });
       throw new Error('injected-quarantined-hmx-temporal-failure');
     }
     return { id: 'quarantine-rollback-assertion:' + temporalState.assertions.length };
@@ -66,8 +109,22 @@ assert.throws(
   /hmx-canonical-apply-failed:injected-quarantined-hmx-temporal-failure/,
   'the injected downstream failure must propagate after compensation',
 );
-assert.deepEqual(runtime.fabric.canonicalSnapshot().items, canonicalBaseline,
-  'failed HMX application must not leave a quarantined record that ordinary forgetting refuses to delete');
+const afterFailedApply = runtime.fabric.canonicalSnapshot().items;
+assert.deepEqual(
+  afterFailedApply.filter(item => canonicalBaseline.some(base => base.id === item.id)),
+  canonicalBaseline,
+  'failed HMX application must preserve all pre-existing canonical records');
+assert.equal(afterFailedApply.some(item =>
+  item.context?.hexisImportStageId === stage.stagingId &&
+  item.context?.hexisImportAttempt === '1'), false,
+  'the failed stage/attempt must be fully compensated');
+const concurrentPeer = afterFailedApply.find(item => item.id === concurrentRowId);
+assert.ok(concurrentPeer, 'a concurrently imported row absent from beforeIds must not be rolled back');
+assert.equal(concurrentPeer.context?.hexisExportId, stage.exportId);
+assert.equal(concurrentPeer.context?.hexisImportStageId, 'stage-concurrent-peer');
+assert.equal(concurrentPeer.context?.hexisImportAttempt, '1');
+assert.equal(afterFailedApply.length, canonicalBaseline.length + 1,
+  'only the independent concurrent-stage row may remain after rollback');
 assert.deepEqual(temporalState, { assertions: [], beliefs: [] },
   'temporal state must be restored to the baseline after the failed apply');
 
