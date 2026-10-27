@@ -976,7 +976,7 @@ export class MemoryOS2{
      if(!evidence)return false;
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(m.id,m.content).includes(queryPhrase);
      const lexicalEvidence=identifierEvidence||exactPhrase||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
-       (qTokens.size<5&&evidence.fuzzy>=.45&&evidence.coverage>=.15)||
+       (qTokens.size<5&&evidence.fuzzy>=.45)||
        (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
      const typedRecall=['identity','episodic','goal','procedural'].includes(queryIntentMode)&&
        memoryIntentFit(queryIntentMode,m)>=.82;

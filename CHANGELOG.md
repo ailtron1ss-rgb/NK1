@@ -1,3 +1,9 @@
+## [NK1][WorkPass581] Preserve strong fuzzy evidence in the answerability gate (2026-10-27)
+
+- Allow MemoryOS2's high-confidence character n-gram evidence (`fuzzy >= 0.45`) to satisfy the grounded-recall gate without requiring exact-token coverage.
+- This restores the explicit spelling/inflection recovery contract while leaving zero-overlap, low-fuzzy unsupported queries subject to abstention.
+- The current regression run reached the recovered suite but failed the existing fuzzy-memory test because the first gate required both fuzzy evidence and exact coverage. This correction addresses that failure; final CI is still pending.
+
 ## [NK1][WorkPass580] Align identifier regression clock with fixture validity (2026-10-27)
 
 - Correct the new RUN-501 regression to query at its explicit fixture timestamp. The test seeds memory at a future timestamp and must use `temporalMode: 'at'`; otherwise the temporal eligibility layer correctly excludes the item before the identifier gate is evaluated.
