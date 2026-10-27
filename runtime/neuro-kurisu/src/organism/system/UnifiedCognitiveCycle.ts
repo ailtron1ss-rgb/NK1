@@ -60,6 +60,15 @@ export class UnifiedCognitiveCycle {
     const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
     const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    // A snapshot's latest-success flag cannot override contradictory aggregate counters.
+    // Only internally coherent persisted counts may retain lastComplete=true.
+    const restoreCountersConsistent =
+      (source.completeCycles === undefined ||
+        (Number.isSafeInteger(source.completeCycles) && source.completeCycles >= 0 && source.completeCycles <= cycles)) &&
+      (source.incompleteCycles === undefined ||
+        (Number.isSafeInteger(source.incompleteCycles) && source.incompleteCycles >= 0 && source.incompleteCycles === incompleteCycles)) &&
+      (source.brokenLineages === undefined ||
+        (Number.isSafeInteger(source.brokenLineages) && source.brokenLineages >= 0 && source.brokenLineages <= incompleteCycles));
     this.state={
       version:1,
       cycles,
@@ -69,7 +78,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:restoreCountersConsistent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
