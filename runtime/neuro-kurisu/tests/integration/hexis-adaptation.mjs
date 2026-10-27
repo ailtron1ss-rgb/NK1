@@ -25,6 +25,69 @@ assert.equal(
 assert.equal(ownedCheckpointFabric.snapshot().beliefs.length, 0,
   'owned ledger mutations should be removed by a successful guarded rollback');
 
+// Bounded mutation journals must declare history loss, while unwinding all
+// retained owner receipts without applying a stale whole-state restore.
+const graphJournalSaturationRuntime = new MemorySubsystemRuntime();
+const graphJournalSaturation = graphJournalSaturationRuntime.semanticMemory;
+const graphJournalSeed = graphJournalSaturation.upsertNode(
+  'bounded graph journal target',
+  'concept',
+  0.2,
+  'test:bounded-journal',
+);
+const graphJournalCheckpoint = graphJournalSaturation.mutationCheckpoint();
+const graphJournalOwner = 'test:graph-journal-saturation';
+for (let index = 0; index < 8193; index++) {
+  graphJournalSaturation.upsertNode(
+    'bounded graph journal target',
+    'concept',
+    0.5,
+    'test:bounded-journal',
+    graphJournalOwner,
+  );
+}
+const graphJournalRollback = graphJournalSaturation.rollbackOwnedMutations(graphJournalCheckpoint, graphJournalOwner);
+assert.equal(graphJournalRollback.historyLost, true,
+  'the graph journal must report when the checkpoint falls outside its retained window');
+assert(graphJournalRollback.conflicts > 0,
+  'history loss must be surfaced as a partial rollback rather than a complete-success receipt');
+const graphJournalAfter = graphJournalSaturation.snapshot().nodes.find(node => node.id === graphJournalSeed.id);
+assert(graphJournalAfter);
+assert(Math.abs(graphJournalAfter.salience - 0.254) < 1e-9,
+  'retained graph receipts must unwind in reverse while the missing earliest receipt is explicitly reported');
+
+const ledgerJournalSaturation = new HexisAdaptationFabric();
+const ledgerJournalSeed = ledgerJournalSaturation.recordTemporalAssertion({
+  memoryId: 'seed-temporal-history',
+  summary: 'Temporal history existing before the saturated transaction.',
+  confidence01: 0.8,
+  validFrom: 1,
+  source: 'test:pre-existing-temporal',
+});
+const ledgerJournalCheckpoint = ledgerJournalSaturation.mutationCheckpoint();
+const ledgerJournalOwner = 'test:ledger-journal-saturation';
+for (let index = 0; index < 8193; index++) {
+  ledgerJournalSaturation.recordTemporalAssertion({
+    memoryId: 'owned-temporal-' + index,
+    summary: 'Owned temporal assertion ' + index,
+    confidence01: 0.6,
+    validFrom: index + 100,
+    source: ledgerJournalOwner,
+  }, ledgerJournalOwner);
+}
+const ledgerJournalRollback = ledgerJournalSaturation.rollbackOwnedMutations(ledgerJournalCheckpoint, ledgerJournalOwner);
+assert.equal(ledgerJournalRollback.historyLost, true,
+  'the temporal ledger must report when a rollback checkpoint falls outside its bounded journal');
+assert(ledgerJournalRollback.conflicts > 0,
+  'saturated ledger rollback must report partial compensation instead of claiming full restoration');
+const ledgerJournalAfter = ledgerJournalSaturation.snapshot().temporal;
+assert(ledgerJournalAfter.some(row => row.id === ledgerJournalSeed.id),
+  'capacity-evicted baseline temporal history must be restored when its owned eviction receipt is retained');
+assert.equal(ledgerJournalAfter.filter(row => row.source === ledgerJournalOwner).length, 1,
+  'only the first owned write, whose compensation receipt was evicted from the bounded journal, may remain');
+assert(ledgerJournalAfter.some(row => row.memoryId === 'owned-temporal-0'),
+  'the exact untracked earliest owned write must be identifiable after history loss is reported');
+
 const trustMirrorFabric = new HexisAdaptationFabric();
 trustMirrorFabric.registerOrUpdateBelief({
   memoryId: 'stale-trust-mirror',
