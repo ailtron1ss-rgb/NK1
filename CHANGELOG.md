@@ -1,3 +1,11 @@
+## [NK1][WorkPass438] Keep graph and belief projections aligned with capacity trim (2026-10-27)
+
+- Exported the canonical 1,600-item capacity constant from MemoryOS2 and reused it in HexisCanonicalMemoryProjector rather than duplicating the trim threshold.
+- Before the successful transaction commit, the projector predicts the exact canonical tail rows to be evicted and withdraws their source-keyed semantic nodes and active Hexis belief mirrors.
+- These projection withdrawals happen inside the transaction's existing try/catch boundary; if canonical trim/commit fails, the saved semantic-graph and temporal-ledger snapshots are restored along with canonical rollback.
+- Extended the capacity-boundary integration fixture with a pre-existing HMX semantic node and active belief. Failed apply must preserve both; successful capacity commit must remove both when their canonical row is evicted.
+- Validation caveat: module parse/source invariants remain available, but runtime regressions and TypeScript typecheck have not been run because GitHub Actions is not yet active from the default branch. See PR #251 for the workflow activation change.
+
 ## [NK1][WorkPass437] Make capacity-commit failure atomic (2026-10-27)
 
 - Made the 1,600-item trim part of the import commit a failure-atomic operation: on an interrupted trim, MemoryOS2 restores the complete pre-commit snapshot and leaves the HMX compensation token live.
