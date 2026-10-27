@@ -1,3 +1,10 @@
+## [NK1][WorkPass573] Stabilize query-derived memory retrieval context (2026-10-27)
+
+- Remove lifetime counters `semanticQueries` and `linkUpdates` as fallback signals for temporal/causal routing; current query intent and explicit temporal mode now define the context.
+- Add a regression that performs 80 general retrievals, then checks that explicit temporal and causal queries select separate contextual-policy buckets.
+- Register the regression in `test:rebuild-recovered`. The test was added but not run in this pass; no pass result is claimed.
+- Code is committed to `workpass70-source`; independent holdout uplift and Release ZIP refresh remain pending.
+
 ## [NK1][WorkPass572] Keep causal life graph summaries coherent after direct mutations (2026-10-27)
 
 - Make standalone `CausalLifeGraph.upsertNode` recompute derived chain/evidence metrics by default, including updates to an existing node.
