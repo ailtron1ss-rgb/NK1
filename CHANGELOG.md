@@ -3,6 +3,8 @@
 - Recompute tick-derived chain coverage after causal graph node insertion/update, keeping live snapshots consistent with restore-time recomputation.
 - Strengthen WorkPass570 persistence regression with an explicit assertion that inserting the first experience node updates `observedChains` immediately.
 - This fixes the real round-trip regression without weakening the persistence assertion or changing the graph's evidence/promotion policy.
+- Preserve bounded cycle construction by deferring counter recomputation during `recordCycle` bulk upserts and recomputing once after the full graph is linked.
+- Added a direct graph invariant contract and focused CI for node insert/update, snapshot/restore, and the complete eight-stage causal cycle.
 
 ## [NK1][WorkPass571] Restore compatibility memory at the persisted lifecycle tick (2026-10-27)
 
