@@ -1,3 +1,8 @@
+## [NK1][WorkPass450] Count HMX document bytes with a typed UTF-8 encoder (2026-10-27)
+
+- Replaced `Buffer.byteLength()` in `stageHmx()` with `new TextEncoder().encode(encoded).byteLength`, preserving the 8 MiB UTF-8 limit while avoiding the project's intentionally narrow Node shim, which does not declare `Buffer.byteLength`.
+- No external dependency added. The code change is committed; exact-head runtime typecheck and HMX integration tests still require a completed hosted run.
+
 ## [NK1][WorkPass449] Restore signal compensation helper and strict TypeScript guards (2026-10-27)
 
 - Restored the missing `MemoryFabric.beginSignalCompensation()` implementation used by the existing `updateSignalsWithCompensation()` rollback path. It snapshots only canonical memory state, uses one-shot in-memory tokens, and fails closed when the 512-token budget is full.
