@@ -209,11 +209,11 @@ try {
     const missingConfidence = await post('/api/organism/integration/hexis/belief/revise', { ...beliefPayload, confidence01: undefined });
     if (missingConfidence.status !== 400) throw new Error('hexis-belief-confidence-required:' + missingConfidence.status);
     const invalidBeliefStanceResponse = await post('/api/organism/integration/hexis/belief/revise', {
-      memoryId:memoryIndex.memoryIndex[0].id,stance:'support-ish',evidence:{ref:'invalid-stance',trust01:.8},
+      memoryId:memoryIndex.memoryIndex[0].id,confidence01:.65,stance:'support-ish',evidence:{ref:'invalid-stance',trust01:.8},
     });
     if (invalidBeliefStanceResponse.status !== 400) throw new Error('hexis-belief-stance-validation:' + invalidBeliefStanceResponse.status);
     const missingBeliefTargetResponse = await post('/api/organism/integration/hexis/belief/revise', {
-      memoryId:'missing-canonical-memory',stance:'supports',evidence:{ref:'missing-target',trust01:.8},
+      memoryId:'missing-canonical-memory',confidence01:.65,stance:'supports',evidence:{ref:'missing-target',trust01:.8},
     });
     if (missingBeliefTargetResponse.status !== 404) throw new Error('hexis-belief-missing-target-status:' + missingBeliefTargetResponse.status);
   }
