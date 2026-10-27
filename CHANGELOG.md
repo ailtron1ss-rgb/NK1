@@ -1,3 +1,10 @@
+## [NK1][WorkPass436] Restore real Node.js type coverage in runtime CI (2026-10-27)
+
+- Added a pinned `@types/node` dev dependency to the runtime package and locked `@types/node@22.20.4` plus its `undici-types@6.21.0` dependency using the repository's existing app lock metadata.
+- The clean runtime TypeScript project now excludes the legacy partial `src/node-shims.d.ts` declarations so they cannot shadow/fragment the actual Node API types.
+- Updated WorkPass71 CI to install the runtime's locked type dependency graph before invoking runtime typecheck. Previously, Core CI only installed app dependencies and the runtime checker reused the app compiler while module resolution had no runtime-installed Node types; the resulting logs contained cascades of missing `node:fs`, `NodeJS`, `Buffer`, `path.resolve` and crypto declarations.
+- This is a root-cause correction to the typecheck environment, not a claim that all remaining strict TypeScript errors are fixed. The next run must report the reduced, current-head error set before follow-up repairs are chosen.
+
 ## [NK1][WorkPass458] Unblock learning regressions and align runtime evidence fixtures (2026-10-27)
 
 - Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit readonly fields and assignments so Node 24 `--experimental-strip-types` can load the module used by P23 tests.
