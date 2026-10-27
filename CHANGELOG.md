@@ -1,3 +1,10 @@
+## [NK1][WorkPass571] Restore compatibility memory at the persisted lifecycle tick (2026-10-27)
+
+- Move legacy/multi-timescale compatibility consolidation after restoration of CanonicalMemoryLifecycleAuthority.
+- Use the restored logical tick rather than the new instance's initial tick when importing compatibility rows.
+- Extend the memory subsystem round-trip regression to assert the imported tick is preserved.
+- Validation status: source and regression committed; CI/test execution and Release ZIP refresh remain unverified.
+
 ## [NK1][WorkPass570] Persist cognitive memory state across restarts (2026-10-27)
 
 - Wire MemoryRetentionEconomy, MemoryCausalEconomy, CausalLifeGraph and MemoryWorldCausalBridge into MemorySubsystemRuntime snapshot/restore.
