@@ -139,10 +139,15 @@ export class SemanticMemoryGraph {
       for(const old of removedNodes){
         const current=this.state.nodes.find(node=>node.id===old.id);
         if(current&&JSON.stringify(current)!==JSON.stringify(old))return false;
+        // A concurrent upsert may recreate the same logical node with a fresh UUID.
+        // Do not restore the stale row alongside that newer row.
+        if(this.state.nodes.some(node=>node.id!==old.id&&node.label===old.label&&node.type===old.type&&String(node.sourceKey??'')===String(old.sourceKey??'')))return false;
       }
       for(const old of removedEdges){
         const current=this.state.edges.find(edge=>edge.id===old.id);
         if(current&&JSON.stringify(current)!==JSON.stringify(old))return false;
+        // Likewise, a replacement edge may use a new UUID but the same semantic key.
+        if(this.state.edges.some(edge=>edge.id!==old.id&&edge.from===old.from&&edge.to===old.to&&edge.relation===old.relation))return false;
       }
       const candidateNodes=this.state.nodes.slice();
       for(const old of removedNodes){
