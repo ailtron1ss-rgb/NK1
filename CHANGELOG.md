@@ -1,3 +1,11 @@
+## [NK1][Integration] Selective Mem0 recall bridge on the Hexis source stack (2026-10-27)
+
+- Ported the opt-in Mem0 Platform adapter onto the newer Hexis canonical-apply line without merging the heavily diverged Mem0 branch.
+- Connected bounded remote recall to ordinary and autonomous language paths only when a separate runtime flag and a configured adapter both permit it. Remote candidates remain low-priority, untrusted prompt data; MemoryOS2 stays the sole canonical memory owner.
+- Preserved disabled-by-default networking, independent write opt-in, user-scoped IDs, bounded requests/responses, credential/Unicode-control redaction, and best-effort fallback to local cognition.
+- Added adapter, runtime-wiring and read-only live-contract tests, CI, exported API entry point, and integration notes.
+- **Evidence status:** code and test wiring committed; execution of these new checks, exact-head CI, live provider behavior, and independent retrieval improvement remain unverified. This does not update the Release ZIP or establish production readiness.
+
 ## [NK1][WorkPass508] Prevent duplicate memory rows inflating precision (2026-10-27)
 
 - Retrieval benchmark precision now counts unique relevant memory IDs rather than duplicate result rows.
