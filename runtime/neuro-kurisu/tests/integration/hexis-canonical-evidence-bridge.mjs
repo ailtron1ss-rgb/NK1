@@ -107,10 +107,34 @@ const snapshot = runtime.snapshot();
 assert.equal(snapshot.sourceMonitor.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint, fingerprint);
 assert.equal(snapshot.p65.claimsData.find(row => row.id === p65Id)?.provenance?.contentFingerprint, fingerprint);
 const restored = new MemorySubsystemRuntime();
-restored.memoryOS.restore(snapshot.memoryOS);
-restored.fabric.restore(snapshot.fabric);
-restored.sourceMonitor.restore(snapshot.sourceMonitor);
-restored.p65EpistemicLedger.restore(snapshot.p65);
+restored.restoreFromPersisted({
+  memory: {
+    eventLog: snapshot.events,
+    autobiographicalMemories: snapshot.memories,
+    selfModel: snapshot.selfModel,
+    socialModel: snapshot.socialModel,
+    adaptiveValues: snapshot.adaptiveValues,
+    workspace: snapshot.workspace,
+    semanticGraph: snapshot.semanticGraph,
+  },
+  advanced: {
+    memoryOS: snapshot.memoryOS,
+    memoryFabric: snapshot.fabric,
+    unifiedMemory: snapshot.unifiedMemory,
+    p47: snapshot.p47,
+    p59MemoryOperatingSystem: snapshot.p59,
+    p62MemoryFabric: snapshot.p62,
+    p65EpistemicLedger: snapshot.p65,
+    sourceMonitor: snapshot.sourceMonitor,
+    p70MemoryLifecycleGovernor: snapshot.p70,
+    p75MemoryContinuumOS: snapshot.p75,
+    experienceContinuum: snapshot.experienceContinuum,
+    hippocampal: snapshot.hippocampal,
+    hippocampalFormation: snapshot.hippocampalFormation,
+    consolidationController: snapshot.consolidationController,
+    memoryLifecycleAuthority: snapshot.memoryLifecycleAuthority,
+  },
+});
 const replay = restored.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-direct-001');
 assert.equal(replay.accepted, true);
 assert.equal(replay.added, false, 'canonical lineage must remain the duplicate authority after a runtime snapshot/restore');
