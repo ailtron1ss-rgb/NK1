@@ -976,29 +976,59 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   const p58Raw = (raw.facets as any)?.advanced?.p58CognitiveKernel ?? (raw as any).p58CognitiveKernel ?? {};
   advancedBase.p58CognitiveKernel = { ...defaultP58(), ...p58Raw, modeCounts:{...defaultP58().modeCounts,...(p58Raw.modeCounts??{})}, frames:Array.isArray(p58Raw.frames)?p58Raw.frames.slice(-96):[] };
   const memoryFabricRaw = (raw.facets as any)?.advanced?.memoryFabric ?? {};
-  const retiredMutationReceiptBloomRaw = typeof memoryFabricRaw.retiredMutationReceiptBloom === 'string' ? memoryFabricRaw.retiredMutationReceiptBloom : undefined;
+  const rawRetiredMutationReceiptBloom=memoryFabricRaw.retiredMutationReceiptBloom;
+  const retiredMutationReceiptBloomRaw = typeof rawRetiredMutationReceiptBloom === 'string' ? rawRetiredMutationReceiptBloom : undefined;
   const retiredMutationReceiptBloomValid = Boolean(retiredMutationReceiptBloomRaw && retiredMutationReceiptBloomRaw.length === 174764 && retiredMutationReceiptBloomRaw.endsWith('=') && !retiredMutationReceiptBloomRaw.endsWith('==') && /^[A-Za-z0-9+/]+=$/.test(retiredMutationReceiptBloomRaw));
-  const retiredMutationReceiptCount = Math.max(0, Math.floor(Number(memoryFabricRaw.retiredMutationReceiptCount ?? 0)));
-  const retiredMutationReceiptBloomCorrupt = memoryFabricRaw.retiredMutationReceiptBloomCorrupt === true || (Boolean(retiredMutationReceiptBloomRaw) && !retiredMutationReceiptBloomValid) || (retiredMutationReceiptCount > 0 && !retiredMutationReceiptBloomValid);
-  const mutationReceiptActions = new Set(['encode','revise-status','revise-content','update-signals','update-context','forget']);
+  const rawRetiredMutationReceiptCount=memoryFabricRaw.retiredMutationReceiptCount;
+  const validRetiredMutationReceiptCount=rawRetiredMutationReceiptCount===undefined||(typeof rawRetiredMutationReceiptCount==='number'&&Number.isSafeInteger(rawRetiredMutationReceiptCount)&&rawRetiredMutationReceiptCount>=0);
+  const retiredMutationReceiptCount=validRetiredMutationReceiptCount?(rawRetiredMutationReceiptCount??0):0;
+  const mutationReceiptActions = new Set(['encode','revise-status','revise-content','update-signals','update-context','forget','rollback-created']);
   const mutationReceiptKinds = new Set(['memory','context','boolean','void','null']);
-  const mutationReceipts = Array.isArray(memoryFabricRaw.mutationReceipts)
-    ? memoryFabricRaw.mutationReceipts.slice(-512).filter((row:any) => Boolean(
-      row && typeof row.commandId === 'string' && row.commandId.trim() &&
-      typeof row.fingerprint === 'string' && /^[a-f0-9]{64}$/i.test(row.fingerprint) &&
-      mutationReceiptActions.has(row.action) && Number.isFinite(Number(row.at)) && Number(row.at) >= 0 &&
-      ['applied','noop'].includes(row.outcome) && mutationReceiptKinds.has(row.resultKind)
-    )).map((row:any) => ({
-      commandId:String(row.commandId).trim().slice(0,128),
-      fingerprint:String(row.fingerprint).slice(0,64).toLowerCase(),
-      action:String(row.action),
-      at:Math.max(0,Math.floor(Number(row.at))),
-      outcome:row.outcome as 'applied'|'noop',
-      resultKind:String(row.resultKind) as 'memory'|'context'|'boolean'|'void'|'null',
-      ...(typeof row.memoryId === 'string' && row.memoryId ? {memoryId:row.memoryId.slice(0,256)} : {}),
-      ...(typeof row.booleanValue === 'boolean' ? {booleanValue:row.booleanValue} : {}),
-    }))
-    : [];
+  const validMutationReceipt=(row:any):boolean=>Boolean(
+    row&&typeof row.commandId==='string'&&row.commandId.length>0&&row.commandId.length<=128&&row.commandId===row.commandId.trim()&&!/[\u0000-\u001f\u007f-\u009f]/.test(row.commandId)&&
+    typeof row.fingerprint==='string'&&/^[a-f0-9]{64}$/i.test(row.fingerprint)&&
+    mutationReceiptActions.has(row.action)&&typeof row.at==='number'&&Number.isFinite(row.at)&&row.at>=0&&
+    ['applied','noop'].includes(row.outcome)&&mutationReceiptKinds.has(row.resultKind)&&
+    ((row.resultKind!=='memory'&&row.resultKind!=='context')||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))&&
+    (row.memoryId===undefined||(typeof row.memoryId==='string'&&row.memoryId.length>0&&row.memoryId.length<=256&&!/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))&&
+    (row.booleanValue===undefined||typeof row.booleanValue==='boolean')&&
+    (row.resultKind==='boolean'?typeof row.booleanValue==='boolean':row.booleanValue===undefined)
+  );
+  const rawMutationReceipts=memoryFabricRaw.mutationReceipts;
+  const mutationReceiptRows=Array.isArray(rawMutationReceipts)?rawMutationReceipts.slice(-512):[];
+  const validMutationReceiptRows=mutationReceiptRows.filter(validMutationReceipt);
+  const seenMutationReceiptIds=new Set<string>();
+  const duplicateMutationReceiptIds=new Set<string>();
+  // Keep at most one journal row per command identity, but preserve uncertainty:
+  // duplicate keys can carry conflicting result metadata and must not stay authoritative.
+  const uniqueMutationReceiptRows=validMutationReceiptRows.filter((row:any)=>{
+    if(seenMutationReceiptIds.has(row.commandId)){
+      duplicateMutationReceiptIds.add(row.commandId);
+      return false;
+    }
+    seenMutationReceiptIds.add(row.commandId);
+    return true;
+  });
+  const mutationReceipts=uniqueMutationReceiptRows.map((row:any)=>({
+    commandId:row.commandId,
+    fingerprint:String(row.fingerprint).slice(0,64).toLowerCase(),
+    action:String(row.action),
+    at:Math.floor(row.at),
+    outcome:row.outcome as 'applied'|'noop',
+    resultKind:String(row.resultKind) as 'memory'|'context'|'boolean'|'void'|'null',
+    ...(typeof row.memoryId==='string'&&row.memoryId?{memoryId:row.memoryId}:{}),
+    ...(typeof row.booleanValue==='boolean'?{booleanValue:row.booleanValue}:{}),
+  }));
+  const mutationReceiptJournalCorrupt=rawMutationReceipts!==undefined&&(
+    !Array.isArray(rawMutationReceipts)||rawMutationReceipts.length>512||
+    mutationReceiptRows.some((row:any)=>!validMutationReceipt(row))||
+    duplicateMutationReceiptIds.size>0
+  );
+  const retiredMutationReceiptBloomCorrupt = memoryFabricRaw.retiredMutationReceiptBloomCorrupt === true ||
+    (rawRetiredMutationReceiptBloom!==undefined&&(typeof rawRetiredMutationReceiptBloom!=='string'||!retiredMutationReceiptBloomValid)) ||
+    (Boolean(retiredMutationReceiptBloomRaw) && !retiredMutationReceiptBloomValid) ||
+    (retiredMutationReceiptCount > 0 && !retiredMutationReceiptBloomValid) ||
+    !validRetiredMutationReceiptCount || mutationReceiptJournalCorrupt;
   advancedBase.memoryFabric = {
     version:2,
     stats:{...defaultAdvancedFacet().memoryFabric.stats,...(memoryFabricRaw.stats??{})},

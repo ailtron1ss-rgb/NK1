@@ -2,9 +2,9 @@ name: WorkPass94 verification input binding
 
 on:
   push:
-    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring]
+    branches: [workpass79-cognitive-rebuild, workpass206-runtime-evaluator-wiring, fix/outcome-projection-index-restore-2026-10-26]
   pull_request:
-    branches: [main, workpass203-independent-candidate-evaluator]
+    branches: [main, workpass203-independent-candidate-evaluator, fix/outcome-projection-index-restore-2026-10-26]
     paths:
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs'
@@ -28,7 +28,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  # Keep the push and pull_request event groups distinct for the same branch.
+  group: nk1-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -45,6 +46,8 @@ jobs:
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
       - name: Reject partial or altered evidence-input bindings
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass94-verification-input-binding.mjs
+      - name: Install locked runtime type dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Outcome-verification firewall regression

@@ -16,7 +16,7 @@ export interface RetrievedSkill extends RetrievableSkill {
   score01: number; transferBias01: number; reasons: string[];
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const n=(x:number,d=0)=>Number.isFinite(x)?x:d;
+const n=(x:unknown,d=0)=>typeof x==='number'&&Number.isFinite(x)?x:d;
 
 /** Six-bucket organism contexts are compared by feature position, not substring. */
 export function contextSimilarity01(a:string,b:string):number {
@@ -37,7 +37,8 @@ export function retrieveSkills(query:SkillRetrievalQuery, skills:readonly Retrie
       const similarity01=contextSimilarity01(query.contextKey,s.contextKey);
       const evidenceStrength01=clamp(1-Math.exp(-Math.max(0,s.validationUses)/6));
       const recency01=clamp(Math.exp(-Math.max(0,now-n(s.updatedAt,now))/(45*86400000)));
-      const outcome=s.status==='promoted'?clamp(s.validationSuccess01):1-clamp(s.validationSuccess01);
+      const validationSuccess01=clamp(n(s.validationSuccess01,.5));
+      const outcome=s.status==='promoted'?validationSuccess01:1-validationSuccess01;
       const actionMatch=query.action===undefined||query.action===s.action;
       const score01=clamp(.30*similarity01+.24*outcome+.18*evidenceStrength01+
         .14*clamp(s.confidence01)+.09*recency01+.05*clamp(Math.log1p(Math.max(0,s.totalUses))/5))*(actionMatch?1:.82);

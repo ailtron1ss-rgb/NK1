@@ -2,6 +2,19 @@ import { useEffect, useState } from "react";
 import { Archive, Brain, CheckCircle2, Clock3, Download, History, RefreshCw, Send, ShieldCheck, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { neuroApi } from "@/neuro-kurisu/api";
+import type {
+  HexisGoalActivationResponse,
+  HexisGoalMaterializeResponse,
+  HexisGoalProposal,
+  HexisGoalProposalDecisionResponse,
+  HexisGoalProposalListResponse,
+  HexisGoalProposalPrepareResponse,
+  HexisGoalProposalStatus,
+  HexisHmxExportResponse,
+  HexisHmxStage,
+  HexisHmxStageInput,
+  HexisHmxStageResponse,
+} from "@/neuro-kurisu/types";
 
 const fmt = (value: unknown) => JSON.stringify(value, null, 2);
 
@@ -45,6 +58,14 @@ export function HexisControlConsole() {
   const [hmxIntent, setHmxIntent] = useState<"port" | "duplicate" | "telepathy" | "analysis">("port");
   const [hmxStrategy, setHmxStrategy] = useState<"additive" | "authoritative" | "deliberative" | "analysis_only">("additive");
   const [hmxConfirmed, setHmxConfirmed] = useState(false);
+  const [hmxApplyConfirmed, setHmxApplyConfirmed] = useState(false);
+  const [hmxAccepted, setHmxAccepted] = useState(false);
+  const [hmxStage, setHmxStage] = useState<HexisHmxStage | null>(null);
+  const [goalProposals, setGoalProposals] = useState<HexisGoalProposal[]>([]);
+  const [goalProposalId, setGoalProposalId] = useState("");
+  const [goalProposalStatus, setGoalProposalStatus] = useState<HexisGoalProposalStatus>("pending");
+  const [goalMaterializeConfirmed, setGoalMaterializeConfirmed] = useState(false);
+  const [goalActivationConfirmed, setGoalActivationConfirmed] = useState(false);
   const [placement, setPlacement] = useState("local");
   const [executionAction, setExecutionAction] = useState("tool.execute");
   const [risk, setRisk] = useState("0.4");
@@ -56,10 +77,16 @@ export function HexisControlConsole() {
       const result = await operation();
       setPanel(fmt(result));
       setMessage(`${label}: OK`);
-      const next = await neuroApi.hexis();
-      setState(next);
-      const memoryResult = await neuroApi.hexisMemories(64);
-      setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+      try {
+        const next = label === "Refresh" && result && typeof result === "object"
+          ? result as Record<string, unknown>
+          : await neuroApi.hexis();
+        setState(next);
+        const memoryResult = await neuroApi.hexisMemories(64);
+        setMemories(Array.isArray((memoryResult as any)?.memoryIndex) ? (memoryResult as any).memoryIndex : []);
+      } catch (refreshError) {
+        setMessage(`${label}: OK; panel refresh failed: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+      }
       return result;
     } catch (error) {
       setMessage(`${label}: ${error instanceof Error ? error.message : String(error)}`);
@@ -79,10 +106,10 @@ export function HexisControlConsole() {
   };
 
   const exportHmx = async () => {
-    const result = await run("Export HMX", () => neuroApi.hexisHmxExport());
-    const document = (result as any)?.document;
-    if (!document) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(document, null, 2)], { type: "application/json" }));
+    const result = await run("Export HMX", () => neuroApi.hexisHmxExport()) as HexisHmxExportResponse | null;
+    const hmxDocument = result?.document;
+    if (!hmxDocument || typeof hmxDocument !== "object" || Array.isArray(hmxDocument)) return;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(hmxDocument, null, 2)], { type: "application/json" }));
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = "neuro-kurisu-hexis-hmx.json";
@@ -91,11 +118,150 @@ export function HexisControlConsole() {
   };
 
   const stageCurrentHmx = async () => {
-    const exported = await neuroApi.hexisHmxExport();
-    const staged = await run("Stage HMX", () => neuroApi.hexisHmxStage({ document: (exported as any).document, intent: hmxIntent, strategy: hmxStrategy }));
-    const nextId = (staged as any)?.stage?.stagingId;
-    if (nextId) setStageId(String(nextId));
+    const staged = await run("Stage HMX", async () => {
+      const exported = await neuroApi.hexisHmxExport();
+      const hmxDocument = (exported as any)?.document;
+      if (!hmxDocument || typeof hmxDocument !== "object" || Array.isArray(hmxDocument)) {
+        throw new Error("HMX export returned no JSON document.");
+      }
+      return neuroApi.hexisHmxStage({ document: hmxDocument, intent: hmxIntent, strategy: hmxStrategy });
+    });
+    const stage = (staged as HexisHmxStageResponse | null)?.stage ?? null;
+    if (stage?.stagingId) {
+      setStageId(String(stage.stagingId));
+      setHmxStage(stage);
+      setHmxAccepted(false);
+      setHmxConfirmed(false);
+      setHmxApplyConfirmed(false);
+    }
   };
+
+  const stageHmxFile = async (file: File) => {
+    if (file.size > 8 * 1024 * 1024) {
+      setMessage("Stage imported HMX: files above 8 MiB are rejected before parsing.");
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await file.text());
+    } catch {
+      setMessage("Stage imported HMX: the selected file is not valid JSON.");
+      return;
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      setMessage("Stage imported HMX: the document root must be a JSON object.");
+      return;
+    }
+    const requestBody = JSON.stringify({ document: parsed, intent: hmxIntent, strategy: hmxStrategy });
+    // The default server body cap is 256,000 bytes; leave room for headers/envelope.
+    if (new TextEncoder().encode(requestBody).byteLength > 240_000) {
+      setMessage("Stage imported HMX: the request exceeds the conservative 240 KB limit for the current server body cap.");
+      return;
+    }
+    const stageInput: HexisHmxStageInput = {
+      document: parsed as Record<string, unknown>, intent: hmxIntent, strategy: hmxStrategy,
+    };
+    const result = await run("Stage imported HMX", () => neuroApi.hexisHmxStage(stageInput));
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    if (stage?.stagingId) {
+      setStageId(String(stage.stagingId));
+      setHmxStage(stage);
+      setHmxAccepted(false);
+      setHmxConfirmed(false);
+      setHmxApplyConfirmed(false);
+    }
+  };
+
+  const acceptHmx = async () => {
+    const result = await run("Accept staged HMX", () => neuroApi.hexisHmxDecide(stageId, "accept", true));
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    if (stage) {
+      setHmxStage(stage);
+      setHmxAccepted(stage.status === "accepted");
+      setHmxApplyConfirmed(false);
+    }
+  };
+
+  const rejectHmx = async () => {
+    const result = await run("Reject staged HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"));
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    if (stage) {
+      setHmxStage(stage);
+      setHmxAccepted(false);
+      setHmxApplyConfirmed(false);
+    }
+  };
+
+  const applyHmx = async () => {
+    const result = await run("Apply canonical HMX", () => neuroApi.hexisHmxDecide(stageId, "apply", true));
+    const stage = (result as HexisHmxStageResponse | null)?.stage ?? null;
+    if (stage) {
+      setHmxStage(stage);
+      setHmxAccepted(false);
+      setHmxApplyConfirmed(false);
+    }
+  };
+
+  const loadGoalProposals = async (status: HexisGoalProposalStatus = goalProposalStatus) => {
+    const result = await run("Load HMX goal proposals", () => neuroApi.hexisGoalProposals(status, 64));
+    const rows = (result as HexisGoalProposalListResponse | null)?.proposals ?? [];
+    setGoalProposals(rows);
+    setGoalProposalId(String(rows[0]?.id ?? ""));
+  };
+
+  const prepareGoalProposals = async () => {
+    if (!stageId.trim() || hmxStage?.status !== "applied") return;
+    const result = await run("Prepare imported goal proposals", () => neuroApi.hexisGoalPrepare(stageId));
+    const rows = (result as HexisGoalProposalPrepareResponse | null)?.proposals ?? [];
+    setGoalProposals(rows);
+    setGoalProposalStatus("pending");
+    setGoalProposalId(String(rows[0]?.id ?? ""));
+    setGoalMaterializeConfirmed(false);
+    setGoalActivationConfirmed(false);
+  };
+
+  const decideGoalProposal = async (decision: "approve" | "reject") => {
+    if (!goalProposalId) return;
+    const result = await run(decision === "approve" ? "Approve HMX goal" : "Reject HMX goal", () =>
+      neuroApi.hexisGoalDecide(goalProposalId, decision));
+    const proposal = (result as HexisGoalProposalDecisionResponse | null)?.proposal;
+    if (proposal?.id) {
+      setGoalProposals([proposal]);
+      setGoalProposalId(proposal.id);
+      setGoalProposalStatus(proposal.status);
+      setGoalMaterializeConfirmed(false);
+      setGoalActivationConfirmed(false);
+    }
+  };
+
+  const materializeGoalProposal = async () => {
+    if (!goalProposalId || !goalMaterializeConfirmed) return;
+    const result = await run("Materialize approved HMX goal", () =>
+      neuroApi.hexisGoalMaterialize(goalProposalId, true));
+    const proposal = (result as HexisGoalMaterializeResponse | null)?.proposal;
+    if (proposal?.id) {
+      setGoalProposals([proposal]);
+      setGoalProposalId(proposal.id);
+      setGoalProposalStatus("materialized");
+      setGoalMaterializeConfirmed(false);
+      setGoalActivationConfirmed(false);
+    }
+  };
+
+  const activateGoalProposal = async () => {
+    if (!goalProposalId || !goalActivationConfirmed) return;
+    const result = await run("Activate approved HMX goal", () =>
+      neuroApi.hexisGoalActivate(goalProposalId, true));
+    const proposal = (result as HexisGoalActivationResponse | null)?.proposal;
+    if (proposal?.id) {
+      setGoalProposals([proposal]);
+      setGoalProposalId(proposal.id);
+      setGoalProposalStatus("materialized");
+      setGoalActivationConfirmed(false);
+    }
+  };
+
+  const selectedGoalProposal = goalProposals.find(proposal => proposal.id === goalProposalId) ?? null;
 
   const approveFirstReview = async () => {
     const result = await run("Load reviews", () => neuroApi.hexisReviews());
@@ -189,14 +355,98 @@ export function HexisControlConsole() {
             <select value={hmxIntent} onChange={e => setHmxIntent(e.target.value as typeof hmxIntent)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="port">port</option><option value="duplicate">duplicate</option><option value="telepathy">telepathy</option><option value="analysis">analysis</option></select>
             <select value={hmxStrategy} onChange={e => setHmxStrategy(e.target.value as typeof hmxStrategy)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg"><option value="additive">additive</option><option value="authoritative">authoritative</option><option value="deliberative">deliberative</option><option value="analysis_only">analysis_only</option></select>
           </div>
+          {hmxStage && (
+            <div className="mt-2 rounded-md border border-border bg-bg p-2 text-[11px]">
+              <p className="text-fg">Stage status: {hmxStage.status} · conflicts: {hmxStage.conflicts.length}</p>
+              <p className="mt-1 text-muted">Section counts: {Object.entries(hmxStage.sectionCounts).map(([section, count]) => `${section}=${count}`).join(" · ") || "none"}</p>
+              {hmxStage.application && (
+                <div className="mt-2 rounded border border-border p-2">
+                  <p className="text-fg">Canonical apply receipt: {hmxStage.application.status} · imported {hmxStage.application.importedCount} · deduplicated {hmxStage.application.deduplicatedCount}</p>
+                  <p className="mt-1 text-muted">Projected edges: {hmxStage.application.projectedRelationships} · deferred: {hmxStage.application.deferredRelationships} · complete: {hmxStage.application.complete ? "yes" : "no"}</p>
+                  {hmxStage.application.warnings.length > 0 && (
+                    <ul className="mt-1 list-disc pl-4 text-muted">{hmxStage.application.warnings.slice(0, 8).map((warning, index) => <li key={index}>{warning}</li>)}</ul>
+                  )}
+                </div>
+              )}
+              {hmxStage.conflicts.length > 0 && (
+                <ul className="mt-1 list-disc pl-4 text-muted">{hmxStage.conflicts.slice(0, 8).map((conflict, index) => <li key={index}>{conflict.path}: {conflict.detail}</li>)}</ul>
+              )}
+            </div>
+          )}
           <div className="mt-2 flex flex-wrap gap-2">
             <Button disabled={busy} onClick={() => void exportHmx()}>Export HMX</Button>
             <Button variant="outline" disabled={busy} onClick={() => void stageCurrentHmx()}>Stage current HMX</Button>
-            <input value={stageId} onChange={e => setStageId(e.target.value)} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
-            <Button disabled={busy || !stageId || !hmxConfirmed} onClick={() => void run("Accept HMX", () => neuroApi.hexisHmxDecide(stageId, "accept"))}>Accept staged</Button>
-            <Button variant="outline" disabled={busy || !stageId} onClick={() => void run("Reject HMX", () => neuroApi.hexisHmxDecide(stageId, "reject"))}>Reject</Button>
+            <label className="flex h-10 cursor-pointer items-center rounded-md border border-border bg-bg px-3 text-xs text-fg">
+              Import HMX JSON
+              <input type="file" accept=".json,application/json" disabled={busy} className="ml-2 max-w-[145px] text-[10px]" onChange={event => {
+                const selectedFile = event.currentTarget.files?.[0];
+                if (selectedFile) void stageHmxFile(selectedFile);
+                event.currentTarget.value = "";
+              }} />
+            </label>
+            <input value={stageId} onChange={e => { setStageId(e.target.value); setHmxStage(null); setHmxAccepted(false); setHmxConfirmed(false); setHmxApplyConfirmed(false); }} placeholder="Staging id" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-xs text-fg" />
+            <Button disabled={busy || !stageId.trim() || !hmxConfirmed || (hmxStage !== null && hmxStage.status !== "staged") || (hmxStage?.conflicts.length ?? 0) > 0} onClick={() => void acceptHmx()}>Accept staged</Button>
+            <Button variant="outline" disabled={busy || !stageId.trim() || (hmxStage !== null && hmxStage.status !== "staged")} onClick={() => void rejectHmx()}>Reject</Button>
+            <Button variant="outline" disabled={busy || !stageId.trim() || !hmxApplyConfirmed || (hmxStage !== null && (hmxStage.status !== "accepted" || !hmxAccepted))} onClick={() => void applyHmx()}>Apply canonical memory</Button>
           </div>
-          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX import.</label>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxConfirmed} onChange={e => setHmxConfirmed(e.target.checked)} /> I explicitly approve this staged HMX document for acceptance.</label>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-muted"><input type="checkbox" checked={hmxApplyConfirmed} onChange={e => setHmxApplyConfirmed(e.target.checked)} /> I separately confirm canonical memory writes after acceptance.</label>
+          <p className="mt-2 text-[11px] text-muted">External HMX content is staged for review first. Canonical NK1 memory changes only after a separate apply confirmation.</p>
+        </Panel>
+
+        <Panel title="Imported goal proposals" icon={<CheckCircle2 className="size-4" />}>
+          <p className="text-[11px] leading-relaxed text-muted">Imported goals remain proposals until reviewed. Approval, materialization into a paused local candidate, and activation are three distinct decisions.</p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+            <select value={goalProposalStatus} onChange={e => setGoalProposalStatus(e.target.value as HexisGoalProposalStatus)} className="h-10 rounded-md border border-border bg-bg px-2 text-xs text-fg">
+              <option value="pending">Pending review</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="materialized">Materialized</option>
+            </select>
+            <Button variant="outline" disabled={busy} onClick={() => void loadGoalProposals()}>Load proposals</Button>
+            <Button disabled={busy || !stageId.trim() || hmxStage?.status !== "applied"} onClick={() => void prepareGoalProposals()}>Prepare from applied stage</Button>
+          </div>
+          {goalProposals.length > 0 ? (
+            <>
+              <select value={goalProposalId} onChange={e => { setGoalProposalId(e.target.value); setGoalMaterializeConfirmed(false); setGoalActivationConfirmed(false); }} className="mt-2 h-10 w-full rounded-md border border-border bg-bg px-2 text-xs text-fg">
+                {goalProposals.map(proposal => <option key={proposal.id} value={proposal.id}>{proposal.title} · {proposal.status}</option>)}
+              </select>
+              {selectedGoalProposal && (
+                <div className="mt-2 rounded-md border border-border bg-bg p-3">
+                  <p className="text-sm text-fg">{selectedGoalProposal.title}</p>
+                  <p className="mt-1 text-[11px] text-muted">{selectedGoalProposal.description}</p>
+                  <p className="mt-2 break-all font-mono text-[10px] text-subtle">status: {selectedGoalProposal.status} · proposal: {selectedGoalProposal.id}</p>
+                  {selectedGoalProposal.goalRelationshipReceipt && (
+                    <p className="mt-1 text-[11px] text-muted">Activation receipt · projected edges: {selectedGoalProposal.goalRelationshipReceipt.projected} · deferred: {selectedGoalProposal.goalRelationshipReceipt.deferred}</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button disabled={busy || selectedGoalProposal.status !== "pending"} onClick={() => void decideGoalProposal("approve")}>Approve proposal</Button>
+                    <Button variant="outline" disabled={busy || selectedGoalProposal.status !== "pending"} onClick={() => void decideGoalProposal("reject")}>Reject proposal</Button>
+                  </div>
+                  {selectedGoalProposal.status === "approved" && (
+                    <>
+                      <label className="mt-3 flex items-start gap-2 text-[11px] text-muted">
+                        <input type="checkbox" checked={goalMaterializeConfirmed} onChange={e => setGoalMaterializeConfirmed(e.target.checked)} />
+                        I explicitly confirm creating/reusing a local candidate goal. This does not activate it.
+                      </label>
+                      <Button className="mt-2" disabled={busy || !goalMaterializeConfirmed} onClick={() => void materializeGoalProposal()}>Materialize approved candidate</Button>
+                    </>
+                  )}
+                  {selectedGoalProposal.status === "materialized" && !selectedGoalProposal.goalRelationshipReceipt && (
+                    <>
+                      <label className="mt-3 flex items-start gap-2 text-[11px] text-muted">
+                        <input type="checkbox" checked={goalActivationConfirmed} onChange={e => setGoalActivationConfirmed(e.target.checked)} />
+                        I explicitly approve activating this goal and projecting the supported relationships into canonical NK1 memory.
+                      </label>
+                      <Button className="mt-2" disabled={busy || !goalActivationConfirmed} onClick={() => void activateGoalProposal()}>Activate approved goal</Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="mt-3 rounded-md border border-dashed border-border p-3 text-xs text-muted">No proposals loaded for this status. Prepare proposals from an applied stage or load an existing review queue.</p>
+          )}
         </Panel>
 
         <Panel title="Transactional outbox" icon={<Send className="size-4" />}>

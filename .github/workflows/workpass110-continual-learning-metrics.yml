@@ -188,7 +188,7 @@ on:
       - 'app/package-lock.json'
       - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
 concurrency:
-  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: nk1-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -206,6 +206,8 @@ jobs:
           package-manager-cache: false
       - name: Install pinned TypeScript compiler from app lockfile
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Install locked runtime dependencies (including Node types)
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Run causal experience identity, replay diversity and restore regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:big-pass-90:causal-stream

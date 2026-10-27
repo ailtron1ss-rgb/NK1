@@ -12,14 +12,15 @@ import { MemoryPolicyOutcomeLedger, defaultMemoryPolicyOutcomeLedger, type Memor
 export type MemoryLifecycleEncodeInput = Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'> & { id?: string };
 type EncodeInput = MemoryLifecycleEncodeInput;
 
-export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
+export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget'|'rollback-created';
 export type MemoryLifecycleCommand =
-  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean }
+  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
-  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number };
+  | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number }
+  | { action:'rollback-created'; id:string; exportId:string; stagingId:string; attempt:number; reason?:string; commandId?:string; tick?:number };
 
 interface MemoryLifecycleReceipt {
   commandId:string;
@@ -176,12 +177,28 @@ export class MemoryFabric {
    */
   applyLifecycleCommand(command:MemoryLifecycleCommand):MemoryItem2|Record<string,string>|boolean|void|null {
     const action=command.action;
-    const commandId=String(command.commandId??'').trim().slice(0,128);
+    // Command IDs are idempotency keys, not display text. Normalizing or truncating
+    // them can alias two distinct mutations to one cached receipt; reject malformed
+    // caller input before fingerprinting, reading state, or performing any write.
+    const rawCommandId:unknown=(command as {commandId?:unknown}).commandId;
+    let commandId='';
+    if(rawCommandId!==undefined){
+      if(typeof rawCommandId!=='string'||rawCommandId.length===0||rawCommandId.length>128||
+        rawCommandId!==rawCommandId.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(rawCommandId)){
+        throw new TypeError('memory-lifecycle-command-id-invalid');
+      }
+      commandId=rawCommandId;
+    }
     const semanticPayload:any={...command};
     delete semanticPayload.commandId; delete semanticPayload.tick;
     delete semanticPayload.emitEvent; delete semanticPayload.syncCompatibility;
     const fingerprint=createHash('sha256').update(stableCommandJson(semanticPayload)).digest('hex');
     if(commandId){
+      // A globally corrupt retired-receipt marker makes every cached result uncertain,
+      // including an otherwise matching hot receipt. Do not let that stale cache bypass
+      // the recovery-required state created by migration or restore.
+      if(this.retiredMutationReceiptBloomCorrupt)
+        throw new MemoryLifecycleCommandRecoveryRequiredError(commandId);
       const prior=this.mutationReceipts.get(commandId);
       if(prior){
         if(prior.fingerprint!==fingerprint||prior.action!==action)throw new MemoryLifecycleCommandConflictError(commandId);
@@ -190,7 +207,7 @@ export class MemoryFabric {
       // A Bloom tombstone cannot recover the result, but it can prove (or conservatively
       // suspect) that this key was used after its exact receipt left the hot journal.
       // Fail closed; never silently execute a possibly committed mutation again.
-      if(this.retiredMutationReceiptBloomCorrupt||this.mightHaveRetiredMutationReceipt(commandId))
+      if(this.mightHaveRetiredMutationReceipt(commandId))
         throw new MemoryLifecycleCommandRecoveryRequiredError(commandId);
     }
 
@@ -205,7 +222,7 @@ export class MemoryFabric {
       case 'encode': {
         this.statsData.encodes++;
         const before=this.memoryOS.size();
-        const item=this.memoryOS.encode(command.input,{clone:false});
+        const item=this.memoryOS.encode(command.input,{clone:false,forceDistinct:command.forceDistinct===true});
         const created=this.memoryOS.size()>before;
         if(created)this.statsData.newItems++; else this.statsData.reconsolidations++;
         this.touchHot(item.id);
@@ -254,6 +271,27 @@ export class MemoryFabric {
         if(context)eventPayload={action,memoryId:before.id,fields:changedEntries.map(([key])=>key),commandId:commandId||undefined};
         break;
       }
+      case 'rollback-created': {
+        if(!commandId)throw new Error('memory-lifecycle-hmx-rollback-command-id-required');
+        const before=this.findCanonical(command.id);
+        if(!before){
+          // Compensation is idempotent: an absent row is already rolled back.
+          result=true; booleanValue=true; memoryId=command.id; outcome='noop';
+          break;
+        }
+        if(!String(before.source??'').startsWith('hexis:')||
+          before.context?.hexisExportId!==command.exportId||
+          before.context?.hexisImportStageId!==command.stagingId||
+          before.context?.hexisImportAttempt!==String(command.attempt)){
+          throw new Error('memory-lifecycle-hmx-rollback-scope-mismatch');
+        }
+        const removed=this.memoryOS.rollbackCreatedHmxImport(command.id,command.exportId,command.stagingId,command.attempt);
+        if(!removed&&this.findCanonical(command.id))throw new Error('memory-lifecycle-hmx-rollback-not-applied');
+        result=true; booleanValue=true; memoryId=command.id; outcome=removed?'applied':'noop';
+        this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>id!==command.id));
+        eventPayload={action,memoryId:command.id,exportId:command.exportId,stagingId:command.stagingId,attempt:command.attempt,reason:String(command.reason??'hmx-apply-rollback').slice(0,240),commandId:commandId||undefined};
+        break;
+      }
       case 'forget': {
         const forgotten=this.memoryOS.forgetById(command.id,command.reason??'memory-knockout');
         result=forgotten; booleanValue=forgotten;memoryId=command.id;outcome=forgotten?'applied':'noop';
@@ -294,8 +332,8 @@ export class MemoryFabric {
     return undefined;
   }
 
-  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string}={}) {
-    return this.applyLifecycleCommand({action:'encode',input,...context}) as MemoryItem2;
+  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string;forceDistinct?:boolean}={}) {
+    return this.applyLifecycleCommand({action:'encode',input,tick:context?.tick,emitEvent:context?.emitEvent,syncCompatibility:context?.syncCompatibility,commandId:context?.commandId,forceDistinct:context?.forceDistinct}) as MemoryItem2;
   }
 
   /** Non-mutating search for inspectors and diagnostics; it must not train policy or heat live memories. */
@@ -510,8 +548,11 @@ export class MemoryFabric {
     this.policyOutcomeLedger.restore(raw.policyOutcomeLedger);
     this.mutationReceipts.clear();
     this.retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
-    this.retiredMutationReceiptCount=Math.max(0,Math.floor(Number(raw.retiredMutationReceiptCount??0)));
-    this.retiredMutationReceiptBloomCorrupt=raw.retiredMutationReceiptBloomCorrupt===true;
+    const rawReceiptCount=raw.retiredMutationReceiptCount;
+    const validReceiptCount=rawReceiptCount===undefined||(typeof rawReceiptCount==='number'&&Number.isSafeInteger(rawReceiptCount)&&rawReceiptCount>=0);
+    this.retiredMutationReceiptCount=validReceiptCount?(rawReceiptCount??0):0;
+    this.retiredMutationReceiptBloomCorrupt=raw.retiredMutationReceiptBloomCorrupt===true||!validReceiptCount;
+    if(raw.retiredMutationReceiptBloom!==undefined&&typeof raw.retiredMutationReceiptBloom!=='string')this.retiredMutationReceiptBloomCorrupt=true;
     if(typeof raw.retiredMutationReceiptBloom==='string'){
       try{
         const decoded=decodeBase64Bytes(raw.retiredMutationReceiptBloom);
@@ -519,12 +560,41 @@ export class MemoryFabric {
         this.retiredMutationReceiptBloom.set(decoded);
       }catch{this.retiredMutationReceiptBloomCorrupt=true;}
     }else if(this.retiredMutationReceiptCount>0){
-      // Missing tombstones with a non-zero count is corrupt state. Fail closed on keyed writes.
       this.retiredMutationReceiptBloomCorrupt=true;
     }
-    for(const row of (raw.mutationReceipts??[]).slice(-this.maxMutationReceipts)){
-      if(!row||typeof row.commandId!=='string'||!row.commandId.trim()||typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||!['encode','revise-status','revise-content','update-signals','update-context','forget'].includes(row.action)||!['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||!Number.isFinite(Number(row.at))||Number(row.at)<0)continue;
-      this.mutationReceipts.set(row.commandId.slice(0,128),{...row,commandId:row.commandId.trim().slice(0,128),fingerprint:row.fingerprint.slice(0,64).toLowerCase(),at:Math.floor(Number(row.at))});
+    const rawReceipts=raw.mutationReceipts;
+    if(rawReceipts!==undefined&&!Array.isArray(rawReceipts))this.retiredMutationReceiptBloomCorrupt=true;
+    if(Array.isArray(rawReceipts)&&rawReceipts.length>this.maxMutationReceipts)this.retiredMutationReceiptBloomCorrupt=true;
+    const validReceipt=(row:any):boolean=>{
+      if(!row||typeof row.commandId!=='string'||row.commandId.length===0||row.commandId.length>128||
+        row.commandId!==row.commandId.trim()||/[\u0000-\u001f\u007f-\u009f]/.test(row.commandId)||
+        typeof row.fingerprint!=='string'||!/^[a-f0-9]{64}$/i.test(row.fingerprint)||
+        !['encode','revise-status','revise-content','update-signals','update-context','forget','rollback-created'].includes(row.action)||
+        !['memory','context','boolean','void','null'].includes(row.resultKind)||!['applied','noop'].includes(row.outcome)||
+        typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0||
+        (row.memoryId!==undefined&&(typeof row.memoryId!=='string'||!row.memoryId||row.memoryId.length>256||/[\u0000-\u001f\u007f-\u009f]/.test(row.memoryId)))||
+        (row.booleanValue!==undefined&&typeof row.booleanValue!=='boolean'))return false;
+      if((row.resultKind==='memory'||row.resultKind==='context')&&(typeof row.memoryId!=='string'||!row.memoryId))return false;
+      if(row.resultKind==='boolean'&&typeof row.booleanValue!=='boolean')return false;
+      if(row.resultKind!=='boolean'&&row.booleanValue!==undefined)return false;
+      return true;
+    };
+    const conflictingReceiptIds=new Set<string>();
+    for(const row of (Array.isArray(rawReceipts)?rawReceipts:[]).slice(-this.maxMutationReceipts)){
+      if(!validReceipt(row)){this.retiredMutationReceiptBloomCorrupt=true;continue;}
+      const commandId=row.commandId;
+      const normalized={...row,commandId,fingerprint:row.fingerprint.toLowerCase(),at:Math.floor(row.at)};
+      if(conflictingReceiptIds.has(commandId)){this.retiredMutationReceiptBloomCorrupt=true;continue;}
+      const prior=this.mutationReceipts.get(commandId);
+      if(prior){
+        // Any duplicated command identity is outside the snapshot contract; even a byte-identical
+        // duplicate makes the replay journal uncertain. Never retain a receipt for that key.
+        this.mutationReceipts.delete(commandId);
+        conflictingReceiptIds.add(commandId);
+        this.retiredMutationReceiptBloomCorrupt=true;
+        continue;
+      }
+      this.mutationReceipts.set(commandId,normalized);
     }
   }
 
@@ -545,19 +615,19 @@ export class MemoryFabric {
   }
 
   revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'revise-status',id,to,reason,...options}) as void;
+    return this.applyLifecycleCommand({action:'revise-status',id,to,reason,tick:options?.tick,commandId:options?.commandId}) as void;
   }
 
   reviseContent(id:string,newContent:string,options:Parameters<MemoryOS2['reviseContent']>[2]={},context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'revise-content',id,newContent,options,...context}) as MemoryItem2|null;
+    return this.applyLifecycleCommand({action:'revise-content',id,newContent,options,tick:context?.tick,commandId:context?.commandId}) as MemoryItem2|null;
   }
 
   updateSignals(id:string, patch:Parameters<MemoryOS2['updateSignals']>[1], reason='reconsolidation', context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,...context}) as MemoryItem2|null;
+    return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,tick:context?.tick,commandId:context?.commandId}) as MemoryItem2|null;
   }
 
   updateContext(id:string, patch:Record<string,string|undefined>, context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'update-context',id,patch,...context}) as Record<string,string> | null;
+    return this.applyLifecycleCommand({action:'update-context',id,patch,tick:context?.tick,commandId:context?.commandId}) as Record<string,string> | null;
   }
 
   markDormant(id:string,dormant=true,reason='memory-economy',context:{tick?:number;commandId?:string}={}){
@@ -565,7 +635,28 @@ export class MemoryFabric {
   }
 
   forgetById(id:string,reason='memory-knockout',context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'forget',id,reason,...context}) as boolean;
+    return this.applyLifecycleCommand({action:'forget',id,reason,tick:context?.tick,commandId:context?.commandId}) as boolean;
+  }
+
+  /** Scoped compensation for a newly-created HMX row when ordinary forgetting correctly
+   * refuses protected states (quarantined/identity). The export check prevents touching native memory.
+   */
+  rollbackHmxCreatedMemory(id:string,exportId:string,stagingId:string,attempt:number,reason='hmx-apply-rollback',context:{tick?:number;commandId?:string}={}):boolean {
+    if(typeof id!=='string'||!id||id.length>256||/[\u0000-\u001f\u007f-\u009f]/u.test(id)||
+      typeof exportId!=='string'||!/^exp_[a-f0-9]{16}$/.test(exportId)||
+      typeof stagingId!=='string'||!stagingId||stagingId.length>512||stagingId!==stagingId.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(stagingId)||
+      !Number.isSafeInteger(attempt)||attempt<1){
+      throw new TypeError('memory-lifecycle-hmx-rollback-input-invalid');
+    }
+    // The scope arguments are authority-bearing. Only copy the explicitly supported
+    // execution metadata from context; a JavaScript caller can pass extra runtime keys
+    // despite the TypeScript shape, and must not be able to override id/export/stage/attempt.
+    const commandContext=context&&typeof context==='object'?context:{};
+    return this.applyLifecycleCommand({
+      action:'rollback-created',id,exportId,stagingId,attempt,reason,
+      ...(commandContext.commandId!==undefined?{commandId:commandContext.commandId}:{}),
+      ...(commandContext.tick!==undefined?{tick:commandContext.tick}:{}),
+    }) as boolean;
   }
 
   canonicalSize(){return this.memoryOS.size();}

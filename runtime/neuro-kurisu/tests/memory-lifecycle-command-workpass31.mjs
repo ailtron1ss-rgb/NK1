@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { MemorySubsystemRuntime } from '../src/organism/core/MemorySubsystemRuntime.ts';
-import { MemoryLifecycleCommandConflictError } from '../src/organism/memory/MemoryFabric.ts';
+import { MemoryLifecycleCommandConflictError, MemoryLifecycleCommandRecoveryRequiredError } from '../src/organism/memory/MemoryFabric.ts';
 import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism/persistence/StateMigrations.ts';
 
 const at = 2_000_000_000_000;
@@ -39,6 +39,40 @@ runtime.fabric.encode(seedInput, { commandId: 'wp31:encode:seed', tick: 42 });
 assert.equal(runtime.memoryOS.size(), sizeAfterEncode, 'replaying an encode command must not create/reconsolidate canonical memory');
 assert.equal(runtime.fabric.snapshot().stats.encodes, encodeStatsAfterFirst, 'replay must not increment write stats');
 assert.equal(runtime.events.list().filter(event => event.type === 'memory-created').length, createEventCount, 'replay must not emit a duplicate create event');
+
+// WorkPass429: a command ID is an exact idempotency key. It may not be trimmed,
+// truncated or coerced, because aliases can replay an unrelated cached result.
+const idPrefix = 'wp31:command-id-boundary:';
+const validBoundaryCommandId = idPrefix + 'x'.repeat(128 - idPrefix.length);
+assert.equal(validBoundaryCommandId.length, 128, 'the maximum supported command ID length remains valid');
+const boundaryInput = makeInput('WP429 bounded command ID remains an exact canonical-memory key.');
+const boundaryItem = runtime.fabric.encode(boundaryInput, { commandId: validBoundaryCommandId, tick: 44 });
+assert.ok(boundaryItem?.id);
+assert.equal(runtime.fabric.encode(boundaryInput, { commandId: validBoundaryCommandId, tick: 45 })?.id, boundaryItem.id,
+  'a valid maximum-length ID must still replay its original receipt');
+const beforeInvalidCommandIds = {
+  size: runtime.memoryOS.size(),
+  stats: runtime.fabric.snapshot().stats,
+  events: runtime.events.list().length,
+};
+const invalidCommandIds = [
+  validBoundaryCommandId + 'x',
+  ' ' + validBoundaryCommandId,
+  validBoundaryCommandId + String.fromCharCode(10),
+  'wp31:bad' + String.fromCharCode(0x009f) + 'key',
+  42,
+  '',
+];
+for (const invalidCommandId of invalidCommandIds) {
+  assert.throws(
+    () => runtime.fabric.encode(boundaryInput, { commandId: invalidCommandId }),
+    error => error instanceof TypeError && error.message === 'memory-lifecycle-command-id-invalid',
+    'malformed, non-string or overlong command IDs must be rejected, not normalized into another key',
+  );
+}
+assert.equal(runtime.memoryOS.size(), beforeInvalidCommandIds.size, 'invalid command IDs must not mutate canonical memory');
+assert.deepEqual(runtime.fabric.snapshot().stats, beforeInvalidCommandIds.stats, 'invalid command IDs must not alter memory counters');
+assert.equal(runtime.events.list().length, beforeInvalidCommandIds.events, 'invalid command IDs must not emit lifecycle events');
 
 // Legacy/multi-timescale imports also pass through the same mutation boundary.
 const legacyRow = {
@@ -125,16 +159,85 @@ assert.equal(replayEventDelta, 0, 'replay should emit no new lifecycle events');
 
 assert.throws(() => restored.fabric.encode(makeInput('different payload with a reused mutation key'), { commandId: 'wp31:encode:seed' }), MemoryLifecycleCommandConflictError,
   'reusing an idempotency key for a different payload must fail explicitly');
+const rollbackReceiptForMigration = {
+  commandId: 'wp31:rollback-created:valid',
+  fingerprint: 'a'.repeat(64),
+  action: 'rollback-created',
+  at,
+  outcome: 'applied',
+  resultKind: 'boolean',
+  memoryId: 'hexis-memory:rollback-fixture',
+  booleanValue: true,
+};
 const malformedMigration = migratePersistedOrganism({
   schemaVersion: ORGANISM_STATE_SCHEMA,
   state: { version: ORGANISM_STATE_SCHEMA },
   facets: { advanced: { memoryFabric: { ...durable.fabric, mutationReceipts: [
     ...(durable.fabric.mutationReceipts ?? []),
+    rollbackReceiptForMigration,
     { commandId: 'bad', fingerprint: 'invalid', action: 'encode', at: -1, outcome: 'applied', resultKind: 'memory' },
   ] } } },
 });
 assert.equal(malformedMigration.facets.advanced.memoryFabric.mutationReceipts?.some(row => row.commandId === 'bad'), false,
   'invalid or negative-time replay receipts must be discarded during state migration');
+assert.equal(malformedMigration.facets.advanced.memoryFabric.retiredMutationReceiptBloomCorrupt,true,
+  'dropping any malformed hot receipt must mark the replay journal uncertain instead of silently permitting a retry');
+assert.equal(malformedMigration.facets.advanced.memoryFabric.mutationReceipts.some(row =>
+  row.commandId === rollbackReceiptForMigration.commandId && row.action === 'rollback-created'), true,
+  'state migration must preserve valid rollback-created receipts instead of treating the new action as corruption');
+const corruptJournalRuntime=new MemorySubsystemRuntime();
+corruptJournalRuntime.fabric.restore(malformedMigration.facets.advanced.memoryFabric);
+assert.throws(
+  () => corruptJournalRuntime.fabric.encode(makeInput('A corrupted receipt journal must never permit an ambiguous duplicate mutation.'), {commandId:'wp31:corrupt-journal:blocked'}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'a malformed restored receipt must fail closed for new keyed mutations until the journal is repaired',
+);
+const directCorruptReceiptRuntime=new MemorySubsystemRuntime();
+directCorruptReceiptRuntime.fabric.restore({mutationReceipts:[{...durable.fabric.mutationReceipts[0],commandId:' '+durable.fabric.mutationReceipts[0].commandId}]});
+assert.throws(
+  () => directCorruptReceiptRuntime.fabric.encode(seedInput,{commandId:durable.fabric.mutationReceipts[0].commandId}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'direct restore must not trim a malformed receipt key into a valid replay key',
+);
+const malformedControlReceiptRuntime=new MemorySubsystemRuntime();
+malformedControlReceiptRuntime.fabric.restore({mutationReceipts:[{
+  ...durable.fabric.mutationReceipts[0],
+  commandId:'wp31:bad\u0000receipt',
+}]});
+assert.throws(
+  () => malformedControlReceiptRuntime.fabric.encode(seedInput,{commandId:'wp31:clean-key'}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'control characters in persisted command IDs must invalidate receipt certainty',
+);
+const c1ControlReceiptRuntime=new MemorySubsystemRuntime();
+c1ControlReceiptRuntime.fabric.restore({mutationReceipts:[{
+  ...durable.fabric.mutationReceipts[0],
+  commandId:'wp31:bad'+String.fromCharCode(0x009f)+'receipt',
+}]});
+assert.throws(
+  () => c1ControlReceiptRuntime.fabric.encode(seedInput,{commandId:'wp31:c1-restore-blocked'}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'C1 controls in persisted command IDs must invalidate receipt certainty',
+);
+const validDuplicateReceipt=durable.fabric.mutationReceipts.find(row=>row.resultKind==='memory'&&row.memoryId);
+assert.ok(validDuplicateReceipt,'fixture requires a canonical memory receipt');
+const duplicateReceiptRuntime=new MemorySubsystemRuntime();
+duplicateReceiptRuntime.fabric.restore({mutationReceipts:[validDuplicateReceipt,{...validDuplicateReceipt,memoryId:'forged-memory-id'}]});
+assert.throws(
+  () => duplicateReceiptRuntime.fabric.encode(seedInput,{commandId:validDuplicateReceipt.commandId}),
+  MemoryLifecycleCommandRecoveryRequiredError,
+  'duplicate persisted command IDs with conflicting result metadata must not replay either cached receipt',
+);
+
+const duplicateReceiptMigration=migratePersistedOrganism({
+  schemaVersion:ORGANISM_STATE_SCHEMA,
+  state:{version:ORGANISM_STATE_SCHEMA},
+  facets:{advanced:{memoryFabric:{...durable.fabric,mutationReceipts:[validDuplicateReceipt,{...validDuplicateReceipt,memoryId:'forged-memory-id'}]}}},
+});
+assert.equal(duplicateReceiptMigration.facets.advanced.memoryFabric.retiredMutationReceiptBloomCorrupt,true,
+  'state migration must mark duplicate command IDs uncertain even while deduplicating their rows');
+assert.equal(duplicateReceiptMigration.facets.advanced.memoryFabric.mutationReceipts.filter(row=>row.commandId===validDuplicateReceipt.commandId).length,1,
+  'state migration must retain at most one row for a duplicate command identity');
 
 // The journal itself remains bounded even under a long-lived organism session.
 for (let index = 0; index < 520; index++) {

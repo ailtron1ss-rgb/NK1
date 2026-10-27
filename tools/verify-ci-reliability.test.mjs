@@ -84,3 +84,43 @@ test("requires cognitive CI for pull requests targeting rebuild", () => {
   });
   assert.match(errors.join("\n"), /must run for pull requests targeting rebuild/);
 });
+
+test("separates Hexis push and pull-request cancellation groups", () => {
+  const hexisWorkflow = [
+    "name: Hexis",
+    "on:",
+    "  push:",
+    "    branches: [main]",
+    "  pull_request:",
+    "    branches: [main]",
+    "concurrency:",
+    "  group: nk1-hexis-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}",
+    "  cancel-in-progress: true",
+    "jobs:",
+    "  test:",
+    "    runs-on: ubuntu-latest"
+  ].join("\n");
+
+  const validErrors = validateCiConfig({
+    workflows: { "hexis-canonical-apply.yml": hexisWorkflow },
+    nodeVersion: "24"
+  });
+  assert.deepEqual(validErrors, []);
+
+  const sharedGroup = hexisWorkflow.replace(
+    "nk1-hexis-${{ github.event_name }}-",
+    "nk1-hexis-"
+  );
+  const invalidErrors = validateCiConfig({
+    workflows: {
+      "hexis-canonical-apply.yml": sharedGroup,
+      "workpass71-validation.yml": sharedGroup.replace("name: Hexis", "name: WorkPass71")
+    },
+    nodeVersion: "24"
+  });
+  assert.match(invalidErrors.join("\n"), /must include github.event_name/);
+  assert.ok(
+    invalidErrors.some(error => error.startsWith("workpass71-validation.yml: concurrency.group must include github.event_name")),
+    "the guard must apply to all workflows with shared push/PR cancellation groups, not only Hexis"
+  );
+});

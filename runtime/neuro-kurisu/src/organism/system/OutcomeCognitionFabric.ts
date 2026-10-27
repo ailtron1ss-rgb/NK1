@@ -35,6 +35,8 @@ export interface OutcomeProjectionIndexEntry {
   executionId:string;
   /** Immutable fingerprint of the original ActionGateway outcome projection. */
   fingerprint:string;
+  /** Integrity digest of the complete cached record, including appended external evidence. */
+  recordDigest?:string;
   record:OutcomeCognitionProjection['verificationRecord'];
   verifiedExternal:boolean;
 }
@@ -93,25 +95,81 @@ export class OutcomeCognitionFabric {
   constructor(maxRecords=96){this.maxRecords=Math.max(32,maxRecords);this.maxProjectionIndex=Math.max(256,Math.min(2048,this.maxRecords*8));}
 
   restore(snapshot?:{version?:number; records?:OutcomeCognitionProjection['verificationRecord'][]; projectionIndex?:OutcomeProjectionIndexEntry[]; evidenceRevisions?:OutcomeProjectionEvidenceRevision[]; causal?:CausalAccountabilityState}){
+    const validOptionalText=(value:unknown,max:number)=>value===undefined||(
+      typeof value==='string'&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value));
+    const validExternalObservation=(value:unknown):boolean=>{
+      if(!value||typeof value!=='object'||Array.isArray(value))return false;
+      const row=value as Record<string,unknown>;
+      return typeof row.observationId==='string'&&row.observationId.length>0&&row.observationId.length<=180&&
+        !/[\u0000-\u001f\u007f]/.test(row.observationId)&&typeof row.verified==='boolean'&&
+        typeof row.confidence01==='number'&&Number.isFinite(row.confidence01)&&row.confidence01>=0&&row.confidence01<=1&&
+        typeof row.at==='number'&&Number.isFinite(row.at)&&row.at>=0&&
+        validOptionalText(row.expectedPostcondition,1024)&&validOptionalText(row.observedPostcondition,1024)&&
+        validOptionalText(row.sourceId,180)&&validOptionalText(row.independenceKey,120)&&validOptionalText(row.reason,160)&&
+        (row.sourceClass===undefined||['os','device','user','external-api','world','organism','simulator','unknown'].includes(String(row.sourceClass)))&&
+        (row.assessment===undefined||['match','mismatch','unknown'].includes(String(row.assessment)));
+    };
     const validRecord=(value:unknown):value is OutcomeCognitionProjection['verificationRecord']=>{
-      if(!value||typeof value!=='object')return false;
+      if(!value||typeof value!=='object'||Array.isArray(value))return false;
       const row=value as OutcomeCognitionProjection['verificationRecord'];
-      return Number.isFinite(Number(row.at))&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
+      const executionIdentityValid=row.executionId===undefined||(
+        typeof row.executionId==='string'&&boundedText(row.executionId,180)===row.executionId);
+      const externalObservationsValid=row.externalObservations===undefined||(
+        Array.isArray(row.externalObservations)&&row.externalObservations.length<=8&&row.externalObservations.every(validExternalObservation));
+      return typeof row.at==='number'&&Number.isFinite(row.at)&&row.at>=0&&
+        typeof row.tick==='number'&&Number.isFinite(row.tick)&&row.tick>=0&&
+        typeof row.confidence01==='number'&&Number.isFinite(row.confidence01)&&row.confidence01>=0&&row.confidence01<=1&&
+        executionIdentityValid&&typeof row.externalObservation==='boolean'&&
+        validOptionalText(row.observationId,180)&&validOptionalText(row.predictionId,180)&&
+        validOptionalText(row.expectedPostcondition,1024)&&validOptionalText(row.observedPostcondition,1024)&&
+        (row.outcomeClass===undefined||(typeof row.outcomeClass==='string'&&row.outcomeClass.length<=64))&&
+        (row.externalEvidenceStatus===undefined||['none','corroborated','contradicted','mixed'].includes(row.externalEvidenceStatus))&&
+        externalObservationsValid&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
         ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean';
     };
     this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];
     this.projectionIndex.clear();
+    const canonicalRecordsByExecution=new Map<string,OutcomeCognitionProjection['verificationRecord']>();
+    for(const record of this.records){
+      const executionId=boundedText(record.executionId,180);
+      if(executionId&&!canonicalRecordsByExecution.has(executionId))canonicalRecordsByExecution.set(executionId,record);
+    }
+    const conflictingProjectionIds=new Set<string>();
     if(Array.isArray(snapshot?.projectionIndex)) for(const candidate of snapshot.projectionIndex.slice(-this.maxProjectionIndex)){
       if(!candidate||typeof candidate.executionId!=='string'||!candidate.executionId.trim()||candidate.executionId.length>180||
         !/^[a-f0-9]{64}$/i.test(String(candidate.fingerprint??''))||!validRecord(candidate.record))continue;
       const executionId=candidate.executionId.trim();
-      this.projectionIndex.set(executionId,{executionId,fingerprint:candidate.fingerprint.toLowerCase(),record:structuredClone(candidate.record),verifiedExternal:Boolean(candidate.verifiedExternal)});
+      if(candidate.record.executionId!==executionId||conflictingProjectionIds.has(executionId))continue;
+      const fingerprint=String(candidate.fingerprint).toLowerCase();
+      try {
+        if(this.fingerprintFromRecord(candidate.record)!==fingerprint)continue;
+        const suppliedRecordDigest=candidate.recordDigest;
+        if(suppliedRecordDigest!==undefined&&(!/^[a-f0-9]{64}$/i.test(String(suppliedRecordDigest))||sha256Stable(candidate.record)!==String(suppliedRecordDigest).toLowerCase()))continue;
+        const canonicalRecord=canonicalRecordsByExecution.get(executionId);
+        if(canonicalRecord&&this.fingerprintFromRecord(canonicalRecord)!==fingerprint)continue;
+        // If the canonical record is retained, it owns mutable evidence fields too.
+        // The projection index is only a cache and cannot inject observations into it.
+        const record=structuredClone(canonicalRecord??candidate.record);
+        const prior=this.projectionIndex.get(executionId);
+        if(prior){
+          const identical=prior.fingerprint===fingerprint&&sha256Stable(prior.record)===sha256Stable(record);
+          if(!identical){this.projectionIndex.delete(executionId);conflictingProjectionIds.add(executionId);}
+          continue;
+        }
+        const verifiedExternal=Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId);
+        this.projectionIndex.set(executionId,{executionId,fingerprint,recordDigest:sha256Stable(record),record,verifiedExternal});
+      } catch {
+        continue;
+      }
     }
-    // Backward-compatible seeding for snapshots created before the projection index.
+    // Backward-compatible repair for missing, stale or conflicting index entries.
+    // The retained verification records rebuild the index from the immutable outcome fields.
     for(const record of this.records){
-      if(!record.executionId||this.projectionIndex.has(record.executionId))continue;
+      const executionId=boundedText(record.executionId,180);
+      if(!executionId||this.projectionIndex.has(executionId))continue;
       const fingerprint=this.fingerprintFromRecord(record);
-      this.projectionIndex.set(record.executionId,{executionId:record.executionId,fingerprint,record:structuredClone(record),verifiedExternal:Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId)});
+      const verifiedExternal=Boolean(record.ok&&record.verified&&record.basis==='external-postcondition'&&record.externalObservation&&record.observationId);
+      this.projectionIndex.set(executionId,{executionId,fingerprint,recordDigest:sha256Stable(record),record:structuredClone(record),verifiedExternal});
     }
     this.trimProjectionIndex();
     this.evidenceRevisions=Array.isArray(snapshot?.evidenceRevisions)
@@ -196,7 +254,7 @@ export class OutcomeCognitionFabric {
     this.records=[row,...this.records].slice(0,this.maxRecords);
     if(executionId&&fingerprint){
       this.projectionIndex.delete(executionId);
-      this.projectionIndex.set(executionId,{executionId,fingerprint,record:structuredClone(row),verifiedExternal});
+      this.projectionIndex.set(executionId,{executionId,fingerprint,recordDigest:sha256Stable(row),record:structuredClone(row),verifiedExternal});
       this.trimProjectionIndex();
     }
     return {verificationRecord:row,causal:this.causal.snapshot(),verifiedExternal,observedWorldContextAfter:v.observedWorldContextAfter};
@@ -262,10 +320,10 @@ export class OutcomeCognitionFabric {
     const updated={...current,externalObservations:obs,externalEvidenceStatus,executionId,predictionId:boundedText(input.predictionId,180)??current.predictionId,at:current.at};
     this.records=[updated,...this.records.filter(row=>row.executionId!==executionId)].slice(0,this.maxRecords);
     const entry=this.projectionIndex.get(executionId);
-    if(entry){this.projectionIndex.delete(executionId);this.projectionIndex.set(executionId,{...entry,record:structuredClone(updated)});}
+    if(entry){this.projectionIndex.delete(executionId);this.projectionIndex.set(executionId,{...entry,recordDigest:sha256Stable(updated),record:structuredClone(updated)});}
     else {
       const fingerprint=this.fingerprintFromRecord(updated);
-      this.projectionIndex.set(executionId,{executionId,fingerprint,record:structuredClone(updated),verifiedExternal:Boolean(updated.ok&&updated.verified&&updated.basis==='external-postcondition'&&updated.externalObservation&&updated.observationId)});
+      this.projectionIndex.set(executionId,{executionId,fingerprint,recordDigest:sha256Stable(updated),record:structuredClone(updated),verifiedExternal:Boolean(updated.ok&&updated.verified&&updated.basis==='external-postcondition'&&updated.externalObservation&&updated.observationId)});
       this.trimProjectionIndex();
     }
     return {resolved:true,record:structuredClone(updated),causal:this.causal.snapshot(),replayed:false} as const;

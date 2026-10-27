@@ -106,6 +106,15 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
       continue;
     }
     consumedRuns.add(report.trialId);
+    // Verify the signature and trusted run binding before consulting payload fields
+    // for task/outcome decisions. Tampered payloads must be classified as untrusted
+    // evidence, not merely as a self-reported outcome mismatch.
+    let verified = false;
+    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
+    if (!verified) {
+      reasons.push('signed-shadow-evidence-not-trusted');
+      continue;
+    }
     if (payload.taskId !== report.taskId || payload.runId !== report.trialId) {
       reasons.push('reflective-trial-receipt-identity-mismatch');
       continue;
@@ -113,12 +122,6 @@ export function bindReflectiveReportsToVerifiedShadowEvidence(
     if (payload.passed !== report.taskSuccess?.passed ||
         report.taskSuccess?.passRate !== (payload.passed ? 1 : 0)) {
       reasons.push('reflective-trial-outcome-mismatch');
-      continue;
-    }
-    let verified = false;
-    try { verified = verifyEvidence(observation, candidate); } catch { verified = false; }
-    if (!verified) {
-      reasons.push('signed-shadow-evidence-not-trusted');
       continue;
     }
     boundTrials += 1;

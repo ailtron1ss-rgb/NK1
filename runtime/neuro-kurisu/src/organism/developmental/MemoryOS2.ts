@@ -1005,8 +1005,9 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
- updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
+ updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'|'evidenceSources'|'sourceAuthority01'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;
+   const before=estimateMemoryBytes(m);
    const fromStatus=m.epistemicStatus;
    const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
    if(patch.salience!==undefined)m.salience=c(patch.salience);
@@ -1017,22 +1018,37 @@ export class MemoryOS2{
    if(patch.predictionError!==undefined)m.predictionError=c(patch.predictionError);
    if(patch.confidence!==undefined)m.confidence=c(patch.confidence);
    if(patch.dormant!==undefined)m.dormant=Boolean(patch.dormant);
-   m.lastAccessAt=Date.now();
+   const updatedAt=Date.now();
+   if(patch.evidenceSources!==undefined){
+    // Merge independent evidence through the canonical lineage rules. This preserves
+    // replay guards, the bounded eight-source trail and the bounded 32-key tombstone.
+    this.mergeIncomingEvidence(m,{...m,evidenceSources:patch.evidenceSources},updatedAt);
+   }
+   if(patch.sourceAuthority01!==undefined){
+    // Authority correction is deliberately monotonic: generic signal updates may
+    // reduce over-trusted state but can never promote a source's authority.
+    const authorityCap=c(patch.sourceAuthority01);
+    m.sourceAuthority01=Math.min(c(m.sourceAuthority01??0.5),authorityCap);
+    m.evidenceSources=(m.evidenceSources??[]).map(source=>{
+     if(source.provenanceClass==='external'&&String(source.source??'').startsWith('hexis:')){
+      return {...source,sourceAuthority01:Math.min(c(source.sourceAuthority01??m.sourceAuthority01??0.5),authorityCap)};
+     }
+     return source;
+    });
+   }
+   m.lastAccessAt=updatedAt;
    m.temperature01=memoryTemperature(m);
    if(reason){this.recordRevision(m,{at:m.lastAccessAt,from:fromStatus,to:fromStatus,reason});}
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    this.state.reconsolidations++;
    return structuredClone(m);
  }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
- forgetById(id:string,reason='memory-knockout'){
-   const i=this.state.items.findIndex(x=>x.id===id);
-   if(i<0)return false;
-   const m=this.state.items[i]!;
-   if(m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical')return false;
+ private removeCanonicalRecordAt(index:number,id:string,m:MemoryItem2,countAsForget:boolean){
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-estimateMemoryBytes(m));
    this.removeIndexedId(id);
-   this.state.items.splice(i,1);
+   this.state.items.splice(index,1);
    this.itemIndex.delete(id);
    this.rebuildDedupIndexesFor(m);
    this.lowerContentCache.delete(id);
@@ -1044,8 +1060,30 @@ export class MemoryOS2{
      if(x.supersedesId===id)x.supersedesId=null;
      if(x.supersededById===id)x.supersededById=null;
    }
-   this.state.forgetCount++;
+   if(countAsForget)this.state.forgetCount++;
    this.state.reconsolidations++;
+ }
+ /** Transaction-only compensation: remove an item created by a failed HMX import.
+  * Unlike user-requested forgetting, rollback must also undo imported quarantined
+  * or identity records. The export scope prevents this path from deleting native data.
+  */
+ rollbackCreatedHmxImport(id:string,expectedExportId:string,expectedStageId:string,expectedAttempt:number):boolean{
+   const i=this.state.items.findIndex(x=>x.id===id);
+   if(i<0)return false;
+   const m=this.state.items[i]!;
+   if(!String(m.source??'').startsWith('hexis:')||
+     m.context?.hexisExportId!==expectedExportId||
+     m.context?.hexisImportStageId!==expectedStageId||
+     m.context?.hexisImportAttempt!==String(expectedAttempt))return false;
+   this.removeCanonicalRecordAt(i,id,m,false);
+   return true;
+ }
+ forgetById(id:string,reason='memory-knockout'){
+   const i=this.state.items.findIndex(x=>x.id===id);
+   if(i<0)return false;
+   const m=this.state.items[i]!;
+   if(m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical')return false;
+   this.removeCanonicalRecordAt(i,id,m,true);
    void reason;
    return true;
  }

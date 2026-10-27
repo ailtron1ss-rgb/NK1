@@ -42,12 +42,20 @@ const hardened=new ParametricPolicyLearner();
 hardened.restore({weights:{explore:[NaN,Infinity,-Infinity]},bias:{explore:NaN}});
 assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'restored policy weights must remain finite');
 assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'restored policy biases must remain finite');
-hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:NaN,sampleWeight01:NaN});
-assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'malformed learning rates must not poison learned weights');
-assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'malformed sample weights must not poison learned biases');
-assert.equal(hardened.snapshot().updates,1);
-hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:Infinity,sampleWeight01:NaN});
-assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'feature-level updates must reject non-finite training controls');
-assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'feature-level updates must preserve finite biases');
-assert.equal(hardened.snapshot().updates,2);
+assert.throws(
+  () => hardened.train({state:mkState(.7,.4,.3),action:'explore',target01:.9,learningRate01:NaN,sampleWeight01:NaN}),
+  /rate-must-be-finite/,
+  'non-finite learning controls must be rejected before any parameter update',
+);
+assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'rejected learning rates must not poison learned weights');
+assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'rejected sample weights must not poison learned biases');
+assert.equal(hardened.snapshot().updates,0);
+assert.throws(
+  () => hardened.trainFeatures({features:new Array(15).fill(.5),action:'explore',target01:.8,learningRate01:Infinity,sampleWeight01:NaN}),
+  /rate-must-be-finite/,
+  'feature-level training must reject non-finite controls at the same boundary',
+);
+assert.ok(Object.values(hardened.snapshot().weights).flat().every(Number.isFinite), 'feature-level rejection must preserve finite weights');
+assert.ok(Object.values(hardened.snapshot().bias).every(Number.isFinite), 'feature-level rejection must preserve finite biases');
+assert.equal(hardened.snapshot().updates,0);
 console.log(`P26_TRUE_LEARNING=PASS updates=${learner.snapshot().updates} heldout=${learned.toFixed(3)} preExplore=${(before.reduce((a,b)=>a+b,0)/before.length).toFixed(3)} finiteGuard=PASS`);

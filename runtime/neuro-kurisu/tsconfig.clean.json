@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node"],
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -12,5 +13,8 @@
     "src/organism/**/*.ts",
     "src/server/**/*.ts",
     "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "src/node-shims.d.ts"
   ]
 }

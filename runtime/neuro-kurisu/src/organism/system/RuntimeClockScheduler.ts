@@ -1,4 +1,4 @@
-export type RuntimeClockKind = 'cognitive' | 'embodiment' | 'reflection' | 'trusted-shadow-learning';
+export type RuntimeClockKind = 'cognitive' | 'embodiment' | 'reflection' | 'trusted-shadow-learning' | 'p23-compound-repair-revision';
 
 export interface RuntimeClockDecision {
   delayMs: number;
@@ -34,7 +34,7 @@ export interface RuntimeClockOptions {
 const MAX_CLOCK_DELAY_MS = 24 * 60 * 60 * 1000;
 const MIN_REPEAT_DELAY_MS = 50;
 const RETRY_DELAY_MS = 1_000;
-const CLOCK_KINDS = new Set<RuntimeClockKind>(['cognitive','embodiment','reflection','trusted-shadow-learning']);
+const CLOCK_KINDS = new Set<RuntimeClockKind>(['cognitive','embodiment','reflection','trusted-shadow-learning','p23-compound-repair-revision']);
 
 function normalizeDecision(value: unknown, fallback: RuntimeClockDecision): RuntimeClockDecision {
   if (value === undefined || value === null) {

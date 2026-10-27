@@ -32,6 +32,33 @@ const cycle = new UnifiedCognitiveCycle();
 const evaluated = cycle.evaluate({ tick: 12, stageIds, parentIntegrity01: fabric.verifyOperationalCycle(stageIds).integrity01 });
 assert.equal(evaluated.complete, true, 'historical dangling links must not poison a valid current cycle');
 
+// Optional stages are part of the supplied trace: a wrong optional-stage identity must fail closed.
+const extendedRawIds = fabric.recordOperationalCycle({
+  tick: 20,
+  at: 2000,
+  observation: { source: 'sensor', confidence01: .8 },
+  prediction: { source: 'world-model', confidence01: .7 },
+  appraisal: { source: 'appraisal', confidence01: .7 },
+  attention: { source: 'workspace', confidence01: .8 },
+  memory: { source: 'active-memory', confidence01: .8 },
+  goal: { source: 'goal-selector', confidence01: .8 },
+  plan: { source: 'planner', confidence01: .8 },
+  action: { source: 'policy', confidence01: .8 },
+  outcome: { source: 'verified-outcome', confidence01: .8 },
+  learning: { source: 'feedback', confidence01: .8 },
+  selfUpdate: { source: 'self-model', confidence01: .8 },
+});
+const extendedStageIds = {
+  ...extendedRawIds,
+  'self-update': extendedRawIds.selfUpdate,
+};
+assert.equal(fabric.verifyOperationalCycle(extendedStageIds).complete, true);
+const forgedOptionalStage = { ...extendedStageIds, plan: extendedStageIds.goal };
+const rejectedOptionalStage = fabric.verifyOperationalCycle(forgedOptionalStage);
+assert.equal(rejectedOptionalStage.complete, false, 'optional stages must not be ignored when supplied');
+assert.ok(rejectedOptionalStage.invalidStages.some(value => value.includes('plan:expected-stage-plan')));
+assert.ok(rejectedOptionalStage.missingEdges.includes('action->plan'));
+
 // A broken current edge must still fail closed.
 const action = fabric.recent(20).find(e => e.id === ids.action);
 action.parentIds = action.parentIds.filter(id => id !== ids.prediction);

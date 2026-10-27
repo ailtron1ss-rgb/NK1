@@ -6,6 +6,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
       - 'runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
@@ -26,6 +27,7 @@ on:
       - '.nvmrc'
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
       - 'runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs'
   workflow_dispatch:
@@ -34,7 +36,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: nk1-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -49,6 +51,6 @@ jobs:
           package-manager-cache: false
       - name: Compare replay selection strategies
         run: |
-          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs
-          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs
-          node --experimental-strip-types runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs
+          node --experimental-transform-types runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs
+          node --experimental-transform-types runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs
+          node --experimental-transform-types runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs

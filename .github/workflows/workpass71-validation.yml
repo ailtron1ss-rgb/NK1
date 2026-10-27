@@ -2,7 +2,7 @@ name: NeuroCore core regression validation
 
 on:
   push:
-    branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
+    branches: [workpass70-source, nk1-integration-workspace-2026-10-22, fix/outcome-projection-index-restore-2026-10-26]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
@@ -65,7 +65,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  group: nk1-${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -104,12 +104,22 @@ jobs:
         run: npm --prefix app run test:embodiment-timeline
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
+      - name: Run avatar preference storage regression
+        run: npm --prefix app run test:avatar-storage
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App development bundle build
         run: npm --prefix app run build:dev
+      - name: Install runtime type dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: WorkPass439 optional-stage cognitive event lineage regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-cycle-local-lineage-workpass41.mjs
+      - name: WorkPass329 corrupt memory mutation receipt restore must fail closed
+        run: npm --prefix runtime/neuro-kurisu run test:memory-lifecycle-command-workpass31
+      - name: WorkPass328 restored outcome projection-index integrity
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-63-outcome-fabric
       - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
         run: npm run test:rebuild-recovered
       - name: P23 persisted learning restore integrity

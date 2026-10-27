@@ -23,6 +23,8 @@ jobs:
           package-manager-cache: false
       - name: Enforce runtime version
         run: node -e "if (process.versions.node.split('.')[0] !== '24') process.exit(1)"
+      - name: Install locked runtime dependencies (including Node types)
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
