@@ -48,6 +48,14 @@ export class UnifiedCognitiveCycle {
     // subset of incomplete cycles. Independent clamping can otherwise make
     // aggregate counts exceed the number of observations.
     if(source.version!==undefined&&source.version!==1)throw new RangeError('unsupported cognitive-cycle state version');
+    const isCounter=(value:unknown):value is number=>
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
+    const aggregateCountersConsistent=
+      isCounter(source.cycles)&&isCounter(source.completeCycles)&&
+      isCounter(source.incompleteCycles)&&isCounter(source.brokenLineages)&&
+      source.completeCycles<=source.cycles&&
+      source.completeCycles+source.incompleteCycles===source.cycles&&
+      source.brokenLineages<=source.incompleteCycles;
     const completeCycles=Math.min(cycles,safeCounter(source.completeCycles));
     // Partition every recorded cycle. Any count not proven complete is
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
@@ -69,7 +77,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete:aggregateCountersConsistent&&cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
       lastMissingStages:missing,
     };
   }
