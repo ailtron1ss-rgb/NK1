@@ -58,6 +58,75 @@ assert(beliefCapacityAfter.some(row => row.memoryId === 'independent-belief-adde
 assert.equal(beliefCapacityAfter.some(row => row.memoryId === 'capacity-belief-0'), false,
   'the over-capacity baseline belief is left absent rather than overwriting the independent addition');
 
+// A foreign full snapshot replacement is a stronger boundary than a regular
+// independent write. Owned undo must not resurrect data omitted by that replacement.
+const globalGraphRestoreRuntime = new MemorySubsystemRuntime();
+const globalGraphRestore = globalGraphRestoreRuntime.semanticMemory;
+const globalGraphCheckpoint = globalGraphRestore.mutationCheckpoint();
+const globalGraphOwner = 'test:global-graph-restore';
+globalGraphRestore.upsertNode(
+  'owned node absent from the later snapshot',
+  'concept',
+  0.4,
+  'test:owned-before-global-restore',
+  globalGraphOwner,
+);
+globalGraphRestore.restore({
+  nodes: [{
+    id: 'global-restore-authoritative-node',
+    label: 'authoritative external graph snapshot',
+    type: 'concept',
+    salience: 0.9,
+    lastSeen: 1700000000000,
+    sourceKey: 'external:authoritative-restore',
+  }],
+  edges: [],
+  updates: 17,
+});
+const globalGraphRollback = globalGraphRestore.rollbackOwnedMutations(globalGraphCheckpoint, globalGraphOwner);
+assert(globalGraphRollback.conflicts > 0,
+  'a full graph restore after a transaction write must invalidate stale owner undo');
+assert.deepEqual(globalGraphRestore.snapshot(), {
+  nodes: [{
+    id: 'global-restore-authoritative-node',
+    label: 'authoritative external graph snapshot',
+    type: 'concept',
+    salience: 0.9,
+    lastSeen: 1700000000000,
+    sourceKey: 'external:authoritative-restore',
+  }],
+  edges: [],
+  updates: 17,
+}, 'owned undo must not overwrite an authoritative full graph snapshot');
+
+const globalLedgerRestore = new HexisAdaptationFabric();
+const globalLedgerCheckpoint = globalLedgerRestore.mutationCheckpoint();
+const globalLedgerOwner = 'test:global-ledger-restore';
+const globalOwnedBelief = globalLedgerRestore.registerOrUpdateBelief({
+  memoryId: 'belief-in-authoritative-restore',
+  confidence01: 0.8,
+  trust01: 0.7,
+  at: 1700000000000,
+}, globalLedgerOwner);
+const authoritativeLedgerState = globalLedgerRestore.snapshot();
+authoritativeLedgerState.beliefs.push({
+  memoryId: 'independent-belief-from-authoritative-restore',
+  confidence01: 0.91,
+  trust01: 0.88,
+  sourceKeys: [],
+  contradictingSourceKeys: [],
+  updatedAt: 1700000001000,
+});
+globalLedgerRestore.restore(authoritativeLedgerState);
+const globalLedgerRollback = globalLedgerRestore.rollbackOwnedMutations(globalLedgerCheckpoint, globalLedgerOwner);
+assert(globalLedgerRollback.conflicts > 0,
+  'a full ledger restore after a transaction write must invalidate stale owner undo');
+const globalLedgerAfter = globalLedgerRestore.snapshot().beliefs;
+assert(globalLedgerAfter.some(row => row.memoryId === globalOwnedBelief.memoryId),
+  'owned undo must preserve a belief retained by the authoritative full ledger snapshot');
+assert(globalLedgerAfter.some(row => row.memoryId === 'independent-belief-from-authoritative-restore'),
+  'owned undo must not erase a newer belief from the authoritative full ledger snapshot');
+
 // Bounded mutation journals must declare history loss, while unwinding all
 // retained owner receipts without applying a stale whole-state restore.
 const graphJournalSaturationRuntime = new MemorySubsystemRuntime();
