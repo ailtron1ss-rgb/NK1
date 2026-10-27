@@ -70,6 +70,7 @@ for(const seed of seeds){
           replayEveryNCurrent:strategy.stride,maxReplayUpdates:2000,targetMode:'reward',
           currentLearningRate01:.18,replayLearningRate01:.06,conflictCandidateCap:32,
         });
+        assert.ok(result.replayUpdates <= Math.ceil(fresh.length / Math.max(4, strategy.stride)), strategy.name + ' must respect the bounded replay/current update ratio');
         replayUpdates+=result.replayUpdates;
         blockedReplayRows+=result.blockedReplayRows;
         eligibleReplayRows=result.eligibleReplayRows;

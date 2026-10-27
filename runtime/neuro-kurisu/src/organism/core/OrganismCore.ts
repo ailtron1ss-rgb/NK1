@@ -9,6 +9,7 @@ import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, t
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisHmxDecision, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { normalizeNk1HmxExport } from '../integration/hexis/Nk1HmxExportAdapter.mjs';
+import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
@@ -851,6 +852,7 @@ function defaultAdvancedFacet(): import('./types.ts').AdvancedDevelopmentFacet {
         memoryFabric: { version: 2, stats: { encodes: 0, newItems: 0, reconsolidations: 0, retrievals: 0, retrievalHits: 0, maintenanceRuns: 0, compatibilityProjections: 0 }, hotIds: [] }, memoryLifecycleAuthority: undefined,
         groundedWorld: defaultGroundedWorldState(),
         unifiedLatentWorldState: defaultUnifiedLatentWorldState(),
+        hexisSourceMonitor: { traces: [], conflicts: 0, unattributed: 0 },
         memoryOS: defaultMemoryOS2(), worldModel2: defaultWorldModel2(), regret: defaultRegretState(), semanticScars: defaultSemanticScarState(),
         valueProvenance: defaultValueProvenance(), commitmentRepair: defaultCommitmentRepair(), modelSwitch: defaultModelSwitchContinuity(), advancedResilience: defaultAdvancedResilience(),
         microDreams: defaultMicroDream(), developmentalForks: defaultDevelopmentalForks(), relationshipSelf: defaultRelationshipSelf(), multiHypothesisPersonality: defaultMultiHypothesisPersonality(), futureSimulator: defaultFutureSimulator(), longTermSocialMind: defaultLongTermSocialMind(), socialMind: defaultSocialMindState(), selfGovernance: defaultSelfGovernance(), futureSelf: defaultFutureSelf(), consequenceAttribution: [], unifiedMemory: defaultUnifiedMemory(), socialDevelopment: defaultSocialDevelopment(), longitudinal: defaultLongitudinalOrganism(), adaptiveDevelopment: defaultAdaptiveDevelopment(), temporalContinuity: defaultTemporalContinuity(), p24: defaultP24WorldIdentity(),
@@ -1937,6 +1939,8 @@ export class OrganismCore {
     private syncPersistenceProjection(includeAdvanced = true, forceAllAdvanced = false) {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
         this.persistence.persistenceProjectionCoordinator.sync(this.persisted, this.projectionContext(), includeAdvanced, forceAllAdvanced);
+        // Persist Hexis evidence provenance alongside the canonical memory snapshot; keep it distinct from cognition.sources.
+        this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
     }
     private syncHotPersistenceProjection() {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
@@ -2864,6 +2868,84 @@ export class OrganismCore {
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return review;
     }
+    /**
+     * Accept externally captured evidence lineage through the canonical Hexis
+     * bridge. The caller supplies raw content only for fingerprint verification;
+     * raw content is not persisted here and a matching hash is not authentication.
+     */
+    hexisIngestEvidenceLineage(input: unknown) {
+        const reject = (reason: string) => ({ accepted: false as const, added: false as const, reason });
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return reject('invalid-evidence-request');
+        const request = input as Record<string, unknown>;
+        const memoryId = request.memoryId;
+        const sourceContent = request.sourceContent;
+        const rawTrace = request.trace;
+        if (typeof memoryId !== 'string' || !memoryId.trim() || memoryId !== memoryId.trim() ||
+            memoryId.length > 192 || /[\x00-\x1f\x7f-\x9f]/u.test(memoryId)) return reject('memory-identity-invalid');
+        if (typeof sourceContent !== 'string' || sourceContent.length < 1 || sourceContent.length > 65536) {
+            return reject('source-content-invalid');
+        }
+        if (!rawTrace || typeof rawTrace !== 'object' || Array.isArray(rawTrace)) return reject('source-trace-invalid');
+        const trace = rawTrace as Record<string, unknown>;
+        const id = trace.id;
+        const source = trace.source;
+        const kind = trace.kind;
+        const confidence = trace.confidence;
+        const epistemicStatus = trace.epistemicStatus;
+        const at = trace.at;
+        const provenance = normalizeEvidenceLineageProvenance(trace.provenance);
+        if (typeof id !== 'string' || !id.trim() || id !== id.trim() || id.length > 192 ||
+            /[\x00-\x1f\x7f-\x9f]/u.test(id)) return reject('source-trace-id-invalid');
+        if (!['user', 'system', 'world', 'tool'].includes(String(source))) return reject('source-not-independent');
+        if (typeof kind !== 'string' || !kind.trim() || kind !== kind.trim() || kind.length > 64 ||
+            /[\x00-\x1f\x7f-\x9f]/u.test(kind)) return reject('source-kind-invalid');
+        if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+            return reject('observation-confidence-invalid');
+        }
+        if (epistemicStatus !== 'observation' && epistemicStatus !== 'fact') return reject('epistemic-status-not-observation');
+        if (typeof at !== 'number' || !Number.isSafeInteger(at) || at < 0 || at > Date.now() + 5 * 60_000) {
+            return reject('observation-time-invalid');
+        }
+        if (!provenance) return reject('provenance-envelope-invalid');
+        if (provenance.evidenceClass !== 'direct-observation' && provenance.evidenceClass !== 'corroborated') {
+            return reject('provenance-class-not-eligible');
+        }
+        if (provenance.capturedAt > Date.now() + 5 * 60_000) return reject('provenance-capture-time-in-future');
+        const actualFingerprint = createHash('sha256').update(sourceContent, 'utf8').digest('hex');
+        if (actualFingerprint !== provenance.contentFingerprint) return reject('source-content-fingerprint-mismatch');
+        const canonical = this.memorySubsystem.fabric.canonicalSnapshot(false).items.find(row => row.id === memoryId);
+        if (!canonical) return reject('canonical-memory-not-found');
+
+        const existing = this.memorySubsystem.sourceMonitor.lineage(id, 8);
+        if (existing.length) {
+            const previous = existing[0]!;
+            if (previous.source !== source || previous.kind !== kind || previous.confidence !== confidence ||
+                previous.epistemicStatus !== epistemicStatus || previous.at !== at ||
+                previous.provenance?.sourceId !== provenance.sourceId ||
+                previous.provenance?.sourceKind !== provenance.sourceKind ||
+                previous.provenance?.capturedAt !== provenance.capturedAt ||
+                previous.provenance?.evidenceClass !== provenance.evidenceClass ||
+                previous.provenance?.contentFingerprint !== provenance.contentFingerprint) {
+                return reject('source-trace-id-conflict');
+            }
+        } else {
+            this.memorySubsystem.sourceMonitor.record({
+                id,
+                source: source as 'user' | 'system' | 'world' | 'tool',
+                kind,
+                confidence,
+                epistemicStatus,
+                at,
+                provenance,
+            });
+        }
+        const result = this.memorySubsystem.hexisCanonicalEvidenceBridge.recordSourceTrace(memoryId, id);
+        this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
+        this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+        return result;
+    }
+
     hexisDecideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string) {
         try {
             const integrated=this.organismSystems.decideHexisLearningReview(reviewId,itemId,decision,correction);
@@ -4890,7 +4972,7 @@ export class OrganismCore {
         const memoryQuery = observation.text || activeGoalPressureFallback(this.persisted.goals) || 'current context';
         const advancedRetrieved = observation.text && cognitiveExecutionPlan.run.memory && memoryQuery === observation.text
             ? cognitionMemoryItems.slice(0, 4)
-            : this.memorySubsystem.fabric.retrieve(memoryQuery, 8, n.goalPressure, 1 - state.needs.identityCoherence, { tick: state.tick }).slice(0, 4);
+            : (await this.memorySubsystem.fabric.retrieveForCognition(memoryQuery, 8, n.goalPressure, 1 - state.needs.identityCoherence, { tick: state.tick })).slice(0, 4);
         const adaptiveMemoryStrategyFrame = this.adaptiveMemoryStrategyReadout.prepare({ items: advancedRetrieved as unknown as import('../developmental/MemoryOS2.ts').MemoryItem2[], query: memoryQuery, tick: state.tick, at: state.at });
         if (advancedRetrieved.length)
             this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(m => m.id);
@@ -9459,7 +9541,16 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                const b272Learning = this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0, independentEvaluatorGain01: b272IndependentGain, acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal });
+                // Do not credit an endogenous-goal model for a different action selected by the outer policy.
+                // B272 intentionally enforces generated-action identity to prevent false causal attribution.
+                if (trace.selected.action === b272GoalState.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick, action: b272GoalState.action, reward01: gatedReward01,
+                        predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b272IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                }
                 const b273Current = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 const b273Learning = this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({ tick: state.tick, action: trace.selected.action, plan: b273Current.plan, reward01: gatedReward01, predictionError01: state.predictionError, independentGain01: b272IndependentGain, personalityAlignment01: clamp(.55 + this.cognitiveRuntime.multiHypothesisPersonality.actionBias(trace.selected.action) * 8), externalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b274Diag = this.developmentalNeural.autonomousSkillLaboratoryB274.diagnostics();
@@ -9733,15 +9824,19 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                    tick: state.tick,
-                    action: trace.selected.action,
-                    reward01: gatedReward01,
-                    predictionError01: state.predictionError,
-                    externalEvidence01: projectEvidenceExternal ? 1 : 0,
-                    independentEvaluatorGain01: b338IndependentGain,
-                    acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
-                });
+                // Real-world outcomes only train B272 when its generated action was actually selected.
+                // A different selected action must not be misattributed to this goal generator.
+                if (trace.selected.action === b338GoalState.action) {
+                    this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
+                        tick: state.tick,
+                        action: b338GoalState.action,
+                        reward01: gatedReward01,
+                        predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        independentEvaluatorGain01: b338IndependentGain,
+                        acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
+                    });
+                }
                 const b338Lifecycle = this.developmentalNeural.autonomousGoalLifecycleB273.current();
                 this.developmentalNeural.autonomousGoalLifecycleB273.learnFromOutcome({
                     tick: state.tick,
@@ -11382,9 +11477,7 @@ export class OrganismCore {
                         ...(stepApprovalId?{approvalId:stepApprovalId}:{})
                     };
                     if(stepApprovalId) pendingApprovalId=undefined; // one approval can authorize only the first matching protected step.
-                    const result = await this.cognitiveRuntime.actionGateway.executeTool(
-                        canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions,
-                    );
+                    const result = await this.executeTool(canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions, Object.keys(runtimeInput));
                     if(result.outcomeClass==='approval-required') {
                         // Consent is a pause, not a skill failure: never retry through a fallback tool or learn a repair from a blocked side effect.
                         const approval=await this.cognitiveRuntime.actionGateway.requestToolApproval(canonicalCandidateTool,resolvedToolInput,executionReason,executionOptions,'execute');
@@ -11412,12 +11505,7 @@ export class OrganismCore {
                     stepOutcomeClass = result.outcomeClass;
                     priorResults.set(step.id, result.result);
                     actualTools.set(step.id, canonicalCandidateTool);
-                    // Keyed tool executions are finalized exactly once by ActionGateway
-                    // before its completed receipt is committed; unkeyed legacy skill runs
-                    // use the same canonical finalizer here.
-                    if (!stepIdempotencyKey && !result.idempotentReplay) {
-                        await this.finalizeToolOutcome(canonicalCandidateTool, resolvedToolInput, executionReason, result, executionOptions, Object.keys(runtimeInput));
-                    }
+                    // The canonical core wrapper owns unkeyed finalization; ActionGateway owns keyed receipts.
                     stepError = result.result?.error ? String(result.result.error) : '';
                     const evidence01 = clamp(Number(result.verification.confidence01 ?? (result.verified ? .72 : .25)));
                     resultVerificationConfidence01 = evidence01;
@@ -12027,14 +12115,14 @@ export class OrganismCore {
         const canonicalId = this.canonicalActionToolId(id);
         return this.cognitiveRuntime.actionGateway.reconcileToolExecution(canonicalId, input, reason, options);
     }
-    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, finalizationContextKeys: string[] = Object.keys(input)) {
         const canonicalId = this.canonicalActionToolId(id);
         const result = await this.cognitiveRuntime.actionGateway.executeTool(canonicalId, input, reason, options);
         // Keyed executions are finalized inside ActionGateway before its completed
         // receipt and outcome projections are committed together. A replay does
         // not create new learning, causal links or external observations.
         if (options.idempotencyKey || result.idempotentReplay) return result;
-        await this.finalizeToolOutcome(canonicalId, input, reason, result, options);
+        await this.finalizeToolOutcome(canonicalId, input, reason, result, options, finalizationContextKeys);
         await this.checkpoint(true);
         return result;
     }
@@ -12416,7 +12504,7 @@ export class OrganismCore {
         if (reconcileExistingOperation) {
             // Never call the executor again for an operation that may already have
             // crossed the side-effect boundary. The gateway only performs receipt lookup.
-            result = await this.cognitiveRuntime.actionGateway.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
+            result = await this.reconcileToolExecution(id, input, `${executionReason};resume-reconcile`, executionOptions);
         } else {
             const budget = this.agencySubsystem.budget.spend('planning', undefined, 0.05, { tick: this.persisted.state.tick, reason: `project-tool:${project.id}` });
             if (!budget.accepted) {
@@ -12426,7 +12514,7 @@ export class OrganismCore {
             }
             await this.checkpoint(true); // Prepared intent is durable; ActionGateway writes its own pending receipt before executor entry.
             stepOperation = this.agencySubsystem.projectExecutor.activeStepOperation()!;
-            result = await this.cognitiveRuntime.actionGateway.executeTool(id, input, executionReason, executionOptions);
+            result = await this.executeTool(id, input, executionReason, executionOptions);
         }
         if(result.outcomeClass==='approval-required') {
             if (reconcileExistingOperation) {

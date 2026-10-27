@@ -66,7 +66,19 @@ try {
   damaged.facets.advanced.memoryOS.items[0].contentHash = 'deliberately-corrupted-content-hash';
   damaged.facets.advanced.memoryOS.items[0].supersedesId = 'missing-revision-target';
   damaged.facets.advanced.memoryOS.items[0].semanticLinks = ['missing-semantic-target'];
-  damaged.facets.advanced.memoryOS.items[0].observedAt = now + 60_000;
+  const futureAt = now + 60 * 60_000;
+  damaged.facets.advanced.memoryOS.items[0].observedAt = futureAt;
+  // Exercise every persisted evidence clock so restore normalization cannot leave
+  // the future-evidence diagnostic dependent on a single timestamp field.
+  damaged.facets.advanced.memoryOS.items[0].evidenceFreshnessAt = futureAt;
+  damaged.facets.advanced.memoryOS.items[0].evidenceSources = [{
+    source: 'workpass318-future-evidence',
+    provenanceClass: 'external',
+    sourceAuthority01: 0.8,
+    independenceKey: 'workpass318-future-evidence',
+    observedAt: futureAt,
+    evidenceFreshnessAt: futureAt,
+  }];
   await writeFile(statePath, JSON.stringify(damaged), 'utf8');
   const failed = run(statePath, 'json', 1);
   assert.equal(failed.status, 2, 'memory integrity errors should produce status 2');

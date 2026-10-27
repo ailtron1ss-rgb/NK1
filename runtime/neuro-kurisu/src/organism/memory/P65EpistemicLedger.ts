@@ -1,3 +1,4 @@
+import { normalizeEvidenceLineageProvenance, type EvidenceLineageProvenance } from './EvidenceLineageProvenance.ts';
 /**
  * P65 — Epistemic Ledger.
  *
@@ -7,7 +8,8 @@
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 export type P65Kind='observation'|'inference'|'belief'|'prediction'|'counterfactual';
-export interface P65Claim {id:string;tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;resolved:boolean;parentIds:string[];predicted01?:number;actual01?:number;error01?:number;lastSupportedAt:number;supportCount:number;status:'active'|'stale'|'expired'|'resolved';}
+export type P65ClaimProvenance = EvidenceLineageProvenance;
+export interface P65Claim {id:string;tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;resolved:boolean;parentIds:string[];predicted01?:number;actual01?:number;error01?:number;lastSupportedAt:number;supportCount:number;status:'active'|'stale'|'expired'|'resolved';provenance?:P65ClaimProvenance;}
 export interface P65State {version:2;claims:number;observations:number;inferences:number;beliefs:number;predictions:number;counterfactuals:number;resolvedPredictions:number;meanConfidence01:number;meanPredictionError01:number;unresolved:number;claimsData:P65Claim[];recentIds:string[];beliefHalfLifeMs:number;expiredBeliefs:number;staleBeliefs:number;}
 export const defaultP65=():P65State=>({version:2,claims:0,observations:0,inferences:0,beliefs:0,predictions:0,counterfactuals:0,resolvedPredictions:0,meanConfidence01:.5,meanPredictionError01:.5,unresolved:0,claimsData:[],recentIds:[],beliefHalfLifeMs:7*24*60*60*1000,expiredBeliefs:0,staleBeliefs:0});
 const sourceTrust=(source:string):number=>{ const s=String(source||'unknown').toLowerCase(); if(s==='os'||s==='android'||s==='termux') return .82; if(s==='device'||s==='sensor') return .76; if(s==='user') return .68; if(s==='external-api'||s==='web') return .84; if(s==='world') return .55; if(s==='simulated-world-environment') return .20; if(s==='organism') return .28; return .45; };
@@ -24,10 +26,11 @@ export class P65EpistemicLedger{
   const claimsData=[...pending,...recent].filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;}).slice(0,160).map(c=>({...c,parentIds:c.parentIds.slice()}));
   return {...this.state,claimsData,recentIds:this.state.recentIds.slice(0,256)};
  }
- record(input:{tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;parentIds?:string[];predicted01?:number}):string{
+ record(input:{tick:number;at:number;kind:P65Kind;content:string;confidence01:number;source:string;parentIds?:string[];predicted01?:number;provenance?:P65ClaimProvenance}):string{
   const content=String(input.content??'').slice(0,320);if(!content)return '';
   const id=stableId(input.tick,input.kind,content,input.source);if(this.state.recentIds.includes(id))return id;
-  const claim:P65Claim={id,tick:input.tick,at:input.at,kind:input.kind,content,confidence01:clamp(input.confidence01),source:String(input.source||'unknown'),resolved:false,parentIds:(input.parentIds??[]).slice(0,8),predicted01:input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined,lastSupportedAt:input.at,supportCount:1,status:'active'};
+  const provenance=normalizeEvidenceLineageProvenance(input.provenance);
+  const claim:P65Claim={id,tick:input.tick,at:input.at,kind:input.kind,content,confidence01:clamp(input.confidence01),source:String(input.source||'unknown'),resolved:false,parentIds:(input.parentIds??[]).slice(0,8),predicted01:input.kind==='prediction'?clamp(input.predicted01 ?? input.confidence01):undefined,lastSupportedAt:input.at,supportCount:1,status:'active',...(provenance?{provenance}:{})};
   this.state.claims++;
   if(input.kind==='observation') this.state.observations++;
   else if(input.kind==='inference') this.state.inferences++;

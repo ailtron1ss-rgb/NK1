@@ -46,6 +46,16 @@ export interface P26InterleavedExperience {
   nextState:OrganismState;
   surprise?:number;
 }
+export type P26ReplayTargetMode = 'recorded-reward' | 'td';
+export interface P26ReplayOptions {
+  /** Use the stored outcome directly, or explicitly request a Bellman bootstrap. */
+  targetMode?: P26ReplayTargetMode;
+  /** Applied only when targetMode='td'. Must be finite and in [0,1]. */
+  bootstrapWeight01?: number;
+  /** Bounds replay plasticity relative to online updates; default 0.25. Must be finite and in [0,1]. */
+  learningRateScale01?: number;
+}
+
 export interface P26InterleavedTrainingOptions {
   replayEveryNCurrent?:number;
   maxReplayUpdates?:number;
@@ -69,6 +79,8 @@ export interface P26TrueLearningState {
   metrics:P26LearningMetrics;
   processedTraceIds:string[];
   holdoutEvidence:P26VerifiedHoldoutEvidence[];
+  /** Persistent round-robin offset so each bounded replay batch traverses the entire buffer over time. */
+  replayCursor?:number;
 }
 
 function normalizeHoldoutEvidence(value:unknown):P26VerifiedHoldoutEvidence|null {
@@ -100,7 +112,7 @@ function nonNegativeInteger(value:unknown):number {
 export const defaultP26TrueLearning=():P26TrueLearningState=>({
   version:1,policy:defaultParametricPolicy(),
   metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,trainingExposure01:0,independentHoldoutSamples:0,learningDelta01:0,recentLoss01:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0},
-  processedTraceIds:[],holdoutEvidence:[],
+  processedTraceIds:[],holdoutEvidence:[],replayCursor:0,
 });
 
 export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number; }
@@ -158,6 +170,7 @@ export class P26TrueLearningEngine{
       ...d,...(raw??{}),metrics,
       processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.filter(id=>typeof id==='string').slice(-4096):[],
       holdoutEvidence:restoredEvidence,
+      replayCursor:nonNegativeInteger(raw?.replayCursor),
     };
     this.learner.restore(this.state.policy);
     this.sync();
@@ -193,18 +206,29 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updated:true,loss01:r.loss01};
   }
-  replay(experiences:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,extras?:BodyExtras){
+  replay(experiences:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,extras?:BodyExtras,options:P26ReplayOptions={}){
+    // Episodic replay must not silently replace a recorded outcome with a target
+    // derived from the current policy: after a task switch, that bootstrapping
+    // leaks the new task's value estimates into the historical task's labels.
+    // Recorded outcomes are the safe default; use TD only when continuation
+    // semantics and task stationarity are intentionally required.
+    const targetMode=options.targetMode??'recorded-reward';
+    if(targetMode!=='recorded-reward'&&targetMode!=='td')throw new TypeError('p26-replay-target-mode-invalid');
+    const bootstrapWeight01=options.bootstrapWeight01??.78;
+    if(!Number.isFinite(bootstrapWeight01)||bootstrapWeight01<0||bootstrapWeight01>1)throw new RangeError('p26-replay-bootstrap-weight-invalid');
+    const learningRateScale01=options.learningRateScale01??.5;
+    if(!Number.isFinite(learningRateScale01)||learningRateScale01<0||learningRateScale01>1)throw new RangeError('p26-replay-learning-rate-scale-invalid');
     let updates=0,loss=0;
     for(const e of experiences){
-      const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
-      const target=clamp(e.reward+.78*next);
-      const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.035+clamp(e.surprise??.2)*.03,extras});
+      const bootstrap=targetMode==='td'?Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5):0;
+      const target=clamp(e.reward+(targetMode==='td'?bootstrapWeight01*bootstrap:0));
+      const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:(.035+clamp(e.surprise??.2)*.03)*learningRateScale01,extras});
       updates++; loss+=r.loss01;
     }
     this.state.metrics.replayUpdates+=updates;
     if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.updateTrainingExposure();this.state.metrics.lastUpdatedAt=Date.now();}
     this.sync();
-    return {updates,meanLoss01:updates?loss/updates:0};
+    return {updates,meanLoss01:updates?loss/updates:0,targetMode};
   }
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
@@ -249,6 +273,11 @@ export class P26TrueLearningEngine{
     if(targetMode!=='reward'&&targetMode!=='td')throw new TypeError('invalid-interleaved-target-mode');
     const currentLearningRate01=finiteOption(options.currentLearningRate01,.035,'current-learning-rate');
     const replayLearningRate01=finiteOption(options.replayLearningRate01,.025,'replay-learning-rate');
+    // Bound the replay/current ratio by scheduling at most one replay update
+    // per four fresh updates. Keep the configured per-replay learning rate intact:
+    // fewer useful rehearsals are preferable to many tiny updates that fail to
+    // recover previously learned tasks.
+    const effectiveReplayEveryNCurrent=Math.max(4,replayEveryNCurrent);
     const conflictCandidateCap=Math.max(8,Math.min(128,Math.floor(finiteOption(options.conflictCandidateCap,64,'conflict-candidate-cap'))));
     const bucket=(value:number)=>Math.max(0,Math.min(19,Math.floor(clamp(value)*20)));
     const key=(row:P26InterleavedExperience)=>[
@@ -302,7 +331,7 @@ export class P26TrueLearningEngine{
       return clamp(row.reward+.78*next);
     };
     let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,comparisons=0,lossSum=0;
-    let replayCursor=0;
+    let replayCursor=nonNegativeInteger(this.state.replayCursor);
     const attemptReplay=()=>{
       if(!replayRows.length||replayUpdates>=maxReplayUpdates)return;
       const row=replayRows[replayCursor%replayRows.length]!;
@@ -322,8 +351,9 @@ export class P26TrueLearningEngine{
         learningRate01:currentLearningRate01,
       });
       onlineUpdates++;lossSum+=trained.loss01;
-      if((indexInBatch+1)%replayEveryNCurrent===0)attemptReplay();
+      if((indexInBatch+1)%effectiveReplayEveryNCurrent===0)attemptReplay();
     }
+    this.state.replayCursor=replayCursor;
     this.state.metrics.outcomeSamples+=onlineUpdates;
     this.state.metrics.onlineUpdates+=onlineUpdates;
     this.state.metrics.replayUpdates+=replayUpdates;

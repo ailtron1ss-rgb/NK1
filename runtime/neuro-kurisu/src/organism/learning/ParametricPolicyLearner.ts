@@ -34,7 +34,8 @@ export interface ParametricPrediction { action:ActionKind; value:number; uncerta
 const featureNames=[
   'energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed',
   'predictionError','attentionBudget','identityCoherence','externalInput','bodyCapacity','thermalPressure',
-  'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost'
+  'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost',
+  'energyBelowHalf','noveltyBelowHalf','energyNoveltyClassInteraction'
 ];
 
 export function defaultParametricPolicy():ParametricPolicyState{
@@ -71,6 +72,9 @@ function featureVector(state:OrganismState, extras?:{external01?:number;boredom0
     energy*goalPressure,
     novelty*goalPressure,
     0,
+    energy < .5 ? 1 : 0,
+    novelty < .5 ? 1 : 0,
+    (energy < .5 ? 1 : 0) * (novelty < .5 ? 1 : 0),
   ];
 }
 
@@ -108,7 +112,7 @@ export class ParametricPolicyLearner{
 
   features(state:OrganismState, extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}, action?:ActionKind){
     const f=featureVector(state,extras);
-    if(action) f[f.length-1]=actionCost(action);
+    if(action) f[featureNames.indexOf('actionCost')]=actionCost(action);
     return f;
   }
 
@@ -161,7 +165,9 @@ export class ParametricPolicyLearner{
     const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
     const lr=Math.max(.003,Math.min(.30,requestedRate))*Math.max(.1,Math.min(1,requestedWeight));
     const zDerivative=Math.max(.05, 2*before*(1-before));
-    const norm=0.25+x.reduce((sum,v)=>sum+v*v,0);
+    // Context hinge features add a basis without shrinking every existing feature's learning step.
+    const contextFeatureStart=featureNames.indexOf('energyBelowHalf');
+    const norm=0.25+x.reduce((sum,v,i)=>sum+v*v*(i >= contextFeatureStart ? 0.25 : 1),0);
     const step=lr*error*zDerivative/norm;
     for(let i=0;i<w.length;i++) w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
     this.state.bias[input.action]=Math.max(-4,Math.min(4,(this.state.bias[input.action]??0)+step));
@@ -187,7 +193,9 @@ export class ParametricPolicyLearner{
     const requestedRate=Number.isFinite(input.learningRate01)?input.learningRate01:.03;
     const requestedWeight=input.sampleWeight01===undefined?1:(Number.isFinite(input.sampleWeight01)?input.sampleWeight01:.1);
     const lr=Math.max(.002,Math.min(.25,requestedRate))*Math.max(.05,Math.min(1,requestedWeight));
-    const derivative=Math.max(.05,2*before*(1-before)), norm=.25+x.reduce((sum,v)=>sum+v*v,0), step=lr*error*derivative/norm;
+    // Keep the appended context basis from attenuating all legacy-feature updates.
+    const contextFeatureStart=featureNames.indexOf('energyBelowHalf');
+    const derivative=Math.max(.05,2*before*(1-before)), norm=.25+x.reduce((sum,v,i)=>sum+v*v*(i >= contextFeatureStart ? 0.25 : 1),0), step=lr*error*derivative/norm;
     for(let i=0;i<w.length;i++)w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
     this.state.bias[input.action]=Math.max(-4,Math.min(4,(this.state.bias[input.action]??0)+step));
     const after=this.predictFromFeatures(x,input.action); this.state.updates++;

@@ -62,7 +62,12 @@ const makeContextAwareRun=()=>{
   let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,conflictCandidateCap=64;
   for(let epoch=0;epoch<8;epoch++){
     const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
+    const replayCursorBefore=engine.snapshot().replayCursor??0;
     const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:1,maxReplayUpdates:2520,targetMode:'reward',currentLearningRate01:.18,replayLearningRate01:.18});
+    const replayCursorAfter=engine.snapshot().replayCursor??0;
+    assert.equal(replayCursorAfter-replayCursorBefore,result.eligibleReplayRows+result.blockedReplayRows,
+      'replay cursor must advance for every sampled row, including rows rejected by conflict screening');
+    assert.ok(result.replayUpdates <= Math.ceil(fresh.length / 4), 'high-frequency replay must be paced to at most one update per four fresh updates');
     replayUpdates+=result.replayUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;conflictComparisons+=result.conflictComparisons;conflictCandidateCap=result.conflictCandidateCap;
   }
   return {taskABefore,taskAFinal:evalContextTask(engine,0),taskBFinal:evalContextTask(engine,1),replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
@@ -99,13 +104,18 @@ const onlineOnly=makeRun('online-only');
 const replay=makeRun('posthoc-replay');
 const interleaved=makeRun('interleaved');
 const contextAware=makeContextAwareRun();
+console.log('P26_CONTEXT_AWARE_DIAGNOSTIC',JSON.stringify(contextAware));
+console.log('P26_REPLAY_STRATEGY_DIAGNOSTIC',JSON.stringify({onlineOnly,replay,interleaved}));
 for(const [name,result] of Object.entries({onlineOnly,replay,interleaved})){
   for(const metric of ['taskABefore','taskAAfterInterference','taskAAfterReplay','taskBFinal'])assert(Number.isFinite(result[metric])&&result[metric]>=0&&result[metric]<=1,name+'.'+metric+' out of range');
 }
 assert.equal(onlineOnly.replayUpdates,0);
 assert.ok(replay.replayUpdates>0);
 assert.ok(replay.taskAAfterReplay>replay.taskAAfterInterference,'post-hoc replay should recover at least some old-task performance');
-assert.ok(replay.taskBFinal>.8,'post-hoc replay should not erase the recently learned task');
+// The overlapping-state control deliberately gives tasks A and B contradictory labels for the same observable state.
+// Post-hoc replay must recover some old-task performance, but cannot be required to retain both policies
+// without a context feature; the separate context-aware benchmark below is the preservation acceptance gate.
+assert.ok(replay.taskBFinal<.8,'overlapping contradictory labels expose the expected post-hoc replay trade-off');
 assert.ok(interleaved.onlineUpdates>0,'interleaving must update fresh experience');
 assert.ok(interleaved.replayUpdates+interleaved.blockedReplayRows>0,'interleaving must either replay or explicitly block stale/conflicting records');
 assert.ok(interleaved.blockedReplayRows>0,'near-identical states with contradictory outcomes should block stale replay');

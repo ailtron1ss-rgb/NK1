@@ -42,6 +42,9 @@ assert.deepEqual(snapshot, before, 'experiment must not mutate supplied snapshot
 assert.equal(experiment.runs.length, 3);
 assert.equal(new Set(experiment.runs.map(row => row.recallDelta01)).size, 1, 'retrieval point estimate should be seed invariant');
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [1, 1, 2] }), /at-least-3-distinct-bootstrap-seeds/);
+assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [13, -1, 29, 53] }), /experiment-seeds-must-be-positive-uint32-values/, 'invalid supplied seeds must not be silently filtered out');
+assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [13, 13, 29, 53] }), /experiment-bootstrap-seeds-must-be-distinct/, 'duplicate seeds must not be silently collapsed when enough unique seeds remain');
+assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: Array.from({ length: 10 }, (_, i) => i + 1) }), /experiment-supports-at-most-9-bootstrap-seeds/, 'seed lists beyond the supported limit must not be silently truncated');
 
 // Corpus-cap parity regression: the baseline indexes only the first 1600 rows.
 // The candidate must use that exact same bounded snapshot, not retrieve from row 1601.
