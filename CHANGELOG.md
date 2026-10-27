@@ -1,3 +1,10 @@
+## [NK1][WorkPass482] Bound replay cadence to preserve current-task plasticity (2026-10-27)
+
+- The exact-head replay-policy sweep showed that a requested 1:1 old/current update cadence drove the new-task score to 0.52 on seed 17, below the unchanged 0.60 diagnostic acceptance threshold, despite separated context features.
+- `P26TrueLearningEngine.trainInterleaved` now enforces a configurable `maxReplayFraction01` independent of the absolute `maxReplayUpdates` budget. The default 0.25 means at least four current updates between replay updates; zero disables replay, and an explicit value up to 1 allows caller-directed higher rehearsal rates.
+- The sweep retains its 0.60 threshold and reports both requested and effective cadence; regression checks cover the default cadence and rejection of out-of-range fractions. This is a synthetic stability diagnostic only, not evidence of external-task generalization or production learning uplift.
+- Exact-head runtime typecheck and P26 learning workflows must pass before this correction is considered validated. `main` and the published Release ZIP remain unchanged.
+
 ## [NK1][WorkPass481] Separate candidate execution from verifier trust (2026-10-27)
 
 - A successfully executed candidate was marked non-executable whenever the independent verifier failed, conflating two separate signals.

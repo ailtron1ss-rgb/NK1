@@ -145,20 +145,28 @@ export class P26TrueLearningEngine{
     replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
     options:{
       replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'reward'|'td';
-      currentLearningRate01?:number;replayLearningRate01?:number;conflictCandidateCap?:number;
+      currentLearningRate01?:number;replayLearningRate01?:number;conflictCandidateCap?:number;maxReplayFraction01?:number;
     }={},
   ):{
     onlineUpdates:number;replayUpdates:number;blockedReplayRows:number;eligibleReplayRows:number;
-    conflictComparisons:number;conflictCandidateCap:number;
+    conflictComparisons:number;conflictCandidateCap:number;effectiveReplayEveryNCurrent:number;maxReplayFraction01:number;
   }{
     if(!Array.isArray(fresh)||!Array.isArray(replayRows))throw new TypeError('interleaved-experiences-must-be-arrays');
     if(fresh.length>20_000||replayRows.length>20_000)throw new RangeError('interleaved-experience-limit-exceeded');
-    const every=options.replayEveryNCurrent??16;
+    const requestedEvery=options.replayEveryNCurrent??16;
+    const maxReplayFraction01=options.maxReplayFraction01??.25;
     const maxReplayUpdates=options.maxReplayUpdates??160;
     const mode=options.targetMode??'td';
     const currentRate=options.currentLearningRate01??.06;
     const replayRate=options.replayLearningRate01??.06;
-    if(!Number.isSafeInteger(every)||every<1||every>10_000)throw new RangeError('replay-every-n-current-invalid');
+    if(!Number.isSafeInteger(requestedEvery)||requestedEvery<1||requestedEvery>10_000)throw new RangeError('replay-every-n-current-invalid');
+    if(typeof maxReplayFraction01!=='number'||!Number.isFinite(maxReplayFraction01)||maxReplayFraction01<0||maxReplayFraction01>1)throw new RangeError('max-replay-fraction-out-of-range');
+    // Replay cadence is capped independently from the absolute per-call budget.
+    // A caller may request frequent rehearsal, but current-task updates remain at
+    // least 1:maxReplayFraction01 relative to replay updates unless the caller
+    // explicitly opts into a higher fraction. Zero disables replay for this call.
+    const fractionBoundedEvery=maxReplayFraction01===0?Number.MAX_SAFE_INTEGER:Math.min(Number.MAX_SAFE_INTEGER,Math.ceil(1/maxReplayFraction01));
+    const every=Math.max(requestedEvery,fractionBoundedEvery);
     if(!Number.isSafeInteger(maxReplayUpdates)||maxReplayUpdates<0||maxReplayUpdates>100_000)throw new RangeError('max-replay-updates-invalid');
     if(mode!=='reward'&&mode!=='td')throw new TypeError('interleaved-target-mode-invalid');
     for(const [name,rate] of [['current',currentRate],['replay',replayRate]] as const){
@@ -243,7 +251,7 @@ export class P26TrueLearningEngine{
       this.state.metrics.lastUpdatedAt=Date.now();
     }
     this.sync();
-    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap,effectiveReplayEveryNCurrent:every,maxReplayFraction01};
   }
 
   recordHoldout(baseline01:number,learned01:number){
