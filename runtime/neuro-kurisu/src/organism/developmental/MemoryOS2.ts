@@ -4,6 +4,8 @@ import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPol
 import { canonicalizeMemoryContent, deriveMemoryIdentity, mergeMemoContext, mergeMemoTags, memoContentHash, stableMemoryId } from './MemoInspiredMemoryPrimitives.ts';
 import { LocalEmbeddingProvider, type TextEmbeddingProvider } from './LocalEmbeddingProvider.ts';
 import { cosineSimilarity, fnv1a32 } from '../core/NumericPrimitives.ts';
+
+const MAX_CANONICAL_MEMORY_ITEMS = 1600;
 export type EpistemicStatus='fact'|'belief'|'hypothesis'|'unknown'|'quarantined';
 export type MemoryProvenanceClass='device'|'external'|'user'|'agent'|'derived'|'simulation'|'unknown';
 export interface MemoryEvidenceSource {
@@ -268,6 +270,7 @@ export class MemoryOS2{
  private state=defaultMemoryOS2();
  private readonly signalCompensationSnapshots=new WeakMap<object,{memoryId:string;snapshot:MemoryItem2}>();
  private readonly statusCompensationSnapshots=new WeakMap<object,{memoryId:string;snapshot:MemoryItem2}>();
+ private readonly hmxImportCompensationSnapshots=new WeakMap<object,{exportId:string;stagingId:string;createdIds:Map<string,string>;baselineCounters:{reconsolidations:number;quarantined:number;linkUpdates:number;forgetCount:number}}>();
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -674,7 +677,13 @@ export class MemoryOS2{
   };
  }
 
- encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean}={}){
+ encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean;hmxImportCompensationToken?:object;hmxImportCommandId?:string}={}){
+   const hmxImportCompensationToken=options.hmxImportCompensationToken;
+   const hmxImportCommandId=String(options.hmxImportCommandId??'');
+   const hmxImportCapture=hmxImportCompensationToken?this.hmxImportCompensationSnapshots.get(hmxImportCompensationToken):undefined;
+   if(hmxImportCompensationToken!==undefined&&(!hmxImportCapture||!/^hexis-hmx:[a-f0-9]{48}$/.test(hmxImportCommandId)||
+    String(input.context?.hexisExportId??'')!==hmxImportCapture.exportId||String(input.context?.hexisStagingId??'')!==hmxImportCapture.stagingId))
+    throw new Error('memory-hmx-import-compensation-token-invalid');
    const now=Date.now();
    const canonicalContent=canonicalizeMemoryContent(input.content);
    const identity=deriveMemoryIdentity(canonicalContent,input.kind,input.source);
@@ -734,11 +743,14 @@ export class MemoryOS2{
    }).slice(0,6).map(x=>x.id);
    item.causalLinks=this.state.items.slice(0,256).filter(x=>x.causalLinks.includes(item.id)).slice(0,3).map(x=>x.id);
    item.contradictionLinks=best.filter(x=>x.sim>=.64&&sharedEntityCount(entities,x.x.entities)>=2&&hasNegationPolarityDifference(item.content,x.x.content)).map(x=>x.x.id).slice(0,4);
-   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;if(this.state.items.length>1600){const removed=this.state.items.pop();if(removed){this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
+   if(hmxImportCompensationToken&&!this.registerHmxImportCompensationItem(hmxImportCompensationToken,item as MemoryItem2,hmxImportCommandId))throw new Error('memory-hmx-import-compensation-record-invalid');
+   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
    for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
-   if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
+   if(item.epistemicStatus==='quarantined')this.state.quarantined++;
+   if(!hmxImportCapture)this.trimCanonicalItemCount();
+   return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
    const qTokens=this.tokensFor(query);
@@ -1104,6 +1116,73 @@ export class MemoryOS2{
   * Capture exact pre-revision fields for a failed higher-level HMX transaction.
   * The opaque token prevents caller-supplied snapshots authorizing status restoration.
   */
+ captureHmxImportCompensation(exportId:string, stagingId:string):object|null{
+  const normalizedExportId=String(exportId??'');
+  const normalizedStagingId=String(stagingId??'');
+  if(!/^exp_[a-f0-9]{16}$/.test(normalizedExportId)||!normalizedStagingId.trim()||normalizedStagingId.length>128)return null;
+  const token=Object.freeze({});
+  this.hmxImportCompensationSnapshots.set(token,{
+   exportId:normalizedExportId,
+   stagingId:normalizedStagingId,
+   createdIds:new Map(),
+   baselineCounters:{
+    reconsolidations:this.state.reconsolidations,
+    quarantined:this.state.quarantined,
+    linkUpdates:this.state.linkUpdates,
+    forgetCount:this.state.forgetCount,
+   },
+  });
+  return token;
+ }
+ hasHmxImportCompensation(token:object):boolean{
+  return Boolean(token&&typeof token==='object'&&this.hmxImportCompensationSnapshots.has(token));
+ }
+ isHmxImportCompensationFor(token:object,exportId:string,stagingId:string):boolean{
+  const capture=this.hmxImportCompensationSnapshots.get(token);
+  return Boolean(capture&&capture.exportId===String(exportId)&&capture.stagingId===String(stagingId));
+ }
+ private registerHmxImportCompensationItem(token:object,item:MemoryItem2,commandId:string):boolean{
+  const capture=this.hmxImportCompensationSnapshots.get(token);
+  if(!capture||!/^hexis-hmx:[a-f0-9]{48}$/.test(commandId)||
+   !String(item.source??'').startsWith('hexis:')||
+   String(item.context?.hexisExportId??'')!==capture.exportId||
+   String(item.context?.hexisStagingId??'')!==capture.stagingId||
+   capture.createdIds.has(item.id))return false;
+  capture.createdIds.set(item.id,commandId);
+  return true;
+ }
+ rollbackHmxImportMemory(id:string,token:object):{removed:boolean;commandId:string}|null{
+  const key=String(id);
+  const capture=this.hmxImportCompensationSnapshots.get(token);
+  const commandId=capture?.createdIds.get(key);
+  if(!capture||!commandId)return null;
+  const current=this.itemIndex.get(key);
+  if(current&&(
+   !String(current.source??'').startsWith('hexis:')||
+   String(current.context?.hexisExportId??'')!==capture.exportId||
+   String(current.context?.hexisStagingId??'')!==capture.stagingId
+  ))return {removed:false,commandId};
+  if(current&&!this.removeCanonicalItem(key,'hexis-hmx-apply-rollback',true,false))return {removed:false,commandId};
+  capture.createdIds.delete(key);
+  return {removed:true,commandId};
+ }
+ commitHmxImportCompensation(token:object):boolean{
+  const capture=this.hmxImportCompensationSnapshots.get(token);
+  if(!capture)return false;
+  if(!this.trimCanonicalItemCount())return false;
+  this.hmxImportCompensationSnapshots.delete(token);
+  return true;
+ }
+ discardHmxImportCompensation(token:object):boolean{
+  const capture=this.hmxImportCompensationSnapshots.get(token);
+  if(!capture||capture.createdIds.size!==0)return false;
+  this.state.reconsolidations=capture.baselineCounters.reconsolidations;
+  this.state.quarantined=capture.baselineCounters.quarantined;
+  this.state.linkUpdates=capture.baselineCounters.linkUpdates;
+  this.state.forgetCount=capture.baselineCounters.forgetCount;
+  this.hmxImportCompensationSnapshots.delete(token);
+  return true;
+ }
  captureStatusCompensation(id:string):object|null{
   const key=String(id);
   const current=this.itemIndex.get(key);
@@ -1143,11 +1222,11 @@ export class MemoryOS2{
  }
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
- forgetById(id:string,reason='memory-knockout'){
+ private removeCanonicalItem(id:string,reason:string,allowProtected:boolean,countAsForget:boolean):boolean{
    const i=this.state.items.findIndex(x=>x.id===id);
    if(i<0)return false;
    const m=this.state.items[i]!;
-   if(m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical')return false;
+   if(!allowProtected&&(m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical'))return false;
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-estimateMemoryBytes(m));
    this.removeIndexedId(id);
    this.state.items.splice(i,1);
@@ -1155,17 +1234,29 @@ export class MemoryOS2{
    this.rebuildDedupIndexesFor(m);
    this.lowerContentCache.delete(id);
    for(const x of this.state.items){
-     if(x.contradictionLinks?.includes(id))x.contradictionLinks=x.contradictionLinks.filter(v=>v!==id);
-     if(x.temporalLinks?.includes(id))x.temporalLinks=x.temporalLinks.filter(v=>v!==id);
-     if(x.semanticLinks?.includes(id))x.semanticLinks=x.semanticLinks.filter(v=>v!==id);
-     if(x.causalLinks?.includes(id))x.causalLinks=x.causalLinks.filter(v=>v!==id);
-     if(x.supersedesId===id)x.supersedesId=null;
-     if(x.supersededById===id)x.supersededById=null;
+     const before=estimateMemoryBytes(x);
+     let changed=false;
+     if(x.contradictionLinks?.includes(id)){x.contradictionLinks=x.contradictionLinks.filter(v=>v!==id);changed=true;}
+     if(x.temporalLinks?.includes(id)){x.temporalLinks=x.temporalLinks.filter(v=>v!==id);changed=true;}
+     if(x.semanticLinks?.includes(id)){x.semanticLinks=x.semanticLinks.filter(v=>v!==id);changed=true;}
+     if(x.causalLinks?.includes(id)){x.causalLinks=x.causalLinks.filter(v=>v!==id);changed=true;}
+     if(x.supersedesId===id){x.supersedesId=null;changed=true;}
+     if(x.supersededById===id){x.supersededById=null;changed=true;}
+     if(changed)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(x));
    }
-   this.state.forgetCount++;
-   this.state.reconsolidations++;
+   if(countAsForget){this.state.forgetCount++;this.state.reconsolidations++;}
    void reason;
    return true;
+ }
+ private trimCanonicalItemCount():boolean{
+   while(this.state.items.length>MAX_CANONICAL_MEMORY_ITEMS){
+    const oldestId=this.state.items[this.state.items.length-1]?.id;
+    if(!oldestId||!this.removeCanonicalItem(oldestId,'canonical-capacity-eviction',true,false))return false;
+   }
+   return true;
+ }
+ forgetById(id:string,reason='memory-knockout'){
+   return this.removeCanonicalItem(id,reason,false,true);
  }
   enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
    const budget=Math.max(16384,Math.floor(Number(options.maxBytes??this.state.byteBudget??524288)));
