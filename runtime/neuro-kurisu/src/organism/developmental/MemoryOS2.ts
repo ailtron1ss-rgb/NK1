@@ -963,14 +963,14 @@ export class MemoryOS2{
    // purpose is to ask for a category of memory (profile, episode, goal or procedure).
    // In particular, never let the bounded recent-memory fallback turn a no-match query
    // into a confident-looking autobiographical answer.
-   const minQueryCoverage=qTokens.length>=5?.30:qTokens.length>=3?.34:qTokens.length===2?.50:1;
+   const minQueryCoverage=qTokens.size>=5?.30:qTokens.size>=3?.34:qTokens.size===2?.50:1;
    const groundedRows=topRows.filter(({m})=>{
      const evidence=rawRowsById.get(m.id);
      if(!evidence)return false;
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(m.id,m.content).includes(queryPhrase);
      const lexicalEvidence=exactPhrase||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
-       (qTokens.length<5&&evidence.fuzzy>=.45&&evidence.coverage>=.15)||
-       (qTokens.length<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
+       (qTokens.size<5&&evidence.fuzzy>=.45&&evidence.coverage>=.15)||
+       (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
      const typedRecall=['identity','episodic','goal','procedural'].includes(queryIntentMode)&&
        memoryIntentFit(queryIntentMode,m)>=.82;
      return lexicalEvidence||typedRecall;
