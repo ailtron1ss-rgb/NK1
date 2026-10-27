@@ -522,6 +522,35 @@ assert.deepEqual(
 );
 void originalCapacityTrim;
 
+// WorkPass440: removing a canonical row invalidates the derived semantic-support cache
+// even when no linkUpdates counter changed, so retrieval cannot score against evicted links.
+const linkSupportCacheRuntime = new MemorySubsystemRuntime();
+const linkSupportCacheTarget = linkSupportCacheRuntime.fabric.encode(
+  makeInput('WP440 cache target row must no longer contribute semantic support.'),
+  { commandId: 'wp440:cache-target' },
+);
+const linkSupportCacheSource = linkSupportCacheRuntime.fabric.encode(
+  makeInput('WP440 source row points to the target through a canonical semantic link.', {
+    semanticLinks: [linkSupportCacheTarget.id],
+    predictionError: .9,
+  }),
+  { commandId: 'wp440:cache-source' },
+);
+assert.ok(linkSupportCacheSource?.id);
+linkSupportCacheRuntime.memoryOS.retrieve('WP440 source row points to the target', 4);
+assert.ok(linkSupportCacheRuntime.memoryOS.linkSupportCache instanceof Map,
+  'retrieval must materialize the derived semantic-support cache');
+assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCache.get(linkSupportCacheTarget.id), .18,
+  'the target should initially receive the source row semantic-support contribution');
+const linkCacheVersionBeforeRemoval = linkSupportCacheRuntime.memoryOS.linkSupportCacheVersion;
+assert.equal(linkSupportCacheRuntime.fabric.forgetById(linkSupportCacheTarget.id, 'workpass440-cache-invalidation'), true);
+assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCache, null,
+  'removing a canonical target must invalidate cached semantic support');
+assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCacheVersion, -1,
+  'cache invalidation must not depend on the linkUpdates counter changing');
+assert.equal(linkCacheVersionBeforeRemoval, linkSupportCacheRuntime.memoryOS.snapshot().linkUpdates,
+  'the regression must cover removal without a linkUpdates version bump');
+
 console.log(JSON.stringify({
   ok: true,
   canonicalItems: restored.memoryOS.size(),
