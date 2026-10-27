@@ -75,7 +75,7 @@ export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
 }
 export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):boolean{
  const context=item.context??{};
- const normalizeKey=(key:string)=>key.normalize('NFKC').replace(/[-_\\s]/gu,'').toLocaleLowerCase();
+ const normalizeKey=(key:string)=>key.normalize('NFKC').replace(/[-_\s]/gu,'').toLocaleLowerCase();
  const hasValue=(value:unknown)=>typeof value==='string'&&value.trim().length>0&&!/^(?:0|false|no|off|none|unknown)$/iu.test(value.trim());
  // Stable lineage is strongest evidence. A relationship, speaker role, message index,
  // turn sequence or arbitrary context value must never impersonate a conversation ID.
@@ -89,7 +89,7 @@ export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):
  const classificationFields=new Set(['type','kind','memorytype','contenttype','sourcetype','recordtype','category','modality','entrytype']);
  const explicitHistoryLabel=(value:unknown)=>{
   if(typeof value!=='string')return false;
-  const normalized=value.normalize('NFKC').toLocaleLowerCase().trim().replace(/[_\\s]+/gu,'-');
+  const normalized=value.normalize('NFKC').toLocaleLowerCase().trim().replace(/[_\s]+/gu,'-');
   return /^(?:(?:conversation|dialogue|chat|session|transcript|message|discussion)(?:-(?:history|summary|record|transcript|log|import|archive))?|история-(?:бесед|диалога|чата|сессии)|транскрипт(?:-(?:диалога|чата|сессии))?|сводка-разговора|запись-(?:диалога|беседы|чата))$/iu.test(normalized);
  };
  for(const [key,value] of Object.entries(context)){
@@ -100,7 +100,7 @@ export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):
  }
  // Source labels can identify a conversation-history import, but generic values from
  // unrelated context fields are not evidence of dialogue lineage.
- const source=String(item.source??'').normalize('NFKC').toLocaleLowerCase().replace(/[_\\s]+/gu,'-');
+ const source=String(item.source??'').normalize('NFKC').toLocaleLowerCase().replace(/[_\s]+/gu,'-');
  return /(?:^|-)(?:conversation|dialogue|chat|session|transcript|message|discussion)-(?:history|summary|record|transcript|log|import|archive)(?:-|$)/u.test(source)||
   /(?:^|-)(?:история-бесед|история-диалога|история-чата|история-сессии|транскрипт-диалога|сводка-разговора)(?:-|$)/u.test(source);
 }
