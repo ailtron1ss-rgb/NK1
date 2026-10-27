@@ -1,8 +1,13 @@
-## [NK1][WorkPass440] Bind HMX trust mutation to its compensation token (2026-10-27)
+## [NK1][WorkPass441] Preserve sealed rollback preconditions during later failure (2026-10-27)
 
-- Fixed the canonical Hexis projector call so the existing-memory authority-cap mutation passes the same one-use compensation token captured before mutation.
-- This closes a real transaction-wiring gap: MemoryFabric only associates mutation receipts with an active rollback when the token reaches the update-signals command; without it, a failed downstream projection could leave a prior memory's trust state changed.
-- Existing failure-injection regressions already exercise rollback of an over-trusted duplicate through the MemoryFabric/MemoryOS2 path. Added source wiring; local runtime execution and current-head CI still need confirmation.
+- The Hexis projector now marks an existing-memory rollback snapshot sealed once that row's status/trust mutations complete. A later projection failure no longer refreshes that snapshot and accidentally accepts an intervening update as part of the failed import.
+- If the canonical row changed after sealing, compensation now fails closed with the existing conflict check instead of overwriting the independent update with stale state. Unsealed entries are refreshed only for a mutation interrupted before the projector could complete its normal seal.
+- Added an integration regression that injects a post-seal canonical update before a downstream failure and verifies that rollback reports the conflict while preserving the independent confidence/authority values. Runtime execution, typecheck and hosted CI remain unverified; no main or Release ZIP change.
+
+## [NK1][WorkPass440] Review HMX compensation-token ownership (2026-10-27)
+
+- A first attempt added the coordinator token to the `update-signals` command payload. Source review showed that this integration line owns the snapshot/expected-current token inside `MemoryFabric`; the extra command field was not consumed by that contract and would only alter the mutation fingerprint. The redundant field was removed.
+- The actual safety improvement is recorded in WorkPass441: preserve a successfully sealed expected-current snapshot during rollback so independent post-seal changes are not silently overwritten.
 
 ## [NK1][WorkPass439] Cover C1 controls in restored receipt targets (2026-10-26)
 
