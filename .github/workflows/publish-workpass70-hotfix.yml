@@ -61,6 +61,7 @@ jobs:
           npm run test:provenance-current
           npm run audit:release-license-readiness
       - name: Package tracked source and verify archive
+        id: package_artifacts
         if: steps.guard.outputs.publish == 'true'
         shell: bash
         run: |
@@ -83,6 +84,7 @@ jobs:
               ;;
             404)
               echo "Release tag $TAG does not exist; safe to continue."
+              echo "publish=true" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unable to verify release tag $TAG (HTTP $HTTP_CODE); refusing to publish."
@@ -100,7 +102,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Create release and upload verified artifacts
-        if: steps.guard.outputs.publish == 'true'
+        if: steps.guard.outputs.publish == 'true' && steps.package_artifacts.outputs.publish == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
