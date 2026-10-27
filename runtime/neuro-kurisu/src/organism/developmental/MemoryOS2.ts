@@ -1076,24 +1076,79 @@ export class MemoryOS2{
    const at=Math.max(requestedAt,Number(parent.validFromAt??parent.createdAt)+1);
    const nextSeq=Math.max(0,...chain.map(x=>Number(x.revisionSequence??1)))+1;
    const source=String(options.source??parent.source);
-   // Memo content-addressed identity is still the canonical content hash, while
-   // an explicit revision gets a lineage-scoped ID. This prevents an identical
-   // phrase in an unrelated chain from hijacking a correction's history.
-   const revisionId=stableMemoryId(`${canonicalContent}\0revision:${group}\0${nextSeq}\0${parent.id}`,parent.kind,source);
+   const revisionId=stableMemoryId(`${canonicalContent}\\0revision:${group}\\0${nextSeq}\\0${parent.id}`,parent.kind,source);
    const already=this.itemIndex.get(revisionId);
    if(already&&canonicalizeMemoryContent(already.content)===canonicalContent&&(already.revisionGroupId??already.id)===group)return structuredClone(already);
-   const replacement=this.encode({
+
+   // A content revision appends a row, changes its parent, and updates several
+   // indexes. Snapshot canonical row objects separately so rollback restores them
+   // in place (callers may retain canonical references) while resetting store/index
+   // generations if a downstream write fails after any of these changes.
+   const previousStateRef=this.state;
+   const previousStateSnapshot=structuredClone(this.state);
+   const previousItemsArray=this.state.items;
+   const previousItemRefs=[...previousItemsArray];
+   const previousItemSnapshots=new Map<MemoryItem2,MemoryItem2>();
+   for(const item of previousItemRefs)previousItemSnapshots.set(item,structuredClone(item));
+   const copySetMap=<T>(sourceMap:Map<string,Set<T>>):Map<string,Set<T>>=>{
+    const copy=new Map<string,Set<T>>();
+    for(const [key,value] of sourceMap)copy.set(key,new Set(value));
+    return copy;
+   };
+   const restoreMap=<K,V>(target:Map<K,V>,snapshot:Map<K,V>)=>{target.clear();for(const [key,value] of snapshot)target.set(key,value);};
+   const restoreSetMap=<T>(target:Map<string,Set<T>>,snapshot:Map<string,Set<T>>)=>{target.clear();for(const [key,value] of snapshot)target.set(key,new Set(value));};
+   const previousIndexes={
+    exactIndex:new Map(this.exactIndex),
+    itemIndex:new Map(this.itemIndex),
+    contentIndex:new Map(this.contentIndex),
+    tokenCache:copySetMap(this.tokenCache),
+    lowerContentCache:new Map(this.lowerContentCache),
+    tokenIndex:copySetMap(this.tokenIndex),
+    characterGramIndex:copySetMap(this.characterGramIndex),
+    documentFrequency:new Map(this.documentFrequency),
+    itemTokenLength:new Map(this.itemTokenLength),
+    revisionGroupIndex:copySetMap(this.revisionGroupIndex),
+    totalTokenLength:this.totalTokenLength,
+    linkSupportCache:this.linkSupportCache?new Map(this.linkSupportCache):null,
+    linkSupportCacheVersion:this.linkSupportCacheVersion,
+    lastCandidateCount:this.lastCandidateCount,
+   };
+   try{
+    const replacement=this.encode({
      id:revisionId,content:canonicalContent,kind:parent.kind,source,tags:parent.tags,context:parent.context,
      salience:options.salience??parent.salience,emotionalWeight:parent.emotionalWeight,identityRelevance:parent.identityRelevance,goalRelevance:parent.goalRelevance,socialRelevance:parent.socialRelevance,predictionError:parent.predictionError,confidence:options.confidence??parent.confidence,epistemicStatus:options.epistemicStatus??parent.epistemicStatus,entities:parent.entities,semanticLinks:[],temporalLinks:[],causalLinks:[],contradictionLinks:[],
      validFromAt:at,validUntilAt:null,observedAt:at,supersedesId:parent.id,supersededById:null,revisionGroupId:group,revisionSequence:nextSeq
-   },{clone:false,forceDistinct:true});
-   parent.validUntilAt=at;parent.supersededById=replacement.id;parent.lastAccessAt=at;
-   this.recordRevision(parent,{at,from:parent.epistemicStatus,to:parent.epistemicStatus,reason:String(options.reason??'content-revision').slice(0,240)});
-   replacement.supersedesId=parent.id;replacement.supersededById=null;replacement.revisionGroupId=group;replacement.revisionSequence=nextSeq;
-   replacement.temporalLinks=[...new Set([...(replacement.temporalLinks??[]),parent.id])].slice(0,6);
-   let revisions=this.revisionGroupIndex.get(group);if(!revisions){revisions=new Set<string>();this.revisionGroupIndex.set(group,revisions);}revisions.add(parent.id);revisions.add(replacement.id);
-   this.state.reconsolidations++;
-   return structuredClone(replacement);
+    },{clone:false,forceDistinct:true});
+    parent.validUntilAt=at;parent.supersededById=replacement.id;parent.lastAccessAt=at;
+    this.recordRevision(parent,{at,from:parent.epistemicStatus,to:parent.epistemicStatus,reason:String(options.reason??'content-revision').slice(0,240)});
+    replacement.supersedesId=parent.id;replacement.supersededById=null;replacement.revisionGroupId=group;replacement.revisionSequence=nextSeq;
+    replacement.temporalLinks=[...new Set([...(replacement.temporalLinks??[]),parent.id])].slice(0,6);
+    let revisions=this.revisionGroupIndex.get(group);if(!revisions){revisions=new Set<string>();this.revisionGroupIndex.set(group,revisions);}revisions.add(parent.id);revisions.add(replacement.id);
+    this.state.reconsolidations++;
+    return structuredClone(replacement);
+   }catch(error){
+    for(const [item,snapshot] of previousItemSnapshots)this.restoreItemInPlace(item,snapshot);
+    previousItemsArray.splice(0,previousItemsArray.length,...previousItemRefs);
+    const restoredState=structuredClone(previousStateSnapshot);
+    restoredState.items=previousItemsArray;
+    Object.assign(previousStateRef,restoredState);
+    this.state=previousStateRef;
+    restoreMap(this.exactIndex,previousIndexes.exactIndex);
+    restoreMap(this.itemIndex,previousIndexes.itemIndex);
+    restoreMap(this.contentIndex,previousIndexes.contentIndex);
+    restoreSetMap(this.tokenCache,previousIndexes.tokenCache);
+    restoreMap(this.lowerContentCache,previousIndexes.lowerContentCache);
+    restoreSetMap(this.tokenIndex,previousIndexes.tokenIndex);
+    restoreSetMap(this.characterGramIndex,previousIndexes.characterGramIndex);
+    restoreMap(this.documentFrequency,previousIndexes.documentFrequency);
+    restoreMap(this.itemTokenLength,previousIndexes.itemTokenLength);
+    restoreSetMap(this.revisionGroupIndex,previousIndexes.revisionGroupIndex);
+    this.totalTokenLength=previousIndexes.totalTokenLength;
+    this.linkSupportCache=previousIndexes.linkSupportCache;
+    this.linkSupportCacheVersion=previousIndexes.linkSupportCacheVersion;
+    this.lastCandidateCount=previousIndexes.lastCandidateCount;
+    throw error;
+   }
  }
 
  updateContext(id:string, patch:Record<string,string|undefined>) {
