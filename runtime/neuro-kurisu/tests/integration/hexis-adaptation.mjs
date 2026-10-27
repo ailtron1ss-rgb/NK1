@@ -967,7 +967,24 @@ legacyTrustRuntime.memoryOS.restore({
 const overTrustedSnapshot = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
 assert.equal(overTrustedSnapshot?.confidence, 0.99, 'fixture emulates a persisted pre-policy import');
 assert.equal(overTrustedSnapshot?.sourceAuthority01, 0.99);
+// Emulate a persisted pre-cap Hexis mirror too. Re-import must lower this derived
+// trust mirror to the corrected canonical values, without treating the update as
+// a new source/evidence observation.
+const staleLegacyBeliefSnapshot = legacyTrustLedger.snapshot();
+legacyTrustLedger.restore({
+  ...staleLegacyBeliefSnapshot,
+  beliefs: staleLegacyBeliefSnapshot.beliefs.map(belief => belief.memoryId === importedLegacyTrust.id
+    ? { ...belief, confidence01: 0.99, trust01: 0.99 }
+    : belief),
+});
 applyLegacyTrust('exp_0000000000009202');
+const remediatedLegacyBelief = legacyTrustLedger.snapshot().beliefs.find(
+  belief => belief.memoryId === importedLegacyTrust.id,
+);
+assert.equal(remediatedLegacyBelief?.confidence01, 0.65,
+  're-import must lower stale mirrored belief confidence to the canonical cap');
+assert.equal(remediatedLegacyBelief?.trust01, 0.65,
+  're-import must lower stale mirrored trust to the canonical authority cap');
 const remediatedLegacyTrust = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
 assert(remediatedLegacyTrust);
 assert.equal(remediatedLegacyTrust.confidence, 0.65, 're-import must cap an old persisted confidence');
