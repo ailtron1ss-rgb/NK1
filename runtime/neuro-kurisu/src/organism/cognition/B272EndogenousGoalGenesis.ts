@@ -277,7 +277,8 @@ const learned=this.learnedGoalValue(v,input.tick);
     if(tick<0)throw new RangeError('B272 tick must be a non-negative safe integer');
     if((this.state.steps>0||this.state.tick>0)&&tick<=this.state.tick)throw new RangeError('B272 ticks must strictly increase');
     if(!isRecord(input.needs))throw new TypeError('B272 needs must be an object');
-    for(const key of ['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'])if(!isUnit(input.needs[key]))throw new RangeError(`B272 needs.${key} must be in [0,1]`);
+    const needKeys:readonly (keyof B272StepInput['needs'])[]=['energy01','uncertainty01','novelty01','goalPressure01','socialNeed01'];
+    for(const key of needKeys)if(!isUnit(input.needs[key]))throw new RangeError(`B272 needs.${key} must be in [0,1]`);
     if(!isRecord(input.traits)||!Object.values(input.traits).every(isUnit))throw new RangeError('B272 traits must contain only finite values in [0,1]');
     for(const [name,vector] of [['selfLatent',input.selfLatent],['worldLatent',input.worldLatent]] as const){
       if(!Array.isArray(vector)||vector.length<1||vector.length>256||vector.some(v=>typeof v!=='number'||!Number.isFinite(v)||Math.abs(v)>1_000_000))throw new RangeError(`B272 ${name} must be a bounded finite vector`);
