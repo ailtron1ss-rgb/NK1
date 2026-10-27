@@ -1,3 +1,8 @@
+## NK1 WorkPass90 — align cognitive-cycle restore regression with fail-closed recovery (2026-10-27)
+- Fixed the WorkPass287 regression expectation for a restored missing-stage list that mixes valid and invalid tokens. The implementation deliberately treats the whole list as ambiguous and restores the full required-stage set.
+- The test now asserts the conservative recovery invariant rather than accepting a partial stage list from a malformed snapshot.
+- This resolves an unrelated pre-existing contract-test failure discovered while validating the learning stage; no production runtime behavior was weakened.
+
 ## NK1 WorkPass89 — preserve transfer-probe builder compatibility (2026-10-27)
 - Kept `beginTransferProbe` non-null for TypeScript callers while making invalid arguments yield a deliberately invalid candidate that the strict recorder rejects; this avoids spreading nullability through every call site.
 - Corrected the malformed-ID regression to pass an actual newline control character, rather than the two printable characters backslash+n.

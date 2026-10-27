@@ -53,7 +53,9 @@ assert.equal(snapshot.meanStageCoverage01,0);
 assert.equal(snapshot.meanCausalContinuity01,1);
 assert.equal(snapshot.lastTick,-1);
 assert.equal(snapshot.lastComplete,false);
-assert.deepEqual(snapshot.lastMissingStages,['action']);
+// An invalid stage token makes the restored history ambiguous; recovery fails closed
+// to the full required-stage set instead of trusting the one surviving token.
+assert.deepEqual(snapshot.lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
 
 const inconsistentRestore=new UnifiedCognitiveCycle();
 inconsistentRestore.restore({
