@@ -686,12 +686,15 @@ export class MemoryFabric {
     const compensation=this.hmxImportCompensations.get(token);
     if(reason!=='hexis-hmx-apply-rollback'||!/^hexis-hmx-rollback:[a-f0-9]{48}$/.test(commandId)||
       !compensation||compensation.sourceCommandIds.length>256)throw new Error('memory-hmx-import-rollback-command-invalid');
+    const expectedCommandId=this.memoryOS.hmxImportRollbackCommandId(id,compensation.snapshotToken);
+    if(!expectedCommandId)return false;
+    const priorReceipt=this.mutationReceipts.get(expectedCommandId);
+    if(priorReceipt&&(priorReceipt.action!=='encode'||priorReceipt.memoryId!==String(id)))
+      throw new Error('memory-hmx-import-rollback-receipt-mismatch');
     const result=this.memoryOS.rollbackHmxImportMemory(id,compensation.snapshotToken);
     if(!result)return false;
     if(!result.removed)return false;
-    const receipt=this.mutationReceipts.get(result.commandId);
-    if(receipt&&(receipt.action!=='encode'||receipt.memoryId!==String(id)))
-      throw new Error('memory-hmx-import-rollback-receipt-mismatch');
+    if(result.commandId!==expectedCommandId)throw new Error('memory-hmx-import-rollback-receipt-changed');
     this.protectedHmxImportReceiptIds.delete(result.commandId);
     if(receipt)this.mutationReceipts.delete(result.commandId);
     return true;
