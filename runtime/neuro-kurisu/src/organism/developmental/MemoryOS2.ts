@@ -1173,7 +1173,19 @@ export class MemoryOS2{
  commitHmxImportCompensation(token:object):boolean{
   const capture=this.hmxImportCompensationSnapshots.get(token);
   if(!capture)return false;
-  if(!this.trimCanonicalItemCount())return false;
+  // Capacity trimming is part of the HMX transaction commit. If an index/link
+  // maintenance error interrupts trimming, restore the complete canonical snapshot
+  // and keep the opaque token live so the caller can still roll back its own rows.
+  const before=this.state.items.length>MAX_CANONICAL_MEMORY_ITEMS?this.snapshot():null;
+  try{
+   if(!this.trimCanonicalItemCount()){
+    if(before)this.restore(before);
+    return false;
+   }
+  }catch(error){
+   if(before)this.restore(before);
+   return false;
+  }
   this.hmxImportCompensationSnapshots.delete(token);
   return true;
  }
