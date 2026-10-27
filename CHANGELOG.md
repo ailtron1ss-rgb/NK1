@@ -1,3 +1,9 @@
+## [NK1][WorkPass497] Anchor cycle embodiment assertion to the active cycle (2026-10-27)
+
+- The exact-head Core regression showed that a file-global lookup found an earlier initialization-time setEmbodiment call rather than the active cycle's persistence point.
+- Scope the lookup to begin after closeB380TemporalLife and require the persistence call to exist there. Keep the downstream phase-order assertions intact; no runtime behavior or acceptance threshold is relaxed.
+- The WorkPass318 memory-doctor CLI regression passed on this head after aligning its synthetic timestamp with the existing five-minute tolerance. Re-run the exact-head Core workflow after this correction.
+
 ## [NK1][WorkPass496] Align the memory-doctor future-evidence fixture (2026-10-27)
 
 - Exact-head Core regression showed the CLI fixture used an observation timestamp only 60 seconds ahead, below the memory doctor's existing five-minute future-evidence tolerance.
