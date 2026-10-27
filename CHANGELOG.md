@@ -1,3 +1,8 @@
+## [NK1][WorkPass492] Attach boundary regressions to the P23 CI lane (2026-10-27)
+
+- Chain `test:workpass490:intrinsic-experiment` into the existing `test:workpass293:p23-revision` command so the active P23 GitHub Actions lane executes the new finite-input, deterministic-identity and dream-hypothesis boundary regressions instead of merely importing the generator.
+- The next Actions run on this branch is the required validation; earlier successful P23 runs predate this wiring change and do not prove the new regression ran.
+
 ## [NK1][WorkPass491] Preserve Node 24 strip-only compatibility (2026-10-27)
 
 - Replace TypeScript constructor parameter properties in `IntrinsicExperimentGenerator` with explicit field declarations and assignments. Node 24's built-in strip-only TypeScript loader rejects parameter properties with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`.
