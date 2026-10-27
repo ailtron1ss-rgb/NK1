@@ -1,3 +1,9 @@
+## [NK1][WorkPass501] Fail closed on malformed retrieval experiment seed lists (2026-10-27)
+
+- The multi-seed retrieval experiment previously discarded malformed seeds and silently truncated seed lists after nine entries. That could make the reported run set differ from the caller's requested evaluation plan.
+- Validate every supplied seed as a positive uint32, reject duplicate seed entries when at least three unique seeds remain, and reject lists over the nine-seed limit. Existing behavior for fewer than three distinct valid seeds remains fail-closed.
+- Added regression cases for a mixed invalid seed list, duplicate entries, and ten requested seeds. This hardens evaluation provenance only; it does not claim retrieval quality uplift or alter promotion criteria.
+
 ## [NK1][WorkPass500] Reject future-dated Hexis observation timestamps (2026-10-27)
 
 - The canonical evidence bridge bounded provenance.captureAt but did not independently bound the source observation timestamp (`candidate.at`), which is persisted as canonical `observedAt`.
