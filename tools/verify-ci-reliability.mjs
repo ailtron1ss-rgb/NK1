@@ -39,6 +39,17 @@ export function validateCiConfig({ workflows, nodeVersion }) {
     }
 
 
+    if (name.endsWith("hexis-canonical-apply.yml") &&
+        /^  push:/m.test(text) &&
+        /^  pull_request:/m.test(text)) {
+      const concurrencyBlock = /^concurrency:\s*\n((?:[ \t]+[^\n]*\n?)*)/m.exec(text)?.[1] ?? "";
+      const cancelsSupersededRuns = /^\s*cancel-in-progress:\s*true\s*$/m.test(concurrencyBlock);
+      const group = /^\s*group:\s*(.+)$/m.exec(concurrencyBlock)?.[1] ?? "";
+      if (cancelsSupersededRuns && !group.includes("${{ github.event_name }}")) {
+        errors.push(name + ": concurrency.group must include github.event_name when push and pull_request both use cancel-in-progress.");
+      }
+    }
+
     if (name.endsWith("workpass79-cognitive-regression.yml")) {
       const timeoutMatch = /^\s*timeout-minutes:\s*(\d+)\s*$/m.exec(text);
       if (!timeoutMatch || Number(timeoutMatch[1]) < 15) {
