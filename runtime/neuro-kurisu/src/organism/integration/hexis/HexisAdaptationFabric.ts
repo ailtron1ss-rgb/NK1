@@ -384,15 +384,17 @@ export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
     private mutationRevision = 0;
     private readonly mutationJournal: Array<{ revision: number; ownerToken: string | null; undo?: () => boolean; undone?: boolean }> = [];
-    private recordScopedMutation(ownerToken?: string, undo?: () => boolean): void {
+    private recordScopedMutation(ownerToken?: string, undo?: () => boolean): number {
         const token = typeof ownerToken === 'string' && ownerToken ? ownerToken : null;
+        const revision = ++this.mutationRevision;
         this.mutationJournal.push({
-            revision: ++this.mutationRevision,
+            revision,
             ownerToken: token,
             ...(token && undo ? { undo } : {}),
             undone: false,
         });
         if (this.mutationJournal.length > 8192) this.mutationJournal.splice(0, this.mutationJournal.length - 8192);
+        return revision;
     }
     mutationCheckpoint(): number { return this.mutationRevision; }
     private hasForeignMutationSince(checkpoint: number, ownerToken: string): boolean {
@@ -683,8 +685,68 @@ export class HexisAdaptationFabric {
         validFrom: number;
         source?: string;
         value?: unknown;
-    }, ownerToken?: string): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const existingBefore = existing ? structuredClone(existing) : null; const at = nowMs(); if (existing)
-        existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const existingAfter = existing ? structuredClone(existing) : null; const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); const expectedCreated = structuredClone(created); this.recordScopedMutation(ownerToken, () => { const currentCreated = this.state.temporal.find(row => row.id === created.id); if (currentCreated && JSON.stringify(currentCreated) !== JSON.stringify(expectedCreated)) return false; let currentPrior: HexisTemporalAssertion | undefined; if (existingBefore) { currentPrior = this.state.temporal.find(row => row.id === existingBefore.id); if (!currentPrior || JSON.stringify(currentPrior) !== JSON.stringify(existingAfter)) return false; } if (currentCreated) this.state.temporal = this.state.temporal.filter(row => row.id !== created.id); if (existingBefore && currentPrior) { const index = this.state.temporal.findIndex(row => row.id === existingBefore.id); if (index < 0) return false; this.state.temporal[index] = structuredClone(existingBefore); } return true; }); return structuredClone(created); }
+    }, ownerToken?: string): HexisTemporalAssertion {
+        // Preserve the exact pre-write rows evicted by the bounded temporal buffer so a
+        // failed transaction can restore them when no foreign write makes that unsafe.
+        const evictedBeforeWrite = this.state.temporal.length >= 4096
+            ? structuredClone(this.state.temporal.slice(0, this.state.temporal.length - 4095))
+            : [];
+        const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null);
+        const existingBefore = existing ? structuredClone(existing) : null;
+        const at = nowMs();
+        if (existing) existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom));
+        const existingAfter = existing ? structuredClone(existing) : null;
+        const created: HexisTemporalAssertion = {
+            id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary),
+            summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01),
+            validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id,
+            source: String(input.source ?? 'canonical-memory'), at,
+        };
+        this.state.temporal.push(created);
+        this.state.temporal = this.state.temporal.slice(-4096);
+        const expectedCreated = structuredClone(created);
+        let ownerRevision = 0;
+        ownerRevision = this.recordScopedMutation(ownerToken, () => {
+            const currentCreated = this.state.temporal.find(row => row.id === created.id);
+            if (currentCreated && JSON.stringify(currentCreated) !== JSON.stringify(expectedCreated)) return false;
+            const currentPrior = existingBefore
+                ? this.state.temporal.find(row => row.id === existingBefore.id)
+                : undefined;
+            if (existingBefore && currentPrior && JSON.stringify(currentPrior) !== JSON.stringify(existingAfter)) return false;
+            if (existingBefore && !currentPrior && !evictedBeforeWrite.some(row => row.id === existingBefore.id)) return false;
+            for (const old of evictedBeforeWrite) {
+                const current = this.state.temporal.find(row => row.id === old.id);
+                const expected = existingBefore?.id === old.id ? existingAfter : old;
+                if (current && JSON.stringify(current) !== JSON.stringify(expected)) return false;
+            }
+
+            const earliest = this.mutationJournal[0]?.revision;
+            const historyLostAfter = earliest !== undefined && ownerRevision < earliest - 1;
+            const foreignAfter = this.mutationJournal.some(
+                row => row.revision > ownerRevision && row.ownerToken !== ownerToken,
+            );
+            const missingEvicted = evictedBeforeWrite.some(
+                old => !this.state.temporal.some(row => row.id === old.id),
+            );
+            const canRestoreEvicted = !historyLostAfter && !foreignAfter;
+
+            if (currentCreated) this.state.temporal = this.state.temporal.filter(row => row.id !== created.id);
+            if (existingBefore && currentPrior) {
+                const index = this.state.temporal.findIndex(row => row.id === existingBefore.id);
+                if (index < 0) return false;
+                this.state.temporal[index] = structuredClone(existingBefore);
+            }
+            if (missingEvicted && !canRestoreEvicted) return false;
+            for (const old of evictedBeforeWrite) {
+                if (this.state.temporal.some(row => row.id === old.id)) continue;
+                const restore = existingBefore?.id === old.id ? existingBefore : old;
+                this.state.temporal.push(structuredClone(restore));
+            }
+            this.state.temporal = this.state.temporal.slice(-4096);
+            return true;
+        });
+        return structuredClone(created);
+    }
     temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.recordScopedMutation(); this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
     temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.recordScopedMutation(); this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
