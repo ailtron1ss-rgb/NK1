@@ -194,6 +194,11 @@ export class MemoryFabric {
     delete semanticPayload.emitEvent; delete semanticPayload.syncCompatibility;
     const fingerprint=createHash('sha256').update(stableCommandJson(semanticPayload)).digest('hex');
     if(commandId){
+      // A globally corrupt retired-receipt marker makes every cached result uncertain,
+      // including an otherwise matching hot receipt. Do not let that stale cache bypass
+      // the recovery-required state created by migration or restore.
+      if(this.retiredMutationReceiptBloomCorrupt)
+        throw new MemoryLifecycleCommandRecoveryRequiredError(commandId);
       const prior=this.mutationReceipts.get(commandId);
       if(prior){
         if(prior.fingerprint!==fingerprint||prior.action!==action)throw new MemoryLifecycleCommandConflictError(commandId);
@@ -202,7 +207,7 @@ export class MemoryFabric {
       // A Bloom tombstone cannot recover the result, but it can prove (or conservatively
       // suspect) that this key was used after its exact receipt left the hot journal.
       // Fail closed; never silently execute a possibly committed mutation again.
-      if(this.retiredMutationReceiptBloomCorrupt||this.mightHaveRetiredMutationReceipt(commandId))
+      if(this.mightHaveRetiredMutationReceipt(commandId))
         throw new MemoryLifecycleCommandRecoveryRequiredError(commandId);
     }
 
