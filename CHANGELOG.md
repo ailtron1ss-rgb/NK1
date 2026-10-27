@@ -1,3 +1,9 @@
+## [NK1][WorkPass446] Cover wrapper action injection across canonical memory APIs (2026-10-27)
+
+- Expanded the existing memory lifecycle regression to send attacker-controlled `action`, `id`, `reason`, `patch`, `to`, and `newContent` keys through `encode`, `revise`, `updateSignals`, `reviseContent`, and `updateContext` metadata arguments.
+- Assertions require the fixed wrapper action and positional target to remain authoritative: the intended operation completes, the unrelated victim memory survives, and caller-supplied payload keys do not replace the target mutation.
+- This regression runs through `test:hexis-canonical-apply` via WorkPass445's restored wiring. Source/test files are committed; runtime execution, typecheck and hosted CI remain unverified.
+
 ## [NK1][WorkPass445] Restore MemoryFabric wrapper allowlists over compensation-token API (2026-10-27)
 
 - Ported the latest base-line wrapper hardening onto the token-aware MemoryFabric: fixed action/target parameters now remain authoritative, while wrappers copy only supported metadata. The rollback wrapper no longer lets runtime-only context keys override `id`, `exportId`, `stagingId`, `attempt`, `reason`, or `action`.
