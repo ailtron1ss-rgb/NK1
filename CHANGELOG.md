@@ -1,3 +1,10 @@
+## [NK1][WorkPass439] Recover canonical insert and index-build failures (2026-10-27)
+
+- Exposed the transaction token's registered row IDs through MemoryOS2/MemoryFabric so the projector can roll back an encode intent even if the canonical array insert never completed and no row appears in the snapshot.
+- Hardened token rollback to check the canonical item array as authority, remove a partially inserted row even when its index entry is missing, repair stale index-only entries, and rebuild derived indexes once the enclosing import rollback has removed all token-owned rows.
+- Added fault-injection integration coverage for a failure before Array.unshift and for a failure while building the canonical token/document-frequency indexes after the row has entered the canonical array. Both scenarios assert exact baseline rows remain, receipts for the failed HMX write are absent, and baseline retrieval still works.
+- Runtime tests and TypeScript typecheck remain unexecuted pending activation of the default-branch Hexis workflow via PR #251.
+
 ## [NK1][WorkPass438] Keep graph and belief projections aligned with capacity trim (2026-10-27)
 
 - Exported the canonical 1,600-item capacity constant from MemoryOS2 and reused it in HexisCanonicalMemoryProjector rather than duplicating the trim threshold.
