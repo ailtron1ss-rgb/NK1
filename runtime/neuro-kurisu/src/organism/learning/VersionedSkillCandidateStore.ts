@@ -184,6 +184,28 @@ function fingerprint(value: unknown): string {
   return createHash('sha256').update(canonicalJson).digest('hex');
 }
 
+/** Shared deterministic candidate-ID contract for runtime staging and integration fixtures. */
+export function computeVersionedSkillCandidateId(input: {
+  skillId: string;
+  version: number;
+  proposalId: string;
+  payloadFingerprint: string;
+  revisionProvenance?: SkillRevisionProvenance;
+}): string {
+  if (!input.skillId.trim() || !Number.isSafeInteger(input.version) || input.version < 1 ||
+      !/^[a-f0-9]{64}$/.test(input.proposalId) ||
+      !/^[a-f0-9]{64}$/.test(input.payloadFingerprint)) {
+    throw new Error('invalid-versioned-skill-candidate-identity');
+  }
+  return createHash('sha256').update(JSON.stringify([
+    input.skillId,
+    input.version,
+    input.proposalId,
+    input.payloadFingerprint,
+    input.revisionProvenance ? fingerprint(input.revisionProvenance) : null,
+  ])).digest('hex');
+}
+
 function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): ActiveSkillVersion | null {
   return snapshot.active.find(item => item.skillId === skillId) ?? null;
 }
@@ -345,10 +367,13 @@ export class VersionedSkillCandidateStore {
       previousActive?.version ?? 0,
       ...current.candidates.filter(item => item.skillId === skillId).map(item => item.version),
     ) + 1;
-    const candidateId = createHash('sha256').update(JSON.stringify([
-      skillId, nextVersion, proposal.proposalId, payloadFingerprint,
-      revisionProvenance ? fingerprint(revisionProvenance) : null,
-    ])).digest('hex');
+    const candidateId = computeVersionedSkillCandidateId({
+      skillId,
+      version: nextVersion,
+      proposalId: proposal.proposalId,
+      payloadFingerprint,
+      revisionProvenance,
+    });
     const candidate: VersionedSkillCandidate = {
       candidateId, skillId, version: nextVersion, payload: clone(payload), payloadFingerprint,
       proposalId: proposal.proposalId, proposalOutcomeFingerprint: proposal.outcomeFingerprint,
