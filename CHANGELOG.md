@@ -1,3 +1,15 @@
+## [NK1][WorkPass475] Emit per-seed replay sweep metrics on failure (2026-10-27)
+
+- The P26 replay-policy sweep now prints the strategy, seed, old-task baseline/final, new-task accuracy, replay counts and conflict-screening diagnostics before asserting. This makes an underperforming schedule actionable rather than leaving only a generic failure at line 84; the `.60` acceptance threshold remains unchanged.
+
+## [NK1][WorkPass474] Make the Hexis belief-revision smoke request satisfy the route contract (2026-10-27)
+
+- Added required `confidence01` to both the initial and duplicate belief-revision requests. The server route already validates `confidence01` as a finite value in `[0,1]`; the test had omitted it and therefore received a 400 response before exercising belief projection or idempotency.
+
+## [NK1][WorkPass473] Preserve execution quality when the independent verifier is unavailable (2026-10-27)
+
+- Separated process executability from independent binding/verification in `IndependentSkillCandidateEvaluator`: the report now retains `executability=1` when the sandbox produced a valid unique run, even if the verifier failed. The run binding remains untrusted (`runId=null`, no observed steps) unless verification authenticates it, and task success still fails closed.
+
 ## [NK1][WorkPass472] Align signed-shadow test identity with provenance-bound candidate IDs (2026-10-27)
 
 - Updated `p23-runtime-signed-shadow-observation.mjs` to include the explicit `null` revision-provenance fingerprint in its expected candidate ID. `VersionedSkillCandidateStore` now uses the five-field identity tuple `[skillId, version, proposalId, payloadFingerprint, provenanceFingerprintOrNull]`; the runtime fixture was still asserting the pre-provenance four-field tuple.
