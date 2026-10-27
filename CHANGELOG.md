@@ -10,14 +10,8 @@
 
 - Added `tests/memory-lifecycle-command-workpass31.mjs` to `test:hexis-canonical-apply`, so the persisted C1 receipt-target regression is executed by the same focused Hexis workflow rather than merely existing in a separate audit script.
 - Added the test path to both push and pull-request filters for `hexis-canonical-apply.yml`. The package JSON parses and the workflow path filter now includes the regression.
+- Consolidated the rollback checkpoint notes so WorkPass442 has one authoritative entry for lifecycle-bound token validation/sealing.
 - Current exact-head runtime test/typecheck/CI result is not yet confirmed; no main or published Release ZIP changes.
-
-## [NK1][WorkPass442] Bind rollback sealing to canonical status and trust mutations (2026-10-27)
-
-- Replaced projector-owned post-state refresh with token-bound lifecycle writes: MemoryFabric now validates compensation capability ownership for status and trust changes and seals the expected state immediately after the canonical mutation.
-- Reuses one transaction-start snapshot per memory across status plus trust reconciliation, applies the same guarded compensation to superseded rows, and removes the separate status-only rollback that could append a misleading revision instead of restoring the original revision history.
-- Catch-time rollback no longer refreshes the current state. If another write changed the row after NK1's owned mutation, the stale-compensation guard reports a conflict rather than overwriting it.
-- The WorkPass441 post-seal mutation regression remains wired to this path. Runtime execution and typecheck are still unverified.
 
 ## [NK1][WorkPass441] Add post-seal rollback conflict regression (2026-10-27)
 
