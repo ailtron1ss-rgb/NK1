@@ -1,3 +1,9 @@
+## [NK1][WorkPass431] Seal HMX rollback scope against runtime context overrides (2026-10-27)
+
+- Fixed a boundary flaw in `MemoryFabric.rollbackHmxCreatedMemory`: the wrapper no longer spreads caller-provided context after the export/stage/attempt scope. It copies only the supported `commandId` and `tick` metadata, so untyped JavaScript callers cannot replace the rollback target or its provenance scope.
+- Added a regression that passes an extra `stagingId` through the runtime context while the positional staging ID is intentionally wrong; the operation must still fail with a scope mismatch and preserve the protected imported record.
+- Source, regression and changelog are committed on the consolidation branch. Execution of the regression remains unverified because current-head GitHub Actions runs have been failing with empty step metadata and no retrievable job logs; no test pass is claimed.
+
 ## [NK1][WorkPass430] Roll back protected HMX records after failed apply (2026-10-26)
 
 - Added a narrowly scoped MemoryOS2 compensation path for records created by a specific Hexis export, staging ID and application attempt. Imported records now carry that stage provenance; rollback cannot delete a record from a different stage/attempt. Unlike ordinary user forgetting, it can undo transaction-created quarantined/identity records without weakening the normal protection against forgetting those records.
