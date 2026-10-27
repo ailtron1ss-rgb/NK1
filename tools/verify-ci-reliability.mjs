@@ -39,14 +39,17 @@ export function validateCiConfig({ workflows, nodeVersion }) {
     }
 
 
-    if (name.endsWith("hexis-canonical-apply.yml") &&
-        /^  push:/m.test(text) &&
-        /^  pull_request:/m.test(text)) {
+    if (/^  push:/m.test(text) && /^  pull_request:/m.test(text)) {
       const concurrencyBlock = /^concurrency:\s*\n((?:[ \t]+[^\n]*\n?)*)/m.exec(text)?.[1] ?? "";
       const cancelsSupersededRuns = /^\s*cancel-in-progress:\s*true\s*$/m.test(concurrencyBlock);
       const group = /^\s*group:\s*(.+)$/m.exec(concurrencyBlock)?.[1] ?? "";
-      if (cancelsSupersededRuns && !group.includes("${{ github.event_name }}")) {
-        errors.push(name + ": concurrency.group must include github.event_name when push and pull_request both use cancel-in-progress.");
+      const reusesBranchFallback = group.includes("github.head_ref || github.ref_name");
+      const eventScoped = group.includes("${{ github.event_name }}");
+      const pullRequestScoped = group.includes("${{ github.event.pull_request.number");
+      const fullRefScoped = group.includes("${{ github.ref }}");
+      if (cancelsSupersededRuns && reusesBranchFallback &&
+          !eventScoped && !pullRequestScoped && !fullRefScoped) {
+        errors.push(name + ": concurrency.group must include github.event_name, a pull-request number, or a distinct full ref when push and pull_request both use cancel-in-progress.");
       }
     }
 
