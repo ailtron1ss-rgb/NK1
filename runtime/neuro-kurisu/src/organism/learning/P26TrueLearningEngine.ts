@@ -216,7 +216,7 @@ export class P26TrueLearningEngine{
     if(targetMode!=='recorded-reward'&&targetMode!=='td')throw new TypeError('p26-replay-target-mode-invalid');
     const bootstrapWeight01=options.bootstrapWeight01??.78;
     if(!Number.isFinite(bootstrapWeight01)||bootstrapWeight01<0||bootstrapWeight01>1)throw new RangeError('p26-replay-bootstrap-weight-invalid');
-    const learningRateScale01=options.learningRateScale01??.25;
+    const learningRateScale01=options.learningRateScale01??.5;
     if(!Number.isFinite(learningRateScale01)||learningRateScale01<0||learningRateScale01>1)throw new RangeError('p26-replay-learning-rate-scale-invalid');
     let updates=0,loss=0;
     for(const e of experiences){
