@@ -1,0 +1,63 @@
+name: NK1 Hexis source lineage contract
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - 'fix/hexis-source-lineage-*'
+    paths:
+      - '.github/workflows/nk1-hexis-source-lineage.yml'
+      - 'CHANGELOG.md'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
+      - 'runtime/neuro-kurisu/src/organism/memory/EvidenceLineageProvenance.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SourceMonitor.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.github/workflows/nk1-hexis-source-lineage.yml'
+      - 'CHANGELOG.md'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
+      - 'runtime/neuro-kurisu/src/organism/memory/EvidenceLineageProvenance.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SourceMonitor.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-hexis-source-lineage-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  source-lineage-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned runtime dependency graph
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck runtime contracts
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Test canonical Hexis evidence lineage
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis-evidence-lineage
+      - name: Test live Hexis server conflict and replay semantics
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis-server-smoke
