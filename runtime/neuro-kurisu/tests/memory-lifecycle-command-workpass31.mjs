@@ -365,6 +365,105 @@ for (let index = 0; index < 520; index++) {
 }
 assert.equal(restored.fabric.snapshot().mutationReceipts.length, 512, 'the persisted receipt journal must stay bounded');
 
+// WorkPass437: a capacity-trim failure must restore the full over-capacity
+// transaction state, not truncate it through the normal 1,600-item restore limit.
+const capacityFailureRuntime = new MemorySubsystemRuntime();
+const capacityFailureSeed = capacityFailureRuntime.fabric.encode(
+  makeInput('WP437 capacity-failure baseline seed row.'),
+  { commandId: 'wp437:capacity-seed' },
+);
+const capacityFailureState = capacityFailureRuntime.memoryOS.snapshot();
+const capacityFailureTemplate = capacityFailureState.items.find(item => item.id === capacityFailureSeed.id);
+assert.ok(capacityFailureTemplate);
+const capacityFailureRows = Array.from({ length: 1600 }, (_, index) => ({
+  ...structuredClone(capacityFailureTemplate),
+  id: index === 0 ? capacityFailureTemplate.id : 'wp437-capacity-baseline-' + String(index).padStart(4, '0'),
+  content: index === 0 ? capacityFailureTemplate.content : 'WP437 capacity baseline row ' + index,
+  contentHash: '',
+  source: 'wp437-capacity-baseline',
+  tags: ['wp437-capacity-baseline'],
+  context: { branch: 'wp437-capacity-baseline', ordinal: String(index) },
+  semanticVector: [],
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  evidenceSources: [],
+  evidenceLineageKeys: [],
+  revisionHistory: [],
+  revisionGroupId: index === 0 ? capacityFailureTemplate.revisionGroupId : 'wp437-capacity-baseline-' + String(index).padStart(4, '0'),
+  revisionSequence: 1,
+}));
+capacityFailureRuntime.memoryOS.restore({
+  ...capacityFailureState,
+  items: capacityFailureRows,
+  estimatedBytes: 0,
+});
+assert.equal(capacityFailureRuntime.fabric.canonicalSize(), 1600);
+const capacityFailureBaselineIds = capacityFailureRuntime.fabric.canonicalSnapshot().items
+  .map(item => item.id).sort();
+const capacityFailureExportId = 'exp_0000000000009437';
+const capacityFailureStagingId = 'wp437-capacity-failure-stage';
+const capacityFailureToken = capacityFailureRuntime.memoryOS.captureHmxImportCompensation(
+  capacityFailureExportId,
+  capacityFailureStagingId,
+);
+assert.ok(capacityFailureToken);
+const capacityFailureImported = capacityFailureRuntime.memoryOS.encode(
+  makeInput('WP437 tokenized row must survive a failed capacity trim until rollback.', {
+    id: 'wp437-imported-row',
+    kind: 'identity',
+    source: 'hexis:wp437:capacity-failure',
+    tags: ['hexis-import', 'wp437'],
+    context: { hexisExportId: capacityFailureExportId, hexisStagingId: capacityFailureStagingId },
+    epistemicStatus: 'quarantined',
+    provenanceClass: 'external',
+    sourceAuthority01: .4,
+    independenceKey: 'wp437:external-source',
+  }),
+  {
+    clone: false,
+    forceDistinct: true,
+    hmxImportCompensationToken: capacityFailureToken,
+    hmxImportCommandId: 'hexis-hmx:' + 'e'.repeat(48),
+  },
+);
+assert.equal(capacityFailureRuntime.fabric.canonicalSize(), 1601);
+const capacityFailurePreCommitIds = capacityFailureRuntime.fabric.canonicalSnapshot().items
+  .map(item => item.id).sort();
+assert.equal(capacityFailurePreCommitIds.includes(capacityFailureImported.id), true);
+const originalCapacityTrim = capacityFailureRuntime.memoryOS.trimCanonicalItemCount;
+capacityFailureRuntime.memoryOS.trimCanonicalItemCount = () => { throw new Error('injected-capacity-trim-failure'); };
+assert.equal(
+  capacityFailureRuntime.memoryOS.commitHmxImportCompensation(capacityFailureToken),
+  false,
+  'a capacity trim exception must fail the import commit closed',
+);
+delete capacityFailureRuntime.memoryOS.trimCanonicalItemCount;
+assert.equal(capacityFailureRuntime.memoryOS.hasHmxImportCompensation(capacityFailureToken), true);
+assert.deepEqual(
+  capacityFailureRuntime.fabric.canonicalSnapshot().items.map(item => item.id).sort(),
+  capacityFailurePreCommitIds,
+  'failure-atomic capacity commit must preserve all 1,601 rows for the enclosing rollback',
+);
+assert.deepEqual(
+  capacityFailureRuntime.fabric.canonicalSnapshot().items.filter(item => capacityFailureBaselineIds.includes(item.id))
+    .map(item => item.id).sort(),
+  capacityFailureBaselineIds,
+);
+const capacityFailureRollback = capacityFailureRuntime.memoryOS.rollbackHmxImportMemory(
+  capacityFailureImported.id, capacityFailureToken,
+);
+assert.equal(capacityFailureRollback?.removed, true);
+assert.equal(capacityFailureRuntime.memoryOS.discardHmxImportCompensation(capacityFailureToken), true);
+assert.deepEqual(
+  capacityFailureRuntime.fabric.canonicalSnapshot().items.map(item => item.id).sort(),
+  capacityFailureBaselineIds,
+  'the enclosing rollback must return to the exact 1,600-row baseline after trim failure',
+);
+void originalCapacityTrim;
+
 console.log(JSON.stringify({
   ok: true,
   canonicalItems: restored.memoryOS.size(),
