@@ -1,3 +1,9 @@
+## [NK1][WorkPass584] Extend lineage-grounded concept recall to learning episodes (2026-10-27)
+
+- Permit strong concept-bridge recall for non-causal-worded learning questions only when the target is an episodic record with explicit decision ID, observation ID, outcome direction and at least 0.55 concept coverage.
+- Keeps the broader paraphrase route evidence-bound; no type/salience/recency-only candidate gets promoted through this condition.
+- Follow-up CI after WorkPass583 confirmed the causal paraphrase passed and exposed the related Russian learning-episode wording; this commit targets that exact case.
+
 ## [NK1][WorkPass582] Preserve causal paraphrase recall with explicit lineage (2026-10-27)
 
 - Allow strong bilingual concept-bridge evidence to pass the answerability gate for causal questions only when the candidate has explicit causal links or a decision/observation/outcome lineage.

@@ -985,7 +985,10 @@ export class MemoryOS2{
      const hasObservation=typeof m.context?.observationId==='string'&&m.context.observationId.trim().length>0;
      const hasCausalOutcome=typeof m.context?.outcomeDirection==='string'&&m.context.outcomeDirection.trim().length>0;
      const causalLineage=(Array.isArray(m.causalLinks)&&m.causalLinks.length>0)||(hasDecision&&hasObservation&&hasCausalOutcome);
-     const causalConceptEvidence=queryIntentMode==='causal'&&evidence.conceptCoverage>=.45&&causalLineage;
+     const causalConceptEvidence=evidence.conceptCoverage>=.45&&causalLineage&&(
+       queryIntentMode==='causal'||
+       (queryIntentMode==='general'&&m.kind==='episodic'&&hasDecision&&hasObservation&&hasCausalOutcome&&evidence.conceptCoverage>=.55)
+     );
      const typedRecall=['identity','episodic','goal','procedural'].includes(queryIntentMode)&&
        memoryIntentFit(queryIntentMode,m)>=.82;
      return lexicalEvidence||causalConceptEvidence||typedRecall;
