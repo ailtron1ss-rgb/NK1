@@ -14,6 +14,10 @@ assert.notEqual(strategyStart, -1, 'the cognition cycle must consume a bounded m
 const retrievalBlock = core.slice(queryStart, strategyStart);
 assert.match(retrievalBlock, /await this\.memorySubsystem\.fabric\.retrieveForCognition\(/,
   'the live cognitive cycle must call the async, budgeted semantic-retrieval adapter');
+const firstRetrievalStart = core.indexOf('const cognitionMemoryItems = observation.text && cognitiveExecutionPlan.run.memory');
+assert.notEqual(firstRetrievalStart, -1, 'the first text recall must also respect the planner memory gate');
+assert.match(retrievalBlock, /const advancedRetrieved = !cognitiveExecutionPlan\.run\.memory\s*\?\s*\[\]\s*:/,
+  'when the planner disables memory, the advanced/fallback recall path must return an empty packet');
 assert.doesNotMatch(retrievalBlock, /this\.memorySubsystem\.fabric\.retrieve\(/,
   'the live cycle must not bypass the semantic-retrieval adapter with the synchronous path');
 

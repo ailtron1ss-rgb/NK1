@@ -1,3 +1,20 @@
+## [NK1][WorkPass506] Enforce planner memory budget across all cognitive recall paths (2026-10-27)
+
+- The advanced/internal-goal recall branch could run retrieval even when `cognitiveExecutionPlan.run.memory` was false, bypassing the cycle's own memory budget decision.
+- Advanced recall now returns an empty packet when the planner disables memory; when enabled, it reuses the already-fetched user-text packet or calls the bounded `retrieveForCognition` adapter for the fallback query.
+- Extended the WorkPass502 route regression to assert that both the initial and advanced recall paths honor the planner gate. This is a runtime policy-routing correction, not a claim of retrieval quality uplift.
+
+## [NK1][WorkPass505] Require semantic provider and cognitive retrieval regressions in Core CI (2026-10-27)
+
+- Added the existing WorkPass33 local embedding-provider contract test and WorkPass34 `MemoryFabric.retrieveForCognition` test to `test:rebuild-recovered`.
+- These tests exercise provider response normalization and cache behavior, semantic top-hit selection via a fixture provider, timeout/failure fallback, and single-flight bounds on cognitive retrieval. They use deterministic local fixtures and require no external model download or network endpoint.
+- Passing these regressions verifies route and failure-boundary behavior, not real-world recall uplift; the independent bilingual holdout gate remains open.
+
+## [NK1][WorkPass504] Exercise retrieval evaluation gates in core regression (2026-10-27)
+
+- Added `test:memory-retrieval-experiment` to `test:rebuild-recovered`, alongside the live cognitive semantic-route regression. Seed validation now runs automatically in the same recovered-core check rather than being committed but disconnected from the required suite.
+- The experiment's seeds are bootstrap-resampling seeds only; they do not independently train the retrieval algorithm. These tests validate reproducibility and promotion-gate behavior, not real-world recall uplift. An independently sourced, bilingual holdout remains required before claiming memory improvement.
+
 ## [NK1][WorkPass503] Make Hexis bridge attempt-count assertion monotonic (2026-10-27)
 
 - A parallel regression added explicit same-ID trace replay to verify immutable source-trace identity, raising the bridge's current-instance attempt count from nine to ten.
