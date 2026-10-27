@@ -1,3 +1,10 @@
+## [NK1][WorkPass497] Route goal-context memory through the canonical semantic adapter (2026-10-27)
+
+- Removed the synchronous MemoryFabric retrieval bypass from the cognition fallback/active-goal path; both observation and fallback queries now use retrieveForCognition with bounded, opt-in semantic work and lexical fallback.
+- Honored cognitiveExecutionPlan.run.memory=false by emitting an empty memory packet instead of accidentally retrieving through the fallback branch.
+- Added WorkPass497 regression coverage to runtime CI and the NK1 integration closure gate.
+- This closes a routing/feature-gate defect only. It does not claim retrieval uplift; the semantic algorithm and independent recall measurements are unchanged.
+
 ## [NK1][WorkPass507] Count unique memory IDs in retrieval precision (2026-10-27)
 
 - Fixed `precision@K` so repeated rows with the same relevant memory ID cannot inflate the metric as multiple independent hits.

@@ -114,6 +114,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:hexis-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
       - name: Memory retrieval experiment including unanswerable holdout
         run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
+      - name: WorkPass497 unified semantic retrieval route and memory-disable gate
+        run: npm --prefix runtime/neuro-kurisu run test:workpass497:semantic-retrieval-route
       - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
         run: npm run test:rebuild-recovered
       - name: P23 persisted learning restore integrity
