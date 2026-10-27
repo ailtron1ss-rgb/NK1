@@ -103,6 +103,12 @@ export class HexisCanonicalEvidenceBridge {
       !Number.isSafeInteger(candidate.at) || candidate.at < 0 || candidate.at > 8_640_000_000_000_000) {
       return this.reject(memoryId, 'observation-confidence-or-time-invalid', candidate.id);
     }
+    // candidate.at is persisted as canonical MemoryEvidenceSource.observedAt.
+    // Validate it separately from provenance.capturedAt so a fresh provenance
+    // envelope cannot legitimize a future-dated observation.
+    if (candidate.at > Date.now() + 5 * 60_000) {
+      return this.reject(memoryId, 'observation-time-in-future', candidate.id);
+    }
     const provenance = normalizeEvidenceLineageProvenance(candidate.provenance);
     if (!provenance) return this.reject(memoryId, 'provenance-envelope-invalid', candidate.id);
     if (provenance.evidenceClass !== 'direct-observation' && provenance.evidenceClass !== 'corroborated') {

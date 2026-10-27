@@ -1,3 +1,9 @@
+## [NK1][WorkPass500] Reject future-dated Hexis observation timestamps (2026-10-27)
+
+- The canonical evidence bridge bounded provenance.captureAt but did not independently bound the source observation timestamp (`candidate.at`), which is persisted as canonical `observedAt`.
+- The bridge now rejects observation times more than five minutes in the future, using the same tolerance as the existing memory doctor/provenance policy. This applies to both SourceMonitor and P65 evidence ingestion; source fingerprint and confidence behavior are unchanged.
+- Added regressions for valid provenance paired with future-dated SourceMonitor and P65 observations, requiring fail-closed rejection before any canonical lineage mutation. Exact-head CI is required before marking this proven.
+
 ## [NK1][WorkPass499] Guard endogenous-goal learning against action mismatch (2026-10-27)
 
 - Exact-head local-model HTTP regression failed with `B272 outcome action must match the generated action`: the outer cognitive selector can execute an action different from B272's own generated action.

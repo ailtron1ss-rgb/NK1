@@ -87,6 +87,32 @@ runtime.sourceMonitor.record({
   at: now,
 });
 assert.equal(runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-no-provenance').accepted, false);
+
+// Observation time is independently bounded. A valid capture envelope cannot
+// make a future-dated event safe to persist as canonical observedAt.
+const futureAt = Date.now() + 10 * 60_000;
+runtime.sourceMonitor.record({
+  id: 'trace-future-observation',
+  source: 'world',
+  kind: 'sensor-observation',
+  confidence: .9,
+  epistemicStatus: 'observation',
+  at: futureAt,
+  provenance: { ...provenance, sourceId: 'sensor:future-trace' },
+});
+assert.equal(
+  runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-future-observation').reason,
+  'observation-time-in-future',
+);
+const futureP65Id = runtime.p65EpistemicLedger.record({
+  tick: 80, at: futureAt, kind: 'observation', content,
+  confidence01: .9, source: 'external-api',
+  provenance: { ...provenance, sourceId: 'sensor:future-p65' },
+});
+assert.equal(
+  runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, futureP65Id).reason,
+  'observation-time-in-future',
+);
 runtime.sourceMonitor.record({
   id: 'trace-model-echo',
   source: 'model',
@@ -145,11 +171,11 @@ assert.equal(replay.accepted, true);
 assert.equal(replay.added, false, 'canonical lineage must remain the duplicate authority after a runtime snapshot/restore');
 
 const stats = runtime.hexisCanonicalEvidenceBridge.snapshotStats();
-assert(stats.attempted >= 6);
+assert(stats.attempted >= 9);
 assert(stats.accepted >= 2);
 assert(stats.added === 1);
 assert(stats.duplicates >= 1);
-assert(stats.rejected >= 4);
+assert(stats.rejected >= 6);
 
 console.log('HEXIS_CANONICAL_EVIDENCE_LINEAGE=PASS', JSON.stringify({
   added: stats.added,
