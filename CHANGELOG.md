@@ -1,3 +1,9 @@
+## [NK1][motivation] Correct endogenous goal-vector diversity diagnostics (2026-10-27)
+
+- Fixed `goalVectorDiversity01`: the pairwise cosine transform was inverted, so identical goals appeared maximally diverse and opposite goals minimally diverse. It now measures normalized cosine distance.
+- Added calibrated boundary regressions proving identical vectors score 0 and opposite vectors score 1; the existing endogenous-goal test script already owns this contract.
+- This corrects an evaluation signal; it does not itself demonstrate greater behavioral diversity, autonomy or learning improvement. Exact-head test/typecheck/Actions remain to be confirmed.
+
 ## [NK1][verification] Server-wired Mem0 integration closure passed (2026-10-27)
 
 - The current code revision passed [Mem0 integration workflow 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): Node runtime check and server syntax; runtime typecheck; Hexis canonical evidence lineage/reviewed ingest; Hexis server smoke; deterministic memory-retrieval experiment; Mem0 Platform adapter tests 15/15; self-hosted OSS REST tests 2/2; static runtime wiring; and HTTP fake-provider smoke.
