@@ -1,3 +1,9 @@
+## [NK1][WorkPass457] Align skill rollback regression with signed approval contract (2026-10-27)
+
+- Updated the versioned skill-store regression to call `rollback(candidateId, { approvedBy, approvedAt, expectedActiveVersion })` and inject explicit test-only rollback authority. The production default-deny verifier is unchanged.
+- Updated the repeated rollback assertion to use a well-shaped approval object so it reaches the lifecycle-state guard and verifies that an already rolled-back candidate cannot be rolled back again.
+- Exact-head WorkPass110 rerun remains required.
+
 ## [NK1][WorkPass456] Resolve Hexis goal links against export-bound memory references (2026-10-27)
 
 - Fixed the goal activation resolver in `OrganismSystemFabric`: canonical Hexis memory records keep refs namespaced as `exportId:sourceRef`, while imported relationship rows reference the original source ref. The resolver now removes only the matching proposal export prefix and still requires exact export ID + lineage before projecting an edge.
