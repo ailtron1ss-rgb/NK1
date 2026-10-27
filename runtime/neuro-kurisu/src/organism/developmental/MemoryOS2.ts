@@ -73,7 +73,7 @@ export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
  if(/\b(what is|define|definition|explain the concept)\b|что такое|определение|дай определение|объясни понятие/iu.test(q))return 'factual';
  return 'general';
 }
-function isConversationMemory(item:MemoryItem2):boolean{
+export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):boolean{
  const context=item.context??{};
  const normalizeKey=(key:string)=>key.normalize('NFKC').replace(/[-_\\s]/gu,'').toLocaleLowerCase();
  const hasValue=(value:unknown)=>typeof value==='string'&&value.trim().length>0&&!/^(?:0|false|no|off|none|unknown)$/iu.test(value.trim());

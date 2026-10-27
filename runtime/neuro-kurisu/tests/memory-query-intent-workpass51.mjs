@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { MemoryOS2, detectMemoryQueryIntent } from '../src/organism/developmental/MemoryOS2.ts';
+import { MemoryOS2, detectMemoryQueryIntent, isConversationMemory } from '../src/organism/developmental/MemoryOS2.ts';
 
 const now = Date.now();
 const encode = (memory, row) => memory.encode({
@@ -136,38 +136,31 @@ for (const [key, sessionId] of [['session-id', 'session-44'], ['session id', 'se
   );
 }
 
-// A conversation-like relationship ID is not a session identity. Keep this fixture's
-// remaining fields lexically neutral so the assertion tests lineage classification, not token overlap.
-const spoofedLineageMemory = new MemoryOS2({ embeddingProvider: null });
-const spoofedLineageContent = 'neural memory experiment dialogue';
-encode(spoofedLineageMemory, {
-  id: 'a-untrusted-social', kind: 'social', content: spoofedLineageContent,
+// The pure provenance classifier is tested directly: MemoryOS2 may merge two rows
+// with identical content/kind before ranking, so such rows are not a valid A/B fixture.
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
   context: { relationshipId: 'conversation-17' },
-});
-encode(spoofedLineageMemory, {
-  id: 'z-real-session-social', kind: 'social', content: spoofedLineageContent,
+}), false, 'a conversation-like relationship ID is not session lineage');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
+  context: { note: 'discussion summary from an unrelated relation' },
+}), false, 'untyped note text is not a conversation-history marker');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
   context: { sessionId: 'session-88' },
-});
-assert.equal(
-  spoofedLineageMemory.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
-  'z-real-session-social',
-  'arbitrary relationship/context values must not impersonate session lineage',
-);
-
-// An explicit, typed import marker is valid metadata even when a stable ID was not
-// retained; the same phrase in an untyped note is not enough.
-const typedHistoryMemory = new MemoryOS2({ embeddingProvider: null });
-const typedHistoryContent = 'neural memory experiment dialogue';
-encode(typedHistoryMemory, {
-  id: 'a-untyped-social-note', kind: 'social', content: typedHistoryContent,
-  context: { note: 'conversation-history' },
-});
-encode(typedHistoryMemory, {
-  id: 'z-typed-history-social', kind: 'social', content: typedHistoryContent,
+}), true, 'a stable session ID is explicit conversation lineage');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
   context: { recordType: 'conversation-history' },
-});
-assert.equal(
-  typedHistoryMemory.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
-  'z-typed-history-social',
-  'explicit typed conversation-history metadata should be accepted while arbitrary note text is ignored',
-);
+}), true, 'an explicit typed history label is supported');
+assert.equal(isConversationMemory({
+  source: 'workpass569-conversation-import',
+  context: {},
+}), true, 'a source label identifying a conversation-history import is supported');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
+  context: { conversationHistory: 'false' },
+}), false, 'an explicitly disabled history field must not qualify as lineage');
+
+console.log('WORKPASS569_SESSION_LINEAGE_CLASSIFIER=PASS');
