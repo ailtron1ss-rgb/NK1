@@ -1,3 +1,9 @@
+## [NK1][WorkPass582] Preserve causal paraphrase recall with explicit lineage (2026-10-27)
+
+- Allow strong bilingual concept-bridge evidence to pass the answerability gate for causal questions only when the candidate has explicit causal links or a decision/observation/outcome lineage.
+- This restores paraphrase retrieval such as a Russian question about why a launch failed matching an English episode about an expired approval ticket, without enabling broad recency-only fallback.
+- The current Core run passed the fuzzy retrieval contract but found this causal paraphrase regression. The targeted rule is added; re-run validation is required.
+
 ## [NK1][WorkPass581] Preserve strong fuzzy evidence in the answerability gate (2026-10-27)
 
 - Allow MemoryOS2's high-confidence character n-gram evidence (`fuzzy >= 0.45`) to satisfy the grounded-recall gate without requiring exact-token coverage.

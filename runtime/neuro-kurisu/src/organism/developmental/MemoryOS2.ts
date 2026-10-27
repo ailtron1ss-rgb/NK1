@@ -978,9 +978,17 @@ export class MemoryOS2{
      const lexicalEvidence=identifierEvidence||exactPhrase||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45)||
        (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
+     // A causal paraphrase may have no literal-token overlap with the event text.
+     // Permit the concept bridge only when the memory carries explicit causal lineage;
+     // generic semantic/recency matches still cannot bypass the answerability gate.
+     const hasDecision=typeof m.context?.decisionId==='string'&&m.context.decisionId.trim().length>0;
+     const hasObservation=typeof m.context?.observationId==='string'&&m.context.observationId.trim().length>0;
+     const hasCausalOutcome=typeof m.context?.outcomeDirection==='string'&&m.context.outcomeDirection.trim().length>0;
+     const causalLineage=(Array.isArray(m.causalLinks)&&m.causalLinks.length>0)||(hasDecision&&hasObservation&&hasCausalOutcome);
+     const causalConceptEvidence=queryIntentMode==='causal'&&evidence.conceptCoverage>=.45&&causalLineage;
      const typedRecall=['identity','episodic','goal','procedural'].includes(queryIntentMode)&&
        memoryIntentFit(queryIntentMode,m)>=.82;
-     return lexicalEvidence||typedRecall;
+     return lexicalEvidence||causalConceptEvidence||typedRecall;
    });
    rows.push(...groundedRows);
    this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null};
