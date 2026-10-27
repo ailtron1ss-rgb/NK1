@@ -497,8 +497,9 @@ export class MemoryOS2{
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }
  }
- restore(s:MemoryOSState2|undefined){
-  const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
+ restore(s:MemoryOSState2|undefined,options:{allowOverCapacity?:boolean}={}){
+  const restoreLimit=options.allowOverCapacity?Math.max(MAX_CANONICAL_MEMORY_ITEMS,Array.isArray(s?.items)?s!.items.length:0):MAX_CANONICAL_MEMORY_ITEMS;
+  const rawItems=Array.isArray(s?.items)?s!.items.slice(0,restoreLimit):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
     semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
@@ -1183,7 +1184,7 @@ export class MemoryOS2{
     return false;
    }
   }catch(error){
-   if(before)this.restore(before);
+   if(before)this.restore(before,{allowOverCapacity:true});
    return false;
   }
   this.hmxImportCompensationSnapshots.delete(token);
