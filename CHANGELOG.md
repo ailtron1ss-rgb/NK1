@@ -1,3 +1,8 @@
+## [NK1][WorkPass479] Share the canonical versioned-skill candidate ID contract (2026-10-27)
+
+- Runtime staging and the signed-shadow integration fixture now use the same `computeVersionedSkillCandidateId` function, including the explicit null provenance component when no revision provenance is supplied.
+- This removes duplicated hash-shape logic that drifted after provenance became part of the ID contract. Identity semantics are unchanged; no learning-quality uplift is claimed.
+
 ## [NK1][WorkPass478] Preserve persisted P23 trace-cache recency on restore (2026-10-27)
 
 - P23 restore constructed deduplication caches from durable rows before persisted cache entries, which could move an older row to the head and discard the cache's newest-first order.
