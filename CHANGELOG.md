@@ -2708,3 +2708,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [FIX] The `updateSignalsWithCompensation` convenience path retains its one-time token until it confirms no mutation occurred or restores the exact pre-state after an exception. Rollback failures are reported explicitly rather than silently discarding the capability.
 - [REGRESSION] Inject an exception after the underlying canonical update returns and assert signal metadata, status, access state and revision history are restored with no pending tokens.
 - [VALIDATION] Source-level assertions only; runtime/typecheck remains unverified until a GitHub Actions runner executes actual steps.
+
+
+## [NK1][Validation] WorkPass445 — align corrupted cognitive-cycle restore expectation (2026-10-27)
+
+- [FIX] Corrected the WorkPass287 restore regression: when the persisted missing-stage list contains an invalid stage or non-string value, UnifiedCognitiveCycle intentionally treats the entire list as corrupted and restores all six required stages as missing.
+- [SAFETY] Preserved the fail-closed implementation rather than weakening normalization to accept a partially malformed history.
+- [VALIDATION] The focused workflow is triggered by the test-path change; the new CI result must confirm this assertion and continue through the remaining steps.
