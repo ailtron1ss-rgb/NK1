@@ -261,6 +261,41 @@ assert(
   'successful full restore must rebuild retrieval indexes for the replacement row',
 );
 
+// Cache reconciliation is content/provider-bound rather than an unconditional purge:
+// a vector for the exact restored content/provider remains reusable, while an expired
+// retry row for the same ID but a different content hash is discarded.
+const matchingEmbeddingCacheRuntime = new MemoryOS2({
+  embeddingProvider: { providerId: 'restore-cache-test-provider' },
+});
+const matchingEmbeddingCacheItem = matchingEmbeddingCacheRuntime.encode({
+  ...restoreAtomicSeedInput,
+  content: 'matching semantic embedding cache remains reusable',
+  source: 'test:memoryos-valid-embedding-cache',
+});
+const matchingEmbeddingCacheRow = {
+  contentHash: matchingEmbeddingCacheItem.contentHash,
+  providerId: 'restore-cache-test-provider',
+  vector: [0.6, 0.8],
+  lastUsedAt: 123,
+};
+matchingEmbeddingCacheRuntime.semanticEmbeddingIndex.set(matchingEmbeddingCacheItem.id, structuredClone(matchingEmbeddingCacheRow));
+matchingEmbeddingCacheRuntime.semanticEmbeddingRetry.set(matchingEmbeddingCacheItem.id, {
+  contentHash: 'obsolete-content-hash',
+  attempts: 4,
+  retryAt: 456,
+});
+matchingEmbeddingCacheRuntime.restore(matchingEmbeddingCacheRuntime.snapshot());
+assert.deepEqual(
+  matchingEmbeddingCacheRuntime.semanticEmbeddingIndex.get(matchingEmbeddingCacheItem.id),
+  matchingEmbeddingCacheRow,
+  'restore must retain a provider-matched embedding for unchanged canonical content',
+);
+assert.equal(
+  matchingEmbeddingCacheRuntime.semanticEmbeddingRetry.has(matchingEmbeddingCacheItem.id),
+  false,
+  'restore must drop a retry entry tied to an obsolete content hash',
+);
+
 const persistedPolicyGuard = new MemoryOS2({ embeddingProvider: null });
 const corruptedPersistedPolicyState = persistedPolicyGuard.snapshot();
 corruptedPersistedPolicyState.adaptiveMemoryPolicy = {
