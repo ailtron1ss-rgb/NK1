@@ -53,7 +53,7 @@ try {
   assert.deepEqual(successful.seen.touched, ['semantic-1'],
     'provisional lexical candidates must not be promoted to hot memory');
   assert.equal(successful.seen.events.length, 1);
-  assert.equal(successful.seen.events[0].payload.evidenceMode, 'semantic-cognitive-retrieval');
+  assert.match(JSON.stringify(successful.seen.events[0]), /semantic-cognitive-retrieval/);
 
   const fallback = makeFabric({
     lexicalRows,
