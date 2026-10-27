@@ -1,3 +1,10 @@
+## [NK1][WorkPass494] Route project tool receipts through canonical core wrappers (2026-10-27)
+
+- Project-step dispatch now uses `OrganismCore.executeTool()` for fresh execution and `OrganismCore.reconcileToolExecution()` for receipt recovery, instead of calling ActionGateway directly from the project path.
+- This keeps legacy tool-ID normalization and finalization ownership at the canonical core boundary. Keyed execution and replay semantics remain guarded by the existing ActionGateway/core-wrapper contract; project recovery still never re-runs a potentially completed side effect.
+- Exact-head Core regression failed at WorkPass97 because the project path bypassed both wrappers. The test already encoded the intended contract; this change fixes the production dispatch path rather than weakening the assertion.
+- Validation is pending for the new commit. This is a targeted execution-boundary fix, not a production-readiness claim.
+
 ## [NK1][WorkPass493] Reject corrupted persisted action receipts on restore (2026-10-27)
 
 - Core regression on exact HEAD found that a completed idempotency receipt could be replayed even when persisted response identity, verification flags, audit outcome, or payload size had been tampered with.
