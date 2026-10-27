@@ -159,6 +159,7 @@ const atomicStatusSeedMemory = atomicStatusRuntime.fabric.canonicalSnapshot().it
 assert(atomicStatusSeedMemory);
 const atomicStatusBefore = signalSnapshot(atomicStatusSeedMemory);
 const atomicStatusMemoryOS = atomicStatusRuntime.fabric.memoryOS;
+const atomicStatusEstimatedBytesBefore = atomicStatusMemoryOS.budgetDiagnostics().estimatedBytes;
 const originalAtomicStatusRecordRevision = atomicStatusMemoryOS.recordRevision.bind(atomicStatusMemoryOS);
 let throwAfterStatusRevision = true;
 atomicStatusMemoryOS.recordRevision = (...args) => {
@@ -193,6 +194,8 @@ assert(atomicStatusAfterFailure);
 assert.deepEqual(signalSnapshot(atomicStatusAfterFailure), atomicStatusBefore,
   'revision-history failure must not leave canonical status/signals partially changed');
 assert.equal(atomicStatusAfterFailure.epistemicStatus, atomicStatusSeedMemory.epistemicStatus);
+assert.equal(atomicStatusMemoryOS.budgetDiagnostics().estimatedBytes, atomicStatusEstimatedBytesBefore,
+  'status revision failure must restore the memory byte-accounting baseline');
 assert.equal(atomicStatusLedger.getHmxStage(atomicStatusRetry.stagingId)?.status, 'accepted');
 assert.equal(atomicStatusRuntime.fabric.inspect().pendingSignalCompensations, 0);
 
@@ -227,6 +230,7 @@ const atomicSignalsSeedMemory = atomicSignalsRuntime.fabric.canonicalSnapshot().
 assert(atomicSignalsSeedMemory);
 const atomicSignalsBefore = signalSnapshot(atomicSignalsSeedMemory);
 const atomicSignalsMemoryOS = atomicSignalsRuntime.fabric.memoryOS;
+const atomicSignalsEstimatedBytesBefore = atomicSignalsMemoryOS.budgetDiagnostics().estimatedBytes;
 const originalAtomicSignalsRecordRevision = atomicSignalsMemoryOS.recordRevision.bind(atomicSignalsMemoryOS);
 let throwAfterSignalsRevision = true;
 atomicSignalsMemoryOS.recordRevision = (...args) => {
@@ -260,6 +264,8 @@ const atomicSignalsAfterFailure = atomicSignalsRuntime.fabric.canonicalSnapshot(
 assert(atomicSignalsAfterFailure);
 assert.deepEqual(signalSnapshot(atomicSignalsAfterFailure), atomicSignalsBefore,
   'authority-cap failure must not leave confidence, source authority, evidence or revision history partially changed');
+assert.equal(atomicSignalsMemoryOS.budgetDiagnostics().estimatedBytes, atomicSignalsEstimatedBytesBefore,
+  'authority-cap failure must restore the memory byte-accounting baseline');
 assert.equal(atomicSignalsLedger.getHmxStage(atomicSignalsRetry.stagingId)?.status, 'accepted');
 assert.equal(atomicSignalsRuntime.fabric.inspect().pendingSignalCompensations, 0);
 
