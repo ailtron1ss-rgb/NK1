@@ -988,6 +988,9 @@ export class MemoryOS2{
    m.lastAccessAt=Date.now();
    this.state.reconsolidations++;
    if(to==='quarantined')this.state.quarantined++;
+   // recordRevision accounts for its own history append; reconcile once against the
+   // transaction-start baseline so status + revision bytes aren't double-counted.
+   this.state.estimatedBytes=Math.max(0,estimatedBytesBefore-estimateMemoryBytes(itemSnapshot)+estimateMemoryBytes(m));
   } catch(error) {
    this.restoreItemInPlace(m,itemSnapshot);
    this.state.estimatedBytes=estimatedBytesBefore;
@@ -1104,7 +1107,6 @@ export class MemoryOS2{
    const estimatedBytesBefore=this.state.estimatedBytes;
    const reconsolidationsBefore=this.state.reconsolidations;
    try {
-    const before=estimateMemoryBytes(m);
     const fromStatus=m.epistemicStatus;
     const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
     if(patch.salience!==undefined)m.salience=c(patch.salience);
@@ -1136,7 +1138,9 @@ export class MemoryOS2{
     m.lastAccessAt=updatedAt;
     m.temperature01=memoryTemperature(m);
     if(reason){this.recordRevision(m,{at:m.lastAccessAt,from:fromStatus,to:fromStatus,reason});}
-    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+    // recordRevision can adjust the running total during the write. Recompute against
+    // the original item snapshot to avoid applying the byte delta twice.
+    this.state.estimatedBytes=Math.max(0,estimatedBytesBefore-estimateMemoryBytes(itemSnapshot)+estimateMemoryBytes(m));
     this.state.reconsolidations++;
     return structuredClone(m);
    } catch(error) {
