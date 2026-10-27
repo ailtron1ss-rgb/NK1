@@ -380,7 +380,7 @@ export class MemoryFabric {
   }
 
   encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string;forceDistinct?:boolean}={}) {
-    return this.applyLifecycleCommand({action:'encode',input,...context}) as MemoryItem2;
+    return this.applyLifecycleCommand({action:'encode',input,tick:context?.tick,emitEvent:context?.emitEvent,syncCompatibility:context?.syncCompatibility,commandId:context?.commandId,forceDistinct:context?.forceDistinct}) as MemoryItem2;
   }
 
   /** Non-mutating search for inspectors and diagnostics; it must not train policy or heat live memories. */
@@ -665,7 +665,7 @@ export class MemoryFabric {
   }
 
   revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string;compensationToken?:string}={}){
-    return this.applyLifecycleCommand({action:'revise-status',id,to,reason,...options}) as void;
+    return this.applyLifecycleCommand({action:'revise-status',id,to,reason,tick:options?.tick,commandId:options?.commandId}) as void;
   }
 
   updateSignals(id:string,patch:Parameters<MemoryOS2['updateSignals']>[1],reason='reconsolidation',context:{tick?:number;commandId?:string;compensationToken?:string}={}){
@@ -673,21 +673,11 @@ export class MemoryFabric {
   }
 
   reviseContent(id:string,newContent:string,options:Parameters<MemoryOS2['reviseContent']>[2]={},context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'revise-content',id,newContent,options,...context}) as MemoryItem2|null;
+    return this.applyLifecycleCommand({action:'revise-content',id,newContent,options,tick:context?.tick,commandId:context?.commandId}) as MemoryItem2|null;
   }
 
-  /** Begin a one-time rollback capability before the first mutation of a memory. */
-  beginSignalCompensation(id:string):string|null {
-    const before=this.findCanonical(id);
-    if(!before)return null;
-    // Fail before creating another mutation when the rollback journal is full.
-    // Never evict an outstanding capability: the owning transaction may still
-    // need every token to restore pre-existing canonical memories on failure.
-    if(this.signalCompensations.size>=512)return null;
-    const token=randomUUID();
-    const snapshot=memorySignalRollbackSnapshot(before);
-    this.signalCompensations.set(token,{memoryId:id,snapshot,expectedCurrent:snapshot});
-    return token;
+  updateSignals(id:string, patch:Parameters<MemoryOS2['updateSignals']>[1], reason='reconsolidation', context:{tick?:number;commandId?:string;compensationToken?:string}={}){
+    return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,tick:context?.tick,commandId:context?.commandId,compensationToken:context?.compensationToken}) as MemoryItem2|null;
   }
 
   private requireSignalCompensation(compensationToken:string|undefined,memoryId:string):MemorySignalCompensationReceipt|null {
@@ -774,7 +764,7 @@ export class MemoryFabric {
   }
 
   updateContext(id:string, patch:Record<string,string|undefined>, context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'update-context',id,patch,...context}) as Record<string,string> | null;
+    return this.applyLifecycleCommand({action:'update-context',id,patch,tick:context?.tick,commandId:context?.commandId}) as Record<string,string> | null;
   }
 
   markDormant(id:string,dormant=true,reason='memory-economy',context:{tick?:number;commandId?:string}={}){
@@ -782,7 +772,7 @@ export class MemoryFabric {
   }
 
   forgetById(id:string,reason='memory-knockout',context:{tick?:number;commandId?:string}={}){
-    return this.applyLifecycleCommand({action:'forget',id,reason,...context}) as boolean;
+    return this.applyLifecycleCommand({action:'forget',id,reason,tick:context?.tick,commandId:context?.commandId}) as boolean;
   }
 
   /** Scoped compensation for a newly-created HMX row when ordinary forgetting correctly
@@ -795,7 +785,15 @@ export class MemoryFabric {
       !Number.isSafeInteger(attempt)||attempt<1){
       throw new TypeError('memory-lifecycle-hmx-rollback-input-invalid');
     }
-    return this.applyLifecycleCommand({action:'rollback-created',id,exportId,stagingId,attempt,reason,...context}) as boolean;
+    // The scope arguments are authority-bearing. Only copy the explicitly supported
+    // execution metadata from context; a JavaScript caller can pass extra runtime keys
+    // despite the TypeScript shape, and must not be able to override id/export/stage/attempt.
+    const commandContext=context&&typeof context==='object'?context:{};
+    return this.applyLifecycleCommand({
+      action:'rollback-created',id,exportId,stagingId,attempt,reason,
+      ...(commandContext.commandId!==undefined?{commandId:commandContext.commandId}:{}),
+      ...(commandContext.tick!==undefined?{tick:commandContext.tick}:{}),
+    }) as boolean;
   }
 
   canonicalSize(){return this.memoryOS.size();}

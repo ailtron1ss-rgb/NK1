@@ -21,7 +21,6 @@ on:
       - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-protected-memory-rollback.mjs'
-      - 'runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs'
       - 'app/package.json'
       - 'app/package-lock.json'
       - 'app/src/components/HexisControlConsole.tsx'
