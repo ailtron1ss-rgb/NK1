@@ -1,3 +1,8 @@
+## [NK1][WorkPass472] Align signed-shadow test identity with provenance-bound candidate IDs (2026-10-27)
+
+- Updated `p23-runtime-signed-shadow-observation.mjs` to include the explicit `null` revision-provenance fingerprint in its expected candidate ID. `VersionedSkillCandidateStore` now uses the five-field identity tuple `[skillId, version, proposalId, payloadFingerprint, provenanceFingerprintOrNull]`; the runtime fixture was still asserting the pre-provenance four-field tuple.
+- No candidate identity check was removed and signed observation verification remains required. Exact-head WorkPass110 CI must re-run.
+
 ## [NK1][WorkPass470] Make the Hexis goal-link fixture explicit about epistemic status (2026-10-27)
 
 - The goal-link regression now imports its semantic evidence record with `status: 'belief'`. The canonical HMX projector intentionally leaves an omitted status as `unknown`, and unknown records do not acquire a semantic node; the fixture now asks for relationship projection only where the source record explicitly allows that projection. Production default-deny handling for unknown status remains unchanged.
