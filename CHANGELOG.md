@@ -1,3 +1,10 @@
+## [NK1][WorkPass470] Normalize restored adaptive policy state (2026-10-27)
+
+- AdaptiveMemoryPolicy.restore() now validates the policy enum and context-key shape, bounds the retained context table to 512 keys, rejects prototype-like context keys, clamps weights/rewards to finite unit values, and bounds trial counts to integers in [0, 10000].
+- Non-finite or malformed cooldown timestamps fall back safely; finite epoch timestamps retain their millisecond scale. Invalid lastPolicy / lastContextKey values fall back to `balanced` / `default`.
+- Added adversarial regression coverage for NaN/Infinity, negative and oversized values, unknown policy names, unsafe context keys, and context-table saturation. Source/test assertions are committed but runtime test, typecheck and hosted CI outcomes remain unconfirmed.
+- `main` and the canonical GitHub Release ZIP remain unchanged.
+
 ## [NK1][WorkPass469] Restore the active retrieval policy with its snapshot (2026-10-27)
 
 - A full MemoryOS2 restore now activates the validated policy recorded by the restored adaptive-policy snapshot, falling back to `balanced` for absent or invalid names. This avoids carrying a stale pre-restore strategy into post-restart outcome attribution.
