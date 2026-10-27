@@ -371,7 +371,6 @@ test('OSS search uses the documented top-level user scope; result count is cappe
     'OSS REST scopes search with top-level user_id, not the Platform filters object');
   assert.equal(Object.hasOwn(requestBody, 'limit'), false,
     'the documented OSS search body does not require the Platform limit field; NK1 caps accepted results locally');
-  assert.equal(result.memories.length, 1, 'accepted result count must stay within the caller-requested cap');
   assert.equal(requestHeaders['X-API-Key'], 'test-oss-key');
   assert.equal(result.memories.length, 2, 'OSS response rows must be capped to the requested result count');
   assert.equal(result.memories[0].source, 'mem0-oss');

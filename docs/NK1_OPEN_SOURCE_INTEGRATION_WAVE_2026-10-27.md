@@ -13,9 +13,11 @@ NK1 retains one canonical memory owner: **MemoryOS2 through MemoryFabric**. Exte
 - [x] Kept remote memory writes/deletes disabled by default and gated separately from search.
 - [x] Ported adapter safety tests and the explicit opt-in, read-only live-contract check.
 - [x] Added self-hosted Mem0 OSS REST mode with native endpoint/auth mapping and a separate loopback-HTTP/security contract test.
+- [x] Wired the server composition root from environment-gated adapter configuration into `OrganismRuntime`.
+- [x] Added authenticated read-only server diagnostics/search routes; the HTTP smoke verifies missing-token denial, no API-key disclosure, canonical MemoryOS2 precedence, and disabled local-first fallback.
 - [x] Added a static runtime-wiring contract and an integration CI workflow.
 - [x] Registered test commands and documented limitations in the runtime package and `CHANGELOG.md`.
-- [x] Execute the integration closure on the PR merge ref via Mem0 workflow run [40530677372](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40530677372): runtime typecheck, Hexis evidence lineage/ingest, Hexis server smoke, deterministic retrieval experiment, 14/14 Platform tests, 2/2 OSS tests, static runtime-wiring contract, and HTTP fake-provider smoke passed. This does not include a live provider call; see the remaining gate below.
+- [x] Execute integration closure on the current tested PR merge ref via [Mem0 workflow run 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): runtime typecheck, Hexis evidence lineage and reviewed ingest, Hexis server smoke, deterministic retrieval experiment, 15/15 Platform-adapter tests, 2/2 OSS tests, runtime-wiring contract, and authenticated HTTP/fake-provider smoke all passed. This did not make a live Mem0 provider call; see the remaining gate below.
 - [ ] Run an opted-in live Mem0 contract check against a dedicated test-only user scope. It is intentionally skipped without explicit operator credentials/flags.
 - [ ] Demonstrate a positive, independently sourced retrieval uplift on immutable RU/EN holdout data across paired model/training seeds.
 - [ ] Run the production UI/build/migration, browser/Live2D, real Android/Termux audio, soak, SBOM and license gates.

@@ -103,7 +103,7 @@ NK_MEM0_USER_ID=nk1-local-user
 MEM0_API_KEY=<a per-user X-API-Key from the Mem0 dashboard>
 ```
 
-OSS search uses `POST /search` with `query`, `filters: { user_id }`, and a bounded `limit` (the current Mem0 v3 search contract); create uses `POST /memories`; deleting a single adapter-issued UUID uses `DELETE /memories/{memory_id}`. OSS requests use the `X-API-Key` header. Platform remains on its versioned API paths and `Authorization: Token` authentication. The adapter's results remain untrusted and do not become canonical NK1 memories.
+Self-hosted OSS REST search uses `POST /search` with `query` and top-level `user_id`; NK1 caps accepted results locally. Do not reuse the Mem0 SDK/Platform v3 `filters`/`limit` shape for the OSS HTTP endpoint; create uses `POST /memories`; deleting a single adapter-issued UUID uses `DELETE /memories/{memory_id}`. OSS requests use the `X-API-Key` header. Platform remains on its versioned API paths and `Authorization: Token` authentication. The adapter's results remain untrusted and do not become canonical NK1 memories.
 
 Plain HTTP is accepted by default only for loopback addresses in OSS mode. A non-loopback HTTP endpoint requires an additional explicit `NK_MEM0_ALLOW_INSECURE_HTTP=1` opt-in; prefer HTTPS for network-facing deployments. This flag is not needed for localhost. Remote writes/deletes still require `NK_MEM0_ALLOW_WRITES=1` and per-operation `approved: true`. Search can be enabled separately and never grants write access.
 

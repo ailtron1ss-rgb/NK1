@@ -1,3 +1,9 @@
+## [NK1][verification] Server-wired Mem0 integration closure passed (2026-10-27)
+
+- The current code revision passed [Mem0 integration workflow 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): Node runtime check and server syntax; runtime typecheck; Hexis canonical evidence lineage/reviewed ingest; Hexis server smoke; deterministic memory-retrieval experiment; Mem0 Platform adapter tests 15/15; self-hosted OSS REST tests 2/2; static runtime wiring; and HTTP fake-provider smoke.
+- The server composition root now passes the env-configured adapter into `OrganismRuntime`, with the separate `NK_MEM0_COGNITIVE_RECALL=1` gate. Authenticated read-only diagnostics/search endpoints were exercised; missing bearer authorization is rejected, secrets are not returned, and disabling Mem0 preserves local-first behavior.
+- The retrieval experiment remains `promotion: not-promoted`. The read-only live-provider test is skipped without explicit operator consent/credentials; no external Mem0 endpoint was contacted. This is not a production-ready/release claim.
+
 ## [NK1][WorkPass582] Align semantic recall contract with canonical selected reads (2026-10-27)
 
 - Fix a stale regression assertion: `retrieveForCognition` correctly records outcome metrics from the canonical `selected` rows after `recordSelectedRetrieval`, not from the uncommitted preview `rows`.
