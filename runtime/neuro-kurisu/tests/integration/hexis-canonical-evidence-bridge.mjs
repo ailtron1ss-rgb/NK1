@@ -79,7 +79,7 @@ assert.equal(traceIdReuse.added, false, 'conflicting ID reuse cannot replace the
 const afterTraceIdReuse = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
 assert(afterTraceIdReuse);
 assert.equal(afterTraceIdReuse.evidenceSources?.filter(row => row.independenceKey === independenceKey).length, 1);
-const spoofedIndependenceKey = 'hexis-source:' + createHash('sha256').update('sensor:spoofed-reuse' + '\\u0000' + spoofedFingerprint).digest('hex');
+const spoofedIndependenceKey = 'hexis-source:' + createHash('sha256').update('sensor:spoofed-reuse' + '\u0000' + spoofedFingerprint).digest('hex');
 assert.equal(afterTraceIdReuse.evidenceSources?.some(row => row.independenceKey === spoofedIndependenceKey), false);
 assert.equal(afterTraceIdReuse.confidence, before.confidence);
 
