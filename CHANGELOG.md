@@ -1,3 +1,9 @@
+## [NK1][WorkPass462] Preserve bounded belief state on rollback conflict (2026-10-27)
+
+- `removeBeliefProjection()` undo now builds a candidate state and refuses restoration when re-inserting a removed row would exceed the 1024-entry bound. It no longer slices off a newer, independent belief to make stale rollback fit.
+- Added a capacity-boundary regression: an old belief is removed, an independent belief fills the vacancy, and compensation must report conflict while preserving the new belief and respecting the configured bound.
+- The HMX retry regression verifies one canonical row, one graph node, and one temporal assertion after recovery, then confirms receipt replay adds no duplicate projection. Hosted runtime tests/typecheck/CI remain unconfirmed; no `main` or Release ZIP changes.
+
 ## [NK1][WorkPass461] Retry HMX after conflict-aware compensation without duplicate projection (2026-10-27)
 
 - Extended the foreign-write rollback regression to retry the still-accepted stage once the injected independent write has completed. The retry must materialize one canonical memory, one semantic node and one temporal assertion while retaining the independent temporal record.
