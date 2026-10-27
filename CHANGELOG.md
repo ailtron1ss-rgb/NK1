@@ -1,3 +1,15 @@
+## [NK1][WorkPass438] Fail closed when causal learning events cannot be recorded (2026-10-27)
+
+- Added null checks around three `recordExternalLearningEvent` calls in `OrganismCore`: replay-derived signals now skip when no causal event was accepted; validation and repair paths only forward accepted events to unified learning. This resolves real strict-TypeScript nullability diagnostics without fabricating fallback evidence.
+- The Core-owned trusted-shadow registrar now returns `void` after durable registration instead of leaking its registry return object through an interface declared as a side-effect capability. The coordinator only requires durable registration, not the registry's internal return payload.
+- The latest full-file source patch is committed. Runtime typecheck and HMX regression execution remain pending on a fresh stable HEAD.
+
+## [NK1][WorkPass437] Resolve strict runtime typecheck contract errors (2026-10-27)
+
+- Fixed compile-time narrowing for the five endogenous need fields, dream-association string filters, persisted cognitive-domain transition map, optional authority metadata, optional replay policy features, numeric retrieval query defaults, and Node buffer backing types.
+- Added `p23-compound-repair-revision` to the typed runtime clock registry so the optional background revision clock is a declared scheduler kind rather than an invalid ID.
+- The edits preserve runtime policy semantics; they address strict type safety. A fresh CI typecheck is still required before claiming the diagnostics are cleared.
+
 ## [NK1][WorkPass461] Align external learning assertions with trusted-outcome semantics (2026-10-27)
 
 - Corrected the causal-experience regression to expect zero trusted runtime outcomes for external/imported events, including after deduplication, restore and quarantine. Imported rows remain queryable but cannot raise trusted outcome totals or learning aggregates until admitted through a grounded runtime transition.
