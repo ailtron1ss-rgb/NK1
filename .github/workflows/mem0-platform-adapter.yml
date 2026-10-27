@@ -1,0 +1,45 @@
+name: Mem0 Platform adapter safety regression
+
+on:
+  pull_request:
+    branches: [nk1-hexis-canonical-apply-2026-10-27]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
+      - "runtime/neuro-kurisu/tests/mem0-platform-adapter-workpass1.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-live-contract-check.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts"
+      - "runtime/neuro-kurisu/src/organism/index.ts"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/mem0-platform-adapter.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-mem0-adapter-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  mem0-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          package-manager-cache: false
+      - name: Verify Node.js runtime
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') { console.error(process.versions.node); process.exit(1) }"
+      - name: Check server JavaScript syntax
+        run: node --check runtime/neuro-kurisu/src/server/server.mjs
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run four-pass integration closure (Hexis, retrieval, Mem0 and HTTP)
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:nk1-integration-closure
