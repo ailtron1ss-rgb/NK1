@@ -15,9 +15,9 @@ type EncodeInput = MemoryLifecycleEncodeInput;
 export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'restore-signals'|'update-context'|'forget'|'rollback-created';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
-  | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
+  | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number; compensationToken?:string }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
-  | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number }
+  | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number; compensationToken?:string }
   | { action:'restore-signals'; compensationToken:string; reason:string; commandId?:string; tick?:number }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
   | { action:'forget'; id:string; reason?:string; commandId?:string; tick?:number }
@@ -250,9 +250,13 @@ export class MemoryFabric {
         break;
       }
       case 'revise-status': {
+        this.requireSignalCompensation(command.compensationToken,command.id);
         const before=this.findCanonical(command.id);
         if(before&&before.epistemicStatus!==command.to){
           this.memoryOS.revise(command.id,command.to,command.reason);
+          // Seal inside the canonical lifecycle write. A wrapper may throw after this
+          // command returns; its catch must still compare against our committed state.
+          this.sealSignalCompensation(command.compensationToken,command.id);
           result=undefined; memoryId=command.id; outcome='applied';
           eventPayload={action, memoryId, from:before.epistemicStatus,to:command.to,reason:String(command.reason).slice(0,240),commandId:commandId||undefined};
         }else{result=undefined;memoryId=before?.id;}
@@ -267,11 +271,13 @@ export class MemoryFabric {
         break;
       }
       case 'update-signals': {
+        this.requireSignalCompensation(command.compensationToken,command.id);
         const before=this.findCanonical(command.id);
         const changed=Boolean(before&&Object.entries(command.patch).some(([key,value])=>(before as any)[key]!==value));
         if(!before){result=null;break;}
         if(!changed){result=before;memoryId=before.id;break;}
         const item=this.memoryOS.updateSignals(command.id,command.patch,command.reason??'reconsolidation');
+        if(item&&command.compensationToken) this.sealSignalCompensation(command.compensationToken,item.id);
         result=item; memoryId=item?.id;
         outcome=item?'applied':'noop';
         if(item)eventPayload={action,memoryId:item.id,fields:Object.keys(command.patch),reason:String(command.reason??'reconsolidation').slice(0,240),commandId:commandId||undefined};
@@ -658,8 +664,12 @@ export class MemoryFabric {
     return {decisionId:this.lastPolicyDecisionId??null,rows};
   }
 
-  revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string}={}){
+  revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string;compensationToken?:string}={}){
     return this.applyLifecycleCommand({action:'revise-status',id,to,reason,...options}) as void;
+  }
+
+  updateSignals(id:string,patch:Parameters<MemoryOS2['updateSignals']>[1],reason='reconsolidation',context:{tick?:number;commandId?:string;compensationToken?:string}={}){
+    return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,...context}) as MemoryItem2|null;
   }
 
   reviseContent(id:string,newContent:string,options:Parameters<MemoryOS2['reviseContent']>[2]={},context:{tick?:number;commandId?:string}={}){
@@ -680,14 +690,22 @@ export class MemoryFabric {
     return token;
   }
 
-  /** Refresh the sealed post-state after all mutations in the surrounding transaction. */
-  refreshSignalCompensation(compensationToken:string):boolean {
+  private requireSignalCompensation(compensationToken:string|undefined,memoryId:string):MemorySignalCompensationReceipt|null {
+    if(compensationToken===undefined)return null;
     const compensation=this.signalCompensations.get(compensationToken);
-    if(!compensation)return false;
-    const current=this.findCanonical(compensation.memoryId);
-    if(!current)return false;
+    if(!compensation||compensation.memoryId!==memoryId) {
+      throw new Error('memory-signal-compensation-token-invalid');
+    }
+    return compensation;
+  }
+
+  /** Seal only from the lifecycle command that performed the owned mutation. */
+  private sealSignalCompensation(compensationToken:string|undefined,memoryId:string):void {
+    const compensation=this.requireSignalCompensation(compensationToken,memoryId);
+    if(!compensation)return;
+    const current=this.findCanonical(memoryId);
+    if(!current)throw new Error('memory-signal-compensation-target-missing');
     compensation.expectedCurrent=memorySignalRollbackSnapshot(current);
-    return true;
   }
 
   /** Convenience wrapper for one signal mutation with a bounded rollback capability. */
@@ -700,8 +718,8 @@ export class MemoryFabric {
     const compensationToken=this.beginSignalCompensation(id);
     if(!compensationToken)return null;
     try {
-      const item=this.updateSignals(id,patch,reason,context);
-      if(!item || !this.refreshSignalCompensation(compensationToken)) {
+      const item=this.updateSignals(id,patch,reason,{...context,compensationToken});
+      if(!item) {
         this.commitSignalCompensation(compensationToken);
         return null;
       }
@@ -716,7 +734,6 @@ export class MemoryFabric {
         if(!compensation||!current)throw new Error('memory-signal-update-compensation-unavailable');
         const currentSnapshot=memorySignalRollbackSnapshot(current);
         if(JSON.stringify(currentSnapshot)!==JSON.stringify(compensation.snapshot)) {
-          compensation.expectedCurrent=currentSnapshot;
           this.restoreSignalsForCompensation(
             compensationToken,
             'memory-signal-update-compensation',
