@@ -34,7 +34,7 @@ on:
       - '.nvmrc'
       - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   pull_request:
-    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
+    branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild, fix/hexis-belief-dedupe-contract-2026-10-27]
     paths:
       - "app/**"
       - "runtime/neuro-kurisu/src/**"
