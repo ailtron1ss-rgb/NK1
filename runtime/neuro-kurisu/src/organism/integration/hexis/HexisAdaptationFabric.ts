@@ -609,21 +609,21 @@ export class HexisAdaptationFabric {
         value?: unknown;
     }, ownerToken?: string): HexisTemporalAssertion { const existing = this.state.temporal.find((x) => x.memoryId === input.memoryId && x.validUntil === null); const at = nowMs(); if (existing)
         existing.validUntil = Math.max(existing.validFrom, Number(input.validFrom)); const created: HexisTemporalAssertion = { id: randomUUID(), memoryId: String(input.memoryId), valueHash: digest(input.value ?? input.summary), summary: String(input.summary).slice(0, 2000), confidence01: clamp(input.confidence01), validFrom: Number(input.validFrom), validUntil: null, supersedesId: existing?.id, source: String(input.source ?? 'canonical-memory'), at }; this.state.temporal.push(created); this.state.temporal = this.state.temporal.slice(-4096); this.recordScopedMutation(ownerToken); return structuredClone(created); }
-    temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
-    temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
+    temporalAt(memoryId: string, at: number): HexisTemporalAssertion | null { this.recordScopedMutation(); this.state.metrics.temporalQueries += 1; const rows = this.state.temporal.filter((x) => x.memoryId === memoryId && x.validFrom <= at && (x.validUntil === null || at < x.validUntil)).sort((a, b) => b.validFrom - a.validFrom); return rows[0] ? structuredClone(rows[0]) : null; }
+    temporalDiff(memoryId: string, fromAt: number, toAt: number) { this.recordScopedMutation(); this.state.metrics.temporalQueries += 1; const from = this.temporalAt(memoryId, fromAt); const to = this.temporalAt(memoryId, toAt); return { memoryId, from, to, changed: (from?.valueHash ?? null) !== (to?.valueHash ?? null) }; }
     createLearningReview(input: {
         periodStart: number;
         periodEnd: number;
         summary: string;
         items: Array<Omit<HexisLearningReviewItem, 'id' | 'status' | 'createdAt'>>;
-    }): HexisLearningReview { const createdAt = nowMs(); const review: HexisLearningReview = { id: randomUUID(), periodStart: input.periodStart, periodEnd: input.periodEnd, summary: String(input.summary).slice(0, 2000), status: 'pending', items: input.items.slice(0, 50).map((item) => ({ ...item, id: randomUUID(), status: 'pending', createdAt })), createdAt }; this.state.learningReviews.push(review); this.state.learningReviews = this.state.learningReviews.slice(-96); this.state.metrics.reviewsCreated += 1; return structuredClone(review); }
-    decideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string, canonicalMemoryId?: string): HexisLearningReviewItem | null { const review = this.state.learningReviews.find((x) => x.id === reviewId); const item = review?.items.find((x) => x.id === itemId); if (!item || item.status !== 'pending' || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim()))
+    }): HexisLearningReview { this.recordScopedMutation(); const createdAt = nowMs(); const review: HexisLearningReview = { id: randomUUID(), periodStart: input.periodStart, periodEnd: input.periodEnd, summary: String(input.summary).slice(0, 2000), status: 'pending', items: input.items.slice(0, 50).map((item) => ({ ...item, id: randomUUID(), status: 'pending', createdAt })), createdAt }; this.state.learningReviews.push(review); this.state.learningReviews = this.state.learningReviews.slice(-96); this.state.metrics.reviewsCreated += 1; return structuredClone(review); }
+    decideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string, canonicalMemoryId?: string): HexisLearningReviewItem | null { this.recordScopedMutation(); const review = this.state.learningReviews.find((x) => x.id === reviewId); const item = review?.items.find((x) => x.id === itemId); if (!item || item.status !== 'pending' || !['approve', 'correct', 'forget'].includes(decision) || (decision === 'correct' && !String(correction ?? '').trim()))
         return null; item.status = decision === 'approve' ? 'approved' : decision === 'correct' ? 'corrected' : 'forgotten'; if (correction)
         item.correction = String(correction).slice(0, 2000); if (canonicalMemoryId) item.canonicalMemoryId = String(canonicalMemoryId).slice(0, 160); item.decidedAt = nowMs(); if (review && review.items.every((x) => x.status !== 'pending')) {
         review.status = 'completed';
         review.completedAt = item.decidedAt;
     } this.state.metrics.reviewDecisions += 1; return structuredClone(item); }
-    setRetentionStatus(proposalId: string, status: 'accepted' | 'rejected'): HexisRetentionProposal | null { const proposal = this.state.retentionProposals.find((x) => x.id === proposalId); if (!proposal)
+    setRetentionStatus(proposalId: string, status: 'accepted' | 'rejected'): HexisRetentionProposal | null { this.recordScopedMutation(); const proposal = this.state.retentionProposals.find((x) => x.id === proposalId); if (!proposal)
         return null; proposal.status = status; return structuredClone(proposal); }
     proposeRetention(input: {
         memoryId: string;
@@ -633,7 +633,7 @@ export class HexisAdaptationFabric {
         fidelity01: number;
         regret01: number;
         reason: string;
-    }): HexisRetentionProposal { const proposal: HexisRetentionProposal = { id: randomUUID(), memoryId: String(input.memoryId), action: input.action, reason: String(input.reason).slice(0, 500), sourceBytes: Math.max(0, Math.floor(input.sourceBytes)), projectedBytes: Math.max(0, Math.floor(input.projectedBytes)), estimatedFidelity01: clamp(input.fidelity01), estimatedRegret01: clamp(input.regret01), status: 'proposed', createdAt: nowMs() }; this.state.retentionProposals.push(proposal); this.state.retentionProposals = this.state.retentionProposals.slice(-512); this.state.metrics.retentionProposals += 1; return structuredClone(proposal); }
+    }): HexisRetentionProposal { this.recordScopedMutation(); const proposal: HexisRetentionProposal = { id: randomUUID(), memoryId: String(input.memoryId), action: input.action, reason: String(input.reason).slice(0, 500), sourceBytes: Math.max(0, Math.floor(input.sourceBytes)), projectedBytes: Math.max(0, Math.floor(input.projectedBytes)), estimatedFidelity01: clamp(input.fidelity01), estimatedRegret01: clamp(input.regret01), status: 'proposed', createdAt: nowMs() }; this.state.retentionProposals.push(proposal); this.state.retentionProposals = this.state.retentionProposals.slice(-512); this.state.metrics.retentionProposals += 1; return structuredClone(proposal); }
     recordFidelityReceipt(input: {
         operation: HexisFidelityReceipt['operation'];
         sourceCount: number;
@@ -643,12 +643,13 @@ export class HexisAdaptationFabric {
         fidelity01: number;
         regret01: number;
         at?: number;
-    }): HexisFidelityReceipt { const base = { operation: input.operation, sourceCount: Math.max(0, Math.floor(input.sourceCount)), retainedCount: Math.max(0, Math.floor(input.retainedCount)), sourceBytes: Math.max(0, Math.floor(input.sourceBytes)), retainedBytes: Math.max(0, Math.floor(input.retainedBytes)), fidelity01: clamp(input.fidelity01), regret01: clamp(input.regret01), at: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; const receipt: HexisFidelityReceipt = { ...base, id: randomUUID(), digest: digest(base) }; this.state.fidelityReceipts.push(receipt); this.state.fidelityReceipts = this.state.fidelityReceipts.slice(-512); return structuredClone(receipt); }
+    }): HexisFidelityReceipt { this.recordScopedMutation(); const base = { operation: input.operation, sourceCount: Math.max(0, Math.floor(input.sourceCount)), retainedCount: Math.max(0, Math.floor(input.retainedCount)), sourceBytes: Math.max(0, Math.floor(input.sourceBytes)), retainedBytes: Math.max(0, Math.floor(input.retainedBytes)), fidelity01: clamp(input.fidelity01), regret01: clamp(input.regret01), at: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; const receipt: HexisFidelityReceipt = { ...base, id: randomUUID(), digest: digest(base) }; this.state.fidelityReceipts.push(receipt); this.state.fidelityReceipts = this.state.fidelityReceipts.slice(-512); return structuredClone(receipt); }
     stageHmx(input: {
         document: unknown;
         intent: HexisHmxIntent;
         strategy: HexisHmxStrategy;
     }): HexisHmxStage {
+        this.recordScopedMutation();
         const conflicts: HexisHmxStage['conflicts'] = [];
         let document: Record<string, unknown> = {};
         try {
@@ -884,7 +885,7 @@ export class HexisAdaptationFabric {
         this.state.metrics.hmxStaged += 1;
         return structuredClone(stage);
     }
-    prepareGoalProposals(stagingId: string) {
+    prepareGoalProposals(stagingId: string) { this.recordScopedMutation();
         const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
         if (!stage) throw new Error('hmx-goal-stage-not-found');
         if (!isValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
@@ -951,7 +952,7 @@ export class HexisAdaptationFabric {
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         return proposal ? structuredClone(proposal) : null;
     }
-    decideGoalProposal(id: string, decision: 'approve' | 'reject') {
+    decideGoalProposal(id: string, decision: 'approve' | 'reject') { this.recordScopedMutation();
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         if (!proposal) return null;
         if (decision !== 'approve' && decision !== 'reject') throw new Error('invalid-hmx-goal-decision');
@@ -968,7 +969,7 @@ export class HexisAdaptationFabric {
         else this.state.metrics.hmxGoalProposalsRejected++;
         return structuredClone(proposal);
     }
-    markGoalProposalMaterialized(id: string, canonicalGoalId: string) {
+    markGoalProposalMaterialized(id: string, canonicalGoalId: string) { this.recordScopedMutation();
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         if (!proposal) return null;
         const target = String(canonicalGoalId ?? '').trim();
@@ -980,7 +981,7 @@ export class HexisAdaptationFabric {
         proposal.decidedAt = nowMs();
         return structuredClone(proposal);
     }
-    markGoalProposalActivated(id: string, canonicalGoalId: string, receipt?: HexisGoalRelationshipReceipt) {
+    markGoalProposalActivated(id: string, canonicalGoalId: string, receipt?: HexisGoalRelationshipReceipt) { this.recordScopedMutation();
         const proposal = this.state.goalProposals.find((candidate) => candidate.id === String(id));
         if (!proposal) return null;
         if (proposal.status !== 'materialized' || proposal.canonicalGoalId !== String(canonicalGoalId)) throw new Error('hmx-goal-must-be-materialized-before-activation');
@@ -992,7 +993,7 @@ export class HexisAdaptationFabric {
         return structuredClone(proposal);
     }
 
-    decideHmx(stagingId: string, decision: HexisHmxDecision): HexisHmxStage | null {
+    decideHmx(stagingId: string, decision: HexisHmxDecision): HexisHmxStage | null { this.recordScopedMutation();
         const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
         if (!stage) return null;
         if (!isValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
@@ -1034,7 +1035,7 @@ export class HexisAdaptationFabric {
         kind: string;
         channel: string;
         payload: unknown;
-    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } {
+    }): HexisOutboxEntry | { ok: false; error: 'idempotency-key-required' | 'idempotency-key-conflict'; idempotencyKey: string; existingId?: string } { this.recordScopedMutation();
         const idempotencyKey = String(input.idempotencyKey ?? '').trim();
         if (!idempotencyKey) return { ok: false, error: 'idempotency-key-required', idempotencyKey };
         const kind = String(input.kind), channel = String(input.channel);
@@ -1050,15 +1051,15 @@ export class HexisAdaptationFabric {
         }
         const at = nowMs(); const entry: HexisOutboxEntry = { id: randomUUID(), idempotencyKey, kind, channel, payload: structuredClone(input.payload), status: 'pending', attempts: 0, createdAt: at, updatedAt: at }; this.state.outbox.push(entry); this.state.outbox = this.state.outbox.slice(-512); this.state.metrics.outboxQueued += 1; return structuredClone(entry);
     }
-    claimOutbox(id: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
+    claimOutbox(id: string): HexisOutboxEntry | null { this.recordScopedMutation(); const entry = this.state.outbox.find((x) => x.id === id && x.status === 'pending'); if (!entry)
         return null; entry.status = 'publishing'; entry.attempts += 1; entry.updatedAt = nowMs(); return structuredClone(entry); }
-    ackOutbox(id: string, published: boolean, error?: string): HexisOutboxEntry | null { const entry = this.state.outbox.find((x) => x.id === id); if (!entry)
+    ackOutbox(id: string, published: boolean, error?: string): HexisOutboxEntry | null { this.recordScopedMutation(); const entry = this.state.outbox.find((x) => x.id === id); if (!entry)
         return null; entry.status = published ? 'published' : (entry.attempts >= 3 ? 'failed' : 'pending'); entry.updatedAt = nowMs(); if (published) {
         entry.publishedAt = entry.updatedAt;
         this.state.metrics.outboxPublished += 1;
     } if (error)
         entry.lastError = String(error).slice(0, 500); return structuredClone(entry); }
-    reclaimOutbox(maxAgeMs = 60000): number { const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
+    reclaimOutbox(maxAgeMs = 60000): number { this.recordScopedMutation(); const cutoff = nowMs() - Math.max(1000, maxAgeMs); let count = 0; for (const entry of this.state.outbox)
         if (entry.status === 'publishing' && entry.updatedAt < cutoff) {
             entry.status = entry.attempts >= 3 ? 'failed' : 'pending';
             entry.updatedAt = nowMs();
@@ -1075,7 +1076,7 @@ export class HexisAdaptationFabric {
         maxPerWindow?: number;
         windowMs?: number;
         expiresAt?: number;
-    }): HexisConnectorPolicy {
+    }): HexisConnectorPolicy { this.recordScopedMutation();
         if (!isHmxText(input.connectorId, 128)) throw new Error('invalid-connector-id');
         if (!isHmxText(input.actionKind, 128)) throw new Error('invalid-connector-action-kind');
         if (input.allowAutonomous !== undefined && typeof input.allowAutonomous !== 'boolean') {
@@ -1125,7 +1126,7 @@ export class HexisAdaptationFabric {
         this.state.connectorPolicies = this.state.connectorPolicies.slice(-256);
         return structuredClone(policy);
     }
-    revokeConnectorPolicy(id: string): boolean { const policy = this.state.connectorPolicies.find((x) => x.id === id); if (!policy)
+    revokeConnectorPolicy(id: string): boolean { this.recordScopedMutation(); const policy = this.state.connectorPolicies.find((x) => x.id === id); if (!policy)
         return false; policy.status = 'revoked'; return true; }
     evaluateConnectorAction(input: {
         connectorId: string;
@@ -1138,7 +1139,7 @@ export class HexisAdaptationFabric {
         allowed: boolean;
         reason: string;
         policyId?: string;
-    } { const now = nowMs(); const policy = this.state.connectorPolicies.find((p) => p.status === 'active' && p.connectorId === String(input.connectorId).toLowerCase() && p.actionKind === String(input.actionKind).toLowerCase() && p.contexts.includes(input.context) && (p.expiresAt === undefined || p.expiresAt > now)); if (!policy) {
+    } { this.recordScopedMutation(); const now = nowMs(); const policy = this.state.connectorPolicies.find((p) => p.status === 'active' && p.connectorId === String(input.connectorId).toLowerCase() && p.actionKind === String(input.actionKind).toLowerCase() && p.contexts.includes(input.context) && (p.expiresAt === undefined || p.expiresAt > now)); if (!policy) {
         this.state.metrics.policyDenials += 1;
         return { allowed: false, reason: 'no-active-policy' };
     } const target = String(input.target ?? ''); if (policy.deniedTargets.includes(target)) {
@@ -1170,5 +1171,5 @@ export class HexisAdaptationFabric {
         risk01?: number;
         rationale?: string;
         requiresApproval?: boolean;
-    }): HexisExecutionPlan { const risk01 = clamp(input.risk01 ?? 0); const requested = input.requestedPlacement ?? 'local'; const resolved = risk01 >= 0.8 ? 'sandbox' : requested; const plan: HexisExecutionPlan = { id: randomUUID(), actionKind: String(input.actionKind), requestedPlacement: requested, resolvedPlacement: resolved, risk01, requiresApproval: input.requiresApproval === true || risk01 >= 0.6, rationale: String(input.rationale ?? 'explicit execution placement from Hexis adaptation'), at: nowMs() }; this.state.executions.push(plan); this.state.executions = this.state.executions.slice(-512); this.state.metrics.executionPlans += 1; return structuredClone(plan); }
+    }): HexisExecutionPlan { this.recordScopedMutation(); const risk01 = clamp(input.risk01 ?? 0); const requested = input.requestedPlacement ?? 'local'; const resolved = risk01 >= 0.8 ? 'sandbox' : requested; const plan: HexisExecutionPlan = { id: randomUUID(), actionKind: String(input.actionKind), requestedPlacement: requested, resolvedPlacement: resolved, risk01, requiresApproval: input.requiresApproval === true || risk01 >= 0.6, rationale: String(input.rationale ?? 'explicit execution placement from Hexis adaptation'), at: nowMs() }; this.state.executions.push(plan); this.state.executions = this.state.executions.slice(-512); this.state.metrics.executionPlans += 1; return structuredClone(plan); }
 }
