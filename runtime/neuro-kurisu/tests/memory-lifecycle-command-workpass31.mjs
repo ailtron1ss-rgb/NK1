@@ -88,6 +88,74 @@ const statusAfterCompensation = statusCompensationRuntime.fabric.canonicalSnapsh
 assert.equal(statusAfterCompensation?.epistemicStatus, statusBeforeFailure.epistemicStatus);
 assert.equal(statusAfterCompensation?.lastAccessAt, statusBeforeFailure.lastAccessAt);
 assert.deepEqual(statusAfterCompensation?.revisionHistory, statusBeforeFailure.revisionHistory);
+
+
+// WorkPass435: trust-signal compensation must also survive a failure after MemoryOS2
+// mutates the row but before MemoryFabric can persist its lifecycle receipt.
+const signalCompensationRuntime = new MemorySubsystemRuntime();
+const signalCompensationSeed = signalCompensationRuntime.fabric.encode(
+  makeInput('WP435 signal compensation must survive a post-mutation event failure.'),
+  { commandId: 'wp435:signal-compensation:seed' },
+);
+const signalCompensationToken = signalCompensationRuntime.fabric.captureSignalCompensation(signalCompensationSeed.id);
+assert.ok(signalCompensationToken);
+const signalBeforeFailure = signalCompensationRuntime.fabric.canonicalSnapshot().items
+  .find(item => item.id === signalCompensationSeed.id);
+assert.ok(signalBeforeFailure);
+const signalFields = [
+  'salience', 'emotionalWeight', 'identityRelevance', 'goalRelevance', 'socialRelevance',
+  'predictionError', 'temperature01', 'confidence', 'sourceAuthority01', 'evidenceSources',
+  'evidenceLineageKeys', 'dormant', 'lastAccessAt', 'revisionHistory',
+];
+const signalBaseline = Object.fromEntries(
+  signalFields.map(field => [field, structuredClone(signalBeforeFailure[field])]),
+);
+const appendSignalLifecycleEvent = signalCompensationRuntime.fabric.events.append
+  .bind(signalCompensationRuntime.fabric.events);
+let injectedSignalAppendFailure = false;
+signalCompensationRuntime.fabric.events.append = (...args) => {
+  if (!injectedSignalAppendFailure) {
+    injectedSignalAppendFailure = true;
+    throw new Error('injected-signal-lifecycle-event-append-failure');
+  }
+  return appendSignalLifecycleEvent(...args);
+};
+assert.throws(
+  () => signalCompensationRuntime.fabric.updateSignals(
+    signalCompensationSeed.id,
+    { salience: .98, confidence: .96 },
+    'workpass435-post-mutation-fault',
+    {
+      commandId: 'hexis-authority:' + 'c'.repeat(48),
+      compensationToken: signalCompensationToken,
+    },
+  ),
+  /injected-signal-lifecycle-event-append-failure/,
+);
+signalCompensationRuntime.fabric.events.append = appendSignalLifecycleEvent;
+assert.equal(injectedSignalAppendFailure, true);
+const signalAfterPartialFailure = signalCompensationRuntime.fabric.canonicalSnapshot().items
+  .find(item => item.id === signalCompensationSeed.id);
+assert.equal(signalAfterPartialFailure?.salience, .98,
+  'fault injection must occur after canonical signal mutation');
+assert.equal(signalAfterPartialFailure?.confidence, .96);
+assert.equal(
+  signalCompensationRuntime.fabric.restoreSignalsForCompensation(
+    signalCompensationSeed.id,
+    signalCompensationToken,
+    'hexis-hmx-apply-rollback',
+    { commandId: 'hexis-signals-rollback:' + 'd'.repeat(48) },
+  ),
+  true,
+  'the in-flight trust-signal compensation token must remain usable without a persisted receipt',
+);
+const signalAfterCompensation = signalCompensationRuntime.fabric.canonicalSnapshot().items
+  .find(item => item.id === signalCompensationSeed.id);
+assert.deepEqual(
+  Object.fromEntries(signalFields.map(field => [field, structuredClone(signalAfterCompensation[field])])),
+  signalBaseline,
+  'compensation must restore the exact canonical trust-signal/provenance/timestamp/history state',
+);
 const sizeAfterEncode = runtime.memoryOS.size();
 const createEventCount = runtime.events.list().filter(event => event.type === 'memory-created').length;
 const encodeStatsAfterFirst = runtime.fabric.snapshot().stats.encodes;
