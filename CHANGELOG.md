@@ -1,3 +1,11 @@
+## [NK1][WorkPass436] Make canonical HMX rollback transaction-scoped (2026-10-27)
+
+- Added an opaque MemoryOS2/MemoryFabric import-compensation token bound to the exact HMX export and staging ID. Every attempted canonical encode is registered before it mutates state; rollback can remove only rows created under that token, including quarantined/identity rows that ordinary forgetting intentionally protects.
+- Deferred the canonical 1,600-row capacity trim until the HMX transaction commits, so a later semantic/temporal projection failure cannot evict unrelated pre-existing memories first. The shared removal path now also adjusts estimated bytes and cleans inbound links consistently.
+- Wired HexisCanonicalMemoryProjector to commit the import token with status/signal tokens, scope recovery to this exact staging ID, and use the token during rollback before falling back to the ordinary deletion API. Receipt metadata is preflighted before a token-owned row is removed.
+- Added an integration regression for an archived identity import that fails in the belief-mirror projection; it asserts the imported row is gone and every baseline canonical ID remains.
+- Validation caveat: code and regression are committed, but this environment cannot reach GitHub from a local shell and the current head has no associated Actions run/status. Runtime tests/typecheck remain unverified; main and the Release ZIP are unchanged.
+
 ## [NK1][WorkPass435] Cover post-mutation trust-signal receipt failure (2026-10-27)
 
 - Added the matching fault-injection regression for `updateSignals`: mutate canonical trust/provenance fields, then throw while appending the lifecycle event before the receipt is persisted.
