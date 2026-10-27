@@ -47,6 +47,17 @@ export class SemanticMemoryGraph {
     if(existing){ existing.weight=clamp(existing.weight*.78+weight*.22); existing.lastSeen=now; this.recordMutation(ownerToken); return structuredClone(existing); }
     const edge={id:randomUUID(),from,to,relation,weight:clamp(weight),lastSeen:now}; this.state.edges=[edge,...this.state.edges].slice(0,2200); this.recordMutation(ownerToken); return structuredClone(edge);
   }
+  /** Remove one source-scoped projection without replacing unrelated graph state. */
+  removeSourceProjection(sourceKey:string,ownerToken?:string):number {
+    const key=String(sourceKey??'').trim();
+    if(!key)return 0;
+    const removed=new Set(this.state.nodes.filter(node=>String(node.sourceKey??'')===key).map(node=>node.id));
+    if(!removed.size)return 0;
+    this.state.nodes=this.state.nodes.filter(node=>!removed.has(node.id));
+    this.state.edges=this.state.edges.filter(edge=>!removed.has(edge.from)&&!removed.has(edge.to));
+    this.recordMutation(ownerToken);
+    return removed.size;
+  }
   ingestEpisode(summary:string, goalTitle?:string, location?:string):void {
     const episode=this.upsertNode(summary,'episode',.62);
     const self=this.upsertNode('kurisu-self','self',.88); this.connect(episode.id,self.id,'about',.55);
