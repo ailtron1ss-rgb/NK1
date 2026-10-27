@@ -69,7 +69,8 @@ for (let i = 0; i < 12; i++) {
 const unsupportedQuery = 'quartz nebula credential archive';
 const unsupportedRows = noEvidence.retrieve(unsupportedQuery, 8, 1, 1, { temporalMode: 'at', asOfAt: now });
 assert.deepEqual(unsupportedRows, [], 'without any evidence-bearing candidate, retrieval must abstain instead of returning recent unrelated memories');
-assert.equal(noEvidence.retrievalDiagnostics().candidateCount, 0, 'no-evidence query must not be populated by recent-memory fallback');
+const abstentionCandidateCount = noEvidence.retrievalDiagnostics().candidateCount;
+assert.equal(abstentionCandidateCount, 0, 'no-evidence query must not be populated by recent-memory fallback');
 const supportedRows = noEvidence.retrieve('zebra keyboard orchard', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.ok(supportedRows.some(row => row.id === 'unrelated-0'), 'evidence-backed retrieval must remain available after an abstention');
-console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id, unsupportedQueryResults: unsupportedRows.length, abstentionCandidateCount: noEvidence.retrievalDiagnostics().candidateCount, supportedQueryResults: supportedRows.length }));
+console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id, unsupportedQueryResults: unsupportedRows.length, abstentionCandidateCount, supportedQueryResults: supportedRows.length }));
