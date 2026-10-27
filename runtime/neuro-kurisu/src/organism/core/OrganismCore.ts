@@ -2741,7 +2741,10 @@ export class OrganismCore {
     willExportCompetence() { return this.willIntegration.exportCompetenceBundle(); }
     willValidateCompetence(bundle: unknown) { return this.willIntegration.validateCompetenceBundle(bundle); }
     async luminaValidateWebTarget(url: string) { return this.luminaAdaptation.validateWebTarget(url); }
-    hexisDiagnostics() { return this.hexisAdaptation.diagnostics(); }
+    hexisDiagnostics() {
+        const diagnostics = this.hexisAdaptation.diagnostics();
+        return { ...diagnostics, sourceTraceConflicts: this.memorySubsystem.sourceMonitor.snapshot().conflicts };
+    }
     hexisMemoryIndex(limit = 64) {
         const now = Date.now();
         const items = this.memorySubsystem.memoryOS.snapshot({ clone: false }).items;
@@ -2887,7 +2890,14 @@ export class OrganismCore {
                 previous.provenance?.sourceKind !== provenance.sourceKind ||
                 previous.provenance?.capturedAt !== provenance.capturedAt ||
                 previous.provenance?.evidenceClass !== provenance.evidenceClass ||
-                previous.provenance?.contentFingerprint !== provenance.contentFingerprint) return reject('source-trace-id-conflict');
+                previous.provenance?.contentFingerprint !== provenance.contentFingerprint) {
+                // Count conflicting attempts without allowing them to replace the first accepted trace.
+                this.memorySubsystem.sourceMonitor.record({
+                    id, source: source as 'user' | 'system' | 'world' | 'tool', kind, confidence, epistemicStatus, at, provenance,
+                });
+                this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
+                return reject('source-trace-id-conflict');
+            }
         } else {
             this.memorySubsystem.sourceMonitor.record({
                 id, source: source as 'user' | 'system' | 'world' | 'tool', kind, confidence, epistemicStatus, at, provenance,
