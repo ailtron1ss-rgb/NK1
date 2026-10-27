@@ -2835,17 +2835,30 @@ export class OrganismCore {
     hexisIngestEvidenceLineage(input: unknown) {
         const reject = (reason: string) => ({ accepted: false as const, added: false as const, reason });
         if (!input || typeof input !== 'object' || Array.isArray(input)) return reject('invalid-evidence-request');
-        const request = input as Record<string, unknown>;
+        const asOwnDataRecord = (value: unknown): Record<string, unknown> | null => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+            const keys = Object.keys(value);
+            if (keys.length > 32) return null;
+            const out = Object.create(null) as Record<string, unknown>;
+            for (const key of keys) {
+                const descriptor = Object.getOwnPropertyDescriptor(value, key);
+                if (!descriptor || !('value' in descriptor)) return null;
+                out[key] = descriptor.value;
+            }
+            return out;
+        };
+        const request = asOwnDataRecord(input);
+        if (!request) return reject('invalid-evidence-request');
         const memoryId = request.memoryId;
         const sourceContent = request.sourceContent;
         const rawTrace = request.trace;
         if (typeof memoryId !== 'string' || !memoryId.trim() || memoryId !== memoryId.trim() ||
-            memoryId.length > 192 || /[\\x00-\\x1f\\x7f-\\x9f]/u.test(memoryId)) return reject('memory-identity-invalid');
+            memoryId.length > 192 || /[\x00-\x1f\x7f-\x9f]/u.test(memoryId)) return reject('memory-identity-invalid');
         if (typeof sourceContent !== 'string' || sourceContent.length < 1 || sourceContent.length > 65536) {
             return reject('source-content-invalid');
         }
-        if (!rawTrace || typeof rawTrace !== 'object' || Array.isArray(rawTrace)) return reject('source-trace-invalid');
-        const trace = rawTrace as Record<string, unknown>;
+        const trace = asOwnDataRecord(rawTrace);
+        if (!trace) return reject('source-trace-invalid');
         const id = trace.id;
         const source = trace.source;
         const kind = trace.kind;
@@ -2854,10 +2867,10 @@ export class OrganismCore {
         const at = trace.at;
         const provenance = normalizeEvidenceLineageProvenance(trace.provenance);
         if (typeof id !== 'string' || !id.trim() || id !== id.trim() || id.length > 192 ||
-            /[\\x00-\\x1f\\x7f-\\x9f]/u.test(id)) return reject('source-trace-id-invalid');
+            /[\x00-\x1f\x7f-\x9f]/u.test(id)) return reject('source-trace-id-invalid');
         if (!['user', 'system', 'world', 'tool'].includes(String(source))) return reject('source-not-independent');
         if (typeof kind !== 'string' || !kind.trim() || kind !== kind.trim() || kind.length > 64 ||
-            /[\\x00-\\x1f\\x7f-\\x9f]/u.test(kind)) return reject('source-kind-invalid');
+            /[\x00-\x1f\x7f-\x9f]/u.test(kind)) return reject('source-kind-invalid');
         if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) return reject('observation-confidence-invalid');
         if (epistemicStatus !== 'observation' && epistemicStatus !== 'fact') return reject('epistemic-status-not-observation');
         if (typeof at !== 'number' || !Number.isSafeInteger(at) || at < 0 || at > Date.now() + 5 * 60_000) return reject('observation-time-invalid');
