@@ -14,6 +14,7 @@ export function canonicalizeHoldoutRows(rows) {
     .map((row) => ({
       id: row.id,
       query: normalizeHoldoutQuery(row.query),
+      ...(row.language === undefined ? {} : { language: row.language }),
       relevantIds: [...new Set(row.relevantIds)].sort(),
       split: row.split,
       answerable: row.answerable !== false,
