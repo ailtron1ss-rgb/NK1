@@ -568,6 +568,61 @@ assert.equal(linkSupportCacheRuntime.memoryOS.semanticEmbeddingRetry.has(linkSup
 assert.equal(linkCacheVersionBeforeRemoval, linkSupportCacheRuntime.memoryOS.snapshot().linkUpdates,
   'the regression must cover removal without a linkUpdates version bump');
 
+// WorkPass441: the ordinary maintenance hard-cap must use the shared remover
+// instead of slicing the canonical array and leaving its inverted indexes stale.
+const maintenanceCapRuntime = new MemorySubsystemRuntime();
+const maintenanceCapSeed = maintenanceCapRuntime.fabric.encode(
+  makeInput('WP441 protected-row maintenance capacity seed.'),
+  { commandId: 'wp441:capacity-seed' },
+);
+const maintenanceCapState = maintenanceCapRuntime.memoryOS.snapshot();
+const maintenanceCapTemplate = maintenanceCapState.items.find(item => item.id === maintenanceCapSeed.id);
+assert.ok(maintenanceCapTemplate);
+const maintenanceCapRows = Array.from({ length: 1601 }, (_, index) => ({
+  ...structuredClone(maintenanceCapTemplate),
+  id: index === 0 ? maintenanceCapTemplate.id : 'wp441-maintenance-protected-' + String(index).padStart(4, '0'),
+  content: index === 0 ? maintenanceCapTemplate.content : 'WP441 protected maintenance row ' + index,
+  contentHash: '',
+  kind: 'identity',
+  epistemicStatus: 'quarantined',
+  source: 'wp441-maintenance-protected',
+  tags: ['wp441-maintenance-protected'],
+  context: { branch: 'wp441-maintenance-protected', ordinal: String(index) },
+  semanticVector: [],
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  evidenceSources: [],
+  evidenceLineageKeys: [],
+  revisionHistory: [],
+  lastAccessAt: Date.now(),
+  createdAt: Date.now(),
+  revisionGroupId: 'wp441-maintenance-protected-' + String(index).padStart(4, '0'),
+  revisionSequence: 1,
+}));
+const maintenanceCapOldestId = maintenanceCapRows[1600].id;
+maintenanceCapRuntime.memoryOS.restore({
+  ...maintenanceCapState,
+  items: maintenanceCapRows,
+  estimatedBytes: 0,
+  lastConflictScanAt: Date.now(),
+}, { allowOverCapacity: true });
+assert.equal(maintenanceCapRuntime.fabric.canonicalSize(), 1601);
+maintenanceCapRuntime.memoryOS.maintain({ maxItems: 1600, pressure01: 0 });
+assert.equal(maintenanceCapRuntime.fabric.canonicalSize(), 1600);
+assert.equal(
+  maintenanceCapRuntime.fabric.canonicalSnapshot().items.some(item => item.id === maintenanceCapOldestId),
+  false,
+  'the normal maintenance hard cap should evict the oldest canonical row',
+);
+assert.equal(
+  maintenanceCapRuntime.memoryOS.indexDiagnostics().pass,
+  true,
+  'maintenance eviction must rebuild/maintain canonical, inverted, DF and character-gram indexes',
+);
+
 console.log(JSON.stringify({
   ok: true,
   canonicalItems: restored.memoryOS.size(),
