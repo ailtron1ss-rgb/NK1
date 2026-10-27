@@ -427,7 +427,8 @@ export class MemoryFabric {
     if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return accountFallback();
     const rows=outcome.result.items.slice(0,safeLimit);
     const selected=this.memoryOS.recordSelectedRetrieval(query,rows.map(row=>row.id),goalRelevance,identityRelevance,
-      {temporalMode:context.temporalMode,asOfAt:context.asOfAt});
+      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
+      outcome.result.semantic.candidateCount??rows.length);
     this.recordRetrievalOutcome(query,selected,{
       tick:context.tick,
       emitEvent:context.tick!==undefined,
