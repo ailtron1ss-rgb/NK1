@@ -1,3 +1,8 @@
+## [NK1][WorkPass449] Prevent unchanged Live2D expressions from restarting (2026-10-27)
+
+- Ported the expression cache to the runtime-packaged Live2D viewer: it remembers the last successfully applied expression and skips duplicate requests. Mouth/body updates no longer need to restart an unchanged expression.
+- The prior WorkPass110 run failed because `runtime/neuro-kurisu/public/live2d/viewer.html` lacked the expression cache that the integrity regression requires; the app viewer already had the newer behavior. Exact-head asset-integrity CI must re-run.
+
 ## [NK1][WorkPass448] Reconcile learning dedupe caches without losing newest IDs (2026-10-27)
 
 - P23 restore now preserves the persisted newest-first identity-cache order and adds IDs reconstructed from durable experience/replay rows. When the cache is full, only its oldest tail is evicted to make room for missing durable identities.
