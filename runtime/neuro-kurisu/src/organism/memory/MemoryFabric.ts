@@ -665,11 +665,7 @@ export class MemoryFabric {
   }
 
   revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string;compensationToken?:string}={}){
-    return this.applyLifecycleCommand({action:'revise-status',id,to,reason,tick:options?.tick,commandId:options?.commandId}) as void;
-  }
-
-  updateSignals(id:string,patch:Parameters<MemoryOS2['updateSignals']>[1],reason='reconsolidation',context:{tick?:number;commandId?:string;compensationToken?:string}={}){
-    return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,...context}) as MemoryItem2|null;
+    return this.applyLifecycleCommand({action:'revise-status',id,to,reason,tick:options?.tick,commandId:options?.commandId,compensationToken:options?.compensationToken}) as void;
   }
 
   reviseContent(id:string,newContent:string,options:Parameters<MemoryOS2['reviseContent']>[2]={},context:{tick?:number;commandId?:string}={}){
