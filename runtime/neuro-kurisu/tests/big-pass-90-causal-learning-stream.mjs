@@ -13,7 +13,10 @@ const trace={
 
 const stream=new CausalExperienceStream(16);
 stream.observe(trace);
-const record=stream.recordOutcome(trace,mkState({tick:2,at:1100,needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75}}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
+const record=stream.recordOutcome(trace,mkState({
+  tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8,
+  needs:{...mkState().needs,energy:.55,uncertainty:.4,novelty:.75},
+}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75});
 
 assert.ok(record);
 assert.ok(record.causalStrength01>.3);
@@ -50,7 +53,7 @@ const persisted=stream.snapshot();
 const restored=new CausalExperienceStream(16);
 restored.restore(persisted);
 assert.deepEqual(restored.recent(8),stream.recent(8));
-assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
+assert.equal(restored.recordOutcome(trace,mkState({tick:2,at:1100,lastAction:'explore',lastActionSuccess:.8}),{reward01:.8,success01:.8,surprise01:.7,novelty01:.75}),null,
   "restored trace identity must prevent recording the same runtime outcome twice");
 assert.ok(Array.isArray(restored.snapshot().recordedTraceIds));
 const consolidated=restored.consolidate(8,1200);
