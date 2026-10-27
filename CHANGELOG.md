@@ -1,3 +1,12 @@
+## [NK1][WorkPass470] Validate HMX receipt against post-transition stage (2026-10-27)
+
+- Fixed first-apply receipt validation to construct the exact applied candidate with the receipt attached and a refreshed lifecycle seal before validation. The prior path validated an accepted stage, contradicting the validator's explicit applied-status invariant and rejecting valid HMX applications after canonical projection had returned a receipt.
+- The original stage is only committed as applied after the candidate receipt passes the same integrity contract used for replay/restore.
+
+## [NK1][WorkPass469] Register WorkPass294 regression test as an npm script (2026-10-27)
+
+- Added the missing test:workpass294:correlated-postcondition script in runtime/neuro-kurisu/package.json, pointing to the existing Node 24-compatible regression file. This closes a workflow-to-package wiring gap that had made the typecheck pass and then failed immediately with an npm missing-script error.
+
 ## [NK1][WorkPass468] Return canonical trusted shadow registration (2026-10-27)
 
 - Fixed `OrganismCore.registerTrustedSkillShadowRun` to return the durable registry's canonical registered context instead of discarding it as `void`. Restart/re-registration callers can now verify idempotency against the persisted `registeredAt` without bypassing the Core-owned registry.
