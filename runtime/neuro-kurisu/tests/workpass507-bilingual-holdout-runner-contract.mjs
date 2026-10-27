@@ -16,15 +16,20 @@ assert.equal(normalizeHoldoutQuery('A/B + C'), 'a b c', 'punctuation and symbols
 assert.equal(normalizeHoldoutQuery('One\n\tTwo'), 'one two', 'whitespace collapses to one ASCII space');
 
 const rows=[
-  {id:'q2',query:'WHAT—Now?',relevantIds:['memory-b','memory-a'],split:'holdout'},
-  {id:'q1',query:'A/B',relevantIds:['memory-z'],split:'train',answerable:true},
+  {id:'q2',query:'WHAT—Now?',relevantIds:['memory-b','memory-a'],split:'holdout',language:'en'},
+  {id:'q1',query:'A/B',relevantIds:['memory-z'],split:'train',answerable:true,language:'ru'},
 ];
 const reordered=[
-  {id:'q1',query:'a b',relevantIds:['memory-z'],split:'train',answerable:true},
-  {id:'q2',query:'what now',relevantIds:['memory-a','memory-b'],split:'holdout',answerable:true},
+  {id:'q1',query:'a b',relevantIds:['memory-z'],split:'train',answerable:true,language:'ru'},
+  {id:'q2',query:'what now',relevantIds:['memory-a','memory-b'],split:'holdout',answerable:true,language:'en'},
 ];
 assert.equal(hashHoldoutRows(rows),hashHoldoutRows(reordered),'canonical fingerprint ignores input order, label order and equivalent query punctuation');
-assert.notEqual(hashHoldoutRows(rows),hashHoldoutRows([...reordered,{id:'q3',query:'new',relevantIds:[],split:'holdout',answerable:false}]),'fingerprint changes when evidence rows change');
+assert.notEqual(
+  hashHoldoutRows(reordered),
+  hashHoldoutRows(reordered.map((row) => row.id === 'q1' ? {...row, language:'en'} : row)),
+  'fingerprint binds explicit language annotations',
+);
+assert.notEqual(hashHoldoutRows(rows),hashHoldoutRows([...reordered,{id:'q3',query:'new',relevantIds:[],split:'holdout',answerable:false,language:'en'}]),'fingerprint changes when evidence rows change');
 
 const result=spawnSync(process.execPath,['--experimental-strip-types',runner],{cwd:root,encoding:'utf8',timeout:15000});
 assert.equal(result.error,undefined,'runner must start and parse successfully');
