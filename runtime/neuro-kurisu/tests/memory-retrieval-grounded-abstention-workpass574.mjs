@@ -71,7 +71,7 @@ encode(identifierRecall, {
   kind: 'semantic',
   content: 'Policy for mobile continuity verification and durable memory consistency.',
 });
-const explicitIdentifier = identifierRecall.retrieve('What is the policy for RUN-501?', 3, 0, 0);
+const explicitIdentifier = identifierRecall.retrieve('What is the policy for RUN-501?', 3, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.ok(
   explicitIdentifier.some(row => row.id === 'run-501-memory'),
   'exact identifier evidence must survive the answerability gate',

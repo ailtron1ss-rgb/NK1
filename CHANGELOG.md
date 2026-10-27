@@ -1,3 +1,9 @@
+## [NK1][WorkPass580] Align identifier regression clock with fixture validity (2026-10-27)
+
+- Correct the new RUN-501 regression to query at its explicit fixture timestamp. The test seeds memory at a future timestamp and must use `temporalMode: 'at'`; otherwise the temporal eligibility layer correctly excludes the item before the identifier gate is evaluated.
+- This is a test-fixture correction, not a relaxation of temporal safety or answerability thresholds.
+- Core regression rerun is required; identifier holdout and the full retrieved-memory regression remain unverified on this fix.
+
 ## [NK1][WorkPass579] Preserve exact-identifier retrieval under grounded abstention (2026-10-27)
 
 - Extend MemoryOS2 answerability gating with an exact-identifier evidence path for structured IDs, incident/run IDs and long hexadecimal identifiers.
