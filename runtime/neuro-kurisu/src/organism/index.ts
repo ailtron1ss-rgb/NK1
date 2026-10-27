@@ -70,3 +70,5 @@ export * from './brain_fusion/ClosedLoopRuntimeOrchestrator.ts';
 export * from './brain_fusion/BehaviourChangeEvaluator.ts';
 export * from './cognition/BoundedRecurrentStateSubstrate.ts';
 export * from './memory/MemoryBudgetCausalHarness.ts';
+
+export * from './integration/HexisEvidenceBridge.ts';
