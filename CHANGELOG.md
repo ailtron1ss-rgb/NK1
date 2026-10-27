@@ -1,3 +1,9 @@
+## [NK1][WorkPass448] Reconcile learning dedupe caches without losing newest IDs (2026-10-27)
+
+- P23 restore now preserves the persisted newest-first identity-cache order and adds IDs reconstructed from durable experience/replay rows. When the cache is full, only its oldest tail is evicted to make room for missing durable identities.
+- Updated the restore regression to assert both requirements: `trace-newest` remains first, and the cache-less `replay-1` identity is reconstructed from its durable replay row.
+- CI previously failed because durable-row IDs were prepended ahead of the cache and displaced the newest cache identity; the updated exact-head regression still needs to run.
+
 ## [NK1][WorkPass447] Use numeric tolerance for transfer deltas (2026-10-27)
 
 - Changed the forward-transfer regression to compare the computed delta within `1e-12` instead of strict equality, avoiding a false failure from ordinary IEEE-754 representation (`0.14999999999999997` versus `0.15`). The measured transfer formula is unchanged.
