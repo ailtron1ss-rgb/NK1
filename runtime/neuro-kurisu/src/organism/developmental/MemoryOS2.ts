@@ -5,7 +5,7 @@ import { canonicalizeMemoryContent, deriveMemoryIdentity, mergeMemoContext, merg
 import { LocalEmbeddingProvider, type TextEmbeddingProvider } from './LocalEmbeddingProvider.ts';
 import { cosineSimilarity, fnv1a32 } from '../core/NumericPrimitives.ts';
 
-const MAX_CANONICAL_MEMORY_ITEMS = 1600;
+export const MAX_CANONICAL_MEMORY_ITEMS = 1600;
 export type EpistemicStatus='fact'|'belief'|'hypothesis'|'unknown'|'quarantined';
 export type MemoryProvenanceClass='device'|'external'|'user'|'agent'|'derived'|'simulation'|'unknown';
 export interface MemoryEvidenceSource {
