@@ -105,6 +105,7 @@ const replay=makeRun('posthoc-replay');
 const interleaved=makeRun('interleaved');
 const contextAware=makeContextAwareRun();
 console.log('P26_CONTEXT_AWARE_DIAGNOSTIC',JSON.stringify(contextAware));
+console.log('P26_REPLAY_STRATEGY_DIAGNOSTIC',JSON.stringify({onlineOnly,replay,interleaved}));
 for(const [name,result] of Object.entries({onlineOnly,replay,interleaved})){
   for(const metric of ['taskABefore','taskAAfterInterference','taskAAfterReplay','taskBFinal'])assert(Number.isFinite(result[metric])&&result[metric]>=0&&result[metric]<=1,name+'.'+metric+' out of range');
 }
