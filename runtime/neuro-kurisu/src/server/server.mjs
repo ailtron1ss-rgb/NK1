@@ -6,6 +6,7 @@ import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsRe
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
@@ -35,6 +36,8 @@ const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').rep
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
+// Server-only provider instance; the adapter remains disabled unless explicitly opted in.
+const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
@@ -157,6 +160,8 @@ const runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
     enableLanguage: true,
+    mem0Adapter: MEM0_MEMORY_ADAPTER,
+    mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
     autoRun: true,
@@ -1925,6 +1930,44 @@ async function route(req, res) {
             }
             const memories = q ? (temporalMode === 'current' && asOfAt === undefined ? runtime.core.memoryInspectorSearch(q, limit) : runtime.core.memoryRetrieveTemporal(q, limit, temporalMode, asOfAt)) : runtime.core.memoryInspectorSnapshot(limit);
             return json(res, 200, { ok: true, query: q, temporalMode, asOfAt: asOfAt ?? Date.now(), memories, embeddingMaintenance: runtime.core.memoryEmbeddingMaintenanceDiagnostics(), note: 'Read-only diagnostic view of canonical MemoryOS2 memories plus derived experience tier; this endpoint does not mutate memory.' });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/memory/mem0/diagnostics') {
+            return json(res, 200, {
+                ok: true,
+                readOnly: true,
+                diagnostics: MEM0_MEMORY_ADAPTER.diagnostics(),
+                canonicalMemory: 'MemoryOS2',
+                cognitiveRecallEnabled: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
+            });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/memory/mem0/search') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)) {
+                return json(res, 400, { ok: false, error: 'invalid-request-body' });
+            }
+            const query = String(input.query ?? '').trim().slice(0, 500);
+            if (!query) return json(res, 400, { ok: false, error: 'missing-query' });
+            const rawLimit = Number(input.limit ?? 5);
+            const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(10, Math.floor(rawLimit))) : 5;
+            // Canonical local memory remains authoritative; external candidates are separate and untrusted.
+            const canonicalMemories = runtime.core.memoryInspectorSearch(query, limit);
+            const external = await MEM0_MEMORY_ADAPTER.search(query, limit);
+            return json(res, 200, {
+                ok: true,
+                query,
+                canonical: { source: 'MemoryOS2', authoritative: true, memories: canonicalMemories },
+                externalCandidates: external.memories,
+                mem0: { status: external.status, errorCode: external.errorCode, diagnostics: external.diagnostics },
+                policy: {
+                    autoPromotion: false,
+                    canonicalWrite: false,
+                    instructionExecution: false,
+                    userScopeFromServerEnvironment: true,
+                    cognitiveRecallRequiresSeparateOptIn: true,
+                },
+                note: 'Remote Mem0 results are untrusted recall candidates. Verify provenance before adopting; NK1 canonical memory is unchanged.',
+            });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/experience-continuum') {
             const query = url.searchParams.get('q') || '';
