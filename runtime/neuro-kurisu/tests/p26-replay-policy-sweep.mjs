@@ -45,6 +45,20 @@ function accuracy(engine,seed,task){
   }
   return correct/100;
 }
+
+// A requested 1:1 cadence is bounded to the default one replay per four current updates.
+const cadenceProbe = new P26TrueLearningEngine().trainInterleaved([], [], { replayEveryNCurrent: 1 });
+assert.equal(cadenceProbe.effectiveReplayEveryNCurrent, 4);
+assert.equal(cadenceProbe.maxReplayFraction01, .25);
+const replaySample = { state: makeState(1, 0, 0), action: 'respond', reward: .5, nextState: makeState(1, 1, 0) };
+const disabledReplayProbe = new P26TrueLearningEngine().trainInterleaved([replaySample], [replaySample], {
+  replayEveryNCurrent: 1, maxReplayFraction01: 0,
+});
+assert.equal(disabledReplayProbe.effectiveReplayEveryNCurrent, Number.MAX_SAFE_INTEGER);
+assert.equal(disabledReplayProbe.onlineUpdates, 1);
+assert.equal(disabledReplayProbe.replayUpdates, 0, 'maxReplayFraction01=0 must disable historical updates');
+assert.throws(() => new P26TrueLearningEngine().trainInterleaved([], [], { maxReplayFraction01: 1.1 }), /max-replay-fraction-out-of-range/);
+
 const strategies=[
   {name:'online-only',stride:0},
   {name:'interleave-8',stride:8},
@@ -60,7 +74,7 @@ for(const seed of seeds){
     const oldBefore=accuracy(engine,seed,0);
     const oldReplay=allActions(taskA,0);
     const fresh=allActions(taskB,1);
-    let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0;
+    let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,effectiveReplayEveryNCurrent=strategy.stride,maxReplayFraction01=.25;
     if(strategy.stride===0){
       for(let epoch=0;epoch<epochs;epoch++)for(const row of fresh)
         engine.learner.train({state:row.state,action:row.action,target01:row.reward,learningRate01:.18});
@@ -74,6 +88,10 @@ for(const seed of seeds){
         blockedReplayRows+=result.blockedReplayRows;
         eligibleReplayRows=result.eligibleReplayRows;
         conflictComparisons+=result.conflictComparisons;
+        effectiveReplayEveryNCurrent=result.effectiveReplayEveryNCurrent;
+        maxReplayFraction01=result.maxReplayFraction01;
+        assert.ok(result.effectiveReplayEveryNCurrent>=strategy.stride,'effective replay cadence must honor the requested minimum interval');
+        assert.ok(result.effectiveReplayEveryNCurrent>=4,'default replay ceiling must keep at least three current updates between replay updates');
         assert.ok(result.conflictComparisons<=oldReplay.length*32,'bounded candidate comparisons');
       }
     }
@@ -81,9 +99,9 @@ for(const seed of seeds){
     for(const [key,value] of Object.entries({oldBefore,oldAfter,newAfter})){
       assert.ok(Number.isFinite(value)&&value>=0&&value<=1, strategy.name+'.'+key+' must be valid');
     }
-    assert.ok(newAfter>.60,'each policy must retain useful new-task performance');
+    assert.ok(newAfter>.60,'each policy must retain useful new-task performance: '+JSON.stringify({seed,strategy:strategy.name,newAfter,oldAfter,blockedReplayRows,eligibleReplayRows,conflictComparisons}));
     if(strategy.stride>0)assert.equal(blockedReplayRows,0,'well-separated contexts must not be misclassified as same-context conflict');
-    records.push({seed,strategy:strategy.name,oldBefore,oldAfter,newAfter,retentionDelta:oldAfter-oldBefore,
+    records.push({seed,strategy:strategy.name,requestedReplayEveryNCurrent:strategy.stride,effectiveReplayEveryNCurrent,maxReplayFraction01,oldBefore,oldAfter,newAfter,retentionDelta:oldAfter-oldBefore,
       replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons});
   }
 }
@@ -91,7 +109,7 @@ const summary=strategies.map(strategy=>{
   const group=records.filter(row=>row.strategy===strategy.name);
   const mean=key=>group.reduce((sum,row)=>sum+row[key],0)/group.length;
   return {strategy:strategy.name,seeds:group.length,meanOldTaskBefore:mean('oldBefore'),meanOldTaskAfter:mean('oldAfter'),
-    meanNewTask:mean('newAfter'),meanRetentionDelta:mean('retentionDelta'),meanReplayUpdates:mean('replayUpdates'),
+    meanNewTask:mean('newAfter'),meanRetentionDelta:mean('retentionDelta'),meanReplayUpdates:mean('replayUpdates'),meanEffectiveReplayEveryNCurrent:mean('effectiveReplayEveryNCurrent'),
     meanConflictComparisons:mean('conflictComparisons')};
 });
 assert.equal(records.length,seeds.length*strategies.length);

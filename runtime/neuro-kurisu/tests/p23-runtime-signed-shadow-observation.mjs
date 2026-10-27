@@ -7,6 +7,7 @@ import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import { proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
+import { computeVersionedSkillCandidateId } from '../src/organism/learning/VersionedSkillCandidateStore.ts';
 
 const root = await mkdtemp(path.join(os.tmpdir(), 'nk1-signed-shadow-e2e-'));
 const priorKeys = process.env.NEURO_SKILL_SHADOW_VERIFIER_KEYS_JSON;
@@ -77,9 +78,12 @@ try {
     return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
   };
   const payloadFingerprint = createHash('sha256').update(canonical(skill)).digest('hex');
-  const expectedCandidateId = createHash('sha256')
-    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint]))
-    .digest('hex');
+  const expectedCandidateId = computeVersionedSkillCandidateId({
+    skillId: skill.id,
+    version: 1,
+    proposalId: proposal.proposalId,
+    payloadFingerprint,
+  });
   const runtimeVersion = 'nk1-e2e-runtime-145';
   const stateFile = path.join(root, 'organism.json');
   const observationFileName = 'verified-skill-shadow-observation.json';

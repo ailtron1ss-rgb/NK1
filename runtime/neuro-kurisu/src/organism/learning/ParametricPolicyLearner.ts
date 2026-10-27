@@ -37,6 +37,45 @@ const featureNames=[
   'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost'
 ];
 
+function assertTrainingInput(input: unknown): asserts input is {
+  state: OrganismState; action: ActionKind; target01: number; learningRate01: number;
+  sampleWeight01?: number; extras?: { external01?:number; boredom01?:number; resourceRisk01?:number; thermalPressure01?:number; bodyCapacity01?:number };
+} {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('training-input-must-be-object');
+  const row=input as Record<string,unknown>;
+  if (typeof row.target01!=='number'||!Number.isFinite(row.target01)) throw new RangeError('target-must-be-finite');
+  if (typeof row.learningRate01!=='number'||!Number.isFinite(row.learningRate01)) throw new RangeError('rate-must-be-finite');
+  if (row.sampleWeight01!==undefined&&(typeof row.sampleWeight01!=='number'||!Number.isFinite(row.sampleWeight01))) throw new RangeError('sample-weight-must-be-finite');
+  if (typeof row.action!=='string'||!ACTIONS.includes(row.action as ActionKind)) throw new TypeError('invalid-action');
+  if (!row.state||typeof row.state!=='object'||Array.isArray(row.state)) throw new TypeError('state-must-be-object');
+  const state=row.state as Record<string,unknown>;
+  if (!state.needs||typeof state.needs!=='object'||Array.isArray(state.needs)) throw new TypeError('state-must-have-needs');
+  const needs=state.needs as Record<string,unknown>;
+  for (const key of ['energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed','identityCoherence']) {
+    if (typeof needs[key]!=='number'||!Number.isFinite(needs[key])) throw new TypeError('state-needs-must-be-finite');
+  }
+  for (const key of ['predictionError','attentionBudget']) {
+    if (typeof state[key]!=='number'||!Number.isFinite(state[key])) throw new TypeError('state-features-must-be-finite');
+  }
+  if (row.extras!==undefined) {
+    if (!row.extras||typeof row.extras!=='object'||Array.isArray(row.extras)) throw new TypeError('training-extras-must-be-object');
+    const extras=row.extras as Record<string,unknown>;
+    for (const key of ['external01','boredom01','resourceRisk01','thermalPressure01','bodyCapacity01']) {
+      if (extras[key]!==undefined&&(typeof extras[key]!=='number'||!Number.isFinite(extras[key]))) throw new TypeError('training-extras-must-be-finite');
+    }
+  }
+}
+
+function assertFeatureTrainingInput(input: unknown): asserts input is {features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number} {
+  if (!input || typeof input!=='object'||Array.isArray(input)) throw new TypeError('training-input-must-be-object');
+  const row=input as Record<string,unknown>;
+  if (typeof row.target01!=='number'||!Number.isFinite(row.target01)) throw new RangeError('target-must-be-finite');
+  if (typeof row.learningRate01!=='number'||!Number.isFinite(row.learningRate01)) throw new RangeError('rate-must-be-finite');
+  if (row.sampleWeight01!==undefined&&(typeof row.sampleWeight01!=='number'||!Number.isFinite(row.sampleWeight01))) throw new RangeError('sample-weight-must-be-finite');
+  if (typeof row.action!=='string'||!ACTIONS.includes(row.action as ActionKind)) throw new TypeError('invalid-action');
+  if (!Array.isArray(row.features)||!row.features.every(value=>typeof value==='number'&&Number.isFinite(value))) throw new TypeError('features-must-be-finite');
+}
+
 export function defaultParametricPolicy():ParametricPolicyState{
   const weights={} as Record<ActionKind,number[]>;
   const bias={} as Record<ActionKind,number>;
@@ -81,6 +120,14 @@ export class ParametricPolicyLearner{
     const d=defaultParametricPolicy();
     const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
     this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
+    this.state.version=1;
+    this.state.updates=typeof raw?.updates==='number'&&Number.isSafeInteger(raw.updates)&&raw.updates>=0?raw.updates:d.updates;
+    this.state.tdAbsMean01=typeof raw?.tdAbsMean01==='number'&&Number.isFinite(raw.tdAbsMean01)&&raw.tdAbsMean01>=0&&raw.tdAbsMean01<=1?raw.tdAbsMean01:d.tdAbsMean01;
+    this.state.trainRewardMean01=typeof raw?.trainRewardMean01==='number'&&Number.isFinite(raw.trainRewardMean01)&&raw.trainRewardMean01>=0&&raw.trainRewardMean01<=1?raw.trainRewardMean01:d.trainRewardMean01;
+    this.state.explorationRate01=typeof raw?.explorationRate01==='number'&&Number.isFinite(raw.explorationRate01)&&raw.explorationRate01>=0&&raw.explorationRate01<=1?raw.explorationRate01:d.explorationRate01;
+    this.state.lastLoss01=typeof raw?.lastLoss01==='number'&&Number.isFinite(raw.lastLoss01)&&raw.lastLoss01>=0&&raw.lastLoss01<=1?raw.lastLoss01:d.lastLoss01;
+    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0?raw.lastTrainedAt:d.lastTrainedAt;
+    this.state.frozen=raw?.frozen===true;
     for(const a of ACTIONS){
       const savedWeights=Array.isArray(raw?.weights?.[a])?raw!.weights![a]:[];
       this.state.weights[a]=featureNames.map((name,index)=>{
@@ -120,6 +167,7 @@ export class ParametricPolicyLearner{
   }
 
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    assertTrainingInput(input);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +194,7 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    assertFeatureTrainingInput(input);
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
@@ -169,6 +218,10 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if(!Array.isArray(samples)) throw new TypeError('training-batch-must-be-array');
+    // Validate the entire batch before the first weight update so a malformed later
+    // row cannot leave a partially trained model behind.
+    for(const sample of samples) assertTrainingInput(sample);
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};

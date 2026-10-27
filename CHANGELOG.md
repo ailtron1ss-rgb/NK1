@@ -1,3 +1,109 @@
+## [NK1][WorkPass489] Align cycle-order assertion with the runtime-owned snapshot API (2026-10-27)
+
+- The broad source regression moved past the embodiment-order check and exposed another stale WorkPass319 symbol: the test expected `setUnifiedCognitiveCycle`, while the current runtime persists the completed snapshot through `setRuntimeUnifiedCognitiveCycle`.
+- Assert the actual runtime-owned Core API inside the cycle-closing block. The assertion still requires the snapshot of the just-evaluated unified cycle to be persisted before completeness evidence is emitted; no cycle gate or production code is bypassed.
+- Re-run the broad exact-head source regression and WorkPass110 before considering the source integration pass closed.
+
+## [NK1][WorkPass488] Anchor embodiment-order regression to the active cycle (2026-10-27)
+
+- The broad recovered-runtime regression reached WorkPass319 after passing the restored action-receipt tamper gate, finalizer boundary, canonical planner wrapper, project reconciliation, causal replay, and memory-doctor CLI checks.
+- The WorkPass319 static test used a file-global `indexOf` for `setEmbodiment`, so it found the earlier initialization-time call rather than the cycle's actual embodiment persistence after `closeB380TemporalLife`. The runtime already commits the cycle embodiment at the required point.
+- Scope the lookup to begin after the life-course update and assert it exists there; retain the full ordering contract through cycle ledger, evaluation, completeness evidence, and evidence persistence. No runtime behavior or acceptance criteria are loosened. Re-run the broad suite on the new exact head.
+
+## [NK1][WorkPass487] Make the CLI future-evidence fixture exceed the policy tolerance (2026-10-27)
+
+- The canonical MemoryOS2 doctor classifies an observation/freshness timestamp as future evidence only when it exceeds the current time by more than five minutes. The CLI test used a timestamp just 60 seconds ahead and incorrectly expected the future-evidence counter to increase.
+- Move the fixture to one hour ahead, matching the existing WorkPass314 unit test and preserving the production five-minute tolerance and error-reporting behavior. This corrects test data; no validator threshold was weakened.
+- Re-run the broad recovered-runtime workflow on the exact updated head before closing pass 2.
+
+## [NK1][WorkPass486] Route compound-skill steps through the canonical Core wrapper (2026-10-27)
+
+- WorkPass97 caught the remaining direct ActionGateway execution path in compound skill steps. It duplicated finalization for unkeyed execution and bypassed the single Core-owned tool-ID normalization/finalizer wrapper.
+- Extend `OrganismCore.executeTool` with optional finalization context keys and route compound skill steps through it. The wrapper still returns immediately for keyed actions and replays because ActionGateway owns their atomic finalization; unkeyed skill steps are finalized once by Core with the preserved runtime-input keys.
+- Remove the skill-local manual finalizer to avoid double-finalization. The route regression verifies project execution, reconciliation, and compound skill dispatch all use the canonical wrapper. Exact-head source regression and WorkPass110 re-run required.
+
+## [NK1][WorkPass485] Route project tool execution through Core-owned wrappers (2026-10-27)
+
+- The recovered-runtime contract check found that fresh project tool execution and receipt reconciliation called ActionGateway directly from OrganismCore's project loop, bypassing the canonical Core wrapper that normalizes legacy tool aliases and owns unkeyed-outcome finalization/checkpointing.
+- Route those two dispatches through `this.executeTool(...)` and `this.reconcileToolExecution(...)`. Existing keyed project operations retain the operation idempotency key, so ActionGateway still owns atomic finalization and retries are not finalized twice.
+- This aligns the production path with the existing WorkPass97 wiring contract; exact-head recovered rebuild and runtime typecheck must pass before the integration is considered closed. `main` and the published Release ZIP remain unchanged.
+
+## [NK1][WorkPass484] Quarantine corrupted restored action receipts (2026-10-27)
+
+- The broad recovered-runtime suite found that ActionGateway restored a completed ledger row by cloning its response without checking that the response execution ID and tool matched the ledger's canonical identity. A same-key retry could therefore replay a forged success response after restart.
+- Restore now retains the completed key but withholds its response unless the response's execution/tool identity, audit acceptance/outcome/verification projections and bounded serialized size agree. Invalid receipts become fail-closed recovery tombstones; side effects are not rerun and valid receipts remain replayable.
+- WorkPass95 has four tamper regressions (execution identity, verification contradiction, audit outcome contradiction and oversized payload). The exact-head broad regression must be rerun to confirm this fix. No release or learning-uplift claim is made.
+
+## [NK1][WorkPass483] Check grounded causal replay features before sampling (2026-10-27)
+
+- The broad source regression exposed a stale static wiring assertion: it searched for the state/outcome feature vector *after* the call to `selectCausalReplayBatch`, even though the production pipeline correctly constructs `causalCandidates` and their `policyFeatures01` first.
+- Reorder the source-wiring assertion to prove the real contract: feature vector creation occurs after `replayPending` starts, completes before causal selection, and causal selection remains before the adaptive final selector. Keep energy, goal-pressure, and actual outcome feature assertions intact.
+- Runtime implementation is unchanged; this corrects test ordering rather than weakening grounding requirements. Replay sweep and sequential benchmark passed on the preceding exact head; broad source regression rerun required.
+
+## [NK1][WorkPass482] Bound replay cadence to preserve current-task plasticity (2026-10-27)
+
+- The exact-head replay-policy sweep showed that a requested 1:1 old/current update cadence drove the new-task score to 0.52 on seed 17, below the unchanged 0.60 diagnostic acceptance threshold, despite separated context features.
+- `P26TrueLearningEngine.trainInterleaved` now enforces a configurable `maxReplayFraction01` independent of the absolute `maxReplayUpdates` budget. The default 0.25 schedules at most one replay update per four current rows; zero disables replay, and an explicit value up to 1 allows caller-directed higher rehearsal rates.
+- The sweep retains its 0.60 threshold and reports requested/effective cadence; regressions cover default cadence, explicit replay disablement and invalid fractions. This is a synthetic stability diagnostic only, not evidence of external-task generalization or production learning uplift.
+- The full source regression exposed a context-aware retention control that intentionally needs aggressive rehearsal; that benchmark now explicitly opts into `maxReplayFraction01: 1` instead of relying on the new conservative default. No threshold was weakened.
+- Targeted exact-head checks passed on `0e820796adf584b7cb5a2d2256090287830bf05a`. Re-triggering the source-branch broad regression after retarget; final broad result remains pending. `main` and the published Release ZIP remain unchanged.
+
+## [NK1][WorkPass481] Separate candidate execution from verifier trust (2026-10-27)
+
+- A successfully executed candidate was marked non-executable whenever the independent verifier failed, conflating two separate signals.
+- `IndependentSkillCandidateEvaluator` now records well-formed execution under `executability` independently, while unbound/missing verifier evidence still fails task success and does not publish a trusted run ID or observed trace.
+- Existing WorkPass203 regression explicitly checks this distinction. No learning uplift is claimed; exact-head CI remains required.
+
+## [NK1][WorkPass480] Restore authority-fixture permissions between regressions (2026-10-27)
+
+- The WorkPass243 regression intentionally chmods the executor to a group-writable mode, but left that mode in place before testing run-root replacement. The later call therefore failed on executable permissions before reaching the intended run-root identity guard.
+- Restore the fixture executable to its original private mode after the writable-executable assertion. Runtime security checks are unchanged; the regression now isolates the condition it is meant to test.
+
+## [NK1][WorkPass479] Share the canonical versioned-skill candidate ID contract (2026-10-27)
+
+- Runtime staging and the signed-shadow integration fixture now use the same `computeVersionedSkillCandidateId` function, including the explicit null provenance component when no revision provenance is supplied.
+- This removes duplicated hash-shape logic that drifted after provenance became part of the ID contract. Identity semantics are unchanged; no learning-quality uplift is claimed.
+
+## [NK1][WorkPass478] Preserve persisted P23 trace-cache recency on restore (2026-10-27)
+
+- P23 restore constructed deduplication caches from durable rows before persisted cache entries, which could move an older row to the head and discard the cache's newest-first order.
+- Restore now preserves validated persisted cache order first and reconciles trace IDs recoverable from durable experience/replay rows afterward. Missing caches still recover IDs from their persisted rows.
+- Updated the WorkPass310 restore regression to assert newest-first ordering plus durable replay-ID reconciliation. Learning uplift is not claimed.
+
+## [NK1][WorkPass467] Add bounded conflict-gated interleaved learning (2026-10-27)
+
+- Implemented the `P26TrueLearningEngine.trainInterleaved` API already exercised by the sequential-learning benchmark.
+- The path prevalidates both fresh and replay streams before weight changes, bounds candidate comparisons to at most 64 per considered replay row, blocks replay rows whose near-identical state/action has a contradictory reward, and retains separate counters for online updates, replay updates, blocked rows and eligible rows.
+- Current/replay learning rates and target mode are explicit options; replay candidate caps no longer stop processing the remainder of fresh-task rows.
+- Validation is pending on the newly updated head. Previous Core CI had failed because this method was missing; do not infer benchmark success until its current exact-head run finishes.
+- Previously confirmed P26 holdout provenance now passes, with `trainingExposure01` separate from `generalizationEvidence01`. P23 restore ordering and the signed-shadow candidate-ID expectation remain open blockers.
+
+## [NK1][WorkPass466] Separate training exposure and independently verified holdout maturity (2026-10-27)
+
+- Added `trainingExposure01` and `independentHoldoutSamples` to P26 learning metrics. Online updates and replay increase exposure without being counted as generalization evidence.
+- Added a deduplicated `recordVerifiedHoldout` path bound to evidence/task/protocol/verifier/sample-set identities and bounded baseline/learned scores. Only verified independent evidence advances `generalizationEvidence01`; legacy `recordHoldout` remains diagnostic-only.
+- Persist and restore holdout evidence IDs, recompute maturity from those IDs rather than trusting an arbitrary scalar, and normalize restored exposure from online/replay counters.
+- Fixed the ADWIN stationary-mean test to use floating-point tolerance. The P26 workflow was red on the prior head for this exact-value assertion; a new exact-head run is in progress.
+- **Still open:** P23 restore loses the newest processed trace ID under its bounded list policy; P110’s signed-shadow integration has a stale expected candidate ID. Those failures remain explicit and have not been bypassed. The latest implementation is awaiting exact-head CI confirmation.
+- No `main` or published Release ZIP changes; no retrieval or learning uplift is claimed until holdout tests pass.
+
+## [NK1][WorkPass465] Close additional source CI regression defects (2026-10-27)
+
+- Fixed a duplicate `snapshotResult` declaration in the independent candidate evaluator regression discovered by the runtime script-integrity audit.
+- Updated the versioned skill candidate-store regression to pass the current rollback approval object contract and use an explicit test-only rollback verifier.
+- Adjusted authenticated promotion/rollback signature verification to validate the PEM as Ed25519 and pass the PEM string to the minimal verifier API, removing a stale custom-shim type mismatch without weakening signature checks.
+- **Still open:** P23 restore does not preserve the newest processed-trace ID at the front of its bounded restored cache; P99 still assumes an exact replay batch count despite adaptive selection; runtime typecheck still reports Core nullability/registrar and incomplete Node shim errors. These are not marked fixed.
+- Latest edits require fresh exact-head CI. No retrieval/learning uplift is claimed; `main` and the published Release ZIP are unchanged.
+
+## [NK1][WorkPass464] Repair cognitive scoring, replay evidence fixtures and Live2D expression stability (2026-10-27)
+
+- Rebalanced B272 predicted goal value to avoid saturation masking a high-confidence intrinsic-drive signal; the WorkPass287–288 contract run passed on the preceding integrated head.
+- Fixed replay/causal fixtures so trace tick, selected action, observed postcondition and retained outcome metadata represent the same event.
+- Corrected the seed-bootstrap order-invariance fixture to hold evidence identity and observation metadata constant while changing insertion order.
+- Updated Hermes tamper coverage to change signed runtime identity, exercising signature/receipt trust validation rather than the earlier binary-outcome mismatch guard.
+- Cached the last successfully applied Live2D expression so redundant state messages do not restart the same expression.
+- Exact current-head CI is still required for the latest edits. Runtime typecheck currently has outstanding type errors in large Core/nullability sites and the custom Node shim contracts; no retrieval or learning uplift is claimed. No Release ZIP or `main` changes were made.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.

@@ -96,10 +96,32 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
       !Array.isArray(value.shadowObservations) || !value.shadowObservations.every(isShadowObservation) ||
       !isTime(value.createdAt) || !Object.prototype.hasOwnProperty.call(value, 'payload')) return false;
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
-  const expectedId = createHash('sha256').update(JSON.stringify([
-    value.skillId, value.version, value.proposalId, value.payloadFingerprint,
-  ])).digest('hex');
-  if (value.candidateId !== expectedId) return false;
+  const identityParts = [value.skillId, value.version, value.proposalId, value.payloadFingerprint];
+  // The store's canonical candidate identity includes a fifth revision-provenance
+  // slot (null for ordinary candidates). Keep the legacy four-field identity
+  // readable for older persisted snapshots, while validating new rows against the
+  // exact identity shape written by VersionedSkillCandidateStore.
+  const revisionFingerprint = value.revisionProvenance === undefined
+    ? null
+    : payloadFingerprint(value.revisionProvenance);
+  if (value.revisionProvenance !== undefined && (
+      !isRecord(value.revisionProvenance) ||
+      value.revisionProvenance.schemaVersion !== 1 ||
+      !isFingerprint(value.revisionProvenance.evaluationFingerprint) ||
+      !(value.revisionProvenance.sourceCandidateId === null || isFingerprint(value.revisionProvenance.sourceCandidateId)) ||
+      !isFingerprint(value.revisionProvenance.planFingerprint) ||
+      !isFingerprint(value.revisionProvenance.datasetFingerprint) ||
+      (value.revisionProvenance.sourceEvidenceFingerprint !== undefined && !isFingerprint(value.revisionProvenance.sourceEvidenceFingerprint)) ||
+      !Array.isArray(value.revisionProvenance.dimensions) || value.revisionProvenance.dimensions.length === 0 ||
+      !value.revisionProvenance.dimensions.every((dimension: unknown) =>
+        ['safety','task-success','trajectory','capability-coverage','executability','holdout-generalization'].includes(String(dimension))) ||
+      new Set(value.revisionProvenance.dimensions).size !== value.revisionProvenance.dimensions.length ||
+      !isTime(value.revisionProvenance.createdAt) || !revisionFingerprint
+  )) return false;
+  const expectedId = createHash('sha256').update(JSON.stringify([...identityParts, revisionFingerprint])).digest('hex');
+  const legacyId = createHash('sha256').update(JSON.stringify(identityParts)).digest('hex');
+  if (value.candidateId !== expectedId &&
+      !(value.revisionProvenance === undefined && value.candidateId === legacyId)) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
   if (value.rollbackApproval !== undefined && !isRollbackApproval(value.rollbackApproval)) return false;
   if (value.promotedAt !== undefined && !isTime(value.promotedAt)) return false;
@@ -123,9 +145,11 @@ function isSnapshot(value: unknown): value is VersionedSkillStoreSnapshot {
  * validated, not just the outer arrays, before they enter runtime state.
  */
 export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
+  private readonly filePath: string;
   private readonly lockPath: string;
 
-  constructor(private readonly filePath: string) {
+  constructor(filePath: string) {
+    this.filePath = filePath;
     if (!filePath?.trim()) throw new Error('skill store file path must be non-empty');
     this.lockPath = filePath + '.lock';
   }

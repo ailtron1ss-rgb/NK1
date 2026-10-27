@@ -123,8 +123,10 @@ export class CausalExperienceStream {
             typeof record?.at==='number'&&Number.isFinite(record.at)&&record.at>=0&&
             typeof record?.id==='string'&&record.id.length>0&&record.id.length<=256;
           if(!traceId||!taskId||!validActions||!boundedMetrics||!validCounters)return [];
+          const policyFeatures=record.policyFeatures01;
           const hasRuntimePolicyFeatures=hasBoundedRuntimePolicyVector(record)&&
-            record.policyFeatures01.length<=128&&record.policyFeatures01.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
+            Array.isArray(policyFeatures)&&policyFeatures.length<=128&&
+            policyFeatures.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
           const validReplayMetadata=record.replayEligible===undefined||typeof record.replayEligible==='boolean';
           const validOptionalMetrics=[record.learningQuality01,record.replayPriority01].every(value=>
             value===undefined||(typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1));

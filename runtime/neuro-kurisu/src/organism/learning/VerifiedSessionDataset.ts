@@ -82,13 +82,13 @@ export function buildVerifiedSessionDataset(
       outcome.passed, outcome.verifierId, evidenceRefDigest,
     ]);
     const example: VerifiedSessionTrainingExample = {
-      schemaVersion: 1,
+      schemaVersion: 1 as const,
       exampleId: createHash('sha256').update(identity).digest('hex'),
       taskId: task.taskId,
       taskVersion: task.version,
       family: task.family,
       promptFingerprint: task.promptFingerprint,
-      split: task.split,
+      split: task.split as 'train' | 'validation',
       method: outcome.method,
       seed: outcome.seed,
       attempt: outcome.attempt,
@@ -106,7 +106,7 @@ export function buildVerifiedSessionDataset(
   const holdoutAggregates: HoldoutAggregate[] = [...holdout.values()]
     .filter(row => row.n >= MIN_HOLDOUT_AGGREGATE_OUTCOMES && row.seeds.size >= MIN_HOLDOUT_AGGREGATE_OUTCOMES)
     .map(row => ({
-      split: 'holdout',
+      split: 'holdout' as const,
       family: row.family,
       method: row.method,
       outcomeCount: row.n,
@@ -126,7 +126,7 @@ export function buildVerifiedSessionDataset(
   // Stable fingerprint lets downstream generators/evaluators bind results to the
   // exact verified dataset rather than merely to a task manifest or export time.
   const datasetIdentity = {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     manifestFingerprint: ledger.manifestFingerprint(),
     training: sortedTraining,
     validation: sortedValidation,

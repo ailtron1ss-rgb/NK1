@@ -372,7 +372,7 @@ export class ProceduralSkillLibrary{
     const baseVariant:CompoundSkillVariant={
       id:baseId,parentId:null,version:1,stepId:'__base__',fromTool:'',toTool:'',reason:'compiled-base',
       steps:structuredClone(steps),createdAt:now,status:'active',trials:0,successes:0,nonHoldoutTrials:0,nonHoldoutSuccesses:0,verifiedExecutions:0,
-      independentExecutions:0,holdoutExecutions:0,distinctContexts:1,confidence01:.18,lastOutcome01:0,lastContext:''
+      independentExecutions:0,verifiedNonHoldoutExecutions:0,holdoutExecutions:0,distinctContexts:1,confidence01:.18,lastOutcome01:0,lastContext:''
     };
     const record:CompoundSkillRecord={
       id,name:String(input.name).slice(0,160),origin:String(input.origin).slice(0,48),projectSignature,steps,

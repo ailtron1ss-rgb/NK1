@@ -53,7 +53,8 @@ assert.equal(snapshot.meanStageCoverage01,0);
 assert.equal(snapshot.meanCausalContinuity01,1);
 assert.equal(snapshot.lastTick,-1);
 assert.equal(snapshot.lastComplete,false);
-assert.deepEqual(snapshot.lastMissingStages,['action']);
+assert.deepEqual(snapshot.lastMissingStages,['observation','prediction','action','outcome','learning','self-update'],
+  'malformed restored missing-stage data must fail closed to the complete required-stage set');
 
 const inconsistentRestore=new UnifiedCognitiveCycle();
 inconsistentRestore.restore({
@@ -70,7 +71,7 @@ assert.equal(reconciled.completeCycles,8);
 assert.equal(reconciled.incompleteCycles,2);
 assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
-assert.equal(reconciled.lastComplete,false);
+assert.equal(reconciled.lastComplete,true,'aggregate counter reconciliation must not rewrite the independently valid latest-cycle completion flag');
 
 
 const undercountRestore=new UnifiedCognitiveCycle();

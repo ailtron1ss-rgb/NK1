@@ -421,11 +421,13 @@ export class P23LearningEngine {
     const ablations=sanitizeRows(source.ablations,512,parseAblation,row=>row.traceId);
     const evidenceDebt=sanitizeRows(source.evidenceDebt,256,parseEvidenceDebt,row=>row.id);
     // Reconcile dedupe caches with durable rows; restored rows must not be applied twice.
+    // Persisted caches are already ordered newest-first. Preserve that order on
+    // restore, then reconcile IDs recoverable from durable rows when a cache is absent.
     const processedTraceIds=sanitizeIdList([
-      ...experiences.map(row=>row.traceId),...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),
+      ...(Array.isArray(source.processedTraceIds)?source.processedTraceIds:[]),...experiences.map(row=>row.traceId),
     ],2048);
     const replayedTraceIds=sanitizeIdList([
-      ...replayUpdates.map(row=>row.traceId),...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),
+      ...(Array.isArray(source.replayedTraceIds)?source.replayedTraceIds:[]),...replayUpdates.map(row=>row.traceId),
     ],2048);
     const checksum=sanitizeChecksum(source.checksum,d.checksum);
     const metrics=sanitizeMetrics(source.metrics,d.metrics);
@@ -1001,7 +1003,7 @@ export class P23LearningEngine {
       // Skills are durable but not immortal: stale evidence gradually loses
       // influence, reaching zero after 180 days without fresh validation.
       const ageMs=Math.max(0,now()-exact.updatedAt);
-      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,usageGapMs:ageMs});
+      const retention=ageMs>=180*24*60*60*1000?0:1-forgettingRisk({lastValidatedAt:exact.updatedAt,now:now(),halfLifeMs:30*24*60*60*1000,gapMs:ageMs});
       if(exact.status==='promoted') return clamp(exact.confidence01*.05*retention);
       if(exact.status==='rejected') return retention===0?0:-clamp(exact.confidence01*.03*retention);
       return 0;

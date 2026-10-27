@@ -66,7 +66,7 @@ try {
   damaged.facets.advanced.memoryOS.items[0].contentHash = 'deliberately-corrupted-content-hash';
   damaged.facets.advanced.memoryOS.items[0].supersedesId = 'missing-revision-target';
   damaged.facets.advanced.memoryOS.items[0].semanticLinks = ['missing-semantic-target'];
-  damaged.facets.advanced.memoryOS.items[0].observedAt = now + 60_000;
+  damaged.facets.advanced.memoryOS.items[0].observedAt = now + 3_600_000;
   await writeFile(statePath, JSON.stringify(damaged), 'utf8');
   const failed = run(statePath, 'json', 1);
   assert.equal(failed.status, 2, 'memory integrity errors should produce status 2');
