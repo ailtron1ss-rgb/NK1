@@ -96,6 +96,8 @@ jobs:
       - name: Validate P23 persisted learning restore integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass310:p23-restore-integrity
+      - name: Install locked runtime type dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Type-check runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
