@@ -969,12 +969,16 @@ export class HexisAdaptationFabric {
     decideHmx(stagingId: string, decision: HexisHmxDecision): HexisHmxStage | null {
         const stage = this.state.hmxStages.find((candidate) => candidate.stagingId === stagingId);
         if (!stage) return null;
+        // An applied row without a valid receipt is a failed replay, even when
+        // removing/corrupting that receipt also invalidates the enclosing stage seal.
+        // isValidHmxApplyReceipt rechecks the lifecycle digest, so this order changes
+        // only the diagnostic classification, never the fail-closed behavior.
+        if (decision === 'apply' && stage.status === 'applied') {
+            if (!isValidHmxApplyReceipt(stage, stage.application)) throw new Error('hmx-applied-receipt-invalid');
+            return structuredClone(stage);
+        }
         if (!isValidHmxStageDigest(stage)) throw new Error('hmx-stage-digest-invalid');
         if (decision === 'apply') {
-            if (stage.status === 'applied') {
-                if (!isValidHmxApplyReceipt(stage, stage.application)) throw new Error('hmx-applied-receipt-invalid');
-                return structuredClone(stage);
-            }
             if (stage.status !== 'accepted' || stage.conflicts.length) return structuredClone(stage);
             if (stage.intent !== 'port' || stage.strategy !== 'additive') {
                 throw new Error('hmx-canonical-apply-requires-port-additive-strategy');
