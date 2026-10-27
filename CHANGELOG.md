@@ -1,3 +1,10 @@
+## [NK1][WorkPass449] Restore signal compensation helper and strict TypeScript guards (2026-10-27)
+
+- Restored the missing `MemoryFabric.beginSignalCompensation()` implementation used by the existing `updateSignalsWithCompensation()` rollback path. It snapshots only canonical memory state, uses one-shot in-memory tokens, and fails closed when the 512-token budget is full.
+- Fixed catch-value formatting to narrow `unknown` errors with `instanceof Error` instead of assuming `.message` exists.
+- Made the optional canonical `sourceAuthority01` fallback explicit when applying a monotonic authority cap; a legacy row without the optional field now uses conservative `0.45` as the pre-cap value.
+- These fixes target exact-head runtime typecheck diagnostics. Runtime suite/typecheck after this commit remain pending and must not be reported as passing until Actions finishes.
+
 ## [NK1][WorkPass448] Align causal-stream duplicate assertions with trusted outcomes (2026-10-27)
 
 - Corrected the external-ingestion regression to reflect the intended invariant: public external events are retained for review but remain ungrounded, so they do not increment the trusted runtime-outcome aggregate. Exact duplicates and conflicting duplicate retries must leave that aggregate at zero.
