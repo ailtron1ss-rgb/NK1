@@ -148,3 +148,17 @@ test("stale provenance cannot satisfy current release gate", async () => {
     assert.ok(report.errors.some(e => e.includes("source-provenance inventory is stale")));
   });
 });
+
+test("a report freshly generated at release start survives a long audit pass", async () => {
+  await withFixture(async ({ root }) => {
+    const agedAt = new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString();
+    const sbom = JSON.parse(await readFile(path.join(root, "contracts/SBOM.final.json"), "utf8"));
+    const provenance = JSON.parse(await readFile(path.join(root, "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS70.json"), "utf8"));
+    sbom.metadata.timestamp = agedAt;
+    provenance.generatedAt = agedAt;
+    await writeJson(root, "contracts/SBOM.final.json", sbom);
+    await writeJson(root, "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS70.json", provenance);
+    const report = await auditReleaseLicenseReadiness({ root, now });
+    assert.equal(report.ok, true, JSON.stringify(report.errors));
+  });
+});

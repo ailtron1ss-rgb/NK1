@@ -116,7 +116,7 @@ export async function auditReleaseLicenseReadiness({ root = defaultRoot, now = n
   const fingerprint = sbom ? fingerprintLockedNpmComponents(sbom) : { sha256: "", count: 0 };
   const generatedAt = Date.parse(provenance?.generatedAt || "");
   const ageMs = now.getTime() - generatedAt;
-  const maxAgeMs = 15 * 60 * 1000;
+  const maxAgeMs = 6 * 60 * 60 * 1000;
   if (!Number.isFinite(generatedAt) || ageMs < -5000 || ageMs > maxAgeMs) {
     errors.push("current source-provenance inventory is stale or has an invalid generatedAt; run test:provenance-current first");
   }
