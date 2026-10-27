@@ -1,3 +1,8 @@
+## [NK1][memory] Count unique candidates in semantic recall cost signals (2026-10-27)
+
+- The semantic preview now reports the cardinality of the union of semantic-scored, lexical-pool and backfill candidate IDs, rather than summing overlapping lists. The adaptive retrieval-cost signal is therefore bounded to the actual unique candidate set instead of double-counting overlap.
+- The canonical selected-read commit preserves this current-query cost context instead of reusing stale candidate diagnostics. This is a metric integrity correction, not a claim of retrieval-quality improvement.
+
 ## [NK1][memory] Commit canonical access signals only for the selected cognitive recall (2026-10-27)
 
 - Added `MemoryOS2.recordSelectedRetrieval` so semantic candidates selected from a read-only preview can update canonical query/access signals exactly once after selection, including adaptive-policy context, last-access time, retrieval count, temperature and candidate-cost diagnostics.
