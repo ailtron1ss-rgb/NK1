@@ -5,6 +5,12 @@
 - Added `test:workpass507:planner-memory-gate` and wired it into `test:rebuild-recovered`, so the source-contract regression runs with the recovered core suite.
 - The test protects routing/budget policy, not real-world retrieval uplift. Exact-head CI remains required; no scorecard increase, production-readiness claim, or Release ZIP update is made.
 
+## [NK1][WorkPass507] Count unique memory IDs in retrieval precision (2026-10-27)
+
+- Fixed `precision@K` so repeated rows with the same relevant memory ID cannot inflate the metric as multiple independent hits.
+- Kept duplicate corpus IDs promotion-blocking; the regression verifies the diagnostic metric remains honest even for an invalid corpus.
+- This corrects evaluation accounting only. It does not improve retrieval ranking or establish positive recall uplift.
+
 ## [NK1][docs] Record outer integration divergence gate (2026-10-27)
 
 - Synchronized the canonical handoff after PR #252 merged into `fix/outcome-projection-index-restore-2026-10-26` at `109df0b3ea1d47eb108c09e7a595a23a09aa2bfc`.
