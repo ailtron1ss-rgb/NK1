@@ -235,14 +235,13 @@ export class OrganismSystemFabric {
           if(item.context?.hexisExportId!==proposal.exportId ||
             item.context?.hexisSourceLineageId!==proposal.sourceLineageId)return false;
           const persistedRef=String(item.context?.hexisMemoryRef??'');
-          // HMX projection stores memory refs as exportId:sourceRef to make
-          // imports from different documents collision-safe. Goal relationships
-          // reference the source-level ref, so compare only after removing this
-          // proposal's exact export prefix; never strip arbitrary prefixes.
-          const sourceRef=persistedRef.startsWith(proposal.exportId+':')
-            ? persistedRef.slice(proposal.exportId.length+1)
-            : persistedRef;
-          return sourceRef===otherRef;
+          // Both canonical memory metadata and relationship rows may carry the
+          // export-scoped ref. Normalize either side only by this proposal's exact
+          // export prefix; never strip arbitrary prefixes or cross export boundaries.
+          const stripCurrentExportPrefix=(value:string)=>value.startsWith(proposal.exportId+':')
+            ? value.slice(proposal.exportId.length+1)
+            : value;
+          return stripCurrentExportPrefix(persistedRef)===stripCurrentExportPrefix(otherRef);
         });
         const endpointKey=String(canonicalMemory?.context?.hexisGraphSourceKey??'');
         const endpointNode=endpointKey?graphNodes.find(node=>String(node.sourceKey??'')===endpointKey):undefined;
