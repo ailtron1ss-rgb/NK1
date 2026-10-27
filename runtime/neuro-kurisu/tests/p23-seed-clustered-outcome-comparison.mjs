@@ -83,7 +83,7 @@ for (let seed = 4; seed >= 1; seed--) {
     for (const [method, passed] of [['baseline', baselinePassed], ['candidate', candidatePassed]]) {
       reverseOrderLedger.record({
         taskId: task.taskId, taskVersion: '1', method, seed, attempt: 1, passed,
-        authority: 'independent-verifier', verifierId: 'verify-v1',
+        authority: 'independent-verifier', verifierId: 'v1',
         evidenceRef: `artifact://${task.taskId}/${method}/${seed}/1`, observedAt: 1000 + seed + 1,
       });
     }
