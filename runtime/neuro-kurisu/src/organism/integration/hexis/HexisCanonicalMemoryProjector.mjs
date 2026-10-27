@@ -643,7 +643,7 @@ export class HexisCanonicalMemoryProjector {
             revision.id,
             revision.token,
             'hexis-hmx-apply-rollback',
-            { commandId: 'hexis-status-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + String(revision.previousStatus) + ':' attempt).slice(0, 48) },
+            { commandId: 'hexis-status-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + String(revision.previousStatus) + ':' + attempt).slice(0, 48) },
           );
           if (restoredExactly !== true) {
             rollbackErrors.push('status-restore-unconfirmed:' + revision.id);
