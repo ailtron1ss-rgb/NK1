@@ -130,6 +130,29 @@ assert(globalLedgerAfter.some(row => row.memoryId === 'independent-belief-from-a
 // MemoryOS2 writes must be exception-atomic when revision bookkeeping throws after
 // it has already changed the canonical row. Otherwise MemoryFabric never gets a chance
 // to seal the transaction-owned post-state for compensation.
+const estimateMemoryItemBytesForTest = item => {
+  const statuses = new Set(['fact', 'belief', 'hypothesis', 'unknown', 'quarantined']);
+  const revisionHistory = Array.isArray(item.revisionHistory)
+    ? item.revisionHistory.slice(0, 64).flatMap(row => {
+      const at = Number(row?.at);
+      if (!Number.isFinite(at) || !statuses.has(row?.from) || !statuses.has(row?.to)) return [];
+      return [{ at, from: row.from, to: row.to, reason: String(row.reason ?? '').slice(0, 240) }];
+    })
+    : [];
+  return Math.max(96, new TextEncoder().encode(JSON.stringify({
+    content: item.content,
+    tags: item.tags,
+    context: item.context,
+    s: item.semanticLinks,
+    t: item.temporalLinks,
+    c: item.causalLinks,
+    k: item.contradictionLinks,
+    e: item.evidenceSources,
+    ek: item.evidenceLineageKeys,
+    r: revisionHistory,
+  })).byteLength);
+};
+
 const atomicStatusRuntime = new MemorySubsystemRuntime();
 const atomicStatusLedger = new HexisAdaptationFabric();
 const atomicStatusProjector = new HexisCanonicalMemoryProjector(
@@ -198,6 +221,18 @@ assert.equal(atomicStatusMemoryOS.budgetDiagnostics().estimatedBytes, atomicStat
   'status revision failure must restore the memory byte-accounting baseline');
 assert.equal(atomicStatusLedger.getHmxStage(atomicStatusRetry.stagingId)?.status, 'accepted');
 assert.equal(atomicStatusRuntime.fabric.inspect().pendingSignalCompensations, 0);
+const atomicStatusRetryItemBefore = atomicStatusRuntime.fabric.canonicalSnapshot().items.find(item => item.id === atomicStatusSeedMemory.id);
+assert(atomicStatusRetryItemBefore);
+const atomicStatusRetryBytesBefore = atomicStatusMemoryOS.budgetDiagnostics().estimatedBytes;
+assert.equal(atomicStatusLedger.decideHmx(atomicStatusRetry.stagingId, 'apply')?.status, 'applied',
+  'the failed status apply must be retryable after the injected bookkeeping error is disabled');
+const atomicStatusRetryItemAfter = atomicStatusRuntime.fabric.canonicalSnapshot().items.find(item => item.id === atomicStatusSeedMemory.id);
+assert(atomicStatusRetryItemAfter);
+assert.equal(
+  atomicStatusMemoryOS.budgetDiagnostics().estimatedBytes,
+  atomicStatusRetryBytesBefore - estimateMemoryItemBytesForTest(atomicStatusRetryItemBefore) + estimateMemoryItemBytesForTest(atomicStatusRetryItemAfter),
+  'successful status reconciliation must account for item size exactly once',
+);
 
 // The same atomicity boundary applies to authority-cap updates after signals have been
 // changed but before updateSignals returns to MemoryFabric.
@@ -268,6 +303,18 @@ assert.equal(atomicSignalsMemoryOS.budgetDiagnostics().estimatedBytes, atomicSig
   'authority-cap failure must restore the memory byte-accounting baseline');
 assert.equal(atomicSignalsLedger.getHmxStage(atomicSignalsRetry.stagingId)?.status, 'accepted');
 assert.equal(atomicSignalsRuntime.fabric.inspect().pendingSignalCompensations, 0);
+const atomicSignalsRetryItemBefore = atomicSignalsRuntime.fabric.canonicalSnapshot().items.find(item => item.id === atomicSignalsSeedMemory.id);
+assert(atomicSignalsRetryItemBefore);
+const atomicSignalsRetryBytesBefore = atomicSignalsMemoryOS.budgetDiagnostics().estimatedBytes;
+assert.equal(atomicSignalsLedger.decideHmx(atomicSignalsRetry.stagingId, 'apply')?.status, 'applied',
+  'the failed trust-cap apply must be retryable after the injected bookkeeping error is disabled');
+const atomicSignalsRetryItemAfter = atomicSignalsRuntime.fabric.canonicalSnapshot().items.find(item => item.id === atomicSignalsSeedMemory.id);
+assert(atomicSignalsRetryItemAfter);
+assert.equal(
+  atomicSignalsMemoryOS.budgetDiagnostics().estimatedBytes,
+  atomicSignalsRetryBytesBefore - estimateMemoryItemBytesForTest(atomicSignalsRetryItemBefore) + estimateMemoryItemBytesForTest(atomicSignalsRetryItemAfter),
+  'successful authority-cap reconciliation must account for item size exactly once',
+);
 
 // Bounded mutation journals must declare history loss, while unwinding all
 // retained owner receipts without applying a stale whole-state restore.
