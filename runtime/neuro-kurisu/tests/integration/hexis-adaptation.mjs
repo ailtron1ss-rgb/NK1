@@ -75,6 +75,19 @@ assert.equal(Object.hasOwn(runtimeContextAfterUnsafeKey.contextValue, 'default')
 assert.equal(runtimeContextGuard.diagnostics().contextCount, 512,
   'invalid runtime context observations must not exceed the bounded context table');
 
+const runtimeInputGuard = new AdaptiveMemoryPolicy();
+runtimeInputGuard.observe('rogue-policy', 1, Number.POSITIVE_INFINITY, '__proto__');
+const runtimeInputSnapshot = runtimeInputGuard.snapshot();
+assert.deepEqual(runtimeInputSnapshot.trials, {
+  semantic: 0, hybrid: 0, causal: 0, temporal: 0, balanced: 1,
+}, 'unknown runtime policy names must fail closed to the valid active policy');
+assert.equal(Number.isFinite(runtimeInputSnapshot.cooldownUntil), true,
+  'non-finite runtime timestamps must not poison the adaptive cooldown');
+assert.equal(runtimeInputSnapshot.contextValue.default.balanced, 1,
+  'unsafe runtime context IDs must route updates into the safe default context');
+assert.equal(Object.hasOwn(runtimeInputSnapshot.contextValue, '__proto__'), false,
+  'runtime policy observations must never create prototype-like context rows');
+
 
 // A full MemoryOS2 restore must be exception-atomic across canonical rows and
 // every derived inverted/dedup/revision index, not merely across the state object.
