@@ -14,7 +14,7 @@ type EncodeInput = MemoryLifecycleEncodeInput;
 
 export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
 export type MemoryLifecycleCommand =
-  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
+  | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean; hmxImportCompensationToken?:object }
   | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number; compensationToken?:object }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number; compensationToken?:object }
@@ -138,6 +138,8 @@ export class MemoryFabric {
   private readonly signalCompensations=new WeakMap<object,{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}>();
   private readonly protectedStatusReceiptIds=new Set<string>();
   private readonly statusCompensations=new WeakMap<object,{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}>();
+  private readonly protectedHmxImportReceiptIds=new Set<string>();
+  private readonly hmxImportCompensations=new WeakMap<object,{snapshotToken:object;exportId:string;stagingId:string;sourceCommandIds:string[]}>();
   private retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
   private retiredMutationReceiptCount=0;
   private retiredMutationReceiptBloomCorrupt=false;
@@ -194,11 +196,13 @@ export class MemoryFabric {
     }
     const semanticPayload:any={...command};
     delete semanticPayload.commandId; delete semanticPayload.tick;
-    delete semanticPayload.emitEvent; delete semanticPayload.syncCompatibility; delete semanticPayload.compensationToken;
+    delete semanticPayload.emitEvent; delete semanticPayload.syncCompatibility; delete semanticPayload.compensationToken; delete semanticPayload.hmxImportCompensationToken;
     const fingerprint=createHash('sha256').update(stableCommandJson(semanticPayload)).digest('hex');
     const compensationToken=(command as {compensationToken?:object}).compensationToken;
+    const hmxImportCompensationToken=(command as {hmxImportCompensationToken?:object}).hmxImportCompensationToken;
     let signalCompensation:{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}|undefined;
     let statusCompensation:{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}|undefined;
+    let hmxImportCompensation:{snapshotToken:object;exportId:string;stagingId:string;sourceCommandIds:string[]}|undefined;
     if(compensationToken!==undefined){
       const targetId=(command as {id?:string}).id;
       if(action==='update-signals')signalCompensation=this.signalCompensations.get(compensationToken);
@@ -207,6 +211,15 @@ export class MemoryFabric {
         (signalCompensation&&signalCompensation.memoryId!==targetId)||
         (statusCompensation&&statusCompensation.memoryId!==targetId)||!commandId)
         throw new Error('memory-compensation-token-invalid');
+    }
+    if(hmxImportCompensationToken!==undefined){
+      if(action!=='encode'||!commandId)throw new Error('memory-hmx-import-compensation-token-invalid');
+      hmxImportCompensation=this.hmxImportCompensations.get(hmxImportCompensationToken);
+      const inputContext=(command as Extract<MemoryLifecycleCommand,{action:'encode'}>).input?.context??{};
+      if(!hmxImportCompensation||hmxImportCompensation.exportId!==String(inputContext.hexisExportId??'')||
+        hmxImportCompensation.stagingId!==String(inputContext.hexisStagingId??'')||
+        !this.memoryOS.isHmxImportCompensationFor(hmxImportCompensation.snapshotToken,hmxImportCompensation.exportId,hmxImportCompensation.stagingId))
+        throw new Error('memory-hmx-import-compensation-token-invalid');
     }
     if(commandId){
       const prior=this.mutationReceipts.get(commandId);
@@ -234,6 +247,11 @@ export class MemoryFabric {
       statusCompensation.sourceCommandIds.push(commandId);
       this.protectedStatusReceiptIds.add(commandId);
     }
+    if(hmxImportCompensation&&!hmxImportCompensation.sourceCommandIds.includes(commandId)){
+      if(hmxImportCompensation.sourceCommandIds.length>=256)throw new Error('memory-hmx-import-compensation-command-limit');
+      hmxImportCompensation.sourceCommandIds.push(commandId);
+      this.protectedHmxImportReceiptIds.add(commandId);
+    }
 
     let result:MemoryItem2|Record<string,string>|boolean|void|null=null;
     let outcome:'applied'|'noop'='noop';
@@ -246,7 +264,11 @@ export class MemoryFabric {
       case 'encode': {
         this.statsData.encodes++;
         const before=this.memoryOS.size();
-        const item=this.memoryOS.encode(command.input,{clone:false,forceDistinct:command.forceDistinct===true});
+        const item=this.memoryOS.encode(command.input,{
+          clone:false,
+          forceDistinct:command.forceDistinct===true,
+          ...(hmxImportCompensation?{hmxImportCompensationToken:hmxImportCompensation.snapshotToken,hmxImportCommandId:commandId}:{}),
+        });
         const created=this.memoryOS.size()>before;
         if(created)this.statsData.newItems++; else this.statsData.reconsolidations++;
         this.touchHot(item.id);
@@ -317,7 +339,7 @@ export class MemoryFabric {
         // HMX import can create hundreds of rows; evict unrelated old receipts first.
         let oldest:string|undefined;
         for(const candidate of this.mutationReceipts.keys()){
-          if(!this.protectedSignalReceiptIds.has(candidate)&&!this.protectedStatusReceiptIds.has(candidate)){oldest=candidate;break;}
+          if(!this.protectedSignalReceiptIds.has(candidate)&&!this.protectedStatusReceiptIds.has(candidate)&&!this.protectedHmxImportReceiptIds.has(candidate)){oldest=candidate;break;}
         }
         if(oldest===undefined)break;
         this.retireMutationReceipt(oldest);
@@ -340,7 +362,7 @@ export class MemoryFabric {
     return undefined;
   }
 
-  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string;forceDistinct?:boolean}={}) {
+  encode(input:EncodeInput, context:{tick?:number;emitEvent?:boolean;syncCompatibility?:boolean;commandId?:string;forceDistinct?:boolean;hmxImportCompensationToken?:object}={}) {
     return this.applyLifecycleCommand({action:'encode',input,...context}) as MemoryItem2;
   }
 
@@ -644,6 +666,53 @@ export class MemoryFabric {
     return token;
   }
 
+  captureHmxImportCompensation(exportId:string,stagingId:string):object|null{
+    const normalizedExportId=String(exportId??'');
+    const normalizedStagingId=String(stagingId??'');
+    const snapshotToken=this.memoryOS.captureHmxImportCompensation(normalizedExportId,normalizedStagingId);
+    if(!snapshotToken)return null;
+    const token=Object.freeze({});
+    this.hmxImportCompensations.set(token,{
+      snapshotToken,
+      exportId:normalizedExportId,
+      stagingId:normalizedStagingId,
+      sourceCommandIds:[],
+    });
+    return token;
+  }
+
+  rollbackHmxImportMemory(id:string,token:object,reason='hexis-hmx-apply-rollback',context:{tick?:number;commandId?:string}={}):boolean{
+    const commandId=String(context.commandId??'');
+    const compensation=this.hmxImportCompensations.get(token);
+    if(reason!=='hexis-hmx-apply-rollback'||!/^hexis-hmx-rollback:[a-f0-9]{48}$/.test(commandId)||
+      !compensation||compensation.sourceCommandIds.length>256)throw new Error('memory-hmx-import-rollback-command-invalid');
+    const result=this.memoryOS.rollbackHmxImportMemory(id,compensation.snapshotToken);
+    if(!result)return false;
+    if(!result.removed)return false;
+    const receipt=this.mutationReceipts.get(result.commandId);
+    if(receipt&&(receipt.action!=='encode'||receipt.memoryId!==String(id)))
+      throw new Error('memory-hmx-import-rollback-receipt-mismatch');
+    this.protectedHmxImportReceiptIds.delete(result.commandId);
+    if(receipt)this.mutationReceipts.delete(result.commandId);
+    return true;
+  }
+
+  finishHmxImportRollback(token:object):boolean{
+    const compensation=this.hmxImportCompensations.get(token);
+    if(!compensation)return false;
+    for(const commandId of compensation.sourceCommandIds){
+      const receipt=this.mutationReceipts.get(commandId);
+      if(receipt&&receipt.action!=='encode')throw new Error('memory-hmx-import-rollback-receipt-mismatch');
+    }
+    if(!this.memoryOS.discardHmxImportCompensation(compensation.snapshotToken))return false;
+    for(const commandId of compensation.sourceCommandIds){
+      this.protectedHmxImportReceiptIds.delete(commandId);
+      this.mutationReceipts.delete(commandId);
+    }
+    this.hmxImportCompensations.delete(token);
+    return true;
+  }
+
   captureStatusCompensation(id:string):object|null{
     const memoryId=String(id);
     const snapshotToken=this.memoryOS.captureStatusCompensation(memoryId);
@@ -656,15 +725,17 @@ export class MemoryFabric {
   /**
    * Validate status and trust-signal tokens together before finalizing either class.
    */
-  commitHmxCompensations(input:{signalTokens?:object[];statusTokens?:object[]}):boolean{
+  commitHmxCompensations(input:{signalTokens?:object[];statusTokens?:object[];hmxImportTokens?:object[]}):boolean{
     const signalTokens=input?.signalTokens??[];
     const statusTokens=input?.statusTokens??[];
-    if(!Array.isArray(signalTokens)||!Array.isArray(statusTokens)||
-      signalTokens.length>256||statusTokens.length>256||signalTokens.length+statusTokens.length>512)
+    const hmxImportTokens=input?.hmxImportTokens??[];
+    if(!Array.isArray(signalTokens)||!Array.isArray(statusTokens)||!Array.isArray(hmxImportTokens)||
+      signalTokens.length>256||statusTokens.length>256||hmxImportTokens.length>1||signalTokens.length+statusTokens.length+hmxImportTokens.length>513)
       throw new Error('memory-compensation-token-list-invalid');
     const unique=new Set<object>();
     const signals:Array<{token:object;snapshotToken:object;sourceCommandIds:string[]}>= [];
     const statuses:Array<{token:object;snapshotToken:object;sourceCommandIds:string[]}>= [];
+    const hmxImports:Array<{token:object;snapshotToken:object;sourceCommandIds:string[]}>= [];
     for(const token of signalTokens){
       if(!token||typeof token!=='object'||unique.has(token))throw new Error('memory-signals-compensation-token-invalid');
       unique.add(token);
@@ -689,11 +760,26 @@ export class MemoryFabric {
       }
       statuses.push({token,snapshotToken:state.snapshotToken,sourceCommandIds:state.sourceCommandIds});
     }
-    // Preflight both maps before the first deletion; no asynchronous work occurs in this boundary.
+    for(const token of hmxImportTokens){
+      if(!token||typeof token!=='object'||unique.has(token))throw new Error('memory-hmx-import-compensation-token-invalid');
+      unique.add(token);
+      const state=this.hmxImportCompensations.get(token);
+      if(!state||state.sourceCommandIds.length>256||!this.memoryOS.hasHmxImportCompensation(state.snapshotToken))
+        throw new Error('memory-hmx-import-compensation-token-invalid');
+      for(const id of state.sourceCommandIds){
+        if(!/^hexis-hmx:[a-f0-9]{48}$/.test(id))throw new Error('memory-hmx-import-compensation-source-command-invalid');
+        const receipt=this.mutationReceipts.get(id);
+        if(!receipt||receipt.action!=='encode'||!receipt.memoryId)throw new Error('memory-hmx-import-compensation-source-command-mismatch');
+      }
+      hmxImports.push({token,snapshotToken:state.snapshotToken,sourceCommandIds:state.sourceCommandIds});
+    }
+    // Preflight every token family before the first deletion; no asynchronous work occurs in this boundary.
     for(const entry of signals)if(!this.memoryOS.hasSignalCompensation(entry.snapshotToken))throw new Error('memory-signals-compensation-capture-missing');
     for(const entry of statuses)if(!this.memoryOS.hasStatusCompensation(entry.snapshotToken))throw new Error('memory-status-compensation-capture-missing');
+    for(const entry of hmxImports)if(!this.memoryOS.hasHmxImportCompensation(entry.snapshotToken))throw new Error('memory-hmx-import-compensation-capture-missing');
     for(const entry of signals)if(!this.memoryOS.discardSignalCompensation(entry.snapshotToken))throw new Error('memory-signals-compensation-capture-missing');
     for(const entry of statuses)if(!this.memoryOS.discardStatusCompensation(entry.snapshotToken))throw new Error('memory-status-compensation-capture-missing');
+    for(const entry of hmxImports)if(!this.memoryOS.commitHmxImportCompensation(entry.snapshotToken))throw new Error('memory-hmx-import-compensation-commit-failed');
     for(const entry of signals){
       for(const id of entry.sourceCommandIds)this.protectedSignalReceiptIds.delete(id);
       this.signalCompensations.delete(entry.token);
@@ -701,6 +787,10 @@ export class MemoryFabric {
     for(const entry of statuses){
       for(const id of entry.sourceCommandIds)this.protectedStatusReceiptIds.delete(id);
       this.statusCompensations.delete(entry.token);
+    }
+    for(const entry of hmxImports){
+      for(const id of entry.sourceCommandIds)this.protectedHmxImportReceiptIds.delete(id);
+      this.hmxImportCompensations.delete(entry.token);
     }
     return true;
   }
