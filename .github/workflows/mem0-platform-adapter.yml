@@ -26,7 +26,7 @@ concurrency:
 jobs:
   mem0-adapter:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -39,12 +39,6 @@ jobs:
         run: node --check runtime/neuro-kurisu/src/server/server.mjs
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
-      - name: Run isolated Mem0 adapter regressions
+      - name: Run four-pass integration closure (Hexis, retrieval, Mem0 and HTTP)
         working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/mem0-platform-adapter-workpass1.mjs
-      - name: Verify live contract probe is inert without opt-in
-        working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/mem0-live-contract-check.mjs
-      - name: Run disabled-provider Mem0 HTTP integration smoke
-        working-directory: runtime/neuro-kurisu
-        run: node --experimental-strip-types tests/server-language-http-fake-provider.mjs
+        run: npm run audit:nk1-integration-closure
