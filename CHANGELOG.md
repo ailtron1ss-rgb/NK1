@@ -1,3 +1,8 @@
+## [NK1][WorkPass458] Prioritize signed CAS mismatch diagnostics during restore (2026-10-27)
+
+- Reordered `VersionedSkillCandidateStore.assertTrustedActiveState` so the persisted active-version metadata is bound to the signed approval before looking up the prior version. A forged `baseVersion` is now rejected by the explicit signed-CAS gate rather than being masked by the secondary missing-prior-version guard.
+- This preserves fail-closed behavior while making the restore-integrity regression verify the intended invariant and diagnostic.
+
 ## [NK1][WorkPass457] Align skill rollback regression with signed approval contract (2026-10-27)
 
 - Updated the versioned skill-store regression to call `rollback(candidateId, { approvedBy, approvedAt, expectedActiveVersion })` and inject explicit test-only rollback authority. The production default-deny verifier is unchanged.
