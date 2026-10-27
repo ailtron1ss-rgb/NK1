@@ -1,3 +1,10 @@
+## [NK1][WorkPass441] Prevent cross-event cancellation across CI workflows (2026-10-27)
+
+- Added `github.event_name` to cancellation groups for WorkPass71, WorkPass287-288, WorkPass79, WorkPass94, WorkPass95, WorkPass99, WorkPass110 and Hexis canonical apply. Push and pull-request jobs for the same branch can now validate independently; newer runs of the same event/branch still supersede older ones.
+- Generalized `tools/verify-ci-reliability.mjs` so the guard applies to any workflow that listens to both push and pull_request and uses `cancel-in-progress: true` with the same `github.head_ref || github.ref_name` key. It accepts event-scoped groups, pull-request-number groups or distinct full-ref groups.
+- Extended `tools/verify-ci-reliability.test.mjs` to assert the guard catches a non-Hexis workflow as well as the Hexis case.
+- Latest concrete test evidence before these workflow changes: WorkPass287-288 passed on HEAD `0ee19e554bff185fae07d36a59d32513f0710d7b`; WorkPass294's runtime typecheck then failed on a single TS7053 transition-map index, whose explicit raw-map typing is now in the current branch. Fresh CI is required to confirm the final set.
+
 ## [NK1][WorkPass440] Complete runtime type dependencies across verification workflows (2026-10-27)
 
 - The WorkPass94 verification-input workflow now installs the runtime lockfile before running `npm run typecheck`; previously it installed only the app compiler, leaving Node's built-in modules and globals unresolved even after runtime `@types/node` was added.
