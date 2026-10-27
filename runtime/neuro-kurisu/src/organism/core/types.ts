@@ -349,6 +349,8 @@ export interface AdvancedDevelopmentFacet {
   memoryLifecycleAuthority?: import('../memory/CanonicalMemoryLifecycleAuthority.ts').CanonicalMemoryLifecycleState;
   memoryResidencyDiagnostics?: { counts:{hot:number;warm:number;cold:number}; targetItems:number; materializedVectors:number };
   memoryOS: import('../developmental/MemoryOS2.ts').MemoryOSState2;
+  /** Hexis-specific source lineage, distinct from cognition.sources. */
+  hexisSourceMonitor?: import('../memory/SourceMonitor.ts').SourceMonitorState;
   worldModel2: import('../developmental/WorldModel2.ts').WorldModel2State;
   unifiedLatentWorldState: import('../world/UnifiedLatentWorldState.ts').UnifiedLatentWorldStateSnapshot;
   groundedWorld: import('../world/GroundedWorldState.ts').GroundedWorldStateSnapshot;
