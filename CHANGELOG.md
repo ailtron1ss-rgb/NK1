@@ -1,3 +1,9 @@
+## [NK1][WorkPass452] Assert HMX rollback residue without assuming diagnostic order (2026-10-27)
+
+- Broadened the HMX rollback assertion to require both the rollback-failure prefix and the `canonical-uncompensated` diagnostic, while allowing the new `canonical-remove-unconfirmed` diagnostic to appear first.
+- The runtime implementation correctly reports multiple independent compensation failures in deterministic order. The regression had failed only because its regular expression assumed the uncompensated label was the first item; failure-atomic behavior and the residue assertion remain intact.
+- Exact-head Hexis workflow revalidation is pending.
+
 ## [NK1][WorkPass451] Ground causal replay fixtures in observed action transitions (2026-10-27)
 
 - Updated the WorkPass115 replay fixture to give each trace a valid pre-action world tick and each resulting state a strictly later tick, with an explicit `lastAction` and `lastActionSuccess` matching the selected action and verifier-style outcome input.
