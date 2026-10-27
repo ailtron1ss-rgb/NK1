@@ -630,7 +630,10 @@ export class HexisAdaptationFabric {
             if (typeof encoded !== 'string') throw new Error('document is not JSON-serializable');
             if (Buffer.byteLength(encoded, 'utf8') > HMX_MAX_DOCUMENT_BYTES) {
                 conflicts.push({
-                    path: '
+                    path: '$',
+                    kind: 'size-limit',
+                    detail: `HMX document exceeds the ${HMX_MAX_DOCUMENT_BYTES}-byte size limit`,
+                });
             } else {
                 const parsed: unknown = JSON.parse(encoded);
                 if (!isHmxRecord(parsed)) {
