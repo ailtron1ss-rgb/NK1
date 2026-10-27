@@ -1,7 +1,7 @@
 ## [NK1][WorkPass440] Invalidate semantic support cache on canonical removal (2026-10-27)
 
-- The shared canonical row-removal path now clears MemoryOS2's derived semantic-support map and resets its cache version. Removing a row can alter inbound semantic/causal support even when the legacy `linkUpdates` counter does not advance.
-- Added a focused lifecycle regression that materializes the retrieval support cache from a causal link, removes its target, and asserts the support cache is invalidated independently of the counter value.
+- The shared canonical row-removal path now clears MemoryOS2's semantic-support cache, cached semantic embedding, and embedding retry entry. Removing a row can alter inbound semantic/causal support even when the legacy `linkUpdates` counter does not advance, and stale embeddings/retries should not persist for dead IDs.
+- Added a focused lifecycle regression that materializes semantic support, seeds the derived embedding/retry maps, removes the target, and asserts all three derived state entries are invalidated independently of the counter value.
 - Runtime test execution and TypeScript typecheck are still pending the default-branch workflow activation PR #251.
 
 ## [NK1][WorkPass439] Recover canonical insert and index-build failures (2026-10-27)
