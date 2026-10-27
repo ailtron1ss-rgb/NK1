@@ -932,8 +932,9 @@ async function route(req, res) {
                 await runtime.core.flush();
                 return json(res, 200, { ok: true, result });
             }
+            // Reusing an immutable trace ID with different provenance is a resource conflict.
             const status = result.reason === 'canonical-memory-not-found' ? 404 :
-                result.reason === 'canonical-evidence-write-failed' ? 409 : 400;
+                (result.reason === 'canonical-evidence-write-failed' || result.reason === 'source-trace-id-conflict') ? 409 : 400;
             return json(res, status, { ok: false, result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/create') {
