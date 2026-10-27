@@ -231,28 +231,12 @@ export class HexisCanonicalMemoryProjector {
 
   removeSemanticProjection(sourceKey, mutationToken) {
     if (!this.semanticGraph) return;
-    // Prefer a source-scoped write so withdrawing one HMX projection never replaces
-    // the whole graph and accidentally drops unrelated nodes/edges.
-    if (typeof this.semanticGraph.removeSourceProjection === 'function') {
-      this.semanticGraph.removeSourceProjection(sourceKey, mutationToken);
-      return;
+    // Never emulate a scoped deletion by restoring a whole snapshot. An adapter must
+    // implement source-scoped deletion so unrelated nodes and edges cannot be replaced.
+    if (typeof this.semanticGraph.removeSourceProjection !== 'function') {
+      throw new Error('semantic-graph-source-removal-required');
     }
-    const checkpoint = typeof this.semanticGraph.mutationCheckpoint === 'function'
-      ? this.semanticGraph.mutationCheckpoint()
-      : null;
-    const snapshot = this.semanticGraph.snapshot();
-    const removed = new Set(snapshot.nodes
-      .filter(node => String(node.sourceKey ?? '') === String(sourceKey ?? ''))
-      .map(node => node.id));
-    if (!removed.size) return;
-    if (checkpoint === null || typeof this.semanticGraph.restoreIfUnchanged !== 'function' ||
-        this.semanticGraph.restoreIfUnchanged({
-          ...snapshot,
-          nodes: snapshot.nodes.filter(node => !removed.has(node.id)),
-          edges: snapshot.edges.filter(edge => !removed.has(edge.from) && !removed.has(edge.to)),
-        }, checkpoint, mutationToken) !== true) {
-      throw new Error('semantic-graph-source-removal-conflict');
-    }
+    this.semanticGraph.removeSourceProjection(sourceKey, mutationToken);
   }
 
   apply(stage) {
@@ -730,10 +714,18 @@ export class HexisCanonicalMemoryProjector {
       // The expected-current guard fails closed rather than overwriting later changes.
       if (this.semanticGraph && semanticGraphBefore) {
         try {
-          if (semanticGraphMutationCheckpoint === null ||
-              typeof this.semanticGraph.restoreIfUnchanged !== 'function' ||
-              this.semanticGraph.restoreIfUnchanged(semanticGraphBefore, semanticGraphMutationCheckpoint, projectionMutationToken) !== true) {
+          const restoredSnapshot = semanticGraphMutationCheckpoint !== null &&
+            typeof this.semanticGraph.restoreIfUnchanged === 'function' &&
+            this.semanticGraph.restoreIfUnchanged(semanticGraphBefore, semanticGraphMutationCheckpoint, projectionMutationToken) === true;
+          if (!restoredSnapshot) {
             rollbackErrors.push('semantic-graph-conflict');
+            if (semanticGraphMutationCheckpoint !== null &&
+                typeof this.semanticGraph.rollbackOwnedMutations === 'function') {
+              const ownedRollback = this.semanticGraph.rollbackOwnedMutations(semanticGraphMutationCheckpoint, projectionMutationToken);
+              if (ownedRollback.conflicts > 0 || ownedRollback.historyLost) {
+                rollbackErrors.push('semantic-graph-owned-rollback-partial:' + ownedRollback.conflicts);
+              }
+            }
           }
         } catch (graphRollbackError) {
           rollbackErrors.push('semantic-graph:' + String(graphRollbackError?.message ?? graphRollbackError).slice(0, 220));
@@ -741,10 +733,18 @@ export class HexisCanonicalMemoryProjector {
       }
       if (this.temporalLedger && temporalLedgerBefore) {
         try {
-          if (temporalLedgerMutationCheckpoint === null ||
-              typeof this.temporalLedger.restoreIfUnchanged !== 'function' ||
-              this.temporalLedger.restoreIfUnchanged(temporalLedgerBefore, temporalLedgerMutationCheckpoint, projectionMutationToken) !== true) {
+          const restoredSnapshot = temporalLedgerMutationCheckpoint !== null &&
+            typeof this.temporalLedger.restoreIfUnchanged === 'function' &&
+            this.temporalLedger.restoreIfUnchanged(temporalLedgerBefore, temporalLedgerMutationCheckpoint, projectionMutationToken) === true;
+          if (!restoredSnapshot) {
             rollbackErrors.push('temporal-ledger-conflict');
+            if (temporalLedgerMutationCheckpoint !== null &&
+                typeof this.temporalLedger.rollbackOwnedMutations === 'function') {
+              const ownedRollback = this.temporalLedger.rollbackOwnedMutations(temporalLedgerMutationCheckpoint, projectionMutationToken);
+              if (ownedRollback.conflicts > 0 || ownedRollback.historyLost) {
+                rollbackErrors.push('temporal-ledger-owned-rollback-partial:' + ownedRollback.conflicts);
+              }
+            }
           }
         } catch (temporalRollbackError) {
           rollbackErrors.push('temporal-ledger:' + String(temporalRollbackError?.message ?? temporalRollbackError).slice(0, 220));
