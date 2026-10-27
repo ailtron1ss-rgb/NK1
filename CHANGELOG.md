@@ -1,3 +1,10 @@
+## [NK1][Memory] Keep causal-life derived diagnostics coherent (2026-10-27)
+
+- Recompute derived chain/evidence statistics after both inserting and updating a causal-life node; snapshot state must not report stale `observedChains` until restore.
+- Extend the WorkPass570 subsystem state round-trip regression to assert the standalone node's diagnostics before serialization, then retain strict snapshot equality after restore.
+- Scope is limited to the derived graph projection; canonical memories, confidence, and causal edges remain unchanged.
+- Validation status at checkpoint creation: CI pending.
+
 ## [NK1][WorkPass571] Restore compatibility memory at the persisted lifecycle tick (2026-10-27)
 
 - Move legacy/multi-timescale compatibility consolidation after restoration of CanonicalMemoryLifecycleAuthority.
