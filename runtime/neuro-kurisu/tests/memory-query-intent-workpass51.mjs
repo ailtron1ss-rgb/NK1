@@ -136,13 +136,13 @@ for (const [key, sessionId] of [['session-id', 'session-44'], ['session id', 'se
   );
 }
 
-// Arbitrary metadata values can contain conversation words without proving that a
-// social memory belongs to a specific dialogue. A real session ID must win that tie.
+// A conversation-like relationship ID is not a session identity. Keep this fixture's
+// remaining fields lexically neutral so the assertion tests lineage classification, not token overlap.
 const spoofedLineageMemory = new MemoryOS2({ embeddingProvider: null });
 const spoofedLineageContent = 'neural memory experiment dialogue';
 encode(spoofedLineageMemory, {
   id: 'a-untrusted-social', kind: 'social', content: spoofedLineageContent,
-  context: { relationshipId: 'conversation-17', note: 'discussion summary from an unrelated relation' },
+  context: { relationshipId: 'conversation-17' },
 });
 encode(spoofedLineageMemory, {
   id: 'z-real-session-social', kind: 'social', content: spoofedLineageContent,
