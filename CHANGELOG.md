@@ -1,3 +1,8 @@
+## [NK1][WorkPass447] Use numeric tolerance for transfer deltas (2026-10-27)
+
+- Changed the forward-transfer regression to compare the computed delta within `1e-12` instead of strict equality, avoiding a false failure from ordinary IEEE-754 representation (`0.14999999999999997` versus `0.15`). The measured transfer formula is unchanged.
+- CI evidence from the prior head isolated this as the first P26 failure; the exact-head workflow must re-run before it is marked green.
+
 ## [NK1][WorkPass446] Keep the replay buffer compatible with Node 22 type stripping (2026-10-27)
 
 - P26's recovery benchmark, continual-learning matrix, skill-learning benchmark and Hermes candidate gate all passed; the next replay test then failed during Node 22's strip-only TypeScript parsing because `ContinualReplayBuffer` used a constructor parameter property (`readonly capacity`).
