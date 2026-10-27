@@ -1,3 +1,9 @@
+## [NK1][WorkPass435] Guard workflow concurrency against event cancellation regressions (2026-10-27)
+
+- Extended `tools/verify-ci-reliability.mjs` to reject a Hexis canonical-apply workflow that listens to both `push` and `pull_request`, sets `cancel-in-progress: true`, and omits `github.event_name` from its concurrency group.
+- Added a regression in `tools/verify-ci-reliability.test.mjs` that accepts an event-scoped group and rejects the former shared-group configuration. This locks the WorkPass434 fix into the existing CI reliability audit.
+- Source and regression are committed and included by the existing WorkPass71 workflow paths. Execution is pending on the final branch head; no test pass is claimed until Actions reports completed step results.
+
 ## [NK1][WorkPass456] Test full HMX envelope size rejection (2026-10-27)
 
 - Added a full-document over-8-MiB UTF-8 regression in the Hexis adaptation suite, complementing the existing per-section limit test.
