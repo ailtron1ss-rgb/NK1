@@ -89,6 +89,28 @@ Deletion is fail-closed: it requires the write gate and per-operation approval, 
 - Remote memories remain untrusted data, not instructions. They are never promoted to a policy or automatically copied into canonical memory. A separate explicit opt-in allows limited contextual use, with a visible untrusted-data boundary and a strict candidate cap.
 - Local retrieval, offline operation, persistence, deletion/revision semantics and MemoryOS2 remain independent of Mem0 availability.
 
+## Self-hosted Mem0 Open Source REST mode
+
+The adapter supports both `mode: 'platform'` (the existing hosted API) and `mode: 'oss'` (the self-hosted REST API). They are different API dialects and must not share routes/auth assumptions.
+
+For a self-hosted Mem0 OSS API, the default local endpoint is `http://localhost:8888`. Configure:
+
+```dotenv
+NK_MEM0_ENABLED=1
+NK_MEM0_MODE=oss
+NK_MEM0_BASE_URL=http://localhost:8888
+NK_MEM0_USER_ID=nk1-local-user
+MEM0_API_KEY=<a per-user X-API-Key from the Mem0 dashboard>
+```
+
+OSS search uses `POST /search` with `query` and `user_id`; create uses `POST /memories`; deleting a single adapter-issued UUID uses `DELETE /memories/{memory_id}`. OSS requests use the `X-API-Key` header. Platform remains on its versioned API paths and `Authorization: Token` authentication. The adapter's results remain untrusted and do not become canonical NK1 memories.
+
+Plain HTTP is accepted by default only for loopback addresses in OSS mode. A non-loopback HTTP endpoint requires an additional explicit `NK_MEM0_ALLOW_INSECURE_HTTP=1` opt-in; prefer HTTPS for network-facing deployments. This flag is not needed for localhost. Remote writes/deletes still require `NK_MEM0_ALLOW_WRITES=1` and per-operation `approved: true`. Search can be enabled separately and never grants write access.
+
+Self-hosting avoids sending NK1 search text to hosted Mem0 Platform, but it does not guarantee the Mem0 deployment has no external data flow: the OSS server's own LLM, embedding, or vector-store providers depend on its deployment configuration. Review those providers and retention settings independently.
+
+Upstream API reference: https://github.com/mem0ai/mem0/blob/main/docs/open-source/features/rest-api.mdx
+
 ## Validation and remaining work
 
 tests/mem0-platform-adapter-workpass1.mjs covers disabled-by-default behavior, fixed per-user scoping, result provenance, sensitive-text minimization, explicit write approval, HTTPS enforcement, HTTP error redaction, bounded response parsing, the prompt boundary for remote candidates, and consent/scope-bound deletion. `tests/server-language-http-fake-provider.mjs` also exercises the actual server diagnostics/search routes with Mem0 disabled, confirms local MemoryOS2 remains available, and confirms no remote recall enters the prompt even if the second gate is set. It runs the server in non-loopback mode with a test-only bearer token: unauthenticated diagnostics/search/chat requests must be denied with 401, the unauthenticated chat must not reach the fake LLM, and authenticated chat must reach it exactly once. `.github/workflows/mem0-platform-adapter.yml` runs the adapter suite, server syntax check, and this disabled-provider HTTP smoke separately from the broader repository suite.
