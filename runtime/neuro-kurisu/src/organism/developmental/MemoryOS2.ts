@@ -580,7 +580,8 @@ export class MemoryOS2{
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
-  const restoredPolicy=this.state.adaptiveMemoryPolicy?.lastPolicy;
+  this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
+  const restoredPolicy=this.state.adaptiveMemoryPolicy.lastPolicy;
   this.activePolicy=restoredPolicy&&['semantic','hybrid','causal','temporal','balanced'].includes(restoredPolicy)?restoredPolicy:'balanced';
   this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
