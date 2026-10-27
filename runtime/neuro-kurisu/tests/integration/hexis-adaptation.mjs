@@ -188,6 +188,34 @@ assert(
   'successful full restore must rebuild retrieval indexes for the replacement row',
 );
 
+const persistedPolicyGuard = new MemoryOS2({ embeddingProvider: null });
+const corruptedPersistedPolicyState = persistedPolicyGuard.snapshot();
+corruptedPersistedPolicyState.adaptiveMemoryPolicy = {
+  version: 99,
+  weights: { semantic: 3, hybrid: Number.NaN, causal: -2, temporal: 0.5, balanced: 0.5 },
+  trials: { semantic: -1, hybrid: 30000, causal: 0, temporal: 0, balanced: 0 },
+  reward: { semantic: 2, hybrid: Number.POSITIVE_INFINITY, causal: 0, temporal: 0, balanced: 0 },
+  contextValue: { 'invalid key': { semantic: 1 }, '__proto__': { causal: 1 } },
+  contextTrials: { 'invalid key': { semantic: 1 }, '__proto__': { causal: 1 } },
+  cooldownUntil: Number.POSITIVE_INFINITY,
+  lastPolicy: 'unknown-policy',
+  lastContextKey: 'invalid key',
+};
+persistedPolicyGuard.restore(corruptedPersistedPolicyState);
+const canonicalPersistedPolicy = persistedPolicyGuard.snapshot().adaptiveMemoryPolicy;
+assert(canonicalPersistedPolicy);
+assert.equal(canonicalPersistedPolicy.lastPolicy, 'balanced',
+  'MemoryOS2 snapshots must persist the normalized policy rather than raw untrusted fields');
+assert.equal(canonicalPersistedPolicy.lastContextKey, 'default');
+assert.equal(canonicalPersistedPolicy.cooldownUntil, 0);
+assert.equal(canonicalPersistedPolicy.weights.semantic, 1);
+assert.equal(canonicalPersistedPolicy.weights.hybrid, 0.5);
+assert.equal(canonicalPersistedPolicy.trials.hybrid, 10000);
+assert.equal(Object.keys(canonicalPersistedPolicy.contextValue).length, 0,
+  'rejected context keys must not remain in the canonical persisted memory state');
+assert.equal(persistedPolicyGuard.activePolicy, 'balanced',
+  'MemoryOS2 active selector and its persisted policy must agree after normalization');
+
 // An HMX rollback can restore its own ledger writes, but must never erase a
 // foreign write made after the transaction's checkpoint.
 const ownedCheckpointFabric = new HexisAdaptationFabric();
