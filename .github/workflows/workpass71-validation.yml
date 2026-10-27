@@ -110,6 +110,8 @@ jobs:
         run: npm --prefix app run typecheck
       - name: App development bundle build
         run: npm --prefix app run build:dev
+      - name: WorkPass451 compound-repair runtime clock registration
+        run: npm --prefix runtime/neuro-kurisu run test:runtime-clocks
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: WorkPass329 corrupt memory mutation receipt restore must fail closed
