@@ -1,3 +1,9 @@
+## [NK1][WorkPass461] Retry HMX after conflict-aware compensation without duplicate projection (2026-10-27)
+
+- Extended the foreign-write rollback regression to retry the still-accepted stage once the injected independent write has completed. The retry must materialize one canonical memory, one semantic node and one temporal assertion while retaining the independent temporal record.
+- Replaying the successful HMX apply must return the identical application receipt and leave graph/temporal counts unchanged.
+- The test, bounded-journal regressions and post-write compensation exception regression are present in the current branch. Exact-head runtime execution, TypeScript typecheck and hosted CI remain unconfirmed; `main` and the canonical Release ZIP are unchanged.
+
 ## [NK1][WorkPass460] Verify compensation after a post-write exception (2026-10-27)
 
 - Added a failure-injection regression in which `MemoryOS.restoreSignalsForCompensation()` completes the canonical signal restore and an outer adapter throws before the lifecycle receipt is returned. The test requires the error to remain visible, the canonical row to match its exact pre-import snapshot, the one-shot token to be consumed, and the HMX stage to remain retryable.
