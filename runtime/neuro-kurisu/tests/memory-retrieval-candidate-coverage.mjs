@@ -49,4 +49,25 @@ for (let i = 0; i < 16; i++) isolated.encode({
 });
 const exactFirst = isolated.retrieve('violet compass migration', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.equal(exactFirst[0]?.id, 'separate-0', 'exact relevant memory must lead unrelated memories');
-console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id }));
+
+// An unanswerable query must not be filled with arbitrary recent memories.
+// The old recent-memory fallback injected a candidate pool even when the query had
+// no token, fuzzy, or bilingual-concept posting in the corpus.
+const noEvidence = new MemoryOS2();
+for (let i = 0; i < 12; i++) {
+  noEvidence.encode({
+    id: `unrelated-${i}`, content: `zebra keyboard orchard weather signal ${i}`,
+    kind: 'semantic', source: 'abstention-fixture', tags: [], context: {},
+    salience: .95, emotionalWeight: .1, identityRelevance: .9, goalRelevance: .9, socialRelevance: .1,
+    predictionError: .1, confidence: .99, epistemicStatus: 'fact', entities: [],
+    semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+    validFromAt: now - 1000, observedAt: now - 100 - i,
+  });
+}
+const unsupportedQuery = 'quartz nebula credential archive';
+const unsupportedRows = noEvidence.retrieve(unsupportedQuery, 8, 1, 1, { temporalMode: 'at', asOfAt: now });
+assert.deepEqual(unsupportedRows, [], 'without any evidence-bearing candidate, retrieval must abstain instead of returning recent unrelated memories');
+assert.equal(noEvidence.retrievalDiagnostics().candidateCount, 0, 'no-evidence query must not be populated by recent-memory fallback');
+const supportedRows = noEvidence.retrieve('zebra keyboard orchard', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
+assert.ok(supportedRows.some(row => row.id === 'unrelated-0'), 'evidence-backed retrieval must remain available after an abstention');
+console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id, unsupportedQueryResults: unsupportedRows.length, abstentionCandidateCount: noEvidence.retrievalDiagnostics().candidateCount, supportedQueryResults: supportedRows.length }));
