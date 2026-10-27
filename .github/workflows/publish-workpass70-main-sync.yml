@@ -1,6 +1,8 @@
-name: Publish main-synced WorkPass70 release
+name: Publish validated WorkPass70 source release
 
 on:
+  push:
+    branches: [workpass70-source]
   workflow_run:
     workflows: ["NeuroCore core regression validation"]
     branches: [workpass70-source]
@@ -8,45 +10,44 @@ on:
 
 permissions:
   contents: write
+  checks: read
+  actions: read
+
+concurrency:
+  group: nk1-validated-release-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   package-and-publish:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'workpass70-source' }}
+    if: ${{ github.event_name == 'push' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'workpass70-source') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Checkout exact validated source commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Refuse stale validation and an existing tag
+      - name: Refuse stale source and existing release tag
         id: guard
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha }}
+          VALIDATED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
           LATEST_SHA="$(git ls-remote origin refs/heads/workpass70-source | cut -f1)"
-          if [ -z "$LATEST_SHA" ]; then
-            echo "Could not resolve current source branch"
-            exit 1
-          fi
+          if [ -z "$LATEST_SHA" ]; then echo "Could not resolve current source branch"; exit 1; fi
           if [ "$LATEST_SHA" != "$VALIDATED_SHA" ]; then
-            echo "Skipping stale validated commit $VALIDATED_SHA; current source head is $LATEST_SHA"
             echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping stale validation $VALIDATED_SHA; source tip is $LATEST_SHA"
             exit 0
           fi
-          SHORT_SHA="${VALIDATED_SHA:0:12}"
-          TAG="workpass70-main-sync-2026-10-22-$SHORT_SHA"
-          API_URL="${GITHUB_API_URL:-https://api.github.com}"
+          SHORT_SHA="$(printf '%s' "$VALIDATED_SHA" | cut -c1-12)"
+          RELEASE_DATE="$(date -u +%Y-%m-%d)"
+          TAG="workpass70-main-sync-$RELEASE_DATE-$SHORT_SHA"
           CHECK_FILE="$RUNNER_TEMP/release-tag-check.json"
-          HTTP_CODE="$(curl --silent --show-error --output "$CHECK_FILE" --write-out '%{http_code}' \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "$API_URL/repos/ailtron1ss-rgb/NK1/releases/tags/$TAG")"
+          HTTP_CODE="$(curl --silent --show-error --output "$CHECK_FILE" --write-out '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/$TAG")"
           case "$HTTP_CODE" in
             200)
               echo "publish=false" >> "$GITHUB_OUTPUT"
@@ -54,7 +55,7 @@ jobs:
               exit 0
               ;;
             404)
-              echo "Release tag $TAG does not exist; safe to continue."
+              echo "Release tag $TAG is absent; safe to continue."
               ;;
             *)
               echo "Unable to verify release tag $TAG (HTTP $HTTP_CODE); refusing to publish."
@@ -64,16 +65,72 @@ jobs:
           esac
           echo "publish=true" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "release_date=$RELEASE_DATE" >> "$GITHUB_OUTPUT"
           echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
-          echo "Validated source head: $VALIDATED_SHA"
+          echo "validated_sha=$VALIDATED_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for exact-source regression checks
+        id: required_checks
+        if: steps.guard.outputs.publish == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 120); do
+            CHECKS_JSON="$(gh api -H "Accept: application/vnd.github+json" "repos/$GITHUB_REPOSITORY/commits/$VALIDATED_SHA/check-runs?per_page=100")"
+            ALL_SUCCEEDED=true
+            for REQUIRED_CHECK in targeted-and-regression source-lineage-contract; do
+              CHECK_JSON="$(jq -c --arg name "$REQUIRED_CHECK" '[.check_runs[] | select(.name == $name)] | sort_by(.started_at // .created_at) | last // {}' <<< "$CHECKS_JSON")"
+              STATUS="$(jq -r '.status // "missing"' <<< "$CHECK_JSON")"
+              CONCLUSION="$(jq -r '.conclusion // ""' <<< "$CHECK_JSON")"
+              if [ "$STATUS" = "completed" ]; then
+                if [ "$CONCLUSION" != "success" ]; then
+                  echo "Required check $REQUIRED_CHECK completed with conclusion=$CONCLUSION for $VALIDATED_SHA"
+                  exit 1
+                fi
+              else
+                ALL_SUCCEEDED=false
+              fi
+            done
+            if [ "$ALL_SUCCEEDED" = true ]; then
+              echo "validated=true" >> "$GITHUB_OUTPUT"
+              echo "Exact-SHA regression checks passed for $VALIDATED_SHA"
+              exit 0
+            fi
+            echo "Waiting for targeted-and-regression and source-lineage-contract on $VALIDATED_SHA (attempt $attempt/120)"
+            sleep 10
+          done
+          echo "Timed out waiting for required exact-SHA checks on $VALIDATED_SHA"
+          exit 1
+
+      - name: Recheck source freshness before packaging
+        id: freshness
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true'
+        shell: bash
+        env:
+          VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
+        run: |
+          set -euo pipefail
+          LATEST_SHA="$(git ls-remote origin refs/heads/workpass70-source | cut -f1)"
+          if [ "$LATEST_SHA" != "$VALIDATED_SHA" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Source advanced to $LATEST_SHA; skip stale release $VALIDATED_SHA"
+            exit 0
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
 
       - name: Set up pinned Node.js for release provenance audit
-        if: steps.guard.outputs.publish == 'true'
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true'
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - name: Verify selected Node.js matches repository pin
-        if: steps.guard.outputs.publish == 'true'
+          package-manager-cache: false
+
+      - name: Run source provenance and release-license gates
+        id: release_audit
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -83,29 +140,24 @@ jobs:
             *.*.*) test "$actual" = "$expected" ;;
             *) case "$actual" in "$expected" | "$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
           esac
-      - name: Regenerate SBOM and require human license approval before packaging
-        if: steps.guard.outputs.publish == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
           npm run test:provenance-current
           npm run audit:release-license-readiness
-      - name: Package complete source and verify ZIP integrity
-        if: steps.guard.outputs.publish == 'true'
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Package exact source, build fresh report and verify ZIP
+        id: package_artifacts
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.release_audit.outputs.ready == 'true'
         shell: bash
         env:
           TAG: ${{ steps.guard.outputs.tag }}
+          RELEASE_DATE: ${{ steps.guard.outputs.release_date }}
           SHORT_SHA: ${{ steps.guard.outputs.short_sha }}
-          GH_TOKEN: ${{ github.token }}
+          VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
         run: |
           set -euo pipefail
-          ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_2026-10-22-${SHORT_SHA}.zip"
-          REPORT="WORKPASS70_MAIN_SYNC_2026-10-22_REPORT_RU.md"
-          if [ ! -f "$REPORT" ]; then
-            echo "Missing release report: $REPORT"
-            exit 1
-          fi
-          git archive --format=zip --prefix="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_2026-10-22-${SHORT_SHA}/" HEAD > "$RUNNER_TEMP/$ZIP"
+          ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}.zip"
+          REPORT="WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}_REPORT_RU.md"
+          git archive --format=zip --prefix="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}/" "$VALIDATED_SHA" > "$RUNNER_TEMP/$ZIP"
           unzip -t "$RUNNER_TEMP/$ZIP" | tail -1
           python - "$RUNNER_TEMP/$ZIP" <<'PY'
           import pathlib, sys, zipfile
@@ -122,29 +174,53 @@ jobs:
                   raise SystemExit(f"Unsafe paths in source archive: {unsafe[:10]}")
               print(f"ZIP_MEMBERS={len(names)}")
           PY
-          cp "$REPORT" "$RUNNER_TEMP/$REPORT"
-          cd "$RUNNER_TEMP"
-          sha256sum "$ZIP" "$REPORT" > SHA256SUMS.txt
-          cat SHA256SUMS.txt
-          ls -lh "$ZIP" "$REPORT" SHA256SUMS.txt
+          cat > "$RUNNER_TEMP/$REPORT" <<EOF
+          # NK1 — отчёт о сборке проверенного Release source
 
-      - name: Publish a new prerelease without overwriting WorkPass70
-        if: steps.guard.outputs.publish == 'true'
+          - Дата сборки (UTC): $RELEASE_DATE
+          - Ветка исходников: workpass70-source
+          - Точный исходный SHA: $VALIDATED_SHA
+          - Targeted core regression: success
+          - Source-lineage regression: success
+          - SBOM provenance and release-license readiness: success
+          - Архив создан через git archive именно для проверенного SHA.
+          - ZIP integrity и безопасные пути проверены в CI.
+          - SHA-256 для ZIP и отчёта включён в SHA256SUMS.txt.
+
+          Это технический prerelease, не подтверждение production-ready. Положительный прирост качества recall на независимом RU/EN holdout здесь не заявляется; он требует отдельной оценки.
+          EOF
+          sha256sum "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" > "$RUNNER_TEMP/SHA256SUMS.txt"
+          cat "$RUNNER_TEMP/SHA256SUMS.txt"
+          ls -lh "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/SHA256SUMS.txt"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Final freshness check before release publication
+        id: final_guard
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.release_audit.outputs.ready == 'true' && steps.package_artifacts.outputs.publish == 'true'
+        shell: bash
+        env:
+          VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
+        run: |
+          set -euo pipefail
+          LATEST_SHA="$(git ls-remote origin refs/heads/workpass70-source | cut -f1)"
+          if [ "$LATEST_SHA" != "$VALIDATED_SHA" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "Source advanced after packaging; refuse to publish stale SHA $VALIDATED_SHA"
+            exit 0
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publish a new verified prerelease without overwriting prior tags
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.release_audit.outputs.ready == 'true' && steps.package_artifacts.outputs.publish == 'true' && steps.final_guard.outputs.publish == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.guard.outputs.tag }}
+          RELEASE_DATE: ${{ steps.guard.outputs.release_date }}
           SHORT_SHA: ${{ steps.guard.outputs.short_sha }}
+          VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
         run: |
           set -euo pipefail
-          ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_2026-10-22-${SHORT_SHA}.zip"
-          REPORT="WORKPASS70_MAIN_SYNC_2026-10-22_REPORT_RU.md"
-          gh release create "$TAG" \
-            "$RUNNER_TEMP/$ZIP" \
-            "$RUNNER_TEMP/$REPORT" \
-            "$RUNNER_TEMP/SHA256SUMS.txt" \
-            --repo ailtron1ss-rgb/NK1 \
-            --target "${{ github.event.workflow_run.head_sha }}" \
-            --title "NeuroCore WorkPass70 Main Sync (2026-10-22)" \
-            --notes "Full source snapshot after syncing the current main-branch files into the WorkPass70 release source. Integrity checked; published as a prerelease after core validation passed. This is not production approval." \
-            --prerelease
+          ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}.zip"
+          REPORT="WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}_REPORT_RU.md"
+          gh release create "$TAG" "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/SHA256SUMS.txt" --repo "$GITHUB_REPOSITORY" --target "$VALIDATED_SHA" --title "NeuroCore WorkPass70 Main Sync ($RELEASE_DATE)" --notes "Validated source snapshot for $VALIDATED_SHA. Exact-SHA core regression and source-lineage checks passed; ZIP integrity verified; report and SHA-256 manifest attached. This prerelease is not production approval." --prerelease
