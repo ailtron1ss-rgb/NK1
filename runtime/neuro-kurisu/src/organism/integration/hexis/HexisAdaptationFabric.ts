@@ -986,9 +986,15 @@ export class HexisAdaptationFabric {
             // If the handler fails, a retry remains valid but gets a distinct attempt ID.
             refreshHmxStageLifecycleDigest(stage);
             const receipt = this.canonicalMemoryApply(structuredClone(stage));
-            // Validate the same stage/export/lineage/digest contract on first apply
-            // that is required when the persisted receipt is replayed after restore.
-            if (!isValidHmxApplyReceipt(stage, receipt)) throw new Error('hmx-apply-receipt-invalid');
+            // Validate against the exact post-transition view that will be persisted.
+            // The receipt validator intentionally requires status='applied' and a
+            // lifecycle seal that binds the application digest; validating the
+            // pre-transition accepted stage rejects every otherwise-valid first apply.
+            const appliedCandidate = structuredClone(stage);
+            appliedCandidate.application = structuredClone(receipt);
+            appliedCandidate.status = 'applied';
+            refreshHmxStageLifecycleDigest(appliedCandidate);
+            if (!isValidHmxApplyReceipt(appliedCandidate, receipt)) throw new Error('hmx-apply-receipt-invalid');
             stage.application = structuredClone(receipt);
             stage.status = 'applied';
             refreshHmxStageLifecycleDigest(stage);
