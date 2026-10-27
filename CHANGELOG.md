@@ -1,18 +1,37 @@
-## [NK1][WorkPass574] Require trusted postcondition evidence in replay-learning regression (2026-10-27)
+## [NK1][WorkPass577] Verify replay learning through trusted postconditions (2026-10-27)
 
-- Fixed the recovered memory-transfer regression that treated a caller-supplied `independentVerified: true` flag as independent verification, even though the runtime has deliberately stopped trusting that deprecated boolean.
-- Added a negative assertion proving caller-provided booleans do not affect validated replay counters.
-- Replaced the synthetic trust shortcut with an `OutcomeVerificationService`-minted, exact-payload external-postcondition receipt; this exercises the same trust boundary as production code.
-- Kept outcome and stability assertions so the test proves a legitimate evidence receipt still reaches the replay-retention path.
-- No thresholds were relaxed and no learning improvement is claimed by this test correction.
+- Corrected the recovered memory-transfer regression that used a caller-supplied `independentVerified: true` boolean as if it were independent verification.
+- Added a negative regression proving a caller flag cannot increase validated replay counters.
+- Replaced the trust shortcut with an exact-payload, service-minted external-postcondition receipt, and retained stability/validation assertions for the trusted path.
+- This correction does not relax evidence gates or claim a measured learning gain.
 
-## [NK1][WorkPass573] Make cross-task transfer evidence idempotent and restore-safe (2026-10-27)
+## [NK1][WorkPass576] Make cross-task transfer evidence idempotent and restore-safe (2026-10-27)
 
-- Reject malformed transfer-probe IDs/context keys, control characters, out-of-range or non-finite scores, non-boolean verification flags, invalid timestamps, and restored rows whose delta does not agree with baseline/post-score.
-- Add a persisted 4,096-entry identity/fingerprint ledger. Exact retries are idempotent, conflicting reuse of an ID is rejected, and an evicted probe cannot earn repeat transfer credit after a restart while its ID remains in the bounded registry.
-- Keep the recorder honest about trust boundaries: payload identity is checked, but caller-supplied `independentVerified` and `holdout` attestations are not cryptographic proof of independence.
-- Extend the paired transfer regression and wire it, with the causal-stream suite, into the canonical `test:rebuild-recovered` aggregate.
-- No measured transfer uplift is claimed; this pass prevents duplicate and malformed evidence from inflating diagnostics.
+- Reject malformed transfer-probe IDs/context keys, control characters, out-of-range/non-finite scores, non-boolean verification flags, invalid timestamps, and restored rows whose delta disagrees with post-score minus baseline.
+- Persist a bounded 4,096-entry identity/fingerprint ledger so identical retries do not mint repeated transfer credit after the 96-row recent window evicts a probe.
+- Reject conflicting reuse of an evidence ID and sanitize restored probes before they affect metrics.
+- Add regressions and wire them into the canonical `test:rebuild-recovered` aggregate.
+- This is an evidence-integrity hardening pass, not evidence of real-world transfer uplift.
+
+## [NK1][WorkPass575] Align backend TTS language and speech modes with text (2026-10-27)
+
+- Replace the fixed `ru-RU` VoicePlan language with bounded Cyrillic/Latin script inference, matching the browser embodiment's existing two-language heuristic.
+- Add English phrases for greeting, self-disclosure, explanatory/lecture and disagreement voice modes; existing Russian cues remain supported.
+- No dependencies added. Runtime/browser/audio checks were not run in this pass.
+
+## [NK1][WorkPass575] Gate memory recall on grounded evidence (2026-10-27)
+
+- Add a final answerability gate to MemoryOS2 hybrid retrieval: recency, salience and type bonuses alone no longer justify returning a memory for a no-match query.
+- Require direct phrase/coverage/entity/fuzzy/concept support, with bounded category-only recall exceptions for explicit identity, episode, goal and procedure requests.
+- Expose the gate decision in retrieval diagnostics so abstention can be evaluated instead of inferred from ranking scores.
+- Add a regression for unsupported queries, identity recall, episodic recall and exact lexical retrieval; register it in the recovered runtime suite.
+- Validation status: code and regression are committed; CI result pending. Synthetic fixtures do not demonstrate real-corpus recall uplift.
+
+## [NK1][WorkPass574] Bind response voice to post-response emotional state (2026-10-27)
+
+- Refresh the canonical organism snapshot after a chat response before assigning the assistant turn's emotion, avoiding use of the pre-response label by AvatarStage's browser TTS.
+- Keep the generated reply durable if the follow-up UI snapshot request fails; surface the refresh error without discarding the chat turn.
+- Tests were not run in this pass. Browser speech/Live2D synchronization still needs end-to-end verification on real audio clocks.
 
 ## [NK1][WorkPass573] Stabilize query-derived memory retrieval context (2026-10-27)
 
@@ -2400,3 +2419,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+## [NK1][WorkPass507] Add independent bilingual retrieval evaluation gate (2026-10-27)
+
+- Added an offline RU/EN MemoryOS2 retrieval holdout runner with source/version/license/labeling provenance, explicit unanswerable queries, five paired bootstrap seeds, corpus/configuration fingerprints, and no automatic promotion.
+- Fixed upstream double-escaped Unicode punctuation/whitespace normalization, canonical row separators and report newlines; extracted deterministic Unicode normalization and SHA-256 row canonicalization into a tested helper.
+- Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
+- Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
+- No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
