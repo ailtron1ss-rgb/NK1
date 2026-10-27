@@ -720,15 +720,20 @@ export class HexisAdaptationFabric {
                 if (current && JSON.stringify(current) !== JSON.stringify(expected)) return false;
             }
 
-            const earliest = this.mutationJournal[0]?.revision;
-            const historyLostAfter = earliest !== undefined && ownerRevision < earliest - 1;
-            const foreignAfter = this.mutationJournal.some(
-                row => row.revision > ownerRevision && row.ownerToken !== ownerToken,
-            );
             const missingEvicted = evictedBeforeWrite.some(
                 old => !this.state.temporal.some(row => row.id === old.id),
             );
-            const canRestoreEvicted = !historyLostAfter && !foreignAfter;
+            let canRestoreEvicted = true;
+            if (missingEvicted) {
+                // Only scan the bounded journal when capacity eviction actually needs
+                // to be reversed. The usual under-capacity rollback stays O(1) here.
+                const earliest = this.mutationJournal[0]?.revision;
+                const historyLostAfter = earliest !== undefined && ownerRevision < earliest - 1;
+                const foreignAfter = this.mutationJournal.some(
+                    row => row.revision > ownerRevision && row.ownerToken !== ownerToken,
+                );
+                canRestoreEvicted = !historyLostAfter && !foreignAfter;
+            }
 
             if (currentCreated) this.state.temporal = this.state.temporal.filter(row => row.id !== created.id);
             if (existingBefore && currentPrior) {
