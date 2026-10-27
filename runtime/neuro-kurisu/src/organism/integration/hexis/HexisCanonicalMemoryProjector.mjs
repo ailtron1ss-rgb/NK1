@@ -348,14 +348,19 @@ export class HexisCanonicalMemoryProjector {
           if (!supersededIds.includes(prior.id)) supersededIds.push(prior.id);
           if (prior.epistemicStatus !== 'quarantined') {
             if (!revisedStatuses.some(entry => entry.id === prior.id)) {
-              revisedStatuses.push({ id: prior.id, previousStatus: prior.epistemicStatus });
+              const compensationToken = this.memoryFabric.captureStatusCompensation(prior.id);
+              if (!compensationToken) throw new Error('hmx-status-compensation-capture-failed:' + prior.id);
+              revisedStatuses.push({ id: prior.id, previousStatus: prior.epistemicStatus, token: compensationToken });
+              this.memoryFabric.revise(
+                prior.id,
+                'quarantined',
+                'hexis-source-content-superseded:' + hash(stableRefKey + '\0' + contentHash).slice(0, 16),
+                {
+                  commandId: 'hexis-supersede:' + hash(String(stage.stagingId) + ':' + prior.id + ':' + contentHash + ':' + attempt).slice(0, 48),
+                  compensationToken,
+                },
+              );
             }
-            this.memoryFabric.revise(
-              prior.id,
-              'quarantined',
-              'hexis-source-content-superseded:' + hash(stableRefKey + '\0' + contentHash).slice(0, 16),
-              { commandId: 'hexis-supersede:' + hash(String(stage.stagingId) + ':' + prior.id + ':' + contentHash + ':' + attempt).slice(0, 48) },
-            );
           }
           const priorGraphSource = asText(prior.context?.hexisGraphSourceKey, 512) || asText(prior.source, 512);
           if (priorGraphSource) this.removeSemanticProjection(priorGraphSource);
@@ -575,9 +580,12 @@ export class HexisCanonicalMemoryProjector {
 
       // Only finalize signal compensation tokens after every canonical/semantic/temporal
       // projection succeeded. If preflight fails, the catch still owns live rollback tokens.
-      if (revisedSignals.length &&
-          this.memoryFabric.commitSignalCompensations(revisedSignals.map(revision => revision.token)) !== true) {
-        throw new Error('hmx-signal-compensation-commit-failed');
+      if ((revisedSignals.length || revisedStatuses.length) &&
+          this.memoryFabric.commitHmxCompensations({
+            signalTokens: revisedSignals.map(revision => revision.token),
+            statusTokens: revisedStatuses.map(revision => revision.token),
+          }) !== true) {
+        throw new Error('hmx-compensation-commit-failed');
       }
 
     } catch (error) {
@@ -631,13 +639,15 @@ export class HexisCanonicalMemoryProjector {
             rollbackErrors.push('status-restore-memory-missing:' + revision.id);
             continue;
           }
-          if (current.epistemicStatus !== revision.previousStatus) {
-            this.memoryFabric.revise(
-              revision.id,
-              revision.previousStatus,
-              'hexis-hmx-apply-status-rollback',
-              { commandId: 'hexis-status-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + String(revision.previousStatus) + ':' + attempt).slice(0, 48) },
-            );
+          const restoredExactly = this.memoryFabric.restoreStatusForCompensation(
+            revision.id,
+            revision.token,
+            'hexis-hmx-apply-rollback',
+            { commandId: 'hexis-status-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + String(revision.previousStatus) + ':' attempt).slice(0, 48) },
+          );
+          if (restoredExactly !== true) {
+            rollbackErrors.push('status-restore-unconfirmed:' + revision.id);
+            continue;
           }
           const restored = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
           if (restored?.epistemicStatus !== revision.previousStatus) {
