@@ -1078,7 +1078,13 @@ export class MemoryOS2{
    const source=String(options.source??parent.source);
    const revisionId=stableMemoryId(`${canonicalContent}\\0revision:${group}\\0${nextSeq}\\0${parent.id}`,parent.kind,source);
    const already=this.itemIndex.get(revisionId);
-   if(already&&canonicalizeMemoryContent(already.content)===canonicalContent&&(already.revisionGroupId??already.id)===group)return structuredClone(already);
+   if(already){
+    if(canonicalizeMemoryContent(already.content)===canonicalContent&&(already.revisionGroupId??already.id)===group)return structuredClone(already);
+    // Never let encode(forceDistinct) reuse a revision ID that now belongs to an
+    // unrelated chain or a different payload. That would create duplicate-ID rows
+    // or silently attach an existing memory to a new revision lineage.
+    throw new Error('memory-revision-id-collision');
+   }
 
    // A content revision appends a row, changes its parent, and updates several
    // indexes. Snapshot canonical row objects separately so rollback restores them
