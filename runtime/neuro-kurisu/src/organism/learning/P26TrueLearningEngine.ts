@@ -215,7 +215,7 @@ export class P26TrueLearningEngine{
       const current=this.learner.train({state:row.state,action:row.action,target01:targetFor(row),learningRate01:currentRate});
       totalLoss+=current.loss01;
       if(!policyFrozen){onlineUpdates++;this.state.metrics.onlineUpdates++;}
-      if((i+1)%every!==0||!replayRows.length||replayUpdates>=maxReplayUpdates)continue;
+      if((i+1)%every!==0||!replayRows.length||replayUpdates>=maxReplayUpdates||attempts>=maxReplayUpdates)continue;
       const historical=replayRows[candidateIndex%replayRows.length];
       candidateIndex++;attempts++;
       if(isConflicting(historical)){
@@ -229,7 +229,7 @@ export class P26TrueLearningEngine{
       });
       totalLoss+=replayResult.loss01;
       if(!policyFrozen){replayUpdates++;this.state.metrics.replayUpdates++;}
-      if(attempts>=maxReplayUpdates&&replayUpdates<maxReplayUpdates)break;
+
     }
     const actualUpdates=onlineUpdates+replayUpdates;
     if(actualUpdates){
