@@ -1,3 +1,9 @@
+## [NK1][WorkPass479] Bound P26 replay pressure at high interleave frequency — 2026-10-27
+
+- `P26TrueLearningEngine.trainInterleaved()` now attenuates per-replay learning rate when replay is scheduled more frequently than once per four current-task examples.
+- The effective replay rate is `requestedRate × min(1, replayEveryNCurrent / 4)`; this bounds replay's aggregate contribution instead of allowing a 1:1 schedule to overtake new-task learning.
+- Existing thresholds remain unchanged. Validation pending on the full P26 replay-policy sweep and core regression.
+
 ## [NK1][WorkPass478] Wire Hexis source lineage into canonical memory — 2026-10-27
 
 - Added a bounded provenance contract shared by SourceMonitor, P65 and the Hexis evidence bridge.
