@@ -40,6 +40,7 @@ try {
   const hexisPostRoutes = [
     '/api/organism/integration/hexis/sync-memory',
     '/api/organism/integration/hexis/belief/revise',
+    '/api/organism/integration/hexis/evidence/lineage',
     '/api/organism/integration/hexis/reviews/create',
     '/api/organism/integration/hexis/reviews/decide',
     '/api/organism/integration/hexis/retention/propose',
