@@ -1,3 +1,10 @@
+## [NK1][WorkPass461] Repair learning retrieval and verified dataset type contracts (2026-10-27)
+
+- `SkillRetrievalAugmentation.retrieveSkills()` now accepts the optional `now` and `limit` values it already receives from `SkillRetrievalQuery`, while retaining finite-number fallback behavior.
+- The base compound-skill variant initializes `verifiedNonHoldoutExecutions` alongside its other evidence counters, matching `CompoundSkillVariant`'s contract.
+- The verified holdout aggregate uses `split: 'holdout' as const`, preventing literal widening to `string` in the dataset's typed return value.
+- These are source-level fixes for previously observed exact-file type diagnostics. They are committed on the draft integration branch; new exact-head runtime typecheck/tests remain unverified.
+
 ## [NK1][WorkPass460] Use the installed Node type contract for runtime typecheck (2026-10-27)
 
 - The runtime typecheck runs after the workflow installs the app lockfile, which already pins `@types/node`, but `tsconfig.clean.json` only saw the runtime's intentionally partial ambient shims. This caused a broad family of false missing-Node-API diagnostics (`node:fs`, `NodeJS`, `Buffer`, `createPublicKey`, `realpath`, `path.resolve`, and related APIs).
