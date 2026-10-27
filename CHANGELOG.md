@@ -2370,3 +2370,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+## [NK1][WorkPass570] Keep causal graph derived state consistent (2026-10-27)
+
+- Fixed the restart regression where `CausalLifeGraph.upsertNode` changed canonical nodes but left derived chain counters stale until restore; snapshots now observe counters recomputed at the mutation boundary.
+- Added an opt-out for internal bulk upserts and used it in `recordCycle`, preserving one recomputation per complete cycle rather than recomputing after every node.
+- Added a direct contract for single-node upsert, existing-node update, stable snapshot/restore, and full eight-stage causal chain counts.
+- Added focused CI that runs the graph contract and the existing WorkPass570 memory subsystem round-trip regression.
