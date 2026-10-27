@@ -1,3 +1,9 @@
+## [NK1][WorkPass434] Cover post-mutation failure before receipt persistence (2026-10-27)
+
+- Added a targeted MemoryFabric regression that injects a lifecycle-event append failure after the canonical status is changed but before its mutation receipt is persisted.
+- The test verifies the in-flight compensation token remains valid without a receipt and restores epistemic status, last-access time, and revision history exactly.
+- The regression is wired into the existing `test:hexis-canonical-apply` chain through `memory-lifecycle-command-workpass31.mjs`. This commit adds coverage only; runtime execution and typecheck remain unverified until a runner executes the current head.
+
 ## [NK1][WorkPass433] Restore exact status metadata after failed HMX apply (2026-10-27)
 
 - Replaced status-label-only rollback with an opaque, one-use MemoryOS2 compensation token restoring the pre-transaction epistemic status, last-access timestamp and revision history.
