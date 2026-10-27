@@ -15,6 +15,8 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const names:MemoryPolicyName[]=['semantic','hybrid','causal','temporal','balanced'];
 const blank=()=>({semantic:0,hybrid:0,causal:0,temporal:0,balanced:0} as Record<MemoryPolicyName,number>);
 const defaults=():AdaptiveMemoryPolicyState=>({version:2,weights:{semantic:.5,hybrid:.5,causal:.5,temporal:.5,balanced:.5},trials:blank(),reward:blank(),contextValue:{},contextTrials:{},cooldownUntil:0,lastPolicy:'balanced',lastContextKey:'default'});
+const MAX_CONTEXTS=512;
+const isSafeContextKey=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=96&&!['__proto__','prototype','constructor'].includes(value)&&/^[A-Za-z0-9_.:-]+$/.test(value);
 function contextKey(c:{pressure01?:number;goal01?:number;causal01?:number;temporal01?:number;mobile?:boolean}){
  const q=(x:number|undefined)=>Math.min(3,Math.floor(clamp(x??0)*4));
  return `${q(c.pressure01)}:${q(c.goal01)}:${q(c.causal01)}:${q(c.temporal01)}:${c.mobile?'m':'g'}`;
@@ -26,8 +28,7 @@ export class AdaptiveMemoryPolicy {
    const d=defaults();
    const record=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
    const isPolicy=(value:unknown):value is MemoryPolicyName=>typeof value==='string'&&names.includes(value as MemoryPolicyName);
-   const isContextKey=(key:string)=>key.length>0&&key.length<=96&&!['__proto__','prototype','constructor'].includes(key)&&/^[A-Za-z0-9_.:-]+$/.test(key);
-   const boundedNumber=(value:unknown,mode:'unit'|'count'|'timestamp',fallback:number):number=>{
+      const boundedNumber=(value:unknown,mode:'unit'|'count'|'timestamp',fallback:number):number=>{
      if(typeof value!=='number'||!Number.isFinite(value))return fallback;
      return mode==='unit'?clamp(value):mode==='count'?Math.max(0,Math.min(10000,Math.floor(value))):Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,Math.floor(value)));
    };
@@ -45,7 +46,7 @@ export class AdaptiveMemoryPolicy {
    const rawContextTrials=record(source.contextTrials);
    // Context keys are small opaque identifiers, never memory text. Bound the
    // persisted table to the most recent 512 accepted contexts and reject unsafe keys.
-   const contextKeys=[...new Set([...Object.keys(rawContextValue),...Object.keys(rawContextTrials)].filter(isContextKey))].slice(-512);
+   const contextKeys=[...new Set([...Object.keys(rawContextValue),...Object.keys(rawContextTrials)].filter(isSafeContextKey))].slice(-MAX_CONTEXTS);
    const contextValue:AdaptiveMemoryPolicyState['contextValue']={};
    const contextTrials:AdaptiveMemoryPolicyState['contextTrials']={};
    for(const key of contextKeys){
@@ -53,7 +54,7 @@ export class AdaptiveMemoryPolicy {
      contextTrials[key]=normalizeRow(rawContextTrials[key],blank(),'count');
    }
    const cooldownUntil=boundedNumber(source.cooldownUntil,'timestamp',d.cooldownUntil);
-   const lastContextKey=typeof source.lastContextKey==='string'&&isContextKey(source.lastContextKey)?source.lastContextKey:d.lastContextKey;
+   const lastContextKey=isSafeContextKey(source.lastContextKey)?source.lastContextKey:d.lastContextKey;
    this.state={
      version:2,weights,trials,reward,contextValue,contextTrials,
      cooldownUntil,lastPolicy:isPolicy(source.lastPolicy)?source.lastPolicy:d.lastPolicy,
@@ -92,7 +93,12 @@ export class AdaptiveMemoryPolicy {
  observe(policy:MemoryPolicyName,reward:number,now=Date.now(),contextKeyOverride=this.state.lastContextKey){
    const r=clamp(reward); const n=Math.min(10000,this.state.trials[policy]+1); const old=this.state.weights[policy];
    this.state.trials[policy]=n;this.state.reward[policy]=this.state.reward[policy]+(r-this.state.reward[policy])/n;this.state.weights[policy]=clamp(old+.08*(r-old));
-   const key=contextKeyOverride||'default'; const cv=this.state.contextValue[key]??blank();const ct=this.state.contextTrials[key]??blank();
+   const key=isSafeContextKey(contextKeyOverride)?contextKeyOverride:'default';
+   if(!Object.hasOwn(this.state.contextValue,key)&&Object.keys(this.state.contextValue).length>=MAX_CONTEXTS){
+     const oldestKey=Object.keys(this.state.contextValue)[0];
+     if(oldestKey){delete this.state.contextValue[oldestKey];delete this.state.contextTrials[oldestKey];}
+   }
+   const cv=this.state.contextValue[key]??blank();const ct=this.state.contextTrials[key]??blank();
    const cn=Math.min(10000,ct[policy]+1);ct[policy]=cn;cv[policy]=cv[policy]+(r-cv[policy])/cn;this.state.contextValue[key]=cv;this.state.contextTrials[key]=ct;
    this.state.cooldownUntil=now+250;
  }
