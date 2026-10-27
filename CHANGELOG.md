@@ -1,3 +1,12 @@
+## [NK1][WorkPass492] Support unanswerable retrieval holdout through the offline CLI (2026-10-27)
+
+- Fixed the offline JSONL parser so explicitly unanswerable examples (`answerable: false`, `relevantIds: []`) reach the existing abstention-safety benchmark instead of being rejected or having answerability lost.
+- Kept the parser fail-closed: non-boolean answerability, answerable rows without relevance labels, and unanswerable rows with relevance IDs are rejected before report publication.
+- The CLI summary now emits answerable/unanswerable holdout counts, unsupported retrieval rate and correct abstention rate.
+- Added CLI end-to-end regressions proving the four-unanswerable-query holdout reaches the promotion gate and contradictory labels fail closed; included those tests in the WorkPass71 source validation workflow.
+- The multi-seed determinism signature now covers abstention and unsupported-retrieval metrics as well as ranking metrics.
+- This improves evaluation coverage only. It does not claim positive recall uplift; production uplift still requires an independently labelled holdout corpus.
+
 ## [NK1][WorkPass490] Integrate Hexis evidence lineage through canonical memory (2026-10-27)
 
 - Added a bounded provenance envelope for declared source identity, capture time, evidence class, and content fingerprint. A matching SHA-256 fingerprint is an integrity check, not source authentication.
