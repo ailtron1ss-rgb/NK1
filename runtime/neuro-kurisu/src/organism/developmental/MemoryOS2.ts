@@ -110,6 +110,15 @@ export interface MemoryEvictionWitness {
  id:string; kind:MemoryItem2['kind']; at:number; tick:number; bytes:number; value01:number; netValuePerByte01:number; reason:string; tokens:string[]; matchedQueries:number; realizedRegret01:number; counterfactualRegret01:number;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const isSafeEmbeddingVector=(value:unknown,dimensions?:number):value is number[]=>{
+ if(!Array.isArray(value)||value.length===0||value.length>4096||(dimensions!==undefined&&value.length!==dimensions))return false;
+ let squaredNorm=0;
+ for(const component of value){
+  if(typeof component!=='number'||!Number.isFinite(component)||Math.abs(component)>1e6)return false;
+  squaredNorm+=component*component;
+ }
+ return squaredNorm>1e-24&&Number.isFinite(squaredNorm);
+};
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
 const tokenize=(text:string)=>text.toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
@@ -381,9 +390,9 @@ export class MemoryOS2{
    const dimensions=Number(vectors[0]?.length??0);
    for(let index=0;index<candidates.length;index++){
     const item=candidates[index],raw=vectors[index];
-    if(!Array.isArray(raw)||!dimensions||dimensions>4096||raw.length!==dimensions||raw.some(value=>!Number.isFinite(Number(value)))){failRow(item);continue;}
-    const clean=raw.map(Number);const norm=Math.sqrt(clean.reduce((sum,value)=>sum+value*value,0));
-    if(!(norm>1e-12)){failRow(item);continue;}
+    if(!dimensions||!isSafeEmbeddingVector(raw,dimensions)){failRow(item);continue;}
+    const clean=raw;const norm=Math.sqrt(clean.reduce((sum,value)=>sum+value*value,0));
+    if(!(norm>1e-12)||!Number.isFinite(norm)){failRow(item);continue;}
     const current=this.state.items.find(row=>row.id===item.id);
     if(!current||current.dormant||current.epistemicStatus==='quarantined'||memoContentHash(current.content)!==memoContentHash(item.content)){staleSkipped++;continue;}
     this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean.map(value=>value/norm),lastUsedAt:now});
@@ -454,11 +463,12 @@ export class MemoryOS2{
    let newlyIndexed=0;
    try{
      const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
-     if(vectors.length!==missing.length+1||!vectors[0]?.length)throw new Error('embedding-vector-count-mismatch');
+     if(vectors.length!==missing.length+1)throw new Error('embedding-vector-count-mismatch');
      const queryVector=vectors[0];
+     if(!isSafeEmbeddingVector(queryVector))throw new Error('invalid-query-embedding-vector');
      for(let index=0;index<missing.length;index++){
        const item=missing[index],vector=vectors[index+1];
-       if(!Array.isArray(vector)||vector.length!==queryVector.length)continue;
+       if(!isSafeEmbeddingVector(vector,queryVector.length))continue;
        this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
@@ -486,7 +496,8 @@ export class MemoryOS2{
      semanticRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||a.lexicalRank-b.lexicalRank||a.item.id.localeCompare(b.item.id));
      const items=semanticRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
      const diag=provider.diagnostics();
-     return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+     const fallbackReason=items.length===0&&fallbackItems.length>0?'no-valid-semantic-candidates':null;
+     return {items:fallbackReason?fallbackItems:items,semantic:{enabled:fallbackReason===null,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }catch(error){
      const diag=provider.diagnostics();
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
