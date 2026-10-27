@@ -65,7 +65,7 @@ const p65Id = runtime.p65EpistemicLedger.record({
   tick: 77,
   at: now,
   kind: 'observation',
-  content: 'Same upstream sensor observation from the P65 evidence route.',
+  content,
   confidence01: .98,
   source: 'external-api',
   provenance,
@@ -102,6 +102,11 @@ const nonIndependentId = runtime.p65EpistemicLedger.record({
   confidence01: .99, source: 'organism', provenance,
 });
 assert.equal(runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, nonIndependentId).accepted, false);
+const mismatchedId = runtime.p65EpistemicLedger.record({
+  tick: 79, at: now, kind: 'observation', content: 'Different content under a copied fingerprint.',
+  confidence01: .99, source: 'external-api', provenance,
+});
+assert.equal(runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, mismatchedId).reason, 'p65-content-fingerprint-mismatch');
 
 const snapshot = runtime.snapshot();
 assert.equal(snapshot.sourceMonitor.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint, fingerprint);
@@ -140,11 +145,11 @@ assert.equal(replay.accepted, true);
 assert.equal(replay.added, false, 'canonical lineage must remain the duplicate authority after a runtime snapshot/restore');
 
 const stats = runtime.hexisCanonicalEvidenceBridge.snapshotStats();
-assert(stats.attempted >= 5);
+assert(stats.attempted >= 6);
 assert(stats.accepted >= 2);
 assert(stats.added === 1);
 assert(stats.duplicates >= 1);
-assert(stats.rejected >= 3);
+assert(stats.rejected >= 4);
 
 console.log('HEXIS_CANONICAL_EVIDENCE_LINEAGE=PASS', JSON.stringify({
   added: stats.added,
