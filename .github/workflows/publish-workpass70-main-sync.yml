@@ -121,9 +121,25 @@ jobs:
           fi
           echo "publish=true" >> "$GITHUB_OUTPUT"
 
+      - name: Run source provenance and release-license gates
+        id: release_audit
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected" | "$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
+          esac
+          npm run test:provenance-current
+          npm run audit:release-license-readiness
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Package exact source, build fresh report and verify ZIP
         id: package_artifacts
-        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true'
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.release_audit.outputs.ready == 'true'
         shell: bash
         env:
           TAG: ${{ steps.guard.outputs.tag }}
@@ -159,6 +175,7 @@ jobs:
           - Точный исходный SHA: $VALIDATED_SHA
           - Targeted core regression: success
           - Source-lineage regression: success
+          - SBOM provenance and release-license readiness: success
           - Архив создан через git archive именно для проверенного SHA.
           - ZIP integrity и безопасные пути проверены в CI.
           - SHA-256 для ZIP и отчёта включён в SHA256SUMS.txt.
@@ -172,7 +189,7 @@ jobs:
 
       - name: Final freshness check before release publication
         id: final_guard
-        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.package_artifacts.outputs.publish == 'true'
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.release_audit.outputs.ready == 'true' && steps.package_artifacts.outputs.publish == 'true'
         shell: bash
         env:
           VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
@@ -187,7 +204,7 @@ jobs:
           echo "publish=true" >> "$GITHUB_OUTPUT"
 
       - name: Publish a new verified prerelease without overwriting prior tags
-        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.package_artifacts.outputs.publish == 'true' && steps.final_guard.outputs.publish == 'true'
+        if: steps.guard.outputs.publish == 'true' && steps.required_checks.outputs.validated == 'true' && steps.freshness.outputs.publish == 'true' && steps.release_audit.outputs.ready == 'true' && steps.package_artifacts.outputs.publish == 'true' && steps.final_guard.outputs.publish == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
