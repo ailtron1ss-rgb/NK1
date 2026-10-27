@@ -15,7 +15,7 @@ NK1 retains one canonical memory owner: **MemoryOS2 through MemoryFabric**. Exte
 - [x] Added self-hosted Mem0 OSS REST mode with native endpoint/auth mapping and a separate loopback-HTTP/security contract test.
 - [x] Added a static runtime-wiring contract and an integration CI workflow.
 - [x] Registered test commands and documented limitations in the runtime package and `CHANGELOG.md`.
-- [ ] Execute the newly wired tests on this exact branch head and inspect all workflow steps/logs.
+- [x] Execute the integration closure on the PR merge ref via Mem0 workflow run [40530677372](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40530677372): runtime typecheck, Hexis evidence lineage/ingest, Hexis server smoke, deterministic retrieval experiment, 14/14 Platform tests, 2/2 OSS tests, static runtime-wiring contract, and HTTP fake-provider smoke passed. This does not include a live provider call; see the remaining gate below.
 - [ ] Run an opted-in live Mem0 contract check against a dedicated test-only user scope. It is intentionally skipped without explicit operator credentials/flags.
 - [ ] Demonstrate a positive, independently sourced retrieval uplift on immutable RU/EN holdout data across paired model/training seeds.
 - [ ] Run the production UI/build/migration, browser/Live2D, real Android/Termux audio, soak, SBOM and license gates.
@@ -52,4 +52,4 @@ References are candidate design sources, not evidence that upstream behavior has
 
 ## Validation record
 
-No test pass is asserted in this file. The current pass writes code and wires test commands, but final correctness depends on the actual CI/typecheck/runtime result for the final branch head. The live Mem0 check must remain opt-in and read-only. No learning or retrieval score is changed by assertion, and no Release ZIP is published here.
+The integration closure run above passed for the tested PR merge ref. It is evidence for the tested merge ref and tested paths only; it is not a claim that the entire repository or release ZIP is production-ready. The live Mem0 check must remain opt-in and read-only. No learning or retrieval score is changed by assertion, and no Release ZIP is published here.
