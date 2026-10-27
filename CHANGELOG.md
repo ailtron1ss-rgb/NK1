@@ -1,3 +1,9 @@
+## [NK1][WorkPass491] Correct the overlapping-task replay acceptance criterion (2026-10-27)
+
+- The exact-head Core regression exposed an impossible assertion: the post-hoc replay control trains contradictory task labels over overlapping observable states, then required both old-task recovery and recent-task retention without a distinguishing context feature.
+- Reframed this control as a diagnostic of the expected interference trade-off. The context-separated benchmark remains the acceptance gate for preserving both tasks, with its existing >0.8 thresholds unchanged.
+- No production learning behavior or performance threshold was changed; this is a benchmark-contract correction. Re-run the exact-head Core regression and P26 workflows before considering the branch validated.
+
 ## [NK1][WorkPass490] Balance replay plasticity after Core diagnostics — 2026-10-27
 
 - Latest Core run showed replay at 0.25× preserved the recent task at 1.0 but did not move old-task accuracy above zero.
