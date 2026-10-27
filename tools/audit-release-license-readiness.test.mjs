@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import os from "node:os";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { fingerprintLockedNpmComponents, auditReleaseLicenseReadiness } from "./audit-release-license-readiness.mjs";
 
@@ -161,4 +162,24 @@ test("a report freshly generated at release start survives a long audit pass", a
     const report = await auditReleaseLicenseReadiness({ root, now });
     assert.equal(report.ok, true, JSON.stringify(report.errors));
   });
+});
+
+
+test("automatic release publishers gate SBOM and human licensing before packaging", async () => {
+  const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const publisherPaths = [
+    ".github/workflows/publish-workpass70-hotfix.yml",
+    ".github/workflows/publish-workpass70-main-sync.yml"
+  ];
+  for (const rel of publisherPaths) {
+    const workflow = await readFile(path.join(repositoryRoot, rel), "utf8");
+    const provenanceIndex = workflow.indexOf("npm run test:provenance-current");
+    const licenseIndex = workflow.indexOf("npm run audit:release-license-readiness");
+    const packageIndex = workflow.search(/- name: Package /);
+    const publishIndex = workflow.indexOf("gh release create");
+    assert.ok(provenanceIndex >= 0, rel + " must regenerate the SBOM/provenance before publishing");
+    assert.ok(licenseIndex > provenanceIndex, rel + " must require license approval after refreshing provenance");
+    assert.ok(packageIndex > licenseIndex, rel + " must not package a ZIP before the license gate passes");
+    assert.ok(publishIndex > licenseIndex, rel + " must not publish a release before the license gate passes");
+  }
 });
