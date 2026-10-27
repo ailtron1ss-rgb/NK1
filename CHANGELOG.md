@@ -1,3 +1,9 @@
+## [NK1][WorkPass499] Guard endogenous-goal learning against action mismatch (2026-10-27)
+
+- Exact-head local-model HTTP regression failed with `B272 outcome action must match the generated action`: the outer cognitive selector can execute an action different from B272's own generated action.
+- Synthetic and real-transition outcome paths now call B272 learning only when the executed selection equals the generated B272 action. The call uses the generated action identity; mismatched outcomes receive no B272 learning credit instead of throwing or teaching a false causal association.
+- B273 and the other runtime outcome learners continue to receive the observed action under their own contracts. The fake-provider HTTP end-to-end regression must pass on the new exact HEAD before this is considered proven.
+
 ## [NK1][WorkPass498] Assert the runtime-owned cognitive-cycle persistence API (2026-10-27)
 
 - Runtime inspection confirmed the active cycle persists its snapshot through setRuntimeUnifiedCognitiveCycle, while the regression expected the superseded setUnifiedCognitiveCycle symbol.
