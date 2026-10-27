@@ -1,3 +1,13 @@
+## [NK1][WorkPass478] Wire Hexis source lineage into canonical memory — 2026-10-27
+
+- Added a bounded provenance contract shared by SourceMonitor, P65 and the Hexis evidence bridge.
+- Wired the bridge into MemorySubsystemRuntime and persisted SourceMonitor provenance with the runtime snapshot.
+- Evidence writes use the existing MemoryFabric mutation gateway; MemoryOS2 remains the only writable canonical memory owner.
+- Deduplicates SourceMonitor/P65 copies by upstream source ID + declared content fingerprint; rejects missing/invalid provenance, inferred/model/memory echoes, non-independent sources and future timestamps.
+- Does not revise belief confidence, authenticate upstream sources, authorize tools or promote skills.
+- Added a regression covering cross-channel deduplication, fail-closed cases, unchanged confidence and replay after snapshot/restore.
+- Validation: test is registered in Hexis and release test commands; exact-head CI is pending and no external retrieval uplift is claimed.
+
 ## [NK1][WorkPass481] Forward request options into Hexis learning-review creation (2026-10-27)
 
 - The review-create route parsed and shape-checked its JSON body but invoked the core factory without passing it. The factory reads `memoryIds`, `periodStart`, and `periodEnd`, so the live route could fail before it returned a learning review.
