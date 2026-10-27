@@ -1,3 +1,10 @@
+## [NK1][WorkPass572] Keep causal life graph summaries coherent after direct mutations (2026-10-27)
+
+- Make standalone `CausalLifeGraph.upsertNode` recompute derived chain/evidence metrics by default, including updates to an existing node.
+- Let `recordCycle` batch node upserts with recomputation disabled and retain its single end-of-cycle recompute, avoiding repeated full graph scans during normal cognition.
+- Add a regression asserting that `observedChains` is current immediately after a direct upsert; this also makes graph snapshot/restore round-trips deterministic.
+- Validation status: pushed to source branch; CI result pending.
+
 ## [NK1][WorkPass571] Restore compatibility memory at the persisted lifecycle tick (2026-10-27)
 
 - Move legacy/multi-timescale compatibility consolidation after restoration of CanonicalMemoryLifecycleAuthority.
