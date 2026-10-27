@@ -1,3 +1,8 @@
+## NK1 WorkPass89 — preserve transfer-probe builder compatibility (2026-10-27)
+- Kept `beginTransferProbe` non-null for TypeScript callers while making invalid arguments yield a deliberately invalid candidate that the strict recorder rejects; this avoids spreading nullability through every call site.
+- Corrected the malformed-ID regression to pass an actual newline control character, rather than the two printable characters backslash+n.
+- No evidence threshold was relaxed; rejected inputs still earn no transfer credit.
+
 ## NK1 WorkPass88 — idempotent, bounded cross-task transfer evidence (2026-10-27)
 - Hardened UnifiedLearningSubstrate transfer-probe intake: malformed IDs/context keys, control characters, out-of-range/non-finite scores, non-boolean verification flags, invalid timestamps, and inconsistent restored deltas are rejected rather than clamped/coerced into apparent evidence.
 - Added a persisted 4,096-entry transfer-probe identity/fingerprint ledger. Exact retries are idempotent; conflicting reuse of a stable evidence ID is rejected; retries remain rejected after the 96-row recent-probe window evicts the original record and after snapshot restore.

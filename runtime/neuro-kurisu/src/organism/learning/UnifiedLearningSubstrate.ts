@@ -364,10 +364,11 @@ export class UnifiedLearningSubstrate {
     const targetTaskId=normalizeEvidenceId(input.targetTaskId);
     const contextKey=normalizeEvidenceId(input.contextKey);
     const at=input.at??Date.now();
-    if(!sourceTaskId||!targetTaskId||!contextKey||!isUnitInterval(input.baseline01)||!Number.isSafeInteger(at)||at<0)return null;
-    const id=normalizeEvidenceId('transfer:'+sourceTaskId.slice(0,24)+':'+targetTaskId.slice(0,24)+':'+at+':'+this.state.transferProbes.length+':'+this.state.validatedTransferSamples);
-    if(!id)return null;
-    return {id,sourceTaskId,targetTaskId,baseline01:input.baseline01,contextKey,at};
+    const validInput=Boolean(sourceTaskId&&targetTaskId&&contextKey&&isUnitInterval(input.baseline01)&&Number.isSafeInteger(at)&&at>=0);
+    const id=validInput?normalizeEvidenceId('transfer:'+sourceTaskId.slice(0,24)+':'+targetTaskId.slice(0,24)+':'+at+':'+this.state.transferProbes.length+':'+this.state.validatedTransferSamples):'';
+    // Keep the historical non-null builder API for TypeScript callers. Invalid
+    // inputs produce an unmistakably invalid candidate which recordTransferProbe rejects.
+    return {id,sourceTaskId,targetTaskId,baseline01:input.baseline01,contextKey,at:Number.isSafeInteger(at)&&at>=0?at:-1};
   }
 
   recordTransferProbe(input:{id:string;sourceTaskId:string;targetTaskId:string;baseline01:number;postScore01:number;independentVerified:boolean;holdout:boolean;contextKey:string;at?:number}):TransferProbe|null{
