@@ -1,3 +1,10 @@
+## [NK1][WorkPass591] Embed audited SBOM and provenance in the release ZIP (2026-10-27)
+
+- The provenance gate regenerates the CycloneDX SBOM and current WorkPass provenance in the runner workspace; those outputs are not part of the immutable commit tree until committed.
+- Overlay the exact audited `contracts/SBOM.final.json` and current `contracts/SOURCE_PROVENANCE_LICENSES_WORKPASSN.json` bytes into the ZIP created from the validated source SHA.
+- Validate that each expected archive member appears exactly once and is byte-identical to the checked output; rerun ZIP integrity and unsafe-path checks after replacement.
+- Keep the exact source SHA in the release report and checksum the final ZIP. Human license/redistribution approval remains a separate mandatory gate; no approval is inferred.
+
 ## [NK1][WorkPass590] Synchronize validated source release workflow (2026-10-27)
 
 - Publish from source pushes as well as successful core-validation workflow runs; wait for exact-SHA targeted regression and Hexis source-lineage checks before release.
