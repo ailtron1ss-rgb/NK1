@@ -1,3 +1,13 @@
+## [NK1][WorkPass478] Wire Hexis source lineage into canonical memory — 2026-10-27
+
+- Added a bounded provenance contract shared by SourceMonitor, P65 and the Hexis evidence bridge.
+- Wired the bridge into MemorySubsystemRuntime and persisted SourceMonitor provenance with the runtime snapshot.
+- Evidence writes use the existing MemoryFabric mutation gateway; MemoryOS2 remains the only writable canonical memory owner.
+- Deduplicates SourceMonitor/P65 copies by upstream source ID + declared content fingerprint; rejects missing/invalid provenance, inferred/model/memory echoes, non-independent sources and future timestamps.
+- Does not revise belief confidence, authenticate upstream sources, authorize tools or promote skills.
+- Added a regression covering cross-channel deduplication, fail-closed cases, unchanged confidence and replay after snapshot/restore.
+- Validation: test is registered in Hexis and release test commands; exact-head CI is pending and no external retrieval uplift is claimed.
+
 ## [NK1][WorkPass480] Isolate host-owned authority regression conditions (2026-10-27)
 
 - The permissions regression intentionally made the executor group-writable, then left that permission in place for a later run-root identity test.
