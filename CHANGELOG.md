@@ -1,3 +1,13 @@
+## [NK1][WorkPass461] Lock in export-scoped HMX reference behavior with regression coverage (2026-10-27)
+
+- Extended the Hexis goal activation regression to assert that the imported canonical memory retains both the current `hexisExportId` and the exact export-scoped `hexisMemoryRef` before goal activation.
+- This pins the real cross-module contract that source relationships must resolve through canonical memory metadata, not merely satisfy an isolated matcher.
+
+## [NK1][WorkPass460] Normalize both sides of the export-scoped Hexis reference (2026-10-27)
+
+- Refined the goal relationship endpoint lookup to normalize both the persisted memory ref and the staged relationship ref, stripping a prefix only when it exactly matches the current proposal's `exportId`. Both refs may already carry `exportId:sourceRef`; comparing one normalized side with one unnormalized side left valid endpoints deferred.
+- Endpoint resolution still requires the exact export ID and source lineage, so this doesn't permit cross-export reference aliasing.
+
 ## [NK1][WorkPass459] Make malformed training controls a rejected, zero-mutation outcome (2026-10-27)
 
 - Updated `p26-true-learning.mjs` to assert that `NaN`/`Infinity` learning rates and malformed sample weights are rejected at the learner's validation boundary before any training update. The previous fixture expected the old sanitize-and-continue behavior, while `ParametricPolicyLearner.validateFeedback` deliberately uses fail-closed validation.
