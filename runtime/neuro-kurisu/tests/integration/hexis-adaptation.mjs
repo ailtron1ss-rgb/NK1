@@ -55,6 +55,26 @@ assert.equal(adaptiveRestoreGuard.snapshot().cooldownUntil, validCooldownTimesta
 assert(['semantic', 'hybrid', 'causal', 'temporal', 'balanced'].includes(adaptiveRestoreGuard.choose({}, 100)),
   'the normalized policy must continue selecting a valid strategy');
 
+const runtimeContextGuard = new AdaptiveMemoryPolicy();
+for (let index = 0; index < 520; index++) {
+  runtimeContextGuard.observe('semantic', 0.5, index, 'runtime-context-' + index);
+}
+const runtimeContextSnapshot = runtimeContextGuard.snapshot();
+assert.equal(runtimeContextGuard.diagnostics().contextCount, 512,
+  'ordinary runtime observations must enforce the same hard context bound as restore');
+assert.equal(Object.hasOwn(runtimeContextSnapshot.contextValue, 'runtime-context-0'), false,
+  'the oldest runtime context must be evicted when capacity is reached');
+assert.equal(Object.hasOwn(runtimeContextSnapshot.contextValue, 'runtime-context-519'), true,
+  'the newest runtime context must remain after bounded eviction');
+runtimeContextGuard.observe('causal', 0.7, 900, '__proto__');
+const runtimeContextAfterUnsafeKey = runtimeContextGuard.snapshot();
+assert.equal(Object.hasOwn(runtimeContextAfterUnsafeKey.contextValue, '__proto__'), false,
+  'runtime observations must not accept prototype-like context keys');
+assert.equal(Object.hasOwn(runtimeContextAfterUnsafeKey.contextValue, 'default'), true,
+  'unsafe runtime context keys must be routed to the safe default context');
+assert.equal(runtimeContextGuard.diagnostics().contextCount, 512,
+  'invalid runtime context observations must not exceed the bounded context table');
+
 
 // A full MemoryOS2 restore must be exception-atomic across canonical rows and
 // every derived inverted/dedup/revision index, not merely across the state object.
