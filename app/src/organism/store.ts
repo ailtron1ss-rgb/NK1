@@ -129,21 +129,32 @@ export const useKurisu = create<KurisuStore>((set, get) => ({
     try {
       const result = await neuroApi.chat(trimmed, true, false);
       const reply = String(result.language?.text || "Я обработала запрос, но язык временно недоступен.");
-      const emotion = get().snap.emotion.label;
+      // The reply can change the organism's appraisal. Read the post-response
+      // snapshot before binding an emotion to the chat turn, so AvatarStage and
+      // browser TTS don't inherit the pre-response emotion by accident.
+      let refreshedSnapshot: OrganismSnapshot = get().snap;
+      let refreshError: string | null = null;
+      try {
+        const remote = await neuroApi.uiSnapshot();
+        refreshedSnapshot = toOrganismSnapshot(remote, get().snap.chat);
+      } catch (error) {
+        // Preserve the reply and durable chat if the snapshot endpoint is temporarily unavailable.
+        refreshError = error instanceof Error ? error.message : String(error);
+      }
+      const responseAt = Date.now();
       const kurisuTurn = {
-        id: `ui-kurisu-${Date.now()}`,
+        id: `ui-kurisu-${responseAt}`,
         role: "kurisu" as const,
         text: reply,
-        at: Date.now(),
-        tick: Number(result.cycle?.state?.tick ?? get().snap.tick),
-        emotion,
-        option: (String(result.cycle?.decision?.selected?.action || result.worldAction || get().snap.lastOption) as OrganismSnapshot["lastOption"]),
+        at: responseAt,
+        tick: Number(result.cycle?.state?.tick ?? refreshedSnapshot.tick),
+        emotion: refreshedSnapshot.emotion.label,
+        option: (String(result.cycle?.decision?.selected?.action || result.worldAction || refreshedSnapshot.lastOption) as OrganismSnapshot["lastOption"]),
         backend: String(result.language?.backend || "canonical"),
       };
       const chat = [...get().snap.chat, kurisuTurn].slice(-120);
       saveChat(chat);
-      const remote = await neuroApi.uiSnapshot();
-      set({ snap: toOrganismSnapshot(remote, chat), busy: false, error: null });
+      set({ snap: { ...refreshedSnapshot, chat }, busy: false, error: refreshError });
     } catch (error) {
       const chat = get().snap.chat;
       saveChat(chat);
