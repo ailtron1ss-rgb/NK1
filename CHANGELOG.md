@@ -1,3 +1,8 @@
+## [NK1][WorkPass504] Exercise retrieval evaluation gates in core regression (2026-10-27)
+
+- Added `test:memory-retrieval-experiment` to `test:rebuild-recovered`, alongside the live cognitive semantic-route regression. Seed validation now runs automatically in the same recovered-core check rather than being committed but disconnected from the required suite.
+- The experiment's seeds are bootstrap-resampling seeds only; they do not independently train the retrieval algorithm. These tests validate reproducibility and promotion-gate behavior, not real-world recall uplift. An independently sourced, bilingual holdout remains required before claiming memory improvement.
+
 ## [NK1][WorkPass503] Make Hexis bridge attempt-count assertion monotonic (2026-10-27)
 
 - A parallel regression added explicit same-ID trace replay to verify immutable source-trace identity, raising the bridge's current-instance attempt count from nine to ten.
