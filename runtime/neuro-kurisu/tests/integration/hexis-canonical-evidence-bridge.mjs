@@ -61,6 +61,28 @@ const independenceKey = 'hexis-source:' + createHash('sha256').update(provenance
 assert(afterFirst.evidenceSources?.some(row => row.independenceKey === independenceKey));
 assert(afterFirst.evidenceLineageKeys?.includes('lineage:' + independenceKey));
 
+// A conflicting reuse of an immutable trace ID must not replace its original lineage.
+const spoofedFingerprint = createHash('sha256').update('different body').digest('hex');
+runtime.sourceMonitor.record({
+  id: 'trace-direct-001',
+  source: 'world',
+  kind: 'sensor-observation',
+  confidence: .99,
+  epistemicStatus: 'observation',
+  at: now,
+  provenance: { ...provenance, sourceId: 'sensor:spoofed-reuse', contentFingerprint: spoofedFingerprint },
+});
+assert.equal(runtime.sourceMonitor.snapshot().conflicts, 1, 'conflicting trace ID reuse is counted');
+const traceIdReuse = runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-direct-001');
+assert.equal(traceIdReuse.accepted, true);
+assert.equal(traceIdReuse.added, false, 'conflicting ID reuse cannot replace the original canonical lineage');
+const afterTraceIdReuse = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
+assert(afterTraceIdReuse);
+assert.equal(afterTraceIdReuse.evidenceSources?.filter(row => row.independenceKey === independenceKey).length, 1);
+const spoofedIndependenceKey = 'hexis-source:' + createHash('sha256').update('sensor:spoofed-reuse' + '\\u0000' + spoofedFingerprint).digest('hex');
+assert.equal(afterTraceIdReuse.evidenceSources?.some(row => row.independenceKey === spoofedIndependenceKey), false);
+assert.equal(afterTraceIdReuse.confidence, before.confidence);
+
 const p65Id = runtime.p65EpistemicLedger.record({
   tick: 77,
   at: now,
@@ -108,7 +130,50 @@ const mismatchedId = runtime.p65EpistemicLedger.record({
 });
 assert.equal(runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, mismatchedId).reason, 'p65-content-fingerprint-mismatch');
 
+// A fresh source envelope must not make a future observation safe to ingest.
+const futureBaseline = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
+assert(futureBaseline);
+const futureBaselineEvidenceSources = structuredClone(futureBaseline.evidenceSources ?? []);
+const futureBaselineLineageKeys = structuredClone(futureBaseline.evidenceLineageKeys ?? []);
+const futureBaselineConfidence = futureBaseline.confidence;
+const futureAt = Date.now() + 10 * 60_000;
+runtime.sourceMonitor.record({
+  id: 'trace-future-observation',
+  source: 'world',
+  kind: 'sensor-observation',
+  confidence: .9,
+  epistemicStatus: 'observation',
+  at: futureAt,
+  provenance: { ...provenance, sourceId: 'sensor:future-trace' },
+});
+assert.equal(runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-future-observation').reason, 'observation-time-in-future');
+const futureP65Id = runtime.p65EpistemicLedger.record({
+  tick: 80, at: futureAt, kind: 'observation', content,
+  confidence01: .9, source: 'external-api',
+  provenance: { ...provenance, sourceId: 'sensor:future-p65' },
+});
+assert.equal(runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, futureP65Id).reason, 'observation-time-in-future');
+const afterFutureTrace = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
+assert(afterFutureTrace);
+assert.deepEqual(afterFutureTrace.evidenceSources ?? [], futureBaselineEvidenceSources,
+  'rejected future observations must not append or rewrite canonical evidence sources');
+assert.deepEqual(afterFutureTrace.evidenceLineageKeys ?? [], futureBaselineLineageKeys,
+  'rejected future observations must not append canonical lineage keys');
+assert.equal(afterFutureTrace.confidence, futureBaselineConfidence);
+
+// A restored snapshot may be corrupted too; a duplicate ID must not shadow its original trace.
 const snapshot = runtime.snapshot();
+const originalTrace = snapshot.hexisSourceMonitor.traces.find(row => row.id === 'trace-direct-001');
+assert(originalTrace);
+snapshot.hexisSourceMonitor.traces.push({
+  ...structuredClone(originalTrace),
+  provenance: {
+    ...provenance,
+    sourceId: 'sensor:restore-spoof',
+    contentFingerprint: createHash('sha256').update('restore spoof').digest('hex'),
+  },
+});
+const priorRestoreConflicts = snapshot.hexisSourceMonitor.conflicts;
 assert.equal(snapshot.hexisSourceMonitor.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint, fingerprint);
 assert.equal(snapshot.p65.claimsData.find(row => row.id === p65Id)?.provenance?.contentFingerprint, fingerprint);
 const restored = new MemorySubsystemRuntime();
@@ -140,6 +205,10 @@ restored.restoreFromPersisted({
     memoryLifecycleAuthority: snapshot.memoryLifecycleAuthority,
   },
 });
+const restoredSourceState = restored.snapshot().hexisSourceMonitor;
+assert.equal(restoredSourceState.conflicts, priorRestoreConflicts + 1, 'restore must count conflicting duplicate trace IDs');
+assert.equal(restoredSourceState.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint, fingerprint,
+  'restore must preserve the original trace instead of the conflicting duplicate');
 const replay = restored.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-direct-001');
 assert.equal(replay.accepted, true);
 assert.equal(replay.added, false, 'canonical lineage must remain the duplicate authority after a runtime snapshot/restore');

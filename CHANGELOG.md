@@ -1,3 +1,11 @@
+## [NK1][WorkPass508] Make Hexis source-trace identity immutable and reject future observations (2026-10-27)
+
+- `SourceMonitor.record` now treats trace IDs as immutable: exact replay is idempotent; conflicting payload reuse increments the conflict counter without replacing the first trace.
+- Restore deduplicates persisted trace IDs, preserves the first valid lineage and counts conflicting duplicates rather than silently shadowing the observation.
+- The canonical Hexis evidence bridge independently rejects future-dated observation timestamps even if `provenance.capturedAt` is fresh; writes continue through `MemoryFabric.attachEvidenceSource` rather than the restricted signal-update path.
+- Regressions cover spoofed trace-ID reuse, malformed restored snapshots, future-dated SourceMonitor/P65 observations and non-mutation of canonical evidence/confidence after rejection.
+- This hardens source identity/provenance boundaries; it does not prove retrieval uplift or validate the whole divergent outer integration PR #236.
+
 ## [NK1][WorkPass507] Enforce planner memory budget across the full cognitive recall cycle (2026-10-27)
 
 - Fixed the advanced/internal-goal recall path in `OrganismCore`: when `cognitiveExecutionPlan.run.memory` is false, it now returns an empty packet instead of silently retrieving memories.

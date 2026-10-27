@@ -20,7 +20,7 @@ export class SourceMonitor {
   private state = defaultSourceMonitor();
 
   restore(s: SourceMonitorState | undefined) {
-    const traces = Array.isArray(s?.traces) ? s!.traces.slice(0, 512).flatMap((raw: any) => {
+    const parsedTraces = Array.isArray(s?.traces) ? s!.traces.slice(0, 512).flatMap((raw: any) => {
       if (!raw || typeof raw !== 'object' || typeof raw.id !== 'string' || !raw.id) return [];
       try {
         const row = structuredClone(raw) as SourceTrace;
@@ -32,11 +32,27 @@ export class SourceMonitor {
         return [];
       }
     }) : [];
+    // Restored snapshots are untrusted input too. Preserve the first trace for an
+    // immutable ID and count conflicting duplicate payloads rather than shadowing
+    // the observation which downstream lineage readers already consumed.
+    const byId = new Map<string, SourceTrace>();
+    const uniqueTraces: SourceTrace[] = [];
+    let restoreConflicts = 0;
+    for (const trace of parsedTraces) {
+      const existing = byId.get(trace.id);
+      if (existing) {
+        if (JSON.stringify(existing) !== JSON.stringify(trace)) restoreConflicts++;
+        continue;
+      }
+      byId.set(trace.id, trace);
+      uniqueTraces.push(trace);
+    }
+    const priorConflicts = Number.isSafeInteger(s?.conflicts) && Number(s?.conflicts) >= 0 ? Number(s?.conflicts) : 0;
     this.state = {
       ...defaultSourceMonitor(),
-      conflicts: Number.isSafeInteger(s?.conflicts) && Number(s?.conflicts) >= 0 ? Number(s?.conflicts) : 0,
+      conflicts: priorConflicts + restoreConflicts,
       unattributed: Number.isSafeInteger(s?.unattributed) && Number(s?.unattributed) >= 0 ? Number(s?.unattributed) : 0,
-      traces,
+      traces: uniqueTraces,
     };
   }
 
@@ -49,6 +65,13 @@ export class SourceMonitor {
     const provenance = normalizeEvidenceLineageProvenance(row.provenance);
     if (provenance) row.provenance = provenance;
     else delete row.provenance;
+    // Trace IDs identify immutable observations. Exact replays are idempotent;
+    // conflicting reuse must never replace the first trace read by the Hexis bridge.
+    const existing = this.state.traces.find(candidate => candidate.id === row.id);
+    if (existing) {
+      if (JSON.stringify(existing) !== JSON.stringify(row)) this.state.conflicts++;
+      return;
+    }
     this.state.traces = [row, ...this.state.traces].slice(0, 512);
   }
 
