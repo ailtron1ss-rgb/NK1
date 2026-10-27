@@ -1,3 +1,10 @@
+## [NK1][WorkPass579] Preserve exact-identifier retrieval under grounded abstention (2026-10-27)
+
+- Extend MemoryOS2 answerability gating with an exact-identifier evidence path for structured IDs, incident/run IDs and long hexadecimal identifiers.
+- This prevents high-information lookups such as `RUN-501` from being rejected solely because generic query words dilute the token-coverage ratio; ordinary no-match queries remain fail-closed.
+- Add a direct identifier-retrieval regression alongside the existing no-match, typed recall and exact lexical fixtures.
+- The preceding Core regression exposed `Recall@3 = 0` in the temporal/identifier holdout; that failure is explicitly addressed here. Fresh CI is required before this fix is considered validated.
+
 ## [NK1][WorkPass578] Correct escaped cues and bilingual retrieval boundaries (2026-10-27)
 
 - Fix over-escaped English voice-mode regexes and restore intended word-boundary/whitespace matching.

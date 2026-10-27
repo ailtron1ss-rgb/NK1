@@ -964,11 +964,18 @@ export class MemoryOS2{
    // In particular, never let the bounded recent-memory fallback turn a no-match query
    // into a confident-looking autobiographical answer.
    const minQueryCoverage=qTokens.size>=5?.30:qTokens.size>=3?.34:qTokens.size===2?.50:1;
+   const identifierPattern=/(?:\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|\b[A-F0-9]{8,}\b)/giu;
+   const normalizeIdentifier=(value:string)=>value.toLocaleUpperCase().replace(/[^A-Z0-9]/g,'');
+   const queryIdentifiers=[...(String(query).matchAll(identifierPattern))].map(match=>normalizeIdentifier(match[0]));
    const groundedRows=topRows.filter(({m})=>{
+     // Exact identifiers are direct evidence even when the prose query includes several
+     // generic words; this is important for temporal, replay and incident lookups.
+     const memoryIdentifiers=[...(String(m.content).matchAll(identifierPattern))].map(match=>normalizeIdentifier(match[0]));
+     const identifierEvidence=queryIdentifiers.length>0&&queryIdentifiers.some(identifier=>memoryIdentifiers.includes(identifier));
      const evidence=rawRowsById.get(m.id);
      if(!evidence)return false;
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(m.id,m.content).includes(queryPhrase);
-     const lexicalEvidence=exactPhrase||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
+     const lexicalEvidence=identifierEvidence||exactPhrase||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45&&evidence.coverage>=.15)||
        (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
      const typedRecall=['identity','episodic','goal','procedural'].includes(queryIntentMode)&&
