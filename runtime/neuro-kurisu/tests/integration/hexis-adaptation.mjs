@@ -35,6 +35,17 @@ const restoreAtomicSeedInput = {
 const restoreAtomicSeed = restoreAtomicMemory.encode(restoreAtomicSeedInput);
 const restoreAtomicBaseline = restoreAtomicMemory.snapshot();
 const replacementRestoreState = structuredClone(restoreAtomicBaseline);
+replacementRestoreState.adaptiveMemoryPolicy = {
+  version: 2,
+  weights: { semantic: 0.5, hybrid: 0.5, causal: 0.5, temporal: 0.5, balanced: 0.5 },
+  trials: { semantic: 0, hybrid: 0, causal: 0, temporal: 0, balanced: 0 },
+  reward: { semantic: 0, hybrid: 0, causal: 0, temporal: 0, balanced: 0 },
+  contextValue: {},
+  contextTrials: {},
+  cooldownUntil: 0,
+  lastPolicy: 'causal',
+  lastContextKey: 'restore-atomic-test',
+};
 replacementRestoreState.items = [{
   ...structuredClone(restoreAtomicSeed),
   id: 'replacement-restore-memory',
@@ -48,6 +59,8 @@ replacementRestoreState.items = [{
   contradictionLinks: [],
   revisionGroupId: 'replacement-restore-memory',
 }];
+// Simulate a process whose last selected strategy differs from the incoming snapshot.
+restoreAtomicMemory.activePolicy = 'temporal';
 const originalRestoreIndexItem = restoreAtomicMemory.indexItem.bind(restoreAtomicMemory);
 let throwAfterRestoreIndexWrite = true;
 restoreAtomicMemory.indexItem = item => {
@@ -69,6 +82,15 @@ assert.deepEqual(
   restoreAtomicBaseline,
   'failed full restore must restore exact canonical state and adaptive-policy snapshot',
 );
+restoreAtomicMemory.observeRetrievalOutcome(1);
+const policyAfterFailedRestore = restoreAtomicMemory.adaptivePolicyDiagnostics();
+assert.equal(policyAfterFailedRestore.trials.temporal, 1,
+  'a failed restore must preserve the pre-restore active strategy for outcome attribution');
+assert.equal(policyAfterFailedRestore.trials.causal, 0,
+  'a failed restore must not retain the incoming snapshot strategy');
+const restoredExactDuplicate = restoreAtomicMemory.encode(restoreAtomicSeedInput);
+assert.equal(restoredExactDuplicate.id, restoreAtomicSeed.id,
+  'failed restore must preserve the canonical exact/content dedup indexes');
 const rollbackRestoreRecall = restoreAtomicMemory.retrieve('transactional restore index sentinel', 5);
 assert(
   rollbackRestoreRecall.some(item => item.id === restoreAtomicSeed.id),
@@ -80,6 +102,12 @@ assert.equal(
   'no replacement memory may leak through a partially rebuilt index',
 );
 restoreAtomicMemory.restore(replacementRestoreState);
+restoreAtomicMemory.observeRetrievalOutcome(1);
+const policyAfterSuccessfulRestore = restoreAtomicMemory.adaptivePolicyDiagnostics();
+assert.equal(policyAfterSuccessfulRestore.trials.causal, 1,
+  'a successful restore must activate the policy stored in the restored snapshot');
+assert.equal(policyAfterSuccessfulRestore.trials.temporal, 0,
+  'a successful restore must not attribute outcomes to the pre-restore active strategy');
 assert.deepEqual(
   restoreAtomicMemory.snapshot().items.map(item => item.id),
   ['replacement-restore-memory'],
