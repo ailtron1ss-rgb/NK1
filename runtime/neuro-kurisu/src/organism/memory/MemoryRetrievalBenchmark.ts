@@ -145,7 +145,8 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
       const queryMrr=first>=0?1/(first+1):0;
       outcomes.push({recallAtK01:queryRecall,mrr01:queryMrr});
       recall+=queryRecall;
-      precision+=hits.length/k;
+      // Precision counts unique relevant memory IDs, not duplicate rows for one memory.
+      precision+=new Set(hits.map(row=>row.id)).size/k;
       mrr+=queryMrr;
       if(results.length===0)falseAbstentionCount++;
     }else{
