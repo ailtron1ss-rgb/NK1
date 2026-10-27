@@ -24,9 +24,41 @@ export class AdaptiveMemoryPolicy {
  private state=defaults();
  restore(raw?:Partial<AdaptiveMemoryPolicyState>|null){
    const d=defaults();
-   const ctxV={...d.contextValue,...(raw?.contextValue??{})}; const ctxT={...d.contextTrials,...(raw?.contextTrials??{})};
-   for(const k of Object.keys(ctxV)){ctxV[k]={...blank(),...(ctxV[k]??{})};ctxT[k]={...blank(),...(ctxT[k]??{})};}
-   this.state={...d,...raw,version:2,weights:{...d.weights,...raw?.weights},trials:{...d.trials,...raw?.trials},reward:{...d.reward,...raw?.reward},contextValue:ctxV,contextTrials:ctxT};
+   const record=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
+   const isPolicy=(value:unknown):value is MemoryPolicyName=>typeof value==='string'&&names.includes(value as MemoryPolicyName);
+   const isContextKey=(key:string)=>key.length>0&&key.length<=96&&!['__proto__','prototype','constructor'].includes(key)&&/^[A-Za-z0-9_.:-]+$/.test(key);
+   const boundedNumber=(value:unknown,mode:'unit'|'count',fallback:number):number=>{
+     if(typeof value!=='number'||!Number.isFinite(value))return fallback;
+     return mode==='unit'?clamp(value):Math.max(0,Math.min(10000,Math.floor(value)));
+   };
+   const normalizeRow=(value:unknown,fallback:Record<MemoryPolicyName,number>,mode:'unit'|'count')=>{
+     const source=record(value);
+     const result={...fallback};
+     for(const name of names)result[name]=boundedNumber(source[name],mode,fallback[name]);
+     return result;
+   };
+   const source=record(raw);
+   const weights=normalizeRow(source.weights,d.weights,'unit');
+   const trials=normalizeRow(source.trials,d.trials,'count');
+   const reward=normalizeRow(source.reward,d.reward,'unit');
+   const rawContextValue=record(source.contextValue);
+   const rawContextTrials=record(source.contextTrials);
+   // Context keys are small opaque identifiers, never memory text. Bound the
+   // persisted table to the most recent 512 accepted contexts and reject unsafe keys.
+   const contextKeys=[...new Set([...Object.keys(rawContextValue),...Object.keys(rawContextTrials)].filter(isContextKey))].slice(-512);
+   const contextValue:AdaptiveMemoryPolicyState['contextValue']={};
+   const contextTrials:AdaptiveMemoryPolicyState['contextTrials']={};
+   for(const key of contextKeys){
+     contextValue[key]=normalizeRow(rawContextValue[key],blank(),'unit');
+     contextTrials[key]=normalizeRow(rawContextTrials[key],blank(),'count');
+   }
+   const cooldownUntil=boundedNumber(source.cooldownUntil,'count',d.cooldownUntil);
+   const lastContextKey=typeof source.lastContextKey==='string'&&isContextKey(source.lastContextKey)?source.lastContextKey:d.lastContextKey;
+   this.state={
+     version:2,weights,trials,reward,contextValue,contextTrials,
+     cooldownUntil,lastPolicy:isPolicy(source.lastPolicy)?source.lastPolicy:d.lastPolicy,
+     lastContextKey,
+   };
  }
  snapshot():AdaptiveMemoryPolicyState{return structuredClone(this.state);}
  choose(context:{pressure01?:number;goal01?:number;causal01?:number;temporal01?:number;mobile?:boolean},now=Date.now()):MemoryPolicyName{
