@@ -338,7 +338,7 @@ test('oversized Mem0 response is rejected with a bounded error', async () => {
   assert.deepEqual(result.memories, []);
 });
 
-test('OSS search uses current scoped filters and sends a bounded result limit', async () => {
+test('OSS search uses the documented top-level user scope; result count is capped locally', async () => {
   let requestUrl = '';
   let requestBody = null;
   let requestHeaders = null;
@@ -366,11 +366,13 @@ test('OSS search uses current scoped filters and sends a bounded result limit', 
   assert.equal(new URL(requestUrl).pathname, '/search');
   assert.deepEqual(requestBody, {
     query: 'What did I prefer about tea?',
-    filters: { user_id: 'scope-owner' },
-    limit: 2,
+    user_id: 'scope-owner',
   });
-  assert.equal(Object.hasOwn(requestBody, 'user_id'), false,
-    'modern OSS search must not pass the entity ID as a top-level search option');
+  assert.equal(Object.hasOwn(requestBody, 'filters'), false,
+    'OSS REST scopes search with top-level user_id, not the Platform filters object');
+  assert.equal(Object.hasOwn(requestBody, 'limit'), false,
+    'the documented OSS search body does not require the Platform limit field; NK1 caps accepted results locally');
+  assert.equal(result.memories.length, 1, 'accepted result count must stay within the caller-requested cap');
   assert.equal(requestHeaders['X-API-Key'], 'test-oss-key');
   assert.equal(result.memories.length, 1);
   assert.equal(result.memories[0].source, 'mem0-oss');
