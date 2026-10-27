@@ -872,6 +872,56 @@ assert((remediatedLegacyTrust.evidenceSources ?? [])
   .every(evidence => evidence.sourceAuthority01 <= 0.65),
   're-import must cap old external evidence authorities too');
 
+// A rollback must not refresh a previously sealed expected-current snapshot after a
+// later subsystem has independently changed that same canonical memory. Failing closed
+// preserves the independent update instead of restoring stale trust over it.
+const concurrentBaseline = legacyTrustRuntime.memoryOS.snapshot();
+legacyTrustRuntime.memoryOS.restore({
+  ...concurrentBaseline,
+  items: concurrentBaseline.items.map(item => item.id === importedLegacyTrust.id ? {
+    ...item,
+    confidence: 0.99,
+    sourceAuthority01: 0.99,
+    evidenceSources: (item.evidenceSources ?? []).map(evidence => ({ ...evidence, sourceAuthority01: 0.99 })),
+  } : item),
+});
+const concurrentStage = legacyTrustLedger.stageHmx({
+  document: makeHmxDocument('exp_0000000000009203', {
+    memories: [{
+      ref: 'exp_0000000000009203:legacy-trust-record',
+      type: 'semantic',
+      content: legacyTrustContent,
+      status: 'active',
+      trust_level: 0.99,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(concurrentStage.conflicts, []);
+assert.equal(legacyTrustLedger.decideHmx(concurrentStage.stagingId, 'accept')?.status, 'accepted');
+const realRegisterConcurrentBelief = legacyTrustLedger.registerOrUpdateBelief.bind(legacyTrustLedger);
+legacyTrustLedger.registerOrUpdateBelief = () => {
+  legacyTrustRuntime.fabric.updateSignals(
+    importedLegacyTrust.id,
+    { confidence: 0.61, sourceAuthority01: 0.61 },
+    'independent-update-after-hmx-signal-seal',
+    { commandId: 'test:independent-update-after-seal' },
+  );
+  throw new Error('injected-concurrent-memory-update');
+};
+assert.throws(
+  () => legacyTrustLedger.decideHmx(concurrentStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-concurrent-memory-update;rollback-failures=.*memory-signal-compensation-conflict/,
+  'rollback must report a conflict instead of silently overwriting a post-seal canonical update',
+);
+legacyTrustLedger.registerOrUpdateBelief = realRegisterConcurrentBelief;
+const concurrentAfterFailure = legacyTrustRuntime.fabric.canonicalSnapshot().items.find(item => item.id === importedLegacyTrust.id);
+assert.equal(concurrentAfterFailure?.confidence, 0.61,
+  'a failed HMX rollback must not overwrite the independent post-seal confidence update');
+assert.equal(concurrentAfterFailure?.sourceAuthority01, 0.61,
+  'a failed HMX rollback must not overwrite the independent post-seal authority update');
+
 // A re-export may demote the same memory, but an active-looking later export must
 // never resurrect a source that was already archived/quarantined.
 const transitionRuntime = new MemorySubsystemRuntime();
