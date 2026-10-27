@@ -38,7 +38,23 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
     duplicateResultCount: value.duplicateResultCount,
     invalidResultRate01: value.invalidResultRate01,
   });
-  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas });
+  const languageSlices: Record<string, unknown> = {};
+  for (const language of ['en', 'ru', 'other'] as const) {
+    const slice = report.languageStratification.slices[language];
+    if (!slice) continue;
+    languageSlices[language] = {
+      trainQueries: slice.trainQueries,
+      holdoutQueries: slice.holdoutQueries,
+      answerableHoldoutQueries: slice.answerableHoldoutQueries,
+      unanswerableHoldoutQueries: slice.unanswerableHoldoutQueries,
+      baseline: metrics(slice.metrics.baseline),
+      candidate: metrics(slice.metrics.candidate),
+      trainBaseline: metrics(slice.metrics.train.baseline),
+      trainCandidate: metrics(slice.metrics.train.candidate),
+      deltas: slice.deltas,
+    };
+  }
+  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices } });
 }
 
 /**
@@ -87,6 +103,7 @@ export function runMemoryOS2RetrievalExperiment(
     recallConfidence: run.confidence.recallAtK01,
     mrrConfidence: run.confidence.mrr01,
     candidateHoldout: run.metrics.candidate,
+    languageStratification: run.languageStratification,
     singleRunPromotionStatus: run.promotion.status,
     singleRunPromotionReason: run.promotion.reason,
     mrrConfidenceNonInferioritySupported: run.promotion.mrrNonInferioritySupported,

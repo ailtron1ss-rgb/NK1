@@ -1,11 +1,15 @@
 import { createHash } from 'node:crypto';
 import { MemoryOS2, type MemoryOSState2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
 
+export type MemoryRetrievalLanguage = 'en' | 'ru' | 'other';
+
 export interface MemoryRetrievalBenchmarkExample {
   id: string;
   query: string;
   relevantIds: string[];
   split: 'train' | 'holdout';
+  /** Explicit dataset annotation; never inferred from candidate retrieval output. */
+  language?: MemoryRetrievalLanguage;
   /** False marks an intentionally unanswerable query; it must have no relevant labels. */
   answerable?: boolean;
 }
@@ -29,6 +33,12 @@ export interface MemoryRetrievalBenchmarkOptions {
   k?: number;
   now?: number;
   minHoldoutQueries?: number;
+  /** Minimum train examples per required language; cannot be lowered below 2. */
+  minLanguageTrainQueries?: number;
+  /** Minimum answerable holdout examples per required language; cannot be lowered below 8. */
+  minLanguageAnswerableHoldoutQueries?: number;
+  /** Minimum explicitly unanswerable holdout examples per required language; cannot be lowered below 2. */
+  minLanguageUnanswerableHoldoutQueries?: number;
   /** Minimum explicitly unanswerable holdout queries required to evaluate abstention safely. */
   minUnanswerableHoldoutQueries?: number;
   minimumRecallUplift01?: number;
@@ -90,7 +100,7 @@ const queryNearDuplicate=(left:string,right:string)=>{
   let intersection=0;for(const shingle of sa)if(sb.has(shingle))intersection++;
   return intersection/(sa.size+sb.size-intersection)>=.88;
 };
-const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
+const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),...(x.language===undefined?{}:{language:x.language}),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
 const stableFingerprint=(rows:MemoryRetrievalBenchmarkExample[])=>createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
 // Canonicalize object keys but preserve array order: arrays such as semanticLinks can
 // affect bounded neighbor expansion, while object insertion order must not affect hashes.
@@ -224,14 +234,16 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   }
   const uniqueTrainQueries=new Set(rawExamples.filter(x=>x.split==='train').map(x=>normalizeQuery(x.query))).size;
   const uniqueHoldoutQueries=new Set(rawExamples.filter(x=>x.split==='holdout').map(x=>normalizeQuery(x.query))).size;
+  const languageAnnotationUsed=rawExamples.some(row=>row.language!==undefined);
+  const languageAnnotationComplete=!languageAnnotationUsed||rawExamples.every(row=>row.language!==undefined);
   const duplicateExampleIdCount=duplicateIds.size;
   const duplicateRelevantLabelCount=duplicateRelevantIds.size;
   const unknownRelevantMemoryIdCount=unknownRelevantIds.size;
   // Same-split duplicate prompts distort independent-query weighting too, so they are
   // reported and block promotion rather than being silently treated as extra evidence.
   const duplicateQueryGroupCount=repeatedQueryKeys.length;
-  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0;
-  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,validForPromotion};
+  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0&&languageAnnotationComplete;
+  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,languageAnnotationUsed,languageAnnotationComplete,validForPromotion};
 }
 
 /**
@@ -244,6 +256,9 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const now=Number.isFinite(Number(options.now))?Number(options.now):Date.now();
   const k=Math.floor(finiteOption(options.k,5,1,10));
   const minHoldout=Math.floor(finiteOption(options.minHoldoutQueries,8,8,64));
+  const minLanguageTrainQueries=Math.floor(finiteOption(options.minLanguageTrainQueries,2,2,32));
+  const minLanguageAnswerableHoldoutQueries=Math.floor(finiteOption(options.minLanguageAnswerableHoldoutQueries,8,8,64));
+  const minLanguageUnanswerableHoldoutQueries=Math.floor(finiteOption(options.minLanguageUnanswerableHoldoutQueries,2,2,32));
   const minUnanswerableHoldout=Math.floor(finiteOption(options.minUnanswerableHoldoutQueries,4,2,32));
   const minUplift=finiteOption(options.minimumRecallUplift01,.02,0,.25);
   const mrrTolerance=finiteOption(options.maximumMrrRegression01,.01,0,.1);
@@ -262,10 +277,10 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   // Bounded copies remain diagnostic-only if the source labels/text would be clipped.
   const truncatedFieldRows=limited.filter(row=>Boolean(row&&((typeof row.id==='string'&&row.id.length>120)||(typeof row.query==='string'&&row.query.length>500)||(Array.isArray(row.relevantIds)&&(row.relevantIds.length>24||row.relevantIds.some(id=>typeof id==='string'&&id.length>160)))))).length;
   const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
-    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
+    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.language===undefined||row.language==='en'||row.language==='ru'||row.language==='other')&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
     if(!valid)droppedExamples++;
     return valid;
-  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),relevantIds:[...new Set(row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)))],split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
+  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),...(row.language===undefined?{}:{language:row.language}),relevantIds:[...new Set(row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)))],split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
   const sourceItems=Array.isArray(snapshot?.items)?snapshot.items:[];
   const boundedSourceItems=sourceItems.slice(0,1600);
   const malformedCorpusRows=boundedSourceItems.filter(m=>!m||typeof m.id!=='string'||!m.id.trim()||typeof m.content!=='string').length;
@@ -333,10 +348,91 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     mrr01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'mrr01',bootstrapSamples,seed^0x9e3779b9),
     unsupportedRetrievalRate01:pairedBootstrapValuesInterval(baselineEval.unsupportedRetrievalOutcomes,candidateEval.unsupportedRetrievalOutcomes,bootstrapSamples,seed^0x85ebca6b),
   };
+  const evaluateLanguageSlice=(language:MemoryRetrievalLanguage)=>{
+    const languageTrain=train.filter(row=>row.language===language);
+    const languageHoldout=holdout.filter(row=>row.language===language);
+    const languageAnswerableHoldout=languageHoldout.filter(row=>row.answerable!==false).length;
+    const languageUnanswerableHoldout=languageHoldout.filter(row=>row.answerable===false).length;
+    const languageBaseline=evaluate(languageHoldout,baseline,k,now);
+    const languageCandidate=evaluate(languageHoldout,candidate,k,now);
+    const languageSeed=((seed^(language==='en'?0x13579bdf:language==='ru'?0x2468ace0:0x9e3779b9))>>>0)||1;
+    const languageConfidence={
+      method:'paired-query-bootstrap-percentile-interval' as const,
+      seed:languageSeed,
+      recallAtK01:pairedBootstrapInterval(languageBaseline.outcomes,languageCandidate.outcomes,'recallAtK01',bootstrapSamples,languageSeed),
+      mrr01:pairedBootstrapInterval(languageBaseline.outcomes,languageCandidate.outcomes,'mrr01',bootstrapSamples,languageSeed^0x9e3779b9),
+      unsupportedRetrievalRate01:pairedBootstrapValuesInterval(languageBaseline.unsupportedRetrievalOutcomes,languageCandidate.unsupportedRetrievalOutcomes,bootstrapSamples,languageSeed^0x85ebca6b),
+    };
+    const languageRecallDelta=languageCandidate.metrics.recallAtK01-languageBaseline.metrics.recallAtK01;
+    const languageMrrDelta=languageCandidate.metrics.mrr01-languageBaseline.metrics.mrr01;
+    const languageAbstentionSafe=languageCandidate.metrics.unsupportedRetrievalRate01<=languageBaseline.metrics.unsupportedRetrievalRate01+unsupportedRetrievalTolerance;
+    const languageAbstentionConfidenceSafe=languageConfidence.unsupportedRetrievalRate01.upperBound01<=unsupportedRetrievalTolerance;
+    const languageMrrConfidenceSafe=languageConfidence.mrr01.lowerBound01>=-mrrTolerance;
+    const languageNoUnsafeResults=languageCandidate.metrics.quarantinedResultCount===0&&languageCandidate.metrics.staleResultCount===0&&languageCandidate.metrics.futureResultCount===0&&languageCandidate.metrics.dormantResultCount===0&&languageCandidate.metrics.invalidEpistemicStatusResultCount===0&&languageCandidate.metrics.invalidResultRate01<=languageBaseline.metrics.invalidResultRate01;
+    const gates={
+      sufficientTrainQueries:languageTrain.length>=minLanguageTrainQueries,
+      sufficientAnswerableHoldoutQueries:languageAnswerableHoldout>=minLanguageAnswerableHoldoutQueries,
+      sufficientUnanswerableHoldoutQueries:languageUnanswerableHoldout>=minLanguageUnanswerableHoldoutQueries,
+      minimumRecallUplift:languageRecallDelta>=minUplift,
+      recallUpliftConfidenceSupported:languageConfidence.recallAtK01.lowerBound01>0,
+      mrrPointEstimateNonInferior:languageMrrDelta>=-mrrTolerance,
+      mrrConfidenceNonInferioritySupported:languageMrrConfidenceSafe,
+      noUnsafeCandidateResults:languageNoUnsafeResults,
+      abstentionNonInferiority:languageAbstentionSafe,
+      abstentionConfidenceNonInferioritySupported:languageAbstentionConfidenceSafe,
+    };
+    return {
+      language,
+      trainQueries:languageTrain.length,
+      holdoutQueries:languageHoldout.length,
+      answerableHoldoutQueries:languageAnswerableHoldout,
+      unanswerableHoldoutQueries:languageUnanswerableHoldout,
+      metrics:{baseline:languageBaseline.metrics,candidate:languageCandidate.metrics,train:{
+        baseline:evaluate(languageTrain,baseline,k,now).metrics,
+        candidate:evaluate(languageTrain,candidate,k,now).metrics,
+      }},
+      deltas:{recallAtK01:Number(languageRecallDelta.toFixed(4)),mrr01:Number(languageMrrDelta.toFixed(4))},
+      confidence:languageConfidence,
+      gates,
+      eligible:Object.values(gates).every(Boolean),
+    };
+  };
+  const languageSlices:Partial<Record<MemoryRetrievalLanguage,ReturnType<typeof evaluateLanguageSlice>>>={};
+  for(const language of ['en','ru','other'] as const){
+    if(examples.some(row=>row.language===language))languageSlices[language]=evaluateLanguageSlice(language);
+  }
   const provenanceInput=options.datasetProvenance??{};
   const provenance={datasetId:textField(provenanceInput.datasetId,120),datasetVersion:textField(provenanceInput.datasetVersion,120),sourceRef:textField(provenanceInput.sourceRef,240),labelingProtocol:textField(provenanceInput.labelingProtocol,500),licenseId:textField(provenanceInput.licenseId,120),contentSha256:textField(provenanceInput.contentSha256,64).toLowerCase()};
   const contentHashValid=/^[a-f0-9]{64}$/.test(provenance.contentSha256)&&provenance.contentSha256===datasetFingerprint;
   const provenanceComplete=Boolean(provenance.datasetId&&provenance.datasetVersion&&provenance.sourceRef&&provenance.labelingProtocol&&provenance.licenseId&&contentHashValid);
+  const languageAnnotationsUsed=examples.some(row=>row.language!==undefined);
+  const languageAnnotationsComplete=dataIntegrity.languageAnnotationComplete;
+  const bothRequiredLanguagesPresent=languageSlices.en!==undefined&&languageSlices.ru!==undefined;
+  const sufficientLanguageTrainQueriesPerLanguage=(languageSlices.en?.trainQueries??0)>=minLanguageTrainQueries&&(languageSlices.ru?.trainQueries??0)>=minLanguageTrainQueries;
+  const sufficientLanguageAnswerableHoldoutPerLanguage=(languageSlices.en?.answerableHoldoutQueries??0)>=minLanguageAnswerableHoldoutQueries&&(languageSlices.ru?.answerableHoldoutQueries??0)>=minLanguageAnswerableHoldoutQueries;
+  const sufficientLanguageUnanswerableHoldoutPerLanguage=(languageSlices.en?.unanswerableHoldoutQueries??0)>=minLanguageUnanswerableHoldoutQueries&&(languageSlices.ru?.unanswerableHoldoutQueries??0)>=minLanguageUnanswerableHoldoutQueries;
+  const languageQualitySupportedAcrossRequiredLanguages=languageSlices.en?.eligible===true&&languageSlices.ru?.eligible===true;
+  const languageStratifiedQualityEligible=languageAnnotationsUsed&&languageAnnotationsComplete&&bothRequiredLanguagesPresent&&sufficientLanguageTrainQueriesPerLanguage&&sufficientLanguageAnswerableHoldoutPerLanguage&&sufficientLanguageUnanswerableHoldoutPerLanguage&&languageQualitySupportedAcrossRequiredLanguages;
+  const languageStratificationReason=!languageAnnotationsUsed?'bilingual-language-annotations-required':!languageAnnotationsComplete?'language-annotations-incomplete':!bothRequiredLanguagesPresent?'english-and-russian-required':!sufficientLanguageTrainQueriesPerLanguage?'insufficient-language-train-evidence':!sufficientLanguageAnswerableHoldoutPerLanguage||!sufficientLanguageUnanswerableHoldoutPerLanguage?'insufficient-language-stratified-holdout':!languageQualitySupportedAcrossRequiredLanguages?'language-stratified-quality-not-supported':'language-stratified-quality-supported';
+  const languageStratification={
+    enabled:languageAnnotationsUsed,
+    annotationsComplete:languageAnnotationsUsed&&languageAnnotationsComplete,
+    requiredLanguages:['en','ru'] as const,
+    minimums:{trainQueriesPerLanguage:minLanguageTrainQueries,answerableHoldoutQueriesPerLanguage:minLanguageAnswerableHoldoutQueries,unanswerableHoldoutQueriesPerLanguage:minLanguageUnanswerableHoldoutQueries},
+    slices:languageSlices,
+    gates:{
+      annotationsPresent:languageAnnotationsUsed,
+      annotationsComplete:languageAnnotationsUsed&&languageAnnotationsComplete,
+      bothRequiredLanguagesPresent,
+      sufficientTrainQueriesPerLanguage:sufficientLanguageTrainQueriesPerLanguage,
+      sufficientAnswerableHoldoutPerLanguage:sufficientLanguageAnswerableHoldoutPerLanguage,
+      sufficientUnanswerableHoldoutPerLanguage:sufficientLanguageUnanswerableHoldoutPerLanguage,
+      qualitySupportedAcrossRequiredLanguages:languageQualitySupportedAcrossRequiredLanguages,
+      promotionEligible:languageStratifiedQualityEligible,
+    },
+    eligibleForPromotion:languageStratifiedQualityEligible,
+    reason:languageStratificationReason,
+  };
   const labelledHoldoutQueries=holdout.filter(x=>x.answerable!==false).length;
   const unanswerableHoldoutQueries=holdout.filter(x=>x.answerable===false).length;
   const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
@@ -372,9 +468,10 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     noUnsafeCandidateResults:quarantineSafe&&staleSafe&&dormantSafe&&epistemicStatusSafe&&validRateSafe,
     abstentionNonInferiority:abstentionSafe,
     abstentionConfidenceNonInferioritySupported,
+    languageStratifiedQuality:languageStratifiedQualityEligible,
   };
   const promotionAllowed=Object.values(promotionGates).every(Boolean);
-  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!enoughUnanswerableEvidence?'insufficient-unanswerable-holdout':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':!abstentionConfidenceNonInferioritySupported?'unsupported-retrieval-regression-not-confidence-bounded':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':'holdout-gates-passed';
+  const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!enoughUnanswerableEvidence?'insufficient-unanswerable-holdout':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':!abstentionConfidenceNonInferioritySupported?'unsupported-retrieval-regression-not-confidence-bounded':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':!languageStratifiedQualityEligible?languageStratificationReason:'holdout-gates-passed';
   return {
     schemaVersion:6 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
@@ -384,7 +481,8 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     baselineConfiguration,baselineConfigurationFingerprint,
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
     deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
-    promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumUnanswerableHoldoutQueries:minUnanswerableHoldout,minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
-    guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
+    languageStratification,
+    promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumUnanswerableHoldoutQueries:minUnanswerableHoldout,minimumLanguageTrainQueries:minLanguageTrainQueries,minimumLanguageAnswerableHoldoutQueries:minLanguageAnswerableHoldoutQueries,minimumLanguageUnanswerableHoldoutQueries:minLanguageUnanswerableHoldoutQueries,requiredLanguages:['en','ru'],minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
+    guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,minimumLanguageStratifiedQualityRequired:true,bothEnglishAndRussianRequiredForPromotion:true,perLanguageConfidenceBoundsRequired:true,languageLabelsMustBeExplicit:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
   };
 }
