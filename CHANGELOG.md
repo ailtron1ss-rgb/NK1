@@ -1,3 +1,9 @@
+## [NK1][WorkPass496] Align the memory-doctor future-evidence fixture (2026-10-27)
+
+- Exact-head Core regression showed the CLI fixture used an observation timestamp only 60 seconds ahead, below the memory doctor's existing five-minute future-evidence tolerance.
+- Changed only the synthetic fixture to one hour ahead so the test exercises the intended rejection path. Production thresholds and behavior are unchanged; the test remains read-only and keeps the bounded-report assertions.
+- The compound-skill and project-reconciliation route regressions pass on the observed head. Re-run the exact-head Core workflow to validate this fixture correction.
+
 ## [NK1][WorkPass495] Unify compound-skill action finalization (2026-10-27)
 
 - The exact-head Core regression exposed a second execution-path bypass after the project-step path was corrected: compound skills called ActionGateway directly and finalized unkeyed results separately.
