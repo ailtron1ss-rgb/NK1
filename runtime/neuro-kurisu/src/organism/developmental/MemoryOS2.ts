@@ -498,6 +498,30 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
+   // A restore replaces canonical rows and a family of derived indexes. Retain the
+   // previous generation so an exception during rebuild cannot mix index generations.
+   const cloneSetMap=<K,V>(source:Map<K,Set<V>>):Map<K,Set<V>>=>new Map([...source].map(([key,value])=>[key,new Set(value)]));
+   const restoreMap=<K,V>(target:Map<K,V>,source:Map<K,V>)=>{target.clear();for(const [key,value] of source)target.set(key,value);};
+   const restoreSetMap=<K,V>(target:Map<K,Set<V>>,source:Map<K,Set<V>>)=>{target.clear();for(const [key,value] of source)target.set(key,new Set(value));};
+   const previousState=this.state;
+   const previousPolicy=this.adaptivePolicy.snapshot();
+   const previous={
+    exactIndex:new Map(this.exactIndex),
+    itemIndex:new Map(this.itemIndex),
+    contentIndex:new Map(this.contentIndex),
+    tokenCache:cloneSetMap(this.tokenCache),
+    lowerContentCache:new Map(this.lowerContentCache),
+    tokenIndex:cloneSetMap(this.tokenIndex),
+    characterGramIndex:cloneSetMap(this.characterGramIndex),
+    documentFrequency:new Map(this.documentFrequency),
+    itemTokenLength:new Map(this.itemTokenLength),
+    revisionGroupIndex:cloneSetMap(this.revisionGroupIndex),
+    totalTokenLength:this.totalTokenLength,
+    linkSupportCache:this.linkSupportCache?new Map(this.linkSupportCache):null,
+    linkSupportCacheVersion:this.linkSupportCacheVersion,
+    lastCandidateCount:this.lastCandidateCount,
+   };
+   try{
   const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
@@ -570,7 +594,26 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
- }
+   }catch(error){
+    this.state=previousState;
+    this.adaptivePolicy.restore(previousPolicy);
+    restoreMap(this.exactIndex,previous.exactIndex);
+    restoreMap(this.itemIndex,previous.itemIndex);
+    restoreMap(this.contentIndex,previous.contentIndex);
+    restoreSetMap(this.tokenCache,previous.tokenCache);
+    restoreMap(this.lowerContentCache,previous.lowerContentCache);
+    restoreSetMap(this.tokenIndex,previous.tokenIndex);
+    restoreSetMap(this.characterGramIndex,previous.characterGramIndex);
+    restoreMap(this.documentFrequency,previous.documentFrequency);
+    restoreMap(this.itemTokenLength,previous.itemTokenLength);
+    restoreSetMap(this.revisionGroupIndex,previous.revisionGroupIndex);
+    this.totalTokenLength=previous.totalTokenLength;
+    this.linkSupportCache=previous.linkSupportCache;
+    this.linkSupportCacheVersion=previous.linkSupportCacheVersion;
+    this.lastCandidateCount=previous.lastCandidateCount;
+    throw error;
+   }
+  }
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
