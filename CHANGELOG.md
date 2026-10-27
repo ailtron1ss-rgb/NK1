@@ -1,3 +1,10 @@
+## [NK1][WorkPass473] Reconcile semantic embedding caches after restore (2026-10-27)
+
+- `MemoryOS2.restore()` now treats the semantic embedding cache and retry ledger as derived state: after rebuilding canonical/dedup/retrieval indexes it drops rows whose memory ID is absent, whose content hash/provider no longer match, or whose vector is empty. Provider-less restores clear embedding retries as well.
+- The cache maps are snapshotted alongside primary indexes and restored if cache reconciliation throws partway through. This closes the previous gap where a failed restore could leave already-pruned vectors/retries missing, and where a successful restore could keep stale rows in diagnostics.
+- Added failure injection after cache deletion, assertions that both derived cache maps are exactly restored, assertions that successful provider-less restore clears stale cache rows, and a positive case proving a matching content/provider vector is retained while obsolete retry metadata is discarded.
+- Source/test presence has been statically checked through GitHub file reads. Runtime tests, TypeScript typecheck and hosted CI remain unconfirmed. `main` and the canonical GitHub Release ZIP remain unchanged.
+
 ## [NK1][WorkPass472] Harden adaptive policy observation inputs (2026-10-27)
 
 - Runtime `observe()` now validates policy identifiers rather than indexing mutable maps with caller-supplied names. Unknown names safely fall back to the last valid policy (or `balanced`), and non-finite timestamps cannot poison the cooldown.
