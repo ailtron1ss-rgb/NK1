@@ -1,3 +1,10 @@
+## [NK1][WorkPass464] Make canonical MemoryOS status and signal writes exception-atomic (2026-10-27)
+
+- `MemoryOS2.revise()`, `updateSignals()`, and `restoreSignalsForCompensation()` now retain an exact in-place snapshot of the canonical item and the affected memory accounting counters before mutation. If revision-history/evidence/bookkeeping throws after fields have been changed, the item and counters are restored before the error propagates.
+- In-place restoration preserves object identity for the canonical store and its index while deleting fields that did not exist in the original snapshot.
+- Added HMX regressions that inject a throw *after* `recordRevision()` mutates the item for status reconciliation and imported-authority capping; each requires exact pre-state, no leaked compensation token, and an accepted/retryable stage.
+- Static source review only; runtime tests, typecheck and hosted CI remain unconfirmed. `main` and the canonical Release ZIP are unchanged.
+
 ## [NK1][WorkPass463] Treat foreign full-state restores as rollback boundaries (2026-10-27)
 
 - Semantic graph and Hexis ledger mutation journals now distinguish global snapshot replacement from source-/record-scoped mutations. Owner undo stops when a foreign full restore occurred later, even if the current row happens to match the stale transaction's post-state.
