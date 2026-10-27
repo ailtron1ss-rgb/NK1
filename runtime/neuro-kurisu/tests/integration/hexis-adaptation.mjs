@@ -25,6 +25,39 @@ assert.equal(
 assert.equal(ownedCheckpointFabric.snapshot().beliefs.length, 0,
   'owned ledger mutations should be removed by a successful guarded rollback');
 
+// If restoring a removed belief would exceed the bounded mirror capacity, rollback
+// must report a conflict rather than evicting a newer unrelated belief.
+const beliefCapacityFabric = new HexisAdaptationFabric();
+for (let index = 0; index < 1024; index++) {
+  beliefCapacityFabric.registerOrUpdateBelief({
+    memoryId: 'capacity-belief-' + index,
+    confidence01: 0.5,
+    trust01: 0.5,
+    at: index + 1,
+  });
+}
+const beliefCapacityCheckpoint = beliefCapacityFabric.mutationCheckpoint();
+const beliefCapacityOwner = 'test:capacity-safe-belief-undo';
+assert.equal(beliefCapacityFabric.removeBeliefProjection('capacity-belief-0', beliefCapacityOwner), true);
+beliefCapacityFabric.registerOrUpdateBelief({
+  memoryId: 'independent-belief-added-after-delete',
+  confidence01: 0.9,
+  trust01: 0.9,
+  at: 5000,
+});
+const beliefCapacityRollback = beliefCapacityFabric.rollbackOwnedMutations(
+  beliefCapacityCheckpoint,
+  beliefCapacityOwner,
+);
+assert(beliefCapacityRollback.conflicts > 0,
+  'capacity conflict must be reported when restoring an old belief cannot fit safely');
+const beliefCapacityAfter = beliefCapacityFabric.snapshot().beliefs;
+assert.equal(beliefCapacityAfter.length, 1024);
+assert(beliefCapacityAfter.some(row => row.memoryId === 'independent-belief-added-after-delete'),
+  'rollback must not evict the independent belief to make room for a stale restored row');
+assert.equal(beliefCapacityAfter.some(row => row.memoryId === 'capacity-belief-0'), false,
+  'the over-capacity baseline belief is left absent rather than overwriting the independent addition');
+
 // Bounded mutation journals must declare history loss, while unwinding all
 // retained owner receipts without applying a stale whole-state restore.
 const graphJournalSaturationRuntime = new MemorySubsystemRuntime();
