@@ -603,12 +603,12 @@ const maintenanceCapRows = Array.from({ length: 1601 }, (_, index) => ({
   revisionSequence: 1,
 }));
 const maintenanceCapOldestId = maintenanceCapRows[1600].id;
-maintenanceCapRuntime.memoryOS.restore({
+maintenanceCapRuntime.memoryOS.restoreInternal({
   ...maintenanceCapState,
   items: maintenanceCapRows,
   estimatedBytes: 0,
   lastConflictScanAt: Date.now() + 60_000,
-}, { allowOverCapacity: true });
+}, true);
 assert.equal(maintenanceCapRuntime.fabric.canonicalSize(), 1601);
 maintenanceCapRuntime.memoryOS.maintain({ maxItems: 1600, pressure01: 0 });
 assert.equal(maintenanceCapRuntime.fabric.canonicalSize(), 1600);
