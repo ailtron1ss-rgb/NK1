@@ -1,4 +1,4 @@
-## [NK1][WorkPass457] Keep canonical trust and Hexis belief mirror aligned (2026-10-27)
+## [NK1][WorkPass458] Keep canonical trust and Hexis belief mirror aligned (2026-10-27)
 
 - `registerOrUpdateBelief()` previously returned an existing mirror untouched on every re-import. When canonical MemoryOS confidence/source authority was corrected downward, the Hexis mirror could therefore retain stale higher confidence and trust.
 - Existing mirrors now reconcile only downward: confidence and trust use the minimum of stored and incoming values, omitted trust is preserved, and equal values remain a no-op. This path does not add evidence keys or append belief-audit entries, so importing is not treated as independent evidence or a promotion path.
@@ -35,13 +35,13 @@
 - Added an integration regression that injects independent graph and temporal writes during a downstream failure, checks that both survive, and checks that the newly created canonical memory is still compensated.
 - Static source checks are complete; runtime execution, typecheck and hosted CI are not confirmed. `main` and the canonical GitHub Release ZIP remain untouched.
 
-## [NK1][WorkPass454] Prove Hexis ledger rollback respects foreign mutations (2026-10-27)
+## [NK1][WorkPass459] Prove Hexis ledger rollback respects foreign mutations (2026-10-27)
 
 - Added a focused integration regression for the new mutation-journal checkpoint API: transaction-owned changes may be restored to their checkpoint, but a foreign write after the checkpoint must make `restoreIfUnchanged()` fail closed and preserve that write.
 - This covers the key safety property of the WorkPass453 snapshot guard instead of only checking that checkpoint methods exist. The integration test is in the existing `test:hexis-canonical-apply` script and its path filter.
 - Regression source is committed separately; exact-head runtime/CI execution remains unverified.
 
-## [NK1][WorkPass453] Use the installed Node type contract for runtime typecheck (2026-10-27)
+## [NK1][WorkPass460] Use the installed Node type contract for runtime typecheck (2026-10-27)
 
 - The runtime typecheck runs after the workflow installs the app lockfile, which already pins `@types/node`, but `tsconfig.clean.json` only saw the runtime's intentionally partial ambient shims. This caused a broad family of false missing-Node-API diagnostics (`node:fs`, `NodeJS`, `Buffer`, `createPublicKey`, `realpath`, `path.resolve`, and related APIs).
 - Added the app's installed `@types` root as a fallback type root and selected Node types explicitly. Removed custom global `process`/`Buffer` declarations so the real Node ambient types remain authoritative; targeted `node:` module declarations stay as compatibility overloads.
