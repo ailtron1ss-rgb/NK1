@@ -817,9 +817,11 @@ export class MemoryOS2{
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
    }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,192).map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
-   if(candidateIds.size<96){
-     // Preserve the prior recent-memory fallback intent, but use explicit fields and ID
-     // as stable tie-breaks instead of relying on serialized array order.
+   if(candidateIds.size<96&&candidatePriority.size>0){
+     // Recent-memory candidates may pad a query that already has an evidence-bearing
+     // anchor, but must never manufacture an answer when no lexical, fuzzy, or concept
+     // posting matched any memory. In that case an empty candidate set is intentional
+     // abstention, not a cue to return unrelated recent records.
      const fallback=[...this.state.items].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)||a.id.localeCompare(b.id));
      for(const m of fallback.slice(0,128)){candidateIds.add(m.id);if(candidateIds.size>=192)break;}
    }
