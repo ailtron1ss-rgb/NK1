@@ -1,3 +1,11 @@
+## [NK1][WorkPass507] Port deterministic bilingual retrieval holdout gate (2026-10-27)
+
+- Ported the offline Russian/English MemoryOS2 retrieval evaluation runner onto the latest source baseline without importing the disconnected upstream branch history.
+- Fixed over-escaped Unicode punctuation/whitespace expressions, canonical row separators and report newlines by extracting query normalization and SHA-256 canonicalization into a small shared helper.
+- Added direct regressions for Unicode NFKC, punctuation/symbol separation, whitespace normalization, ordering-independent fingerprints, changed-input sensitivity and fail-closed missing-dataset behavior.
+- Kept independent-dataset provenance, explicit licensing/labeling requirements, unanswerable-query coverage, five paired bootstrap seeds, no live-memory mutation and no automatic promotion.
+- No holdout dataset is fabricated or committed; real recall uplift remains unverified until a genuinely independent RU/EN dataset is supplied and reviewed.
+
 ## [NK1][Hexis] Surface immutable trace conflicts as HTTP 409 (2026-10-27)
 
 - Map `source-trace-id-conflict` to HTTP 409 Conflict while keeping missing canonical memory as 404 and malformed/invalid submissions as 400.
