@@ -1,3 +1,9 @@
+## [NK1][WorkPass469] Restore the active retrieval policy with its snapshot (2026-10-27)
+
+- A full MemoryOS2 restore now activates the validated policy recorded by the restored adaptive-policy snapshot, falling back to `balanced` for absent or invalid names. This avoids carrying a stale pre-restore strategy into post-restart outcome attribution.
+- Failure rollback restores the prior active strategy together with the prior adaptive-policy model. Regression coverage checks both directions: injected index failure preserves the old strategy, while a successful restore uses the snapshot's `causal` strategy; exact/content dedup remains usable after failure.
+- Source and test changes are committed; runtime execution and TypeScript/CI remain unconfirmed. `main` and the canonical Release ZIP are unchanged.
+
 ## [NK1][WorkPass468] Cover full-restore index rollback and retry (2026-10-27)
 
 - Added a focused MemoryOS2 regression that injects an exception after the first derived-index write during full snapshot restore. It requires exact pre-restore snapshot/policy recovery, prior-memory retrieval to remain intact, no replacement row to leak through, and successful retry to rebuild retrieval for the replacement row.
