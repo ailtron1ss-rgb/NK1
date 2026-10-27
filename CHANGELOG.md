@@ -1,3 +1,9 @@
+## [NK1][WorkPass498] Assert the runtime-owned cognitive-cycle persistence API (2026-10-27)
+
+- Runtime inspection confirmed the active cycle persists its snapshot through setRuntimeUnifiedCognitiveCycle, while the regression expected the superseded setUnifiedCognitiveCycle symbol.
+- Updated the regression to assert the API actually used by the runtime, alongside WorkPass497's scoped embodiment-persistence check. The ordering and persistence requirements remain enforced; this does not change production code.
+- Exact-head Core validation must finish on the new commit before the recovered regression set is considered green.
+
 ## [NK1][WorkPass497] Anchor cycle embodiment assertion to the active cycle (2026-10-27)
 
 - The exact-head Core regression showed that a file-global lookup found an earlier initialization-time setEmbodiment call rather than the active cycle's persistence point.
