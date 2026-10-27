@@ -7,7 +7,7 @@
 
 ## [NK1][integration] Add self-hosted Mem0 OSS mode (2026-10-27)
 
-- Follow-up: align `POST /search` with current Mem0 OSS v3 scoped-search semantics (`filters.user_id`) and include the requested server-side result cap; add a request-level regression for endpoint, payload, and `X-API-Key`. This is mock-only validation, not a live deployment claim.
+- Follow-up after checking the distinct upstream contracts: self-hosted OSS REST `POST /search` uses top-level `user_id`; the SDK/Platform v3 `filters` shape does not apply to this raw REST endpoint. NK1 caps accepted results locally, and regressions now assert the actual route, payload and `X-API-Key`. This is contract-level/mock validation only; live provider compatibility remains unverified.
 
 - Added explicit `platform|oss` provider mode. OSS mode uses its documented `/search`, `/memories`, and `X-API-Key` contract; Platform mode remains unchanged.
 - Default OSS URL is loopback HTTP only; remote cleartext requires a separate explicit opt-in. Single-memory mutations still need write enablement, per-operation approval, and an adapter-issued scoped UUID.
