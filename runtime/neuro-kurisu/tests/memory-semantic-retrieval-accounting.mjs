@@ -8,7 +8,7 @@ process.env.NK_EMBEDDINGS_RUNTIME_ENABLED = '1';
 process.env.NK_EMBEDDINGS_RUNTIME_BUDGET_MS = '100';
 
 function makeFabric({ lexicalRows, semanticRows = [], providerWork }) {
-  const seen = { policy: [], unified: [], touched: [], events: [], canonicalReads: [] };
+  const seen = { policy: [], unified: [], touched: [], events: [], canonicalReads: [], liveReads: [] };
   const fabric = Object.create(MemoryFabric.prototype);
   fabric.lastCognitiveMemoryQueryAt = 0;
   fabric.cognitionSemanticInFlight = null;
@@ -28,7 +28,7 @@ function makeFabric({ lexicalRows, semanticRows = [], providerWork }) {
   // The fallback is a read-only preview. A live lexical retrieval before the
   // semantic selector picks its result would mutate canonical access counters.
   fabric.previewRetrieve = () => lexicalRows;
-  fabric.retrieve = () => { throw new Error('provisional cognitive recall must not mutate canonical memory'); };
+  fabric.retrieve = (query) => { seen.liveReads.push({ query }); return lexicalRows; };
   fabric.policyOutcomeLedger = {
     register: item => { seen.policy.push(item); return { id: 'decision-' + seen.policy.length }; },
   };
@@ -62,6 +62,8 @@ try {
   assert.deepEqual(successful.seen.unified, [{ query: 'remember this', hits: 1 }]);
   assert.deepEqual(successful.seen.canonicalReads, [{ query: 'remember this', ids: ['semantic-1'] }],
     'only the chosen semantic IDs are committed to canonical memory access history');
+  assert.deepEqual(successful.seen.liveReads, [],
+    'semantic success must not run a speculative live lexical retrieval');
   assert.deepEqual(successful.seen.touched, ['semantic-1'],
     'provisional lexical candidates must not be promoted to hot memory');
   assert.equal(successful.seen.events.length, 1);
@@ -80,8 +82,10 @@ try {
     'provider failure must not register a provisional result and a second fallback result');
   assert.deepEqual(fallback.seen.policy[0].memoryIds, ['lexical-1', 'lexical-2']);
   assert.deepEqual(fallback.seen.unified, [{ query: 'remember this', hits: 2 }]);
-  assert.deepEqual(fallback.seen.canonicalReads, [{ query: 'remember this', ids: ['lexical-1', 'lexical-2'] }],
-    'provider failure must commit only the selected lexical fallback IDs');
+  assert.deepEqual(fallback.seen.liveReads, [{ query: 'remember this' }],
+    'provider failure must perform exactly one live lexical retrieval after fallback is selected');
+  assert.deepEqual(fallback.seen.canonicalReads, [],
+    'the selected lexical fallback is already accounted by canonical MemoryOS2.retrieve');
   assert.deepEqual(fallback.seen.touched, ['lexical-1', 'lexical-2']);
 
   // Verify the canonical MemoryOS2 owns exactly-once retrieval access signals:
