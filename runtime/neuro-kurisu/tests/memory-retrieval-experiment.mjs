@@ -22,6 +22,11 @@ const snapshot = memory.snapshot();
 const examples = [];
 for (let i = 0; i < 4; i++) examples.push({ id: `train-${i}`, query: `training query fern status ${i}`, relevantIds: [`m${i}`], split: 'train' });
 for (let i = 0; i < 8; i++) examples.push({ id: `holdout-${i}`, query: `heldout query fern routing ${i}`, relevantIds: [`m${i}`], split: 'holdout' });
+for (let i = 0; i < 4; i++) examples.push({
+  id: `unanswerable-${i}`,
+  query: i < 2 ? `unseen quasar archive token ${i}` : `project fern status phantom case ${i}`,
+  relevantIds: [], answerable: false, split: 'holdout',
+});
 const provenance = { datasetId: 'controlled-fixture', datasetVersion: '1.0', sourceRef: 'test-fixture-only', labelingProtocol: 'Hand-authored test labels; not production evidence.' };
 const options = { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance, seeds: [13, 29, 53] };
 const before = structuredClone(snapshot);
@@ -40,6 +45,17 @@ assert.equal(experiment.promotion.allowed, false, 'multi-seed experiment must ne
 assert.equal(experiment.promotion.candidateAutomaticallyPromoted, false);
 assert.deepEqual(snapshot, before, 'experiment must not mutate supplied snapshot');
 assert.equal(experiment.runs.length, 3);
+assert.equal(experiment.holdoutQueries, 12);
+assert.equal(experiment.answerableHoldoutQueries, 8);
+assert.equal(experiment.unanswerableHoldoutQueries, 4);
+assert.deepEqual(experiment.runs.map(row => row.candidateHoldout.unanswerableQueries), [4, 4, 4]);
+assert.equal(experiment.runs.every(row => {
+  const metrics = row.candidateHoldout;
+  return metrics.correctAbstentionRate01 >= 0 && metrics.correctAbstentionRate01 <= 1
+    && metrics.unsupportedRetrievalRate01 >= 0 && metrics.unsupportedRetrievalRate01 <= 1
+    && metrics.correctAbstentionRate01 + metrics.unsupportedRetrievalRate01 === 1
+    && metrics.unsupportedRetrievalCount === metrics.unsupportedRetrievalRate01 * metrics.unanswerableQueries;
+}), true, 'each seed report must expose internally consistent no-answer retrieval and abstention metrics');
 assert.equal(new Set(experiment.runs.map(row => row.recallDelta01)).size, 1, 'retrieval point estimate should be seed invariant');
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [1, 1, 2] }), /at-least-3-distinct-bootstrap-seeds/);
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [13, -1, 29, 53] }), /experiment-seeds-must-be-positive-uint32-values/, 'invalid supplied seeds must not be silently filtered out');
@@ -131,6 +147,11 @@ try {
   const emitted = JSON.parse(await readFile(reportPath, 'utf8'));
   assert.equal(emitted.seedCount, 3);
   assert.equal(emitted.input.labelRowsParsed, examples.length);
+  assert.equal(emitted.holdoutQueries, 12);
+  assert.equal(emitted.answerableHoldoutQueries, 8);
+  assert.equal(emitted.unanswerableHoldoutQueries, 4);
+  assert.equal(emitted.runs.every(row => row.candidateHoldout.unanswerableQueries === 4), true,
+    'CLI parsing must preserve explicitly unanswerable labels into all experiment runs');
   assert.equal(emitted.promotion.allowed, false);
   assert.equal(emitted.runs.every(row => Array.isArray(row.failedPromotionGates) && typeof row.mrrConfidenceNonInferioritySupported === 'boolean'), true);
   assert.equal((await readdir(temp)).some(name => name.endsWith('.tmp')), false, 'successful publication must clean temporary output files');
@@ -142,6 +163,20 @@ try {
   assert.equal(badSeed.status, 2);
   assert.match(badSeed.stderr, /seeds-must-be-3-to-9-uint32-values/);
   assert.equal((await readdir(temp)).includes('bad-seed.json'), false, 'invalid CLI seed arguments must fail before publishing a report');
+
+  const invalidLabelsPath = path.join(temp, 'invalid-answerability.jsonl');
+  const invalidLabelsOut = path.join(temp, 'invalid-answerability.json');
+  await writeFile(invalidLabelsPath, `${JSON.stringify({ id: 'bad-no-answer', query: 'unanswerable example', relevantIds: ['m0'], answerable: false, split: 'holdout' })}\\n`);
+  const badAnswerability = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidLabelsPath, '--provenance', provenancePath, '--out', invalidLabelsOut, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(badAnswerability.status, 2);
+  assert.match(badAnswerability.stderr, /labels-unanswerable-requires-empty-relevantIds-line:1/);
+  assert.equal((await readdir(temp)).includes('invalid-answerability.json'), false, 'contradictory no-answer labels must fail before report publication');
+
+  await writeFile(invalidLabelsPath, `${JSON.stringify({ id: 'bad-answerable', query: 'answerable example', relevantIds: [], answerable: true, split: 'holdout' })}\\n`);
+  const missingRelevantLabels = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidLabelsPath, '--provenance', provenancePath, '--out', invalidLabelsOut, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(missingRelevantLabels.status, 2);
+  assert.match(missingRelevantLabels.stderr, /labels-answerable-requires-relevantIds-line:1/);
+  assert.equal((await readdir(temp)).includes('invalid-answerability.json'), false, 'answerable queries without a ground-truth ID must fail closed');
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
