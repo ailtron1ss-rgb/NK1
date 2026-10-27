@@ -1,13 +1,26 @@
-## [NK1][WorkPass441] Preserve sealed rollback preconditions during later failure (2026-10-27)
+## [NK1][WorkPass443] Run persisted receipt-control regression in the Hexis integration gate (2026-10-27)
 
-- The Hexis projector now marks an existing-memory rollback snapshot sealed once that row's status/trust mutations complete. A later projection failure no longer refreshes that snapshot and accidentally accepts an intervening update as part of the failed import.
-- If the canonical row changed after sealing, compensation now fails closed with the existing conflict check instead of overwriting the independent update with stale state. Unsealed entries are refreshed only for a mutation interrupted before the projector could complete its normal seal.
-- Added an integration regression that injects a post-seal canonical update before a downstream failure and verifies that rollback reports the conflict while preserving the independent confidence/authority values. Runtime execution, typecheck and hosted CI remain unverified; no main or Release ZIP change.
+- Added `tests/memory-lifecycle-command-workpass31.mjs` to `test:hexis-canonical-apply`, so the persisted C1 receipt-target regression is executed by the same focused Hexis workflow rather than merely existing in a separate audit script.
+- Added the test path to both push and pull-request filters for `hexis-canonical-apply.yml`. The package JSON parses and the workflow path filter now includes the regression.
+- Current exact-head runtime test/typecheck/CI result is not yet confirmed; no main or published Release ZIP changes.
+
+## [NK1][WorkPass442] Bind rollback sealing to canonical status and trust mutations (2026-10-27)
+
+- Replaced projector-owned post-state refresh with token-bound lifecycle writes: MemoryFabric now validates compensation capability ownership for status and trust changes and seals the expected state immediately after the canonical mutation.
+- Reuses one transaction-start snapshot per memory across status plus trust reconciliation, applies the same guarded compensation to superseded rows, and removes the separate status-only rollback that could append a misleading revision instead of restoring the original revision history.
+- Catch-time rollback no longer refreshes the current state. If another write changed the row after NK1's owned mutation, the stale-compensation guard reports a conflict rather than overwriting it.
+- The WorkPass441 post-seal mutation regression remains wired to this path. Runtime execution and typecheck are still unverified.
+
+## [NK1][WorkPass441] Add post-seal rollback conflict regression (2026-10-27)
+
+- Added a failure-injection case where a downstream belief projection performs an independent canonical signal update after HMX's trust reconciliation has completed.
+- The regression requires the failed import to report a compensation conflict and preserve the post-seal confidence/authority values, instead of restoring the transaction-start snapshot over the independent write.
+- The initial projector-level seal marker from this pass was superseded by WorkPass442's lifecycle-owned sealing, which also covers status-only and supersession mutations.
 
 ## [NK1][WorkPass440] Review HMX compensation-token ownership (2026-10-27)
 
-- A first attempt added the coordinator token to the `update-signals` command payload. Source review showed that this integration line owns the snapshot/expected-current token inside `MemoryFabric`; the extra command field was not consumed by that contract and would only alter the mutation fingerprint. The redundant field was removed.
-- The actual safety improvement is recorded in WorkPass441: preserve a successfully sealed expected-current snapshot during rollback so independent post-seal changes are not silently overwritten.
+- The first token handoff attempt was not wired to the then-current MemoryFabric contract, so that field was removed rather than left as unconsumed command data.
+- WorkPass442 subsequently extended the canonical lifecycle contract to validate and consume the compensation token for both status and trust mutations. Use WorkPass442 as the authoritative implementation description.
 
 ## [NK1][WorkPass439] Cover C1 controls in restored receipt targets (2026-10-26)
 
