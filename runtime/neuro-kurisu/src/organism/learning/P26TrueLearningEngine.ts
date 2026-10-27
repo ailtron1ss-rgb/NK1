@@ -162,9 +162,9 @@ export class P26TrueLearningEngine{
     if(!Number.isSafeInteger(requestedEvery)||requestedEvery<1||requestedEvery>10_000)throw new RangeError('replay-every-n-current-invalid');
     if(typeof maxReplayFraction01!=='number'||!Number.isFinite(maxReplayFraction01)||maxReplayFraction01<0||maxReplayFraction01>1)throw new RangeError('max-replay-fraction-out-of-range');
     // Replay cadence is capped independently from the absolute per-call budget.
-    // A caller may request frequent rehearsal, but current-task updates remain at
-    // least 1:maxReplayFraction01 relative to replay updates unless the caller
-    // explicitly opts into a higher fraction. Zero disables replay for this call.
+    // Requested cadence is a minimum interval, not a way to bypass the
+    // replay/current ratio guard. At 0.25, at most one replay update is scheduled
+    // per four current rows. Zero disables replay; higher values opt into more.
     const fractionBoundedEvery=maxReplayFraction01===0?Number.MAX_SAFE_INTEGER:Math.min(Number.MAX_SAFE_INTEGER,Math.ceil(1/maxReplayFraction01));
     const every=Math.max(requestedEvery,fractionBoundedEvery);
     if(!Number.isSafeInteger(maxReplayUpdates)||maxReplayUpdates<0||maxReplayUpdates>100_000)throw new RangeError('max-replay-updates-invalid');

@@ -50,6 +50,13 @@ function accuracy(engine,seed,task){
 const cadenceProbe = new P26TrueLearningEngine().trainInterleaved([], [], { replayEveryNCurrent: 1 });
 assert.equal(cadenceProbe.effectiveReplayEveryNCurrent, 4);
 assert.equal(cadenceProbe.maxReplayFraction01, .25);
+const replaySample = { state: makeState(1, 0, 0), action: 'respond', reward: .5, nextState: makeState(1, 1, 0) };
+const disabledReplayProbe = new P26TrueLearningEngine().trainInterleaved([replaySample], [replaySample], {
+  replayEveryNCurrent: 1, maxReplayFraction01: 0,
+});
+assert.equal(disabledReplayProbe.effectiveReplayEveryNCurrent, Number.MAX_SAFE_INTEGER);
+assert.equal(disabledReplayProbe.onlineUpdates, 1);
+assert.equal(disabledReplayProbe.replayUpdates, 0, 'maxReplayFraction01=0 must disable historical updates');
 assert.throws(() => new P26TrueLearningEngine().trainInterleaved([], [], { maxReplayFraction01: 1.1 }), /max-replay-fraction-out-of-range/);
 
 const strategies=[
