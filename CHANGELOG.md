@@ -1,3 +1,9 @@
+## [NK1][WorkPass477] Reconcile Hexis belief-dedupe fixture on integration head (2026-10-27)
+
+- The integration head still contained a stale duplicate request that omitted the route-required numeric `confidence01`, despite an earlier changelog entry claiming this fixture was corrected on another line.
+- Reuse one valid payload for the initial revision and its replay, require the replay audit to report `duplicate_source` with `applied=false`, and separately assert that missing confidence is rejected with HTTP 400.
+- Test/contract correction only; no runtime behavior, retrieval uplift, or learning-quality improvement is claimed.
+
 ## [NK1][WorkPass475] Emit per-seed replay sweep metrics on failure (2026-10-27)
 
 - The P26 replay-policy sweep now prints the strategy, seed, old-task baseline/final, new-task accuracy, replay counts and conflict-screening diagnostics before asserting. This makes an underperforming schedule actionable rather than leaving only a generic failure at line 84; the `.60` acceptance threshold remains unchanged.
