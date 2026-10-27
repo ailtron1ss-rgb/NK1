@@ -1596,6 +1596,72 @@ assert.equal(sourceRemovalSnapshot.edges.some(edge => edge.id === removedProject
 assert(sourceRemovalSnapshot.edges.some(edge => edge.id === survivingIndependentEdge.id),
   'independent edges must survive source-scoped projection removal');
 
+// If full snapshot compensation itself throws, the projector must still attempt
+// per-record rollback of its transaction-owned graph changes.
+const compensationThrowRuntime = new MemorySubsystemRuntime();
+const compensationThrowLedger = new HexisAdaptationFabric();
+let injectGraphRestoreThrow = true;
+const compensationThrowGraph = new Proxy(compensationThrowRuntime.semanticMemory, {
+  get(target, property) {
+    if (property === 'restoreIfUnchanged') {
+      return (...args) => {
+        if (injectGraphRestoreThrow) {
+          injectGraphRestoreThrow = false;
+          throw new Error('injected-snapshot-restore-exception');
+        }
+        return target.restoreIfUnchanged(...args);
+      };
+    }
+    const value = Reflect.get(target, property, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+});
+const failingTemporalAdapter = new Proxy(compensationThrowLedger, {
+  get(target, property) {
+    if (property === 'recordTemporalAssertion') {
+      return () => { throw new Error('injected-downstream-projection-failure'); };
+    }
+    const value = Reflect.get(target, property, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+});
+const compensationThrowProjector = new HexisCanonicalMemoryProjector(
+  compensationThrowRuntime.fabric,
+  compensationThrowGraph,
+  failingTemporalAdapter,
+);
+compensationThrowLedger.bindCanonicalMemoryApply(stage => compensationThrowProjector.apply(stage));
+const compensationThrowExportId = 'exp_0000000000009207';
+const compensationThrowStage = compensationThrowLedger.stageHmx({
+  document: makeHmxDocument(compensationThrowExportId, {
+    memories: [{
+      ref: compensationThrowExportId + ':memory-new',
+      type: 'semantic',
+      content: 'Owned projection must unwind after snapshot compensation throws.',
+      status: 'active',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(compensationThrowStage.conflicts, []);
+assert.equal(compensationThrowLedger.decideHmx(compensationThrowStage.stagingId, 'accept')?.status, 'accepted');
+assert.throws(
+  () => compensationThrowLedger.decideHmx(compensationThrowStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-downstream-projection-failure;rollback-failures=semantic-graph-restore:injected-snapshot-restore-exception/,
+  'snapshot restore exceptions must be reported while selective rollback still runs',
+);
+assert.equal(compensationThrowRuntime.semanticMemory.snapshot().nodes.some(
+  node => node.label === 'owned projection must unwind after snapshot compensation throws',
+), false, 'selective undo must remove the failed import node despite snapshot restore throwing');
+assert.equal(compensationThrowRuntime.fabric.canonicalSnapshot().items.some(
+  item => item.content === 'Owned projection must unwind after snapshot compensation throws.',
+), false, 'the failed canonical memory must be compensated');
+assert.equal(compensationThrowLedger.snapshot().temporal.length, 0);
+assert.equal(compensationThrowLedger.getHmxStage(compensationThrowStage.stagingId)?.status, 'accepted');
+assert.equal(compensationThrowRuntime.fabric.inspect().pendingSignalCompensations, 0);
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
