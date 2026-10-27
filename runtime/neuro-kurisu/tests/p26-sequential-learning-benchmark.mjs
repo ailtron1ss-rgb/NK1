@@ -62,7 +62,11 @@ const makeContextAwareRun=()=>{
   let replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0,conflictCandidateCap=64;
   for(let epoch=0;epoch<8;epoch++){
     const fresh=taskB.flatMap(row=>actions.map(action=>({...row,action,reward:targetB(row.state,action)})));
+    const replayCursorBefore=engine.snapshot().replayCursor??0;
     const result=engine.trainInterleaved(fresh,replayRows,{replayEveryNCurrent:1,maxReplayUpdates:2520,targetMode:'reward',currentLearningRate01:.18,replayLearningRate01:.18});
+    const replayCursorAfter=engine.snapshot().replayCursor??0;
+    assert.equal(replayCursorAfter-replayCursorBefore,result.eligibleReplayRows+result.blockedReplayRows,
+      'replay cursor must advance for every sampled row, including rows rejected by conflict screening');
     assert.ok(result.replayUpdates <= Math.ceil(fresh.length / 4), 'high-frequency replay must be paced to at most one update per four fresh updates');
     replayUpdates+=result.replayUpdates;blockedReplayRows+=result.blockedReplayRows;eligibleReplayRows+=result.eligibleReplayRows;conflictComparisons+=result.conflictComparisons;conflictCandidateCap=result.conflictCandidateCap;
   }
