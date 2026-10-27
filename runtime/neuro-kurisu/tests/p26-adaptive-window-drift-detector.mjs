@@ -11,7 +11,7 @@ const detector = new AdaptiveWindowDriftDetector({
 
 for (let i = 0; i < 100; i++) detector.update(0.2);
 assert.equal(detector.nDetections, 0, 'stationary stream should not trigger on constant values');
-assert.equal(detector.estimation, 0.2);
+assert.ok(Math.abs(detector.estimation - 0.2) < 1e-12, 'stationary estimate tolerates IEEE-754 rounding');
 assert.equal(detector.width, 100);
 
 let detectedAt = -1;
