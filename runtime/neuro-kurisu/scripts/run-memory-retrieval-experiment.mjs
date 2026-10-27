@@ -16,6 +16,7 @@ function usage() {
     '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>]',
     '',
     'The label file is JSONL: {"id":"q1","query":"...","relevantIds":["memory-id"],"split":"train|holdout"}.',
+    'For an explicitly unanswerable query, use "answerable":false with an empty relevantIds array; omitted answerable defaults to true.',
     'The snapshot must be the exported MemoryOSState2 object. The provenance file must contain datasetId, datasetVersion, sourceRef and labelingProtocol.',
     'This runs offline on a clone; it does not alter live memory or automatically promote a candidate.',
   ].join('\n');
