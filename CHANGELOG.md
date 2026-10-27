@@ -1,3 +1,10 @@
+## [NK1][WorkPass571] Стабилизация контекста извлечения памяти (2026-10-27)
+
+- Убрана зависимость causal/temporal retrieval context от накопительных счётчиков `linkUpdates` и `semanticQueries`: стратегия выбирается по текущему запросу и явному временному режиму.
+- Добавлена регрессия на 80 общих запросов подряд, после которых проверяются раздельные временной и причинный контексты.
+- Тест зарегистрирован в `test:rebuild-recovered`; он добавлен, но не запускался в этом проходе по приоритету прямой работы над исходным кодом.
+- Статус: записано в ветку WorkPass571; интеграция в основной рабочий ствол, независимое измерение retrieval uplift и обновление Release ZIP ещё не выполнены.
+
 ## [NK1][WorkPass570] Persist cognitive memory state across restarts (2026-10-27)
 
 - Wire MemoryRetentionEconomy, MemoryCausalEconomy, CausalLifeGraph and MemoryWorldCausalBridge into MemorySubsystemRuntime snapshot/restore.
