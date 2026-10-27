@@ -2721,3 +2721,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [FIX] Corrected the WorkPass287 restore regression: when the persisted missing-stage list contains an invalid stage or non-string value, UnifiedCognitiveCycle intentionally treats the entire list as corrupted and restores all six required stages as missing.
 - [SAFETY] Preserved the fail-closed implementation rather than weakening normalization to accept a partially malformed history.
 - [VALIDATION] The focused workflow is triggered by the test-path change; the new CI result must confirm this assertion and continue through the remaining steps.
+
+
+## [NK1][Validation] WorkPass446 — ground the causal-learning positive fixture (2026-10-27)
+
+- [FIX] Updated the valid CausalExperienceStream outcome fixture to include `lastAction` and a bounded `lastActionSuccess` matching the selected action and observed success score.
+- [SAFETY] Kept the production transition gate unchanged: causal evidence still requires an observed post-action state explicitly attributed to the decision.
+- [VALIDATION] The WorkPass110 workflow is triggered by the updated causal-stream test path; the next run must verify this fixture and continue through the remaining learning regressions/typecheck.
