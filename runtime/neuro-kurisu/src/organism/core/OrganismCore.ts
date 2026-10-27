@@ -9,6 +9,7 @@ import { runMemoryOS2RetrievalBenchmark, type MemoryRetrievalBenchmarkExample, t
 import { LuminaAdaptationFabric, defaultLuminaAdaptationState, type LuminaAdaptationState, type LuminaChannel } from '../integration/lumina/LuminaAdaptationFabric.ts';
 import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvidenceStance, type HexisReviewDecision, type HexisHmxIntent, type HexisHmxStrategy, type HexisHmxDecision, type HexisExecutionPlacement } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { normalizeNk1HmxExport } from '../integration/hexis/Nk1HmxExportAdapter.mjs';
+import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
 import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
@@ -2867,6 +2868,80 @@ export class OrganismCore {
         this.persisted.system.hexisAdaptation = this.hexisAdaptation.snapshot();
         return review;
     }
+    /**
+     * Accept externally captured evidence lineage through the canonical Hexis
+     * bridge. The caller supplies raw content only for fingerprint verification;
+     * raw content is not persisted here and a matching hash is not authentication.
+     */
+    hexisIngestEvidenceLineage(input: unknown) {
+        const reject = (reason: string) => ({ accepted: false as const, added: false as const, reason });
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return reject('invalid-evidence-request');
+        const request = input as Record<string, unknown>;
+        const memoryId = request.memoryId;
+        const sourceContent = request.sourceContent;
+        const rawTrace = request.trace;
+        if (typeof memoryId !== 'string' || !memoryId.trim() || memoryId !== memoryId.trim() ||
+            memoryId.length > 192 || /[\x00-\x1f\x7f-\x9f]/u.test(memoryId)) return reject('memory-identity-invalid');
+        if (typeof sourceContent !== 'string' || sourceContent.length < 1 || sourceContent.length > 65536) {
+            return reject('source-content-invalid');
+        }
+        if (!rawTrace || typeof rawTrace !== 'object' || Array.isArray(rawTrace)) return reject('source-trace-invalid');
+        const trace = rawTrace as Record<string, unknown>;
+        const id = trace.id;
+        const source = trace.source;
+        const kind = trace.kind;
+        const confidence = trace.confidence;
+        const epistemicStatus = trace.epistemicStatus;
+        const at = trace.at;
+        const provenance = normalizeEvidenceLineageProvenance(trace.provenance);
+        if (typeof id !== 'string' || !id.trim() || id !== id.trim() || id.length > 192 ||
+            /[\x00-\x1f\x7f-\x9f]/u.test(id)) return reject('source-trace-id-invalid');
+        if (!['user', 'system', 'world', 'tool'].includes(String(source))) return reject('source-not-independent');
+        if (typeof kind !== 'string' || !kind.trim() || kind !== kind.trim() || kind.length > 64 ||
+            /[\x00-\x1f\x7f-\x9f]/u.test(kind)) return reject('source-kind-invalid');
+        if (typeof confidence !== 'number' || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+            return reject('observation-confidence-invalid');
+        }
+        if (epistemicStatus !== 'observation' && epistemicStatus !== 'fact') return reject('epistemic-status-not-observation');
+        if (typeof at !== 'number' || !Number.isSafeInteger(at) || at < 0 || at > Date.now() + 5 * 60_000) {
+            return reject('observation-time-invalid');
+        }
+        if (!provenance) return reject('provenance-envelope-invalid');
+        if (provenance.evidenceClass !== 'direct-observation' && provenance.evidenceClass !== 'corroborated') {
+            return reject('provenance-class-not-eligible');
+        }
+        const actualFingerprint = createHash('sha256').update(sourceContent, 'utf8').digest('hex');
+        if (actualFingerprint !== provenance.contentFingerprint) return reject('source-content-fingerprint-mismatch');
+        const canonical = this.memorySubsystem.fabric.canonicalSnapshot(false).items.find(row => row.id === memoryId);
+        if (!canonical) return reject('canonical-memory-not-found');
+
+        const existing = this.memorySubsystem.sourceMonitor.lineage(id, 8);
+        if (existing.length) {
+            const previous = existing[0]!;
+            if (previous.source !== source || previous.kind !== kind || previous.confidence !== confidence ||
+                previous.epistemicStatus !== epistemicStatus || previous.at !== at ||
+                previous.provenance?.sourceId !== provenance.sourceId ||
+                previous.provenance?.contentFingerprint !== provenance.contentFingerprint) {
+                return reject('source-trace-id-conflict');
+            }
+        } else {
+            this.memorySubsystem.sourceMonitor.record({
+                id,
+                source: source as 'user' | 'system' | 'world' | 'tool',
+                kind,
+                confidence,
+                epistemicStatus,
+                at,
+                provenance,
+            });
+        }
+        const result = this.memorySubsystem.hexisCanonicalEvidenceBridge.recordSourceTrace(memoryId, id);
+        this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
+        this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+        return result;
+    }
+
     hexisDecideLearningReview(reviewId: string, itemId: string, decision: HexisReviewDecision, correction?: string) {
         try {
             const integrated=this.organismSystems.decideHexisLearningReview(reviewId,itemId,decision,correction);
