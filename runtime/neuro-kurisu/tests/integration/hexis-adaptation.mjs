@@ -25,6 +25,48 @@ assert.equal(
 assert.equal(ownedCheckpointFabric.snapshot().beliefs.length, 0,
   'owned ledger mutations should be removed by a successful guarded rollback');
 
+const trustMirrorFabric = new HexisAdaptationFabric();
+trustMirrorFabric.registerOrUpdateBelief({
+  memoryId: 'stale-trust-mirror',
+  confidence01: 0.99,
+  trust01: 0.98,
+  at: 1000,
+});
+const trustMirrorBaseline = trustMirrorFabric.snapshot();
+const trustMirrorCheckpoint = trustMirrorFabric.mutationCheckpoint();
+const trustMirrorOwner = 'test:canonical-authority-cap';
+const cappedMirror = trustMirrorFabric.registerOrUpdateBelief({
+  memoryId: 'stale-trust-mirror',
+  confidence01: 0.65,
+  trust01: 0.65,
+  at: 2000,
+}, trustMirrorOwner);
+assert.equal(cappedMirror.confidence01, 0.65,
+  'a canonical authority-cap replay must lower stale mirrored confidence');
+assert.equal(cappedMirror.trust01, 0.65,
+  'a canonical authority-cap replay must lower stale mirrored trust');
+assert.equal(trustMirrorFabric.snapshot().beliefAudit.length, trustMirrorBaseline.beliefAudit.length,
+  'a mirror refresh must not be recorded as new independent evidence');
+const attemptedTrustPromotion = trustMirrorFabric.registerOrUpdateBelief({
+  memoryId: 'stale-trust-mirror',
+  confidence01: 0.97,
+  trust01: 0.99,
+  at: 3000,
+}, trustMirrorOwner);
+assert.equal(attemptedTrustPromotion.confidence01, 0.65,
+  're-import must never increase confidence in an existing mirrored belief');
+assert.equal(attemptedTrustPromotion.trust01, 0.65,
+  're-import must never increase trust in an existing mirrored belief');
+assert.equal(
+  trustMirrorFabric.restoreIfUnchanged(trustMirrorBaseline, trustMirrorCheckpoint, trustMirrorOwner),
+  true,
+  'a later HMX failure must be able to roll back the owned monotonic mirror update',
+);
+assert.equal(trustMirrorFabric.snapshot().beliefs[0]?.confidence01, 0.99,
+  'a successful guarded rollback must recover the pre-import mirrored confidence');
+assert.equal(trustMirrorFabric.snapshot().beliefs[0]?.trust01, 0.98,
+  'a successful guarded rollback must recover the pre-import mirrored trust');
+
 const foreignCheckpointFabric = new HexisAdaptationFabric();
 const foreignCheckpointBaseline = foreignCheckpointFabric.snapshot();
 const foreignCheckpoint = foreignCheckpointFabric.mutationCheckpoint();
