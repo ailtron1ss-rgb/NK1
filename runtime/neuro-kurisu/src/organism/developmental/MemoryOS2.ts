@@ -1268,10 +1268,13 @@ export class MemoryOS2{
    this.removeIndexedId(id);
    this.state.items.splice(i,1);
    this.itemIndex.delete(id);
-   // Semantic support is derived from live canonical links and prediction errors.
-   // A removal can change that support without changing the cached linkUpdates counter.
+   // Retrieval caches are derived from live canonical rows. Capacity eviction and
+   // ordinary forgetting must invalidate them even if the legacy linkUpdates counter
+   // does not move; otherwise ranking can retain support or embeddings for dead IDs.
    this.linkSupportCache=null;
    this.linkSupportCacheVersion=-1;
+   this.semanticEmbeddingIndex.delete(id);
+   this.semanticEmbeddingRetry.delete(id);
    this.rebuildDedupIndexesFor(m);
    this.lowerContentCache.delete(id);
    for(const x of this.state.items){
