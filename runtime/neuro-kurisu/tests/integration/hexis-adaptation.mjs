@@ -988,6 +988,10 @@ const afterInjectedFailure = failedApplyRuntime.fabric.canonicalSnapshot().items
 assert.equal(afterInjectedFailure?.id, beforeInjectedFailure?.id);
 assert.equal(afterInjectedFailure?.epistemicStatus, 'belief',
   'failed HMX apply must restore an existing memory status');
+assert.equal(afterInjectedFailure?.lastAccessAt, beforeInjectedFailure?.lastAccessAt,
+  'failed HMX apply must restore the existing memory timestamp exactly');
+assert.deepEqual(afterInjectedFailure?.revisionHistory, beforeInjectedFailure?.revisionHistory,
+  'failed HMX apply must remove the tentative status-revision history, not append a compensating revision');
 assert(failedApplyRuntime.semanticMemory.snapshot().nodes.some(node => node.sourceKey === beforeInjectedFailure.context?.hexisGraphSourceKey),
   'failed HMX apply must restore the previous graph projection');
 assert(failedApplyLedger.snapshot().beliefs.some(belief => belief.memoryId === beforeInjectedFailure.id),
