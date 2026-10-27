@@ -140,6 +140,107 @@ export class P26TrueLearningEngine{
     return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline};
   }
 
+  trainInterleaved(
+    fresh:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
+    options:{
+      replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'reward'|'td';
+      currentLearningRate01?:number;replayLearningRate01?:number;
+    }={},
+  ):{
+    onlineUpdates:number;replayUpdates:number;blockedReplayRows:number;eligibleReplayRows:number;
+    conflictComparisons:number;conflictCandidateCap:number;
+  }{
+    if(!Array.isArray(fresh)||!Array.isArray(replayRows))throw new TypeError('interleaved-experiences-must-be-arrays');
+    if(fresh.length>20_000||replayRows.length>20_000)throw new RangeError('interleaved-experience-limit-exceeded');
+    const every=options.replayEveryNCurrent??16;
+    const maxReplayUpdates=options.maxReplayUpdates??160;
+    const mode=options.targetMode??'td';
+    const currentRate=options.currentLearningRate01??.06;
+    const replayRate=options.replayLearningRate01??.06;
+    if(!Number.isSafeInteger(every)||every<1||every>10_000)throw new RangeError('replay-every-n-current-invalid');
+    if(!Number.isSafeInteger(maxReplayUpdates)||maxReplayUpdates<0||maxReplayUpdates>100_000)throw new RangeError('max-replay-updates-invalid');
+    if(mode!=='reward'&&mode!=='td')throw new TypeError('interleaved-target-mode-invalid');
+    for(const [name,rate] of [['current',currentRate],['replay',replayRate]] as const){
+      if(typeof rate!=='number'||!Number.isFinite(rate)||rate<=0||rate>.3)throw new RangeError(name+'-learning-rate-out-of-range');
+    }
+    const validState=(state:OrganismState):boolean=>{
+      if(!state||typeof state!=='object'||!state.needs)return false;
+      const values=[state.needs.energy,state.needs.cognitiveLoad,state.needs.uncertainty,state.needs.socialNeed,
+        state.needs.novelty,state.needs.identityCoherence,state.needs.goalPressure,state.predictionError,
+        state.attentionBudget,state.selfPredictionError];
+      return values.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+    };
+    const validateRows=(rows:typeof fresh):void=>{
+      for(const row of rows){
+        if(!row||!ACTIONS.includes(row.action)||!validState(row.state)||!validState(row.nextState)||
+           typeof row.reward!=='number'||!Number.isFinite(row.reward)||row.reward<0||row.reward>1||
+           (row.surprise!==undefined&&(typeof row.surprise!=='number'||!Number.isFinite(row.surprise)||row.surprise<0||row.surprise>1))){
+          throw new TypeError('interleaved-experience-invalid');
+        }
+      }
+    };
+    // Validate both streams before the first weight change; malformed replay rows
+    // must not leave a partially trained current-task policy.
+    validateRows(fresh);
+    validateRows(replayRows);
+    const conflictCandidateCap=Math.min(64,fresh.length);
+    const context=(state:OrganismState)=>[
+      state.needs.energy,state.needs.cognitiveLoad,state.needs.uncertainty,state.needs.novelty,
+      state.needs.socialNeed,state.needs.goalPressure,state.needs.identityCoherence,
+    ];
+    const freshContexts=fresh.map(row=>({row,features:context(row.state)}));
+    const replayContext=(row:typeof replayRows[number])=>context(row.state);
+    const nextValue=(row:typeof fresh[number])=>Math.max(.5,...this.learner.predict(row.nextState).map(prediction=>prediction.value));
+    const targetFor=(row:typeof fresh[number])=>mode==='reward'?clamp(row.reward):clamp(row.reward+.78*nextValue(row));
+    const policyFrozen=this.learner.snapshot().frozen;
+    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,conflictComparisons=0;
+    let totalLoss=0,candidateIndex=0,attempts=0;
+    const isConflicting=(historical:typeof replayRows[number]):boolean=>{
+      if(conflictCandidateCap===0)return false;
+      const historicalFeatures=replayContext(historical);
+      for(let n=0;n<conflictCandidateCap;n++){
+        // Evenly spread the bounded candidate sample across the current stream.
+        const index=Math.min(freshContexts.length-1,Math.floor(n*freshContexts.length/conflictCandidateCap));
+        const current=freshContexts[index];
+        conflictComparisons++;
+        if(current.row.action!==historical.action)continue;
+        const distance=Math.max(...historicalFeatures.map((value,i)=>Math.abs(value-current.features[i])));
+        if(distance<=.12&&Math.abs(current.row.reward-historical.reward)>.25)return true;
+      }
+      return false;
+    };
+    for(let i=0;i<fresh.length;i++){
+      const row=fresh[i];
+      const current=this.learner.train({state:row.state,action:row.action,target01:targetFor(row),learningRate01:currentRate});
+      totalLoss+=current.loss01;
+      if(!policyFrozen){onlineUpdates++;this.state.metrics.onlineUpdates++;}
+      if((i+1)%every!==0||!replayRows.length||replayUpdates>=maxReplayUpdates)continue;
+      const historical=replayRows[candidateIndex%replayRows.length];
+      candidateIndex++;attempts++;
+      if(isConflicting(historical)){
+        blockedReplayRows++;
+        continue;
+      }
+      eligibleReplayRows++;
+      const replayResult=this.learner.train({
+        state:historical.state,action:historical.action,target01:targetFor(historical),
+        learningRate01:replayRate,
+      });
+      totalLoss+=replayResult.loss01;
+      if(!policyFrozen){replayUpdates++;this.state.metrics.replayUpdates++;}
+      if(attempts>=maxReplayUpdates&&replayUpdates<maxReplayUpdates)break;
+    }
+    const actualUpdates=onlineUpdates+replayUpdates;
+    if(actualUpdates){
+      this.state.metrics.recentLoss01=clamp(totalLoss/actualUpdates);
+      this.refreshTrainingExposure();
+      this.state.metrics.lastUpdatedAt=Date.now();
+    }
+    this.sync();
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons,conflictCandidateCap};
+  }
+
   recordHoldout(baseline01:number,learned01:number){
     // Legacy score reporting is diagnostic only; it does not establish provenance.
     this.state.metrics.holdoutBaseline01=clamp(baseline01);
