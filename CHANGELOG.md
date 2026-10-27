@@ -1,8 +1,7 @@
-## [NK1][WorkPass501] Correct Hexis ingress attempt accounting regression (2026-10-27)
+## [NK1][WorkPass502] Count explicit missing-trace rejection in Hexis regression (2026-10-27)
 
-- Exact-head Hexis CI exposed a stale assertion requiring at least nine attempts, while the test performs eight calls against the measured bridge instance; snapshot-restore replay is intentionally performed by a separate runtime and bridge.
-- Changed the assertion to require exactly eight attempts and documented the instance boundary. Rejection, acceptance, deduplication, canonical-write, confidence-invariance and restore-replay assertions remain unchanged.
-- This is a test-accounting correction, not a relaxation of provenance validation. Re-run the Hexis canonical-apply workflow on the exact new head before considering the integration green.
+- Added a regression for a missing SourceMonitor trace ID and asserted the bridge rejects it as `source-trace-not-found`.
+- The same runtime now performs nine ingress attempts; snapshot/restore replay is intentionally counted on a separate bridge instance. The exact attempt-count assertion is aligned to nine, preserving all provenance acceptance and rejection checks.
 
 ## [NK1][WorkPass501] Fail closed on malformed retrieval experiment seed lists (2026-10-27)
 
