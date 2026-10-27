@@ -1057,12 +1057,38 @@ const protectedRollbackCapacityRows = Array.from({ length: 1600 }, (_, index) =>
   revisionGroupId: index === 0 ? protectedRollbackTemplate.revisionGroupId : 'wp436-capacity-baseline-' + String(index).padStart(4, '0'),
   revisionSequence: 1,
 }));
+const protectedRollbackEvictedMemoryId = protectedRollbackCapacityRows[1599].id;
+const protectedRollbackEvictedGraphKey = 'hexis:workpass436:capacity-oldest';
+protectedRollbackCapacityRows[1599] = {
+  ...protectedRollbackCapacityRows[1599],
+  kind: 'semantic',
+  source: protectedRollbackEvictedGraphKey,
+  epistemicStatus: 'belief',
+  context: {
+    hexisGraphSourceKey: protectedRollbackEvictedGraphKey,
+    hexisSourceLineageId: 'workpass436-baseline-lineage',
+    hexisMemoryRef: 'exp_0000000000009114:capacity-oldest',
+    hexisOriginalType: 'semantic',
+  },
+};
 protectedRollbackRuntime.memoryOS.restore({
   ...protectedRollbackCapacityState,
   items: protectedRollbackCapacityRows,
   estimatedBytes: 0,
 });
 assert.equal(protectedRollbackRuntime.fabric.canonicalSize(), 1600);
+const protectedRollbackEvictedGraphNode = protectedRollbackRuntime.semanticMemory.upsertNode(
+  'WP436 baseline semantic node removed only after capacity commit',
+  'concept',
+  .72,
+  protectedRollbackEvictedGraphKey,
+);
+protectedRollbackLedger.registerOrUpdateBelief({
+  memoryId: protectedRollbackEvictedMemoryId,
+  confidence01: .72,
+  trust01: .61,
+  at: Date.now(),
+});
 const protectedRollbackContent = 'WP436 archived identity must be removed after a failed import transaction.';
 const protectedRollbackExportId = 'exp_0000000000009103';
 const protectedRollbackStage = protectedRollbackLedger.stageHmx({
@@ -1085,6 +1111,16 @@ assert.throws(
   /hmx-canonical-apply-failed:injected-protected-row-rollback-failure/,
 );
 const protectedRollbackAfter = protectedRollbackRuntime.fabric.canonicalSnapshot().items;
+assert.equal(
+  protectedRollbackRuntime.semanticMemory.snapshot().nodes.some(node => node.id === protectedRollbackEvictedGraphNode.id),
+  true,
+  'a failed import must restore the graph node for a row that was never evicted',
+);
+assert.equal(
+  protectedRollbackLedger.snapshot().beliefs.some(belief => belief.memoryId === protectedRollbackEvictedMemoryId),
+  true,
+  'a failed import must restore the active belief mirror for a row that was never evicted',
+);
 assert.equal(
   protectedRollbackAfter.some(item => item.content === protectedRollbackContent || item.context?.hexisExportId === protectedRollbackExportId),
   false,
@@ -1111,6 +1147,16 @@ assert.equal(
   protectedRollbackAfterCommit.some(item => item.id === protectedRollbackCapacityRows[1599].id),
   false,
   'successful import commits the deferred trim against the oldest canonical row',
+);
+assert.equal(
+  protectedRollbackRuntime.semanticMemory.snapshot().nodes.some(node => node.id === protectedRollbackEvictedGraphNode.id),
+  false,
+  'successful capacity trim must withdraw the evicted canonical row semantic projection',
+);
+assert.equal(
+  protectedRollbackLedger.snapshot().beliefs.some(belief => belief.memoryId === protectedRollbackEvictedMemoryId),
+  false,
+  'successful capacity trim must remove the evicted canonical row active belief projection',
 );
 
 // Malformed status values must fail staging rather than being silently coerced.
