@@ -5,6 +5,15 @@
 - Extend the existing query-intent regression with profile precedence, session snapshot/restore and camelCase/snake_case/kebab-case/spaced key variants; add a deterministic 30-query lexical-tie goldset.
 - Include both tests in `test:rebuild-recovered`. Synthetic fixtures validate routing and bounded type preference only; they do not establish production-corpus recall uplift or release readiness.
 
+## [NK1][WorkPass511] Add a fail-closed human license readiness gate (2026-10-27)
+
+- Added a hash-bound review manifest for root/runtime project policies, the locked npm SBOM component fingerprint, every source archive, and every detected repository LICENSE/NOTICE.
+- Allow a six-hour maximum age for inventory generated at release-audit start so a long test chain does not fail only because execution took more than 15 minutes.
+- The release audit rejects pending reviews, missing/extra inventory entries, stale hashes, changed dependency fingerprints, stale SBOM/provenance timestamps, and any decision without a human reviewer plus evidence reference.
+- Wired the unit regression into recovered Core CI and the audit into WorkPass70/release audit paths. Added static regressions for both automatic publishers and all canonical package release scripts. The initial manifest is intentionally pending; this makes unresolved licensing an explicit release blocker rather than treating license-file detection as approval.
+- Added the same provenance/license gate to both workflow_run-based release publishers, before archive packaging and gh release create, so a green Core run alone cannot bypass the unresolved manual licensing review.
+- This is a process-integrity gate, not legal advice or a declaration that any specific third-party archive is approved for redistribution.
+
 ## [NK1][WorkPass510] Gate release audits on current SBOM provenance (2026-10-27)
 
 - Wire the existing `test:provenance-current` into root `audit:workpass70` and runtime `release:audit`, `release:final`, and `release:final3`.
