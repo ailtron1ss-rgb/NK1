@@ -124,6 +124,16 @@ assert.equal(malformedReport.corpusIntegrity.validForPromotion, false);
 assert.equal(malformedReport.metrics.baseline.recallAtK01, 1);
 assert.equal(malformedReport.metrics.candidate.recallAtK01, 1, 'candidate and baseline must filter to the same valid corpus even when promotion is blocked');
 
+// Duplicate corpus IDs are promotion-blocking, but reported precision must not
+// reward repeated copies of one relevant memory as multiple independent hits.
+const duplicatePrecisionSnapshot = structuredClone(snapshot);
+duplicatePrecisionSnapshot.items.push(structuredClone(duplicatePrecisionSnapshot.items[0]));
+const duplicatePrecisionReport = runMemoryOS2RetrievalBenchmark(duplicatePrecisionSnapshot, [
+  { id: 'duplicate-precision-holdout', query: 'project fern event memory document 0 routing status 0', relevantIds: ['m0'], split: 'holdout' },
+], { now, k: 5, bootstrapSamples: 200, maxExamples: 64 });
+assert.equal(duplicatePrecisionReport.corpusIntegrity.validForPromotion, false, 'duplicate corpus IDs must still block promotion');
+assert.equal(duplicatePrecisionReport.metrics.baseline.precisionAtK01, 0.2, 'precision@K must count the same relevant memory ID once even if duplicated in corpus');
+
 
 
 // High-fanout query: selection must remain stable when identical memory rows are reordered.
