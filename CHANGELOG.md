@@ -1,3 +1,9 @@
+## [NK1][WorkPass432] Prevent lifecycle convenience-wrapper action injection (2026-10-27)
+
+- Extended the same allowlist rule across `MemoryFabric` convenience wrappers for encode, status/content revision, signal/context updates and forgetting. Their caller-controlled context/options can now contribute only the documented execution metadata; they cannot replace the method's fixed action or target payload.
+- Strengthened the protected-HMX rollback regression so an ordinary `forgetById` call carries extra JavaScript keys attempting to switch the action to `rollback-created`. It must remain an ordinary forget and refuse to remove the quarantined record.
+- Workflow paths already include the touched runtime and regression test. The source and test are committed; hosted execution remains unverified while current-head jobs conclude without step/log metadata.
+
 ## [NK1][WorkPass431] Seal HMX rollback scope against runtime context overrides (2026-10-27)
 
 - Fixed a boundary flaw in `MemoryFabric.rollbackHmxCreatedMemory`: the wrapper no longer spreads caller-provided context after the export/stage/attempt scope. It copies only the supported `commandId` and `tick` metadata, so untyped JavaScript callers cannot replace the rollback target or its provenance scope.
