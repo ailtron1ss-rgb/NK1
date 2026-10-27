@@ -1,3 +1,9 @@
+## [NK1][WorkPass443] Wire the P26 learning-input integrity regression (2026-10-27)
+
+- Fixed a reproducible CI blocker in `.github/workflows/p26-learning-validation.yml`: the workflow called `npm run test:p26:learning-input-integrity`, but the package script was absent even though `tests/p26-learning-input-integrity.mjs` exists.
+- Added the explicit script `node --experimental-strip-types tests/p26-learning-input-integrity.mjs` to `runtime/neuro-kurisu/package.json`. No test was skipped or weakened.
+- The failed P26 run had already passed runtime typecheck; its failure was exactly npm's `Missing script`. The newly triggered run must still execute the actual regression before it can be counted green.
+
 ## [NK1][WorkPass473] Recompute poisoned rolling metrics from trusted evidence (2026-10-27)
 
 - Updated the WorkPass110 restore regression so an external-only snapshot recomputes learning-opportunity to zero instead of preserving a caller-poisoned value. Only grounded runtime outcomes may repopulate behavioral/learning aggregates.
