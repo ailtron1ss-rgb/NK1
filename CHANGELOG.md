@@ -1,3 +1,13 @@
+## [NK1][WorkPass456] Test full HMX envelope size rejection (2026-10-27)
+
+- Added a full-document over-8-MiB UTF-8 regression in the Hexis adaptation suite, complementing the existing per-section limit test.
+- The test confirms an oversized document keeps its memory section out of staged data and remains blocked from acceptance.
+
+## [NK1][WorkPass455] Align restored cycle test with fail-closed policy (2026-10-27)
+
+- Corrected the WorkPass287 restored-state assertion: an invalid entry in persisted `lastMissingStages` causes all required stages to be marked missing, matching the runtime's conservative normalization.
+- The earlier exact-head CI run demonstrated the old assertion was stale; the next exact-head run must confirm the suite.
+
 ## [NK1][WorkPass434] Prevent Hexis push/PR workflows cancelling each other (2026-10-27)
 
 - Fixed the Hexis canonical-apply workflow concurrency key to include `github.event_name`. The same commit can trigger both `push` and `pull_request`; the previous shared group with `cancel-in-progress: true` allowed one event's run to cancel the other.
