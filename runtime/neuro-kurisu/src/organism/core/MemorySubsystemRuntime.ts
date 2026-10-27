@@ -14,6 +14,8 @@ import { P47TemporalMemoryMind } from '../developmental/P47TemporalMemoryMind.ts
 import { P59MemoryOperatingSystem } from '../developmental/P59MemoryOperatingSystem.ts';
 import { P62MemoryFabric } from '../memory/P62MemoryFabric.ts';
 import { P65EpistemicLedger } from '../memory/P65EpistemicLedger.ts';
+import { SourceMonitor } from '../memory/SourceMonitor.ts';
+import { HexisCanonicalEvidenceBridge } from '../integration/hexis/HexisCanonicalEvidenceBridge.ts';
 import { P70MemoryLifecycleGovernor } from '../developmental/P70MemoryLifecycleGovernor.ts';
 import { P75MemoryContinuumOS } from '../developmental/P75MemoryContinuumOS.ts';
 import { MemoryFabric } from '../memory/MemoryFabric.ts';
@@ -49,9 +51,12 @@ export class MemorySubsystemRuntime {
   readonly p59MemoryOperatingSystem = new P59MemoryOperatingSystem();
   readonly p62MemoryFabric = new P62MemoryFabric();
   readonly p65EpistemicLedger = new P65EpistemicLedger();
+  readonly sourceMonitor = new SourceMonitor();
   readonly p70MemoryLifecycleGovernor = new P70MemoryLifecycleGovernor();
   readonly p75MemoryContinuumOS = new P75MemoryContinuumOS();
   readonly fabric = new MemoryFabric(this.memoryOS,this.events,this.memories,this.memorySubstrate,this.unifiedMemory,this.p62MemoryFabric,this.semanticMemory);
+  /** One-way OMEGA/Hexis provenance bridge; MemoryFabric remains the canonical write boundary. */
+  readonly hexisCanonicalEvidenceBridge = new HexisCanonicalEvidenceBridge(this.fabric, this.sourceMonitor, this.p65EpistemicLedger);
   readonly experienceContinuum = new ExperienceContinuumFabric();
   readonly hippocampal = new HippocampalMemorySubstrate();
   readonly hippocampalFormation = new HippocampalFormationCircuit();
@@ -84,6 +89,7 @@ export class MemorySubsystemRuntime {
     this.p59MemoryOperatingSystem.restore(advanced.p59MemoryOperatingSystem);
     this.p62MemoryFabric.restore(advanced.p62MemoryFabric);
     this.p65EpistemicLedger.restore(advanced.p65EpistemicLedger);
+    this.sourceMonitor.restore(advanced.sourceMonitor);
     this.p70MemoryLifecycleGovernor.restore(advanced.p70MemoryLifecycleGovernor);
     this.p75MemoryContinuumOS.restore(advanced.p75MemoryContinuumOS);
     this.experienceContinuum.restore(advanced.experienceContinuum);
@@ -101,7 +107,7 @@ export class MemorySubsystemRuntime {
     selfModel:this.selfModel.snapshot(), socialModel:this.socialModel.snapshot(), adaptiveValues:this.valuePlasticity.snapshot(),
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
-    p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
+    p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), sourceMonitor:this.sourceMonitor.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
     p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),
   }; }
 }
