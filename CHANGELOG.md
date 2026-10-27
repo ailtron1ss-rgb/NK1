@@ -1,3 +1,9 @@
+## [NK1][WorkPass488] Anchor embodiment-order regression to the active cycle (2026-10-27)
+
+- The broad recovered-runtime regression reached WorkPass319 after passing the restored action-receipt tamper gate, finalizer boundary, canonical planner wrapper, project reconciliation, causal replay, and memory-doctor CLI checks.
+- The WorkPass319 static test used a file-global `indexOf` for `setEmbodiment`, so it found the earlier initialization-time call rather than the cycle's actual embodiment persistence after `closeB380TemporalLife`. The runtime already commits the cycle embodiment at the required point.
+- Scope the lookup to begin after the life-course update and assert it exists there; retain the full ordering contract through cycle ledger, evaluation, completeness evidence, and evidence persistence. No runtime behavior or acceptance criteria are loosened. Re-run the broad suite on the new exact head.
+
 ## [NK1][WorkPass487] Make the CLI future-evidence fixture exceed the policy tolerance (2026-10-27)
 
 - The canonical MemoryOS2 doctor classifies an observation/freshness timestamp as future evidence only when it exceeds the current time by more than five minutes. The CLI test used a timestamp just 60 seconds ahead and incorrectly expected the future-evidence counter to increase.

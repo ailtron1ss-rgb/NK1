@@ -14,7 +14,8 @@ const embodiedConsequenceLearning = index('this.core.b365LearnEmbodiedConsequenc
 const continuousMemory = index('const continuousFabric = this.continuousCognitiveFabric.step({');
 const neuralTrace = index('const neuralTrace = this.neuralCausalTrace.record({');
 const lifeCourseUpdate = index('this.core.closeB380TemporalLife({');
-const embodimentPersist = index('await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());');
+const embodimentPersist = runtime.indexOf('await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());', lifeCourseUpdate);
+assert.notEqual(embodimentPersist, -1, 'cycle embodiment persistence must occur after the life-course update');
 const cycleLedger = index('const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({');
 const cycleEvaluation = index('const cycleVerification = this.unifiedCycle.evaluate({');
 const completenessEvidence = index("claim:'cognitive-cycle-completeness'");
