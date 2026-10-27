@@ -1100,45 +1100,45 @@ export class MemoryOS2{
  }
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'|'evidenceSources'|'sourceAuthority01'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;
-   const before=estimateMemoryBytes(m);
-   const fromStatus=m.epistemicStatus;
-   const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-   if(patch.salience!==undefined)m.salience=c(patch.salience);
-   if(patch.emotionalWeight!==undefined)m.emotionalWeight=c(patch.emotionalWeight);
-   if(patch.identityRelevance!==undefined)m.identityRelevance=c(patch.identityRelevance);
-   if(patch.goalRelevance!==undefined)m.goalRelevance=c(patch.goalRelevance);
-   if(patch.socialRelevance!==undefined)m.socialRelevance=c(patch.socialRelevance);
-   if(patch.predictionError!==undefined)m.predictionError=c(patch.predictionError);
-   if(patch.confidence!==undefined)m.confidence=c(patch.confidence);
-   if(patch.dormant!==undefined)m.dormant=Boolean(patch.dormant);
-   const updatedAt=Date.now();
-   if(patch.evidenceSources!==undefined){
-    // Merge independent evidence through the canonical lineage rules. This preserves
-    // replay guards, the bounded eight-source trail and the bounded 32-key tombstone.
-    this.mergeIncomingEvidence(m,{...m,evidenceSources:patch.evidenceSources},updatedAt);
-   }
-   if(patch.sourceAuthority01!==undefined){
-    // Authority correction is deliberately monotonic: generic signal updates may
-    // reduce over-trusted state but can never promote a source's authority.
-    const authorityCap=c(patch.sourceAuthority01);
-    m.sourceAuthority01=Math.min(c(m.sourceAuthority01??0.45),authorityCap);
-    m.evidenceSources=(m.evidenceSources??[]).map(source=>{
-     if(source.provenanceClass==='external'&&String(source.source??'').startsWith('hexis:')){
-      return {...source,sourceAuthority01:Math.min(c(source.sourceAuthority01),authorityCap)};
-     }
-     return source;
-    });
-   }
-   m.lastAccessAt=updatedAt;
-   m.temperature01=memoryTemperature(m);
-   if(reason){this.recordRevision(m,{at:m.lastAccessAt,from:fromStatus,to:fromStatus,reason});}
-   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
-   this.state.reconsolidations++;
-   return structuredClone(m);
- }});}
-   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
-   this.state.reconsolidations++;
-   return structuredClone(m);
+   const itemSnapshot=structuredClone(m);
+   const estimatedBytesBefore=this.state.estimatedBytes;
+   const reconsolidationsBefore=this.state.reconsolidations;
+   try {
+    const before=estimateMemoryBytes(m);
+    const fromStatus=m.epistemicStatus;
+    const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+    if(patch.salience!==undefined)m.salience=c(patch.salience);
+    if(patch.emotionalWeight!==undefined)m.emotionalWeight=c(patch.emotionalWeight);
+    if(patch.identityRelevance!==undefined)m.identityRelevance=c(patch.identityRelevance);
+    if(patch.goalRelevance!==undefined)m.goalRelevance=c(patch.goalRelevance);
+    if(patch.socialRelevance!==undefined)m.socialRelevance=c(patch.socialRelevance);
+    if(patch.predictionError!==undefined)m.predictionError=c(patch.predictionError);
+    if(patch.confidence!==undefined)m.confidence=c(patch.confidence);
+    if(patch.dormant!==undefined)m.dormant=Boolean(patch.dormant);
+    const updatedAt=Date.now();
+    if(patch.evidenceSources!==undefined){
+     // Merge independent evidence through the canonical lineage rules. This preserves
+     // replay guards, the bounded eight-source trail and the bounded 32-key tombstone.
+     this.mergeIncomingEvidence(m,{...m,evidenceSources:patch.evidenceSources},updatedAt);
+    }
+    if(patch.sourceAuthority01!==undefined){
+     // Authority correction is deliberately monotonic: generic signal updates may
+     // reduce over-trusted state but can never promote a source's authority.
+     const authorityCap=c(patch.sourceAuthority01);
+     m.sourceAuthority01=Math.min(c(m.sourceAuthority01??0.45),authorityCap);
+     m.evidenceSources=(m.evidenceSources??[]).map(source=>{
+      if(source.provenanceClass==='external'&&String(source.source??'').startsWith('hexis:')){
+       return {...source,sourceAuthority01:Math.min(c(source.sourceAuthority01),authorityCap)};
+      }
+      return source;
+     });
+    }
+    m.lastAccessAt=updatedAt;
+    m.temperature01=memoryTemperature(m);
+    if(reason){this.recordRevision(m,{at:m.lastAccessAt,from:fromStatus,to:fromStatus,reason});}
+    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+    this.state.reconsolidations++;
+    return structuredClone(m);
    } catch(error) {
     // Evidence merging or revision bookkeeping may throw after some fields have been
     // changed. Restore the exact item before allowing the lifecycle caller to handle it.
@@ -1148,6 +1148,7 @@ export class MemoryOS2{
     throw error;
    }
  }
+
  get(id:string){const m=this.state.items.find(x=>x.id===id); if(!m)return null; if(!m.semanticVector.length)m.semanticVector=vectorize(m.content); m.lastAccessAt=Date.now(); m.temperature01=memoryTemperature(m); m.residencyTier='hot'; return structuredClone(m);}
  markDormant(id:string,dormant=true,reason='memory-economy'){return this.updateSignals(id,{dormant},reason);}
  private removeCanonicalRecordAt(index:number,id:string,m:MemoryItem2,countAsForget:boolean){
