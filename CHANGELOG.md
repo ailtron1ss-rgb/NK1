@@ -1,3 +1,10 @@
+## [NK1][WorkPass443] Keep over-capacity restore behind an internal boundary (2026-10-27)
+
+- Removed the optional `allowOverCapacity` argument from public `MemoryOS2.restore()`; ordinary persisted restore always enforces the 1,600-row cap.
+- Moved the temporary over-capacity restore mode to private `restoreInternal(state, allowOverCapacity)`, used only by the HMX transaction's failure-atomic trim, token rollback/index repair, and internal regression fixtures.
+- Updated the 1,601-row maintenance fixture to call the internal test path explicitly. No production API caller can now accidentally bypass the normal restore limit through a public options parameter.
+- Runtime tests and TypeScript typecheck remain pending because the default-branch workflow activation PR #251 has not been merged.
+
 ## [NK1][WorkPass442] Prune stale embedding caches during restore (2026-10-27)
 
 - MemoryOS2.restore() now reconciles its derived semantic-embedding index and embedding-retry map against the restored canonical rows after rebuilding the inverted indexes. Entries are retained only while the memory ID exists and the content hash still matches.
