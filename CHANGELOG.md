@@ -1,3 +1,9 @@
+## [NK1][WorkPass455] Remove duplicated HMX regression suffix and gate clock regression (2026-10-27)
+
+- Removed a duplicated trailing fragment from `tests/integration/hexis-adaptation.mjs`. The fragment started with an orphaned `&& conflict.kind === 'size-limit'` after the success log and repeated the oversized-HMX section and many following regressions; it could prevent the entire test module from parsing. The retained prefix still contains one document-size guard test, section-limit/schema tests, foreign graph/ledger rollback tests, and the final suite output.
+- Added `tests/runtime-clocks.mjs` to the Hexis CI path filters and inserted its dedicated execution step before runtime typecheck. A scheduler allowlist regression should now be exercised even if later unrelated typecheck errors stop the workflow.
+- Static path/count checks are confirmed from GitHub file contents. No local execution or exact-head CI pass is claimed; main and the published Release ZIP remain unchanged.
+
 ## [NK1][WorkPass454] Use source-scoped semantic projection removal (2026-10-27)
 
 - Replaced the production graph projection withdrawal path's whole-state snapshot rewrite with `SemanticMemoryGraph.removeSourceProjection(sourceKey, ownerToken)`, which removes only source-owned nodes and edges attached to them.
