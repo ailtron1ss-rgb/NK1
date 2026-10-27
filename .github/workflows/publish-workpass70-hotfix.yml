@@ -37,6 +37,29 @@ jobs:
             echo "publish=false" >> "$GITHUB_OUTPUT"
             echo "Skipping stale run $VALIDATED_SHA; current source tip is $LATEST_SHA"
           fi
+      - name: Set up pinned Node.js for release provenance audit
+        if: steps.guard.outputs.publish == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Verify selected Node.js matches repository pin
+        if: steps.guard.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected" | "$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Regenerate SBOM and require human license approval before packaging
+        if: steps.guard.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run test:provenance-current
+          npm run audit:release-license-readiness
       - name: Package tracked source and verify archive
         id: package_artifacts
         if: steps.guard.outputs.publish == 'true'
