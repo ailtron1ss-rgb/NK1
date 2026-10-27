@@ -1,9 +1,95 @@
 import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { refreshHmxStageLifecycleDigest } from '../../src/organism/integration/hexis/HexisStageIntegrity.mjs';
+import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
+
+
+// A full MemoryOS2 restore must be exception-atomic across canonical rows and
+// every derived inverted/dedup/revision index, not merely across the state object.
+const restoreAtomicMemory = new MemoryOS2({ embeddingProvider: null });
+const restoreAtomicSeedInput = {
+  content: 'transactional restore index sentinel alpha beta gamma',
+  kind: 'semantic',
+  source: 'test:memoryos-restore-atomicity',
+  salience: 0.91,
+  emotionalWeight: 0.18,
+  identityRelevance: 0.12,
+  goalRelevance: 0.2,
+  socialRelevance: 0.1,
+  predictionError: 0.05,
+  confidence: 0.94,
+  epistemicStatus: 'fact',
+  entities: ['transactional', 'restore', 'sentinel'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  provenanceClass: 'user',
+  sourceAuthority01: 0.9,
+  evidenceSources: [],
+  evidenceLineageKeys: [],
+};
+const restoreAtomicSeed = restoreAtomicMemory.encode(restoreAtomicSeedInput);
+const restoreAtomicBaseline = restoreAtomicMemory.snapshot();
+const replacementRestoreState = structuredClone(restoreAtomicBaseline);
+replacementRestoreState.items = [{
+  ...structuredClone(restoreAtomicSeed),
+  id: 'replacement-restore-memory',
+  content: 'replacement projection omega delta epsilon',
+  contentHash: '',
+  source: 'test:memoryos-restore-replacement',
+  entities: ['replacement', 'projection'],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  revisionGroupId: 'replacement-restore-memory',
+}];
+const originalRestoreIndexItem = restoreAtomicMemory.indexItem.bind(restoreAtomicMemory);
+let throwAfterRestoreIndexWrite = true;
+restoreAtomicMemory.indexItem = item => {
+  const result = originalRestoreIndexItem(item);
+  if (throwAfterRestoreIndexWrite) {
+    throwAfterRestoreIndexWrite = false;
+    throw new Error('injected-memoryos-restore-index-after-write');
+  }
+  return result;
+};
+assert.throws(
+  () => restoreAtomicMemory.restore(replacementRestoreState),
+  /injected-memoryos-restore-index-after-write$/,
+  'a derived-index exception after a partial write must fail the full restore',
+);
+restoreAtomicMemory.indexItem = originalRestoreIndexItem;
+assert.deepEqual(
+  restoreAtomicMemory.snapshot(),
+  restoreAtomicBaseline,
+  'failed full restore must restore exact canonical state and adaptive-policy snapshot',
+);
+const rollbackRestoreRecall = restoreAtomicMemory.retrieve('transactional restore index sentinel', 5);
+assert(
+  rollbackRestoreRecall.some(item => item.id === restoreAtomicSeed.id),
+  'failed restore must restore the prior token, document-frequency, and item indexes',
+);
+assert.equal(
+  rollbackRestoreRecall.some(item => item.id === 'replacement-restore-memory'),
+  false,
+  'no replacement memory may leak through a partially rebuilt index',
+);
+restoreAtomicMemory.restore(replacementRestoreState);
+assert.deepEqual(
+  restoreAtomicMemory.snapshot().items.map(item => item.id),
+  ['replacement-restore-memory'],
+  'a valid retry must atomically replace canonical rows after the injected failure is removed',
+);
+const successfulRestoreRecall = restoreAtomicMemory.retrieve('replacement projection omega delta epsilon', 5);
+assert(
+  successfulRestoreRecall.some(item => item.id === 'replacement-restore-memory'),
+  'successful full restore must rebuild retrieval indexes for the replacement row',
+);
 
 // An HMX rollback can restore its own ledger writes, but must never erase a
 // foreign write made after the transaction's checkpoint.
