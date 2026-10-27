@@ -215,24 +215,26 @@ export class P26TrueLearningEngine{
     };
     for(let i=0;i<fresh.length;i++){
       const row=fresh[i];
+      // On replay boundaries, rehearse historical data first and apply the current
+      // outcome last. This protects latest-task plasticity at high replay cadence.
+      if((i+1)%every===0&&replayRows.length&&replayUpdates<maxReplayUpdates&&attempts<maxReplayUpdates){
+        const historical=replayRows[candidateIndex%replayRows.length];
+        candidateIndex++;attempts++;
+        if(isConflicting(historical)){
+          blockedReplayRows++;
+        }else{
+          eligibleReplayRows++;
+          const replayResult=this.learner.train({
+            state:historical.state,action:historical.action,target01:targetFor(historical),
+            learningRate01:replayRate,
+          });
+          totalLoss+=replayResult.loss01;
+          if(!policyFrozen){replayUpdates++;this.state.metrics.replayUpdates++;}
+        }
+      }
       const current=this.learner.train({state:row.state,action:row.action,target01:targetFor(row),learningRate01:currentRate});
       totalLoss+=current.loss01;
       if(!policyFrozen){onlineUpdates++;this.state.metrics.onlineUpdates++;}
-      if((i+1)%every!==0||!replayRows.length||replayUpdates>=maxReplayUpdates||attempts>=maxReplayUpdates)continue;
-      const historical=replayRows[candidateIndex%replayRows.length];
-      candidateIndex++;attempts++;
-      if(isConflicting(historical)){
-        blockedReplayRows++;
-        continue;
-      }
-      eligibleReplayRows++;
-      const replayResult=this.learner.train({
-        state:historical.state,action:historical.action,target01:targetFor(historical),
-        learningRate01:replayRate,
-      });
-      totalLoss+=replayResult.loss01;
-      if(!policyFrozen){replayUpdates++;this.state.metrics.replayUpdates++;}
-
     }
     const actualUpdates=onlineUpdates+replayUpdates;
     if(actualUpdates){
