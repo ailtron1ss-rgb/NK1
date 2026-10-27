@@ -1,3 +1,9 @@
+## [NK1][WorkPass452] Run compound-repair clock registration regression in CI (2026-10-27)
+
+- Extended `tests/runtime-clocks.mjs` to register `p23-compound-repair-revision` and assert its scheduler state exists, proving the runtime clock is admitted by the live scheduler allowlist rather than only accepted by a TypeScript union.
+- The existing `test:runtime-clocks` npm script now has an explicit CI step in WorkPass71 before the broad runtime typecheck, so this narrow runtime behavior remains testable even if unrelated runtime type errors stop later steps.
+- Test and workflow changes are committed; exact-head CI outcome remains pending.
+
 ## [NK1][WorkPass451] Repair runtime type contracts and activate compound-repair clock (2026-10-27)
 
 - Fixed several concrete TypeScript blockers found in the current runtime check: the restored causal policy vector is now narrowed by its validator; P23's forgetting-risk call uses the canonical `gapMs` option; B272 need keys are a typed tuple; dream-metadata filters return actual booleans; and cognitive-domain counters preserve their `Record<CognitiveDomain, number>` type.
