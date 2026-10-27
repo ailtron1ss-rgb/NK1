@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2, detectMemoryQueryIntent } from '../src/organism/developmental/MemoryOS2.ts';
 
-const sharedContent = 'neural memory experiment dialogue нейронная память эксперимент диалог';
+const sharedBaseContent = 'neural memory experiment dialogue нейронная память эксперимент диалог';
 const fixtures = [
   {
     "query": "Что ты помнишь обо мне и моих интересах?",
@@ -171,6 +171,9 @@ let reciprocalRankTotal = 0;
 const details = [];
 
 for (const [index, fixture] of fixtures.entries()) {
+  // Keep lexical evidence identical across target and decoys so this suite isolates intent/type ranking.
+  // The independent grounded-abstention suite separately verifies that unsupported queries are rejected.
+  const sharedContent = `${sharedBaseContent} ${fixture.query}`;
   assert.equal(detectMemoryQueryIntent(fixture.query), fixture.intent, 'intent classification: ' + fixture.query);
   intentCorrect++;
 
