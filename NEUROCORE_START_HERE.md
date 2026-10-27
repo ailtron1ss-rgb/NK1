@@ -1,3 +1,13 @@
+# CURRENT HANDOFF — 2026-10-27
+
+> **Read first:** [NK1 canonical project goal and state map](docs/NK1_CANONICAL_PROJECT_STATE_RU.md). It supersedes this file's older checkpoint where dates, branches, validation, or next steps conflict. Do not assume historical PASS entries validate the latest commit.
+
+**Current source base:** `workpass70-source`  
+**Latest source-branch checkpoint inspected:** `62deb97c0a175245ebe9058e29e0f3f43b32f100` (fresh base includes WorkPass496; check exact-head CI before claiming any newer change validated).  
+**Release:** latest published source archive remains the 2026-10-19 WorkPass70 Hotfix ZIP until a later asset is verified. Source changes alone do not update Release.
+
+---
+
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 
 - Continue on workpass206-runtime-evaluator-wiring / draft PR #55; use live PR for current HEAD.
