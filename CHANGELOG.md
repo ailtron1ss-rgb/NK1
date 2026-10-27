@@ -1,3 +1,11 @@
+## [NK1][WorkPass589] Close Mem0 OSS/runtime wiring validation gap on current source (2026-10-27)
+
+- Upgrade the existing opt-in Mem0 adapter with explicit Platform/OSS API modes, local-only OSS defaults, an explicit unsafe-HTTP opt-in for non-loopback hosts, and provider-specific API headers/routes.
+- Add independent self-hosted OSS route/scope/write-delete gate coverage and a runtime wiring contract test for disabled-by-default remote recall, bounded candidates, and untrusted low-priority prompt injection.
+- Add both tests to the dedicated Mem0 audit and the integration-closure gate; run the workflow on pull requests targeting `workpass70-source`.
+- Preserve the existing runtime, LanguageOrgan, and server integration already present on current source; no duplicate re-wiring and no remote-memory auto-promotion.
+- Validation is pending on the new PR head. No Release ZIP was changed.
+
 ## [NK1][WorkPass588] Port Hexis trace-conflict telemetry onto the current source baseline (2026-10-27)
 
 - Preserve the first accepted source trace when an immutable trace ID is reused with conflicting provenance, while incrementing a separate conflict diagnostic.
