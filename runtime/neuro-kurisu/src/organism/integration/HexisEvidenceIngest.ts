@@ -39,7 +39,7 @@ export function applyReviewedHexisEvidence(
     return { status: 'review-required', targetMemoryId, evidenceId: proposal.evidenceId, stance: proposal.stance };
   }
 
-  const lineage = `lineage:${proposal.source.independenceKey!.normalize('NFKC').toLocaleLowerCase()}`;
+  const lineage = `lineage:${proposal.source.independenceKey!.normalize('NFKC').toLowerCase()}`;
   // MemoryOS2's canonical replay guard is lineage-based, not just event-ID-based.
   // Different event IDs or source wrappers must not turn one upstream origin into
   // multiple corroborating sources. Check both the durable compact guard and the
@@ -48,7 +48,7 @@ export function applyReviewedHexisEvidence(
     (target.evidenceLineageKeys ?? []).includes(lineage) ||
     (target.evidenceSources ?? []).some(source =>
       typeof source.independenceKey === 'string' &&
-      `lineage:${source.independenceKey.normalize('NFKC').toLocaleLowerCase()}` === lineage
+      `lineage:${source.independenceKey.trim().normalize('NFKC').toLowerCase()}` === lineage
     );
   if (priorLineageSeen) {
     return { status: 'duplicate', targetMemoryId, evidenceId: proposal.evidenceId };
