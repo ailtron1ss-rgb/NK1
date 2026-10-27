@@ -141,7 +141,10 @@ const retryReceipt = projector.apply(stage);
 assert.equal(retryReceipt.status, 'applied');
 assert.equal(retryReceipt.attempt, 2);
 const afterRetry = runtime.fabric.canonicalSnapshot().items;
-assert.equal(afterRetry.length, canonicalBaseline.length + 1);
+assert.equal(afterRetry.length, canonicalBaseline.length + 2,
+  'successful retry must preserve the concurrent peer and create exactly one row for its own attempt');
+assert.ok(afterRetry.some(item => item.id === concurrentRowId),
+  'the concurrent peer row must remain after a subsequent successful retry');
 const importedQuarantined = afterRetry.find(item =>
   item.context?.hexisExportId === stage.exportId &&
   item.context?.hexisMemoryRef === 'exp_0123456789abcdef:quarantined-record');
