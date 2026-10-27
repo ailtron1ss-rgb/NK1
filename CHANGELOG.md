@@ -1,3 +1,9 @@
+## [NK1][WorkPass496] Count unique memory IDs in retrieval precision (2026-10-27)
+
+- Fixed `precision@K` so repeated rows with the same relevant memory ID cannot inflate the metric as multiple independent hits.
+- Kept duplicate corpus IDs promotion-blocking; the new regression verifies the diagnostic metric remains honest even for an invalid corpus.
+- This corrects evaluation accounting only. It does not improve retrieval ranking or establish positive recall uplift.
+
 ## [NK1][WorkPass494] Close the four-pass integration set through one release gate (2026-10-27)
 
 - Added `audit:nk1-integration-closure` to run the Hexis canonical-lineage + restart checks, the offline retrieval holdout experiment, the Mem0 adapter safety regressions and the authenticated disabled-provider HTTP smoke as one deterministic command.
