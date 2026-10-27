@@ -1,13 +1,12 @@
 # CURRENT HANDOFF — 2026-10-27
 
-> **Read first:** [NK1 canonical project goal and state map](docs/NK1_CANONICAL_PROJECT_STATE_RU.md). It is the handoff authority for goal, subsystem boundaries, evidence status, and next priorities. Old WorkPass checkpoints below are historical unless their exact SHA matches current code.
+> **Read first:** [NK1 canonical project goal and state map](docs/NK1_CANONICAL_PROJECT_STATE_RU.md). Do not assume historical PASS entries validate a newer SHA.
 
 **Canonical source branch:** `workpass70-source`  
-**Source checkpoint:** `91d1ef02bda69d7bbe6cbbd092ff5d6e6dc33720`; WorkPass496's bilingual retrieval gates are in its history at `62deb97c0a175245ebe9058e29e0f3f43b32f100`.  
-**Hexis stack:** child PR [#255](https://github.com/ailtron1ss-rgb/NK1/pull/255) merged into intermediate branch `fix/hexis-belief-dedupe-contract-2026-10-27` as `8299e157bde6256dabfe2e62dba3bc198efa3a01`. Thirteen workflows passed on child head `a995911b9eeba78d3d6e68931c3527bf32d49b12`; current parent PR #252 exact-head checks are still required. Do not claim this stack has reached `workpass70-source` or Release yet.  
+**Source head:** `2d40d11230f491cab1b69f8a910a30266911a2fc`; WorkPass496 bilingual retrieval gates are in its history at `62deb97c0a175245ebe9058e29e0f3f43b32f100`.  
+**Hexis stack:** PR #255 and parent PR #252 are merged into the intermediate branch `fix/outcome-projection-index-restore-2026-10-26`; latest stack commit `109df0b3ea1d47eb108c09e7a595a23a09aa2bfc`. Tests passed on the preceding stack head `8299e157...`; current squash-head checks require confirmation.  
+**Critical integration gate:** outer PR [#236](https://github.com/ailtron1ss-rgb/NK1/pull/236) is **361 commits ahead / 111 behind** the source branch and GitHub marks it `dirty`. Do not merge it directly. Reconcile the integration stack against current source first, preserving WorkPass496 and later changes, then validate the rebased exact HEAD.  
 **Release:** last published ZIP remains the WorkPass70 Hotfix asset from 2026-10-19; verify a later asset and SHA-256 before claiming a release update.
-
----
 
 ## Latest durable checkpoint — WorkPass272 (2026-10-22)
 

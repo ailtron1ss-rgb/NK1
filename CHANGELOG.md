@@ -1,3 +1,9 @@
+## [NK1][docs] Record outer integration divergence gate (2026-10-27)
+
+- Synchronized the canonical handoff after PR #252 merged into `fix/outcome-projection-index-restore-2026-10-26` at `109df0b3ea1d47eb108c09e7a595a23a09aa2bfc`.
+- Recorded that outer PR #236 is 361 commits ahead and 111 behind current `workpass70-source`, with GitHub reporting `dirty`; direct merge is blocked until the integration tree is reconciled against current source.
+- Kept release and retrieval-quality claims unchanged. Test PASS evidence remains bound to exact SHA and is not automatically transferred to the post-squash head.
+
 ## [NK1][docs] Sync canonical state with WorkPass496 and Hexis stack (2026-10-27)
 
 - Update the canonical project map with WorkPass496 bilingual retrieval gates and the current Hexis stack status.
