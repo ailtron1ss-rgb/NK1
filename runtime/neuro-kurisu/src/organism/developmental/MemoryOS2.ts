@@ -1180,7 +1180,7 @@ export class MemoryOS2{
   const before=this.state.items.length>MAX_CANONICAL_MEMORY_ITEMS?this.snapshot():null;
   try{
    if(!this.trimCanonicalItemCount()){
-    if(before)this.restore(before);
+    if(before)this.restore(before,{allowOverCapacity:true});
     return false;
    }
   }catch{
