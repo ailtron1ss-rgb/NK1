@@ -2754,3 +2754,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [FIX] Corrected the remaining restored-external duplicate assertions: normalized duplicate identity is preserved after restore, while the grounded runtime-outcome aggregate remains zero for unverified external records.
 - [SAFETY] Both normal-intake and restored-intake external records remain ineligible for grounded replay/consolidation; no production policy was weakened.
 - [VALIDATION] The updated WorkPass110 workflow should re-run the causal experience stream regression and continue through subsequent steps.
+
+
+## [NK1][Validation] WorkPass449 — connect the evidence-lanes workflow to its test (2026-10-27)
+
+- [FIX] Added the missing `test:workpass292:evidence-lanes` npm script pointing to the existing `tests/workpass292-evidence-lanes.mjs` regression. The workflow's command previously failed immediately with npm's `Missing script` error.
+- [VALIDATION] Confirmed that the referenced test file exists and exercises causal action/outcome binding, untrusted external intake, stable idempotency identity and trusted aggregate isolation. The resulting workflow run must still confirm execution.
