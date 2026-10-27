@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:rebuild-recovered": "npm --prefix runtime/neuro-kurisu run test:rebuild-recovered && npm --prefix app run test:avatar-storage && npm --prefix app run test:live2d-expression-cache",
+    "test:rebuild-recovered": "npm --prefix runtime/neuro-kurisu run test:rebuild-recovered && npm --prefix app run test:avatar-storage && npm --prefix app run test:live2d-expression-cache && npm run test:release-license-readiness",
     "dev": "node tools/super-dev.mjs",
     "start": "node tools/super-start.mjs",
     "build": "npm --prefix app run build",
@@ -113,6 +113,8 @@
     "audit:workpass41": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:provenance-current && npm run test:cognitive-cycle-local-lineage-workpass41 && npm run test:memory-retention-net-value-workpass41 && node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-162-unified-cognitive-economy.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-164-large-cognitive-pass.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/p2894-memory-anti-collapse.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/p2888-adaptive-memory-economy.mjs && npm --prefix runtime/neuro-kurisu run test:memory-substrate-performance && npm --prefix runtime/neuro-kurisu run typecheck && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm run audit:release-metadata",
     "test:memory-retention-net-value-workpass41": "node --experimental-strip-types runtime/neuro-kurisu/tests/memory-retention-net-value-workpass41.mjs",
     "test:provenance-current": "node --test tools/super-sbom.test.mjs",
+    "test:release-license-readiness": "node --test tools/audit-release-license-readiness.test.mjs",
+    "audit:release-license-readiness": "node tools/audit-release-license-readiness.mjs",
     "assets:sync": "node app/scripts/sync-canonical-public-assets.mjs",
     "test:canonical-public-assets": "node --test app/scripts/sync-canonical-public-assets.test.mjs",
     "audit:workpass42": "npm run test:canonical-public-assets && npm run test:historical-path-restoration && npm run check:compacted-source-archives && npm run check:historical-snapshot && npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:provenance-current && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run test:cognitive-cycle-local-lineage-workpass41 && npm run test:memory-retention-net-value-workpass41 && npm run test:action-ledger-archive-workpass38 && npm run audit:assets && npm run assets:clean",
@@ -182,7 +184,7 @@
     "audit:workpass69": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass69 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
     "test:embodiment-timeline": "npm --prefix app run test:embodiment-timeline",
     "test:workpass70": "npm run test:embodiment-timeline && npm run test:workpass69",
-    "audit:workpass70": "npm run audit:release-metadata && npm run test:provenance-current && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass70 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata",
+    "audit:workpass70": "npm run audit:release-metadata && npm run test:provenance-current && npm run test:release-metadata-contract && npm run test:app-dependency-contract && npm run test:super-install && npm run test:workpass70 && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm --prefix runtime/neuro-kurisu run audit:contract && npm --prefix runtime/neuro-kurisu run audit:integrity && npm --prefix runtime/neuro-kurisu run verify:release-source && npm run audit:release-metadata && npm run audit:release-license-readiness",
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs"
   },
   "version": "35.0.0-super-workpass70",
