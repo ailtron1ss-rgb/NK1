@@ -1612,6 +1612,10 @@ const goalPipelineStage = goalPipelineSystems.hexisAdaptation.stageHmx({
 assert.deepEqual(goalPipelineStage.conflicts, []);
 assert.equal(goalPipelineSystems.hexisAdaptation.decideHmx(goalPipelineStage.stagingId, 'accept')?.status, 'accepted');
 assert.equal(goalPipelineSystems.hexisAdaptation.decideHmx(goalPipelineStage.stagingId, 'apply')?.status, 'applied');
+const namespacedGoalMemory = goalPipelineSystems.memory.fabric.canonicalSnapshot(false).items.find(item =>
+  item.context?.hexisExportId === goalExportId && item.context?.hexisMemoryRef === goalMemoryRef,
+);
+assert.ok(namespacedGoalMemory, 'canonical HMX memory must preserve its export-scoped source ref for later goal-link resolution');
 const goalPreparation = goalPipelineSystems.hexisAdaptation.prepareGoalProposals(goalPipelineStage.stagingId);
 assert.equal(goalPreparation.created, 1);
 const goalProposal = goalPreparation.proposals[0];
