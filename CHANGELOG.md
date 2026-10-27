@@ -1,3 +1,11 @@
+## [NK1][WorkPass437] Make capacity-commit failure atomic (2026-10-27)
+
+- Made the 1,600-item trim part of the import commit a failure-atomic operation: on an interrupted trim, MemoryOS2 restores the complete pre-commit snapshot and leaves the HMX compensation token live.
+- Added an explicit internal restore option for over-capacity transaction snapshots. This is necessary because the enclosing import temporarily holds 1,601 rows before commit; the standard durable restore remains capped at 1,600.
+- Reordered MemoryFabric's combined commit so the failure-atomic capacity commit runs before status/signal compensation snapshots are consumed.
+- Added a targeted fault-injection regression that forces capacity trimming to throw with 1,601 rows present, verifies every row survives long enough for rollback, and then verifies the baseline returns to exactly 1,600 rows.
+- Validation caveat: source/module syntax and focused invariants can be checked from GitHub reads, but the runtime test suite and TypeScript typecheck remain unexecuted because no exact-head Actions run is available.
+
 ## [NK1][WorkPass436] Make canonical HMX rollback transaction-scoped (2026-10-27)
 
 - Added an opaque MemoryOS2/MemoryFabric import-compensation token bound to the exact HMX export and staging ID. Every attempted canonical encode is registered before it mutates state; rollback can remove only rows created under that token, including quarantined/identity rows that ordinary forgetting intentionally protects.
