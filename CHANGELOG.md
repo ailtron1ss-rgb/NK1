@@ -1,3 +1,12 @@
+## [NK1][WorkPass485] Add explicit state-context interaction features — 2026-10-27
+
+- Core regression showed that replay-cadence/cursor fixes alone did not preserve the old task in the context-aware synthetic benchmark.
+- Added named, zero-initialized features for low-energy, low-novelty and their joint context interaction, allowing the parametric policy to represent a different action mapping in separated state regimes.
+- Kept `actionCost` addressed by semantic feature name so appending new features cannot move its learned coefficient.
+- Extended the schema migration regression to verify old action-cost weights survive and new interaction weights start at zero; added a context-separation feature check.
+- Added explicit context-aware benchmark diagnostics; existing performance thresholds remain unchanged.
+- Validation: latest-head P26 and Core regression pending.
+
 ## [NK1][WorkPass484] Persist P26 replay-buffer traversal across batches — 2026-10-27
 
 - Fixed replay cursor reset at each `trainInterleaved()` call, which caused bounded training batches to revisit the same replay-buffer prefix.
