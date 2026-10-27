@@ -750,9 +750,8 @@ export class MemoryOS2{
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
  /**
-  * Record the canonical read only after the cognitive selector has chosen its final
-  * lexical or semantic result. Preview search may run several speculative paths;
-  * only this method is allowed to advance access/freshness signals for the selected IDs.
+  * Commit access/freshness signals for a cognitive result chosen from read-only
+  * previews. Speculative lexical candidates must not be treated as remembered reads.
   */
  recordSelectedRetrieval(query:string,ids:string[],goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},candidateCountHint=ids.length):MemoryItem2[]{
    const wallClockNow=Date.now();
