@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { ExperienceContinuumFabric } from '../src/organism/memory/ExperienceContinuumFabric.ts';
 import { CausalExperienceStream } from '../src/organism/learning/CausalExperienceStream.ts';
 import { UnifiedLearningSubstrate } from '../src/organism/learning/UnifiedLearningSubstrate.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const f=new ExperienceContinuumFabric({maxNodes:128,maxEdges:256,maxClusters:32});
 const base={id:'m103',kind:'episodic',source:'runtime',content:'causal memory replay transfer test',createdAt:1,lastAccessAt:1,retrievalCount:0,salience:.84,identityRelevance:.72,goalRelevance:.82,predictionError:.78,emotionalWeight:.42,socialRelevance:.36,confidence:.82,semanticLinks:[],temporalLinks:[],causalLinks:[],epistemicStatus:'verified'};
@@ -9,9 +10,34 @@ f.observe(base,{tick:1,at:1,novelty01:.74,activeGoalIds:['goal-A'],evidenceSuppo
 const candidates=f.replayCandidates(4,['goal-A']); assert.equal(candidates.length,1); assert.ok(candidates[0].replayPriority01>.5);
 const r=f.reactivate('m103',1000); assert.ok(r); assert.equal(r.tier,'hot');
 const before=f.snapshot().graphNodes[0].stability01;
-const validation=f.recordReplayValidation({memoryId:'m103',retentionScore01:.92,transferPotential01:.71,interferenceRisk01:.04,independentVerified:true,evidenceKey:'holdout:m103:1',at:1100});
-assert.equal(validation.independentVerified,true);
-assert.ok(f.snapshot().replay.validated===1); assert.ok(f.snapshot().graphNodes[0].stability01>=before);
+const untrustedValidation=f.recordReplayValidation({
+  memoryId:'m103',taskId:'task-X',contextKey:'x1',delayMs:100,baselineScore01:.5,
+  retentionScore01:.92,transferPotential01:.71,interferenceRisk01:.04,
+  independentVerified:true,evidenceKey:'holdout:untrusted:m103:1',at:1050
+});
+assert.equal(untrustedValidation.independentVerified,false,'a caller boolean must not manufacture independent replay evidence');
+assert.equal(f.snapshot().replay.validated,0,'untrusted replay receipts must not move validated replay metrics');
+
+const verificationInput={
+  memoryId:'m103',evidenceKey:'holdout:m103:1',taskId:'task-X',contextKey:'x1',
+  delayMs:100,retentionScore01:.92,baselineScore01:.5,transferPotential01:.71,interferenceRisk01:.04
+};
+const verificationService=new OutcomeVerificationService();
+const verification=await verificationService.verify({
+  toolId:'memory.retention-postcondition',
+  input:verificationInput,
+  result:{retentionScore01:.92}
+},()=>({
+  verified:true,basis:'external-postcondition',confidence01:.99,externalObservation:true,
+  observationId:'obs-m103-retention-1',
+  expectedPostcondition:'retention-score:0.92',
+  observedPostcondition:'retention-score:0.92'
+}));
+assert.equal(verification.verified,true,'the test verifier must mint a trusted, matching external postcondition');
+const validation=f.recordReplayValidation({...verificationInput,verification,at:1100});
+assert.equal(validation.independentVerified,true,'only the exact service-minted receipt may authorize retention learning');
+assert.ok(f.snapshot().replay.validated===1);
+assert.ok(f.snapshot().graphNodes[0].stability01>=before);
 f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.8,independentVerified:true,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1200});
 f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.74,independentVerified:true,randomized:true,contextKey:'x2',pairKey:'pair-2',at:1300});
 f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-off',preScore01:.5,postScore01:.56,independentVerified:true,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1400});

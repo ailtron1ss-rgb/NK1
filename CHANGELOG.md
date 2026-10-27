@@ -1,3 +1,11 @@
+## [NK1][WorkPass574] Require trusted postcondition evidence in replay-learning regression (2026-10-27)
+
+- Fixed the recovered memory-transfer regression that treated a caller-supplied `independentVerified: true` flag as independent verification, even though the runtime has deliberately stopped trusting that deprecated boolean.
+- Added a negative assertion proving caller-provided booleans do not affect validated replay counters.
+- Replaced the synthetic trust shortcut with an `OutcomeVerificationService`-minted, exact-payload external-postcondition receipt; this exercises the same trust boundary as production code.
+- Kept outcome and stability assertions so the test proves a legitimate evidence receipt still reaches the replay-retention path.
+- No thresholds were relaxed and no learning improvement is claimed by this test correction.
+
 ## [NK1][WorkPass573] Make cross-task transfer evidence idempotent and restore-safe (2026-10-27)
 
 - Reject malformed transfer-probe IDs/context keys, control characters, out-of-range or non-finite scores, non-boolean verification flags, invalid timestamps, and restored rows whose delta does not agree with baseline/post-score.
@@ -5,6 +13,13 @@
 - Keep the recorder honest about trust boundaries: payload identity is checked, but caller-supplied `independentVerified` and `holdout` attestations are not cryptographic proof of independence.
 - Extend the paired transfer regression and wire it, with the causal-stream suite, into the canonical `test:rebuild-recovered` aggregate.
 - No measured transfer uplift is claimed; this pass prevents duplicate and malformed evidence from inflating diagnostics.
+
+## [NK1][WorkPass573] Stabilize query-derived memory retrieval context (2026-10-27)
+
+- Remove lifetime counters `semanticQueries` and `linkUpdates` as fallback signals for temporal/causal routing; current query intent and explicit temporal mode now define the context.
+- Add a regression that performs 80 general retrievals, then checks that explicit temporal and causal queries select separate contextual-policy buckets.
+- Register the regression in `test:rebuild-recovered`. The test was added but not run in this pass; no pass result is claimed.
+- Code is committed to `workpass70-source`; independent holdout uplift and Release ZIP refresh remain pending.
 
 ## [NK1][WorkPass572] Keep causal life graph summaries coherent after direct mutations (2026-10-27)
 
