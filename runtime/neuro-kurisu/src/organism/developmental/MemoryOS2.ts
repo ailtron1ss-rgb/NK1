@@ -1151,6 +1151,10 @@ export class MemoryOS2{
   capture.createdIds.set(item.id,commandId);
   return true;
  }
+ hmxImportRollbackCommandId(id:string,token:object):string|null{
+  const capture=this.hmxImportCompensationSnapshots.get(token);
+  return capture?.createdIds.get(String(id))??null;
+ }
  rollbackHmxImportMemory(id:string,token:object):{removed:boolean;commandId:string}|null{
   const key=String(id);
   const capture=this.hmxImportCompensationSnapshots.get(token);
