@@ -1,3 +1,9 @@
+## [NK1][WorkPass508] Prevent duplicate memory rows inflating precision (2026-10-27)
+
+- Retrieval benchmark precision now counts unique relevant memory IDs rather than duplicate result rows.
+- Added a regression fixture with a duplicate corpus ID: the report must block promotion for corpus integrity and count the repeated relevant ID only once in Precision@k.
+- This fixes a metric-integrity bug; no retrieval uplift is claimed. Test execution and CI remain unverified.
+
 ## [NK1][WorkPass507] Include abstention quality in experiment determinism checks (2026-10-27)
 
 - The multi-seed memory experiment's determinism signature now includes answerable/unanswerable counts, unsupported retrieval rate, correct abstention rate, and false-abstention metrics.
@@ -28,9 +34,3 @@
 ## [NK1][WorkPass502] Wire bounded semantic recall into the live cognitive cycle (2026-10-27)
 
 - The direct user-text path already used `retrieveForCognition` when the execution plan requested memory; the later advanced-recall branch still used synchronous lexical-only `retrieve` for internal-goal/fallback queries or when it could not reuse that first memory packet.
-- That branch now awaits the same existing cognitive retrieval adapter. With `NK_EMBEDDINGS_RUNTIME_ENABLED` unset, behavior remains the deterministic lexical fallback; when explicitly enabled and a provider is configured, semantic recall can participate in that branch under the existing foreground budget.
-- Added a route regression and wired it into `test:rebuild-recovered`. This connects an existing subsystem rather than creating a second memory store. Recall uplift is not claimed; provider-backed runtime behavior and real-task improvement still require separate validation.
-
-## [NK1][WorkPass502] Count explicit missing-trace rejection in Hexis regression (2026-10-27)
-
-- Added a regression for a missing SourceMonitor trace ID and asserted the bridge rejects it as `source-trace-not-found`.
