@@ -536,15 +536,25 @@ export class HexisAdaptationFabric {
             });
             return structuredClone(existing);
         }
+        const evicted = this.state.beliefs.length >= 1024
+            ? structuredClone(this.state.beliefs.slice(0, this.state.beliefs.length - 1023))
+            : [];
         const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() };
         this.state.beliefs.push(created);
         this.state.beliefs = this.state.beliefs.slice(-1024);
         const expected = structuredClone(created);
         this.recordScopedMutation(ownerToken, () => {
             const current = this.state.beliefs.find(row => row.memoryId === id);
-            if (!current) return true;
-            if (JSON.stringify(current) !== JSON.stringify(expected)) return false;
-            this.state.beliefs = this.state.beliefs.filter(row => row.memoryId !== id);
+            if (!current || JSON.stringify(current) !== JSON.stringify(expected)) return false;
+            for (const prior of evicted) {
+                const duplicate = this.state.beliefs.find(row => row.memoryId === prior.memoryId);
+                if (duplicate && JSON.stringify(duplicate) !== JSON.stringify(prior)) return false;
+            }
+            const next = this.state.beliefs.filter(row => row.memoryId !== id);
+            for (const prior of evicted) {
+                if (!next.some(row => row.memoryId === prior.memoryId)) next.push(structuredClone(prior));
+            }
+            this.state.beliefs = next;
             return true;
         });
         return structuredClone(created);
