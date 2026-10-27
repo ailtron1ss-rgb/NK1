@@ -500,7 +500,7 @@ export class MemoryOS2{
  restore(s:MemoryOSState2|undefined){
    // A restore replaces canonical rows and a family of derived indexes. Retain the
    // previous generation so an exception during rebuild cannot mix index generations.
-   const cloneSetMap=<K,V>(source:Map<K,Set<V>>):Map<K,Set<V>>=>new Map([...source].map(([key,value])=>[key,new Set(value)]));
+   const cloneSetMap=<K,V>(source:Map<K,Set<V>>):Map<K,Set<V>>=>{const copy=new Map<K,Set<V>>();for(const [key,value] of source)copy.set(key,new Set(value));return copy;};
    const restoreMap=<K,V>(target:Map<K,V>,source:Map<K,V>)=>{target.clear();for(const [key,value] of source)target.set(key,value);};
    const restoreSetMap=<K,V>(target:Map<K,Set<V>>,source:Map<K,Set<V>>)=>{target.clear();for(const [key,value] of source)target.set(key,new Set(value));};
    const previousState=this.state;
