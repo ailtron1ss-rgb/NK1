@@ -1,3 +1,9 @@
+## [NK1][WorkPass472] Harden adaptive policy observation inputs (2026-10-27)
+
+- Runtime `observe()` now validates policy identifiers rather than indexing mutable maps with caller-supplied names. Unknown names safely fall back to the last valid policy (or `balanced`), and non-finite timestamps cannot poison the cooldown.
+- The context table's hard cap and safe-key validation apply on every observation; oldest contextual value/trial rows are evicted together so the two maps remain aligned.
+- Added adversarial runtime tests for an unknown policy name, infinite time input, and a prototype-like context ID. Test execution and TypeScript/hosted CI remain unconfirmed; `main` and the canonical Release ZIP remain unchanged.
+
 ## [NK1][WorkPass471] Enforce adaptive context bounds at runtime and persist canonical policy (2026-10-27)
 
 - The 512-context limit now applies to ordinary `AdaptiveMemoryPolicy.observe()` updates, not only restores. When capacity is reached, the oldest entry is removed from both contextual-value and contextual-trial maps; unsafe/prototype-like caller context IDs are routed to the safe `default` context.
