@@ -1350,7 +1350,8 @@ export class MemoryOS2{
      const removeCount=Math.min(pressureCandidates.length,Math.max(0,Math.floor(this.state.items.length*.12)));
      for(const m of pressureCandidates.slice(0,removeCount))this.forgetById(m.id,'pressure');
    }
-   this.state.items=this.state.items.slice(0,1600);
+   // Never slice canonical storage directly: all removals must update every derived index/cache.
+   this.trimCanonicalItemCount();
    this.state.lastMaintenanceAt=now;
  }
 
