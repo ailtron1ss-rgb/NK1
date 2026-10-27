@@ -510,6 +510,7 @@ export class P23LearningEngine {
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
     sourceEvidenceFingerprint?: string,
+    assertCanonicalLineageCurrent?: () => void,
   ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
     if(sourceEvidenceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(sourceEvidenceFingerprint)) {
@@ -566,6 +567,9 @@ export class P23LearningEngine {
        !Array.isArray(fresh.evaluation.holdout) || fresh.evaluation.holdout.length===0) {
       throw new Error('independent evaluator did not return non-empty validation/holdout reports bound to the exact generated payload');
     }
+    // This synchronous final recheck closes the async evaluation-to-staging gap.
+    // A changed active baseline or source version can never label stale metrics as current.
+    assertCanonicalLineageCurrent?.();
     return this.stageReflectiveSkillRevision(
       proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
       sourceEvidenceFingerprint,

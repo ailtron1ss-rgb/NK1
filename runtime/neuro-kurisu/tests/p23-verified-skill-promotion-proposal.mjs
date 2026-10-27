@@ -5,7 +5,7 @@ import {
   ingestSignedOutcomeArtifact,
   signOutcomePayloadForFixture,
 } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
-import { isAuthenticVerifiedSkillPromotionProposal, proposeVerifiedSkillPromotion } from '../src/organism/learning/VerifiedSkillPromotion.ts';
+import { isAuthenticVerifiedSkillPromotionProposal, proposeVerifiedSkillPromotion, snapshotAuthenticVerifiedSkillPromotionProposal } from '../src/organism/learning/VerifiedSkillPromotion.ts';
 import { evaluateSkillRevision } from '../src/organism/learning/SkillRevisionGate.ts';
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -59,6 +59,16 @@ assert.equal(repeatedProposal.datasetFingerprint,proposal.datasetFingerprint,
 assert.equal(repeatedProposal.proposalId,proposal.proposalId,
   'proposal identity is stable for an unchanged manifest/outcome ledger');
 assert.equal(isAuthenticVerifiedSkillPromotionProposal(proposal), true);
+const proposalSnapshot = snapshotAuthenticVerifiedSkillPromotionProposal(proposal);
+assert.notEqual(proposalSnapshot, proposal, 'snapshot must detach the proposal object');
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(proposalSnapshot), true,
+  'a snapshot of an authentic proposal must retain proof after a safe copy');
+proposalSnapshot.datasetFingerprint = 'e'.repeat(64);
+assert.equal(isAuthenticVerifiedSkillPromotionProposal(proposalSnapshot), false,
+  'mutating an authentic snapshot must invalidate its process-local proof');
+assert.throws(() => snapshotAuthenticVerifiedSkillPromotionProposal({ ...proposal }),
+  /verified-skill-proposal-snapshot-requires-authentic-source/,
+  'caller-constructed copies must never be promoted to authentic snapshots');
 const tamperedProposal = proposeVerifiedSkillPromotion(ledger,'baseline','candidate',{minPairedTasks:8,minAbsoluteGain:.1,minCompleteSeeds:3});
 const originalDatasetFingerprint = tamperedProposal.datasetFingerprint;
 tamperedProposal.datasetFingerprint = 'f'.repeat(64);

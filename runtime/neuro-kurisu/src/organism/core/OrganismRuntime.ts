@@ -42,7 +42,7 @@ import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleCo
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
-import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
+import { withIndependentCandidateEvaluation, type CanonicalRevisionPayloads } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
 
@@ -103,6 +103,11 @@ export interface RuntimeConfig extends OrganismConfig {
     provideInputs: CompoundRepairRevisionInputProvider;
     /** When supplied, replaces provider-supplied candidate evaluation with exact-payload independent execution. */
     independentEvaluationConfigForRepair?: (input: Parameters<CompoundRepairRevisionInputProvider>[0]) => IndependentCandidateEvaluationConfig;
+    /** Resolve baseline/source payloads from the canonical candidate store, never from provider output. */
+    resolveCanonicalPayloadsForRepair?: (
+      input: Parameters<CompoundRepairRevisionInputProvider>[0],
+      prepared: { sourceCandidateId: string },
+    ) => CanonicalRevisionPayloads | Promise<CanonicalRevisionPayloads>;
     /** Optional background repair-to-P23 loop. Opt-in and independently evaluated; never auto-activates candidates. */
     backgroundRevision?: { enabled: boolean; initialDelayMs?: number; intervalMs?: number };
   };
@@ -259,6 +264,10 @@ export class OrganismRuntime {
           typeof config.compoundRepairRevision.independentEvaluationConfigForRepair !== 'function') {
         throw new Error('production-compound-repair-revision-requires-independent-evaluation-authority');
       }
+      if (process.env.NODE_ENV === 'production' &&
+          typeof config.compoundRepairRevision.resolveCanonicalPayloadsForRepair !== 'function') {
+        throw new Error('production-compound-repair-revision-requires-canonical-baseline-and-source-resolver');
+      }
       if (typeof config.compoundRepairRevision.provideInputs !== 'function') {
         throw new Error('compound-repair-revision requires a trusted input provider');
       }
@@ -271,6 +280,10 @@ export class OrganismRuntime {
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
+            {
+              resolveCanonicalPayloads: config.compoundRepairRevision.resolveCanonicalPayloadsForRepair,
+              requireCanonicalSourceEvaluation: process.env.NODE_ENV === 'production',
+            },
           )
         : config.compoundRepairRevision.provideInputs;
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
@@ -1262,6 +1275,7 @@ export class OrganismRuntime {
     evaluateRevisedCandidate:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6];
     options?:Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[7];
     sourceEvidenceFingerprint?: string;
+    assertCanonicalLineageCurrent?: () => void;
   }){
     if(!input?.engine || typeof input.engine.generateAndStageReflectiveSkillRevision!=='function') {
       throw new Error('configured P23 learning engine is required');
@@ -1278,7 +1292,7 @@ export class OrganismRuntime {
     const result=await input.engine.generateAndStageReflectiveSkillRevision(
       input.proposal,input.skillId,input.sourceCandidateId,input.baseline,input.candidateEvaluation,
       request=>input.generate({...request,repairEvidence:structuredClone(repairEvidence)}),
-      input.evaluateRevisedCandidate,input.options,computedEvidenceFingerprint,
+      input.evaluateRevisedCandidate,input.options,computedEvidenceFingerprint,input.assertCanonicalLineageCurrent,
     );
     await this.journal.write('info','runtime.p23.compound-repair-revision.staged',{
       skillId:input.skillId,sourceCandidateId:input.sourceCandidateId,candidateId:result.candidate.candidateId,

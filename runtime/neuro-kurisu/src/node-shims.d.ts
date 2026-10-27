@@ -9,7 +9,7 @@ declare module 'node:fs/promises' {
   export function appendFile(path:string,data:string,encoding?:string):Promise<void>;
   export function copyFile(src:string,dest:string):Promise<void>;
   export function mkdir(path:string, options?:{recursive?:boolean;mode?:number}):Promise<string|undefined>;
-  export function open(path:string, flags:string, mode?:number):Promise<any>;
+  export function open(path:string, flags:string|number, mode?:number):Promise<any>;
   export function readFile(path:string, encoding:'utf8'):Promise<string>;
   export function readFile(path:string):Promise<Uint8Array>;
   export function rename(src:string,dest:string):Promise<void>;
@@ -56,7 +56,7 @@ declare namespace NodeJS {
   interface ProcessEnv extends Record<string, string | undefined> {}
 }
 declare module 'node:fs' {
-  export const constants: { O_RDONLY:number; O_WRONLY:number; O_RDWR:number; O_CREAT:number; O_EXCL:number; O_TRUNC:number; O_APPEND:number; [key:string]:number; };
+  export const constants: { O_RDONLY:number; O_WRONLY:number; O_RDWR:number; O_CREAT:number; O_EXCL:number; O_TRUNC:number; O_APPEND:number; O_NOFOLLOW?:number; [key:string]:number|undefined; };
   export function closeSync(fd:number):void;
   export function fsyncSync(fd:number):void;
   export function linkSync(existingPath:string,newPath:string):void;
