@@ -1,29 +1,15 @@
-# WorkPass479 — Stabilizing P26 interleaved replay
+# WorkPass479 — P26 replay schedule stability
 
-**Date:** 2026-10-27  
-**Status:** implementation committed; CI re-run pending.
+**Date:** 2026-10-27
 
-## Observed failure
+The initial WorkPass479 attempt scaled the per-replay learning rate. That reduced replay's aggregate update contribution but failed the sequential retention benchmark: the model did not recover old-task skill (task A remained at 0.0125). That attempt is not considered successful.
 
-The broad core regression exposed a deterministic synthetic sweep failure: `interleave-1`, seed 17, new-task accuracy **0.52** against an existing threshold of **0.60**. Other tested interleave schedules passed. The test threshold was not lowered.
-
-## Change
-
-`P26TrueLearningEngine.trainInterleaved()` now scales the requested per-replay learning rate when replay occurs more often than once every four current examples:
+The revised implementation, committed as WorkPass483, preserves the configured learning rate for each rehearsal and bounds the schedule instead:
 
 ```text
-effectiveReplayRate = requestedReplayRate × min(1, replayEveryNCurrent / 4)
+effectiveReplayEveryNCurrent = max(4, requestedReplayEveryNCurrent)
 ```
 
-This caps replay's aggregate learning-rate contribution per current update at the high-frequency end. Intervals of four or more retain the requested replay rate; an interval of one uses one quarter of that rate.
+This caps replay frequency at one replay update per four fresh updates without reducing the magnitude of each accepted rehearsal. Both the sequential benchmark and the multi-seed replay-policy sweep now assert this ratio. The original new-task performance thresholds remain unchanged.
 
-## Why this is preferable
-
-- Fresh task learning remains the primary signal when replay frequency is maximal.
-- Lower-frequency replay semantics remain unchanged.
-- The regression's minimum new-task performance stays at 0.60.
-- No benchmark threshold was relaxed and no independent/generalization evidence is fabricated.
-
-## Validation
-
-Run the existing `npm run test:p26:replay-policy-sweep`, P26 Learning Validation workflow and NeuroCore core regression workflow. Until the latest-head runs complete successfully, this is an implementation change awaiting validation, not a claimed fix.
+Validation must pass the sequential benchmark, replay-policy sweep and broad core regression before the correction is considered validated.
