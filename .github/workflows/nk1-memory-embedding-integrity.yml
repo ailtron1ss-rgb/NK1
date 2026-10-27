@@ -1,0 +1,46 @@
+name: NK1 memory embedding vector integrity
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-embedding-vector-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/nk1-memory-embedding-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-memory-embedding-integrity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  memory-embedding-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            app/package-lock.json
+            runtime/neuro-kurisu/package-lock.json
+      - name: Install pinned app compiler
+        run: npm ci --prefix app
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu
+      - name: Validate provider vector boundaries and lexical fallback
+        run: npm run test:memory-embedding-vector-integrity
+        working-directory: runtime/neuro-kurisu
+      - name: Run retrieval experiment integrity contract
+        run: npm run test:memory-retrieval-experiment
+        working-directory: runtime/neuro-kurisu
+      - name: Typecheck runtime
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
