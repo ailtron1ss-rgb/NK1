@@ -1,3 +1,10 @@
+## [NK1][memory] Correct P62 relevance ranking and query the canonical recall corpus (2026-10-27)
+
+- Fixed a ranking comparator that subtracted `b.relevance01` from itself, effectively eliminating relevance ordering. P62 now sorts by descending relevance, then support, then stable ID.
+- Replaced insertion-order `snapshot.items.slice(0,128)` candidate input in `MemoryFabric.recall` with bounded, side-effect-free query-aware retrieval from the canonical MemoryOS2 owner. This makes older relevant memories eligible without mutating canonical retrieval diagnostics merely to prepare the recall packet.
+- Added `test:p62-relevance-order` for calibrated ranking and a 150-item corpus where the target memory sits beyond the legacy first-128 window; wired it into recovered-core tests and WorkPass110 CI.
+- This fixes retrieval reachability/ranking semantics; no aggregate retrieval-quality uplift is claimed until independent holdout evaluation.
+
 ## [NK1][motivation] Correct endogenous goal-vector diversity diagnostics (2026-10-27)
 
 - Fixed `goalVectorDiversity01`: the pairwise cosine transform was inverted, so identical goals appeared maximally diverse and opposite goals minimally diverse. It now measures normalized cosine distance.
