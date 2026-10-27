@@ -1,3 +1,9 @@
+## [NK1][integration] Add self-hosted Mem0 OSS mode (2026-10-27)
+
+- Added explicit `platform|oss` provider mode. OSS mode uses its documented `/search`, `/memories`, and `X-API-Key` contract; Platform mode remains unchanged.
+- Default OSS URL is loopback HTTP only; remote cleartext requires a separate explicit opt-in. Single-memory mutations still need write enablement, per-operation approval, and an adapter-issued scoped UUID.
+- Added an end-to-end mocked search → add → delete contract test and included it in CI closure. No live self-hosted server has been contacted, and no retrieval uplift is claimed.
+
 ## [NK1][Integration] Selective Mem0 recall bridge on the Hexis source stack (2026-10-27)
 
 - Ported the opt-in Mem0 Platform adapter onto the newer Hexis canonical-apply line without merging the heavily diverged Mem0 branch.
