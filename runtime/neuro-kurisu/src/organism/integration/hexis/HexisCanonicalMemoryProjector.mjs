@@ -300,6 +300,8 @@ export class HexisCanonicalMemoryProjector {
     let deferredRelationships = 0;
     const appliedAt = Date.now();
     const attempt = Math.max(1, Math.floor(Number(stage.applicationAttempts ?? 1)));
+    const hmxImportCompensationToken = this.memoryFabric.captureHmxImportCompensation(exportId, String(stage.stagingId));
+    if (!hmxImportCompensationToken) throw new Error('hmx-import-compensation-capture-failed');
 
     try {
       for (const item of normalized) {
@@ -443,6 +445,7 @@ export class HexisCanonicalMemoryProjector {
         const provenancePayload = row.provenance ?? row.source_attribution ?? null;
         const context = {
           hexisExportId: exportId,
+          hexisStagingId: String(stage.stagingId).slice(0, 128),
           hexisMemoryRef: ref,
           hexisGraphSourceKey: graphSourceKey,
           hexisSourceLineageId: lineageId.slice(0, 512),
@@ -494,7 +497,12 @@ export class HexisCanonicalMemoryProjector {
             evidenceFreshnessAt: dateMs(row.updated_at ?? row.updatedAt) ?? observedAt,
           }],
         };
-        const inserted = this.memoryFabric.encode(memoryInput, { commandId, syncCompatibility: false, forceDistinct: true });
+        const inserted = this.memoryFabric.encode(memoryInput, {
+          commandId,
+          syncCompatibility: false,
+          forceDistinct: true,
+          hmxImportCompensationToken,
+        });
         if (!inserted?.id) throw new Error('hmx-apply-canonical-write-returned-no-id:' + ref);
         importedIds.push(inserted.id);
         if (beforeIds.has(inserted.id)) {
@@ -578,13 +586,14 @@ export class HexisCanonicalMemoryProjector {
         }
       }
 
-      // Only finalize signal compensation tokens after every canonical/semantic/temporal
-      // projection succeeded. If preflight fails, the catch still owns live rollback tokens.
-      if ((revisedSignals.length || revisedStatuses.length) &&
-          this.memoryFabric.commitHmxCompensations({
-            signalTokens: revisedSignals.map(revision => revision.token),
-            statusTokens: revisedStatuses.map(revision => revision.token),
-          }) !== true) {
+      // Finalize every transactional token family only after all canonical, semantic,
+      // and temporal projections have succeeded. The HMX import token also defers
+      // canonical capacity eviction until this point.
+      if (this.memoryFabric.commitHmxCompensations({
+        signalTokens: revisedSignals.map(revision => revision.token),
+        statusTokens: revisedStatuses.map(revision => revision.token),
+        hmxImportTokens: [hmxImportCompensationToken],
+      }) !== true) {
         throw new Error('hmx-compensation-commit-failed');
       }
 
@@ -602,17 +611,27 @@ export class HexisCanonicalMemoryProjector {
             item?.id &&
             !beforeIds.has(item.id) &&
             String(item.source ?? '').startsWith('hexis:') &&
-            String(item.context?.hexisExportId ?? '') === exportId
+            String(item.context?.hexisExportId ?? '') === exportId &&
+            String(item.context?.hexisStagingId ?? '') === String(stage.stagingId).slice(0, 128)
           ) rollbackIds.add(item.id);
         }
       } catch (snapshotError) {
         rollbackErrors.push('canonical-reconcile:' + String(snapshotError?.message ?? snapshotError).slice(0, 220));
       }
       for (const id of [...rollbackIds].reverse()) {
+        const rollbackCommandId = 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48);
         try {
-          this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
-            commandId: 'hexis-hmx-rollback:' + hash(exportId + '\0' + String(stage.stagingId) + '\0' + id + '\0' + attempt).slice(0, 48),
+          const tokenRollback = this.memoryFabric.rollbackHmxImportMemory(
+            id,
+            hmxImportCompensationToken,
+            'hexis-hmx-apply-rollback',
+            { commandId: rollbackCommandId },
+          );
+          if (tokenRollback === true) continue;
+          const forgotten = this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
+            commandId: rollbackCommandId,
           });
+          if (forgotten !== true) rollbackErrors.push('canonical-rollback-refused:' + id);
         } catch (rollbackError) {
           rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
         }
@@ -693,6 +712,13 @@ export class HexisCanonicalMemoryProjector {
         } catch (temporalRollbackError) {
           rollbackErrors.push('temporal-ledger:' + String(temporalRollbackError?.message ?? temporalRollbackError).slice(0, 220));
         }
+      }
+      try {
+        if (this.memoryFabric.finishHmxImportRollback(hmxImportCompensationToken) !== true) {
+          rollbackErrors.push('canonical-import-compensation-finalize-failed');
+        }
+      } catch (importRollbackError) {
+        rollbackErrors.push('canonical-import-compensation-finalize:' + String(importRollbackError?.message ?? importRollbackError).slice(0, 220));
       }
       const reason = String(error?.message ?? error).slice(0, 500);
       throw new Error('hmx-canonical-apply-failed:' + reason + (rollbackErrors.length ? ';rollback-failures=' + rollbackErrors.join('|') : ''));
