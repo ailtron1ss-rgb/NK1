@@ -2728,3 +2728,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [FIX] Updated the valid CausalExperienceStream outcome fixture to include `lastAction` and a bounded `lastActionSuccess` matching the selected action and observed success score.
 - [SAFETY] Kept the production transition gate unchanged: causal evidence still requires an observed post-action state explicitly attributed to the decision.
 - [VALIDATION] The WorkPass110 workflow is triggered by the updated causal-stream test path; the next run must verify this fixture and continue through the remaining learning regressions/typecheck.
+
+
+## [NK1][Validation] WorkPass447 — preserve grounded runtime-outcome accounting (2026-10-27)
+
+- [FIX] Corrected two legacy external-evidence assertions to expect a grounded runtime-outcome count of zero. The external adapter still stores the unverified record and deduplicates its normalized trace identity, but it must not increment trusted outcome aggregates.
+- [SAFETY] Kept the existing evidence boundary intact: imported external records remain non-grounded and ineligible for policy replay/consolidation.
+- [VALIDATION] The WorkPass110 workflow is triggered by the causal-learning test path; the new runner result must confirm both the grounded positive case and external-evidence accounting.
