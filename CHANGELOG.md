@@ -1,3 +1,10 @@
+## [NK1][WorkPass507] Preserve unanswerable labels through retrieval experiment CLI (2026-10-27)
+
+- The benchmark engine already measured explicitly unanswerable queries, but the offline JSONL CLI rejected empty `relevantIds` and dropped the `answerable` label while parsing. As a result, users could not exercise the abstention gate through the supported file-based experiment path.
+- The CLI now accepts `answerable:false` only with an empty relevance list, keeps omitted/true answerability tied to at least one relevant ID, and fails closed on contradictory labels before publishing a report.
+- Expose answerable/unanswerable holdout counts in experiment output and include unsupported-retrieval / abstention metrics in cross-seed quality signatures. The synthetic regression includes four no-answer holdout rows and checks counts, metric consistency, and malformed-label rejection.
+- This proves CLI/benchmark plumbing only. The fixture remains synthetic; it does not prove real-world recall or abstention uplift and does not update the Release ZIP.
+
 ## [NK1][WorkPass506] Enforce planner memory budget across all cognitive recall paths (2026-10-27)
 
 - The advanced/internal-goal recall branch could run retrieval even when `cognitiveExecutionPlan.run.memory` was false, bypassing the cycle's own memory budget decision.
