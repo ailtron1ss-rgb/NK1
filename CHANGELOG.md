@@ -1,3 +1,10 @@
+## [NK1][WorkPass570] Persist cognitive memory state across restarts (2026-10-27)
+
+- Wire MemoryRetentionEconomy, MemoryCausalEconomy, CausalLifeGraph and MemoryWorldCausalBridge into MemorySubsystemRuntime snapshot/restore.
+- Add a round-trip regression that seeds learned retention weights, evidence-to-outcome lineage, autobiographical causal graph state and verified memory-to-world prediction evidence.
+- Register the regression in the runtime recovered-suite command.
+- Validation status: code and regression committed; execution/CI and Release ZIP refresh remain unverified.
+
 ## [NK1][Hexis] Surface immutable trace conflicts as HTTP 409 (2026-10-27)
 
 - Map `source-trace-id-conflict` to HTTP 409 Conflict while keeping missing canonical memory as 404 and malformed/invalid submissions as 400.
