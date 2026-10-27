@@ -1,3 +1,8 @@
+## [NK1][WorkPass461] Align external learning assertions with trusted-outcome semantics (2026-10-27)
+
+- Corrected the causal-experience regression to expect zero trusted runtime outcomes for external/imported events, including after deduplication, restore and quarantine. Imported rows remain queryable but cannot raise trusted outcome totals or learning aggregates until admitted through a grounded runtime transition.
+- This fixes an assertion mismatch; it does not weaken provenance, replay-admission or consolidation gates.
+
 ## [NK1][WorkPass460] Make trusted shadow scheduler Node strip-compatible (2026-10-27)
 
 - Replaced the constructor parameter property in `P23TrustedShadowLearningScheduler` with an explicit readonly field and assignment, so Node 24's `--experimental-strip-types` can load the module without a TypeScript transformation step.
