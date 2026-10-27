@@ -1,3 +1,11 @@
+## [NK1][WorkPass573] Make cross-task transfer evidence idempotent and restore-safe (2026-10-27)
+
+- Reject malformed transfer-probe IDs/context keys, control characters, out-of-range or non-finite scores, non-boolean verification flags, invalid timestamps, and restored rows whose delta does not agree with baseline/post-score.
+- Add a persisted 4,096-entry identity/fingerprint ledger. Exact retries are idempotent, conflicting reuse of an ID is rejected, and an evicted probe cannot earn repeat transfer credit after a restart while its ID remains in the bounded registry.
+- Keep the recorder honest about trust boundaries: payload identity is checked, but caller-supplied `independentVerified` and `holdout` attestations are not cryptographic proof of independence.
+- Extend the paired transfer regression and wire it, with the causal-stream suite, into the canonical `test:rebuild-recovered` aggregate.
+- No measured transfer uplift is claimed; this pass prevents duplicate and malformed evidence from inflating diagnostics.
+
 ## [NK1][WorkPass572] Keep causal life graph summaries coherent after direct mutations (2026-10-27)
 
 - Make standalone `CausalLifeGraph.upsertNode` recompute derived chain/evidence metrics by default, including updates to an existing node.
