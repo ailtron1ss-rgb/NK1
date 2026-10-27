@@ -112,6 +112,8 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: WorkPass439 optional-stage cognitive event lineage regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/cognitive-cycle-local-lineage-workpass41.mjs
       - name: WorkPass329 corrupt memory mutation receipt restore must fail closed
         run: npm --prefix runtime/neuro-kurisu run test:memory-lifecycle-command-workpass31
       - name: WorkPass328 restored outcome projection-index integrity

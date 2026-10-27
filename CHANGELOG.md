@@ -1,3 +1,9 @@
+## [NK1][WorkPass440] Wire cognitive-cycle lineage regression into core CI (2026-10-27)
+
+- Added the WorkPass41 causal-lineage regression as an explicit step in the core regression workflow immediately after runtime typecheck. It now exercises required and optional stage identity/edge checks on the same integration-head validation run.
+- The workflow already filters the runtime source/test trees and runs for pushes to the integration branch and pull requests targeting `workpass70-source`; no parallel test runner or separate package dependency was added.
+- Validation boundary: workflow and changelog edits are committed; the newly triggered exact-head run must execute the added step before this regression can be marked passing.
+
 ## [NK1][WorkPass439] Remove duplicate cognitive-cycle verifier (2026-10-27)
 
 - Removed the duplicate `verifyOperationalCycle` method from `CognitiveEventFabric`. The retained implementation validates required and supplied optional stage identities, same-tick ownership, per-cycle parent edges, and optional plan ancestry without letting unrelated old ring-buffer links invalidate a valid cycle.
