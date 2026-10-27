@@ -1639,6 +1639,7 @@
     "test:workpass49": "npm run typecheck && npm run test:workpass49:privacy && npm run test:workpass47:trait-salience",
     "test:workpass50": "npm run typecheck && node --experimental-strip-types tests/kurisu-interest-continuity-workpass50.mjs && node --experimental-strip-types tests/workpass50-autonomous-runtime-loop.mjs && node --experimental-strip-types tests/workpass50-autonomous-background-clock.mjs",
     "test:memory-query-intent-workpass51": "node --experimental-strip-types tests/memory-query-intent-workpass51.mjs",
+    "test:memory-autobiographical-recall-workpass568": "node --experimental-strip-types tests/memory-autobiographical-recall-goldset-workpass568.mjs",
     "test:temporal-credit-targeting-workpass51": "node --experimental-strip-types tests/big-pass-121-temporal-credit-targeting.mjs",
     "test:reafference-codec-workpass51": "node --experimental-strip-types tests/big-pass-123-reafference-evidence-codec.mjs",
     "test:reafference-integration-workpass51": "node --experimental-strip-types tests/big-pass-124-reafference-integration.mjs",
