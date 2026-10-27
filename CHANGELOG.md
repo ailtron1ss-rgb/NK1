@@ -1,3 +1,8 @@
+## [NK1][WorkPass480] Isolate host-owned authority regression conditions (2026-10-27)
+
+- The permissions regression intentionally made the executor group-writable, then left that permission in place for a later run-root identity test.
+- Restore the fixture executable to private mode after asserting permission rejection, so the following assertion exercises the root-identity guard rather than being pre-empted by the executable-permission guard. Runtime security checks are unchanged.
+
 ## [NK1][WorkPass477] Reconcile Hexis belief-dedupe fixture on integration head (2026-10-27)
 
 - The integration head still contained a stale duplicate request that omitted the route-required numeric `confidence01`, despite an earlier changelog entry claiming this fixture was corrected on another line.
