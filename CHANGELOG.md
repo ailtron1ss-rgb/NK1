@@ -1,3 +1,9 @@
+## [NK1][WorkPass494] Close the four-pass integration set through one release gate (2026-10-27)
+
+- Added `audit:nk1-integration-closure` to run the Hexis canonical-lineage + restart checks, the offline retrieval holdout experiment, the Mem0 adapter safety regressions and the authenticated disabled-provider HTTP smoke as one deterministic command.
+- Wired the closure command into `release:final`, avoiding separately repeated versions of those same checks.
+- This is a code-level release gate; passing it does not substitute for production DB migration, real browser/Live2D E2E, Android/Termux synchronization, endurance soak, independent retrieval uplift or license review.
+
 ## [NK1][WorkPass493] Port opt-in Mem0 Platform external recall onto canonical source (2026-10-27)
 
 - Ported the isolated Mem0 adapter from the divergent integration branch without importing that branch's unrelated runtime changes.
