@@ -1159,6 +1159,110 @@ assert.equal(
   'successful capacity trim must remove the evicted canonical row active belief projection',
 );
 
+// WorkPass439: rollback must also cover faults inside canonical encode, where
+// the transaction token is registered before a row reaches (or finishes indexing in)
+// the canonical array. The token list is authoritative even if createdIds stays empty.
+const createPartialInsertFixture = exportId => {
+  const runtime = new MemorySubsystemRuntime();
+  const ledger = new HexisAdaptationFabric();
+  const projector = new HexisCanonicalMemoryProjector(runtime.fabric, runtime.semanticMemory, ledger);
+  ledger.bindCanonicalMemoryApply(stage => projector.apply(stage));
+  const baselineContent = 'WP439 baseline memory must remain indexed after failed canonical insert.';
+  const baseline = runtime.fabric.encode({
+    content: baselineContent,
+    kind: 'episodic',
+    source: 'wp439-baseline',
+    tags: ['wp439'],
+    context: { fixture: 'wp439' },
+    salience: .62,
+    emotionalWeight: .12,
+    identityRelevance: .08,
+    goalRelevance: .14,
+    socialRelevance: .1,
+    predictionError: .02,
+    confidence: .73,
+    epistemicStatus: 'fact',
+    entities: [],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+  }, { commandId: 'wp439:baseline:' + exportId });
+  const stage = ledger.stageHmx({
+    document: makeHmxDocument(exportId, {
+      memories: [{
+        ref: exportId + ':fault-injected-row',
+        type: 'semantic',
+        content: 'WP439 partial insert must be removed on rollback.',
+        status: 'active',
+      }],
+    }),
+    intent: 'port',
+    strategy: 'additive',
+  });
+  assert.equal(ledger.decideHmx(stage.stagingId, 'accept')?.status, 'accepted');
+  return { runtime, ledger, stage, baseline, baselineContent };
+};
+
+// Fault before Array.unshift: MemoryOS2 has registered the ID in the opaque token,
+// but there is no canonical row for the projector's snapshot scan to discover.
+const preInsertFault = createPartialInsertFixture('exp_0000000000009439');
+const preInsertIds = preInsertFault.runtime.fabric.canonicalSnapshot().items.map(item => item.id).sort();
+const preInsertArray = preInsertFault.runtime.memoryOS.snapshot({ clone: false }).items;
+preInsertArray.unshift = function () {
+  delete preInsertArray.unshift;
+  throw new Error('injected-hmx-array-insert-failure');
+};
+assert.throws(
+  () => preInsertFault.ledger.decideHmx(preInsertFault.stage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-hmx-array-insert-failure/,
+);
+assert.deepEqual(
+  preInsertFault.runtime.fabric.canonicalSnapshot().items.map(item => item.id).sort(),
+  preInsertIds,
+  'token-owned IDs must be released even when canonical array insertion never happened',
+);
+assert.equal(
+  preInsertFault.runtime.fabric.retrieve(preInsertFault.baselineContent, 4).some(item => item.id === preInsertFault.baseline.id),
+  true,
+  'pre-insert rollback must preserve baseline retrieval indexes',
+);
+
+// Fault after canonical insertion and map registration, but before tokenIndex,
+// document-frequency and character-gram construction finish.
+const indexBuildFault = createPartialInsertFixture('exp_0000000000009440');
+const indexBuildIds = indexBuildFault.runtime.fabric.canonicalSnapshot().items.map(item => item.id).sort();
+const originalIndexItem = indexBuildFault.runtime.memoryOS.indexItem.bind(indexBuildFault.runtime.memoryOS);
+let injectedIndexBuildFailure = false;
+indexBuildFault.runtime.memoryOS.indexItem = item => {
+  if (String(item.context?.hexisExportId ?? '') === 'exp_0000000000009440') {
+    injectedIndexBuildFailure = true;
+    throw new Error('injected-hmx-index-build-failure');
+  }
+  return originalIndexItem(item);
+};
+assert.throws(
+  () => indexBuildFault.ledger.decideHmx(indexBuildFault.stage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-hmx-index-build-failure/,
+);
+delete indexBuildFault.runtime.memoryOS.indexItem;
+assert.equal(injectedIndexBuildFailure, true);
+assert.deepEqual(
+  indexBuildFault.runtime.fabric.canonicalSnapshot().items.map(item => item.id).sort(),
+  indexBuildIds,
+  'partially indexed HMX rows must be removed and all canonical indexes rebuilt from authority',
+);
+assert.equal(
+  indexBuildFault.runtime.fabric.snapshot().mutationReceipts.some(receipt => receipt.commandId.startsWith('hexis-hmx:')),
+  false,
+  'a failed import must not leave an encode receipt for a row that no longer exists',
+);
+assert.equal(
+  indexBuildFault.runtime.fabric.retrieve(indexBuildFault.baselineContent, 4).some(item => item.id === indexBuildFault.baseline.id),
+  true,
+  'post-rollback index rebuild must preserve baseline lexical retrieval',
+);
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
