@@ -1,3 +1,10 @@
+## [NK1][WorkPass445] Restore MemoryFabric wrapper allowlists over compensation-token API (2026-10-27)
+
+- Ported the latest base-line wrapper hardening onto the token-aware MemoryFabric: fixed action/target parameters now remain authoritative, while wrappers copy only supported metadata. The rollback wrapper no longer lets runtime-only context keys override `id`, `exportId`, `stagingId`, `attempt`, `reason`, or `action`.
+- Preserved the compensation token in the canonical `revise` and `updateSignals` wrappers so WorkPass442's expected-state sealing still applies to both status and trust changes. Removed an accidental duplicate `updateSignals` implementation introduced while reconciling the latest base.
+- Reattached `memory-lifecycle-command-workpass31.mjs` to the Hexis test command and both workflow path filters; this restores the C1 persisted-receipt regression after the base refresh had dropped it from the focused gate.
+- The protected-HMX rollback test now includes the upstream injection cases: ordinary `forgetById` cannot be turned into a scoped rollback, and extra JS context keys cannot override the positional rollback scope. Package JSON parses and source/path checks were inspected; runtime tests/typecheck/CI remain unverified, and `main`/Release ZIP are untouched.
+
 ## [NK1][WorkPass442] Seal HMX compensation at the canonical write boundary (2026-10-27)
 
 - Removed catch-time `refreshSignalCompensation`: rollback can no longer replace the expected-current seal with a snapshot taken after an unrelated write.
