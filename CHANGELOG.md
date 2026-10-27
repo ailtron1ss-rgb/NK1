@@ -1,3 +1,9 @@
+## [NK1][WorkPass441] Route maintenance hard-cap through canonical removal (2026-10-27)
+
+- Removed the remaining direct `items.slice(0, 1600)` mutation at the end of MemoryOS2.maintain(). The maintenance hard cap now uses the shared canonical remover, keeping itemIndex, exact/content dedup indexes, token postings, document frequencies, character-gram postings, byte accounting and retrieval caches aligned.
+- Added a regression that restores 1,601 deliberately protected rows, runs maintenance under a 1,600-row hard cap, and asserts both the oldest row's eviction and `indexDiagnostics().pass === true`. The conflict-scan timestamp is pinned forward in the fixture so the test does not depend on wall-clock execution speed.
+- Runtime tests and TypeScript typecheck remain unexecuted pending default-branch CI activation via PR #251.
+
 ## [NK1][WorkPass440] Invalidate semantic support cache on canonical removal (2026-10-27)
 
 - The shared canonical row-removal path now clears MemoryOS2's semantic-support cache, cached semantic embedding, and embedding retry entry. Removing a row can alter inbound semantic/causal support even when the legacy `linkUpdates` counter does not advance, and stale embeddings/retries should not persist for dead IDs.
