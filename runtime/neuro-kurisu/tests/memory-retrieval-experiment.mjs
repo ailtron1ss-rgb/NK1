@@ -131,6 +131,46 @@ try {
   assert.equal(emitted.promotion.allowed, false);
   assert.equal(emitted.runs.every(row => Array.isArray(row.failedPromotionGates) && typeof row.mrrConfidenceNonInferioritySupported === 'boolean'), true);
   assert.equal((await readdir(temp)).some(name => name.endsWith('.tmp')), false, 'successful publication must clean temporary output files');
+
+  // The real CLI must preserve explicit no-answer labels so abstention safety gates
+  // use labelled ground truth rather than inferring answerability from empty results.
+  const unanswerableExamples = [
+    ...examples,
+    ...Array.from({ length: 4 }, (_, index) => ({
+      id: `unanswerable-holdout-${index + 1}`,
+      query: `qzxv glarpen unikora source ${index + 1} 9xq`,
+      relevantIds: [],
+      split: 'holdout',
+      answerable: false,
+    })),
+  ];
+  const unanswerableLabelsPath = path.join(temp, 'labels-with-unanswerable.jsonl');
+  const unanswerableReportPath = path.join(temp, 'report-with-unanswerable.json');
+  await writeFile(unanswerableLabelsPath, `${unanswerableExamples.map(row => JSON.stringify(row)).join('\\n')}\\n`);
+  const abstentionCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', unanswerableLabelsPath, '--provenance', provenancePath, '--out', unanswerableReportPath, '--seeds', '13,29,53', '--k', '5', '--now', String(now)], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(abstentionCli.status, 0, `CLI rejected valid unanswerable labels: ${abstentionCli.stderr}\\n${abstentionCli.stdout}`);
+  const abstentionReport = JSON.parse(await readFile(unanswerableReportPath, 'utf8'));
+  assert.equal(abstentionReport.input.labelRowsParsed, unanswerableExamples.length);
+  assert.equal(abstentionReport.holdoutQueries, 12);
+  assert.equal(abstentionReport.runs.every(row => row.candidateHoldout.unanswerableQueries === 4), true);
+  assert.equal(abstentionReport.runs.every(row => row.candidateHoldout.answerableQueries === 8), true);
+  assert.equal(abstentionReport.runs.every(row => !row.failedPromotionGates.includes('sufficientUnanswerableEvidence')), true);
+  assert.equal(abstentionReport.runs.every(row =>
+    Math.abs(row.candidateHoldout.correctAbstentionRate01 + row.candidateHoldout.unsupportedRetrievalRate01 - 1) < 1e-12
+  ), true, 'candidate abstention and unsupported-retrieval rates must be complements over labelled unanswerable holdout');
+  assert.equal(abstentionReport.promotion.allowed, false, 'CLI abstention support must not permit automatic promotion');
+
+  // An unanswerable row with a relevance label is contradictory and must fail closed.
+  const invalidUnanswerableLabelsPath = path.join(temp, 'invalid-unanswerable-labels.jsonl');
+  const invalidUnanswerableReportPath = path.join(temp, 'invalid-unanswerable-report.json');
+  await writeFile(invalidUnanswerableLabelsPath, `${JSON.stringify({
+    id: 'invalid-unanswerable-001', query: 'explicitly unanswerable but labelled',
+    relevantIds: ['m0'], split: 'holdout', answerable: false,
+  })}\\n`);
+  const invalidUnanswerableCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidUnanswerableLabelsPath, '--provenance', provenancePath, '--out', invalidUnanswerableReportPath], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(invalidUnanswerableCli.status, 2);
+  assert.match(invalidUnanswerableCli.stderr, /labels-invalid-relevantIds-line:1/);
+  assert.equal((await readdir(temp)).includes('invalid-unanswerable-report.json'), false, 'invalid no-answer labels must fail before report publication');
   const overwrite = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', labelsPath, '--provenance', provenancePath, '--out', reportPath, '--seeds', '13,29,53', '--now', String(now)], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(overwrite.status, 2, 'CLI must not silently overwrite a report');
   assert.match(overwrite.stderr, /MEMORY_EXPERIMENT_FAILED/);
