@@ -1,3 +1,9 @@
+## [NK1][WorkPass451] Ground causal replay fixtures in observed action transitions (2026-10-27)
+
+- Updated the WorkPass115 replay fixture to give each trace a valid pre-action world tick and each resulting state a strictly later tick, with an explicit `lastAction` and `lastActionSuccess` matching the selected action and verifier-style outcome input.
+- This preserves the production rule that only an observed, action-attributed transition can mint grounded causal evidence. The previous fixture omitted those fields, so all 24 supposed outcomes were correctly rejected and the downstream replay sample-count assertion failed.
+- Exact-head causal replay and rebuild regressions must re-run; no runtime learning uplift is claimed from this fixture correction.
+
 ## [NK1][WorkPass450] Remove duplicate evaluator binding in WorkPass203 test (2026-10-27)
 
 - Renamed the WorkPass214 authority-snapshot evaluator/result variables so they no longer collide with the earlier WorkPass203 snapshot-mutation test in the same `.mjs` module.
