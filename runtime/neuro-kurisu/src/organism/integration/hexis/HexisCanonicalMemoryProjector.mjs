@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { isSafeJsonTree, isValidHmxStageDigest } from './HexisStageIntegrity.mjs';
+import { MAX_CANONICAL_MEMORY_ITEMS } from '../../developmental/MemoryOS2.ts';
 
 const clamp01 = value => Math.max(0, Math.min(1, Number.isFinite(Number(value)) ? Number(value) : 0));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -583,6 +584,22 @@ export class HexisCanonicalMemoryProjector {
             trust01: clamp01(memory.sourceAuthority01 ?? memory.confidence),
             at: dateMs(memory.observedAt) ?? appliedAt,
           });
+        }
+      }
+
+      // Predict the exact tail rows that MemoryOS2 will evict at commit. Withdraw
+      // their derived semantic nodes and active belief mirrors before the canonical
+      // trim; if commit later fails, the transaction catch restores both snapshots.
+      const canonicalBeforeCapacityCommit = this.memoryFabric.canonicalSnapshot().items ?? [];
+      const capacityEvictions = canonicalBeforeCapacityCommit.length > MAX_CANONICAL_MEMORY_ITEMS
+        ? canonicalBeforeCapacityCommit.slice(MAX_CANONICAL_MEMORY_ITEMS)
+        : [];
+      for (const evicted of capacityEvictions) {
+        const evictedSourceKey = asText(evicted.context?.hexisGraphSourceKey, 512) ||
+          (String(evicted.source ?? '').startsWith('hexis:') ? String(evicted.source) : '');
+        if (evictedSourceKey) this.removeSemanticProjection(evictedSourceKey);
+        if (this.temporalLedger && typeof this.temporalLedger.removeBeliefProjection === 'function') {
+          this.temporalLedger.removeBeliefProjection(String(evicted.id));
         }
       }
 
