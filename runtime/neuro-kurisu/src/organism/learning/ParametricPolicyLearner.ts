@@ -167,7 +167,7 @@ export class ParametricPolicyLearner{
     const zDerivative=Math.max(.05, 2*before*(1-before));
     // Context hinge features add a basis without shrinking every existing feature's learning step.
     const contextFeatureStart=featureNames.indexOf('energyBelowHalf');
-    const norm=0.25+x.reduce((sum,v,i)=>sum+v*v*(i>=contextFeatureStart?.25:1),0);
+    const norm=0.25+x.reduce((sum,v,i)=>sum+v*v*(i >= contextFeatureStart ? 0.25 : 1),0);
     const step=lr*error*zDerivative/norm;
     for(let i=0;i<w.length;i++) w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
     this.state.bias[input.action]=Math.max(-4,Math.min(4,(this.state.bias[input.action]??0)+step));
@@ -195,7 +195,7 @@ export class ParametricPolicyLearner{
     const lr=Math.max(.002,Math.min(.25,requestedRate))*Math.max(.05,Math.min(1,requestedWeight));
     // Keep the appended context basis from attenuating all legacy-feature updates.
     const contextFeatureStart=featureNames.indexOf('energyBelowHalf');
-    const derivative=Math.max(.05,2*before*(1-before)), norm=.25+x.reduce((sum,v,i)=>sum+v*v*(i>=contextFeatureStart?.25:1),0), step=lr*error*derivative/norm;
+    const derivative=Math.max(.05,2*before*(1-before)), norm=.25+x.reduce((sum,v,i)=>sum+v*v*(i >= contextFeatureStart ? 0.25 : 1),0), step=lr*error*derivative/norm;
     for(let i=0;i<w.length;i++)w[i]=Math.max(-4,Math.min(4,w[i]+step*x[i]));
     this.state.bias[input.action]=Math.max(-4,Math.min(4,(this.state.bias[input.action]??0)+step));
     const after=this.predictFromFeatures(x,input.action); this.state.updates++;
