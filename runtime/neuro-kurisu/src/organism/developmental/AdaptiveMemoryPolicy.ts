@@ -27,9 +27,9 @@ export class AdaptiveMemoryPolicy {
    const record=(value:unknown):Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?value as Record<string,unknown>:{};
    const isPolicy=(value:unknown):value is MemoryPolicyName=>typeof value==='string'&&names.includes(value as MemoryPolicyName);
    const isContextKey=(key:string)=>key.length>0&&key.length<=96&&!['__proto__','prototype','constructor'].includes(key)&&/^[A-Za-z0-9_.:-]+$/.test(key);
-   const boundedNumber=(value:unknown,mode:'unit'|'count',fallback:number):number=>{
+   const boundedNumber=(value:unknown,mode:'unit'|'count'|'timestamp',fallback:number):number=>{
      if(typeof value!=='number'||!Number.isFinite(value))return fallback;
-     return mode==='unit'?clamp(value):Math.max(0,Math.min(10000,Math.floor(value)));
+     return mode==='unit'?clamp(value):mode==='count'?Math.max(0,Math.min(10000,Math.floor(value))):Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,Math.floor(value)));
    };
    const normalizeRow=(value:unknown,fallback:Record<MemoryPolicyName,number>,mode:'unit'|'count')=>{
      const source=record(value);
@@ -52,7 +52,7 @@ export class AdaptiveMemoryPolicy {
      contextValue[key]=normalizeRow(rawContextValue[key],blank(),'unit');
      contextTrials[key]=normalizeRow(rawContextTrials[key],blank(),'count');
    }
-   const cooldownUntil=boundedNumber(source.cooldownUntil,'count',d.cooldownUntil);
+   const cooldownUntil=boundedNumber(source.cooldownUntil,'timestamp',d.cooldownUntil);
    const lastContextKey=typeof source.lastContextKey==='string'&&isContextKey(source.lastContextKey)?source.lastContextKey:d.lastContextKey;
    this.state={
      version:2,weights,trials,reward,contextValue,contextTrials,
