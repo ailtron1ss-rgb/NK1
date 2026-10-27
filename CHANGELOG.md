@@ -1,3 +1,9 @@
+## [NK1][WorkPass466] Verify successful status and authority byte accounting (2026-10-27)
+
+- Added an independent test-side implementation of MemoryOS's bounded revision-history byte estimate. After an injected post-write failure is rolled back, each regression retries the same accepted HMX stage; the successful status or authority update must change `estimatedBytes` by exactly `estimate(after) - estimate(before)`.
+- This guards the fix where `recordRevision()` already updates the byte counter; lifecycle writes now reconcile once against their transaction-start snapshot rather than applying a second delta to an intermediate estimate.
+- Test source is present; runtime execution, typecheck and hosted CI remain unconfirmed. `main` and the canonical GitHub Release ZIP are unchanged.
+
 ## [NK1][WorkPass465] Reconcile MemoryOS byte totals after atomic lifecycle writes (2026-10-27)
 
 - Status and trust/signal mutation paths now recompute `estimatedBytes` from the transaction-start item snapshot and the final item, rather than mixing an intermediate `recordRevision()` adjustment with a second full-row delta. This avoids double-counting revision-history growth.
