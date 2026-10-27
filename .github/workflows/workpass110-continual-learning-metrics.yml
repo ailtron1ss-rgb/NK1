@@ -82,6 +82,9 @@ on:
       - 'CHANGELOG.md'
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/tests/memory-embedding-vector-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts'
       - 'runtime/neuro-kurisu/tests/p23-hermes-verified-evidence-binding.mjs'
@@ -153,6 +156,9 @@ on:
       - 'CHANGELOG.md'
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/tests/memory-embedding-vector-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts'
       - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
@@ -327,6 +333,12 @@ jobs:
       - name: Validate P23 persisted learning restore integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass310:p23-restore-integrity
+      - name: Validate embedding vector integrity and lexical fallback
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-embedding-vector-integrity
+      - name: Run deterministic memory retrieval experiment contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-experiment
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
