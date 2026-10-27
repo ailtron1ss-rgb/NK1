@@ -1,3 +1,13 @@
+## [NK1][WorkPass459] Restore canonical Hexis test suite with envelope limit regression (2026-10-27)
+
+- Restored the Hexis adaptation regression to a single canonical test body and kept the new full-document UTF-8 size-limit case alongside the existing section-size and normalized-export checks.
+- The regression asserts that an envelope above 8 MiB cannot retain parsed memory sections or be accepted. Exact-head Actions must run before this is marked validated.
+
+## [NK1][WorkPass457] Fail closed on inconsistent restored cognitive-cycle counters (2026-10-27)
+
+- `UnifiedCognitiveCycle.restore` now prevents a persisted `lastComplete=true` from being trusted when explicit complete/incomplete/broken-lineage counters are internally inconsistent.
+- The existing WorkPass287 regression covers a snapshot with 10 cycles, 8 complete, 8 incomplete and 7 broken lineages; the restored totals are reconciled conservatively and the latest cycle is not reported as complete.
+
 ## [NK1][WorkPass436] Restore real Node.js type coverage in runtime CI (2026-10-27)
 
 - Added a pinned `@types/node` dev dependency to the runtime package and locked `@types/node@22.20.4` plus its `undici-types@6.21.0` dependency using the repository's existing app lock metadata.
