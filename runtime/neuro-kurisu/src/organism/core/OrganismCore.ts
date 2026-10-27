@@ -11079,9 +11079,9 @@ export class OrganismCore {
         return this.developmentalNeural.p23Learning.stageVerifiedSkillCandidate(proposal, skill);
     }
     /** Trusted execution supervisor hook: persist run context before accepting any signed shadow receipt. */
-    registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext): void {
+    registerTrustedSkillShadowRun(context: TrustedShadowExecutionContext) {
         if (!this.verifiedSkillShadowRunRegistry) throw new Error('trusted skill shadow registry is not configured');
-        this.verifiedSkillShadowRunRegistry.register(context);
+        return this.verifiedSkillShadowRunRegistry.register(context);
     }
     /** Promotion is possible only with a valid detached signature from a configured trusted authority. */
     approveVerifiedSkillCandidate(candidateId: string, approval: SkillPromotionApproval, minShadowRuns = 3) {
