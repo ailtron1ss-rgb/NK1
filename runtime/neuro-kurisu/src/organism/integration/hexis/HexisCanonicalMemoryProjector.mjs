@@ -231,6 +231,12 @@ export class HexisCanonicalMemoryProjector {
 
   removeSemanticProjection(sourceKey, mutationToken) {
     if (!this.semanticGraph) return;
+    // Prefer a source-scoped write so withdrawing one HMX projection never replaces
+    // the whole graph and accidentally drops unrelated nodes/edges.
+    if (typeof this.semanticGraph.removeSourceProjection === 'function') {
+      this.semanticGraph.removeSourceProjection(sourceKey, mutationToken);
+      return;
+    }
     const snapshot = this.semanticGraph.snapshot();
     const removed = new Set(snapshot.nodes
       .filter(node => String(node.sourceKey ?? '') === String(sourceKey ?? ''))
