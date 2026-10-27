@@ -9,11 +9,13 @@ const normalize=(s:string)=>s.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu,'').tr
 export class SemanticMemoryGraph {
   private state: SemanticGraphState={nodes:[],edges:[],updates:0};
   private mutationRevision=0;
-  private readonly mutationJournal:Array<{revision:number;ownerToken:string|null;undo?:()=>boolean;undone?:boolean}>=[];
-  private recordMutation(ownerToken?:string,undo?:()=>boolean):void {
+  private readonly mutationJournal:Array<{revision:number;ownerToken:string|null;global?:boolean;undo?:()=>boolean;undone?:boolean}>=[];
+  private recordMutation(ownerToken?:string,undo?:()=>boolean,global=false):number {
     const token=typeof ownerToken==='string'&&ownerToken?ownerToken:null;
-    this.mutationJournal.push({revision:++this.mutationRevision,ownerToken:token,...(token&&undo?{undo}:{}),undone:false});
+    const revision=++this.mutationRevision;
+    this.mutationJournal.push({revision,ownerToken:token,...(global?{global:true}:{}),...(token&&undo?{undo}:{}),undone:false});
     if(this.mutationJournal.length>8192)this.mutationJournal.splice(0,this.mutationJournal.length-8192);
+    return revision;
   }
   mutationCheckpoint():number { return this.mutationRevision; }
   private hasForeignMutationSince(checkpoint:number,ownerToken:string):boolean {
@@ -22,6 +24,13 @@ export class SemanticMemoryGraph {
     // Missing journal history is ambiguous, so rollback fails closed.
     if(earliest!==undefined&&checkpoint<earliest-1)return true;
     return this.mutationJournal.some(entry=>entry.revision>checkpoint&&entry.ownerToken!==ownerToken);
+  }
+  private hasForeignGlobalMutationAfter(revision:number,ownerToken:string):boolean {
+    if(!Number.isSafeInteger(revision)||revision<=0||revision>this.mutationRevision)return true;
+    const earliest=this.mutationJournal[0]?.revision;
+    // If the relevant journal window has fallen out, the restore boundary is unknown.
+    if(earliest!==undefined&&revision<earliest-1)return true;
+    return this.mutationJournal.some(entry=>entry.revision>revision&&entry.ownerToken!==ownerToken&&entry.global===true);
   }
   rollbackOwnedMutations(checkpoint:number,ownerToken:string):{rolledBack:number;conflicts:number;historyLost:boolean} {
     const earliest=this.mutationJournal[0]?.revision;
@@ -48,7 +57,7 @@ export class SemanticMemoryGraph {
   restore(state:SemanticGraphState|undefined,ownerToken?:string):void {
     if(state){
       this.state={nodes:Array.isArray(state.nodes)?state.nodes.slice(0,1000):[],edges:Array.isArray(state.edges)?state.edges.slice(0,2200):[],updates:Number(state.updates||0)};
-      this.recordMutation(ownerToken);
+      this.recordMutation(ownerToken,undefined,true);
     }
   }
   upsertNode(label:string,type:SemanticNode['type'],salience:number,sourceKey='',ownerToken?:string):SemanticNode {
@@ -60,7 +69,9 @@ export class SemanticMemoryGraph {
       const before=structuredClone(existing);
       existing.salience=clamp(existing.salience*.82+salience*.18); existing.lastSeen=now;
       const after=structuredClone(existing);
-      this.recordMutation(ownerToken,()=> {
+      let ownerRevision=0;
+      ownerRevision=this.recordMutation(ownerToken,()=> {
+        if(ownerToken&&this.hasForeignGlobalMutationAfter(ownerRevision,ownerToken))return false;
         const current=this.state.nodes.find(node=>node.id===after.id);
         if(!current||JSON.stringify(current)!==JSON.stringify(after))return false;
         const index=this.state.nodes.findIndex(node=>node.id===after.id);
@@ -77,7 +88,9 @@ export class SemanticMemoryGraph {
     const evicted=before.filter(item=>!nextIds.has(item.id)).map(item=>structuredClone(item));
     this.state.nodes=next;
     const after=structuredClone(node);
-    this.recordMutation(ownerToken,()=> {
+    let ownerRevision=0;
+    ownerRevision=this.recordMutation(ownerToken,()=> {
+      if(ownerToken&&this.hasForeignGlobalMutationAfter(ownerRevision,ownerToken))return false;
       const current=this.state.nodes.find(item=>item.id===after.id);
       if(!current||JSON.stringify(current)!==JSON.stringify(after))return false;
       const candidate=this.state.nodes.filter(item=>item.id!==after.id);
@@ -96,7 +109,9 @@ export class SemanticMemoryGraph {
       const before=structuredClone(existing);
       existing.weight=clamp(existing.weight*.78+weight*.22); existing.lastSeen=now;
       const after=structuredClone(existing);
-      this.recordMutation(ownerToken,()=> {
+      let ownerRevision=0;
+      ownerRevision=this.recordMutation(ownerToken,()=> {
+        if(ownerToken&&this.hasForeignGlobalMutationAfter(ownerRevision,ownerToken))return false;
         const current=this.state.edges.find(edge=>edge.id===after.id);
         if(!current||JSON.stringify(current)!==JSON.stringify(after))return false;
         const index=this.state.edges.findIndex(edge=>edge.id===after.id);
@@ -112,7 +127,9 @@ export class SemanticMemoryGraph {
     const evicted=before.filter(item=>!nextIds.has(item.id)).map(item=>structuredClone(item));
     this.state.edges=next;
     const after=structuredClone(edge);
-    this.recordMutation(ownerToken,()=> {
+    let ownerRevision=0;
+    ownerRevision=this.recordMutation(ownerToken,()=> {
+      if(ownerToken&&this.hasForeignGlobalMutationAfter(ownerRevision,ownerToken))return false;
       const current=this.state.edges.find(item=>item.id===after.id);
       if(!current||JSON.stringify(current)!==JSON.stringify(after))return false;
       const candidate=this.state.edges.filter(item=>item.id!==after.id);
@@ -135,7 +152,9 @@ export class SemanticMemoryGraph {
     const removedEdges=this.state.edges.filter(edge=>removed.has(edge.from)||removed.has(edge.to)).map(edge=>structuredClone(edge));
     this.state.nodes=this.state.nodes.filter(node=>!removed.has(node.id));
     this.state.edges=this.state.edges.filter(edge=>!removed.has(edge.from)&&!removed.has(edge.to));
-    this.recordMutation(ownerToken,()=> {
+    let ownerRevision=0;
+    ownerRevision=this.recordMutation(ownerToken,()=> {
+      if(ownerToken&&this.hasForeignGlobalMutationAfter(ownerRevision,ownerToken))return false;
       for(const old of removedNodes){
         const current=this.state.nodes.find(node=>node.id===old.id);
         if(current&&JSON.stringify(current)!==JSON.stringify(old))return false;
