@@ -8,20 +8,44 @@ const normalize=(s:string)=>s.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu,'').tr
 
 export class SemanticMemoryGraph {
   private state: SemanticGraphState={nodes:[],edges:[],updates:0};
-  restore(state:SemanticGraphState|undefined):void { if(state) this.state={nodes:Array.isArray(state.nodes)?state.nodes.slice(0,1000):[],edges:Array.isArray(state.edges)?state.edges.slice(0,2200):[],updates:Number(state.updates||0)}; }
-  upsertNode(label:string,type:SemanticNode['type'],salience:number,sourceKey=''):SemanticNode {
+  private mutationRevision=0;
+  private readonly mutationJournal:Array<{revision:number;ownerToken:string|null}>=[];
+  private recordMutation(ownerToken?:string):void {
+    this.mutationJournal.push({revision:++this.mutationRevision,ownerToken:typeof ownerToken==='string'&&ownerToken?ownerToken:null});
+    if(this.mutationJournal.length>8192)this.mutationJournal.splice(0,this.mutationJournal.length-8192);
+  }
+  mutationCheckpoint():number { return this.mutationRevision; }
+  private hasForeignMutationSince(checkpoint:number,ownerToken:string):boolean {
+    if(!Number.isSafeInteger(checkpoint)||checkpoint<0||checkpoint>this.mutationRevision)return true;
+    const earliest=this.mutationJournal[0]?.revision;
+    // Missing journal history is ambiguous, so rollback fails closed.
+    if(earliest!==undefined&&checkpoint<earliest-1)return true;
+    return this.mutationJournal.some(entry=>entry.revision>checkpoint&&entry.ownerToken!==ownerToken);
+  }
+  restoreIfUnchanged(state:SemanticGraphState|undefined,checkpoint:number,ownerToken:string):boolean {
+    if(this.hasForeignMutationSince(checkpoint,ownerToken))return false;
+    this.restore(state,ownerToken);
+    return true;
+  }
+  restore(state:SemanticGraphState|undefined,ownerToken?:string):void {
+    if(state){
+      this.state={nodes:Array.isArray(state.nodes)?state.nodes.slice(0,1000):[],edges:Array.isArray(state.edges)?state.edges.slice(0,2200):[],updates:Number(state.updates||0)};
+      this.recordMutation(ownerToken);
+    }
+  }
+  upsertNode(label:string,type:SemanticNode['type'],salience:number,sourceKey='',ownerToken?:string):SemanticNode {
     const clean=normalize(label); if(!clean) throw new Error('semantic-node-empty');
     const namespace=String(sourceKey??'').trim().slice(0,160);
     const existing=this.state.nodes.find(n=>n.label===clean&&n.type===type&&String(n.sourceKey??'')===namespace);
     const now=Date.now();
-    if(existing){ existing.salience=clamp(existing.salience*.82+salience*.18); existing.lastSeen=now; return structuredClone(existing); }
+    if(existing){ existing.salience=clamp(existing.salience*.82+salience*.18); existing.lastSeen=now; this.recordMutation(ownerToken); return structuredClone(existing); }
     const node:SemanticNode={id:randomUUID(),label:clean,type,salience:clamp(salience),lastSeen:now,...(namespace?{sourceKey:namespace}:{})};
-    this.state.nodes=[node,...this.state.nodes].sort((a,b)=>b.salience-a.salience).slice(0,1000); return structuredClone(node);
+    this.state.nodes=[node,...this.state.nodes].sort((a,b)=>b.salience-a.salience).slice(0,1000); this.recordMutation(ownerToken); return structuredClone(node);
   }
-  connect(from:string,to:string,relation:SemanticEdge['relation'],weight:number):SemanticEdge {
+  connect(from:string,to:string,relation:SemanticEdge['relation'],weight:number,ownerToken?:string):SemanticEdge {
     const existing=this.state.edges.find(e=>e.from===from&&e.to===to&&e.relation===relation); const now=Date.now();
-    if(existing){ existing.weight=clamp(existing.weight*.78+weight*.22); existing.lastSeen=now; return structuredClone(existing); }
-    const edge={id:randomUUID(),from,to,relation,weight:clamp(weight),lastSeen:now}; this.state.edges=[edge,...this.state.edges].slice(0,2200); return structuredClone(edge);
+    if(existing){ existing.weight=clamp(existing.weight*.78+weight*.22); existing.lastSeen=now; this.recordMutation(ownerToken); return structuredClone(existing); }
+    const edge={id:randomUUID(),from,to,relation,weight:clamp(weight),lastSeen:now}; this.state.edges=[edge,...this.state.edges].slice(0,2200); this.recordMutation(ownerToken); return structuredClone(edge);
   }
   ingestEpisode(summary:string, goalTitle?:string, location?:string):void {
     const episode=this.upsertNode(summary,'episode',.62);
