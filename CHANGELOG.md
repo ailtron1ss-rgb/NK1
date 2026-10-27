@@ -2430,3 +2430,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
 - Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
 - No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
+
+## [NK1][Hexis] Persist immutable trace conflict telemetry (2026-10-27)
+
+- Count attempts to reuse an immutable `SourceMonitor` trace ID with conflicting provenance, without replacing the first accepted observation.
+- Expose `sourceTraceConflicts` in Hexis diagnostics and flush on HTTP 409 so the audit count survives process restart.
+- Extend live smoke coverage for exact replay (no false conflict), one conflict increment, original trace replay, and restart persistence.
+- Verification is tied to this PR's focused source-lineage workflow; Release ZIP remains unchanged.
