@@ -1,3 +1,10 @@
+## [NK1][WorkPass459] Harden bounded-journal and exception compensation (2026-10-27)
+
+- Temporal assertion writes now capture rows evicted at the 4096-entry bound and can restore those exact rows on owned rollback when no foreign write makes that unsafe. The standard under-capacity undo avoids scanning the full mutation journal.
+- Snapshot-restore exceptions no longer skip per-record rollback: the projector records the adapter error and still attempts owner-token compensation for graph/temporal deltas; failures of the selective rollback path are reported separately.
+- Added regressions for an exception during full-snapshot compensation and for saturation of both 8192-entry journals. The saturation tests require explicit `historyLost`/partial status and verify the retained undo records unwind in reverse while capacity-evicted baseline history is restored when its receipt remains available.
+- Static source checks only; hosted runtime tests, typecheck and CI remain unconfirmed. `main` and the canonical GitHub Release ZIP remain untouched.
+
 ## [NK1][WorkPass461] Repair learning retrieval and verified dataset type contracts (2026-10-27)
 
 - `SkillRetrievalAugmentation.retrieveSkills()` now accepts the optional `now` and `limit` values it already receives from `SkillRetrievalQuery`, while retaining finite-number fallback behavior.
