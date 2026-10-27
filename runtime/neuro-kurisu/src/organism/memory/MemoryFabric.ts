@@ -643,7 +643,15 @@ export class MemoryFabric {
       !Number.isSafeInteger(attempt)||attempt<1){
       throw new TypeError('memory-lifecycle-hmx-rollback-input-invalid');
     }
-    return this.applyLifecycleCommand({action:'rollback-created',id,exportId,stagingId,attempt,reason,...context}) as boolean;
+    // The scope arguments are authority-bearing. Only copy the explicitly supported
+    // execution metadata from context; a JavaScript caller can pass extra runtime keys
+    // despite the TypeScript shape, and must not be able to override id/export/stage/attempt.
+    const commandContext=context&&typeof context==='object'?context:{};
+    return this.applyLifecycleCommand({
+      action:'rollback-created',id,exportId,stagingId,attempt,reason,
+      ...(commandContext.commandId!==undefined?{commandId:commandContext.commandId}:{}),
+      ...(commandContext.tick!==undefined?{tick:commandContext.tick}:{}),
+    }) as boolean;
   }
 
   canonicalSize(){return this.memoryOS.size();}
