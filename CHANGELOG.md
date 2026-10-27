@@ -1,3 +1,11 @@
+## [NK1][WorkPass465] Close additional source CI regression defects (2026-10-27)
+
+- Fixed a duplicate `snapshotResult` declaration in the independent candidate evaluator regression discovered by the runtime script-integrity audit.
+- Updated the versioned skill candidate-store regression to pass the current rollback approval object contract and use an explicit test-only rollback verifier.
+- Adjusted authenticated promotion/rollback signature verification to validate the PEM as Ed25519 and pass the PEM string to the minimal verifier API, removing a stale custom-shim type mismatch without weakening signature checks.
+- **Still open:** P23 restore does not preserve the newest processed-trace ID at the front of its bounded restored cache; P99 still assumes an exact replay batch count despite adaptive selection; runtime typecheck still reports Core nullability/registrar and incomplete Node shim errors. These are not marked fixed.
+- Latest edits require fresh exact-head CI. No retrieval/learning uplift is claimed; `main` and the published Release ZIP are unchanged.
+
 ## [NK1][WorkPass464] Repair cognitive scoring, replay evidence fixtures and Live2D expression stability (2026-10-27)
 
 - Rebalanced B272 predicted goal value to avoid saturation masking a high-confidence intrinsic-drive signal; the WorkPass287–288 contract run passed on the preceding integrated head.
