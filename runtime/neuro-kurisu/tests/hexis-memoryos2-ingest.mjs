@@ -29,7 +29,7 @@ const evidence = {
   sourceKind: 'tool_receipt',
   stance: 'refutes',
   observedAt: 1_798_000_000_000,
-  independenceKey: 'tool-run:independent-1',
+  independenceKey: 'TOOL-RUN:INDEPENDENT-1',
   authority01: 0.9,
   confidenceBefore: 0.8,
   confidenceAfter: 0.2,
