@@ -1,3 +1,9 @@
+## [NK1][WorkPass435] Cover post-mutation trust-signal receipt failure (2026-10-27)
+
+- Added the matching fault-injection regression for `updateSignals`: mutate canonical trust/provenance fields, then throw while appending the lifecycle event before the receipt is persisted.
+- The test exercises the existing opaque compensation token and verifies exact restoration of confidence, salience, evidence provenance, last-access time, and revision history.
+- Coverage is included in the existing `test:hexis-canonical-apply` script via `memory-lifecycle-command-workpass31.mjs`. Runtime tests/typecheck remain unverified because this environment cannot resolve GitHub for a local checkout and no exact-head CI run is available.
+
 ## [NK1][WorkPass434] Cover post-mutation failure before receipt persistence (2026-10-27)
 
 - Added a targeted MemoryFabric regression that injects a lifecycle-event append failure after the canonical status is changed but before its mutation receipt is persisted.
