@@ -1152,6 +1152,10 @@ export class MemoryOS2{
   capture.createdIds.set(item.id,commandId);
   return true;
  }
+ hmxImportCompensationIds(token:object):string[]{
+  const capture=this.hmxImportCompensationSnapshots.get(token);
+  return capture?[...capture.createdIds.keys()]:[];
+ }
  hmxImportRollbackCommandId(id:string,token:object):string|null{
   const capture=this.hmxImportCompensationSnapshots.get(token);
   return capture?.createdIds.get(String(id))??null;
@@ -1161,14 +1165,27 @@ export class MemoryOS2{
   const capture=this.hmxImportCompensationSnapshots.get(token);
   const commandId=capture?.createdIds.get(key);
   if(!capture||!commandId)return null;
-  const current=this.itemIndex.get(key);
+  const indexed=this.itemIndex.get(key);
+  const current=this.state.items.find(item=>item.id===key);
   if(current&&(
    !String(current.source??'').startsWith('hexis:')||
    String(current.context?.hexisExportId??'')!==capture.exportId||
    String(current.context?.hexisStagingId??'')!==capture.stagingId
   ))return {removed:false,commandId};
+  if(!current&&indexed){
+   // A failed canonical insert may leave a stale index entry even though the
+   // authoritative item array no longer contains the row. Rebuild from authority.
+   this.restore(this.snapshot(),{allowOverCapacity:true});
+   capture.createdIds.delete(key);
+   return {removed:true,commandId};
+  }
   if(current&&!this.removeCanonicalItem(key,'hexis-hmx-apply-rollback',true,false))return {removed:false,commandId};
   capture.createdIds.delete(key);
+  if(current&&indexed!==current){
+   // Index construction may have thrown part-way through a new row. Rebuild the
+   // derived indexes once after removing it instead of trusting partial postings.
+   this.restore(this.snapshot(),{allowOverCapacity:true});
+  }
   return {removed:true,commandId};
  }
  commitHmxImportCompensation(token:object):boolean{
@@ -1193,6 +1210,9 @@ export class MemoryOS2{
  discardHmxImportCompensation(token:object):boolean{
   const capture=this.hmxImportCompensationSnapshots.get(token);
   if(!capture||capture.createdIds.size!==0)return false;
+  // A row insert can fail after it has partially modified the derived indexes.
+  // Rebuild once from the canonical array after all token-owned rows are removed.
+  this.restore(this.snapshot(),{allowOverCapacity:true});
   this.state.reconsolidations=capture.baselineCounters.reconsolidations;
   this.state.quarantined=capture.baselineCounters.quarantined;
   this.state.linkUpdates=capture.baselineCounters.linkUpdates;
