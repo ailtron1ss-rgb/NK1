@@ -38,6 +38,8 @@ jobs:
         run: node -e "if (process.versions.node.split('.')[0] !== '24') { console.error(process.versions.node); process.exit(1) }"
       - name: Check server JavaScript syntax
         run: node --check runtime/neuro-kurisu/src/server/server.mjs
+      - name: Install runtime type dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Run four-pass integration closure (Hexis, retrieval, Mem0 and HTTP)
