@@ -1,3 +1,10 @@
+## [NK1][WorkPass453] Fail closed on foreign graph and temporal-ledger writes (2026-10-27)
+
+- Added bounded mutation journals to the semantic graph and Hexis adaptation ledger. Writes made by the current HMX apply are tagged with a transaction token; untagged mutations after the baseline checkpoint prevent a full-snapshot restore.
+- The projector now passes the owner token through semantic node/edge changes, temporal assertions, and belief projection updates. Failed imports restore graph/ledger snapshots only when the journal proves no foreign write occurred; otherwise rollback reports `semantic-graph-conflict` / `temporal-ledger-conflict` and preserves the independent writes.
+- Added an integration regression that injects independent graph and temporal writes during a downstream failure, checks that both survive, and checks that the newly created canonical memory is still compensated.
+- Static source checks are complete; runtime execution, typecheck and hosted CI are not confirmed. `main` and the canonical GitHub Release ZIP remain untouched.
+
 ## [NK1][WorkPass454] Prove Hexis ledger rollback respects foreign mutations (2026-10-27)
 
 - Added a focused integration regression for the new mutation-journal checkpoint API: transaction-owned changes may be restored to their checkpoint, but a foreign write after the checkpoint must make `restoreIfUnchanged()` fail closed and preserve that write.
