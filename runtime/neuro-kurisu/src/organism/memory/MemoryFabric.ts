@@ -676,6 +676,20 @@ export class MemoryFabric {
     return this.applyLifecycleCommand({action:'update-signals',id,patch,reason,tick:context?.tick,commandId:context?.commandId,compensationToken:context?.compensationToken}) as MemoryItem2|null;
   }
 
+  /** Begin a bounded, one-shot rollback capability from the canonical row before mutation. */
+  beginSignalCompensation(id:string):string|null {
+    if(typeof id!=='string'||!id)return null;
+    const before=this.findCanonical(id);
+    if(!before)return null;
+    // Never evict a live compensation capability: the owning transaction may still
+    // need it after several canonical status/trust writes and downstream projections.
+    if(this.signalCompensations.size>=512)return null;
+    const token=randomUUID();
+    const snapshot=memorySignalRollbackSnapshot(before);
+    this.signalCompensations.set(token,{memoryId:id,snapshot,expectedCurrent:snapshot});
+    return token;
+  }
+
   private requireSignalCompensation(compensationToken:string|undefined,memoryId:string):MemorySignalCompensationReceipt|null {
     if(compensationToken===undefined)return null;
     const compensation=this.signalCompensations.get(compensationToken);
@@ -735,8 +749,8 @@ export class MemoryFabric {
       } catch(rollbackError) {
         this.commitSignalCompensation(compensationToken);
         throw new Error(
-          'memory-signal-update-failed:'+String(error?.message??error).slice(0,240)+
-          ';rollback-failure='+String(rollbackError?.message??rollbackError).slice(0,240),
+          'memory-signal-update-failed:'+String(error instanceof Error?error.message:error).slice(0,240)+
+          ';rollback-failure='+String(rollbackError instanceof Error?rollbackError.message:rollbackError).slice(0,240),
         );
       }
       throw error;
