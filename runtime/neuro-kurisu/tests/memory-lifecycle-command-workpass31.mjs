@@ -255,6 +255,97 @@ for (let index = 0; index < 520; index++) {
 }
 assert.equal(restored.fabric.snapshot().mutationReceipts.length, 512, 'the persisted receipt journal must stay bounded');
 
+// Regression: convenience wrappers must whitelist context metadata, not spread
+// JavaScript-only fields into the canonical lifecycle command. Otherwise a caller
+// can turn encode/revise/update into a different action against a different memory.
+const wrapperIsolation = new MemorySubsystemRuntime();
+const seedWrapperMemory = (content, commandId) =>
+  wrapperIsolation.fabric.encode(makeInput(content), { commandId });
+const wrapperVictim = seedWrapperMemory(
+  'WP445 context injection victim must remain in canonical memory.',
+  'wp31:wrapper-victim',
+);
+assert.ok(wrapperVictim?.id);
+const wrapperEncodeResult = wrapperIsolation.fabric.encode(
+  makeInput('WP445 encode wrapper ignores injected lifecycle keys.'),
+  {
+    commandId: 'wp31:wrapper-encode-allowlist',
+    action: 'forget',
+    id: wrapperVictim.id,
+    reason: 'injected-forget',
+  },
+);
+assert.ok(wrapperEncodeResult?.id, 'encode must keep its fixed action despite extra runtime keys');
+assert.equal(wrapperIsolation.fabric.canonicalSnapshot().items.some(row => row.id === wrapperVictim.id), true,
+  'extra encode context keys must not forget a different canonical memory');
+
+const wrapperStatusTarget = seedWrapperMemory(
+  'WP445 status wrapper target remains independently addressable.',
+  'wp31:wrapper-status-target',
+);
+wrapperIsolation.fabric.revise(wrapperStatusTarget.id, 'hypothesis', 'allowlisted-status-update', {
+  commandId: 'wp31:wrapper-status-allowlist',
+  action: 'forget',
+  id: wrapperVictim.id,
+  to: 'quarantined',
+  reason: 'injected-forget',
+});
+assert.equal(wrapperIsolation.fabric.canonicalSnapshot().items.find(row => row.id === wrapperStatusTarget.id)?.epistemicStatus, 'hypothesis',
+  'revise must honor its positional target/status instead of injected context values');
+assert.equal(wrapperIsolation.fabric.canonicalSnapshot().items.some(row => row.id === wrapperVictim.id), true);
+
+const wrapperSignalTarget = seedWrapperMemory(
+  'WP445 signal wrapper target keeps its own confidence.',
+  'wp31:wrapper-signal-target',
+);
+wrapperIsolation.fabric.updateSignals(wrapperSignalTarget.id, { confidence: 0.41 }, 'allowlisted-signal-update', {
+  commandId: 'wp31:wrapper-signals-allowlist',
+  action: 'forget',
+  id: wrapperVictim.id,
+  patch: { confidence: 0 },
+  reason: 'injected-forget',
+});
+assert.equal(wrapperIsolation.fabric.canonicalSnapshot().items.find(row => row.id === wrapperSignalTarget.id)?.confidence, 0.41,
+  'updateSignals must not accept injected action/id/patch/reason fields');
+assert.equal(wrapperIsolation.fabric.canonicalSnapshot().items.some(row => row.id === wrapperVictim.id), true);
+
+const wrapperRevisionTarget = seedWrapperMemory(
+  'WP445 content revision target before safe wrapper update.',
+  'wp31:wrapper-revision-target',
+);
+const wrapperRevision = wrapperIsolation.fabric.reviseContent(
+  wrapperRevisionTarget.id,
+  'WP445 content revision completed through the fixed wrapper.',
+  { reason: 'allowlisted-content-update', source: 'workpass445', validAt: at + 50_000 },
+  {
+    commandId: 'wp31:wrapper-revision-allowlist',
+    action: 'forget',
+    id: wrapperVictim.id,
+    newContent: 'injected replacement',
+  },
+);
+assert.equal(wrapperRevision?.content, 'WP445 content revision completed through the fixed wrapper.');
+assert.equal(wrapperIsolation.fabric.canonicalSnapshot().items.some(row => row.id === wrapperVictim.id), true,
+  'reviseContent metadata must not replace the canonical command target/action');
+
+const wrapperContextTarget = seedWrapperMemory(
+  'WP445 context update target for allowlist test.',
+  'wp31:wrapper-context-target',
+);
+const wrapperContext = wrapperIsolation.fabric.updateContext(
+  wrapperContextTarget.id,
+  { allowedContextField: 'preserved' },
+  {
+    commandId: 'wp31:wrapper-context-allowlist',
+    action: 'forget',
+    id: wrapperVictim.id,
+    patch: { overwritten: 'attacker' },
+  },
+);
+assert.equal(wrapperContext.allowedContextField, 'preserved');
+assert.equal(wrapperIsolation.fabric.canonicalSnapshot().items.some(row => row.id === wrapperVictim.id), true,
+  'updateContext metadata must not change its fixed action or target');
+
 console.log(JSON.stringify({
   ok: true,
   canonicalItems: restored.memoryOS.size(),
