@@ -43,12 +43,14 @@ const isolated = new MemoryOS2();
 for (let i = 0; i < 16; i++) isolated.encode({
   id: `separate-${i}`, content: i === 0 ? 'violet compass migration' : `unrelated cloud storage note ${i}`,
   kind: 'semantic', source: 'cosine-floor-fixture', tags: [], context: {},
-  salience: .5, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1, socialRelevance: .1,
+  salience: i === 0 ? .2 : .99, emotionalWeight: .1, identityRelevance: i === 0 ? .1 : .99, goalRelevance: i === 0 ? .1 : .99, socialRelevance: .1,
   predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
   semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [], validFromAt: now - 1000,
 });
-const exactFirst = isolated.retrieve('violet compass migration', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
-assert.equal(exactFirst[0]?.id, 'separate-0', 'exact relevant memory must lead unrelated memories');
+const exactFirst = isolated.retrieve('violet compass migration', 8, 1, 1, { temporalMode: 'at', asOfAt: now });
+assert.equal(exactFirst[0]?.id, 'separate-0', 'exact relevant memory must lead unrelated memories despite stronger decoy salience/goal signals');
+assert.deepEqual(exactFirst.map(row => row.id), ['separate-0'],
+  'top-k must not pad unrelated high-salience recent memories when only one evidence-backed result exists');
 
 // An unanswerable query must not be filled with arbitrary recent memories.
 // The old recent-memory fallback injected a candidate pool even when the query had
@@ -67,7 +69,8 @@ for (let i = 0; i < 12; i++) {
 const unsupportedQuery = 'quartz nebula credential archive';
 const unsupportedRows = noEvidence.retrieve(unsupportedQuery, 8, 1, 1, { temporalMode: 'at', asOfAt: now });
 assert.deepEqual(unsupportedRows, [], 'without any evidence-bearing candidate, retrieval must abstain instead of returning recent unrelated memories');
-assert.equal(noEvidence.retrievalDiagnostics().candidateCount, 0, 'no-evidence query must not be populated by recent-memory fallback');
+const abstentionCandidateCount = noEvidence.retrievalDiagnostics().candidateCount;
+assert.equal(abstentionCandidateCount, 0, 'no-evidence query must not be populated by recent-memory fallback');
 const supportedRows = noEvidence.retrieve('zebra keyboard orchard', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.ok(supportedRows.some(row => row.id === 'unrelated-0'), 'evidence-backed retrieval must remain available after an abstention');
-console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id, unsupportedQueryResults: unsupportedRows.length, abstentionCandidateCount: noEvidence.retrievalDiagnostics().candidateCount, supportedQueryResults: supportedRows.length }));
+console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id, unsupportedQueryResults: unsupportedRows.length, abstentionCandidateCount, supportedQueryResults: supportedRows.length }));

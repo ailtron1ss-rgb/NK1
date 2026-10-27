@@ -1,3 +1,10 @@
+## [NK1][WorkPass509] Prevent recency-only fallback rows from contaminating top-k (2026-10-27)
+
+- WorkPass508 stopped the recent-memory fallback for zero-match queries, but the same fallback still padded a sparse, query-anchored candidate set with arbitrary fresh records. Those rows could gain score from salience, recency, goal and identity signals despite carrying no evidence for the query.
+- Remove recency-only candidate padding from `MemoryOS2.retrieve()`. Candidate selection now starts from token/fuzzy/concept matches and keeps the existing bounded revision-chain and one-hop graph expansion from those query-anchored seeds.
+- Strengthen candidate-coverage tests with one exact match and unrelated decoys that have much higher salience, identity and goal relevance. Assert top-k returns only the evidence-backed match; retain the prior no-evidence abstention check and stable high-fanout retrieval regression.
+- This narrows search output to evidence-backed candidates; it is not an overall recall-uplift claim. Independent bilingual holdout evaluation remains required. Release ZIP is untouched.
+
 ## [NK1][WorkPass508] Abstain from recent-memory fallback when retrieval has no evidence anchor (2026-10-27)
 
 - `MemoryOS2.retrieve()` previously populated a recent-memory candidate set whenever token/fuzzy/concept discovery found fewer than 96 entries, including the zero-match case. Recency, salience and generic fusion terms could then make unrelated memories look like an answer.
