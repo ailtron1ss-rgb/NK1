@@ -4972,7 +4972,7 @@ export class OrganismCore {
         const memoryQuery = observation.text || activeGoalPressureFallback(this.persisted.goals) || 'current context';
         const advancedRetrieved = observation.text && cognitiveExecutionPlan.run.memory && memoryQuery === observation.text
             ? cognitionMemoryItems.slice(0, 4)
-            : this.memorySubsystem.fabric.retrieve(memoryQuery, 8, n.goalPressure, 1 - state.needs.identityCoherence, { tick: state.tick }).slice(0, 4);
+            : (await this.memorySubsystem.fabric.retrieveForCognition(memoryQuery, 8, n.goalPressure, 1 - state.needs.identityCoherence, { tick: state.tick })).slice(0, 4);
         const adaptiveMemoryStrategyFrame = this.adaptiveMemoryStrategyReadout.prepare({ items: advancedRetrieved as unknown as import('../developmental/MemoryOS2.ts').MemoryItem2[], query: memoryQuery, tick: state.tick, at: state.at });
         if (advancedRetrieved.length)
             this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(m => m.id);
