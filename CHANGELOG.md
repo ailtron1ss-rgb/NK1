@@ -2695,3 +2695,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
 - [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
 
+
+
+## [NK1][Hexis] WorkPass444 — prune dangling links during bounded memory restore (2026-10-27)
+
+- [FIX] Public restore remains capped at 1,600 canonical rows and now removes links whose targets were omitted by bounded hydration: semantic, temporal, causal, contradiction, and both revision pointers.
+- [CONSISTENCY] Link pruning runs before byte-footprint recomputation and derived-index rebuilding, so restored counters and indexes represent the retained canonical rows.
+- [TEST] Extended the WorkPass31 lifecycle regression with a 1,601-row snapshot whose retained row points at the discarded tail; asserts that every dangling relation is cleared and indexes remain coherent.
+- [VALIDATION] Source-contract checks only at this pass; the Node runtime regression and TypeScript typecheck have not been executed on this exact head. No runtime PASS is claimed.
