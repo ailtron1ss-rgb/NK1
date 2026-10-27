@@ -34,7 +34,8 @@ export interface ParametricPrediction { action:ActionKind; value:number; uncerta
 const featureNames=[
   'energy','cognitiveLoad','uncertainty','novelty','goalPressure','socialNeed',
   'predictionError','attentionBudget','identityCoherence','externalInput','bodyCapacity','thermalPressure',
-  'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost'
+  'boredom','resourceRisk','energyNoveltyInteraction','energyGoalPressureInteraction','noveltyGoalPressureInteraction','actionCost',
+  'energyBelowHalf','noveltyBelowHalf','energyNoveltyClassInteraction'
 ];
 
 export function defaultParametricPolicy():ParametricPolicyState{
@@ -71,6 +72,9 @@ function featureVector(state:OrganismState, extras?:{external01?:number;boredom0
     energy*goalPressure,
     novelty*goalPressure,
     0,
+    energy < .5 ? 1 : 0,
+    novelty < .5 ? 1 : 0,
+    (energy < .5 ? 1 : 0) * (novelty < .5 ? 1 : 0),
   ];
 }
 
@@ -108,7 +112,7 @@ export class ParametricPolicyLearner{
 
   features(state:OrganismState, extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}, action?:ActionKind){
     const f=featureVector(state,extras);
-    if(action) f[f.length-1]=actionCost(action);
+    if(action) f[featureNames.indexOf('actionCost')]=actionCost(action);
     return f;
   }
 
