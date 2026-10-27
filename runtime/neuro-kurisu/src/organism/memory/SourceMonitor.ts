@@ -32,11 +32,26 @@ export class SourceMonitor {
         return [];
       }
     }) : [];
+    // Persisted snapshots are untrusted input too: retain the first trace
+    // for each ID so restore() cannot reintroduce the shadowing bug guarded in
+    // record(). Count conflicting duplicate IDs instead of silently accepting them.
+    const uniqueTraces: SourceTrace[] = [];
+    const byId = new Map<string, SourceTrace>();
+    let restoreConflicts = 0;
+    for (const trace of traces) {
+      const existing = byId.get(trace.id);
+      if (existing) {
+        if (JSON.stringify(existing) !== JSON.stringify(trace)) restoreConflicts++;
+        continue;
+      }
+      byId.set(trace.id, trace);
+      uniqueTraces.push(trace);
+    }
     this.state = {
       ...defaultSourceMonitor(),
-      conflicts: Number.isSafeInteger(s?.conflicts) && Number(s?.conflicts) >= 0 ? Number(s?.conflicts) : 0,
+      conflicts: (Number.isSafeInteger(s?.conflicts) && Number(s?.conflicts) >= 0 ? Number(s?.conflicts) : 0) + restoreConflicts,
       unattributed: Number.isSafeInteger(s?.unattributed) && Number(s?.unattributed) >= 0 ? Number(s?.unattributed) : 0,
-      traces,
+      traces: uniqueTraces,
     };
   }
 
