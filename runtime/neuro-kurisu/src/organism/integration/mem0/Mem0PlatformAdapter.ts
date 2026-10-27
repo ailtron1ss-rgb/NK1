@@ -259,7 +259,7 @@ export class Mem0PlatformAdapter {
     const result = await this.post(
       this.mode === 'oss' ? '/search' : '/v3/memories/search/',
       this.mode === 'oss'
-        ? { query, user_id: this.userId }
+        ? { query, filters: { user_id: this.userId }, limit }
         : { query, filters: { user_id: this.userId }, limit },
     );
     if (!result.ok) {
