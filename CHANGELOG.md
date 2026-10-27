@@ -1,3 +1,8 @@
+## [NK1][WorkPass504] Exercise retrieval provenance and semantic routing in core regressions (2026-10-27)
+
+- The recovered-core suite now runs `test:memory-retrieval-experiment` as well as the live semantic-route regression. This ensures malformed, duplicated and over-limit bootstrap seed lists are tested instead of merely committed.
+- The experiment's seeds are bootstrap-resampling seeds only, not independent retrieval-model training runs. Passing these checks verifies the evaluation contract, not memory recall uplift; a separate independently sourced holdout is still required.
+
 ## [NK1][WorkPass503] Make Hexis bridge attempt-count assertion monotonic (2026-10-27)
 
 - A parallel regression added explicit same-ID trace replay to verify immutable source-trace identity, raising the bridge's current-instance attempt count from nine to ten.
@@ -5,9 +10,9 @@
 
 ## [NK1][WorkPass502] Wire bounded semantic recall into the live cognitive cycle (2026-10-27)
 
-- The MemoryFabric already provided `retrieveForCognition`, which supports opt-in local embeddings, a bounded foreground budget and deterministic lexical fallback, but `OrganismCore.observe()` still called the synchronous lexical-only `retrieve` method on its main memory path.
-- The live cycle now awaits the existing cognitive retrieval adapter. With `NK_EMBEDDINGS_RUNTIME_ENABLED` unset, behavior remains the existing lexical fallback; when explicitly enabled and a provider is configured, semantic recall can participate in the actual cycle under its time budget.
-- Added a WorkPass502 route regression and wired it into `test:rebuild-recovered`. This connects an existing subsystem rather than creating a second memory store. Recall uplift is not claimed; embedding activation, provider-backed runtime behavior and real-task improvement still require separate validation.
+- The direct user-text path already used `retrieveForCognition` when the execution plan requested memory; the later advanced-recall branch still used synchronous lexical-only `retrieve` for internal-goal/fallback queries or when it could not reuse that first memory packet.
+- That branch now awaits the same existing cognitive retrieval adapter. With `NK_EMBEDDINGS_RUNTIME_ENABLED` unset, behavior remains the deterministic lexical fallback; when explicitly enabled and a provider is configured, semantic recall can participate in that branch under the existing foreground budget.
+- Added a route regression and wired it into `test:rebuild-recovered`. This connects an existing subsystem rather than creating a second memory store. Recall uplift is not claimed; provider-backed runtime behavior and real-task improvement still require separate validation.
 
 ## [NK1][WorkPass502] Count explicit missing-trace rejection in Hexis regression (2026-10-27)
 
