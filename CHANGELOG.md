@@ -1,3 +1,11 @@
+## [NK1][WorkPass575] Gate memory recall on grounded evidence (2026-10-27)
+
+- Add a final answerability gate to MemoryOS2 hybrid retrieval: recency, salience and type bonuses alone no longer justify returning a memory for a no-match query.
+- Require direct phrase/coverage/entity/fuzzy/concept support, with bounded category-only recall exceptions for explicit identity, episode, goal and procedure requests.
+- Expose the gate decision in retrieval diagnostics so abstention can be evaluated instead of inferred from ranking scores.
+- Add a regression for unsupported queries, identity recall, episodic recall and exact lexical retrieval; register it in the recovered runtime suite.
+- Validation status: code and regression are committed; CI result pending. Synthetic fixtures do not demonstrate real-corpus recall uplift.
+
 ## [NK1][WorkPass574] Bind response voice to post-response emotional state (2026-10-27)
 
 - Refresh the canonical organism snapshot after a chat response before assigning the assistant turn's emotion, avoiding use of the pre-response label by AvatarStage's browser TTS.
