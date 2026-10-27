@@ -1784,6 +1784,7 @@
     "test:mem0-platform-adapter-workpass1": "node --experimental-strip-types tests/mem0-platform-adapter-workpass1.mjs",
     "test:mem0-live-contract-check": "node --experimental-strip-types tests/mem0-live-contract-check.mjs",
     "audit:mem0-platform-adapter-workpass1": "npm run typecheck && npm run test:mem0-platform-adapter-workpass1 && npm run test:mem0-live-contract-check && node --experimental-strip-types tests/server-language-http-fake-provider.mjs",
-    "audit:nk1-integration-closure": "npm run test:hexis-evidence-lineage && npm run test:hexis-server-smoke && npm run test:memory-retrieval-experiment && npm run test:mem0-platform-adapter-workpass1 && npm run test:mem0-live-contract-check && node --experimental-strip-types tests/server-language-http-fake-provider.mjs"
+    "audit:nk1-integration-closure": "npm run test:hexis-evidence-lineage && npm run test:hexis-server-smoke && npm run test:memory-retrieval-experiment && npm run test:memory-retrieval-annotation-pack && npm run test:mem0-platform-adapter-workpass1 && npm run test:mem0-live-contract-check && node --experimental-strip-types tests/server-language-http-fake-provider.mjs",
+    "test:memory-retrieval-annotation-pack": "node --experimental-strip-types tests/memory-retrieval-annotation-pack.mjs"
   }
 }
