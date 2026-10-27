@@ -79,9 +79,15 @@ function parseLabels(text) {
     if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Error(`labels-row-not-object:${index + 1}`);
     if (typeof row.id !== 'string' || !row.id.trim() || row.id.length > 120) throw new Error(`labels-invalid-id-line:${index + 1}`);
     if (typeof row.query !== 'string' || !row.query.trim() || row.query.length > 500) throw new Error(`labels-invalid-query-line:${index + 1}`);
-    if (!Array.isArray(row.relevantIds) || row.relevantIds.length < 1 || row.relevantIds.length > 24 || row.relevantIds.some(id => typeof id !== 'string' || !id.trim() || id.length > 160)) throw new Error(`labels-invalid-relevantIds-line:${index + 1}`);
+    if (row.answerable !== undefined && typeof row.answerable !== 'boolean') throw new Error(`labels-invalid-answerable-line:${index + 1}`);
+    const answerable = row.answerable !== false;
+    if (!Array.isArray(row.relevantIds) || row.relevantIds.length > 24 ||
+        (answerable ? row.relevantIds.length < 1 : row.relevantIds.length !== 0) ||
+        row.relevantIds.some(id => typeof id !== 'string' || !id.trim() || id.length > 160)) {
+      throw new Error(`labels-invalid-relevantIds-line:${index + 1}`);
+    }
     if (row.split !== 'train' && row.split !== 'holdout') throw new Error(`labels-invalid-split-line:${index + 1}`);
-    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split });
+    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split, answerable });
     if (rows.length > MAX_EXAMPLES) throw new Error(`labels-exceed-limit:${MAX_EXAMPLES}`);
   }
   if (!rows.length) throw new Error('labels-empty');
@@ -129,7 +135,21 @@ async function main() {
   };
   const outputPath = path.resolve(args.out);
   await publishReportExclusive(outputPath, `${JSON.stringify(report, null, 2)}\n`);
-  console.log(JSON.stringify({ output: outputPath, datasetFingerprint: report.datasetFingerprint, corpusFingerprint: report.corpusFingerprint, seedCount: report.seedCount, trainQueries: report.trainQueries, holdoutQueries: report.holdoutQueries, promotion: report.promotion.status, reason: report.promotion.reason }, null, 2));
+  const holdoutMetrics = report.runs[0]?.candidateHoldout;
+  console.log(JSON.stringify({
+    output: outputPath,
+    datasetFingerprint: report.datasetFingerprint,
+    corpusFingerprint: report.corpusFingerprint,
+    seedCount: report.seedCount,
+    trainQueries: report.trainQueries,
+    holdoutQueries: report.holdoutQueries,
+    answerableHoldoutQueries: holdoutMetrics?.answerableQueries ?? 0,
+    unanswerableHoldoutQueries: holdoutMetrics?.unanswerableQueries ?? 0,
+    unsupportedRetrievalRate01: holdoutMetrics?.unsupportedRetrievalRate01 ?? 0,
+    correctAbstentionRate01: holdoutMetrics?.correctAbstentionRate01 ?? 0,
+    promotion: report.promotion.status,
+    reason: report.promotion.reason,
+  }, null, 2));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
