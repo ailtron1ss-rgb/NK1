@@ -246,7 +246,7 @@ try {
       },
     });
     const conflictingTrace = await conflictingTraceResponse.json();
-    if (conflictingTraceResponse.status !== 400 || conflictingTrace.ok ||
+    if (conflictingTraceResponse.status !== 409 || conflictingTrace.ok ||
         conflictingTrace.result?.accepted !== false || conflictingTrace.result?.added !== false ||
         conflictingTrace.result?.reason !== 'source-trace-id-conflict') {
       throw new Error('hexis-conflicting-trace-id-must-fail-closed:' + JSON.stringify(conflictingTrace));
