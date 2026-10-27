@@ -49,10 +49,9 @@ try {
   assert.ok(Date.now() - started < 1500, 'foreground recall must honor the bounded fallback budget');
   assert.ok(slow.cognitionSemanticInFlight,
     'the bounded background operation remains tracked until its provider work settles');
+  const trackedInFlight = slow.cognitionSemanticInFlight;
   resolveProvider(semanticResult);
-  await pending;
-  await Promise.resolve();
-  await Promise.resolve();
+  await trackedInFlight;
   assert.equal(slow.cognitionSemanticInFlight, null,
     'settled late provider work must clear its in-flight marker');
 
