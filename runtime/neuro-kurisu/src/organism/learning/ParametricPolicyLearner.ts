@@ -80,7 +80,16 @@ export class ParametricPolicyLearner{
   restore(raw?:Partial<ParametricPolicyState>|null){
     const d=defaultParametricPolicy();
     const savedNames=Array.isArray(raw?.featureNames)?raw!.featureNames:[];
-    this.state={...d,...(raw??{}),featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
+    this.state={...d,...(raw??{}),version:1,featureNames:[...featureNames],weights:{...d.weights,...(raw?.weights??{})},bias:{...d.bias,...(raw?.bias??{})}};
+    // Persisted telemetry is untrusted input too: repair non-finite/corrupt counters
+    // instead of reintroducing poison values into future learning decisions.
+    this.state.updates=Number.isSafeInteger(raw?.updates)&&Number(raw?.updates)>=0?Number(raw?.updates):0;
+    this.state.tdAbsMean01=typeof raw?.tdAbsMean01==='number'&&Number.isFinite(raw.tdAbsMean01)?clamp(raw.tdAbsMean01):d.tdAbsMean01;
+    this.state.trainRewardMean01=typeof raw?.trainRewardMean01==='number'&&Number.isFinite(raw.trainRewardMean01)?clamp(raw.trainRewardMean01):d.trainRewardMean01;
+    this.state.explorationRate01=typeof raw?.explorationRate01==='number'&&Number.isFinite(raw.explorationRate01)?clamp(raw.explorationRate01):d.explorationRate01;
+    this.state.lastLoss01=typeof raw?.lastLoss01==='number'&&Number.isFinite(raw.lastLoss01)?clamp(raw.lastLoss01):d.lastLoss01;
+    this.state.lastTrainedAt=typeof raw?.lastTrainedAt==='number'&&Number.isFinite(raw.lastTrainedAt)&&raw.lastTrainedAt>=0?raw.lastTrainedAt:d.lastTrainedAt;
+    this.state.frozen=raw?.frozen===true;
     for(const a of ACTIONS){
       const savedWeights=Array.isArray(raw?.weights?.[a])?raw!.weights![a]:[];
       this.state.weights[a]=featureNames.map((name,index)=>{
@@ -119,7 +128,28 @@ export class ParametricPolicyLearner{
     return this.predict(state,extras).find(p=>p.action===action)!;
   }
 
+  private validateFeedback(action:unknown,target01:unknown,learningRate01:unknown,sampleWeight01:unknown):void {
+    if(typeof action!=='string'||!ACTIONS.includes(action as ActionKind))throw new TypeError('invalid-action');
+    if(typeof target01!=='number'||!Number.isFinite(target01))throw new TypeError('target-must-be-finite');
+    if(typeof learningRate01!=='number'||!Number.isFinite(learningRate01))throw new TypeError('rate-must-be-finite');
+    if(sampleWeight01!==undefined&&(typeof sampleWeight01!=='number'||!Number.isFinite(sampleWeight01)))throw new TypeError('sample-weight-must-be-finite');
+  }
+
+  private validateState(state:unknown):asserts state is OrganismState {
+    if(!state||typeof state!=='object'||Array.isArray(state)||!('needs' in state)||
+      !state.needs||typeof state.needs!=='object'||Array.isArray(state.needs)){
+      throw new TypeError('state-must-have-needs');
+    }
+  }
+
+  private validateTrainInput(input:Parameters<ParametricPolicyLearner['train']>[0]):void {
+    if(!input||typeof input!=='object')throw new TypeError('training-input-required');
+    this.validateFeedback(input.action,input.target01,input.learningRate01,input.sampleWeight01);
+    this.validateState(input.state);
+  }
+
   train(input:{state:OrganismState;action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number;extras?:{external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number}}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    this.validateTrainInput(input);
     if(this.state.frozen) return {predictionBefore:this.value(input.state,input.action,input.extras).value,predictionAfter:this.value(input.state,input.action,input.extras).value,loss01:0,tdError01:0};
     const x=this.features(input.state,input.extras,input.action);
     const w=this.state.weights[input.action];
@@ -146,6 +176,10 @@ export class ParametricPolicyLearner{
   }
 
   trainFeatures(input:{features:number[];action:ActionKind;target01:number;learningRate01:number;sampleWeight01?:number}):{predictionBefore:number;predictionAfter:number;loss01:number;tdError01:number}{
+    if(!input||typeof input!=='object')throw new TypeError('training-input-required');
+    this.validateFeedback(input.action,input.target01,input.learningRate01,input.sampleWeight01);
+    if(!Array.isArray(input.features)||input.features.some(value=>typeof value!=='number'||!Number.isFinite(value)))
+      throw new TypeError('features-must-be-finite');
     if(this.state.frozen) { const value=this.predictFromFeatures(input.features,input.action); return {predictionBefore:value,predictionAfter:value,loss01:0,tdError01:0}; }
     const x=input.features.slice(0,featureNames.length).map(clamp); while(x.length<featureNames.length)x.push(0);
     const w=this.state.weights[input.action]; if(!w)return {predictionBefore:.5,predictionAfter:.5,loss01:0,tdError01:0};
@@ -169,6 +203,10 @@ export class ParametricPolicyLearner{
   }
 
   trainBatch(samples:Array<Parameters<ParametricPolicyLearner['train']>[0]>){
+    if(!Array.isArray(samples))throw new TypeError('batch-must-be-array');
+    // Preflight every sample before the first mutation; invalid later feedback must
+    // never leave a partially trained policy snapshot.
+    for(const sample of samples)this.validateTrainInput(sample);
     let loss=0; let n=0;
     for(const sample of samples){const r=this.train(sample);loss+=r.loss01;n++;}
     return {samples:n,meanLoss01:n?loss/n:0,updates:this.state.updates};
