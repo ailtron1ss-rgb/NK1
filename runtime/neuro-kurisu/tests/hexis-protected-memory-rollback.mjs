@@ -115,6 +115,24 @@ assert.throws(
   /memory-lifecycle-hmx-rollback-scope-mismatch/,
   'the scoped compensator must not remove a protected import created by a different stage attempt',
 );
+
+// JavaScript can provide keys omitted from the TypeScript context type. Those keys
+// must not override the authority-bearing positional scope or silently widen rollback.
+assert.throws(
+  () => runtime.fabric.rollbackHmxCreatedMemory(
+    importedQuarantined.id, stage.exportId, 'stage-not-the-origin', 2, 'context-mass-assignment-regression',
+    {
+      commandId: 'wp430:context-mass-assignment-regression',
+      id: importedQuarantined.id,
+      exportId: stage.exportId,
+      stagingId: stage.stagingId,
+      attempt: 2,
+      reason: 'overridden-reason',
+    },
+  ),
+  /memory-lifecycle-hmx-rollback-scope-mismatch/,
+  'extra context keys must not replace the caller-supplied stage scope',
+);
 assert.equal(runtime.fabric.canonicalSnapshot().items.some(item => item.id === importedQuarantined.id), true,
   'a mismatched compensation scope must leave the canonical imported record untouched');
 assert.equal(temporalState.assertions.length, 1,
