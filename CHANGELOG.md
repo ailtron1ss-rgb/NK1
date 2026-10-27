@@ -1,3 +1,16 @@
+## [NK1][motivation] Correct endogenous goal-vector diversity diagnostics (2026-10-27)
+
+- Fixed `goalVectorDiversity01`: the pairwise cosine transform was inverted, so identical goals appeared maximally diverse and opposite goals minimally diverse. It now measures normalized cosine distance.
+- Added calibrated boundary regressions proving identical vectors score 0 and opposite vectors score 1; wired the existing goal-genesis contract into the recovered-core suite.
+- This corrects an evaluation signal; it does not itself demonstrate greater behavioral diversity, autonomy or learning improvement.
+
+## [NK1][memory] Validate embedding vectors at the canonical memory boundary (2026-10-27)
+
+- Added a shared finite, dimension-bounded and nonzero embedding-vector guard to MemoryOS2 semantic retrieval and background indexing.
+- Invalid query vectors now use lexical fallback; invalid candidate vectors are not admitted to the index; overflow-sized finite values cannot silently normalize to zero vectors.
+- If no valid semantic candidate remains while lexical recall has results, return lexical candidates with `no-valid-semantic-candidates` rather than reporting an empty semantic success.
+- Added regression coverage for invalid query/candidate vectors and overflow during maintenance. Exact-head CI is required before marking this change validated.
+
 ## [NK1][memory] Prevent duplicate accounting in semantic cognitive recall (2026-10-27)
 
 - Centralized memory-retrieval outcome accounting so the live cognitive cycle records only the result actually selected for use.
