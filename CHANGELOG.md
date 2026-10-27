@@ -3,6 +3,7 @@
 - The exact-head replay-policy sweep showed that a requested 1:1 old/current update cadence drove the new-task score to 0.52 on seed 17, below the unchanged 0.60 diagnostic acceptance threshold, despite separated context features.
 - `P26TrueLearningEngine.trainInterleaved` now enforces a configurable `maxReplayFraction01` independent of the absolute `maxReplayUpdates` budget. The default 0.25 schedules at most one replay update per four current rows; zero disables replay, and an explicit value up to 1 allows caller-directed higher rehearsal rates.
 - The sweep retains its 0.60 threshold and reports requested/effective cadence; regressions cover default cadence, explicit replay disablement and invalid fractions. This is a synthetic stability diagnostic only, not evidence of external-task generalization or production learning uplift.
+- The full source regression exposed a context-aware retention control that intentionally needs aggressive rehearsal; that benchmark now explicitly opts into `maxReplayFraction01: 1` instead of relying on the new conservative default. No threshold was weakened.
 - Targeted exact-head checks passed on `0e820796adf584b7cb5a2d2256090287830bf05a`. Re-triggering the source-branch broad regression after retarget; final broad result remains pending. `main` and the published Release ZIP remain unchanged.
 
 ## [NK1][WorkPass481] Separate candidate execution from verifier trust (2026-10-27)
