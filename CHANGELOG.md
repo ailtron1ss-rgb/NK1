@@ -1,3 +1,9 @@
+## [NK1][WorkPass576] Fix evidence-gate token cardinality and verify the integrated branch (2026-10-27)
+
+- Correct the grounded-recall gate to use `Set.size` for MemoryOS2's query-token set; the previous implementation incorrectly used array `.length`.
+- The preceding GitHub typecheck failure was caused by this new gate and is acknowledged as a regression. A fresh CI run must pass before the gate is considered validated.
+- This entry supplements WorkPass575's answerability gate; it does not claim production-corpus recall uplift or update the Release ZIP.
+
 ## [NK1][WorkPass575] Align backend TTS language and speech modes with text (2026-10-27)
 
 - Replace the fixed `ru-RU` VoicePlan language with bounded Cyrillic/Latin script inference, matching the browser embodiment's existing two-language heuristic.
