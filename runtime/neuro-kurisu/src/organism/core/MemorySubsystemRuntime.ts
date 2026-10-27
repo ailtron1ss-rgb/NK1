@@ -89,7 +89,7 @@ export class MemorySubsystemRuntime {
     this.p59MemoryOperatingSystem.restore(advanced.p59MemoryOperatingSystem);
     this.p62MemoryFabric.restore(advanced.p62MemoryFabric);
     this.p65EpistemicLedger.restore(advanced.p65EpistemicLedger);
-    this.sourceMonitor.restore(advanced.sourceMonitor);
+    this.sourceMonitor.restore(advanced.hexisSourceMonitor ?? advanced.sourceMonitor);
     this.p70MemoryLifecycleGovernor.restore(advanced.p70MemoryLifecycleGovernor);
     this.p75MemoryContinuumOS.restore(advanced.p75MemoryContinuumOS);
     this.experienceContinuum.restore(advanced.experienceContinuum);
@@ -107,7 +107,7 @@ export class MemorySubsystemRuntime {
     selfModel:this.selfModel.snapshot(), socialModel:this.socialModel.snapshot(), adaptiveValues:this.valuePlasticity.snapshot(),
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
-    p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), sourceMonitor:this.sourceMonitor.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
+    p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), hexisSourceMonitor:this.sourceMonitor.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
     p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),
   }; }
 }
