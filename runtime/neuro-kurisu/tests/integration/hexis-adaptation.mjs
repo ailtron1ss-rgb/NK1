@@ -127,6 +127,142 @@ assert(globalLedgerAfter.some(row => row.memoryId === globalOwnedBelief.memoryId
 assert(globalLedgerAfter.some(row => row.memoryId === 'independent-belief-from-authoritative-restore'),
   'owned undo must not erase a newer belief from the authoritative full ledger snapshot');
 
+// MemoryOS2 writes must be exception-atomic when revision bookkeeping throws after
+// it has already changed the canonical row. Otherwise MemoryFabric never gets a chance
+// to seal the transaction-owned post-state for compensation.
+const atomicStatusRuntime = new MemorySubsystemRuntime();
+const atomicStatusLedger = new HexisAdaptationFabric();
+const atomicStatusProjector = new HexisCanonicalMemoryProjector(
+  atomicStatusRuntime.fabric,
+  atomicStatusRuntime.semanticMemory,
+  atomicStatusLedger,
+);
+atomicStatusLedger.bindCanonicalMemoryApply(stage => atomicStatusProjector.apply(stage));
+const atomicStatusExportId = 'exp_0000000000009210';
+const atomicStatusContent = 'MemoryOS status mutation must roll back atomically after revision failure.';
+const atomicStatusSeed = atomicStatusLedger.stageHmx({
+  document: makeHmxDocument(atomicStatusExportId, {
+    memories: [{
+      ref: atomicStatusExportId + ':memory',
+      type: 'semantic',
+      content: atomicStatusContent,
+      status: 'active',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(atomicStatusLedger.decideHmx(atomicStatusSeed.stagingId, 'accept')?.status, 'accepted');
+assert.equal(atomicStatusLedger.decideHmx(atomicStatusSeed.stagingId, 'apply')?.status, 'applied');
+const atomicStatusSeedMemory = atomicStatusRuntime.fabric.canonicalSnapshot().items.find(item => item.content === atomicStatusContent);
+assert(atomicStatusSeedMemory);
+const atomicStatusBefore = signalSnapshot(atomicStatusSeedMemory);
+const atomicStatusMemoryOS = atomicStatusRuntime.fabric.memoryOS;
+const originalAtomicStatusRecordRevision = atomicStatusMemoryOS.recordRevision.bind(atomicStatusMemoryOS);
+let throwAfterStatusRevision = true;
+atomicStatusMemoryOS.recordRevision = (...args) => {
+  const result = originalAtomicStatusRecordRevision(...args);
+  if (throwAfterStatusRevision && String(args[1]?.reason ?? '').startsWith('hexis-source-status-reconciliation:')) {
+    throwAfterStatusRevision = false;
+    throw new Error('injected-memoryos-status-revision-after-write');
+  }
+  return result;
+};
+const atomicStatusRetry = atomicStatusLedger.stageHmx({
+  document: makeHmxDocument(atomicStatusExportId, {
+    memories: [{
+      ref: atomicStatusExportId + ':memory',
+      type: 'semantic',
+      content: atomicStatusContent,
+      status: 'archived',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(atomicStatusLedger.decideHmx(atomicStatusRetry.stagingId, 'accept')?.status, 'accepted');
+assert.throws(
+  () => atomicStatusLedger.decideHmx(atomicStatusRetry.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-memoryos-status-revision-after-write$/,
+  'status mutation bookkeeping failure must leave an exact pre-state for compensation',
+);
+const atomicStatusAfterFailure = atomicStatusRuntime.fabric.canonicalSnapshot().items.find(item => item.id === atomicStatusSeedMemory.id);
+assert(atomicStatusAfterFailure);
+assert.deepEqual(signalSnapshot(atomicStatusAfterFailure), atomicStatusBefore,
+  'revision-history failure must not leave canonical status/signals partially changed');
+assert.equal(atomicStatusAfterFailure.epistemicStatus, atomicStatusSeedMemory.epistemicStatus);
+assert.equal(atomicStatusLedger.getHmxStage(atomicStatusRetry.stagingId)?.status, 'accepted');
+assert.equal(atomicStatusRuntime.fabric.inspect().pendingSignalCompensations, 0);
+
+// The same atomicity boundary applies to authority-cap updates after signals have been
+// changed but before updateSignals returns to MemoryFabric.
+const atomicSignalsRuntime = new MemorySubsystemRuntime();
+const atomicSignalsLedger = new HexisAdaptationFabric();
+const atomicSignalsProjector = new HexisCanonicalMemoryProjector(
+  atomicSignalsRuntime.fabric,
+  atomicSignalsRuntime.semanticMemory,
+  atomicSignalsLedger,
+);
+atomicSignalsLedger.bindCanonicalMemoryApply(stage => atomicSignalsProjector.apply(stage));
+const atomicSignalsExportId = 'exp_0000000000009211';
+const atomicSignalsContent = 'MemoryOS trust correction must roll back atomically after revision failure.';
+const atomicSignalsSeed = atomicSignalsLedger.stageHmx({
+  document: makeHmxDocument(atomicSignalsExportId, {
+    memories: [{
+      ref: atomicSignalsExportId + ':memory',
+      type: 'semantic',
+      content: atomicSignalsContent,
+      status: 'active',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(atomicSignalsLedger.decideHmx(atomicSignalsSeed.stagingId, 'accept')?.status, 'accepted');
+assert.equal(atomicSignalsLedger.decideHmx(atomicSignalsSeed.stagingId, 'apply')?.status, 'applied');
+const atomicSignalsSeedMemory = atomicSignalsRuntime.fabric.canonicalSnapshot().items.find(item => item.content === atomicSignalsContent);
+assert(atomicSignalsSeedMemory);
+const atomicSignalsBefore = signalSnapshot(atomicSignalsSeedMemory);
+const atomicSignalsMemoryOS = atomicSignalsRuntime.fabric.memoryOS;
+const originalAtomicSignalsRecordRevision = atomicSignalsMemoryOS.recordRevision.bind(atomicSignalsMemoryOS);
+let throwAfterSignalsRevision = true;
+atomicSignalsMemoryOS.recordRevision = (...args) => {
+  const result = originalAtomicSignalsRecordRevision(...args);
+  if (throwAfterSignalsRevision && args[1]?.reason === 'hexis-import-authority-cap') {
+    throwAfterSignalsRevision = false;
+    throw new Error('injected-memoryos-signals-revision-after-write');
+  }
+  return result;
+};
+const atomicSignalsRetry = atomicSignalsLedger.stageHmx({
+  document: makeHmxDocument(atomicSignalsExportId, {
+    memories: [{
+      ref: atomicSignalsExportId + ':memory',
+      type: 'semantic',
+      content: atomicSignalsContent,
+      status: 'active',
+      trust_level: 0.25,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.equal(atomicSignalsLedger.decideHmx(atomicSignalsRetry.stagingId, 'accept')?.status, 'accepted');
+assert.throws(
+  () => atomicSignalsLedger.decideHmx(atomicSignalsRetry.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-memoryos-signals-revision-after-write$/,
+  'trust correction bookkeeping failure must leave an exact pre-state for compensation',
+);
+const atomicSignalsAfterFailure = atomicSignalsRuntime.fabric.canonicalSnapshot().items.find(item => item.id === atomicSignalsSeedMemory.id);
+assert(atomicSignalsAfterFailure);
+assert.deepEqual(signalSnapshot(atomicSignalsAfterFailure), atomicSignalsBefore,
+  'authority-cap failure must not leave confidence, source authority, evidence or revision history partially changed');
+assert.equal(atomicSignalsLedger.getHmxStage(atomicSignalsRetry.stagingId)?.status, 'accepted');
+assert.equal(atomicSignalsRuntime.fabric.inspect().pendingSignalCompensations, 0);
+
 // Bounded mutation journals must declare history loss, while unwinding all
 // retained owner receipts without applying a stale whole-state restore.
 const graphJournalSaturationRuntime = new MemorySubsystemRuntime();
