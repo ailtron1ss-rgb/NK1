@@ -556,6 +556,19 @@ export class MemoryOS2{
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
+  // Restoring a bounded prefix can discard rows that were targets of links in the
+  // retained prefix. Never leave dangling cross-memory relationships after hydration:
+  // they poison causal support, temporal traversal, contradiction checks and revision chains.
+  const restoredIds=new Set(this.state.items.map(item=>item.id));
+  for(const item of this.state.items){
+   const retainKnownLinks=(links:string[])=>[...new Set(links.filter(id=>typeof id==='string'&&restoredIds.has(id)))];
+   item.semanticLinks=retainKnownLinks(item.semanticLinks);
+   item.temporalLinks=retainKnownLinks(item.temporalLinks);
+   item.causalLinks=retainKnownLinks(item.causalLinks);
+   item.contradictionLinks=retainKnownLinks(item.contradictionLinks??[]);
+   if(item.supersedesId!=null&&!restoredIds.has(item.supersedesId))item.supersedesId=null;
+   if(item.supersededById!=null&&!restoredIds.has(item.supersededById))item.supersededById=null;
+  }
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
