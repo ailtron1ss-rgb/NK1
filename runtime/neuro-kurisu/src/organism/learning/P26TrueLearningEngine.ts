@@ -243,7 +243,7 @@ export class P26TrueLearningEngine{
       if(!Number.isFinite(value))throw new TypeError(label+'-must-be-finite');
       return value;
     };
-    const replayEveryNCurrent=Math.max(1,Math.min(10000,Math.floor(finiteOption(options.replayEveryNCurrent,16,'replay-every-n-current')));
+    const replayEveryNCurrent=Math.max(1,Math.min(10000,Math.floor(finiteOption(options.replayEveryNCurrent,16,'replay-every-n-current'))));
     const maxReplayUpdates=Math.max(0,Math.min(100000,Math.floor(finiteOption(options.maxReplayUpdates,64,'max-replay-updates'))));
     const targetMode=options.targetMode??'td';
     if(targetMode!=='reward'&&targetMode!=='td')throw new TypeError('invalid-interleaved-target-mode');
