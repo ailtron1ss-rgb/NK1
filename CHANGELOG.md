@@ -1,3 +1,9 @@
+## [NK1][WorkPass578] Correct escaped cues and bilingual retrieval boundaries (2026-10-27)
+
+- Fix over-escaped English voice-mode regexes and restore intended word-boundary/whitespace matching.
+- Split English word-boundary cues from Russian temporal/causal substrings in MemoryOS2, because JavaScript word boundaries do not reliably treat Cyrillic letters as ASCII word characters.
+- No tests or runtime checks were run. This pass repairs source-level matching errors introduced in the preceding passes; downstream behavior remains unverified.
+
 ## [NK1][WorkPass577] Route affective appraisal into backend voice planning (2026-10-27)
 
 - Pass the current canonical cognitive-field emotion, valence and arousal through `OrganismRuntime` and `EmbodimentRuntime` into `VoicePlan`.
