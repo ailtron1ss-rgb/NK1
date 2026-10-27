@@ -19,7 +19,7 @@ type Candidate = {
   source: SourceTrace['source'];
   kind: string;
   confidence: number;
-  epistemicStatus: 'observation' | 'fact';
+  epistemicStatus: string;
   at: number;
   provenance?: EvidenceLineageProvenance;
 };
@@ -53,7 +53,7 @@ export class HexisCanonicalEvidenceBridge {
       source: trace.source,
       kind: trace.kind,
       confidence: trace.confidence,
-      epistemicStatus: trace.epistemicStatus === 'fact' ? 'fact' : trace.epistemicStatus === 'observation' ? 'observation' : 'hypothesis' as Candidate['epistemicStatus'],
+      epistemicStatus: trace.epistemicStatus,
       at: trace.at,
       provenance: trace.provenance,
     }, 'source-monitor');
@@ -83,7 +83,7 @@ export class HexisCanonicalEvidenceBridge {
     return Object.freeze({ ...this.counters });
   }
 
-  private recordCandidate(memoryId: string, candidate: Candidate | (Omit<Candidate, 'epistemicStatus'> & {epistemicStatus: string}), origin: EvidenceOrigin) {
+  private recordCandidate(memoryId: string, candidate: Candidate, origin: EvidenceOrigin) {
     if (typeof memoryId !== 'string' || !memoryId.trim() || memoryId !== memoryId.trim() ||
       memoryId.length > 192 || /[\u0000-\u001f\u007f-\u009f]/u.test(memoryId)) {
       return this.reject(memoryId, 'memory-identity-invalid', candidate.id);
