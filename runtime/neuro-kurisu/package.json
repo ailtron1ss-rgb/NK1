@@ -1516,11 +1516,11 @@
     "audit:ui-wiring": "node scripts/audit-ui-function-wiring.mjs",
     "audit:pass3": "npm run typecheck && npm run test:lumina-adaptation && npm run test:will-all && npm run audit:ui-wiring && npm run server:smoke",
     "test:hexis-adaptation": "node --experimental-strip-types tests/integration/hexis-adaptation.mjs",
-    "audit:hexis": "npm run test:hexis-adaptation && npm run test:hexis-server-smoke && npm run audit:ui-wiring",
+    "audit:hexis": "npm run test:hexis-adaptation && npm run test:hexis-server-smoke && npm run audit:ui-wiring && npm run test:hexis-evidence-lineage",
     "audit:hexis-release": "npm run typecheck && npm run audit:hexis && npm run server:smoke",
     "test:hexis-server-smoke": "node --experimental-strip-types tests/integration/hexis-server-smoke.mjs",
     "test:server-input-hardening": "node --experimental-strip-types tests/integration/server-input-hardening.mjs",
-    "release:final": "npm run typecheck && npm run test:letta-governance && npm run test:will-all && npm run test:lumina-adaptation && npm run test:hexis-adaptation && npm run test:server-input-hardening && npm run test:hexis-server-smoke && npm run audit:ui-wiring && npm run audit:architecture && npm run audit:core-ownership && npm run audit:hygiene && npm run audit:forensics && npm run audit:syntax && npm run audit:integrity && npm run audit:contract && npm run verify:release-source && npm run audit:archive && npm run test:conscio-ui-wiring",
+    "release:final": "npm run typecheck && npm run test:letta-governance && npm run test:will-all && npm run test:lumina-adaptation && npm run test:hexis-adaptation && npm run test:hexis-evidence-lineage && npm run test:server-input-hardening && npm run test:hexis-server-smoke && npm run audit:ui-wiring && npm run audit:architecture && npm run audit:core-ownership && npm run audit:hygiene && npm run audit:forensics && npm run audit:syntax && npm run audit:integrity && npm run audit:contract && npm run verify:release-source && npm run audit:archive && npm run test:conscio-ui-wiring",
     "test:letta-governance": "node --experimental-strip-types tests/integration/letta-governance-adaptation.mjs",
     "test:conscio-adaptation": "node --experimental-strip-types tests/integration/conscio-adaptation.mjs",
     "test:conscio-all": "npm run typecheck && npm run test:conscio-adaptation && npm run test:will-all && npm run test:lumina-adaptation && npm run test:hexis-adaptation && npm run test:server-input-hardening && npm run test:hexis-server-smoke && npm run test:conscio-ui-wiring && npm run test:conscio-server-smoke",
@@ -1776,6 +1776,7 @@
     "test:p324:interrupt-episodes": "node --experimental-strip-types tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
-    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs"
+    "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
+    "test:hexis-evidence-lineage": "node --experimental-strip-types tests/integration/hexis-canonical-evidence-bridge.mjs"
   }
 }

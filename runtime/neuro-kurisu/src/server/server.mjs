@@ -864,6 +864,20 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/integration/hexis/reviews') {
             return json(res, 200, { ok: true, reviews: runtime.core.hexisListLearningReviews() });
         }
+        if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/evidence/lineage') {
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)) {
+                return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
+            }
+            const result = runtime.core.hexisIngestEvidenceLineage(input);
+            if (result.accepted) {
+                await runtime.core.flush();
+                return json(res, 200, { ok: true, result });
+            }
+            const status = result.reason === 'canonical-memory-not-found' ? 404 :
+                result.reason === 'canonical-evidence-write-failed' ? 409 : 400;
+            return json(res, status, { ok: false, result });
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/create') {
             const input = await body(req);
             const result = runtime.core.hexisCreateLearningReview();

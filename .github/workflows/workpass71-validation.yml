@@ -110,6 +110,8 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Hexis evidence lineage and server restart persistence
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
       - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
         run: npm run test:rebuild-recovered
       - name: P23 persisted learning restore integrity
