@@ -46,12 +46,15 @@ export function detectVoiceBreathMode(text:string): VoiceBreathMode {
   return 'talk';
 }
 
-export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null;mode?:string|null;needs:OrganismNeeds;body:OrganismBodyState;continuity01?:number;grounding01?:number;uncertainty01?:number;}): VoicePlan {
+export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null;mode?:string|null;needs:OrganismNeeds;body:OrganismBodyState;continuity01?:number;grounding01?:number;uncertainty01?:number;emotion?:{label?:string;valence01?:number;arousal01?:number;dominance01?:number};}): VoicePlan {
   const {text,action,mode,needs,body}=input;
   const breath=detectVoiceBreathMode(text);
   const continuity=clamp(input.continuity01??.7);
   const grounding=clamp(input.grounding01??.7);
   const uncertainty=clamp(input.uncertainty01??needs.uncertainty);
+  const emotionLabel=String(input.emotion?.label??'').trim().toLocaleLowerCase();
+  const valence=clamp(input.emotion?.valence01??.5);
+  const arousal=clamp(input.emotion?.arousal01??.22);
   const reason:string[]=[];
 
   let tone:VoiceTone='neutral';
@@ -59,6 +62,11 @@ export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null
   if(action==='reflect'||mode==='reflect') tone='reflective';
   if(action==='verify'||action==='explore'||mode==='learn') tone='focused';
   if(action==='rest'||mode==='rest') tone='tender';
+  // Appraisal may tune delivery, but high-arousal negative states never become
+  // an instruction to escalate into hostile speech.
+  if(emotionLabel==='joy') tone='playful';
+  else if(emotionLabel==='curiosity'||emotionLabel==='anxiety'||emotionLabel==='frustration'||emotionLabel==='anger'||emotionLabel==='protective') tone='focused';
+  else if(emotionLabel==='sadness') tone='tender';
   if(breath==='argue') tone='focused';
   if(breath==='confess') tone='reflective';
 
@@ -92,6 +100,17 @@ export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null
   if(action==='verify') { pitch-=.012; rate-=.008; }
   if(action==='rest') { rate-=.05; volume-=.04; }
   if(uncertainty>.8){ rate-=.02; pauseMs+=25; }
+
+  if(emotionLabel==='joy'){ pitch+=.012; rate+=.012; emphasis+=.035; reason.push('affect-joy'); }
+  else if(emotionLabel==='curiosity'){ pitch+=.006; emphasis+=.035; reason.push('affect-curiosity'); }
+  else if(emotionLabel==='anxiety'){ rate-=.025; pauseMs+=25; emphasis-=.025; reason.push('affect-anxiety-deescalation'); }
+  else if(emotionLabel==='sadness'){ pitch-=.018; rate-=.028; pauseMs+=20; reason.push('affect-sadness'); }
+  else if(emotionLabel==='frustration'||emotionLabel==='anger'){ pitch-=.012; pauseMs+=15; reason.push('affect-regulation'); }
+  else if(emotionLabel==='protective'){ rate-=.012; reason.push('affect-protective'); }
+  if(valence>=.68){ pitch+=.006; emphasis+=.015; reason.push('positive-valence'); }
+  else if(valence<=.32){ rate-=.012; pauseMs+=10; reason.push('negative-valence'); }
+  if(arousal>=.78){ emphasis+=.025; reason.push('high-arousal'); }
+  else if(arousal<=.20){ rate-=.01; volume-=.01; reason.push('low-arousal'); }
 
   const safePitch=clampRange(pitch,.72,1.28);
   const safeRate=clampRange(rate,.72,1.25);
