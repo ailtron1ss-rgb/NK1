@@ -783,11 +783,14 @@ export class MemoryOS2{
    // explicit `at` mode opts into historical time; `all` remains an archive view.
    const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
    const isValidAt=(m:MemoryItem2,at:number)=>{const from=Number(m.validFromAt??m.createdAt),until=m.validUntilAt==null?Number.POSITIVE_INFINITY:Number(m.validUntilAt);return from<=at&&at<until;};
-   const contextCausal=/\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
-  const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
-  this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    const queryLower=query.toLocaleLowerCase();
    const queryIntentMode=detectMemoryQueryIntent(query);
+   // Context belongs to the current query, not a lifetime counter. Using
+   // linkUpdates/semanticQueries here made unrelated questions drift into causal
+   // or temporal policy buckets after enough ordinary retrievals.
+   const contextCausal=(queryIntentMode==='causal'||/\\b(why|cause|causal|because|reason|effect|consequence|причин|почему|следств)/iu.test(query))?1:0;
+   const contextTemporal=(temporalMode!=='current'||queryIntentMode==='episodic'||/\\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query))?1:0;
+   this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    if(this.linkSupportCacheVersion!==this.state.linkUpdates||!this.linkSupportCache){
      const support=new Map<string,number>();
      for(const source of this.state.items){
