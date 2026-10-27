@@ -517,6 +517,8 @@ export class MemoryOS2{
     documentFrequency:new Map(this.documentFrequency),
     itemTokenLength:new Map(this.itemTokenLength),
     revisionGroupIndex:cloneSetMap(this.revisionGroupIndex),
+    semanticEmbeddingIndex:new Map(this.semanticEmbeddingIndex),
+    semanticEmbeddingRetry:new Map(this.semanticEmbeddingRetry),
     totalTokenLength:this.totalTokenLength,
     linkSupportCache:this.linkSupportCache?new Map(this.linkSupportCache):null,
     linkSupportCacheVersion:this.linkSupportCacheVersion,
@@ -598,6 +600,18 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
+  // Embeddings and provider retry entries are derived from canonical content.
+  // Prune them only after all primary indexes rebuilt; retain exact-current vectors
+  // for unchanged content and roll them back too if cache reconciliation throws.
+  const restoredById=new Map(this.state.items.map(item=>[item.id,item]));
+  for(const [id,row] of this.semanticEmbeddingIndex){
+    const item=restoredById.get(id);
+    if(!item||!this.embeddingProvider||row.providerId!==this.embeddingProvider.providerId||row.contentHash!==memoContentHash(item.content)||row.vector.length===0)this.semanticEmbeddingIndex.delete(id);
+  }
+  for(const [id,retry] of this.semanticEmbeddingRetry){
+    const item=restoredById.get(id);
+    if(!item||!this.embeddingProvider||retry.contentHash!==memoContentHash(item.content))this.semanticEmbeddingRetry.delete(id);
+  }
    }catch(error){
     this.state=previousState;
     this.adaptivePolicy.restore(previousPolicy);
@@ -615,6 +629,8 @@ export class MemoryOS2{
     this.totalTokenLength=previous.totalTokenLength;
     this.linkSupportCache=previous.linkSupportCache;
     this.linkSupportCacheVersion=previous.linkSupportCacheVersion;
+    restoreMap(this.semanticEmbeddingIndex,previous.semanticEmbeddingIndex);
+    restoreMap(this.semanticEmbeddingRetry,previous.semanticEmbeddingRetry);
     this.lastCandidateCount=previous.lastCandidateCount;
     throw error;
    }
