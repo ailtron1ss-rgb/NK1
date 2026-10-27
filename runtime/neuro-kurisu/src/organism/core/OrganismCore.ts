@@ -11023,7 +11023,7 @@ export class OrganismCore {
      * the registrar: this Core instance records provenance before child spawn.
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
-        return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: context => this.registerTrustedSkillShadowRun(context) } });
+        return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } } });
     }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
