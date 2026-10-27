@@ -1,0 +1,48 @@
+name: WorkPass507 bilingual memory holdout contract
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/tests/holdout-normalization.mjs"
+      - "runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs"
+      - "runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs"
+      - "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md"
+      - ".github/workflows/workpass507-bilingual-holdout.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/tests/holdout-normalization.mjs"
+      - "runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs"
+      - "runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs"
+      - ".github/workflows/workpass507-bilingual-holdout.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass507-holdout-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          package-manager-cache: false
+      - name: Verify Node.js runtime
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') { console.error(process.versions.node); process.exit(1) }"
+      - name: Install pinned runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Test deterministic Unicode normalization and stable fingerprints
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass507-bilingual-holdout-runner-contract.mjs
+      - name: Run existing independent-holdout safety regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:big-pass-305:independent-holdout
