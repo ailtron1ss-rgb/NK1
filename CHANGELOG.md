@@ -2377,3 +2377,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [DOCS] Added `docs/integration/hexis/ASSIMILATION_PLAN_RU.md`: compares the distinct QuixiAI, Bevel-Software, and hexis-framework repositories; maps transferable mechanisms to NK1; defines adapter contracts, phased implementation, provenance, learning promotion gates, benchmark requirements, and rollback constraints.
 - [SCOPE] Documentation/design only. No Hexis runtime code, dependency, database migration, or behavioral change was integrated in this commit.
 - [EVIDENCE] Plan anchors to the current source-branch checkpoint and its reported open production/retrieval validation gates. No retrieval uplift, learning score improvement, or production readiness is claimed.
+
+## [NK1][WorkPass507] Add independent bilingual retrieval evaluation gate (2026-10-27)
+
+- Added an offline RU/EN MemoryOS2 retrieval holdout runner with source/version/license/labeling provenance, explicit unanswerable queries, five paired bootstrap seeds, corpus/configuration fingerprints, and no automatic promotion.
+- Fixed upstream double-escaped Unicode punctuation/whitespace normalization, canonical row separators and report newlines; extracted deterministic Unicode normalization and SHA-256 row canonicalization into a tested helper.
+- Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
+- Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
+- No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
