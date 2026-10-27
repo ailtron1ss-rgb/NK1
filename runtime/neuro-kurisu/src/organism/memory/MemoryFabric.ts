@@ -15,7 +15,7 @@ type EncodeInput = MemoryLifecycleEncodeInput;
 export type MemoryLifecycleAction = 'encode'|'revise-status'|'revise-content'|'update-signals'|'update-context'|'forget';
 export type MemoryLifecycleCommand =
   | { action:'encode'; input:EncodeInput; commandId?:string; tick?:number; emitEvent?:boolean; syncCompatibility?:boolean; forceDistinct?:boolean }
-  | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number }
+  | { action:'revise-status'; id:string; to:MemoryItem2['epistemicStatus']; reason:string; commandId?:string; tick?:number; compensationToken?:object }
   | { action:'revise-content'; id:string; newContent:string; options?:Parameters<MemoryOS2['reviseContent']>[2]; commandId?:string; tick?:number }
   | { action:'update-signals'; id:string; patch:Parameters<MemoryOS2['updateSignals']>[1]; reason?:string; commandId?:string; tick?:number; compensationToken?:object }
   | { action:'update-context'; id:string; patch:Record<string,string|undefined>; commandId?:string; tick?:number }
@@ -136,6 +136,8 @@ export class MemoryFabric {
   private readonly mutationReceipts=new Map<string,MemoryLifecycleReceipt>();
   private readonly protectedSignalReceiptIds=new Set<string>();
   private readonly signalCompensations=new WeakMap<object,{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}>();
+  private readonly protectedStatusReceiptIds=new Set<string>();
+  private readonly statusCompensations=new WeakMap<object,{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}>();
   private retiredMutationReceiptBloom=new Uint8Array(RETIRED_RECEIPT_BLOOM_BYTES);
   private retiredMutationReceiptCount=0;
   private retiredMutationReceiptBloomCorrupt=false;
@@ -196,10 +198,15 @@ export class MemoryFabric {
     const fingerprint=createHash('sha256').update(stableCommandJson(semanticPayload)).digest('hex');
     const compensationToken=(command as {compensationToken?:object}).compensationToken;
     let signalCompensation:{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}|undefined;
+    let statusCompensation:{memoryId:string;snapshotToken:object;sourceCommandIds:string[]}|undefined;
     if(compensationToken!==undefined){
-      signalCompensation=action==='update-signals'?this.signalCompensations.get(compensationToken):undefined;
-      if(!signalCompensation||signalCompensation.memoryId!==(command as {id?:string}).id||!commandId)
-        throw new Error('memory-signals-compensation-token-invalid');
+      const targetId=(command as {id?:string}).id;
+      if(action==='update-signals')signalCompensation=this.signalCompensations.get(compensationToken);
+      else if(action==='revise-status')statusCompensation=this.statusCompensations.get(compensationToken);
+      if((!signalCompensation&&!statusCompensation)||
+        (signalCompensation&&signalCompensation.memoryId!==targetId)||
+        (statusCompensation&&statusCompensation.memoryId!==targetId)||!commandId)
+        throw new Error('memory-compensation-token-invalid');
     }
     if(commandId){
       const prior=this.mutationReceipts.get(commandId);
@@ -218,10 +225,14 @@ export class MemoryFabric {
     // crossing into MemoryOS2. If a downstream operation throws after partial mutation,
     // the transaction still knows exactly which command may need compensation.
     if(signalCompensation&&!signalCompensation.sourceCommandIds.includes(commandId)){
-      if(signalCompensation.sourceCommandIds.length>=256)
-        throw new Error('memory-signals-compensation-command-limit');
+      if(signalCompensation.sourceCommandIds.length>=256)throw new Error('memory-signals-compensation-command-limit');
       signalCompensation.sourceCommandIds.push(commandId);
       this.protectedSignalReceiptIds.add(commandId);
+    }
+    if(statusCompensation&&!statusCompensation.sourceCommandIds.includes(commandId)){
+      if(statusCompensation.sourceCommandIds.length>=256)throw new Error('memory-status-compensation-command-limit');
+      statusCompensation.sourceCommandIds.push(commandId);
+      this.protectedStatusReceiptIds.add(commandId);
     }
 
     let result:MemoryItem2|Record<string,string>|boolean|void|null=null;
@@ -306,7 +317,7 @@ export class MemoryFabric {
         // HMX import can create hundreds of rows; evict unrelated old receipts first.
         let oldest:string|undefined;
         for(const candidate of this.mutationReceipts.keys()){
-          if(!this.protectedSignalReceiptIds.has(candidate)){oldest=candidate;break;}
+          if(!this.protectedSignalReceiptIds.has(candidate)&&!this.protectedStatusReceiptIds.has(candidate)){oldest=candidate;break;}
         }
         if(oldest===undefined)break;
         this.retireMutationReceipt(oldest);
@@ -611,7 +622,7 @@ export class MemoryFabric {
     return {decisionId:this.lastPolicyDecisionId??null,rows};
   }
 
-  revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string}={}){
+  revise(id:string,to:MemoryItem2['epistemicStatus'],reason:string,options:{tick?:number;commandId?:string;compensationToken?:object}={}){
     return this.applyLifecycleCommand({action:'revise-status',id,to,reason,...options}) as void;
   }
 
@@ -633,38 +644,68 @@ export class MemoryFabric {
     return token;
   }
 
-  /** Commit a successful HMX signal transaction and release its protected receipts. */
-  commitSignalCompensations(tokens:object[]):boolean{
-    if(!Array.isArray(tokens)||tokens.length>256)throw new Error('memory-signals-compensation-token-list-invalid');
+  captureStatusCompensation(id:string):object|null{
+    const memoryId=String(id);
+    const snapshotToken=this.memoryOS.captureStatusCompensation(memoryId);
+    if(!snapshotToken)return null;
+    const token=Object.freeze({});
+    this.statusCompensations.set(token,{memoryId,snapshotToken,sourceCommandIds:[]});
+    return token;
+  }
+
+  /**
+   * Validate status and trust-signal tokens together before finalizing either class.
+   */
+  commitHmxCompensations(input:{signalTokens?:object[];statusTokens?:object[]}):boolean{
+    const signalTokens=input?.signalTokens??[];
+    const statusTokens=input?.statusTokens??[];
+    if(!Array.isArray(signalTokens)||!Array.isArray(statusTokens)||
+      signalTokens.length>256||statusTokens.length>256||signalTokens.length+statusTokens.length>512)
+      throw new Error('memory-compensation-token-list-invalid');
     const unique=new Set<object>();
-    const transactions:Array<{token:object;memoryId:string;snapshotToken:object;sourceCommandIds:string[]}>= [];
-    for(const token of tokens){
+    const signals:Array<{token:object;snapshotToken:object;sourceCommandIds:string[]}>= [];
+    const statuses:Array<{token:object;snapshotToken:object;sourceCommandIds:string[]}>= [];
+    for(const token of signalTokens){
       if(!token||typeof token!=='object'||unique.has(token))throw new Error('memory-signals-compensation-token-invalid');
       unique.add(token);
       const state=this.signalCompensations.get(token);
-      if(!state||!this.memoryOS.hasSignalCompensation(state.snapshotToken))
-        throw new Error('memory-signals-compensation-token-invalid');
-      for(const sourceCommandId of state.sourceCommandIds){
-        if(!/^hexis-authority:[a-f0-9]{48}$/.test(sourceCommandId))
-          throw new Error('memory-signals-compensation-source-command-invalid');
-        const prior=this.mutationReceipts.get(sourceCommandId);
-        if(!prior||prior.action!=='update-signals'||prior.memoryId!==state.memoryId)
-          throw new Error('memory-signals-compensation-source-command-mismatch');
+      if(!state||!this.memoryOS.hasSignalCompensation(state.snapshotToken))throw new Error('memory-signals-compensation-token-invalid');
+      for(const id of state.sourceCommandIds){
+        if(!/^hexis-authority:[a-f0-9]{48}$/.test(id))throw new Error('memory-signals-compensation-source-command-invalid');
+        const receipt=this.mutationReceipts.get(id);
+        if(!receipt||receipt.action!=='update-signals'||receipt.memoryId!==state.memoryId)throw new Error('memory-signals-compensation-source-command-mismatch');
       }
-      transactions.push({token,memoryId:state.memoryId,snapshotToken:state.snapshotToken,sourceCommandIds:state.sourceCommandIds});
+      signals.push({token,snapshotToken:state.snapshotToken,sourceCommandIds:state.sourceCommandIds});
     }
-    // Validate the whole batch before consuming any token, so the projector's catch
-    // can still compensate every mutation if this transaction cannot be committed.
-    for(const transaction of transactions){
-      if(!this.memoryOS.discardSignalCompensation(transaction.snapshotToken))
-        throw new Error('memory-signals-compensation-capture-missing');
+    for(const token of statusTokens){
+      if(!token||typeof token!=='object'||unique.has(token))throw new Error('memory-status-compensation-token-invalid');
+      unique.add(token);
+      const state=this.statusCompensations.get(token);
+      if(!state||!this.memoryOS.hasStatusCompensation(state.snapshotToken))throw new Error('memory-status-compensation-token-invalid');
+      for(const id of state.sourceCommandIds){
+        if(!/^hexis-supersede:[a-f0-9]{48}$/.test(id))throw new Error('memory-status-compensation-source-command-invalid');
+        const receipt=this.mutationReceipts.get(id);
+        if(!receipt||receipt.action!=='revise-status'||receipt.memoryId!==state.memoryId)throw new Error('memory-status-compensation-source-command-mismatch');
+      }
+      statuses.push({token,snapshotToken:state.snapshotToken,sourceCommandIds:state.sourceCommandIds});
     }
-    for(const transaction of transactions){
-      for(const sourceCommandId of transaction.sourceCommandIds)this.protectedSignalReceiptIds.delete(sourceCommandId);
-      this.signalCompensations.delete(transaction.token);
+    // Preflight both maps before the first deletion; no asynchronous work occurs in this boundary.
+    for(const entry of signals)if(!this.memoryOS.hasSignalCompensation(entry.snapshotToken))throw new Error('memory-signals-compensation-capture-missing');
+    for(const entry of statuses)if(!this.memoryOS.hasStatusCompensation(entry.snapshotToken))throw new Error('memory-status-compensation-capture-missing');
+    for(const entry of signals)if(!this.memoryOS.discardSignalCompensation(entry.snapshotToken))throw new Error('memory-signals-compensation-capture-missing');
+    for(const entry of statuses)if(!this.memoryOS.discardStatusCompensation(entry.snapshotToken))throw new Error('memory-status-compensation-capture-missing');
+    for(const entry of signals){
+      for(const id of entry.sourceCommandIds)this.protectedSignalReceiptIds.delete(id);
+      this.signalCompensations.delete(entry.token);
+    }
+    for(const entry of statuses){
+      for(const id of entry.sourceCommandIds)this.protectedStatusReceiptIds.delete(id);
+      this.statusCompensations.delete(entry.token);
     }
     return true;
   }
+  commitSignalCompensations(tokens:object[]):boolean{return this.commitHmxCompensations({signalTokens:tokens});}
+  commitStatusCompensations(tokens:object[]):boolean{return this.commitHmxCompensations({statusTokens:tokens});}
 
   /**
    * Restore only the signal fields changed by an HMX apply that later failed.
@@ -716,6 +757,45 @@ export class MemoryFabric {
     const tick=Number.isSafeInteger(context.tick)&&Number(context.tick)>=0?Number(context.tick):0;
     this.events.append(makeEvent('memory-lifecycle',tick,{
       action:'restore-signals-compensation',memoryId:id,reason,commandId:rollbackCommandId,
+      sourceCommandIds:[...compensation.sourceCommandIds],
+    }));
+    return true;
+  }
+
+  restoreStatusForCompensation(
+    id:string,
+    token:object,
+    reason='hexis-hmx-apply-rollback',
+    context:{tick?:number;commandId?:string}={},
+  ):boolean{
+    const rollbackCommandId=String(context.commandId??'');
+    const compensation=this.statusCompensations.get(token);
+    if(reason!=='hexis-hmx-apply-rollback'||
+      !/^hexis-status-rollback:[a-f0-9]{48}$/.test(rollbackCommandId)||
+      !compensation||compensation.memoryId!==String(id)||compensation.sourceCommandIds.length>256)
+      throw new Error('memory-status-compensation-command-invalid');
+    if(compensation.sourceCommandIds.length===0){
+      const released=this.memoryOS.discardStatusCompensation(compensation.snapshotToken);
+      if(!released)return false;
+      this.statusCompensations.delete(token);
+      return true;
+    }
+    for(const sourceCommandId of compensation.sourceCommandIds){
+      if(!/^hexis-supersede:[a-f0-9]{48}$/.test(sourceCommandId))throw new Error('memory-status-compensation-source-command-invalid');
+      const prior=this.mutationReceipts.get(sourceCommandId);
+      if(prior&&(prior.action!=='revise-status'||prior.memoryId!==compensation.memoryId))
+        throw new Error('memory-status-compensation-source-command-mismatch');
+    }
+    const restored=this.memoryOS.restoreStatusForCompensation(id,compensation.snapshotToken);
+    if(!restored)return false;
+    for(const sourceCommandId of compensation.sourceCommandIds){
+      this.protectedStatusReceiptIds.delete(sourceCommandId);
+      if(this.mutationReceipts.has(sourceCommandId))this.mutationReceipts.delete(sourceCommandId);
+    }
+    this.statusCompensations.delete(token);
+    const tick=Number.isSafeInteger(context.tick)&&Number(context.tick)>=0?Number(context.tick):0;
+    this.events.append(makeEvent('memory-lifecycle',tick,{
+      action:'restore-status-compensation',memoryId:id,reason,commandId:rollbackCommandId,
       sourceCommandIds:[...compensation.sourceCommandIds],
     }));
     return true;
