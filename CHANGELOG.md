@@ -1,3 +1,10 @@
+## [NK1][WorkPass440] Complete runtime type dependencies across verification workflows (2026-10-27)
+
+- The WorkPass94 verification-input workflow now installs the runtime lockfile before running `npm run typecheck`; previously it installed only the app compiler, leaving Node's built-in modules and globals unresolved even after runtime `@types/node` was added.
+- WorkPass94's concurrency group now includes `github.event_name`, preventing a push and its pull-request run for the same branch from cancelling one another.
+- The concurrent update also typed `CognitiveDependencyGraph.restore()`'s raw transition payload as `Record<string, unknown>`, fixing the remaining TS7053 diagnostic identified by WorkPass294 on the prior head.
+- The targeted endogenous goal/drive contract test passed on HEAD `0ee19e554bff185fae07d36a59d32513f0710d7b` after WorkPass439. Runtime typecheck must still be rechecked on the new head after these final environment/type fixes.
+
 ## [NK1][WorkPass466] Make restored domain-transition map type-safe (2026-10-27)
 
 - Declared the persisted domain-transition map as `Record<string, unknown>` before validating individual domain counters. This removes the compiler's inferred empty-object indexing error without weakening the per-domain validation.
