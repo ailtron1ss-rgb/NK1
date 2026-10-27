@@ -46,3 +46,93 @@ assert.equal(generalRows.length, 1);
 assert.equal(generalMemory.retrievalDiagnostics().queryIntentMode, 'general');
 assert.equal(generalMemory.retrievalDiagnostics().maxQueryIntentBoost01, 0, 'general search must not get an intent preference');
 console.log('MEMORY_QUERY_INTENT_WORKPASS51=PASS', JSON.stringify({ cases: reports, general: 'no-intent-bonus' }));
+const autobiographicalRecallCases = [
+  { query: 'Какие у меня воспоминания о нейронной памяти и эксперименте?', intent: 'episodic' },
+  { query: 'Вспомни, что мы обсуждали про нейронную память', intent: 'episodic' },
+  { query: 'Что ты помнишь о нашем прошлом разговоре про нейронную память?', intent: 'episodic' },
+  { query: 'What do you remember about our previous conversation on memory?', intent: 'episodic' },
+  { query: 'What did we discuss last time about memory?', intent: 'episodic' },
+  { query: 'Что ты помнишь обо мне и моих интересах?', intent: 'identity' },
+  { query: 'What do you remember about me and my preferences?', intent: 'identity' },
+];
+for (const fixture of autobiographicalRecallCases) {
+  assert.equal(detectMemoryQueryIntent(fixture.query), fixture.intent, 'autobiographical recall intent: ' + fixture.query);
+}
+
+const identityRecall = new MemoryOS2({ embeddingProvider: null });
+const identityContent = 'личные интересы предпочтения характер';
+encode(identityRecall, { id: 'a-semantic-decoy', kind: 'semantic', content: identityContent });
+encode(identityRecall, { id: 'z-identity-recall', kind: 'identity', content: identityContent, identityRelevance: .8 });
+assert.equal(
+  identityRecall.retrieve('Что ты помнишь обо мне и моих интересах?', 1, .1, .9)[0]?.id,
+  'z-identity-recall',
+  'profile recall must prefer identity memory rather than a lexical-tied semantic note',
+);
+
+const conversationalMemory = new MemoryOS2({ embeddingProvider: null });
+const conversationContent = 'нейронная память эксперимент разговор';
+encode(conversationalMemory, { id: 'a-semantic-decoy', kind: 'semantic', content: conversationContent });
+encode(conversationalMemory, {
+  id: 'z-social-session-memory', kind: 'social', content: conversationContent,
+  // Some stores persist only the session identifier, not a separate conversation ID.
+  context: { sessionId: 'session-42' },
+});
+const conversationSnapshot = conversationalMemory.snapshot();
+const restoredConversation = new MemoryOS2({ embeddingProvider: null });
+restoredConversation.restore(conversationSnapshot);
+assert.equal(
+  restoredConversation.retrieve('Что мы обсуждали в прошлый раз про нейронную память и эксперимент?', 1, .1, .1)[0]?.id,
+  'z-social-session-memory',
+  'session-backed social memory must survive snapshot/restore and beat a lexical-tied semantic note',
+);
+assert.equal(restoredConversation.get('z-social-session-memory')?.context?.sessionId, 'session-42',
+  'conversation/session lineage must survive snapshot/restore');
+
+const relationshipMemory = new MemoryOS2({ embeddingProvider: null });
+const relationshipContent = 'нейронная память эксперимент разговор';
+encode(relationshipMemory, {
+  id: 'a-relationship-social', kind: 'social', content: relationshipContent,
+  context: { relationshipId: 'relationship-7', conversationRole: 'assistant', messageIndex: '3', turnSequence: '7' },
+});
+encode(relationshipMemory, { id: 'z-actual-episode', kind: 'episodic', content: relationshipContent });
+assert.equal(
+  relationshipMemory.retrieve('Вспомни, что мы обсуждали про нейронную память', 1, .1, .1)[0]?.id,
+  'z-actual-episode',
+  'relationship, message-index, turn-sequence, and role labels must not impersonate a durable conversation ID',
+);
+
+console.log('MEMORY_QUERY_INTENT_AUTOBIOGRAPHICAL_RECALL=PASS', JSON.stringify({
+  phraseCases: autobiographicalRecallCases.length,
+  identityWinner: 'z-identity-recall',
+  sessionRecallWinner: 'z-social-session-memory',
+  roleOnlyGuard: 'z-actual-episode',
+}));
+
+const snakeSessionMemory = new MemoryOS2({ embeddingProvider: null });
+const snakeSessionContent = 'neural memory experiment dialogue';
+encode(snakeSessionMemory, { id: 'a-semantic-decoy', kind: 'semantic', content: snakeSessionContent });
+encode(snakeSessionMemory, {
+  id: 'z-session-snake-case', kind: 'social', content: snakeSessionContent,
+  context: { session_id: 'session-43' },
+});
+assert.equal(
+  snakeSessionMemory.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
+  'z-session-snake-case',
+  'snake_case session identifiers from imported memory must retain conversation lineage',
+);
+
+for (const [key, sessionId] of [['session-id', 'session-44'], ['session id', 'session-45'], ['threadId', 'thread-46']]) {
+  const importedSession = new MemoryOS2({ embeddingProvider: null });
+  const importedContent = 'neural memory experiment dialogue';
+  encode(importedSession, { id: 'a-semantic-decoy', kind: 'semantic', content: importedContent });
+  encode(importedSession, {
+    id: 'z-imported-session', kind: 'social', content: importedContent,
+    context: { [key]: sessionId },
+  });
+  assert.equal(
+    importedSession.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
+    'z-imported-session',
+    'normalized session/thread key should preserve lineage: ' + key,
+  );
+}
+

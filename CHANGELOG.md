@@ -1,3 +1,10 @@
+## [NK1][WorkPass568] Improve bilingual autobiographical and session recall (2026-10-27)
+
+- Prioritize explicit profile questions before broad recall phrasing, and recognize Russian/English prompts about previous conversations and sessions as episodic recall.
+- Boost social memory for episodic questions only when stable conversation/session lineage or explicit conversation-history metadata is present. Relationship IDs, speaker role, message index and turn sequence alone do not count as dialogue identity.
+- Extend the existing query-intent regression with profile precedence, session snapshot/restore and camelCase/snake_case/kebab-case/spaced key variants; add a deterministic 30-query lexical-tie goldset.
+- Include both tests in `test:rebuild-recovered`. Synthetic fixtures validate routing and bounded type preference only; they do not establish production-corpus recall uplift or release readiness.
+
 ## [NK1][WorkPass510] Gate release audits on current SBOM provenance (2026-10-27)
 
 - Wire the existing `test:provenance-current` into root `audit:workpass70` and runtime `release:audit`, `release:final`, and `release:final3`.

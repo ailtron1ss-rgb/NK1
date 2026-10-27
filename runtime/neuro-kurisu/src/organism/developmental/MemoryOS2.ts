@@ -64,17 +64,33 @@ export type MemoryQueryIntent='episodic'|'procedural'|'identity'|'goal'|'causal'
 export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
  const q=String(query??'').normalize('NFKC').toLocaleLowerCase();
  if(/\b(why|cause|causal|because|reason|effect|consequence)\b|почему|из-за чего|причин|последств|к чему привел|что повлиял/iu.test(q))return 'causal';
- if(/\b(what happened|when did|remember when|what did i do|what did we do|how did it go)\b|что произошло|что случилось|что мы делали|вспомни|когда я|когда мы|как прошло|какое событие/iu.test(q))return 'episodic';
+ // Explicit profile questions outrank broad recollection markers such as "remember".
+ if(/\b(what do you remember about me|what do you remember about my (?:interests|preferences|personality|profile|goals)|what have you learned about me)\b|что ты помнишь (?:обо мне|про меня|о моих (?:интерес|предпочт|чертах|целях))|что ты запомнил[аи]? (?:обо мне|про меня)|что тебе известно обо мне/iu.test(q))return 'identity';
+ if(/\b(what happened|when did|remember when|what did i do|what did we do|how did it go|what did we discuss|what did we talk about|what did you tell me|what did i tell you|can you remind me what we (?:discussed|talked about)|remind me what we (?:discussed|talked about)|recall (?:our|the) (?:last|previous|earlier) (?:conversation|discussion|chat|session)|remember (?:our|the) (?:last|previous|earlier) (?:conversation|discussion|chat|session)|what do you remember about|what do you remember from|what are my memories of|memories? (?:of|about)|our last conversation|previous conversation|earlier discussion|last time)\b|что произошло|что случилось|что мы делали|что мы обсуждали|о ч[её]м мы говорили|напомни(?:те)?(?: мне)?[,\s]{0,12}(?:о ч[её]м|что мы (?:обсуждали|говорили|делали)|наш(?:ем|у) (?:прошл(?:ом|ый)|последн(?:ем|ий)) (?:разговор|диалог|чат))|восстанови(?:ть)? контекст (?:нашего|последнего|прошлого) (?:чата|разговора|диалога|обсуждения)|(?:^|[^\p{L}\p{N}])(?:воспомин|вспомин|припомн)\p{L}*|вспомни|когда я|когда мы|как прошло|какое событие|какой эпизод|что было (?:в )?(?:прошлый раз|тогда)|прошл(?:ый|ая|ое|ые|ую|ых|ом|ей) (?:раз|разговор|обсужден\p{L}*|сесси\p{L}*|встреч\p{L}*)/iu.test(q))return 'episodic';
  if(/\b(how to|steps|instructions|how do i|procedure|configure|install|implement)\b|как сделать|как настроить|инструкц|шаги|пошагово|как реализовать|как установить/iu.test(q))return 'procedural';
  if(/\b(what do i like|what do i love|what am i interested in|what topics am i curious about|what do i find interesting|what are my hobbies|what do i enjoy|what do i enjoy exploring|my interests|my preferences|who am i|my personality|what do you know about me|what are my personality traits)\b|что мне нравит|что мне интересно|чем я интересуюсь|что меня интересует|что я люблю|что мне любопытно|чем я увлекаюсь|какие у меня интересы|какой я|мои интересы|мои предпочт|что ты знаешь обо мне|какие у меня черты характера|какие мои устойчивые черты|что за человек я|мой характер|моя личность/iu.test(q))return 'identity';
  if(/\b(what is next|what remains|unfinished|current goals|next step|what did i want|what did i intend|what was i planning|next goal|my intention)\b|что (?:мне )?осталось|что я хотел|что я намеревал|что я собирался|что я планировал|мои цели|незаверш|следующий шаг|какие планы|что дальше|текущие цели/iu.test(q))return 'goal';
  if(/\b(what is|define|definition|explain the concept)\b|что такое|определение|дай определение|объясни понятие/iu.test(q))return 'factual';
  return 'general';
 }
+function isConversationMemory(item:MemoryItem2):boolean{
+ const context=item.context??{};
+ // Only stable conversation/session IDs or keys count as lineage. A message index,
+ // turn sequence, or speaker role identifies a fragment, not the dialogue it belongs to.
+ const hasConversationIdentity=Object.entries(context).some(([key,value])=>{
+  // Imported memories commonly use camelCase, snake_case, or kebab-case metadata.
+  const normalizedKey=key.replace(/[-_\s]/gu,'').toLocaleLowerCase();
+  return /^(?:conversation|dialogue|chat|thread|transcript|session)(?:id|key)$/u.test(normalizedKey)&&
+   typeof value==='string'&&value.trim().length>0;
+ });
+ if(hasConversationIdentity)return true;
+ const metadata=[item.source,...Object.entries(context).flatMap(([key,value])=>[key,String(value??'')])].join(' ').normalize('NFKC');
+ return /\b(?:conversation|dialogue|chat[-_ ]history|session[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
+}
 function memoryIntentFit(intent:MemoryQueryIntent,item:MemoryItem2):number{
  const hasGoal=Boolean(String(item.context?.goalId??'').trim())||item.goalRelevance>=.65;
  switch(intent){
-  case 'episodic': return item.kind==='episodic'?(item.context?.observationId&&item.context?.decisionId?.trim()?1:.94):item.kind==='autobiographical'?.92:item.kind==='social'?.32:item.kind==='working'?.18:0;
+  case 'episodic': return item.kind==='episodic'?(item.context?.observationId&&item.context?.decisionId?.trim()?1:.94):item.kind==='autobiographical'?.92:item.kind==='social'?(isConversationMemory(item) ? 0.90 : 0.32):item.kind==='working'?.18:0;
   case 'procedural': return item.kind==='procedural'?1:item.kind==='episodic'?.18:item.kind==='semantic'?.08:0;
   case 'identity': return item.kind==='identity'?1:item.kind==='autobiographical'?.82:item.kind==='social'?.56:item.kind==='semantic'?.18:0;
   case 'goal': return hasGoal?.96:item.kind==='working'?.82:item.kind==='autobiographical'?.48:item.kind==='identity'?.34:item.kind==='procedural'?.28:item.kind==='episodic'?.24:0;
