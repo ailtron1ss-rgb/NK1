@@ -2,9 +2,54 @@ import assert from 'node:assert/strict';
 import { HexisAdaptationFabric, defaultHexisAdaptationState } from '../../src/organism/integration/hexis/HexisAdaptationFabric.ts';
 import { refreshHmxStageLifecycleDigest } from '../../src/organism/integration/hexis/HexisStageIntegrity.mjs';
 import { MemoryOS2 } from '../../src/organism/developmental/MemoryOS2.ts';
+import { AdaptiveMemoryPolicy } from '../../src/organism/developmental/AdaptiveMemoryPolicy.ts';
 
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
+
+ 
+// Persisted adaptive policy snapshots are untrusted input: normalize numeric
+// bounds, reject malformed policy/context identifiers, and cap contextual history.
+const adaptiveRestoreGuard = new AdaptiveMemoryPolicy();
+const adaptiveContextRows = Object.fromEntries(Array.from({ length: 520 }, (_, index) => [
+  'context_' + index,
+  { semantic: index / 520, causal: 4 },
+]));
+adaptiveContextRows['invalid key'] = { causal: 1 };
+const adaptiveUnsafeContextRows = JSON.parse('{"__proto__":{"causal":1},"constructor":{"causal":1}}');
+adaptiveRestoreGuard.restore({
+  version: 99,
+  weights: { semantic: 2, hybrid: 'invalid', causal: -1, temporal: Number.NaN, balanced: Number.POSITIVE_INFINITY },
+  trials: { semantic: -1, hybrid: 10001, causal: 3.9, temporal: Number.NaN, balanced: 500 },
+  reward: { semantic: 2, hybrid: -1, causal: Number.NaN, temporal: 0.25, balanced: Number.POSITIVE_INFINITY },
+  contextValue: { ...adaptiveContextRows, ...adaptiveUnsafeContextRows, 'context_519': { causal: 4, semantic: Number.NaN } },
+  contextTrials: { ...adaptiveContextRows, ...adaptiveUnsafeContextRows, 'context_519': { causal: 50000 } },
+  cooldownUntil: Number.POSITIVE_INFINITY,
+  lastPolicy: 'not-a-memory-policy',
+  lastContextKey: 'invalid key',
+});
+const adaptiveRestored = adaptiveRestoreGuard.snapshot();
+const adaptiveDiagnostics = adaptiveRestoreGuard.diagnostics();
+assert.equal(adaptiveRestored.version, 2, 'policy snapshot versions must be normalized');
+assert.equal(adaptiveDiagnostics.lastPolicy, 'balanced', 'unknown policy names must fail closed to balanced');
+assert.equal(adaptiveDiagnostics.lastContextKey, 'default', 'unsafe context names must not become active context state');
+assert.equal(adaptiveDiagnostics.cooldownUntil, 0, 'non-finite cooldowns must reset to the safe default');
+assert.deepEqual(adaptiveRestored.weights, {
+  semantic: 1, hybrid: 0.5, causal: 0, temporal: 0.5, balanced: 0.5,
+}, 'weights must stay finite and inside the unit interval');
+assert.deepEqual(adaptiveRestored.trials, {
+  semantic: 0, hybrid: 10000, causal: 3, temporal: 0, balanced: 500,
+}, 'trial counts must be finite, integral, non-negative and bounded');
+assert.deepEqual(adaptiveRestored.reward, {
+  semantic: 1, hybrid: 0, causal: 0, temporal: 0.25, balanced: 0,
+}, 'reward estimates must stay finite and inside the unit interval');
+assert.equal(adaptiveDiagnostics.contextCount, 512, 'restored context history must have a hard 512-key bound');
+assert.equal(adaptiveRestored.contextValue.context_519.causal, 1, 'context scores must be clamped');
+assert.equal(adaptiveRestored.contextTrials.context_519.causal, 10000, 'context trial counts must be bounded');
+assert.equal(Object.hasOwn(adaptiveRestored.contextValue, '__proto__'), false, 'prototype-like context keys must be rejected');
+assert.equal(Object.hasOwn(adaptiveRestored.contextValue, 'constructor'), false, 'constructor context keys must be rejected');
+assert(['semantic', 'hybrid', 'causal', 'temporal', 'balanced'].includes(adaptiveRestoreGuard.choose({}, 100)),
+  'the normalized policy must continue selecting a valid strategy');
 
 
 // A full MemoryOS2 restore must be exception-atomic across canonical rows and
