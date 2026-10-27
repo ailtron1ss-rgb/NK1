@@ -32,5 +32,9 @@ assert.match(adapter, /this\.enabled = options\.enabled === true/, 'the adapter 
 assert.match(adapter, /this\.allowWrites = options\.allowWrites === true/, 'remote write/delete needs explicit enablement');
 assert.match(adapter, /NK_MEM0_ENABLED === '1'/, 'the environment switch must require an exact opt-in');
 assert.match(adapter, /NK_MEM0_ALLOW_WRITES === '1'/, 'write permission must remain a separate opt-in');
+assert.match(adapter, /mode: env\.NK_MEM0_MODE === 'oss' \? 'oss' : 'platform'/, 'provider mode must be explicit and default to Platform');
+assert.match(adapter, /this\.mode === 'oss' \? 'mem0-oss' : 'mem0-platform'/, 'OSS candidates must retain distinct provenance');
+assert.match(adapter, /'X-API-Key': this\.apiKey/, 'self-hosted OSS calls must use the OSS API-key header');
+assert.match(adapter, /DEFAULT_OSS_BASE_URL = 'http:\/\/localhost:8888'/, 'self-hosted mode must have a local-only default');
 
 console.log('Mem0 runtime wiring contract: PASS');
