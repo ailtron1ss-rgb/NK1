@@ -1770,6 +1770,8 @@
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
-    "test:hexis-canonical-apply": "node tests/hexis-projector-idempotent-replay.mjs && node --experimental-strip-types tests/hexis-protected-memory-rollback.mjs && node --experimental-strip-types tests/integration/hexis-adaptation.mjs && node tests/integration/hexis-export-adapter.mjs && node --experimental-strip-types tests/integration/hexis-server-smoke.mjs"
+    "test:hexis-canonical-apply": "node tests/hexis-projector-idempotent-replay.mjs && node --experimental-strip-types tests/hexis-protected-memory-rollback.mjs && node --experimental-strip-types tests/integration/hexis-adaptation.mjs && node tests/integration/hexis-export-adapter.mjs && node --experimental-strip-types tests/integration/hexis-server-smoke.mjs",
+    "test:workpass291:payload-budget": "node --experimental-strip-types tests/workpass291-reflective-payload-budget.mjs",
+    "test:workpass293:p23-revision": "node --experimental-strip-types tests/workpass293-autonomous-p23-revision.mjs"
   }
 }
