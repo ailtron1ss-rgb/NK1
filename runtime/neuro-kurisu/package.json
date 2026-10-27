@@ -1778,7 +1778,7 @@
     "test:p26:learning-input-integrity": "node --experimental-strip-types tests/p26-learning-input-integrity.mjs",
     "test:p26:learning-recovery-benchmark": "node --experimental-strip-types tests/p26-learning-recovery-benchmark.mjs",
     "test:p26:learning-continual-matrix": "node --experimental-strip-types tests/p26-learning-continual-matrix.mjs",
-    "test:hexis-evidence-lineage": "node --experimental-strip-types tests/integration/hexis-canonical-evidence-bridge.mjs"
+    "test:hexis-evidence-lineage": "node --experimental-strip-types tests/integration/hexis-canonical-evidence-bridge.mjs && node --experimental-strip-types tests/hexis-memoryos2-ingest.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.16.5"
