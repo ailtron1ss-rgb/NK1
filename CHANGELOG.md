@@ -1,3 +1,13 @@
+## [NK1][WorkPass466] Make restored domain-transition map type-safe (2026-10-27)
+
+- Declared the persisted domain-transition map as `Record<string, unknown>` before validating individual domain counters. This removes the compiler's inferred empty-object indexing error without weakening the per-domain validation.
+- The exact-head WorkPass294 runtime typecheck should rerun to confirm the repair.
+
+## [NK1][WorkPass464] Explicitly include Node types in runtime compilation (2026-10-27)
+
+- Added `types: ["node"]` to `tsconfig.clean.json`. Scoped workflow installation alone had not made the modern compiler automatically include Node ambient declarations; this makes the requirement explicit.
+- The fresh WorkPass294 run then advanced past the prior `process`/`node:*` missing-type flood and exposed a single independent typing issue in `CognitiveDependencyGraph`, tracked in WorkPass466.
+
 ## [NK1][WorkPass439] Prevent endogenous goal value saturation from masking intrinsic drive (2026-10-27)
 
 - Replaced the unnormalized dot product in the B272 predicted-value formula with bounded cosine similarity and recalibrated the component weights to leave headroom for the intrinsic drive term. Previously, the dot product could saturate the final value at 1.0, making a high-confidence intrinsic drive numerically invisible even though it was included in the formula.
