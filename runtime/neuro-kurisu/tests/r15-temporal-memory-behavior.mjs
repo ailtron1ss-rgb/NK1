@@ -50,6 +50,10 @@ for(const [id] of cases){
 }
 const holdoutRecallAt3=hit/cases.length;
 assert(holdoutRecallAt3>=.75,`holdout Recall@3 too low: ${holdoutRecallAt3}`);
+// A near-match must not be accepted as an exact identifier match.
+const nearMiss=os.retrieve('What is the policy for RUN-5011?',3);
+assert(!nearMiss.some(row=>row.content.startsWith('RUN-501:')),
+  'identifier recall must reject a prefix-only collision such as RUN-501 vs RUN-5011');
 
 console.log(JSON.stringify({
   pass:true,
