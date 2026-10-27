@@ -1465,6 +1465,20 @@ assert(scopedRollbackLedger.snapshot().temporal.some(
   row => row.memoryId === 'external-temporal-write',
 ), 'the independent temporal assertion must survive a failed import');
 assert.equal(
+  scopedRollbackRuntime.semanticMemory.snapshot().nodes.some(
+    node => node.label === 'canonical fact whose graph and temporal projection race must fail closed',
+  ),
+  false,
+  'an owned semantic node created by the failed transaction must be undone even when snapshot restore conflicts',
+);
+assert.equal(
+  scopedRollbackLedger.snapshot().temporal.some(
+    row => row.summary === 'Canonical fact whose graph and temporal projection race must fail closed.',
+  ),
+  false,
+  'the failed transaction temporal assertion must be undone without deleting the independent ledger write',
+);
+assert.equal(
   scopedRollbackRuntime.fabric.canonicalSnapshot().items.some(
     item => item.content === 'Canonical fact whose graph and temporal projection race must fail closed.',
   ),
