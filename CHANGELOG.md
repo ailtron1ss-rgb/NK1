@@ -1,3 +1,11 @@
+## [NK1][WorkPass483] Bound replay frequency without weakening rehearsal updates — 2026-10-27
+
+- Replaced per-update replay-rate attenuation with a minimum replay cadence of one rehearsal per four fresh updates.
+- Keeps the configured replay learning rate intact, while bounding the replay/current update ratio to reduce task interference.
+- Added explicit cadence assertions to the sequential-learning benchmark and multi-seed replay-policy sweep; existing performance thresholds were not relaxed.
+- The prior rate-scaling attempt did not recover old-task performance and is superseded.
+- Validation: fresh-head P26 and Core regression workflows pending.
+
 ## [NK1][WorkPass482] Verify full root persistence across server restart — 2026-10-27
 
 - Extended Hexis server smoke to stop the first server after a flushed evidence write, restart over the same state directory and replay the same source trace.
