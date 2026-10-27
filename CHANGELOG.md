@@ -1,3 +1,9 @@
+## [NK1][WorkPass493] Reject corrupted persisted action receipts on restore (2026-10-27)
+
+- Core regression on exact HEAD found that a completed idempotency receipt could be replayed even when persisted response identity, verification flags, audit outcome, or payload size had been tampered with.
+- Restore now only retains a replayable response when execution/tool identity matches the ledger row, verification and audit attestations agree, and the serialized response remains within the 48 KiB bound. Invalid responses become non-replayable recovery tombstones; the gateway does not re-run the side effect.
+- Validation is pending on the updated branch HEAD; this is a security/integrity fix, not a claim that all Core regressions now pass.
+
 ## [NK1][WorkPass492] Fix causal replay runtime wiring assertion order (2026-10-27)
 
 - Core regression logs showed the causal replay wiring test searched for the feature vector only after the sampler call, although production correctly builds candidate feature vectors before invoking the sampler.
