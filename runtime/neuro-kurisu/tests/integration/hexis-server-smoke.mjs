@@ -9,6 +9,8 @@ const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-'));
 const port = 35600 + Math.floor(Math.random() * 800);
 const env = { ...process.env, HOST: '127.0.0.1', PORT: String(port), STATE_DIR: stateDir };
 const child = spawn(process.execPath, ['--experimental-transform-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+let restartedChild = null;
+let restartedOutput = '';
 let output = '';
 child.stdout.on('data', d => output += d);
 child.stderr.on('data', d => output += d);
@@ -228,6 +230,35 @@ try {
       ...lineagePayload, sourceContent: sourceContent + ' tampered',
     });
     if (tamperedResponse.status !== 400) throw new Error('hexis-live-evidence-fingerprint-guard:' + tamperedResponse.status);
+
+    // Flush is part of the endpoint contract. Restart the whole server over the
+    // same state directory to prove the root OrganismCore projection persisted
+    // the Hexis trace as well as canonical lineage.
+    await new Promise(resolve => {
+      if (child.exitCode !== null || child.signalCode !== null) return resolve();
+      child.once('exit', resolve);
+      child.kill('SIGTERM');
+    });
+    restartedChild = spawn(process.execPath, ['--experimental-transform-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    restartedChild.stdout.on('data', d => restartedOutput += d);
+    restartedChild.stderr.on('data', d => restartedOutput += d);
+    let restartedReady = false;
+    for (let i = 0; i < 180; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      try {
+        const response = await fetch(base + '/api/health');
+        const data = await response.json();
+        if (response.ok && data.ready === true) { restartedReady = true; break; }
+      } catch {}
+    }
+    if (!restartedReady) throw new Error('server-restart-not-ready:' + restartedOutput.slice(-1200));
+    const restoredReplayResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
+    const restoredReplay = await restoredReplayResponse.json();
+    if (restoredReplayResponse.status !== 200 || !restoredReplay.ok ||
+        !restoredReplay.result?.accepted || restoredReplay.result?.added ||
+        restoredReplay.result?.reason !== 'duplicate-source-lineage') {
+      throw new Error('hexis-evidence-lineage-root-persistence:' + JSON.stringify(restoredReplay));
+    }
   }
   if (memoryIndex.memoryIndex[0]?.id) {
     // Replay the same valid revision request; idempotency must be tested after
@@ -462,7 +493,8 @@ try {
   if (!ack.ok || ack.result?.status !== 'published') throw new Error('hexis-outbox-ack');
   console.log('HEXIS_SERVER_SMOKE=PASS');
 } finally {
-  child.kill('SIGTERM');
-  await new Promise(r => setTimeout(r, 300));
+  if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
+  if (restartedChild && restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
+  await new Promise(r => setTimeout(r, 400));
   await rm(stateDir, { recursive: true, force: true });
 }
