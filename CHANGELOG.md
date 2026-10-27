@@ -1,3 +1,9 @@
+## [NK1][Hexis] Linear-time canonical receipt membership validation (2026-10-27)
+
+- Replaced repeated array scans when verifying that created memory IDs are contained in the receipt's canonical memory-ID list with a single Set-backed membership index.
+- The validation invariant is unchanged: every created ID must be present; duplicate and malformed identity checks remain in force. This reduces that membership check from quadratic to linear expected time for large bounded receipts.
+- This is a focused hot-path optimization only. Exact-head test/typecheck and end-to-end performance measurements remain unverified; no cognitive-quality or retrieval uplift is claimed.
+
 ## [NK1][WorkPass508] Prevent duplicate memory rows inflating precision (2026-10-27)
 
 - Retrieval benchmark precision now counts unique relevant memory IDs rather than duplicate result rows.
