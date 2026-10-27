@@ -52,7 +52,12 @@ function makeProvider(mode) {
       if (mode === 'invalid-query') {
         return texts.map((_, index) => index === 0 ? [invalidMagnitude, invalidMagnitude] : [1, 0]);
       }
-      return texts.map((_, index) => index === 0 ? [1, 0] : [invalidMagnitude, invalidMagnitude]);
+      // Retrieval batches contain [query, ...candidate memories], while the
+      // maintenance batch contains candidate memories only. Keep the query valid
+      // for semantic retrieval but deliberately corrupt every memory vector.
+      return texts.map((_, index) => texts.length > 1 && index === 0
+        ? [1, 0]
+        : [invalidMagnitude, invalidMagnitude]);
     },
   };
 }
