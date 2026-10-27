@@ -1,3 +1,9 @@
+## [NK1][docs] Canonical project state map (2026-10-27)
+
+- Added `docs/NK1_CANONICAL_PROJECT_STATE_RU.md` as the handoff page for the end goal, closed cognitive loop, subsystem map, source-of-truth branches, validation boundaries, release gates and engineering-pass rules.
+- Updated `NEUROCORE_START_HERE.md` to point to the canonical map and mark the old WorkPass272 handoff as historical.
+- Rebased this documentation change on the current source base including WorkPass496; readiness and learning scores remain unchanged, and the published Release ZIP was not touched.
+
 ## [NK1][WorkPass496] Require language-stratified memory retrieval evidence (2026-10-27)
 
 - Added explicit en / ru / other dataset labels to the MemoryOS2 retrieval benchmark and bound provided language labels into the dataset fingerprint without changing fingerprints for legacy unlabelled datasets.
