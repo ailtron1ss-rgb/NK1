@@ -505,6 +505,7 @@ export class MemoryOS2{
    const restoreSetMap=<K,V>(target:Map<K,Set<V>>,source:Map<K,Set<V>>)=>{target.clear();for(const [key,value] of source)target.set(key,new Set(value));};
    const previousState=this.state;
    const previousPolicy=this.adaptivePolicy.snapshot();
+   const previousActivePolicy=this.activePolicy;
    const previous={
     exactIndex:new Map(this.exactIndex),
     itemIndex:new Map(this.itemIndex),
@@ -597,6 +598,7 @@ export class MemoryOS2{
    }catch(error){
     this.state=previousState;
     this.adaptivePolicy.restore(previousPolicy);
+    this.activePolicy=previousActivePolicy;
     restoreMap(this.exactIndex,previous.exactIndex);
     restoreMap(this.itemIndex,previous.itemIndex);
     restoreMap(this.contentIndex,previous.contentIndex);
