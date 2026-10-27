@@ -1,3 +1,20 @@
+## [NK1][WorkPass481] Wire live Hexis evidence-lineage ingestion — 2026-10-27
+
+- Added a canonical Hexis HTTP route for source lineage, guarded by strict source, content, timestamp, confidence and provenance validation.
+- The route checks the supplied SHA-256 fingerprint against the submitted source content before the evidence trace reaches SourceMonitor.
+- Identical trace replays are idempotent; trace-ID collisions and modified content are rejected.
+- Added server-smoke coverage for first ingestion, replay and fingerprint-tampering rejection.
+- This records provenance metadata only: a content hash is not source authentication and this path does not change belief confidence or authorize actions.
+- Validation: current-head CI pending.
+
+## [NK1][WorkPass480] Persist Hexis evidence lineage in the root organism snapshot — 2026-10-27
+
+- Added the typed optional `hexisSourceMonitor` field to the advanced persisted facet, separate from the existing cognitive source monitor.
+- The root OrganismCore persistence projection now captures the live Hexis evidence-lineage state; older snapshots default to an empty state.
+- Runtime restore supports the new explicit key and retains a legacy fallback for direct runtime snapshots.
+- Regression snapshot naming now mirrors the canonical persisted contract.
+- Validation: current-head CI pending.
+
 ## [NK1][WorkPass479] Bound P26 replay pressure at high interleave frequency — 2026-10-27
 
 - `P26TrueLearningEngine.trainInterleaved()` now attenuates per-replay learning rate when replay is scheduled more frequently than once per four current-task examples.
