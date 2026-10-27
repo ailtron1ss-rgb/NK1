@@ -24,6 +24,8 @@ function makeFabric(providerWork) {
     previewRetrieveWithEmbeddings: providerWork,
   };
   fabric.retrieve = () => fallback;
+  // This regression isolates fallback/control flow; outcome accounting has its own behavioral test.
+  fabric.recordRetrievalOutcome = () => {};
   return fabric;
 }
 
