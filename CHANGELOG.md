@@ -1,3 +1,9 @@
+## [NK1][WorkPass440] Bind HMX trust mutation to its compensation token (2026-10-27)
+
+- Fixed the canonical Hexis projector call so the existing-memory authority-cap mutation passes the same one-use compensation token captured before mutation.
+- This closes a real transaction-wiring gap: MemoryFabric only associates mutation receipts with an active rollback when the token reaches the update-signals command; without it, a failed downstream projection could leave a prior memory's trust state changed.
+- Existing failure-injection regressions already exercise rollback of an over-trusted duplicate through the MemoryFabric/MemoryOS2 path. Added source wiring; local runtime execution and current-head CI still need confirmation.
+
 ## [NK1][WorkPass439] Cover C1 controls in restored receipt targets (2026-10-26)
 
 - Extended the existing memory lifecycle regression with an otherwise-valid persisted receipt whose target memoryId contains U+009F.
