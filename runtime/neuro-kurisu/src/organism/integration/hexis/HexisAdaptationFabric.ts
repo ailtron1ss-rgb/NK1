@@ -383,13 +383,14 @@ export function defaultHexisAdaptationState(): HexisAdaptationState {
 export class HexisAdaptationFabric {
     private state = defaultHexisAdaptationState();
     private mutationRevision = 0;
-    private readonly mutationJournal: Array<{ revision: number; ownerToken: string | null; undo?: () => boolean; undone?: boolean }> = [];
-    private recordScopedMutation(ownerToken?: string, undo?: () => boolean): number {
+    private readonly mutationJournal: Array<{ revision: number; ownerToken: string | null; global?: boolean; undo?: () => boolean; undone?: boolean }> = [];
+    private recordScopedMutation(ownerToken?: string, undo?: () => boolean, global = false): number {
         const token = typeof ownerToken === 'string' && ownerToken ? ownerToken : null;
         const revision = ++this.mutationRevision;
         this.mutationJournal.push({
             revision,
             ownerToken: token,
+            ...(global ? { global: true } : {}),
             ...(token && undo ? { undo } : {}),
             undone: false,
         });
@@ -403,6 +404,13 @@ export class HexisAdaptationFabric {
         // A lost journal window is ambiguous; never restore over an unknown mutation.
         if (earliest !== undefined && checkpoint < earliest - 1) return true;
         return this.mutationJournal.some(entry => entry.revision > checkpoint && entry.ownerToken !== ownerToken);
+    }
+    private hasForeignGlobalMutationAfter(revision: number, ownerToken: string): boolean {
+        if (!Number.isSafeInteger(revision) || revision <= 0 || revision > this.mutationRevision) return true;
+        const earliest = this.mutationJournal[0]?.revision;
+        // If the relevant window has been evicted, a full replacement cannot be ruled out.
+        if (earliest !== undefined && revision < earliest - 1) return true;
+        return this.mutationJournal.some(entry => entry.revision > revision && entry.ownerToken !== ownerToken && entry.global === true);
     }
     rollbackOwnedMutations(checkpoint: number, ownerToken: string): { rolledBack: number; conflicts: number; historyLost: boolean } {
         const earliest = this.mutationJournal[0]?.revision;
@@ -453,7 +461,7 @@ export class HexisAdaptationFabric {
             executions: Array.isArray(value.executions) ? value.executions.slice(-512) : [],
             metrics: { ...defaults.metrics, ...(value.metrics ?? {}) },
         };
-        this.recordScopedMutation(ownerToken);
+        this.recordScopedMutation(ownerToken, undefined, true);
     }
     snapshot(): HexisAdaptationState { return structuredClone(this.state); }
     bindCanonicalMemoryApply(handler: (stage: HexisHmxStage) => HexisHmxApplyReceipt): void {
@@ -495,7 +503,9 @@ export class HexisAdaptationFabric {
         const removed = this.state.beliefs.filter(belief => belief.memoryId === id).map(belief => structuredClone(belief));
         if (!removed.length) return false;
         this.state.beliefs = this.state.beliefs.filter(belief => belief.memoryId !== id);
-        this.recordScopedMutation(ownerToken, () => {
+        let ownerRevision = 0;
+        ownerRevision = this.recordScopedMutation(ownerToken, () => {
+            if (ownerToken && this.hasForeignGlobalMutationAfter(ownerRevision, ownerToken)) return false;
             const current = this.state.beliefs.filter(belief => belief.memoryId === id);
             if (current.length) {
                 return current.length === removed.length &&
@@ -540,7 +550,9 @@ export class HexisAdaptationFabric {
             existing.trust01 = nextTrust01;
             existing.updatedAt = Number.isFinite(input.at) ? Number(input.at) : nowMs();
             const expected = structuredClone(existing);
-            this.recordScopedMutation(ownerToken, () => {
+            let ownerRevision = 0;
+            ownerRevision = this.recordScopedMutation(ownerToken, () => {
+                if (ownerToken && this.hasForeignGlobalMutationAfter(ownerRevision, ownerToken)) return false;
                 const current = this.state.beliefs.find((row) => row.memoryId === id);
                 if (!current || JSON.stringify(current) !== JSON.stringify(expected)) return false;
                 Object.assign(current, before);
@@ -555,7 +567,9 @@ export class HexisAdaptationFabric {
         this.state.beliefs.push(created);
         this.state.beliefs = this.state.beliefs.slice(-1024);
         const expected = structuredClone(created);
-        this.recordScopedMutation(ownerToken, () => {
+        let ownerRevision = 0;
+        ownerRevision = this.recordScopedMutation(ownerToken, () => {
+            if (ownerToken && this.hasForeignGlobalMutationAfter(ownerRevision, ownerToken)) return false;
             const current = this.state.beliefs.find(row => row.memoryId === id);
             if (!current || JSON.stringify(current) !== JSON.stringify(expected)) return false;
             for (const prior of evicted) {
@@ -717,6 +731,7 @@ export class HexisAdaptationFabric {
         const expectedCreated = structuredClone(created);
         let ownerRevision = 0;
         ownerRevision = this.recordScopedMutation(ownerToken, () => {
+            if (ownerToken && this.hasForeignGlobalMutationAfter(ownerRevision, ownerToken)) return false;
             const currentCreated = this.state.temporal.find(row => row.id === created.id);
             if (currentCreated && JSON.stringify(currentCreated) !== JSON.stringify(expectedCreated)) return false;
             const currentPrior = existingBefore
