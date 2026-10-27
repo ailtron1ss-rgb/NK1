@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/outcome-projection-index-restore-2026-10-26
+      - fix/hexis-belief-dedupe-contract-2026-10-27
     paths:
       - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
@@ -30,6 +31,7 @@ on:
     branches:
       - workpass70-source
       - fix/outcome-projection-index-restore-2026-10-26
+      - fix/hexis-belief-dedupe-contract-2026-10-27
     paths:
       - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
