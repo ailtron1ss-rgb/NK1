@@ -2366,6 +2366,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [NK1][WorkPass507] Add independent bilingual retrieval evaluation gate (2026-10-27)
 
+- Follow-up: bind explicit `language` labels into the canonical SHA-256 dataset fingerprint so the offline runner matches `MemoryRetrievalBenchmark`; regression test proves relabelling changes the digest.
+
 - Added an offline RU/EN MemoryOS2 holdout runner with versioned data/source/license/labeling provenance, explicit unanswerable queries, five paired bootstrap seeds, fingerprints and no automatic promotion.
 - Fixed upstream double-escaped Unicode/punctuation/whitespace normalization, canonical row separators and report newline; extracted the deterministic normalization into a tested helper.
 - Added regressions for NFKC, punctuation/symbols, whitespace, order-independent SHA-256 fingerprints, changed-input sensitivity and fail-closed missing-dataset handling.
