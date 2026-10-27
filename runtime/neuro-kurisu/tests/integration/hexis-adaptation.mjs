@@ -1012,6 +1012,57 @@ const protectedRollbackProjector = new HexisCanonicalMemoryProjector(
   protectedRollbackRuntime.fabric, protectedRollbackRuntime.semanticMemory, protectedRollbackLedger,
 );
 protectedRollbackLedger.bindCanonicalMemoryApply(stage => protectedRollbackProjector.apply(stage));
+// Fill canonical storage to its 1,600-row limit without spending 1,600 encode calls.
+// MemoryOS2.restore rebuilds its real indexes from these valid rows.
+const protectedRollbackSeed = protectedRollbackRuntime.fabric.encode({
+  content: 'WP436 baseline capacity seed row.',
+  kind: 'episodic',
+  source: 'workpass436-capacity-baseline',
+  tags: ['workpass436-capacity-baseline'],
+  context: { branch: 'workpass436-capacity-baseline' },
+  salience: .5,
+  emotionalWeight: .1,
+  identityRelevance: .05,
+  goalRelevance: .1,
+  socialRelevance: .1,
+  predictionError: 0,
+  confidence: .7,
+  epistemicStatus: 'fact',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+}, { commandId: 'wp436:capacity-seed' });
+const protectedRollbackCapacityState = protectedRollbackRuntime.memoryOS.snapshot();
+const protectedRollbackTemplate = protectedRollbackCapacityState.items.find(item => item.id === protectedRollbackSeed.id);
+assert.ok(protectedRollbackTemplate);
+const protectedRollbackCapacityRows = Array.from({ length: 1600 }, (_, index) => ({
+  ...structuredClone(protectedRollbackTemplate),
+  id: index === 0 ? protectedRollbackTemplate.id : 'wp436-capacity-baseline-' + String(index).padStart(4, '0'),
+  content: index === 0 ? protectedRollbackTemplate.content : 'WP436 baseline capacity row ' + index,
+  contentHash: '',
+  source: 'workpass436-capacity-baseline',
+  tags: ['workpass436-capacity-baseline'],
+  context: { branch: 'workpass436-capacity-baseline', ordinal: String(index) },
+  semanticVector: [],
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  evidenceSources: [],
+  evidenceLineageKeys: [],
+  revisionHistory: [],
+  revisionGroupId: index === 0 ? protectedRollbackTemplate.revisionGroupId : 'wp436-capacity-baseline-' + String(index).padStart(4, '0'),
+  revisionSequence: 1,
+}));
+protectedRollbackRuntime.memoryOS.restore({
+  ...protectedRollbackCapacityState,
+  items: protectedRollbackCapacityRows,
+  estimatedBytes: 0,
+});
+assert.equal(protectedRollbackRuntime.fabric.canonicalSize(), 1600);
 const protectedRollbackContent = 'WP436 archived identity must be removed after a failed import transaction.';
 const protectedRollbackExportId = 'exp_0000000000009103';
 const protectedRollbackStage = protectedRollbackLedger.stageHmx({
