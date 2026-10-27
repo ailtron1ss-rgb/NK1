@@ -146,9 +146,9 @@ try {
   ];
   const unanswerableLabelsPath = path.join(temp, 'labels-with-unanswerable.jsonl');
   const unanswerableReportPath = path.join(temp, 'report-with-unanswerable.json');
-  await writeFile(unanswerableLabelsPath, `${unanswerableExamples.map(row => JSON.stringify(row)).join('\\n')}\\n`);
+  await writeFile(unanswerableLabelsPath, `${unanswerableExamples.map(row => JSON.stringify(row)).join('\n')}\n`);
   const abstentionCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', unanswerableLabelsPath, '--provenance', provenancePath, '--out', unanswerableReportPath, '--seeds', '13,29,53', '--k', '5', '--now', String(now)], { cwd: root, encoding: 'utf8', timeout: 120000 });
-  assert.equal(abstentionCli.status, 0, `CLI rejected valid unanswerable labels: ${abstentionCli.stderr}\\n${abstentionCli.stdout}`);
+  assert.equal(abstentionCli.status, 0, `CLI rejected valid unanswerable labels: ${abstentionCli.stderr}\n${abstentionCli.stdout}`);
   const abstentionReport = JSON.parse(await readFile(unanswerableReportPath, 'utf8'));
   assert.equal(abstentionReport.input.labelRowsParsed, unanswerableExamples.length);
   assert.equal(abstentionReport.holdoutQueries, 12);
@@ -166,7 +166,7 @@ try {
   await writeFile(invalidUnanswerableLabelsPath, `${JSON.stringify({
     id: 'invalid-unanswerable-001', query: 'explicitly unanswerable but labelled',
     relevantIds: ['m0'], split: 'holdout', answerable: false,
-  })}\\n`);
+  })}\n`);
   const invalidUnanswerableCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidUnanswerableLabelsPath, '--provenance', provenancePath, '--out', invalidUnanswerableReportPath], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(invalidUnanswerableCli.status, 2);
   assert.match(invalidUnanswerableCli.stderr, /labels-invalid-relevantIds-line:1/);
