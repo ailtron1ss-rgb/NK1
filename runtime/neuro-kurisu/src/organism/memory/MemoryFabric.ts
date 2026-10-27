@@ -381,15 +381,20 @@ export class MemoryFabric {
     // lexical retrieval stays available while a bounded maintenance batch warms the index.
     if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return fallback;
     const providerTimeout=Math.max(500,Math.min(20000,Number(process.env.NK_EMBEDDINGS_TIMEOUT_MS??5000)||5000));
-    const work=this.memoryOS.previewRetrieveWithEmbeddings(query,safeLimit,goalRelevance,identityRelevance,
+    // Defer provider invocation into the promise chain so synchronous adapter throws
+    // and asynchronous provider failures share the same lexical-fallback path.
+    const work=Promise.resolve().then(()=>this.memoryOS.previewRetrieveWithEmbeddings(query,safeLimit,goalRelevance,identityRelevance,
       {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
-      {maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout});
+      {maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout}));
     const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
     this.cognitionSemanticInFlight=tracked;
     let timer:ReturnType<typeof setTimeout>|undefined;
     const budgetMs=Math.max(50,Math.min(1000,Number(process.env.NK_EMBEDDINGS_RUNTIME_BUDGET_MS??220)||220));
     const outcome=await Promise.race([
-      tracked.then(result=>({kind:'complete' as const,result})),
+      tracked.then(
+        result=>({kind:'complete' as const,result}),
+        ()=>({kind:'failed' as const}),
+      ),
       new Promise<{kind:'timeout'}>(resolve=>{timer=setTimeout(()=>resolve({kind:'timeout'}),budgetMs);}),
     ]);
     if(timer)clearTimeout(timer);
