@@ -50,7 +50,7 @@ export class P26TrueLearningEngine{
     const verifiedHoldoutEvidenceIds=Array.isArray(raw?.verifiedHoldoutEvidenceIds)
       ? [...new Set(raw!.verifiedHoldoutEvidenceIds.filter((value):value is string=>
           typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&
-          !/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value)))].slice(-4096)
+          !/[\u0000-\u001f\u007f-\u009f]/.test(value)))].slice(-4096)
       : [];
     const onlineUpdates=safeCounter(sourceMetrics.onlineUpdates);
     const replayUpdates=safeCounter(sourceMetrics.replayUpdates);
@@ -156,7 +156,7 @@ export class P26TrueLearningEngine{
     const identityFields=[evidence?.evidenceId,evidence?.taskId,evidence?.protocolId,evidence?.verifierId,evidence?.sampleSetHash];
     const validIdentity=identityFields.every(value=>
       typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&
-      !/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value));
+      !/[\u0000-\u001f\u007f-\u009f]/.test(value));
     const validScores=typeof evidence?.baseline01==='number'&&Number.isFinite(evidence.baseline01)&&evidence.baseline01>=0&&evidence.baseline01<=1&&
       typeof evidence?.learned01==='number'&&Number.isFinite(evidence.learned01)&&evidence.learned01>=0&&evidence.learned01<=1;
     if(!validIdentity||!validScores)return {accepted:false,reason:'invalid-holdout-evidence'};
