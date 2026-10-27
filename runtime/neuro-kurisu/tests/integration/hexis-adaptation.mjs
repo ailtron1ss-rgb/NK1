@@ -1611,6 +1611,37 @@ assert.equal(scopedRollbackLedger.getHmxStage(scopedRollbackStage.stagingId)?.st
   'a transaction with conflicted compensation must not be marked applied');
 assert.equal(scopedRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0);
 
+// A conflict must not poison the stage permanently: retry after the injected external
+// write has finished, then replay the successful receipt without duplicating projections.
+const scopedRollbackRetry = scopedRollbackLedger.decideHmx(scopedRollbackStage.stagingId, 'apply');
+assert.equal(scopedRollbackRetry?.status, 'applied',
+  'an accepted HMX stage must remain retryable after conflict-aware partial compensation');
+const scopedImportedMemory = scopedRollbackRuntime.fabric.canonicalSnapshot().items.filter(
+  item => item.content === 'Canonical fact whose graph and temporal projection race must fail closed.',
+);
+assert.equal(scopedImportedMemory.length, 1,
+  'retry after rollback conflict must materialize exactly one canonical memory');
+const scopedImportedNodes = scopedRollbackRuntime.semanticMemory.snapshot().nodes.filter(
+  node => node.label === 'canonical fact whose graph and temporal projection race must fail closed',
+);
+assert.equal(scopedImportedNodes.length, 1,
+  'retry after rollback conflict must materialize exactly one source-scoped semantic node');
+assert.equal(scopedRollbackLedger.snapshot().temporal.filter(
+  row => row.summary === 'Canonical fact whose graph and temporal projection race must fail closed.',
+).length, 1, 'retry after rollback conflict must materialize exactly one temporal assertion');
+assert(scopedRollbackLedger.snapshot().temporal.some(
+  row => row.memoryId === 'external-temporal-write',
+), 'the independent temporal assertion must remain after a successful retry');
+const temporalCountBeforeReplay = scopedRollbackLedger.snapshot().temporal.length;
+const graphNodeCountBeforeReplay = scopedRollbackRuntime.semanticMemory.snapshot().nodes.length;
+const replayedScopedStage = scopedRollbackLedger.decideHmx(scopedRollbackStage.stagingId, 'apply');
+assert.equal(replayedScopedStage?.application?.digest, scopedRollbackRetry?.application?.digest,
+  'idempotent replay must return the same apply receipt');
+assert.equal(scopedRollbackLedger.snapshot().temporal.length, temporalCountBeforeReplay,
+  'idempotent replay must not add temporal assertions');
+assert.equal(scopedRollbackRuntime.semanticMemory.snapshot().nodes.length, graphNodeCountBeforeReplay,
+  'idempotent replay must not add semantic graph nodes');
+
 // Source-projection withdrawal is a targeted graph mutation, not a global snapshot
 // replacement: unrelated nodes and edges must remain reachable.
 const sourceRemovalRuntime = new MemorySubsystemRuntime();
