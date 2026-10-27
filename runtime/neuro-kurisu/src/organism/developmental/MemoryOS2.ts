@@ -266,7 +266,7 @@ type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLi
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
-export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
+export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;candidateCount?:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
 export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
  enabled:boolean; provider:string; model:string; considered:number; indexed:number; failed:number; staleSkipped:number;
@@ -497,7 +497,7 @@ export class MemoryOS2{
      const items=semanticRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
      const diag=provider.diagnostics();
      const fallbackReason=items.length===0&&fallbackItems.length>0?'no-valid-semantic-candidates':null;
-     return {items:fallbackReason?fallbackItems:items,semantic:{enabled:fallbackReason===null,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+     return {items:fallbackReason?fallbackItems:items,semantic:{enabled:fallbackReason===null,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,candidateCount:semanticRows.length+lexicalPool.length+missing.length,fallbackReason,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }catch(error){
      const diag=provider.diagnostics();
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
@@ -754,7 +754,7 @@ export class MemoryOS2{
   * lexical or semantic result. Preview search may run several speculative paths;
   * only this method is allowed to advance access/freshness signals for the selected IDs.
   */
- recordSelectedRetrieval(query:string,ids:string[],goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}):MemoryItem2[]{
+ recordSelectedRetrieval(query:string,ids:string[],goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},candidateCountHint=ids.length):MemoryItem2[]{
    const wallClockNow=Date.now();
    const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
    const temporalMode:MemoryTemporalMode=temporalOptions.temporalMode??'current';
@@ -764,6 +764,7 @@ export class MemoryOS2{
    const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
    this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
+   this.lastCandidateCount=Math.max(0,Math.min(192,Math.floor(Number.isFinite(candidateCountHint)?candidateCountHint:ids.length)));
    const selected:MemoryItem2[]=[];
    const seen=new Set<string>();
    for(const id of (Array.isArray(ids)?ids:[]).slice(0,32)){
