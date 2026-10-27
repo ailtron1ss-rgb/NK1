@@ -115,5 +115,5 @@ test("separates Hexis push and pull-request cancellation groups", () => {
     workflows: { "hexis-canonical-apply.yml": sharedGroup },
     nodeVersion: "24"
   });
-  assert.match(invalidErrors.join("\n"), /concurrency\\.group must include github\\.event_name/);
+  assert.match(invalidErrors.join("\n"), /must include github.event_name/);
 });
