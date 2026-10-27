@@ -1,3 +1,8 @@
+## [NK1][WorkPass456] Import replay-selection options from their owning module (2026-10-27)
+
+- Fixed a TypeScript export-boundary error in `MultiSourceLearningMechanisms.ts`: `ReplaySelectionOptions` is defined/exported by `ReplaySelectionPolicy.ts`, not re-exported from `P23LearningEngine.ts`. The consumer now imports the type from its actual owner.
+- No behavioral policy was changed and no dependency was added. Exact-head runtime typecheck and hosted CI remain unverified.
+
 ## [NK1][WorkPass455] Remove duplicated HMX regression suffix and gate clock regression (2026-10-27)
 
 - Removed a duplicated trailing fragment from `tests/integration/hexis-adaptation.mjs`. The fragment started with an orphaned `&& conflict.kind === 'size-limit'` after the success log and repeated the oversized-HMX section and many following regressions; it could prevent the entire test module from parsing. The retained prefix still contains one document-size guard test, section-limit/schema tests, foreign graph/ledger rollback tests, and the final suite output.
