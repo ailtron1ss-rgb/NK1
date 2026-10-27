@@ -51,7 +51,7 @@ const summary = complete.summary();
 assert.equal(summary.observedChains, 1, 'one complete cognitive cycle should count as one observed chain');
 assert.equal(summary.completeChains, 1, 'a cycle containing every required node kind should count as complete');
 assert.equal(summary.chainCoverage01, 1, 'complete-chain coverage must be derived consistently');
-assert.equal(summary.edges, 7, 'recordCycle should connect its eight chain stages');
+assert.equal(summary.edges, 8, 'recordCycle should connect its eight stage-to-stage and experience-to-memory links');
 assert.equal(complete.hasCompleteChainAtTick(42), true, 'cycle completeness query must agree with summary counters');
 
 console.log('CAUSAL_LIFE_GRAPH_DERIVED_STATE_INVARIANT=PASS', JSON.stringify(summary));
