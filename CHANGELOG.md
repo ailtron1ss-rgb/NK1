@@ -1,3 +1,9 @@
+## [NK1][docs] Sync canonical state with WorkPass496 and Hexis stack (2026-10-27)
+
+- Update the canonical project map with WorkPass496 bilingual retrieval gates and the current Hexis stack status.
+- Record that PR #255 was merged into its intermediate parent branch after 13 passing workflows on exact child head `a995911b9eeba78d3d6e68931c3527bf32d49b12`; parent PR #252 is still the promotion path and needs exact-head validation at squash commit `8299e157bde6256dabfe2e62dba3bc198efa3a01`.
+- Explicitly keep the integration stack separate from `workpass70-source` and the published Release ZIP. No learning-quality score or release state is raised.
+
 ## [NK1][docs] Canonical project state map (2026-10-27)
 
 - Added `docs/NK1_CANONICAL_PROJECT_STATE_RU.md` as the handoff page for the end goal, closed cognitive loop, subsystem map, source-of-truth branches, validation boundaries, release gates and engineering-pass rules.
