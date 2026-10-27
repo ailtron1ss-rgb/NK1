@@ -1,3 +1,11 @@
+## [NK1][memory] Validate embedding vectors at the canonical memory boundary (2026-10-27)
+
+- Added a shared finite, dimension-bounded, nonzero embedding-vector guard to the MemoryOS2 semantic retrieval and background-indexing paths.
+- Reject malformed query vectors into the existing lexical fallback, skip invalid candidate vectors before index admission, and block overflow-sized finite values from being normalized into zero vectors.
+- If the semantic path has no valid candidate while lexical recall has results, return the lexical candidates and expose `no-valid-semantic-candidates` instead of reporting empty semantic success.
+- Added regression coverage for invalid query/candidate vectors and overflow during background indexing; wired it into the recovered-core package script and a focused Node 24 CI workflow.
+- Exact-head test/typecheck/Actions status remains to be confirmed; no retrieval-quality uplift is claimed.
+
 ## [NK1][verification] Server-wired Mem0 integration closure passed (2026-10-27)
 
 - The current code revision passed [Mem0 integration workflow 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): Node runtime check and server syntax; runtime typecheck; Hexis canonical evidence lineage/reviewed ingest; Hexis server smoke; deterministic memory-retrieval experiment; Mem0 Platform adapter tests 15/15; self-hosted OSS REST tests 2/2; static runtime wiring; and HTTP fake-provider smoke.
