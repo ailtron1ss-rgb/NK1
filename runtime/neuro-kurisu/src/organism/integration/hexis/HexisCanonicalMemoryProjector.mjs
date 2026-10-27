@@ -627,11 +627,7 @@ export class HexisCanonicalMemoryProjector {
             'hexis-hmx-apply-rollback',
             { commandId: rollbackCommandId },
           );
-          if (tokenRollback === true) continue;
-          const forgotten = this.memoryFabric.forgetById(id, 'hexis-hmx-apply-rollback', {
-            commandId: rollbackCommandId,
-          });
-          if (forgotten !== true) rollbackErrors.push('canonical-rollback-refused:' + id);
+          if (tokenRollback !== true) rollbackErrors.push('canonical-token-rollback-unconfirmed:' + id);
         } catch (rollbackError) {
           rollbackErrors.push(String(rollbackError?.message ?? rollbackError).slice(0, 240));
         }
