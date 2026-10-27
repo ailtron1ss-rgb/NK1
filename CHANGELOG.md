@@ -1,3 +1,12 @@
+## [NK1][WorkPass466] Separate training exposure and independently verified holdout maturity (2026-10-27)
+
+- Added `trainingExposure01` and `independentHoldoutSamples` to P26 learning metrics. Online updates and replay increase exposure without being counted as generalization evidence.
+- Added a deduplicated `recordVerifiedHoldout` path bound to evidence/task/protocol/verifier/sample-set identities and bounded baseline/learned scores. Only verified independent evidence advances `generalizationEvidence01`; legacy `recordHoldout` remains diagnostic-only.
+- Persist and restore holdout evidence IDs, recompute maturity from those IDs rather than trusting an arbitrary scalar, and normalize restored exposure from online/replay counters.
+- Fixed the ADWIN stationary-mean test to use floating-point tolerance. The P26 workflow was red on the prior head for this exact-value assertion; a new exact-head run is in progress.
+- **Still open:** P23 restore loses the newest processed trace ID under its bounded list policy; P110’s signed-shadow integration has a stale expected candidate ID. Those failures remain explicit and have not been bypassed. The latest implementation is awaiting exact-head CI confirmation.
+- No `main` or published Release ZIP changes; no retrieval or learning uplift is claimed until holdout tests pass.
+
 ## [NK1][WorkPass465] Close additional source CI regression defects (2026-10-27)
 
 - Fixed a duplicate `snapshotResult` declaration in the independent candidate evaluator regression discovered by the runtime script-integrity audit.
