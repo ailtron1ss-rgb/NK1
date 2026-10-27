@@ -1,3 +1,10 @@
+## [NK1][WorkPass484] Persist P26 replay-buffer traversal across batches — 2026-10-27
+
+- Fixed replay cursor reset at each `trainInterleaved()` call, which caused bounded training batches to revisit the same replay-buffer prefix.
+- Stores the cursor in P26 learning state and restores it safely from snapshots.
+- Advances cursor for every sampled record, including conflict-blocked entries; adds a sequential benchmark assertion for cursor accounting.
+- Validation: latest-head sequential benchmark and Core regression pending.
+
 ## [NK1][WorkPass483] Bound replay frequency without weakening rehearsal updates — 2026-10-27
 
 - Replaced per-update replay-rate attenuation with a minimum replay cadence of one rehearsal per four fresh updates.
