@@ -38,8 +38,11 @@ export function applyReviewedHexisEvidence(
     return { status: 'review-required', targetMemoryId, evidenceId: proposal.evidenceId, stance: proposal.stance };
   }
 
+  // Evidence IDs are the final component of the adapter's source reference.
+  // Use an exact suffix match: includes() incorrectly treats "...#event-1" as
+  // a replay when the only stored event is "...#event-10".
   const evidenceMarker = `#${proposal.evidenceId}`;
-  if ((target.evidenceSources ?? []).some(source => String(source.source).includes(evidenceMarker))) {
+  if ((target.evidenceSources ?? []).some(source => String(source.source).endsWith(evidenceMarker))) {
     return { status: 'duplicate', targetMemoryId, evidenceId: proposal.evidenceId };
   }
 
