@@ -52,7 +52,7 @@ function normalizeHoldoutEvidence(value:unknown):P26VerifiedHoldoutEvidence|null
   const raw=value as Record<string,unknown>;
   const text=(item:unknown,max:number):item is string=>
     typeof item==='string'&&item.length>0&&item.length<=max&&item.trim()===item&&
-    !/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(item);
+    !Array.from(item).some(character=>{const code=character.codePointAt(0)??0;return code<=0x1f||(code>=0x7f&&code<=0x9f);});
   if(!text(raw.evidenceId,180)||!text(raw.taskId,180)||!text(raw.protocolId,120)||
     !text(raw.verifierId,120)||!text(raw.sampleSetHash,256)||
     typeof raw.baseline01!=='number'||!Number.isFinite(raw.baseline01)||raw.baseline01<0||raw.baseline01>1||
