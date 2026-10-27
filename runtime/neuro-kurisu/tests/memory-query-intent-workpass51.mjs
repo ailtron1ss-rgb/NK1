@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { MemoryOS2, detectMemoryQueryIntent } from '../src/organism/developmental/MemoryOS2.ts';
+import { MemoryOS2, detectMemoryQueryIntent, isConversationMemory } from '../src/organism/developmental/MemoryOS2.ts';
 
 const now = Date.now();
 const encode = (memory, row) => memory.encode({
@@ -136,3 +136,31 @@ for (const [key, sessionId] of [['session-id', 'session-44'], ['session id', 'se
   );
 }
 
+// The pure provenance classifier is tested directly: MemoryOS2 may merge two rows
+// with identical content/kind before ranking, so such rows are not a valid A/B fixture.
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
+  context: { relationshipId: 'conversation-17' },
+}), false, 'a conversation-like relationship ID is not session lineage');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
+  context: { note: 'discussion summary from an unrelated relation' },
+}), false, 'untyped note text is not a conversation-history marker');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
+  context: { sessionId: 'session-88' },
+}), true, 'a stable session ID is explicit conversation lineage');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
+  context: { recordType: 'conversation-history' },
+}), true, 'an explicit typed history label is supported');
+assert.equal(isConversationMemory({
+  source: 'workpass569-conversation-import',
+  context: {},
+}), true, 'a source label identifying a conversation-history import is supported');
+assert.equal(isConversationMemory({
+  source: 'workpass569-fixture',
+  context: { conversationHistory: 'false' },
+}), false, 'an explicitly disabled history field must not qualify as lineage');
+
+console.log('WORKPASS569_SESSION_LINEAGE_CLASSIFIER=PASS');

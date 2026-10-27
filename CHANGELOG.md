@@ -1,3 +1,10 @@
+## [NK1][WorkPass569] Require explicit session lineage for autobiographical recall ranking (2026-10-27)
+
+- Hardened `isConversationMemory`: stable conversation/session ID or key remains the strongest signal; otherwise only explicit history fields, typed history labels, or source labels naming a history import can identify conversation memory.
+- Stopped treating arbitrary `context` values such as `relationshipId="conversation-17"` or untyped notes containing “discussion summary” as conversation lineage.
+- Corrected regex escaping in key/value normalization so camelCase, snake_case, kebab-case and spaced session keys normalize as intended. Added direct tests for the pure lineage classifier: relationship IDs and untyped notes are rejected, stable session IDs and typed history/import markers are accepted, and an explicitly disabled history field is rejected. Existing retrieval fixtures continue to test session-memory ranking.
+- This is a ranking/provenance-boundary fix. The fixtures do not establish real-world recall uplift, and release readiness remains gated on the separate human license review.
+
 ## [NK1][WorkPass512] Add reproducible human retrieval annotation pipeline (2026-10-27)
 
 - Add a local prepare/finalize CLI for frozen MemoryOS2 corpora, query splits, human-assigned relevant memory IDs and explicit unanswerable labels.

@@ -73,19 +73,36 @@ export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
  if(/\b(what is|define|definition|explain the concept)\b|что такое|определение|дай определение|объясни понятие/iu.test(q))return 'factual';
  return 'general';
 }
-function isConversationMemory(item:MemoryItem2):boolean{
+export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):boolean{
  const context=item.context??{};
- // Only stable conversation/session IDs or keys count as lineage. A message index,
- // turn sequence, or speaker role identifies a fragment, not the dialogue it belongs to.
- const hasConversationIdentity=Object.entries(context).some(([key,value])=>{
-  // Imported memories commonly use camelCase, snake_case, or kebab-case metadata.
-  const normalizedKey=key.replace(/[-_\s]/gu,'').toLocaleLowerCase();
-  return /^(?:conversation|dialogue|chat|thread|transcript|session)(?:id|key)$/u.test(normalizedKey)&&
-   typeof value==='string'&&value.trim().length>0;
- });
+ const normalizeKey=(key:string)=>key.normalize('NFKC').replace(/[-_\s]/gu,'').toLocaleLowerCase();
+ const hasValue=(value:unknown)=>typeof value==='string'&&value.trim().length>0&&!/^(?:0|false|no|off|none|unknown)$/iu.test(value.trim());
+ // Stable lineage is strongest evidence. A relationship, speaker role, message index,
+ // turn sequence or arbitrary context value must never impersonate a conversation ID.
+ const hasConversationIdentity=Object.entries(context).some(([key,value])=>
+  /^(?:conversation|dialogue|chat|thread|transcript|session)(?:id|key)$/u.test(normalizeKey(key))&&hasValue(value));
  if(hasConversationIdentity)return true;
- const metadata=[item.source,...Object.entries(context).flatMap(([key,value])=>[key,String(value??'')])].join(' ').normalize('NFKC');
- return /\b(?:conversation|dialogue|chat[-_ ]history|session[-_ ]history|transcript|message[-_ ]history|discussion[-_ ]summary)\b|разговор|диалог|чат|переписк|транскрипт|истори[яи] (?:бесед|диалог|разговор)|обсужден(?:ие|ия|ий)/iu.test(metadata);
+
+ // Accept explicit, typed conversation-history markers. Do not scan every context value:
+ // imported metadata such as relationshipId="conversation-17" is not a conversation ID.
+ const historyField=/^(?:(?:conversation|dialogue|chat|thread|transcript|session|message|discussion)(?:history|summary|record|transcript|log|archive))$/u;
+ const classificationFields=new Set(['type','kind','memorytype','contenttype','sourcetype','recordtype','category','modality','entrytype']);
+ const explicitHistoryLabel=(value:unknown)=>{
+  if(typeof value!=='string')return false;
+  const normalized=value.normalize('NFKC').toLocaleLowerCase().trim().replace(/[_\s]+/gu,'-');
+  return /^(?:(?:conversation|dialogue|chat|session|transcript|message|discussion)(?:-(?:history|summary|record|transcript|log|import|archive))?|история-(?:бесед|диалога|чата|сессии)|транскрипт(?:-(?:диалога|чата|сессии))?|сводка-разговора|запись-(?:диалога|беседы|чата))$/iu.test(normalized);
+ };
+ for(const [key,value] of Object.entries(context)){
+  if(!hasValue(value))continue;
+  const normalizedKey=normalizeKey(key);
+  if(historyField.test(normalizedKey))return true;
+  if(classificationFields.has(normalizedKey)&&explicitHistoryLabel(value))return true;
+ }
+ // Source labels can identify a conversation-history import, but generic values from
+ // unrelated context fields are not evidence of dialogue lineage.
+ const source=String(item.source??'').normalize('NFKC').toLocaleLowerCase().replace(/[_\s]+/gu,'-');
+ return /(?:^|-)(?:conversation|dialogue|chat|session|transcript|message|discussion)-(?:history|summary|record|transcript|log|import|archive)(?:-|$)/u.test(source)||
+  /(?:^|-)(?:история-бесед|история-диалога|история-чата|история-сессии|транскрипт-диалога|сводка-разговора)(?:-|$)/u.test(source);
 }
 function memoryIntentFit(intent:MemoryQueryIntent,item:MemoryItem2):number{
  const hasGoal=Boolean(String(item.context?.goalId??'').trim())||item.goalRelevance>=.65;
