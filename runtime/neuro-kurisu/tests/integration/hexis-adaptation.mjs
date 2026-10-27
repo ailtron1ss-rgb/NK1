@@ -5,6 +5,53 @@ import { refreshHmxStageLifecycleDigest } from '../../src/organism/integration/h
 const fabric = new HexisAdaptationFabric();
 assert.equal(fabric.snapshot().version, 1);
 
+// An HMX rollback can restore its own ledger writes, but must never erase a
+// foreign write made after the transaction's checkpoint.
+const ownedCheckpointFabric = new HexisAdaptationFabric();
+const ownedCheckpointBaseline = ownedCheckpointFabric.snapshot();
+const ownedCheckpoint = ownedCheckpointFabric.mutationCheckpoint();
+const ownedMutationToken = 'test:owned-hmx-transaction';
+ownedCheckpointFabric.registerOrUpdateBelief({
+  memoryId: 'owned-write',
+  confidence01: 0.8,
+  trust01: 0.7,
+  at: 1000,
+}, ownedMutationToken);
+assert.equal(
+  ownedCheckpointFabric.restoreIfUnchanged(ownedCheckpointBaseline, ownedCheckpoint, ownedMutationToken),
+  true,
+  'rollback must restore a transaction that contains only writes owned by its token',
+);
+assert.equal(ownedCheckpointFabric.snapshot().beliefs.length, 0,
+  'owned ledger mutations should be removed by a successful guarded rollback');
+
+const foreignCheckpointFabric = new HexisAdaptationFabric();
+const foreignCheckpointBaseline = foreignCheckpointFabric.snapshot();
+const foreignCheckpoint = foreignCheckpointFabric.mutationCheckpoint();
+const foreignMutationToken = 'test:owned-hmx-transaction';
+foreignCheckpointFabric.registerOrUpdateBelief({
+  memoryId: 'owned-write',
+  confidence01: 0.8,
+  trust01: 0.7,
+  at: 1000,
+}, foreignMutationToken);
+foreignCheckpointFabric.registerOrUpdateBelief({
+  memoryId: 'foreign-write',
+  confidence01: 0.4,
+  trust01: 0.3,
+  at: 1001,
+});
+assert.equal(
+  foreignCheckpointFabric.restoreIfUnchanged(foreignCheckpointBaseline, foreignCheckpoint, foreignMutationToken),
+  false,
+  'rollback must fail closed when a foreign ledger mutation follows the transaction checkpoint',
+);
+assert.deepEqual(
+  foreignCheckpointFabric.snapshot().beliefs.map(row => row.memoryId).sort(),
+  ['foreign-write', 'owned-write'],
+  'a failed rollback must preserve both the transaction write and the independent foreign write',
+);
+
 const first = fabric.reviseBelief({ memoryId:'mem-1', confidence01:.5, trust01:.6, stance:'supports', evidence:{ref:'source-a',trust01:.9}, context:'test' });
 assert.equal(first.applied, true);
 assert(first.posteriorConfidence01 > .5);
