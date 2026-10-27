@@ -1,3 +1,10 @@
+## [NK1][WorkPass489] Bound replay update strength to avoid task overwrite — 2026-10-27
+
+- WorkPass488 made replay use stored rewards; Core CI then showed old-task accuracy recovered to 0.50, but recent-task accuracy dropped to 0.5125.
+- Added a validated `learningRateScale01` option to replay, defaulting to 0.25 of online update strength, so historical replay can recover some retention without overwhelming newer outcomes.
+- Target mode and bootstrap coefficient remain explicit; no benchmark threshold or expected result was altered.
+- Validation: latest-head sequential/Core regression required.
+
 ## [NK1][WorkPass488] Preserve observed outcomes in episodic replay — 2026-10-27
 
 - The sequential benchmark isolated a target-contamination bug: default replay bootstrapped every stored reward from the current policy, allowing the newly learned task's value estimates to dominate historical task labels.
