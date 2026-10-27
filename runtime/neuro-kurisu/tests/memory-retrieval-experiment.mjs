@@ -166,13 +166,13 @@ try {
 
   const invalidLabelsPath = path.join(temp, 'invalid-answerability.jsonl');
   const invalidLabelsOut = path.join(temp, 'invalid-answerability.json');
-  await writeFile(invalidLabelsPath, `${JSON.stringify({ id: 'bad-no-answer', query: 'unanswerable example', relevantIds: ['m0'], answerable: false, split: 'holdout' })}\\n`);
+  await writeFile(invalidLabelsPath, `${JSON.stringify({ id: 'bad-no-answer', query: 'unanswerable example', relevantIds: ['m0'], answerable: false, split: 'holdout' })}\n`);
   const badAnswerability = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidLabelsPath, '--provenance', provenancePath, '--out', invalidLabelsOut, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(badAnswerability.status, 2);
   assert.match(badAnswerability.stderr, /labels-unanswerable-requires-empty-relevantIds-line:1/);
   assert.equal((await readdir(temp)).includes('invalid-answerability.json'), false, 'contradictory no-answer labels must fail before report publication');
 
-  await writeFile(invalidLabelsPath, `${JSON.stringify({ id: 'bad-answerable', query: 'answerable example', relevantIds: [], answerable: true, split: 'holdout' })}\\n`);
+  await writeFile(invalidLabelsPath, `${JSON.stringify({ id: 'bad-answerable', query: 'answerable example', relevantIds: [], answerable: true, split: 'holdout' })}\n`);
   const missingRelevantLabels = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidLabelsPath, '--provenance', provenancePath, '--out', invalidLabelsOut, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(missingRelevantLabels.status, 2);
   assert.match(missingRelevantLabels.stderr, /labels-answerable-requires-relevantIds-line:1/);
