@@ -44,7 +44,12 @@ const oversizedDocumentStage = fabric.stageHmx({
   strategy: 'additive',
 });
 assert(oversizedDocumentStage.conflicts.some(conflict =>
-  conflict.path === '
+  conflict.path === '$' && conflict.kind === 'size-limit'),
+  'HMX document over the byte budget must produce an explicit size-limit conflict');
+assert.equal(fabric.decideHmx(oversizedDocumentStage.stagingId, 'accept')?.status, 'staged',
+  'an over-budget HMX document must remain ineligible for acceptance');
+
+// Oversized HMX sections are rejected as a whole, not silently staged as a prefix.
 const oversizedExportId = 'exp_3333333333333333';
 const oversizedStage = fabric.stageHmx({
   document: makeHmxDocument(oversizedExportId, {
