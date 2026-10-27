@@ -1,3 +1,10 @@
+## [NK1][WorkPass508] Abstain from recent-memory fallback when retrieval has no evidence anchor (2026-10-27)
+
+- `MemoryOS2.retrieve()` previously populated a recent-memory candidate set whenever token/fuzzy/concept discovery found fewer than 96 entries, including the zero-match case. Recency, salience and generic fusion terms could then make unrelated memories look like an answer.
+- The recent-memory padding path now requires at least one evidence-bearing candidate from lexical, fuzzy or bilingual-concept postings. If the query has no evidence anchor, the candidate set stays empty and retrieval abstains; evidence-backed retrieval, bounded candidate selection, and existing fuzzy/concept/graph paths remain available.
+- Added a regression with high-salience/high-goal unrelated memories, a novel no-match query that must return no rows, and a follow-up matched query that must still retrieve the corpus. Wired the regression into `test:rebuild-recovered`.
+- This is a targeted no-evidence abstention fix, not a claim of overall recall uplift. Partial-overlap unanswerable queries and real bilingual holdout quality still require independent measurement. Release ZIP is untouched.
+
 ## [NK1][WorkPass507] Preserve unanswerable labels through retrieval experiment CLI (2026-10-27)
 
 - The benchmark engine already measured explicitly unanswerable queries, but the offline JSONL CLI rejected empty `relevantIds` and dropped the `answerable` label while parsing. As a result, users could not exercise the abstention gate through the supported file-based experiment path.
