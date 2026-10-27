@@ -1367,6 +1367,21 @@ export class OrganismRuntime {
       return this.captureCameraDirect(cameraId, retain, options);
     });
   }
+  /** Read the current affective appraisal from the canonical cognitive snapshot. */
+  private voiceEmotionContext(): {label:string;valence01:number;arousal01:number;dominance01:number} {
+    const snapshot=this.core.snapshot() as any;
+    const field=snapshot?.facets?.cognition?.cognitiveField;
+    const finite=(value:unknown,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
+    const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
+    const rawLabel=String(field?.dominantEmotion??'calm').toLocaleLowerCase();
+    return {
+      label:known.has(rawLabel)?rawLabel:'calm',
+      valence01:Math.max(0,Math.min(1,finite(field?.valence01,.5))),
+      arousal01:Math.max(0,Math.min(1,finite(field?.arousal01,.22))),
+      dominance01:Math.max(0,Math.min(1,finite(field?.coherence01,.5))),
+    };
+  }
+
   async speak(text: string): Promise<boolean> {
     return this.enqueue(async () => {
       const snapshot=this.core.operationalStatusSnapshot();
@@ -1379,6 +1394,7 @@ export class OrganismRuntime {
         continuity01:subject.continuity01,
         grounding01:subject.embodiedGrounding01,
         uncertainty01:snapshot.needs.uncertainty,
+        emotion:this.voiceEmotionContext(),
         speechEventId:stableSpeechEventId('api',snapshot.tick,text),
       });
     });
@@ -1420,7 +1436,7 @@ export class OrganismRuntime {
         let spoken=false;
         if(options.speak && step.language?.text){
           const subject=this.core.subjectContinuitySnapshot();
-          const voicePlanContext={action:step.cycle.state.lastAction,mode:this.core.p64Snapshot().lastFrame?.mode??null,needs:step.cycle.state.needs,continuity01:subject.continuity01,grounding01:subject.embodiedGrounding01,uncertainty01:step.cycle.state.needs.uncertainty,speechEventId:stableSpeechEventId('voice-turn',step.cycle.state.tick,step.language.text)};
+          const voicePlanContext={action:step.cycle.state.lastAction,mode:this.core.p64Snapshot().lastFrame?.mode??null,needs:step.cycle.state.needs,continuity01:subject.continuity01,grounding01:subject.embodiedGrounding01,uncertainty01:step.cycle.state.needs.uncertainty,emotion:this.voiceEmotionContext(),speechEventId:stableSpeechEventId('voice-turn',step.cycle.state.tick,step.language.text)};
           spoken=await this.embodiment.speak(step.language.text,voicePlanContext);
         }
         return {text:clean,step,spoken,voice:this.embodiment.voiceSnapshot()};
