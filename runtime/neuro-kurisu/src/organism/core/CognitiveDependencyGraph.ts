@@ -51,7 +51,7 @@ export class CognitiveDependencyGraph {
     const wakeMask=safeCounter(source.wakeMask)&VALID_MASK;
     const base=defaultCognitiveDependencyState();
     const rawTransitions=isRecord(source.domainTransitions)?source.domainTransitions:{};
-    const domainTransitions={...base.domainTransitions};
+    const domainTransitions:Record<CognitiveDomain,number>={...base.domainTransitions};
     for(const domain of DOMAINS) {
       domainTransitions[domain]=safeCounter(Object.hasOwn(rawTransitions,domain)?rawTransitions[domain]:undefined);
     }
