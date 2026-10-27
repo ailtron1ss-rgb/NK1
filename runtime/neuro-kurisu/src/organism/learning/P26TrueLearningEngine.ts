@@ -46,6 +46,14 @@ export interface P26InterleavedExperience {
   nextState:OrganismState;
   surprise?:number;
 }
+export type P26ReplayTargetMode = 'recorded-reward' | 'td';
+export interface P26ReplayOptions {
+  /** Use the stored outcome directly, or explicitly request a Bellman bootstrap. */
+  targetMode?: P26ReplayTargetMode;
+  /** Applied only when targetMode='td'. Must be finite and in [0,1]. */
+  bootstrapWeight01?: number;
+}
+
 export interface P26InterleavedTrainingOptions {
   replayEveryNCurrent?:number;
   maxReplayUpdates?:number;
@@ -196,18 +204,27 @@ export class P26TrueLearningEngine{
     this.sync();
     return {updated:true,loss01:r.loss01};
   }
-  replay(experiences:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,extras?:BodyExtras){
+  replay(experiences:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,extras?:BodyExtras,options:P26ReplayOptions={}){
+    // Episodic replay must not silently replace a recorded outcome with a target
+    // derived from the current policy: after a task switch, that bootstrapping
+    // leaks the new task's value estimates into the historical task's labels.
+    // Recorded outcomes are the safe default; use TD only when continuation
+    // semantics and task stationarity are intentionally required.
+    const targetMode=options.targetMode??'recorded-reward';
+    if(targetMode!=='recorded-reward'&&targetMode!=='td')throw new TypeError('p26-replay-target-mode-invalid');
+    const bootstrapWeight01=options.bootstrapWeight01??.78;
+    if(!Number.isFinite(bootstrapWeight01)||bootstrapWeight01<0||bootstrapWeight01>1)throw new RangeError('p26-replay-bootstrap-weight-invalid');
     let updates=0,loss=0;
     for(const e of experiences){
-      const next=Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5);
-      const target=clamp(e.reward+.78*next);
+      const bootstrap=targetMode==='td'?Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5):0;
+      const target=clamp(e.reward+(targetMode==='td'?bootstrapWeight01*bootstrap:0));
       const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.035+clamp(e.surprise??.2)*.03,extras});
       updates++; loss+=r.loss01;
     }
     this.state.metrics.replayUpdates+=updates;
     if(updates){this.state.metrics.recentLoss01=clamp(loss/updates);this.updateTrainingExposure();this.state.metrics.lastUpdatedAt=Date.now();}
     this.sync();
-    return {updates,meanLoss01:updates?loss/updates:0};
+    return {updates,meanLoss01:updates?loss/updates:0,targetMode};
   }
   replayCausalRecords(records:Array<{action:ActionKind;reward01:number;success01:number;surprise01:number;causalStrength01?:number;learningQuality01?:number;policyFeatures01?:number[];replayPriority01?:number}>){
     const usable=records.filter(r=>Array.isArray(r.policyFeatures01)&&r.policyFeatures01.length>=16).slice(0,32);
