@@ -1,3 +1,10 @@
+## [NK1][WorkPass587] Enforce source-payload schema preservation in local skill generation (2026-10-27)
+
+- Validate the local-model revision output against the source payload root type before returning it to P23.
+- For object payloads, require every pre-existing top-level key to remain present; added keys remain possible, while silent loss of source fields is rejected before independent execution.
+- Extend the generator unit test with root-type and missing-field rejection cases.
+- Candidate generation remains untrusted; fresh evaluation, evidence binding, approval and activation gates remain unchanged.
+
 ## [NK1][WorkPass586] Wire the verified P23 lifecycle to the local revision generator (2026-10-27)
 
 - Add `generateAndStageReflectiveSkillRevisionWithLocalModel` to P23LearningEngine so the existing bounded local-model generator is directly usable without caller-authored adapter code.

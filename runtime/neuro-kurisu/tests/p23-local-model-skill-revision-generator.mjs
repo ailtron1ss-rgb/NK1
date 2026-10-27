@@ -44,4 +44,21 @@ await assert.rejects(
   () => generateLocalSkillRevision(provider, { ...request, datasetFingerprint: 'not-a-digest' }),
   /p23-revision-verified-dataset-fingerprint-required/,
 );
-console.log('P23_LOCAL_MODEL_SKILL_REVISION_GENERATOR=PASS');
+await assert.rejects(
+  () => generateLocalSkillRevision({
+    configured: () => true,
+    async generate() { return { text: JSON.stringify({ name: 'candidate-without-steps' }) }; },
+  }, request),
+  /p23-revision-generator-dropped-source-field/,
+  'the model must not silently discard required fields from the source payload',
+);
+await assert.rejects(
+  () => generateLocalSkillRevision({
+    configured: () => true,
+    async generate() { return { text: JSON.stringify({ name: 'candidate', steps: ['safe-step'] }) }; },
+  }, { ...request, sourcePayload: 'legacy string payload' }),
+  /p23-revision-generator-schema-mismatch/,
+  'the model must not change the payload root type',
+);
+
+console.log('P23_LOCAL_MODEL_SKILL_REVISION_GENERATOR=PASS schemaPreserved=true');

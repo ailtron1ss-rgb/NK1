@@ -38,6 +38,28 @@ function parseGeneratedPayload(raw: string): unknown {
   return parsed;
 }
 
+function assertSourceSchemaPreserved(source: unknown, candidate: unknown): unknown {
+  const sourceIsArray = Array.isArray(source);
+  const candidateIsArray = Array.isArray(candidate);
+  if (source === null || candidate === null ||
+      typeof source !== typeof candidate ||
+      sourceIsArray !== candidateIsArray) {
+    throw new Error('p23-revision-generator-schema-mismatch');
+  }
+  if (typeof source === 'object' && !sourceIsArray) {
+    if (typeof candidate !== 'object' || candidateIsArray) {
+      throw new Error('p23-revision-generator-schema-mismatch');
+    }
+    const sourceKeys = Object.keys(source as Record<string, unknown>);
+    const candidateRecord = candidate as Record<string, unknown>;
+    const missingKeys = sourceKeys.filter(key => !Object.hasOwn(candidateRecord, key));
+    if (missingKeys.length > 0) {
+      throw new Error('p23-revision-generator-dropped-source-field');
+    }
+  }
+  return candidate;
+}
+
 /**
  * Real local-model revision generator for the P23 reflective lifecycle.
  * It creates a candidate payload only; evaluation, proposal authenticity,
@@ -84,5 +106,5 @@ export async function generateLocalSkillRevision(
     maxTokens: 4096,
     temperature: 0.2,
   });
-  return parseGeneratedPayload(response.text);
+  return assertSourceSchemaPreserved(request.sourcePayload, parseGeneratedPayload(response.text));
 }
