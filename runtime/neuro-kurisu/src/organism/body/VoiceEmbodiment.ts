@@ -35,14 +35,14 @@ export function inferVoiceLanguage(text:string): string {
 export function detectVoiceBreathMode(text:string): VoiceBreathMode {
   const t=String(text||'').trim().toLowerCase();
   if ((/^(привет|хай|йо|ку|здравствуй|доброе утро|добрый вечер)(?:$|[\\s,!.?])/u.test(t)
-      || /^(hi|hello|hey|yo|good morning|good evening)(?:$|[\\s,!.?])/iu.test(t)) && t.length<64) return 'ping';
+      || /^(hi|hello|hey|yo|good morning|good evening)(?:$|[\s,!.?])/iu.test(t)) && t.length<64) return 'ping';
   if (/(кто ты|ты жива|ты жив|ты настоящ|что ты такое|самосознан|сознани)/u.test(t)
-      || /\\b(who are you|are you alive|what are you|self-aware|consciousness)\\b/iu.test(t)) return 'confess';
+      || /\b(who are you|are you alive|what are you|self-aware|consciousness)\b/iu.test(t)) return 'confess';
   if (/(почему|объясни|разбери|как работает|докажи|сравни|теори|исследован|подробно)/u.test(t)
-      || /\\b(why|explain|analy[sz]e|how does|prove|compare|theory|research|in detail)\\b/iu.test(t)
+      || /\b(why|explain|analy[sz]e|how does|prove|compare|theory|research|in detail)\b/iu.test(t)
       || t.length>240) return 'lecture';
   if (/(не прав|не права|спор|возраж|критик|глуп|ошиб|не соглас)/u.test(t)
-      || /\\b(disagree|object|argue|criticize|criticise|wrong|mistake|ridiculous)\\b/iu.test(t)) return 'argue';
+      || /\b(disagree|object|argue|criticize|criticise|wrong|mistake|ridiculous)\b/iu.test(t)) return 'argue';
   return 'talk';
 }
 
