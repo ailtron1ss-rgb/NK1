@@ -1,3 +1,10 @@
+## [NK1][WorkPass590] Synchronize validated source release workflow (2026-10-27)
+
+- Publish from source pushes as well as successful core-validation workflow runs; wait for exact-SHA targeted regression and Hexis source-lineage checks before release.
+- Recheck branch freshness before and after packaging; build a dated ZIP, report, and SHA-256 manifest for that exact source SHA without overwriting existing tags.
+- Preserve pinned Node, current SBOM/provenance, and release-license-readiness gates in both release workflows.
+- Fail closed when a required CI or license-readiness gate fails; existing release assets remain untouched.
+
 ## [NK1][WorkPass589] Close Mem0 OSS/runtime wiring validation gap on current source (2026-10-27)
 
 - Upgrade the existing opt-in Mem0 adapter with explicit Platform/OSS API modes, local-only OSS defaults, an explicit unsafe-HTTP opt-in for non-loopback hosts, and provider-specific API headers/routes.
