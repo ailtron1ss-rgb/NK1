@@ -1,3 +1,11 @@
+## [NK1][WorkPass445] Enforce atomic, finite parametric-policy updates (2026-10-27)
+
+- Fixed the first real failure in `tests/p26-learning-input-integrity.mjs`: the learner had clamped `NaN`/infinite training targets and rates into plausible values instead of rejecting the data.
+- `ParametricPolicyLearner.train` and `trainFeatures` now preflight action identity, finite target/rate/sample weight, required state shape and finite feature vectors before training or the frozen-state fast path.
+- `trainBatch` validates all rows before applying the first update, so a malformed later sample cannot partially train the policy.
+- `restore` now repairs non-finite reward/error/exploration/loss/timestamp diagnostics, resets unsafe update counts and treats only literal boolean `true` as an enabled freeze. Existing weight/bias sanitation remains intact.
+- The corresponding P26 regression previously reached the test and failed at the NaN target assertion; the new run must show the entire input-integrity suite passes before this is counted green.
+
 ## [NK1][WorkPass478] Verify shadow signatures before reading outcome fields (2026-10-27)
 
 - Reordered reflective evidence binding so the trusted signature/context verifier runs before candidate-task and pass/fail comparisons. A changed payload with a stale signature now fails as untrusted signed evidence rather than being classified only from its self-reported outcome.
