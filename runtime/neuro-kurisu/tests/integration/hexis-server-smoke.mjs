@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -190,6 +191,44 @@ try {
   if (!sync.ok || typeof sync.scanned !== 'number') throw new Error('hexis-sync');
   const memoryIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=8`)).json();
   if (!memoryIndex.ok || !Array.isArray(memoryIndex.memoryIndex)) throw new Error('hexis-memory-index');
+  if (memoryIndex.memoryIndex[0]?.id) {
+    const memoryId = memoryIndex.memoryIndex[0].id;
+    const sourceContent = 'Hexis server smoke direct source observation';
+    const capturedAt = Date.now();
+    const lineagePayload = {
+      memoryId,
+      sourceContent,
+      trace: {
+        id: 'hexis-server-smoke-lineage-001',
+        source: 'world',
+        kind: 'smoke-observation',
+        confidence: .85,
+        epistemicStatus: 'observation',
+        at: capturedAt,
+        provenance: {
+          sourceId: 'smoke:source:001',
+          sourceKind: 'server-smoke',
+          capturedAt,
+          evidenceClass: 'direct-observation',
+          contentFingerprint: createHash('sha256').update(sourceContent, 'utf8').digest('hex'),
+        },
+      },
+    };
+    const lineageResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
+    const lineage = await lineageResponse.json();
+    if (lineageResponse.status !== 200 || !lineage.ok || !lineage.result?.accepted || !lineage.result?.added) {
+      throw new Error('hexis-live-evidence-lineage:' + JSON.stringify(lineage));
+    }
+    const replayResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
+    const replay = await replayResponse.json();
+    if (replayResponse.status !== 200 || !replay.ok || !replay.result?.accepted || replay.result?.added) {
+      throw new Error('hexis-live-evidence-lineage-replay:' + JSON.stringify(replay));
+    }
+    const tamperedResponse = await post('/api/organism/integration/hexis/evidence/lineage', {
+      ...lineagePayload, sourceContent: sourceContent + ' tampered',
+    });
+    if (tamperedResponse.status !== 400) throw new Error('hexis-live-evidence-fingerprint-guard:' + tamperedResponse.status);
+  }
   if (memoryIndex.memoryIndex[0]?.id) {
     // Replay the same valid revision request; idempotency must be tested after
     // request validation, not with a payload missing the required confidence.
