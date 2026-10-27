@@ -87,14 +87,18 @@ const externalDuplicate = externalStream.recordExternalLearningEvent({
 });
 assert.equal(externalDuplicate?.id, externalFirst?.id,
   "NFKC-normalized upstream retry must resolve to the same recorded outcome");
-assert.equal(externalStream.summary().outcomes, 1,
-  "duplicate external evidence must not increment outcome count");
+assert.equal(externalStream.summary().outcomes, 0,
+  "unverified external events must never increment the trusted runtime-outcome total");
+assert.equal(externalStream.summary().records, 1,
+  "duplicate external evidence must not create a second retained record");
 assert.throws(() => externalStream.recordExternalLearningEvent({
   ...externalInput, traceId: "External-Source-17", success01: .1,
 }), /causal-external-trace-id-conflict/,
   "reusing a trace identity with a changed outcome must surface a conflict");
-assert.equal(externalStream.summary().outcomes, 1,
-  "conflicting duplicate evidence must not mutate outcome counts");
+assert.equal(externalStream.summary().outcomes, 0,
+  "conflicting external evidence must not mutate trusted outcome counts");
+assert.equal(externalStream.summary().records, 1,
+  "conflicting duplicate evidence must not mutate retained records");
 
 assert.throws(() => externalStream.recordExternalLearningEvent({
   tick: Number.NaN, taskId: "bad-tick", action: "explore",
