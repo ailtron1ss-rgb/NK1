@@ -145,7 +145,7 @@ export class P26TrueLearningEngine{
     replayRows:Array<{state:OrganismState;action:ActionKind;reward:number;nextState:OrganismState;surprise?:number}>,
     options:{
       replayEveryNCurrent?:number;maxReplayUpdates?:number;targetMode?:'reward'|'td';
-      currentLearningRate01?:number;replayLearningRate01?:number;
+      currentLearningRate01?:number;replayLearningRate01?:number;conflictCandidateCap?:number;
     }={},
   ):{
     onlineUpdates:number;replayUpdates:number;blockedReplayRows:number;eligibleReplayRows:number;
@@ -184,7 +184,10 @@ export class P26TrueLearningEngine{
     // must not leave a partially trained current-task policy.
     validateRows(fresh);
     validateRows(replayRows);
-    const conflictCandidateCap=Math.min(64,fresh.length);
+    const requestedCandidateCap=options.conflictCandidateCap??64;
+    if(!Number.isSafeInteger(requestedCandidateCap)||requestedCandidateCap<8||requestedCandidateCap>128)
+      throw new RangeError('conflict-candidate-cap-out-of-range');
+    const conflictCandidateCap=Math.min(requestedCandidateCap,fresh.length);
     const context=(state:OrganismState)=>[
       state.needs.energy,state.needs.cognitiveLoad,state.needs.uncertainty,state.needs.novelty,
       state.needs.socialNeed,state.needs.goalPressure,state.needs.identityCoherence,
