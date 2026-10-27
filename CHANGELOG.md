@@ -1,3 +1,9 @@
+## [NK1][WorkPass442] Prune stale embedding caches during restore (2026-10-27)
+
+- MemoryOS2.restore() now reconciles its derived semantic-embedding index and embedding-retry map against the restored canonical rows after rebuilding the inverted indexes. Entries are retained only while the memory ID exists and the content hash still matches.
+- Added a restore regression covering both a removed ID and changed content under the same ID; neither an old vector nor a scheduled retry may survive hydration, and the rebuilt canonical index diagnostics must pass.
+- Runtime test execution and TypeScript typecheck remain pending the default-branch CI activation PR #251.
+
 ## [NK1][WorkPass441] Route maintenance hard-cap through canonical removal (2026-10-27)
 
 - Removed the remaining direct `items.slice(0, 1600)` mutation at the end of MemoryOS2.maintain(). The maintenance hard cap now uses the shared canonical remover, keeping itemIndex, exact/content dedup indexes, token postings, document frequencies, character-gram postings, byte accounting and retrieval caches aligned.
