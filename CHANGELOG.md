@@ -1,3 +1,12 @@
+## [NK1][WorkPass463] Install runtime type dependencies in scoped CI workflows (2026-10-27)
+
+- Added locked runtime dependency installation to WorkPass110 before its integration/typecheck tail, matching the canonical core workflow instead of assuming app dependencies provide runtime `@types/node`.
+- WorkPass294 now installs `runtime/neuro-kurisu/package-lock.json` dependencies before TypeScript typecheck. These changes address a setup defect; new exact-head runs must confirm typecheck behavior.
+
+## [NK1][WorkPass462] Install locked runtime dependencies for correlated postconditions (2026-10-27)
+
+- Updated WorkPass294 to install the runtime's locked dependencies before typecheck, ensuring the compiler sees the canonical Node type declarations used by `tsconfig.clean.json`.
+
 ## [NK1][WorkPass438] Fail closed when causal learning events cannot be recorded (2026-10-27)
 
 - Added null checks around three `recordExternalLearningEvent` calls in `OrganismCore`: replay-derived signals now skip when no causal event was accepted; validation and repair paths only forward accepted events to unified learning. This resolves real strict-TypeScript nullability diagnostics without fabricating fallback evidence.
