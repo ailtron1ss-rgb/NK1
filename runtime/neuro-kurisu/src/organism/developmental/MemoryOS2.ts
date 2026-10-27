@@ -266,6 +266,15 @@ function negationSignature(text:string){const tokens=tokenize(text);let hits=0;f
 function sharedEntityCount(a:string[],b:string[]){const set=new Set(a);let n=0;for(const x of b)if(set.has(x))n++;return n;}
 function hasNegationPolarityDifference(a:string,b:string){return negationSignature(a)!==negationSignature(b);}
 function identifierLike(text:string){return /(?:\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|[A-F0-9]{8,})/.test(String(text));}
+function canonicalRetrievalIdentifier(value:string){
+ return String(value??'').normalize('NFKC').toLocaleUpperCase().replace(/[-_/]/g,'');
+}
+/** Extract explicit stable IDs so exact-ID recall does not depend on broad query-token coverage. */
+function extractRetrievalIdentifiers(text:string):string[]{
+ const normalized=String(text??'').normalize('NFKC').toLocaleUpperCase();
+ const matches=normalized.match(/\b[A-Z][A-Z0-9]{0,15}(?:[-_/]?[0-9]{2,}|[-_/][A-Z0-9]{2,})\b|\b[A-F0-9]{8,}\b/gu)??[];
+ return [...new Set(matches.map(canonicalRetrievalIdentifier))];
+}
 function normalizeBm25(score:number,max?:number){if(score<=0)return 0;if(max!==undefined)return max>0?clamp(score/max):0;return clamp(score/(score+1));}
 function bm25Score(queryTokens:string[],content:string,docCount:number,documentFrequency:Map<string,number>,itemTokenLength:Map<string,number>,totalTokenLength:number,itemId?:string){
   const tokens=tokenize(content); if(!tokens.length||!queryTokens.length||!docCount)return 0;
@@ -784,6 +793,7 @@ export class MemoryOS2{
    const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
    const isValidAt=(m:MemoryItem2,at:number)=>{const from=Number(m.validFromAt??m.createdAt),until=m.validUntilAt==null?Number.POSITIVE_INFINITY:Number(m.validUntilAt);return from<=at&&at<until;};
    const queryLower=query.toLocaleLowerCase();
+   const queryIdentifiers=extractRetrievalIdentifiers(query);
    const queryIntentMode=detectMemoryQueryIntent(query);
    // Context belongs to the current query, not a lifetime counter. Using
    // linkUpdates/semanticQueries here made unrelated questions drift into causal
@@ -846,10 +856,13 @@ export class MemoryOS2{
      const item=this.itemIndex.get(id);
      if(!item)return {id,score:priority.idfSupport+priority.fuzzySupport,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase:0,validAt:0,lastAccessAt:0,salience:0,createdAt:0,revisionSequence:0};
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(id,item.content).includes(queryPhrase)?1:0;
+     const itemIdentifiers=extractRetrievalIdentifiers(item.content);
+     const identifierMatch=queryIdentifiers.some(identifier=>itemIdentifiers.includes(identifier))?1:0;
      const validAt=temporalMode==='all'||isValidAt(item,now)?1:0;
      // A tiny lexical coverage/phrase term breaks high-fanout ties without letting
      // recency overpower a genuinely rarer query match.
-     const score=priority.idfSupport+priority.fuzzySupport*.70+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
+     // Exact structured IDs are rare, high-precision retrieval anchors; rank them before the 192-item cap.
+     const score=priority.idfSupport+priority.fuzzySupport*.70+exactPhrase*.65+identifierMatch*1000+Math.min(priority.matchedTerms,8)*.035;
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
    }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,192).map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
@@ -898,7 +911,7 @@ export class MemoryOS2{
    if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
-   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
+   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number;identifierMatch:number}> = [];
    for(const id of candidateIds){
      const m=this.itemIndex.get(id);
      if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
@@ -911,6 +924,8 @@ export class MemoryOS2{
      const lexicalTokens=this.tokensFor(m.content);
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
      const queryTokenArray=[...qTokens];
+     const itemIdentifiers=extractRetrievalIdentifiers(m.content);
+     const identifierMatch=queryIdentifiers.some(identifier=>itemIdentifiers.includes(identifier))?1:0;
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
      const fuzzy=fuzzyTokenCoverage(queryTokenArray,lexicalTokens);
      const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id);
@@ -922,7 +937,7 @@ export class MemoryOS2{
      const temporalBase=this.signalFusion.temporalHint(query,m.validFromAt??m.createdAt,now); const validity=temporalMode==='all'?1:(isValidAt(m,now)?1:0); const temporal=clamp(.72*validity+.28*temporalBase);
      const identity=clamp(m.identityRelevance*clamp(identityRelevance));
      const goal=clamp(m.goalRelevance*clamp(goalRelevance));
-     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,conceptCoverage,temporal,causal,identity,goal,recency});
+     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,conceptCoverage,temporal,causal,identity,goal,recency,identifierMatch});
    }
    const rrfK=60;
    const rankBy=(score:(row:typeof rawRows[number])=>number)=>new Map(rawRows.filter(row=>score(row)>0).sort((a,b)=>score(b)-score(a)||a.m.id.localeCompare(b.m.id)).map((row,index)=>[row.m.id,index+1]));
@@ -954,8 +969,10 @@ export class MemoryOS2{
      // direct evidence. The bounded 0.10 boost helps paraphrases enter the top-k while
      // direct BM25/coverage/phrase scores still dominate exact matches.
      const conceptBoost01=row.conceptCoverage*.10;
-     fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01);
-     return {m:row.m,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01};
+     // A matching explicit ID is direct retrieval evidence, not source authentication or trust.
+     const identifierBoost01=row.identifierMatch?0.30:0;
+     fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01+identifierBoost01);
+     return {m:row.m,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01,identifierBoost01};
    }).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id)).slice(0,Math.max(1,limit));
    // Answerability gate: a high recency/salience/identity score is not proof that a
    // memory answers the current question. Require item-level lexical, entity, fuzzy,
@@ -968,7 +985,7 @@ export class MemoryOS2{
      const evidence=rawRowsById.get(m.id);
      if(!evidence)return false;
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(m.id,m.content).includes(queryPhrase);
-     const lexicalEvidence=exactPhrase||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
+     const lexicalEvidence=exactPhrase||evidence.identifierMatch===1||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45&&evidence.coverage>=.15)||
        (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
      const typedRecall=['identity','episodic','goal','procedural'].includes(queryIntentMode)&&
