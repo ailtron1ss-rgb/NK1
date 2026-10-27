@@ -1,0 +1,95 @@
+name: NK1 Hexis canonical HMX apply
+
+on:
+  push:
+    branches:
+      - main
+      - workpass70-source
+      - fix/outcome-projection-index-restore-2026-10-26
+    paths:
+      - '.github/workflows/hexis-canonical-apply.yml'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/SelfProjectEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/AgencyDeliberationEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
+      - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-lifecycle-command-workpass31.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'app/src/components/HexisControlConsole.tsx'
+      - 'app/src/neuro-kurisu/api.ts'
+      - 'app/src/neuro-kurisu/types.ts'
+  pull_request:
+    branches:
+      - main
+      - workpass70-source
+      - fix/outcome-projection-index-restore-2026-10-26
+    paths:
+      - '.github/workflows/hexis-canonical-apply.yml'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/SelfProjectEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/evolution/AgencyDeliberationEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
+      - 'runtime/neuro-kurisu/scripts/audit-ui-function-wiring.mjs'
+      - 'runtime/neuro-kurisu/scripts/audit-ui-api-linkage.mjs'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/SemanticMemoryGraph.ts'
+      - 'runtime/neuro-kurisu/src/server/server.mjs'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
+      - 'runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs'
+      - 'app/package.json'
+      - 'app/package-lock.json'
+      - 'app/src/components/HexisControlConsole.tsx'
+      - 'app/src/neuro-kurisu/api.ts'
+      - 'app/src/neuro-kurisu/types.ts'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-hexis-canonical-apply-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  canonical-hmx-apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install the pinned runtime dependency graph
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Install the pinned frontend dependency graph
+        working-directory: app
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck the Hexis console and API contracts
+        working-directory: app
+        run: npm run typecheck
+      - name: Audit frontend action wiring and UI/API/runtime links
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:ui-wiring && npm run audit:ui-api-linkage
+      - name: Typecheck the Hexis-to-NK1 runtime contracts
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Test Hexis adaptation, canonical HMX projection and server apply/replay
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis-canonical-apply
