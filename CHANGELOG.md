@@ -1,3 +1,10 @@
+## [NK1][WorkPass452] Repair HMX ingestion and signed-outcome replay checks (2026-10-27)
+
+- Repaired the malformed HMX document-size guard: oversized UTF-8 documents now emit a bounded `$` / `size-limit` conflict and the runtime file parses again.
+- Updated the signed-outcome artifact regression to match the intended idempotent receipt-reestablishment contract: exact retries are accepted without increasing the outcome count, while a newly signed conflicting outcome for the same task/method/seed/attempt is rejected without mutation.
+- Evidence: the previous exact-head Hexis workflow passed dependency installation, frontend typecheck and UI/API linkage, then stopped at the malformed runtime TypeScript guard; the signed-artifact workflow exposed a stale `duplicate-attempt` expectation. Current-head workflows must re-run before either fix is marked passing.
+- Scope: no release ZIP changed or published; this change remains on the integration PR branch.
+
 ## [NK1][WorkPass440] Wire cognitive-cycle lineage regression into core CI (2026-10-27)
 
 - Added the WorkPass41 causal-lineage regression as an explicit step in the core regression workflow immediately after runtime typecheck. It now exercises required and optional stage identity/edge checks on the same integration-head validation run.
