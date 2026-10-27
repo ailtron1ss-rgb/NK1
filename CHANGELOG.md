@@ -1,3 +1,8 @@
+## [NK1][WorkPass480] Restore authority-fixture permissions between regressions (2026-10-27)
+
+- The WorkPass243 regression intentionally chmods the executor to a group-writable mode, but left that mode in place before testing run-root replacement. The later call therefore failed on executable permissions before reaching the intended run-root identity guard.
+- Restore the fixture executable to its original private mode after the writable-executable assertion. Runtime security checks are unchanged; the regression now isolates the condition it is meant to test.
+
 ## [NK1][WorkPass479] Share the canonical versioned-skill candidate ID contract (2026-10-27)
 
 - Runtime staging and the signed-shadow integration fixture now use the same `computeVersionedSkillCandidateId` function, including the explicit null provenance component when no revision provenance is supplied.
