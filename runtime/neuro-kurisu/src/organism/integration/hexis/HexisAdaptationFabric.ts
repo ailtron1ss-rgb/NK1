@@ -628,7 +628,7 @@ export class HexisAdaptationFabric {
         try {
             const encoded = JSON.stringify(input?.document);
             if (typeof encoded !== 'string') throw new Error('document is not JSON-serializable');
-            if (Buffer.byteLength(encoded, 'utf8') > HMX_MAX_DOCUMENT_BYTES) {
+            if (new TextEncoder().encode(encoded).byteLength > HMX_MAX_DOCUMENT_BYTES) {
                 conflicts.push({
                     path: '$',
                     kind: 'size-limit',
