@@ -44,7 +44,7 @@ export class P26TrueLearningEngine{
   private state=defaultP26TrueLearning();
   restore(raw?:Partial<P26TrueLearningState>|null){
     const d=defaultP26TrueLearning();
-    const sourceMetrics=raw?.metrics??{};
+    const sourceMetrics:Partial<P26LearningMetrics>=raw?.metrics??{};
     const safeCounter=(value:unknown):number=>
       typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
     const verifiedHoldoutEvidenceIds=Array.isArray(raw?.verifiedHoldoutEvidenceIds)
