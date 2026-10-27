@@ -49,6 +49,14 @@ export class SourceMonitor {
     const provenance = normalizeEvidenceLineageProvenance(row.provenance);
     if (provenance) row.provenance = provenance;
     else delete row.provenance;
+
+    // Trace IDs are immutable event identities. An exact replay is a no-op;
+    // conflicting reuse must not shadow the original trace consumed by lineage().
+    const existing = this.state.traces.find(candidate => candidate.id === row.id);
+    if (existing) {
+      if (JSON.stringify(existing) !== JSON.stringify(row)) this.state.conflicts++;
+      return;
+    }
     this.state.traces = [row, ...this.state.traces].slice(0, 512);
   }
 
