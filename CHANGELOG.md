@@ -1,8 +1,9 @@
-## [NK1][WorkPass507] Add external bilingual retrieval holdout runner (2026-10-27)
+## [NK1][WorkPass507] Add independent bilingual retrieval holdout runner (2026-10-27)
 
-- Added a CLI runner for independently sourced Russian/English retrieval evaluation against the existing BM25 baseline, with five paired-bootstrap seeds, per-language reports, and corpus/configuration/label fingerprints.
+- Added an offline CLI runner for independently sourced Russian/English retrieval evaluation against the existing BM25 baseline, with five paired-bootstrap seeds, per-language reports, and corpus/configuration/label fingerprints.
 - Requires independent dataset provenance, an explicit license and labeling protocol, unique corpus IDs, valid ground-truth references, at least 20 answerable and 8 unanswerable holdout queries per language, and at least four unique train queries per language.
-- The runner rejects synthetic/fixture provenance, keeps holdout labels out of training, never mutates live memory or promotes automatically, and does not include a private dataset in the repository.
+- Added a fail-closed CLI contract test to the recovered Core CI suite so the runner's syntax/imports and missing-dataset behavior are checked without pretending a fixture is independent evidence.
+- The runner rejects fixture-like provenance, keeps holdout labels out of training, never mutates live memory or promotes automatically, and does not include a private dataset in the repository.
 - This is evaluation infrastructure only; no retrieval uplift is claimed until a real external dataset is run and reviewed.
 
 ## [NK1][WorkPass506] Enforce planner memory budget across all cognitive recall paths (2026-10-27)

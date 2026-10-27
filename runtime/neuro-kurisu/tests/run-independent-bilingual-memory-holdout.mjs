@@ -17,8 +17,8 @@ assert.ok(Array.isArray(data.examples),'examples is required');
 const provenance=data.provenance??{};
 for(const key of ['datasetId','datasetVersion','sourceRef','labelingProtocol','licenseId']) assert.ok(typeof provenance[key]==='string'&&provenance[key].trim(), 'missing provenance: '+key);
 assert.doesNotMatch(provenance.sourceRef,/fixture|synthetic|test-only|hand-authored/i,'test fixtures cannot count as independent evidence');
-const normalize=q=>String(q).normalize('NFKC').toLowerCase().replace(/[\p{P}\p{S}]+/gu,' ').replace(/\s+/g,' ').trim();
-const canonical=rows=>[...rows].map(x=>({id:x.id,query:normalize(x.query),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
+const normalize=q=>String(q).normalize('NFKC').toLowerCase().replace(/[\\p{P}\\p{S}]+/gu,' ').replace(/\\s+/g,' ').trim();
+const canonical=rows=>[...rows].map(x=>({id:x.id,query:normalize(x.query),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\\0').localeCompare(b.relevantIds.join('\\0')));
 const hashRows=rows=>createHash('sha256').update(JSON.stringify(canonical(rows))).digest('hex');
 const corpusIds=data.snapshot.items.map(x=>x?.id);
 assert.ok(corpusIds.length>=12&&corpusIds.length<=1600,'corpus must have 12–1600 rows');
@@ -52,6 +52,6 @@ for(const language of ['ru','en']){
  reports[language]={datasetFingerprint:sensitivity.datasetFingerprint,corpusFingerprint:sensitivity.corpusFingerprint,retrievalConfigurationFingerprint:sensitivity.retrievalConfigurationFingerprint,datasetProvenance:sensitivity.datasetProvenance,corpusIntegrity:sensitivity.corpusIntegrity,datasetIntegrity:sensitivity.datasetIntegrity,determinism:sensitivity.determinism,sensitivity:sensitivity.sensitivity,runs,promotion:{allowedAutomatically:false,status:'requires-independent-review'}};
 }
 const report={schemaVersion:1,generatedAt:new Date().toISOString(),evaluation:'independent-bilingual-holdout',mode:'offline-only; no-live-memory-mutation; no-auto-promotion',sourceDataset:{datasetId:provenance.datasetId,datasetVersion:provenance.datasetVersion,sourceRef:provenance.sourceRef,licenseId:provenance.licenseId,rawFileSha256:createHash('sha256').update(raw).digest('hex')},guardrails:{labelsInferredFromPredictions:false,holdoutUsedForTraining:false,sameCorpusForBaselineAndCandidate:true,languageScoresSeparated:true,promotionRequiresIndependentReview:true},reports};
-const output=JSON.stringify(report,null,2)+'\n';
+const output=JSON.stringify(report,null,2)+'\\n';
 const out=flag('--out'); if(out) await writeFile(path.resolve(out),output,'utf8');
 console.log(output);
