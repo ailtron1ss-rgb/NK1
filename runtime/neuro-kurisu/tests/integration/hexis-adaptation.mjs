@@ -386,7 +386,7 @@ const revisionCollisionSeed = revisionCollisionMemory.encode({
 const collisionTargetContent = canonicalizeMemoryContent('revision ID collision target text');
 const collisionGroup = revisionCollisionSeed.revisionGroupId ?? revisionCollisionSeed.id;
 const collisionRevisionId = stableMemoryId(
-  `${collisionTargetContent}\\0revision:${collisionGroup}\\0${2}\\0${revisionCollisionSeed.id}`,
+  `${collisionTargetContent}\0revision:${collisionGroup}\0${2}\0${revisionCollisionSeed.id}`,
   revisionCollisionSeed.kind,
   revisionCollisionSeed.source,
 );
