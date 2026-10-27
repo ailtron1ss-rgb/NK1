@@ -5,12 +5,14 @@
  * untrusted, provenance-labelled candidates; this module never promotes them
  * to MemoryOS2 and never uploads conversation data automatically.
  */
+export type Mem0BackendMode = 'platform' | 'oss';
+
 export type Mem0Status = 'ok' | 'disabled' | 'unconfigured' | 'writes-disabled' | 'invalid-input' | 'consent-required' | 'error';
 
 export interface Mem0Candidate {
   id: string;
   content: string;
-  source: 'mem0-platform';
+  source: 'mem0-platform' | 'mem0-oss';
   epistemicStatus: 'external-unverified';
   instructionTreatment: 'data-not-instructions';
   requiresVerification: true;
@@ -20,7 +22,7 @@ export interface Mem0Candidate {
 }
 
 export interface Mem0Diagnostics {
-  provider: 'mem0-platform';
+  provider: 'mem0-platform' | 'mem0-oss';
   enabled: boolean;
   configured: boolean;
   available: boolean;
@@ -42,6 +44,10 @@ export interface Mem0SearchResult {
 
 export interface Mem0AdapterOptions {
   enabled?: boolean;
+  /** Protocol/API dialect: hosted Platform API or self-hosted Open Source REST API. */
+  mode?: Mem0BackendMode;
+  /** Explicit opt-in for plain HTTP to non-loopback self-hosted OSS endpoints. */
+  allowInsecureHttp?: boolean;
   apiKey?: string;
   userId?: string;
   baseUrl?: string;
@@ -53,6 +59,7 @@ export interface Mem0AdapterOptions {
 
 type JsonRecord = Record<string, unknown>;
 const DEFAULT_BASE_URL = 'https://api.mem0.ai';
+const DEFAULT_OSS_BASE_URL = 'http://localhost:8888';
 const MAX_QUERY_CHARS = 500;
 const MAX_MEMORY_CHARS = 2000;
 const MAX_MESSAGES = 12;
@@ -63,10 +70,18 @@ function boundedInt(value: unknown, fallback: number, min: number, max: number):
   return Number.isFinite(n) ? Math.max(min, Math.min(max, Math.floor(n))) : fallback;
 }
 
-function parseBaseUrl(value: string | undefined): URL | null {
+function isLoopbackHost(hostname: string): boolean {
+  return ['localhost', '127.0.0.1', '::1', '[::1]'].includes(hostname.toLowerCase());
+}
+
+function parseBaseUrl(value: string | undefined, mode: Mem0BackendMode, allowInsecureHttp: boolean): URL | null {
   try {
-    const url = new URL((value || DEFAULT_BASE_URL).trim());
-    if (url.protocol !== 'https:' || !url.hostname || url.username || url.password ||
+    const fallback = mode === 'oss' ? DEFAULT_OSS_BASE_URL : DEFAULT_BASE_URL;
+    const url = new URL((value || fallback).trim());
+    const secureTransport = url.protocol === 'https:';
+    const allowedLocalOssHttp = mode === 'oss' && url.protocol === 'http:' &&
+      (isLoopbackHost(url.hostname) || allowInsecureHttp);
+    if (!(secureTransport || allowedLocalOssHttp) || !url.hostname || url.username || url.password ||
         url.search || url.hash || (url.pathname !== '/' && url.pathname !== '')) return null;
     return url;
   } catch {
@@ -165,6 +180,7 @@ function extractRows(value: unknown): JsonRecord[] | null {
 
 export class Mem0PlatformAdapter {
   private readonly enabled: boolean;
+  private readonly mode: Mem0BackendMode;
   private readonly apiKey: string;
   private readonly userId: string | null;
   private readonly baseUrl: URL | null;
@@ -181,9 +197,10 @@ export class Mem0PlatformAdapter {
 
   constructor(options: Mem0AdapterOptions = {}) {
     this.enabled = options.enabled === true;
+    this.mode = options.mode ?? 'platform';
     this.apiKey = String(options.apiKey ?? '').trim();
     this.userId = safeUserId(options.userId);
-    this.baseUrl = parseBaseUrl(options.baseUrl);
+    this.baseUrl = parseBaseUrl(options.baseUrl, this.mode, options.allowInsecureHttp === true);
     this.allowWrites = options.allowWrites === true;
     this.timeoutMs = boundedInt(options.timeoutMs, 1500, 250, 5000);
     this.maxResponseBytes = boundedInt(options.maxResponseBytes, 262144, 4096, 1048576);
@@ -193,6 +210,8 @@ export class Mem0PlatformAdapter {
   static fromEnvironment(env: Record<string, string | undefined> = process.env, fetchImpl: typeof fetch = fetch): Mem0PlatformAdapter {
     return new Mem0PlatformAdapter({
       enabled: env.NK_MEM0_ENABLED === '1',
+      mode: env.NK_MEM0_MODE === 'oss' ? 'oss' : 'platform',
+      allowInsecureHttp: env.NK_MEM0_ALLOW_INSECURE_HTTP === '1',
       apiKey: env.MEM0_API_KEY,
       userId: env.NK_MEM0_USER_ID,
       baseUrl: env.NK_MEM0_BASE_URL,
@@ -206,7 +225,7 @@ export class Mem0PlatformAdapter {
   diagnostics(): Mem0Diagnostics {
     const configured = Boolean(this.apiKey && this.userId && this.baseUrl);
     return {
-      provider: 'mem0-platform',
+      provider: this.mode === 'oss' ? 'mem0-oss' : 'mem0-platform',
       enabled: this.enabled,
       configured,
       available: this.enabled && configured,
@@ -237,11 +256,12 @@ export class Mem0PlatformAdapter {
       return { status: 'invalid-input', memories: [], diagnostics: diagnostics() };
     }
     const limit = boundedInt(limitInput, 5, 1, 10);
-    const result = await this.post('/v3/memories/search/', {
-      query,
-      filters: { user_id: this.userId },
-      limit,
-    });
+    const result = await this.post(
+      this.mode === 'oss' ? '/search' : '/v3/memories/search/',
+      this.mode === 'oss'
+        ? { query, user_id: this.userId }
+        : { query, filters: { user_id: this.userId }, limit },
+    );
     if (!result.ok) {
       this.lastStatus = result.errorCode ?? 'error';
       return { status: 'error', memories: [], errorCode: result.errorCode, diagnostics: diagnostics() };
@@ -280,7 +300,7 @@ export class Mem0PlatformAdapter {
       memories.push({
         id,
         content: minimized.text,
-        source: 'mem0-platform',
+        source: this.mode === 'oss' ? 'mem0-oss' : 'mem0-platform',
         epistemicStatus: 'external-unverified',
         instructionTreatment: 'data-not-instructions',
         requiresVerification: true,
@@ -329,13 +349,17 @@ export class Mem0PlatformAdapter {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const url = new URL(`/v1/memories/${encodeURIComponent(memoryId)}/`, this.baseUrl);
-      // Intentionally never cascade into linked memories.
-      url.searchParams.set('delete_linked', 'false');
+      const url = this.mode === 'oss'
+        ? new URL(`/memories/${encodeURIComponent(memoryId)}`, this.baseUrl)
+        : new URL(`/v1/memories/${encodeURIComponent(memoryId)}/`, this.baseUrl);
+      // Platform supports this explicit guard. OSS exposes deletion of the exact memory ID.
+      if (this.mode === 'platform') url.searchParams.set('delete_linked', 'false');
       const response = await this.fetchImpl(url.toString(), {
         method: 'DELETE',
         redirect: 'error',
-        headers: { authorization: `Token ${this.apiKey}`, accept: 'application/json' },
+        headers: this.mode === 'oss'
+          ? { 'X-API-Key': this.apiKey, accept: 'application/json' }
+          : { authorization: `Token ${this.apiKey}`, accept: 'application/json' },
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -396,11 +420,12 @@ export class Mem0PlatformAdapter {
       this.lastStatus = 'invalid-input';
       return { status: 'invalid-input', memoryIds: [], diagnostics: diagnostics() };
     }
-    const result = await this.post('/v3/memories/add/', {
-      messages,
-      user_id: this.userId,
-      metadata: { app_id: 'nk1', source: 'neuro-kurisu' },
-    });
+    const result = await this.post(
+      this.mode === 'oss' ? '/memories' : '/v3/memories/add/',
+      this.mode === 'oss'
+        ? { messages, user_id: this.userId }
+        : { messages, user_id: this.userId, metadata: { app_id: 'nk1', source: 'neuro-kurisu' } },
+    );
     if (!result.ok) {
       this.lastStatus = result.errorCode ?? 'error';
       return { status: 'error', memoryIds: [], errorCode: result.errorCode, diagnostics: diagnostics() };
@@ -432,7 +457,7 @@ export class Mem0PlatformAdapter {
         method: 'POST',
         redirect: 'error',
         headers: {
-          authorization: `Token ${this.apiKey}`,
+          ...(this.mode === 'oss' ? { 'X-API-Key': this.apiKey } : { authorization: `Token ${this.apiKey}` }),
           'content-type': 'application/json',
           accept: 'application/json',
         },
