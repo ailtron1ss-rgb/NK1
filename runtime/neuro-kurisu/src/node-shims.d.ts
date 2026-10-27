@@ -12,6 +12,7 @@ declare module 'node:fs' {
   export function closeSync(fd:number):void;
   export function renameSync(from:string,to:string):void;
   export function unlinkSync(path:string):void;
+  export const constants: { X_OK:number; F_OK:number; R_OK:number; W_OK:number; };
   export function linkSync(existingPath:string,newPath:string):void;
   export function mkdtempSync(prefix:string):string;
 }
@@ -29,7 +30,8 @@ declare module 'node:crypto' {
   export function sign(algorithm: null | string, data: Uint8Array, key: string): any;
 }
 declare module 'node:fs/promises' {
-  export function access(path:string): Promise<void>;
+  export function access(path:string, mode?:number): Promise<void>;
+  export function realpath(path:string): Promise<string>;
   export function appendFile(path:string,data:string,encoding?:string):Promise<void>;
   export function copyFile(src:string,dest:string):Promise<void>;
   export function mkdir(path:string, options?:{recursive?:boolean;mode?:number}):Promise<string|undefined>;
@@ -46,13 +48,14 @@ declare module 'node:fs/promises' {
   export function mkdtemp(prefix:string):Promise<string>;
 }
 declare module 'node:path' {
-  const path: { join(...parts:string[]):string; dirname(path:string):string; basename(path:string):string; isAbsolute(path:string):boolean; resolve(...parts:string[]):string; };
+  const path: { join(...parts:string[]):string; dirname(path:string):string; basename(path:string):string; isAbsolute(path:string):boolean; resolve(...parts:string[]):string; sep:string; };
   export default path;
   export function dirname(path:string):string;
   export function join(...parts:string[]):string;
   export function basename(path:string):string;
   export function isAbsolute(path:string):boolean;
   export function resolve(...parts:string[]):string;
+  export const sep:string;
 }
 declare module 'node:os' { export function homedir():string; export function tmpdir():string; export function totalmem():number; export function freemem():number; export function loadavg():number[]; export function cpus():any[]; export function hostname():string; }
 declare module 'node:http' { export function createServer(handler:(req:any,res:any)=>void):any; }
