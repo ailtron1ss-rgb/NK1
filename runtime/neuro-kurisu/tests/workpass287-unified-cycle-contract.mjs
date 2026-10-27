@@ -53,7 +53,9 @@ assert.equal(snapshot.meanStageCoverage01,0);
 assert.equal(snapshot.meanCausalContinuity01,1);
 assert.equal(snapshot.lastTick,-1);
 assert.equal(snapshot.lastComplete,false);
-assert.deepEqual(snapshot.lastMissingStages,['action']);
+// A malformed missing-stage array is treated as corrupted history. Preserve no
+// partial claims from it: all required stages must be considered missing.
+assert.deepEqual(snapshot.lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
 
 const inconsistentRestore=new UnifiedCognitiveCycle();
 inconsistentRestore.restore({

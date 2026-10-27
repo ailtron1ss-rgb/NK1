@@ -136,6 +136,19 @@ const normalizeHmxMemoryStatus = value => {
   return 'unknown';
 };
 const epistemicStatusRank = status => ({ belief: 0, hypothesis: 1, unknown: 2, quarantined: 3 }[status] ?? 2);
+const signalRollbackSnapshot = memory => ({
+  confidence: memory.confidence,
+  epistemicStatus: memory.epistemicStatus,
+  sourceAuthority01: memory.sourceAuthority01,
+  evidenceSources: memory.evidenceSources === undefined ? undefined : structuredClone(memory.evidenceSources),
+  evidenceLineageKeys: memory.evidenceLineageKeys === undefined ? undefined : [...memory.evidenceLineageKeys],
+  lastAccessAt: memory.lastAccessAt,
+  temperature01: memory.temperature01,
+  revisionHistory: structuredClone(memory.revisionHistory ?? []),
+});
+const sameSignalRollbackSnapshot = (memory, snapshot) =>
+  Boolean(memory) && JSON.stringify(signalRollbackSnapshot(memory)) === JSON.stringify(snapshot);
+
 const MAX_IMPORTED_EXTERNAL_CONFIDENCE = 0.65;
 const contextText = value => {
   if (typeof value === 'string') return value.slice(0, 1200);
@@ -288,7 +301,22 @@ export class HexisCanonicalMemoryProjector {
       .filter(item => String(item.source ?? '').startsWith('hexis:'))
       .map(item => String(item.source) + '\0' + stableRecordContent(item.content)));
     const createdIds = [];
-    const revisedStatuses = [];
+    const revisedSignals = [];
+    const signalRevisionById = new Map();
+    const reserveSignalRevision = memory => {
+      const existing = signalRevisionById.get(memory.id);
+      if (existing) return existing;
+      const compensationToken = this.memoryFabric.beginSignalCompensation(memory.id);
+      if (!compensationToken) throw new Error('hmx-signal-compensation-target-missing:' + memory.id);
+      const revision = {
+        id: memory.id,
+        previous: signalRollbackSnapshot(memory),
+        compensationToken,
+      };
+      revisedSignals.push(revision);
+      signalRevisionById.set(memory.id, revision);
+      return revision;
+    };
     const supersededIds = [];
     const warnings = [];
     const importedIds = [];
@@ -346,14 +374,17 @@ export class HexisCanonicalMemoryProjector {
         for (const prior of priorVersions) {
           if (!supersededIds.includes(prior.id)) supersededIds.push(prior.id);
           if (prior.epistemicStatus !== 'quarantined') {
-            if (!revisedStatuses.some(entry => entry.id === prior.id)) {
-              revisedStatuses.push({ id: prior.id, previousStatus: prior.epistemicStatus });
-            }
+            // Status-only supersession uses the same compare-and-restore capability as
+            // trust reconciliation; there is no separate unguarded status rollback.
+            const signalRevision = reserveSignalRevision(prior);
             this.memoryFabric.revise(
               prior.id,
               'quarantined',
               'hexis-source-content-superseded:' + hash(stableRefKey + '\0' + contentHash).slice(0, 16),
-              { commandId: 'hexis-supersede:' + hash(String(stage.stagingId) + ':' + prior.id + ':' + contentHash + ':' + attempt).slice(0, 48) },
+              {
+                commandId: 'hexis-supersede:' + hash(String(stage.stagingId) + ':' + prior.id + ':' + contentHash + ':' + attempt).slice(0, 48),
+                compensationToken: signalRevision.compensationToken,
+              },
             );
           }
           const priorGraphSource = asText(prior.context?.hexisGraphSourceKey, 512) || asText(prior.source, 512);
@@ -369,21 +400,10 @@ export class HexisCanonicalMemoryProjector {
             importedIds.push(duplicate.id);
             const currentStatus = normalizeHmxMemoryStatus(duplicate.epistemicStatus);
             const targetStatus = epistemicStatusRank(currentStatus) >= epistemicStatusRank(epistemicStatus) ? currentStatus : epistemicStatus;
-            if (String(duplicate.epistemicStatus) !== targetStatus) {
-              revisedStatuses.push({ id: duplicate.id, previousStatus: duplicate.epistemicStatus });
-              this.memoryFabric.revise(
-                duplicate.id,
-                targetStatus,
-                'hexis-source-status-reconciliation:' + (typeof row.status === 'string' ? row.status.slice(0, 64) : 'unknown'),
-                { commandId: 'hexis-status:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + targetStatus + ':' + attempt).slice(0, 48) },
-              );
-            }
-            if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey);
-            else this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+            const changesStatus = String(duplicate.epistemicStatus) !== targetStatus;
 
-            // Existing state may predate this importer's confidence cap. Reconcile it
-            // downward on replay, including its external HMX evidence trail; never raise
-            // canonical trust from an upstream claim.
+            // Compute all trust predicates before the first mutation. A shared token
+            // will restore the complete transaction-start status + signals snapshot.
             const trustValue = row.trust_level ?? row.trustLevel ?? row.provenance?.confidence;
             const sourceTrustClaim = Number.isFinite(Number(trustValue)) ? clamp01(Number(trustValue)) : 0.45;
             const incomingAuthorityCap = Math.min(sourceTrustClaim, MAX_IMPORTED_EXTERNAL_CONFIDENCE);
@@ -394,8 +414,32 @@ export class HexisCanonicalMemoryProjector {
                 String(evidence.source ?? '').startsWith('hexis:') &&
                 clamp01(evidence.sourceAuthority01) > incomingAuthorityCap,
             );
-            if (priorConfidence > incomingAuthorityCap || priorAuthority > incomingAuthorityCap || hasOverCapHmxEvidence) {
-              this.memoryFabric.updateSignals(
+            const changesTrustSignals = priorConfidence > incomingAuthorityCap ||
+              priorAuthority > incomingAuthorityCap || hasOverCapHmxEvidence;
+            // Reserve one transaction-start snapshot per canonical memory. Each owned
+            // status/trust mutation seals its post-state inside MemoryFabric; an external
+            // mutation between this row and rollback therefore remains a conflict.
+            const signalRevision = changesStatus || changesTrustSignals
+              ? reserveSignalRevision(duplicate)
+              : null;
+            const compensationToken = signalRevision?.compensationToken;
+
+            if (changesStatus) {
+              this.memoryFabric.revise(
+                duplicate.id,
+                targetStatus,
+                'hexis-source-status-reconciliation:' + (typeof row.status === 'string' ? row.status.slice(0, 64) : 'unknown'),
+                {
+                  commandId: 'hexis-status:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + targetStatus + ':' + attempt).slice(0, 48),
+                  compensationToken,
+                },
+              );
+            }
+            if (targetStatus === 'quarantined' || targetStatus === 'unknown') this.removeSemanticProjection(graphSourceKey);
+            else this.ensureSemanticNode(ref, memoryText, nativeType, salience, semanticNodeIdsByRef, graphSourceKey);
+
+            if (changesTrustSignals) {
+              const cappedMemory = this.memoryFabric.updateSignals(
                 duplicate.id,
                 {
                   confidence: Math.min(priorConfidence, incomingAuthorityCap),
@@ -405,9 +449,14 @@ export class HexisCanonicalMemoryProjector {
                     : [],
                 },
                 'hexis-import-authority-cap',
-                { commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48) },
+                {
+                  commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48),
+                  compensationToken,
+                },
               );
+              if (!cappedMemory) throw new Error('hmx-import-authority-cap-memory-missing:' + duplicate.id);
             }
+
           }
           deduplicatedCount++;
           continue;
@@ -637,29 +686,29 @@ export class HexisCanonicalMemoryProjector {
       // Status reconciliation may touch an existing canonical memory before a later
       // projection/ledger operation fails. Restore those prior statuses as well as
       // deleting newly-created rows; never leave a failed import half-applied.
-      for (const revision of [...revisedStatuses].reverse()) {
+      for (const revision of [...revisedSignals].reverse()) {
         try {
-          const current = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
-          if (!current) {
-            rollbackErrors.push('status-restore-memory-missing:' + revision.id);
-            continue;
-          }
-          if (current.epistemicStatus !== revision.previousStatus) {
-            this.memoryFabric.revise(
-              revision.id,
-              revision.previousStatus,
-              'hexis-hmx-apply-status-rollback',
-              { commandId: 'hexis-status-rollback:' + hash(String(stage.stagingId) + ':' + revision.id + ':' + String(revision.previousStatus) + ':' + attempt).slice(0, 48) },
-            );
-          }
+          // Never replace expectedCurrent with a catch-time snapshot: that would bless
+          // unrelated intervening writes. Lifecycle writes seal their own post-state.
+          this.memoryFabric.restoreSignalsForCompensation(
+            revision.compensationToken,
+            'hexis-hmx-apply-signal-rollback',
+            {
+              commandId: 'hexis-signal-rollback:' + hash(
+                String(stage.stagingId) + ':' + revision.id + ':' + attempt,
+              ).slice(0, 48),
+            },
+          );
           const restored = (this.memoryFabric.canonicalSnapshot().items ?? []).find(item => item.id === revision.id);
-          if (restored?.epistemicStatus !== revision.previousStatus) {
-            rollbackErrors.push('status-restore-unconfirmed:' + revision.id);
+          if (!sameSignalRollbackSnapshot(restored, revision.previous)) {
+            rollbackErrors.push('signal-restore-unconfirmed:' + revision.id);
           }
-        } catch (statusRollbackError) {
-          rollbackErrors.push('status-restore:' + String(statusRollbackError?.message ?? statusRollbackError).slice(0, 220));
+        } catch (signalRollbackError) {
+          rollbackErrors.push('signal-restore:' + String(signalRollbackError?.message ?? signalRollbackError).slice(0, 220));
         }
       }
+      // Restore trust/certainty metadata changed on pre-existing duplicate rows.
+      // The expected-current guard fails closed rather than overwriting later changes.
       if (this.semanticGraph && semanticGraphBefore) {
         try {
           this.semanticGraph.restore(semanticGraphBefore);
@@ -713,6 +762,12 @@ export class HexisCanonicalMemoryProjector {
       deferredSections,
       warnings,
     };
-    return { ...base, digest: hash(JSON.stringify(base)) };
+    const receipt = { ...base, digest: hash(JSON.stringify(base)) };
+    // Once the receipt is fully constructed, the transaction has completed and its
+    // rollback capabilities must no longer remain usable or occupy the bounded map.
+    for (const revision of revisedSignals) {
+      this.memoryFabric.commitSignalCompensation(revision.compensationToken);
+    }
+    return receipt;
   }
 }

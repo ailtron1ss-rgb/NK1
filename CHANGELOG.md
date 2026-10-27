@@ -1,3 +1,72 @@
+## [NK1][WorkPass450] Count HMX document bytes with a typed UTF-8 encoder (2026-10-27)
+
+- Replaced `Buffer.byteLength()` in `stageHmx()` with `new TextEncoder().encode(encoded).byteLength`, preserving the 8 MiB UTF-8 limit while avoiding the project's intentionally narrow Node shim, which does not declare `Buffer.byteLength`.
+- No external dependency added. The code change is committed; exact-head runtime typecheck and HMX integration tests still require a completed hosted run.
+
+## [NK1][WorkPass449] Restore signal compensation helper and strict TypeScript guards (2026-10-27)
+
+- Restored the missing `MemoryFabric.beginSignalCompensation()` implementation used by the existing `updateSignalsWithCompensation()` rollback path. It snapshots only canonical memory state, uses one-shot in-memory tokens, and fails closed when the 512-token budget is full.
+- Fixed catch-value formatting to narrow `unknown` errors with `instanceof Error` instead of assuming `.message` exists.
+- Made the optional canonical `sourceAuthority01` fallback explicit when applying a monotonic authority cap; a legacy row without the optional field now uses conservative `0.45` as the pre-cap value.
+- These fixes target exact-head runtime typecheck diagnostics. Runtime suite/typecheck after this commit remain pending and must not be reported as passing until Actions finishes.
+
+## [NK1][WorkPass448] Align causal-stream duplicate assertions with trusted outcomes (2026-10-27)
+
+- Corrected the external-ingestion regression to reflect the intended invariant: public external events are retained for review but remain ungrounded, so they do not increment the trusted runtime-outcome aggregate. Exact duplicates and conflicting duplicate retries must leave that aggregate at zero.
+- This matches `CausalExperienceStream.recordExternalLearningEvent()`, which records provenance as `external`, forces `stateGrounded=false`, and does not increment the grounded outcome counter. The prior assertion expected one outcome even though the production path deliberately records none.
+- The updated WorkPass110 regression is present on the branch; current exact-head CI still needs to confirm it passes.
+
+## [NK1][WorkPass447] Restore the HMX document size guard (2026-10-27)
+
+- Repaired a malformed string literal in `HexisAdaptationFabric.stageHmx()` that made the runtime TypeScript typecheck fail at line 633 before tests could run.
+- The UTF-8 document-size boundary now emits a structured `size-limit` conflict at `$` instead of attempting to parse/stage an over-budget HMX payload.
+- Added a regression that supplies a JSON document slightly larger than the 8 MiB byte budget and requires it to remain ineligible for acceptance. Source and test are committed; the updated focused workflow must run on the new head before this is marked validated.
+
+## [NK1][WorkPass446] Cover wrapper action injection across canonical memory APIs (2026-10-27)
+
+- Expanded the existing memory lifecycle regression to send attacker-controlled `action`, `id`, `reason`, `patch`, `to`, and `newContent` keys through `encode`, `revise`, `updateSignals`, `reviseContent`, and `updateContext` metadata arguments.
+- Assertions require the fixed wrapper action and positional target to remain authoritative: the intended operation completes, the unrelated victim memory survives, and caller-supplied payload keys do not replace the target mutation.
+- This regression runs through `test:hexis-canonical-apply` via WorkPass445's restored wiring. Source/test files are committed; runtime execution, typecheck and hosted CI remain unverified.
+
+## [NK1][WorkPass445] Restore MemoryFabric wrapper allowlists over compensation-token API (2026-10-27)
+
+- Ported the latest base-line wrapper hardening onto the token-aware MemoryFabric: fixed action/target parameters now remain authoritative, while wrappers copy only supported metadata. The rollback wrapper no longer lets runtime-only context keys override `id`, `exportId`, `stagingId`, `attempt`, `reason`, or `action`.
+- Preserved the compensation token in the canonical `revise` and `updateSignals` wrappers so WorkPass442's expected-state sealing still applies to both status and trust changes. Removed an accidental duplicate `updateSignals` implementation introduced while reconciling the latest base.
+- Reattached `memory-lifecycle-command-workpass31.mjs` to the Hexis test command and both workflow path filters; this restores the C1 persisted-receipt regression after the base refresh had dropped it from the focused gate.
+- The protected-HMX rollback test now includes the upstream injection cases: ordinary `forgetById` cannot be turned into a scoped rollback, and extra JS context keys cannot override the positional rollback scope. Package JSON parses and source/path checks were inspected; runtime tests/typecheck/CI remain unverified, and `main`/Release ZIP are untouched.
+
+## [NK1][WorkPass442] Seal HMX compensation at the canonical write boundary (2026-10-27)
+
+- Removed catch-time `refreshSignalCompensation`: rollback can no longer replace the expected-current seal with a snapshot taken after an unrelated write.
+- MemoryFabric now validates one-shot compensation tokens and seals expected state inside the owned status/signal lifecycle command. A caller that throws after a committed command can still roll it back safely; a later divergent write produces a conflict.
+- Routed Hexis supersession and duplicate status/trust changes through one per-memory compensation token and removed the unguarded secondary status rollback path.
+- Added regression coverage for an independent confidence update after a status command commits but before the adapter throws; assertions require conflict handling to preserve that update.
+- Hosted runtime tests, typecheck and CI were not run/confirmed in this work pass. The Release ZIP and `main` remain untouched.
+
+## [NK1][WorkPass443] Run persisted receipt-control regression in the Hexis integration gate (2026-10-27)
+
+- Added `tests/memory-lifecycle-command-workpass31.mjs` to `test:hexis-canonical-apply`, so the persisted C1 receipt-target regression is executed by the same focused Hexis workflow rather than merely existing in a separate audit script.
+- Added the test path to both push and pull-request filters for `hexis-canonical-apply.yml`. The package JSON parses and the workflow path filter now includes the regression.
+- Consolidated the rollback checkpoint notes so WorkPass442 has one authoritative entry for lifecycle-bound token validation/sealing.
+- Current exact-head runtime test/typecheck/CI result is not yet confirmed; no main or published Release ZIP changes.
+
+## [NK1][WorkPass441] Add post-seal rollback conflict regression (2026-10-27)
+
+- Added a failure-injection case where a downstream belief projection performs an independent canonical signal update after HMX's trust reconciliation has completed.
+- The regression requires the failed import to report a compensation conflict and preserve the post-seal confidence/authority values, instead of restoring the transaction-start snapshot over the independent write.
+- The initial projector-level seal marker from this pass was superseded by WorkPass442's lifecycle-owned sealing, which also covers status-only and supersession mutations.
+
+## [NK1][WorkPass440] Review HMX compensation-token ownership (2026-10-27)
+
+- The first token handoff attempt was not wired to the then-current MemoryFabric contract, so that field was removed rather than left as unconsumed command data.
+- WorkPass442 subsequently extended the canonical lifecycle contract to validate and consume the compensation token for both status and trust mutations. Use WorkPass442 as the authoritative implementation description.
+
+## [NK1][WorkPass439] Cover C1 controls in restored receipt targets (2026-10-26)
+
+- Extended the existing memory lifecycle regression with an otherwise-valid persisted receipt whose target memoryId contains U+009F.
+- Restore must reject the receipt, mark replay-journal certainty as compromised, and fail closed for subsequent keyed mutations. The canonical integration branch already applies the C0/C1 range to both commandId and memoryId; this pass closes the missing regression case.
+- The test is wired through the existing lifecycle/Hexis package test entry. Runtime execution, typecheck and hosted CI remain unverified; no main or Release ZIP change.
+
 ## [NK1][WorkPass432] Prevent lifecycle convenience-wrapper action injection (2026-10-27)
 
 - Extended the same allowlist rule across `MemoryFabric` convenience wrappers for encode, status/content revision, signal/context updates and forgetting. Their caller-controlled context/options can now contribute only the documented execution metadata; they cannot replace the method's fixed action or target payload.
@@ -2619,3 +2688,87 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
 - [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
 
+
+## [NK1][Hexis] WorkPass430 — restore trust signals after compensated HMX failure (2026-10-26)
+
+- [FIX] Track the pre-apply signal snapshot for existing imported memories when the HMX authority cap lowers confidence, source authority, or external evidence authority.
+- [INTEGRATION] Add an explicit MemoryFabric compensation command backed by MemoryOS2; it restores the previous canonical signal snapshot only when the current signal fields still match the failed transaction's expected post-update state.
+- [ROLLBACK] On downstream failure, restore the prior confidence, authority, evidence trail/lineage, access temperature and item revision history alongside the existing status, graph, and temporal compensation.
+- [REGRESSION] Add fault injection after trust reconciliation and a subsequent row insert; assert that existing trust state is restored, the new row is removed, and the accepted HMX stage remains retryable. Also verify the compensation receipt survives MemoryFabric snapshot restore.
+- [VALIDATION] Source, integration test and CHANGELOG are committed below; exact-head runtime/typecheck/Actions execution is still required and is not claimed as PASS.
+
+## [NK1][Hexis] WorkPass431 — scope HMX compensation to one-time capabilities (2026-10-26)
+
+- [SAFETY] Remove caller-supplied prior/expected signal snapshots from the public compensation contract. MemoryFabric now issues an internal one-time token only after a real canonical signal update.
+- [INTEGRITY] The private MemoryOS2 restore primitive is invoked only from MemoryFabric's token-validated lifecycle path; tokens are consumed on use and bounded in memory.
+- [REGRESSION] Assert that a forged compensation token is rejected and leaves canonical trust state unchanged. Persisted receipt validation continues to allow the named compensation lifecycle action.
+- [VALIDATION] Commit-level source checks completed; runtime execution/typecheck remains blocked by GitHub Actions jobs that terminate with `runner_id=0` and `steps=[]`.
+
+## [NK1][Hexis] WorkPass432 — retire completed signal-compensation tokens (2026-10-26)
+
+- [FIX] Revoke every issued HMX signal rollback token when apply receipt construction completes successfully; failed transactions consume tokens during compensation.
+- [DIAGNOSTICS] Expose only the count of outstanding signal-compensation tokens in MemoryFabric inspection, not their snapshots or identifiers.
+- [REGRESSION] Assert both failed-import compensation and successful trust reconciliation leave zero pending rollback tokens.
+- [VALIDATION] Source-level contract checks pass; runtime/typecheck remains unvalidated because GitHub Actions jobs still exit before runner assignment and execute zero steps.
+
+## [NK1][Hexis] WorkPass433 — capture full HMX rollback state before status changes (2026-10-26)
+
+- [FIX] Capture a duplicate-memory rollback capability before either status reconciliation or trust capping. Refresh its expected-current seal only after both updates, so a single compensation restores the transaction-start status and signal snapshot.
+- [ROLLBACK] Restore the combined token before the legacy status-only compensation loop; this preserves the original revision history rather than recording an incomplete rollback sequence.
+- [REGRESSION] The temporal-ledger failure fixture now archives an existing memory while lowering its trust and inserting another row; assert exact restoration including epistemic status and revision history.
+- [VALIDATION] Source-level assertions only. Runtime/typecheck is still unverified because current GitHub Actions jobs terminate before runner assignment with `runner_id=0` and `steps=[]`.
+
+## [NK1][Hexis] WorkPass434 — retain rollback capability across partial mutation failures (2026-10-26)
+
+- [FIX] Register a duplicate-memory rollback token before the first status or trust mutation, then refresh its expected-current seal immediately before compensation. A synchronous adapter error after a partial commit can no longer escape because the token was not yet registered.
+- [REGRESSION] Inject an error after MemoryFabric commits an archival status change and assert the original status, signal metadata and revision history are restored with no pending tokens.
+- [VALIDATION] Source-level contract checks only; runtime/typecheck is still unverified pending execution by a GitHub Actions runner.
+
+
+## [NK1][Hexis] WorkPass435 — fail closed at signal-compensation capacity (2026-10-26)
+
+- [FIX] When the bounded rollback-token journal reaches 512 entries, refuse to issue another token before its caller mutates a canonical record; do not silently evict an earlier transaction's live rollback capability.
+- [LIFECYCLE] Invalidate process-local compensation capabilities when restoring a persisted MemoryFabric snapshot, because those capabilities are deliberately not part of the persisted state.
+- [REGRESSION] Cover capacity exhaustion, preservation of every previously issued token, token cleanup, and invalidation across snapshot restoration.
+- [VALIDATION] Added regression coverage and source changes; runtime execution and typecheck remain unverified until Actions runs actual steps.
+
+
+## [NK1][Hexis] WorkPass438 — compensate partial failures in the MemoryFabric signal helper (2026-10-26)
+
+- [FIX] The `updateSignalsWithCompensation` convenience path retains its one-time token until it confirms no mutation occurred or restores the exact pre-state after an exception. Rollback failures are reported explicitly rather than silently discarding the capability.
+- [REGRESSION] Inject an exception after the underlying canonical update returns and assert signal metadata, status, access state and revision history are restored with no pending tokens.
+- [VALIDATION] Source-level assertions only; runtime/typecheck remains unverified until a GitHub Actions runner executes actual steps.
+
+
+## [NK1][Validation] WorkPass445 — align corrupted cognitive-cycle restore expectation (2026-10-27)
+
+- [FIX] Corrected the WorkPass287 restore regression: when the persisted missing-stage list contains an invalid stage or non-string value, UnifiedCognitiveCycle intentionally treats the entire list as corrupted and restores all six required stages as missing.
+- [SAFETY] Preserved the fail-closed implementation rather than weakening normalization to accept a partially malformed history.
+- [VALIDATION] The focused workflow is triggered by the test-path change; the new CI result must confirm this assertion and continue through the remaining steps.
+
+
+## [NK1][Validation] WorkPass446 — ground the causal-learning positive fixture (2026-10-27)
+
+- [FIX] Updated the valid CausalExperienceStream outcome fixture to include `lastAction` and a bounded `lastActionSuccess` matching the selected action and observed success score.
+- [SAFETY] Kept the production transition gate unchanged: causal evidence still requires an observed post-action state explicitly attributed to the decision.
+- [VALIDATION] The WorkPass110 workflow is triggered by the updated causal-stream test path; the next run must verify this fixture and continue through the remaining learning regressions/typecheck.
+
+
+## [NK1][Validation] WorkPass447 — preserve grounded runtime-outcome accounting (2026-10-27)
+
+- [FIX] Corrected two legacy external-evidence assertions to expect a grounded runtime-outcome count of zero. The external adapter still stores the unverified record and deduplicates its normalized trace identity, but it must not increment trusted outcome aggregates.
+- [SAFETY] Kept the existing evidence boundary intact: imported external records remain non-grounded and ineligible for policy replay/consolidation.
+- [VALIDATION] The WorkPass110 workflow is triggered by the causal-learning test path; the new runner result must confirm both the grounded positive case and external-evidence accounting.
+
+
+## [NK1][Validation] WorkPass448 — preserve trusted outcome totals after restore (2026-10-27)
+
+- [FIX] Corrected the remaining restored-external duplicate assertions: normalized duplicate identity is preserved after restore, while the grounded runtime-outcome aggregate remains zero for unverified external records.
+- [SAFETY] Both normal-intake and restored-intake external records remain ineligible for grounded replay/consolidation; no production policy was weakened.
+- [VALIDATION] The updated WorkPass110 workflow should re-run the causal experience stream regression and continue through subsequent steps.
+
+
+## [NK1][Validation] WorkPass449 — connect the evidence-lanes workflow to its test (2026-10-27)
+
+- [FIX] Added the missing `test:workpass292:evidence-lanes` npm script pointing to the existing `tests/workpass292-evidence-lanes.mjs` regression. The workflow's command previously failed immediately with npm's `Missing script` error.
+- [VALIDATION] Confirmed that the referenced test file exists and exercises causal action/outcome binding, untrusted external intake, stable idempotency identity and trusted aggregate isolation. The resulting workflow run must still confirm execution.

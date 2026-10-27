@@ -24,6 +24,7 @@
     "test:workpass318:operational-microcycle-finite-input": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs",
     "test:rebuild-recovered": "npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:learning-replay && npm run test:causal-replay-runtime-wiring && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass97:planner-route && npm run test:workpass98:project-reconciliation-route && npm run test:workpass318:operational-microcycle-finite-input",
     "test:workpass292:motivation-to-goal": "node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs",
+    "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
     "test:workpass288:intrinsic-motivation": "node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs",
     "test:workpass287:cognitive-cycle": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs",
     "test:workpass84:script-integrity": "node tests/workpass84-script-integrity.mjs",
@@ -1770,6 +1771,6 @@
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",
     "test:causal-replay-runtime-wiring": "node tests/causal-replay-runtime-wiring.mjs",
-    "test:hexis-canonical-apply": "node tests/hexis-projector-idempotent-replay.mjs && node --experimental-strip-types tests/hexis-protected-memory-rollback.mjs && node --experimental-strip-types tests/integration/hexis-adaptation.mjs && node tests/integration/hexis-export-adapter.mjs && node --experimental-strip-types tests/integration/hexis-server-smoke.mjs"
+    "test:hexis-canonical-apply": "node tests/hexis-projector-idempotent-replay.mjs && node --experimental-strip-types tests/hexis-protected-memory-rollback.mjs && node --experimental-strip-types tests/memory-lifecycle-command-workpass31.mjs && node --experimental-strip-types tests/integration/hexis-adaptation.mjs && node tests/integration/hexis-export-adapter.mjs && node --experimental-strip-types tests/integration/hexis-server-smoke.mjs"
   }
 }
