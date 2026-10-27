@@ -623,6 +623,23 @@ assert.equal(
   'maintenance eviction must rebuild/maintain canonical, inverted, DF and character-gram indexes',
 );
 
+// Public hydration must keep the hard 1,600-row cap; only the private transaction
+// restore can temporarily preserve 1,601 rows while rolling back a failed trim.
+const publicRestoreCapRuntime = new MemorySubsystemRuntime();
+publicRestoreCapRuntime.memoryOS.restore({
+  ...maintenanceCapState,
+  items: maintenanceCapRows,
+  estimatedBytes: 0,
+});
+assert.equal(publicRestoreCapRuntime.fabric.canonicalSize(), 1600);
+assert.equal(
+  publicRestoreCapRuntime.fabric.canonicalSnapshot().items.some(item => item.id === maintenanceCapOldestId),
+  false,
+  'ordinary public restore must not expose the internal over-capacity rollback mode',
+);
+assert.equal(publicRestoreCapRuntime.memoryOS.indexDiagnostics().pass, true,
+  'public restore must rebuild coherent canonical/inverted indexes under the normal row cap');
+
 // WorkPass442: restore replaces the canonical row set, so embedding vectors and
 // retry records for absent IDs or changed content hashes must be pruned at hydration.
 const restoreCacheRuntime = new MemorySubsystemRuntime();
