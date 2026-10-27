@@ -111,11 +111,11 @@ export class EmbodimentRuntime {
     return `battery=${Math.round(t.battery01*100)}%, temp=${t.batteryTemperatureC == null ? 'n/a' : `${t.batteryTemperatureC.toFixed(1)}C`}, cpu=${Math.round(t.cpuLoad01*100)}%, ram=${Math.round(t.ramPressure01*100)}%, thermal=${Math.round(this.body.thermalStrain01*100)}%, sleep=${this.body.sleep}`;
   }
 
-  async speak(text: string, context?: { action?:string|null; mode?:string|null; needs?:OrganismNeedsLike; continuity01?:number; grounding01?:number; uncertainty01?:number; speechEventId?:string }): Promise<boolean> {
+  async speak(text: string, context?: { action?:string|null; mode?:string|null; needs?:OrganismNeedsLike; continuity01?:number; grounding01?:number; uncertainty01?:number; emotion?:{label?:string;valence01?:number;arousal01?:number;dominance01?:number}; speechEventId?:string }): Promise<boolean> {
     if(this.activeSpeechEventId){this.voice.lastError='tts-prior-outcome-unresolved-no-overlap';this.voice.lastAt=Date.now();return false;}
     if(!this.body.ttsAvailable) { this.voice.lastError='tts-unavailable'; this.voice.lastAt=Date.now(); return false; }
     const needs=context?.needs ?? { energy: this.body.bodyEnergy01, cognitiveLoad:1-this.body.cognitiveCapacity01, uncertainty:.35, socialNeed:.35, novelty:.2, identityCoherence:.8, goalPressure:.35 };
-    const plan=buildVoicePlan({ text:String(text||''), action:context?.action, mode:context?.mode, needs, body:this.body, continuity01:context?.continuity01, grounding01:context?.grounding01, uncertainty01:context?.uncertainty01 });
+    const plan=buildVoicePlan({ text:String(text||''), action:context?.action, mode:context?.mode, needs, body:this.body, continuity01:context?.continuity01, grounding01:context?.grounding01, uncertainty01:context?.uncertainty01, emotion:context?.emotion });
     this.lastVoicePlan=plan;
     const clean=String(text||'').replace(/[\r\n]+/g,' ').trim().slice(0,2000);
     const dispatcher=this.speechGatewayDispatcher;
