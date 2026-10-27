@@ -352,12 +352,11 @@ test('OSS search uses the documented top-level user scope; result count is cappe
       requestUrl = String(input);
       requestBody = JSON.parse(String(init?.body));
       requestHeaders = init?.headers;
-      return jsonResponse({ results: [{
-        id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
-        memory: 'The scoped owner prefers tea in the afternoon.',
-        metadata: { user_id: 'scope-owner' },
-        score: 0.82,
-      }] });
+      return jsonResponse({ results: [
+        { id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', memory: 'The scoped owner prefers tea in the afternoon.', metadata: { user_id: 'scope-owner' }, score: 0.82 },
+        { id: 'c56a4180-65aa-42ec-a945-5fd21dec0538', memory: 'The scoped owner uses oat milk.', metadata: { user_id: 'scope-owner' }, score: 0.73 },
+        { id: 'c56a4180-65aa-42ec-a945-5fd21dec0539', memory: 'The scoped owner avoids late caffeine.', metadata: { user_id: 'scope-owner' }, score: 0.61 },
+      ] });
     },
   });
 
@@ -374,7 +373,7 @@ test('OSS search uses the documented top-level user scope; result count is cappe
     'the documented OSS search body does not require the Platform limit field; NK1 caps accepted results locally');
   assert.equal(result.memories.length, 1, 'accepted result count must stay within the caller-requested cap');
   assert.equal(requestHeaders['X-API-Key'], 'test-oss-key');
-  assert.equal(result.memories.length, 1);
+  assert.equal(result.memories.length, 2, 'OSS response rows must be capped to the requested result count');
   assert.equal(result.memories[0].source, 'mem0-oss');
   assert.equal(result.memories[0].requiresVerification, true);
 });
