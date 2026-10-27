@@ -6,16 +6,20 @@ declare module 'node:fs' {
   export function openSync(path:string, flags:string, mode?:number):number;
   export function readFileSync(path:string, encoding:'utf8'):string;
   export function readFileSync(path:string):Uint8Array;
-  export function writeFileSync(path:string, data:string|Uint8Array, options?:'utf8'|{encoding?:string;mode?:number;flag?:string}):void;
+  export function writeFileSync(path:string|number, data:string|Uint8Array, options?:'utf8'|{encoding?:string;mode?:number;flag?:string}):void;
   export function writeSync(fd:number, data:string|Uint8Array):number;
   export function fsyncSync(fd:number):void;
   export function closeSync(fd:number):void;
   export function renameSync(from:string,to:string):void;
   export function unlinkSync(path:string):void;
+  export function linkSync(existingPath:string,newPath:string):void;
   export function mkdtempSync(prefix:string):string;
 }
 declare namespace NodeJS {
   interface ErrnoException extends Error { code?: string; errno?: number; path?: string; syscall?: string; }
+  interface ProcessEnv { [key:string]: string | undefined; }
+  type Signals = string;
+  interface Timeout { unref(): this; }
 }
 declare module 'node:crypto' {
   export function randomUUID(): string;
@@ -38,7 +42,7 @@ declare module 'node:fs/promises' {
   export function lstat(path:string):Promise<any>;
   export function unlink(path:string):Promise<void>;
   export function link(existingPath:string,newPath:string):Promise<void>;
-  export function writeFile(path:string,data:string,encoding:'utf8'):Promise<void>;
+  export function writeFile(path:string,data:string|Uint8Array,options?:'utf8'|{encoding?:string;mode?:number;flag?:string}):Promise<void>;
   export function mkdtemp(prefix:string):Promise<string>;
 }
 declare module 'node:path' {
@@ -54,7 +58,7 @@ declare module 'node:os' { export function homedir():string; export function tmp
 declare module 'node:http' { export function createServer(handler:(req:any,res:any)=>void):any; }
 declare module 'node:child_process' { export function spawn(command:string,args?:string[],options?:any):any; export function execFile(command:string,args?:string[],options?:any,callback?:any):any; }
 declare module 'node:util' { export function promisify(fn:any):any; }
-declare const process: { pid:number; env:Record<string,string|undefined>; argv:string[]; exitCode?:number; on(event:string,handler:()=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
+declare const process: { pid:number; platform:string; env:NodeJS.ProcessEnv; argv:string[]; exitCode?:number; on(event:string,handler:()=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
 
 declare module 'node:zlib' { export function deflateRawSync(data: Uint8Array): Uint8Array; export function inflateRawSync(data: Uint8Array): Uint8Array; }
 declare module 'node:v8' { export function serialize(value: unknown): Uint8Array; export function deserialize(data: Uint8Array): unknown; }
@@ -62,9 +66,14 @@ declare module 'node:v8' { export function serialize(value: unknown): Uint8Array
 declare module 'node:dns/promises' { export function lookup(hostname:string, options?:{all?:boolean;verbatim?:boolean}):Promise<any>; }
 declare module 'node:net' { export function isIP(input:string):number; }
 declare module 'node:https' { export type RequestOptions = { lookup?: any; [key:string]: any }; export function request(options:any, callback:(response:any)=>void):any; }
+interface Buffer extends Uint8Array {
+  toString(encoding?:string):string;
+  subarray(begin?:number,end?:number):Buffer;
+}
 declare const Buffer: {
   isBuffer(value:unknown):boolean;
-  from(value:string|Uint8Array, encoding?:string):any;
-  concat(list:readonly Uint8Array[], totalLength?:number):Uint8Array;
+  from(value:string|Uint8Array, encoding?:string):Buffer;
+  alloc(size:number):Buffer;
+  concat(list:readonly Uint8Array[], totalLength?:number):Buffer;
   byteLength(value:string|Uint8Array, encoding?:string):number;
 };
