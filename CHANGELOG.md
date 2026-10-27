@@ -1,3 +1,10 @@
+## [NK1][verification] Mem0 integration closure CI evidence (2026-10-27)
+
+- GitHub Actions run [40530677372](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40530677372) completed successfully on the PR merge ref.
+- Runtime typecheck passed; Hexis evidence-lineage and reviewed-ingest checks passed; Hexis server smoke passed; retrieval experiment was deterministic on seeds 13/29/53 with promotion explicitly not granted; Mem0 Platform tests passed 14/14; self-hosted Mem0 OSS tests passed 2/2; runtime-wiring assertions and HTTP fake-provider smoke passed.
+- The read-only live Mem0 API check was skipped because explicit operator opt-in and a dedicated test account were not supplied. These results validate local/mock integration contracts; they do not establish live provider compatibility or retrieval-quality uplift.
+- The Release ZIP was not changed.
+
 ## [NK1][integration] Add self-hosted Mem0 OSS mode (2026-10-27)
 
 - Added explicit `platform|oss` provider mode. OSS mode uses its documented `/search`, `/memories`, and `X-API-Key` contract; Platform mode remains unchanged.
