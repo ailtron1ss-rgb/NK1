@@ -83,7 +83,6 @@ export class MemorySubsystemRuntime {
     this.semanticMemory.restore(memory.semanticGraph);
     this.memoryOS.restore(advanced.memoryOS);
     this.fabric.restore(advanced.memoryFabric);
-    this.fabric.consolidateCompatibility(this.memories.snapshot({clone:false}), 96, this.memoryLifecycleAuthority.snapshot().lastTick >= 0 ? this.memoryLifecycleAuthority.snapshot().lastTick : 0);
     this.unifiedMemory.restore(advanced.unifiedMemory);
     this.p47MemoryMind.restore(advanced.p47);
     this.p59MemoryOperatingSystem.restore(advanced.p59MemoryOperatingSystem);
@@ -97,6 +96,10 @@ export class MemorySubsystemRuntime {
     this.hippocampalFormation.restore(advanced.hippocampalFormation);
     this.consolidationController.restore(advanced.consolidationController);
     this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
+    // Import legacy rows using the persisted lifecycle tick; doing this before restore
+    // would silently reset compatibility timestamps to tick zero on every restart.
+    const restoredLifecycleTick=this.memoryLifecycleAuthority.snapshot().lastTick;
+    this.fabric.consolidateCompatibility(this.memories.snapshot({clone:false}), 96, restoredLifecycleTick >= 0 ? restoredLifecycleTick : 0);
     // Preserve learned memory policy and causal life continuity across process restarts.
     this.memoryRetentionEconomy.restore(advanced.memoryRetentionEconomy);
     this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy);
