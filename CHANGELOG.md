@@ -1,3 +1,8 @@
+## [NK1][WorkPass505] Prove future Hexis evidence rejection is mutation-free (2026-10-27)
+
+- Strengthened the future-dated SourceMonitor and P65 regressions beyond checking the rejection reason: each now compares the canonical evidence-source array, lineage keys and confidence against a pre-attempt snapshot.
+- This proves the bridge's fail-closed time guard prevents both future-dated ingress paths from changing canonical memory, rather than merely returning an error after a partial write.
+
 ## [NK1][WorkPass504] Exercise retrieval provenance and semantic routing in core regressions (2026-10-27)
 
 - The recovered-core suite now runs `test:memory-retrieval-experiment` as well as the live semantic-route regression. This ensures malformed, duplicated and over-limit bootstrap seed lists are tested instead of merely committed.
