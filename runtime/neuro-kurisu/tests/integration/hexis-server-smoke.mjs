@@ -290,7 +290,7 @@ try {
     throw new Error('hexis-goal-prepare:'+JSON.stringify(preparedGoals));
   }
   const proposalId=preparedGoals.proposals[0].id;
-  const pendingMaterializeResponse=await post('/api/organism/integration/hexis/goals/materialize',{proposalId});
+  const pendingMaterializeResponse=await post('/api/organism/integration/hexis/goals/materialize',{proposalId,confirmed:true});
   if(pendingMaterializeResponse.status!==409) throw new Error('hexis-goal-pending-must-not-materialize:'+pendingMaterializeResponse.status);
   const goalList=await (await fetch(`${base}/api/organism/integration/hexis/goals?status=pending&limit=8`)).json();
   if(!goalList.ok||!goalList.proposals?.some(proposal=>proposal.id===proposalId)) throw new Error('hexis-goal-list');
