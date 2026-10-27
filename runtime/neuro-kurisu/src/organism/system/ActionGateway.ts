@@ -486,7 +486,34 @@ export class ActionGateway {
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
         ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
       if(row.status==='completed' && row.response && typeof row.response==='object') {
-        try { safe.response=structuredClone(row.response); } catch { safe.responseOmitted=true; }
+        try {
+          const response=structuredClone(row.response) as ToolExecution;
+          const audit=response?.audit;
+          const verification=response?.verification;
+          const structurallyValid=Boolean(response && typeof response==='object' &&
+            typeof response.ok==='boolean' && typeof response.verified==='boolean' &&
+            typeof response.executionId==='string' && typeof response.tool==='string' &&
+            typeof response.capability==='string' && response.result!==null &&
+            typeof response.result==='object' && !Array.isArray(response.result) &&
+            audit && typeof audit==='object' && typeof audit.accepted==='boolean' &&
+            verification && typeof verification==='object' && typeof verification.verified==='boolean');
+          const identityValid=structurallyValid &&
+            typeof safe.executionId==='string' && response.executionId===safe.executionId &&
+            typeof safe.toolId==='string' && response.tool===safe.toolId &&
+            (audit.executionId===undefined || audit.executionId===response.executionId) &&
+            (audit.tool===undefined || audit.tool===response.tool);
+          const outcomeConsistent=identityValid &&
+            audit.accepted===response.ok &&
+            (audit.verified===undefined || audit.verified===response.verified) &&
+            (audit.outcomeClass===undefined || audit.outcomeClass===response.outcomeClass) &&
+            (response.verified!==true || verification.verified===true);
+          const responseBytes=outcomeConsistent ? new TextEncoder().encode(stableJson(response)).byteLength : Infinity;
+          // A restored receipt is replayable only if its identity, outcome/audit
+          // projections and size agree with the canonical ledger row. Otherwise
+          // retain the key as a recovery tombstone; never re-run the side effect.
+          if(outcomeConsistent && responseBytes<=48*1024) safe.response=response;
+          else safe.responseOmitted=true;
+        } catch { safe.responseOmitted=true; }
       } else if(row.status==='completed') safe.responseOmitted=true;
       const prior=restored.get(safe.keyHash);
       if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');

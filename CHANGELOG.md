@@ -1,3 +1,9 @@
+## [NK1][WorkPass484] Quarantine corrupted restored action receipts (2026-10-27)
+
+- The broad recovered-runtime suite found that ActionGateway restored a completed ledger row by cloning its response without checking that the response execution ID and tool matched the ledger's canonical identity. A same-key retry could therefore replay a forged success response after restart.
+- Restore now retains the completed key but withholds its response unless the response's execution/tool identity, audit acceptance/outcome/verification projections and bounded serialized size agree. Invalid receipts become fail-closed recovery tombstones; side effects are not rerun and valid receipts remain replayable.
+- WorkPass95 has four tamper regressions (execution identity, verification contradiction, audit outcome contradiction and oversized payload). The exact-head broad regression must be rerun to confirm this fix. No release or learning-uplift claim is made.
+
 ## [NK1][WorkPass483] Check grounded causal replay features before sampling (2026-10-27)
 
 - The broad source regression exposed a stale static wiring assertion: it searched for the state/outcome feature vector *after* the call to `selectCausalReplayBatch`, even though the production pipeline correctly constructs `causalCandidates` and their `policyFeatures01` first.
