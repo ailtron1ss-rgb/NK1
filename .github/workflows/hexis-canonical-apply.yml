@@ -3,8 +3,9 @@ name: NK1 Hexis canonical HMX apply
 on:
   push:
     branches:
+      - 'nk1-hexis-*'
+      - 'fix/hexis-*'
       - fix/outcome-projection-index-restore-2026-10-26
-      - fix/hexis-belief-dedupe-contract-2026-10-27
     paths:
       - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
@@ -30,6 +31,7 @@ on:
   pull_request:
     branches:
       - workpass70-source
+      - nk1-hexis-evidence-lineage-v2-2026-10-27
       - fix/outcome-projection-index-restore-2026-10-26
       - fix/hexis-belief-dedupe-contract-2026-10-27
     paths:
@@ -62,8 +64,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Push and pull_request both fire for PR branch commits; keep their groups distinct
-  # so one event does not cancel the other. Newer runs still supersede older runs per event.
+  # Keep push and pull_request groups distinct; newer runs supersede older runs per event.
   group: nk1-hexis-canonical-apply-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
