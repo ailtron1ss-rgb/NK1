@@ -530,18 +530,18 @@ const linkSupportCacheTarget = linkSupportCacheRuntime.fabric.encode(
   { commandId: 'wp440:cache-target' },
 );
 const linkSupportCacheSource = linkSupportCacheRuntime.fabric.encode(
-  makeInput('WP440 source row points to the target through a canonical semantic link.', {
-    semanticLinks: [linkSupportCacheTarget.id],
+  makeInput('WP440 source row causally points to the target through a canonical link.', {
+    causalLinks: [linkSupportCacheTarget.id],
     predictionError: .9,
   }),
   { commandId: 'wp440:cache-source' },
 );
 assert.ok(linkSupportCacheSource?.id);
-linkSupportCacheRuntime.memoryOS.retrieve('WP440 source row points to the target', 4);
+linkSupportCacheRuntime.memoryOS.retrieve('WP440 source row causally points to the target', 4);
 assert.ok(linkSupportCacheRuntime.memoryOS.linkSupportCache instanceof Map,
   'retrieval must materialize the derived semantic-support cache');
 assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCache.get(linkSupportCacheTarget.id), .18,
-  'the target should initially receive the source row semantic-support contribution');
+  'the target should initially receive the source row causal-support contribution');
 const linkCacheVersionBeforeRemoval = linkSupportCacheRuntime.memoryOS.linkSupportCacheVersion;
 assert.equal(linkSupportCacheRuntime.fabric.forgetById(linkSupportCacheTarget.id, 'workpass440-cache-invalidation'), true);
 assert.equal(linkSupportCacheRuntime.memoryOS.linkSupportCache, null,
