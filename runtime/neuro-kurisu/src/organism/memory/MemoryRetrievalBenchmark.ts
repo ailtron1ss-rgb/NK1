@@ -127,6 +127,8 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
     const relevant=new Set(ex.relevantIds);
     const answerable=ex.answerable!==false;
     const hits=results.filter(row=>row?.id&&relevant.has(row.id));
+    // Precision counts unique relevant memory IDs, not duplicate rows. Duplicate results
+    // remain separately reported as an integrity violation, but cannot inflate quality.
     if(answerable){
       answerableQueries++;
       const hitIds=new Set(hits.map(row=>row.id));
@@ -135,7 +137,7 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
       const queryMrr=first>=0?1/(first+1):0;
       outcomes.push({recallAtK01:queryRecall,mrr01:queryMrr});
       recall+=queryRecall;
-      precision+=hits.length/k;
+      precision+=new Set(hits.map(row=>row.id)).size/k;
       mrr+=queryMrr;
       if(results.length===0)falseAbstentionCount++;
     }else{
