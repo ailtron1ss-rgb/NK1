@@ -1,3 +1,8 @@
+## [NK1][WorkPass459] Make malformed training controls a rejected, zero-mutation outcome (2026-10-27)
+
+- Updated `p26-true-learning.mjs` to assert that `NaN`/`Infinity` learning rates and malformed sample weights are rejected at the learner's validation boundary before any training update. The previous fixture expected the old sanitize-and-continue behavior, while `ParametricPolicyLearner.validateFeedback` deliberately uses fail-closed validation.
+- The regression now checks finite parameters and an unchanged update count after both batch-style and feature-level invalid calls; no training rule was loosened.
+
 ## [NK1][WorkPass458] Prioritize signed CAS mismatch diagnostics during restore (2026-10-27)
 
 - Reordered `VersionedSkillCandidateStore.assertTrustedActiveState` so the persisted active-version metadata is bound to the signed approval before looking up the prior version. A forged `baseVersion` is now rejected by the explicit signed-CAS gate rather than being masked by the secondary missing-prior-version guard.
