@@ -39,6 +39,30 @@ export interface P26TrueLearningOptions {
   verifyHoldoutEvidence?:P26HoldoutEvidenceVerifier;
 }
 
+export interface P26InterleavedExperience {
+  state:OrganismState;
+  action:ActionKind;
+  reward:number;
+  nextState:OrganismState;
+  surprise?:number;
+}
+export interface P26InterleavedTrainingOptions {
+  replayEveryNCurrent?:number;
+  maxReplayUpdates?:number;
+  targetMode?:'reward'|'td';
+  currentLearningRate01?:number;
+  replayLearningRate01?:number;
+  conflictCandidateCap?:number;
+}
+export interface P26InterleavedTrainingResult {
+  onlineUpdates:number;
+  replayUpdates:number;
+  blockedReplayRows:number;
+  eligibleReplayRows:number;
+  conflictComparisons:number;
+  conflictCandidateCap:number;
+}
+
 export interface P26TrueLearningState {
   version:1;
   policy:ParametricPolicyState;
@@ -196,6 +220,121 @@ export class P26TrueLearningEngine{
     this.updateTrainingExposure();
     this.state.metrics.holdoutBaseline01=baseline; this.state.metrics.holdoutLearned01=learned; this.state.metrics.holdoutDelta01=learned-baseline; this.state.metrics.lastUpdatedAt=Date.now(); this.sync();
     return {updates:train.length,meanLoss01:train.length?loss/train.length:0,holdoutBaseline01:baseline,holdoutLearned01:learned,holdoutDelta01:learned-baseline};
+  }
+
+  /**
+   * Interleave fresh task experience with a bounded replay queue. Replay is
+   * screened against nearby current-state/action labels first: where a fresh
+   * outcome contradicts an old label in an indistinguishable state context,
+   * stale replay is blocked. Separable contexts remain eligible for rehearsal.
+   * The method does not issue generalization evidence; only recordVerifiedHoldout
+   * can do that through the explicitly configured host verifier.
+   */
+  trainInterleaved(
+    fresh:readonly P26InterleavedExperience[],
+    replayRows:readonly P26InterleavedExperience[],
+    options:P26InterleavedTrainingOptions={},
+  ):P26InterleavedTrainingResult {
+    if(!Array.isArray(fresh)||!Array.isArray(replayRows))throw new TypeError('interleaved-experience-lanes-must-be-arrays');
+    const finiteOption=(value:number|undefined,fallback:number,label:string):number=>{
+      if(value===undefined)return fallback;
+      if(!Number.isFinite(value))throw new TypeError(label+'-must-be-finite');
+      return value;
+    };
+    const replayEveryNCurrent=Math.max(1,Math.min(10000,Math.floor(finiteOption(options.replayEveryNCurrent,16,'replay-every-n-current')));
+    const maxReplayUpdates=Math.max(0,Math.min(100000,Math.floor(finiteOption(options.maxReplayUpdates,64,'max-replay-updates'))));
+    const targetMode=options.targetMode??'td';
+    if(targetMode!=='reward'&&targetMode!=='td')throw new TypeError('invalid-interleaved-target-mode');
+    const currentLearningRate01=finiteOption(options.currentLearningRate01,.035,'current-learning-rate');
+    const replayLearningRate01=finiteOption(options.replayLearningRate01,.025,'replay-learning-rate');
+    const conflictCandidateCap=Math.max(8,Math.min(128,Math.floor(finiteOption(options.conflictCandidateCap,64,'conflict-candidate-cap'))));
+    const bucket=(value:number)=>Math.max(0,Math.min(19,Math.floor(clamp(value)*20)));
+    const key=(row:P26InterleavedExperience)=>[
+      row.action,bucket(row.state.needs.energy),bucket(row.state.needs.novelty),
+    ].join('|');
+    const validateRows=(rows:readonly P26InterleavedExperience[])=>{
+      for(const row of rows){
+        if(!row||!row.state||!row.nextState||!ACTIONS.includes(row.action)||
+          typeof row.reward!=='number'||!Number.isFinite(row.reward)||row.reward<0||row.reward>1||
+          (row.surprise!==undefined&&(typeof row.surprise!=='number'||!Number.isFinite(row.surprise)||row.surprise<0||row.surprise>1))){
+          throw new TypeError('interleaved-experience-invalid');
+        }
+      }
+    };
+    validateRows(fresh); validateRows(replayRows);
+    const index=new Map<string,P26InterleavedExperience[]>();
+    for(const row of fresh){
+      const bucketKey=key(row),list=index.get(bucketKey)??[];
+      list.push(row);index.set(bucketKey,list);
+    }
+    const conflictsWithFresh=(oldRow:P26InterleavedExperience):boolean=>{
+      const energyBucket=bucket(oldRow.state.needs.energy),noveltyBucket=bucket(oldRow.state.needs.novelty);
+      const nearby:P26InterleavedExperience[]=[];
+      for(let e=-1;e<=1;e++)for(let n=-1;n<=1;n++){
+        const energyIndex=energyBucket+e,noveltyIndex=noveltyBucket+n;
+        if(energyIndex<0||energyIndex>19||noveltyIndex<0||noveltyIndex>19)continue;
+        const rows=index.get([oldRow.action,energyIndex,noveltyIndex].join('|'));
+        if(rows)nearby.push(...rows);
+      }
+      // Sort by the context dimensions that drive the benchmark's old/new task
+      // conflict. Inspect no more than the configured number of neighbours.
+      nearby.sort((a,b)=>
+        Math.abs(a.state.needs.energy-oldRow.state.needs.energy)-
+          Math.abs(b.state.needs.energy-oldRow.state.needs.energy) ||
+        Math.abs(a.state.needs.novelty-oldRow.state.needs.novelty)-
+          Math.abs(b.state.needs.novelty-oldRow.state.needs.novelty));
+      for(const current of nearby.slice(0,conflictCandidateCap)){
+        comparisons++;
+        const energyDistance=Math.abs(current.state.needs.energy-oldRow.state.needs.energy);
+        const noveltyDistance=Math.abs(current.state.needs.novelty-oldRow.state.needs.novelty);
+        const uncertaintyDistance=Math.abs(current.state.needs.uncertainty-oldRow.state.needs.uncertainty);
+        const cognitiveLoadDistance=Math.abs(current.state.needs.cognitiveLoad-oldRow.state.needs.cognitiveLoad);
+        if(energyDistance<=.055&&noveltyDistance<=.055&&uncertaintyDistance<=.055&&
+          cognitiveLoadDistance<=.12&&Math.abs(current.reward-oldRow.reward)>=.25)return true;
+      }
+      return false;
+    };
+    const targetFor=(row:P26InterleavedExperience):number=>{
+      if(targetMode==='reward')return clamp(row.reward);
+      const next=Math.max(...this.learner.predict(row.nextState).map(prediction=>prediction.value),.5);
+      return clamp(row.reward+.78*next);
+    };
+    let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,comparisons=0,lossSum=0;
+    let replayCursor=0;
+    const attemptReplay=()=>{
+      if(!replayRows.length||replayUpdates>=maxReplayUpdates)return;
+      const row=replayRows[replayCursor%replayRows.length]!;
+      replayCursor++;
+      if(conflictsWithFresh(row)){blockedReplayRows++;return;}
+      eligibleReplayRows++;
+      const trained=this.learner.train({
+        state:row.state,action:row.action,target01:targetFor(row),
+        learningRate01:replayLearningRate01,
+      });
+      replayUpdates++;lossSum+=trained.loss01;
+    };
+    for(let indexInBatch=0;indexInBatch<fresh.length;indexInBatch++){
+      const row=fresh[indexInBatch]!;
+      const trained=this.learner.train({
+        state:row.state,action:row.action,target01:targetFor(row),
+        learningRate01:currentLearningRate01,
+      });
+      onlineUpdates++;lossSum+=trained.loss01;
+      if((indexInBatch+1)%replayEveryNCurrent===0)attemptReplay();
+    }
+    this.state.metrics.outcomeSamples+=onlineUpdates;
+    this.state.metrics.onlineUpdates+=onlineUpdates;
+    this.state.metrics.replayUpdates+=replayUpdates;
+    const total=onlineUpdates+replayUpdates;
+    if(total){
+      this.state.metrics.recentLoss01=clamp(lossSum/total);
+      this.state.metrics.lastUpdatedAt=Date.now();
+    }
+    // This is training exposure only; no replay split or synthetic task label
+    // is allowed to increment generalizationEvidence01.
+    this.updateTrainingExposure();
+    this.sync();
+    return {onlineUpdates,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons:comparisons,conflictCandidateCap};
   }
 
   /** Record an unauthenticated diagnostic only; this never increases generalization maturity. */
