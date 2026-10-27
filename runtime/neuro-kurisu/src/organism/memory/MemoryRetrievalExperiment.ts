@@ -19,6 +19,13 @@ const boundedSeed = (value: unknown): number | null => {
 function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchmark>) {
   const metrics = (value: typeof report.metrics.candidate) => ({
     queries: value.queries,
+    answerableQueries: value.answerableQueries,
+    unanswerableQueries: value.unanswerableQueries,
+    unsupportedRetrievalCount: value.unsupportedRetrievalCount,
+    unsupportedRetrievalRate01: value.unsupportedRetrievalRate01,
+    correctAbstentionRate01: value.correctAbstentionRate01,
+    falseAbstentionCount: value.falseAbstentionCount,
+    falseAbstentionRate01: value.falseAbstentionRate01,
     recallAtK01: value.recallAtK01,
     mrr01: value.mrr01,
     precisionAtK01: value.precisionAtK01,
@@ -102,6 +109,8 @@ export function runMemoryOS2RetrievalExperiment(
     corpusSize: runs[0]?.corpusSize ?? 0,
     trainQueries: runs[0]?.trainQueries ?? 0,
     holdoutQueries: runs[0]?.holdoutQueries ?? 0,
+    answerableHoldoutQueries: runs[0]?.metrics.candidate.answerableQueries ?? 0,
+    unanswerableHoldoutQueries: runs[0]?.metrics.candidate.unanswerableQueries ?? 0,
     datasetFingerprint: runs[0]?.datasetFingerprint ?? '',
     corpusFingerprint: runs[0]?.corpusFingerprint ?? '',
     retrievalConfigurationFingerprint: runs[0]?.retrievalConfigurationFingerprint ?? '',
