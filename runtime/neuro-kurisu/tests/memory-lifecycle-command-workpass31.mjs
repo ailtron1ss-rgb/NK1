@@ -607,7 +607,7 @@ maintenanceCapRuntime.memoryOS.restore({
   ...maintenanceCapState,
   items: maintenanceCapRows,
   estimatedBytes: 0,
-  lastConflictScanAt: Date.now(),
+  lastConflictScanAt: Date.now() + 60_000,
 }, { allowOverCapacity: true });
 assert.equal(maintenanceCapRuntime.fabric.canonicalSize(), 1601);
 maintenanceCapRuntime.memoryOS.maintain({ maxItems: 1600, pressure01: 0 });
