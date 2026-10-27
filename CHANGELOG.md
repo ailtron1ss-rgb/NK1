@@ -2424,3 +2424,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
 - Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
 - No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
+
+## [NK1][WorkPass578] Preserve exact-tie semantics in grounded recall goldset (2026-10-27)
+
+- Updated the synthetic autobiographical recall rank fixture so every candidate has the same direct lexical evidence for each query; the fixture now measures intent/type ranking without accidentally testing unsupported-answer abstention.
+- Kept the independent grounded-abstention regression responsible for proving no-match queries are suppressed; did not weaken the production answerability gate or lower the expected rank-1/MRR result.
+- This corrects a test-fixture mismatch exposed by the new answerability gate. It is not evidence of production-corpus recall improvement.
