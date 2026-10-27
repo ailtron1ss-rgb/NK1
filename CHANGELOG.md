@@ -1,3 +1,11 @@
+## [NK1][WorkPass509] Harden Hexis source-trace identity and future evidence bounds (2026-10-27)
+
+- `SourceMonitor.record` now treats trace IDs as immutable: exact replay is idempotent; conflicting payload reuse increments the conflict counter and cannot replace the first record.
+- Restore deduplicates persisted trace IDs, preserves the first valid lineage and counts conflicting duplicates rather than silently shadowing the observation.
+- The canonical Hexis evidence bridge independently rejects future-dated observation timestamps even if `provenance.capturedAt` is fresh; writes continue through `MemoryFabric.attachEvidenceSource`.
+- Regressions cover spoofed trace-ID reuse, malformed restored snapshots, future-dated SourceMonitor/P65 observations, and non-mutation of canonical evidence/confidence after rejection.
+- This hardens provenance boundaries only; it does not prove retrieval uplift or validate the divergent outer integration PR #236.
+
 ## [NK1][WorkPass508] Harden intrinsic experiment input boundaries (2026-10-27)
 
 - Clamp uncertainty, prediction-error, novelty and dream-confidence inputs to finite unit values before scoring. Non-finite state cannot create a spurious experiment or corrupt information-gain metrics.
