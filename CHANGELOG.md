@@ -1,3 +1,10 @@
+## [NK1][WorkPass482] Verify full root persistence across server restart — 2026-10-27
+
+- Extended Hexis server smoke to stop the first server after a flushed evidence write, restart over the same state directory and replay the same source trace.
+- The test requires the restored SourceMonitor trace and canonical MemoryFabric lineage to deduplicate after process restart; missing root persistence fails the test.
+- No confidence or evidence-quality threshold was relaxed.
+- Validation: current-head smoke/core CI pending.
+
 ## [NK1][WorkPass481] Wire live Hexis evidence-lineage ingestion — 2026-10-27
 
 - Added a canonical Hexis HTTP route for source lineage, guarded by strict source, content, timestamp, confidence and provenance validation.
