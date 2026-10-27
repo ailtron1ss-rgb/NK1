@@ -510,8 +510,45 @@ export class HexisAdaptationFabric {
         confidence01: number;
         trust01?: number;
         at?: number;
-    }, ownerToken?: string): HexisBeliefState { const id = String(input.memoryId); const existing = this.state.beliefs.find((x) => x.memoryId === id); if (existing)
-        return structuredClone(existing); const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() }; this.state.beliefs.push(created); this.state.beliefs = this.state.beliefs.slice(-1024); const expected = structuredClone(created); this.recordScopedMutation(ownerToken, () => { const current = this.state.beliefs.find(row => row.memoryId === id); if (!current) return true; if (JSON.stringify(current) !== JSON.stringify(expected)) return false; this.state.beliefs = this.state.beliefs.filter(row => row.memoryId !== id); return true; }); return structuredClone(created); }
+    }, ownerToken?: string): HexisBeliefState {
+        const id = String(input.memoryId);
+        const existing = this.state.beliefs.find((row) => row.memoryId === id);
+        if (existing) {
+            // Re-import is not independent evidence. It may only tighten a stale mirror
+            // against the current canonical memory; it must never raise posterior trust.
+            const nextConfidence01 = Math.min(clamp(existing.confidence01), clamp(input.confidence01));
+            const nextTrust01 = input.trust01 === undefined
+                ? clamp(existing.trust01)
+                : Math.min(clamp(existing.trust01), clamp(input.trust01));
+            if (nextConfidence01 === existing.confidence01 && nextTrust01 === existing.trust01) {
+                return structuredClone(existing);
+            }
+            const before = structuredClone(existing);
+            existing.confidence01 = nextConfidence01;
+            existing.trust01 = nextTrust01;
+            existing.updatedAt = Number.isFinite(input.at) ? Number(input.at) : nowMs();
+            const expected = structuredClone(existing);
+            this.recordScopedMutation(ownerToken, () => {
+                const current = this.state.beliefs.find((row) => row.memoryId === id);
+                if (!current || JSON.stringify(current) !== JSON.stringify(expected)) return false;
+                Object.assign(current, before);
+                return true;
+            });
+            return structuredClone(existing);
+        }
+        const created: HexisBeliefState = { memoryId: id, confidence01: clamp(input.confidence01), trust01: clamp(input.trust01 ?? 0.5), sourceKeys: [], contradictingSourceKeys: [], updatedAt: Number.isFinite(input.at) ? Number(input.at) : nowMs() };
+        this.state.beliefs.push(created);
+        this.state.beliefs = this.state.beliefs.slice(-1024);
+        const expected = structuredClone(created);
+        this.recordScopedMutation(ownerToken, () => {
+            const current = this.state.beliefs.find(row => row.memoryId === id);
+            if (!current) return true;
+            if (JSON.stringify(current) !== JSON.stringify(expected)) return false;
+            this.state.beliefs = this.state.beliefs.filter(row => row.memoryId !== id);
+            return true;
+        });
+        return structuredClone(created);
+    }
     reviseBelief(input: {
         memoryId: string;
         confidence01: number;
