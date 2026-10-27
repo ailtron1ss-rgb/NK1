@@ -1,3 +1,9 @@
+## [NK1][WorkPass483] Check grounded causal replay features before sampling (2026-10-27)
+
+- The broad source regression exposed a stale static wiring assertion: it searched for the state/outcome feature vector *after* the call to `selectCausalReplayBatch`, even though the production pipeline correctly constructs `causalCandidates` and their `policyFeatures01` first.
+- Reorder the source-wiring assertion to prove the real contract: feature vector creation occurs after `replayPending` starts, completes before causal selection, and causal selection remains before the adaptive final selector. Keep energy, goal-pressure, and actual outcome feature assertions intact.
+- Runtime implementation is unchanged; this corrects test ordering rather than weakening grounding requirements. Replay sweep and sequential benchmark passed on the preceding exact head; broad source regression rerun required.
+
 ## [NK1][WorkPass482] Bound replay cadence to preserve current-task plasticity (2026-10-27)
 
 - The exact-head replay-policy sweep showed that a requested 1:1 old/current update cadence drove the new-task score to 0.52 on seed 17, below the unchanged 0.60 diagnostic acceptance threshold, despite separated context features.
