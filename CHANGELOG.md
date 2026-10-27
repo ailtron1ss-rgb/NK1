@@ -1,3 +1,10 @@
+## [NK1][WorkPass474] Make content revision a multi-record transaction (2026-10-27)
+
+- `MemoryOS2.reviseContent()` now snapshots canonical rows in place, the whole bounded state/counters and every affected dedup/token/character-gram/document-frequency/revision index before creating a revision. If the replacement insert or subsequent revision-history bookkeeping throws, it restores old row objects and array order as well as index/counter state before rethrowing.
+- This matters because revision creation can add a new row, evict a row at capacity, mutate the prior revision's validity/supersession fields, and add temporal/revision-group links. A single row-level rollback would leave those cross-record changes inconsistent.
+- Added a post-write `recordRevision()` failure test asserting exact canonical snapshot recovery, preservation of the original object reference, retrieval/index consistency, a successful retry that creates one revision, and idempotent replay without duplicate rows.
+- Static source/test presence only; the runtime test, TypeScript typecheck and hosted CI remain unconfirmed. `main` and the canonical GitHub Release ZIP remain unchanged.
+
 ## [NK1][WorkPass473] Reconcile semantic embedding caches after restore (2026-10-27)
 
 - `MemoryOS2.restore()` now treats the semantic embedding cache and retry ledger as derived state: after rebuilding canonical/dedup/retrieval indexes it drops rows whose memory ID is absent, whose content hash/provider no longer match, or whose vector is empty. Provider-less restores clear embedding retries as well.
