@@ -231,10 +231,19 @@ export class OrganismSystemFabric {
         const targetRef=String(row?.target_ref??'');
         const otherRef=sourceRef===proposal.sourceRef?targetRef:sourceRef;
         if(!otherRef || otherRef===proposal.sourceRef){deferred++;continue;}
-        const canonicalMemory=canonicalItems.find(item=>
-          item.context?.hexisMemoryRef===otherRef &&
-          item.context?.hexisSourceLineageId===proposal.sourceLineageId
-        );
+        const canonicalMemory=canonicalItems.find(item=>{
+          if(item.context?.hexisExportId!==proposal.exportId ||
+            item.context?.hexisSourceLineageId!==proposal.sourceLineageId)return false;
+          const persistedRef=String(item.context?.hexisMemoryRef??'');
+          // HMX projection stores memory refs as exportId:sourceRef to make
+          // imports from different documents collision-safe. Goal relationships
+          // reference the source-level ref, so compare only after removing this
+          // proposal's exact export prefix; never strip arbitrary prefixes.
+          const sourceRef=persistedRef.startsWith(proposal.exportId+':')
+            ? persistedRef.slice(proposal.exportId.length+1)
+            : persistedRef;
+          return sourceRef===otherRef;
+        });
         const endpointKey=String(canonicalMemory?.context?.hexisGraphSourceKey??'');
         const endpointNode=endpointKey?graphNodes.find(node=>String(node.sourceKey??'')===endpointKey):undefined;
         if(!endpointNode){deferred++;continue;}
