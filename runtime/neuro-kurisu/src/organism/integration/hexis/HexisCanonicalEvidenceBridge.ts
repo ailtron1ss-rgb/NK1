@@ -68,6 +68,10 @@ export class HexisCanonicalEvidenceBridge {
     }
     const source = this.mapP65Source(claim.source);
     if (!source) return this.reject(memoryId, 'p65-source-not-independent', claimId);
+    const provenance = normalizeEvidenceLineageProvenance(claim.provenance);
+    if (!provenance || createHash('sha256').update(claim.content).digest('hex') !== provenance.contentFingerprint) {
+      return this.reject(memoryId, 'p65-content-fingerprint-mismatch', claimId);
+    }
     return this.recordCandidate(memoryId, {
       id: claim.id,
       source,
