@@ -1,3 +1,9 @@
+## [NK1][WorkPass487] Make the CLI future-evidence fixture exceed the policy tolerance (2026-10-27)
+
+- The canonical MemoryOS2 doctor classifies an observation/freshness timestamp as future evidence only when it exceeds the current time by more than five minutes. The CLI test used a timestamp just 60 seconds ahead and incorrectly expected the future-evidence counter to increase.
+- Move the fixture to one hour ahead, matching the existing WorkPass314 unit test and preserving the production five-minute tolerance and error-reporting behavior. This corrects test data; no validator threshold was weakened.
+- Re-run the broad recovered-runtime workflow on the exact updated head before closing pass 2.
+
 ## [NK1][WorkPass486] Route compound-skill steps through the canonical Core wrapper (2026-10-27)
 
 - WorkPass97 caught the remaining direct ActionGateway execution path in compound skill steps. It duplicated finalization for unkeyed execution and bypassed the single Core-owned tool-ID normalization/finalizer wrapper.
