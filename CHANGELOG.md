@@ -1,3 +1,9 @@
+## [NK1][WorkPass453] Use the installed Node type contract for runtime typecheck (2026-10-27)
+
+- The runtime typecheck runs after the workflow installs the app lockfile, which already pins `@types/node`, but `tsconfig.clean.json` only saw the runtime's intentionally partial ambient shims. This caused a broad family of false missing-Node-API diagnostics (`node:fs`, `NodeJS`, `Buffer`, `createPublicKey`, `realpath`, `path.resolve`, and related APIs).
+- Added the app's installed `@types` root as a fallback type root and selected Node types explicitly. Removed custom global `process`/`Buffer` declarations so the real Node ambient types remain authoritative; targeted `node:` module declarations stay as compatibility overloads.
+- This narrows the error surface at its source rather than expanding a parallel imitation of Node types. Exact-head runtime typecheck and integration tests must still pass before this is considered validated.
+
 ## [NK1][WorkPass452] Run compound-repair clock registration regression in CI (2026-10-27)
 
 - Extended `tests/runtime-clocks.mjs` to register `p23-compound-repair-revision` and assert its scheduler state exists, proving the runtime clock is admitted by the live scheduler allowlist rather than only accepted by a TypeScript union.
