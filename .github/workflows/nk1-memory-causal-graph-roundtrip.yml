@@ -1,0 +1,54 @@
+name: NK1 causal memory graph round-trip
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - 'fix/causal-life-graph-*'
+    paths:
+      - '.github/workflows/nk1-memory-causal-graph-roundtrip.yml'
+      - 'CHANGELOG.md'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/organism/system/CausalLifeGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/memory-subsystem-state-roundtrip-workpass570.mjs'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - '.github/workflows/nk1-memory-causal-graph-roundtrip.yml'
+      - 'CHANGELOG.md'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
+      - 'runtime/neuro-kurisu/src/organism/system/CausalLifeGraph.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/memory-subsystem-state-roundtrip-workpass570.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-causal-memory-graph-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  causal-memory-roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned runtime dependency graph
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Test cognitive memory snapshot/restore round trip
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-subsystem-state-roundtrip
