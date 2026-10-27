@@ -1,3 +1,9 @@
+## [NK1][WorkPass510] Gate release audits on current SBOM provenance (2026-10-27)
+
+- Wire the existing `test:provenance-current` into root `audit:workpass70` and runtime `release:audit`, `release:final`, and `release:final3`.
+- Release validation now regenerates and checks the CycloneDX SBOM and source-archive/license-evidence inventory instead of silently relying on the older tracked report.
+- This proves inventory/hash structure only. Ambiguous imported-source licensing still requires manual review; no release ZIP, legal approval, or readiness score is advanced by this change.
+
 ## [NK1][WorkPass509] Harden Hexis source-trace identity and future evidence bounds (2026-10-27)
 
 - `SourceMonitor.record` now treats trace IDs as immutable: exact replay is idempotent; conflicting payload reuse increments the conflict counter and cannot replace the first record.
