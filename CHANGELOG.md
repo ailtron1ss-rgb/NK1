@@ -1,3 +1,11 @@
+## [NK1][WorkPass512] Add reproducible human retrieval annotation pipeline (2026-10-27)
+
+- Add a local prepare/finalize CLI for frozen MemoryOS2 corpora, query splits, human-assigned relevant memory IDs and explicit unanswerable labels.
+- Bind packs to snapshot/query/catalog fingerprints; bind finalized labels to the benchmark's canonical dataset fingerprint and require source provenance plus an exact license identifier.
+- Reject duplicate or near-duplicate cross-split queries, changed queue identity, unknown memory IDs, incomplete annotations and insufficient EN/RU train/answerable/unanswerable counts.
+- Add regression coverage for hash parity with MemoryRetrievalBenchmark, privacy-aware local packs, no fabricated labels, fail-closed invalid annotations and no-overwrite publication; wire it into core CI and integration closure.
+- Test annotations are synthetic fixture data only. This creates a reproducible process for independent evidence; it does not prove retrieval uplift, approve licenses, or update the Release ZIP.
+
 ## [NK1][WorkPass568] Improve bilingual autobiographical and session recall (2026-10-27)
 
 - Prioritize explicit profile questions before broad recall phrasing, and recognize Russian/English prompts about previous conversations and sessions as episodic recall.
