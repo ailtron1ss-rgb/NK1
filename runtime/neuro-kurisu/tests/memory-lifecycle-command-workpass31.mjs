@@ -462,6 +462,64 @@ assert.deepEqual(
   capacityFailureBaselineIds,
   'the enclosing rollback must return to the exact 1,600-row baseline after trim failure',
 );
+// Also exercise a partial trim that reports false (rather than throwing). The
+// failing trim deletes an old row first; commit must restore it with the added row.
+const capacityFalseExportId = 'exp_0000000000009438';
+const capacityFalseStagingId = 'wp437-capacity-false-stage';
+const capacityFalseToken = capacityFailureRuntime.memoryOS.captureHmxImportCompensation(
+  capacityFalseExportId,
+  capacityFalseStagingId,
+);
+assert.ok(capacityFalseToken);
+const capacityFalseImported = capacityFailureRuntime.memoryOS.encode(
+  makeInput('WP437 return-false trim must restore every row before rollback.', {
+    id: 'wp437-imported-row-return-false',
+    kind: 'identity',
+    source: 'hexis:wp437:capacity-false',
+    tags: ['hexis-import', 'wp437'],
+    context: { hexisExportId: capacityFalseExportId, hexisStagingId: capacityFalseStagingId },
+    epistemicStatus: 'quarantined',
+    provenanceClass: 'external',
+    sourceAuthority01: .4,
+    independenceKey: 'wp437:external-source-false',
+  }),
+  {
+    clone: false,
+    forceDistinct: true,
+    hmxImportCompensationToken: capacityFalseToken,
+    hmxImportCommandId: 'hexis-hmx:' + 'f'.repeat(48),
+  },
+);
+const capacityFalsePreCommitIds = capacityFailureRuntime.fabric.canonicalSnapshot().items
+  .map(item => item.id).sort();
+const capacityFalseOldestId = capacityFailureRuntime.memoryOS.snapshot({ clone: false }).items.at(-1)?.id;
+assert.ok(capacityFalseOldestId);
+capacityFailureRuntime.memoryOS.trimCanonicalItemCount = () => {
+  assert.equal(capacityFailureRuntime.memoryOS.forgetById(capacityFalseOldestId, 'wp437-injected-partial-trim'), true);
+  return false;
+};
+assert.equal(
+  capacityFailureRuntime.memoryOS.commitHmxImportCompensation(capacityFalseToken),
+  false,
+  'a trim that partially mutates then returns false must abort the transaction commit',
+);
+delete capacityFailureRuntime.memoryOS.trimCanonicalItemCount;
+assert.equal(capacityFailureRuntime.memoryOS.hasHmxImportCompensation(capacityFalseToken), true);
+assert.deepEqual(
+  capacityFailureRuntime.fabric.canonicalSnapshot().items.map(item => item.id).sort(),
+  capacityFalsePreCommitIds,
+  'return-false trim failure must restore both the old row and the temporary imported row',
+);
+assert.equal(
+  capacityFailureRuntime.memoryOS.rollbackHmxImportMemory(capacityFalseImported.id, capacityFalseToken)?.removed,
+  true,
+);
+assert.equal(capacityFailureRuntime.memoryOS.discardHmxImportCompensation(capacityFalseToken), true);
+assert.deepEqual(
+  capacityFailureRuntime.fabric.canonicalSnapshot().items.map(item => item.id).sort(),
+  capacityFailureBaselineIds,
+  'rollback after a partial false-return trim must recover the original 1,600 row IDs',
+);
 void originalCapacityTrim;
 
 console.log(JSON.stringify({
