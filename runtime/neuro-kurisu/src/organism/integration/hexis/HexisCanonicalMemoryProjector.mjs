@@ -713,41 +713,62 @@ export class HexisCanonicalMemoryProjector {
       // Restore trust/certainty metadata changed on pre-existing duplicate rows.
       // The expected-current guard fails closed rather than overwriting later changes.
       if (this.semanticGraph && semanticGraphBefore) {
+        let restoredSnapshot = false;
         try {
-          const restoredSnapshot = semanticGraphMutationCheckpoint !== null &&
+          restoredSnapshot = semanticGraphMutationCheckpoint !== null &&
             typeof this.semanticGraph.restoreIfUnchanged === 'function' &&
             this.semanticGraph.restoreIfUnchanged(semanticGraphBefore, semanticGraphMutationCheckpoint, projectionMutationToken) === true;
-          if (!restoredSnapshot) {
+        } catch (graphRestoreError) {
+          // A broken snapshot adapter must not prevent the independent per-record
+          // compensation pass from unwinding still-owned graph writes.
+          rollbackErrors.push('semantic-graph-restore:' + String(graphRestoreError?.message ?? graphRestoreError).slice(0, 220));
+        }
+        if (!restoredSnapshot) {
+          if (!rollbackErrors.some(entry => entry.startsWith('semantic-graph-restore:'))) {
             rollbackErrors.push('semantic-graph-conflict');
-            if (semanticGraphMutationCheckpoint !== null &&
-                typeof this.semanticGraph.rollbackOwnedMutations === 'function') {
+          }
+          try {
+            if (semanticGraphMutationCheckpoint === null ||
+                typeof this.semanticGraph.rollbackOwnedMutations !== 'function') {
+              rollbackErrors.push('semantic-graph-owned-rollback-unavailable');
+            } else {
               const ownedRollback = this.semanticGraph.rollbackOwnedMutations(semanticGraphMutationCheckpoint, projectionMutationToken);
               if (ownedRollback.conflicts > 0 || ownedRollback.historyLost) {
                 rollbackErrors.push('semantic-graph-owned-rollback-partial:' + ownedRollback.conflicts);
               }
             }
+          } catch (graphOwnedRollbackError) {
+            rollbackErrors.push('semantic-graph-owned-rollback:' + String(graphOwnedRollbackError?.message ?? graphOwnedRollbackError).slice(0, 220));
           }
-        } catch (graphRollbackError) {
-          rollbackErrors.push('semantic-graph:' + String(graphRollbackError?.message ?? graphRollbackError).slice(0, 220));
         }
       }
       if (this.temporalLedger && temporalLedgerBefore) {
+        let restoredSnapshot = false;
         try {
-          const restoredSnapshot = temporalLedgerMutationCheckpoint !== null &&
+          restoredSnapshot = temporalLedgerMutationCheckpoint !== null &&
             typeof this.temporalLedger.restoreIfUnchanged === 'function' &&
             this.temporalLedger.restoreIfUnchanged(temporalLedgerBefore, temporalLedgerMutationCheckpoint, projectionMutationToken) === true;
-          if (!restoredSnapshot) {
+        } catch (temporalRestoreError) {
+          // Still attempt owner-scoped compensation when full-state restore throws.
+          rollbackErrors.push('temporal-ledger-restore:' + String(temporalRestoreError?.message ?? temporalRestoreError).slice(0, 220));
+        }
+        if (!restoredSnapshot) {
+          if (!rollbackErrors.some(entry => entry.startsWith('temporal-ledger-restore:'))) {
             rollbackErrors.push('temporal-ledger-conflict');
-            if (temporalLedgerMutationCheckpoint !== null &&
-                typeof this.temporalLedger.rollbackOwnedMutations === 'function') {
+          }
+          try {
+            if (temporalLedgerMutationCheckpoint === null ||
+                typeof this.temporalLedger.rollbackOwnedMutations !== 'function') {
+              rollbackErrors.push('temporal-ledger-owned-rollback-unavailable');
+            } else {
               const ownedRollback = this.temporalLedger.rollbackOwnedMutations(temporalLedgerMutationCheckpoint, projectionMutationToken);
               if (ownedRollback.conflicts > 0 || ownedRollback.historyLost) {
                 rollbackErrors.push('temporal-ledger-owned-rollback-partial:' + ownedRollback.conflicts);
               }
             }
+          } catch (temporalOwnedRollbackError) {
+            rollbackErrors.push('temporal-ledger-owned-rollback:' + String(temporalOwnedRollbackError?.message ?? temporalOwnedRollbackError).slice(0, 220));
           }
-        } catch (temporalRollbackError) {
-          rollbackErrors.push('temporal-ledger:' + String(temporalRollbackError?.message ?? temporalRollbackError).slice(0, 220));
         }
       }
       const reason = String(error?.message ?? error).slice(0, 500);
