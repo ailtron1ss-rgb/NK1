@@ -81,7 +81,8 @@ for(const seed of seeds){
     for(const [key,value] of Object.entries({oldBefore,oldAfter,newAfter})){
       assert.ok(Number.isFinite(value)&&value>=0&&value<=1, strategy.name+'.'+key+' must be valid');
     }
-    assert.ok(newAfter>.60,'each policy must retain useful new-task performance');
+    console.log('P26_REPLAY_POLICY_SWEEP_ROW',JSON.stringify({seed,strategy:strategy.name,oldBefore,oldAfter,newAfter,replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons}));
+    assert.ok(newAfter>.60,`${strategy.name} seed=${seed} new-task performance must exceed .60 (actual ${newAfter})`);
     if(strategy.stride>0)assert.equal(blockedReplayRows,0,'well-separated contexts must not be misclassified as same-context conflict');
     records.push({seed,strategy:strategy.name,oldBefore,oldAfter,newAfter,retentionDelta:oldAfter-oldBefore,
       replayUpdates,blockedReplayRows,eligibleReplayRows,conflictComparisons});
