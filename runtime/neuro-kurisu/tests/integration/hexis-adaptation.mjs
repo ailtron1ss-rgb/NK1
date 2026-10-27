@@ -48,6 +48,10 @@ assert.equal(adaptiveRestored.contextValue.context_519.causal, 1, 'context score
 assert.equal(adaptiveRestored.contextTrials.context_519.causal, 10000, 'context trial counts must be bounded');
 assert.equal(Object.hasOwn(adaptiveRestored.contextValue, '__proto__'), false, 'prototype-like context keys must be rejected');
 assert.equal(Object.hasOwn(adaptiveRestored.contextValue, 'constructor'), false, 'constructor context keys must be rejected');
+const validCooldownTimestamp = 1700000000123;
+adaptiveRestoreGuard.restore({ ...adaptiveRestored, cooldownUntil: validCooldownTimestamp });
+assert.equal(adaptiveRestoreGuard.snapshot().cooldownUntil, validCooldownTimestamp,
+  'valid epoch-millisecond cooldown timestamps must not be mistaken for small counters');
 assert(['semantic', 'hybrid', 'causal', 'temporal', 'balanced'].includes(adaptiveRestoreGuard.choose({}, 100)),
   'the normalized policy must continue selecting a valid strategy');
 
