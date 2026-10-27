@@ -48,6 +48,27 @@ assert.equal(memory.get(target.id)?.confidence, 0.7,
 assert.equal(memory.get(target.id)?.context?.hexisLastEvidenceStance, 'refutes');
 assert.equal(memory.get(target.id)?.evidenceSources?.some(row => row.source.includes('hex-evidence-1')), true);
 
+// A shorter evidence ID must not collide with a longer ID sharing its prefix.
+const longerId = { ...evidence, evidenceId: 'hex-evidence-10' };
+const longerRecorded = applyReviewedHexisEvidence(memory, target.id, longerId, { reviewed: true });
+assert.equal(longerRecorded.status, 'recorded');
+const shorterTarget = memory.encode({
+  content: 'Separate target for evidence ID prefix regression',
+  kind: 'semantic', source: 'test:prefix-regression', salience: 0.5,
+  emotionalWeight: 0, identityRelevance: 0, goalRelevance: 0,
+  socialRelevance: 0, predictionError: 0, confidence: 0.6,
+  epistemicStatus: 'belief', entities: [], semanticLinks: [], temporalLinks: [], causalLinks: [],
+}, { clone: false });
+memory.updateSignals(shorterTarget.id, {
+  evidenceSources: [{
+    source: 'hexis:tool:prior#hex-evidence-10', provenanceClass: 'external',
+    sourceAuthority01: 0.9, independenceKey: 'tool-run:prior',
+    observedAt: evidence.observedAt, evidenceFreshnessAt: evidence.observedAt,
+  }],
+}, 'test-prefix-regression');
+const shorter = applyReviewedHexisEvidence(memory, shorterTarget.id, evidence, { reviewed: true });
+assert.equal(shorter.status, 'recorded', 'hex-evidence-1 is not a replay of hex-evidence-10');
+
 const duplicate = applyReviewedHexisEvidence(memory, target.id, evidence, { reviewed: true });
 assert.equal(duplicate.status, 'duplicate', 'exact evidence replay must be idempotent');
 assert.equal(applyReviewedHexisEvidence(memory, 'missing-memory', evidence, { reviewed: true }).status, 'missing-target');
