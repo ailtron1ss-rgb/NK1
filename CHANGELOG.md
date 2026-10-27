@@ -1,3 +1,9 @@
+## [NK1][WorkPass574] Bind response voice to post-response emotional state (2026-10-27)
+
+- Refresh the canonical organism snapshot after a chat response before assigning the assistant turn's emotion, avoiding use of the pre-response label by AvatarStage's browser TTS.
+- Keep the generated reply durable if the follow-up UI snapshot request fails; surface the refresh error without discarding the chat turn.
+- Tests were not run in this pass. Browser speech/Live2D synchronization still needs end-to-end verification on real audio clocks.
+
 ## [NK1][WorkPass573] Stabilize query-derived memory retrieval context (2026-10-27)
 
 - Remove lifetime counters `semanticQueries` and `linkUpdates` as fallback signals for temporal/causal routing; current query intent and explicit temporal mode now define the context.
