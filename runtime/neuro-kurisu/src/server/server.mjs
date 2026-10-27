@@ -879,6 +879,7 @@ async function route(req, res) {
                 await runtime.core.flush();
                 return json(res, 200, { ok: true, result });
             }
+            if (result.reason === 'source-trace-id-conflict') await runtime.core.flush();
             // Reusing an immutable trace ID with different provenance is a resource conflict.
             const status = result.reason === 'canonical-memory-not-found' ? 404 :
                 (result.reason === 'canonical-evidence-write-failed' || result.reason === 'source-trace-id-conflict') ? 409 : 400;

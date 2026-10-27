@@ -1,3 +1,10 @@
+## [NK1][WorkPass588] Port Hexis trace-conflict telemetry onto the current source baseline (2026-10-27)
+
+- Preserve the first accepted source trace when an immutable trace ID is reused with conflicting provenance, while incrementing a separate conflict diagnostic.
+- Flush the rejected-conflict audit event before returning HTTP 409 so the telemetry survives a server restart.
+- Extend the live server smoke regression for exact replay, one conflict increment, original-trace preservation, and restart persistence.
+- Based on current `workpass70-source` head `e6830bf`; the earlier stale PR's duplicate retrieval patch is intentionally excluded. Fresh CI and the Release ZIP are still pending.
+
 ## [NK1][WorkPass587] Enforce source-payload schema preservation in local skill generation (2026-10-27)
 
 - Validate the local-model revision output against the source payload root type before returning it to P23.

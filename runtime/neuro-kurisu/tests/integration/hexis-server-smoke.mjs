@@ -45,6 +45,8 @@ try {
         },
       },
     };
+    const initialConflictDiagnostics = await (await fetch(base + '/api/organism/integration/hexis')).json();
+    const initialConflictCount = Number(initialConflictDiagnostics.hexis?.sourceTraceConflicts ?? 0);
     const lineageResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
     const lineage = await lineageResponse.json();
     if (lineageResponse.status !== 200 || !lineage.ok || !lineage.result?.accepted || !lineage.result?.added) {
@@ -55,6 +57,14 @@ try {
     if (replayResponse.status !== 200 || !replay.ok || !replay.result?.accepted || replay.result?.added) {
       throw new Error('hexis-live-evidence-lineage-replay:' + JSON.stringify(replay));
     }
+
+    const replayConflictDiagnostics = await (await fetch(base + '/api/organism/integration/hexis')).json();
+    if (Number(replayConflictDiagnostics.hexis?.sourceTraceConflicts ?? 0) !== initialConflictCount) {
+      throw new Error('hexis-exact-replay-must-not-increment-conflict-counter:' + JSON.stringify({
+        before: initialConflictCount,
+        after: replayConflictDiagnostics.hexis?.sourceTraceConflicts,
+      }));
+    }
     const tamperedResponse = await post('/api/organism/integration/hexis/evidence/lineage', {
       ...lineagePayload, sourceContent: sourceContent + ' tampered',
     });
@@ -62,6 +72,8 @@ try {
 
     // Conflicting provenance for an immutable trace ID must be rejected as a
     // resource conflict, without replacing the first accepted source lineage.
+    const conflictDiagnosticsBefore = await (await fetch(base + '/api/organism/integration/hexis')).json();
+    const conflictCountBefore = Number(conflictDiagnosticsBefore.hexis?.sourceTraceConflicts ?? 0);
     const conflictingTraceResponse = await post('/api/organism/integration/hexis/evidence/lineage', {
       ...lineagePayload,
       trace: {
@@ -77,6 +89,14 @@ try {
         conflictingTrace.result?.accepted !== false || conflictingTrace.result?.added !== false ||
         conflictingTrace.result?.reason !== 'source-trace-id-conflict') {
       throw new Error('hexis-conflicting-trace-id-must-fail-closed:' + JSON.stringify(conflictingTrace));
+    }
+
+    const conflictDiagnosticsAfter = await (await fetch(base + '/api/organism/integration/hexis')).json();
+    if (Number(conflictDiagnosticsAfter.hexis?.sourceTraceConflicts) !== conflictCountBefore + 1) {
+      throw new Error('hexis-source-trace-conflict-must-increment-audit-counter:' + JSON.stringify({
+        before: conflictCountBefore,
+        after: conflictDiagnosticsAfter.hexis?.sourceTraceConflicts,
+      }));
     }
 
     const originalAfterConflictResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
@@ -103,6 +123,13 @@ try {
       } catch {}
     }
     if (!restartedReady) throw new Error('server-restart-not-ready:' + restartedOutput.slice(-1200));
+    const restoredDiagnostics = await (await fetch(base + '/api/organism/integration/hexis')).json();
+    if (Number(restoredDiagnostics.hexis?.sourceTraceConflicts) !== conflictCountBefore + 1) {
+      throw new Error('hexis-source-trace-conflict-counter-must-survive-restart:' + JSON.stringify({
+        expected: conflictCountBefore + 1,
+        actual: restoredDiagnostics.hexis?.sourceTraceConflicts,
+      }));
+    }
     const restoredReplayResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
     const restoredReplay = await restoredReplayResponse.json();
     if (restoredReplayResponse.status !== 200 || !restoredReplay.ok ||
