@@ -1,3 +1,9 @@
+## [NK1][WorkPass506] Enforce planner memory budget across all cognitive recall paths (2026-10-27)
+
+- The advanced/internal-goal recall branch could run retrieval even when `cognitiveExecutionPlan.run.memory` was false, bypassing the cycle's own memory budget decision.
+- Advanced recall now returns an empty packet when the planner disables memory; when enabled, it reuses the already-fetched user-text packet or calls the bounded `retrieveForCognition` adapter for the fallback query.
+- Extended the WorkPass502 route regression to assert that both the initial and advanced recall paths honor the planner gate. This is a runtime policy-routing correction, not a claim of retrieval quality uplift.
+
 ## [NK1][WorkPass505] Require semantic provider and cognitive retrieval regressions in Core CI (2026-10-27)
 
 - Added the existing WorkPass33 local embedding-provider contract test and WorkPass34 `MemoryFabric.retrieveForCognition` test to `test:rebuild-recovered`.
