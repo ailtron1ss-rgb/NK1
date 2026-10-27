@@ -1,3 +1,13 @@
+## [NK1][WorkPass468] Return canonical trusted shadow registration (2026-10-27)
+
+- Fixed `OrganismCore.registerTrustedSkillShadowRun` to return the durable registry's canonical registered context instead of discarding it as `void`. Restart/re-registration callers can now verify idempotency against the persisted `registeredAt` without bypassing the Core-owned registry.
+- The WorkPass108 exact-head run must confirm the restart-idempotency path after this contract fix.
+
+## [NK1][WorkPass467] Build replay diversity fixtures from grounded transitions (2026-10-27)
+
+- Updated the WorkPass110 causal-stream replay-diversity fixture to bind each decision trace to its own pre-action tick and supply the matching post-action `lastAction`/success observation.
+- Added explicit assertions that the task-A and task-B transitions were accepted and that exactly four grounded outcomes entered replay. This preserves the runtime's fail-closed rule instead of weakening replay admission to accommodate an invalid fixture.
+
 ## [NK1][WorkPass441] Prevent cross-event cancellation across CI workflows (2026-10-27)
 
 - Added `github.event_name` to cancellation groups for WorkPass71, WorkPass287-288, WorkPass79, WorkPass94, WorkPass95, WorkPass99, WorkPass110 and Hexis canonical apply. Push and pull-request jobs for the same branch can now validate independently; newer runs of the same event/branch still supersede older ones.
