@@ -1,3 +1,9 @@
+## [NK1][WorkPass433] Isolate rollback reconciliation by stage and attempt under interleaved imports (2026-10-27)
+
+- Expanded the failure-injection regression to simulate a second HMX stage creating a row from the same export while the first stage is unwinding. The concurrent row is deliberately absent from the original `beforeIds` snapshot and shares the export ID, but has its own staging ID and attempt.
+- The regression now requires compensation to remove the failed stage's own row while preserving all pre-existing rows and the concurrent peer row; it also checks that no row from the failed stage/attempt remains and the temporal ledger returns to baseline.
+- The regression is wired into the existing `test:hexis-canonical-apply` command. The source change is committed; hosted execution is still unverified because latest-head Actions jobs are not exposing step/log metadata.
+
 ## [NK1][WorkPass452] Repair HMX ingestion and signed-outcome replay checks (2026-10-27)
 
 - Repaired the malformed HMX document-size guard: oversized UTF-8 documents now emit a bounded `$` / `size-limit` conflict and the runtime file parses again.
