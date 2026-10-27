@@ -191,10 +191,23 @@ try {
   const memoryIndex = await (await fetch(`${base}/api/organism/integration/hexis/memories?limit=8`)).json();
   if (!memoryIndex.ok || !Array.isArray(memoryIndex.memoryIndex)) throw new Error('hexis-memory-index');
   if (memoryIndex.memoryIndex[0]?.id) {
-    const belief = await (await post('/api/organism/integration/hexis/belief/revise', { memoryId: memoryIndex.memoryIndex[0].id, confidence01: .65, stance: 'supports', context: 'server-smoke', evidence: { ref: 'server-smoke-evidence', trust01: .8 } })).json();
+    // Replay the same valid revision request; idempotency must be tested after
+    // request validation, not with a payload missing the required confidence.
+    const beliefPayload = {
+      memoryId: memoryIndex.memoryIndex[0].id,
+      confidence01: .65,
+      stance: 'supports',
+      context: 'server-smoke',
+      evidence: { ref: 'server-smoke-evidence', trust01: .8 },
+    };
+    const belief = await (await post('/api/organism/integration/hexis/belief/revise', beliefPayload)).json();
     if (!belief.ok || !belief.result?.audit) throw new Error('hexis-belief-revise');
-    const duplicate = await (await post('/api/organism/integration/hexis/belief/revise', { memoryId: memoryIndex.memoryIndex[0].id, stance: 'supports', context: 'server-smoke', evidence: { ref: 'server-smoke-evidence', trust01: .8 } })).json();
-    if (!duplicate.ok || duplicate.result?.audit?.applied !== false) throw new Error('hexis-belief-dedupe');
+    const duplicate = await (await post('/api/organism/integration/hexis/belief/revise', beliefPayload)).json();
+    if (!duplicate.ok || duplicate.result?.audit?.applied !== false || duplicate.result?.audit?.reason !== 'duplicate_source') {
+      throw new Error('hexis-belief-dedupe:' + JSON.stringify(duplicate));
+    }
+    const missingConfidence = await post('/api/organism/integration/hexis/belief/revise', { ...beliefPayload, confidence01: undefined });
+    if (missingConfidence.status !== 400) throw new Error('hexis-belief-confidence-required:' + missingConfidence.status);
     const invalidBeliefStanceResponse = await post('/api/organism/integration/hexis/belief/revise', {
       memoryId:memoryIndex.memoryIndex[0].id,stance:'support-ish',evidence:{ref:'invalid-stance',trust01:.8},
     });
