@@ -1,10 +1,11 @@
 # CURRENT HANDOFF — 2026-10-27
 
-> **Read first:** [NK1 canonical project goal and state map](docs/NK1_CANONICAL_PROJECT_STATE_RU.md). It supersedes this file's older checkpoint where dates, branches, validation, or next steps conflict. Do not assume historical PASS entries validate the latest commit.
+> **Read first:** [NK1 canonical project goal and state map](docs/NK1_CANONICAL_PROJECT_STATE_RU.md). It is the handoff authority for goal, subsystem boundaries, evidence status, and next priorities. Old WorkPass checkpoints below are historical unless their exact SHA matches current code.
 
-**Current source base:** `workpass70-source`  
-**Latest source-branch checkpoint inspected:** `62deb97c0a175245ebe9058e29e0f3f43b32f100` (fresh base includes WorkPass496; check exact-head CI before claiming any newer change validated).  
-**Release:** latest published source archive remains the 2026-10-19 WorkPass70 Hotfix ZIP until a later asset is verified. Source changes alone do not update Release.
+**Canonical source branch:** `workpass70-source`  
+**Source checkpoint:** `91d1ef02bda69d7bbe6cbbd092ff5d6e6dc33720`; WorkPass496's bilingual retrieval gates are in its history at `62deb97c0a175245ebe9058e29e0f3f43b32f100`.  
+**Hexis stack:** child PR [#255](https://github.com/ailtron1ss-rgb/NK1/pull/255) merged into intermediate branch `fix/hexis-belief-dedupe-contract-2026-10-27` as `8299e157bde6256dabfe2e62dba3bc198efa3a01`. Thirteen workflows passed on child head `a995911b9eeba78d3d6e68931c3527bf32d49b12`; current parent PR #252 exact-head checks are still required. Do not claim this stack has reached `workpass70-source` or Release yet.  
+**Release:** last published ZIP remains the WorkPass70 Hotfix asset from 2026-10-19; verify a later asset and SHA-256 before claiming a release update.
 
 ---
 
