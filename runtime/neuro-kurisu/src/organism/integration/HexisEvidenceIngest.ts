@@ -1,4 +1,4 @@
-/**
+/** 
  * Applies a reviewed Hexis evidence proposal to NK1's canonical MemoryOS2 record.
  *
  * This is deliberately not an automatic belief updater: it records source lineage
@@ -22,7 +22,8 @@ export interface HexisEvidenceApplyOptions {
 
 /**
  * Persist evidence through MemoryOS2's existing evidence-source merge/dedup path.
- * A missing review approval is a non-mutating result; exact replays are idempotent.
+ * A missing review approval is a non-mutating result. Exact replays and different
+ * event IDs from an already-seen independent source are both idempotent duplicates.
  */
 export function applyReviewedHexisEvidence(
   memory: Pick<MemoryOS2, 'get' | 'updateSignals' | 'updateContext'>,
@@ -38,15 +39,27 @@ export function applyReviewedHexisEvidence(
     return { status: 'review-required', targetMemoryId, evidenceId: proposal.evidenceId, stance: proposal.stance };
   }
 
-  // Evidence IDs are the final component of the adapter's source reference.
-  // Use an exact suffix match: includes() incorrectly treats "...#event-1" as
-  // a replay when the only stored event is "...#event-10".
+  const lineage = `lineage:${proposal.source.independenceKey!.normalize('NFKC').toLocaleLowerCase()}`;
+  // MemoryOS2's canonical replay guard is lineage-based, not just event-ID-based.
+  // Different event IDs or source wrappers must not turn one upstream origin into
+  // multiple corroborating sources. Check both the durable compact guard and the
+  // visible trail because older snapshots may predate evidenceLineageKeys.
+  const priorLineageSeen =
+    (target.evidenceLineageKeys ?? []).includes(lineage) ||
+    (target.evidenceSources ?? []).some(source =>
+      typeof source.independenceKey === 'string' &&
+      `lineage:${source.independenceKey.normalize('NFKC').toLocaleLowerCase()}` === lineage
+    );
+  if (priorLineageSeen) {
+    return { status: 'duplicate', targetMemoryId, evidenceId: proposal.evidenceId };
+  }
+
+  // Exact suffix matching avoids treating "...#event-1" as a replay of "...#event-10".
   const evidenceMarker = `#${proposal.evidenceId}`;
   if ((target.evidenceSources ?? []).some(source => String(source.source).endsWith(evidenceMarker))) {
     return { status: 'duplicate', targetMemoryId, evidenceId: proposal.evidenceId };
   }
 
-  const lineage = `lineage:${proposal.source.independenceKey!.normalize('NFKC').toLocaleLowerCase()}`;
   const priorSources = target.evidenceSources ?? [];
   const merged = memory.updateSignals(targetMemoryId, {
     evidenceSources: [...priorSources, proposal.source],
