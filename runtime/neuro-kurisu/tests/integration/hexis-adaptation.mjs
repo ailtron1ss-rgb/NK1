@@ -1347,6 +1347,87 @@ assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 
   'conflicted rollback must consume the one-shot compensation capability');
 
 
+// Whole-snapshot rollback of the semantic graph and temporal ledger must fail closed
+// if an independent write lands during a downstream adapter failure.
+const scopedRollbackRuntime = new MemorySubsystemRuntime();
+const scopedRollbackLedger = new HexisAdaptationFabric();
+let injectForeignProjectionWrites = true;
+const originalScopedTemporalRecord = scopedRollbackLedger.recordTemporalAssertion.bind(scopedRollbackLedger);
+const scopedTemporalLedgerAdapter = new Proxy(scopedRollbackLedger, {
+  get(target, property) {
+    if (property === 'recordTemporalAssertion') {
+      return (...args) => {
+        if (injectForeignProjectionWrites) {
+          injectForeignProjectionWrites = false;
+          scopedRollbackRuntime.semanticMemory.upsertNode(
+            'independent projection survives failed HMX apply',
+            'concept',
+            0.99,
+            'test:external-projection-write',
+          );
+          // This first write belongs to the HMX transaction; the second deliberately
+          // has no owner token and must prevent restoring the pre-transaction snapshot.
+          originalScopedTemporalRecord(...args);
+          originalScopedTemporalRecord({
+            memoryId: 'external-temporal-write',
+            summary: 'Independent temporal assertion written during failed projection.',
+            confidence01: 0.9,
+            validFrom: Date.now(),
+            source: 'test:external-temporal-write',
+          });
+          throw new Error('injected-independent-projection-mutation');
+        }
+        return originalScopedTemporalRecord(...args);
+      };
+    }
+    const value = Reflect.get(target, property, target);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+});
+const scopedRollbackProjector = new HexisCanonicalMemoryProjector(
+  scopedRollbackRuntime.fabric,
+  scopedRollbackRuntime.semanticMemory,
+  scopedTemporalLedgerAdapter,
+);
+scopedRollbackLedger.bindCanonicalMemoryApply(stage => scopedRollbackProjector.apply(stage));
+const scopedRollbackExportId = 'exp_0000000000009206';
+const scopedRollbackStage = scopedRollbackLedger.stageHmx({
+  document: makeHmxDocument(scopedRollbackExportId, {
+    memories: [{
+      ref: scopedRollbackExportId + ':memory-new',
+      type: 'semantic',
+      content: 'Canonical fact whose graph and temporal projection race must fail closed.',
+      status: 'active',
+      trust_level: 0.45,
+    }],
+  }),
+  intent: 'port',
+  strategy: 'additive',
+});
+assert.deepEqual(scopedRollbackStage.conflicts, []);
+assert.equal(scopedRollbackLedger.decideHmx(scopedRollbackStage.stagingId, 'accept')?.status, 'accepted');
+assert.throws(
+  () => scopedRollbackLedger.decideHmx(scopedRollbackStage.stagingId, 'apply'),
+  /hmx-canonical-apply-failed:injected-independent-projection-mutation;rollback-failures=semantic-graph-conflict\|temporal-ledger-conflict/,
+  'the importer must report snapshot conflicts instead of replacing unrelated graph and ledger state',
+);
+assert(scopedRollbackRuntime.semanticMemory.snapshot().nodes.some(
+  node => node.sourceKey === 'test:external-projection-write',
+), 'the independent semantic graph write must survive a failed import');
+assert(scopedRollbackLedger.snapshot().temporal.some(
+  row => row.memoryId === 'external-temporal-write',
+), 'the independent temporal assertion must survive a failed import');
+assert.equal(
+  scopedRollbackRuntime.fabric.canonicalSnapshot().items.some(
+    item => item.content === 'Canonical fact whose graph and temporal projection race must fail closed.',
+  ),
+  false,
+  'the canonical memory written by the failed transaction must still be compensated',
+);
+assert.equal(scopedRollbackLedger.getHmxStage(scopedRollbackStage.stagingId)?.status, 'accepted',
+  'a transaction with conflicted compensation must not be marked applied');
+assert.equal(scopedRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0);
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
