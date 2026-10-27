@@ -1,3 +1,12 @@
+## [NK1][WorkPass464] Repair cognitive scoring, replay evidence fixtures and Live2D expression stability (2026-10-27)
+
+- Rebalanced B272 predicted goal value to avoid saturation masking a high-confidence intrinsic-drive signal; the WorkPass287–288 contract run passed on the preceding integrated head.
+- Fixed replay/causal fixtures so trace tick, selected action, observed postcondition and retained outcome metadata represent the same event.
+- Corrected the seed-bootstrap order-invariance fixture to hold evidence identity and observation metadata constant while changing insertion order.
+- Updated Hermes tamper coverage to change signed runtime identity, exercising signature/receipt trust validation rather than the earlier binary-outcome mismatch guard.
+- Cached the last successfully applied Live2D expression so redundant state messages do not restart the same expression.
+- Exact current-head CI is still required for the latest edits. Runtime typecheck currently has outstanding type errors in large Core/nullability sites and the custom Node shim contracts; no retrieval or learning uplift is claimed. No Release ZIP or `main` changes were made.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
