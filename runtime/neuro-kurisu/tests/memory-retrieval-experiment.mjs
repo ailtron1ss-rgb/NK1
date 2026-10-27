@@ -101,6 +101,16 @@ assert.equal(malformedReport.metrics.candidate.recallAtK01, 1, 'candidate and ba
 
 
 
+// Duplicate corpus IDs must be surfaced as an integrity issue without inflating precision.
+const duplicateSnapshot = structuredClone(snapshot);
+duplicateSnapshot.items = [...duplicateSnapshot.items, structuredClone(duplicateSnapshot.items[0])];
+const duplicateReport = runMemoryOS2RetrievalBenchmark(duplicateSnapshot, [
+  { id: 'duplicate-id-holdout', query: 'project fern event memory document routing status', relevantIds: ['m0'], split: 'holdout' },
+], { now, k: 5, bootstrapSamples: 200, maxExamples: 64 });
+assert.equal(duplicateReport.corpusIntegrity.duplicateIdCount, 1);
+assert.equal(duplicateReport.corpusIntegrity.validForPromotion, false);
+assert.equal(duplicateReport.metrics.baseline.precisionAtK01, 0.2, 'duplicate rows for one relevant memory ID must count as one relevant result for precision');
+
 // High-fanout query: selection must remain stable when identical memory rows are reordered.
 const largeMemory = new MemoryOS2();
 for (let i = 0; i < 260; i++) largeMemory.encode({
