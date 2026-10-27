@@ -1,3 +1,10 @@
+## [NK1][WorkPass458] Unblock learning regressions and align runtime evidence fixtures (2026-10-27)
+
+- Replaced TypeScript constructor parameter properties in `VersionedSkillCandidateStore` with explicit readonly fields and assignments so Node 24 `--experimental-strip-types` can load the module used by P23 tests.
+- Registered the existing WorkPass292 evidence-lanes regression in the runtime package manifest; the workflow previously failed before executing tests because its npm script was missing.
+- Updated the WorkPass90 causal-stream fixture to include the observed post-state `lastAction` and bounded `lastActionSuccess`, which the canonical causal-memory gate now requires before it can mint grounded action/outcome evidence.
+- Validation boundary: exact-head workflows must re-run; these changes do not assert the broader runtime typecheck is green. No Release asset changed or published.
+
 ## [NK1][WorkPass435] Guard workflow concurrency against event cancellation regressions (2026-10-27)
 
 - Extended `tools/verify-ci-reliability.mjs` to reject a Hexis canonical-apply workflow that listens to both `push` and `pull_request`, sets `cancel-in-progress: true`, and omits `github.event_name` from its concurrency group.
