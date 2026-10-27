@@ -712,12 +712,16 @@ export class HexisAdaptationFabric {
             const currentPrior = existingBefore
                 ? this.state.temporal.find(row => row.id === existingBefore.id)
                 : undefined;
-            if (existingBefore && currentPrior && JSON.stringify(currentPrior) !== JSON.stringify(existingAfter)) return false;
-            if (existingBefore && !currentPrior && !evictedBeforeWrite.some(row => row.id === existingBefore.id)) return false;
+            let conflict = false;
+            if (existingBefore && currentPrior && JSON.stringify(currentPrior) !== JSON.stringify(existingAfter)) conflict = true;
+            if (existingBefore && !currentPrior && !evictedBeforeWrite.some(row => row.id === existingBefore.id)) conflict = true;
+
+            // Validate all still-present evicted rows before making any compensation
+            // edits. A row changed by an independent writer is preserved as-is.
             for (const old of evictedBeforeWrite) {
                 const current = this.state.temporal.find(row => row.id === old.id);
                 const expected = existingBefore?.id === old.id ? existingAfter : old;
-                if (current && JSON.stringify(current) !== JSON.stringify(expected)) return false;
+                if (current && JSON.stringify(current) !== JSON.stringify(expected)) conflict = true;
             }
 
             const missingEvicted = evictedBeforeWrite.some(
@@ -733,22 +737,25 @@ export class HexisAdaptationFabric {
                     row => row.revision > ownerRevision && row.ownerToken !== ownerToken,
                 );
                 canRestoreEvicted = !historyLostAfter && !foreignAfter;
+                if (!canRestoreEvicted) conflict = true;
             }
 
+            // Remove this transaction's exact new assertion even if a prior row was
+            // independently changed; that conflict must not strand our own new row.
             if (currentCreated) this.state.temporal = this.state.temporal.filter(row => row.id !== created.id);
-            if (existingBefore && currentPrior) {
+            if (existingBefore && currentPrior && JSON.stringify(currentPrior) === JSON.stringify(existingAfter)) {
                 const index = this.state.temporal.findIndex(row => row.id === existingBefore.id);
-                if (index < 0) return false;
-                this.state.temporal[index] = structuredClone(existingBefore);
+                if (index >= 0) this.state.temporal[index] = structuredClone(existingBefore);
             }
-            if (missingEvicted && !canRestoreEvicted) return false;
-            for (const old of evictedBeforeWrite) {
-                if (this.state.temporal.some(row => row.id === old.id)) continue;
-                const restore = existingBefore?.id === old.id ? existingBefore : old;
-                this.state.temporal.push(structuredClone(restore));
+            if (canRestoreEvicted) {
+                for (const old of evictedBeforeWrite) {
+                    if (this.state.temporal.some(row => row.id === old.id)) continue;
+                    const restore = existingBefore?.id === old.id ? existingBefore : old;
+                    this.state.temporal.push(structuredClone(restore));
+                }
             }
             this.state.temporal = this.state.temporal.slice(-4096);
-            return true;
+            return !conflict;
         });
         return structuredClone(created);
     }
