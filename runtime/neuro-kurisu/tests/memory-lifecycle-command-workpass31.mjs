@@ -623,6 +623,48 @@ assert.equal(
   'maintenance eviction must rebuild/maintain canonical, inverted, DF and character-gram indexes',
 );
 
+// WorkPass442: restore replaces the canonical row set, so embedding vectors and
+// retry records for absent IDs or changed content hashes must be pruned at hydration.
+const restoreCacheRuntime = new MemorySubsystemRuntime();
+const restoreCacheRemoved = restoreCacheRuntime.fabric.encode(
+  makeInput('WP442 this row will be absent from the replacement snapshot.'),
+  { commandId: 'wp442:removed-row' },
+);
+const restoreCacheRevised = restoreCacheRuntime.fabric.encode(
+  makeInput('WP442 this row remains but its canonical content will change.'),
+  { commandId: 'wp442:revised-row' },
+);
+const addRestoreCaches = item => {
+  restoreCacheRuntime.memoryOS.semanticEmbeddingIndex.set(item.id, {
+    contentHash: String(item.contentHash ?? ''),
+    providerId: 'wp442-test-provider',
+    vector: [1, 0],
+    lastUsedAt: Date.now(),
+  });
+  restoreCacheRuntime.memoryOS.semanticEmbeddingRetry.set(item.id, {
+    contentHash: String(item.contentHash ?? ''),
+    attempts: 2,
+    retryAt: Date.now() + 120_000,
+  });
+};
+addRestoreCaches(restoreCacheRemoved);
+addRestoreCaches(restoreCacheRevised);
+const replacementMemoryState = restoreCacheRuntime.memoryOS.snapshot();
+replacementMemoryState.items = replacementMemoryState.items
+  .filter(item => item.id !== restoreCacheRemoved.id)
+  .map(item => item.id === restoreCacheRevised.id
+    ? { ...item, content: 'WP442 replacement content under the same memory ID.', contentHash: '' }
+    : item);
+restoreCacheRuntime.memoryOS.restore(replacementMemoryState);
+for (const id of [restoreCacheRemoved.id, restoreCacheRevised.id]) {
+  assert.equal(restoreCacheRuntime.memoryOS.semanticEmbeddingIndex.has(id), false,
+    'restore must prune absent/content-stale embedding entries: ' + id);
+  assert.equal(restoreCacheRuntime.memoryOS.semanticEmbeddingRetry.has(id), false,
+    'restore must prune absent/content-stale embedding retries: ' + id);
+}
+assert.equal(restoreCacheRuntime.memoryOS.indexDiagnostics().pass, true,
+  'cache pruning on restore must preserve the rebuilt canonical inverted indexes');
+
 console.log(JSON.stringify({
   ok: true,
   canonicalItems: restored.memoryOS.size(),
