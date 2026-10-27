@@ -61,6 +61,30 @@ const independenceKey = 'hexis-source:' + createHash('sha256').update(provenance
 assert(afterFirst.evidenceSources?.some(row => row.independenceKey === independenceKey));
 assert(afterFirst.evidenceLineageKeys?.includes('lineage:' + independenceKey));
 
+// Reusing a trace ID with a different provenance envelope must not shadow the
+// original observation or inject a second lineage into canonical memory.
+runtime.sourceMonitor.record({
+  id: 'trace-direct-001',
+  source: 'world',
+  kind: 'sensor-observation',
+  confidence: .99,
+  epistemicStatus: 'observation',
+  at: now,
+  provenance: {
+    ...provenance,
+    sourceId: 'sensor:spoofed-reuse',
+    contentFingerprint: createHash('sha256').update('different body').digest('hex'),
+  },
+});
+assert.equal(runtime.sourceMonitor.snapshot().conflicts, 1, 'conflicting trace ID reuse is recorded');
+const traceIdReuse = runtime.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-direct-001');
+assert.equal(traceIdReuse.accepted, true);
+assert.equal(traceIdReuse.added, false, 'conflicting ID reuse cannot replace the original lineage');
+const afterTraceIdReuse = runtime.fabric.canonicalSnapshot().items.find(row => row.id === memory.id);
+assert(afterTraceIdReuse);
+assert.equal(afterTraceIdReuse.evidenceSources?.filter(row => row.independenceKey === independenceKey).length, 1);
+assert(!afterTraceIdReuse.evidenceSources?.some(row => row.independenceKey?.includes('spoofed-reuse')));
+
 const p65Id = runtime.p65EpistemicLedger.record({
   tick: 77,
   at: now,
