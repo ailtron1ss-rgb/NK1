@@ -2779,3 +2779,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - [FIX] Added the missing `test:workpass292:evidence-lanes` npm script pointing to the existing `tests/workpass292-evidence-lanes.mjs` regression. The workflow's command previously failed immediately with npm's `Missing script` error.
 - [VALIDATION] Confirmed that the referenced test file exists and exercises causal action/outcome binding, untrusted external intake, stable idempotency identity and trusted aggregate isolation. The resulting workflow run must still confirm execution.
+
+
+## [NK1][Validation] WorkPass452 — wire the remaining regression workflow scripts (2026-10-27)
+
+- [FIX] Added the missing npm entries for WorkPass291 reflective payload-budget, WorkPass293 autonomous P23 revision, and WorkPass294 correlated external postcondition workflows. Each entry points to the corresponding existing test file.
+- [CAUSE] Those workflows were failing before running their tests with npm's `Missing script` error; these were integration wiring failures, not assertions against the implementation.
+- [VALIDATION] Script-to-file paths verified in the repository. The next exact-head workflows must confirm these tests execute and reveal any remaining runtime assertions.
