@@ -97,6 +97,11 @@ export class MemorySubsystemRuntime {
     this.hippocampalFormation.restore(advanced.hippocampalFormation);
     this.consolidationController.restore(advanced.consolidationController);
     this.memoryLifecycleAuthority.restore(advanced.memoryLifecycleAuthority);
+    // Preserve learned memory policy and causal life continuity across process restarts.
+    this.memoryRetentionEconomy.restore(advanced.memoryRetentionEconomy);
+    this.memoryCausalEconomy.restore(advanced.memoryCausalEconomy);
+    this.causalLifeGraph.restore(advanced.causalLifeGraph);
+    this.memoryWorldCausalBridge.restore(advanced.memoryWorldCausalBridge);
   }
 
   /** Read-only memory hygiene report; destructive repair remains an explicit separate operation. */
@@ -109,5 +114,7 @@ export class MemorySubsystemRuntime {
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
     p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), hexisSourceMonitor:this.sourceMonitor.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
     p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),
+    memoryRetentionEconomy:this.memoryRetentionEconomy.snapshot(), memoryCausalEconomy:this.memoryCausalEconomy.snapshot(),
+    causalLifeGraph:this.causalLifeGraph.snapshot(), memoryWorldCausalBridge:this.memoryWorldCausalBridge.snapshot(),
   }; }
 }
