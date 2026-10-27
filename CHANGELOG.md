@@ -1,3 +1,10 @@
+## [NK1][WorkPass475] Fail closed on revision-ID collisions (2026-10-27)
+
+- `MemoryOS2.reviseContent()` now rejects an already-occupied deterministic revision ID unless that row is exactly the expected content in the same revision group. This prevents force-distinct insertion from reusing a conflicting row, creating duplicate IDs, or attaching an unrelated memory to the wrong chain.
+- Added an adversarial test that pre-seeds the deterministic revision ID with a different row/lineage. The attempted correction must throw `memory-revision-id-collision` while preserving the canonical snapshot, original item references, and both revision chains.
+- The prior WorkPass474 post-write exception test also requires exact rollback across canonical row state, byte counters, store order, inverted/dedup/revision indexes, followed by one successful revision and idempotent replay.
+- Static source/test presence only; runtime tests, TypeScript typecheck and hosted CI remain unconfirmed. `main` and the canonical GitHub Release ZIP remain unchanged.
+
 ## [NK1][WorkPass474] Make content revision a multi-record transaction (2026-10-27)
 
 - `MemoryOS2.reviseContent()` now snapshots canonical rows in place, the whole bounded state/counters and every affected dedup/token/character-gram/document-frequency/revision index before creating a revision. If the replacement insert or subsequent revision-history bookkeeping throws, it restores old row objects and array order as well as index/counter state before rethrowing.
