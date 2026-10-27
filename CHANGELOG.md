@@ -1,3 +1,10 @@
+## [NK1][WorkPass586] Wire the verified P23 lifecycle to the local revision generator (2026-10-27)
+
+- Add `generateAndStageReflectiveSkillRevisionWithLocalModel` to P23LearningEngine so the existing bounded local-model generator is directly usable without caller-authored adapter code.
+- Keep candidate generation separate from the existing authenticated proposal, fresh independent evaluation, shadow evidence, human approval and activation boundaries.
+- Add an integration contract proving the exact dataset fingerprint, validation evidence, revision plan and evidence fingerprint flow through the adapter without sending per-case holdout details.
+- The standalone generator already has its own unit test; this adds engine-wiring coverage. Full Core/Hexis CI result pending.
+
 ## [NK1][WorkPass585] Preserve deterministic morphological recall during provider timeouts (2026-10-27)
 
 - Add a deterministic token-root evidence path to the answerability gate. A strong stem-prefix match can ground a memory even when a long query dilutes aggregate fuzzy coverage.

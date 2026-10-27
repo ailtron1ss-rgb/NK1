@@ -11,6 +11,7 @@ import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluati
 import { bindIndependentEvaluationToVerifiedShadowEvidence, bindReflectiveReportsToVerifiedShadowEvidence, type ReflectiveEvidenceBindingReport } from './HermesVerifiedEvidenceBinding.ts';
 import { compareMatchedIndependentEvaluations } from './IndependentSkillCandidateEvaluator.ts';
 import { planSkillRevision, type SkillRevisionPlan } from './SkillRevisionPlan.ts';
+import { generateLocalSkillRevision, type SkillRevisionChatProvider } from './P23LocalModelSkillRevisionGenerator.ts';
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
@@ -566,6 +567,29 @@ export class P23LearningEngine {
     return this.stageReflectiveSkillRevision(
       proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
       sourceEvidenceFingerprint,
+    );
+  }
+
+  /**
+   * First-party wiring for the bounded local-model generator. Callers no longer need
+   * to hand-write an adapter callback; the canonical evidence, shadow evaluation,
+   * staging and promotion gates remain in generateAndStageReflectiveSkillRevision.
+   */
+  async generateAndStageReflectiveSkillRevisionWithLocalModel(
+    provider:SkillRevisionChatProvider,
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    sourceCandidateId:string,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    evaluateRevisedCandidate:RevisedCandidateEvaluator,
+    options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?:string,
+  ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
+    return this.generateAndStageReflectiveSkillRevision(
+      proposal,skillId,sourceCandidateId,baseline,candidateEvaluation,
+      request=>generateLocalSkillRevision(provider,request),
+      evaluateRevisedCandidate,options,sourceEvidenceFingerprint,
     );
   }
 
