@@ -136,3 +136,38 @@ for (const [key, sessionId] of [['session-id', 'session-44'], ['session id', 'se
   );
 }
 
+// Arbitrary metadata values can contain conversation words without proving that a
+// social memory belongs to a specific dialogue. A real session ID must win that tie.
+const spoofedLineageMemory = new MemoryOS2({ embeddingProvider: null });
+const spoofedLineageContent = 'neural memory experiment dialogue';
+encode(spoofedLineageMemory, {
+  id: 'a-untrusted-social', kind: 'social', content: spoofedLineageContent,
+  context: { relationshipId: 'conversation-17', note: 'discussion summary from an unrelated relation' },
+});
+encode(spoofedLineageMemory, {
+  id: 'z-real-session-social', kind: 'social', content: spoofedLineageContent,
+  context: { sessionId: 'session-88' },
+});
+assert.equal(
+  spoofedLineageMemory.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
+  'z-real-session-social',
+  'arbitrary relationship/context values must not impersonate session lineage',
+);
+
+// An explicit, typed import marker is valid metadata even when a stable ID was not
+// retained; the same phrase in an untyped note is not enough.
+const typedHistoryMemory = new MemoryOS2({ embeddingProvider: null });
+const typedHistoryContent = 'neural memory experiment dialogue';
+encode(typedHistoryMemory, {
+  id: 'a-untyped-social-note', kind: 'social', content: typedHistoryContent,
+  context: { note: 'conversation-history' },
+});
+encode(typedHistoryMemory, {
+  id: 'z-typed-history-social', kind: 'social', content: typedHistoryContent,
+  context: { recordType: 'conversation-history' },
+});
+assert.equal(
+  typedHistoryMemory.retrieve('What did we discuss last time about the neural memory experiment?', 1, .1, .1)[0]?.id,
+  'z-typed-history-social',
+  'explicit typed conversation-history metadata should be accepted while arbitrary note text is ignored',
+);
