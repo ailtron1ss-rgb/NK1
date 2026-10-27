@@ -1,0 +1,45 @@
+name: WorkPass570 causal graph state invariant
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/CausalLifeGraph.ts"
+      - "runtime/neuro-kurisu/tests/causal-life-graph-derived-state-invariant.mjs"
+      - "runtime/neuro-kurisu/tests/memory-subsystem-state-roundtrip-workpass570.mjs"
+      - ".github/workflows/workpass570-causal-life-graph-state.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/CausalLifeGraph.ts"
+      - "runtime/neuro-kurisu/tests/causal-life-graph-derived-state-invariant.mjs"
+      - "runtime/neuro-kurisu/tests/memory-subsystem-state-roundtrip-workpass570.mjs"
+      - ".github/workflows/workpass570-causal-life-graph-state.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass570-graph-state-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  state-invariant:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install pinned runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Test causal graph derived-state invariants
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/causal-life-graph-derived-state-invariant.mjs
+      - name: Test WorkPass570 memory state snapshot/restore
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-subsystem-state-roundtrip
