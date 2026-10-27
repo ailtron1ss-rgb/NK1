@@ -2747,3 +2747,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [FIX] Corrected two legacy external-evidence assertions to expect a grounded runtime-outcome count of zero. The external adapter still stores the unverified record and deduplicates its normalized trace identity, but it must not increment trusted outcome aggregates.
 - [SAFETY] Kept the existing evidence boundary intact: imported external records remain non-grounded and ineligible for policy replay/consolidation.
 - [VALIDATION] The WorkPass110 workflow is triggered by the causal-learning test path; the new runner result must confirm both the grounded positive case and external-evidence accounting.
+
+
+## [NK1][Validation] WorkPass448 — preserve trusted outcome totals after restore (2026-10-27)
+
+- [FIX] Corrected the remaining restored-external duplicate assertions: normalized duplicate identity is preserved after restore, while the grounded runtime-outcome aggregate remains zero for unverified external records.
+- [SAFETY] Both normal-intake and restored-intake external records remain ineligible for grounded replay/consolidation; no production policy was weakened.
+- [VALIDATION] The updated WorkPass110 workflow should re-run the causal experience stream regression and continue through subsequent steps.
