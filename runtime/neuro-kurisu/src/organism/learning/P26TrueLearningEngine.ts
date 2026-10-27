@@ -69,6 +69,8 @@ export interface P26TrueLearningState {
   metrics:P26LearningMetrics;
   processedTraceIds:string[];
   holdoutEvidence:P26VerifiedHoldoutEvidence[];
+  /** Persistent round-robin offset so each bounded replay batch traverses the entire buffer over time. */
+  replayCursor?:number;
 }
 
 function normalizeHoldoutEvidence(value:unknown):P26VerifiedHoldoutEvidence|null {
@@ -100,7 +102,7 @@ function nonNegativeInteger(value:unknown):number {
 export const defaultP26TrueLearning=():P26TrueLearningState=>({
   version:1,policy:defaultParametricPolicy(),
   metrics:{outcomeSamples:0,onlineUpdates:0,replayUpdates:0,trainingExposure01:0,independentHoldoutSamples:0,learningDelta01:0,recentLoss01:0,generalizationEvidence01:0,holdoutBaseline01:0,holdoutLearned01:0,holdoutDelta01:0,lastUpdatedAt:0},
-  processedTraceIds:[],holdoutEvidence:[],
+  processedTraceIds:[],holdoutEvidence:[],replayCursor:0,
 });
 
 export interface BodyExtras { external01?:number;boredom01?:number;resourceRisk01?:number;thermalPressure01?:number;bodyCapacity01?:number; }
@@ -158,6 +160,7 @@ export class P26TrueLearningEngine{
       ...d,...(raw??{}),metrics,
       processedTraceIds:Array.isArray(raw?.processedTraceIds)?raw!.processedTraceIds.filter(id=>typeof id==='string').slice(-4096):[],
       holdoutEvidence:restoredEvidence,
+      replayCursor:nonNegativeInteger(raw?.replayCursor),
     };
     this.learner.restore(this.state.policy);
     this.sync();
@@ -307,7 +310,7 @@ export class P26TrueLearningEngine{
       return clamp(row.reward+.78*next);
     };
     let onlineUpdates=0,replayUpdates=0,blockedReplayRows=0,eligibleReplayRows=0,comparisons=0,lossSum=0;
-    let replayCursor=0;
+    let replayCursor=nonNegativeInteger(this.state.replayCursor);
     const attemptReplay=()=>{
       if(!replayRows.length||replayUpdates>=maxReplayUpdates)return;
       const row=replayRows[replayCursor%replayRows.length]!;
@@ -329,6 +332,7 @@ export class P26TrueLearningEngine{
       onlineUpdates++;lossSum+=trained.loss01;
       if((indexInBatch+1)%effectiveReplayEveryNCurrent===0)attemptReplay();
     }
+    this.state.replayCursor=replayRows.length?replayCursor%Math.max(1,replayRows.length):0;
     this.state.metrics.outcomeSamples+=onlineUpdates;
     this.state.metrics.onlineUpdates+=onlineUpdates;
     this.state.metrics.replayUpdates+=replayUpdates;
