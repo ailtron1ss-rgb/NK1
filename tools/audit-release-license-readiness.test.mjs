@@ -183,3 +183,21 @@ test("automatic release publishers gate SBOM and human licensing before packagin
     assert.ok(publishIndex > licenseIndex, rel + " must not publish a release before the license gate passes");
   }
 });
+
+
+test("canonical package release gates refresh provenance before license approval", async () => {
+  const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const rootPackage = JSON.parse(await readFile(path.join(repositoryRoot, "package.json"), "utf8"));
+  const runtimePackage = JSON.parse(await readFile(path.join(repositoryRoot, "runtime/neuro-kurisu/package.json"), "utf8"));
+  assert.ok(rootPackage.scripts["test:rebuild-recovered"].includes("npm run test:release-license-readiness"));
+  const rootAudit = rootPackage.scripts["audit:workpass70"];
+  assert.ok(rootAudit.indexOf("npm run test:provenance-current") >= 0);
+  assert.ok(rootAudit.indexOf("npm run audit:release-license-readiness") > rootAudit.indexOf("npm run test:provenance-current"));
+  for (const scriptName of ["release:audit", "release:final", "release:final3"]) {
+    const script = runtimePackage.scripts[scriptName];
+    const provenanceIndex = script.indexOf("npm --prefix ../.. run test:provenance-current");
+    const licenseIndex = script.indexOf("npm --prefix ../.. run audit:release-license-readiness");
+    assert.ok(provenanceIndex >= 0, scriptName + " must regenerate SBOM/provenance");
+    assert.ok(licenseIndex > provenanceIndex, scriptName + " must run the human license gate after provenance refresh");
+  }
+});
