@@ -112,8 +112,15 @@ test("separates Hexis push and pull-request cancellation groups", () => {
     "nk1-hexis-"
   );
   const invalidErrors = validateCiConfig({
-    workflows: { "hexis-canonical-apply.yml": sharedGroup },
+    workflows: {
+      "hexis-canonical-apply.yml": sharedGroup,
+      "workpass71-validation.yml": sharedGroup.replace("name: Hexis", "name: WorkPass71")
+    },
     nodeVersion: "24"
   });
   assert.match(invalidErrors.join("\n"), /must include github.event_name/);
+  assert.ok(
+    invalidErrors.some(error => error.startsWith("workpass71-validation.yml: concurrency.group must include github.event_name")),
+    "the guard must apply to all workflows with shared push/PR cancellation groups, not only Hexis"
+  );
 });
