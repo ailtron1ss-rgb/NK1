@@ -35,6 +35,8 @@ assert.equal(experiment.corpusFingerprint.length, 64);
 assert.equal(experiment.retrievalConfigurationFingerprint.length, 64);
 assert.equal(experiment.datasetFingerprint.length, 64);
 assert.equal(experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, true);
+assert.equal(new Set(experiment.runs.map(row => row.candidateHoldout.unsupportedRetrievalRate01)).size, 1, 'abstention quality must be included in retrieval-metric determinism checks');
+assert.equal(new Set(experiment.runs.map(row => row.candidateHoldout.correctAbstentionRate01)).size, 1, 'correct-abstention rate must remain seed invariant');
 assert.equal(experiment.determinism.datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds, true);
 assert.equal(experiment.sensitivity.mrrNonInferioritySupportedAcrossAllSeeds, experiment.runs.every(row => row.mrrConfidenceNonInferioritySupported));
 assert.equal(experiment.runs.every(row => Array.isArray(row.failedPromotionGates)), true);
