@@ -1224,10 +1224,6 @@ assert.equal(
 );
 assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 512);
 for (const token of signalCompensationCapacityTokens) {
-  assert.equal(signalRollbackRuntime.fabric.refreshSignalCompensation(token), true,
-    'all pre-existing rollback tokens must remain live when capacity is exhausted');
-}
-for (const token of signalCompensationCapacityTokens) {
   assert.equal(signalRollbackRuntime.fabric.commitSignalCompensation(token), true);
 }
 assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0);
@@ -1240,8 +1236,15 @@ const postCompensationMemoryFabricSnapshot = signalRollbackRuntime.fabric.snapsh
 signalRollbackRuntime.fabric.restore(postCompensationMemoryFabricSnapshot);
 assert.equal(signalRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0,
   'snapshot restoration must revoke non-persisted rollback capabilities');
-assert.equal(signalRollbackRuntime.fabric.refreshSignalCompensation(transientSignalCompensationToken), false,
-  'a capability from before restore must be unusable after restore');
+assert.throws(
+  () => signalRollbackRuntime.fabric.restoreSignalsForCompensation(
+    transientSignalCompensationToken,
+    'must-not-use-pre-restore-capability',
+    { commandId: 'test-pre-restore-signal-compensation' },
+  ),
+  /memory-signal-compensation-token-invalid/,
+  'a capability from before restore must be unusable after restore',
+);
 assert.equal(signalRollbackRuntime.fabric.inspect().mutationReceiptJournal.corrupt, false,
   'the new compensating lifecycle receipt must survive snapshot/restore validation');
 
