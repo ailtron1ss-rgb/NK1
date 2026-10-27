@@ -1,3 +1,9 @@
+## [NK1][WorkPass575] Align backend TTS language and speech modes with text (2026-10-27)
+
+- Replace the fixed `ru-RU` VoicePlan language with bounded Cyrillic/Latin script inference, matching the browser embodiment's existing two-language heuristic.
+- Add English phrases for greeting, self-disclosure, explanatory/lecture and disagreement voice modes; existing Russian cues remain supported.
+- No dependencies added. Runtime/browser/audio checks were not run in this pass.
+
 ## [NK1][WorkPass575] Gate memory recall on grounded evidence (2026-10-27)
 
 - Add a final answerability gate to MemoryOS2 hybrid retrieval: recency, salience and type bonuses alone no longer justify returning a memory for a no-match query.
