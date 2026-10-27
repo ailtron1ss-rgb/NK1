@@ -1,3 +1,10 @@
+## [NK1][WorkPass508] Harden intrinsic experiment input boundaries (2026-10-27)
+
+- Clamp uncertainty, prediction-error, novelty and dream-confidence inputs to finite unit values before scoring. Non-finite state cannot create a spurious experiment or corrupt information-gain metrics.
+- Sample the logical timestamp once per experiment and inject clock/ID suffix providers for deterministic regression tests, while preserving runtime defaults.
+- Normalize dream-memory identifiers and keep dream-derived associations as unverified verification candidates; they cannot become factual memories through this path.
+- Register the regression in both the recovered-core suite and P23 revision lane. This establishes boundary and determinism behavior, not autonomous-behavior quality.
+
 ## [NK1][WorkPass507] Enforce planner memory budget across the full cognitive recall cycle (2026-10-27)
 
 - Fixed the advanced/internal-goal recall path in `OrganismCore`: when `cognitiveExecutionPlan.run.memory` is false, it now returns an empty packet instead of silently retrieving memories.
