@@ -296,6 +296,82 @@ assert.equal(
   'restore must drop a retry entry tied to an obsolete content hash',
 );
 
+
+// reviseContent is a multi-record transaction: creating the replacement row,
+// closing the old validity window and appending revision history must roll back as
+// one unit when bookkeeping throws after its canonical write.
+const contentRevisionAtomicMemory = new MemoryOS2({ embeddingProvider: null });
+const contentRevisionSeed = contentRevisionAtomicMemory.encode({
+  ...restoreAtomicSeedInput,
+  content: 'revision atomicity original memory record',
+  source: 'test:memoryos-content-revision-atomicity',
+});
+const contentRevisionParentRef = contentRevisionAtomicMemory.itemIndex.get(contentRevisionSeed.id);
+assert(contentRevisionParentRef);
+const contentRevisionBaseline = contentRevisionAtomicMemory.snapshot();
+const originalContentRevisionRecord = contentRevisionAtomicMemory.recordRevision.bind(contentRevisionAtomicMemory);
+let throwAfterContentRevisionWrite = true;
+contentRevisionAtomicMemory.recordRevision = (...args) => {
+  const result = originalContentRevisionRecord(...args);
+  if (throwAfterContentRevisionWrite && args[1]?.reason === 'injected-revision-content-failure') {
+    throwAfterContentRevisionWrite = false;
+    throw new Error('injected-memoryos-content-revision-after-write');
+  }
+  return result;
+};
+assert.throws(
+  () => contentRevisionAtomicMemory.reviseContent(contentRevisionSeed.id, 'revision atomicity corrected content', {
+    reason: 'injected-revision-content-failure',
+    validAt: contentRevisionSeed.createdAt + 100,
+  }),
+  /injected-memoryos-content-revision-after-write$/,
+  'a post-write revision-history exception must abort the complete content revision',
+);
+assert.deepEqual(
+  contentRevisionAtomicMemory.snapshot(),
+  contentRevisionBaseline,
+  'failed content revision must restore every canonical item and counter',
+);
+assert.strictEqual(
+  contentRevisionAtomicMemory.itemIndex.get(contentRevisionSeed.id),
+  contentRevisionParentRef,
+  'failed content revision must preserve the original canonical item object',
+);
+assert.strictEqual(
+  contentRevisionAtomicMemory.state.items[0],
+  contentRevisionParentRef,
+  'failed content revision must restore the original store array/order and item identity',
+);
+assert.equal(contentRevisionAtomicMemory.temporalChain(contentRevisionSeed.id).length, 1,
+  'a failed content revision must not leave a phantom temporal-chain member');
+assert(
+  contentRevisionAtomicMemory.retrieve('revision atomicity original memory record', 5)
+    .some(item => item.id === contentRevisionSeed.id),
+  'a failed content revision must preserve the original retrieval indexes');
+
+const contentRevisionAfterRetry = contentRevisionAtomicMemory.reviseContent(
+  contentRevisionSeed.id,
+  'revision atomicity corrected content',
+  { reason: 'content-revision-after-retry', validAt: contentRevisionSeed.createdAt + 100 },
+);
+assert(contentRevisionAfterRetry);
+assert.equal(contentRevisionAtomicMemory.snapshot().items.length, 2,
+  'a successful retry must create exactly one replacement row');
+assert.equal(contentRevisionAtomicMemory.temporalChain(contentRevisionSeed.id).length, 2,
+  'a successful retry must update the canonical revision chain once');
+assert.equal(contentRevisionParentRef.validUntilAt, contentRevisionAfterRetry.validFromAt);
+assert.equal(contentRevisionParentRef.supersededById, contentRevisionAfterRetry.id);
+assert.equal(contentRevisionAfterRetry.supersedesId, contentRevisionSeed.id);
+const contentRevisionReplay = contentRevisionAtomicMemory.reviseContent(
+  contentRevisionSeed.id,
+  'revision atomicity corrected content',
+  { reason: 'content-revision-replay', validAt: contentRevisionSeed.createdAt + 200 },
+);
+assert.equal(contentRevisionReplay?.id, contentRevisionAfterRetry.id,
+  'replaying the same correction must return the established revision');
+assert.equal(contentRevisionAtomicMemory.snapshot().items.length, 2,
+  'replaying a content correction must not append duplicate revision rows');
+
 const persistedPolicyGuard = new MemoryOS2({ embeddingProvider: null });
 const corruptedPersistedPolicyState = persistedPolicyGuard.snapshot();
 corruptedPersistedPolicyState.adaptiveMemoryPolicy = {
