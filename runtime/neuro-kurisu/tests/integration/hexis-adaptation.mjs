@@ -1475,6 +1475,54 @@ assert.equal(scopedRollbackLedger.getHmxStage(scopedRollbackStage.stagingId)?.st
   'a transaction with conflicted compensation must not be marked applied');
 assert.equal(scopedRollbackRuntime.fabric.inspect().pendingSignalCompensations, 0);
 
+// Source-projection withdrawal is a targeted graph mutation, not a global snapshot
+// replacement: unrelated nodes and edges must remain reachable.
+const sourceRemovalRuntime = new MemorySubsystemRuntime();
+const sourceRemovalProjector = new HexisCanonicalMemoryProjector(
+  sourceRemovalRuntime.fabric,
+  sourceRemovalRuntime.semanticMemory,
+);
+const priorProjectionNode = sourceRemovalRuntime.semanticMemory.upsertNode(
+  'older imported belief',
+  'concept',
+  0.62,
+  'hexis:old-version',
+);
+const unrelatedNode = sourceRemovalRuntime.semanticMemory.upsertNode(
+  'independent user concept',
+  'concept',
+  0.87,
+  'user:independent',
+);
+const unrelatedPeer = sourceRemovalRuntime.semanticMemory.upsertNode(
+  'independent peer concept',
+  'concept',
+  0.74,
+  'user:independent',
+);
+const removedProjectionEdge = sourceRemovalRuntime.semanticMemory.connect(
+  priorProjectionNode.id,
+  unrelatedNode.id,
+  'associated',
+  0.51,
+);
+const survivingIndependentEdge = sourceRemovalRuntime.semanticMemory.connect(
+  unrelatedNode.id,
+  unrelatedPeer.id,
+  'supports',
+  0.71,
+);
+sourceRemovalProjector.removeSemanticProjection('hexis:old-version', 'test:source-removal');
+const sourceRemovalSnapshot = sourceRemovalRuntime.semanticMemory.snapshot();
+assert.equal(sourceRemovalSnapshot.nodes.some(node => node.id === priorProjectionNode.id), false);
+assert(sourceRemovalSnapshot.nodes.some(node => node.id === unrelatedNode.id),
+  'removing an imported projection must not remove unrelated semantic nodes');
+assert(sourceRemovalSnapshot.nodes.some(node => node.id === unrelatedPeer.id));
+assert.equal(sourceRemovalSnapshot.edges.some(edge => edge.id === removedProjectionEdge.id), false,
+  'edges attached to the removed projection node must be withdrawn');
+assert(sourceRemovalSnapshot.edges.some(edge => edge.id === survivingIndependentEdge.id),
+  'independent edges must survive source-scoped projection removal');
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
