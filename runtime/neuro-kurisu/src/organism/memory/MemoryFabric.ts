@@ -681,6 +681,12 @@ export class MemoryFabric {
     return token;
   }
 
+  hmxImportCompensationIds(token:object):string[]{
+    const compensation=this.hmxImportCompensations.get(token);
+    if(!compensation)return [];
+    return this.memoryOS.hmxImportCompensationIds(compensation.snapshotToken);
+  }
+
   rollbackHmxImportMemory(id:string,token:object,reason='hexis-hmx-apply-rollback',context:{tick?:number;commandId?:string}={}):boolean{
     const commandId=String(context.commandId??'');
     const compensation=this.hmxImportCompensations.get(token);
