@@ -21,7 +21,6 @@ declare module 'node:os' { export function homedir():string; export function tmp
 declare module 'node:http' { export function createServer(handler:(req:any,res:any)=>void):any; }
 declare module 'node:child_process' { export function spawn(command:string,args?:string[],options?:any):any; export function execFile(command:string,args?:string[],options?:any,callback?:any):any; }
 declare module 'node:util' { export function promisify(fn:any):any; }
-declare const process: { pid:number; env:Record<string,string|undefined>; argv:string[]; exitCode?:number; on(event:string,handler:()=>void):void; memoryUsage():{rss:number;heapUsed:number;heapTotal:number;external:number;arrayBuffers?:number}; kill(pid:number|string,signal?:number|string):void; }
 
 declare module 'node:zlib' { export function deflateRawSync(data: Uint8Array): Uint8Array; export function inflateRawSync(data: Uint8Array): Uint8Array; }
 declare module 'node:v8' { export function serialize(value: unknown): Uint8Array; export function deserialize(data: Uint8Array): unknown; }
@@ -29,4 +28,3 @@ declare module 'node:v8' { export function serialize(value: unknown): Uint8Array
 declare module 'node:dns/promises' { export function lookup(hostname:string, options?:{all?:boolean;verbatim?:boolean}):Promise<any>; }
 declare module 'node:net' { export function isIP(input:string):number; }
 declare module 'node:https' { export type RequestOptions = { lookup?: any; [key:string]: any }; export function request(options:any, callback:(response:any)=>void):any; }
-declare const Buffer: { isBuffer(value:unknown):boolean; from(value:string|Uint8Array, encoding?:string):any; concat(list:readonly Uint8Array[], totalLength?:number):Uint8Array; };
