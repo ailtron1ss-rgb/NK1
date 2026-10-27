@@ -1,3 +1,8 @@
+## [NK1][WorkPass450] Remove duplicate evaluator binding in WorkPass203 test (2026-10-27)
+
+- Renamed the WorkPass214 authority-snapshot evaluator/result variables so they no longer collide with the earlier WorkPass203 snapshot-mutation test in the same `.mjs` module.
+- The workflow script-integrity audit had identified a syntax-level duplicate `const snapshotEvaluator`; this is a test-source repair, not a change to the evaluator's runtime authority or promotion gates.
+
 ## [NK1][WorkPass449] Prevent unchanged Live2D expressions from restarting (2026-10-27)
 
 - Ported the expression cache to the runtime-packaged Live2D viewer: it remembers the last successfully applied expression and skips duplicate requests. Mouth/body updates no longer need to restart an unchanged expression.
