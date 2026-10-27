@@ -132,6 +132,8 @@ try {
   const committedItem = afterCommit.items.find(row => row.id === 'canonical-accounting-target');
   assert.equal(committedItem.retrievalCount, 1,
     'selected canonical memory receives one access increment, not one per speculative path');
+  assert.equal(canonical.retrievalDiagnostics().candidateCount, candidates.length,
+    'adaptive compute-cost accounting must not reuse the previous query candidate count');
 
   console.log('MEMORY_SEMANTIC_RETRIEVAL_ACCOUNTING=PASS', JSON.stringify({
     semanticAccountingExactlyOnce: true,
