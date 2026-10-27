@@ -1,3 +1,9 @@
+## [NK1][WorkPass439] Prevent endogenous goal value saturation from masking intrinsic drive (2026-10-27)
+
+- Replaced the unnormalized dot product in the B272 predicted-value formula with bounded cosine similarity and recalibrated the component weights to leave headroom for the intrinsic drive term. Previously, the dot product could saturate the final value at 1.0, making a high-confidence intrinsic drive numerically invisible even though it was included in the formula.
+- The existing regression compares the same restored cognitive state at drive 0.0 and 0.9 with confidence 1.0, requiring a value increase greater than 0.1; a confidence-0 drive must match baseline. The new coefficient gives a 0.112 expected contribution difference before any final clamp.
+- Actual test execution is pending on the current branch head.
+
 ## [NK1][WorkPass463] Install runtime type dependencies in scoped CI workflows (2026-10-27)
 
 - Added locked runtime dependency installation to WorkPass110 before its integration/typecheck tail, matching the canonical core workflow instead of assuming app dependencies provide runtime `@types/node`.
