@@ -1,3 +1,9 @@
+## [NK1][WorkPass489] Align cycle-order assertion with the runtime-owned snapshot API (2026-10-27)
+
+- The broad source regression moved past the embodiment-order check and exposed another stale WorkPass319 symbol: the test expected `setUnifiedCognitiveCycle`, while the current runtime persists the completed snapshot through `setRuntimeUnifiedCognitiveCycle`.
+- Assert the actual runtime-owned Core API inside the cycle-closing block. The assertion still requires the snapshot of the just-evaluated unified cycle to be persisted before completeness evidence is emitted; no cycle gate or production code is bypassed.
+- Re-run the broad exact-head source regression and WorkPass110 before considering the source integration pass closed.
+
 ## [NK1][WorkPass488] Anchor embodiment-order regression to the active cycle (2026-10-27)
 
 - The broad recovered-runtime regression reached WorkPass319 after passing the restored action-receipt tamper gate, finalizer boundary, canonical planner wrapper, project reconciliation, causal replay, and memory-doctor CLI checks.

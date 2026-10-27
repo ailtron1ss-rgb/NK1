@@ -35,6 +35,6 @@ assert.ok(completenessEvidence < cycleEvidencePersist, 'cycle completeness evide
 const cycleBlock = runtime.slice(cycleLedger, completenessEvidence);
 assert.match(cycleBlock, /learning:\s*\{?\s*source:'core\.feedback'/);
 assert.match(cycleBlock, /selfUpdate:\s*\{?\s*source:'core\.lifecycle'/);
-assert.match(cycleBlock, /this\.core\.setUnifiedCognitiveCycle\(this\.unifiedCycle\.snapshot\(\)\)/);
+assert.match(cycleBlock, /this\.core\.setRuntimeUnifiedCognitiveCycle\(this\.unifiedCycle\.snapshot\(\)\)/, 'the verified cycle snapshot must be persisted through the runtime-owned Core contract');
 
 console.log('WorkPass319 cognitive-cycle causal ordering: PASS');
