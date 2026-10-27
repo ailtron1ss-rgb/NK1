@@ -237,16 +237,22 @@ export class HexisCanonicalMemoryProjector {
       this.semanticGraph.removeSourceProjection(sourceKey, mutationToken);
       return;
     }
+    const checkpoint = typeof this.semanticGraph.mutationCheckpoint === 'function'
+      ? this.semanticGraph.mutationCheckpoint()
+      : null;
     const snapshot = this.semanticGraph.snapshot();
     const removed = new Set(snapshot.nodes
       .filter(node => String(node.sourceKey ?? '') === String(sourceKey ?? ''))
       .map(node => node.id));
     if (!removed.size) return;
-    this.semanticGraph.restore({
-      ...snapshot,
-      nodes: snapshot.nodes.filter(node => !removed.has(node.id)),
-      edges: snapshot.edges.filter(edge => !removed.has(edge.from) && !removed.has(edge.to)),
-    }, mutationToken);
+    if (checkpoint === null || typeof this.semanticGraph.restoreIfUnchanged !== 'function' ||
+        this.semanticGraph.restoreIfUnchanged({
+          ...snapshot,
+          nodes: snapshot.nodes.filter(node => !removed.has(node.id)),
+          edges: snapshot.edges.filter(edge => !removed.has(edge.from) && !removed.has(edge.to)),
+        }, checkpoint, mutationToken) !== true) {
+      throw new Error('semantic-graph-source-removal-conflict');
+    }
   }
 
   apply(stage) {
