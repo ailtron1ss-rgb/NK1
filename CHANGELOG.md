@@ -1,3 +1,9 @@
+## [NK1][WorkPass577] Route affective appraisal into backend voice planning (2026-10-27)
+
+- Pass the current canonical cognitive-field emotion, valence and arousal through `OrganismRuntime` and `EmbodimentRuntime` into `VoicePlan`.
+- Use bounded, conservative prosody adjustments for joy, curiosity, anxiety, sadness, frustration, anger and protective affect; negative high-arousal states are routed toward focused/regulatory delivery rather than hostile escalation.
+- Keep pitch, rate, volume and pause values under the existing final clamps. No dependencies added; tests/audio playback were not run.
+
 ## [NK1][WorkPass576] Fix evidence-gate token cardinality and verify the integrated branch (2026-10-27)
 
 - Correct the grounded-recall gate to use `Set.size` for MemoryOS2's query-token set; the previous implementation incorrectly used array `.length`.
