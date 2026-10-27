@@ -407,13 +407,10 @@ export class HexisCanonicalMemoryProjector {
               throw new Error('hmx-signal-compensation-target-missing:' + duplicate.id);
             }
             // Register rollback before any status/signal mutation can partially fail.
-            if (compensationToken) {
-              revisedSignals.push({
-                id: duplicate.id,
-                previous: previousSignals,
-                compensationToken,
-              });
-            }
+            const signalRevision = compensationToken
+              ? { id: duplicate.id, previous: previousSignals, compensationToken, sealed: false }
+              : null;
+            if (signalRevision) revisedSignals.push(signalRevision);
 
             if (changesStatus) {
               revisedStatuses.push({ id: duplicate.id, previousStatus: duplicate.epistemicStatus });
@@ -438,10 +435,7 @@ export class HexisCanonicalMemoryProjector {
                     : [],
                 },
                 'hexis-import-authority-cap',
-                {
-                  commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48),
-                  compensationToken,
-                },
+                { commandId: 'hexis-authority:' + hash(String(stage.stagingId) + ':' + duplicate.id + ':' + incomingAuthorityCap + ':' + attempt).slice(0, 48) },
               );
               if (!cappedMemory) throw new Error('hmx-import-authority-cap-memory-missing:' + duplicate.id);
             }
@@ -450,6 +444,7 @@ export class HexisCanonicalMemoryProjector {
               if (!this.memoryFabric.refreshSignalCompensation(compensationToken)) {
                 throw new Error('hmx-signal-compensation-refresh-failed:' + duplicate.id);
               }
+              if (signalRevision) signalRevision.sealed = true;
             }
           }
           deduplicatedCount++;
@@ -682,7 +677,13 @@ export class HexisCanonicalMemoryProjector {
       // deleting newly-created rows; never leave a failed import half-applied.
       for (const revision of [...revisedSignals].reverse()) {
         try {
-          if (!this.memoryFabric.refreshSignalCompensation(revision.compensationToken)) {
+          // A successfully completed mutation sealed its expected post-state before
+          // later projection work began. Do not refresh that seal here: another
+          // subsystem may have legitimately changed the same memory in the meantime.
+          // Unsealed entries are refreshed only to compensate a mutation that threw
+          // after changing canonical state but before returning to the projector.
+          if (revision.sealed !== true &&
+              !this.memoryFabric.refreshSignalCompensation(revision.compensationToken)) {
             throw new Error('hmx-signal-compensation-refresh-failed:' + revision.id);
           }
           this.memoryFabric.restoreSignalsForCompensation(
