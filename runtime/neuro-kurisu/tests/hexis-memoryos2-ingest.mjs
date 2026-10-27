@@ -47,6 +47,8 @@ assert.equal(memory.get(target.id)?.confidence, 0.7,
   'upstream confidence deltas must not overwrite NK1 confidence');
 assert.equal(memory.get(target.id)?.context?.hexisLastEvidenceStance, 'refutes');
 assert.equal(memory.get(target.id)?.evidenceSources?.some(row => row.source.includes('hex-evidence-1')), true);
+assert.equal(memory.get(target.id)?.evidenceLineageKeys?.includes('lineage:tool-run:independent-1'), true,
+  'the canonical replay guard must persist the normalized independent lineage');
 
 // A different event ID from the same upstream origin must not count as independent corroboration.
 const sameLineageCopy = {
