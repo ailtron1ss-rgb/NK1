@@ -34,6 +34,11 @@ export interface TransferProbe {
   at:number;
 }
 
+export interface TransferProbeLedgerEntry {
+  id:string;
+  fingerprint:string;
+}
+
 export interface ExternalLearningHypothesis {
   id:string;
   taskId:string;
@@ -87,6 +92,8 @@ export interface UnifiedLearningState {
   negativeTransferSamples:number;
   interference01:number;
   transferProbes:TransferProbe[];
+  /** Bounded persistent dedupe registry; recent probe rows alone are insufficient after eviction. */
+  transferProbeLedger:TransferProbeLedgerEntry[];
   loop:UnifiedLearningLoopState;
 }
 
@@ -101,7 +108,7 @@ export interface UnifiedLearningSignal {
 export const defaultUnifiedLearning=():UnifiedLearningState=>({
   version:4,cycles:0,samples:0,updates:0,sharedRepresentation01:new Array(DIM).fill(.5),
   representationDrift01:0,predictionAgreement01:.5,crossTaskTransfer01:0,consolidationEfficiency01:0,developmentalTransfer01:0,lastDevelopmentalSignal01:0,
-  lastLearningOpportunity01:0,lastAt:0,patterns:[],externalHypotheses:[],provenanceCounts:{runtime:0,experienceReplay:0,skillRepair:0,external:0},validatedTransferSamples:0,positiveTransferSamples:0,negativeTransferSamples:0,interference01:0,transferProbes:[],loop:{cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,closedLoopCount:0,verifiedClosedLoopCount:0,failedClosedLoopCount:0,lastAt:0},
+  lastLearningOpportunity01:0,lastAt:0,patterns:[],externalHypotheses:[],provenanceCounts:{runtime:0,experienceReplay:0,skillRepair:0,external:0},validatedTransferSamples:0,positiveTransferSamples:0,negativeTransferSamples:0,interference01:0,transferProbes:[],transferProbeLedger:[],loop:{cycleId:'',phase:'idle',completed:0,total:7,lastOutcomeVerified:false,lastLearningDelta01:0,lastPolicyDelta01:0,lastTransferDelta01:0,lastRetention01:1,closedLoopCount:0,verifiedClosedLoopCount:0,failedClosedLoopCount:0,lastAt:0},
 });
 
 function stateVector(state:OrganismState):number[]{
@@ -111,6 +118,37 @@ function stateVector(state:OrganismState):number[]{
 }
 function centroid(oldV:number[],newV:number[],alpha:number){return newV.map((v,i)=>clamp01((oldV[i]??.5)*(1-alpha)+v*alpha));}
 function distance(a:number[],b:number[]){let s=0,n=Math.min(a.length,b.length);for(let i=0;i<n;i++)s+=(clamp01(a[i])-clamp01(b[i]))**2;return n?clamp01(Math.sqrt(s/n)*1.8):0;}
+
+const normalizeEvidenceId=(value:unknown,maxLength=96):string=>{
+  if(typeof value!=='string')return '';
+  const normalized=value.normalize('NFKC');
+  if(Array.from(normalized).some(character=>{
+    const code=character.codePointAt(0)??0;
+    return code<=0x1f||(code>=0x7f&&code<=0x9f);
+  }))return '';
+  const trimmed=normalized.trim();
+  return trimmed.length>0&&trimmed.length<=maxLength?trimmed:'';
+};
+const isUnitInterval=(value:unknown):value is number=>
+  typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1;
+const transferProbeFingerprint=(probe:Pick<TransferProbe,'sourceTaskId'|'targetTaskId'|'baseline01'|'postScore01'|'independentVerified'|'holdout'|'contextKey'>):string=>
+  JSON.stringify([probe.sourceTaskId,probe.targetTaskId,probe.baseline01,probe.postScore01,probe.independentVerified,probe.holdout,probe.contextKey]);
+function restoreTransferProbe(value:unknown):TransferProbe|null{
+  if(!value||typeof value!=='object')return null;
+  const raw=value as Partial<TransferProbe>;
+  const id=normalizeEvidenceId(raw.id);
+  const sourceTaskId=normalizeEvidenceId(raw.sourceTaskId);
+  const targetTaskId=normalizeEvidenceId(raw.targetTaskId);
+  const contextKey=normalizeEvidenceId(raw.contextKey);
+  if(!id||!sourceTaskId||!targetTaskId||!contextKey||
+    !isUnitInterval(raw.baseline01)||!isUnitInterval(raw.postScore01)||
+    typeof raw.independentVerified!=='boolean'||typeof raw.holdout!=='boolean'||
+    !Number.isSafeInteger(raw.at)||Number(raw.at)<0||typeof raw.delta01!=='number'||!Number.isFinite(raw.delta01))return null;
+  const delta01=raw.postScore01-raw.baseline01;
+  if(Math.abs(raw.delta01-delta01)>1e-9)return null;
+  return {id,sourceTaskId,targetTaskId,baseline01:raw.baseline01,postScore01:raw.postScore01,delta01,
+    independentVerified:raw.independentVerified,holdout:raw.holdout,contextKey,at:Number(raw.at)};
+}
 
 function isGroundedRuntimeOutcome(record:CausalExperienceRecord):boolean{
   const metrics=[record.reward01,record.success01,record.surprise01,record.predictionError01,record.novelty01,
@@ -162,6 +200,32 @@ export class UnifiedLearningSubstrate {
       skillRepair:safeCount(rawProvenance?.skillRepair),
       external:safeCount(rawProvenance?.external),
     };
+    // Snapshot data crosses a persistence boundary: sanitize recent probes and
+    // rebuild their stable-ID ledger before any restored evidence affects metrics.
+    const ledger=new Map<string,string>();
+    if(Array.isArray(r.transferProbeLedger)){
+      for(const item of r.transferProbeLedger.slice(-4096)){
+        if(!item||typeof item!=='object')continue;
+        const entry=item as TransferProbeLedgerEntry;
+        const probeId=normalizeEvidenceId(entry.id);
+        if(probeId&&typeof entry.fingerprint==='string'&&entry.fingerprint.length>0&&entry.fingerprint.length<=1024)
+          ledger.set(probeId,entry.fingerprint);
+      }
+    }
+    const restoredTransferProbes:TransferProbe[]=[];
+    const restoredSeen=new Set<string>();
+    const rawTransferProbes=Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[];
+    for(const rawProbe of rawTransferProbes){
+      const probe=restoreTransferProbe(rawProbe);
+      if(!probe||restoredSeen.has(probe.id))continue;
+      const fingerprint=transferProbeFingerprint(probe);
+      const registered=ledger.get(probe.id);
+      if(registered&&registered!==fingerprint)continue;
+      if(!registered)ledger.set(probe.id,fingerprint);
+      restoredSeen.add(probe.id);
+      restoredTransferProbes.push(probe);
+    }
+    const transferProbeLedger=[...ledger.entries()].slice(-4096).map(([probeId,fingerprint])=>({id:probeId,fingerprint}));
     this.state={
       ...d,
       version:4,
@@ -184,7 +248,8 @@ export class UnifiedLearningSubstrate {
       positiveTransferSamples:safeCount(r.positiveTransferSamples),
       negativeTransferSamples:safeCount(r.negativeTransferSamples),
       interference01:safeMetric(r.interference01),
-      transferProbes:Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[],
+      transferProbes:restoredTransferProbes,
+      transferProbeLedger,
       loop:r.loop&&typeof r.loop==='object'?{...d.loop,...r.loop}:d.loop,
     };
   }
@@ -295,14 +360,42 @@ export class UnifiedLearningSubstrate {
   }
 
   beginTransferProbe(input:{sourceTaskId:string;targetTaskId:string;baseline01:number;contextKey:string;at?:number}){
-    return {id:`transfer:${String(input.sourceTaskId).slice(0,64)}:${String(input.targetTaskId).slice(0,64)}:${Date.now()}`,sourceTaskId:String(input.sourceTaskId).slice(0,96),targetTaskId:String(input.targetTaskId).slice(0,96),baseline01:clamp01(input.baseline01),contextKey:String(input.contextKey).slice(0,96),at:input.at??Date.now()};
+    const sourceTaskId=normalizeEvidenceId(input.sourceTaskId);
+    const targetTaskId=normalizeEvidenceId(input.targetTaskId);
+    const contextKey=normalizeEvidenceId(input.contextKey);
+    const at=input.at??Date.now();
+    if(!sourceTaskId||!targetTaskId||!contextKey||!isUnitInterval(input.baseline01)||!Number.isSafeInteger(at)||at<0)return null;
+    const id=normalizeEvidenceId('transfer:'+sourceTaskId.slice(0,24)+':'+targetTaskId.slice(0,24)+':'+at+':'+this.state.transferProbes.length+':'+this.state.validatedTransferSamples);
+    if(!id)return null;
+    return {id,sourceTaskId,targetTaskId,baseline01:input.baseline01,contextKey,at};
   }
 
-  recordTransferProbe(input:{id:string;sourceTaskId:string;targetTaskId:string;baseline01:number;postScore01:number;independentVerified:boolean;holdout:boolean;contextKey:string;at?:number}){
-    const delta=clamp01(input.postScore01)-clamp01(input.baseline01);
-    const probe:TransferProbe={id:String(input.id).slice(0,96),sourceTaskId:String(input.sourceTaskId).slice(0,96),targetTaskId:String(input.targetTaskId).slice(0,96),baseline01:clamp01(input.baseline01),postScore01:clamp01(input.postScore01),delta01:delta,independentVerified:Boolean(input.independentVerified),holdout:Boolean(input.holdout),contextKey:String(input.contextKey).slice(0,96),at:input.at??Date.now()};
-    this.state.transferProbes.push(probe); if(this.state.transferProbes.length>96)this.state.transferProbes=this.state.transferProbes.slice(-96);
-    if(probe.independentVerified && probe.holdout){
+  recordTransferProbe(input:{id:string;sourceTaskId:string;targetTaskId:string;baseline01:number;postScore01:number;independentVerified:boolean;holdout:boolean;contextKey:string;at?:number}):TransferProbe|null{
+    const id=normalizeEvidenceId(input?.id);
+    const sourceTaskId=normalizeEvidenceId(input?.sourceTaskId);
+    const targetTaskId=normalizeEvidenceId(input?.targetTaskId);
+    const contextKey=normalizeEvidenceId(input?.contextKey);
+    const at=input?.at??Date.now();
+    if(!id||!sourceTaskId||!targetTaskId||!contextKey||
+      !isUnitInterval(input?.baseline01)||!isUnitInterval(input?.postScore01)||
+      typeof input?.independentVerified!=='boolean'||typeof input?.holdout!=='boolean'||
+      !Number.isSafeInteger(at)||at<0)return null;
+    const probe:TransferProbe={id,sourceTaskId,targetTaskId,baseline01:input.baseline01,postScore01:input.postScore01,
+      delta01:input.postScore01-input.baseline01,independentVerified:input.independentVerified,
+      holdout:input.holdout,contextKey,at};
+    const fingerprint=transferProbeFingerprint(probe);
+    const known=this.state.transferProbeLedger.find(entry=>entry.id===id);
+    if(known){
+      if(known.fingerprint!==fingerprint)return null;
+      const existing=this.state.transferProbes.find(row=>row.id===id);
+      return existing?structuredClone(existing):null;
+    }
+    this.state.transferProbeLedger.push({id,fingerprint});
+    if(this.state.transferProbeLedger.length>4096)this.state.transferProbeLedger=this.state.transferProbeLedger.slice(-4096);
+    this.state.transferProbes.push(probe);
+    if(this.state.transferProbes.length>96)this.state.transferProbes=this.state.transferProbes.slice(-96);
+    const delta=probe.delta01;
+    if(probe.independentVerified&&probe.holdout){
       this.state.validatedTransferSamples++;
       if(delta>.04)this.state.positiveTransferSamples++; else if(delta<-.04)this.state.negativeTransferSamples++;
       const signed=clamp01(Math.abs(Math.min(0,delta))*2);

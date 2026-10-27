@@ -1,3 +1,10 @@
+## NK1 WorkPass88 — idempotent, bounded cross-task transfer evidence (2026-10-27)
+- Hardened UnifiedLearningSubstrate transfer-probe intake: malformed IDs/context keys, control characters, out-of-range/non-finite scores, non-boolean verification flags, invalid timestamps, and inconsistent restored deltas are rejected rather than clamped/coerced into apparent evidence.
+- Added a persisted 4,096-entry transfer-probe identity/fingerprint ledger. Exact retries are idempotent; conflicting reuse of a stable evidence ID is rejected; retries remain rejected after the 96-row recent-probe window evicts the original record and after snapshot restore.
+- Kept transfer attestations bounded: payload integrity is validated, but `independentVerified` and `holdout` still depend on the caller/evaluator and are not themselves cryptographic proof of independence.
+- Added regression coverage and wired the transfer-evidence and causal-stream suites into `test:rebuild-recovered` so the existing canonical CI aggregate executes them.
+- No production transfer uplift is claimed; this prevents duplicate/malformed evidence from inflating metrics.
+
 ## NK1 Integration — unify non-main branch heads (2026-10-23)
 
 - [MERGE] Compared the branch tips against `nk1-integration-workspace-2026-10-22`: every historical non-main branch checked was already an ancestor (GitHub compare reported `behind_by=0`). The only new divergent line was `workpass326-ci-runtime-hardening`.
