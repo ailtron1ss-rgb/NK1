@@ -276,15 +276,28 @@ assert.equal(boundedDuplicateStream.summary().outcomes, outcomesBeforeEvictedRet
 
 const replayDiversity = new CausalExperienceStream(64);
 for (let i = 0; i < 3; i++) {
-  replayDiversity.recordOutcome({
-    ...trace, id: `replay-a-${i}`, tick: 10 + i,
+  const tick = 10 + i;
+  const record = replayDiversity.recordOutcome({
+    ...trace, id: `replay-a-${i}`, tick,
+    stateBefore: mkState({ tick }),
     selected: { ...trace.selected, goalId: "task-A" },
-  }, mkState({ tick: 11 + i }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+  }, mkState({ tick: tick + 1, lastAction: "explore", lastActionSuccess: .7 }), {
+    reward01: .7, success01: .7, surprise01: .6, novelty01: .5,
+  });
+  assert.ok(record, "task-A replay fixture must be a grounded runtime transition");
 }
-replayDiversity.recordOutcome({
-  ...trace, id: "replay-b-0", tick: 20,
+const taskBTick = 20;
+const taskBRecord = replayDiversity.recordOutcome({
+  ...trace, id: "replay-b-0", tick: taskBTick,
+  stateBefore: mkState({ tick: taskBTick }),
   selected: { ...trace.selected, goalId: "task-B" },
-}, mkState({ tick: 21 }), { reward01: .7, success01: .7, surprise01: .6, novelty01: .5 });
+}, mkState({ tick: taskBTick + 1, lastAction: "explore", lastActionSuccess: .7 }), {
+  reward01: .7, success01: .7, surprise01: .6, novelty01: .5,
+});
+assert.ok(taskBRecord, "task-B replay fixture must be a grounded runtime transition");
+assert.equal(replayDiversity.prioritizedReplayCandidates(8).length, 4,
+  "only the four grounded outcomes should enter replay");
+
 const replayBatch = replayDiversity.prioritizedReplayCandidates(2);
 assert.ok(replayBatch.some((row) => row.taskId === "task-A"));
 assert.ok(replayBatch.some((row) => row.taskId === "task-B"),
