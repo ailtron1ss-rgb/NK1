@@ -149,7 +149,7 @@ export class HexisCanonicalEvidenceBridge {
     const commandId = 'hexis-canonical-evidence:' + origin + ':' +
       createHash('sha256').update(memoryId + '\u0000' + independenceKey).digest('hex').slice(0, 32);
     try {
-      const updated = this.memory.updateSignals(memoryId, { evidenceSources: [source] }, 'hexis-canonical-evidence-lineage', { commandId });
+      const updated = this.memory.attachEvidenceSource(memoryId, source, 'hexis-canonical-evidence-lineage', { commandId });
       if (!updated) return this.reject(memoryId, 'canonical-evidence-write-failed', candidate.id);
       if (!this.hasLineage(updated, independenceKey, lineageKey)) {
         return this.reject(memoryId, 'canonical-lineage-not-retained', candidate.id);

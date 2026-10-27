@@ -2874,7 +2874,7 @@ export class OrganismCore {
         if (!provenance) return reject('provenance-envelope-invalid');
         if (provenance.evidenceClass !== 'direct-observation' && provenance.evidenceClass !== 'corroborated') return reject('provenance-class-not-eligible');
         if (provenance.capturedAt > Date.now() + 5 * 60_000) return reject('provenance-capture-time-in-future');
-        const actualFingerprint = createHash('sha256').update(sourceContent, 'utf8').digest('hex');
+        const actualFingerprint = createHash('sha256').update(sourceContent).digest('hex');
         if (actualFingerprint !== provenance.contentFingerprint) return reject('source-content-fingerprint-mismatch');
         const canonical = this.memorySubsystem.fabric.canonicalSnapshot(false).items.find(row => row.id === memoryId);
         if (!canonical) return reject('canonical-memory-not-found');

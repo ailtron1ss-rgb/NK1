@@ -1005,6 +1005,34 @@ export class MemoryOS2{
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
+ /** Merge one independently attributed evidence source through the canonical MemoryOS2 owner. */
+ attachEvidenceSource(id:string, source:MemoryEvidenceSource, reason='evidence-lineage'):MemoryItem2|null {
+   const item=this.state.items.find(x=>x.id===id);if(!item)return null;
+   const beforeBytes=estimateMemoryBytes(item);
+   const beforeSources=JSON.stringify(item.evidenceSources??[]);
+   const beforeKeys=JSON.stringify(item.evidenceLineageKeys??[]);
+   const now=Date.now();
+   const input:MemoryEncodeInput={
+     ...item,
+     source:source.source,
+     provenanceClass:source.provenanceClass,
+     sourceAuthority01:source.sourceAuthority01,
+     independenceKey:source.independenceKey,
+     observedAt:source.observedAt,
+     evidenceFreshnessAt:source.evidenceFreshnessAt,
+     evidenceSources:[source],
+   };
+   this.mergeIncomingEvidence(item,input,now);
+   const changed=beforeSources!==JSON.stringify(item.evidenceSources??[])||beforeKeys!==JSON.stringify(item.evidenceLineageKeys??[]);
+   if(!changed)return structuredClone(item);
+   item.lastAccessAt=now;
+   item.temperature01=memoryTemperature(item);
+   this.recordRevision(item,{at:now,from:item.epistemicStatus,to:item.epistemicStatus,reason:String(reason||'evidence-lineage').slice(0,240)});
+   this.state.reconsolidations++;
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
+   return structuredClone(item);
+ }
+
  updateSignals(id:string, patch:Partial<Pick<MemoryItem2,'salience'|'emotionalWeight'|'identityRelevance'|'goalRelevance'|'socialRelevance'|'predictionError'|'confidence'|'dormant'>>, reason='reconsolidation') {
    const m=this.state.items.find(x=>x.id===id); if(!m) return null;
    const fromStatus=m.epistemicStatus;
