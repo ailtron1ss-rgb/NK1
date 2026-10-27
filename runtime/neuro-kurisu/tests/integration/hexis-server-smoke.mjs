@@ -59,6 +59,33 @@ try {
       ...lineagePayload, sourceContent: sourceContent + ' tampered',
     });
     if (tamperedResponse.status !== 400) throw new Error('hexis-live-evidence-fingerprint-guard:' + tamperedResponse.status);
+
+    // Conflicting provenance for an immutable trace ID must be rejected as a
+    // resource conflict, without replacing the first accepted source lineage.
+    const conflictingTraceResponse = await post('/api/organism/integration/hexis/evidence/lineage', {
+      ...lineagePayload,
+      trace: {
+        ...lineagePayload.trace,
+        provenance: {
+          ...lineagePayload.trace.provenance,
+          sourceId: 'smoke:spoofed-source:002',
+        },
+      },
+    });
+    const conflictingTrace = await conflictingTraceResponse.json();
+    if (conflictingTraceResponse.status !== 409 || conflictingTrace.ok ||
+        conflictingTrace.result?.accepted !== false || conflictingTrace.result?.added !== false ||
+        conflictingTrace.result?.reason !== 'source-trace-id-conflict') {
+      throw new Error('hexis-conflicting-trace-id-must-fail-closed:' + JSON.stringify(conflictingTrace));
+    }
+
+    const originalAfterConflictResponse = await post('/api/organism/integration/hexis/evidence/lineage', lineagePayload);
+    const originalAfterConflict = await originalAfterConflictResponse.json();
+    if (originalAfterConflictResponse.status !== 200 || !originalAfterConflict.ok ||
+        !originalAfterConflict.result?.accepted || originalAfterConflict.result?.added ||
+        originalAfterConflict.result?.reason !== 'duplicate-source-lineage') {
+      throw new Error('hexis-original-lineage-must-survive-conflict:' + JSON.stringify(originalAfterConflict));
+    }
     await new Promise(resolve => {
       if (child.exitCode !== null || child.signalCode !== null) return resolve();
       child.once('exit', resolve); child.kill('SIGTERM');
