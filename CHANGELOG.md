@@ -1,3 +1,9 @@
+## [NK1][WorkPass502] Wire bounded semantic recall into the live cognitive cycle (2026-10-27)
+
+- The MemoryFabric already provided `retrieveForCognition`, which supports opt-in local embeddings, a bounded foreground budget and deterministic lexical fallback, but `OrganismCore.observe()` still called the synchronous lexical-only `retrieve` method on its main memory path.
+- The live cycle now awaits the existing cognitive retrieval adapter. With `NK_EMBEDDINGS_RUNTIME_ENABLED` unset, behavior remains the existing lexical fallback; when explicitly enabled and a provider is configured, semantic recall can participate in the actual cycle under its time budget.
+- Added a WorkPass502 route regression and wired it into `test:rebuild-recovered`. This connects an existing subsystem rather than creating a second memory store. Recall uplift is not claimed; embedding activation, provider-backed runtime behavior and real-task improvement still require separate validation.
+
 ## [NK1][WorkPass502] Count explicit missing-trace rejection in Hexis regression (2026-10-27)
 
 - Added a regression for a missing SourceMonitor trace ID and asserted the bridge rejects it as `source-trace-not-found`.
