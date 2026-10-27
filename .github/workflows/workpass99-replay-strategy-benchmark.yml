@@ -6,6 +6,7 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
       - 'runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-strategy-benchmark.mjs'
@@ -26,6 +27,7 @@ on:
       - '.nvmrc'
       - 'runtime/neuro-kurisu/src/organism/learning/ReplaySelectionPolicy.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/MultiSourceLearningMechanisms.ts'
       - 'runtime/neuro-kurisu/tests/p23-replay-selection-policy.mjs'
       - 'runtime/neuro-kurisu/tests/p23-replay-runtime-config.mjs'
   workflow_dispatch:
