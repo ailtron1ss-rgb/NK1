@@ -1,3 +1,10 @@
+## [NK1][WorkPass454] Use source-scoped semantic projection removal (2026-10-27)
+
+- Replaced the production graph projection withdrawal path's whole-state snapshot rewrite with `SemanticMemoryGraph.removeSourceProjection(sourceKey, ownerToken)`, which removes only source-owned nodes and edges attached to them.
+- The compatibility fallback now requires a mutation checkpoint plus conditional restore; it fails closed when the adapter cannot prove the snapshot is uncontended.
+- Added an integration regression proving old projection nodes/edges are removed while unrelated semantic nodes and independent edges survive.
+- Runtime tests, typecheck and hosted CI remain unconfirmed. `main` and the canonical GitHub Release ZIP are unchanged.
+
 ## [NK1][WorkPass453] Fail closed on foreign graph and temporal-ledger writes (2026-10-27)
 
 - Added bounded mutation journals to the semantic graph and Hexis adaptation ledger. Writes made by the current HMX apply are tagged with a transaction token; untagged mutations after the baseline checkpoint prevent a full-snapshot restore.
