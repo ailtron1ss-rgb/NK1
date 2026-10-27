@@ -2,8 +2,9 @@ name: NK1 Hexis canonical HMX apply
 
 on:
   push:
+    # The default branch stores release/report processes; the runtime source lives
+    # on source branches, so never run npm jobs against main's intentionally sparse tree.
     branches:
-      - main
       - workpass70-source
       - fix/outcome-projection-index-restore-2026-10-26
     paths:
@@ -34,7 +35,6 @@ on:
       - workpass70-source
       - fix/outcome-projection-index-restore-2026-10-26
     paths:
-      - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/package-lock.json'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
