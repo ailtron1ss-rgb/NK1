@@ -851,6 +851,7 @@ function defaultAdvancedFacet(): import('./types.ts').AdvancedDevelopmentFacet {
         memoryFabric: { version: 2, stats: { encodes: 0, newItems: 0, reconsolidations: 0, retrievals: 0, retrievalHits: 0, maintenanceRuns: 0, compatibilityProjections: 0 }, hotIds: [] }, memoryLifecycleAuthority: undefined,
         groundedWorld: defaultGroundedWorldState(),
         unifiedLatentWorldState: defaultUnifiedLatentWorldState(),
+        hexisSourceMonitor: { traces: [], conflicts: 0, unattributed: 0 },
         memoryOS: defaultMemoryOS2(), worldModel2: defaultWorldModel2(), regret: defaultRegretState(), semanticScars: defaultSemanticScarState(),
         valueProvenance: defaultValueProvenance(), commitmentRepair: defaultCommitmentRepair(), modelSwitch: defaultModelSwitchContinuity(), advancedResilience: defaultAdvancedResilience(),
         microDreams: defaultMicroDream(), developmentalForks: defaultDevelopmentalForks(), relationshipSelf: defaultRelationshipSelf(), multiHypothesisPersonality: defaultMultiHypothesisPersonality(), futureSimulator: defaultFutureSimulator(), longTermSocialMind: defaultLongTermSocialMind(), socialMind: defaultSocialMindState(), selfGovernance: defaultSelfGovernance(), futureSelf: defaultFutureSelf(), consequenceAttribution: [], unifiedMemory: defaultUnifiedMemory(), socialDevelopment: defaultSocialDevelopment(), longitudinal: defaultLongitudinalOrganism(), adaptiveDevelopment: defaultAdaptiveDevelopment(), temporalContinuity: defaultTemporalContinuity(), p24: defaultP24WorldIdentity(),
@@ -1937,6 +1938,8 @@ export class OrganismCore {
     private syncPersistenceProjection(includeAdvanced = true, forceAllAdvanced = false) {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
         this.persistence.persistenceProjectionCoordinator.sync(this.persisted, this.projectionContext(), includeAdvanced, forceAllAdvanced);
+        // Persist Hexis evidence provenance alongside the canonical memory snapshot; keep it distinct from cognition.sources.
+        this.persisted.facets.advanced.hexisSourceMonitor = this.memorySubsystem.sourceMonitor.snapshot();
     }
     private syncHotPersistenceProjection() {
         this.persisted.system.conscioAdaptation = this.conscioAdaptation.snapshot();
