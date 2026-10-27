@@ -158,6 +158,41 @@ jobs:
           ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}.zip"
           REPORT="WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}_REPORT_RU.md"
           git archive --format=zip --prefix="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}/" "$VALIDATED_SHA" > "$RUNNER_TEMP/$ZIP"
+          WORKPASS="$(node -e 'const fs=require("node:fs"); const b=JSON.parse(fs.readFileSync("SUPER_VERSION.json","utf8")).build; const m=String(b??"").match(/WORKPASS(\d+)/i); if(!m) process.exit(2); console.log(m[1]);')"
+          PROVENANCE="contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS${WORKPASS}.json"
+          test -s contracts/SBOM.final.json
+          test -s "$PROVENANCE"
+          python - "$RUNNER_TEMP/$ZIP" "$PWD/contracts/SBOM.final.json" "$PWD/$PROVENANCE" "Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}" <<'PY'
+          import pathlib, sys, zipfile
+          archive = pathlib.Path(sys.argv[1])
+          inputs = [pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])]
+          prefix = sys.argv[4]
+          replacement = {f"{prefix}/contracts/{source.name}": source.read_bytes() for source in inputs}
+          if any(not value for value in replacement.values()):
+              raise SystemExit("Generated SBOM/provenance overlay must not be empty")
+          temp = archive.with_name(archive.name + ".overlay.zip")
+          with zipfile.ZipFile(archive, "r") as original:
+              original_names = original.namelist()
+              for name in replacement:
+                  if original_names.count(name) > 1:
+                      raise SystemExit(f"Duplicate pre-existing archive member: {name}")
+              with zipfile.ZipFile(temp, "w", compression=zipfile.ZIP_DEFLATED) as output:
+                  for info in original.infolist():
+                      if info.filename in replacement:
+                          continue
+                      output.writestr(info, original.read(info.filename))
+                  for name, contents in replacement.items():
+                      output.writestr(name, contents, compress_type=zipfile.ZIP_DEFLATED)
+          temp.replace(archive)
+          with zipfile.ZipFile(archive, "r") as result:
+              names = result.namelist()
+              for name, contents in replacement.items():
+                  if names.count(name) != 1:
+                      raise SystemExit(f"Expected exactly one current provenance member: {name}")
+                  if result.read(name) != contents:
+                      raise SystemExit(f"Archive provenance content does not match audited output: {name}")
+              print("CURRENT_SBOM_PROVENANCE_OVERLAY=verified")
+          PY
           unzip -t "$RUNNER_TEMP/$ZIP" | tail -1
           python - "$RUNNER_TEMP/$ZIP" <<'PY'
           import pathlib, sys, zipfile
@@ -183,8 +218,9 @@ jobs:
           - Targeted core regression: success
           - Source-lineage regression: success
           - SBOM provenance and release-license readiness: success
-          - Архив создан через git archive именно для проверенного SHA.
-          - ZIP integrity и безопасные пути проверены в CI.
+          - Код архива создан через git archive для точного проверенного SHA.
+          - Свежие contracts/SBOM.final.json и SOURCE_PROVENANCE_LICENSES_WORKPASSN.json поверх архива заменены результатами provenance gate и проверены на совпадение байтов.
+          - ZIP integrity и безопасные пути проверены после overlay в CI.
           - SHA-256 для ZIP и отчёта включён в SHA256SUMS.txt.
 
           Это технический prerelease, не подтверждение production-ready. Положительный прирост качества recall на независимом RU/EN holdout здесь не заявляется; он требует отдельной оценки.
