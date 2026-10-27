@@ -1,3 +1,24 @@
+## [NK1][WorkPass478] Verify shadow signatures before reading outcome fields (2026-10-27)
+
+- Reordered reflective evidence binding so the trusted signature/context verifier runs before candidate-task and pass/fail comparisons. A changed payload with a stale signature now fails as untrusted signed evidence rather than being classified only from its self-reported outcome.
+- Preserves the distinct identity-mismatch and outcome-mismatch diagnostics for cryptographically trusted receipts.
+
+## [NK1][WorkPass477] Enforce receipt-recovery state before cache replay (2026-10-27)
+
+- A corrupt retired-receipt marker now blocks replay even when a matching hot-journal row remains. Otherwise a migrated duplicate command ID could preserve one cached result and bypass the global recovery-required state.
+
+## [NK1][WorkPass476] Deduplicate migrated receipt IDs while preserving uncertainty (2026-10-27)
+
+- State migration now retains at most one row per mutation command ID and marks the receipt journal corrupt when duplicate IDs appear, even if all individual rows are schema-valid. The duplicate-key uncertainty is retained as a recovery-required state rather than silently disappearing during migration.
+
+## [NK1][WorkPass475] Classify applied HMX rows missing receipts as invalid replay (2026-10-27)
+
+- Applied-stage receipt validation now runs before the generic lifecycle-digest check for replay. Missing or tampered receipts still fail closed, but report the specific `hmx-applied-receipt-invalid` contract instead of masking the broken applied receipt as a generic stage-digest error.
+
+## [NK1][WorkPass474] Register P26 learning input integrity regression (2026-10-27)
+
+- Added the missing `test:p26:learning-input-integrity` npm script for the existing test file, so P26 validation runs the intended integrity regression rather than failing at script lookup.
+
 ## [NK1][WorkPass444] Complete P26 learning-validation script wiring (2026-10-27)
 
 - Audited every `npm run ...` step in `.github/workflows/p26-learning-validation.yml` against the runtime package scripts.
