@@ -1,3 +1,10 @@
+## [NK1][memory] Prevent duplicate accounting in semantic cognitive recall (2026-10-27)
+
+- Centralized memory-retrieval outcome accounting so the live cognitive cycle records only the result actually selected for use.
+- The lexical candidate set is now side-effect-free while semantic retrieval is pending. On semantic success, only selected semantic IDs update retrieval statistics, hot-memory residency, adaptive-policy evidence and unified-memory retrieval history; on timeout or provider failure, the lexical fallback is accounted once.
+- Added runtime regressions for semantic-success and provider-failure accounting; wired both semantic resilience regressions into the recovered-core suite and a focused GitHub Actions workflow.
+- Validation status: code, regressions and workflow are committed; exact-head CI/test/typecheck results remain pending until the new workflow completes. No retrieval-quality uplift is claimed.
+
 ## [NK1][memory] Keep the cognitive cycle resilient to semantic-provider failure (2026-10-27)
 
 - Route synchronous embedding-adapter throws and rejected provider promises through the same bounded semantic-recall path instead of allowing a provider failure to reject the foreground cognition cycle.
