@@ -1,3 +1,9 @@
+## [NK1][WorkPass582] Align semantic recall contract with canonical selected reads (2026-10-27)
+
+- Fix a stale regression assertion: `retrieveForCognition` correctly records outcome metrics from the canonical `selected` rows after `recordSelectedRetrieval`, not from the uncommitted preview `rows`.
+- Strengthen the contract test to require both the canonical selected-read call and outcome accounting on the returned selected rows.
+- The latest PR head has not been revalidated by a fresh Actions run; no passing CI is claimed.
+
 ## [NK1][memory] Count unique candidates in semantic recall cost signals (2026-10-27)
 
 - The semantic preview now reports the cardinality of the union of semantic-scored, lexical-pool and backfill candidate IDs, rather than summing overlapping lists. The adaptive retrieval-cost signal is therefore bounded to the actual unique candidate set instead of double-counting overlap.
