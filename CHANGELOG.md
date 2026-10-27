@@ -1,3 +1,196 @@
+## [NK1][WorkPass503] Make Hexis bridge attempt-count assertion monotonic (2026-10-27)
+
+- A parallel regression added explicit same-ID trace replay to verify immutable source-trace identity, raising the bridge's current-instance attempt count from nine to ten.
+- Replaced the brittle exact count with a minimum-coverage assertion of ten. Missing-trace, duplicate-ID, future-timestamp, model-echo, non-independent P65, and fingerprint-mismatch checks remain individually asserted; restore replay remains accounted to its own bridge instance.
+
+## [NK1][WorkPass502] Wire bounded semantic recall into the live cognitive cycle (2026-10-27)
+
+- The MemoryFabric already provided `retrieveForCognition`, which supports opt-in local embeddings, a bounded foreground budget and deterministic lexical fallback, but `OrganismCore.observe()` still called the synchronous lexical-only `retrieve` method on its main memory path.
+- The live cycle now awaits the existing cognitive retrieval adapter. With `NK_EMBEDDINGS_RUNTIME_ENABLED` unset, behavior remains the existing lexical fallback; when explicitly enabled and a provider is configured, semantic recall can participate in the actual cycle under its time budget.
+- Added a WorkPass502 route regression and wired it into `test:rebuild-recovered`. This connects an existing subsystem rather than creating a second memory store. Recall uplift is not claimed; embedding activation, provider-backed runtime behavior and real-task improvement still require separate validation.
+
+## [NK1][WorkPass502] Count explicit missing-trace rejection in Hexis regression (2026-10-27)
+
+- Added a regression for a missing SourceMonitor trace ID and asserted the bridge rejects it as `source-trace-not-found`.
+- The same runtime now performs nine ingress attempts; snapshot/restore replay is intentionally counted on a separate bridge instance. The exact attempt-count assertion is aligned to nine, preserving all provenance acceptance and rejection checks.
+
+## [NK1][WorkPass501] Fail closed on malformed retrieval experiment seed lists (2026-10-27)
+
+- The multi-seed retrieval experiment previously discarded malformed seeds and silently truncated seed lists after nine entries. That could make the reported run set differ from the caller's requested evaluation plan.
+- Validate every supplied seed as a positive uint32, reject duplicate seed entries when at least three unique seeds remain, and reject lists over the nine-seed limit. Existing behavior for fewer than three distinct valid seeds remains fail-closed.
+- Added regression cases for a mixed invalid seed list, duplicate entries, and ten requested seeds. This hardens evaluation provenance only; it does not claim retrieval quality uplift or alter promotion criteria.
+
+## [NK1][WorkPass500] Reject future-dated Hexis observation timestamps (2026-10-27)
+
+- The canonical evidence bridge bounded provenance.captureAt but did not independently bound the source observation timestamp (`candidate.at`), which is persisted as canonical `observedAt`.
+- The bridge now rejects observation times more than five minutes in the future, using the same tolerance as the existing memory doctor/provenance policy. This applies to both SourceMonitor and P65 evidence ingestion; source fingerprint and confidence behavior are unchanged.
+- Added regressions for valid provenance paired with future-dated SourceMonitor and P65 observations, requiring fail-closed rejection before any canonical lineage mutation. Exact-head CI is required before marking this proven.
+
+## [NK1][WorkPass499] Guard endogenous-goal learning against action mismatch (2026-10-27)
+
+- Exact-head local-model HTTP regression failed with `B272 outcome action must match the generated action`: the outer cognitive selector can execute an action different from B272's own generated action.
+- Synthetic and real-transition outcome paths now call B272 learning only when the executed selection equals the generated B272 action. The call uses the generated action identity; mismatched outcomes receive no B272 learning credit instead of throwing or teaching a false causal association.
+- B273 and the other runtime outcome learners continue to receive the observed action under their own contracts. The fake-provider HTTP end-to-end regression must pass on the new exact HEAD before this is considered proven.
+
+## [NK1][WorkPass498] Assert the runtime-owned cognitive-cycle persistence API (2026-10-27)
+
+- Runtime inspection confirmed the active cycle persists its snapshot through setRuntimeUnifiedCognitiveCycle, while the regression expected the superseded setUnifiedCognitiveCycle symbol.
+- Updated the regression to assert the API actually used by the runtime, alongside WorkPass497's scoped embodiment-persistence check. The ordering and persistence requirements remain enforced; this does not change production code.
+- Exact-head Core validation must finish on the new commit before the recovered regression set is considered green.
+
+## [NK1][WorkPass497] Anchor cycle embodiment assertion to the active cycle (2026-10-27)
+
+- The exact-head Core regression showed that a file-global lookup found an earlier initialization-time setEmbodiment call rather than the active cycle's persistence point.
+- Scope the lookup to begin after closeB380TemporalLife and require the persistence call to exist there. Keep the downstream phase-order assertions intact; no runtime behavior or acceptance threshold is relaxed.
+- The WorkPass318 memory-doctor CLI regression passed on this head after aligning its synthetic timestamp with the existing five-minute tolerance. Re-run the exact-head Core workflow after this correction.
+
+## [NK1][WorkPass496] Align the memory-doctor future-evidence fixture (2026-10-27)
+
+- Exact-head Core regression showed the CLI fixture used an observation timestamp only 60 seconds ahead, below the memory doctor's existing five-minute future-evidence tolerance.
+- Changed only the synthetic fixture to one hour ahead so the test exercises the intended rejection path. Production thresholds and behavior are unchanged; the test remains read-only and keeps the bounded-report assertions.
+- The compound-skill and project-reconciliation route regressions pass on the observed head. Re-run the exact-head Core workflow to validate this fixture correction.
+
+## [NK1][WorkPass495] Unify compound-skill action finalization (2026-10-27)
+
+- The exact-head Core regression exposed a second execution-path bypass after the project-step path was corrected: compound skills called ActionGateway directly and finalized unkeyed results separately.
+- Compound skills now use `OrganismCore.executeTool()`; the canonical wrapper accepts caller-supplied context-key names and passes them to the single finalization owner. Keyed execution/replay remains finalized by ActionGateway, avoiding double finalization.
+- This change follows the existing WorkPass97 contract instead of relaxing it. Exact-head Core regression must complete before this is considered proven.
+
+## [NK1][WorkPass494] Route project tool receipts through canonical core wrappers (2026-10-27)
+
+- Project-step dispatch now uses `OrganismCore.executeTool()` for fresh execution and `OrganismCore.reconcileToolExecution()` for receipt recovery, instead of calling ActionGateway directly from the project path.
+- This keeps legacy tool-ID normalization and finalization ownership at the canonical core boundary. Keyed execution and replay semantics remain guarded by the existing ActionGateway/core-wrapper contract; project recovery still never re-runs a potentially completed side effect.
+- Exact-head Core regression failed at WorkPass97 because the project path bypassed both wrappers. The test already encoded the intended contract; this change fixes the production dispatch path rather than weakening the assertion.
+- Validation is pending for the new commit. This is a targeted execution-boundary fix, not a production-readiness claim.
+
+## [NK1][WorkPass493] Reject corrupted persisted action receipts on restore (2026-10-27)
+
+- Core regression on exact HEAD found that a completed idempotency receipt could be replayed even when persisted response identity, verification flags, audit outcome, or payload size had been tampered with.
+- Restore now only retains a replayable response when execution/tool identity matches the ledger row, verification and audit attestations agree, and the serialized response remains within the 48 KiB bound. Invalid responses become non-replayable recovery tombstones; the gateway does not re-run the side effect.
+- Validation is pending on the updated branch HEAD; this is a security/integrity fix, not a claim that all Core regressions now pass.
+
+## [NK1][WorkPass492] Fix causal replay runtime wiring assertion order (2026-10-27)
+
+- Core regression logs showed the causal replay wiring test searched for the feature vector only after the sampler call, although production correctly builds candidate feature vectors before invoking the sampler.
+- Updated the assertion to require the feature vector between `replayPending` and `selectCausalReplayBatch`, preserving the check that candidates are grounded in state/outcome features and the sampler remains in the production path.
+- This is a regression-test correction based on exact-head CI evidence; rerun Core regression and related workflows before treating the branch as green.
+
+## [NK1][WorkPass491] Correct the overlapping-task replay acceptance criterion (2026-10-27)
+
+- The exact-head Core regression exposed an impossible assertion: the post-hoc replay control trains contradictory task labels over overlapping observable states, then required both old-task recovery and recent-task retention without a distinguishing context feature.
+- Reframed this control as a diagnostic of the expected interference trade-off. The context-separated benchmark remains the acceptance gate for preserving both tasks, with its existing >0.8 thresholds unchanged.
+- No production learning behavior or performance threshold was changed; this is a benchmark-contract correction. Re-run the exact-head Core regression and P26 workflows before considering the branch validated.
+
+## [NK1][WorkPass490] Balance replay plasticity after Core diagnostics — 2026-10-27
+
+- Latest Core run showed replay at 0.25× preserved the recent task at 1.0 but did not move old-task accuracy above zero.
+- Increased the default replay update scale to 0.5× while retaining stored-reward targets and the explicit TD option.
+- The change targets the measured under-replay side of the retention/forgetting trade-off; the existing old-task recovery and new-task retention checks remain unchanged.
+- Validation: fresh Core regression pending.
+
+## [NK1][WorkPass489] Bound replay update strength to avoid task overwrite — 2026-10-27
+
+- WorkPass488 made replay use stored rewards; Core CI then showed old-task accuracy recovered to 0.50, but recent-task accuracy dropped to 0.5125.
+- Added a validated `learningRateScale01` option to replay, defaulting to 0.25 of online update strength, so historical replay can recover some retention without overwhelming newer outcomes.
+- Target mode and bootstrap coefficient remain explicit; no benchmark threshold or expected result was altered.
+- Validation: latest-head sequential/Core regression required.
+
+## [NK1][WorkPass488] Preserve observed outcomes in episodic replay — 2026-10-27
+
+- The sequential benchmark isolated a target-contamination bug: default replay bootstrapped every stored reward from the current policy, allowing the newly learned task's value estimates to dominate historical task labels.
+- `P26TrueLearningEngine.replay()` now defaults to `recorded-reward`, training from the stored outcome; Bellman bootstrapping is still available explicitly with `{ targetMode: 'td', bootstrapWeight01 }`.
+- Invalid target modes and bootstrap weights outside the finite `[0,1]` range fail explicitly.
+- No learning/retention threshold was relaxed. The sequential Core regression is the acceptance gate for this change.
+- Validation: latest-head Core and P26 workflows pending.
+
+## [NK1][WorkPass487] Preserve update magnitude after adding context features — 2026-10-27
+
+- The first context-feature regression run established perfect context-aware synthetic accuracy, but exposed a new regression: the shared feature-vector norm slowed post-hoc replay recovery.
+- Updated gradient normalization in both regular sample training and causal feature training: appended context hinges contribute 0.25 of their squared magnitude to the normalizer, while still receiving the normal gradient update.
+- This prevents new binary basis dimensions from shrinking every existing policy feature's learning step; no task-performance threshold was changed.
+- Validation: latest-head Core regression and P26 workflows pending.
+
+## [NK1][WorkPass485] Add explicit state-context interaction features — 2026-10-27
+
+- Core regression showed that replay-cadence/cursor fixes alone did not preserve the old task in the context-aware synthetic benchmark.
+- Added named, zero-initialized features for low-energy, low-novelty and their joint context interaction, allowing the parametric policy to represent a different action mapping in separated state regimes.
+- Kept `actionCost` addressed by semantic feature name so appending new features cannot move its learned coefficient.
+- Extended the schema migration regression to verify old action-cost weights survive and new interaction weights start at zero; added a context-separation feature check.
+- Added explicit context-aware benchmark diagnostics; existing performance thresholds remain unchanged.
+- Validation: latest-head P26 and Core regression pending.
+
+## [NK1][WorkPass484] Persist P26 replay-buffer traversal across batches — 2026-10-27
+
+- Fixed replay cursor reset at each `trainInterleaved()` call, which caused bounded training batches to revisit the same replay-buffer prefix.
+- Stores the cursor in P26 learning state and restores it safely from snapshots.
+- Advances cursor for every sampled record, including conflict-blocked entries; adds a sequential benchmark assertion for cursor accounting.
+- Validation: latest-head sequential benchmark and Core regression pending.
+
+## [NK1][WorkPass483] Bound replay frequency without weakening rehearsal updates — 2026-10-27
+
+- Replaced per-update replay-rate attenuation with a minimum replay cadence of one rehearsal per four fresh updates.
+- Keeps the configured replay learning rate intact, while bounding the replay/current update ratio to reduce task interference.
+- Added explicit cadence assertions to the sequential-learning benchmark and multi-seed replay-policy sweep; existing performance thresholds were not relaxed.
+- The prior rate-scaling attempt did not recover old-task performance and is superseded.
+- Validation: fresh-head P26 and Core regression workflows pending.
+
+## [NK1][WorkPass482] Verify full root persistence across server restart — 2026-10-27
+
+- Extended Hexis server smoke to stop the first server after a flushed evidence write, restart over the same state directory and replay the same source trace.
+- The test requires the restored SourceMonitor trace and canonical MemoryFabric lineage to deduplicate after process restart; missing root persistence fails the test.
+- No confidence or evidence-quality threshold was relaxed.
+- Validation: current-head smoke/core CI pending.
+
+## [NK1][WorkPass481] Wire live Hexis evidence-lineage ingestion — 2026-10-27
+
+- Added a canonical Hexis HTTP route for source lineage, guarded by strict source, content, timestamp, confidence and provenance validation.
+- The route checks the supplied SHA-256 fingerprint against the submitted source content before the evidence trace reaches SourceMonitor.
+- Identical trace replays are idempotent; trace-ID collisions and modified content are rejected.
+- Added server-smoke coverage for first ingestion, replay and fingerprint-tampering rejection.
+- This records provenance metadata only: a content hash is not source authentication and this path does not change belief confidence or authorize actions.
+- Validation: current-head CI pending.
+
+## [NK1][WorkPass480] Persist Hexis evidence lineage in the root organism snapshot — 2026-10-27
+
+- Added the typed optional `hexisSourceMonitor` field to the advanced persisted facet, separate from the existing cognitive source monitor.
+- The root OrganismCore persistence projection now captures the live Hexis evidence-lineage state; older snapshots default to an empty state.
+- Runtime restore supports the new explicit key and retains a legacy fallback for direct runtime snapshots.
+- Regression snapshot naming now mirrors the canonical persisted contract.
+- Validation: current-head CI pending.
+
+## [NK1][WorkPass479] Bound P26 replay pressure at high interleave frequency — 2026-10-27
+
+- `P26TrueLearningEngine.trainInterleaved()` now attenuates per-replay learning rate when replay is scheduled more frequently than once per four current-task examples.
+- The effective replay rate is `requestedRate × min(1, replayEveryNCurrent / 4)`; this bounds replay's aggregate contribution instead of allowing a 1:1 schedule to overtake new-task learning.
+- Existing thresholds remain unchanged. Validation pending on the full P26 replay-policy sweep and core regression.
+
+## [NK1][WorkPass478] Wire Hexis source lineage into canonical memory — 2026-10-27
+
+- Added a bounded provenance contract shared by SourceMonitor, P65 and the Hexis evidence bridge.
+- Wired the bridge into MemorySubsystemRuntime and persisted SourceMonitor provenance with the runtime snapshot.
+- Evidence writes use the existing MemoryFabric mutation gateway; MemoryOS2 remains the only writable canonical memory owner.
+- Deduplicates SourceMonitor/P65 copies by upstream source ID + declared content fingerprint; rejects missing/invalid provenance, inferred/model/memory echoes, non-independent sources and future timestamps.
+- Does not revise belief confidence, authenticate upstream sources, authorize tools or promote skills.
+- Added a regression covering cross-channel deduplication, fail-closed cases, unchanged confidence and replay after snapshot/restore.
+- Validation: test is registered in Hexis and release test commands; exact-head CI is pending and no external retrieval uplift is claimed.
+
+## [NK1][WorkPass481] Forward request options into Hexis learning-review creation (2026-10-27)
+
+- The review-create route parsed and shape-checked its JSON body but invoked the core factory without passing it. The factory reads `memoryIds`, `periodStart`, and `periodEnd`, so the live route could fail before it returned a learning review.
+- Forward the parsed object into `hexisCreateLearningReview(input)`; preserve the existing object-body guard and downstream approval/decision gates.
+- Regression evidence: the exact-head canonical HMX apply workflow reached `hexis-learning-review-create` after the projector, rollback, adaptation, and export-adapter checks had passed. Re-run required after this change. `main` and the published Release ZIP remain unchanged.
+
+## [NK1][WorkPass480] Isolate host-owned authority regression conditions (2026-10-27)
+
+- The permissions regression intentionally made the executor group-writable, then left that permission in place for a later run-root identity test.
+- Restore the fixture executable to private mode after asserting permission rejection, so the following assertion exercises the root-identity guard rather than being pre-empted by the executable-permission guard. Runtime security checks are unchanged.
+
+## [NK1][WorkPass477] Reconcile Hexis belief-dedupe fixture on integration head (2026-10-27)
+
+- The integration head still contained a stale duplicate request that omitted the route-required numeric `confidence01`, despite an earlier changelog entry claiming this fixture was corrected on another line.
+- Reuse one valid payload for the initial revision and its replay, require the replay audit to report `duplicate_source` with `applied=false`, and separately assert that missing confidence is rejected with HTTP 400. Invalid-stance and missing-target requests now include otherwise-valid confidence so their status assertions reach the intended validators. The pending-goal materialization regression now sends explicit confirmation so it reaches the proposal-state guard (expected HTTP 409) instead of the earlier confirmation guard (HTTP 403).
+- Test/contract correction only; no runtime behavior, retrieval uplift, or learning-quality improvement is claimed.
+
 ## [NK1][WorkPass475] Emit per-seed replay sweep metrics on failure (2026-10-27)
 
 - The P26 replay-policy sweep now prints the strategy, seed, old-task baseline/final, new-task accuracy, replay counts and conflict-screening diagnostics before asserting. This makes an underperforming schedule actionable rather than leaving only a generic failure at line 84; the `.60` acceptance threshold remains unchanged.

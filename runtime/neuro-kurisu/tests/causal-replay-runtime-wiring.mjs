@@ -11,8 +11,8 @@ const samplerAt = engine.indexOf('selectCausalReplayBatch(causalCandidates', rep
 const finalSelectorAt = engine.indexOf('selectReplayBatch(causalCandidatesSelected,options)', replayAt);
 assert.ok(samplerAt > replayAt, 'causal selection must run in the production replayPending path');
 assert.ok(finalSelectorAt > samplerAt, 'the adaptive multi-signal selector must remain the final selector');
-const vectorAt = engine.indexOf('policyFeatures01:[', samplerAt);
-assert.ok(vectorAt > samplerAt, 'causal sampler candidates must be grounded in state/outcome features');
+const vectorAt = engine.indexOf('policyFeatures01:[', replayAt);
+assert.ok(vectorAt > replayAt && vectorAt < samplerAt, 'causal sampler candidates must be grounded in state/outcome features before sampling');
 const vectorEnd = engine.indexOf('],', vectorAt);
 assert.ok(vectorEnd > vectorAt, 'causal feature vector must be closed');
 const vector = engine.slice(vectorAt, vectorEnd);

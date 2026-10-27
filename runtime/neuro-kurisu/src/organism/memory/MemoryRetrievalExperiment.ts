@@ -47,8 +47,12 @@ export function runMemoryOS2RetrievalExperiment(
 ) {
   const now = Number.isFinite(Number(options.now)) ? Number(options.now) : Date.now();
   const suppliedSeeds = Array.isArray(options.seeds) && options.seeds.length ? options.seeds : DEFAULT_SEEDS;
-  const seeds = [...new Set(suppliedSeeds.map(boundedSeed).filter((value): value is number => value !== null))].slice(0, 9);
+  if (suppliedSeeds.length > 9) throw new Error('experiment-supports-at-most-9-bootstrap-seeds');
+  const parsedSeeds = suppliedSeeds.map(boundedSeed);
+  if (parsedSeeds.some((value) => value === null)) throw new Error('experiment-seeds-must-be-positive-uint32-values');
+  const seeds = [...new Set(parsedSeeds as number[])];
   if (seeds.length < 3) throw new Error('experiment-requires-at-least-3-distinct-bootstrap-seeds');
+  if (seeds.length !== parsedSeeds.length) throw new Error('experiment-bootstrap-seeds-must-be-distinct');
 
   const benchmarkOptions: MemoryRetrievalBenchmarkOptions = { ...options, now, maxExamples: Math.max(64, Math.min(512, Math.floor(Number(options.maxExamples ?? 512)))) };
   delete (benchmarkOptions as MemoryRetrievalExperimentOptions).seeds;
