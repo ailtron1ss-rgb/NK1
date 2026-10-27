@@ -486,7 +486,25 @@ export class ActionGateway {
         ...(typeof row.decisionId==='string'&&row.decisionId.length<=180?{decisionId:row.decisionId}:{}),
         ...(typeof row.autonomous==='boolean'?{autonomous:row.autonomous}:{})};
       if(row.status==='completed' && row.response && typeof row.response==='object') {
-        try { safe.response=structuredClone(row.response); } catch { safe.responseOmitted=true; }
+        try {
+          const response=structuredClone(row.response) as ToolExecution;
+          // A persisted receipt is untrusted input. Do not replay it unless its
+          // response identity and outcome attestations agree with the ledger row.
+          const responseBytes=new TextEncoder().encode(stableJson(response)).length;
+          const identityValid=typeof safe.executionId==='string'
+            && response.executionId===safe.executionId
+            && (!safe.toolId || response.tool===safe.toolId);
+          const verificationValid=Boolean(response.verification)
+            && response.verified===response.verification.verified
+            && response.audit?.verified===response.verified;
+          const outcomeValid=response.audit?.outcomeClass===response.outcomeClass
+            && response.audit?.executionId===response.executionId;
+          if(identityValid && verificationValid && outcomeValid && responseBytes<=48*1024) {
+            safe.response=response;
+          } else {
+            safe.responseOmitted=true;
+          }
+        } catch { safe.responseOmitted=true; }
       } else if(row.status==='completed') safe.responseOmitted=true;
       const prior=restored.get(safe.keyHash);
       if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
