@@ -337,3 +337,42 @@ test('oversized Mem0 response is rejected with a bounded error', async () => {
   assert.equal(result.errorCode, 'response-too-large');
   assert.deepEqual(result.memories, []);
 });
+
+test('OSS search uses current scoped filters and sends a bounded result limit', async () => {
+  let requestUrl = '';
+  let requestBody = null;
+  let requestHeaders = null;
+  const adapter = new Mem0PlatformAdapter({
+    enabled: true,
+    mode: 'oss',
+    apiKey: 'test-oss-key',
+    userId: 'scope-owner',
+    baseUrl: 'http://localhost:8888',
+    fetchImpl: async (input, init) => {
+      requestUrl = String(input);
+      requestBody = JSON.parse(String(init?.body));
+      requestHeaders = init?.headers;
+      return jsonResponse({ results: [{
+        id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        memory: 'The scoped owner prefers tea in the afternoon.',
+        metadata: { user_id: 'scope-owner' },
+        score: 0.82,
+      }] });
+    },
+  });
+
+  const result = await adapter.search('What did I prefer about tea?', 2);
+  assert.equal(result.status, 'ok');
+  assert.equal(new URL(requestUrl).pathname, '/search');
+  assert.deepEqual(requestBody, {
+    query: 'What did I prefer about tea?',
+    filters: { user_id: 'scope-owner' },
+    limit: 2,
+  });
+  assert.equal(Object.hasOwn(requestBody, 'user_id'), false,
+    'modern OSS search must not pass the entity ID as a top-level search option');
+  assert.equal(requestHeaders['X-API-Key'], 'test-oss-key');
+  assert.equal(result.memories.length, 1);
+  assert.equal(result.memories[0].source, 'mem0-oss');
+  assert.equal(result.memories[0].requiresVerification, true);
+});
