@@ -624,11 +624,22 @@ assert.equal(
 );
 
 // Public hydration must keep the hard 1,600-row cap; only the private transaction
-// restore can temporarily preserve 1,601 rows while rolling back a failed trim.
+// restore can temporarily preserve 1,601 rows while rolling back a failed trim. It must
+// also remove references to the discarded row rather than retaining dangling memory edges.
 const publicRestoreCapRuntime = new MemorySubsystemRuntime();
+const droppedRestoreTargetId = maintenanceCapRows[1600].id;
+const publicRestoreRows = maintenanceCapRows.map((item, index) => index === 0 ? {
+  ...item,
+  semanticLinks: [droppedRestoreTargetId],
+  temporalLinks: [droppedRestoreTargetId],
+  causalLinks: [droppedRestoreTargetId],
+  contradictionLinks: [droppedRestoreTargetId],
+  supersedesId: droppedRestoreTargetId,
+  supersededById: droppedRestoreTargetId,
+} : item);
 publicRestoreCapRuntime.memoryOS.restore({
   ...maintenanceCapState,
-  items: maintenanceCapRows,
+  items: publicRestoreRows,
   estimatedBytes: 0,
 });
 assert.equal(publicRestoreCapRuntime.fabric.canonicalSize(), 1600);
@@ -637,6 +648,17 @@ assert.equal(
   false,
   'ordinary public restore must not expose the internal over-capacity rollback mode',
 );
+const restoredLinkedRow = publicRestoreCapRuntime.fabric.canonicalSnapshot().items
+  .find(item => item.id === maintenanceCapTemplate.id);
+assert.ok(restoredLinkedRow);
+for (const linkName of ['semanticLinks', 'temporalLinks', 'causalLinks', 'contradictionLinks']) {
+  assert.deepEqual(restoredLinkedRow[linkName], [],
+    'public restore must remove ' + linkName + ' targets discarded by the hard cap');
+}
+assert.equal(restoredLinkedRow.supersedesId, null,
+  'restore must clear a supersedes pointer to a row discarded by the hard cap');
+assert.equal(restoredLinkedRow.supersededById, null,
+  'restore must clear a supersededBy pointer to a row discarded by the hard cap');
 assert.equal(publicRestoreCapRuntime.memoryOS.indexDiagnostics().pass, true,
   'public restore must rebuild coherent canonical/inverted indexes under the normal row cap');
 
