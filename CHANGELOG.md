@@ -1,3 +1,9 @@
+## [NK1][WorkPass505] Require semantic provider and cognitive retrieval regressions in Core CI (2026-10-27)
+
+- Added the existing WorkPass33 local embedding-provider contract test and WorkPass34 `MemoryFabric.retrieveForCognition` test to `test:rebuild-recovered`.
+- These tests exercise provider response normalization and cache behavior, semantic top-hit selection via a fixture provider, timeout/failure fallback, and single-flight bounds on cognitive retrieval. They use deterministic local fixtures and require no external model download or network endpoint.
+- Passing these regressions verifies route and failure-boundary behavior, not real-world recall uplift; the independent bilingual holdout gate remains open.
+
 ## [NK1][WorkPass504] Exercise retrieval evaluation gates in core regression (2026-10-27)
 
 - Added `test:memory-retrieval-experiment` to `test:rebuild-recovered`, alongside the live cognitive semantic-route regression. Seed validation now runs automatically in the same recovered-core check rather than being committed but disconnected from the required suite.
