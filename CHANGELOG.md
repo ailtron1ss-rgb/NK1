@@ -1,3 +1,10 @@
+## [NK1][memory] Commit canonical access signals only for the selected cognitive recall (2026-10-27)
+
+- Added `MemoryOS2.recordSelectedRetrieval` so semantic candidates selected from a read-only preview can update canonical query/access signals exactly once after selection, including adaptive-policy context, last-access time, retrieval count, temperature and candidate-cost diagnostics.
+- Changed the cognitive recall path to defer live lexical retrieval until fallback is actually chosen. Provider-disabled, busy, timed-out and failed paths use canonical lexical retrieval once; successful semantic recall commits only its selected IDs. Speculative lexical rows no longer warm or age memories that were not actually used.
+- Added regression assertions that preview does not mutate canonical access counts, selected reads increment once, and adaptive compute-cost diagnostics are attributed to the current selection rather than a stale candidate count.
+- This is an accounting/temporal-signal integrity fix; it does not claim retrieval-quality uplift.
+
 ## [NK1][memory] Correct P62 relevance ranking and query the canonical recall corpus (2026-10-27)
 
 - Fixed a ranking comparator that subtracted `b.relevance01` from itself, effectively eliminating relevance ordering. P62 now sorts by descending relevance, then support, then stable ID.
