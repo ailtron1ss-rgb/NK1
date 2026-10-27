@@ -1383,7 +1383,7 @@ const uncompensatedStage = uncompensatedHexis.stageHmx({
 assert.equal(uncompensatedHexis.decideHmx(uncompensatedStage.stagingId, 'accept')?.status, 'accepted');
 assert.throws(
   () => uncompensatedHexis.decideHmx(uncompensatedStage.stagingId, 'apply'),
-  /rollback-failures=canonical-uncompensated:/,
+  /rollback-failures=.*canonical-uncompensated:/,
   'a silent no-op compensator must be reported as an incomplete rollback, never as atomic failure recovery',
 );
 const uncompensatedResiduals = uncompensatedRuntime.fabric.canonicalSnapshot().items.filter(item =>
