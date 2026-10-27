@@ -996,7 +996,20 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   );
   const rawMutationReceipts=memoryFabricRaw.mutationReceipts;
   const mutationReceiptRows=Array.isArray(rawMutationReceipts)?rawMutationReceipts.slice(-512):[];
-  const mutationReceipts=mutationReceiptRows.filter(validMutationReceipt).map((row:any)=>({
+  const validMutationReceiptRows=mutationReceiptRows.filter(validMutationReceipt);
+  const seenMutationReceiptIds=new Set<string>();
+  const duplicateMutationReceiptIds=new Set<string>();
+  // Keep at most one journal row per command identity, but preserve uncertainty:
+  // duplicate keys can carry conflicting result metadata and must not stay authoritative.
+  const uniqueMutationReceiptRows=validMutationReceiptRows.filter((row:any)=>{
+    if(seenMutationReceiptIds.has(row.commandId)){
+      duplicateMutationReceiptIds.add(row.commandId);
+      return false;
+    }
+    seenMutationReceiptIds.add(row.commandId);
+    return true;
+  });
+  const mutationReceipts=uniqueMutationReceiptRows.map((row:any)=>({
     commandId:row.commandId,
     fingerprint:String(row.fingerprint).slice(0,64).toLowerCase(),
     action:String(row.action),
@@ -1006,7 +1019,11 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
     ...(typeof row.memoryId==='string'&&row.memoryId?{memoryId:row.memoryId}:{}),
     ...(typeof row.booleanValue==='boolean'?{booleanValue:row.booleanValue}:{}),
   }));
-  const mutationReceiptJournalCorrupt=rawMutationReceipts!==undefined&&(!Array.isArray(rawMutationReceipts)||rawMutationReceipts.length>512||mutationReceiptRows.some((row:any)=>!validMutationReceipt(row)));
+  const mutationReceiptJournalCorrupt=rawMutationReceipts!==undefined&&(
+    !Array.isArray(rawMutationReceipts)||rawMutationReceipts.length>512||
+    mutationReceiptRows.some((row:any)=>!validMutationReceipt(row))||
+    duplicateMutationReceiptIds.size>0
+  );
   const retiredMutationReceiptBloomCorrupt = memoryFabricRaw.retiredMutationReceiptBloomCorrupt === true ||
     (rawRetiredMutationReceiptBloom!==undefined&&(typeof rawRetiredMutationReceiptBloom!=='string'||!retiredMutationReceiptBloomValid)) ||
     (Boolean(retiredMutationReceiptBloomRaw) && !retiredMutationReceiptBloomValid) ||
