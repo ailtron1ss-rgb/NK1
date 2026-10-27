@@ -52,6 +52,8 @@ export interface P26ReplayOptions {
   targetMode?: P26ReplayTargetMode;
   /** Applied only when targetMode='td'. Must be finite and in [0,1]. */
   bootstrapWeight01?: number;
+  /** Bounds replay plasticity relative to online updates; default 0.25. Must be finite and in [0,1]. */
+  learningRateScale01?: number;
 }
 
 export interface P26InterleavedTrainingOptions {
@@ -214,11 +216,13 @@ export class P26TrueLearningEngine{
     if(targetMode!=='recorded-reward'&&targetMode!=='td')throw new TypeError('p26-replay-target-mode-invalid');
     const bootstrapWeight01=options.bootstrapWeight01??.78;
     if(!Number.isFinite(bootstrapWeight01)||bootstrapWeight01<0||bootstrapWeight01>1)throw new RangeError('p26-replay-bootstrap-weight-invalid');
+    const learningRateScale01=options.learningRateScale01??.25;
+    if(!Number.isFinite(learningRateScale01)||learningRateScale01<0||learningRateScale01>1)throw new RangeError('p26-replay-learning-rate-scale-invalid');
     let updates=0,loss=0;
     for(const e of experiences){
       const bootstrap=targetMode==='td'?Math.max(...this.learner.predict(e.nextState,extras).map(x=>x.value),.5):0;
       const target=clamp(e.reward+(targetMode==='td'?bootstrapWeight01*bootstrap:0));
-      const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:.035+clamp(e.surprise??.2)*.03,extras});
+      const r=this.learner.train({state:e.state,action:e.action,target01:target,learningRate01:(.035+clamp(e.surprise??.2)*.03)*learningRateScale01,extras});
       updates++; loss+=r.loss01;
     }
     this.state.metrics.replayUpdates+=updates;
