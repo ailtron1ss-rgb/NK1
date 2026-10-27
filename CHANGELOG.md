@@ -1,3 +1,10 @@
+## [NK1][Hexis] Surface immutable trace conflicts as HTTP 409 (2026-10-27)
+
+- Map `source-trace-id-conflict` to HTTP 409 Conflict while keeping missing canonical memory as 404 and malformed/invalid submissions as 400.
+- Extend the live server smoke test to reject conflicting provenance for an existing trace ID, then replay the original lineage and assert an idempotent duplicate rather than a second write.
+- Add a focused source-lineage CI gate for runtime typecheck, canonical evidence-lineage tests, and live server smoke tests whenever the server, Hexis adapter, provenance logic, tests, or this changelog change.
+- Validation status at commit time: CI pending; no retrieval-uplift or Release ZIP refresh is implied.
+
 ## [NK1][WorkPass569] Require explicit session lineage for autobiographical recall ranking (2026-10-27)
 
 - Hardened `isConversationMemory`: stable conversation/session ID or key remains the strongest signal; otherwise only explicit history fields, typed history labels, or source labels naming a history import can identify conversation memory.
