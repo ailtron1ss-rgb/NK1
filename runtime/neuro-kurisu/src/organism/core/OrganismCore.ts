@@ -2910,6 +2910,7 @@ export class OrganismCore {
         if (provenance.evidenceClass !== 'direct-observation' && provenance.evidenceClass !== 'corroborated') {
             return reject('provenance-class-not-eligible');
         }
+        if (provenance.capturedAt > Date.now() + 5 * 60_000) return reject('provenance-capture-time-in-future');
         const actualFingerprint = createHash('sha256').update(sourceContent, 'utf8').digest('hex');
         if (actualFingerprint !== provenance.contentFingerprint) return reject('source-content-fingerprint-mismatch');
         const canonical = this.memorySubsystem.fabric.canonicalSnapshot(false).items.find(row => row.id === memoryId);
@@ -2921,6 +2922,9 @@ export class OrganismCore {
             if (previous.source !== source || previous.kind !== kind || previous.confidence !== confidence ||
                 previous.epistemicStatus !== epistemicStatus || previous.at !== at ||
                 previous.provenance?.sourceId !== provenance.sourceId ||
+                previous.provenance?.sourceKind !== provenance.sourceKind ||
+                previous.provenance?.capturedAt !== provenance.capturedAt ||
+                previous.provenance?.evidenceClass !== provenance.evidenceClass ||
                 previous.provenance?.contentFingerprint !== provenance.contentFingerprint) {
                 return reject('source-trace-id-conflict');
             }
