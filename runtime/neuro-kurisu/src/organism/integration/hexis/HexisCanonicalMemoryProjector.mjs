@@ -622,6 +622,16 @@ export class HexisCanonicalMemoryProjector {
       // records from this export; never forget pre-existing/native memories.
       const rollbackIds = new Set(createdIds);
       try {
+        // The compensation token also knows about a row whose encode threw before
+        // returning its ID to createdIds. Include those intents so an insert failure
+        // before the canonical array changes can still consume the token cleanly.
+        for (const id of this.memoryFabric.hmxImportCompensationIds(hmxImportCompensationToken)) {
+          rollbackIds.add(id);
+        }
+      } catch (tokenSnapshotError) {
+        rollbackErrors.push('canonical-token-reconcile:' + String(tokenSnapshotError?.message ?? tokenSnapshotError).slice(0, 220));
+      }
+      try {
         const afterFailure = this.memoryFabric.canonicalSnapshot().items ?? [];
         for (const item of afterFailure) {
           if (
