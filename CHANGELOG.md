@@ -1,3 +1,11 @@
+## [NK1][WorkPass488] Preserve observed outcomes in episodic replay — 2026-10-27
+
+- The sequential benchmark isolated a target-contamination bug: default replay bootstrapped every stored reward from the current policy, allowing the newly learned task's value estimates to dominate historical task labels.
+- `P26TrueLearningEngine.replay()` now defaults to `recorded-reward`, training from the stored outcome; Bellman bootstrapping is still available explicitly with `{ targetMode: 'td', bootstrapWeight01 }`.
+- Invalid target modes and bootstrap weights outside the finite `[0,1]` range fail explicitly.
+- No learning/retention threshold was relaxed. The sequential Core regression is the acceptance gate for this change.
+- Validation: latest-head Core and P26 workflows pending.
+
 ## [NK1][WorkPass487] Preserve update magnitude after adding context features — 2026-10-27
 
 - The first context-feature regression run established perfect context-aware synthetic accuracy, but exposed a new regression: the shared feature-vector norm slowed post-hoc replay recovery.
