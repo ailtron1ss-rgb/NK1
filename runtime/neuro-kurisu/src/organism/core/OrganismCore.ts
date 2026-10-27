@@ -11464,9 +11464,7 @@ export class OrganismCore {
                         ...(stepApprovalId?{approvalId:stepApprovalId}:{})
                     };
                     if(stepApprovalId) pendingApprovalId=undefined; // one approval can authorize only the first matching protected step.
-                    const result = await this.cognitiveRuntime.actionGateway.executeTool(
-                        canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions,
-                    );
+                    const result = await this.executeTool(canonicalCandidateTool, resolvedToolInput, executionReason, executionOptions, Object.keys(runtimeInput));
                     if(result.outcomeClass==='approval-required') {
                         // Consent is a pause, not a skill failure: never retry through a fallback tool or learn a repair from a blocked side effect.
                         const approval=await this.cognitiveRuntime.actionGateway.requestToolApproval(canonicalCandidateTool,resolvedToolInput,executionReason,executionOptions,'execute');
@@ -11494,12 +11492,7 @@ export class OrganismCore {
                     stepOutcomeClass = result.outcomeClass;
                     priorResults.set(step.id, result.result);
                     actualTools.set(step.id, canonicalCandidateTool);
-                    // Keyed tool executions are finalized exactly once by ActionGateway
-                    // before its completed receipt is committed; unkeyed legacy skill runs
-                    // use the same canonical finalizer here.
-                    if (!stepIdempotencyKey && !result.idempotentReplay) {
-                        await this.finalizeToolOutcome(canonicalCandidateTool, resolvedToolInput, executionReason, result, executionOptions, Object.keys(runtimeInput));
-                    }
+                    // The canonical core wrapper owns unkeyed finalization; ActionGateway owns keyed receipts.
                     stepError = result.result?.error ? String(result.result.error) : '';
                     const evidence01 = clamp(Number(result.verification.confidence01 ?? (result.verified ? .72 : .25)));
                     resultVerificationConfidence01 = evidence01;
@@ -12109,14 +12102,14 @@ export class OrganismCore {
         const canonicalId = this.canonicalActionToolId(id);
         return this.cognitiveRuntime.actionGateway.reconcileToolExecution(canonicalId, input, reason, options);
     }
-    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}) {
+    async executeTool(id: string, input: Record<string, unknown> = {}, reason = 'tool-request', options: import('../system/ActionGateway.ts').ActionGatewayExecutionOptions = {}, finalizationContextKeys: string[] = Object.keys(input)) {
         const canonicalId = this.canonicalActionToolId(id);
         const result = await this.cognitiveRuntime.actionGateway.executeTool(canonicalId, input, reason, options);
         // Keyed executions are finalized inside ActionGateway before its completed
         // receipt and outcome projections are committed together. A replay does
         // not create new learning, causal links or external observations.
         if (options.idempotencyKey || result.idempotentReplay) return result;
-        await this.finalizeToolOutcome(canonicalId, input, reason, result, options);
+        await this.finalizeToolOutcome(canonicalId, input, reason, result, options, finalizationContextKeys);
         await this.checkpoint(true);
         return result;
     }

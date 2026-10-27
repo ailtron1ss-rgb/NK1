@@ -1,3 +1,9 @@
+## [NK1][WorkPass495] Unify compound-skill action finalization (2026-10-27)
+
+- The exact-head Core regression exposed a second execution-path bypass after the project-step path was corrected: compound skills called ActionGateway directly and finalized unkeyed results separately.
+- Compound skills now use `OrganismCore.executeTool()`; the canonical wrapper accepts caller-supplied context-key names and passes them to the single finalization owner. Keyed execution/replay remains finalized by ActionGateway, avoiding double finalization.
+- This change follows the existing WorkPass97 contract instead of relaxing it. Exact-head Core regression must complete before this is considered proven.
+
 ## [NK1][WorkPass494] Route project tool receipts through canonical core wrappers (2026-10-27)
 
 - Project-step dispatch now uses `OrganismCore.executeTool()` for fresh execution and `OrganismCore.reconcileToolExecution()` for receipt recovery, instead of calling ActionGateway directly from the project path.
