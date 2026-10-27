@@ -165,6 +165,17 @@ assert.equal(runtime.hexisCanonicalEvidenceBridge.recordP65Claim(memory.id, mism
 const snapshot = runtime.snapshot();
 assert.equal(snapshot.hexisSourceMonitor.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint, fingerprint);
 assert.equal(snapshot.p65.claimsData.find(row => row.id === p65Id)?.provenance?.contentFingerprint, fingerprint);
+// A corrupted persisted snapshot must not restore a conflicting duplicate ID
+// over the first trace; the restore path records the conflict and keeps lineage stable.
+snapshot.hexisSourceMonitor.traces.push({
+  ...snapshot.hexisSourceMonitor.traces.find(row => row.id === 'trace-direct-001'),
+  provenance: {
+    ...provenance,
+    sourceId: 'sensor:restore-spoof',
+    contentFingerprint: createHash('sha256').update('restore spoof').digest('hex'),
+  },
+});
+const priorRestoreConflicts = snapshot.hexisSourceMonitor.conflicts;
 const restored = new MemorySubsystemRuntime();
 restored.restoreFromPersisted({
   memory: {
@@ -194,6 +205,13 @@ restored.restoreFromPersisted({
     memoryLifecycleAuthority: snapshot.memoryLifecycleAuthority,
   },
 });
+const restoredSourceState = restored.snapshot().hexisSourceMonitor;
+assert.equal(restoredSourceState.conflicts, priorRestoreConflicts + 1, 'restore records conflicting duplicate trace IDs');
+assert.equal(
+  restoredSourceState.traces.find(row => row.id === 'trace-direct-001')?.provenance?.contentFingerprint,
+  fingerprint,
+  'restore preserves the original trace rather than the conflicting duplicate',
+);
 const replay = restored.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id, 'trace-direct-001');
 assert.equal(replay.accepted, true);
 assert.equal(replay.added, false, 'canonical lineage must remain the duplicate authority after a runtime snapshot/restore');
