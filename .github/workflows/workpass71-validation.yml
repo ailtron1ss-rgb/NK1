@@ -90,6 +90,9 @@ jobs:
             *.*.*) test "$actual" = "$expected" ;;
             *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
           esac
+      - name: WorkPass461 Node 24 strip-only import regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass461-node24-strip-only-shadow-registry.mjs
       - name: Audit CI Action/runtime compatibility contract
         run: npm run audit:ci-reliability
       - name: Test CI reliability audit regressions
