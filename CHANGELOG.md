@@ -1,3 +1,10 @@
+## [NK1][WorkPass496] Require language-stratified memory retrieval evidence (2026-10-27)
+
+- Added explicit en / ru / other dataset labels to the MemoryOS2 retrieval benchmark and bound provided language labels into the dataset fingerprint without changing fingerprints for legacy unlabelled datasets.
+- Reports baseline, candidate, train/holdout counts, recall/MRR deltas and paired-bootstrap intervals per language. Incomplete tags, a missing English/Russian slice, undersized per-language holdout, recall/MRR regression, unsafe retrieval or worse abstention cannot pass the new promotion gate.
+- The CLI validates and preserves explicit language labels. The regression covers English-only, incomplete annotations, balanced synthetic RU/EN strata, valid annotation passthrough and invalid locale labels.
+- Synthetic fixtures verify the gate contract only. No independent labelled bilingual corpus, positive real-world recallDelta, model promotion, production readiness or Release ZIP update is claimed.
+
 ## [NK1][WorkPass494] Close the four-pass integration set through one release gate (2026-10-27)
 
 - Added `audit:nk1-integration-closure` to run the Hexis canonical-lineage + restart checks, the offline retrieval holdout experiment, the Mem0 adapter safety regressions and the authenticated disabled-provider HTTP smoke as one deterministic command.

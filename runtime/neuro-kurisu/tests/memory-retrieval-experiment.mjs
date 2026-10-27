@@ -43,6 +43,38 @@ assert.equal(experiment.runs.length, 3);
 assert.equal(new Set(experiment.runs.map(row => row.recallDelta01)).size, 1, 'retrieval point estimate should be seed invariant');
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [1, 1, 2] }), /at-least-3-distinct-bootstrap-seeds/);
 
+// Language-stratified regression: explicit labels must keep RU/EN quality separate.
+const bilingualExamples = [
+  ...Array.from({ length: 2 }, (_, i) => ({ id: `en-train-${i}`, query: `training project fern status ${i}`, relevantIds: [`m${i}`], split: 'train', language: 'en' })),
+  ...Array.from({ length: 8 }, (_, i) => ({ id: `en-holdout-${i}`, query: `project fern event memory document ${i} routing status ${i % 4}`, relevantIds: [`m${i}`], split: 'holdout', language: 'en' })),
+  ...Array.from({ length: 2 }, (_, i) => ({ id: `en-no-answer-${i}`, query: `unanswerable orbital cipher orange ${i}`, relevantIds: [], split: 'holdout', answerable: false, language: 'en' })),
+  ...Array.from({ length: 2 }, (_, i) => ({ id: `ru-train-${i}`, query: `обучение проект память статус ${i}`, relevantIds: [`m${i + 8}`], split: 'train', language: 'ru' })),
+  ...Array.from({ length: 8 }, (_, i) => ({ id: `ru-holdout-${i}`, query: `проект память событие документ ${i} маршрут статус ${i % 4}`, relevantIds: [`m${i + 8}`], split: 'holdout', language: 'ru' })),
+  ...Array.from({ length: 2 }, (_, i) => ({ id: `ru-no-answer-${i}`, query: `несуществующий орбитальный шифр пример ${i}`, relevantIds: [], split: 'holdout', answerable: false, language: 'ru' })),
+];
+const bilingualReport = runMemoryOS2RetrievalBenchmark(snapshot, bilingualExamples, { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance });
+assert.equal(bilingualReport.languageStratification.enabled, true);
+assert.equal(bilingualReport.languageStratification.annotationsComplete, true);
+assert.deepEqual(Object.keys(bilingualReport.languageStratification.slices).sort(), ['en', 'ru']);
+assert.equal(bilingualReport.languageStratification.slices.en.answerableHoldoutQueries, 8);
+assert.equal(bilingualReport.languageStratification.slices.en.unanswerableHoldoutQueries, 2);
+assert.equal(bilingualReport.languageStratification.slices.ru.answerableHoldoutQueries, 8);
+assert.equal(bilingualReport.languageStratification.slices.ru.unanswerableHoldoutQueries, 2);
+assert.equal(bilingualReport.promotion.allowed, false, 'synthetic bilingual data cannot establish provenance or auto-promote retrieval');
+assert.equal(bilingualReport.languageStratification.gates.promotionEligible, false, 'synthetic fixtures must not satisfy language-specific real-uplift confidence gates');
+
+// A single-language set must not meet the required bilingual promotion contract.
+const englishOnlyReport = runMemoryOS2RetrievalBenchmark(snapshot, bilingualExamples.map(row => ({ ...row, language: 'en' })), { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance });
+assert.equal(englishOnlyReport.languageStratification.gates.bothRequiredLanguagesPresent, false);
+assert.equal(englishOnlyReport.promotion.gates.languageStratifiedQuality, false);
+
+// Partial labels fail closed instead of silently excluding unlabelled examples.
+const partiallyTaggedExamples = bilingualExamples.map((row, index) => index === 0 ? (({ language, ...rest }) => rest)(row) : row);
+const partialLanguageReport = runMemoryOS2RetrievalBenchmark(snapshot, partiallyTaggedExamples, { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance });
+assert.equal(partialLanguageReport.languageStratification.annotationsComplete, false);
+assert.equal(partialLanguageReport.datasetIntegrity.validForPromotion, false);
+assert.equal(partialLanguageReport.promotion.gates.languageStratifiedQuality, false);
+
 // Corpus-cap parity regression: the baseline indexes only the first 1600 rows.
 // The candidate must use that exact same bounded snapshot, not retrieve from row 1601.
 const overflowSnapshot = structuredClone(snapshot);
@@ -179,6 +211,21 @@ try {
   assert.equal(badSeed.status, 2);
   assert.match(badSeed.stderr, /seeds-must-be-3-to-9-uint32-values/);
   assert.equal((await readdir(temp)).includes('bad-seed.json'), false, 'invalid CLI seed arguments must fail before publishing a report');
+  const invalidLanguageLabelsPath = path.join(temp, 'invalid-language.jsonl');
+  const invalidLanguageReportPath = path.join(temp, 'invalid-language-report.json');
+  await writeFile(invalidLanguageLabelsPath, JSON.stringify({ id: 'invalid-language-001', query: 'invalid locale', relevantIds: ['m0'], split: 'holdout', language: 'es' }) + String.fromCharCode(10));
+  const invalidLanguageCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidLanguageLabelsPath, '--provenance', provenancePath, '--out', invalidLanguageReportPath], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(invalidLanguageCli.status, 2);
+  assert.match(invalidLanguageCli.stderr, /labels-invalid-language-line:1/);
+  assert.equal((await readdir(temp)).includes('invalid-language-report.json'), false, 'invalid language labels must fail before report publication');
+  const validLanguageLabelsPath = path.join(temp, 'valid-language.jsonl');
+  const validLanguageReportPath = path.join(temp, 'valid-language-report.json');
+  await writeFile(validLanguageLabelsPath, JSON.stringify({ id: 'valid-language-001', query: 'project fern memory', relevantIds: ['m0'], split: 'holdout', language: 'ru' }) + String.fromCharCode(10));
+  const validLanguageCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', validLanguageLabelsPath, '--provenance', provenancePath, '--out', validLanguageReportPath, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(validLanguageCli.status, 0, 'CLI rejected a valid explicit language label: ' + validLanguageCli.stderr + validLanguageCli.stdout);
+  const validLanguageReport = JSON.parse(await readFile(validLanguageReportPath, 'utf8'));
+  assert.equal(validLanguageReport.runs.every(row => row.languageStratification.enabled), true, 'CLI must preserve accepted language annotations into each benchmark run');
+  assert.equal(validLanguageReport.runs.every(row => Object.hasOwn(row.languageStratification.slices, 'ru')), true);
 } finally {
   await rm(temp, { recursive: true, force: true });
 }

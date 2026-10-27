@@ -15,7 +15,8 @@ function usage() {
     'Usage:',
     '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>]',
     '',
-    'The label file is JSONL: {"id":"q1","query":"...","relevantIds":["memory-id"],"split":"train|holdout"}.',
+    'The label file is JSONL; optional explicit language labels are "en", "ru", or "other".',
+    'A tagged benchmark requires all rows tagged and both en and ru for promotion; per-language holdout gates run separately.',
     'For an explicitly unanswerable query, use "answerable":false with an empty relevantIds array; omitted answerable defaults to true.',
     'The snapshot must be the exported MemoryOSState2 object. The provenance file must contain datasetId, datasetVersion, sourceRef and labelingProtocol.',
     'This runs offline on a clone; it does not alter live memory or automatically promote a candidate.',
@@ -81,6 +82,7 @@ function parseLabels(text) {
     if (typeof row.id !== 'string' || !row.id.trim() || row.id.length > 120) throw new Error(`labels-invalid-id-line:${index + 1}`);
     if (typeof row.query !== 'string' || !row.query.trim() || row.query.length > 500) throw new Error(`labels-invalid-query-line:${index + 1}`);
     if (row.answerable !== undefined && typeof row.answerable !== 'boolean') throw new Error(`labels-invalid-answerable-line:${index + 1}`);
+    if (row.language !== undefined && !['en', 'ru', 'other'].includes(row.language)) throw new Error(`labels-invalid-language-line:${index + 1}`);
     const answerable = row.answerable !== false;
     if (!Array.isArray(row.relevantIds) || row.relevantIds.length > 24 ||
         (answerable ? row.relevantIds.length < 1 : row.relevantIds.length !== 0) ||
@@ -88,7 +90,7 @@ function parseLabels(text) {
       throw new Error(`labels-invalid-relevantIds-line:${index + 1}`);
     }
     if (row.split !== 'train' && row.split !== 'holdout') throw new Error(`labels-invalid-split-line:${index + 1}`);
-    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split, answerable });
+    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split, answerable, ...(row.language === undefined ? {} : { language: row.language }) });
     if (rows.length > MAX_EXAMPLES) throw new Error(`labels-exceed-limit:${MAX_EXAMPLES}`);
   }
   if (!rows.length) throw new Error('labels-empty');
