@@ -199,7 +199,7 @@ assert.equal(replay.accepted, true);
 assert.equal(replay.added, false, 'canonical lineage must remain the duplicate authority after a runtime snapshot/restore');
 
 const stats = runtime.hexisCanonicalEvidenceBridge.snapshotStats();
-assert.equal(stats.attempted, 8, 'this runtime instance records eight ingress attempts; restore replay uses a separate bridge instance');
+assert.equal(stats.attempted, 9, 'this runtime instance records nine ingress attempts including missing-trace rejection; restore replay uses a separate bridge instance');
 assert(stats.accepted >= 2);
 assert(stats.added === 1);
 assert(stats.duplicates >= 1);
