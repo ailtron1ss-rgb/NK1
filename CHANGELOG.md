@@ -1,3 +1,45 @@
+## [NK1][WorkPass470] Make the Hexis goal-link fixture explicit about epistemic status (2026-10-27)
+
+- The goal-link regression now imports its semantic evidence record with `status: 'belief'`. The canonical HMX projector intentionally leaves an omitted status as `unknown`, and unknown records do not acquire a semantic node; the fixture now asks for relationship projection only where the source record explicitly allows that projection. Production default-deny handling for unknown status remains unchanged.
+
+## [NK1][WorkPass469] Make the compound-repair coordinator compatible with Node 24 strip-only execution (2026-10-27)
+
+- Replaced `P23CompoundRepairRevisionCoordinator` constructor parameter properties with explicit readonly fields and assignments. The trusted-shadow integration workflow imports this module through the runtime graph; Node 24's strip-only TypeScript loader rejected its parameter-property syntax before tests could run.
+
+## [NK1][WorkPass468] Repair interleaved replay syntax and keep typecheck strict (2026-10-27)
+
+- Fixed the missing closing parenthesis in the P26 replay cadence bound. The exact-head runtime typecheck now gets past the source parser rather than stopping at `P26TrueLearningEngine.ts`.
+
+## [NK1][WorkPass467] Derive training exposure from actual P26 policy updates (2026-10-27)
+
+- P26 `trainingExposure01` now derives from the parametric learner's persisted update counter, not only the online/replay counters owned by `P26TrueLearningEngine`. This includes direct learner training used by controlled benchmarks while remaining separate from independently verified generalization evidence.
+
+## [NK1][WorkPass466] Add bounded conflict-screened P26 interleaved replay (2026-10-27)
+
+- Implemented `P26TrueLearningEngine.trainInterleaved`: fresh examples are trained in sequence, prior examples are replayed under a hard update budget, nearby same-action state contexts with contradictory outcomes are blocked, and conflict screening is capped at 8–128 candidates. Separated contexts remain eligible for rehearsal.
+- Synthetic interleaving diagnostics update training exposure only; the replay batch itself cannot mint independent holdout evidence or raise generalization maturity.
+
+## [NK1][WorkPass465] Validate holdout identifiers without regex-escape ambiguity (2026-10-27)
+
+- Replaced the ambiguous escaped-control-character regex in the P26 holdout normalizer with an explicit Unicode code-point check for C0/C1 controls. This is safe under Node 24's native TypeScript stripping parser.
+
+## [NK1][WorkPass464] Test P26 holdout provenance and default-deny verification (2026-10-27)
+
+- Added an explicit verifier boundary and regression for caller-asserted versus independently verified P26 holdout evidence, duplicate sample-set suppression, and persistence re-verification. Without a configured verifier, the engine rejects claimed holdout authority.
+
+## [NK1][WorkPass463] Separate P26 training progress from independent generalization evidence (2026-10-27)
+
+- Added persisted `trainingExposure01`, `independentHoldoutSamples` and a verified-holdout evidence lane. Policy updates, internal replay splits and the legacy diagnostic `recordHoldout` no longer increase generalization maturity; only a configured verifier can authorize `recordVerifiedHoldout`.
+
+## [NK1][WorkPass462] Bind atomic skill-store candidate IDs to revision provenance (2026-10-27)
+
+- Updated durable candidate validation to include the revision-provenance fingerprint in the candidate identity, matching `VersionedSkillCandidateStore` generation. It validates the provenance shape and continues to accept legacy v1 candidate IDs only where provenance is absent.
+
+## Validation boundary for WorkPass462–470
+
+- Exact-head Actions on the new P26 interleaved replay and HMX goal-link fixture are required before those checks are marked passing. Previously observed green runs include the P26 holdout validation, WorkPass108 runtime typecheck, WorkPass291/292, WorkPass293, WorkPass99, WorkPass102, WorkPass105 and WorkPass294; those historical green runs do not replace the latest-head gate.
+- The latest release ZIP was not modified or published by this pass.
+
 ## [NK1][WorkPass461] Lock in export-scoped HMX reference behavior with regression coverage (2026-10-27)
 
 - Extended the Hexis goal activation regression to assert that the imported canonical memory retains both the current `hexisExportId` and the exact export-scoped `hexisMemoryRef` before goal activation.
