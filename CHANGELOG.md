@@ -1,3 +1,9 @@
+## [NK1][WorkPass486] Route compound-skill steps through the canonical Core wrapper (2026-10-27)
+
+- WorkPass97 caught the remaining direct ActionGateway execution path in compound skill steps. It duplicated finalization for unkeyed execution and bypassed the single Core-owned tool-ID normalization/finalizer wrapper.
+- Extend `OrganismCore.executeTool` with optional finalization context keys and route compound skill steps through it. The wrapper still returns immediately for keyed actions and replays because ActionGateway owns their atomic finalization; unkeyed skill steps are finalized once by Core with the preserved runtime-input keys.
+- Remove the skill-local manual finalizer to avoid double-finalization. The route regression verifies project execution, reconciliation, and compound skill dispatch all use the canonical wrapper. Exact-head source regression and WorkPass110 re-run required.
+
 ## [NK1][WorkPass485] Route project tool execution through Core-owned wrappers (2026-10-27)
 
 - The recovered-runtime contract check found that fresh project tool execution and receipt reconciliation called ActionGateway directly from OrganismCore's project loop, bypassing the canonical Core wrapper that normalizes legacy tool aliases and owns unkeyed-outcome finalization/checkpointing.
