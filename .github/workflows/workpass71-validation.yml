@@ -110,6 +110,8 @@ jobs:
         run: npm --prefix app run typecheck
       - name: App development bundle build
         run: npm --prefix app run build:dev
+      - name: Install runtime type dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: WorkPass439 optional-stage cognitive event lineage regression
