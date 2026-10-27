@@ -1,3 +1,8 @@
+## [NK1][WorkPass491] Preserve Node 24 strip-only compatibility (2026-10-27)
+
+- Replace TypeScript constructor parameter properties in `IntrinsicExperimentGenerator` with explicit field declarations and assignments. Node 24's built-in strip-only TypeScript loader rejects parameter properties with `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`.
+- This is a compatibility correction discovered while inspecting failed GitHub Actions logs for the WorkPass490 head. The new head must be revalidated by Actions before the fix is considered verified.
+
 ## [NK1][WorkPass490] Harden endogenous experiment inputs and identity (2026-10-27)
 
 - Clamp uncertainty, prediction-error, novelty and dream-confidence inputs to finite unit values before scoring, so NaN/Infinity cannot create a bogus autonomous experiment or corrupt its information-gain metric.
