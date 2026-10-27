@@ -1,3 +1,9 @@
+## [NK1][WorkPass453] Restore registered P23 regression commands (2026-10-27)
+
+- Registered the existing WorkPass291 reflective-payload-budget test and WorkPass293 autonomous P23 revision test in `runtime/neuro-kurisu/package.json`; their workflow files already invoked these names, so the jobs were failing immediately with `npm error Missing script` instead of testing runtime behavior.
+- The entries invoke the committed test files with Node 24 TypeScript stripping; no replacement implementation or new dependency was introduced.
+- Validation boundary: the exact-head regression workflows must complete before these checks are marked passing. No Release ZIP was changed or published.
+
 ## [NK1][WorkPass433] Isolate rollback reconciliation by stage and attempt under interleaved imports (2026-10-27)
 
 - Expanded the failure-injection regression to simulate a second HMX stage creating a row from the same export while the first stage is unwinding. The concurrent row is deliberately absent from the original `beforeIds` snapshot and shares the export ID, but has its own staging ID and attempt.
