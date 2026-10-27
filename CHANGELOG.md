@@ -1,3 +1,9 @@
+## [NK1][WorkPass481] Forward request options into Hexis learning-review creation (2026-10-27)
+
+- The review-create route parsed and shape-checked its JSON body but invoked the core factory without passing it. The factory reads `memoryIds`, `periodStart`, and `periodEnd`, so the live route could fail before it returned a learning review.
+- Forward the parsed object into `hexisCreateLearningReview(input)`; preserve the existing object-body guard and downstream approval/decision gates.
+- Regression evidence: the exact-head canonical HMX apply workflow reached `hexis-learning-review-create` after the projector, rollback, adaptation, and export-adapter checks had passed. Re-run required after this change. `main` and the published Release ZIP remain unchanged.
+
 ## [NK1][WorkPass480] Isolate host-owned authority regression conditions (2026-10-27)
 
 - The permissions regression intentionally made the executor group-writable, then left that permission in place for a later run-root identity test.

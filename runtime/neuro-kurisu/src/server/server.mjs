@@ -927,7 +927,7 @@ async function route(req, res) {
             if (!input || typeof input !== 'object' || Array.isArray(input)) {
                 return json(res, 400, { ok: false, error: 'hexis-invalid-request-body' });
             }
-            const result = runtime.core.hexisCreateLearningReview();
+            const result = runtime.core.hexisCreateLearningReview(input);
             await runtime.core.flush();
             return json(res, 200, { ok: true, review: result });
         }
