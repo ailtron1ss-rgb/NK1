@@ -1096,6 +1096,23 @@ assert.deepEqual(
   'failed HMX apply must preserve every pre-existing canonical row',
 );
 
+// On a clean retry, the deferred capacity trim should run only at commit: one
+// oldest baseline row is evicted, the imported row persists, and the count stays 1,600.
+protectedRollbackLedger.removeBeliefProjection = HexisAdaptationFabric.prototype.removeBeliefProjection;
+assert.equal(
+  protectedRollbackLedger.decideHmx(protectedRollbackStage.stagingId, 'apply')?.status,
+  'applied',
+  'the rolled-back HMX stage must remain retryable',
+);
+const protectedRollbackAfterCommit = protectedRollbackRuntime.fabric.canonicalSnapshot().items;
+assert.equal(protectedRollbackAfterCommit.length, 1600);
+assert.equal(protectedRollbackAfterCommit.some(item => item.content === protectedRollbackContent), true);
+assert.equal(
+  protectedRollbackAfterCommit.some(item => item.id === protectedRollbackCapacityRows[1599].id),
+  false,
+  'successful import commits the deferred trim against the oldest canonical row',
+);
+
 // Malformed status values must fail staging rather than being silently coerced.
 for (const [invalidIndex, invalidStatus] of [42, false, {}, 'active' + String.fromCharCode(10) + 'admin'].entries()) {
   const exportId = 'exp_' + String(101 + invalidIndex).padStart(16, '0');
