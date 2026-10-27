@@ -1,3 +1,14 @@
+## [NK1][WorkPass468] Cover full-restore index rollback and retry (2026-10-27)
+
+- Added a focused MemoryOS2 regression that injects an exception after the first derived-index write during full snapshot restore. It requires exact pre-restore snapshot/policy recovery, prior-memory retrieval to remain intact, no replacement row to leak through, and successful retry to rebuild retrieval for the replacement row.
+- The test is committed on the PR branch. Runtime execution, TypeScript typecheck and hosted CI are not claimed PASS. `main` and the canonical GitHub Release ZIP remain unchanged.
+
+## [NK1][WorkPass467] Make full MemoryOS2 restore exception-atomic (2026-10-27)
+
+- `MemoryOS2.restore()` now retains the prior canonical state, adaptive-policy snapshot, exact/dedup maps, item map, token/character-gram/document-frequency/revision indexes, token caches, total-token accounting and link-support cache state until index rebuilding completes.
+- If normalization, policy restore or derived-index rebuilding throws, the restore catch path reinstates the previous generation before rethrowing. This prevents partially rebuilt indices from being observed alongside a failed snapshot replacement.
+- Initial source change was statically inspected only; runtime tests, TypeScript typecheck and hosted CI remain unconfirmed. `main` and the canonical GitHub Release ZIP remain unchanged.
+
 ## [NK1][WorkPass466] Verify successful status and authority byte accounting (2026-10-27)
 
 - Added an independent test-side implementation of MemoryOS's bounded revision-history byte estimate. After an injected post-write failure is rolled back, each regression retries the same accepted HMX stage; the successful status or authority update must change `estimatedBytes` by exactly `estimate(after) - estimate(before)`.
