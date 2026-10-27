@@ -332,7 +332,7 @@ export class P26TrueLearningEngine{
       onlineUpdates++;lossSum+=trained.loss01;
       if((indexInBatch+1)%effectiveReplayEveryNCurrent===0)attemptReplay();
     }
-    this.state.replayCursor=replayRows.length?replayCursor%Math.max(1,replayRows.length):0;
+    this.state.replayCursor=replayCursor;
     this.state.metrics.outcomeSamples+=onlineUpdates;
     this.state.metrics.onlineUpdates+=onlineUpdates;
     this.state.metrics.replayUpdates+=replayUpdates;
