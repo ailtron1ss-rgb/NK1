@@ -165,6 +165,10 @@ const fixtures = [
   }
 ];
 
+// Rank-only synthetic fixture: all candidates contain every query prompt, so lexical
+// evidence is identical and this test isolates typed-intent ranking. Abstention is tested separately.
+const tiedContent = sharedContent + ' ' + fixtures.map(({ query }) => query).join(' ');
+
 let intentCorrect = 0;
 let hitsAtOne = 0;
 let reciprocalRankTotal = 0;
@@ -190,7 +194,7 @@ for (const [index, fixture] of fixtures.entries()) {
           : {};
   memory.encode({
     id: targetId,
-    content: sharedContent,
+    content: tiedContent,
     kind: fixture.targetKind,
     source: 'goldset-fixture',
     context: targetContext,
@@ -210,7 +214,7 @@ for (const [index, fixture] of fixtures.entries()) {
   });
   memory.encode({
     id: 'a-semantic-decoy',
-    content: sharedContent,
+    content: tiedContent,
     kind: fixture.intent === 'factual' ? 'episodic' : 'semantic',
     source: 'goldset-decoy',
     context: {},
@@ -230,7 +234,7 @@ for (const [index, fixture] of fixtures.entries()) {
   });
   memory.encode({
     id: 'b-fragment-only-decoy',
-    content: sharedContent,
+    content: tiedContent,
     kind: 'social',
     source: 'goldset-decoy',
     context: { relationshipId: 'relationship-' + index, conversationRole: 'assistant', messageIndex: '3', turnSequence: '7' },
