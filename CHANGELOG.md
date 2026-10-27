@@ -1,5 +1,7 @@
 ## [NK1][WorkPass507] Port deterministic bilingual retrieval holdout gate (2026-10-27)
 
+- Follow-up fix: include explicit `language` labels in the canonical SHA-256 input so the offline runner matches MemoryRetrievalBenchmark's dataset fingerprint; add a regression proving language relabeling changes the digest.
+
 - Ported the offline Russian/English MemoryOS2 retrieval evaluation runner onto the latest source baseline without importing the disconnected upstream branch history.
 - Fixed over-escaped Unicode punctuation/whitespace expressions, canonical row separators and report newlines by extracting query normalization and SHA-256 canonicalization into a small shared helper.
 - Added direct regressions for Unicode NFKC, punctuation/symbol separation, whitespace normalization, ordering-independent fingerprints, changed-input sensitivity and fail-closed missing-dataset behavior.
