@@ -19,6 +19,13 @@ const boundedSeed = (value: unknown): number | null => {
 function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchmark>) {
   const metrics = (value: typeof report.metrics.candidate) => ({
     queries: value.queries,
+    answerableQueries: value.answerableQueries,
+    unanswerableQueries: value.unanswerableQueries,
+    unsupportedRetrievalCount: value.unsupportedRetrievalCount,
+    unsupportedRetrievalRate01: value.unsupportedRetrievalRate01,
+    correctAbstentionRate01: value.correctAbstentionRate01,
+    falseAbstentionCount: value.falseAbstentionCount,
+    falseAbstentionRate01: value.falseAbstentionRate01,
     recallAtK01: value.recallAtK01,
     mrr01: value.mrr01,
     precisionAtK01: value.precisionAtK01,
