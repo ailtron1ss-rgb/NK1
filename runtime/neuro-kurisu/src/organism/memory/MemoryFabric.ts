@@ -788,6 +788,10 @@ export class MemoryFabric {
     for(const entry of signals)if(!this.memoryOS.discardSignalCompensation(entry.snapshotToken))throw new Error('memory-signals-compensation-capture-missing');
     for(const entry of statuses)if(!this.memoryOS.discardStatusCompensation(entry.snapshotToken))throw new Error('memory-status-compensation-capture-missing');
     for(const entry of hmxImports)if(!this.memoryOS.commitHmxImportCompensation(entry.snapshotToken))throw new Error('memory-hmx-import-compensation-commit-failed');
+    if(hmxImports.length){
+      const retainedIds=new Set(this.memoryOS.snapshot({clone:false}).items.map(item=>item.id));
+      this.hotIds.splice(0,this.hotIds.length,...this.hotIds.filter(id=>retainedIds.has(id)));
+    }
     for(const entry of signals){
       for(const id of entry.sourceCommandIds)this.protectedSignalReceiptIds.delete(id);
       this.signalCompensations.delete(entry.token);
