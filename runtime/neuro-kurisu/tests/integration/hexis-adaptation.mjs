@@ -116,6 +116,22 @@ const restoreAtomicSeedInput = {
 };
 const restoreAtomicSeed = restoreAtomicMemory.encode(restoreAtomicSeedInput);
 const restoreAtomicBaseline = restoreAtomicMemory.snapshot();
+// Seed derived caches independently of the canonical snapshot. A successful
+// restore without a provider must evict them; failed restoration must restore them.
+restoreAtomicMemory.semanticEmbeddingIndex.set('stale-cache-first', {
+  contentHash: 'stale-content-hash', providerId: 'offline-provider', vector: [0.25, 0.75], lastUsedAt: 1,
+});
+restoreAtomicMemory.semanticEmbeddingIndex.set('stale-cache-after', {
+  contentHash: 'stale-content-hash', providerId: 'offline-provider', vector: [0.8, 0.2], lastUsedAt: 2,
+});
+restoreAtomicMemory.semanticEmbeddingRetry.set('stale-retry-first', {
+  contentHash: 'stale-content-hash', attempts: 2, retryAt: 20,
+});
+restoreAtomicMemory.semanticEmbeddingRetry.set('stale-retry-throws', {
+  contentHash: 'stale-content-hash', attempts: 3, retryAt: 30,
+});
+const embeddingCacheBaseline = [...restoreAtomicMemory.semanticEmbeddingIndex].map(([id, row]) => [id, structuredClone(row)]);
+const embeddingRetryBaseline = [...restoreAtomicMemory.semanticEmbeddingRetry].map(([id, row]) => [id, structuredClone(row)]);
 const replacementRestoreState = structuredClone(restoreAtomicBaseline);
 replacementRestoreState.adaptiveMemoryPolicy = {
   version: 2,
@@ -183,7 +199,51 @@ assert.equal(
   false,
   'no replacement memory may leak through a partially rebuilt index',
 );
+assert.deepEqual(
+  [...restoreAtomicMemory.semanticEmbeddingIndex].map(([id, row]) => [id, structuredClone(row)]),
+  embeddingCacheBaseline,
+  'index-build failure must preserve the pre-restore semantic embedding cache',
+);
+assert.deepEqual(
+  [...restoreAtomicMemory.semanticEmbeddingRetry].map(([id, row]) => [id, structuredClone(row)]),
+  embeddingRetryBaseline,
+  'index-build failure must preserve the pre-restore embedding retry schedule',
+);
+
+// Fail after cache cleanup has already deleted records. The cache maps must be
+// restored together if reconciliation fails partway through.
+const originalRetryCacheDelete = restoreAtomicMemory.semanticEmbeddingRetry.delete.bind(restoreAtomicMemory.semanticEmbeddingRetry);
+restoreAtomicMemory.semanticEmbeddingRetry.delete = key => {
+  const deleted = originalRetryCacheDelete(key);
+  if (key === 'stale-retry-throws') throw new Error('injected-memoryos-restore-cache-prune-after-write');
+  return deleted;
+};
+assert.throws(
+  () => restoreAtomicMemory.restore(replacementRestoreState),
+  /injected-memoryos-restore-cache-prune-after-write$/,
+  'cache cleanup failure must roll back already-pruned semantic vectors and retries',
+);
+delete restoreAtomicMemory.semanticEmbeddingRetry.delete;
+assert.deepEqual(
+  [...restoreAtomicMemory.snapshot().items.map(item => item.id)],
+  [...restoreAtomicBaseline.items.map(item => item.id)],
+  'cache-pruning failure must preserve canonical memories',
+);
+assert.deepEqual(
+  [...restoreAtomicMemory.semanticEmbeddingIndex].map(([id, row]) => [id, structuredClone(row)]),
+  embeddingCacheBaseline,
+  'cache-pruning failure must restore vectors deleted before the exception',
+);
+assert.deepEqual(
+  [...restoreAtomicMemory.semanticEmbeddingRetry].map(([id, row]) => [id, structuredClone(row)]),
+  embeddingRetryBaseline,
+  'cache-pruning failure must restore retry rows deleted before the exception',
+);
 restoreAtomicMemory.restore(replacementRestoreState);
+assert.equal(restoreAtomicMemory.semanticEmbeddingIndex.size, 0,
+  'successful provider-less restore must discard stale embedding vectors');
+assert.equal(restoreAtomicMemory.semanticEmbeddingRetry.size, 0,
+  'successful provider-less restore must discard stale embedding retries');
 restoreAtomicMemory.observeRetrievalOutcome(1);
 const policyAfterSuccessfulRestore = restoreAtomicMemory.adaptivePolicyDiagnostics();
 assert.equal(policyAfterSuccessfulRestore.trials.causal, 1,
