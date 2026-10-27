@@ -1,3 +1,8 @@
+## [NK1][WorkPass460] Make trusted shadow scheduler Node strip-compatible (2026-10-27)
+
+- Replaced the constructor parameter property in `P23TrustedShadowLearningScheduler` with an explicit readonly field and assignment, so Node 24's `--experimental-strip-types` can load the module without a TypeScript transformation step.
+- Exact-head validation: WorkPass293 autonomous P23 revision passed on commit `20c12aa0c6a6106fa7c86b2fc3b616a8cfbb9f20` after the scheduler fix. This validates that workflow's regression, not the overall release or full runtime.
+
 ## [NK1][WorkPass459] Restore canonical Hexis test suite with envelope limit regression (2026-10-27)
 
 - Restored the Hexis adaptation regression to a single canonical test body and kept the new full-document UTF-8 size-limit case alongside the existing section-size and normalized-export checks.
