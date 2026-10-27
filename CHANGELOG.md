@@ -1,3 +1,11 @@
+## [NK1][WorkPass442] Seal HMX compensation at the canonical write boundary (2026-10-27)
+
+- Removed catch-time `refreshSignalCompensation`: rollback can no longer replace the expected-current seal with a snapshot taken after an unrelated write.
+- MemoryFabric now validates one-shot compensation tokens and seals expected state inside the owned status/signal lifecycle command. A caller that throws after a committed command can still roll it back safely; a later divergent write produces a conflict.
+- Routed Hexis supersession and duplicate status/trust changes through one per-memory compensation token and removed the unguarded secondary status rollback path.
+- Added regression coverage for an independent confidence update after a status command commits but before the adapter throws; assertions require conflict handling to preserve that update.
+- Hosted runtime tests, typecheck and CI were not run/confirmed in this work pass. The Release ZIP and `main` remain untouched.
+
 ## [NK1][WorkPass443] Run persisted receipt-control regression in the Hexis integration gate (2026-10-27)
 
 - Added `tests/memory-lifecycle-command-workpass31.mjs` to `test:hexis-canonical-apply`, so the persisted C1 receipt-target regression is executed by the same focused Hexis workflow rather than merely existing in a separate audit script.
