@@ -1,7 +1,7 @@
 ## [NK1][WorkPass477] Reconcile Hexis belief-dedupe fixture on integration head (2026-10-27)
 
 - The integration head still contained a stale duplicate request that omitted the route-required numeric `confidence01`, despite an earlier changelog entry claiming this fixture was corrected on another line.
-- Reuse one valid payload for the initial revision and its replay, require the replay audit to report `duplicate_source` with `applied=false`, and separately assert that missing confidence is rejected with HTTP 400.
+- Reuse one valid payload for the initial revision and its replay, require the replay audit to report `duplicate_source` with `applied=false`, and separately assert that missing confidence is rejected with HTTP 400. Invalid-stance and missing-target requests now include otherwise-valid confidence so their status assertions reach the intended validators.
 - Test/contract correction only; no runtime behavior, retrieval uplift, or learning-quality improvement is claimed.
 
 ## [NK1][WorkPass475] Emit per-seed replay sweep metrics on failure (2026-10-27)
