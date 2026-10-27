@@ -247,7 +247,7 @@ export async function runLearningProcess(
     if (!terminalStatus) terminalStatus = 'timed-out';
     terminateRun();
   }, timeoutMs);
-  timeout.unref?.();
+  (timeout as unknown as { unref?: () => void }).unref?.();
   const onAbort = () => {
     if (childClosed || terminalStatus) return;
     terminalStatus = 'cancelled';
@@ -257,14 +257,14 @@ export async function runLearningProcess(
   if (command.signal?.aborted) onAbort();
 
   await new Promise<void>(resolve => {
-    child.once('error', error => {
+    child.once('error', (error: Error) => {
       if (!childClosed) {
         spawnFailure = error.message;
         terminalStatus = 'spawn-error';
       }
       resolve();
     });
-    child.once('close', (code, childSignal) => {
+    child.once('close', (code: number | null, childSignal: NodeJS.Signals | null) => {
       childClosed = true;
       exitCode = code;
       signal = childSignal;
