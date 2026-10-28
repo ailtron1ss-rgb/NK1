@@ -1,0 +1,16 @@
+FROM node:24-bookworm-slim
+
+ENV NODE_ENV=development
+WORKDIR /workspace/runtime/neuro-kurisu
+
+COPY runtime/neuro-kurisu/package.json runtime/neuro-kurisu/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY runtime/neuro-kurisu/ ./
+
+ENV HOST=0.0.0.0
+ENV PORT=3310
+ENV STATE_DIR=/data
+EXPOSE 3310
+
+CMD ["npm", "start"]

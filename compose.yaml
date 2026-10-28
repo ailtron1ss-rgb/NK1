@@ -1,0 +1,58 @@
+name: nk1-local
+
+services:
+  runtime:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: "3310"
+      STATE_DIR: /data
+      NK1_STATE_FILE: /data/organism-state.json
+    init: true
+    restart: unless-stopped
+    volumes:
+      - nk1-runtime-state:/data
+    ports:
+      - "127.0.0.1:3310:3310"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3310/health').then(async r => { const b = await r.json(); if (!r.ok || b.ok === false || b.ready === false) process.exit(1); }).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    environment:
+      NODE_ENV: development
+      NK1_RUNTIME_API_TARGET: http://runtime:3310
+      VITE_AUTH_ENABLED: "false"
+    init: true
+    restart: unless-stopped
+    depends_on:
+      runtime:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/').then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  nk1-runtime-state:

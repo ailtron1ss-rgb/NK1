@@ -1,0 +1,69 @@
+name: NK1 local Compose smoke
+
+on:
+  pull_request:
+    branches: [nk1-hexis-canonical-apply-2026-10-27]
+    paths:
+      - ".dockerignore"
+      - "Dockerfile.app"
+      - "Dockerfile.runtime"
+      - "compose.yaml"
+      - "app/vite.config.ts"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "app/scripts/with-app-env.mjs"
+      - "app/scripts/sync-canonical-public-assets.mjs"
+      - "runtime/neuro-kurisu/**"
+      - "scripts/local-compose-smoke.mjs"
+      - "docs/LOCAL_COMPOSE_DEV_STACK.md"
+      - ".github/workflows/local-compose-smoke.yml"
+  push:
+    branches: [nk1-hexis-canonical-apply-2026-10-27]
+    paths:
+      - ".dockerignore"
+      - "Dockerfile.app"
+      - "Dockerfile.runtime"
+      - "compose.yaml"
+      - "app/vite.config.ts"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "app/scripts/with-app-env.mjs"
+      - "app/scripts/sync-canonical-public-assets.mjs"
+      - "runtime/neuro-kurisu/**"
+      - "scripts/local-compose-smoke.mjs"
+      - "docs/LOCAL_COMPOSE_DEV_STACK.md"
+      - ".github/workflows/local-compose-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-local-compose-smoke-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Set up the smoke-test Node runtime
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify Compose configuration
+        run: docker compose -f compose.yaml config --quiet
+      - name: Build and launch local app/runtime stack
+        run: docker compose -f compose.yaml up --build --detach
+      - name: Probe app, runtime and app-to-runtime proxy
+        run: node scripts/local-compose-smoke.mjs
+      - name: Capture container logs on failure
+        if: failure()
+        run: |
+          docker compose -f compose.yaml ps
+          docker compose -f compose.yaml logs --no-color --tail=200
+      - name: Stop local stack and remove smoke-test volumes
+        if: always()
+        run: docker compose -f compose.yaml down --volumes --remove-orphans

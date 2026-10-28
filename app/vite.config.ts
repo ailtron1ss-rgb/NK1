@@ -145,14 +145,25 @@ function authPopupPlugin(): Plugin {
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
+// In Compose, the runtime is a sibling service; for a host-run dev server,
+// retain the existing loopback default. This value is server-only and is not
+// exposed to the browser bundle.
+const runtimeApiTarget = process.env.NK1_RUNTIME_API_TARGET?.trim() || "http://127.0.0.1:3310";
+
 export default defineConfig(({ command, isPreview }) => ({
   server: {
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
     proxy: {
-      "/api/organism": { target: "http://127.0.0.1:3310", changeOrigin: true },
-      "/api/research": { target: "http://127.0.0.1:8765", changeOrigin: true },
+      "/api/organism": { target: runtimeApiTarget, changeOrigin: true },
+      // Route the runtime health probe through the same app-to-runtime network
+      // path used by Compose; this also verifies that the proxy is connected.
+      "/api/health": { target: runtimeApiTarget, changeOrigin: true },
+      "/api/research": {
+        target: process.env.NK1_RESEARCH_API_TARGET?.trim() || "http://127.0.0.1:8765",
+        changeOrigin: true,
+      },
     },
   },
   preview: {
