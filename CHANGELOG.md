@@ -173,3 +173,10 @@
 - Added a runtime regression with an already-aborted signal and a real `OrganismRuntime` step; wired it into `test:rebuild-recovered` and the canonical WorkPass110 workflow.
 - This closes a queue-liveness bug; it does not claim higher quality or more frequent successful autonomous dialogue.
 
+## [NK1][runtime] Back off recurring clock tasks after failures (2026-10-28)
+
+- A failing runtime-clock task previously returned to its normal policy delay after every exception. With a short normal cadence, a persistent provider or runtime error could repeatedly execute at the minimum 50 ms scheduler floor.
+- Added per-clock exponential task-failure backoff starting at 1 second, doubling to a 60-second cap. A successful task clears that clock's failure streak; admission-decision failures remain separately handled.
+- Extended `tests/runtime-clocks.mjs` to prove the first retry is delayed by at least one second, a repeated task failure raises the floor to at least two seconds, and each failure reaches `onError`. Wired the test into `test:rebuild-recovered` and canonical WorkPass110 CI.
+- This is scheduler stability hardening, not a claim of increased cognitive quality or autonomy.
+
