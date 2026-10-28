@@ -22,7 +22,7 @@
     "test:p26:feature-schema-migration": "node --experimental-strip-types tests/p26-feature-schema-migration.mjs",
     "test:learning-replay": "npm run test:p26:feature-schema-migration && npm run test:causal-replay-sampler && npm run test:causal-replay-benchmark && node --experimental-strip-types tests/big-pass-115-causal-replay.mjs && npm run test:p26:true-learning && npm run test:p26:holdout-provenance && npm run test:p26:sequential-benchmark && npm run test:p26:replay-policy-sweep",
     "test:workpass318:operational-microcycle-finite-input": "node --experimental-strip-types tests/operational-microcycle-finite-input.mjs",
-    "test:rebuild-recovered": "npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:learning-replay && npm run test:causal-replay-runtime-wiring && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass97:planner-route && npm run test:workpass98:project-reconciliation-route && npm run test:workpass318:operational-microcycle-finite-input && npm run test:workpass292:motivation-to-goal && npm run test:memory-semantic-failure-fallback && npm run test:memory-semantic-retrieval-accounting && npm run test:memory-embedding-vector-integrity && npm run test:p62-relevance-order && npm run test:workpass49:privacy && npm run test:memory-retrieval-experiment && npm run test:workpass502:semantic-cognition-route",
+    "test:rebuild-recovered": "npm run test:cognitive-cycle-boundary && npm run test:cognitive-cycle-boundary-runtime-wiring && npm run test:learning-replay && npm run test:causal-replay-runtime-wiring && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass97:planner-route && npm run test:workpass98:project-reconciliation-route && npm run test:workpass318:operational-microcycle-finite-input && npm run test:workpass292:motivation-to-goal && npm run test:memory-semantic-failure-fallback && npm run test:memory-semantic-retrieval-accounting && npm run test:memory-embedding-vector-integrity && npm run test:p62-relevance-order && npm run test:workpass49:privacy && npm run test:autonomous-dialogue-abort-defer && npm run test:memory-retrieval-experiment && npm run test:workpass502:semantic-cognition-route",
     "test:workpass502:semantic-cognition-route": "node --experimental-strip-types tests/workpass502-live-cognitive-semantic-retrieval.mjs",
     "test:workpass292:motivation-to-goal": "node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs",
     "test:workpass288:intrinsic-motivation": "node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs",
@@ -1792,7 +1792,8 @@
     "test:memory-semantic-failure-fallback": "node --experimental-strip-types tests/memory-semantic-failure-fallback.mjs",
     "test:memory-semantic-retrieval-accounting": "node --experimental-strip-types tests/memory-semantic-retrieval-accounting.mjs",
     "test:memory-embedding-vector-integrity": "node --experimental-strip-types tests/memory-embedding-vector-integrity.mjs",
-    "test:p62-relevance-order": "node --experimental-strip-types tests/p62-relevance-order.mjs"
+    "test:p62-relevance-order": "node --experimental-strip-types tests/p62-relevance-order.mjs",
+    "test:autonomous-dialogue-abort-defer": "node --experimental-strip-types tests/autonomous-dialogue-abort-defer.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.16.5"
