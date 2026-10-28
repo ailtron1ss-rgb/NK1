@@ -368,10 +368,14 @@ export class MemoryOS2{
   * method never changes live access timestamps, retrieval counts, adaptive policy,
   * memory temperature, stale counters, or retrieval diagnostics on this instance.
   */
- previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}){
+ previewRetrieveWithDiagnostics(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}){
    const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile});
    isolated.restore(this.snapshot());
-   return isolated.retrieve(query,limit,goalRelevance,identityRelevance,temporalOptions,true) as MemoryItem2[];
+   const items=isolated.retrieve(query,limit,goalRelevance,identityRelevance,temporalOptions,true) as MemoryItem2[];
+   return {items,diagnostics:isolated.retrievalDiagnostics(),policy:isolated.adaptivePolicyDiagnostics()};
+ }
+ previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}){
+   return this.previewRetrieveWithDiagnostics(query,limit,goalRelevance,identityRelevance,temporalOptions).items;
  }
  /**
   * Low-priority, bounded semantic-index maintenance. Adapts the deferred embedding-worker

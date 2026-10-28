@@ -143,6 +143,13 @@ export class MemoryFabric {
   private lastSemanticMaintenanceStartedAt=0;
   private lastCognitiveMemoryQueryAt=0;
   private lastPolicyDecisionId:string|undefined;
+  private lastRetrievalOutcome:{
+    evidenceMode:'none'|'retrieval-audit'|'semantic-cognitive-retrieval';
+    costSource:'uninitialized'|'isolated-lexical-preview'|'semantic-runtime-estimate'|'live-lexical-runtime';
+    computeCost01:number;
+    selectedCount:number;
+    at:number;
+  }={evidenceMode:'none',costSource:'uninitialized',computeCost01:0,selectedCount:0,at:0};
   private readonly maxMutationReceipts=512;
 
   constructor(
@@ -349,13 +356,17 @@ export class MemoryFabric {
     const temporalContext={temporalMode:context.temporalMode,asOfAt:context.asOfAt};
     // Preview read-only until the runtime chooses the actual result. Otherwise the
     // lexical fallback is counted even when semantic retrieval replaces it.
-    const fallback=this.memoryOS.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalContext);
-    const finish=(selected:MemoryItem2[],semantic=false)=>{
+    const fallbackPreview=this.memoryOS.previewRetrieveWithDiagnostics(query,safeLimit,goalRelevance,identityRelevance,temporalContext);
+    const fallback=fallbackPreview.items;
+    const fallbackCost01=Math.max(0,Math.min(1,fallbackPreview.diagnostics.candidateCount/192));
+    const finish=(selected:MemoryItem2[],semantic=false,computeCost01=fallbackCost01,costSource:'isolated-lexical-preview'|'semantic-runtime-estimate'='isolated-lexical-preview')=>{
       const rows=this.memoryOS.commitSelectedRetrieval(query,selected.map(row=>({id:row.id,content:row.content})),goalRelevance,identityRelevance,temporalContext);
       return this.recordRetrievalResult(query,rows,{
         tick:context.tick,
         emitEvent:semantic&&context.tick!==undefined,
         evidenceMode:semantic?'semantic-cognitive-retrieval':'retrieval-audit',
+        computeCost01,
+        costSource,
       });
     };
     const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
@@ -377,18 +388,31 @@ export class MemoryFabric {
     ]);
     if(timer)clearTimeout(timer);
     if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return finish(fallback);
-    return finish(outcome.result.items.slice(0,safeLimit),true);
+    // Bounded workload estimate: corpus scan fraction, index-backfill batch fraction,
+    // or provider latency relative to timeout, whichever best reflects this attempt.
+    const semanticCost01=Math.max(
+      outcome.result.semantic.corpusItems/1600,
+      outcome.result.semantic.newlyIndexed/12,
+      outcome.result.semantic.lastLatencyMs/Math.max(1,providerTimeout),
+    );
+    return finish(outcome.result.items.slice(0,safeLimit),true,semanticCost01,'semantic-runtime-estimate');
   }
 
   private recordRetrievalResult(
     query:string,
     rows:MemoryItem2[],
-    context:{tick?:number;emitEvent?:boolean;evidenceMode?:'retrieval-audit'|'semantic-cognitive-retrieval'}={}
+    context:{tick?:number;emitEvent?:boolean;evidenceMode?:'retrieval-audit'|'semantic-cognitive-retrieval';computeCost01?:number;costSource?:'isolated-lexical-preview'|'semantic-runtime-estimate'|'live-lexical-runtime'}={}
   ):MemoryItem2[]{
     this.statsData.retrievals++;
     this.statsData.retrievalHits+=rows.length;
+    const rawCost=Number(context.computeCost01??(this.memoryOS.retrievalDiagnostics().candidateCount/192));
+    const computeCost01=Math.max(0,Math.min(1,Number.isFinite(rawCost)?rawCost:1));
+    const costSource=context.costSource??'live-lexical-runtime';
+    const evidenceMode=context.evidenceMode??'retrieval-audit';
+    const at=Date.now();
+    this.lastRetrievalOutcome={evidenceMode,costSource,computeCost01,selectedCount:rows.length,at};
     const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
+    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at,hit01:rows.length?1:0,computeCost01});
     this.lastPolicyDecisionId=decision.id;
     for(const row of rows)this.touchHot(row.id);
     if(context.emitEvent){
@@ -606,6 +630,7 @@ export class MemoryFabric {
       compatibilityItems:compatibility.length,
       hotItems:this.hotIds.length,
       stats:{...this.statsData},
+      retrievalAccounting:{...this.lastRetrievalOutcome},
       eventWindow:this.compactRecentEvents(),
       mutationReceiptJournal:{count:this.mutationReceipts.size,capacity:this.maxMutationReceipts,retiredCount:this.retiredMutationReceiptCount,tombstoneBytes:this.retiredMutationReceiptCount?RETIRED_RECEIPT_BLOOM_BYTES:0,corrupt:this.retiredMutationReceiptBloomCorrupt},
     };
