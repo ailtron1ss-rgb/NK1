@@ -2585,3 +2585,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Allocate the budget in explicit critical/hot/warm/cold tier order, preserving the declared order within a tier. This prevents lower-priority cold research from consuming capacity before affordable warm project/shadow work.
 - Add a low-budget/high-demand regression that verifies affordable hot-path work runs, expensive research is gated, and summed planned costs never exceed the budget.
 - Extend the focused planner workflow to run both cadence-weighting and aggregate-budget regressions. This is a resource-allocation safety correction, not an end-to-end autonomy uplift claim; `main` and Release ZIP remain untouched.
+
+
+## [NK1][WorkPass591] Verify budgeted planner integration through observation stage (2026-10-28)
+
+- Added an integration regression for `compileObservationPlan()` that uses the real cognitive frame builder, resource-budget handoff, cognitive execution planner and plan-persistence callback with bounded fixture ports.
+- The test verifies the effective budget passed to the planner, confirms warm project work is preserved ahead of cold research, checks aggregate planned cost, and ensures perception refresh and stored execution plan derive from the same result.
+- Extended the scoped planner CI workflow to run the integrated observation-stage test after typecheck and the two direct planner regressions. This validates the planning seam, not the entire production cycle; no `main` or Release ZIP changes.
