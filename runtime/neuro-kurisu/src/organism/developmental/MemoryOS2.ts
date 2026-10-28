@@ -1315,7 +1315,7 @@ export class MemoryOS2{
  size(){return this.state.items.length;}
  retrievalDiagnostics(){return {candidateCount:this.lastCandidateCount,totalItems:this.state.items.length,pruning01:this.state.items.length?Math.max(0,1-this.lastCandidateCount/this.state.items.length):0,signalFusion:true,hybridRetrieval:true,...this.lastHybridDiagnostics};}
  indexDiagnostics(){
-   let staleItemIndex=0,missingItemIndex=0,staleExact=0,staleContent=0,dfMismatch=0;
+   let staleItemIndex=0,missingItemIndex=0,staleExact=0,staleContent=0,dfMismatch=0,metadataIndexMismatch=0;
    const ids=new Set(this.state.items.map(m=>m.id));
    for(const id of this.itemIndex.keys())if(!ids.has(id))staleItemIndex++;
    for(const id of ids)if(!this.itemIndex.has(id))missingItemIndex++;
@@ -1326,11 +1326,15 @@ export class MemoryOS2{
    if(expectedTotal!==this.totalTokenLength)dfMismatch++;
    if(expectedDf.size!==this.documentFrequency.size)dfMismatch++;
    else for(const [token,count] of expectedDf)if(this.documentFrequency.get(token)!==count){dfMismatch++;break;}
+   const expectedMetadataIndex=new Map<string,Set<string>>();
+   for(const item of this.state.items)for(const token of this.metadataTokens(item)){let posting=expectedMetadataIndex.get(token);if(!posting){posting=new Set<string>();expectedMetadataIndex.set(token,posting);}posting.add(item.id);}
+   if(expectedMetadataIndex.size!==this.metadataTokenIndex.size)metadataIndexMismatch++;
+   else for(const [token,expectedIds] of expectedMetadataIndex){const actual=this.metadataTokenIndex.get(token);if(!actual||actual.size!==expectedIds.size||[...expectedIds].some(id=>!actual.has(id))){metadataIndexMismatch++;break;}}
    const expectedGrams=new Map<string,Set<string>>();
    for(const token of expectedDf.keys())for(const gram of charTrigrams(token)){let posting=expectedGrams.get(gram);if(!posting){posting=new Set<string>();expectedGrams.set(gram,posting);}posting.add(token);}
    let characterGramMismatch=expectedGrams.size===this.characterGramIndex.size?0:1;
    if(!characterGramMismatch)for(const [gram,tokens] of expectedGrams){const actual=this.characterGramIndex.get(gram);if(!actual||actual.size!==tokens.size||[...tokens].some(token=>!actual.has(token))){characterGramMismatch++;break;}}
-   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,characterGramVocabulary:this.characterGramIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
+   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0&&metadataIndexMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,metadataIndexMismatch,metadataTokenVocabulary:this.metadataTokenIndex.size,characterGramVocabulary:this.characterGramIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
  }
  /**
   * Read-only /doctor pass adapted from MemFS maintenance: checks memory identity, provenance,
