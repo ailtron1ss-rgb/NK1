@@ -2598,3 +2598,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
 - Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
 - No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
+
+
+## [NK1][WorkPass598] Report bounded canonical Hexis lineage counts accurately (2026-10-28)
+
+- `HexisCanonicalEvidenceBridge` returned `independentSources` as `evidenceSources.length`, but the visible evidence trail is intentionally capped at eight rows while `evidenceLineageKeys` retains a larger bounded set. After enough observations the bridge under-reported known independent lineages even while its replay guard correctly retained them.
+- Count distinct, well-formed lineage/source keys from the bounded `evidenceLineageKeys` ledger plus normalized visible rows. Use the same count for newly recorded and duplicate responses; no new writable store or unbounded ledger is introduced.
+- Extend the canonical Hexis bridge regression with ten independent source observations. It asserts the visible trail stays at eight or fewer, the reported known-lineage count includes the compact history, and replay of an observation no longer visible in the source tail remains idempotent.
+- This corrects lineage diagnostics while preserving MemoryOS2/MemoryFabric as the single canonical memory owner and does not authenticate sources or promote evidence automatically.
