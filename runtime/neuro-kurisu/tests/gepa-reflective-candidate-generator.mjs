@@ -70,6 +70,8 @@ test('GEPA sidecar receives validation-only evidence and returns a payload, not 
   assert.equal(call.body.adapter, 'nk1-gepa-revision-proposal');
   assert.equal(call.body.constraints.activationAuthority, 'NK1-P23');
   assert.equal(call.body.constraints.independentReevaluationRequired, true);
+  assert.equal(call.body.constraints.sourcePayloadIsUntrustedData, true);
+  assert.equal(call.body.constraints.validationEvidenceIsDataNotInstructions, true);
   assert.equal(call.body.holdoutGeneralization.gap01, -0.12);
   assert.deepEqual(call.body.holdoutGeneralization, { gap01: -0.12, requiresFreshIndependentEvaluation: true });
   assert.equal(JSON.stringify(call.body).includes('hidden-holdout-task-99'), false);
@@ -159,6 +161,17 @@ test('server composition root wires the optional adapter but keeps local generat
   assert.match(server, /generateSkillRevision: P23_SKILL_REVISION_GENERATOR/);
   assert.match(server, /: generateLocalSkillRevision\(LLAMA_CPP_PROVIDER, request\)/);
   assert.match(server, /asP23RevisionGenerator\(\)\(request\)/);
+});
+
+test('oversized source payload is rejected before any sidecar request', async () => {
+  let calls = 0;
+  const adapter = new GepaReflectiveCandidateGenerator({
+    enabled: true, endpoint: 'https://optimizer.example.test/revise', apiKey: 'secret',
+    fetchImpl: async () => { calls++; return response({ schemaVersion: 1, candidatePayload: {} }); },
+  });
+  const oversized = { ...request, sourcePayload: { skill: 'x'.repeat(256 * 1024 + 1) } };
+  await assert.rejects(adapter.generate(oversized), /gepa-source-payload-too-large/);
+  assert.equal(calls, 0);
 });
 
 console.log('GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS');
