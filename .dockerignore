@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/dist
+**/.vite
+**/coverage
+**/*.log
+**/.DS_Store
+app/.tanstack
+runtime/neuro-kurisu/state
+runtime/neuro-kurisu/.cache
