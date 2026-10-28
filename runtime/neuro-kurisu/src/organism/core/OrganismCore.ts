@@ -5331,8 +5331,9 @@ export class OrganismCore {
             this.memorySubsystem.events.append(makeEvent('experiment', state.tick, experiment as any));
         }
         if (this.config.enableScientificMethod && experiment) {
-            const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
+            const experimentSources = ['intrinsic-experiment', `tick:${state.tick}`, `experiment:${experiment.id}`, ...(experiment.source === 'dream-association' ? ['dream-association', `dream:${experiment.dreamId}`, ...(experiment.sourceMemoryIds ?? []).map(id => `source-memory:${id}`)] : [])];
             const project = this.cognitiveRuntime.scientificMethod.create(experiment.question, experiment.hypothesis, experiment.action, experimentSources);
+            this.persisted.facets.memory.experiments = this.persisted.facets.memory.experiments.map((row: any) => row?.id === experiment.id ? { ...row, scientificProjectId: project.id, createdTick: state.tick } : row);
             this.persisted.facets.cognition.scientific = this.cognitiveRuntime.scientificMethod.snapshot();
             if (project.uncertainty > 0.6)
                 this.cognitiveRuntime.cognitiveField.addPressure('curiosity', `scientific question: ${project.question}`, 0.44, [project.id]);
@@ -9343,8 +9344,33 @@ export class OrganismCore {
         this.persisted.facets.advanced.commitmentRepair = this.cognitiveRuntime.commitmentRepair.snapshot();
         if (this.config.enableScientificMethod) {
             const latest = this.cognitiveRuntime.scientificMethod.snapshot().projects[0];
-            if (latest) {
-                this.cognitiveRuntime.scientificMethod.observe(latest.id, { evidence: `tick:${state.tick}; action:${trace?.selected?.action ?? 'none'}`, success: gatedSuccess01 });
+            const observedAction = trace?.selected?.action;
+            // A hypothesis receives outcome credit only when its proposed action
+            // actually ran and the world/external evidence gate verified the outcome.
+            if (latest && observedAction && verifiedPolicyOutcome &&
+                latest.provenance.some((source: string) => source.startsWith('experiment:')) &&
+                latest.predictions.includes(observedAction)) {
+                this.cognitiveRuntime.scientificMethod.observe(latest.id, {
+                    evidence: `tick:${state.tick}; action:${observedAction}; independently-verified`,
+                    success: gatedSuccess01,
+                    verified: true,
+                });
+                const resolved = this.cognitiveRuntime.scientificMethod.snapshot().projects.find(project => project.id === latest.id);
+                const hypothesis = resolved?.hypotheses[0];
+                if (resolved?.status === 'concluded' && hypothesis &&
+                    (hypothesis.status === 'supported' || hypothesis.status === 'rejected')) {
+                    const experimentId = resolved.provenance.find((source: string) => source.startsWith('experiment:'))?.slice('experiment:'.length);
+                    if (experimentId) {
+                        this.persisted.facets.memory.experiments = this.persisted.facets.memory.experiments.map((row: any) => row?.id === experimentId ? {
+                            ...row,
+                            status: hypothesis.status === 'supported' ? 'validated' : 'rejected',
+                            verified: true,
+                            verificationRequired: false,
+                            verifiedAt: state.at,
+                            verificationEvidence: resolved.evidence.slice(0, 4),
+                        } : row);
+                    }
+                }
             }
             this.persisted.facets.cognition.scientific = this.cognitiveRuntime.scientificMethod.snapshot();
         }
