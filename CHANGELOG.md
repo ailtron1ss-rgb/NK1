@@ -2592,3 +2592,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added an integration regression for `compileObservationPlan()` that uses the real cognitive frame builder, resource-budget handoff, cognitive execution planner and plan-persistence callback with bounded fixture ports.
 - The test verifies the effective budget passed to the planner, confirms warm project work is preserved ahead of cold research, checks aggregate planned cost, and ensures perception refresh and stored execution plan derive from the same result.
 - Extended the scoped planner CI workflow to run the integrated observation-stage test after typecheck and the two direct planner regressions. This validates the planning seam, not the entire production cycle; no `main` or Release ZIP changes.
+
+
+## [NK1][WorkPass592] Use one budget snapshot across an observation planning cycle (2026-10-28)
+
+- `compileObservationPlan()` previously called `host.getBudget()` independently for the spine mode, spine budget, and execution planner budget, allowing a changing host budget to produce internally inconsistent decisions in one cycle.
+- Capture the budget once at stage entry and reuse its mode/remaining amount for all planning decisions. The integrated regression now returns different values on subsequent calls and asserts that the stage reads the host exactly once and both planners see the same snapshot.
+- Extended the targeted planner workflow path filter to include `ObservationPlanningStage.ts`. This closes a consistency seam; it does not claim full runtime or autonomy readiness.
