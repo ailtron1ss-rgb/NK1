@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveExecutionPlanner.ts"
+      - "runtime/neuro-kurisu/src/organism/core/ObservationPlanningStage.ts"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-cadence-workpass586.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-budget-workpass587.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-stage-workpass591.mjs"
