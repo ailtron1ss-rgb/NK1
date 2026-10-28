@@ -152,3 +152,10 @@
 - Added a regression that restores a ready row without a message, proves it is deferred and counted, and proves a new distinct initiative can be generated immediately. Wired the privacy/initiative restore suite into `test:rebuild-recovered` and the canonical WorkPass110 workflow.
 - This is a lifecycle recovery fix; it does not claim any particular achieved level of autonomy.
 
+## [NK1][autonomy] Resolve proactively generated turns when provider work is cancelled (2026-10-28)
+
+- When a caller aborts the language-provider request for a spontaneous initiative, the runtime now defers that exact initiative before recording the cancellation event. The cancelled row no longer remains in the pending queue and block future initiative attempts until the generic stale-plan timeout.
+- The cancellation evidence includes the affected initiative ID and records that it was deferred, without treating cancellation as user feedback or successful delivery.
+- Added a runtime regression with an already-aborted signal and a real `OrganismRuntime` step; wired it into `test:rebuild-recovered` and the canonical WorkPass110 workflow.
+- This closes a queue-liveness bug; it does not claim higher quality or more frequent successful autonomous dialogue.
+

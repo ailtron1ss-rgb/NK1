@@ -702,7 +702,15 @@ export class OrganismRuntime {
         }
       } catch (error) {
         if(options.signal?.aborted) {
-          this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-cancelled',confidence01:.95,payload:{reason:'caller-aborted',role:'response-generation'}});
+          // Cancellation resolves the current proactive attempt. Leaving it planned
+          // would keep hasPending() true and suppress new initiatives until stale expiry.
+          if (!externalText && autonomousAgenda) {
+            this.core.deferAutonomousSocialInitiative(autonomousAgenda.id, Date.now());
+          }
+          this.evidenceBus.publish({tick:cycle.state.tick,kind:'model',source:'language-cancelled',confidence01:.95,payload:{
+            reason:'caller-aborted',role:'response-generation',
+            ...(autonomousAgenda && !externalText ? {initiativeId:autonomousAgenda.id,initiativeDeferred:true} : {}),
+          }});
         } else if (!externalText && autonomousAgenda) {
           this.core.deferAutonomousSocialInitiative(autonomousAgenda.id, Date.now());
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-failure', confidence01: .2, payload: { initiativeId: autonomousAgenda.id, reason: String((error as any)?.message ?? error).slice(0, 180) } });
