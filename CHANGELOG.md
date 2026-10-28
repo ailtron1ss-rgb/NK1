@@ -138,3 +138,10 @@
 - `MemoryFabric` normalizes the adaptive compute-cost signal to `[0,1]`, preventing a full semantic scan from emitting an out-of-range value.
 - Added regression assertions for candidate counts of 400 and the 1600-item cap, plus normalized cost saturation. This is a metric-integrity correction, not a claim of improved retrieval quality.
 
+## [NK1][Hexis] Reduce canonical receipt membership validation cost (2026-10-28)
+
+- Build a `Set` from the bounded HMX receipt memory-ID list before validating `createdMemoryIds`; repeated membership checks now have expected linear total complexity rather than repeatedly scanning the receipt list.
+- Preserve the stronger integration-base smoke contract: conflicting trace ID reuse must return HTTP 409, be denied, and leave the original evidence lineage readable.
+- Extend the Hexis canonical apply workflow's pull-request base filter so this integration branch runs projector, rollback, server smoke, evidence-lineage and runtime typecheck checks.
+- This optimizes validation cost while preserving trust semantics; it does not claim memory-quality improvement.
+
