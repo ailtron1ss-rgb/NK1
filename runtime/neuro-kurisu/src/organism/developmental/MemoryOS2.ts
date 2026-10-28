@@ -837,7 +837,7 @@ export class MemoryOS2{
      // posting matched any memory. In that case an empty candidate set is intentional
      // abstention, not a cue to return unrelated recent records.
      const fallback=[...this.state.items].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)||a.id.localeCompare(b.id));
-     for(const m of fallback){if(!candidateEligible(m.id))continue;candidateIds.add(m.id);if(candidateIds.size>=192)break;}
+     let fallbackAdded=0;for(const m of fallback){if(!candidateEligible(m.id))continue;const beforeSize=candidateIds.size;candidateIds.add(m.id);if(candidateIds.size>beforeSize)fallbackAdded++;if(candidateIds.size>=192||fallbackAdded>=128)break;}
    }
    // Revision-aware recall: a lexical hit on one revision should be able to
    // surface the rest of the bounded revision chain before temporal filtering.
