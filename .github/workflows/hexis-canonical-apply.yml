@@ -9,6 +9,9 @@ on:
     paths:
       - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs'
+      - 'runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md'
       - 'runtime/neuro-kurisu/package-lock.json'
       - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
       - 'runtime/neuro-kurisu/src/organism/integration/HexisEvidence*.ts'
@@ -45,6 +48,9 @@ on:
     paths:
       - '.github/workflows/hexis-canonical-apply.yml'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs'
+      - 'runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md'
       - 'runtime/neuro-kurisu/package-lock.json'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
@@ -110,3 +116,6 @@ jobs:
       - name: Test Hexis adaptation, canonical HMX projection and server apply/replay
         working-directory: runtime/neuro-kurisu
         run: npm run test:hexis-canonical-apply
+      - name: Verify independent bilingual retrieval holdout runner contract (offline only)
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass507:bilingual-holdout-runner-contract
