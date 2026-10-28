@@ -132,104 +132,10 @@ async function configureCompoundRepairRevision() {
     }
     // Baseline/source payloads are resolved by the host from the canonical
     // versioned store. Provider-supplied payloads/reports never become the reference.
-    const resolveCanonicalPayloadsForRepair = (input, prepared) => {
-        const skillId = input?.skillId;
-        const sourceCandidateId = prepared?.sourceCandidateId;
-        if (typeof skillId !== 'string' || !skillId.trim() ||
-            typeof sourceCandidateId !== 'string' || !sourceCandidateId.trim()) {
-            throw new Error('canonical-p23-revision-skill-and-source-identities-required');
-        }
-        const snapshot = lifecycle.store.snapshot();
-        const source = snapshot.candidates.find(item => item.candidateId === sourceCandidateId);
-        if (!source || source.skillId !== skillId ||
-            !['staged', 'shadow', 'active'].includes(source.status)) {
-            throw new Error('canonical-p23-revision-source-candidate-missing-or-ineligible');
-        }
-        const active = snapshot.active.find(item => item.skillId === skillId);
-        let baseline;
-        let sourceMode;
-        if (source.status === 'active') {
-            if (!active || active.version !== source.version ||
-                active.payloadFingerprint !== source.payloadFingerprint ||
-                active.proposalId !== source.proposalId) {
-                throw new Error('canonical-p23-revision-active-source-is-not-current');
-            }
-            baseline = source.previousActive;
-            if (!baseline) {
-                throw new Error('canonical-p23-revision-active-source-has-no-prior-baseline');
-            }
-            sourceMode = 'active-source';
-        } else {
-            if (!active) {
-                throw new Error('canonical-p23-revision-active-baseline-required');
-            }
-            if (source.baseVersion !== active.version) {
-                throw new Error('canonical-p23-revision-source-base-version-is-stale');
-            }
-            baseline = active;
-            sourceMode = 'pending-source';
-        }
-        if (!baseline || baseline.payloadFingerprint === source.payloadFingerprint) {
-            throw new Error('canonical-p23-revision-baseline-and-source-payload-identical-or-missing');
-        }
-        const baselineIdentity = {
-            skillId: baseline.skillId,
-            version: baseline.version,
-            payloadFingerprint: baseline.payloadFingerprint,
-            proposalId: baseline.proposalId,
-            activatedAt: baseline.activatedAt,
-        };
-        const sourceIdentity = {
-            candidateId: source.candidateId,
-            skillId: source.skillId,
-            version: source.version,
-            status: source.status,
-            payloadFingerprint: source.payloadFingerprint,
-            proposalId: source.proposalId,
-            baseVersion: source.baseVersion,
-        };
-        const matchesBaseline = (candidate) => Boolean(candidate &&
-            candidate.skillId === baselineIdentity.skillId &&
-            candidate.version === baselineIdentity.version &&
-            candidate.payloadFingerprint === baselineIdentity.payloadFingerprint &&
-            candidate.proposalId === baselineIdentity.proposalId &&
-            candidate.activatedAt === baselineIdentity.activatedAt);
-        return {
-            baselinePayload: structuredClone(baseline.payload),
-            sourceCandidatePayload: structuredClone(source.payload),
-            baselinePayloadFingerprint: baseline.payloadFingerprint,
-            sourceCandidatePayloadFingerprint: source.payloadFingerprint,
-            assertStillCurrent() {
-                const latest = lifecycle.store.snapshot();
-                const activeNow = latest.active.find(item => item.skillId === skillId);
-                const sourceNow = latest.candidates.find(item => item.candidateId === sourceCandidateId);
-                const sameSource = Boolean(sourceNow &&
-                    sourceNow.candidateId === sourceIdentity.candidateId &&
-                    sourceNow.skillId === sourceIdentity.skillId &&
-                    sourceNow.version === sourceIdentity.version &&
-                    sourceNow.status === sourceIdentity.status &&
-                    sourceNow.payloadFingerprint === sourceIdentity.payloadFingerprint &&
-                    sourceNow.proposalId === sourceIdentity.proposalId &&
-                    sourceNow.baseVersion === sourceIdentity.baseVersion);
-                const sameBaseline = sourceMode === 'active-source'
-                    ? matchesBaseline(sourceNow?.previousActive)
-                    : matchesBaseline(activeNow);
-                const activeStillMatchesSource = sourceMode !== 'active-source' || Boolean(activeNow &&
-                    activeNow.skillId === sourceIdentity.skillId &&
-                    activeNow.version === sourceIdentity.version &&
-                    activeNow.payloadFingerprint === sourceIdentity.payloadFingerprint &&
-                    activeNow.proposalId === sourceIdentity.proposalId);
-                if (!sameBaseline || !sameSource || !activeStillMatchesSource) {
-                    throw new Error('canonical-p23-revision-source-changed-during-independent-evaluation');
-                }
-            },
-        };
-    };
     return {
         engine,
         provideInputs,
         ...(independentEvaluationConfigForRepair ? { independentEvaluationConfigForRepair } : {}),
-        resolveCanonicalPayloadsForRepair,
         ...(COMPOUND_REPAIR_BACKGROUND_REVISION ? { backgroundRevision: COMPOUND_REPAIR_BACKGROUND_REVISION } : {}),
     };
 }
