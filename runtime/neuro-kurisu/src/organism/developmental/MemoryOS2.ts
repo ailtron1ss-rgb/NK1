@@ -290,7 +290,7 @@ export class MemoryOS2{
  private readonly revisionGroupIndex=new Map<string,Set<string>>();
  private totalTokenLength=0;
  private lastCandidateCount=0;
- private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[]}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal']};
+ private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[]}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-metadata-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','metadata-tags-entities','entity','graph-temporal']};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
  private readonly residencyGovernor=new MemoryResidencyGovernor();
@@ -824,14 +824,20 @@ export class MemoryOS2{
    // Accumulate inverse-document-frequency support across all unique query terms, then
    // select a bounded deterministic top set. The old first-192 walk could omit relevant
    // memories solely because their row happened to be later in an imported snapshot.
-   const candidatePriority=new Map<string,{idfSupport:number;matchedTerms:number;fuzzySupport:number;fuzzyMatches:number}>();
-   const priorityFor=(id:string)=>{const prior=candidatePriority.get(id)??{idfSupport:0,matchedTerms:0,fuzzySupport:0,fuzzyMatches:0};candidatePriority.set(id,prior);return prior;};
+   const candidatePriority=new Map<string,{idfSupport:number;matchedTerms:number;fuzzySupport:number;fuzzyMatches:number;metadataSupport:number;metadataMatches:number}>();
+   const priorityFor=(id:string)=>{const prior=candidatePriority.get(id)??{idfSupport:0,matchedTerms:0,fuzzySupport:0,fuzzyMatches:0,metadataSupport:0,metadataMatches:0};candidatePriority.set(id,prior);return prior;};
    const corpusSize=Math.max(1,this.state.items.length);
    const idfFor=(token:string)=>{const df=this.documentFrequency.get(token)??0;return Math.log(1+(corpusSize-df+.5)/(df+.5));};
    for(const token of qTokens){
      const ids=this.tokenIndex.get(token);
      const idf=idfFor(token);
      if(ids)for(const id of ids){const priority=priorityFor(id);priority.idfSupport+=idf;priority.matchedTerms++;}
+     // Metadata matches can nominate a memory without contaminating content-only BM25 document frequency.
+     const metadataIds=this.metadataTokenIndex.get(token);
+     if(metadataIds){
+       const support=idf*.42;
+       for(const id of metadataIds){const priority=priorityFor(id);priority.metadataSupport+=support;priority.metadataMatches++;}
+     }
      // Fuzzy discovery only runs for meaningful token lengths. Candidate terms
      // come from shared character n-grams, not a full corpus scan. This lets
      // spelling variants and inflected forms enter the bounded retrieval pool.
@@ -868,7 +874,7 @@ export class MemoryOS2{
      const validAt=temporalMode==='all'||isValidAt(item,now)?1:0;
      // A tiny lexical coverage/phrase term breaks high-fanout ties without letting
      // recency overpower a genuinely rarer query match.
-     const score=priority.idfSupport+priority.fuzzySupport*.70+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
+     const score=priority.idfSupport+priority.fuzzySupport*.70+priority.metadataSupport*.72+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
    }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,192).map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
@@ -917,7 +923,7 @@ export class MemoryOS2{
    if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
-   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
+   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
    for(const id of candidateIds){
      const m=this.itemIndex.get(id);
      if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
@@ -928,6 +934,8 @@ export class MemoryOS2{
      if(!temporalValid)continue;
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
+     const metadataTokens=this.metadataTokens(m);
+     const metadata=queryTokenArray.length?queryTokenArray.filter(token=>metadataTokens.has(token)).length/queryTokenArray.length:0;
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
      const queryTokenArray=[...qTokens];
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
@@ -941,7 +949,7 @@ export class MemoryOS2{
      const temporalBase=this.signalFusion.temporalHint(query,m.validFromAt??m.createdAt,now); const validity=temporalMode==='all'?1:(isValidAt(m,now)?1:0); const temporal=clamp(.72*validity+.28*temporalBase);
      const identity=clamp(m.identityRelevance*clamp(identityRelevance));
      const goal=clamp(m.goalRelevance*clamp(goalRelevance));
-     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,conceptCoverage,temporal,causal,identity,goal,recency});
+     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency});
    }
    const rrfK=60;
    const rankBy=(score:(row:typeof rawRows[number])=>number)=>new Map(rawRows.filter(row=>score(row)>0).sort((a,b)=>score(b)-score(a)||a.m.id.localeCompare(b.m.id)).map((row,index)=>[row.m.id,index+1]));
@@ -953,14 +961,15 @@ export class MemoryOS2{
    // Reciprocal-rank fusion combines partially independent retrieval signals.
    // The hashed token vector is intentionally not a ranking channel: it is not
    // a semantic embedding and was largely duplicating the lexical projection.
-   const rrfWeights={bm25:1,coverage:.90,fuzzy:.60,entity:.42,relationship:.32};
+   const metadataRank=rankBy(row=>row.metadata);
+   const rrfWeights={bm25:1,coverage:.90,fuzzy:.60,metadata:.28,entity:.42,relationship:.32};
    const maxRrf=Object.values(rrfWeights).reduce((sum,weight)=>sum+weight/(rrfK+1),0);
    const maxBm25=Math.max(0,...rawRows.map(x=>x.bm25));
    const fuzzyCandidateIds=new Set<string>([...candidatePriority.entries()].filter(([,priority])=>priority.fuzzyMatches>0).map(([id])=>id));
    const topRows=rawRows.map(row=>{
-     const rrfNorm=clamp((rrfWeights.bm25/(rrfK+(bm25Rank.get(row.m.id)??rawRows.length+1))+rrfWeights.coverage/(rrfK+(coverageRank.get(row.m.id)??rawRows.length+1))+rrfWeights.fuzzy/(rrfK+(fuzzyRank.get(row.m.id)??rawRows.length+1))+rrfWeights.entity/(rrfK+(entityRank.get(row.m.id)??rawRows.length+1))+rrfWeights.relationship/(rrfK+(relationshipRank.get(row.m.id)??rawRows.length+1)))/maxRrf);
+     const rrfNorm=clamp((rrfWeights.bm25/(rrfK+(bm25Rank.get(row.m.id)??rawRows.length+1))+rrfWeights.coverage/(rrfK+(coverageRank.get(row.m.id)??rawRows.length+1))+rrfWeights.fuzzy/(rrfK+(fuzzyRank.get(row.m.id)??rawRows.length+1))+rrfWeights.metadata/(rrfK+(metadataRank.get(row.m.id)??rawRows.length+1))+rrfWeights.entity/(rrfK+(entityRank.get(row.m.id)??rawRows.length+1))+rrfWeights.relationship/(rrfK+(relationshipRank.get(row.m.id)??rawRows.length+1)))/maxRrf);
      const bm25Norm=maxBm25>0?normalizeBm25(row.bm25,maxBm25):0;
-     const lexical=clamp(.18*row.lexical+.43*bm25Norm+.22*row.coverage+.17*row.fuzzy+.10*rrfNorm);
+     const lexical=clamp(.18*row.lexical+.40*bm25Norm+.21*row.coverage+.16*row.fuzzy+.08*rrfNorm+.07*row.metadata);
      const fused=this.signalFusion.score({semantic01:0,lexical01:identifierBias?clamp(lexical+.10*row.lexical):lexical,entity01:row.entity,temporal01:row.temporal,causal01:row.causal,recency01:row.recency,salience01:row.m.salience,identity01:row.identity,goal01:row.goal,predictionError01:row.m.predictionError,temperature01:row.m.temperature01});
      const policyBias=this.activePolicy==='semantic'?(row.fuzzy*.04+row.coverage*.04):this.activePolicy==='causal'?row.causal*.10:this.activePolicy==='temporal'?row.temporal*.10:this.activePolicy==='hybrid'?(rrfNorm+row.entity)*.06:(row.identity+row.goal)*.04;
      // Intent adds a bounded preference for the memory system that answers the
@@ -972,11 +981,12 @@ export class MemoryOS2{
      // direct evidence. The bounded 0.10 boost helps paraphrases enter the top-k while
      // direct BM25/coverage/phrase scores still dominate exact matches.
      const conceptBoost01=row.conceptCoverage*.10;
-     fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01);
+     const metadataBoost01=row.metadata>0?Math.min(.10,row.metadata*.10):0;
+     fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01+metadataBoost01);
      return {m:row.m,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01};
    }).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id)).slice(0,Math.max(1,limit));
    rows.push(...topRows);
-   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...topRows.map(x=>x.intentBoost01)),candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']};
+   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...topRows.map(x=>x.intentBoost01)),candidateSelection:'idf-coverage-fuzzy-concept-metadata-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']};
    // semanticHits is retained only for persisted-state compatibility. It is not
    // incremented by retrieval: the legacy hashed token projection is not a semantic
    // retrieval channel, and its previous calculation silently warmed cold memories.
