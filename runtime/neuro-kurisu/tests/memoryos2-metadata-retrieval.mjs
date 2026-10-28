@@ -97,6 +97,9 @@ assert.equal(reconsolidated?.id ?? reconsolidated?.m?.id, 'm-orchid');
 const reconciledMetadataHits = memory.retrieve('duplicate reconciliation beacon', 4);
 assert.equal(reconciledMetadataHits[0]?.m?.id ?? reconciledMetadataHits[0]?.id, 'm-orchid',
   'deduplicating encode must index newly merged metadata for an old memory');
+assert.equal(memory.retrieve('orchid watering schedule', 160).some(
+  row => (row.m?.id ?? row.id) === 'm-orchid',
+), false, 'replacing a topic during reconsolidation must remove old topic postings');
 const postReconsolidationHealth = memory.indexDiagnostics();
 assert.equal(postReconsolidationHealth.pass, true,
   'metadata postings must track merged tags/context without a full rebuild');
