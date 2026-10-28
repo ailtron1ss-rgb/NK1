@@ -255,6 +255,17 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
 }
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
+function normalizeEmbeddingVector(raw:unknown,expectedDimension?:number):number[]|null{
+ if(!Array.isArray(raw)||raw.length===0||raw.length>4096||(expectedDimension!==undefined&&raw.length!==expectedDimension))return null;
+ const values:number[]=[];
+ for(const value of raw){
+  if(typeof value!=='number'&&typeof value!=='string')return null;
+  const numeric=Number(value);if(!Number.isFinite(numeric))return null;values.push(numeric);
+ }
+ const squaredNorm=values.reduce((sum,value)=>sum+value*value,0);
+ const norm=Math.sqrt(squaredNorm);if(!Number.isFinite(norm)||norm<=1e-12)return null;
+ return values.map(value=>value/norm);
+}
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
@@ -381,12 +392,13 @@ export class MemoryOS2{
    const dimensions=Number(vectors[0]?.length??0);
    for(let index=0;index<candidates.length;index++){
     const item=candidates[index],raw=vectors[index];
-    if(!Array.isArray(raw)||!dimensions||dimensions>4096||raw.length!==dimensions||raw.some(value=>!Number.isFinite(Number(value)))){failRow(item);continue;}
-    const clean=raw.map(Number);const norm=Math.sqrt(clean.reduce((sum,value)=>sum+value*value,0));
-    if(!(norm>1e-12)){failRow(item);continue;}
+    // Share the preview path's strict dimension/norm/finite checks; finite coordinates
+    // can still overflow the squared norm to Infinity and otherwise become a zero vector.
+    const clean=normalizeEmbeddingVector(raw,dimensions);
+    if(!clean){failRow(item);continue;}
     const current=this.state.items.find(row=>row.id===item.id);
     if(!current||current.dormant||current.epistemicStatus==='quarantined'||memoContentHash(current.content)!==memoContentHash(item.content)){staleSkipped++;continue;}
-    this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean.map(value=>value/norm),lastUsedAt:now});
+    this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean,lastUsedAt:now});
     this.semanticEmbeddingRetry.delete(item.id);indexed++;
    }
    while(this.semanticEmbeddingIndex.size>1600){
@@ -432,11 +444,38 @@ export class MemoryOS2{
    const now=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:Date.now();
    const temporalMode=temporalOptions.temporalMode??'current';
    const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
+   const sourceState=this.state;
+   const sourceItemCount=this.state.items.length;
    const corpus=this.state.items.filter(eligible);
-   const corpusIds=new Set(corpus.map(item=>item.id));
-   for(const id of this.semanticEmbeddingIndex.keys())if(!corpusIds.has(id))this.semanticEmbeddingIndex.delete(id);
+   const sourceCorpusContentHashes=new Map(corpus.map(item=>[item.id,memoContentHash(item.content)]));
+   const corpusById=new Map(corpus.map(item=>[item.id,item]));
+   // Derived vectors are valid only for the current content hash, provider and dimension-safe vector.
+   // Restore may replace a record while retaining its ID, so pruning by ID alone is insufficient.
+   for(const [id,row] of this.semanticEmbeddingIndex){
+     const item=corpusById.get(id);
+     if(!item||row.providerId!==provider.providerId||row.contentHash!==memoContentHash(item.content)||!normalizeEmbeddingVector(row.vector)){
+       this.semanticEmbeddingIndex.delete(id);
+     }
+   }
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
    const lexicalPool=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions).filter(eligible);
+
+   const sourceSnapshotStillMatches=()=>{
+     if(this.state!==sourceState||this.state.items.length!==sourceItemCount)return false;
+     const currentCorpus=this.state.items.filter(eligible);
+     return currentCorpus.length===corpus.length&&currentCorpus.every((item,index)=>
+       item===corpus[index]&&memoContentHash(item.content)===sourceCorpusContentHashes.get(item.id));
+   };
+   const staleSnapshotFallback=():SemanticMemoryPreview=>{
+     const liveCorpus=this.state.items.filter(eligible);
+     const liveItems=this.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalOptions);
+     const indexedItems=liveCorpus.filter(item=>{
+       const row=this.semanticEmbeddingIndex.get(item.id);
+       return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&normalizeEmbeddingVector(row.vector));
+     }).length;
+     const diagnostics=provider.diagnostics();
+     return {items:liveItems,semantic:{enabled:false,provider:diagnostics.provider,model:diagnostics.model,indexedItems,corpusItems:liveCorpus.length,coverage01:liveCorpus.length?clamp(indexedItems/liveCorpus.length):0,newlyIndexed:0,fallbackReason:'memory-corpus-changed-during-embedding',cacheEntries:diagnostics.cacheEntries,requests:diagnostics.requests,failures:diagnostics.failures,lastLatencyMs:diagnostics.lastLatencyMs}};
+   };
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
    const missingSet=new Map<string,MemoryItem2>();
    // Prioritize lexical/fuzzy candidates but reserve part of a cold-start batch for
@@ -454,11 +493,19 @@ export class MemoryOS2{
    let newlyIndexed=0;
    try{
      const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
-     if(vectors.length!==missing.length+1||!vectors[0]?.length)throw new Error('embedding-vector-count-mismatch');
-     const queryVector=vectors[0];
+     if(!sourceSnapshotStillMatches())return staleSnapshotFallback();
+     if(!Array.isArray(vectors)||vectors.length!==missing.length+1)throw new Error('embedding-vector-count-mismatch');
+     const queryVector=normalizeEmbeddingVector(vectors[0]);
+     if(!queryVector)throw new Error('invalid-query-embedding-vector');
+     // Validate the complete batch before publishing any row. A malformed provider
+     // response must not poison the derived index or suppress the lexical fallback.
+     const normalizedVectors=missing.map((item,index)=>{
+       const vector=normalizeEmbeddingVector(vectors[index+1],queryVector.length);
+       if(!vector)throw new Error('invalid-memory-embedding-vector');
+       return vector;
+     });
      for(let index=0;index<missing.length;index++){
-       const item=missing[index],vector=vectors[index+1];
-       if(!Array.isArray(vector)||vector.length!==queryVector.length)continue;
+       const item=missing[index],vector=normalizedVectors[index]!;
        this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
@@ -488,6 +535,7 @@ export class MemoryOS2{
      const diag=provider.diagnostics();
      return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }catch(error){
+     if(!sourceSnapshotStillMatches())return staleSnapshotFallback();
      const diag=provider.diagnostics();
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }

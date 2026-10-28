@@ -76,4 +76,109 @@ assert.equal(fallback.semantic.enabled, false);
 assert.match(fallback.semantic.fallbackReason, /local-model-offline/);
 assert.ok(Array.isArray(fallback.items), 'provider failures should return deterministic hybrid fallback results');
 
-console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason }));
+class InvalidMemoryVectorProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:invalid-memory-vector';
+  modelId = 'invalid-memory-vector';
+  async embedBatch(texts) {
+    return texts.map((raw, index) => {
+      if (index === 0) return [1, 0, 0];
+      if (/credential recovery/i.test(String(raw))) return [Number.NaN, 0, 0];
+      return [0, 1, 0];
+    });
+  }
+}
+const invalidMemory = new MemoryOS2({ embeddingProvider: new InvalidMemoryVectorProvider() });
+invalidMemory.restore(before);
+const invalidMemoryFallback = await invalidMemory.previewRetrieveWithEmbeddings(
+  'credential recovery account access', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(invalidMemoryFallback.semantic.enabled, false,
+  'a malformed corpus vector must fail closed into deterministic lexical retrieval');
+assert.match(invalidMemoryFallback.semantic.fallbackReason, /invalid-memory-embedding-vector/);
+assert.ok(invalidMemoryFallback.items.some(item => item.id === 'credential-recovery'),
+  'malformed semantic vectors must not hide a lexical match from the fallback');
+assert.equal(invalidMemoryFallback.semantic.indexedItems, 0,
+  'the failed batch must not partially publish vectors into the derived semantic index');
+assert.deepEqual(invalidMemory.snapshot(), before,
+  'invalid provider vectors and fallback retrieval must not mutate canonical memory state');
+
+class ZeroQueryVectorProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:zero-query-vector';
+  modelId = 'zero-query-vector';
+  async embedBatch(texts) {
+    return texts.map((_, index) => index === 0 ? [0, 0, 0] : [1, 0, 0]);
+  }
+}
+const zeroQueryMemory = new MemoryOS2({ embeddingProvider: new ZeroQueryVectorProvider() });
+zeroQueryMemory.restore(before);
+const zeroQueryFallback = await zeroQueryMemory.previewRetrieveWithEmbeddings(
+  'credential recovery account access', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(zeroQueryFallback.semantic.enabled, false, 'zero-norm query embeddings must be rejected');
+assert.match(zeroQueryFallback.semantic.fallbackReason, /invalid-query-embedding-vector/);
+assert.ok(zeroQueryFallback.items.some(item => item.id === 'credential-recovery'),
+  'a zero query vector must retain the deterministic lexical fallback');
+
+const racedSnapshot = structuredClone(before);
+const revisedCredential = racedSnapshot.items.find(item => item.id === 'credential-recovery');
+assert.ok(revisedCredential, 'race fixture must contain the original credential memory');
+const revisedContent = 'Corrected credential recovery and account access troubleshooting facts.';
+revisedCredential.content = revisedContent;
+revisedCredential.contentHash = '';
+revisedCredential.semanticVector = [];
+let racedMemory;
+let postRestoreSnapshot;
+class RestoreDuringEmbeddingProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:restore-during-embedding';
+  modelId = 'restore-during-embedding';
+  async embedBatch(texts) {
+    const vectors = texts.map(() => [1, 0, 0]);
+    racedMemory.restore(structuredClone(racedSnapshot));
+    postRestoreSnapshot = racedMemory.snapshot();
+    return vectors;
+  }
+}
+racedMemory = new MemoryOS2({ embeddingProvider: new RestoreDuringEmbeddingProvider() });
+racedMemory.restore(before);
+const raceResult = await racedMemory.previewRetrieveWithEmbeddings(
+  'credential recovery account access', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(raceResult.semantic.enabled, false,
+  'an embedding request racing with snapshot restore must discard its stale semantic result');
+assert.match(raceResult.semantic.fallbackReason, /memory-corpus-changed-during-embedding/);
+assert.equal(raceResult.items.find(item => item.id === 'credential-recovery')?.content, revisedContent,
+  'the fallback must retrieve from the newly restored canonical corpus, not the stale pre-await copy');
+assert.deepEqual(racedMemory.snapshot(), postRestoreSnapshot,
+  'stale in-flight embedding completion must not mutate restored canonical memory');
+
+
+
+class OverflowNormProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:overflowing-norm';
+  modelId = 'overflowing-norm';
+  async embedBatch(texts) { return texts.map(() => [1e308, 1e308, 1e308]); }
+}
+const maintenanceMemory = new MemoryOS2({ embeddingProvider: new OverflowNormProvider() });
+const maintenanceNow = Date.now();
+maintenanceMemory.encode({
+  id: 'overflow-maintenance-row',
+  content: 'A finite but enormous embedding coordinate must not enter the semantic index.',
+  kind: 'semantic', source: 'embedding-maintenance-overflow-fixture', tags: [], context: {},
+  salience: .5, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1, socialRelevance: .1,
+  predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: maintenanceNow - 1000, validUntilAt: null, observedAt: maintenanceNow - 100,
+});
+const overflowMaintenance = await maintenanceMemory.maintainSemanticIndexBatch({ maxItems: 1, now: maintenanceNow });
+assert.equal(overflowMaintenance.indexed, 0,
+  'finite coordinates whose squared norm overflows must never be indexed as a zero vector');
+assert.equal(overflowMaintenance.failed, 1,
+  'overflowed norm must fail this row and schedule bounded retry instead of publishing a vector');
+assert.equal(overflowMaintenance.indexedItems, 0,
+  'overflowed embedding must not increase semantic index coverage');
+assert.equal(overflowMaintenance.waitingForRetry, 1,
+  'invalid background vectors must use the existing bounded backoff path');
+assert.equal(maintenanceMemory.semanticEmbeddingMaintenanceDiagnostics().indexedItems, 0,
+  'maintenance diagnostics must not report a corrupted vector as indexed');
+
+console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, invalidMemoryFallback: invalidMemoryFallback.semantic.fallbackReason, zeroQueryFallback: zeroQueryFallback.semantic.fallbackReason, raceFallback: raceResult.semantic.fallbackReason, overflowMaintenance: { indexed: overflowMaintenance.indexed, failed: overflowMaintenance.failed, waitingForRetry: overflowMaintenance.waitingForRetry } }));
