@@ -1,3 +1,9 @@
+## [NK1][WorkPass592] Keep intrinsic experiments explicitly unverified (2026-10-28)
+
+- Mark every ordinary intrinsic experiment as `epistemicStatus: hypothesis`, `status: candidate`, and `verificationRequired: true`, matching the existing dream-association boundary.
+- Extend the existing WorkPass490 scenario so generated proposals cannot silently omit their epistemic status or appear validated by default. Its command is already part of `test:rebuild-recovered`.
+- The change was committed to the source branch. Tests were not run; no behavior pass is claimed.
+
 ## [NK1][WorkPass591] Embed audited SBOM and provenance in the release ZIP (2026-10-27)
 
 - The provenance gate regenerates the CycloneDX SBOM and current WorkPass provenance in the runner workspace; those outputs are not part of the immutable commit tree until committed.
