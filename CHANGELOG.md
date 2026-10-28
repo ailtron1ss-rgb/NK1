@@ -1,3 +1,9 @@
+## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
+
+- Keep repeated ground-truth memory IDs until dataset-integrity inspection; duplicate labels remain visible to the promotion gate instead of being silently deduplicated.
+- Bind the duplicate-label regression to a matching canonical fingerprint and complete provenance, proving that label integrity alone blocks promotion.
+- Validation is pending on the exact PR head; no passing result is claimed before CI completes.
+
 ## [NK1][WorkPass596] Make scientific evidence idempotent and bounded (2026-10-28)
 
 - Require a non-empty, NFKC-normalized, bounded evidence string for verified hypothesis updates.
