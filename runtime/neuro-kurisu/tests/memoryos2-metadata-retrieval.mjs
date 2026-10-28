@@ -61,7 +61,7 @@ assert.equal(directHits[0]?.m?.id ?? directHits[0]?.id, 'm-direct',
 
 const snapshot = memory.snapshot();
 assert.equal(snapshot.items.length, 3, 'metadata retrieval must be read-only');
-const indexHealth = memory.indexIntegrityDiagnostics();
+const indexHealth = memory.indexDiagnostics();
 assert.equal(indexHealth.pass, true, 'metadata postings must remain aligned with canonical MemoryOS2 indexes');
 assert.equal(indexHealth.metadataIndexMismatch, 0);
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
