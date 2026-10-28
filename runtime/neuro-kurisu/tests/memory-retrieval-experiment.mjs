@@ -181,3 +181,15 @@ try {
   await rm(temp, { recursive: true, force: true });
 }
 console.log('MEMORY_RETRIEVAL_EXPERIMENT=PASS', JSON.stringify({ seeds: experiment.seeds, corpusSize: experiment.corpusSize, train: experiment.trainQueries, holdout: experiment.holdoutQueries, deterministic: experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, promotion: experiment.promotion.status }));
+
+
+// Duplicate ground-truth IDs must survive normalization long enough to be diagnosed.
+const duplicateLabelExamples = structuredClone(examples);
+duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
+const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, options);
+assert.equal(duplicateLabelReport.datasetIntegrity.duplicateRelevantLabelCount, 1,
+  'duplicate relevance labels must be reported rather than normalized away');
+assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false,
+  'duplicate relevance labels must block candidate promotion');
+assert.equal(duplicateLabelReport.promotion.allowed, false,
+  'dataset with duplicate relevance labels must never pass the promotion gate');
