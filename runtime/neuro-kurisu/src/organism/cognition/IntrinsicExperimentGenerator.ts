@@ -15,6 +15,11 @@ export interface IntrinsicExperiment {
   epistemicStatus?:'hypothesis';
   status?:'candidate'|'validated'|'rejected';
   verificationRequired?:boolean;
+  scientificProjectId?:string;
+  createdTick?:number;
+  verifiedAt?:number;
+  verificationEvidence?:string[];
+  verified?:boolean;
 }
 
 const unit=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.min(1,value)):0;
@@ -50,7 +55,7 @@ export class IntrinsicExperimentGenerator {
       id:`exp-${createdAt}-${suffix}`,
       question:uncertainty>predictionError?'Что в текущей среде объясняет мою неопределённость?':'Почему мой последний прогноз оказался неточным?',
       hypothesis:uncertainty>0.6?'новое наблюдение сократит неопределённость':'проверка конкретного предположения даст более точную модель',
-      action:uncertainty>predictionError?'inspect':'verify',
+      action:uncertainty>predictionError?'explore':'verify',
       expectedInformationGain:Number(Math.min(1,drive*0.8).toFixed(3)),
       linkedGoal:goal?.id,
       createdAt,
