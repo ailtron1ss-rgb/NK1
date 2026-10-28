@@ -55,15 +55,34 @@ const replaySignal=ul.ingestExternalSignal({taskId:'replay:m103',action:'reflect
 assert.ok(replaySignal.learningOpportunity01>.4);
 const probe=ul.beginTransferProbe({sourceTaskId:'source-X',targetTaskId:'target-Y',baseline01:.48,contextKey:'holdout-1',at:1600});
 assert.ok(probe);
-const transferInput={...probe,postScore01:.66,independentVerified:true,holdout:true};
+const claimOnly=new UnifiedLearningSubstrate();
+const claimedProbe=claimOnly.recordTransferProbe({...probe,id:probe.id+'-claimed-only',postScore01:.66,independentVerified:true,holdout:true});
+assert.ok(claimedProbe);
+assert.equal(claimedProbe.independentVerified,false,'caller booleans cannot mint transfer verification');
+assert.equal(claimOnly.transferDiagnostics().validatedSamples,0,'caller booleans must not produce a validated transfer sample');
+
+const mintTransferReceipt=async(candidate,postScore01)=>{
+  const verificationInput={id:candidate.id,sourceTaskId:candidate.sourceTaskId,targetTaskId:candidate.targetTaskId,
+    baseline01:candidate.baseline01,postScore01,holdout:true,contextKey:candidate.contextKey,at:candidate.at};
+  const postcondition=`transfer-score:${candidate.id}:${postScore01}`;
+  return verificationService.verify({toolId:'learning.transfer-probe-postcondition',input:verificationInput,result:{postScore01}},()=>({
+    verified:true,basis:'external-postcondition',confidence01:.99,externalObservation:true,
+    observationId:`obs-transfer-${candidate.id}`,expectedPostcondition:postcondition,observedPostcondition:postcondition,
+  }));
+};
+const firstCandidate={...probe,postScore01:.66,independentVerified:true,holdout:true};
+const transferInput={...firstCandidate,verification:await mintTransferReceipt(firstCandidate,.66)};
 const firstTransfer=ul.recordTransferProbe(transferInput);
 assert.ok(firstTransfer);
-assert.deepEqual(ul.recordTransferProbe(transferInput),firstTransfer,'repeated evidence ID with identical payload must be idempotent');
+assert.equal(firstTransfer.independentVerified,true);
+assert.equal(firstTransfer.holdout,true);
+assert.deepEqual(ul.recordTransferProbe(transferInput),firstTransfer,'repeated receipt-bound evidence ID with identical payload must be idempotent');
 assert.equal(ul.transferDiagnostics().validatedSamples,1,'an exact retry must not mint a second validated transfer sample');
 assert.equal(ul.recordTransferProbe({...transferInput,postScore01:.91}),null,'reusing an evidence ID with a conflicting outcome must be rejected');
 assert.equal(ul.recordTransferProbe({...transferInput,id:'bad-nan-transfer',postScore01:Number.NaN}),null,'non-finite scores must not be clamped into valid transfer evidence');
 assert.equal(ul.recordTransferProbe({...transferInput,id:'bad-control-transfer\n',postScore01:.66}),null,'control-bearing IDs must not enter the evidence ledger');
-const secondTransfer=ul.recordTransferProbe({...probe,id:probe.id+'-2',postScore01:.64,independentVerified:true,holdout:true});
+const secondCandidate={...probe,id:probe.id+'-2',postScore01:.64,independentVerified:true,holdout:true};
+const secondTransfer=ul.recordTransferProbe({...secondCandidate,verification:await mintTransferReceipt(secondCandidate,.64)});
 assert.ok(secondTransfer);
 const td=ul.transferDiagnostics();
 assert.equal(td.validatedSamples,2); assert.equal(td.positiveSamples,2); assert.equal(td.negativeSamples,0); assert.ok(td.crossTaskTransfer01>0);
@@ -83,6 +102,9 @@ const ledgerCredit=ul.transferDiagnostics().validatedSamples;
 assert.equal(ul.recordTransferProbe(transferInput),null,'an evicted but remembered ID must not re-enter the transfer evidence window');
 assert.equal(ul.transferDiagnostics().validatedSamples,ledgerCredit,'an evicted retry must not increment transfer credit');
 const ulRestored=new UnifiedLearningSubstrate(); ulRestored.restore(ul.snapshot());
+assert.equal(ulRestored.transferDiagnostics().validatedSamples,0,'serialized booleans cannot carry verifier authority across process restore');
+assert.ok(ulRestored.snapshot().transferProbes.every(row=>row.independentVerified===false&&row.holdout===false),
+  'restored transfer rows remain available as history but are not credited without a durable verifier receipt');
 assert.equal(ulRestored.recordTransferProbe(transferInput),null,'the transfer ID registry must survive snapshot restoration');
 assert.ok(ulRestored.snapshot().transferProbeLedger.length<=4096,'the transfer evidence registry must remain bounded');
 const poisonedSnapshot=ul.snapshot();

@@ -1,5 +1,6 @@
 import type { ActionKind, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { CausalExperienceRecord, CausalLearningPacket } from './CausalExperienceStream.ts';
+import { isTrustedExternalPostconditionVerification, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const DIM=16;
@@ -216,12 +217,16 @@ export class UnifiedLearningSubstrate {
     const restoredSeen=new Set<string>();
     const rawTransferProbes=Array.isArray(r.transferProbes)?r.transferProbes.slice(-96):[];
     for(const rawProbe of rawTransferProbes){
-      const probe=restoreTransferProbe(rawProbe);
-      if(!probe||restoredSeen.has(probe.id))continue;
+      const parsed=restoreTransferProbe(rawProbe);
+      if(!parsed||restoredSeen.has(parsed.id))continue;
+      const originalFingerprint=transferProbeFingerprint(parsed);
+      const registered=ledger.get(parsed.id);
+      if(registered&&registered!==originalFingerprint)continue;
+      // Verification receipts are process-local capabilities, not serializable flags.
+      // A restored snapshot may retain these probes for history, but never their authority.
+      const probe:TransferProbe={...parsed,independentVerified:false,holdout:false};
       const fingerprint=transferProbeFingerprint(probe);
-      const registered=ledger.get(probe.id);
-      if(registered&&registered!==fingerprint)continue;
-      if(!registered)ledger.set(probe.id,fingerprint);
+      ledger.set(probe.id,fingerprint);
       restoredSeen.add(probe.id);
       restoredTransferProbes.push(probe);
     }
@@ -244,10 +249,10 @@ export class UnifiedLearningSubstrate {
       patterns:Array.isArray(r.patterns)?r.patterns.slice(-128):[],
       externalHypotheses:restoreExternalHypotheses(r.externalHypotheses),
       provenanceCounts,
-      validatedTransferSamples:safeCount(r.validatedTransferSamples),
-      positiveTransferSamples:safeCount(r.positiveTransferSamples),
-      negativeTransferSamples:safeCount(r.negativeTransferSamples),
-      interference01:safeMetric(r.interference01),
+      validatedTransferSamples:0,
+      positiveTransferSamples:0,
+      negativeTransferSamples:0,
+      interference01:0,
       transferProbes:restoredTransferProbes,
       transferProbeLedger,
       loop:r.loop&&typeof r.loop==='object'?{...d.loop,...r.loop}:d.loop,
@@ -370,7 +375,7 @@ export class UnifiedLearningSubstrate {
     return {id,sourceTaskId,targetTaskId,baseline01:input.baseline01,contextKey,at:Number.isSafeInteger(at)&&at>=0?at:-1};
   }
 
-  recordTransferProbe(input:{id:string;sourceTaskId:string;targetTaskId:string;baseline01:number;postScore01:number;independentVerified:boolean;holdout:boolean;contextKey:string;at?:number}):TransferProbe|null{
+  recordTransferProbe(input:{id:string;sourceTaskId:string;targetTaskId:string;baseline01:number;postScore01:number;independentVerified?:boolean;holdout:boolean;contextKey:string;verification?:OutcomeVerification;at?:number}):TransferProbe|null{
     const id=normalizeEvidenceId(input?.id);
     const sourceTaskId=normalizeEvidenceId(input?.sourceTaskId);
     const targetTaskId=normalizeEvidenceId(input?.targetTaskId);
@@ -380,9 +385,13 @@ export class UnifiedLearningSubstrate {
       !isUnitInterval(input?.baseline01)||!isUnitInterval(input?.postScore01)||
       typeof input?.independentVerified!=='boolean'||typeof input?.holdout!=='boolean'||
       !Number.isSafeInteger(at)||at<0)return null;
+    const verificationInput={id,sourceTaskId,targetTaskId,baseline01:input.baseline01,postScore01:input.postScore01,holdout:input.holdout===true,contextKey,at};
+    // Caller-supplied independentVerified/holdout booleans are claims, not proof.
+    // Only an exact in-process receipt bound to this measurement may earn transfer credit.
+    const receiptVerified=input.holdout===true&&isTrustedExternalPostconditionVerification(input.verification,verificationInput);
     const probe:TransferProbe={id,sourceTaskId,targetTaskId,baseline01:input.baseline01,postScore01:input.postScore01,
-      delta01:input.postScore01-input.baseline01,independentVerified:input.independentVerified,
-      holdout:input.holdout,contextKey,at};
+      delta01:input.postScore01-input.baseline01,independentVerified:receiptVerified,
+      holdout:receiptVerified,contextKey,at};
     const fingerprint=transferProbeFingerprint(probe);
     const known=this.state.transferProbeLedger.find(entry=>entry.id===id);
     if(known){

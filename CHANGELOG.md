@@ -1,7 +1,8 @@
 ## [NK1][WorkPass604] Port transfer-integrity and sample-level forgetting evidence to canonical source (2026-10-28)
 
 - Port the WorkPass579–580 transfer-probe integrity and continual-outcome sample-transition diagnostics onto the current canonical source instead of merging the stale, divergent PR branch.
-- Require trusted service-minted external-postcondition receipts for replay retention credit; persist a bounded transfer-probe ID/fingerprint ledger and validate restored probe integrity.
+- Require exact service-minted external-postcondition receipts for both replay retention and transfer-sample credit; caller booleans cannot independently validate a probe.
+- Keep a bounded transfer-probe ID/fingerprint ledger and make restore fail closed: serialized flags are demoted and transfer-validation counters reset because process-local verifier authority cannot survive JSON serialization.
 - Report matched pass→fail and fail→pass transitions by stage, task, and task family; include the new regressions in the recovered runtime test aggregate.
 - These are integrity and descriptive-evaluation improvements, not evidence of real-corpus learning uplift. `main` and the Release ZIP remain untouched.
 
