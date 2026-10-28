@@ -11,7 +11,7 @@ const first=generator.generate({uncertainty:.8,predictionError:.2,novelty:.1,goa
 assert.ok(first);
 assert.equal(first.createdAt,now);
 assert.equal(first.id,`exp-${now}-test-id`);
-assert.equal(first.action,'inspect');
+assert.equal(first.action,'explore','experiments must name a canonical action the selector can execute');
 assert.ok(Number.isFinite(first.expectedInformationGain));
 assert.ok(first.expectedInformationGain>=0&&first.expectedInformationGain<=1);
 assert.equal(first.epistemicStatus,'hypothesis','internally generated experiments must remain explicitly unverified');
