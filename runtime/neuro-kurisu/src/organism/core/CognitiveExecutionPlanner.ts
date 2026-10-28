@@ -41,6 +41,7 @@ const OPS:CognitiveExecutionOperation[]=['perception','memory','world-rollout','
 const TIER:Record<CognitiveExecutionOperation,ExecutionTier>={
   perception:'hot',memory:'hot','world-rollout':'warm',research:'cold',shadow:'warm',project:'warm','slow-cognition':'cold',
 };
+const TIER_ORDER:Record<ExecutionTier,number>={critical:0,hot:1,warm:2,cold:3};
 const BASE_COST:Record<CognitiveExecutionOperation,number>={perception:.035,memory:.025,'world-rollout':.12,research:.28,shadow:.08,project:.10,'slow-cognition':.18};
 const DOMAIN:Record<CognitiveExecutionOperation,CognitiveDomain>={perception:'embodiment',memory:'memory','world-rollout':'world',research:'research',shadow:'self',project:'agency','slow-cognition':'governance'};
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -116,7 +117,7 @@ export class CognitiveExecutionPlanner{
       if(donorTotal>0) for(const domain of donorDomains) plan.metabolism[domain].budgetShare01=clamp(plan.metabolism[domain].budgetShare01-(deficit*(plan.metabolism[domain].budgetShare01/donorTotal)));
     }
     let budgetRemaining=budget;
-    for(const op of OPS){
+    for(const op of [...OPS].sort((a,b)=>TIER_ORDER[TIER[a]]-TIER_ORDER[TIER[b]]||OPS.indexOf(a)-OPS.indexOf(b))){
       const domain=frame.domains[DOMAIN[op]];
       const metabolism=plan.metabolism[DOMAIN[op]];
       const tier=TIER[op];
