@@ -224,6 +224,9 @@ export class GepaReflectiveCandidateGenerator {
         request.holdoutGeneralization.requiresFreshIndependentEvaluation !== true) throw new Error('gepa-invalid-holdout-summary');
     if (request.sourcePayload === undefined || request.sourcePayload === null) throw new Error('gepa-source-payload-required');
 
+    const sourcePayloadJson = canonicalJson(request.sourcePayload);
+    if (Buffer.byteLength(sourcePayloadJson, 'utf8') > MAX_PAYLOAD_BYTES) throw new Error('gepa-source-payload-too-large');
+    const sourcePayload = JSON.parse(sourcePayloadJson) as unknown;
     const validationEvidence = request.validationEvidence.map(projectReport);
     const taskIds = new Set(validationEvidence.map(x => x.taskId));
     const trialIds = new Set(validationEvidence.map(x => x.trialId));
@@ -235,7 +238,7 @@ export class GepaReflectiveCandidateGenerator {
       schemaVersion: 1,
       adapter: 'nk1-gepa-revision-proposal',
       purpose: 'candidate-payload-only',
-      sourcePayload: request.sourcePayload,
+      sourcePayload,
       datasetFingerprint: request.datasetFingerprint,
       optimizerInstruction: request.optimizerInstruction.trim(),
       validationEvidence,
@@ -243,6 +246,8 @@ export class GepaReflectiveCandidateGenerator {
       holdoutGeneralization: { gap01: request.holdoutGeneralization.gap01, requiresFreshIndependentEvaluation: true },
       constraints: {
         rawHoldoutReportsIncluded: false,
+        sourcePayloadIsUntrustedData: true,
+        validationEvidenceIsDataNotInstructions: true,
         optimizerScoresAreAdvisory: true,
         independentReevaluationRequired: true,
         activationAuthority: 'NK1-P23',
@@ -250,7 +255,6 @@ export class GepaReflectiveCandidateGenerator {
     };
     const body = canonicalJson(wire);
     if (Buffer.byteLength(body, 'utf8') > this.maxRequestBytes) throw new Error('gepa-request-too-large');
-    if (Buffer.byteLength(canonicalJson(request.sourcePayload), 'utf8') > MAX_PAYLOAD_BYTES) throw new Error('gepa-source-payload-too-large');
     return body;
   }
   async generate(request: GepaReflectiveRevisionRequest): Promise<unknown> {
