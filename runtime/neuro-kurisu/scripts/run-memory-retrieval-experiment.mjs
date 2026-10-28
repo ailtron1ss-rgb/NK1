@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile, stat, open, link, unlink, mkdir } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
@@ -67,7 +67,7 @@ async function publishReportExclusive(outputPath, contents) {
     throw error;
   }
 }
-function parseLabels(text) {
+export function parseMemoryRetrievalLabels(text) {
   const lines = text.split(/\r?\n/);
   const rows = [];
   for (let index = 0; index < lines.length; index++) {
@@ -112,7 +112,14 @@ async function main() {
   if (!snapshot || typeof snapshot !== 'object' || !Array.isArray(snapshot.items)) throw new Error('snapshot-must-be-MemoryOSState2-with-items-array');
   if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) throw new Error('provenance-must-be-json-object');
   for (const key of ['datasetId', 'datasetVersion', 'sourceRef', 'labelingProtocol']) if (typeof provenance[key] !== 'string' || !provenance[key].trim()) throw new Error(`provenance-field-required:${key}`);
-  const examples = parseLabels(labelsFile.text);
+  const examples = parseMemoryRetrievalLabels(labelsFile.text);
+  const rawLabelsSha256 = createHash('sha256').update(labelsFile.text, 'utf8').digest('hex');
+  if (provenance.rawSourceSha256 !== undefined) {
+    const claimedRawHash = String(provenance.rawSourceSha256).trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(claimedRawHash) || claimedRawHash !== rawLabelsSha256) {
+      throw new Error('provenance-raw-source-sha256-mismatch');
+    }
+  }
   const seeds = parseSeeds(args.seeds);
   const k = args.k === undefined ? 5 : Number(args.k);
   if (!Number.isInteger(k) || k < 1 || k > 10) throw new Error('k-must-be-integer-1-to-10');
@@ -128,7 +135,9 @@ async function main() {
     labelsFile: path.basename(labelsFile.absolute),
     provenanceFile: path.basename(provenanceFile.absolute),
     labelRowsParsed: examples.length,
-    note: 'Absolute local paths are deliberately omitted from the report; use sourceRef in provenance for durable lineage.',
+    rawLabelsSha256,
+    rawSourceSha256Verified: provenance.rawSourceSha256 === undefined ? false : true,
+    note: 'Absolute local paths are deliberately omitted from the report; use sourceRef in provenance for durable lineage. The canonical contentSha256 is the normalized labelled dataset fingerprint; rawLabelsSha256 binds exact source-file bytes.',
   };
   const outputPath = path.resolve(args.out);
   await publishReportExclusive(outputPath, `${JSON.stringify(report, null, 2)}\n`);
