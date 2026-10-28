@@ -1,3 +1,9 @@
+## [NK1][WorkPass598] Expose canonical retrieval dataset fingerprint (2026-10-28)
+
+- Export the source tree's canonical labelled-dataset fingerprint through a narrow wrapper around the existing hash function.
+- Keep benchmark execution and provenance generation on the same canonical algorithm, allowing duplicate-label tests to bind their exact dataset bytes without a second implementation.
+- Exact-head CI is pending.
+
 ## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
 
 - Keep repeated ground-truth memory IDs until dataset-integrity inspection; duplicate labels remain visible to the promotion gate instead of being silently deduplicated.

@@ -102,6 +102,11 @@ const queryNearDuplicate=(left:string,right:string)=>{
 };
 const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),...(x.language===undefined?{}:{language:x.language}),relevantIds:[...x.relevantIds].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
 const stableFingerprint=(rows:MemoryRetrievalBenchmarkExample[])=>createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
+
+/** Stable canonical fingerprint shared by dataset provenance writers and the retrieval promotion gate. */
+export function fingerprintMemoryRetrievalDataset(rows: MemoryRetrievalBenchmarkExample[]): string {
+  return stableFingerprint(rows);
+}
 // Canonicalize object keys but preserve array order: arrays such as semanticLinks can
 // affect bounded neighbor expansion, while object insertion order must not affect hashes.
 const canonicalJsonValue=(value:unknown):unknown=>{
