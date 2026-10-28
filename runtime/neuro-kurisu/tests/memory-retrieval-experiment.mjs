@@ -50,6 +50,25 @@ assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false);
 assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
 assert.equal(duplicateLabelReport.promotion.allowed, false);
 
+// Malformed labels must be counted before the normalizer filters them. The clean
+// fingerprint intentionally matches the sanitized result, so provenance alone cannot
+// hide malformed source input.
+const malformedLabelExamples = structuredClone(examples);
+malformedLabelExamples[0].relevantIds.push(null, '   ');
+const sanitizedContentFingerprint = fingerprintMemoryRetrievalDataset(examples);
+const malformedLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, malformedLabelExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: sanitizedContentFingerprint },
+});
+assert.equal(malformedLabelReport.datasetProvenance.contentHashValid, true,
+  'sanitized rows intentionally retain the clean-content fingerprint');
+assert.equal(malformedLabelReport.datasetIntegrity.malformedRelevantLabelCount, 2,
+  'every blank or non-string relevance label must be counted before normalization');
+assert.equal(malformedLabelReport.datasetIntegrity.validForPromotion, false,
+  'malformed source labels must block dataset promotion even when sanitized content hashes cleanly');
+assert.equal(malformedLabelReport.promotion.gates.datasetIntegrity, false);
+assert.equal(malformedLabelReport.promotion.allowed, false);
+
 assert.equal(experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, true);
 assert.equal(experiment.determinism.datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds, true);
 assert.equal(experiment.sensitivity.mrrNonInferioritySupportedAcrossAllSeeds, experiment.runs.every(row => row.mrrConfidenceNonInferioritySupported));

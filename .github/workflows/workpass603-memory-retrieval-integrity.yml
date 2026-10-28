@@ -1,0 +1,39 @@
+name: NK1 memory retrieval label integrity
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass603-memory-retrieval-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memory-retrieval-label-integrity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Runtime typecheck and retrieval-label integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run retrieval integrity regression
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
