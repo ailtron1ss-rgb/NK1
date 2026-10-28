@@ -8513,6 +8513,7 @@ export class OrganismCore {
         this.persisted.system.worldModelEnsemble = this.worldSubsystem.worldModelEnsemble.snapshot();
         const externalEvidenceSources = ['os', 'device', 'user', 'external-api'];
         const projectEvidenceExternal = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase());
+        const verifiedPolicyOutcome = Boolean(outcome.worldTransition) || projectEvidenceExternal;
         const feedbackMemoryIds = [...(this.persisted.facets.memory.lastRetrievedMemoryIds ?? []), ...(this.persisted.system.lastEncodedMemoryIds ?? [])].filter((id, index, arr) => arr.indexOf(id) === index).slice(0, 12);
         for (const memoryId of feedbackMemoryIds) {
             const causalBefore = this.organismSystems.memory.memoryCausalEconomy.assessMemory(memoryId);
@@ -9270,7 +9271,6 @@ export class OrganismCore {
             this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: trace.selected.action, contextKey: `${skillContext}|energy:${Math.round(state.needs.energy * 4)}|unc:${Math.round(state.needs.uncertainty * 4)}|goal:${selectedGoalTitle ?? 'general'}`, outcome01: gatedSuccess01 });
             if (this.config.enableLifelongLearning)
                 this.cognitiveRuntime.lifelong.observeOutcome(trace.selected.action, gatedSuccess01, 'active', trace.selected.predictedCost, fullSuccess01 < 0.45 ? 'low-outcome' : undefined);
-            const verifiedPolicyOutcome = Boolean(outcome.worldTransition) || projectEvidenceExternal;
             if (this.config.enableLifelongLearning) {
                 const beforeContext = this.cognitiveRuntime.adaptivePolicy.contextKey(trace.stateBefore, trace.stateBefore.needs.goalPressure);
                 const nextContext = this.cognitiveRuntime.adaptivePolicy.contextKey(state, state.needs.goalPressure);

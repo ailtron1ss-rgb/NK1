@@ -1,3 +1,9 @@
+## [NK1][WorkPass599] Place verified outcome predicate at method scope (2026-10-28)
+
+- Hoist the verified-outcome predicate beside the method-level external-evidence classification so the scientific-method and adaptive-policy paths share the same initialized trust gate.
+- Preserve the original condition: a world transition or explicit external project evidence is still required; no self-reported success is promoted.
+- Exact-head typecheck and dependent CI are pending. No pass is claimed until those runs complete.
+
 ## [NK1][WorkPass597] Restore verified outcome gate scope (2026-10-28)
 
 - Move `verifiedPolicyOutcome` to the surrounding outcome-processing scope so the scientific-method gate uses the same predicate as adaptive-policy feedback.
