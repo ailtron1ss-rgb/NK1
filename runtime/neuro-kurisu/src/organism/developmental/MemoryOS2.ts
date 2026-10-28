@@ -534,6 +534,7 @@ export class MemoryOS2{
      const diag=provider.diagnostics();
      return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }catch(error){
+     if(!sourceSnapshotStillMatches())return staleSnapshotFallback();
      const diag=provider.diagnostics();
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }
