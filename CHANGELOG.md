@@ -1,3 +1,9 @@
+## [NK1][WorkPass596] Make scientific evidence idempotent and bounded (2026-10-28)
+
+- Require a non-empty, NFKC-normalized, bounded evidence string for verified hypothesis updates.
+- Reject repeated evidence receipts and non-finite/out-of-range success scores before mutating project status, evidence or confidence.
+- Extend the verified-science regression with duplicate-receipt and NaN-score cases. The registered scenario was not run; no passing result is claimed.
+
 ## [NK1][WorkPass595] Close intrinsic experiments through verified outcomes (2026-10-28)
 
 - Use a canonical `explore` action instead of the non-selector label `inspect` for uncertainty-led intrinsic experiments.
