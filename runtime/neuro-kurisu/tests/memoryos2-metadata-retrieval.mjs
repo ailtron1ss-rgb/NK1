@@ -64,6 +64,26 @@ assert.equal(snapshot.items.length, 3, 'metadata retrieval must be read-only');
 const indexHealth = memory.indexDiagnostics();
 assert.equal(indexHealth.pass, true, 'metadata postings must remain aligned with canonical MemoryOS2 indexes');
 assert.equal(indexHealth.metadataIndexMismatch, 0);
+
+// Restore into the same instance after a newer metadata-only record was indexed.
+// This catches stale posting leaks as well as missing metadata-index rebuilds.
+encode('m-stale', 'A transient note with unrelated content.', {
+  tags: ['ephemeral-marker'],
+  context: { topic: 'ephemeral recall topic' },
+  entities: ['EphemeralRecord'],
+});
+memory.restore(snapshot);
+const afterRestoreDiagnostics = memory.indexDiagnostics();
+assert.equal(afterRestoreDiagnostics.pass, true,
+  'restore must clear obsolete metadata postings and rebuild current postings');
+assert.equal(afterRestoreDiagnostics.metadataIndexMismatch, 0);
+const restoredTopicHits = memory.retrieve('orchid watering schedule', 3);
+assert.equal(restoredTopicHits[0]?.m?.id ?? restoredTopicHits[0]?.id, 'm-orchid',
+  'metadata-only recall must still work after rebuilding indexes');
+assert.equal(memory.retrieve('ephemeral recall topic', 3).some(
+  row => (row.m?.id ?? row.id) === 'm-stale',
+), false, 'restored metadata index must not retain stale item IDs');
+
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   topicTop1: topicHits[0]?.m?.id ?? topicHits[0]?.id,
   entityTop1: entityHits[0]?.m?.id ?? entityHits[0]?.id,
