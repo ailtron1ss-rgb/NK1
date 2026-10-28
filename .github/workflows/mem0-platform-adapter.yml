@@ -21,6 +21,8 @@ on:
       - "runtime/neuro-kurisu/docs/GEPA_DSPY_CANDIDATE_ADAPTER.md"
       - "runtime/neuro-kurisu/docs/NATIVE_P23_VERIFIED_REVISION.md"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs"
       - "runtime/neuro-kurisu/scripts/fingerprint-memory-retrieval-dataset.mjs"
       - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-dataset-fingerprint.mjs"

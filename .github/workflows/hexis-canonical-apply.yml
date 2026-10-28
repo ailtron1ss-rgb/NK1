@@ -17,6 +17,11 @@ on:
       - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
       - 'runtime/neuro-kurisu/tests/hexis-evidence-bridge.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-memoryos2-ingest.mjs'
+      - 'runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs'
+      - 'runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs'
+      - 'runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
       - 'runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/core/AgencySubsystemRuntime.ts'
@@ -59,6 +64,11 @@ on:
       - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
       - 'runtime/neuro-kurisu/tests/hexis-evidence-bridge.mjs'
       - 'runtime/neuro-kurisu/tests/hexis-memoryos2-ingest.mjs'
+      - 'runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs'
+      - 'runtime/neuro-kurisu/tests/run-independent-bilingual-memory-holdout.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass507-bilingual-holdout-runner-contract.mjs'
+      - 'runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md'
       - 'runtime/neuro-kurisu/scripts/audit-ui-function-wiring.mjs'
       - 'runtime/neuro-kurisu/scripts/audit-ui-api-linkage.mjs'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
@@ -110,3 +120,9 @@ jobs:
       - name: Test Hexis adaptation, canonical HMX projection and server apply/replay
         working-directory: runtime/neuro-kurisu
         run: npm run test:hexis-canonical-apply
+      - name: Test MemoryOS2 metadata-aware retrieval
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memoryos2-metadata-retrieval
+      - name: Verify independent bilingual retrieval holdout runner contract (offline only)
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass507:bilingual-holdout-runner-contract
