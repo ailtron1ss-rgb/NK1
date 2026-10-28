@@ -3205,3 +3205,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
 - [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
 
+
+## [NK1][WorkPass585] Validate memory snapshot identity before rebuilding indexes (2026-10-28)
+
+- During restore, discard rows with malformed IDs or non-string/blank content before they can enter canonical state or derived indexes.
+- Collapse repeated IDs only when their `(kind, source, canonical content)` identity agrees, selecting metadata deterministically; if one ID maps to conflicting identities, drop the whole group rather than allowing `state.items` and `itemIndex` to disagree.
+- Return a compact restore-integrity report with malformed rows, duplicate groups, collapsed rows, conflicting identity groups, retained rows, and truncation counts.
+- Add permutation-invariant regression coverage and a dedicated CI gate for runtime typecheck plus the snapshot restore integrity test. This protects index invariants; no retrieval uplift is claimed, and `main`/Release ZIP remain untouched.
