@@ -1,0 +1,43 @@
+name: NK1 learning transfer and forgetting integrity
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/UnifiedLearningSubstrate.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-103-memory-transfer.mjs"
+      - "runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/workpass604-learning-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: learning-transfer-forgetting-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Runtime typecheck and learning integrity regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Verify replay evidence and transfer-probe integrity
+        run: npm --prefix runtime/neuro-kurisu run test:learning-evidence-transfer
+      - name: Verify sample-wise forgetting and recovery metrics
+        run: npm --prefix runtime/neuro-kurisu run test:p23:continual-outcome-matrix

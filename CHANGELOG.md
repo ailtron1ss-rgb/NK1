@@ -1,3 +1,10 @@
+## [NK1][WorkPass604] Port transfer-integrity and sample-level forgetting evidence to canonical source (2026-10-28)
+
+- Port the WorkPass579–580 transfer-probe integrity and continual-outcome sample-transition diagnostics onto the current canonical source instead of merging the stale, divergent PR branch.
+- Require trusted service-minted external-postcondition receipts for replay retention credit; persist a bounded transfer-probe ID/fingerprint ledger and validate restored probe integrity.
+- Report matched pass→fail and fail→pass transitions by stage, task, and task family; include the new regressions in the recovered runtime test aggregate.
+- These are integrity and descriptive-evaluation improvements, not evidence of real-corpus learning uplift. `main` and the Release ZIP remain untouched.
+
 ## [NK1][WorkPass603] Reject malformed retrieval labels before normalization (2026-10-28)
 
 - Count blank and non-string `relevantIds` entries on bounded raw inputs before filtering; malformed labels now invalidate dataset integrity even when sanitized rows still match a clean-content fingerprint.
