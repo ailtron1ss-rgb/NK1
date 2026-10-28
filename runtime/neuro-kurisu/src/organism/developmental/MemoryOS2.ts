@@ -582,12 +582,45 @@ export class MemoryOS2{
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  /** Index only bounded, curated metadata; do not merge these tokens into content BM25 statistics. */
  private metadataTokens(item:MemoryItem2):Set<string>{
-  const parts:string[]=[];
-  for(const value of (Array.isArray(item.tags)?item.tags:[]).slice(0,24))if(typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
-  for(const value of (Array.isArray(item.entities)?item.entities:[]).slice(0,24))if(typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
+  const tags=(Array.isArray(item.tags)?item.tags:[]).slice(0,24).filter((value):value is string=>typeof value==='string'&&Boolean(value.trim())).map(value=>value.trim().slice(0,160));
+  const entities=(Array.isArray(item.entities)?item.entities:[]).slice(0,24).filter((value):value is string=>typeof value==='string'&&Boolean(value.trim())).map(value=>value.trim().slice(0,160));
   const allowedContextKeys=/^(topic|category|subject|project|domain|title|label|goal|intent|location|relationship|type|environment|language|preference|person|organization)$/i;
-  for(const [key,value] of Object.entries(item.context??{}).slice(0,32))if(allowedContextKeys.test(key)&&typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
-  return this.tokensFor(parts.join(' '));
+  // Filter first, then bound allowlisted fields. Unrelated context keys must not
+  // consume the metadata budget and hide a relevant topic appended later.
+  const contextValues=Object.entries(item.context??{}).filter(([key,value])=>allowedContextKeys.test(key)&&typeof value==='string'&&Boolean(value.trim())).slice(0,32).map(([,value])=>value.trim().slice(0,160));
+  const laneTokens=(values:string[]):string[]=>{
+    const rows=values.map(value=>{
+      const tokens=[...this.tokensFor(value)];
+      return tokens.length<=8?tokens:[...tokens.slice(0,4),...tokens.slice(-4)];
+    });
+    const positions=rows.map(()=>0),selected:string[]=[],seen=new Set<string>();
+    let progressed=true;
+    while(selected.length<64&&progressed){
+      progressed=false;
+      for(let i=0;i<rows.length&&selected.length<64;i++){
+        const token=rows[i]![positions[i]++];
+        if(token===undefined)continue;
+        progressed=true;
+        if(!seen.has(token)){seen.add(token);selected.push(token);}
+      }
+    }
+    return selected;
+  };
+  // A hard per-source and per-item token budget bounds posting growth on mobile.
+  // Round-robin extraction keeps later tags/entities and context fields represented.
+  const lanes=[laneTokens(tags),laneTokens(entities),laneTokens(contextValues)];
+  const positions=[0,0,0],tokens=new Set<string>();
+  let progressed=true;
+  while(tokens.size<128&&progressed){
+    progressed=false;
+    for(let i=0;i<lanes.length&&tokens.size<128;i++){
+      const token=lanes[i]![positions[i]++];
+      if(token===undefined)continue;
+      progressed=true;
+      tokens.add(token);
+    }
+  }
+  return tokens;
  }
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
