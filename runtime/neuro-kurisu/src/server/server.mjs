@@ -15,6 +15,7 @@ import { createSkillPromotionApprovalPayload, createSkillRollbackApprovalPayload
 import { ProcessLock } from '../organism/persistence/ProcessLock.ts';
 import { FileStateStore } from '../organism/persistence/FileStateStore.ts';
 import { idempotencyPreflightHttpStatus } from './idempotency-response.mjs';
+import { hexisEvidenceHttpStatus } from './hexis-evidence-http-status.mjs';
 import { LocalLanguageBackendPolicy } from './local-language-backend-policy.mjs';
 import { RELEASE_CONTRACT } from '../organism/system/ReleaseContract.ts';
 import { resolvePhonePolicyConfig } from '../organism/system/PhoneRuntimePolicy.ts';
@@ -881,8 +882,7 @@ async function route(req, res) {
             }
             if (result.reason === 'source-trace-id-conflict') await runtime.core.flush();
             // Reusing an immutable trace ID with different provenance is a resource conflict.
-            const status = result.reason === 'canonical-memory-not-found' ? 404 :
-                (result.reason === 'canonical-evidence-write-failed' || result.reason === 'source-trace-id-conflict') ? 409 : 400;
+            const status = hexisEvidenceHttpStatus(result.reason);
             return json(res, status, { ok: false, result });
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/integration/hexis/reviews/create') {
