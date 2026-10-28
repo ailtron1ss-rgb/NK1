@@ -218,9 +218,7 @@ async function invokeLanguage(request) {
 const runtime = new OrganismRuntime({
     // Optional explicit durable state location for containers/local Compose.
     // When absent, the runtime keeps its existing default state-file behavior.
-    stateFile: process.env.NK1_STATE_FILE?.trim() || (process.env.STATE_DIR?.trim()
-      ? `${process.env.STATE_DIR.replace(/\\/+$/, '')}/organism-state.json`
-      : undefined),
+    stateFile: process.env.NK1_STATE_FILE?.trim() || (process.env.STATE_DIR?.trim() ? `${process.env.STATE_DIR.trim()}/organism-state.json` : undefined),
     stateFile,
     worldStateFile: worldFile,
     enableLanguage: true,
