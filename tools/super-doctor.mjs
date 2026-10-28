@@ -3,12 +3,14 @@ import { existsSync, statSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
+import { readPinnedNodeMajor, versionMajor } from './lib/node-runtime.mjs';
 const root = process.cwd();
 const out=[]; const ok=(name,pass,detail='')=>out.push({name,pass,detail});
 function ver(bin,args=['--version']){try{return execFileSync(bin,args,{encoding:'utf8'}).trim()}catch{return null}}
 const node=ver(process.execPath); const npm=ver('npm'); const py=ver('python3');
-ok('node', /^v22\./.test(node||''), node||'missing');
-ok('npm', /^10\./.test(npm||''), npm||'missing');
+const pinnedMajor = readPinnedNodeMajor(root);
+ok('node', versionMajor(node) === pinnedMajor, node||'missing');
+ok('npm', versionMajor(npm) >= 10, npm||'missing');
 ok('python', !!py, py||'missing');
 ok('runtime-package', existsSync(path.join(root,'runtime/neuro-kurisu/package.json')));
 ok('app-lock', existsSync(path.join(root,'app/package-lock.json')));
