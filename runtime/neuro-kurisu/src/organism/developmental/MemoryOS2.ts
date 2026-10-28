@@ -273,7 +273,7 @@ function stableRestoreTieKey(value:unknown):string{
  if(value===null||typeof value!=='object')return JSON.stringify(value)??'null';
  if(Array.isArray(value))return '['+value.map(stableRestoreTieKey).join(',')+']';
  const record=value as Record<string,unknown>;
- return '{'+Object.keys(record).sort((a,b)=>a.localeCompare(b)).map(key=>JSON.stringify(key)+':'+stableRestoreTieKey(record[key])).join(',')+'}';
+ return '{'+Object.keys(record).sort().map(key=>JSON.stringify(key)+':'+stableRestoreTieKey(record[key])).join(',')+'}';
 }
 export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
@@ -592,7 +592,7 @@ export class MemoryOS2{
       const candidatePreferred=this.preferIndexRecord(candidate,winner,restoreAt);
       const winnerPreferred=this.preferIndexRecord(winner,candidate,restoreAt);
       if(candidatePreferred&&!winnerPreferred)winner=candidate;
-      else if(!candidatePreferred&&!winnerPreferred&&stableRestoreTieKey(candidate).localeCompare(stableRestoreTieKey(winner))<0)winner=candidate;
+      else if(!candidatePreferred&&!winnerPreferred&&stableRestoreTieKey(candidate)<stableRestoreTieKey(winner))winner=candidate;
     }
     restoredItems.push(winner);collapsedDuplicateRows+=group.length-1;
   }
