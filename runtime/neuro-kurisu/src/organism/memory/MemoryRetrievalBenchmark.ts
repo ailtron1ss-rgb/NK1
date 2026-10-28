@@ -91,7 +91,10 @@ const queryNearDuplicate=(left:string,right:string)=>{
   return intersection/(sa.size+sb.size-intersection)>=.88;
 };
 const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),relevantIds:[...new Set(x.relevantIds)].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
-const stableFingerprint=(rows:MemoryRetrievalBenchmarkExample[])=>createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
+/** Stable SHA-256 for the canonical labelled dataset. Use this exact helper to populate provenance.contentSha256. */
+export function fingerprintMemoryRetrievalDataset(rows:MemoryRetrievalBenchmarkExample[]):string {
+  return createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
+}
 // Canonicalize object keys but preserve array order: arrays such as semanticLinks can
 // affect bounded neighbor expansion, while object insertion order must not affect hashes.
 const canonicalJsonValue=(value:unknown):unknown=>{
@@ -326,7 +329,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
 
   const baselineEval=evaluate(holdout,baseline,k,now);const candidateEval=evaluate(holdout,candidate,k,now);
   const trainBaseline=evaluate(train,baseline,k,now);const trainCandidate=evaluate(train,candidate,k,now);
-  const datasetFingerprint=stableFingerprint(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot);
+  const datasetFingerprint=fingerprintMemoryRetrievalDataset(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot);
   const seed=providedSeed??Number.parseInt(createHash('sha256').update(`${datasetFingerprint}:${corpusHash}`).digest('hex').slice(0,8),16);
   const confidence={
     method:'paired-query-bootstrap-percentile-interval' as const,
