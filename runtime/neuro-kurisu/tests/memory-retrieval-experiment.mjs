@@ -207,7 +207,7 @@ const malformedLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, malformedL
   ...options,
   datasetProvenance: integrityCompleteProvenance,
 });
-assert.equal(malformedLabelReport.dataIntegrity.invalidRelevantLabelCount, 2,
+assert.equal(malformedLabelReport.datasetIntegrity.invalidRelevantLabelCount, 2,
   'malformed relevance label entries must be counted before normalization');
 assert.equal(malformedLabelReport.datasetFingerprint, experiment.datasetFingerprint,
   'fixture demonstrates why the integrity gate must catch malformed labels even if normalization would erase them');
