@@ -3218,3 +3218,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
 - [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
 
+
+## [NK1][WorkPass594] Reject overflowed vector norms in background maintenance (2026-10-28)
+
+- `maintainSemanticIndexBatch()` previously checked finite embedding coordinates but computed the Euclidean norm without verifying it remained finite. Extremely large finite values could overflow the squared norm to `Infinity` and be cached as an all-zero vector.
+- Reuse the shared strict vector normalizer in the background maintenance path; invalid rows now fail and enter the existing bounded retry/backoff path without being counted as indexed.
+- Extend the semantic embedding regression with a finite `1e308` vector fixture and assert no vector is indexed, `failed=1`, retry is scheduled, and diagnostics retain zero indexed entries. Preview and background indexing now share the same finite/dimension/norm checks.
