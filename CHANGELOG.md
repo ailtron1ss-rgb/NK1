@@ -1,3 +1,9 @@
+## [NK1][WorkPass582-port] Preserve duplicate relevance labels in source fingerprints (2026-10-28)
+
+- Ported the focused benchmark-integrity correction into the canonical source stack: relevance labels are sorted for order-independent fingerprints but are no longer deduplicated before provenance hashing.
+- Added a regression binding the clean dataset hash to a duplicated-label input; the duplicate-label dataset must have a different fingerprint, invalid provenance hash, failed integrity gate and blocked promotion.
+- This is an evidence-integrity fix only. No retrieval uplift is claimed, and the GitHub Release ZIP was not rebuilt or changed by this source edit.
+
 ## [NK1][WorkPass592] Keep intrinsic experiments explicitly unverified (2026-10-28)
 
 - Mark every ordinary intrinsic experiment as `epistemicStatus: hypothesis`, `status: candidate`, and `verificationRequired: true`, matching the existing dream-association boundary.
