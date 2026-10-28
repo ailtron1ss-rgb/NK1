@@ -10,6 +10,7 @@ on:
       - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-dataset-fingerprint.mjs"
       - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/docs/MEMORY_RETRIEVAL_DATASET_PROVENANCE.md"
       - "runtime/neuro-kurisu/tests/mem0-platform-adapter-workpass1.mjs"
       - "runtime/neuro-kurisu/tests/mem0-live-contract-check.mjs"
       - "runtime/neuro-kurisu/tests/mem0-runtime-wiring.mjs"
