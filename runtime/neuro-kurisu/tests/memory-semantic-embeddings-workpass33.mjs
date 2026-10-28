@@ -153,4 +153,32 @@ assert.deepEqual(racedMemory.snapshot(), postRestoreSnapshot,
 
 
 
-console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, invalidMemoryFallback: invalidMemoryFallback.semantic.fallbackReason, zeroQueryFallback: zeroQueryFallback.semantic.fallbackReason, raceFallback: raceResult.semantic.fallbackReason }));
+class OverflowNormProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:overflowing-norm';
+  modelId = 'overflowing-norm';
+  async embedBatch(texts) { return texts.map(() => [1e308, 1e308, 1e308]); }
+}
+const maintenanceMemory = new MemoryOS2({ embeddingProvider: new OverflowNormProvider() });
+const maintenanceNow = Date.now();
+maintenanceMemory.encode({
+  id: 'overflow-maintenance-row',
+  content: 'A finite but enormous embedding coordinate must not enter the semantic index.',
+  kind: 'semantic', source: 'embedding-maintenance-overflow-fixture', tags: [], context: {},
+  salience: .5, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1, socialRelevance: .1,
+  predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: maintenanceNow - 1000, validUntilAt: null, observedAt: maintenanceNow - 100,
+});
+const overflowMaintenance = await maintenanceMemory.maintainSemanticIndexBatch({ maxItems: 1, now: maintenanceNow });
+assert.equal(overflowMaintenance.indexed, 0,
+  'finite coordinates whose squared norm overflows must never be indexed as a zero vector');
+assert.equal(overflowMaintenance.failed, 1,
+  'overflowed norm must fail this row and schedule bounded retry instead of publishing a vector');
+assert.equal(overflowMaintenance.indexedItems, 0,
+  'overflowed embedding must not increase semantic index coverage');
+assert.equal(overflowMaintenance.waitingForRetry, 1,
+  'invalid background vectors must use the existing bounded backoff path');
+assert.equal(maintenanceMemory.semanticEmbeddingMaintenanceDiagnostics().indexedItems, 0,
+  'maintenance diagnostics must not report a corrupted vector as indexed');
+
+console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, invalidMemoryFallback: invalidMemoryFallback.semantic.fallbackReason, zeroQueryFallback: zeroQueryFallback.semantic.fallbackReason, raceFallback: raceResult.semantic.fallbackReason, overflowMaintenance: { indexed: overflowMaintenance.indexed, failed: overflowMaintenance.failed, waitingForRetry: overflowMaintenance.waitingForRetry } }));
