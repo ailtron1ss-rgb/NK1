@@ -8513,6 +8513,7 @@ export class OrganismCore {
         this.persisted.system.worldModelEnsemble = this.worldSubsystem.worldModelEnsemble.snapshot();
         const externalEvidenceSources = ['os', 'device', 'user', 'external-api'];
         const projectEvidenceExternal = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase());
+        const verifiedPolicyOutcome = Boolean(outcome.worldTransition) || projectEvidenceExternal;
         const feedbackMemoryIds = [...(this.persisted.facets.memory.lastRetrievedMemoryIds ?? []), ...(this.persisted.system.lastEncodedMemoryIds ?? [])].filter((id, index, arr) => arr.indexOf(id) === index).slice(0, 12);
         for (const memoryId of feedbackMemoryIds) {
             const causalBefore = this.organismSystems.memory.memoryCausalEconomy.assessMemory(memoryId);
@@ -9298,7 +9299,6 @@ export class OrganismCore {
                 }
                 this.persisted.system.canonicalTemporalCredit = this.cognitiveRuntime.canonicalTemporalCredit.snapshot();
                 this.cognitiveRuntime.adaptivePolicy.update(beforeContext, trace.selected.action, gatedSuccess01, nextContext, ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'], this.persisted.facets.learning.neuromodulation.updateRate01 * .24 + .08, .72, gatedSurprise01);
-                const verifiedPolicyOutcome = Boolean(outcome.worldTransition) || projectEvidenceExternal;
                 if (verifiedPolicyOutcome) {
                     const policyCausalConfidence = clamp(this.developmentalNeural.causalNeuralEventSpineB294.metrics().causalConfidence01 ?? .5);
                     const policyIndependent = Boolean(outcome.worldTransition?.after) || projectEvidenceExternal;

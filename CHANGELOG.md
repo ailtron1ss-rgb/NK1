@@ -1,3 +1,27 @@
+## [NK1][WorkPass598] Expose canonical retrieval dataset fingerprint (2026-10-28)
+
+- Export the source tree's canonical labelled-dataset fingerprint through a narrow wrapper around the existing hash function.
+- Keep benchmark execution and provenance generation on the same canonical algorithm, allowing duplicate-label tests to bind their exact dataset bytes without a second implementation.
+- Exact-head CI is pending.
+
+## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
+
+- Keep repeated ground-truth memory IDs until dataset-integrity inspection; duplicate labels remain visible to the promotion gate instead of being silently deduplicated.
+- Bind the duplicate-label regression to a matching canonical fingerprint and complete provenance, proving that label integrity alone blocks promotion.
+- Exact-head validation is pending; no passing result is claimed until the combined regression workflow completes.
+
+## [NK1][WorkPass599] Place verified outcome predicate at method scope (2026-10-28)
+
+- Hoist the verified-outcome predicate beside the method-level external-evidence classification so the scientific-method and adaptive-policy paths share the same initialized trust gate.
+- Preserve the original condition: a world transition or explicit external project evidence is still required; no self-reported success is promoted.
+- Exact-head typecheck and dependent CI are pending. No pass is claimed until those runs complete.
+
+## [NK1][WorkPass597] Restore verified outcome gate scope (2026-10-28)
+
+- Move `verifiedPolicyOutcome` to the surrounding outcome-processing scope so the scientific-method gate uses the same predicate as adaptive-policy feedback.
+- Preserve fail-closed semantics: the gate remains true only for a world transition or explicit external project evidence.
+- Validation is pending on the exact PR head; no passing result is claimed before CI completes.
+
 ## [NK1][WorkPass596] Make scientific evidence idempotent and bounded (2026-10-28)
 
 - Require a non-empty, NFKC-normalized, bounded evidence string for verified hypothesis updates.
