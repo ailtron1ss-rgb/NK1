@@ -1,3 +1,9 @@
+## [NK1][WorkPass603] Sync retrieval regression with metadata ranking channel (2026-10-28)
+
+- Update the high-fanout retrieval determinism test to expect the active `metadata` contribution in the candidate-selection identifier; the runtime now uses metadata overlap as a ranked signal.
+- Preserve the permutation-stability and candidate-cap assertions; this changes the expected algorithm identity, not the retrieval weights or memory data.
+- Validate on the exact PR head with the full WorkPass110 retrieval contract.
+
 ## [NK1][WorkPass602] Fix MemoryOS2 metadata retrieval token scope (2026-10-28)
 
 - Initialize the per-query token array before metadata scoring references it; retain the same query tokens for metadata overlap, lexical coverage, fuzzy match and BM25.
