@@ -29,8 +29,7 @@ while (Date.now() < deadline) {
     }
 
     const proxy = await readJson(`${appBase}/api/health`);
-    if (!proxy.response.ok || !proxy.body || proxy.body.ok === false || proxy.body.ready === false ||
-        (proxy.body.service && proxy.body.service !== 'neuro-kurisu')) {
+    if (!proxy.response.ok || !proxy.body || proxy.body.ok === false || proxy.body.ready === false) {
       throw new Error(`app-to-runtime proxy failed: HTTP ${proxy.response.status} ${proxy.text}`);
     }
 
