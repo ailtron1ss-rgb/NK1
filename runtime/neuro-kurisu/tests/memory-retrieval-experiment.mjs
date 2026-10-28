@@ -74,6 +74,28 @@ assert.equal(invalidLabelReport.promotion.gates.datasetIntegrity, false);
 assert.equal(invalidLabelReport.promotion.allowed, false,
   'malformed source labels must block promotion even if all normalized labels are valid');
 
+// Adversarial oversized arrays must be sliced before label filtering/counting;
+// the 24-label cap must bound actual work, not just the final normalized output.
+let oversizedLabelValueReads = 0;
+const oversizedLabels = new Proxy(Array.from({ length: 20_000 }, (_, i) => `m${i % 4}`), {
+  get(target, property, receiver) {
+    if (typeof property === 'string' && /^(0|[1-9][0-9]*)$/.test(property)) oversizedLabelValueReads++;
+    return Reflect.get(target, property, receiver);
+  },
+});
+const oversizedLabelExamples = structuredClone(examples);
+oversizedLabelExamples[0] = { ...oversizedLabelExamples[0], relevantIds: oversizedLabels };
+const oversizedLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, oversizedLabelExamples, {
+  ...options,
+  maxExamples: 512,
+});
+assert.equal(oversizedLabelReport.datasetIntegrity.truncatedFieldRows, 1,
+  'a source label array beyond the 24-label contract must be flagged');
+assert.equal(oversizedLabelReport.datasetIntegrity.validForPromotion, false,
+  'oversized relevance-label arrays must block promotion even if prefix labels are valid');
+assert.ok(oversizedLabelValueReads <= 100,
+  `normalization must read only a bounded label prefix, but read ${oversizedLabelValueReads} values`);
+
 assert.equal(experiment.schemaVersion, 1);
 assert.equal(experiment.seedCount, 3);
 assert.equal(experiment.holdoutQueries, 9, 'explicitly unanswerable holdout queries must survive the CLI/benchmark contract');
