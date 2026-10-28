@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
-import { runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { fingerprintMemoryRetrievalDataset, runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const now = 2_000_000_000_000;
@@ -28,6 +28,28 @@ const provenance = { datasetId: 'controlled-fixture', datasetVersion: '1.0', sou
 const options = { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance, seeds: [13, 29, 53] };
 const before = structuredClone(snapshot);
 const experiment = runMemoryOS2RetrievalExperiment(snapshot, examples, options);
+
+const duplicateLabelExamples = structuredClone(examples);
+duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
+const duplicateLabelFingerprint = fingerprintMemoryRetrievalDataset(duplicateLabelExamples);
+const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, {
+  ...options,
+  datasetProvenance: {
+    ...provenance,
+    licenseId: 'LicenseRef-NK1-TestFixture',
+    contentSha256: duplicateLabelFingerprint,
+  },
+});
+assert.equal(duplicateLabelReport.datasetProvenance.contentHashValid, true,
+  'the fingerprint must bind the exact duplicate-labelled dataset');
+assert.equal(duplicateLabelReport.datasetIntegrity.provenanceComplete, true,
+  'duplicate-label integrity must be checked with complete provenance');
+assert.equal(duplicateLabelReport.datasetIntegrity.duplicateRelevantLabelCount, 1);
+assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false);
+assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
+assert.equal(duplicateLabelReport.promotion.allowed, false,
+  'duplicate ground-truth labels must block promotion even when the hash is correct');
+
 assert.equal(experiment.schemaVersion, 1);
 assert.equal(experiment.seedCount, 3);
 assert.equal(experiment.holdoutQueries, 9, 'explicitly unanswerable holdout queries must survive the CLI/benchmark contract');

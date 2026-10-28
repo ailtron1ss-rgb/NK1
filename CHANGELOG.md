@@ -1,3 +1,9 @@
+## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
+
+- Preserve repeated ground-truth IDs in canonical fingerprints and through normalization until dataset-integrity inspection.
+- Add a regression with correct content hash and complete provenance proving that duplicate labels themselves block promotion.
+- Exact-head integration validation is pending.
+
 ## [NK1][integration] Native signed P23 revision with three-arm host evaluation (2026-10-28)
 
 - Ported the native signed-outcome P23 provider and its protected host-evaluator configuration loader onto the current Hexis/Mem0 branch.
