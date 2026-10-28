@@ -219,7 +219,7 @@ export class GepaReflectiveCandidateGenerator {
         request.validationEvidence.length > MAX_TRIALS) throw new Error('gepa-validation-evidence-required-or-too-large');
     if (!Array.isArray(request.targets) || request.targets.length === 0 ||
         request.targets.length > MAX_TARGETS) throw new Error('gepa-targets-required-or-too-large');
-    if (!request.holdoutGeneralization || !is01(request.holdoutGeneralization.gap01) ||
+    if (!request.holdoutGeneralization || typeof request.holdoutGeneralization.gap01 !== 'number' || !Number.isFinite(request.holdoutGeneralization.gap01) || request.holdoutGeneralization.gap01 < -1 || request.holdoutGeneralization.gap01 > 1 ||
         request.holdoutGeneralization.requiresFreshIndependentEvaluation !== true) throw new Error('gepa-invalid-holdout-summary');
     if (request.sourcePayload === undefined || request.sourcePayload === null) throw new Error('gepa-source-payload-required');
 
