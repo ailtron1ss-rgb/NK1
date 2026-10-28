@@ -32,6 +32,20 @@ assert.equal(experiment.seeds.join(','), '13,29,53');
 assert.equal(experiment.corpusFingerprint.length, 64);
 assert.equal(experiment.retrievalConfigurationFingerprint.length, 64);
 assert.equal(experiment.datasetFingerprint.length, 64);
+const duplicateLabelExamples = structuredClone(examples);
+duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
+const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: experiment.datasetFingerprint },
+});
+assert.notEqual(duplicateLabelReport.datasetFingerprint, experiment.datasetFingerprint,
+  'the provenance fingerprint must bind duplicate ground-truth labels instead of canonicalizing them away');
+assert.equal(duplicateLabelReport.datasetProvenance.contentHashValid, false,
+  'a clean dataset hash must not authenticate the duplicate-label input');
+assert.equal(duplicateLabelReport.dataIntegrity.duplicateRelevantLabelCount, 1);
+assert.equal(duplicateLabelReport.dataIntegrity.validForPromotion, false);
+assert.equal(duplicateLabelReport.promotion.allowed, false);
+
 assert.equal(experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, true);
 assert.equal(experiment.determinism.datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds, true);
 assert.equal(experiment.sensitivity.mrrNonInferioritySupportedAcrossAllSeeds, experiment.runs.every(row => row.mrrConfidenceNonInferioritySupported));
