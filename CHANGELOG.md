@@ -1,3 +1,9 @@
+## [NK1][WorkPass600] Align GEPA server-wiring regression with callback contract (2026-10-28)
+
+- Assert the server's explicit request-wrapper callback shape for the GEPA-or-local candidate generator; the implementation intentionally forwards `(request) => P23_SKILL_REVISION_GENERATOR(request)` rather than assigning the function identifier directly.
+- Preserve coverage of local llama.cpp fallback and the enabled GEPA sidecar path. This fixes a stale textual contract assertion without weakening behavioral adapter tests.
+- Exact-head integration CI is pending.
+
 ## [NK1][integration] Optional GEPA/DSPy reflective candidate sidecar (2026-10-28)
 
 - Added an opt-in, bounded HTTP adapter for candidate-payload generation through the existing P23 reflective-revision callback. Disabled by default; local llama.cpp remains the default.

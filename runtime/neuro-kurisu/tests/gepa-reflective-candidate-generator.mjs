@@ -159,7 +159,7 @@ test('server composition root wires the optional adapter but keeps local generat
   const adapterSource = await readFile(path.join(runtimeRoot, 'src/organism/learning/GepaReflectiveCandidateGenerator.ts'), 'utf8');
   assert.match(server, /GepaReflectiveCandidateGenerator\.fromEnvironment\(\)/);
   assert.match(adapterSource, /NK1_GEPA_ENABLED === '1'/);
-  assert.match(server, /generateSkillRevision: P23_SKILL_REVISION_GENERATOR/);
+  assert.match(server, /generateSkillRevision:\s*\(request\)\s*=>\s*P23_SKILL_REVISION_GENERATOR\(request\)/);
   assert.match(server, /: generateLocalSkillRevision\(LLAMA_CPP_PROVIDER, request\)/);
   assert.match(server, /asP23RevisionGenerator\(\)\(request\)/);
 });
