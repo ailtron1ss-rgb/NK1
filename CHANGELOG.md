@@ -3210,5 +3210,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - During restore, discard rows with malformed IDs or non-string/blank content before they can enter canonical state or derived indexes.
 - Collapse repeated IDs only when their `(kind, source, canonical content)` identity agrees, selecting metadata deterministically; if one ID maps to conflicting identities, drop the whole group rather than allowing `state.items` and `itemIndex` to disagree.
-- Return a compact restore-integrity report with malformed rows, duplicate groups, collapsed rows, conflicting identity groups, retained rows, and truncation counts.
+- Return a compact restore-integrity report from `restore()` and keep the last report available through `restoreIntegrityDiagnostics()`, including malformed rows, duplicate groups, collapsed rows, conflicting identity groups, retained rows, and truncation counts.
 - Add permutation-invariant regression coverage and a dedicated CI gate for runtime typecheck plus the snapshot restore integrity test. This protects index invariants; no retrieval uplift is claimed, and `main`/Release ZIP remain untouched.
