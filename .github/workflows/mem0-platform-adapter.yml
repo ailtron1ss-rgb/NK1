@@ -8,6 +8,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts"
       - "runtime/neuro-kurisu/tests/gepa-reflective-candidate-generator.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts"
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
