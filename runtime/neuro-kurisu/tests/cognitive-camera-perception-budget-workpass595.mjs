@@ -12,6 +12,7 @@ const runtime = new OrganismRuntime({
   realityMode: 'external-first',
   performanceProfile: 'mobile',
 });
+await runtime.init();
 let directCaptureCalls = 0;
 const stableBody = {
   telemetry: { motion01: 0, battery01: .8, ramPressure01: .1 },
