@@ -1,8 +1,16 @@
 import { createHash } from 'node:crypto';
+import assert from 'node:assert/strict';
+import { hexisEvidenceHttpStatus } from '../../src/server/hexis-evidence-http-status.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+assert.equal(hexisEvidenceHttpStatus('canonical-memory-not-found'), 404);
+assert.equal(hexisEvidenceHttpStatus('source-trace-id-conflict'), 409);
+assert.equal(hexisEvidenceHttpStatus('canonical-evidence-write-failed'), 500,
+  'canonical persistence failures must not masquerade as client conflicts');
+assert.equal(hexisEvidenceHttpStatus('invalid-evidence-payload'), 400);
 
 const root = path.resolve(process.cwd());
 const stateDir = await mkdtemp(path.join(tmpdir(), 'nk-hexis-'));
