@@ -1,3 +1,9 @@
+## [NK1][memory] Preserve full-corpus semantic retrieval cost evidence (2026-10-28)
+
+- `MemoryOS2.recordSelectedRetrieval` preserves candidate counts up to the canonical 1600-item memory capacity rather than clipping semantic scans to the lexical candidate budget of 192.
+- `MemoryFabric` normalizes the adaptive compute-cost signal to `[0,1]`, preventing a full semantic scan from emitting an out-of-range value.
+- Added regression assertions for candidate counts of 400 and the 1600-item cap, plus normalized cost saturation. This is a metric-integrity correction, not a claim of improved retrieval quality.
+
 ## [NK1][verification] Server-wired Mem0 integration closure passed (2026-10-27)
 
 - The current code revision passed [Mem0 integration workflow 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): Node runtime check and server syntax; runtime typecheck; Hexis canonical evidence lineage/reviewed ingest; Hexis server smoke; deterministic memory-retrieval experiment; Mem0 Platform adapter tests 15/15; self-hosted OSS REST tests 2/2; static runtime wiring; and HTTP fake-provider smoke.
