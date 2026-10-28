@@ -5,7 +5,7 @@
 - Optimizer score/pass/promotion claims are discarded. P23 still independently evaluates the exact returned payload and requires signed execution evidence and authenticated approval for activation.
 - Configurable endpoint requires HTTPS or loopback HTTP; redirects, invalid JSON/UTF-8, timeouts, oversized request/response/payload, and malformed identities fail closed.
 - Added mocked contract tests and a wiring check for the application generator callback. No live GEPA sidecar was contacted and no candidate was evaluated or promoted by the optimizer.
-- **Validation status:** this adapter slice awaits its dedicated CI run; no PASS is claimed until the run completes.
+- **Validation:** [integration workflow 40632954283](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40632954283) passed for tested code HEAD `85932372417ac26f0624dfcb7e162303d43beb8a`: typecheck, GEPA adapter **11/11**, Hexis evidence lineage/ingest/server smoke, retrieval fingerprint/experiment, Mem0 Platform **15/15**, Mem0 OSS **2/2**, runtime wiring, and authenticated HTTP fake-provider smoke. No live GEPA service was contacted; retrieval remains `promotion: not-promoted`.
 ## [NK1][memory] Reproducible retrieval-dataset provenance tooling (2026-10-28)
 
 - Exported the canonical labelled-dataset fingerprint used by the retrieval promotion gate and added `fingerprint:memory-retrieval-dataset`, which reports that value plus a raw source-file SHA-256 and split counts.
