@@ -1,3 +1,10 @@
+## [NK1][Hexis] Reduce canonical receipt membership validation cost (2026-10-28)
+
+- Build a `Set` from the bounded HMX receipt memory-ID list before validating `createdMemoryIds`; repeated membership checks now have expected linear total complexity rather than repeatedly scanning the receipt list.
+- Keep the existing stronger server smoke contract that requires HTTP 409 for a conflicting trace ID, verifies rejection, and confirms the original evidence lineage remains readable.
+- Extend the Hexis canonical apply workflow's pull-request base filter so this integration branch runs the projector, rollback, server smoke, evidence-lineage and runtime typecheck checks.
+- This optimizes validation cost while preserving trust semantics; it does not claim memory-quality improvement.
+
 ## [NK1][memory] Reproducible retrieval-dataset provenance tooling (2026-10-28)
 
 - Exported the canonical labelled-dataset fingerprint used by the retrieval promotion gate and added `fingerprint:memory-retrieval-dataset`, which reports that value plus a raw source-file SHA-256 and split counts.
@@ -123,11 +130,3 @@
 ## [NK1][WorkPass502] Wire bounded semantic recall into the live cognitive cycle (2026-10-27)
 
 - The direct user-text path already used `retrieveForCognition` when the execution plan requested memory; the later advanced-recall branch still used synchronous lexical-only `retrieve` for internal-goal/fallback queries or when it could not reuse that first memory packet.
-
-## [NK1][Hexis] Reduce canonical receipt membership validation cost (2026-10-28)
-
-- Build a `Set` from the bounded HMX receipt memory-ID list before validating `createdMemoryIds`; repeated membership checks now have expected linear total complexity rather than repeatedly scanning the receipt list.
-- Keep the existing stronger server smoke contract that requires HTTP 409 for a conflicting trace ID, verifies rejection, and confirms the original evidence lineage remains readable.
-- Extend the Hexis canonical apply workflow's pull-request base filter so this integration branch runs the projector, rollback, server smoke, evidence-lineage and runtime typecheck checks.
-- This optimizes validation cost while preserving trust semantics; it does not claim memory-quality improvement.
-
