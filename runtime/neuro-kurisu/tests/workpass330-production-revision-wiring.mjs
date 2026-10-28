@@ -262,15 +262,24 @@ test('background revision remains disabled when absent and validates explicit sc
   assert.throws(() => parseCompoundRepairBackgroundRevisionConfig('{"enabled":true,"unknown":1}'), /compound-repair-background-revision-config-invalid/);
 });
 
-test('server resolves baseline/source payloads from the canonical P23 store and guards stale identity', async () => {
+test('native provider binds canonical baseline/source payloads and wrapper performs three independent method evaluations', async () => {
   const server = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
   const runtime = await readFile(new URL('../src/organism/core/OrganismRuntime.ts', import.meta.url), 'utf8');
-  assert.match(server, /resolveCanonicalPayloadsForRepair/);
-  assert.match(server, /baselinePayload: structuredClone\(baseline\.payload\)/);
-  assert.match(server, /sourceCandidatePayload: structuredClone\(source\.payload\)/);
-  assert.match(server, /canonical-p23-revision-source-changed-during-independent-evaluation/);
-  assert.match(runtime, /production-compound-repair-revision-requires-canonical-baseline-and-source-resolver/);
-  assert.match(runtime, /resolveCanonicalPayloads: config\.compoundRepairRevision\.resolveCanonicalPayloadsForRepair/);
+  const provider = await readFile(new URL('../src/organism/learning/P23CompoundRepairRevisionProvider.ts', import.meta.url), 'utf8');
+  const wrapper = await readFile(new URL('../src/organism/learning/P23IndependentEvaluationProvider.ts', import.meta.url), 'utf8');
+  assert.match(server, /createNativeCompoundRepairRevisionProvider/);
+  assert.match(server, /independentEvaluationConfigForRepair/);
+  assert.match(provider, /baselinePayload,/);
+  assert.match(provider, /baselinePayloadFingerprint,/);
+  assert.match(provider, /sourceCandidatePayload: source\.payload/);
+  assert.match(provider, /sourceCandidatePayloadFingerprint: source\.payloadFingerprint/);
+  assert.match(provider, /assertCanonicalLineageCurrent/);
+  assert.match(runtime, /withIndependentCandidateEvaluation/);
+  assert.match(wrapper, /evaluateMethod\(baselineMethod!\)/);
+  assert.match(wrapper, /evaluateMethod\(sourceMethod!\)/);
+  assert.match(wrapper, /revisionEvaluator\(request\)/);
+  assert.match(wrapper, /native-p23-revision-method-not-scheduled-in-both-splits/);
+  assert.match(wrapper, /assertCurrent\(\)/);
 });
 
 test('server attaches the separate host evaluator and explicit schedule to the runtime config', async () => {
