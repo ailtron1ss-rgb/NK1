@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { GepaReflectiveCandidateGenerator } from '../src/organism/learning/GepaReflectiveCandidateGenerator.ts';
 
 const validationReport = {
@@ -145,6 +148,16 @@ test('P23-compatible callback forwards only candidate-generation requests', asyn
   const callback = adapter.asRevisionGenerator();
   assert.deepEqual(await callback(request), { skill: 'updated' });
   assert.equal(seen, true);
+});
+
+test('server composition root wires the optional adapter but keeps local generation as default', async () => {
+  const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const server = await readFile(path.join(runtimeRoot, 'src/server/server.mjs'), 'utf8');
+  assert.match(server, /GepaReflectiveCandidateGenerator\.fromEnvironment\(\)/);
+  assert.match(server, /process\.env\.NK1_GEPA_ENABLED/);
+  assert.match(server, /generateSkillRevision: P23_SKILL_REVISION_GENERATOR/);
+  assert.match(server, /: generateLocalSkillRevision\(LLAMA_CPP_PROVIDER, request\)/);
+  assert.match(server, /asP23RevisionGenerator\(\)\(request\)/);
 });
 
 console.log('GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS');
