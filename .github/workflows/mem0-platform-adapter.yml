@@ -19,6 +19,7 @@ on:
       - "runtime/neuro-kurisu/tests/p23-native-provider-wiring.mjs"
       - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
       - "runtime/neuro-kurisu/docs/GEPA_DSPY_CANDIDATE_ADAPTER.md"
+      - "runtime/neuro-kurisu/docs/NATIVE_P23_VERIFIED_REVISION.md"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
       - "runtime/neuro-kurisu/scripts/fingerprint-memory-retrieval-dataset.mjs"
       - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
