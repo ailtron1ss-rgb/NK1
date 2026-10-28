@@ -1,0 +1,42 @@
+name: NK1 temporal retrieval candidate eligibility
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass584-temporal-candidate-eligibility.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: temporal-candidate-eligibility-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck and temporal candidate coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Run temporal candidate coverage regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-candidate-coverage
