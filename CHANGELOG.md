@@ -2606,3 +2606,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - `OrganismRuntime.captureCameraForCognition()` used the maximum expected value across every cognitive operation to decide whether a camera capture was useful. High-value research or project work could therefore trigger a camera capture despite low perception value.
 - Restrict the camera demand signal to `plan.expectedValue01.perception`; explicit pending vision requests and the existing motion/resource checks remain separate trigger paths.
 - Add a runtime regression proving a high research/project value does not trigger the camera, while a high perception value still dispatches through the canonical capture path. Extend the planner workflow to run this test and watch the runtime camera gate.
+
+
+## [NK1][WorkPass596] Enforce the perception planner gate on EVC-driven camera capture (2026-10-28)
+
+- The perception-specific EVC trigger now respects `plan.run.perception`; a high expected value alone cannot override an explicit planner decision to skip perception.
+- Preserve explicit reactive exceptions: a concrete pending vision request or strong motion signal can still trigger camera capture, subject to the existing battery, thermal, RAM, awake, and idempotency safeguards.
+- Extended the runtime regression with a high-perception-EVC/planner-off case and a pending-vision override case; added no new workflow dependency because both execute in the existing focused planner/camera CI job.
