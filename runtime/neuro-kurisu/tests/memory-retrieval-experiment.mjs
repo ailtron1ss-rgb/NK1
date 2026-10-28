@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
-import { runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { fingerprintMemoryRetrievalDataset, runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const now = 2_000_000_000_000;
@@ -22,7 +22,7 @@ const snapshot = memory.snapshot();
 const examples = [];
 for (let i = 0; i < 4; i++) examples.push({ id: `train-${i}`, query: `training query fern status ${i}`, relevantIds: [`m${i}`], split: 'train' });
 for (let i = 0; i < 8; i++) examples.push({ id: `holdout-${i}`, query: `heldout query fern routing ${i}`, relevantIds: [`m${i}`], split: 'holdout' });
-const provenance = { datasetId: 'controlled-fixture', datasetVersion: '1.0', sourceRef: 'test-fixture-only', labelingProtocol: 'Hand-authored test labels; not production evidence.' };
+const provenance = { datasetId: 'controlled-fixture', datasetVersion: '1.0', sourceRef: 'test-fixture-only', labelingProtocol: 'Hand-authored test labels; not production evidence.', licenseId: 'LicenseRef-NK1-TestFixture' };
 const options = { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance, seeds: [13, 29, 53] };
 const before = structuredClone(snapshot);
 const experiment = runMemoryOS2RetrievalExperiment(snapshot, examples, options);
@@ -34,16 +34,20 @@ assert.equal(experiment.retrievalConfigurationFingerprint.length, 64);
 assert.equal(experiment.datasetFingerprint.length, 64);
 const duplicateLabelExamples = structuredClone(examples);
 duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
+const duplicateLabelFingerprint = fingerprintMemoryRetrievalDataset(duplicateLabelExamples);
 const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, {
   ...options,
-  datasetProvenance: { ...provenance, contentSha256: experiment.datasetFingerprint },
+  datasetProvenance: { ...provenance, contentSha256: duplicateLabelFingerprint },
 });
 assert.notEqual(duplicateLabelReport.datasetFingerprint, experiment.datasetFingerprint,
   'the provenance fingerprint must bind duplicate ground-truth labels instead of canonicalizing them away');
-assert.equal(duplicateLabelReport.datasetProvenance.contentHashValid, false,
-  'a clean dataset hash must not authenticate the duplicate-label input');
-assert.equal(duplicateLabelReport.dataIntegrity.duplicateRelevantLabelCount, 1);
-assert.equal(duplicateLabelReport.dataIntegrity.validForPromotion, false);
+assert.equal(duplicateLabelReport.datasetProvenance.contentHashValid, true,
+  'the duplicate-labelled bytes may have valid provenance while still failing label-integrity validation');
+assert.equal(duplicateLabelReport.datasetIntegrity.provenanceComplete, true,
+  'the duplicate-label case must use complete provenance so the integrity gate is tested independently');
+assert.equal(duplicateLabelReport.datasetIntegrity.duplicateRelevantLabelCount, 1);
+assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false);
+assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
 assert.equal(duplicateLabelReport.promotion.allowed, false);
 
 assert.equal(experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, true);

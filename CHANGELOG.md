@@ -1,3 +1,9 @@
+## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
+
+- Keep repeated ground-truth memory IDs until dataset-integrity inspection; duplicate labels remain visible to the promotion gate instead of being silently deduplicated.
+- Bind the duplicate-label regression to a matching canonical fingerprint and complete provenance, proving that label integrity alone blocks promotion.
+- Exact-head validation is pending; no passing result is claimed until the combined regression workflow completes.
+
 ## [NK1][WorkPass599] Place verified outcome predicate at method scope (2026-10-28)
 
 - Hoist the verified-outcome predicate beside the method-level external-evidence classification so the scientific-method and adaptive-policy paths share the same initialized trust gate.
