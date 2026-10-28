@@ -17,7 +17,10 @@ NK1 retains one canonical memory owner: **MemoryOS2 through MemoryFabric**. Exte
 - [x] Added authenticated read-only server diagnostics/search routes; the HTTP smoke verifies missing-token denial, no API-key disclosure, canonical MemoryOS2 precedence, and disabled local-first fallback.
 - [x] Added a static runtime-wiring contract and an integration CI workflow.
 - [x] Registered test commands and documented limitations in the runtime package and `CHANGELOG.md`.
+- [x] Exported the canonical MemoryOS2 retrieval-label fingerprint and added a CLI that emits both canonical `contentSha256` and exact-source `rawSourceSha256`.
+- [x] Hardened the benchmark CLI to reject invalid UTF-8 and a mismatched supplied raw-source hash before output publication; added tests and linked them into the integration closure.
 - [x] Execute integration closure on the current tested PR merge ref via [Mem0 workflow run 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): runtime typecheck, Hexis evidence lineage and reviewed ingest, Hexis server smoke, deterministic retrieval experiment, 15/15 Platform-adapter tests, 2/2 OSS tests, runtime-wiring contract, and authenticated HTTP/fake-provider smoke all passed. This did not make a live Mem0 provider call; see the remaining gate below.
+- [ ] The follow-up provenance/fingerprint test run has not yet completed; do not treat this new slice as CI-validated until its own workflow reports success.
 - [ ] Run an opted-in live Mem0 contract check against a dedicated test-only user scope. It is intentionally skipped without explicit operator credentials/flags.
 - [ ] Demonstrate a positive, independently sourced retrieval uplift on immutable RU/EN holdout data across paired model/training seeds.
 - [ ] Run the production UI/build/migration, browser/Live2D, real Android/Termux audio, soak, SBOM and license gates.
