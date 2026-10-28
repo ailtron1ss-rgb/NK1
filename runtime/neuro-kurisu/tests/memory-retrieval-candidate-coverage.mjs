@@ -70,4 +70,80 @@ assert.deepEqual(unsupportedRows, [], 'without any evidence-bearing candidate, r
 assert.equal(noEvidence.retrievalDiagnostics().candidateCount, 0, 'no-evidence query must not be populated by recent-memory fallback');
 const supportedRows = noEvidence.retrieve('zebra keyboard orchard', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
 assert.ok(supportedRows.some(row => row.id === 'unrelated-0'), 'evidence-backed retrieval must remain available after an abstention');
+
+ // Expired high-fanout matches must not consume the 192-entry pool before current memories are considered.
+const temporalFlood = new MemoryOS2();
+for (let i = 0; i < 260; i++) temporalFlood.encode({
+  id: `expired-flood-${String(i).padStart(3, '0')}`,
+  content: `needle common atlas archived record ${i}`,
+  kind: 'semantic', source: 'temporal-candidate-flood', tags: [], context: {},
+  salience: .5, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1, socialRelevance: .1,
+  predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: now - 10_000, validUntilAt: now - 1, observedAt: now - 5_000,
+});
+temporalFlood.encode({
+  id: 'current-target', content: 'needle project result', kind: 'semantic', source: 'temporal-candidate-flood',
+  tags: [], context: {}, salience: .6, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1, socialRelevance: .1,
+  predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: now - 10_000, validUntilAt: null, observedAt: now - 100,
+});
+const temporalReader = new MemoryOS2();
+temporalReader.restore(temporalFlood.snapshot());
+const temporalRows = temporalReader.retrieve('needle common atlas', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
+assert.ok(temporalRows.some(row => row.id === 'current-target'),
+  'expired high-fanout lexical hits must not crowd a current relevant memory out of the candidate budget');
+assert.equal(temporalReader.retrievalDiagnostics().candidateCount, 1,
+  'candidate count should include eligible rows, not a pool dominated by expired matches');
+
+// Stale revisions remain valid discovery anchors for their current successor.
+const revisionMemory = new MemoryOS2();
+revisionMemory.encode({
+  id: 'revision-old', content: 'needle common atlas archived note', kind: 'semantic', source: 'revision-bridge',
+  tags: [], context: {}, salience: .6, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1, socialRelevance: .1,
+  predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  revisionGroupId: 'answer-chain', revisionSequence: 1, supersededById: 'revision-current',
+  validFromAt: now - 10_000, validUntilAt: now - 1, observedAt: now - 5_000,
+});
+revisionMemory.encode({
+  id: 'revision-current', content: 'corrected report of present status', kind: 'semantic', source: 'revision-bridge',
+  tags: [], context: {}, salience: .6, emotionalWeight: .1, identityRelevance: .1, goalRelevance: .1, socialRelevance: .1,
+  predictionError: .1, confidence: .9, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  revisionGroupId: 'answer-chain', revisionSequence: 2, supersedesId: 'revision-old',
+  validFromAt: now - 500, validUntilAt: null, observedAt: now - 100,
+});
+const revisionReader = new MemoryOS2();
+revisionReader.restore(revisionMemory.snapshot());
+const revisionRows = revisionReader.retrieve('needle common atlas archived note', 8, 0, 0, { temporalMode: 'at', asOfAt: now });
+assert.ok(revisionRows.some(row => row.id === 'revision-current'),
+  'an expired revision should still bridge query matches to its eligible current successor');
+
+ // An expired-only lexical hit cannot authorize unrelated recent-memory fallback.
+const expiredOnly = new MemoryOS2();
+expiredOnly.encode({
+  id: 'expired-only-match', content: 'obsolete quartz nebula credential archive', kind: 'semantic', source: 'expired-only-fixture',
+  tags: [], context: {}, salience: .95, emotionalWeight: .1, identityRelevance: .9, goalRelevance: .9, socialRelevance: .1,
+  predictionError: .1, confidence: .99, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: now - 10_000, validUntilAt: now - 1, observedAt: now - 5_000,
+});
+for (let i = 0; i < 8; i++) expiredOnly.encode({
+  id: `unrelated-current-${i}`, content: `present unrelated fern document ${i}`, kind: 'semantic', source: 'expired-only-fixture',
+  tags: [], context: {}, salience: .9, emotionalWeight: .1, identityRelevance: .9, goalRelevance: .9, socialRelevance: .1,
+  predictionError: .1, confidence: .99, epistemicStatus: 'fact', entities: [],
+  semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [],
+  validFromAt: now - 10_000, validUntilAt: null, observedAt: now - 100 - i,
+});
+const expiredOnlyReader = new MemoryOS2();
+expiredOnlyReader.restore(expiredOnly.snapshot());
+const expiredOnlyRows = expiredOnlyReader.retrieve('quartz nebula credential archive', 8, 1, 1, { temporalMode: 'at', asOfAt: now });
+assert.deepEqual(expiredOnlyRows, [],
+  'expired-only evidence must not seed recent unrelated memories when no current revision exists');
+assert.equal(expiredOnlyReader.retrievalDiagnostics().candidateCount, 0,
+  'expired-only evidence must leave the eligible candidate pool empty');
+
+
 console.log('MEMORY_RETRIEVAL_CANDIDATE_COVERAGE=PASS', JSON.stringify({ candidateCount: ordered.retrievalDiagnostics().candidateCount, resultOrderStable: JSON.stringify(a) === JSON.stringify(b), retainedTarget: a.includes('row-000'), exactFirst: exactFirst[0]?.id, unsupportedQueryResults: unsupportedRows.length, abstentionCandidateCount: noEvidence.retrievalDiagnostics().candidateCount, supportedQueryResults: supportedRows.length }));

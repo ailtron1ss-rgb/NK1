@@ -750,6 +750,19 @@ export class MemoryOS2{
    // explicit `at` mode opts into historical time; `all` remains an archive view.
    const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
    const isValidAt=(m:MemoryItem2,at:number)=>{const from=Number(m.validFromAt??m.createdAt),until=m.validUntilAt==null?Number.POSITIVE_INFINITY:Number(m.validUntilAt);return from<=at&&at<until;};
+   // Bound the result pool using only records eligible for this temporal view. Stale
+   // lexical hits still remain in rankedSeedRows below as revision-discovery anchors.
+   const temporallyRejectedCandidateIds=new Set<string>();
+   const candidateEligible=(id:string)=>{
+     const item=this.itemIndex.get(id);
+     if(!item||item.dormant||item.epistemicStatus==='quarantined')return false;
+     if(temporalMode==='all')return true;
+     if((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null)){
+       temporallyRejectedCandidateIds.add(id);
+       return false;
+     }
+     return isValidAt(item,now);
+   };
    const contextCausal=/\b(why|cause|causal|because|reason|effect|причин|почему|следств)/iu.test(query)?1:clamp(this.state.linkUpdates/100);
   const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
   this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
@@ -806,7 +819,7 @@ export class MemoryOS2{
      const support=idfFor(token)*weight;
      for(const id of ids){const priority=priorityFor(id);priority.idfSupport+=support;priority.matchedTerms+=weight*.25;}
    }
-   const rankedSeedIds=[...candidatePriority.entries()].map(([id,priority])=>{
+   const rankedSeedRows=[...candidatePriority.entries()].map(([id,priority])=>{
      const item=this.itemIndex.get(id);
      if(!item)return {id,score:priority.idfSupport+priority.fuzzySupport,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase:0,validAt:0,lastAccessAt:0,salience:0,createdAt:0,revisionSequence:0};
      const exactPhrase=queryPhrase.length>=4&&this.lowerFor(id,item.content).includes(queryPhrase)?1:0;
@@ -815,21 +828,23 @@ export class MemoryOS2{
      // recency overpower a genuinely rarer query match.
      const score=priority.idfSupport+priority.fuzzySupport*.70+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
-   }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,192).map(row=>row.id);
+   }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id));
+   const rankedSeedIds=rankedSeedRows.filter(row=>candidateEligible(row.id)).slice(0,192).map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
-   if(candidateIds.size<96&&candidatePriority.size>0){
+   if(candidateIds.size<96&&rankedSeedIds.length>0){
      // Recent-memory candidates may pad a query that already has an evidence-bearing
      // anchor, but must never manufacture an answer when no lexical, fuzzy, or concept
      // posting matched any memory. In that case an empty candidate set is intentional
      // abstention, not a cue to return unrelated recent records.
      const fallback=[...this.state.items].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)||a.id.localeCompare(b.id));
-     for(const m of fallback.slice(0,128)){candidateIds.add(m.id);if(candidateIds.size>=192)break;}
+     let fallbackAdded=0;for(const m of fallback){if(!candidateEligible(m.id))continue;const beforeSize=candidateIds.size;candidateIds.add(m.id);if(candidateIds.size>beforeSize)fallbackAdded++;if(candidateIds.size>=192||fallbackAdded>=128)break;}
    }
    // Revision-aware recall: a lexical hit on one revision should be able to
    // surface the rest of the bounded revision chain before temporal filtering.
    // This prevents a renamed/corrected fact from becoming unreachable only
    // because its newest wording changed.
-   for(const seedId of [...candidateIds].slice(0,96)){
+   const revisionSeedIds=[...new Set([...rankedSeedRows.slice(0,96).map(row=>row.id),...rankedSeedIds.slice(0,96)])];
+   for(const seedId of revisionSeedIds){
      const seed=this.itemIndex.get(seedId);
      if(!seed)continue;
      const group=seed.revisionGroupId??seed.id;
@@ -842,6 +857,7 @@ export class MemoryOS2{
        // Check before insertion: checking after .add() allowed a 192-item seed
        // pool to grow to 193 before the loop broke.
        if(candidateIds.size>=192)break;
+       if(!candidateEligible(revisionId))continue;
        candidateIds.add(revisionId);
      }
      if(candidateIds.size>=192)break;
@@ -857,10 +873,12 @@ export class MemoryOS2{
        // The graph expansion shares the same strict bound as lexical/revision
        // discovery; never insert the over-budget item before testing the cap.
        if(candidateIds.size>=192)break;
+       if(!candidateEligible(linkedId))continue;
        candidateIds.add(linkedId);
      }
      if(candidateIds.size>=192)break;
    }
+   this.state.staleRetrievalsAvoided+=temporallyRejectedCandidateIds.size;
    if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);

@@ -3205,3 +3205,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [TEST] Added runtime/neuro-kurisu/tests/hexis-projector-idempotent-replay.mjs covering zero storage calls, receipt cloning, nested-data isolation, and fail-closed handling of pending stages.
 - [VALIDATION] The regression test has been added but has not yet been executed in a runtime; CI/typecheck status remains unverified until GitHub Actions runs on the resulting branch head.
 
+## [NK1][WorkPass584] Exclude temporally ineligible items before retrieval candidate cap (2026-10-28)
+
+- Filter expired, future-invalid, dormant, and quarantined memories from the bounded result-candidate pool before truncating the ranked list, preventing stale high-fanout postings from crowding eligible memories out.
+- Keep high-ranked lexical rows as bounded revision-discovery seeds, and allow eligible revisions through the same temporal gate; this preserves recall when an expired wording is the only query anchor for a current successor.
+- Apply eligibility to recent-memory padding and graph expansion, retain the 192-candidate hard cap, and add regressions for stale candidate floods and revision bridges.
+- Add an expired-only query regression to ensure stale lexical evidence cannot trigger unrelated recent-memory fallback when no eligible revision exists.
+- This changes candidate-pool integrity, not the scoring formula. Retrieval uplift remains unvalidated until the focused CI workflow passes; `main` and Release ZIP remain untouched.
