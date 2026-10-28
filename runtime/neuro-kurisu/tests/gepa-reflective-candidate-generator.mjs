@@ -174,4 +174,15 @@ test('oversized source payload is rejected before any sidecar request', async ()
   assert.equal(calls, 0);
 });
 
+test('rejects unknown revision target dimensions before contacting the sidecar', async () => {
+  let calls = 0;
+  const adapter = new GepaReflectiveCandidateGenerator({
+    enabled: true, endpoint: 'https://optimizer.example.test/revise', apiKey: 'secret',
+    fetchImpl: async () => { calls++; return response({ schemaVersion: 1, candidatePayload: {} }); },
+  });
+  const bad = { ...request, targets: [{ ...validationTarget, dimension: 'optimizer-authority' }] };
+  await assert.rejects(adapter.generate(bad), /gepa-invalid-revision-target/);
+  assert.equal(calls, 0);
+});
+
 console.log('GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS');
