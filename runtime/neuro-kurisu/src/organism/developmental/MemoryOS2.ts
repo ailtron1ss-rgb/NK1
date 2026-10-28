@@ -763,7 +763,7 @@ export class MemoryOS2{
    const contextTemporal=/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year|сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query)?1:clamp(this.state.semanticQueries/100);
    this.activePolicy=this.adaptivePolicy.choose({pressure01:clamp(this.state.items.length/1600),goal01:clamp(goalRelevance),causal01:contextCausal,temporal01:contextTemporal,mobile:true},now);
    this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
-   this.lastCandidateCount=Math.max(0,Math.min(192,Math.floor(Number.isFinite(candidateCountHint)?candidateCountHint:ids.length)));
+   this.lastCandidateCount=Math.max(0,Math.min(1600,Math.floor(Number.isFinite(candidateCountHint)?candidateCountHint:ids.length)));
    const selected:MemoryItem2[]=[];
    const seen=new Set<string>();
    for(const id of (Array.isArray(ids)?ids:[]).slice(0,32)){
