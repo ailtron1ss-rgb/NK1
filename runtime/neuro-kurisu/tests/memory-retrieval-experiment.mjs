@@ -50,6 +50,30 @@ assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
 assert.equal(duplicateLabelReport.promotion.allowed, false,
   'duplicate ground-truth labels must block promotion even when the hash is correct');
 
+// Invalid ground-truth label values are filtered from normalized query rows for
+// safe evaluation, but their presence in the source dataset must remain a hard
+// integrity failure; otherwise one valid label can hide malformed siblings.
+const invalidLabelExamples = structuredClone(examples);
+invalidLabelExamples[0].relevantIds.push('', 42, null);
+const invalidLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, invalidLabelExamples, {
+  ...options,
+  datasetProvenance: {
+    ...provenance,
+    licenseId: 'LicenseRef-NK1-TestFixture',
+    // This is the fingerprint of the normalized valid labels. The original source
+    // still contains malformed labels and must fail integrity independently.
+    contentSha256: fingerprintMemoryRetrievalDataset(examples),
+  },
+});
+assert.equal(invalidLabelReport.datasetProvenance.contentHashValid, true);
+assert.equal(invalidLabelReport.datasetIntegrity.provenanceComplete, true);
+assert.equal(invalidLabelReport.datasetIntegrity.invalidRelevantLabelCount, 3,
+  'blank, numeric and null labels must be counted before filtering');
+assert.equal(invalidLabelReport.datasetIntegrity.validForPromotion, false);
+assert.equal(invalidLabelReport.promotion.gates.datasetIntegrity, false);
+assert.equal(invalidLabelReport.promotion.allowed, false,
+  'malformed source labels must block promotion even if all normalized labels are valid');
+
 assert.equal(experiment.schemaVersion, 1);
 assert.equal(experiment.seedCount, 3);
 assert.equal(experiment.holdoutQueries, 9, 'explicitly unanswerable holdout queries must survive the CLI/benchmark contract');
