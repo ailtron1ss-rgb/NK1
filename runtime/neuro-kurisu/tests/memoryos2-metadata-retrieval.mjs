@@ -127,6 +127,17 @@ assert.equal(memory.retrieve('ephemeral recall topic', 3).some(
   row => (row.m?.id ?? row.id) === 'm-stale',
 ), false, 'restored metadata index must not retain stale item IDs');
 
+// Canonical deletion must remove metadata postings as well as the content index.
+assert.equal(memory.forgetById('m-bounded-metadata'), true,
+  'the regression memory must be deletable through the canonical memory lifecycle');
+const afterDeleteDiagnostics = memory.indexDiagnostics();
+assert.equal(afterDeleteDiagnostics.pass, true,
+  'deletion must leave all canonical and metadata indexes consistent');
+assert.equal(afterDeleteDiagnostics.metadataIndexMismatch, 0);
+assert.equal(memory.retrieve('retention beacon keyword', 160).some(
+  row => (row.m?.id ?? row.id) === 'm-bounded-metadata',
+), false, 'deleted memory must not remain discoverable through metadata postings');
+
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   topicTop1: topicHits[0]?.m?.id ?? topicHits[0]?.id,
   entityTop1: entityHits[0]?.m?.id ?? entityHits[0]?.id,
