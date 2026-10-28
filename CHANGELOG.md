@@ -159,3 +159,9 @@
 - Added a runtime regression with an already-aborted signal and a real `OrganismRuntime` step; wired it into `test:rebuild-recovered` and the canonical WorkPass110 workflow.
 - This closes a queue-liveness bug; it does not claim higher quality or more frequent successful autonomous dialogue.
 
+## [NK1][GEPA] Match the sidecar wiring contract to the P23 callback boundary (2026-10-28)
+
+- The current composition root exposes a named `P23_SKILL_REVISION_GENERATOR` and passes it to the P23 providers through a small forwarding callback. Updated the static wiring assertion to accept either direct callback assignment or this equivalent forwarding form, while retaining checks for explicit GEPA environment opt-in, the local llama.cpp fallback and the P23 adapter boundary.
+- Added the test to WorkPass110 PR/push path filters and extended the Mem0 integration safety workflow to PRs targeting the active `nk1-hexis-mem0-integration-20261027` branch.
+- This prevents a brittle assertion about callback syntax from failing the larger Mem0/GEPA integration suite; it does not weaken the runtime evaluation, evidence or promotion gates.
+
