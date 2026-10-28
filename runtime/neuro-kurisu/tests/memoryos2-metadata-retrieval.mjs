@@ -77,6 +77,21 @@ const entityHits = memory.retrieve('Phalaenopsis', 3);
 assert.equal(entityHits[0]?.m?.id ?? entityHits[0]?.id, 'm-orchid',
   'entity metadata should provide a candidate even when entity terms are absent from content');
 
+// Retrieval must use the already-built metadata postings for scoring, not
+// retokenize every candidate's tags/context on every query (mobile hot-path guard).
+const originalMetadataTokens = memory.metadataTokens;
+memory.metadataTokens = () => {
+  throw new Error('query-time metadata scoring must use postings, not retokenize candidates');
+};
+let postingScoredHits;
+try {
+  postingScoredHits = memory.retrieve('orchid watering schedule', 3);
+} finally {
+  memory.metadataTokens = originalMetadataTokens;
+}
+assert.equal(postingScoredHits[0]?.m?.id ?? postingScoredHits[0]?.id, 'm-orchid',
+  'metadata postings must drive query scoring without per-candidate metadata tokenization');
+
 const directHits = memory.retrieve('resetting a laptop system update', 4);
 assert.equal(directHits[0]?.m?.id ?? directHits[0]?.id, 'm-direct',
   'direct content/BM25 matches must remain stronger than unrelated metadata hits');
@@ -159,6 +174,7 @@ assert.equal(memory.retrieve('retention beacon keyword', 160).some(
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   topicTop1: topicHits[0]?.m?.id ?? topicHits[0]?.id,
   entityTop1: entityHits[0]?.m?.id ?? entityHits[0]?.id,
+  postingScoredTop1: postingScoredHits[0]?.m?.id ?? postingScoredHits[0]?.id,
   directContentTop1: directHits[0]?.m?.id ?? directHits[0]?.id,
   boundedMetadataTop1: boundedMetadataHits[0]?.m?.id ?? boundedMetadataHits[0]?.id,
   reconciledMetadataTop1: reconciledMetadataHits[0]?.m?.id ?? reconciledMetadataHits[0]?.id,
