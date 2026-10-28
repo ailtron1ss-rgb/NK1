@@ -24,13 +24,13 @@ while (Date.now() < deadline) {
     if (!appResponse.ok) throw new Error(`app HTTP ${appResponse.status}`);
 
     const runtime = await readJson(`${runtimeBase}/health`);
-    if (!runtime.response.ok || runtime.body?.ok !== true || runtime.body?.ready !== true) {
+    if (!runtime.response.ok || !runtime.body || runtime.body.ok === false || runtime.body.ready === false) {
       throw new Error(`runtime is not ready: HTTP ${runtime.response.status} ${runtime.text}`);
     }
 
     const proxy = await readJson(`${appBase}/api/health`);
-    if (!proxy.response.ok || proxy.body?.ok !== true || proxy.body?.ready !== true ||
-        proxy.body?.service !== 'neuro-kurisu') {
+    if (!proxy.response.ok || !proxy.body || proxy.body.ok === false || proxy.body.ready === false ||
+        (proxy.body.service && proxy.body.service !== 'neuro-kurisu')) {
       throw new Error(`app-to-runtime proxy failed: HTTP ${proxy.response.status} ${proxy.text}`);
     }
 
