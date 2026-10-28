@@ -2621,3 +2621,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Extend the WorkPass599 regression across snapshot/restore: after 256 newer sources evict the old source from the fast key list, restore the Hexis adapter from its snapshot and replay the original evidence with opposite polarity.
 - Assert the persisted bounded revision audit still recognizes the old source as a duplicate, does not apply a second confidence mutation, and preserves the belief's current confidence after restore.
 - The existing `nk1-hexis-source-lineage` workflow now covers this as part of `npm run test:hexis-adaptation`.
+
+
+## [NK1][WorkPass601] Keep duplicate Hexis evidence from mutating trust and update time (2026-10-28)
+
+- `HexisAdaptationFabric.reviseBelief()` could mark a source as duplicate (`applied=false`) but still raise `belief.trust01` and advance `updatedAt`, because those mutations were outside the `if (applied)` statement.
+- Only update belief trust/time for an independent source; duplicates still emit a bounded audit event and duplicate telemetry, but cannot change confidence, trust, or semantic update time by replaying the same source with a higher declared `trust01`.
+- Added a regression where a low-trust observation is replayed with trust 0.99; it verifies duplicate detection and unchanged confidence, trust and `updatedAt`.
