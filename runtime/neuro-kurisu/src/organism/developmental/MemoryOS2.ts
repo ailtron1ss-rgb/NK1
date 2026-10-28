@@ -443,7 +443,10 @@ export class MemoryOS2{
    const now=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:Date.now();
    const temporalMode=temporalOptions.temporalMode??'current';
    const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
+   const sourceState=this.state;
+   const sourceItemCount=this.state.items.length;
    const corpus=this.state.items.filter(eligible);
+   const sourceCorpusContentHashes=new Map(corpus.map(item=>[item.id,memoContentHash(item.content)]));
    const corpusById=new Map(corpus.map(item=>[item.id,item]));
    // Derived vectors are valid only for the current content hash, provider and dimension-safe vector.
    // Restore may replace a record while retaining its ID, so pruning by ID alone is insufficient.
@@ -455,6 +458,23 @@ export class MemoryOS2{
    }
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
    const lexicalPool=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions).filter(eligible);
+
+   const sourceSnapshotStillMatches=()=>{
+     if(this.state!==sourceState||this.state.items.length!==sourceItemCount)return false;
+     const currentCorpus=this.state.items.filter(eligible);
+     return currentCorpus.length===corpus.length&&currentCorpus.every((item,index)=>
+       item===corpus[index]&&memoContentHash(item.content)===sourceCorpusContentHashes.get(item.id));
+   };
+   const staleSnapshotFallback=():SemanticMemoryPreview=>{
+     const liveCorpus=this.state.items.filter(eligible);
+     const liveItems=this.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalOptions);
+     const indexedItems=liveCorpus.filter(item=>{
+       const row=this.semanticEmbeddingIndex.get(item.id);
+       return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&normalizeEmbeddingVector(row.vector));
+     }).length;
+     const diagnostics=provider.diagnostics();
+     return {items:liveItems,semantic:{enabled:false,provider:diagnostics.provider,model:diagnostics.model,indexedItems,corpusItems:liveCorpus.length,coverage01:liveCorpus.length?clamp(indexedItems/liveCorpus.length):0,newlyIndexed:0,fallbackReason:'memory-corpus-changed-during-embedding',cacheEntries:diagnostics.cacheEntries,requests:diagnostics.requests,failures:diagnostics.failures,lastLatencyMs:diagnostics.lastLatencyMs}};
+   };
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
    const missingSet=new Map<string,MemoryItem2>();
    // Prioritize lexical/fuzzy candidates but reserve part of a cold-start batch for
@@ -472,6 +492,7 @@ export class MemoryOS2{
    let newlyIndexed=0;
    try{
      const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
+     if(!sourceSnapshotStillMatches())return staleSnapshotFallback();
      if(!Array.isArray(vectors)||vectors.length!==missing.length+1)throw new Error('embedding-vector-count-mismatch');
      const queryVector=normalizeEmbeddingVector(vectors[0]);
      if(!queryVector)throw new Error('invalid-query-embedding-vector');
