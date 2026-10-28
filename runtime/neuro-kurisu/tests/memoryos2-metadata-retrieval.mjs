@@ -120,9 +120,9 @@ const afterRestoreDiagnostics = memory.indexDiagnostics();
 assert.equal(afterRestoreDiagnostics.pass, true,
   'restore must clear obsolete metadata postings and rebuild current postings');
 assert.equal(afterRestoreDiagnostics.metadataIndexMismatch, 0);
-const restoredTopicHits = memory.retrieve('orchid watering schedule', 3);
+const restoredTopicHits = memory.retrieve('duplicate reconciliation beacon', 3);
 assert.equal(restoredTopicHits[0]?.m?.id ?? restoredTopicHits[0]?.id, 'm-orchid',
-  'metadata-only recall must still work after rebuilding indexes');
+  'merged metadata-only recall must still work after rebuilding indexes');
 assert.equal(memory.retrieve('ephemeral recall topic', 3).some(
   row => (row.m?.id ?? row.id) === 'm-stale',
 ), false, 'restored metadata index must not retain stale item IDs');
