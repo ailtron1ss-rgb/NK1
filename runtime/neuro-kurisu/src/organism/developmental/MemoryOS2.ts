@@ -4,6 +4,18 @@ import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPol
 import { canonicalizeMemoryContent, deriveMemoryIdentity, mergeMemoContext, mergeMemoTags, memoContentHash, stableMemoryId } from './MemoInspiredMemoryPrimitives.ts';
 import { LocalEmbeddingProvider, type TextEmbeddingProvider } from './LocalEmbeddingProvider.ts';
 import { cosineSimilarity, fnv1a32 } from '../core/NumericPrimitives.ts';
+function normalizeValidatedEmbeddingVector(value:unknown,expectedDimensions?:number):number[]|null{
+ if(!Array.isArray(value)||value.length===0||value.length>4096||
+    (expectedDimensions!==undefined&&value.length!==expectedDimensions))return null;
+ const vector:number[]=[];let normSquared=0;
+ for(const component of value){
+  if(typeof component!=='number'||!Number.isFinite(component))return null;
+  vector.push(component);normSquared+=component*component;
+ }
+ const norm=Math.sqrt(normSquared);
+ if(!Number.isFinite(norm)||norm<=1e-12)return null;
+ return vector.map(component=>component/norm);
+}
 export type EpistemicStatus='fact'|'belief'|'hypothesis'|'unknown'|'quarantined';
 export type MemoryProvenanceClass='device'|'external'|'user'|'agent'|'derived'|'simulation'|'unknown';
 export interface MemoryEvidenceSource {
@@ -487,11 +499,14 @@ export class MemoryOS2{
    let newlyIndexed=0;
    try{
      const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
-     if(vectors.length!==missing.length+1||!vectors[0]?.length)throw new Error('embedding-vector-count-mismatch');
-     const queryVector=vectors[0];
+     if(!Array.isArray(vectors)||vectors.length!==missing.length+1)throw new Error('embedding-vector-count-mismatch');
+     const queryVector=normalizeValidatedEmbeddingVector(vectors[0]);
+     if(!queryVector)throw new Error('invalid-query-embedding-vector');
      for(let index=0;index<missing.length;index++){
-       const item=missing[index],vector=vectors[index+1];
-       if(!Array.isArray(vector)||vector.length!==queryVector.length)continue;
+       const item=missing[index],vector=normalizeValidatedEmbeddingVector(vectors[index+1],queryVector.length);
+       // A malformed candidate must never enter the derived index. The valid lexical
+       // retrieval path remains available for this row and future requests.
+       if(!vector)continue;
        this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
@@ -517,6 +532,10 @@ export class MemoryOS2{
        cached.lastUsedAt=now;semanticRows.push({item,score,similarity,lexicalRank:rank??Number.MAX_SAFE_INTEGER});
      }
      semanticRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||a.lexicalRank-b.lexicalRank||a.item.id.localeCompare(b.item.id));
+     if(!semanticRows.length){
+       const diag=provider.diagnostics();
+       return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:'no-valid-semantic-candidates',cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+     }
      const items=semanticRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
      const diag=provider.diagnostics();
      return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};

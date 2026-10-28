@@ -1,3 +1,10 @@
+## [NK1][WorkPass605] Validate semantic embedding vectors before indexing (2026-10-28)
+
+- Validate query and document vectors for array shape, finite numeric components, dimension bounds, expected-dimension match, and non-zero norm before semantic ranking/cache insertion.
+- Normalize accepted vectors consistently with background semantic-index maintenance; ignore malformed document vectors and fall back to canonical lexical retrieval if no valid semantic candidates remain.
+- Add fake-provider regressions for NaN, Infinity, empty/zero-norm query vectors, malformed document vectors, and the all-invalid fallback path.
+- This is provider-output integrity and failure-recovery work; no retrieval uplift is claimed.
+
 ## [NK1][WorkPass604] Port transfer-integrity and sample-level forgetting evidence to canonical source (2026-10-28)
 
 - Port the WorkPass579–580 transfer-probe integrity and continual-outcome sample-transition diagnostics onto the current canonical source instead of merging the stale, divergent PR branch.
