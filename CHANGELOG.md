@@ -5,6 +5,12 @@
 - Prune cached vectors whose content hash or provider no longer matches a restored corpus row; this prevents stale same-ID vectors from inflating semantic coverage after restore.
 - Added regressions for NaN memory vectors and zero-norm query vectors, confirming fallback retrieval remains available and canonical memory is unchanged. This is retrieval integrity work, not a quality-uplift claim.
 
+## [NK1][WorkPass590] Reject stale in-flight semantic results after memory changes (2026-10-28)
+
+- Recheck source-state identity, item count, corpus ordering, and per-row content hashes after asynchronous embedding requests. If restore or corpus mutation occurred while a provider request was in flight, discard the result and return lexical retrieval against the live canonical corpus.
+- Apply the same live-state fallback if the embedding provider fails during a concurrent restore; stale pre-await results must not be returned or committed to the derived cache.
+- Added a regression whose provider restores a changed snapshot before resolving, proving the returned row comes from the new corpus and canonical state remains unchanged after preview. This closes an async race; no retrieval-uplift claim.
+
 ## [NK1][WorkPass508] Abstain from recent-memory fallback when retrieval has no evidence anchor (2026-10-27)
 
 - `MemoryOS2.retrieve()` previously populated a recent-memory candidate set whenever token/fuzzy/concept discovery found fewer than 96 entries, including the zero-match case. Recency, salience and generic fusion terms could then make unrelated memories look like an answer.
