@@ -30,7 +30,7 @@
     "test:cognitive-execution-planner-cadence": "node --experimental-strip-types tests/cognitive-execution-planner-cadence-workpass586.mjs",
     "test:cognitive-execution-planner-budget": "node --experimental-strip-types tests/cognitive-execution-planner-budget-workpass587.mjs",
     "test:cognitive-execution-planner-stage": "node --experimental-strip-types tests/cognitive-execution-planner-stage-workpass591.mjs",
-    "test:cognitive-camera-perception-budget": "node --experimental-strip-types tests/cognitive-camera-perception-budget-workpass595.mjs",
+    "test:cognitive-camera-perception-budget": "node --experimental-sqlite --experimental-strip-types tests/cognitive-camera-perception-budget-workpass595.mjs",
     "test:workpass490:intrinsic-experiment": "node --experimental-strip-types tests/workpass490-intrinsic-experiment-boundaries.mjs",
     "test:workpass292:motivation-to-goal": "node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs",
     "test:workpass291:payload-budget": "node --experimental-strip-types tests/workpass291-reflective-payload-budget.mjs",
