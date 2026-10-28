@@ -10,6 +10,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/tests/memoryos2-metadata-retrieval.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
+      - "runtime/neuro-kurisu/docs/MEMORY_RETRIEVAL_ABSTENTION.md"
       - "runtime/neuro-kurisu/docs/MEMORYOS2_METADATA_RETRIEVAL.md"
       - "runtime/neuro-kurisu/tests/memory-restore-id-integrity-workpass585.mjs"
       - "runtime/neuro-kurisu/docs/MEMORY_RESTORE_ID_INTEGRITY_WORKPASS585.md"
