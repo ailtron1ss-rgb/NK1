@@ -5,9 +5,11 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveExecutionPlanner.ts"
       - "runtime/neuro-kurisu/src/organism/core/ObservationPlanningStage.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-cadence-workpass586.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-budget-workpass587.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-stage-workpass591.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-camera-perception-budget-workpass595.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - "CHANGELOG.md"
@@ -50,3 +52,6 @@ jobs:
       - name: Run observation-stage integration regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:cognitive-execution-planner-stage
+      - name: Run perception-specific camera budget regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cognitive-camera-perception-budget
