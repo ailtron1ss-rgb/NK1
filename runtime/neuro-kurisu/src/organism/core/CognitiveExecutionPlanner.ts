@@ -115,6 +115,7 @@ export class CognitiveExecutionPlanner{
       plan.metabolism.governance.budgetShare01=governanceFloor;
       if(donorTotal>0) for(const domain of donorDomains) plan.metabolism[domain].budgetShare01=clamp(plan.metabolism[domain].budgetShare01-(deficit*(plan.metabolism[domain].budgetShare01/donorTotal)));
     }
+    let budgetRemaining=budget;
     for(const op of OPS){
       const domain=frame.domains[DOMAIN[op]];
       const metabolism=plan.metabolism[DOMAIN[op]];
@@ -150,12 +151,17 @@ export class CognitiveExecutionPlanner{
       // Hard safety rule: governance does not disappear under pressure; slow work does.
       if(op==='slow-cognition' && (frame.thermal01>.80||frame.ramPressure01>.86||frame.energy01<.18)) run=false;
       if((tier==='cold'||tier==='warm') && lowResource && !forced) run=false;
+      // `forced` raises priority but never creates compute capacity: a scheduled plan
+      // must fit the remaining aggregate budget, not only each operation's local share.
+      let budgetBlocked=false;
+      if(run&&cost>budgetRemaining+1e-9){run=false;budgetBlocked=true;}
+      if(run)budgetRemaining=Math.max(0,budgetRemaining-cost);
       plan.run[op]=Boolean(run);
       plan.cost01[op]=run?cost:0;
       plan.informationGain01[op]=run?informationGain:0;
       const s=plan.stats[op]; s.opportunities+=1;
       if(run){s.runs+=1;s.forced+=forced?1:0;s.estimatedCost01=clamp(s.estimatedCost01*.95+cost*.05);s.lastReason=`run:${tier};evc=${expectedValue.toFixed(2)};cheap=${cheap};forced=${forced}`;}
-      else{s.skips+=1;s.estimatedSavings01=clamp(s.estimatedSavings01*.95+cost*.05);s.lastReason=`skip:${!domain?'domain-cold':!spineRun?'spine-gated':lowResource?'resource-guard':expectedValue<valueThreshold?'evc-low':'cadence'}`;}
+      else{s.skips+=1;s.estimatedSavings01=clamp(s.estimatedSavings01*.95+cost*.05);s.lastReason=`skip:${budgetBlocked?'budget-exhausted':!domain?'domain-cold':!spineRun?'spine-gated':lowResource?'resource-guard':expectedValue<valueThreshold?'evc-low':'cadence'}`;}
     }
     this.plan=plan;
     return this.snapshot();
