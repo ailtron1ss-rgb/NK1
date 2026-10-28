@@ -95,14 +95,21 @@ export function withIndependentCandidateEvaluation(
         experimentAuthority: { ...authority, method },
       });
       await assertCurrent();
+      const evaluationPlaceholder = { validation: [], holdout: [] };
+      // RevisedCandidateEvaluator keeps the same request shape for every arm. The host
+      // evaluator reads only payload and payloadFingerprint, then builds fresh reports.
       const baselineResult = await evaluateMethod(baselineMethod!)({
         payload: baselinePayload,
         payloadFingerprint: prepared.baselinePayloadFingerprint!,
+        baseline: evaluationPlaceholder,
+        previousEvaluation: evaluationPlaceholder,
       });
       await assertCurrent();
       const sourceResult = await evaluateMethod(sourceMethod!)({
         payload: sourceCandidatePayload,
         payloadFingerprint: prepared.sourceCandidatePayloadFingerprint!,
+        baseline: evaluationPlaceholder,
+        previousEvaluation: evaluationPlaceholder,
       });
       await assertCurrent();
       if (!baselineResult?.evaluation || !Array.isArray(baselineResult.evaluation.validation) ||
