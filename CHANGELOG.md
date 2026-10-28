@@ -2628,3 +2628,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - `HexisAdaptationFabric.reviseBelief()` could mark a source as duplicate (`applied=false`) but still raise `belief.trust01` and advance `updatedAt`, because those mutations were outside the `if (applied)` statement.
 - Only update belief trust/time for an independent source; duplicates still emit a bounded audit event and duplicate telemetry, but cannot change confidence, trust, or semantic update time by replaying the same source with a higher declared `trust01`.
 - Added a regression where a low-trust observation is replayed with trust 0.99; it verifies duplicate detection and unchanged confidence, trust and `updatedAt`.
+
+
+## [NK1][WorkPass602] Do not trust a caller-declared corroboration class for authority boosts (2026-10-28)
+
+- `HexisCanonicalEvidenceBridge` allowed `evidenceClass: 'corroborated'` to raise a source's authority cap from 0.64 to 0.76, even though the provenance envelope explicitly defines `evidenceClass` and `contentFingerprint` as declared lineage metadata rather than source authentication.
+- Use the same 0.64 per-source authority cap for both direct-observation and caller-declared corroborated labels. Actual corroboration remains represented as distinct independent source lineages; the label alone cannot increase authority.
+- Added an isolated canonical-memory regression with only one declared-corroborated source, proving it is accepted as lineage but receives authority 0.64 and does not change canonical belief confidence.
