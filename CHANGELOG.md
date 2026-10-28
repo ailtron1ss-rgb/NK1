@@ -1,3 +1,8 @@
+## [NK1][WorkPass601] Document exact release-license review blockers (2026-10-28)
+
+- Record the current publisher audit's 135 missing review/evidence items, affected archive/license paths, dependency fingerprint, and required human decision sequence in `docs/RELEASE_LICENSE_REVIEW_WORKLIST_2026-10-28.md`.
+- Keep the release gate fail-closed; the worklist does not approve licensing or redistribution and does not enable publication.
+
 ## [NK1][WorkPass598] Expose canonical retrieval dataset fingerprint (2026-10-28)
 
 - Export the source tree's canonical labelled-dataset fingerprint through a narrow wrapper around the existing hash function.
