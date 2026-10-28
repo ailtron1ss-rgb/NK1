@@ -58,6 +58,28 @@ assert.equal(agedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 
   agedBeliefBeforeReplay.confidence01,
   'confidence must remain unchanged when an old evidence source is replayed');
 
+// The idempotency backstop must remain effective after persistence/restore, not
+// only within the live fabric's current audit instance.
+const restoredAgedEvidenceFabric = new HexisAdaptationFabric();
+restoredAgedEvidenceFabric.restore(agedEvidenceFabric.snapshot());
+const agedBeliefAfterRestore = restoredAgedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence');
+assert(agedBeliefAfterRestore);
+assert.equal(agedBeliefAfterRestore.sourceKeys.includes('aged-source-original'), false);
+const restoredAgedReplay = restoredAgedEvidenceFabric.reviseBelief({
+  memoryId: 'mem-aged-evidence',
+  confidence01: agedBeliefAfterRestore.confidence01,
+  trust01: .99,
+  stance: 'contradicts',
+  evidence: { ref: 'aged-source-original', trust01: .99 },
+});
+assert.equal(restoredAgedReplay.independent, false,
+  'the audit-based replay guard must survive restore when the old fast-list key is absent');
+assert.equal(restoredAgedReplay.applied, false);
+assert.equal(restoredAgedReplay.reason, 'duplicate_source');
+assert.equal(restoredAgedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence').confidence01,
+  agedBeliefAfterRestore.confidence01,
+  'restored replay must not re-apply old evidence to belief confidence');
+
 const t1 = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'alpha',confidence01:.7,validFrom:1000,source:'test',value:'alpha'});
 fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'beta',confidence01:.8,validFrom:2000,source:'test',value:'beta'});
 assert.equal(fabric.temporalAt('mem-1',1500)?.valueHash, t1.valueHash);
@@ -111,5 +133,5 @@ assert.equal(fabric.revokeConnectorPolicy(policy.id),true);
 
 const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:'local',risk01:.9});
 assert.equal(exec.resolvedPlacement,'sandbox');
-console.log('HEXIS_ADAPTATION_PASS', JSON.stringify({ agedReplayDetected: agedReplay.reason === 'duplicate_source', agedSourceKeys: agedBeliefBeforeReplay.sourceKeys.length, auditRows: beforeAgedReplay.beliefAudit.length }));
+console.log('HEXIS_ADAPTATION_PASS', JSON.stringify({ agedReplayDetected: agedReplay.reason === 'duplicate_source', restoredAgedReplayDetected: restoredAgedReplay.reason === 'duplicate_source', agedSourceKeys: agedBeliefBeforeReplay.sourceKeys.length, auditRows: beforeAgedReplay.beliefAudit.length }));
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
