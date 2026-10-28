@@ -43,6 +43,7 @@ let pressureInput;
 let spineInput;
 let economyWritten;
 let writtenPlan;
+let budgetReads = 0;
 const host = {
   resourceAllocator: {
     decide(input) { resourceInput = input; return { mode: 'normal', budget01: remainingBudget }; },
@@ -67,7 +68,7 @@ const host = {
   snapshotExternalObserver() { return { unresolvedCount: 0, observations: 1, assessments: 1, contradictedCount: 0, verificationRate01: 1 }; },
   snapshotShadow() { return { ensembleDisagreement01: .1, escalations: 0, recent: [] }; },
   snapshotCognitiveField() { return { tick: state.tick, channels: [] }; },
-  getBudget() { return { mode: 'normal', remaining01: remainingBudget }; },
+  getBudget() { budgetReads++; return budgetReads === 1 ? { mode: 'normal', remaining01: remainingBudget } : { mode: 'protect', remaining01: .1 }; },
   writeCognitiveResourceEconomy(value) { economyWritten = structuredClone(value); },
   writeExecutionPlan(value) { writtenPlan = structuredClone(value); },
 };
@@ -79,6 +80,9 @@ const plannedCost = Object.values(plan.cost01).reduce((sum, cost) => sum + cost,
 assert.equal(result.cognitiveFrame.tick, state.tick + 1);
 assert.equal(resourceInput.externalInput, true);
 assert.equal(spineInput.externalInput, true);
+assert.equal(budgetReads, 1, 'one observation plan must use one consistent budget snapshot');
+assert.equal(spineInput.budgetMode, 'normal', 'spine scheduler must use the same captured budget mode');
+assert.equal(spineInput.remainingBudget01, remainingBudget, 'spine scheduler must use the captured remaining budget');
 assert.ok(pressureInput.predictionDebt);
 assert.equal(result.cognitiveResourceAllocation.totalBudget01, remainingBudget);
 assert.ok(plannedCost <= remainingBudget + 1e-9,
