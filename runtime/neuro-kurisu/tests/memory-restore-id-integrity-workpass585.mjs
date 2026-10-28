@@ -64,6 +64,8 @@ assert.deepEqual(report, {
   conflictingDuplicateRowsDropped: 2,
   truncatedItems: 0,
 }, 'restore must report invalid, collapsed, and conflicting identity rows');
+assert.deepEqual(restored.restoreIntegrityDiagnostics(), report,
+  'the last restore-integrity report must remain inspectable after restore returns');
 assert.equal(restored.size(), 2, 'only unique, well-formed identities may enter canonical memory state');
 const restoredItems = restored.snapshot().items;
 assert.equal(new Set(restoredItems.map(item => item.id)).size, restoredItems.length,
@@ -79,6 +81,8 @@ const reverseReport = reverseRestore.restore({
   items: [...structuredClone(corruptedSnapshot.items)].reverse(),
 });
 assert.deepEqual(reverseReport, report, 'restore integrity accounting must not depend on snapshot row order');
+assert.deepEqual(reverseRestore.restoreIntegrityDiagnostics(), reverseReport,
+  'restore diagnostics accessor must expose the same integrity accounting');
 const normalize = memory => memory.snapshot().items
   .map(item => ({ id: item.id, content: item.content, salience: item.salience }))
   .sort((a, b) => a.id.localeCompare(b.id));
