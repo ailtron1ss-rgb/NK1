@@ -255,6 +255,17 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
 }
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
+function normalizeEmbeddingVector(raw:unknown,expectedDimension?:number):number[]|null{
+ if(!Array.isArray(raw)||raw.length===0||raw.length>4096||(expectedDimension!==undefined&&raw.length!==expectedDimension))return null;
+ const values:number[]=[];
+ for(const value of raw){
+  if(typeof value!=='number'&&typeof value!=='string')return null;
+  const numeric=Number(value);if(!Number.isFinite(numeric))return null;values.push(numeric);
+ }
+ const squaredNorm=values.reduce((sum,value)=>sum+value*value,0);
+ const norm=Math.sqrt(squaredNorm);if(!Number.isFinite(norm)||norm<=1e-12)return null;
+ return values.map(value=>value/norm);
+}
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
@@ -433,8 +444,15 @@ export class MemoryOS2{
    const temporalMode=temporalOptions.temporalMode??'current';
    const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
    const corpus=this.state.items.filter(eligible);
-   const corpusIds=new Set(corpus.map(item=>item.id));
-   for(const id of this.semanticEmbeddingIndex.keys())if(!corpusIds.has(id))this.semanticEmbeddingIndex.delete(id);
+   const corpusById=new Map(corpus.map(item=>[item.id,item]));
+   // Derived vectors are valid only for the current content hash, provider and dimension-safe vector.
+   // Restore may replace a record while retaining its ID, so pruning by ID alone is insufficient.
+   for(const [id,row] of this.semanticEmbeddingIndex){
+     const item=corpusById.get(id);
+     if(!item||row.providerId!==provider.providerId||row.contentHash!==memoContentHash(item.content)||!normalizeEmbeddingVector(row.vector)){
+       this.semanticEmbeddingIndex.delete(id);
+     }
+   }
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
    const lexicalPool=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions).filter(eligible);
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
@@ -454,11 +472,18 @@ export class MemoryOS2{
    let newlyIndexed=0;
    try{
      const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
-     if(vectors.length!==missing.length+1||!vectors[0]?.length)throw new Error('embedding-vector-count-mismatch');
-     const queryVector=vectors[0];
+     if(!Array.isArray(vectors)||vectors.length!==missing.length+1)throw new Error('embedding-vector-count-mismatch');
+     const queryVector=normalizeEmbeddingVector(vectors[0]);
+     if(!queryVector)throw new Error('invalid-query-embedding-vector');
+     // Validate the complete batch before publishing any row. A malformed provider
+     // response must not poison the derived index or suppress the lexical fallback.
+     const normalizedVectors=missing.map((item,index)=>{
+       const vector=normalizeEmbeddingVector(vectors[index+1],queryVector.length);
+       if(!vector)throw new Error('invalid-memory-embedding-vector');
+       return vector;
+     });
      for(let index=0;index<missing.length;index++){
-       const item=missing[index],vector=vectors[index+1];
-       if(!Array.isArray(vector)||vector.length!==queryVector.length)continue;
+       const item=missing[index],vector=normalizedVectors[index]!;
        this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
