@@ -85,6 +85,23 @@ const boundedMetadataHits = memory.retrieve('retention beacon keyword', 4);
 assert.equal(boundedMetadataHits[0]?.m?.id ?? boundedMetadataHits[0]?.id, 'm-bounded-metadata',
   'allowlisted topic fields must survive unrelated context keys and a noisy metadata corpus');
 
+// An exact-content replay/reconciliation merges new tags and context into the
+// existing canonical memory. The metadata postings must follow that mutation;
+// the old record remains outside the 128-item recent fallback window.
+const reconsolidated = encode('m-orchid', 'A short note about reorganizing a bookshelf on Sunday.', {
+  tags: ['dedup-reconciliation-beacon'],
+  context: { topic: 'duplicate reconciliation beacon', category: 'plant-care' },
+  entities: ['Phalaenopsis'],
+});
+assert.equal(reconsolidated?.id ?? reconsolidated?.m?.id, 'm-orchid');
+const reconciledMetadataHits = memory.retrieve('duplicate reconciliation beacon', 4);
+assert.equal(reconciledMetadataHits[0]?.m?.id ?? reconciledMetadataHits[0]?.id, 'm-orchid',
+  'deduplicating encode must index newly merged metadata for an old memory');
+const postReconsolidationHealth = memory.indexDiagnostics();
+assert.equal(postReconsolidationHealth.pass, true,
+  'metadata postings must track merged tags/context without a full rebuild');
+assert.equal(postReconsolidationHealth.metadataIndexMismatch, 0);
+
 const snapshot = memory.snapshot();
 assert.equal(snapshot.items.length, 4 + distractorCount, 'metadata retrieval must be read-only');
 const indexHealth = memory.indexDiagnostics();
@@ -115,5 +132,6 @@ console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   entityTop1: entityHits[0]?.m?.id ?? entityHits[0]?.id,
   directContentTop1: directHits[0]?.m?.id ?? directHits[0]?.id,
   boundedMetadataTop1: boundedMetadataHits[0]?.m?.id ?? boundedMetadataHits[0]?.id,
+  reconciledMetadataTop1: reconciledMetadataHits[0]?.m?.id ?? reconciledMetadataHits[0]?.id,
   liveItems: snapshot.items.length,
 }));
