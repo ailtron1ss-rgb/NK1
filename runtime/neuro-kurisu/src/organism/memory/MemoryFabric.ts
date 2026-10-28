@@ -374,7 +374,7 @@ export class MemoryFabric {
     this.statsData.retrievals++;
     this.statsData.retrievalHits+=rows.length;
     const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
+    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:Math.max(0,Math.min(1,this.memoryOS.retrievalDiagnostics().candidateCount/192))});
     this.lastPolicyDecisionId=decision.id;
     for(const row of rows)this.touchHot(row.id);
     this.unifiedMemory.recordRetrieval(query,rows.length);
