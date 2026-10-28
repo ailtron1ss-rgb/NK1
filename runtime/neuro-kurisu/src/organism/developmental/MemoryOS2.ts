@@ -392,12 +392,13 @@ export class MemoryOS2{
    const dimensions=Number(vectors[0]?.length??0);
    for(let index=0;index<candidates.length;index++){
     const item=candidates[index],raw=vectors[index];
-    if(!Array.isArray(raw)||!dimensions||dimensions>4096||raw.length!==dimensions||raw.some(value=>!Number.isFinite(Number(value)))){failRow(item);continue;}
-    const clean=raw.map(Number);const norm=Math.sqrt(clean.reduce((sum,value)=>sum+value*value,0));
-    if(!(norm>1e-12)){failRow(item);continue;}
+    // Share the preview path's strict dimension/norm/finite checks; finite coordinates
+    // can still overflow the squared norm to Infinity and otherwise become a zero vector.
+    const clean=normalizeEmbeddingVector(raw,dimensions);
+    if(!clean){failRow(item);continue;}
     const current=this.state.items.find(row=>row.id===item.id);
     if(!current||current.dormant||current.epistemicStatus==='quarantined'||memoContentHash(current.content)!==memoContentHash(item.content)){staleSkipped++;continue;}
-    this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean.map(value=>value/norm),lastUsedAt:now});
+    this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(current.content),providerId:provider.providerId,vector:clean,lastUsedAt:now});
     this.semanticEmbeddingRetry.delete(item.id);indexed++;
    }
    while(this.semanticEmbeddingIndex.size>1600){
