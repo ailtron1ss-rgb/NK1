@@ -37,10 +37,13 @@ async function main() {
   const metadata = await stat(absolute);
   if (!metadata.isFile()) throw new Error('labels-not-a-file');
   if (metadata.size > MAX_LABEL_BYTES) throw new Error(`labels-too-large:${metadata.size}>${MAX_LABEL_BYTES}`);
-  const source = await readFile(absolute, 'utf8');
+  const bytes = await readFile(absolute);
+  let source;
+  try { source = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { throw new Error('labels-invalid-utf8'); }
   const examples = parseMemoryRetrievalLabels(source);
   const contentSha256 = fingerprintMemoryRetrievalDataset(examples);
-  const rawSourceSha256 = createHash('sha256').update(source, 'utf8').digest('hex');
+  const rawSourceSha256 = createHash('sha256').update(bytes).digest('hex');
   const holdout = examples.filter(row => row.split === 'holdout');
   const report = {
     schemaVersion: 1,
