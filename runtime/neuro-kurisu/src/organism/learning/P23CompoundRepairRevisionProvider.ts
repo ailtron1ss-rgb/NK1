@@ -327,11 +327,25 @@ export async function createNativeCompoundRepairRevisionProvider(
     if (!source) {
       throw new Error('native-p23-revision-no-candidate-matches-signed-proposal-and-payload');
     }
+
+    let baselinePayload: unknown;
+    let baselinePayloadFingerprint: string;
+    let baselineIdentity: { version: number; payloadFingerprint: string; proposalId: string };
     if (source.status === 'active') {
-      if (active.payloadFingerprint.toLowerCase() !== dataset.candidatePayloadFingerprint ||
-          source.previousActive?.payloadFingerprint.toLowerCase() !== dataset.baselinePayloadFingerprint) {
+      if (active.version !== source.version ||
+          active.payloadFingerprint.toLowerCase() !== dataset.candidatePayloadFingerprint ||
+          active.proposalId !== source.proposalId ||
+          !source.previousActive ||
+          source.previousActive.payloadFingerprint.toLowerCase() !== dataset.baselinePayloadFingerprint) {
         throw new Error('native-p23-revision-active-source-payload-binding-mismatch');
       }
+      baselinePayload = source.previousActive.payload;
+      baselinePayloadFingerprint = source.previousActive.payloadFingerprint;
+      baselineIdentity = {
+        version: source.previousActive.version,
+        payloadFingerprint: source.previousActive.payloadFingerprint,
+        proposalId: source.previousActive.proposalId,
+      };
     } else {
       if (active.payloadFingerprint.toLowerCase() !== dataset.baselinePayloadFingerprint) {
         throw new Error('native-p23-revision-active-baseline-payload-binding-mismatch');
@@ -339,14 +353,75 @@ export async function createNativeCompoundRepairRevisionProvider(
       if (source.baseVersion !== active.version) {
         throw new Error('native-p23-revision-source-base-version-is-stale');
       }
+      baselinePayload = active.payload;
+      baselinePayloadFingerprint = active.payloadFingerprint;
+      baselineIdentity = {
+        version: active.version,
+        payloadFingerprint: active.payloadFingerprint,
+        proposalId: active.proposalId,
+      };
     }
+
+    const sourceIdentity = {
+      candidateId: source.candidateId,
+      skillId: source.skillId,
+      version: source.version,
+      status: source.status,
+      payloadFingerprint: source.payloadFingerprint,
+      proposalId: source.proposalId,
+      proposalOutcomeFingerprint: source.proposalOutcomeFingerprint,
+      baseVersion: source.baseVersion,
+    };
+    const activeIdentity = {
+      version: active.version,
+      payloadFingerprint: active.payloadFingerprint,
+      proposalId: active.proposalId,
+    };
+    const assertCanonicalLineageCurrent = async (): Promise<void> => {
+      const latest = await issueVerifiedProposal(datasetPath, options.root, options.stateDirectory, trustedKeys);
+      if (latest.proposal.proposalId !== proposal.proposalId ||
+          latest.proposal.outcomeFingerprint !== proposal.outcomeFingerprint ||
+          latest.dataset.baselinePayloadFingerprint !== dataset.baselinePayloadFingerprint ||
+          latest.dataset.candidatePayloadFingerprint !== dataset.candidatePayloadFingerprint) {
+        throw new Error('native-p23-revision-signed-dataset-changed-during-independent-evaluation');
+      }
+      const current = options.candidateStore.snapshot();
+      const currentSource = current.candidates.find(candidate => candidate.candidateId === sourceIdentity.candidateId);
+      const currentActive = current.active.find(candidate => candidate.skillId === input.skillId);
+      if (!currentSource || !currentActive ||
+          currentSource.skillId !== sourceIdentity.skillId ||
+          currentSource.version !== sourceIdentity.version ||
+          currentSource.status !== sourceIdentity.status ||
+          currentSource.payloadFingerprint !== sourceIdentity.payloadFingerprint ||
+          currentSource.proposalId !== sourceIdentity.proposalId ||
+          currentSource.proposalOutcomeFingerprint !== sourceIdentity.proposalOutcomeFingerprint ||
+          currentSource.baseVersion !== sourceIdentity.baseVersion ||
+          currentActive.version !== activeIdentity.version ||
+          currentActive.payloadFingerprint !== activeIdentity.payloadFingerprint ||
+          currentActive.proposalId !== activeIdentity.proposalId) {
+        throw new Error('native-p23-revision-canonical-store-lineage-changed-during-independent-evaluation');
+      }
+      const currentBaseline = currentSource.status === 'active' ? currentSource.previousActive : currentActive;
+      if (!currentBaseline ||
+          currentBaseline.version !== baselineIdentity.version ||
+          currentBaseline.payloadFingerprint !== baselineIdentity.payloadFingerprint ||
+          currentBaseline.proposalId !== baselineIdentity.proposalId) {
+        throw new Error('native-p23-revision-baseline-changed-during-independent-evaluation');
+      }
+    };
+
     return {
       proposal,
       sourceCandidateId: source.candidateId,
-      // The canonical provider wrapper overwrites these with fresh independent
-      // baseline/source results. Empty values make no claim and are not used in production.
+      // These placeholders are never trusted; withIndependentCandidateEvaluation
+      // replaces them with three distinct host-owned method evaluations.
       baseline: { validation: [], holdout: [] },
       candidateEvaluation: { validation: [], holdout: [] },
+      baselinePayload,
+      baselinePayloadFingerprint,
+      sourceCandidatePayload: source.payload,
+      sourceCandidatePayloadFingerprint: source.payloadFingerprint,
+      assertCanonicalLineageCurrent,
       generate: options.generateSkillRevision,
       evaluateRevisedCandidate: async () => {
         throw new Error('native-p23-revision-requires-independent-evaluation-wrapper');
