@@ -76,4 +76,48 @@ assert.equal(fallback.semantic.enabled, false);
 assert.match(fallback.semantic.fallbackReason, /local-model-offline/);
 assert.ok(Array.isArray(fallback.items), 'provider failures should return deterministic hybrid fallback results');
 
-console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason }));
+class InvalidMemoryVectorProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:invalid-memory-vector';
+  modelId = 'invalid-memory-vector';
+  async embedBatch(texts) {
+    return texts.map((raw, index) => {
+      if (index === 0) return [1, 0, 0];
+      if (/credential recovery/i.test(String(raw))) return [Number.NaN, 0, 0];
+      return [0, 1, 0];
+    });
+  }
+}
+const invalidMemory = new MemoryOS2({ embeddingProvider: new InvalidMemoryVectorProvider() });
+invalidMemory.restore(before);
+const invalidMemoryFallback = await invalidMemory.previewRetrieveWithEmbeddings(
+  'credential recovery account access', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(invalidMemoryFallback.semantic.enabled, false,
+  'a malformed corpus vector must fail closed into deterministic lexical retrieval');
+assert.match(invalidMemoryFallback.semantic.fallbackReason, /invalid-memory-embedding-vector/);
+assert.ok(invalidMemoryFallback.items.some(item => item.id === 'credential-recovery'),
+  'malformed semantic vectors must not hide a lexical match from the fallback');
+assert.equal(invalidMemoryFallback.semantic.indexedItems, 0,
+  'the failed batch must not partially publish vectors into the derived semantic index');
+assert.deepEqual(invalidMemory.snapshot(), before,
+  'invalid provider vectors and fallback retrieval must not mutate canonical memory state');
+
+class ZeroQueryVectorProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:zero-query-vector';
+  modelId = 'zero-query-vector';
+  async embedBatch(texts) {
+    return texts.map((_, index) => index === 0 ? [0, 0, 0] : [1, 0, 0]);
+  }
+}
+const zeroQueryMemory = new MemoryOS2({ embeddingProvider: new ZeroQueryVectorProvider() });
+zeroQueryMemory.restore(before);
+const zeroQueryFallback = await zeroQueryMemory.previewRetrieveWithEmbeddings(
+  'credential recovery account access', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(zeroQueryFallback.semantic.enabled, false, 'zero-norm query embeddings must be rejected');
+assert.match(zeroQueryFallback.semantic.fallbackReason, /invalid-query-embedding-vector/);
+assert.ok(zeroQueryFallback.items.some(item => item.id === 'credential-recovery'),
+  'a zero query vector must retain the deterministic lexical fallback');
+
+
+console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, invalidMemoryFallback: invalidMemoryFallback.semantic.fallbackReason, zeroQueryFallback: zeroQueryFallback.semantic.fallbackReason }));
