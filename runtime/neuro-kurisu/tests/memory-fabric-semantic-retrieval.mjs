@@ -55,6 +55,9 @@ try{
     assert.equal(fabric.inspect().stats.retrievalHits,1);
     assert.equal(unified.snapshot().retrieveCount,1,'the chosen lexical result is recorded once');
     assert.equal(unified.snapshot().recentQueries.length,1);
+    const accounting=fabric.inspect().retrievalAccounting;
+    assert.equal(accounting.costSource,'isolated-lexical-preview');
+    assert.ok(accounting.computeCost01>0&&accounting.computeCost01<=1,'lexical policy cost must come from this query’s isolated preview');
     const counts=new Map(memoryOS.snapshot().items.map(row=>[row.id,row.retrievalCount]));
     assert.equal(counts.get(rows[0].id),1,'only the selected lexical row receives an access update');
     assert.equal(counts.get('semantic-target'),0);
@@ -68,6 +71,9 @@ try{
     assert.equal(fabric.inspect().stats.retrievalHits,1);
     assert.equal(unified.snapshot().retrieveCount,1,'semantic result is recorded exactly once');
     assert.equal(unified.snapshot().recentQueries.length,1);
+    const accounting=fabric.inspect().retrievalAccounting;
+    assert.equal(accounting.costSource,'semantic-runtime-estimate');
+    assert.ok(accounting.computeCost01>0&&accounting.computeCost01<=1,'semantic policy cost must derive from this attempt, not stale lexical diagnostics');
     const counts=new Map(memoryOS.snapshot().items.map(row=>[row.id,row.retrievalCount]));
     assert.equal(counts.get('semantic-target'),1,'the selected semantic row receives the canonical access update');
     assert.equal(counts.get('lexical-distractor-0'),0,'discarded lexical fallback must not receive access credit');

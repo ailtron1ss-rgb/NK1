@@ -1,3 +1,10 @@
+## [NK1][WorkPass608] Attribute retrieval cost to the selected execution path (2026-10-28)
+
+- Add isolated lexical preview diagnostics so candidateCount/cost no longer reads whichever query last mutated live MemoryOS2 diagnostic state.
+- Attribute semantic retrieval cost to the actual attempt using corpus scan size, embedding backfill work and provider latency, bounded to [0,1]; report cost source and selected count in MemoryFabric runtime diagnostics.
+- Extend the live fake-provider regression to assert lexical and semantic paths use their own cost evidence, not stale prior-query diagnostics.
+- The estimate is an adaptive-policy workload signal, not a benchmark of real CPU cost or evidence of retrieval uplift.
+
 ## [NK1][WorkPass607] Commit only the selected cognitive retrieval result (2026-10-28)
 
 - Keep the lexical fallback preview read-only while the optional semantic path is deciding; previously fallback accounting/access updates occurred even when semantic retrieval replaced it.
