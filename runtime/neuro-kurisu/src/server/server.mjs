@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { GepaReflectiveCandidateGenerator } from '../organism/learning/GepaReflectiveCandidateGenerator.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
@@ -44,6 +45,11 @@ const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
 const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
+// Explicitly opt-in GEPA sidecar; local llama.cpp remains the default generator.
+const GEPA_REVISION_GENERATOR = GepaReflectiveCandidateGenerator.fromEnvironment();
+const P23_SKILL_REVISION_GENERATOR = (request) => GEPA_REVISION_GENERATOR.diagnostics().enabled
+    ? GEPA_REVISION_GENERATOR.asP23RevisionGenerator()(request)
+    : generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request);
 async function configureCompoundRepairRevision() {
     if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
         return undefined;
@@ -71,9 +77,10 @@ async function configureCompoundRepairRevision() {
         candidateStore: lifecycle.store,
         trustedRunRegistry: lifecycle.registry,
         stateDirectory: STATE,
-        // Real llama.cpp-compatible local generator. The provider module still owns
-        // authentic proposal construction and independent baseline/candidate evaluation.
-        generateSkillRevision: (request) => generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request),
+        // Candidate generation only. GEPA is disabled by default; when enabled, P23's
+        // exact-payload independent evaluator and signed promotion gates remain mandatory.
+        // The provider module still owns proposal construction and evaluation orchestration.
+        generateSkillRevision: P23_SKILL_REVISION_GENERATOR,
     });
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
