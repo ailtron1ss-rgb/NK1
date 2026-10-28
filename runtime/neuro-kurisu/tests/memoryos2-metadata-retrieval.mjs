@@ -58,6 +58,15 @@ encode('m-bounded-metadata', 'A brief unrelated note about updating a calendar.'
   entities: noisyEntities,
   context: crowdedContext,
 });
+const distractorCount = 132;
+for (let i = 0; i < distractorCount; i++) {
+  encode(`distractor-${i}`,
+    `An unrelated archive entry ${i} about generic desk organization and routine maintenance.`, {
+      tags: [`unrelated-distractor-${i}`],
+      context: { topic: `generic archive topic ${i}`, category: 'unrelated-filler' },
+      entities: [`DistractorEntity${i}`],
+    });
+}
 
 const topicHits = memory.retrieve('orchid watering schedule', 3);
 assert.equal(topicHits[0]?.m?.id ?? topicHits[0]?.id, 'm-orchid',
@@ -77,7 +86,7 @@ assert.equal(boundedMetadataHits[0]?.m?.id ?? boundedMetadataHits[0]?.id, 'm-bou
   'allowlisted topic fields must survive unrelated context keys and a noisy metadata corpus');
 
 const snapshot = memory.snapshot();
-assert.equal(snapshot.items.length, 4, 'metadata retrieval must be read-only');
+assert.equal(snapshot.items.length, 4 + distractorCount, 'metadata retrieval must be read-only');
 const indexHealth = memory.indexDiagnostics();
 assert.equal(indexHealth.pass, true, 'metadata postings must remain aligned with canonical MemoryOS2 indexes');
 assert.equal(indexHealth.metadataIndexMismatch, 0);
