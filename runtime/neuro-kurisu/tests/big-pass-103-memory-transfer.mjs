@@ -48,7 +48,7 @@ assert.equal(exp.pairedComparable,true); assert.equal(exp.evidenceGrade,'randomi
 const cx=new CausalExperienceStream();
 const replayRecord=cx.recordExternalLearningEvent({tick:8,taskId:'replay:m103',action:'reflect',reward01:.5,success01:.5,surprise01:.7,novelty01:.6,causalStrength01:.67,provenance:'experience-replay',stateGrounded:false,sourceMemoryId:'m103',evidenceKey:'replay:m103'});
 const repairRecord=cx.recordExternalLearningEvent({tick:9,taskId:'repair:demo',action:'explore',reward01:.9,success01:1,surprise01:.4,novelty01:.5,causalStrength01:.75,provenance:'skill-repair',stateGrounded:false,evidenceKey:'repair:demo'});
-assert.equal(replayRecord.provenance,'experience-replay'); assert.equal(replayRecord.stateGrounded,false); assert.equal(repairRecord.provenance,'skill-repair');
+assert.equal(replayRecord.provenance,'external','caller-provided replay provenance must be downgraded without trusted runtime evidence'); assert.equal(replayRecord.stateGrounded,false); assert.equal(repairRecord.provenance,'external','caller-provided skill-repair provenance must also be downgraded');
 
 const ul=new UnifiedLearningSubstrate();
 const replaySignal=ul.ingestExternalSignal({taskId:'replay:m103',action:'reflect',reward01:.5,success01:.5,surprise01:.7,novelty01:.6,causalStrength01:.67,transferPotential01:.65,provenance:'experience-replay'});
