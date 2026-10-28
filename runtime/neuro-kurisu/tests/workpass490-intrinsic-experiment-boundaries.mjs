@@ -14,6 +14,9 @@ assert.equal(first.id,`exp-${now}-test-id`);
 assert.equal(first.action,'inspect');
 assert.ok(Number.isFinite(first.expectedInformationGain));
 assert.ok(first.expectedInformationGain>=0&&first.expectedInformationGain<=1);
+assert.equal(first.epistemicStatus,'hypothesis','internally generated experiments must remain explicitly unverified');
+assert.equal(first.status,'candidate','intrinsic drive must never mark an experiment validated');
+assert.equal(first.verificationRequired,true,'generated experiment requires observed evidence before promotion');
 
 now+=10;
 const second=generator.generate({uncertainty:.8,predictionError:.2,novelty:.1,goals});
