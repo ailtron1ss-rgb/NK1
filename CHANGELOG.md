@@ -1,3 +1,10 @@
+## [NK1][WorkPass589] Fail closed on malformed semantic embedding vectors (2026-10-28)
+
+- Added a shared bounded embedding-vector normalizer that rejects empty, oversized, dimension-mismatched, non-finite, and zero-norm vectors and normalizes accepted vectors.
+- `previewRetrieveWithEmbeddings()` now validates the query vector and every corpus vector before publishing any result into the derived cache. A malformed batch triggers deterministic lexical/hybrid fallback instead of inserting NaN/zero vectors or partially mutating the embedding index.
+- Prune cached vectors whose content hash or provider no longer matches a restored corpus row; this prevents stale same-ID vectors from inflating semantic coverage after restore.
+- Added regressions for NaN memory vectors and zero-norm query vectors, confirming fallback retrieval remains available and canonical memory is unchanged. This is retrieval integrity work, not a quality-uplift claim.
+
 ## [NK1][WorkPass508] Abstain from recent-memory fallback when retrieval has no evidence anchor (2026-10-27)
 
 - `MemoryOS2.retrieve()` previously populated a recent-memory candidate set whenever token/fuzzy/concept discovery found fewer than 96 entries, including the zero-match case. Recency, salience and generic fusion terms could then make unrelated memories look like an answer.
