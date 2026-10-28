@@ -45,6 +45,19 @@ encode('m-direct', 'Instructions for resetting a laptop after a system update.',
   context: { topic: 'device maintenance', category: 'technology' },
   entities: ['Laptop'],
 });
+const noisyTags = Array.from({ length: 24 }, (_, i) =>
+  `tagnoise${i} alpha${i} beta${i} gamma${i} delta${i} epsilon${i} zetaword${i} etaword${i} thetaword${i} iotaword${i}`);
+const noisyEntities = Array.from({ length: 24 }, (_, i) =>
+  `entitynoise${i} ealpha${i} ebeta${i} egamma${i} edelta${i} eepsilon${i} ezeta${i} eeta${i} etheta${i} eiota${i}`);
+const crowdedContext = Object.fromEntries(Array.from({ length: 40 }, (_, i) =>
+  [`unlistedContext${i}`, `unlisted value ${i}`]));
+crowdedContext.topic = 'retention beacon keyword';
+crowdedContext.category = 'bounded metadata';
+encode('m-bounded-metadata', 'A brief unrelated note about updating a calendar.', {
+  tags: noisyTags,
+  entities: noisyEntities,
+  context: crowdedContext,
+});
 
 const topicHits = memory.retrieve('orchid watering schedule', 3);
 assert.equal(topicHits[0]?.m?.id ?? topicHits[0]?.id, 'm-orchid',
@@ -55,12 +68,16 @@ const entityHits = memory.retrieve('Phalaenopsis', 3);
 assert.equal(entityHits[0]?.m?.id ?? entityHits[0]?.id, 'm-orchid',
   'entity metadata should provide a candidate even when entity terms are absent from content');
 
-const directHits = memory.retrieve('resetting a laptop system update', 3);
+const directHits = memory.retrieve('resetting a laptop system update', 4);
 assert.equal(directHits[0]?.m?.id ?? directHits[0]?.id, 'm-direct',
   'direct content/BM25 matches must remain stronger than unrelated metadata hits');
 
+const boundedMetadataHits = memory.retrieve('retention beacon keyword', 4);
+assert.equal(boundedMetadataHits[0]?.m?.id ?? boundedMetadataHits[0]?.id, 'm-bounded-metadata',
+  'allowlisted topic fields must survive unrelated context keys and a noisy metadata corpus');
+
 const snapshot = memory.snapshot();
-assert.equal(snapshot.items.length, 3, 'metadata retrieval must be read-only');
+assert.equal(snapshot.items.length, 4, 'metadata retrieval must be read-only');
 const indexHealth = memory.indexDiagnostics();
 assert.equal(indexHealth.pass, true, 'metadata postings must remain aligned with canonical MemoryOS2 indexes');
 assert.equal(indexHealth.metadataIndexMismatch, 0);
@@ -88,5 +105,6 @@ console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   topicTop1: topicHits[0]?.m?.id ?? topicHits[0]?.id,
   entityTop1: entityHits[0]?.m?.id ?? entityHits[0]?.id,
   directContentTop1: directHits[0]?.m?.id ?? directHits[0]?.id,
+  boundedMetadataTop1: boundedMetadataHits[0]?.m?.id ?? boundedMetadataHits[0]?.id,
   liveItems: snapshot.items.length,
 }));
