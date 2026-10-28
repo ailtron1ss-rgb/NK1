@@ -18,7 +18,22 @@ assert.equal(after.hypotheses[0].confidence, initialConfidence, 'unverified clai
 assert.equal(after.evidence.length, 0, 'unverified claims must not enter evidence ledger');
 assert.equal(after.status, 'open', 'unverified claims must not move project to testing');
 
-for (let index = 0; index < 4; index++) {
+engine.observe(project.id, { evidence: 'verified world transition 1', success: 1, verified: true });
+after = engine.snapshot().projects.find(row => row.id === project.id);
+assert.ok(after);
+const firstVerifiedConfidence = after.hypotheses[0].confidence;
+const firstVerifiedCount = after.evidence.length;
+engine.observe(project.id, { evidence: 'verified world transition 1', success: 0, verified: true });
+after = engine.snapshot().projects.find(row => row.id === project.id);
+assert.ok(after);
+assert.equal(after.hypotheses[0].confidence, firstVerifiedConfidence, 'replayed evidence must not update confidence twice');
+assert.equal(after.evidence.length, firstVerifiedCount, 'replayed evidence must not duplicate the evidence ledger');
+engine.observe(project.id, { evidence: 'invalid NaN success score', success: Number.NaN, verified: true });
+after = engine.snapshot().projects.find(row => row.id === project.id);
+assert.ok(after);
+assert.equal(after.evidence.length, firstVerifiedCount, 'invalid scores must not enter the evidence ledger');
+
+for (let index = 1; index < 4; index++) {
   engine.observe(project.id, { evidence: `verified world transition ${index + 1}`, success: 1, verified: true });
 }
 after = engine.snapshot().projects.find(row => row.id === project.id);
