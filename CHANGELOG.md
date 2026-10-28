@@ -1,3 +1,10 @@
+## [NK1][WorkPass606] Reject stale in-flight semantic embeddings (2026-10-28)
+
+- Capture content hash and exact input text before each asynchronous embedding request; accept a returned vector only if the current canonical record still exists, remains eligible, and retains that exact content identity.
+- Prune stale/wrong-provider/malformed cache rows before computing semantic coverage so invalid cache entries cannot inflate diagnostics.
+- Add a controlled await-boundary regression that revises a memory while an embedding request is pending and proves the old vector is not cached or used for ranking.
+- This protects semantic-index freshness; no retrieval uplift is claimed.
+
 ## [NK1][WorkPass605] Validate semantic embedding vectors before indexing (2026-10-28)
 
 - Validate query and document vectors for array shape, finite numeric components, dimension bounds, expected-dimension match, and non-zero norm before semantic ranking/cache insertion.

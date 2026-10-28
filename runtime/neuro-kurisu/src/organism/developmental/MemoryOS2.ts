@@ -478,8 +478,11 @@ export class MemoryOS2{
    const temporalMode=temporalOptions.temporalMode??'current';
    const eligible=(item:MemoryItem2)=>!item.dormant&&item.epistemicStatus!=='quarantined'&&(temporalMode==='all'||(Number(item.validFromAt??item.createdAt)<=now&&(item.validUntilAt==null||now<Number(item.validUntilAt))));
    const corpus=this.state.items.filter(eligible);
-   const corpusIds=new Set(corpus.map(item=>item.id));
-   for(const id of this.semanticEmbeddingIndex.keys())if(!corpusIds.has(id))this.semanticEmbeddingIndex.delete(id);
+   const corpusById=new Map(corpus.map(item=>[item.id,item]));
+   for(const [id,row] of this.semanticEmbeddingIndex){
+     const current=corpusById.get(id);
+     if(!current||row.providerId!==provider.providerId||row.contentHash!==memoContentHash(current.content)||!row.vector.length||row.vector.some(value=>!Number.isFinite(value)))this.semanticEmbeddingIndex.delete(id);
+   }
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
    const lexicalPool=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions).filter(eligible);
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
@@ -496,18 +499,24 @@ export class MemoryOS2{
      missingSet.set(item.id,item);
    }
    const missing=[...missingSet.values()].slice(0,backfillBudget);
+   // Capture the exact text identity sent to the provider. Memory may be revised
+   // while embedBatch is pending; a late vector must never be labelled with a new
+   // content hash or be inserted for an evicted/invalidated record.
+   const requestedMissing=missing.map(item=>({item,content:item.content,contentHash:memoContentHash(item.content)}));
    let newlyIndexed=0;
    try{
-     const vectors=await provider.embedBatch([query,...missing.map(item=>item.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
-     if(!Array.isArray(vectors)||vectors.length!==missing.length+1)throw new Error('embedding-vector-count-mismatch');
+     const vectors=await provider.embedBatch([query,...requestedMissing.map(row=>row.content)],performanceOptions.providerTimeoutMs?{timeoutMs:performanceOptions.providerTimeoutMs}:undefined);
+     if(!Array.isArray(vectors)||vectors.length!==requestedMissing.length+1)throw new Error('embedding-vector-count-mismatch');
      const queryVector=normalizeValidatedEmbeddingVector(vectors[0]);
      if(!queryVector)throw new Error('invalid-query-embedding-vector');
-     for(let index=0;index<missing.length;index++){
-       const item=missing[index],vector=normalizeValidatedEmbeddingVector(vectors[index+1],queryVector.length);
+     for(let index=0;index<requestedMissing.length;index++){
+       const requested=requestedMissing[index],vector=normalizeValidatedEmbeddingVector(vectors[index+1],queryVector.length);
        // A malformed candidate must never enter the derived index. The valid lexical
        // retrieval path remains available for this row and future requests.
        if(!vector)continue;
-       this.semanticEmbeddingIndex.set(item.id,{contentHash:memoContentHash(item.content),providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
+       const current=this.state.items.find(row=>row.id===requested.item.id);
+       if(!current||!eligible(current)||memoContentHash(current.content)!==requested.contentHash)continue;
+       this.semanticEmbeddingIndex.set(current.id,{contentHash:requested.contentHash,providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
      // Keep one compact index for the canonical memory's maximum 1600 rows.
      while(this.semanticEmbeddingIndex.size>1600){
