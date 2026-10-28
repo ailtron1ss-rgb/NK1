@@ -267,6 +267,23 @@ const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder()
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;candidateCount?:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
+export interface MemoryOS2RestoreIntegrityReport {
+ sourceItems:number;
+ consideredItems:number;
+ retainedItems:number;
+ invalidRowsDropped:number;
+ duplicateIdGroups:number;
+ collapsedDuplicateRows:number;
+ conflictingDuplicateIdGroups:number;
+ conflictingDuplicateRowsDropped:number;
+ truncatedItems:number;
+}
+function stableRestoreTieKey(value:unknown):string{
+ if(value===null||typeof value!=='object')return JSON.stringify(value)??'null';
+ if(Array.isArray(value))return '['+value.map(stableRestoreTieKey).join(',')+']';
+ const record=value as Record<string,unknown>;
+ return '{'+Object.keys(record).sort().map(key=>JSON.stringify(key)+':'+stableRestoreTieKey(record[key])).join(',')+'}';
+}
 export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
  enabled:boolean; provider:string; model:string; considered:number; indexed:number; failed:number; staleSkipped:number;
@@ -275,12 +292,15 @@ export interface SemanticIndexMaintenanceResult {
 }
 export class MemoryOS2{
  private state=defaultMemoryOS2();
+ private lastRestoreIntegrity:MemoryOS2RestoreIntegrityReport={sourceItems:0,consideredItems:0,retainedItems:0,invalidRowsDropped:0,duplicateIdGroups:0,collapsedDuplicateRows:0,conflictingDuplicateIdGroups:0,conflictingDuplicateRowsDropped:0,truncatedItems:0};
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
  private readonly tokenCache=new Map<string,Set<string>>();
  private readonly lowerContentCache=new Map<string,string>();
  private readonly tokenIndex=new Map<string,Set<string>>();
+ /** Curated tags/entities/topic metadata: separate from the content BM25 index. */
+ private readonly metadataTokenIndex=new Map<string,Set<string>>();
  /** Token-level character n-gram inverted index for typo/inflection-tolerant candidate discovery. */
  private readonly characterGramIndex=new Map<string,Set<string>>();
  private readonly documentFrequency=new Map<string,number>();
@@ -288,7 +308,7 @@ export class MemoryOS2{
  private readonly revisionGroupIndex=new Map<string,Set<string>>();
  private totalTokenLength=0;
  private lastCandidateCount=0;
- private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[]}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal']};
+ private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[]}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-metadata-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','metadata-tags-entities','entity','graph-temporal']};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
  private readonly residencyGovernor=new MemoryResidencyGovernor();
@@ -503,7 +523,8 @@ export class MemoryOS2{
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }
  }
- restore(s:MemoryOSState2|undefined){
+ restore(s:MemoryOSState2|undefined):MemoryOS2RestoreIntegrityReport{
+  const sourceItemCount=Array.isArray(s?.items)?s!.items.length:0;
   const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
@@ -558,10 +579,47 @@ export class MemoryOS2{
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
+  // A duplicate ID makes itemIndex disagree with state.items and can poison posting
+  // frequencies, link traversal and later eviction. Reject malformed rows; collapse
+  // same-identity duplicates deterministically, but drop every row in a conflicting-ID
+  // group rather than guessing which memory owns that identity.
+  let invalidRowsDropped=0,duplicateIdGroups=0,collapsedDuplicateRows=0,conflictingDuplicateIdGroups=0,conflictingDuplicateRowsDropped=0;
+  const rowsById=new Map<string,MemoryItem2[]>();
+  for(const item of this.state.items){
+    const raw=item as any;
+    if(!raw||typeof raw.id!=='string'||!raw.id.trim()||raw.id!==raw.id.trim()||typeof raw.content!=='string'||!raw.content.trim()||typeof raw.kind!=='string'||!raw.kind.trim()||typeof raw.source!=='string'||!raw.source.trim()){
+      invalidRowsDropped++;continue;
+    }
+    const group=rowsById.get(raw.id)??[];group.push(item);rowsById.set(raw.id,group);
+  }
+  const restoredItems:MemoryItem2[]=[];
+  const restoreAt=Date.now();
+  for(const group of rowsById.values()){
+    if(group.length===1){restoredItems.push(group[0]!);continue;}
+    duplicateIdGroups++;
+    const identities=new Set(group.map(item=>JSON.stringify([item.kind,item.source,canonicalizeMemoryContent(item.content)])));
+    if(identities.size!==1){
+      conflictingDuplicateIdGroups++;conflictingDuplicateRowsDropped+=group.length;continue;
+    }
+    let winner=group[0]!;
+    for(const candidate of group.slice(1)){
+      const candidatePreferred=this.preferIndexRecord(candidate,winner,restoreAt);
+      const winnerPreferred=this.preferIndexRecord(winner,candidate,restoreAt);
+      if(candidatePreferred&&!winnerPreferred)winner=candidate;
+      else if(!candidatePreferred&&!winnerPreferred&&stableRestoreTieKey(candidate)<stableRestoreTieKey(winner))winner=candidate;
+    }
+    restoredItems.push(winner);collapsedDuplicateRows+=group.length-1;
+  }
+  this.state.items=restoredItems;
+  const restoreIntegrityReport:MemoryOS2RestoreIntegrityReport={
+    sourceItems:sourceItemCount,consideredItems:rawItems.length,retainedItems:restoredItems.length,
+    invalidRowsDropped,duplicateIdGroups,collapsedDuplicateRows,conflictingDuplicateIdGroups,
+    conflictingDuplicateRowsDropped,truncatedItems:Math.max(0,sourceItemCount-rawItems.length),
+  };
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
-  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
+  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
   for(const m of this.state.items){
     const exactKey=`${m.kind}|${m.source}|${canonicalizeMemoryContent(m.content)}`;
@@ -576,8 +634,53 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
+  this.lastRestoreIntegrity=restoreIntegrityReport;
+  return {...restoreIntegrityReport};
  }
+ restoreIntegrityDiagnostics():MemoryOS2RestoreIntegrityReport{return {...this.lastRestoreIntegrity};}
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
+ /** Index only bounded, curated metadata; do not merge these tokens into content BM25 statistics. */
+ private metadataTokens(item:MemoryItem2):Set<string>{
+  const tags=(Array.isArray(item.tags)?item.tags:[]).slice(0,24).filter((value):value is string=>typeof value==='string'&&Boolean(value.trim())).map(value=>value.trim().slice(0,160));
+  const entities=(Array.isArray(item.entities)?item.entities:[]).slice(0,24).filter((value):value is string=>typeof value==='string'&&Boolean(value.trim())).map(value=>value.trim().slice(0,160));
+  const allowedContextKeys=/^(topic|category|subject|project|domain|title|label|goal|intent|location|relationship|type|environment|language|preference|person|organization)$/i;
+  // Filter first, then bound allowlisted fields. Unrelated context keys must not
+  // consume the metadata budget and hide a relevant topic appended later.
+  const contextValues=Object.entries(item.context??{}).filter(([key,value])=>allowedContextKeys.test(key)&&typeof value==='string'&&Boolean(value.trim())).slice(0,32).map(([,value])=>value.trim().slice(0,160));
+  const laneTokens=(values:string[]):string[]=>{
+    const rows=values.map(value=>{
+      const tokens=[...this.tokensFor(value)];
+      return tokens.length<=8?tokens:[...tokens.slice(0,4),...tokens.slice(-4)];
+    });
+    const positions=rows.map(()=>0),selected:string[]=[],seen=new Set<string>();
+    let progressed=true;
+    while(selected.length<64&&progressed){
+      progressed=false;
+      for(let i=0;i<rows.length&&selected.length<64;i++){
+        const token=rows[i]![positions[i]++];
+        if(token===undefined)continue;
+        progressed=true;
+        if(!seen.has(token)){seen.add(token);selected.push(token);}
+      }
+    }
+    return selected;
+  };
+  // A hard per-source and per-item token budget bounds posting growth on mobile.
+  // Round-robin extraction keeps later tags/entities and context fields represented.
+  const lanes=[laneTokens(tags),laneTokens(entities),laneTokens(contextValues)];
+  const positions=[0,0,0],tokens=new Set<string>();
+  let progressed=true;
+  while(tokens.size<128&&progressed){
+    progressed=false;
+    for(let i=0;i<lanes.length&&tokens.size<128;i++){
+      const token=lanes[i]![positions[i]++];
+      if(token===undefined)continue;
+      progressed=true;
+      tokens.add(token);
+    }
+  }
+  return tokens;
+ }
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
  private provenanceClassFor(source:string,explicit?:MemoryProvenanceClass):MemoryProvenanceClass{if(explicit&&['device','external','user','agent','derived','simulation','unknown'].includes(explicit))return explicit;const s=String(source).toLowerCase();if(s.includes('device')||s.includes('android'))return 'device';if(s.includes('external')||s.includes('api')||s.includes('os'))return 'external';if(s.includes('user'))return 'user';if(s.includes('simulation')||s.includes('synthetic'))return 'simulation';if(s.includes('agent')||s.includes('model')||s.includes('llm'))return 'agent';if(s.includes('derived'))return 'derived';return 'unknown';}
@@ -685,11 +788,16 @@ export class MemoryOS2{
 
  encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean}={}){
    const now=Date.now();
+   if(input.id!==undefined&&(typeof input.id!=='string'||!input.id.trim()||input.id!==input.id.trim()))throw new Error('memory-id-invalid');
    const canonicalContent=canonicalizeMemoryContent(input.content);
    const identity=deriveMemoryIdentity(canonicalContent,input.kind,input.source);
-   if(options.forceDistinct&&input.id){
-     const forced=this.itemIndex.get(input.id);
-     if(forced&&canonicalizeMemoryContent(forced.content)===canonicalContent)return options.clone===false?forced:structuredClone(forced);
+   if(input.id){
+     const requestedId=this.itemIndex.get(input.id);
+     if(requestedId){
+       const sameIdentity=requestedId.kind===input.kind&&requestedId.source===input.source&&canonicalizeMemoryContent(requestedId.content)===canonicalContent;
+       if(!sameIdentity)throw new Error('memory-id-conflict:'+input.id);
+       if(options.forceDistinct)return options.clone===false?requestedId:structuredClone(requestedId);
+     }
    }
    const exactId=options.forceDistinct?undefined:this.exactIndex.get(`${input.kind}|${input.source}|${canonicalContent}`);
    const contentId=options.forceDistinct?undefined:this.contentIndex.get(`${input.kind}|${canonicalContent}`);
@@ -697,6 +805,7 @@ export class MemoryOS2{
    const existing=indexedCandidates.filter(m=>this.validAt(m,now)&&m.epistemicStatus!=='quarantined'&&!m.dormant).sort((a,b)=>this.preferIndexRecord(a,b,now)?-1:this.preferIndexRecord(b,a,now)?1:0)[0];
    if(existing){
     const priorBytes=estimateMemoryBytes(existing);
+    const previousMetadataTokens=this.metadataTokens(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
     existing.lastAccessAt=now;
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
@@ -711,18 +820,33 @@ export class MemoryOS2{
     existing.contentHash=existing.contentHash||memoContentHash(existing.content);
     existing.tags=mergeMemoTags(existing.tags,input.tags);
     existing.context=mergeMemoContext(existing.context,input.context);
+    // Dedup/reconsolidation may add metadata without changing content. Update only
+    // the changed posting sets instead of rescanning the complete metadata vocabulary.
+    this.syncMetadataIndex(existing,previousMetadataTokens);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
     this.state.reconsolidations++;
     this.exactIndex.set(`${existing.kind}|${existing.source}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     this.contentIndex.set(`${existing.kind}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     return options.clone===false?existing:structuredClone(existing);
    }
+   // An explicit ID already bound to this same identity is idempotent even when
+   // its row is historical/dormant and was excluded from the active dedup pool.
+   // Never append a second state.items row for an ID already owned by itemIndex.
+   if(input.id){
+     const requestedId=this.itemIndex.get(input.id);
+     if(requestedId)return options.clone===false?requestedId:structuredClone(requestedId);
+   }
    const semanticVector=vectorize(input.content); const entities=[...new Set([...(input.entities??[]),...extractEntities(input.content)])];
-   // If canonical content already exists only as an expired/quarantined record,
-   // a fresh observation gets its own stable-in-process identity rather than
-   // mutating history or overwriting the historical item's map entry.
-   const collision=this.itemIndex.has(input.id??identity.stableId);
-   const materializedInput:MemoryEncodeInput=options.forceDistinct||input.id||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
+   // forceDistinct skips content deduplication, not ID uniqueness.
+   const collision=!input.id&&this.itemIndex.has(identity.stableId);
+   let materializedInput:MemoryEncodeInput=input;
+   if(collision){
+     const reason=options.forceDistinct?'forced-distinct':'reobserved';
+     const seed=canonicalContent+'\0'+reason+':'+now+':'+this.state.items.length+':'+this.state.reconsolidations;
+     let uniqueId=stableMemoryId(seed,input.kind,input.source),salt=0;
+     while(this.itemIndex.has(uniqueId))uniqueId=stableMemoryId(seed+':'+(++salt),input.kind,input.source);
+     materializedInput={...input,id:uniqueId};
+   }
    const item=this.buildMemoryItem(materializedInput,identity,entities,semanticVector,now);
    if(collision&&!input.id&&!options.forceDistinct&&!materializedInput.revisionGroupId)item.revisionGroupId=item.id;
    item.temperature01=memoryTemperature(item,now);
@@ -784,6 +908,7 @@ export class MemoryOS2{
  }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
    const qTokens=this.tokensFor(query);
+   const queryTokenArray=[...qTokens];
    const conceptQuery=expandMemoryQueryConcepts(qTokens);
    const queryEntities=extractEntities(query);
    this.state.semanticQueries++;
@@ -813,14 +938,20 @@ export class MemoryOS2{
    // Accumulate inverse-document-frequency support across all unique query terms, then
    // select a bounded deterministic top set. The old first-192 walk could omit relevant
    // memories solely because their row happened to be later in an imported snapshot.
-   const candidatePriority=new Map<string,{idfSupport:number;matchedTerms:number;fuzzySupport:number;fuzzyMatches:number}>();
-   const priorityFor=(id:string)=>{const prior=candidatePriority.get(id)??{idfSupport:0,matchedTerms:0,fuzzySupport:0,fuzzyMatches:0};candidatePriority.set(id,prior);return prior;};
+   const candidatePriority=new Map<string,{idfSupport:number;matchedTerms:number;fuzzySupport:number;fuzzyMatches:number;metadataSupport:number;metadataMatches:number}>();
+   const priorityFor=(id:string)=>{const prior=candidatePriority.get(id)??{idfSupport:0,matchedTerms:0,fuzzySupport:0,fuzzyMatches:0,metadataSupport:0,metadataMatches:0};candidatePriority.set(id,prior);return prior;};
    const corpusSize=Math.max(1,this.state.items.length);
    const idfFor=(token:string)=>{const df=this.documentFrequency.get(token)??0;return Math.log(1+(corpusSize-df+.5)/(df+.5));};
    for(const token of qTokens){
      const ids=this.tokenIndex.get(token);
      const idf=idfFor(token);
      if(ids)for(const id of ids){const priority=priorityFor(id);priority.idfSupport+=idf;priority.matchedTerms++;}
+     // Metadata matches can nominate a memory without contaminating content-only BM25 document frequency.
+     const metadataIds=this.metadataTokenIndex.get(token);
+     if(metadataIds){
+       const support=idf*.42;
+       for(const id of metadataIds){const priority=priorityFor(id);priority.metadataSupport+=support;priority.metadataMatches++;}
+     }
      // Fuzzy discovery only runs for meaningful token lengths. Candidate terms
      // come from shared character n-grams, not a full corpus scan. This lets
      // spelling variants and inflected forms enter the bounded retrieval pool.
@@ -857,13 +988,15 @@ export class MemoryOS2{
      const validAt=temporalMode==='all'||isValidAt(item,now)?1:0;
      // A tiny lexical coverage/phrase term breaks high-fanout ties without letting
      // recency overpower a genuinely rarer query match.
-     const score=priority.idfSupport+priority.fuzzySupport*.70+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
+     const score=priority.idfSupport+priority.fuzzySupport*.70+priority.metadataSupport*.72+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
    }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,192).map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
-   if(candidateIds.size<96){
-     // Preserve the prior recent-memory fallback intent, but use explicit fields and ID
-     // as stable tie-breaks instead of relying on serialized array order.
+   if(candidateIds.size<96&&candidatePriority.size>0){
+     // Recent-memory padding may supplement an evidence-bearing lexical/fuzzy/concept/
+     // metadata hit, but it must not manufacture an answer for a zero-match query.
+     // Empty candidates here are intentional abstention, not a cue to return recency-only
+     // rows whose generic salience/goal signals happen to be high.
      const fallback=[...this.state.items].sort((a,b)=>Number(b.createdAt)-Number(a.createdAt)||a.id.localeCompare(b.id));
      for(const m of fallback.slice(0,128)){candidateIds.add(m.id);if(candidateIds.size>=192)break;}
    }
@@ -906,7 +1039,7 @@ export class MemoryOS2{
    if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
-   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
+   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
    for(const id of candidateIds){
      const m=this.itemIndex.get(id);
      if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
@@ -917,8 +1050,12 @@ export class MemoryOS2{
      if(!temporalValid)continue;
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
+     // Score metadata coverage from the inverted postings used for candidate
+     // discovery; avoid re-tokenizing every candidate's tags/context on every query.
+     let metadataMatches=0;
+     for(const token of queryTokenArray)if(this.metadataTokenIndex.get(token)?.has(id))metadataMatches++;
+     const metadata=queryTokenArray.length?metadataMatches/queryTokenArray.length:0;
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
-     const queryTokenArray=[...qTokens];
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
      const fuzzy=fuzzyTokenCoverage(queryTokenArray,lexicalTokens);
      const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id);
@@ -930,7 +1067,7 @@ export class MemoryOS2{
      const temporalBase=this.signalFusion.temporalHint(query,m.validFromAt??m.createdAt,now); const validity=temporalMode==='all'?1:(isValidAt(m,now)?1:0); const temporal=clamp(.72*validity+.28*temporalBase);
      const identity=clamp(m.identityRelevance*clamp(identityRelevance));
      const goal=clamp(m.goalRelevance*clamp(goalRelevance));
-     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,conceptCoverage,temporal,causal,identity,goal,recency});
+     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency});
    }
    const rrfK=60;
    const rankBy=(score:(row:typeof rawRows[number])=>number)=>new Map(rawRows.filter(row=>score(row)>0).sort((a,b)=>score(b)-score(a)||a.m.id.localeCompare(b.m.id)).map((row,index)=>[row.m.id,index+1]));
@@ -942,14 +1079,15 @@ export class MemoryOS2{
    // Reciprocal-rank fusion combines partially independent retrieval signals.
    // The hashed token vector is intentionally not a ranking channel: it is not
    // a semantic embedding and was largely duplicating the lexical projection.
-   const rrfWeights={bm25:1,coverage:.90,fuzzy:.60,entity:.42,relationship:.32};
+   const metadataRank=rankBy(row=>row.metadata);
+   const rrfWeights={bm25:1,coverage:.90,fuzzy:.60,metadata:.28,entity:.42,relationship:.32};
    const maxRrf=Object.values(rrfWeights).reduce((sum,weight)=>sum+weight/(rrfK+1),0);
    const maxBm25=Math.max(0,...rawRows.map(x=>x.bm25));
    const fuzzyCandidateIds=new Set<string>([...candidatePriority.entries()].filter(([,priority])=>priority.fuzzyMatches>0).map(([id])=>id));
    const topRows=rawRows.map(row=>{
-     const rrfNorm=clamp((rrfWeights.bm25/(rrfK+(bm25Rank.get(row.m.id)??rawRows.length+1))+rrfWeights.coverage/(rrfK+(coverageRank.get(row.m.id)??rawRows.length+1))+rrfWeights.fuzzy/(rrfK+(fuzzyRank.get(row.m.id)??rawRows.length+1))+rrfWeights.entity/(rrfK+(entityRank.get(row.m.id)??rawRows.length+1))+rrfWeights.relationship/(rrfK+(relationshipRank.get(row.m.id)??rawRows.length+1)))/maxRrf);
+     const rrfNorm=clamp((rrfWeights.bm25/(rrfK+(bm25Rank.get(row.m.id)??rawRows.length+1))+rrfWeights.coverage/(rrfK+(coverageRank.get(row.m.id)??rawRows.length+1))+rrfWeights.fuzzy/(rrfK+(fuzzyRank.get(row.m.id)??rawRows.length+1))+rrfWeights.metadata/(rrfK+(metadataRank.get(row.m.id)??rawRows.length+1))+rrfWeights.entity/(rrfK+(entityRank.get(row.m.id)??rawRows.length+1))+rrfWeights.relationship/(rrfK+(relationshipRank.get(row.m.id)??rawRows.length+1)))/maxRrf);
      const bm25Norm=maxBm25>0?normalizeBm25(row.bm25,maxBm25):0;
-     const lexical=clamp(.18*row.lexical+.43*bm25Norm+.22*row.coverage+.17*row.fuzzy+.10*rrfNorm);
+     const lexical=clamp(.18*row.lexical+.40*bm25Norm+.21*row.coverage+.16*row.fuzzy+.08*rrfNorm+.07*row.metadata);
      const fused=this.signalFusion.score({semantic01:0,lexical01:identifierBias?clamp(lexical+.10*row.lexical):lexical,entity01:row.entity,temporal01:row.temporal,causal01:row.causal,recency01:row.recency,salience01:row.m.salience,identity01:row.identity,goal01:row.goal,predictionError01:row.m.predictionError,temperature01:row.m.temperature01});
      const policyBias=this.activePolicy==='semantic'?(row.fuzzy*.04+row.coverage*.04):this.activePolicy==='causal'?row.causal*.10:this.activePolicy==='temporal'?row.temporal*.10:this.activePolicy==='hybrid'?(rrfNorm+row.entity)*.06:(row.identity+row.goal)*.04;
      // Intent adds a bounded preference for the memory system that answers the
@@ -961,11 +1099,12 @@ export class MemoryOS2{
      // direct evidence. The bounded 0.10 boost helps paraphrases enter the top-k while
      // direct BM25/coverage/phrase scores still dominate exact matches.
      const conceptBoost01=row.conceptCoverage*.10;
-     fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01);
+     const metadataBoost01=row.metadata>0?Math.min(.10,row.metadata*.10):0;
+     fused.score01=clamp(fused.score01+policyBias+intentBoost01+conceptBoost01+metadataBoost01);
      return {m:row.m,score:fused.score01,bm25:row.bm25,entity:row.entity,lexical,intentBoost01,conceptBoost01};
    }).sort((a,b)=>b.score-a.score||a.m.id.localeCompare(b.m.id)).slice(0,Math.max(1,limit));
    rows.push(...topRows);
-   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...topRows.map(x=>x.intentBoost01)),candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']};
+   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...topRows.map(x=>x.intentBoost01)),candidateSelection:'idf-coverage-fuzzy-concept-metadata-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']};
    // semanticHits is retained only for persisted-state compatibility. It is not
    // incremented by retrieval: the legacy hashed token projection is not a semantic
    // retrieval channel, and its previous calculation silently warmed cold memories.
@@ -1045,7 +1184,9 @@ export class MemoryOS2{
  updateContext(id:string, patch:Record<string,string|undefined>) {
    const m=this.itemIndex.get(String(id));if(!m)return null;
    const before=estimateMemoryBytes(m);
+   const previousMetadataTokens=this.metadataTokens(m);
    m.context=mergeMemoContext(m.context,patch);
+   this.syncMetadataIndex(m,previousMetadataTokens);
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
@@ -1224,6 +1365,22 @@ export class MemoryOS2{
      if(!ids.has(item.id))ids.add(item.id);
      if(previousDf===0)for(const gram of charTrigrams(token)){let posting=this.characterGramIndex.get(gram);if(!posting){posting=new Set<string>();this.characterGramIndex.set(gram,posting);}posting.add(token);}
    }
+   this.syncMetadataIndex(item,new Set<string>());
+ }
+ /** Maintain only changed postings; callers provide the pre-mutation metadata token set. */
+ private syncMetadataIndex(item:MemoryItem2,previousTokens:Set<string>){
+   const nextTokens=this.metadataTokens(item);
+   for(const token of previousTokens){
+     if(nextTokens.has(token))continue;
+     const ids=this.metadataTokenIndex.get(token);
+     if(ids){ids.delete(item.id);if(ids.size===0)this.metadataTokenIndex.delete(token);}
+   }
+   for(const token of nextTokens){
+     if(previousTokens.has(token))continue;
+     let ids=this.metadataTokenIndex.get(token);
+     if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}
+     ids.add(item.id);
+   }
  }
  private removeIndexedId(id:string){
    const item=this.itemIndex.get(id);
@@ -1244,6 +1401,12 @@ export class MemoryOS2{
    }
    for(const [token,ids] of this.tokenIndex){
      if(ids.delete(id)&&ids.size===0)this.tokenIndex.delete(token);
+   }
+   if(item){
+     for(const token of this.metadataTokens(item)){
+       const ids=this.metadataTokenIndex.get(token);
+       if(ids){ids.delete(id);if(ids.size===0)this.metadataTokenIndex.delete(token);}
+     }
    }
  }
 
@@ -1285,7 +1448,7 @@ export class MemoryOS2{
  size(){return this.state.items.length;}
  retrievalDiagnostics(){return {candidateCount:this.lastCandidateCount,totalItems:this.state.items.length,pruning01:this.state.items.length?Math.max(0,1-this.lastCandidateCount/this.state.items.length):0,signalFusion:true,hybridRetrieval:true,...this.lastHybridDiagnostics};}
  indexDiagnostics(){
-   let staleItemIndex=0,missingItemIndex=0,staleExact=0,staleContent=0,dfMismatch=0;
+   let staleItemIndex=0,missingItemIndex=0,staleExact=0,staleContent=0,dfMismatch=0,metadataIndexMismatch=0;
    const ids=new Set(this.state.items.map(m=>m.id));
    for(const id of this.itemIndex.keys())if(!ids.has(id))staleItemIndex++;
    for(const id of ids)if(!this.itemIndex.has(id))missingItemIndex++;
@@ -1296,11 +1459,15 @@ export class MemoryOS2{
    if(expectedTotal!==this.totalTokenLength)dfMismatch++;
    if(expectedDf.size!==this.documentFrequency.size)dfMismatch++;
    else for(const [token,count] of expectedDf)if(this.documentFrequency.get(token)!==count){dfMismatch++;break;}
+   const expectedMetadataIndex=new Map<string,Set<string>>();
+   for(const item of this.state.items)for(const token of this.metadataTokens(item)){let posting=expectedMetadataIndex.get(token);if(!posting){posting=new Set<string>();expectedMetadataIndex.set(token,posting);}posting.add(item.id);}
+   if(expectedMetadataIndex.size!==this.metadataTokenIndex.size)metadataIndexMismatch++;
+   else for(const [token,expectedIds] of expectedMetadataIndex){const actual=this.metadataTokenIndex.get(token);if(!actual||actual.size!==expectedIds.size||[...expectedIds].some(id=>!actual.has(id))){metadataIndexMismatch++;break;}}
    const expectedGrams=new Map<string,Set<string>>();
    for(const token of expectedDf.keys())for(const gram of charTrigrams(token)){let posting=expectedGrams.get(gram);if(!posting){posting=new Set<string>();expectedGrams.set(gram,posting);}posting.add(token);}
    let characterGramMismatch=expectedGrams.size===this.characterGramIndex.size?0:1;
    if(!characterGramMismatch)for(const [gram,tokens] of expectedGrams){const actual=this.characterGramIndex.get(gram);if(!actual||actual.size!==tokens.size||[...tokens].some(token=>!actual.has(token))){characterGramMismatch++;break;}}
-   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,characterGramVocabulary:this.characterGramIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
+   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0&&metadataIndexMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,metadataIndexMismatch,metadataTokenVocabulary:this.metadataTokenIndex.size,characterGramVocabulary:this.characterGramIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
  }
  /**
   * Read-only /doctor pass adapted from MemFS maintenance: checks memory identity, provenance,

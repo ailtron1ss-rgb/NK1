@@ -50,6 +50,52 @@ assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
 assert.equal(duplicateLabelReport.promotion.allowed, false,
   'duplicate ground-truth labels must block promotion even when the hash is correct');
 
+// Invalid ground-truth label values are filtered from normalized query rows for
+// safe evaluation, but their presence in the source dataset must remain a hard
+// integrity failure; otherwise one valid label can hide malformed siblings.
+const invalidLabelExamples = structuredClone(examples);
+invalidLabelExamples[0].relevantIds.push('', 42, null);
+const invalidLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, invalidLabelExamples, {
+  ...options,
+  datasetProvenance: {
+    ...provenance,
+    licenseId: 'LicenseRef-NK1-TestFixture',
+    // This is the fingerprint of the normalized valid labels. The original source
+    // still contains malformed labels and must fail integrity independently.
+    contentSha256: fingerprintMemoryRetrievalDataset(examples),
+  },
+});
+assert.equal(invalidLabelReport.datasetProvenance.contentHashValid, true);
+assert.equal(invalidLabelReport.datasetIntegrity.provenanceComplete, true);
+assert.equal(invalidLabelReport.datasetIntegrity.invalidRelevantLabelCount, 3,
+  'blank, numeric and null labels must be counted before filtering');
+assert.equal(invalidLabelReport.datasetIntegrity.validForPromotion, false);
+assert.equal(invalidLabelReport.promotion.gates.datasetIntegrity, false);
+assert.equal(invalidLabelReport.promotion.allowed, false,
+  'malformed source labels must block promotion even if all normalized labels are valid');
+
+// Adversarial oversized arrays must be sliced before label filtering/counting;
+// the 24-label cap must bound actual work, not just the final normalized output.
+let oversizedLabelValueReads = 0;
+const oversizedLabels = new Proxy(Array.from({ length: 20_000 }, (_, i) => `m${i % 4}`), {
+  get(target, property, receiver) {
+    if (typeof property === 'string' && /^(0|[1-9][0-9]*)$/.test(property)) oversizedLabelValueReads++;
+    return Reflect.get(target, property, receiver);
+  },
+});
+const oversizedLabelExamples = structuredClone(examples);
+oversizedLabelExamples[0] = { ...oversizedLabelExamples[0], relevantIds: oversizedLabels };
+const oversizedLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, oversizedLabelExamples, {
+  ...options,
+  maxExamples: 512,
+});
+assert.equal(oversizedLabelReport.datasetIntegrity.truncatedFieldRows, 1,
+  'a source label array beyond the 24-label contract must be flagged');
+assert.equal(oversizedLabelReport.datasetIntegrity.validForPromotion, false,
+  'oversized relevance-label arrays must block promotion even if prefix labels are valid');
+assert.ok(oversizedLabelValueReads <= 100,
+  `normalization must read only a bounded label prefix, but read ${oversizedLabelValueReads} values`);
+
 assert.equal(experiment.schemaVersion, 1);
 assert.equal(experiment.seedCount, 3);
 assert.equal(experiment.holdoutQueries, 9, 'explicitly unanswerable holdout queries must survive the CLI/benchmark contract');
@@ -150,7 +196,7 @@ const orderedB = new MemoryOS2(); orderedB.restore({ ...structuredClone(largeSna
 const rankedA = orderedA.retrieve('sharedproject needle-special', 12, 0, 0, { temporalMode: 'current', asOfAt: now }).map(row => row.id);
 const rankedB = orderedB.retrieve('sharedproject needle-special', 12, 0, 0, { temporalMode: 'current', asOfAt: now }).map(row => row.id);
 assert.deepEqual(rankedA, rankedB, 'candidate and top-k ranking must be stable under snapshot row permutation above the 192-candidate cap');
-assert.equal(orderedA.retrievalDiagnostics().candidateSelection, 'idf-coverage-fuzzy-concept-rrf-stable-id');
+assert.equal(orderedA.retrievalDiagnostics().candidateSelection, 'idf-coverage-fuzzy-concept-metadata-rrf-stable-id');
 assert.equal(orderedB.retrievalDiagnostics().candidateSelectionLimit, 192);
 
 // Exercise the real CLI path using external snapshot, labelled JSONL and provenance files.
