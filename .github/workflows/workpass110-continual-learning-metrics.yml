@@ -82,6 +82,8 @@ on:
       - 'CHANGELOG.md'
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
       - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
@@ -163,6 +165,8 @@ on:
       - 'CHANGELOG.md'
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
       - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
@@ -368,6 +372,9 @@ jobs:
       - name: Verify P62 relevance ordering and deep canonical recall
         working-directory: runtime/neuro-kurisu
         run: npm run test:p62-relevance-order
+      - name: Verify autonomous initiative restore and privacy boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass49:privacy
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
