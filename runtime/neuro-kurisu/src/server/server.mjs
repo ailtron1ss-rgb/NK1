@@ -47,6 +47,11 @@ const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES ||
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
+// Optional GEPA/DSPy sidecar: disabled by default; local llama.cpp remains the generator otherwise.
+const GEPA_REVISION_GENERATOR = GepaReflectiveCandidateGenerator.fromEnvironment();
+const P23_SKILL_REVISION_GENERATOR = (request) => GEPA_REVISION_GENERATOR.diagnostics().enabled
+    ? GEPA_REVISION_GENERATOR.asP23RevisionGenerator()(request)
+    : generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request);
 const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
 const COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH = String(process.env.NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH || '').trim();
 const COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE || '').trim();
