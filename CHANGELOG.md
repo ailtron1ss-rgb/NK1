@@ -1,3 +1,11 @@
+## [NK1][integration] Optional GEPA/DSPy reflective candidate sidecar (2026-10-28)
+
+- Added an opt-in, bounded HTTP adapter for candidate-payload generation through the existing P23 reflective-revision callback. Disabled by default; local llama.cpp remains the default.
+- The adapter allowlists validation evidence, binds revision-target IDs to validation trials, sends only an aggregate signed holdout delta, and rejects holdout-target identifiers. Raw holdout reports are not sent.
+- Optimizer score/pass/promotion claims are discarded. P23 still independently evaluates the exact returned payload and requires signed execution evidence and authenticated approval for activation.
+- Configurable endpoint requires HTTPS or loopback HTTP; redirects, invalid JSON/UTF-8, timeouts, oversized request/response/payload, and malformed identities fail closed.
+- Added mocked contract tests and a wiring check for the application generator callback. No live GEPA sidecar was contacted and no candidate was evaluated or promoted by the optimizer.
+- **Validation status:** this adapter slice awaits its dedicated CI run; no PASS is claimed until the run completes.
 ## [NK1][memory] Reproducible retrieval-dataset provenance tooling (2026-10-28)
 
 - Exported the canonical labelled-dataset fingerprint used by the retrieval promotion gate and added `fingerprint:memory-retrieval-dataset`, which reports that value plus a raw source-file SHA-256 and split counts.
