@@ -145,3 +145,10 @@
 - Extend the Hexis canonical apply workflow's pull-request base filter so this integration branch runs projector, rollback, server smoke, evidence-lineage and runtime typecheck checks.
 - This optimizes validation cost while preserving trust semantics; it does not claim memory-quality improvement.
 
+## [NK1][autonomy] Resolve undeliverable proactive initiatives during restore (2026-10-28)
+
+- Tightened the durable initiative invariant: a row restored as `ready` must include a non-empty sanitized message. If it does not, restore now marks the row `deferred` immediately with a diagnostic reason instead of leaving it in the pending queue.
+- This prevents a malformed/interrupted snapshot from leaving `hasPending()` true while `latestReady()` returns no deliverable message, which previously blocked newly generated autonomous dialogue until the generic 20-minute expiry.
+- Added a regression that restores a ready row without a message, proves it is deferred and counted, and proves a new distinct initiative can be generated immediately. Wired the privacy/initiative restore suite into `test:rebuild-recovered` and the canonical WorkPass110 workflow.
+- This is a lifecycle recovery fix; it does not claim any particular achieved level of autonomy.
+
