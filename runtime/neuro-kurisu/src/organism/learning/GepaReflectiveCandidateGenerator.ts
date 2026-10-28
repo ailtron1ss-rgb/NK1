@@ -110,7 +110,8 @@ function projectReport(report: SkillLearnBenchTrialReport): SkillLearnBenchTrial
   };
 }
 function projectTarget(target: SkillRevisionTarget, taskIds: Set<string>, trialIds: Set<string>): SkillRevisionTarget {
-  if (!target || typeof target.dimension !== 'string' || !is01(target.priority01) ||
+  const allowedDimensions = ['safety', 'task-success', 'trajectory', 'capability-coverage', 'executability', 'holdout-generalization'];
+  if (!target || !allowedDimensions.includes(target.dimension) || !is01(target.priority01) ||
       !Number.isSafeInteger(target.evidenceCount) || target.evidenceCount < 0 ||
       typeof target.directive !== 'string' || !target.directive.trim() || target.directive.length > 2000) {
     throw new Error('gepa-invalid-revision-target');
