@@ -119,5 +119,38 @@ assert.match(zeroQueryFallback.semantic.fallbackReason, /invalid-query-embedding
 assert.ok(zeroQueryFallback.items.some(item => item.id === 'credential-recovery'),
   'a zero query vector must retain the deterministic lexical fallback');
 
+const racedSnapshot = structuredClone(before);
+const revisedCredential = racedSnapshot.items.find(item => item.id === 'credential-recovery');
+assert.ok(revisedCredential, 'race fixture must contain the original credential memory');
+const revisedContent = 'Corrected credential recovery and account access troubleshooting facts.';
+revisedCredential.content = revisedContent;
+revisedCredential.contentHash = '';
+revisedCredential.semanticVector = [];
+let racedMemory;
+let postRestoreSnapshot;
+class RestoreDuringEmbeddingProvider extends SemanticFixtureProvider {
+  providerId = 'fixture:restore-during-embedding';
+  modelId = 'restore-during-embedding';
+  async embedBatch(texts) {
+    const vectors = texts.map(() => [1, 0, 0]);
+    racedMemory.restore(structuredClone(racedSnapshot));
+    postRestoreSnapshot = racedMemory.snapshot();
+    return vectors;
+  }
+}
+racedMemory = new MemoryOS2({ embeddingProvider: new RestoreDuringEmbeddingProvider() });
+racedMemory.restore(before);
+const raceResult = await racedMemory.previewRetrieveWithEmbeddings(
+  'credential recovery account access', 3, 0, 0, { temporalMode: 'current', asOfAt: now },
+);
+assert.equal(raceResult.semantic.enabled, false,
+  'an embedding request racing with snapshot restore must discard its stale semantic result');
+assert.match(raceResult.semantic.fallbackReason, /memory-corpus-changed-during-embedding/);
+assert.equal(raceResult.items.find(item => item.id === 'credential-recovery')?.content, revisedContent,
+  'the fallback must retrieve from the newly restored canonical corpus, not the stale pre-await copy');
+assert.deepEqual(racedMemory.snapshot(), postRestoreSnapshot,
+  'stale in-flight embedding completion must not mutate restored canonical memory');
 
-console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, invalidMemoryFallback: invalidMemoryFallback.semantic.fallbackReason, zeroQueryFallback: zeroQueryFallback.semantic.fallbackReason }));
+
+
+console.log('MEMORY_SEMANTIC_EMBEDDINGS_WORKPASS33=PASS', JSON.stringify({ providerCache: provider.diagnostics(), semantic: result.semantic, top: result.items[0]?.id, fallback: fallback.semantic.fallbackReason, invalidMemoryFallback: invalidMemoryFallback.semantic.fallbackReason, zeroQueryFallback: zeroQueryFallback.semantic.fallbackReason, raceFallback: raceResult.semantic.fallbackReason }));
