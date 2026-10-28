@@ -7,6 +7,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
       - "runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts"
       - "runtime/neuro-kurisu/tests/gepa-reflective-candidate-generator.mjs"
+      - "runtime/neuro-kurisu/docs/GEPA_DSPY_CANDIDATE_ADAPTER.md"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
       - "runtime/neuro-kurisu/scripts/fingerprint-memory-retrieval-dataset.mjs"
       - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
