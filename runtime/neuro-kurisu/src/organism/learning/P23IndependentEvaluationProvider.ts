@@ -1,11 +1,13 @@
 import type { CompoundRepairRevisionInputProvider } from './P23CompoundRepairRevisionCoordinator.ts';
 import { createIndependentSkillCandidateEvaluator, type IndependentCandidateEvaluationConfig } from './IndependentSkillCandidateEvaluator.ts';
 
+type PreparedRevision = Awaited<ReturnType<CompoundRepairRevisionInputProvider>>;
+
 /**
- * Wraps the trusted repair-input provider and replaces its evaluator with one
- * that executes the exact generated payload through independent runtime authorities.
- * Proposal, source candidate, baseline and generator remain owned by the trusted
- * provider; caller-supplied candidate evaluation is never used.
+ * Runs the host-owned evaluator on the canonical baseline and source candidate,
+ * then returns the same independent evaluator for the newly generated payload.
+ * Native-provider payload identity is revalidated across each asynchronous boundary.
+ * A host-provided evaluator is the only authority; provider-reported scores are ignored.
  */
 export function withIndependentCandidateEvaluation(
   provider: CompoundRepairRevisionInputProvider,
@@ -17,9 +19,6 @@ export function withIndependentCandidateEvaluation(
     throw new Error('independent-candidate-evaluation-provider-config-invalid');
   }
   return async input => {
-    // Keep the evaluator's authority inputs independent from provider code. A
-    // provider is allowed to prepare proposals, but it must not be able to mutate
-    // the repair evidence/fingerprints later used to choose trusted task plans.
     const configInput = structuredClone(input);
     const providerInput = structuredClone(input);
     const prepared = await provider(providerInput);
@@ -28,40 +27,113 @@ export function withIndependentCandidateEvaluation(
       throw new Error('independent-candidate-evaluation-provider-output-invalid');
     }
 
-    // Detach every data-bearing field before handing control to another async
-    // authority. The provider may retain references to its returned proposal or
-    // baseline and mutate them later; those objects feed the existing P23 gate.
-    // Functions are intentionally retained as capabilities, not cloned as data.
-    let proposal: typeof prepared.proposal;
-    let baseline: typeof prepared.baseline;
-    let candidateEvaluation: typeof prepared.candidateEvaluation;
-    let options: typeof prepared.options;
+    let proposal: PreparedRevision['proposal'];
+    let baseline: PreparedRevision['baseline'];
+    let candidateEvaluation: PreparedRevision['candidateEvaluation'];
+    let options: PreparedRevision['options'];
+    let baselinePayload: unknown;
+    let sourceCandidatePayload: unknown;
     try {
       proposal = structuredClone(prepared.proposal);
       baseline = structuredClone(prepared.baseline);
       candidateEvaluation = structuredClone(prepared.candidateEvaluation);
       options = prepared.options === undefined ? undefined : structuredClone(prepared.options);
+      baselinePayload = prepared.baselinePayload === undefined ? undefined : structuredClone(prepared.baselinePayload);
+      sourceCandidatePayload = prepared.sourceCandidatePayload === undefined ? undefined : structuredClone(prepared.sourceCandidatePayload);
     } catch {
       throw new Error('independent-candidate-evaluation-provider-data-not-cloneable');
     }
     if (typeof prepared.sourceCandidateId !== 'string' || !prepared.sourceCandidateId.trim()) {
       throw new Error('independent-candidate-evaluation-provider-source-candidate-invalid');
     }
+    const hasBaselinePayload = Object.prototype.hasOwnProperty.call(prepared, 'baselinePayload');
+    const hasSourcePayload = Object.prototype.hasOwnProperty.call(prepared, 'sourceCandidatePayload');
+    const hasNativePayloadBoundary = hasBaselinePayload || hasSourcePayload ||
+      Object.prototype.hasOwnProperty.call(prepared, 'baselinePayloadFingerprint') ||
+      Object.prototype.hasOwnProperty.call(prepared, 'sourceCandidatePayloadFingerprint') ||
+      typeof prepared.assertCanonicalLineageCurrent === 'function';
+    if (hasNativePayloadBoundary && (!hasBaselinePayload || !hasSourcePayload ||
+        typeof prepared.baselinePayloadFingerprint !== 'string' ||
+        !/^[a-f0-9]{64}$/i.test(prepared.baselinePayloadFingerprint) ||
+        typeof prepared.sourceCandidatePayloadFingerprint !== 'string' ||
+        !/^[a-f0-9]{64}$/i.test(prepared.sourceCandidatePayloadFingerprint) ||
+        typeof prepared.assertCanonicalLineageCurrent !== 'function')) {
+      throw new Error('native-p23-revision-canonical-payload-boundary-incomplete');
+    }
+    const assertCurrent = async (): Promise<void> => {
+      await prepared.assertCanonicalLineageCurrent?.();
+    };
 
     const config = evaluationConfigForRepair(configInput);
-    // In production, a factory's existence alone is not sufficient: require the
-    // canonical manifest + validation/holdout plans + verified-outcome ledger so
-    // evaluation evidence is bound to scheduled runs before P23 can stage a revision.
-    if (process.env.NODE_ENV === 'production' && !config?.experimentAuthority) {
+    if (!config || typeof config !== 'object') {
+      throw new Error('independent-candidate-evaluation-config-invalid');
+    }
+    if (process.env.NODE_ENV === 'production' && !config.experimentAuthority) {
       throw new Error('production-independent-evaluation-experiment-authority-required');
     }
+
+    const revisionEvaluator = createIndependentSkillCandidateEvaluator(config);
+    if (hasNativePayloadBoundary) {
+      const authority = config.experimentAuthority;
+      const baselineMethod = config.baselineMethod;
+      const sourceMethod = config.sourceCandidateMethod;
+      const revisionMethod = authority?.method;
+      const methods = [baselineMethod, sourceMethod, revisionMethod];
+      if (!authority || methods.some(method => typeof method !== 'string' || !method.trim()) ||
+          new Set(methods).size !== methods.length) {
+        throw new Error('native-p23-revision-requires-three-distinct-host-owned-methods');
+      }
+      for (const plan of [authority.validationPlan, authority.holdoutPlan]) {
+        const scheduled = new Set(plan.arms.map(arm => arm.method));
+        if (methods.some(method => !scheduled.has(method!))) {
+          throw new Error('native-p23-revision-method-not-scheduled-in-both-splits');
+        }
+      }
+
+      const evaluateMethod = (method: string) => createIndependentSkillCandidateEvaluator({
+        ...config,
+        experimentAuthority: { ...authority, method },
+      });
+      await assertCurrent();
+      const baselineResult = await evaluateMethod(baselineMethod!)({
+        payload: baselinePayload,
+        payloadFingerprint: prepared.baselinePayloadFingerprint!,
+      });
+      await assertCurrent();
+      const sourceResult = await evaluateMethod(sourceMethod!)({
+        payload: sourceCandidatePayload,
+        payloadFingerprint: prepared.sourceCandidatePayloadFingerprint!,
+      });
+      await assertCurrent();
+      if (!baselineResult?.evaluation || !Array.isArray(baselineResult.evaluation.validation) ||
+          !Array.isArray(baselineResult.evaluation.holdout) ||
+          !sourceResult?.evaluation || !Array.isArray(sourceResult.evaluation.validation) ||
+          !Array.isArray(sourceResult.evaluation.holdout)) {
+        throw new Error('native-p23-revision-baseline-and-source-independent-reports-required');
+      }
+      baseline = structuredClone(baselineResult.evaluation);
+      candidateEvaluation = structuredClone(sourceResult.evaluation);
+    }
+
+    const generate = async (request: Parameters<PreparedRevision['generate']>[0]) => {
+      await assertCurrent();
+      const candidate = await prepared.generate(request);
+      await assertCurrent();
+      return candidate;
+    };
+    const evaluateRevisedCandidate: PreparedRevision['evaluateRevisedCandidate'] = async request => {
+      await assertCurrent();
+      const result = await revisionEvaluator(request);
+      await assertCurrent();
+      return result;
+    };
     return {
       proposal,
       sourceCandidateId: prepared.sourceCandidateId,
       baseline,
       candidateEvaluation,
-      generate: prepared.generate,
-      evaluateRevisedCandidate: createIndependentSkillCandidateEvaluator(config),
+      generate,
+      evaluateRevisedCandidate,
       ...(options === undefined ? {} : { options }),
     };
   };
