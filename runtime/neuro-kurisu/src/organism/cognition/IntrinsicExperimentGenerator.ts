@@ -55,6 +55,12 @@ export class IntrinsicExperimentGenerator {
       linkedGoal:goal?.id,
       createdAt,
       source:'intrinsic',
+      // Every generated experiment is an unverified proposal until an independent
+      // observation/tool outcome closes the loop. Never let intrinsic drive alone
+      // convert a hypothesis into a trusted fact.
+      epistemicStatus:'hypothesis',
+      status:'candidate',
+      verificationRequired:true,
     };
   }
 
