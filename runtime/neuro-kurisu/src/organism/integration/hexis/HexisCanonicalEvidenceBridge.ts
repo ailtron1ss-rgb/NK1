@@ -142,7 +142,9 @@ export class HexisCanonicalEvidenceBridge {
     const provenanceClass: MemoryEvidenceSource['provenanceClass'] =
       candidate.source === 'user' ? 'user' :
       candidate.source === 'world' || candidate.source === 'tool' ? 'external' : 'device';
-    const authorityCap = provenance.evidenceClass === 'corroborated' ? 0.76 : 0.64;
+    // Evidence class is caller-declared metadata, not independent corroboration proof.
+    // Keep the per-source authority cap uniform; distinct sources remain separate lineages.
+    const authorityCap = 0.64;
     const source: MemoryEvidenceSource = {
       source: 'hexis-lineage:' + origin + ':' + candidate.source + ':' + provenance.sourceKind,
       provenanceClass,
