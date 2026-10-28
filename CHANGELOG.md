@@ -1,3 +1,10 @@
+## [NK1][WorkPass601] Canonical bilingual holdout and metadata recall integration (2026-10-28)
+
+- Port the reviewed metadata-only recall channel, its index-integrity/read-only regression, and the offline RU/EN independent holdout contract onto the canonical Hexis branch.
+- Preserve one canonical MemoryOS2 owner and the shared fingerprint-bound dataset integrity gate; harness contract tests do not promote retrieval.
+- Keep the latest RuntimeClockScheduler failure-backoff fix and regression in `test:rebuild-recovered`.
+- No independent dataset is included, no retrieval-uplift claim is made, and no Release ZIP is changed.
+
 ## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
 
 - Preserve repeated ground-truth IDs in canonical fingerprints and through normalization until dataset-integrity inspection.
