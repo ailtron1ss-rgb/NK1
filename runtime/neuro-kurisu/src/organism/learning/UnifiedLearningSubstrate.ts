@@ -383,7 +383,7 @@ export class UnifiedLearningSubstrate {
     const at=input?.at??Date.now();
     if(!id||!sourceTaskId||!targetTaskId||!contextKey||
       !isUnitInterval(input?.baseline01)||!isUnitInterval(input?.postScore01)||
-      typeof input?.independentVerified!=='boolean'||typeof input?.holdout!=='boolean'||
+      typeof input?.holdout!=='boolean'||
       !Number.isSafeInteger(at)||at<0)return null;
     const verificationInput={id,sourceTaskId,targetTaskId,baseline01:input.baseline01,postScore01:input.postScore01,holdout:input.holdout===true,contextKey,at};
     // Caller-supplied independentVerified/holdout booleans are claims, not proof.
