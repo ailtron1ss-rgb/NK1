@@ -37,7 +37,7 @@ const request = {
   optimizerInstruction: 'Make the smallest change linked to the validation evidence.',
   validationEvidence: [validationReport],
   targets: [validationTarget, holdoutTarget],
-  holdoutGeneralization: { gap01: 0.12, requiresFreshIndependentEvaluation: true },
+  holdoutGeneralization: { gap01: -0.12, requiresFreshIndependentEvaluation: true },
 };
 function response(value, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
@@ -67,8 +67,8 @@ test('GEPA sidecar receives validation-only evidence and returns a payload, not 
   assert.equal(call.body.adapter, 'nk1-gepa-revision-proposal');
   assert.equal(call.body.constraints.activationAuthority, 'NK1-P23');
   assert.equal(call.body.constraints.independentReevaluationRequired, true);
-  assert.equal(call.body.holdoutGeneralization.gap01, 0.12);
-  assert.deepEqual(call.body.holdoutGeneralization, { gap01: 0.12, requiresFreshIndependentEvaluation: true });
+  assert.equal(call.body.holdoutGeneralization.gap01, -0.12);
+  assert.deepEqual(call.body.holdoutGeneralization, { gap01: -0.12, requiresFreshIndependentEvaluation: true });
   assert.equal(JSON.stringify(call.body).includes('hidden-holdout-task-99'), false);
   assert.equal(JSON.stringify(call.body).includes('rawHoldoutReports'), true,
     'only the explicit false constraint marker is included; no raw holdout reports are attached');
