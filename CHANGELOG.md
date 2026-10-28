@@ -1,3 +1,9 @@
+## [NK1][memory] Metadata-aware MemoryOS2 retrieval experiment (2026-10-28)
+
+- Added a bounded, separate metadata postings index for curated tags/entities and allowlisted topic/context fields. Metadata can nominate candidates when a query does not repeat memory-content terms, while content BM25 document-frequency statistics stay isolated.
+- Added a low-weight metadata ranking/RRF channel and lifecycle cleanup on deletion. Metadata postings are checked against canonical MemoryOS2 items via `indexIntegrityDiagnostics()`.
+- Added `test:memoryos2-metadata-retrieval` to the integration closure and runbook `runtime/neuro-kurisu/docs/MEMORYOS2_METADATA_RETRIEVAL.md`.
+- **Validation status:** the new metadata code/test still requires its own exact-head integration CI. No recall uplift or promotion is claimed until independent immutable holdout evaluation demonstrates the required metrics.
 ## [NK1][WorkPass598] Preserve duplicate retrieval labels through integrity validation (2026-10-28)
 
 - Preserve repeated ground-truth IDs in canonical fingerprints and through normalization until dataset-integrity inspection.
