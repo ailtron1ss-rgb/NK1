@@ -180,4 +180,42 @@ try {
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
+
+ // Duplicate labels must survive normalization, alter the provenance fingerprint, and fail promotion.
+const duplicateLabelExamples = structuredClone(examples);
+duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
+const integrityCompleteProvenance = { ...provenance, licenseId: 'LicenseRef-TestFixture', contentSha256: experiment.datasetFingerprint };
+const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, {
+  ...options,
+  datasetProvenance: integrityCompleteProvenance,
+});
+assert.notEqual(duplicateLabelReport.datasetFingerprint, experiment.datasetFingerprint,
+  'duplicate ground-truth labels must change the canonical dataset fingerprint');
+assert.equal(duplicateLabelReport.datasetProvenance.contentHashValid, false,
+  'a clean dataset hash must not authenticate the duplicate-label input');
+assert.equal(duplicateLabelReport.datasetIntegrity.duplicateRelevantLabelCount, 1,
+  'duplicate relevance labels must be diagnosed');
+assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false,
+  'duplicate relevance labels must invalidate dataset integrity');
+assert.equal(duplicateLabelReport.promotion.allowed, false,
+  'dataset with duplicate relevance labels must never pass the promotion gate');
+
+// Invalid labels mixed with otherwise valid labels must not be silently filtered away.
+const malformedLabelExamples = structuredClone(examples);
+malformedLabelExamples[0].relevantIds.push(null, '   ');
+const malformedLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, malformedLabelExamples, {
+  ...options,
+  datasetProvenance: integrityCompleteProvenance,
+});
+assert.equal(malformedLabelReport.datasetIntegrity.invalidRelevantLabelCount, 2,
+  'malformed relevance label entries must be counted before normalization');
+assert.equal(malformedLabelReport.datasetFingerprint, experiment.datasetFingerprint,
+  'fixture demonstrates why the integrity gate must catch malformed labels even if normalization would erase them');
+assert.equal(malformedLabelReport.datasetProvenance.contentHashValid, true,
+  'fixture keeps a clean hash to isolate malformed-label integrity gating');
+assert.equal(malformedLabelReport.datasetIntegrity.validForPromotion, false,
+  'malformed relevance label entries must invalidate dataset integrity');
+assert.equal(malformedLabelReport.promotion.allowed, false,
+  'malformed relevance labels must block candidate promotion');
+
 console.log('MEMORY_RETRIEVAL_EXPERIMENT=PASS', JSON.stringify({ seeds: experiment.seeds, corpusSize: experiment.corpusSize, train: experiment.trainQueries, holdout: experiment.holdoutQueries, deterministic: experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, promotion: experiment.promotion.status }));
