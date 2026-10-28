@@ -77,6 +77,40 @@ assert.equal(restoredPrivate.latestPlanned(2), null, 'unsafe persisted initiativ
 assert.equal(restoredPrivate.latestReady(), null, 'unsafe persisted message must not be redelivered after restore');
 assert.doesNotMatch(JSON.stringify(restoredPrivate.snapshot()), /hunter2|curator@example\.com/, 'private persisted text must be removed from the restored initiative state');
 assert.equal(restoredPrivate.summary().deferred, 1, 'privacy-invalid restored work must be visibly deferred');
+// Restored ready rows without a safe message are not deliverable. They must be
+// deferred immediately instead of remaining in hasPending() until the 20-minute
+// expiry and blocking new endogenous dialogue indefinitely after restart.
+const orphanedReady = new AutonomousSocialInitiativeEngine();
+orphanedReady.restore({
+  version: 1, cycles: 1, planned: 1, executed: 0, deferred: 0,
+  reciprocity01: .5, initiative01: .5, startedAt: 1,
+  lastExternalInputAt: 0, lastInitiativeAt: 100,
+  initiatives: [{
+    id: 'orphaned-ready-no-message',
+    contact: null,
+    kind: 'share-thought',
+    priority01: .7,
+    status: 'ready',
+    createdAt: 100,
+    reason: 'legacy or interrupted state',
+    topic: 'A prior distinct thought about verified memory and causal evidence',
+    topicSource: 'reflection',
+    openingIntent: 'offer-an-idea',
+  }],
+});
+assert.equal(orphanedReady.latestReady(), null,
+  'a ready initiative without a safe message must never be exposed to delivery');
+assert.equal(orphanedReady.snapshot().initiatives[0].status, 'deferred',
+  'restore must resolve undeliverable ready state immediately');
+assert.equal(orphanedReady.summary().deferred, 1,
+  'the invalid restored work must be visible in deferred diagnostics');
+const resumedAfterRestore = orphanedReady.cycle(inputs(10_000, {
+  startupGraceMs: 0, quietPeriodMs: 0, cooldownMs: 0,
+  topics: [{ topic: 'A fresh autonomous question about testing a prediction against independent evidence', source: 'curiosity' }],
+}));
+assert.ok(resumedAfterRestore.initiative,
+  'an orphaned ready row must not suppress a valid new initiative after restore');
+
 const expressive = new AutonomousSocialInitiativeEngine();
 const direct = expressive.cycle(inputs(5000, { startupGraceMs: 0, quietPeriodMs: 0, cooldownMs: 0, emotionLabel: 'frustration', emotionConfidence01: .8, emotionArousal01: .82, topics: [{ topic: 'A distinct new question about how competing hypotheses should be tested', source: 'reflection' }] }));
 assert.equal(direct.initiative?.toneHint, 'direct', 'a high-confidence appraisal should shape expression');

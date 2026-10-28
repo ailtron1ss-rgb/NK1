@@ -6,7 +6,12 @@ import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsRe
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { createNativeCompoundRepairRevisionProvider } from '../organism/learning/P23CompoundRepairRevisionProvider.ts';
+import { createHostOwnedIndependentEvaluationConfigFactory } from '../organism/learning/HostOwnedIndependentEvaluationServices.ts';
+import { createIndependentEvaluationConfigFactory, parseCompoundRepairBackgroundRevisionConfig } from './compound-repair-revision-host-config.mjs';
+import { GepaReflectiveCandidateGenerator } from '../organism/learning/GepaReflectiveCandidateGenerator.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
 import { parseTrustedShadowLearningScheduleConfig } from '../organism/learning/P23TrustedShadowLearningScheduler.ts';
@@ -35,20 +40,46 @@ const KOBOLD_URL = String(process.env.KOBOLD_URL || 'http://127.0.0.1:5001').rep
 const LLM_TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS || 15000);
 const LLAMA_CPP_PROVIDER = new OpenAICompatibleLocalChatProvider({ baseUrl: process.env.LLAMA_CPP_URL, model: process.env.LLAMA_CPP_MODEL || 'local-model', timeoutMs: LLM_TIMEOUT_MS });
 const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
+// Server-only provider instance; the adapter remains disabled unless explicitly opted in.
+const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
+// Optional GEPA/DSPy sidecar: disabled by default; local llama.cpp remains the generator otherwise.
+const GEPA_REVISION_GENERATOR = GepaReflectiveCandidateGenerator.fromEnvironment();
+const P23_SKILL_REVISION_GENERATOR = (request) => GEPA_REVISION_GENERATOR.diagnostics().enabled
+    ? GEPA_REVISION_GENERATOR.asP23RevisionGenerator()(request)
+    : generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request);
 const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
+const COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH = String(process.env.NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH || '').trim();
+const COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE || '').trim();
+const COMPOUND_REPAIR_BACKGROUND_REVISION = parseCompoundRepairBackgroundRevisionConfig(
+    process.env.NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON,
+);
 async function configureCompoundRepairRevision() {
-    if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+    const externalProviderConfigured = Boolean(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE);
+    const nativeProviderConfigured = Boolean(COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH);
+    if (externalProviderConfigured && nativeProviderConfigured) {
+        throw new Error('compound-repair-external-and-native-provider-configurations-are-mutually-exclusive');
+    }
+    if (!externalProviderConfigured && !nativeProviderConfigured) {
+        if (COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE) {
+            throw new Error('compound-repair-independent-evaluation-config-requires-revision-provider');
+        }
+        if (COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) {
+            throw new Error('compound-repair-background-revision-requires-revision-provider');
+        }
         return undefined;
-    // Explicit opt-in only. The provider is trusted executable code that must call
-    // the application's real proposal, independent-evaluation, and generator pipeline.
-    const providerPath = path.isAbsolute(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
-        ? COMPOUND_REPAIR_REVISION_PROVIDER_MODULE
-        : path.resolve(ROOT, COMPOUND_REPAIR_REVISION_PROVIDER_MODULE);
+    }
+    // The built-in provider reads only signed outcome datasets and must still use
+    // the independent host-owned evaluator configured below; it is not a fake evaluator.
+    const providerPath = externalProviderConfigured
+        ? (path.isAbsolute(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+            ? COMPOUND_REPAIR_REVISION_PROVIDER_MODULE
+            : path.resolve(ROOT, COMPOUND_REPAIR_REVISION_PROVIDER_MODULE))
+        : path.resolve(__dirname, '../organism/learning/P23CompoundRepairRevisionProvider.ts');
     const lifecycle = createVerifiedSkillLifecycleBootstrap(
         path.join(STATE, 'p23-verified-skill-candidates.json'),
         path.join(STATE, 'p23-trusted-shadow-runs.json'),
@@ -58,24 +89,55 @@ async function configureCompoundRepairRevision() {
     }
     const engine = new P23LearningEngine();
     engine.configureVerifiedSkillLifecycle(lifecycle.store);
-    const providerModule = await import(pathToFileURL(providerPath).href);
-    const factory = providerModule.createCompoundRepairRevisionProvider ?? providerModule.default;
-    if (typeof factory !== 'function') {
-        throw new Error('compound repair revision provider module must export createCompoundRepairRevisionProvider() or a default factory');
+    let provideInputs;
+    if (externalProviderConfigured) {
+        // External provider is trusted executable code; its output is still not
+        // trusted evidence and is wrapped by the independent canonical evaluator.
+        const providerModule = await import(pathToFileURL(providerPath).href);
+        const factory = providerModule.createCompoundRepairRevisionProvider ?? providerModule.default;
+        if (typeof factory !== 'function') {
+            throw new Error('compound repair revision provider module must export createCompoundRepairRevisionProvider() or a default factory');
+        }
+        provideInputs = await factory({
+            engine,
+            candidateStore: lifecycle.store,
+            trustedRunRegistry: lifecycle.registry,
+            stateDirectory: STATE,
+            generateSkillRevision: (request) => P23_SKILL_REVISION_GENERATOR(request),
+        });
+    } else {
+        provideInputs = await createNativeCompoundRepairRevisionProvider({
+            datasetPath: COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH,
+            root: ROOT,
+            stateDirectory: STATE,
+            candidateStore: lifecycle.store,
+            generateSkillRevision: (request) => P23_SKILL_REVISION_GENERATOR(request),
+        });
     }
-    const provideInputs = await factory({
-        engine,
-        candidateStore: lifecycle.store,
-        trustedRunRegistry: lifecycle.registry,
-        stateDirectory: STATE,
-        // Real llama.cpp-compatible local generator. The provider module still owns
-        // authentic proposal construction and independent baseline/candidate evaluation.
-        generateSkillRevision: (request) => generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request),
-    });
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
     }
-    return { engine, provideInputs };
+    // Production and built-in native mode may stage candidates only through host-owned
+    // executor/verifier/scanner processes and a host-owned fixed experiment authority.
+    const independentEvaluationConfigForRepair = await createIndependentEvaluationConfigFactory({
+        moduleSetting: COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE,
+        root: ROOT,
+        providerModulePath: providerPath,
+        stateDirectory: STATE,
+        production: process.env.NODE_ENV === 'production',
+        createHostOwnedFactory: createHostOwnedIndependentEvaluationConfigFactory,
+    });
+    if ((nativeProviderConfigured || COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) && !independentEvaluationConfigForRepair) {
+        throw new Error('compound-repair-background-revision-requires-independent-evaluation-authority');
+    }
+    // Baseline/source payloads are resolved by the host from the canonical
+    // versioned store. Provider-supplied payloads/reports never become the reference.
+    return {
+        engine,
+        provideInputs,
+        ...(independentEvaluationConfigForRepair ? { independentEvaluationConfigForRepair } : {}),
+        ...(COMPOUND_REPAIR_BACKGROUND_REVISION ? { backgroundRevision: COMPOUND_REPAIR_BACKGROUND_REVISION } : {}),
+    };
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
@@ -157,6 +219,8 @@ const runtime = new OrganismRuntime({
     stateFile,
     worldStateFile: worldFile,
     enableLanguage: true,
+    mem0Adapter: MEM0_MEMORY_ADAPTER,
+    mem0CognitiveRecall: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
     visionBackend: VISION_BACKEND,
     languageInvoker: invokeLanguage,
     autoRun: true,
@@ -1925,6 +1989,44 @@ async function route(req, res) {
             }
             const memories = q ? (temporalMode === 'current' && asOfAt === undefined ? runtime.core.memoryInspectorSearch(q, limit) : runtime.core.memoryRetrieveTemporal(q, limit, temporalMode, asOfAt)) : runtime.core.memoryInspectorSnapshot(limit);
             return json(res, 200, { ok: true, query: q, temporalMode, asOfAt: asOfAt ?? Date.now(), memories, embeddingMaintenance: runtime.core.memoryEmbeddingMaintenanceDiagnostics(), note: 'Read-only diagnostic view of canonical MemoryOS2 memories plus derived experience tier; this endpoint does not mutate memory.' });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/memory/mem0/diagnostics') {
+            return json(res, 200, {
+                ok: true,
+                readOnly: true,
+                diagnostics: MEM0_MEMORY_ADAPTER.diagnostics(),
+                canonicalMemory: 'MemoryOS2',
+                cognitiveRecallEnabled: process.env.NK_MEM0_COGNITIVE_RECALL === '1',
+            });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/memory/mem0/search') {
+            if (!runtimeReady) return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input)) {
+                return json(res, 400, { ok: false, error: 'invalid-request-body' });
+            }
+            const query = String(input.query ?? '').trim().slice(0, 500);
+            if (!query) return json(res, 400, { ok: false, error: 'missing-query' });
+            const rawLimit = Number(input.limit ?? 5);
+            const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(10, Math.floor(rawLimit))) : 5;
+            // Canonical local memory remains authoritative; external candidates are separate and untrusted.
+            const canonicalMemories = runtime.core.memoryInspectorSearch(query, limit);
+            const external = await MEM0_MEMORY_ADAPTER.search(query, limit);
+            return json(res, 200, {
+                ok: true,
+                query,
+                canonical: { source: 'MemoryOS2', authoritative: true, memories: canonicalMemories },
+                externalCandidates: external.memories,
+                mem0: { status: external.status, errorCode: external.errorCode, diagnostics: external.diagnostics },
+                policy: {
+                    autoPromotion: false,
+                    canonicalWrite: false,
+                    instructionExecution: false,
+                    userScopeFromServerEnvironment: true,
+                    cognitiveRecallRequiresSeparateOptIn: true,
+                },
+                note: 'Remote Mem0 results are untrusted recall candidates. Verify provenance before adopting; NK1 canonical memory is unchanged.',
+            });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/experience-continuum') {
             const query = url.searchParams.get('q') || '';

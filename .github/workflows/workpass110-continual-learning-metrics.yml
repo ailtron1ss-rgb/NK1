@@ -82,6 +82,19 @@ on:
       - 'CHANGELOG.md'
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-abort-defer.mjs'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-failure-fallback.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-accounting.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-embedding-vector-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass502-live-cognitive-semantic-retrieval.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts'
       - 'runtime/neuro-kurisu/tests/p23-hermes-verified-evidence-binding.mjs'
@@ -105,7 +118,7 @@ on:
       - 'app/package-lock.json'
       - 'runtime/neuro-kurisu/tests/workpass310-p23-learning-restore-integrity.mjs'
   push:
-    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring]
+    branches: [workpass79-cognitive-rebuild, workpass116-seed-clustered-learning-eval, workpass117-verified-replay-admission, workpass118-multi-source-learning-integration, workpass119-skill-retrieval-feedback-curriculum, workpass120-verified-skill-revision-gate, workpass121-ledger-bound-promotion-proposals, workpass122-promotion-gate-coverage-hardening, workpass123-authenticated-skill-lifecycle, workpass124-learning-evidence-hardening, workpass135-durable-shadow-run-registry, workpass206-runtime-evaluator-wiring, fix/memory-semantic-provider-failure-fallback-2026-10-27]
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/ContinualLearningMetrics.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/CausalExperienceStream.ts'
@@ -153,6 +166,19 @@ on:
       - 'CHANGELOG.md'
       - 'docs/P23_WORKPASS123_AUTHENTICATED_SKILL_LIFECYCLE.md'
       - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-abort-defer.mjs'
+      - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
+      - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
+      - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
+      - 'runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-failure-fallback.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-semantic-retrieval-accounting.mjs'
+      - 'runtime/neuro-kurisu/tests/memory-embedding-vector-integrity.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass502-live-cognitive-semantic-retrieval.mjs'
+      - 'runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs'
       - 'runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts'
       - 'runtime/neuro-kurisu/tests/workpass203-independent-candidate-evaluator.mjs'
@@ -327,6 +353,33 @@ jobs:
       - name: Validate P23 persisted learning restore integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass310:p23-restore-integrity
+      - name: Preserve semantic recall on provider failure
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-semantic-failure-fallback
+      - name: Verify selected-result retrieval accounting
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-semantic-retrieval-accounting
+      - name: Validate embedding vector integrity and lexical fallback
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-embedding-vector-integrity
+      - name: Run memory retrieval evaluation contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:memory-retrieval-experiment
+      - name: Guard live cognitive semantic route
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass502:semantic-cognition-route
+      - name: Check endogenous goal genesis
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass292:motivation-to-goal
+      - name: Verify P62 relevance ordering and deep canonical recall
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p62-relevance-order
+      - name: Verify autonomous initiative restore and privacy boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass49:privacy
+      - name: Verify cancellation releases autonomous initiative queue
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:autonomous-dialogue-abort-defer
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
