@@ -5,6 +5,11 @@ on:
     branches: [nk1-hexis-canonical-apply-2026-10-27]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/scripts/fingerprint-memory-retrieval-dataset.mjs"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-dataset-fingerprint.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/mem0-platform-adapter-workpass1.mjs"
       - "runtime/neuro-kurisu/tests/mem0-live-contract-check.mjs"
       - "runtime/neuro-kurisu/tests/mem0-runtime-wiring.mjs"
