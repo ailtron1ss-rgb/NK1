@@ -8,7 +8,7 @@ Content-only BM25 term frequency and document frequency remain unchanged. Metada
 
 ## Integrity and lifecycle
 
-- Metadata values are length/count bounded and only selected string-valued context keys are indexed; arbitrary JSON context is not recursively mined.
+- Metadata values are length/count bounded; each source lane is capped at 64 unique tokens and each memory at 128 metadata tokens, selected by round-robin across tags, entities and allowlisted context fields. Allowlisted fields are filtered before the field cap, so unrelated context keys cannot starve topic metadata; arbitrary JSON context is not recursively mined.
 - Index addition and deletion update metadata postings with the canonical MemoryOS2 item lifecycle.
 - `indexDiagnostics()` reconstructs expected metadata postings from canonical items and includes `metadataIndexMismatch` in its `pass` decision.
 - The regression verifies metadata-only topic/entity discoverability, preserves a direct content match, checks that retrieval does not mutate the canonical item count, and restores an older snapshot over a newer in-memory record to detect stale metadata postings.
