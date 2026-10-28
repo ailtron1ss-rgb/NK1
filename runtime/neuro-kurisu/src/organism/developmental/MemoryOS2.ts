@@ -741,6 +741,7 @@ export class MemoryOS2{
    const existing=indexedCandidates.filter(m=>this.validAt(m,now)&&m.epistemicStatus!=='quarantined'&&!m.dormant).sort((a,b)=>this.preferIndexRecord(a,b,now)?-1:this.preferIndexRecord(b,a,now)?1:0)[0];
    if(existing){
     const priorBytes=estimateMemoryBytes(existing);
+    const previousMetadataTokens=this.metadataTokens(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
     existing.lastAccessAt=now;
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
@@ -755,6 +756,9 @@ export class MemoryOS2{
     existing.contentHash=existing.contentHash||memoContentHash(existing.content);
     existing.tags=mergeMemoTags(existing.tags,input.tags);
     existing.context=mergeMemoContext(existing.context,input.context);
+    // Dedup/reconsolidation may add metadata without changing content. Update only
+    // the changed posting sets instead of rescanning the complete metadata vocabulary.
+    this.syncMetadataIndex(existing,previousMetadataTokens);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
     this.state.reconsolidations++;
     this.exactIndex.set(`${existing.kind}|${existing.source}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
@@ -1278,7 +1282,18 @@ export class MemoryOS2{
      if(!ids.has(item.id))ids.add(item.id);
      if(previousDf===0)for(const gram of charTrigrams(token)){let posting=this.characterGramIndex.get(gram);if(!posting){posting=new Set<string>();this.characterGramIndex.set(gram,posting);}posting.add(token);}
    }
-   for(const token of this.metadataTokens(item)){
+   this.syncMetadataIndex(item,new Set<string>());
+ }
+ /** Maintain only changed postings; callers provide the pre-mutation metadata token set. */
+ private syncMetadataIndex(item:MemoryItem2,previousTokens:Set<string>){
+   const nextTokens=this.metadataTokens(item);
+   for(const token of previousTokens){
+     if(nextTokens.has(token))continue;
+     const ids=this.metadataTokenIndex.get(token);
+     if(ids){ids.delete(item.id);if(ids.size===0)this.metadataTokenIndex.delete(token);}
+   }
+   for(const token of nextTokens){
+     if(previousTokens.has(token))continue;
      let ids=this.metadataTokenIndex.get(token);
      if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}
      ids.add(item.id);
@@ -1304,8 +1319,11 @@ export class MemoryOS2{
    for(const [token,ids] of this.tokenIndex){
      if(ids.delete(id)&&ids.size===0)this.tokenIndex.delete(token);
    }
-   for(const [token,ids] of this.metadataTokenIndex){
-     if(ids.delete(id)&&ids.size===0)this.metadataTokenIndex.delete(token);
+   if(item){
+     for(const token of this.metadataTokens(item)){
+       const ids=this.metadataTokenIndex.get(token);
+       if(ids){ids.delete(id);if(ids.size===0)this.metadataTokenIndex.delete(token);}
+     }
    }
  }
 
