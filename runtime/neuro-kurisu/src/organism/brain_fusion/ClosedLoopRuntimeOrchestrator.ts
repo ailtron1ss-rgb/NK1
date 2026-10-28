@@ -4,7 +4,10 @@
  * Engineering purpose: connect observable runtime events into a measurable
  * cognition loop. This is an orchestration layer, not a claim of sentience.
  */
-import { LifeCycleIntegrationKernel, LifeCycleExperience, LifeCycleState } from './LifeCycleIntegrationKernel.ts';
+import { LifeCycleIntegrationKernel } from './LifeCycleIntegrationKernel.ts';
+// `LifeCycleExperience` and `LifeCycleState` are erased interface declarations, so they
+// must not appear in a runtime import under Node's strip-only TypeScript loader.
+import type { LifeCycleExperience, LifeCycleState } from './LifeCycleIntegrationKernel.ts';
 
 export interface RuntimeObservation {
   source: string;

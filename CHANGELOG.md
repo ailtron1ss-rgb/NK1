@@ -1,3 +1,12 @@
+## [NK1][WorkPass609] Restore brain-fusion module loading under Node 24 strip-only TypeScript (2026-10-28)
+
+- Remove TypeScript parameter properties from `src/organism/brain_fusion/UnifiedCognitiveLoop.ts`, `FullCognitiveOrganismLoop.ts`, `CognitiveRuntimeBridge.ts`, `BrainRuntimeBridge.ts` and `MobileCognitiveResourceGuard.ts`; these files previously threw `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX` at module load under `--experimental-strip-types`, which is how the runtime and its tests execute TypeScript.
+- Split erased-interface names out of the runtime import in `ClosedLoopRuntimeOrchestrator.ts` into a `import type` statement so strip-only resolution no longer requests `LifeCycleExperience`/`LifeCycleState` as runtime bindings.
+- Re-export the brain-fusion barrel (`UnifiedCognitiveLoop`, `FullCognitiveOrganismLoop`, `CognitiveRuntimeBridge`, `BrainRuntimeBridge`, `MobileCognitiveResourceGuard`) from `src/organism/index.ts` so the organism surface matches the implemented modules.
+- Fix `scripts/typecheck-runtime.mjs`: it used `node --check`, which cannot parse TypeScript and therefore reported every source file as a parse failure. It now uses `stripTypeScriptTypes` for a strip-syntax check that still rejects parameter properties and value-imported erased types.
+- Add `tests/workpass609-brain-fusion-strip-only-runtime-load.mjs` (fails before this change with the strip-only syntax error) and wire it into the `test:rebuild-recovered` aggregate used by the active validation workflow.
+- Scope: module-load and constructor-default behavior only. No learning, recall, or cognition claim is made.
+
 ## [NK1][WorkPass608] Attribute retrieval cost to the selected execution path (2026-10-28)
 
 - Add isolated lexical preview diagnostics so candidateCount/cost no longer reads whichever query last mutated live MemoryOS2 diagnostic state.
