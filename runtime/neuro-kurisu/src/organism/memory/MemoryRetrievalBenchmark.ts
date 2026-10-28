@@ -195,7 +195,7 @@ function pairedBootstrapValuesInterval(baseline:number[],candidate:number[],samp
   const at=(p:number)=>Number((deltas[Math.min(deltas.length-1,Math.max(0,Math.floor((deltas.length-1)*p)))]??0).toFixed(4));
   return {samples,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
 }
-function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:MemoryItem2[],truncatedExamples:number,droppedExamples:number,truncatedFieldRows:number){
+function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:MemoryItem2[],truncatedExamples:number,droppedExamples:number,truncatedFieldRows:number,invalidRelevantLabelCount:number){
   const knownIds=new Set(corpus.map(row=>row.id));
   const duplicateIds=new Set<string>();const seenIds=new Set<string>();
   const duplicateRelevantIds=new Set<string>();
@@ -230,8 +230,8 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   // Same-split duplicate prompts distort independent-query weighting too, so they are
   // reported and block promotion rather than being silently treated as extra evidence.
   const duplicateQueryGroupCount=repeatedQueryKeys.length;
-  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0;
-  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,validForPromotion};
+  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&invalidRelevantLabelCount===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0;
+  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,invalidRelevantLabelCount,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,validForPromotion};
 }
 
 /**
@@ -259,6 +259,8 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const maxExamples=Math.floor(finiteOption(options.maxExamples,64,64,512));
   const limited=rawArray.slice(0,maxExamples);const truncatedExamples=Math.max(0,rawArray.length-limited.length);
   let droppedExamples=0;
+  // Invalid relevance elements are counted before normalization filters them; a mixed valid/invalid label array must not silently pass promotion gates.
+  const invalidRelevantLabelCount=limited.reduce((count,row)=>count+(row&&Array.isArray(row.relevantIds)?row.relevantIds.filter(label=>typeof label!=='string'||!label.trim()).length:0),0);
   // Bounded copies remain diagnostic-only if the source labels/text would be clipped.
   const truncatedFieldRows=limited.filter(row=>Boolean(row&&((typeof row.id==='string'&&row.id.length>120)||(typeof row.query==='string'&&row.query.length>500)||(Array.isArray(row.relevantIds)&&(row.relevantIds.length>24||row.relevantIds.some(id=>typeof id==='string'&&id.length>160)))))).length;
   const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
@@ -275,7 +277,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const truncatedCorpusItems=Math.max(0,sourceItems.length-boundedSourceItems.length);
   const corpusIntegrity={sourceItems:sourceItems.length,acceptedItems:validItems.length,malformedRows:malformedCorpusRows,duplicateIdCount:duplicateCorpusIds.size,truncatedItems:truncatedCorpusItems,validForPromotion:malformedCorpusRows===0&&duplicateCorpusIds.size===0&&truncatedCorpusItems===0};
   const corpus=validItems;
-  const dataIntegrity=inspectDataset(examples,corpus,truncatedExamples,droppedExamples,truncatedFieldRows);
+  const dataIntegrity=inspectDataset(examples,corpus,truncatedExamples,droppedExamples,truncatedFieldRows,invalidRelevantLabelCount);
   dataIntegrity.validForPromotion=dataIntegrity.validForPromotion&&corpusIntegrity.validForPromotion;
   const train=examples.filter(x=>x.split==='train');const holdout=examples.filter(x=>x.split==='holdout');
   // A real corpus-scoped Okapi BM25 baseline, not the former binary token-overlap
