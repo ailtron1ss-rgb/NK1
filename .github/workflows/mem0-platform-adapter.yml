@@ -5,6 +5,8 @@ on:
     branches: [nk1-hexis-canonical-apply-2026-10-27]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
+      - "runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts"
+      - "runtime/neuro-kurisu/tests/gepa-reflective-candidate-generator.mjs"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
       - "runtime/neuro-kurisu/scripts/fingerprint-memory-retrieval-dataset.mjs"
       - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
