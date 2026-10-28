@@ -12,13 +12,13 @@ const hostConfig = await readFile(path.join(runtimeRoot, 'src/server/compound-re
 test('native provider and host-owned evaluation remain explicit opt-in paths', () => {
   assert.match(server, /NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH/);
   assert.match(server, /NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE/);
-  assert.match(server, /if \\(externalProviderConfigured && nativeProviderConfigured\\)/);
+  assert.ok(server.includes('if (externalProviderConfigured && nativeProviderConfigured)'));
   assert.match(server, /createNativeCompoundRepairRevisionProvider\\(/);
   assert.match(server, /datasetPath: COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH/);
   assert.match(server, /createIndependentEvaluationConfigFactory\\(/);
   assert.match(server, /createHostOwnedIndependentEvaluationConfigFactory/);
-  assert.match(server, /if \\(\\(nativeProviderConfigured \\|\\| COMPOUND_REPAIR_BACKGROUND_REVISION\\?\\.enabled\\) && !independentEvaluationConfigForRepair\\)/);
-  assert.match(server, /generateSkillRevision: \\(request\\) => P23_SKILL_REVISION_GENERATOR\\(request\\)/);
+  assert.ok(server.includes('if ((nativeProviderConfigured || COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) && !independentEvaluationConfigForRepair)'));
+  assert.ok(server.includes('generateSkillRevision: (request) => P23_SKILL_REVISION_GENERATOR(request)'));
   assert.match(server, /compoundRepairRevision: COMPOUND_REPAIR_REVISION/);
 });
 
