@@ -184,9 +184,10 @@ try {
  // Duplicate labels must survive normalization, alter the provenance fingerprint, and fail promotion.
 const duplicateLabelExamples = structuredClone(examples);
 duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
+const integrityCompleteProvenance = { ...provenance, licenseId: 'LicenseRef-TestFixture', contentSha256: experiment.datasetFingerprint };
 const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, {
   ...options,
-  datasetProvenance: { ...provenance, contentSha256: experiment.datasetFingerprint },
+  datasetProvenance: integrityCompleteProvenance,
 });
 assert.notEqual(duplicateLabelReport.datasetFingerprint, experiment.datasetFingerprint,
   'duplicate ground-truth labels must change the canonical dataset fingerprint');
@@ -204,7 +205,7 @@ const malformedLabelExamples = structuredClone(examples);
 malformedLabelExamples[0].relevantIds.push(null, '   ');
 const malformedLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, malformedLabelExamples, {
   ...options,
-  datasetProvenance: { ...provenance, contentSha256: experiment.datasetFingerprint },
+  datasetProvenance: integrityCompleteProvenance,
 });
 assert.equal(malformedLabelReport.dataIntegrity.invalidRelevantLabelCount, 2,
   'malformed relevance label entries must be counted before normalization');
