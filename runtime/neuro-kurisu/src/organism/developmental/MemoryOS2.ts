@@ -1103,7 +1103,9 @@ export class MemoryOS2{
  updateContext(id:string, patch:Record<string,string|undefined>) {
    const m=this.itemIndex.get(String(id));if(!m)return null;
    const before=estimateMemoryBytes(m);
+   const previousMetadataTokens=this.metadataTokens(m);
    m.context=mergeMemoContext(m.context,patch);
+   this.syncMetadataIndex(m,previousMetadataTokens);
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
    return structuredClone(m.context??{});
  }
