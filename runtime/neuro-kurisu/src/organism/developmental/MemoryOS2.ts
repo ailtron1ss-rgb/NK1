@@ -733,11 +733,16 @@ export class MemoryOS2{
 
  encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean}={}){
    const now=Date.now();
+   if(input.id!==undefined&&(typeof input.id!=='string'||!input.id.trim()||input.id!==input.id.trim()))throw new Error('memory-id-invalid');
    const canonicalContent=canonicalizeMemoryContent(input.content);
    const identity=deriveMemoryIdentity(canonicalContent,input.kind,input.source);
-   if(options.forceDistinct&&input.id){
-     const forced=this.itemIndex.get(input.id);
-     if(forced&&canonicalizeMemoryContent(forced.content)===canonicalContent)return options.clone===false?forced:structuredClone(forced);
+   if(input.id){
+     const requestedId=this.itemIndex.get(input.id);
+     if(requestedId){
+       const sameIdentity=requestedId.kind===input.kind&&requestedId.source===input.source&&canonicalizeMemoryContent(requestedId.content)===canonicalContent;
+       if(!sameIdentity)throw new Error('memory-id-conflict:'+input.id);
+       if(options.forceDistinct)return options.clone===false?requestedId:structuredClone(requestedId);
+     }
    }
    const exactId=options.forceDistinct?undefined:this.exactIndex.get(`${input.kind}|${input.source}|${canonicalContent}`);
    const contentId=options.forceDistinct?undefined:this.contentIndex.get(`${input.kind}|${canonicalContent}`);
@@ -765,14 +770,29 @@ export class MemoryOS2{
     this.contentIndex.set(`${existing.kind}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     return options.clone===false?existing:structuredClone(existing);
    }
+   // An explicit ID already bound to the same identity is idempotent even when
+   // its row is historical/dormant and therefore absent from the active dedup pool.
+   // Never append a second state.items row for an ID already owned by itemIndex.
+   if(input.id){
+     const requestedId=this.itemIndex.get(input.id);
+     if(requestedId)return options.clone===false?requestedId:structuredClone(requestedId);
+   }
    const semanticVector=vectorize(input.content); const entities=[...new Set([...(input.entities??[]),...extractEntities(input.content)])];
    // If canonical content already exists only as an expired/quarantined record,
    // a fresh observation gets its own stable-in-process identity rather than
    // mutating history or overwriting the historical item's map entry.
-   const collision=this.itemIndex.has(input.id??identity.stableId);
-   const materializedInput:MemoryEncodeInput=options.forceDistinct||input.id||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
+   const collision=!input.id&&this.itemIndex.has(identity.stableId);
+   let materializedInput:MemoryEncodeInput=input;
+   if(collision){
+     // `forceDistinct` skips content deduplication, not ID uniqueness. Generate a
+     // fresh lineage ID whenever the content-addressed default ID is already owned.
+     const reason=options.forceDistinct?'forced-distinct':'reobserved';
+     const seed=canonicalContent+'\0'+reason+':'+now+':'+this.state.items.length+':'+this.state.reconsolidations;
+     let uniqueId=stableMemoryId(seed,input.kind,input.source),salt=0;
+     while(this.itemIndex.has(uniqueId))uniqueId=stableMemoryId(seed+':'+(++salt),input.kind,input.source);
+     materializedInput={...input,id:uniqueId};
+   }
    const item=this.buildMemoryItem(materializedInput,identity,entities,semanticVector,now);
-   if(collision&&!input.id&&!options.forceDistinct&&!materializedInput.revisionGroupId)item.revisionGroupId=item.id;
    item.temperature01=memoryTemperature(item,now);
    const best:Array<{x:MemoryItem2;sim:number;ent:number;rank:number}>=[];
    for(const x of this.state.items.slice(0,512)){
