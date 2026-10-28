@@ -101,7 +101,8 @@ export class CognitiveExecutionPlanner{
       const cadenceFactor=1/Math.max(1,contract?.cadenceCycles??1);
       rawWeights[domain]=Math.max(.01, criticality*(.45+priority*.75)*(.70+cheapness*.30)*(active?1:0.28)*(domain==='research'?(.65+(pressure?.informationUrgency01 ?? 0)*.65):1)*(domain==='governance'?1.12:1));
       plan.metabolism[domain]={domain,priority01:priority,budgetShare01:0,estimatedLoad01:active?clamp(frame.complexity01*(domain==='embodiment'?1.2:domain==='memory'?.85:1)):0,active};
-      if(cadenceFactor>1) rawWeights[domain]*=cadenceFactor;
+      // Cadence factors are discounts in (0, 1]; the former >1 guard made this adjustment unreachable.
+      if(cadenceFactor<1) rawWeights[domain]*=cadenceFactor;
     }
     const totalWeight=Math.max(.01,Object.values(rawWeights).reduce((sum,x)=>sum+x,0));
     for(const domain of domainList) plan.metabolism[domain].budgetShare01=clamp(rawWeights[domain]/totalWeight);
