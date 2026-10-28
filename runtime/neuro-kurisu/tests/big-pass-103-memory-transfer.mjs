@@ -62,7 +62,7 @@ assert.deepEqual(ul.recordTransferProbe(transferInput),firstTransfer,'repeated e
 assert.equal(ul.transferDiagnostics().validatedSamples,1,'an exact retry must not mint a second validated transfer sample');
 assert.equal(ul.recordTransferProbe({...transferInput,postScore01:.91}),null,'reusing an evidence ID with a conflicting outcome must be rejected');
 assert.equal(ul.recordTransferProbe({...transferInput,id:'bad-nan-transfer',postScore01:Number.NaN}),null,'non-finite scores must not be clamped into valid transfer evidence');
-assert.equal(ul.recordTransferProbe({...transferInput,id:'bad-control-transfer\\n',postScore01:.66}),null,'control-bearing IDs must not enter the evidence ledger');
+assert.equal(ul.recordTransferProbe({...transferInput,id:'bad-control-transfer\n',postScore01:.66}),null,'control-bearing IDs must not enter the evidence ledger');
 const secondTransfer=ul.recordTransferProbe({...probe,id:probe.id+'-2',postScore01:.64,independentVerified:true,holdout:true});
 assert.ok(secondTransfer);
 const td=ul.transferDiagnostics();
