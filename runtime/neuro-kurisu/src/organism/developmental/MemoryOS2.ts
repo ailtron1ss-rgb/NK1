@@ -908,6 +908,7 @@ export class MemoryOS2{
  }
  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},clone=true){
    const qTokens=this.tokensFor(query);
+   const queryTokenArray=[...qTokens];
    const conceptQuery=expandMemoryQueryConcepts(qTokens);
    const queryEntities=extractEntities(query);
    this.state.semanticQueries++;
@@ -1047,9 +1048,11 @@ export class MemoryOS2{
      if(!temporalValid)continue;
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
-     const queryTokenArray=[...qTokens];
-     const metadataTokens=this.metadataTokens(m);
-     const metadata=queryTokenArray.length?queryTokenArray.filter(token=>metadataTokens.has(token)).length/queryTokenArray.length:0;
+     // Score metadata coverage from the inverted postings used for candidate
+     // discovery; avoid re-tokenizing every candidate's tags/context on every query.
+     let metadataMatches=0;
+     for(const token of queryTokenArray)if(this.metadataTokenIndex.get(token)?.has(id))metadataMatches++;
+     const metadata=queryTokenArray.length?metadataMatches/queryTokenArray.length:0;
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
      const fuzzy=fuzzyTokenCoverage(queryTokenArray,lexicalTokens);
