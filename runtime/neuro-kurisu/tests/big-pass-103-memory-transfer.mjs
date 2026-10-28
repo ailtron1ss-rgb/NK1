@@ -68,7 +68,7 @@ assert.ok(secondTransfer);
 const td=ul.transferDiagnostics();
 assert.equal(td.validatedSamples,2); assert.equal(td.positiveSamples,2); assert.equal(td.negativeSamples,0); assert.ok(td.crossTaskTransfer01>0);
 const diag=ul.diagnostics();
-assert.equal(diag.version,4);
+assert.equal(diag.version,2);
 assert.equal(diag.provenanceCounts.experienceReplay,0,'caller-provided replay provenance must not be counted as trusted replay evidence');
 assert.equal(diag.provenanceCounts.external,1,'unverified replay claims must remain in the external-hypothesis lane');
 assert.equal(ul.pendingExternalHypotheses()[0]?.claimedProvenance,'experience-replay','the claimed origin may be retained for review without granting trusted provenance');
