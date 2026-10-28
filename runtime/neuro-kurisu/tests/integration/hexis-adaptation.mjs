@@ -11,6 +11,53 @@ const duplicate = fabric.reviseBelief({ memoryId:'mem-1', confidence01:first.pos
 assert.equal(duplicate.applied, false);
 assert.equal(duplicate.reason, 'duplicate_source');
 
+// The in-memory source key list is intentionally bounded to 256 entries. The
+// larger bounded audit must still prevent a replayed old source from changing a
+// belief after its key leaves that fast membership list.
+const agedEvidenceFabric = new HexisAdaptationFabric();
+const agedFirst = agedEvidenceFabric.reviseBelief({
+  memoryId: 'mem-aged-evidence',
+  confidence01: .5,
+  trust01: .5,
+  stance: 'supports',
+  evidence: { ref: 'aged-source-original', trust01: .72 },
+});
+assert.equal(agedFirst.applied, true);
+for (let index = 0; index < 256; index++) {
+  const entry = agedEvidenceFabric.reviseBelief({
+    memoryId: 'mem-aged-evidence',
+    confidence01: agedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence').confidence01,
+    trust01: .25,
+    stance: 'supports',
+    evidence: { ref: 'aged-source-' + index, trust01: .25 },
+  });
+  assert.equal(entry.applied, true, 'each new independent source should be eligible once');
+}
+const beforeAgedReplay = agedEvidenceFabric.snapshot();
+const agedBeliefBeforeReplay = beforeAgedReplay.beliefs.find(row => row.memoryId === 'mem-aged-evidence');
+assert(agedBeliefBeforeReplay);
+assert.equal(agedBeliefBeforeReplay.sourceKeys.includes('aged-source-original'), false,
+  'the original source key must be evicted from the 256-key fast list in this fixture');
+assert.ok(beforeAgedReplay.beliefAudit.some(row =>
+  row.memoryId === 'mem-aged-evidence' && row.evidence.ref === 'aged-source-original'),
+  'the bounded audit should still retain the original source event');
+const agedReplay = agedEvidenceFabric.reviseBelief({
+  memoryId: 'mem-aged-evidence',
+  confidence01: agedBeliefBeforeReplay.confidence01,
+  trust01: .99,
+  stance: 'contradicts',
+  evidence: { ref: 'aged-source-original', trust01: .99 },
+});
+assert.equal(agedReplay.independent, false,
+  'an old source still in the audit must not become independent after source-key eviction');
+assert.equal(agedReplay.applied, false,
+  'replaying old evidence with opposite polarity must not alter belief confidence');
+assert.equal(agedReplay.reason, 'duplicate_source');
+assert.equal(agedReplay.posteriorConfidence01, agedBeliefBeforeReplay.confidence01);
+assert.equal(agedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence').confidence01,
+  agedBeliefBeforeReplay.confidence01,
+  'confidence must remain unchanged when an old evidence source is replayed');
+
 const t1 = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'alpha',confidence01:.7,validFrom:1000,source:'test',value:'alpha'});
 fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'beta',confidence01:.8,validFrom:2000,source:'test',value:'beta'});
 assert.equal(fabric.temporalAt('mem-1',1500)?.valueHash, t1.valueHash);
@@ -64,5 +111,5 @@ assert.equal(fabric.revokeConnectorPolicy(policy.id),true);
 
 const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:'local',risk01:.9});
 assert.equal(exec.resolvedPlacement,'sandbox');
-console.log('HEXIS_ADAPTATION_PASS');
+console.log('HEXIS_ADAPTATION_PASS', JSON.stringify({ agedReplayDetected: agedReplay.reason === 'duplicate_source', agedSourceKeys: agedBeliefBeforeReplay.sourceKeys.length, auditRows: beforeAgedReplay.beliefAudit.length }));
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
