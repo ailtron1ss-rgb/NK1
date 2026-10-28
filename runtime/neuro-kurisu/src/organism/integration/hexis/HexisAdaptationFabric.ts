@@ -272,7 +272,7 @@ export class HexisAdaptationFabric {
         this.registerOrUpdateBelief({ memoryId: input.memoryId, confidence01: input.confidence01, trust01: input.trust01, at });
         stored = this.state.beliefs.find((x) => x.memoryId === String(input.memoryId));
     } if (!stored)
-        throw new Error('belief_registration_failed'); const belief = stored; const key = sourceKey(input.evidence); const independent = !belief.sourceKeys.includes(key) && !belief.contradictingSourceKeys.includes(key); const evidenceTrust = clamp(input.evidence.trust01 ?? 0.5); const priorConfidence01 = clamp(belief.confidence01); const priorTrust01 = clamp(belief.trust01); let posteriorConfidence01 = priorConfidence01; let applied = false; let reason = 'applied'; if (!independent) {
+        throw new Error('belief_registration_failed'); const belief = stored; const key = sourceKey(input.evidence); const alreadyAudited = this.state.beliefAudit.some(row => row.memoryId === String(input.memoryId) && sourceKey(row.evidence) === key); const independent = !belief.sourceKeys.includes(key) && !belief.contradictingSourceKeys.includes(key) && !alreadyAudited; const evidenceTrust = clamp(input.evidence.trust01 ?? 0.5); const priorConfidence01 = clamp(belief.confidence01); const priorTrust01 = clamp(belief.trust01); let posteriorConfidence01 = priorConfidence01; let applied = false; let reason = 'applied'; if (!independent) {
         reason = 'duplicate_source';
         this.state.metrics.duplicateEvidence += 1;
     }
