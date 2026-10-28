@@ -313,7 +313,7 @@ assert.equal(forgedDerivedRestore.prioritizedReplayCandidates(8).length, 0,
   "non-runtime provenance must never enter policy replay");
 assert.equal(forgedDerivedRestore.consolidate(8, 1400).length, 0,
   "non-runtime provenance must never be consolidated as grounded memory");
-  
+
 // Persisted rows are also untrusted input: reject malformed schema values instead
 // of allowing NaN/out-of-range metrics or invalid action/task identities downstream.
 const malformedSnapshot = externalStream.snapshot();
@@ -336,7 +336,7 @@ assert.equal(malformedRestore.recent(64).some(row => row.traceId.startsWith("mal
 assert.equal(malformedRestore.prioritizedReplayCandidates(64).length, 0,
   "malformed persisted records must not become replay candidates");
 
-  
+
 // Aggregate snapshot fields are also untrusted. Normalize poisoned counters and
 // rolling metrics, and recompute behavioral aggregates from eligible runtime rows.
 const poisonedAggregates = externalStream.snapshot();
