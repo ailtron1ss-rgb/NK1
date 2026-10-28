@@ -1,3 +1,11 @@
+## [NK1][integration] Native signed P23 revision with three-arm host evaluation (2026-10-28)
+
+- Ported the native signed-outcome P23 provider and its protected host-evaluator configuration loader onto the current Hexis/Mem0 branch.
+- Bound signed baseline/source payload fingerprints to the canonical versioned candidate store, and added lineage revalidation across asynchronous evaluation.
+- Changed the independent-evaluation wrapper to run separate host-owned evaluations for baseline, source candidate and new revision. The three method labels must be distinct and scheduled in both validation and holdout plans; empty native placeholder reports are never accepted as evidence.
+- Added server fail-closed configuration, a static wiring regression, and a behavioral three-arm evaluator test. Local llama.cpp remains the default generator; GEPA is optional candidate generation only. Native activation still requires signed evidence and authenticated approval.
+- **Validation:** integration workflow [40634609071](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40634609071) passed on tested code HEAD `649facadc3e8bbf1cab394f76e826ac4427f8e4d`: runtime typecheck, native provider **8/8**, host evaluator config **13/13**, native wiring **2/2**, three-arm evaluator **1/1**, GEPA **11/11**, Hexis lineage/ingest/server smoke, retrieval fingerprint/experiment, Mem0 Platform **15/15**, OSS **2/2**, runtime wiring and HTTP fake-provider smoke.
+- No live Mem0 or GEPA service was contacted. The memory experiment remains `promotion: not-promoted`; these checks validate integration correctness, not learning uplift or release readiness.
 ## [NK1][integration] Optional GEPA/DSPy reflective candidate sidecar (2026-10-28)
 
 - Added an opt-in, bounded HTTP adapter for candidate-payload generation through the existing P23 reflective-revision callback. Disabled by default; local llama.cpp remains the default.
