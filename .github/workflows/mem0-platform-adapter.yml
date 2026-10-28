@@ -1,0 +1,69 @@
+name: Mem0 Platform adapter safety regression
+
+on:
+  pull_request:
+    branches: [nk1-hexis-canonical-apply-2026-10-27]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
+      - "runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts"
+      - "runtime/neuro-kurisu/tests/gepa-reflective-candidate-generator.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23IndependentEvaluationProvider.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/tests/p23-native-independent-evaluation-wrapper.mjs"
+      - "runtime/neuro-kurisu/tests/workpass172-compound-revision-coordinator.mjs"
+      - "runtime/neuro-kurisu/tests/workpass243-host-owned-independent-evaluation-services.mjs"
+      - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
+      - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
+      - "runtime/neuro-kurisu/tests/p23-native-provider-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
+      - "runtime/neuro-kurisu/docs/GEPA_DSPY_CANDIDATE_ADAPTER.md"
+      - "runtime/neuro-kurisu/docs/NATIVE_P23_VERIFIED_REVISION.md"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/scripts/fingerprint-memory-retrieval-dataset.mjs"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-dataset-fingerprint.mjs"
+      - "runtime/neuro-kurisu/tests/memory-retrieval-experiment.mjs"
+      - "runtime/neuro-kurisu/docs/MEMORY_RETRIEVAL_DATASET_PROVENANCE.md"
+      - "runtime/neuro-kurisu/tests/mem0-platform-adapter-workpass1.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-live-contract-check.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-oss-adapter-workpass2.mjs"
+      - "runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/language/LanguageOrgan.ts"
+      - "runtime/neuro-kurisu/src/organism/index.ts"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/mem0-platform-adapter.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-mem0-adapter-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  mem0-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          package-manager-cache: false
+      - name: Verify Node.js runtime
+        run: node -e "if (process.versions.node.split('.')[0] !== '24') { console.error(process.versions.node); process.exit(1) }"
+      - name: Check server JavaScript syntax
+        run: node --check runtime/neuro-kurisu/src/server/server.mjs
+      - name: Install runtime type dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run four-pass integration closure (Hexis, retrieval, Mem0 and HTTP)
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:nk1-integration-closure

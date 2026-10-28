@@ -34,6 +34,7 @@ export interface RuntimeClockOptions {
 const MAX_CLOCK_DELAY_MS = 24 * 60 * 60 * 1000;
 const MIN_REPEAT_DELAY_MS = 50;
 const RETRY_DELAY_MS = 1_000;
+const MAX_TASK_FAILURE_BACKOFF_MS = 60_000;
 const CLOCK_KINDS = new Set<RuntimeClockKind>(['cognitive','embodiment','reflection','trusted-shadow-learning','p23-compound-repair-revision']);
 
 function normalizeDecision(value: unknown, fallback: RuntimeClockDecision): RuntimeClockDecision {
@@ -60,6 +61,7 @@ export class RuntimeClockScheduler {
   private readonly stats = new Map<RuntimeClockKind, RuntimeClockStats>();
   private readonly activeWakeups = new Set<Promise<void>>();
   private readonly activeByClock = new Map<RuntimeClockKind, Promise<void>>();
+  private readonly taskFailureStreak = new Map<RuntimeClockKind, number>();
   private readonly generations = new Map<RuntimeClockKind, number>();
   private stopping = false;
 
@@ -191,11 +193,16 @@ export class RuntimeClockScheduler {
       try {
         stats.executions += 1;
         await clock.task();
+        // A successful task clears only the task-failure streak; admission/diagnostic
+        // failures are tracked separately and must not silently reset this backoff.
+        this.taskFailureStreak.delete(id);
         const duration = Date.now() - started;
         stats.lastRunAt = Date.now();
         stats.lastDurationMs = duration;
         stats.averageDurationMs = stats.averageDurationMs === 0 ? duration : stats.averageDurationMs * 0.8 + duration * 0.2;
       } catch (error) {
+        const failures = Math.min(7, (this.taskFailureStreak.get(id) ?? 0) + 1);
+        this.taskFailureStreak.set(id, failures);
         await this.reportFailure(clock, stats, error);
       }
     }
@@ -216,6 +223,13 @@ export class RuntimeClockScheduler {
           await this.reportFailure(clock, stats, error);
           nextDelay = Math.max(RETRY_DELAY_MS, decision.delayMs);
         }
+      }
+      // Persistent task errors must not hot-loop when the ordinary policy cadence
+      // is short. Back off exponentially from 1s to 60s; a successful task resets it.
+      const taskFailures = this.taskFailureStreak.get(id) ?? 0;
+      if (taskFailures > 0) {
+        const retryFloor = Math.min(MAX_TASK_FAILURE_BACKOFF_MS, RETRY_DELAY_MS * (2 ** (taskFailures - 1)));
+        nextDelay = Math.max(nextDelay, retryFloor);
       }
       // A zero-delay recurring decision must not spin the event loop indefinitely.
       this.schedule(id, Math.max(MIN_REPEAT_DELAY_MS, nextDelay));
