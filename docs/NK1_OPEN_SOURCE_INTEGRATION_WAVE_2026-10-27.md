@@ -18,6 +18,9 @@ NK1 retains one canonical memory owner: **MemoryOS2 through MemoryFabric**. Exte
 - [x] Added a static runtime-wiring contract and an integration CI workflow.
 - [x] Registered test commands and documented limitations in the runtime package and `CHANGELOG.md`.
 - [x] Exported the canonical MemoryOS2 retrieval-label fingerprint and added a CLI that emits both canonical `contentSha256` and exact-source `rawSourceSha256`.
+- [x] Added an opt-in GEPA/DSPy sidecar adapter to the existing P23 generator callback, retaining the local model as the default and keeping independent evaluation/signed approval under P23.
+- [x] Added request privacy/holdout identifier checks, network/payload bounds, a mocked adapter suite and server wiring regression.
+- [ ] GEPA adapter CI has not yet passed; do not treat this new slice as validated until its workflow run succeeds.
 - [x] Hardened the benchmark CLI to reject invalid UTF-8 and a mismatched supplied raw-source hash before output publication; added tests and linked them into the integration closure.
 - [x] Execute integration closure on the current tested PR merge ref via [Mem0 workflow run 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): runtime typecheck, Hexis evidence lineage and reviewed ingest, Hexis server smoke, deterministic retrieval experiment, 15/15 Platform-adapter tests, 2/2 OSS tests, runtime-wiring contract, and authenticated HTTP/fake-provider smoke all passed. This did not make a live Mem0 provider call; see the remaining gate below.
 - [x] Provenance/fingerprint follow-up passed in [Mem0 integration workflow 40631987375](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40631987375): typecheck, Hexis lineage/ingest, Hexis server smoke, canonical/raw dataset fingerprint regressions, retrieval experiment, Mem0 Platform 15/15, OSS 2/2, runtime wiring, and authenticated HTTP fake-provider smoke.
