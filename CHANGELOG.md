@@ -1,3 +1,9 @@
+## [NK1][WorkPass583] Reject malformed relevance labels and restore regression coverage (2026-10-28)
+
+- Restored the full `memory-retrieval-experiment.mjs` regression suite after detecting that a previous PR update had replaced the test file with only a short assertion fragment.
+- Count malformed `relevantIds` entries before normalization; mixed arrays containing non-string or blank labels now invalidate dataset integrity and block candidate promotion even if filtering would leave a matching clean-data hash.
+- Expanded regressions for duplicate-label fingerprint mismatch and malformed-label gating. This is evidence-integrity work, not a retrieval-uplift claim; `main` and the Release ZIP remain untouched pending exact-head validation.
+
 ## [NK1][WorkPass582] Bind retrieval provenance to exact relevance labels (2026-10-28)
 
 - Changed the labelled-dataset fingerprint canonicalizer to sort relevance IDs without deduplicating them. A repeated ground-truth label now changes the fingerprint, while order-independent canonicalization is preserved.
