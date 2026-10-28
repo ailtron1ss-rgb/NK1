@@ -27,7 +27,7 @@ test('native provider and host-owned evaluation remain explicit opt-in paths', (
 test('signed dataset verification and evaluator authority fail closed', () => {
   for (const token of [
     'loadTrustedVerifierKeys',
-    'asymmetricKeyType !== \'ed25519\'',
+    "keyType !== 'ed25519'",
     'ingestSignedOutcomeArtifact',
     'native-p23-revision-dataset-must-not-be-group-or-world-writable',
     'native-p23-revision-dataset-mutated-during-read',
