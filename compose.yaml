@@ -10,8 +10,7 @@ services:
       HOST: 0.0.0.0
       PORT: "3310"
       STATE_DIR: /data
-      NEURO_PHONE_MODE: "false"
-      NEURO_RUNTIME_MODE: research
+      NK1_STATE_FILE: /data/organism-state.json
     init: true
     restart: unless-stopped
     volumes:
@@ -23,7 +22,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3310/health').then(async r => { const b = await r.json(); if (!r.ok || b.ok !== true || b.ready !== true) process.exit(1); }).catch(() => process.exit(1))"
+        - "fetch('http://127.0.0.1:3310/health').then(async r => { const b = await r.json(); if (!r.ok || b.ok === false || b.ready === false) process.exit(1); }).catch(() => process.exit(1))"
       interval: 5s
       timeout: 3s
       retries: 30
