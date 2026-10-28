@@ -84,6 +84,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
       - 'runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-abort-defer.mjs'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
       - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
@@ -167,6 +168,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
       - 'runtime/neuro-kurisu/src/organism/system/AutonomousSocialInitiativeEngine.ts'
       - 'runtime/neuro-kurisu/tests/autonomous-dialogue-workpass48.mjs'
+      - 'runtime/neuro-kurisu/tests/autonomous-dialogue-abort-defer.mjs'
       - 'runtime/neuro-kurisu/src/organism/memory/MemoryFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts'
       - 'runtime/neuro-kurisu/tests/p62-relevance-order.mjs'
@@ -375,6 +377,9 @@ jobs:
       - name: Verify autonomous initiative restore and privacy boundary
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass49:privacy
+      - name: Verify cancellation releases autonomous initiative queue
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:autonomous-dialogue-abort-defer
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
