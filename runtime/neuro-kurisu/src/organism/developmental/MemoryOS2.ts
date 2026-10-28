@@ -283,6 +283,7 @@ export interface SemanticIndexMaintenanceResult {
 }
 export class MemoryOS2{
  private state=defaultMemoryOS2();
+ private lastRestoreIntegrity:MemoryOS2RestoreIntegrityReport={sourceItems:0,consideredItems:0,retainedItems:0,invalidRowsDropped:0,duplicateIdGroups:0,collapsedDuplicateRows:0,conflictingDuplicateIdGroups:0,conflictingDuplicateRowsDropped:0,truncatedItems:0};
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -620,8 +621,10 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
-  return restoreIntegrityReport;
+  this.lastRestoreIntegrity=restoreIntegrityReport;
+  return {...restoreIntegrityReport};
  }
+ restoreIntegrityDiagnostics():MemoryOS2RestoreIntegrityReport{return {...this.lastRestoreIntegrity};}
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
