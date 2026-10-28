@@ -6,10 +6,12 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/CognitiveExecutionPlanner.ts"
       - "runtime/neuro-kurisu/src/organism/core/ObservationPlanningStage.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/world/PlanEngine.ts"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-cadence-workpass586.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-budget-workpass587.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-execution-planner-stage-workpass591.mjs"
       - "runtime/neuro-kurisu/tests/cognitive-camera-perception-budget-workpass595.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-runtime-planner-execution-gate-workpass603.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
       - "CHANGELOG.md"
@@ -55,3 +57,6 @@ jobs:
       - name: Run perception-specific camera budget regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:cognitive-camera-perception-budget
+      - name: Run runtime execution-plan gate regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cognitive-runtime-planner-execution-gate
