@@ -11,7 +11,7 @@ import { parseMemoryRetrievalLabels } from '../scripts/run-memory-retrieval-expe
 const runtimeRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cliPath = path.join(runtimeRoot, 'scripts/fingerprint-memory-retrieval-dataset.mjs');
 const rows = [
-  { id: 'train-1', query: 'Where did I leave the red notebook?', relevantIds: ['memory-red-notebook'], split: 'train' },
+  { id: 'train-1', query: 'Where did I leave the red notebook?', relevantIds: ['memory-red-notebook', 'memory-red-notebook-context'], split: 'train' },
   { id: 'holdout-1', query: 'Quelle est ma préférence pour le thé ?', relevantIds: ['memory-tea-preference'], split: 'holdout' },
   { id: 'holdout-2', query: 'Which language did I ask to practice?', relevantIds: ['memory-language-practice'], split: 'holdout' },
   { id: 'holdout-3', query: 'What time do I usually go running?', relevantIds: ['memory-running-time'], split: 'holdout' },
@@ -47,7 +47,7 @@ try {
     { ...rows[3], query: '  WHAT TIME DO I USUALLY GO RUNNING?  ' },
     { ...rows[2] },
     { ...rows[1], query: 'QUELLE EST MA PRÉFÉRENCE POUR LE THÉ ?' },
-    { ...rows[0], relevantIds: ['memory-red-notebook'] },
+    { ...rows[0], relevantIds: ['memory-red-notebook-context', 'memory-red-notebook'] },
   ];
   const alternateSource = reordered.map(row => JSON.stringify(row)).join('\n') + '\n';
   const alternatePath = path.join(temp, 'labels-reordered.jsonl');
