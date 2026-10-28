@@ -1,3 +1,9 @@
+## [NK1][WorkPass582] Bind retrieval provenance to exact relevance labels (2026-10-28)
+
+- Changed the labelled-dataset fingerprint canonicalizer to sort relevance IDs without deduplicating them. A repeated ground-truth label now changes the fingerprint, while order-independent canonicalization is preserved.
+- Extended the retrieval regression so a duplicate-label dataset is rejected by integrity checks and cannot reuse the clean dataset's provenance hash.
+- This is an evaluation/provenance integrity improvement; it does not establish retrieval uplift, production readiness, or consciousness. Release ZIP remains untouched and validation still requires an exact-head run.
+
 ## [NK1][WorkPass581] Preserve duplicate retrieval labels for integrity gating (2026-10-28)
 
 - Fixed benchmark input normalization that deduplicated each example's `relevantIds` before `inspectDataset()`; this made its duplicate-label detector unreachable for JSON/JSONL datasets.
