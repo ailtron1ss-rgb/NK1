@@ -66,6 +66,10 @@ try {
     'semantic success must not run a speculative live lexical retrieval');
   assert.deepEqual(successful.seen.touched, ['semantic-1'],
     'provisional lexical candidates must not be promoted to hot memory');
+  successful.fabric.memoryOS.retrievalDiagnostics = () => ({ candidateCount: 1600 });
+  successful.fabric.recordRetrievalOutcome('cost saturation', semanticRows);
+  assert.equal(successful.seen.policy.at(-1).computeCost01, 1,
+    'normalized adaptive compute cost must saturate at one for a full 1600-item semantic scan');
   assert.equal(successful.seen.events.length, 1);
   assert.match(JSON.stringify(successful.seen.events[0]), /semantic-cognitive-retrieval/);
 
@@ -134,6 +138,12 @@ try {
     'selected canonical memory receives one access increment, not one per speculative path');
   assert.equal(canonical.retrievalDiagnostics().candidateCount, candidates.length,
     'adaptive compute-cost accounting must not reuse the previous query candidate count');
+  canonical.recordSelectedRetrieval('large semantic candidate pool', ['canonical-accounting-target'], 0, 0, {}, 400);
+  assert.equal(canonical.retrievalDiagnostics().candidateCount, 400,
+    'warm semantic recall can scan more than the lexical 192-candidate budget without truncating its cost evidence');
+  canonical.recordSelectedRetrieval('oversized candidate hint', ['canonical-accounting-target'], 0, 0, {}, 5000);
+  assert.equal(canonical.retrievalDiagnostics().candidateCount, 1600,
+    'candidate cost evidence must remain bounded by the canonical memory capacity');
 
   console.log('MEMORY_SEMANTIC_RETRIEVAL_ACCOUNTING=PASS', JSON.stringify({
     semanticAccountingExactlyOnce: true,
