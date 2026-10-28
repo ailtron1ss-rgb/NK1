@@ -281,6 +281,8 @@ export class MemoryOS2{
  private readonly tokenCache=new Map<string,Set<string>>();
  private readonly lowerContentCache=new Map<string,string>();
  private readonly tokenIndex=new Map<string,Set<string>>();
+ /** Curated tags/entities/topic metadata: separate from the content BM25 index. */
+ private readonly metadataTokenIndex=new Map<string,Set<string>>();
  /** Token-level character n-gram inverted index for typo/inflection-tolerant candidate discovery. */
  private readonly characterGramIndex=new Map<string,Set<string>>();
  private readonly documentFrequency=new Map<string,number>();
@@ -578,6 +580,15 @@ export class MemoryOS2{
   }
  }
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
+ /** Index only bounded, curated metadata; do not merge these tokens into content BM25 statistics. */
+ private metadataTokens(item:MemoryItem2):Set<string>{
+  const parts:string[]=[];
+  for(const value of (Array.isArray(item.tags)?item.tags:[]).slice(0,24))if(typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
+  for(const value of (Array.isArray(item.entities)?item.entities:[]).slice(0,24))if(typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
+  const allowedContextKeys=/^(topic|category|subject|project|domain|title|label|goal|intent|location|relationship|type|environment|language|preference|person|organization)$/i;
+  for(const [key,value] of Object.entries(item.context??{}).slice(0,32))if(allowedContextKeys.test(key)&&typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
+  return this.tokensFor(parts.join(' '));
+ }
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
  private provenanceClassFor(source:string,explicit?:MemoryProvenanceClass):MemoryProvenanceClass{if(explicit&&['device','external','user','agent','derived','simulation','unknown'].includes(explicit))return explicit;const s=String(source).toLowerCase();if(s.includes('device')||s.includes('android'))return 'device';if(s.includes('external')||s.includes('api')||s.includes('os'))return 'external';if(s.includes('user'))return 'user';if(s.includes('simulation')||s.includes('synthetic'))return 'simulation';if(s.includes('agent')||s.includes('model')||s.includes('llm'))return 'agent';if(s.includes('derived'))return 'derived';return 'unknown';}
@@ -1224,6 +1235,11 @@ export class MemoryOS2{
      if(!ids.has(item.id))ids.add(item.id);
      if(previousDf===0)for(const gram of charTrigrams(token)){let posting=this.characterGramIndex.get(gram);if(!posting){posting=new Set<string>();this.characterGramIndex.set(gram,posting);}posting.add(token);}
    }
+   for(const token of this.metadataTokens(item)){
+     let ids=this.metadataTokenIndex.get(token);
+     if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}
+     ids.add(item.id);
+   }
  }
  private removeIndexedId(id:string){
    const item=this.itemIndex.get(id);
@@ -1244,6 +1260,9 @@ export class MemoryOS2{
    }
    for(const [token,ids] of this.tokenIndex){
      if(ids.delete(id)&&ids.size===0)this.tokenIndex.delete(token);
+   }
+   for(const [token,ids] of this.metadataTokenIndex){
+     if(ids.delete(id)&&ids.size===0)this.metadataTokenIndex.delete(token);
    }
  }
 
