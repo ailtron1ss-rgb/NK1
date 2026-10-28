@@ -18,6 +18,13 @@ export interface CompoundRepairRevisionInputs {
   generate: Generator;
   evaluateRevisedCandidate: Evaluator;
   options?: Options;
+  /** Optional canonical payloads for the native path; the host wrapper independently evaluates all three methods. */
+  baselinePayload?: unknown;
+  baselinePayloadFingerprint?: string;
+  sourceCandidatePayload?: unknown;
+  sourceCandidatePayloadFingerprint?: string;
+  /** Revalidates signed dataset and canonical versioned-store lineage across async evaluation boundaries. */
+  assertCanonicalLineageCurrent?: () => Promise<void> | void;
 }
 
 export type CompoundRepairRevisionInputProvider = (
