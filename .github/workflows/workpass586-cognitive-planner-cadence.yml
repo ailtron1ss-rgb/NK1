@@ -1,0 +1,43 @@
+name: NK1 cognitive planner cadence weighting
+
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveExecutionPlanner.ts"
+      - "runtime/neuro-kurisu/tests/cognitive-execution-planner-cadence-workpass586.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "CHANGELOG.md"
+      - ".github/workflows/workpass586-cognitive-planner-cadence.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cognitive-planner-cadence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck and cadence-weight regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Run cadence-weighting regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:cognitive-execution-planner-cadence
