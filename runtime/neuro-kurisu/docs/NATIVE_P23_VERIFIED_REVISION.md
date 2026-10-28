@@ -6,6 +6,8 @@ NK1 can optionally source a revision proposal from a protected local dataset of 
 
 The native provider validates an immutable, signed outcome dataset, checks the authenticated `VerifiedOutcomeLedger` proposal gate, binds its baseline and source-candidate payloads to the canonical versioned skill store, and revalidates those identities across asynchronous evaluation. It cannot supply trusted baseline/source evaluation reports itself.
 
+The server does not maintain a second baseline/source resolver. The native provider returns canonical payloads/fingerprints and a lineage revalidation callback; `withIndependentCandidateEvaluation` is the single boundary that evaluates baseline, source and proposed revision with three distinct host-owned methods.
+
 ## Environment and exclusivity
 
 Required for the native mode:
