@@ -11,6 +11,43 @@ const duplicate = fabric.reviseBelief({ memoryId:'mem-1', confidence01:first.pos
 assert.equal(duplicate.applied, false);
 assert.equal(duplicate.reason, 'duplicate_source');
 
+// A duplicate with a higher claimed trust score is not fresh corroboration.
+// It must not change canonical Hexis belief trust or its semantic update time.
+const duplicateTrustFabric = new HexisAdaptationFabric();
+const lowTrustEvidence = duplicateTrustFabric.reviseBelief({
+  memoryId: 'mem-duplicate-trust',
+  confidence01: .3,
+  trust01: 0,
+  stance: 'supports',
+  evidence: { ref: 'same-low-trust-source', trust01: .1 },
+  at: 1_000,
+});
+assert.equal(lowTrustEvidence.applied, true);
+const beforeDuplicateTrust = duplicateTrustFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-duplicate-trust');
+assert(beforeDuplicateTrust);
+assert.equal(beforeDuplicateTrust.trust01, .05);
+const beforeDuplicateConfidence = beforeDuplicateTrust.confidence01;
+const beforeDuplicateUpdatedAt = beforeDuplicateTrust.updatedAt;
+const elevatedDuplicate = duplicateTrustFabric.reviseBelief({
+  memoryId: 'mem-duplicate-trust',
+  confidence01: beforeDuplicateConfidence,
+  trust01: .99,
+  stance: 'supports',
+  evidence: { ref: 'same-low-trust-source', trust01: .99 },
+  at: 2_000,
+});
+assert.equal(elevatedDuplicate.independent, false);
+assert.equal(elevatedDuplicate.applied, false);
+assert.equal(elevatedDuplicate.reason, 'duplicate_source');
+const afterDuplicateTrust = duplicateTrustFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-duplicate-trust');
+assert(afterDuplicateTrust);
+assert.equal(afterDuplicateTrust.confidence01, beforeDuplicateConfidence,
+  'duplicate evidence must not change confidence');
+assert.equal(afterDuplicateTrust.trust01, beforeDuplicateTrust.trust01,
+  'duplicate evidence cannot raise belief trust by supplying a larger trust01');
+assert.equal(afterDuplicateTrust.updatedAt, beforeDuplicateUpdatedAt,
+  'duplicate evidence cannot refresh the semantic update time');
+
 // The in-memory source key list is intentionally bounded to 256 entries. The
 // larger bounded audit must still prevent a replayed old source from changing a
 // belief after its key leaves that fast membership list.
@@ -133,5 +170,5 @@ assert.equal(fabric.revokeConnectorPolicy(policy.id),true);
 
 const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:'local',risk01:.9});
 assert.equal(exec.resolvedPlacement,'sandbox');
-console.log('HEXIS_ADAPTATION_PASS', JSON.stringify({ agedReplayDetected: agedReplay.reason === 'duplicate_source', restoredAgedReplayDetected: restoredAgedReplay.reason === 'duplicate_source', agedSourceKeys: agedBeliefBeforeReplay.sourceKeys.length, auditRows: beforeAgedReplay.beliefAudit.length }));
+console.log('HEXIS_ADAPTATION_PASS', JSON.stringify({ duplicateTrustUnchanged: afterDuplicateTrust.trust01 === beforeDuplicateTrust.trust01, duplicateTimestampUnchanged: afterDuplicateTrust.updatedAt === beforeDuplicateUpdatedAt, agedReplayDetected: agedReplay.reason === 'duplicate_source', restoredAgedReplayDetected: restoredAgedReplay.reason === 'duplicate_source', agedSourceKeys: agedBeliefBeforeReplay.sourceKeys.length, auditRows: beforeAgedReplay.beliefAudit.length }));
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
