@@ -1,3 +1,11 @@
+## [NK1][memory] Reproducible retrieval-dataset provenance tooling (2026-10-28)
+
+- Exported the canonical labelled-dataset fingerprint used by the retrieval promotion gate and added `fingerprint:memory-retrieval-dataset`, which reports that value plus a raw source-file SHA-256 and split counts.
+- The experiment CLI now strictly decodes UTF-8, records the raw labels digest, and rejects a supplied `rawSourceSha256` that does not match the exact labels artifact before it publishes any report.
+- Added regressions for canonical stability under harmless row/query/relevant-ID ordering, exact raw-byte identity, invalid labels, and fail-closed mismatched provenance.
+- Wired the new test into the Hexis/Mem0 integration closure and documented the procedure in `runtime/neuro-kurisu/docs/MEMORY_RETRIEVAL_DATASET_PROVENANCE.md`.
+- **Validation status:** CI for this follow-up is pending; no test pass is claimed in this changelog entry until the run for the updated source completes.
+
 ## [NK1][verification] Server-wired Mem0 integration closure passed (2026-10-27)
 
 - The current code revision passed [Mem0 integration workflow 40532574354](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40532574354): Node runtime check and server syntax; runtime typecheck; Hexis canonical evidence lineage/reviewed ingest; Hexis server smoke; deterministic memory-retrieval experiment; Mem0 Platform adapter tests 15/15; self-hosted OSS REST tests 2/2; static runtime wiring; and HTTP fake-provider smoke.
