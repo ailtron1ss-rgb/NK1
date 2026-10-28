@@ -10,28 +10,34 @@ const provider = await readFile(path.join(runtimeRoot, 'src/organism/learning/P2
 const hostConfig = await readFile(path.join(runtimeRoot, 'src/server/compound-repair-revision-host-config.mjs'), 'utf8');
 
 test('native provider and host-owned evaluation remain explicit opt-in paths', () => {
-  assert.match(server, /NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH/);
-  assert.match(server, /NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE/);
-  assert.ok(server.includes('if (externalProviderConfigured && nativeProviderConfigured)'));
-  assert.match(server, /createNativeCompoundRepairRevisionProvider\\(/);
-  assert.match(server, /datasetPath: COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH/);
-  assert.match(server, /createIndependentEvaluationConfigFactory\\(/);
-  assert.match(server, /createHostOwnedIndependentEvaluationConfigFactory/);
-  assert.ok(server.includes('if ((nativeProviderConfigured || COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) && !independentEvaluationConfigForRepair)'));
-  assert.ok(server.includes('generateSkillRevision: (request) => P23_SKILL_REVISION_GENERATOR(request)'));
-  assert.match(server, /compoundRepairRevision: COMPOUND_REPAIR_REVISION/);
+  for (const token of [
+    'NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH',
+    'NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE',
+    'if (externalProviderConfigured && nativeProviderConfigured)',
+    'createNativeCompoundRepairRevisionProvider(',
+    'datasetPath: COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH',
+    'createIndependentEvaluationConfigFactory(',
+    'createHostOwnedIndependentEvaluationConfigFactory',
+    'if ((nativeProviderConfigured || COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) && !independentEvaluationConfigForRepair)',
+    'generateSkillRevision: (request) => P23_SKILL_REVISION_GENERATOR(request)',
+    'compoundRepairRevision: COMPOUND_REPAIR_REVISION',
+  ]) assert.ok(server.includes(token), 'server must contain integration token: ' + token);
 });
 
-test('signed dataset verifier and independent evaluator wrapper fail closed', () => {
-  assert.match(provider, /loadTrustedVerifierKeys/);
-  assert.match(provider, /asymmetricKeyType !== 'ed25519'/);
-  assert.match(provider, /ingestSignedOutcomeArtifact/);
-  assert.match(provider, /native-p23-revision-dataset-must-not-be-group-or-world-writable/);
-  assert.match(provider, /native-p23-revision-dataset-mutated-during-read/);
-  assert.match(provider, /native-p23-revision-requires-independent-evaluation-wrapper/);
-  assert.match(hostConfig, /production-compound-repair-revision-requires-independent-evaluation-config-module/);
-  assert.match(hostConfig, /production-independent-evaluation-requires-host-owned-experiment-authority/);
-  assert.match(hostConfig, /compound-repair-provider-and-independent-evaluator-modules-must-be-distinct/);
+test('signed dataset verification and evaluator authority fail closed', () => {
+  for (const token of [
+    'loadTrustedVerifierKeys',
+    'asymmetricKeyType !== \'ed25519\'',
+    'ingestSignedOutcomeArtifact',
+    'native-p23-revision-dataset-must-not-be-group-or-world-writable',
+    'native-p23-revision-dataset-mutated-during-read',
+    'native-p23-revision-requires-independent-evaluation-wrapper',
+  ]) assert.ok(provider.includes(token), 'provider must contain security token: ' + token);
+  for (const token of [
+    'production-compound-repair-revision-requires-independent-evaluation-config-module',
+    'production-independent-evaluation-requires-host-owned-experiment-authority',
+    'compound-repair-provider-and-independent-evaluator-modules-must-be-distinct',
+  ]) assert.ok(hostConfig.includes(token), 'host evaluator config must enforce: ' + token);
 });
 
 console.log('P23_NATIVE_PROVIDER_WIRING=PASS');
