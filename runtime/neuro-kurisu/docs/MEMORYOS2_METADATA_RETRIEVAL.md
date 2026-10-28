@@ -10,7 +10,7 @@ Content-only BM25 term frequency and document frequency remain unchanged. Metada
 
 - Metadata values are length/count bounded and only selected string-valued context keys are indexed; arbitrary JSON context is not recursively mined.
 - Index addition and deletion update metadata postings with the canonical MemoryOS2 item lifecycle.
-- `indexIntegrityDiagnostics()` reconstructs expected metadata postings from canonical items and includes `metadataIndexMismatch` in its `pass` decision.
+- `indexDiagnostics()` reconstructs expected metadata postings from canonical items and includes `metadataIndexMismatch` in its `pass` decision.
 - The regression verifies metadata-only topic/entity discoverability, retains a direct content match, and asserts retrieval is read-only and the metadata index remains aligned.
 
 ## Validation and promotion boundary
