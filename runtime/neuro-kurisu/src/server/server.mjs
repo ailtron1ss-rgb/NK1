@@ -8,6 +8,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
+import { createNativeCompoundRepairRevisionProvider } from '../organism/learning/P23CompoundRepairRevisionProvider.ts';
+import { createHostOwnedIndependentEvaluationConfigFactory } from '../organism/learning/HostOwnedIndependentEvaluationServices.ts';
+import { createIndependentEvaluationConfigFactory, parseCompoundRepairBackgroundRevisionConfig } from './compound-repair-revision-host-config.mjs';
 import { GepaReflectiveCandidateGenerator } from '../organism/learning/GepaReflectiveCandidateGenerator.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 import { createVerifiedSkillLifecycleBootstrap } from '../organism/learning/VerifiedSkillLifecycleBootstrap.ts';
@@ -45,19 +48,33 @@ const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
 const COMPOUND_REPAIR_REVISION_PROVIDER_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_REVISION_PROVIDER_MODULE || '').trim();
-// Explicitly opt-in GEPA sidecar; local llama.cpp remains the default generator.
-const GEPA_REVISION_GENERATOR = GepaReflectiveCandidateGenerator.fromEnvironment();
-const P23_SKILL_REVISION_GENERATOR = (request) => GEPA_REVISION_GENERATOR.diagnostics().enabled
-    ? GEPA_REVISION_GENERATOR.asP23RevisionGenerator()(request)
-    : generateLocalSkillRevision(LLAMA_CPP_PROVIDER, request);
+const COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH = String(process.env.NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH || '').trim();
+const COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE = String(process.env.NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE || '').trim();
+const COMPOUND_REPAIR_BACKGROUND_REVISION = parseCompoundRepairBackgroundRevisionConfig(
+    process.env.NEURO_COMPOUND_REPAIR_BACKGROUND_REVISION_JSON,
+);
 async function configureCompoundRepairRevision() {
-    if (!COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+    const externalProviderConfigured = Boolean(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE);
+    const nativeProviderConfigured = Boolean(COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH);
+    if (externalProviderConfigured && nativeProviderConfigured) {
+        throw new Error('compound-repair-external-and-native-provider-configurations-are-mutually-exclusive');
+    }
+    if (!externalProviderConfigured && !nativeProviderConfigured) {
+        if (COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE) {
+            throw new Error('compound-repair-independent-evaluation-config-requires-revision-provider');
+        }
+        if (COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) {
+            throw new Error('compound-repair-background-revision-requires-revision-provider');
+        }
         return undefined;
-    // Explicit opt-in only. The provider is trusted executable code that must call
-    // the application's real proposal, independent-evaluation, and generator pipeline.
-    const providerPath = path.isAbsolute(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
-        ? COMPOUND_REPAIR_REVISION_PROVIDER_MODULE
-        : path.resolve(ROOT, COMPOUND_REPAIR_REVISION_PROVIDER_MODULE);
+    }
+    // The built-in provider reads only signed outcome datasets and must still use
+    // the independent host-owned evaluator configured below; it is not a fake evaluator.
+    const providerPath = externalProviderConfigured
+        ? (path.isAbsolute(COMPOUND_REPAIR_REVISION_PROVIDER_MODULE)
+            ? COMPOUND_REPAIR_REVISION_PROVIDER_MODULE
+            : path.resolve(ROOT, COMPOUND_REPAIR_REVISION_PROVIDER_MODULE))
+        : path.resolve(__dirname, '../organism/learning/P23CompoundRepairRevisionProvider.ts');
     const lifecycle = createVerifiedSkillLifecycleBootstrap(
         path.join(STATE, 'p23-verified-skill-candidates.json'),
         path.join(STATE, 'p23-trusted-shadow-runs.json'),
@@ -67,25 +84,149 @@ async function configureCompoundRepairRevision() {
     }
     const engine = new P23LearningEngine();
     engine.configureVerifiedSkillLifecycle(lifecycle.store);
-    const providerModule = await import(pathToFileURL(providerPath).href);
-    const factory = providerModule.createCompoundRepairRevisionProvider ?? providerModule.default;
-    if (typeof factory !== 'function') {
-        throw new Error('compound repair revision provider module must export createCompoundRepairRevisionProvider() or a default factory');
+    let provideInputs;
+    if (externalProviderConfigured) {
+        // External provider is trusted executable code; its output is still not
+        // trusted evidence and is wrapped by the independent canonical evaluator.
+        const providerModule = await import(pathToFileURL(providerPath).href);
+        const factory = providerModule.createCompoundRepairRevisionProvider ?? providerModule.default;
+        if (typeof factory !== 'function') {
+            throw new Error('compound repair revision provider module must export createCompoundRepairRevisionProvider() or a default factory');
+        }
+        provideInputs = await factory({
+            engine,
+            candidateStore: lifecycle.store,
+            trustedRunRegistry: lifecycle.registry,
+            stateDirectory: STATE,
+            generateSkillRevision: (request) => P23_SKILL_REVISION_GENERATOR(request),
+        });
+    } else {
+        provideInputs = await createNativeCompoundRepairRevisionProvider({
+            datasetPath: COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH,
+            root: ROOT,
+            stateDirectory: STATE,
+            candidateStore: lifecycle.store,
+            generateSkillRevision: (request) => P23_SKILL_REVISION_GENERATOR(request),
+        });
     }
-    const provideInputs = await factory({
-        engine,
-        candidateStore: lifecycle.store,
-        trustedRunRegistry: lifecycle.registry,
-        stateDirectory: STATE,
-        // Candidate generation only. GEPA is disabled by default; when enabled, P23's
-        // exact-payload independent evaluator and signed promotion gates remain mandatory.
-        // The provider module still owns proposal construction and evaluation orchestration.
-        generateSkillRevision: P23_SKILL_REVISION_GENERATOR,
-    });
     if (typeof provideInputs !== 'function') {
         throw new Error('compound repair revision provider factory must return an input-provider function');
     }
-    return { engine, provideInputs };
+    // Production and built-in native mode may stage candidates only through host-owned
+    // executor/verifier/scanner processes and a host-owned fixed experiment authority.
+    const independentEvaluationConfigForRepair = await createIndependentEvaluationConfigFactory({
+        moduleSetting: COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE,
+        root: ROOT,
+        providerModulePath: providerPath,
+        stateDirectory: STATE,
+        production: process.env.NODE_ENV === 'production',
+        createHostOwnedFactory: createHostOwnedIndependentEvaluationConfigFactory,
+    });
+    if ((nativeProviderConfigured || COMPOUND_REPAIR_BACKGROUND_REVISION?.enabled) && !independentEvaluationConfigForRepair) {
+        throw new Error('compound-repair-background-revision-requires-independent-evaluation-authority');
+    }
+    // Baseline/source payloads are resolved by the host from the canonical
+    // versioned store. Provider-supplied payloads/reports never become the reference.
+    const resolveCanonicalPayloadsForRepair = (input, prepared) => {
+        const skillId = input?.skillId;
+        const sourceCandidateId = prepared?.sourceCandidateId;
+        if (typeof skillId !== 'string' || !skillId.trim() ||
+            typeof sourceCandidateId !== 'string' || !sourceCandidateId.trim()) {
+            throw new Error('canonical-p23-revision-skill-and-source-identities-required');
+        }
+        const snapshot = lifecycle.store.snapshot();
+        const source = snapshot.candidates.find(item => item.candidateId === sourceCandidateId);
+        if (!source || source.skillId !== skillId ||
+            !['staged', 'shadow', 'active'].includes(source.status)) {
+            throw new Error('canonical-p23-revision-source-candidate-missing-or-ineligible');
+        }
+        const active = snapshot.active.find(item => item.skillId === skillId);
+        let baseline;
+        let sourceMode;
+        if (source.status === 'active') {
+            if (!active || active.version !== source.version ||
+                active.payloadFingerprint !== source.payloadFingerprint ||
+                active.proposalId !== source.proposalId) {
+                throw new Error('canonical-p23-revision-active-source-is-not-current');
+            }
+            baseline = source.previousActive;
+            if (!baseline) {
+                throw new Error('canonical-p23-revision-active-source-has-no-prior-baseline');
+            }
+            sourceMode = 'active-source';
+        } else {
+            if (!active) {
+                throw new Error('canonical-p23-revision-active-baseline-required');
+            }
+            if (source.baseVersion !== active.version) {
+                throw new Error('canonical-p23-revision-source-base-version-is-stale');
+            }
+            baseline = active;
+            sourceMode = 'pending-source';
+        }
+        if (!baseline || baseline.payloadFingerprint === source.payloadFingerprint) {
+            throw new Error('canonical-p23-revision-baseline-and-source-payload-identical-or-missing');
+        }
+        const baselineIdentity = {
+            skillId: baseline.skillId,
+            version: baseline.version,
+            payloadFingerprint: baseline.payloadFingerprint,
+            proposalId: baseline.proposalId,
+            activatedAt: baseline.activatedAt,
+        };
+        const sourceIdentity = {
+            candidateId: source.candidateId,
+            skillId: source.skillId,
+            version: source.version,
+            status: source.status,
+            payloadFingerprint: source.payloadFingerprint,
+            proposalId: source.proposalId,
+            baseVersion: source.baseVersion,
+        };
+        const matchesBaseline = (candidate) => Boolean(candidate &&
+            candidate.skillId === baselineIdentity.skillId &&
+            candidate.version === baselineIdentity.version &&
+            candidate.payloadFingerprint === baselineIdentity.payloadFingerprint &&
+            candidate.proposalId === baselineIdentity.proposalId &&
+            candidate.activatedAt === baselineIdentity.activatedAt);
+        return {
+            baselinePayload: structuredClone(baseline.payload),
+            sourceCandidatePayload: structuredClone(source.payload),
+            baselinePayloadFingerprint: baseline.payloadFingerprint,
+            sourceCandidatePayloadFingerprint: source.payloadFingerprint,
+            assertStillCurrent() {
+                const latest = lifecycle.store.snapshot();
+                const activeNow = latest.active.find(item => item.skillId === skillId);
+                const sourceNow = latest.candidates.find(item => item.candidateId === sourceCandidateId);
+                const sameSource = Boolean(sourceNow &&
+                    sourceNow.candidateId === sourceIdentity.candidateId &&
+                    sourceNow.skillId === sourceIdentity.skillId &&
+                    sourceNow.version === sourceIdentity.version &&
+                    sourceNow.status === sourceIdentity.status &&
+                    sourceNow.payloadFingerprint === sourceIdentity.payloadFingerprint &&
+                    sourceNow.proposalId === sourceIdentity.proposalId &&
+                    sourceNow.baseVersion === sourceIdentity.baseVersion);
+                const sameBaseline = sourceMode === 'active-source'
+                    ? matchesBaseline(sourceNow?.previousActive)
+                    : matchesBaseline(activeNow);
+                const activeStillMatchesSource = sourceMode !== 'active-source' || Boolean(activeNow &&
+                    activeNow.skillId === sourceIdentity.skillId &&
+                    activeNow.version === sourceIdentity.version &&
+                    activeNow.payloadFingerprint === sourceIdentity.payloadFingerprint &&
+                    activeNow.proposalId === sourceIdentity.proposalId);
+                if (!sameBaseline || !sameSource || !activeStillMatchesSource) {
+                    throw new Error('canonical-p23-revision-source-changed-during-independent-evaluation');
+                }
+            },
+        };
+    };
+    return {
+        engine,
+        provideInputs,
+        ...(independentEvaluationConfigForRepair ? { independentEvaluationConfigForRepair } : {}),
+        resolveCanonicalPayloadsForRepair,
+        ...(COMPOUND_REPAIR_BACKGROUND_REVISION ? { backgroundRevision: COMPOUND_REPAIR_BACKGROUND_REVISION } : {}),
+    };
 }
 const COMPOUND_REPAIR_REVISION = await configureCompoundRepairRevision();
 const TRUSTED_PROMOTION_APPROVER_IDS = new Set(parseTrustedSkillPromotionApprovalKeys(process.env.NEURO_SKILL_PROMOTION_APPROVAL_KEYS_JSON).keys());
