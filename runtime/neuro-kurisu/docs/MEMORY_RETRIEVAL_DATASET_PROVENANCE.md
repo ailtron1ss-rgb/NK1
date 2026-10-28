@@ -18,7 +18,7 @@ The script emits:
 - Counts for train, answerable holdout, and explicitly unanswerable holdout queries.
 - A provenance JSON template with fields that must be replaced by verified dataset-specific values.
 
-Freeze the labels file, the provenance file, and the commit/archive reference in version control before comparing retrieval strategies. Never generate holdout answers from the candidate system being evaluated. A synthetic fixture or a hash does not establish benchmark quality.
+Freeze the labels file, the provenance file, and the commit/archive reference in version control before comparing retrieval strategies. Never generate holdout answers from the candidate system being evaluated. A synthetic fixture or a hash does not establish benchmark quality. Duplicate ground-truth labels and malformed relevance-label values (blank strings, non-strings, or nulls) are integrity failures. The runner counts malformed values before normalization filters them; a valid fingerprint of the surviving normalized rows does not waive the source-label integrity gate.
 
 ## Run the offline paired baseline/candidate experiment
 
