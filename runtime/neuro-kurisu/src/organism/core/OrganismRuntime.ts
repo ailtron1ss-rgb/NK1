@@ -1357,7 +1357,8 @@ export class OrganismRuntime {
     return this.enqueue(async () => {
       const body = this.embodiment.snapshot();
       const plan = this.core.cognitiveExecutionPlanSnapshot();
-      const demand = plan ? Math.max(...Object.values(plan.expectedValue01).map(Number), 0) : 0;
+      // Camera capture demand is modality-specific; a high-value research/project operation must not wake the camera by accident.
+      const demand = plan ? clamp01(Number(plan.expectedValue01?.perception ?? 0)) : 0;
       const next = this.core.p41NextPerception();
       const motion01 = Number(body.telemetry.motion01 ?? 0);
       const visionNeeded = next?.modality === 'vision' || demand > .62 || motion01 > .5;
