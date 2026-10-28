@@ -1,3 +1,9 @@
+## [NK1][WorkPass597] Restore verified outcome gate scope (2026-10-28)
+
+- Move `verifiedPolicyOutcome` to the surrounding outcome-processing scope so the scientific-method gate uses the same predicate as adaptive-policy feedback.
+- Preserve fail-closed semantics: the gate remains true only for a world transition or explicit external project evidence.
+- Validation is pending on the exact PR head; no passing result is claimed before CI completes.
+
 ## [NK1][WorkPass596] Make scientific evidence idempotent and bounded (2026-10-28)
 
 - Require a non-empty, NFKC-normalized, bounded evidence string for verified hypothesis updates.

@@ -9270,6 +9270,7 @@ export class OrganismCore {
             this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: trace.selected.action, contextKey: `${skillContext}|energy:${Math.round(state.needs.energy * 4)}|unc:${Math.round(state.needs.uncertainty * 4)}|goal:${selectedGoalTitle ?? 'general'}`, outcome01: gatedSuccess01 });
             if (this.config.enableLifelongLearning)
                 this.cognitiveRuntime.lifelong.observeOutcome(trace.selected.action, gatedSuccess01, 'active', trace.selected.predictedCost, fullSuccess01 < 0.45 ? 'low-outcome' : undefined);
+            const verifiedPolicyOutcome = Boolean(outcome.worldTransition) || projectEvidenceExternal;
             if (this.config.enableLifelongLearning) {
                 const beforeContext = this.cognitiveRuntime.adaptivePolicy.contextKey(trace.stateBefore, trace.stateBefore.needs.goalPressure);
                 const nextContext = this.cognitiveRuntime.adaptivePolicy.contextKey(state, state.needs.goalPressure);
@@ -9298,7 +9299,6 @@ export class OrganismCore {
                 }
                 this.persisted.system.canonicalTemporalCredit = this.cognitiveRuntime.canonicalTemporalCredit.snapshot();
                 this.cognitiveRuntime.adaptivePolicy.update(beforeContext, trace.selected.action, gatedSuccess01, nextContext, ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'], this.persisted.facets.learning.neuromodulation.updateRate01 * .24 + .08, .72, gatedSurprise01);
-                const verifiedPolicyOutcome = Boolean(outcome.worldTransition) || projectEvidenceExternal;
                 if (verifiedPolicyOutcome) {
                     const policyCausalConfidence = clamp(this.developmentalNeural.causalNeuralEventSpineB294.metrics().causalConfidence01 ?? .5);
                     const policyIndependent = Boolean(outcome.worldTransition?.after) || projectEvidenceExternal;
