@@ -74,6 +74,9 @@ export interface IndependentCandidateEvaluationConfig {
   };
   /** Domain identity for runtime/tool policy; included in the report fingerprint. */
   environmentFingerprint: string;
+  /** Host-defined method labels used to separate native baseline/source/revision evaluations. */
+  baselineMethod?: string;
+  sourceCandidateMethod?: string;
   /** Per-service deadline; timeout aborts the service signal and fails closed. Defaults to 30s. */
   serviceTimeoutMs?: number;
 }
