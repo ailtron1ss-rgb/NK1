@@ -1,3 +1,10 @@
+## [NK1][WorkPass595] Close intrinsic experiments through verified outcomes (2026-10-28)
+
+- Use a canonical `explore` action instead of the non-selector label `inspect` for uncertainty-led intrinsic experiments.
+- Bind each generated proposal to its `ScientificMethodEngine` project by experiment ID and tick.
+- Only credit the project when its proposed action actually ran and the world-transition/external evidence gate verified the outcome. Unverified rewards no longer change hypothesis confidence; a concluded project marks its linked queue item validated/rejected with evidence references.
+- Add a focused regression for unverified evidence rejection, verified multi-observation conclusion, and idempotent completion; register it in `test:rebuild-recovered`. Tests were not run.
+
 ## [NK1][WorkPass594] Keep Hexis storage failures distinct from conflicts (2026-10-28)
 
 - Extracted the Hexis evidence-ingest reason-to-HTTP mapping into a pure helper shared by the server and integration smoke test.
