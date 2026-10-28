@@ -2570,3 +2570,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
 - Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
 - No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
+
+
+## [NK1][WorkPass586] Apply cadence discounts to cognitive metabolism weights (2026-10-28)
+
+- Fixed a reversed guard in `CognitiveExecutionPlanner.compile()`: `cadenceFactor = 1 / cadenceCycles` is in `(0, 1]`, so the previous `cadenceFactor > 1` condition could never scale a domain's metabolism weight.
+- Long-cadence domains now receive proportionally lower budget shares while the planner preserves normalized total share. Added a direct regression comparing research cadence 1 vs 8 and a focused CI workflow for typecheck plus the cadence test.
+- This changes resource allocation only; it does not assert improved organism behavior until the target tests pass. `main` and the Release ZIP remain untouched.
