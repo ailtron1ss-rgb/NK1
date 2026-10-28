@@ -2614,3 +2614,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Check the existing bounded `beliefAudit` by memory ID and canonical `sourceKey` as an idempotency backstop before applying confidence changes. This keeps contradictory replays from changing confidence while the audit still retains the original event; it adds no new store or unbounded ledger.
 - Added a regression that inserts 256 distinct sources, proves the original source key was evicted from the fast list, then replays it with opposite polarity and asserts `duplicate_source`, `applied=false`, and unchanged confidence.
 - Extend `nk1-hexis-source-lineage.yml` to run `npm run test:hexis-adaptation` so this trust-boundary regression is validated alongside canonical lineage and server replay tests.
+
+
+## [NK1][WorkPass600] Verify Hexis evidence replay protection after restore (2026-10-28)
+
+- Extend the WorkPass599 regression across snapshot/restore: after 256 newer sources evict the old source from the fast key list, restore the Hexis adapter from its snapshot and replay the original evidence with opposite polarity.
+- Assert the persisted bounded revision audit still recognizes the old source as a duplicate, does not apply a second confidence mutation, and preserves the belief's current confidence after restore.
+- The existing `nk1-hexis-source-lineage` workflow now covers this as part of `npm run test:hexis-adaptation`.
