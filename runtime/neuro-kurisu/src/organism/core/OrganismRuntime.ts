@@ -1361,7 +1361,9 @@ export class OrganismRuntime {
       const demand = plan ? clamp01(Number(plan.expectedValue01?.perception ?? 0)) : 0;
       const next = this.core.p41NextPerception();
       const motion01 = Number(body.telemetry.motion01 ?? 0);
-      const visionNeeded = next?.modality === 'vision' || demand > .62 || motion01 > .5;
+      const plannerAllowsPerception = plan?.run?.perception !== false;
+      // EVC-driven camera work obeys the planner; queued vision requests and strong motion remain explicit reactive triggers.
+      const visionNeeded = next?.modality === 'vision' || motion01 > .5 || (plannerAllowsPerception && demand > .62);
       const resourceBlocked = body.telemetry.battery01 < .12 || body.thermalStrain01 > .82 || body.telemetry.ramPressure01 > .88 || !body.awake;
       if (!visionNeeded || resourceBlocked) return { ok:false, skipped:true, reason:resourceBlocked?'resource-gate':'low-vision-utility', demand01:demand, nextPerception:next, resourceGate:resourceBlocked };
       if (!options.idempotencyKey) return { ok:false, skipped:false, error:'camera-capture-idempotency-key-required' };
