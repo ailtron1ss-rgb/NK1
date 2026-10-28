@@ -2606,3 +2606,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Count distinct, well-formed lineage/source keys from the bounded `evidenceLineageKeys` ledger plus normalized visible rows. Use the same count for newly recorded and duplicate responses; no new writable store or unbounded ledger is introduced.
 - Extend the canonical Hexis bridge regression with ten independent source observations. It asserts the visible trail stays at eight or fewer, the reported known-lineage count includes the compact history, and replay of an observation no longer visible in the source tail remains idempotent.
 - This corrects lineage diagnostics while preserving MemoryOS2/MemoryFabric as the single canonical memory owner and does not authenticate sources or promote evidence automatically.
+
+
+## [NK1][WorkPass599] Preserve Hexis evidence idempotency after source-key eviction (2026-10-28)
+
+- `HexisAdaptationFabric.reviseBelief()` used only the bounded `sourceKeys`/`contradictingSourceKeys` arrays to decide whether evidence was independent. After 257 sources, the original key left the 256-entry fast list even though the bounded revision audit still contained the source event, allowing an old source replay to be treated as new.
+- Check the existing bounded `beliefAudit` by memory ID and canonical `sourceKey` as an idempotency backstop before applying confidence changes. This keeps contradictory replays from changing confidence while the audit still retains the original event; it adds no new store or unbounded ledger.
+- Added a regression that inserts 256 distinct sources, proves the original source key was evicted from the fast list, then replays it with opposite polarity and asserts `duplicate_source`, `applied=false`, and unchanged confidence.
+- Extend `nk1-hexis-source-lineage.yml` to run `npm run test:hexis-adaptation` so this trust-boundary regression is validated alongside canonical lineage and server replay tests.
