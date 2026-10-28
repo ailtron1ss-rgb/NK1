@@ -96,7 +96,7 @@ test('native P23 wrapper independently evaluates baseline, source and revision m
   assert.ok(prepared.candidateEvaluation.holdout.length > 0);
   assert.equal(prepared.baseline.provenance.experimentAuthority.method, 'baseline-v1');
   assert.equal(prepared.candidateEvaluation.provenance.experimentAuthority.method, 'source-v1');
-  assert.equal(lineageChecks, 4, 'canonical lineage is rechecked before/after each pre-revision evaluation');
+  assert.equal(lineageChecks, 3, 'canonical lineage is checked before baseline, after baseline and after source evaluation');
 
   const revisedPayload = { skill: 'v3', steps: ['read', 'verify', 'confirm'] };
   const revision = await prepared.evaluateRevisedCandidate({
@@ -108,7 +108,7 @@ test('native P23 wrapper independently evaluates baseline, source and revision m
   assert.equal(revision.evaluation.provenance.experimentAuthority.method, 'revision-1');
   assert.ok(revision.evaluation.validation.length > 0);
   assert.ok(revision.evaluation.holdout.length > 0);
-  assert.equal(lineageChecks, 5, 'canonical lineage is rechecked after the generated candidate evaluation');
+  assert.equal(lineageChecks, 5, 'canonical lineage is rechecked before and after the new candidate evaluation');
   assert.equal(executionLog.length, 6, 'two fixed tasks run in baseline, source and revision arms');
 });
 
