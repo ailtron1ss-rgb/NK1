@@ -150,7 +150,7 @@ const orderedB = new MemoryOS2(); orderedB.restore({ ...structuredClone(largeSna
 const rankedA = orderedA.retrieve('sharedproject needle-special', 12, 0, 0, { temporalMode: 'current', asOfAt: now }).map(row => row.id);
 const rankedB = orderedB.retrieve('sharedproject needle-special', 12, 0, 0, { temporalMode: 'current', asOfAt: now }).map(row => row.id);
 assert.deepEqual(rankedA, rankedB, 'candidate and top-k ranking must be stable under snapshot row permutation above the 192-candidate cap');
-assert.equal(orderedA.retrievalDiagnostics().candidateSelection, 'idf-coverage-fuzzy-concept-rrf-stable-id');
+assert.equal(orderedA.retrievalDiagnostics().candidateSelection, 'idf-coverage-fuzzy-concept-metadata-rrf-stable-id');
 assert.equal(orderedB.retrievalDiagnostics().candidateSelectionLimit, 192);
 
 // Exercise the real CLI path using external snapshot, labelled JSONL and provenance files.

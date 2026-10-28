@@ -936,9 +936,9 @@ export class MemoryOS2{
      m.temperature01=memoryTemperature(m,now);
      const lexicalTokens=this.tokensFor(m.content);
      const metadataTokens=this.metadataTokens(m);
+     const queryTokenArray=[...qTokens];
      const metadata=queryTokenArray.length?queryTokenArray.filter(token=>metadataTokens.has(token)).length/queryTokenArray.length:0;
      const exact=this.lowerFor(m.id,m.content).includes(queryLower)?1:0;
-     const queryTokenArray=[...qTokens];
      const coverage=queryTokenArray.length?queryTokenArray.filter(token=>lexicalTokens.has(token)).length/queryTokenArray.length:0;
      const fuzzy=fuzzyTokenCoverage(queryTokenArray,lexicalTokens);
      const bm25=bm25Score(queryTokenArray,m.content,this.state.items.length,this.documentFrequency,this.itemTokenLength,this.totalTokenLength,m.id);
