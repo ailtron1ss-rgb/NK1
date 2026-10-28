@@ -1,3 +1,10 @@
+## [NK1][WorkPass601] Add independent bilingual retrieval holdout harness (2026-10-28)
+
+- Add an offline RU/EN holdout CLI requiring independent provenance, explicit licensing/label protocol, at least 20 answerable and 8 unanswerable holdout queries per language, unique corpus/example IDs and five paired bootstrap seeds.
+- Bind per-language results to the canonical `fingerprintMemoryRetrievalDataset` helper so repeated ground-truth labels cannot be erased by a second hash implementation.
+- Fix Unicode punctuation/whitespace normalization and newline output; verify fail-closed CLI behavior, Unicode normalization and duplicate-label fingerprint integrity in CI.
+- Evaluation only: no private dataset is committed, no live memory is mutated, no candidate is automatically promoted, and no retrieval-uplift claim is made.
+
 ## [NK1][WorkPass603] Sync retrieval regression with metadata ranking channel (2026-10-28)
 
 - Update the high-fanout retrieval determinism test to expect the active `metadata` contribution in the candidate-selection identifier; the runtime now uses metadata overlap as a ranked signal.
