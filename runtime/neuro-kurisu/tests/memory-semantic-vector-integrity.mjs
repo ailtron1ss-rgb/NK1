@@ -78,4 +78,30 @@ for(const invalidQueryVector of [[Number.NaN,0],[Number.POSITIVE_INFINITY,1],[0,
   assert.deepEqual(response.items.map(row=>row.id),expected);
 }
 
+// Do not bind a slow provider response to content that changed after the request
+// was started. Direct state mutation here injects a concurrent revision at the await
+// boundary; production writes go through MemoryOS2 and update its indexes normally.
+{
+  let resolveBatch;
+  let sentTexts=[];
+  const provider=makeProvider(texts=>{
+    sentTexts=[...texts];
+    return new Promise(resolve=>{resolveBatch=resolve;});
+  });
+  const memory=createMemory(provider);
+  const pending=memory.previewRetrieveWithEmbeddings(query,2,0,0,temporal,perf);
+  assert.equal(typeof resolveBatch,'function','embedding request should be pending at the controlled boundary');
+  const revised=memory.state.items.find(row=>row.id==='semantic-bad-vector');
+  assert.ok(revised);
+  revised.content='revised after semantic embedding request; old vector is now stale';
+  resolveBatch([
+    [1,0],
+    ...sentTexts.slice(1).map(text=>text.includes('poisoned')?[0,1]:[1,0]),
+  ]);
+  const response=await pending;
+  assert.equal(response.semantic.newlyIndexed,1,'only the unchanged content may receive the late embedding');
+  assert.equal(response.semantic.indexedItems,1,'a changed content identity must not inherit the previous text embedding');
+  assert.deepEqual(response.items.map(row=>row.id),['semantic-good-vector'],'stale in-flight vectors must not affect semantic ranking');
+}
+
 console.log('MEMORY_SEMANTIC_VECTOR_INTEGRITY=PASS');
