@@ -180,7 +180,7 @@ try {
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
-console.log('MEMORY_RETRIEVAL_EXPERIMENT=PASS', JSON.stringify({ seeds: experiment.seeds, corpusSize: experiment.corpusSize, train: experiment.trainQueries, holdout: experiment.holdoutQueries, deterministic: experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, promotion: experiment.promotion.status }));
+
 
 
 // Duplicate ground-truth IDs must survive normalization long enough to be diagnosed.
@@ -193,3 +193,5 @@ assert.equal(duplicateLabelReport.dataIntegrity.validForPromotion, false,
   'duplicate relevance labels must block candidate promotion');
 assert.equal(duplicateLabelReport.promotion.allowed, false,
   'dataset with duplicate relevance labels must never pass the promotion gate');
+
+console.log('MEMORY_RETRIEVAL_EXPERIMENT=PASS', JSON.stringify({ seeds: experiment.seeds, corpusSize: experiment.corpusSize, train: experiment.trainQueries, holdout: experiment.holdoutQueries, deterministic: experiment.determinism.retrievalQualityMetricsStableAcrossSeeds, promotion: experiment.promotion.status }));
