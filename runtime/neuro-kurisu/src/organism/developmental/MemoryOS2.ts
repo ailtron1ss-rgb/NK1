@@ -258,6 +258,23 @@ const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder()
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
+export interface MemoryOS2RestoreIntegrityReport {
+ sourceItems:number;
+ consideredItems:number;
+ retainedItems:number;
+ invalidRowsDropped:number;
+ duplicateIdGroups:number;
+ collapsedDuplicateRows:number;
+ conflictingDuplicateIdGroups:number;
+ conflictingDuplicateRowsDropped:number;
+ truncatedItems:number;
+}
+function stableRestoreTieKey(value:unknown):string{
+ if(value===null||typeof value!=='object')return JSON.stringify(value)??'null';
+ if(Array.isArray(value))return '['+value.map(stableRestoreTieKey).join(',')+']';
+ const record=value as Record<string,unknown>;
+ return '{'+Object.keys(record).sort((a,b)=>a.localeCompare(b)).map(key=>JSON.stringify(key)+':'+stableRestoreTieKey(record[key])).join(',')+'}';
+}
 export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
  enabled:boolean; provider:string; model:string; considered:number; indexed:number; failed:number; staleSkipped:number;
@@ -492,7 +509,8 @@ export class MemoryOS2{
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }
  }
- restore(s:MemoryOSState2|undefined){
+ restore(s:MemoryOSState2|undefined):MemoryOS2RestoreIntegrityReport{
+  const sourceItemCount=Array.isArray(s?.items)?s!.items.length:0;
   const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
@@ -547,6 +565,43 @@ export class MemoryOS2{
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
+  // A duplicate ID makes itemIndex disagree with state.items and can poison posting
+  // frequencies, link traversal and later eviction. Reject malformed rows; collapse
+  // same-identity duplicates deterministically, but drop every row in a conflicting-ID
+  // group rather than guessing which memory owns that identity.
+  let invalidRowsDropped=0,duplicateIdGroups=0,collapsedDuplicateRows=0,conflictingDuplicateIdGroups=0,conflictingDuplicateRowsDropped=0;
+  const rowsById=new Map<string,MemoryItem2[]>();
+  for(const item of this.state.items){
+    const raw=item as any;
+    if(!raw||typeof raw.id!=='string'||!raw.id.trim()||raw.id!==raw.id.trim()||typeof raw.content!=='string'||!raw.content.trim()||typeof raw.kind!=='string'||!raw.kind.trim()||typeof raw.source!=='string'||!raw.source.trim()){
+      invalidRowsDropped++;continue;
+    }
+    const group=rowsById.get(raw.id)??[];group.push(item);rowsById.set(raw.id,group);
+  }
+  const restoredItems:MemoryItem2[]=[];
+  const restoreAt=Date.now();
+  for(const group of rowsById.values()){
+    if(group.length===1){restoredItems.push(group[0]!);continue;}
+    duplicateIdGroups++;
+    const identities=new Set(group.map(item=>JSON.stringify([item.kind,item.source,canonicalizeMemoryContent(item.content)])));
+    if(identities.size!==1){
+      conflictingDuplicateIdGroups++;conflictingDuplicateRowsDropped+=group.length;continue;
+    }
+    let winner=group[0]!;
+    for(const candidate of group.slice(1)){
+      const candidatePreferred=this.preferIndexRecord(candidate,winner,restoreAt);
+      const winnerPreferred=this.preferIndexRecord(winner,candidate,restoreAt);
+      if(candidatePreferred&&!winnerPreferred)winner=candidate;
+      else if(!candidatePreferred&&!winnerPreferred&&stableRestoreTieKey(candidate).localeCompare(stableRestoreTieKey(winner))<0)winner=candidate;
+    }
+    restoredItems.push(winner);collapsedDuplicateRows+=group.length-1;
+  }
+  this.state.items=restoredItems;
+  const restoreIntegrityReport:MemoryOS2RestoreIntegrityReport={
+    sourceItems:sourceItemCount,consideredItems:rawItems.length,retainedItems:restoredItems.length,
+    invalidRowsDropped,duplicateIdGroups,collapsedDuplicateRows,conflictingDuplicateIdGroups,
+    conflictingDuplicateRowsDropped,truncatedItems:Math.max(0,sourceItemCount-rawItems.length),
+  };
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
@@ -565,6 +620,7 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
+  return restoreIntegrityReport;
  }
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
