@@ -2613,3 +2613,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - The perception-specific EVC trigger now respects `plan.run.perception`; a high expected value alone cannot override an explicit planner decision to skip perception.
 - Preserve explicit reactive exceptions: a concrete pending vision request or strong motion signal can still trigger camera capture, subject to the existing battery, thermal, RAM, awake, and idempotency safeguards.
 - Extended the runtime regression with a high-perception-EVC/planner-off case and a pending-vision override case; added no new workflow dependency because both execute in the existing focused planner/camera CI job.
+
+
+## [NK1][WorkPass597] Enable the Node 22.12 SQLite feature for runtime gate tests (2026-10-28)
+
+- The new runtime camera-gate regression imports `OrganismRuntime`, which reaches the built-in `node:sqlite` module during initialization. The workflow pins Node 22.12.0, where SQLite is gated behind `--experimental-sqlite`; without the flag the test crashed before reaching its assertions.
+- Add `--experimental-sqlite` to this test script only. The workflow still uses the repository's established Node 22.12.0 version, and the correction makes the test exercise the runtime gate instead of failing during module initialization.
