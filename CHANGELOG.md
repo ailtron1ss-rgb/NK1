@@ -1,3 +1,9 @@
+## [NK1][WorkPass594] Keep Hexis storage failures distinct from conflicts (2026-10-28)
+
+- Extracted the Hexis evidence-ingest reason-to-HTTP mapping into a pure helper shared by the server and integration smoke test.
+- Preserve 404 for missing canonical memory, 409 for immutable trace-ID/provenance conflicts, and 400 for malformed/invalid submissions; map canonical evidence write failures to 500 rather than misreporting them as client conflicts.
+- The existing Hexis server smoke test now directly checks all four mappings as well as its live conflict/replay path. Test/CI execution is still unconfirmed; no Release ZIP update or learning uplift is claimed.
+
 ## [NK1][WorkPass593] Preserve duplicate relevance labels in source fingerprints (2026-10-28)
 
 - Ported the focused benchmark-integrity correction into the canonical source stack: relevance labels are sorted for order-independent fingerprints but are no longer deduplicated before provenance hashing.
