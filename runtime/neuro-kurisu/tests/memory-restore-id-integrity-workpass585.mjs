@@ -29,6 +29,36 @@ const source = new MemoryOS2();
 source.encode({ ...base, id: 'good-unique', content: 'unique valid memory record' });
 source.encode({ ...base, id: 'same-duplicate', content: 'same canonical duplicate record' });
 source.encode({ ...base, id: 'conflicting-id', content: 'first conflicting memory record' });
+
+// Live writes must preserve the same unique-ID invariant as snapshot restore.
+const beforeLiveCollision = source.snapshot();
+assert.throws(
+  () => source.encode({ ...base, id: 'good-unique', content: 'different content with the same explicit ID' }),
+  /memory-id-conflict:good-unique/,
+  'an explicit ID bound to different content must fail before changing canonical memory',
+);
+assert.throws(
+  () => source.encode({ ...base, id: 'good-unique', content: 'different content with forceDistinct', }, { forceDistinct: true }),
+  /memory-id-conflict:good-unique/,
+  'forceDistinct must not allow an explicit ID to overwrite an existing identity',
+);
+assert.deepEqual(source.snapshot(), beforeLiveCollision,
+  'rejected explicit-ID conflicts must leave live memory state and indexes unchanged');
+
+const forcedDistinct = new MemoryOS2();
+const forcedFirst = forcedDistinct.encode({ ...base, content: 'repeatable forced-distinct content' });
+const forcedSecond = forcedDistinct.encode({ ...base, content: 'repeatable forced-distinct content' }, { forceDistinct: true });
+assert.notEqual(forcedSecond.id, forcedFirst.id,
+  'forceDistinct without an explicit ID must mint a fresh ID when the content-addressed ID is occupied');
+assert.equal(new Set(forcedDistinct.snapshot().items.map(item => item.id)).size, forcedDistinct.size(),
+  'forced-distinct writes must keep state.items IDs unique');
+
+const explicitIdRepeat = new MemoryOS2();
+const explicitFirst = explicitIdRepeat.encode({ ...base, id: 'stable-explicit-id', content: 'same explicit identity content' });
+const explicitRepeated = explicitIdRepeat.encode({ ...base, id: 'stable-explicit-id', content: 'same explicit identity content' });
+assert.equal(explicitRepeated.id, explicitFirst.id, 'replaying the same explicit identity remains idempotent');
+assert.equal(explicitIdRepeat.size(), 1, 'same-ID idempotent replay must not append a duplicate row');
+
 const initial = source.snapshot();
 const good = structuredClone(initial.items.find(item => item.id === 'good-unique'));
 const same = structuredClone(initial.items.find(item => item.id === 'same-duplicate'));
