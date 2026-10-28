@@ -123,3 +123,10 @@
 ## [NK1][WorkPass502] Wire bounded semantic recall into the live cognitive cycle (2026-10-27)
 
 - The direct user-text path already used `retrieveForCognition` when the execution plan requested memory; the later advanced-recall branch still used synchronous lexical-only `retrieve` for internal-goal/fallback queries or when it could not reuse that first memory packet.
+
+## [NK1][memory] Preserve full-corpus semantic retrieval cost evidence (2026-10-28)
+
+- `MemoryOS2.recordSelectedRetrieval` preserves candidate counts up to the canonical 1600-item memory capacity rather than clipping semantic scans to the lexical candidate budget of 192.
+- `MemoryFabric` normalizes the adaptive compute-cost signal to `[0,1]`, preventing a full semantic scan from emitting an out-of-range value.
+- Added regression assertions for candidate counts of 400 and the 1600-item cap, plus normalized cost saturation. This is a metric-integrity correction, not a claim of improved retrieval quality.
+
