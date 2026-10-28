@@ -1573,6 +1573,7 @@
     "test:memory-temporal-inspector-closure": "node --experimental-strip-types tests/memory-temporal-inspector-closure.mjs",
     "audit:workpass26": "npm run typecheck && npm run test:memory-temporal-inspector-closure && npm run test:r15:memory && npm run test:r16:memory && npm run test:memory-retrieval-benchmark && node --experimental-strip-types tests/server-smoke.mjs",
     "test:memory-retrieval-candidate-coverage": "node --experimental-strip-types tests/memory-retrieval-candidate-coverage.mjs",
+    "test:memory-restore-id-integrity": "node --experimental-strip-types tests/memory-restore-id-integrity-workpass585.mjs",
     "audit:workpass27": "npm run typecheck && npm run test:memory-temporal-inspector-closure && npm run test:memory-retrieval-candidate-coverage && npm run test:r16:memory && npm run test:memory-retrieval-benchmark && npm run test:memory-retrieval-experiment && node --experimental-strip-types tests/server-smoke.mjs",
     "test:memory-retrieval-numeric-terms": "node --experimental-strip-types tests/memory-retrieval-numeric-terms.mjs",
     "audit:workpass28": "npm run typecheck && npm run test:memory-temporal-inspector-closure && npm run test:memory-retrieval-candidate-coverage && npm run test:memory-retrieval-numeric-terms && npm run test:r15:memory && npm run test:r16:memory && npm run test:memory-retrieval-benchmark && npm run test:memory-retrieval-experiment && node --experimental-strip-types tests/server-smoke.mjs",
