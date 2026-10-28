@@ -333,7 +333,7 @@ const claimedCorroboratedResult = claimedCorroborationRuntime.hexisCanonicalEvid
 assert.equal(claimedCorroboratedResult.accepted, true);
 assert.equal(claimedCorroboratedResult.added, true);
 const claimedCorroborationKey = 'hexis-source:' + createHash('sha256')
-  .update(declaredCorroboratedProvenance.sourceId + '\\u0000' + fingerprint)
+  .update(declaredCorroboratedProvenance.sourceId + '\u0000' + fingerprint)
   .digest('hex');
 const claimedCorroborationAfter = claimedCorroborationRuntime.fabric.canonicalSnapshot().items
   .find(row => row.id === claimedCorroborationMemory.id);
