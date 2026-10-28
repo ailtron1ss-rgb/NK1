@@ -1,3 +1,9 @@
+## [NK1][WorkPass602] Use canonical snapshot for retrieval read-only regression (2026-10-28)
+
+- Remove the stale test-only call to a non-existent `indexIntegrityDiagnostics()` API; retain the meaningful read-only invariant by comparing the canonical MemoryOS2 snapshot before and after metadata-aware retrieval.
+- Preserve metadata-only recall, direct lexical priority, and unrelated-topic non-pollution assertions; do not add a fake diagnostic API to production runtime.
+- Exact-head CI is pending.
+
 ## [NK1][WorkPass601] Canonical bilingual holdout and metadata recall integration (2026-10-28)
 
 - Port the reviewed metadata-only recall channel, its index-integrity/read-only regression, and the offline RU/EN independent holdout contract onto the canonical Hexis branch.

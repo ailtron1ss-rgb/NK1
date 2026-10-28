@@ -46,6 +46,7 @@ encode('m-direct', 'Instructions for resetting a laptop after a system update.',
   entities: ['Laptop'],
 });
 
+const readOnlySnapshotBeforeMetadataRetrieval = structuredClone(memory.snapshot());
 const topicHits = memory.retrieve('orchid watering schedule', 3);
 assert.equal(topicHits[0]?.m?.id ?? topicHits[0]?.id, 'm-orchid',
   'topic metadata should make a differently-worded memory discoverable');
@@ -61,9 +62,7 @@ assert.equal(directHits[0]?.m?.id ?? directHits[0]?.id, 'm-direct',
 
 const snapshot = memory.snapshot();
 assert.equal(snapshot.items.length, 3, 'metadata retrieval must be read-only');
-const indexHealth = memory.indexIntegrityDiagnostics();
-assert.equal(indexHealth.pass, true, 'metadata postings must remain aligned with canonical MemoryOS2 indexes');
-assert.equal(indexHealth.metadataIndexMismatch, 0);
+assert.deepEqual(memory.snapshot(), readOnlySnapshotBeforeMetadataRetrieval, 'metadata-aware retrieval must not mutate canonical memory state');
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   topicTop1: topicHits[0]?.m?.id ?? topicHits[0]?.id,
   entityTop1: entityHits[0]?.m?.id ?? entityHits[0]?.id,
