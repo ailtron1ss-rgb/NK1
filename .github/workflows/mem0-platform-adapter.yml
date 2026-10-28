@@ -2,7 +2,7 @@ name: Mem0 Platform adapter safety regression
 
 on:
   pull_request:
-    branches: [nk1-hexis-canonical-apply-2026-10-27]
+    branches: [nk1-hexis-canonical-apply-2026-10-27, nk1-hexis-mem0-integration-20261027]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
       - "runtime/neuro-kurisu/src/organism/learning/GepaReflectiveCandidateGenerator.ts"
