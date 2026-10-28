@@ -267,6 +267,23 @@ const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder()
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;candidateCount?:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
+export interface MemoryOS2RestoreIntegrityReport {
+ sourceItems:number;
+ consideredItems:number;
+ retainedItems:number;
+ invalidRowsDropped:number;
+ duplicateIdGroups:number;
+ collapsedDuplicateRows:number;
+ conflictingDuplicateIdGroups:number;
+ conflictingDuplicateRowsDropped:number;
+ truncatedItems:number;
+}
+function stableRestoreTieKey(value:unknown):string{
+ if(value===null||typeof value!=='object')return JSON.stringify(value)??'null';
+ if(Array.isArray(value))return '['+value.map(stableRestoreTieKey).join(',')+']';
+ const record=value as Record<string,unknown>;
+ return '{'+Object.keys(record).sort().map(key=>JSON.stringify(key)+':'+stableRestoreTieKey(record[key])).join(',')+'}';
+}
 export interface SemanticRetrievalPerformanceOptions { maxIndexItems?:number; maxLexicalPool?:number; providerTimeoutMs?:number; }
 export interface SemanticIndexMaintenanceResult {
  enabled:boolean; provider:string; model:string; considered:number; indexed:number; failed:number; staleSkipped:number;
@@ -275,6 +292,7 @@ export interface SemanticIndexMaintenanceResult {
 }
 export class MemoryOS2{
  private state=defaultMemoryOS2();
+ private lastRestoreIntegrity:MemoryOS2RestoreIntegrityReport={sourceItems:0,consideredItems:0,retainedItems:0,invalidRowsDropped:0,duplicateIdGroups:0,collapsedDuplicateRows:0,conflictingDuplicateIdGroups:0,conflictingDuplicateRowsDropped:0,truncatedItems:0};
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -505,7 +523,8 @@ export class MemoryOS2{
      return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }
  }
- restore(s:MemoryOSState2|undefined){
+ restore(s:MemoryOSState2|undefined):MemoryOS2RestoreIntegrityReport{
+  const sourceItemCount=Array.isArray(s?.items)?s!.items.length:0;
   const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
@@ -560,6 +579,43 @@ export class MemoryOS2{
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
+  // A duplicate ID makes itemIndex disagree with state.items and can poison posting
+  // frequencies, link traversal and later eviction. Reject malformed rows; collapse
+  // same-identity duplicates deterministically, but drop every row in a conflicting-ID
+  // group rather than guessing which memory owns that identity.
+  let invalidRowsDropped=0,duplicateIdGroups=0,collapsedDuplicateRows=0,conflictingDuplicateIdGroups=0,conflictingDuplicateRowsDropped=0;
+  const rowsById=new Map<string,MemoryItem2[]>();
+  for(const item of this.state.items){
+    const raw=item as any;
+    if(!raw||typeof raw.id!=='string'||!raw.id.trim()||raw.id!==raw.id.trim()||typeof raw.content!=='string'||!raw.content.trim()||typeof raw.kind!=='string'||!raw.kind.trim()||typeof raw.source!=='string'||!raw.source.trim()){
+      invalidRowsDropped++;continue;
+    }
+    const group=rowsById.get(raw.id)??[];group.push(item);rowsById.set(raw.id,group);
+  }
+  const restoredItems:MemoryItem2[]=[];
+  const restoreAt=Date.now();
+  for(const group of rowsById.values()){
+    if(group.length===1){restoredItems.push(group[0]!);continue;}
+    duplicateIdGroups++;
+    const identities=new Set(group.map(item=>JSON.stringify([item.kind,item.source,canonicalizeMemoryContent(item.content)])));
+    if(identities.size!==1){
+      conflictingDuplicateIdGroups++;conflictingDuplicateRowsDropped+=group.length;continue;
+    }
+    let winner=group[0]!;
+    for(const candidate of group.slice(1)){
+      const candidatePreferred=this.preferIndexRecord(candidate,winner,restoreAt);
+      const winnerPreferred=this.preferIndexRecord(winner,candidate,restoreAt);
+      if(candidatePreferred&&!winnerPreferred)winner=candidate;
+      else if(!candidatePreferred&&!winnerPreferred&&stableRestoreTieKey(candidate)<stableRestoreTieKey(winner))winner=candidate;
+    }
+    restoredItems.push(winner);collapsedDuplicateRows+=group.length-1;
+  }
+  this.state.items=restoredItems;
+  const restoreIntegrityReport:MemoryOS2RestoreIntegrityReport={
+    sourceItems:sourceItemCount,consideredItems:rawItems.length,retainedItems:restoredItems.length,
+    invalidRowsDropped,duplicateIdGroups,collapsedDuplicateRows,conflictingDuplicateIdGroups,
+    conflictingDuplicateRowsDropped,truncatedItems:Math.max(0,sourceItemCount-rawItems.length),
+  };
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
@@ -578,7 +634,10 @@ export class MemoryOS2{
     if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
     this.indexItem(m);
   }
+  this.lastRestoreIntegrity=restoreIntegrityReport;
+  return {...restoreIntegrityReport};
  }
+ restoreIntegrityDiagnostics():MemoryOS2RestoreIntegrityReport{return {...this.lastRestoreIntegrity};}
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  /** Index only bounded, curated metadata; do not merge these tokens into content BM25 statistics. */
  private metadataTokens(item:MemoryItem2):Set<string>{
@@ -729,11 +788,16 @@ export class MemoryOS2{
 
  encode(input:MemoryEncodeInput, options:{clone?:boolean;forceDistinct?:boolean}={}){
    const now=Date.now();
+   if(input.id!==undefined&&(typeof input.id!=='string'||!input.id.trim()||input.id!==input.id.trim()))throw new Error('memory-id-invalid');
    const canonicalContent=canonicalizeMemoryContent(input.content);
    const identity=deriveMemoryIdentity(canonicalContent,input.kind,input.source);
-   if(options.forceDistinct&&input.id){
-     const forced=this.itemIndex.get(input.id);
-     if(forced&&canonicalizeMemoryContent(forced.content)===canonicalContent)return options.clone===false?forced:structuredClone(forced);
+   if(input.id){
+     const requestedId=this.itemIndex.get(input.id);
+     if(requestedId){
+       const sameIdentity=requestedId.kind===input.kind&&requestedId.source===input.source&&canonicalizeMemoryContent(requestedId.content)===canonicalContent;
+       if(!sameIdentity)throw new Error('memory-id-conflict:'+input.id);
+       if(options.forceDistinct)return options.clone===false?requestedId:structuredClone(requestedId);
+     }
    }
    const exactId=options.forceDistinct?undefined:this.exactIndex.get(`${input.kind}|${input.source}|${canonicalContent}`);
    const contentId=options.forceDistinct?undefined:this.contentIndex.get(`${input.kind}|${canonicalContent}`);
@@ -765,12 +829,24 @@ export class MemoryOS2{
     this.contentIndex.set(`${existing.kind}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     return options.clone===false?existing:structuredClone(existing);
    }
+   // An explicit ID already bound to this same identity is idempotent even when
+   // its row is historical/dormant and was excluded from the active dedup pool.
+   // Never append a second state.items row for an ID already owned by itemIndex.
+   if(input.id){
+     const requestedId=this.itemIndex.get(input.id);
+     if(requestedId)return options.clone===false?requestedId:structuredClone(requestedId);
+   }
    const semanticVector=vectorize(input.content); const entities=[...new Set([...(input.entities??[]),...extractEntities(input.content)])];
-   // If canonical content already exists only as an expired/quarantined record,
-   // a fresh observation gets its own stable-in-process identity rather than
-   // mutating history or overwriting the historical item's map entry.
-   const collision=this.itemIndex.has(input.id??identity.stableId);
-   const materializedInput:MemoryEncodeInput=options.forceDistinct||input.id||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
+   // forceDistinct skips content deduplication, not ID uniqueness.
+   const collision=!input.id&&this.itemIndex.has(identity.stableId);
+   let materializedInput:MemoryEncodeInput=input;
+   if(collision){
+     const reason=options.forceDistinct?'forced-distinct':'reobserved';
+     const seed=canonicalContent+'\0'+reason+':'+now+':'+this.state.items.length+':'+this.state.reconsolidations;
+     let uniqueId=stableMemoryId(seed,input.kind,input.source),salt=0;
+     while(this.itemIndex.has(uniqueId))uniqueId=stableMemoryId(seed+':'+(++salt),input.kind,input.source);
+     materializedInput={...input,id:uniqueId};
+   }
    const item=this.buildMemoryItem(materializedInput,identity,entities,semanticVector,now);
    if(collision&&!input.id&&!options.forceDistinct&&!materializedInput.revisionGroupId)item.revisionGroupId=item.id;
    item.temperature01=memoryTemperature(item,now);
