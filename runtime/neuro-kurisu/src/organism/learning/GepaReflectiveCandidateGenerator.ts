@@ -1,5 +1,6 @@
 import type { SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { SkillRevisionTarget } from './SkillRevisionPlan.ts';
+import type { ReflectiveRevisionRequest } from './P23LocalModelSkillRevisionGenerator.ts';
 
 export interface GepaReflectiveRevisionRequest {
   sourcePayload: unknown;
@@ -293,5 +294,16 @@ export class GepaReflectiveCandidateGenerator {
   }
   asRevisionGenerator(): (request: GepaReflectiveRevisionRequest) => Promise<unknown> {
     return request => this.generate(request);
+  }
+  /** Type-compatible with generateLocalSkillRevision's request; all fields still undergo runtime allowlisting. */
+  asP23RevisionGenerator(): (request: ReflectiveRevisionRequest) => Promise<unknown> {
+    return request => this.generate({
+      sourcePayload: request.sourcePayload,
+      datasetFingerprint: request.datasetFingerprint,
+      optimizerInstruction: request.optimizerInstruction,
+      validationEvidence: request.validationEvidence as SkillLearnBenchTrialReport[],
+      targets: request.targets as SkillRevisionTarget[],
+      holdoutGeneralization: request.holdoutGeneralization,
+    });
   }
 }
