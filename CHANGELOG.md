@@ -1,3 +1,10 @@
+## [NK1][WorkPass581] Preserve duplicate retrieval labels for integrity gating (2026-10-28)
+
+- Fixed benchmark input normalization that deduplicated each example's `relevantIds` before `inspectDataset()`; this made its duplicate-label detector unreachable for JSON/JSONL datasets.
+- Keep bounded, trimmed labels intact until integrity inspection so duplicate ground-truth IDs are counted and invalidate promotion instead of being silently hidden.
+- Added a regression proving duplicate labels are reported, dataset integrity fails, and candidate promotion stays blocked.
+- This is an evaluation-integrity correction, not evidence of retrieval quality uplift. No live memory state or Release ZIP changed.
+
 ## [NK1][WorkPass508] Abstain from recent-memory fallback when retrieval has no evidence anchor (2026-10-27)
 
 - `MemoryOS2.retrieve()` previously populated a recent-memory candidate set whenever token/fuzzy/concept discovery found fewer than 96 entries, including the zero-match case. Recency, salience and generic fusion terms could then make unrelated memories look like an answer.
