@@ -4,7 +4,7 @@
 
 This change adds a separate low-priority inverted index over curated memory metadata (`tags`, `entities`, and allowlisted topic/context fields). It is intended to improve discovery when the query matches how a memory is classified but does not repeat words from the memory content.
 
-Content-only BM25 term frequency and document frequency remain unchanged. Metadata tokens are held in separate postings, nominate additional candidates, and contribute a small independent ranking signal plus a low-weight reciprocal-rank-fusion channel. Metadata does not overwrite the stored memory text, modify confidence, or promote a memory to a stronger epistemic status.
+Content-only BM25 term frequency and document frequency remain unchanged. Metadata tokens are held in separate postings, nominate additional candidates, and contribute a small independent ranking signal plus a low-weight reciprocal-rank-fusion channel. Query tokens are materialized once, and per-candidate metadata coverage is scored directly from those inverted postings rather than re-tokenizing each candidate's tags/context. Metadata does not overwrite the stored memory text, modify confidence, or promote a memory to a stronger epistemic status.
 
 ## Integrity and lifecycle
 
