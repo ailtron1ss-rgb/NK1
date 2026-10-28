@@ -39,7 +39,11 @@ async function readBounded(file, maxBytes, label) {
   const meta = await stat(absolute);
   if (!meta.isFile()) throw new Error(`${label}-not-a-file:${absolute}`);
   if (meta.size > maxBytes) throw new Error(`${label}-too-large:${meta.size}>${maxBytes}`);
-  return { absolute, text: await readFile(absolute, 'utf8') };
+  const bytes = await readFile(absolute);
+  let text;
+  try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  catch { throw new Error(`${label}-invalid-utf8`); }
+  return { absolute, text, bytes };
 }
 /**
  * Publish a report atomically without clobbering an existing result. The temporary
@@ -113,7 +117,7 @@ async function main() {
   if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) throw new Error('provenance-must-be-json-object');
   for (const key of ['datasetId', 'datasetVersion', 'sourceRef', 'labelingProtocol']) if (typeof provenance[key] !== 'string' || !provenance[key].trim()) throw new Error(`provenance-field-required:${key}`);
   const examples = parseMemoryRetrievalLabels(labelsFile.text);
-  const rawLabelsSha256 = createHash('sha256').update(labelsFile.text, 'utf8').digest('hex');
+  const rawLabelsSha256 = createHash('sha256').update(labelsFile.bytes).digest('hex');
   if (provenance.rawSourceSha256 !== undefined) {
     const claimedRawHash = String(provenance.rawSourceSha256).trim().toLowerCase();
     if (!/^[a-f0-9]{64}$/.test(claimedRawHash) || claimedRawHash !== rawLabelsSha256) {
