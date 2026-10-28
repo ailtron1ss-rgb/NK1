@@ -284,14 +284,16 @@ test('native provider binds canonical baseline/source payloads and wrapper perfo
 
 test('server attaches the separate host evaluator and explicit schedule to the runtime config', async () => {
   const server = await readFile(new URL('../src/server/server.mjs', import.meta.url), 'utf8');
+  const provider = await readFile(new URL('../src/organism/learning/P23CompoundRepairRevisionProvider.ts', import.meta.url), 'utf8');
   assert.match(server, /NEURO_COMPOUND_REPAIR_EVALUATION_CONFIG_MODULE/);
   assert.match(server, /NEURO_COMPOUND_REPAIR_VERIFIED_PROPOSAL_DATASET_PATH/);
   assert.match(server, /createNativeCompoundRepairRevisionProvider/);
   assert.match(server, /compound-repair-external-and-native-provider-configurations-are-mutually-exclusive/);
   assert.match(server, /createIndependentEvaluationConfigFactory\(\{/);
   assert.match(server, /independentEvaluationConfigForRepair/);
-  assert.match(server, /baseline = source\.previousActive/);
-  assert.match(server, /source\.baseVersion !== active\.version/);
+  assert.match(provider, /baselinePayload = source\.previousActive\.payload/);
+  assert.match(provider, /source\.baseVersion !== active\.version/);
+  assert.match(provider, /native-p23-revision-canonical-store-lineage-changed-during-independent-evaluation/);
   assert.match(server, /backgroundRevision: COMPOUND_REPAIR_BACKGROUND_REVISION/);
   assert.match(server, /compoundRepairRevision: COMPOUND_REPAIR_REVISION/);
   assert.doesNotMatch(server, /providerContext:\s*\{\s*engine,\s*candidateStore/);
