@@ -53,4 +53,16 @@ assert.equal(plan.stats.research.lastReason.includes('budget-exhausted'), true,
 assert.equal(plan.run['world-rollout'], true,
   'an affordable world rollout should remain eligible before the budget is exhausted');
 assert.ok(Object.values(plan.run).some(Boolean), 'budget limiting should allocate useful work rather than skip every operation');
-console.log('COGNITIVE_EXECUTION_PLANNER_BUDGET=PASS', JSON.stringify({ budget, allocated, run: plan.run, cost01: plan.cost01 }));
+
+ // When enough budget remains for either warm project work or cold research, prefer
+ // the warm action instead of letting the OPS declaration order consume the reserve.
+const tierPriorityPlan = new CognitiveExecutionPlanner().compile(frame, spine, .75, undefined, organismSystemContracts());
+const tierPriorityAllocated = Object.values(tierPriorityPlan.cost01).reduce((sum, cost) => sum + cost, 0);
+assert.ok(tierPriorityPlan.run.project,
+  'a warm project operation that fits the remaining budget must run before lower-priority cold research');
+assert.equal(tierPriorityPlan.run.research, false,
+  'cold research must not consume budget ahead of affordable warm project work');
+assert.ok(tierPriorityAllocated <= .75 + 1e-9,
+  'tier-priority allocation must still respect the aggregate budget cap');
+
+console.log('COGNITIVE_EXECUTION_PLANNER_BUDGET=PASS', JSON.stringify({ budget, allocated, run: plan.run, tierPriorityBudget: .75, tierPriorityAllocated, tierPriorityRun: tierPriorityPlan.run }));
