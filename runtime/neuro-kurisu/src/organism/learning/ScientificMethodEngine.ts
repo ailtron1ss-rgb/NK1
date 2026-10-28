@@ -13,7 +13,7 @@ export class ScientificMethodEngine{
   if(!p||p.status==='concluded'||input.verified!==true)return;
   // Outcome credit needs one stable, unique evidence identity; malformed or repeated
   // receipts must not shift confidence, even when a caller retries after a timeout.
-  const evidence=typeof input.evidence==='string'?input.evidence.normalize('NFKC').replace(/[\\r\\n\\t]+/gu,' ').trim().slice(0,320):'';
+  const evidence=typeof input.evidence==='string'?input.evidence.normalize('NFKC').replace(/[\r\n\t]+/gu,' ').trim().slice(0,320):'';
   if(!evidence||p.evidence.includes(evidence))return;
   if(input.success!==undefined&&(!Number.isFinite(input.success)||input.success<0||input.success>1))return;
   p.status='testing';
