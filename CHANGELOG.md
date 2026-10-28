@@ -2582,5 +2582,6 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 ## [NK1][WorkPass587] Enforce aggregate cognitive execution budget (2026-10-28)
 
 - Enforce the remaining compute budget across the full operation plan, even when high-demand or interrupt forcing raises execution priority. An operation is skipped with the explicit `budget-exhausted` reason if its cost would exceed the remaining aggregate budget.
+- Allocate the budget in explicit critical/hot/warm/cold tier order, preserving the declared order within a tier. This prevents lower-priority cold research from consuming capacity before affordable warm project/shadow work.
 - Add a low-budget/high-demand regression that verifies affordable hot-path work runs, expensive research is gated, and summed planned costs never exceed the budget.
 - Extend the focused planner workflow to run both cadence-weighting and aggregate-budget regressions. This is a resource-allocation safety correction, not an end-to-end autonomy uplift claim; `main` and Release ZIP remain untouched.
