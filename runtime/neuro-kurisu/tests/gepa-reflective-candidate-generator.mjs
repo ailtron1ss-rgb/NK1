@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -183,6 +184,49 @@ test('rejects unknown revision target dimensions before contacting the sidecar',
   const bad = { ...request, targets: [{ ...validationTarget, dimension: 'optimizer-authority' }] };
   await assert.rejects(adapter.generate(bad), /gepa-invalid-revision-target/);
   assert.equal(calls, 0);
+});
+
+test('real loopback sidecar HTTP roundtrip reaches the P23 callback contract', async () => {
+  let received;
+  const server = createServer(async (req, res) => {
+    let raw = '';
+    for await (const chunk of req) raw += chunk;
+    received = { method: req.method, url: req.url, authorization: req.headers.authorization, body: JSON.parse(raw) };
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    res.end(JSON.stringify({
+      schemaVersion: 1,
+      candidatePayload: { skill: 'updated-through-real-http' },
+      score: 1,
+      promote: true,
+    }));
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  try {
+    const adapter = new GepaReflectiveCandidateGenerator({
+      enabled: true,
+      endpoint: 'http://127.0.0.1:' + address.port + '/revise',
+      apiKey: 'loopback-only-test-secret',
+    });
+    const result = await adapter.asP23RevisionGenerator()(request);
+    assert.deepEqual(result, { skill: 'updated-through-real-http' });
+    assert.equal(received.method, 'POST');
+    assert.equal(received.url, '/revise');
+    assert.equal(received.authorization, 'Bearer loopback-only-test-secret');
+    assert.equal(received.body.schemaVersion, 1);
+    assert.deepEqual(received.body.holdoutGeneralization, {
+      gap01: -0.12,
+      requiresFreshIndependentEvaluation: true,
+    });
+    assert.equal(JSON.stringify(received.body).includes('private-holdout-task'), false);
+    assert.equal(adapter.diagnostics().lastStatus, 'ok');
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
 });
 
 console.log('GEPA_REFLECTIVE_CANDIDATE_GENERATOR=PASS');
