@@ -1,3 +1,9 @@
+## [NK1][WorkPass603] Reject malformed retrieval labels before normalization (2026-10-28)
+
+- Count blank and non-string `relevantIds` entries on bounded raw inputs before filtering; malformed labels now invalidate dataset integrity even when sanitized rows still match a clean-content fingerprint.
+- Add a regression for mixed malformed/clean labels and a path-scoped Actions gate for runtime typecheck and retrieval experiment integrity checks.
+- This is evaluation-integrity work only; no recall uplift or release readiness is claimed.
+
 ## [NK1][WorkPass601] Document exact release-license review blockers (2026-10-28)
 
 - Record the current publisher audit's 135 missing review/evidence items, affected archive/license paths, dependency fingerprint, and required human decision sequence in `docs/RELEASE_LICENSE_REVIEW_WORKLIST_2026-10-28.md`.
