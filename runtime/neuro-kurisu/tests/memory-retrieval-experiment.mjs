@@ -187,9 +187,9 @@ console.log('MEMORY_RETRIEVAL_EXPERIMENT=PASS', JSON.stringify({ seeds: experime
 const duplicateLabelExamples = structuredClone(examples);
 duplicateLabelExamples[0].relevantIds.push(duplicateLabelExamples[0].relevantIds[0]);
 const duplicateLabelReport = runMemoryOS2RetrievalBenchmark(snapshot, duplicateLabelExamples, options);
-assert.equal(duplicateLabelReport.datasetIntegrity.duplicateRelevantLabelCount, 1,
+assert.equal(duplicateLabelReport.dataIntegrity.duplicateRelevantLabelCount, 1,
   'duplicate relevance labels must be reported rather than normalized away');
-assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false,
+assert.equal(duplicateLabelReport.dataIntegrity.validForPromotion, false,
   'duplicate relevance labels must block candidate promotion');
 assert.equal(duplicateLabelReport.promotion.allowed, false,
   'dataset with duplicate relevance labels must never pass the promotion gate');
