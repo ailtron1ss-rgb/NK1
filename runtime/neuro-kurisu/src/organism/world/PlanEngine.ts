@@ -49,7 +49,7 @@ export class PlanEngine {
     const confidence = Number.isFinite(projection.confidence)
       ? Math.max(0.05, Math.min(0.99, projection.confidence))
       : 0.4;
-    const safeReason = String(reason ?? 'budget-gated').replace(/[\\u0000-\\u001f\\u007f-\\u009f]/gu, ' ').slice(0, 96);
+    const safeReason = String(reason ?? 'budget-gated').replace(/[\x00-\x1f\x7f-\x9f]/gu, ' ').slice(0, 96);
     return {
       id: `plan-budget-fallback-${createdAt}-${preferred}`,
       goalId: goal?.id,
