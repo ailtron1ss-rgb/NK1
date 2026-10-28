@@ -2619,3 +2619,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 - The new runtime camera-gate regression imports `OrganismRuntime`, which reaches the built-in `node:sqlite` module during initialization. The workflow pins Node 22.12.0, where SQLite is gated behind `--experimental-sqlite`; without the flag the test crashed before reaching its assertions.
 - Add `--experimental-sqlite` to this test script only. The workflow still uses the repository's established Node 22.12.0 version, and the correction makes the test exercise the runtime gate instead of failing during module initialization.
+
+
+## [NK1][WorkPass603] Enforce cognitive execution-plan gates in the runtime loop (2026-10-28)
+
+- `stepInternal()` previously ignored the result of `cognitiveBudgetSpend('planning', ...)` and always executed the full four-step beam search. It also performed counterfactual rollout and the alternative-action shadow sweep without checking the matching `run` flags in `CognitiveExecutionPlan`.
+- Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
+- Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
+- Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
