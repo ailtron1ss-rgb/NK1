@@ -346,17 +346,27 @@ export class MemoryFabric {
   async retrieveForCognition(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}):Promise<MemoryItem2[]> {
     this.lastCognitiveMemoryQueryAt=Date.now();
     const safeLimit=Math.max(1,Math.min(16,Math.floor(Number.isFinite(limit)?limit:8)));
-    const fallback=this.retrieve(query,safeLimit,goalRelevance,identityRelevance,{...context,emitEvent:false});
+    const temporalContext={temporalMode:context.temporalMode,asOfAt:context.asOfAt};
+    // Preview read-only until the runtime chooses the actual result. Otherwise the
+    // lexical fallback is counted even when semantic retrieval replaces it.
+    const fallback=this.memoryOS.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalContext);
+    const finish=(selected:MemoryItem2[],semantic=false)=>{
+      const rows=this.memoryOS.commitSelectedRetrieval(query,selected.map(row=>({id:row.id,content:row.content})),goalRelevance,identityRelevance,temporalContext);
+      return this.recordRetrievalResult(query,rows,{
+        tick:context.tick,
+        emitEvent:semantic&&context.tick!==undefined,
+        evidenceMode:semantic?'semantic-cognitive-retrieval':'retrieval-audit',
+      });
+    };
     const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
-    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return fallback;
+    if(!runtimeEnabled||!String(query??'').trim()||!this.memoryOS.embeddingConfigured()) return finish(fallback);
 
     // Foreground cognition must not compete with low-priority background indexing;
-    // lexical retrieval stays available while a bounded maintenance batch warms the index.
-    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return fallback;
+    // lexical recall stays available while a bounded maintenance batch warms the index.
+    if(this.cognitionSemanticInFlight||this.semanticMaintenanceInFlight) return finish(fallback);
     const providerTimeout=Math.max(500,Math.min(20000,Number(process.env.NK_EMBEDDINGS_TIMEOUT_MS??5000)||5000));
     const work=this.memoryOS.previewRetrieveWithEmbeddings(query,safeLimit,goalRelevance,identityRelevance,
-      {temporalMode:context.temporalMode,asOfAt:context.asOfAt},
-      {maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout});
+      temporalContext,{maxIndexItems:12,maxLexicalPool:24,providerTimeoutMs:providerTimeout});
     const tracked=work.finally(()=>{if(this.cognitionSemanticInFlight===tracked)this.cognitionSemanticInFlight=null;});
     this.cognitionSemanticInFlight=tracked;
     let timer:ReturnType<typeof setTimeout>|undefined;
@@ -366,18 +376,15 @@ export class MemoryFabric {
       new Promise<{kind:'timeout'}>(resolve=>{timer=setTimeout(()=>resolve({kind:'timeout'}),budgetMs);}),
     ]);
     if(timer)clearTimeout(timer);
-    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return fallback;
-    const rows=outcome.result.items.slice(0,safeLimit);
-    for(const row of rows)this.touchHot(row.id);
-    const policy=this.memoryOS.adaptivePolicyDiagnostics();
-    const decision=this.policyOutcomeLedger.register({policy:policy.lastPolicy,contextKey:policy.lastContextKey,query,memoryIds:rows.map(row=>row.id),at:Date.now(),hit01:rows.length?1:0,computeCost01:this.memoryOS.retrievalDiagnostics().candidateCount/192});
-    this.lastPolicyDecisionId=decision.id;
-    if(context.tick!==undefined) this.events.append(makeEvent('attention',context.tick,{source:'memory-fabric',query:query.slice(0,120),hits:rows.length,touchedMemoryIds:rows.slice(0,8).map(row=>row.id),evidenceMode:'semantic-cognitive-retrieval'} as any));
-    return rows;
+    if(outcome.kind!=='complete'||!outcome.result.semantic.enabled||outcome.result.semantic.fallbackReason) return finish(fallback);
+    return finish(outcome.result.items.slice(0,safeLimit),true);
   }
 
-  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
-    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
+  private recordRetrievalResult(
+    query:string,
+    rows:MemoryItem2[],
+    context:{tick?:number;emitEvent?:boolean;evidenceMode?:'retrieval-audit'|'semantic-cognitive-retrieval'}={}
+  ):MemoryItem2[]{
     this.statsData.retrievals++;
     this.statsData.retrievalHits+=rows.length;
     const policy=this.memoryOS.adaptivePolicyDiagnostics();
@@ -385,16 +392,20 @@ export class MemoryFabric {
     this.lastPolicyDecisionId=decision.id;
     for(const row of rows)this.touchHot(row.id);
     if(context.emitEvent){
+      const semantic=context.evidenceMode==='semantic-cognitive-retrieval';
       this.events.append(makeEvent('attention',context.tick??0,{
-        source:'memory-fabric',
-        query:query.slice(0,160),
-        hits:rows.length,
-        touchedMemoryIds:rows.slice(0,12).map(row=>row.id),
-        evidenceMode:'retrieval-audit',
+        source:'memory-fabric',query:query.slice(0,semantic?120:160),hits:rows.length,
+        touchedMemoryIds:rows.slice(0,semantic?8:12).map(row=>row.id),
+        evidenceMode:context.evidenceMode??'retrieval-audit',
       }));
     }
     this.unifiedMemory.recordRetrieval(query,rows.length);
     return rows;
+  }
+
+  retrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,context:{tick?:number;emitEvent?:boolean;temporalMode?:MemoryTemporalQueryOptions['temporalMode'];asOfAt?:number}={}) {
+    const rows=this.memoryOS.retrieve(query,Math.max(1,Math.min(32,Math.floor(limit))),goalRelevance,identityRelevance,{temporalMode:context.temporalMode,asOfAt:context.asOfAt},false);
+    return this.recordRetrievalResult(query,rows,{tick:context.tick,emitEvent:context.emitEvent,evidenceMode:'retrieval-audit'});
   }
 
   recall(query:string,limit=8):P62Frame {

@@ -1052,6 +1052,61 @@ export class MemoryOS2{
    }
    return rows.map(({m})=>{m.lastAccessAt=now;m.retrievalCount++;return clone?structuredClone(m):m;});
  }
+ /**
+  * Commit the outcome of a read-only retrieval preview to canonical state.
+  * Only selected rows receive access/retrieval updates. The exact-content guard
+  * prevents a result computed for an older revision from warming a newer revision.
+  */
+ commitSelectedRetrieval(
+  query:string,
+  selectedItems:ReadonlyArray<Pick<MemoryItem2,'id'|'content'>>,
+  goalRelevance=0,
+  identityRelevance=0,
+  temporalOptions:MemoryTemporalQueryOptions={}
+ ):MemoryItem2[]{
+  const wallClockNow=Date.now();
+  const requestedAsOf=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:undefined;
+  const temporalMode:MemoryTemporalMode=temporalOptions.temporalMode??'current';
+  const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
+  const queryIntentMode=detectMemoryQueryIntent(query);
+  const contextCausal=queryIntentMode==='causal'||/\b(why|cause|causal|because|reason|effect|consequence)\b/iu.test(query)||/(причин|почему|следств)/iu.test(query);
+  const contextTemporal=temporalMode!=='current'||queryIntentMode==='episodic'||/\b(today|now|yesterday|recent|recently|last|earlier|week|month|year)\b/iu.test(query)||/(сегодня|сейчас|вчера|недав|послед|раньше|недел|месяц|год)/iu.test(query);
+  this.state.semanticQueries++;
+  this.activePolicy=this.adaptivePolicy.choose({
+   pressure01:clamp(this.state.items.length/1600),
+   goal01:clamp(goalRelevance),
+   causal01:contextCausal?1:0,
+   temporal01:contextTemporal?1:0,
+   mobile:true,
+  },now);
+  const validAt=(item:MemoryItem2,at:number)=>{
+   const from=Number(item.validFromAt??item.createdAt);
+   const until=item.validUntilAt==null?Number.POSITIVE_INFINITY:Number(item.validUntilAt);
+   return from<=at&&at<until;
+  };
+  const seen=new Set<string>();
+  const rows:MemoryItem2[]=[];
+  for(const selected of selectedItems.slice(0,32)){
+   if(!selected||typeof selected.id!=='string'||typeof selected.content!=='string'||seen.has(selected.id))continue;
+   seen.add(selected.id);
+   const item=this.state.items.find(candidate=>candidate.id===selected.id);
+   if(!item||item.content!==selected.content||item.dormant||item.epistemicStatus==='quarantined')continue;
+   if(temporalMode!=='all'&&((item.validUntilAt!=null&&Number(item.validUntilAt)<=now)||(item.supersededById!=null&&item.validUntilAt==null))){
+    this.state.staleRetrievalsAvoided++;
+    continue;
+   }
+   if(temporalMode!=='all'&&!validAt(item,now)){
+    this.state.staleRetrievalsAvoided++;
+    continue;
+   }
+   item.lastAccessAt=now;
+   item.retrievalCount++;
+   item.temperature01=memoryTemperature(item,now);
+   rows.push(structuredClone(item));
+  }
+  this.state.adaptiveMemoryPolicy=this.adaptivePolicy.snapshot();
+  return rows;
+ }
  reconcile(inputs:MemoryEncodeInput[],options:{clone?:boolean}={}):{created:number;reused:number;ids:string[]}{
   let created=0,reused=0;
   const ids:string[]=[];

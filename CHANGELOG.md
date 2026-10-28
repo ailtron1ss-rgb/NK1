@@ -1,3 +1,10 @@
+## [NK1][WorkPass607] Commit only the selected cognitive retrieval result (2026-10-28)
+
+- Keep the lexical fallback preview read-only while the optional semantic path is deciding; previously fallback accounting/access updates occurred even when semantic retrieval replaced it.
+- Add a canonical MemoryOS2 selected-read commit that rechecks ID, exact content, temporal validity and eligibility before updating access/retrieval state for only chosen rows.
+- Record one MemoryFabric/UnifiedMemorySystem retrieval outcome for final selected rows, including semantic retrieval; add a fake-provider runtime wiring regression for feature-flag behavior and exactly-once accounting.
+- This verifies runtime accounting and wiring, not real-provider retrieval uplift.
+
 ## [NK1][WorkPass606] Reject stale in-flight semantic embeddings (2026-10-28)
 
 - Capture content hash and exact input text before each asynchronous embedding request; accept a returned vector only if the current canonical record still exists, remains eligible, and retains that exact content identity.
