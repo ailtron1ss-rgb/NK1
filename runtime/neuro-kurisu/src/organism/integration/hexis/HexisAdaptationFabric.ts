@@ -291,7 +291,7 @@ export class HexisAdaptationFabric {
         else
             belief.contradictingSourceKeys = [...new Set([...belief.contradictingSourceKeys, key])].slice(-256);
     } if (applied)
-        belief.confidence01 = posteriorConfidence01; belief.trust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5)); belief.updatedAt = at; const base = { id: randomUUID(), memoryId: input.memoryId, stance: input.stance, evidence: structuredClone(input.evidence), priorConfidence01, posteriorConfidence01, priorTrust01, posteriorTrust01: belief.trust01, independent, applied, reason, policy: 'residual_v1' as const, context: input.context, at }; const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) }; this.state.beliefAudit.push(audit); this.state.beliefAudit = this.state.beliefAudit.slice(-2048); this.state.metrics.beliefRevisions += 1; return structuredClone(audit); }
+        belief.confidence01 = posteriorConfidence01; if (independent) { belief.trust01 = clamp(Math.max(priorTrust01, evidenceTrust * 0.5)); belief.updatedAt = at; } const base = { id: randomUUID(), memoryId: input.memoryId, stance: input.stance, evidence: structuredClone(input.evidence), priorConfidence01, posteriorConfidence01, priorTrust01, posteriorTrust01: belief.trust01, independent, applied, reason, policy: 'residual_v1' as const, context: input.context, at }; const audit: HexisBeliefRevisionAudit = { ...base, digest: digest(base) }; this.state.beliefAudit.push(audit); this.state.beliefAudit = this.state.beliefAudit.slice(-2048); this.state.metrics.beliefRevisions += 1; return structuredClone(audit); }
     recordTemporalAssertion(input: {
         memoryId: string;
         summary: string;
