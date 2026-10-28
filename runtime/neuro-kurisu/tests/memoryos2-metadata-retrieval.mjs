@@ -105,6 +105,21 @@ assert.equal(postReconsolidationHealth.pass, true,
   'metadata postings must track merged tags/context without a full rebuild');
 assert.equal(postReconsolidationHealth.metadataIndexMismatch, 0);
 
+// The explicit context update API is another canonical metadata mutation path.
+const patchedContext = memory.updateContext('m-orchid', {
+  topic: 'manual context patch beacon',
+});
+assert.equal(patchedContext?.topic, 'manual context patch beacon');
+const explicitContextHits = memory.retrieve('manual context patch beacon', 4);
+assert.equal(explicitContextHits[0]?.m?.id ?? explicitContextHits[0]?.id, 'm-orchid',
+  'updateContext must add a new topic to the metadata index');
+assert.equal(memory.retrieve('duplicate', 160).some(
+  row => (row.m?.id ?? row.id) === 'm-orchid',
+), false, 'updateContext must remove the replaced topic token');
+const postContextUpdateHealth = memory.indexDiagnostics();
+assert.equal(postContextUpdateHealth.pass, true);
+assert.equal(postContextUpdateHealth.metadataIndexMismatch, 0);
+
 const snapshot = memory.snapshot();
 assert.equal(snapshot.items.length, 4 + distractorCount, 'metadata retrieval must be read-only');
 const indexHealth = memory.indexDiagnostics();
@@ -123,9 +138,9 @@ const afterRestoreDiagnostics = memory.indexDiagnostics();
 assert.equal(afterRestoreDiagnostics.pass, true,
   'restore must clear obsolete metadata postings and rebuild current postings');
 assert.equal(afterRestoreDiagnostics.metadataIndexMismatch, 0);
-const restoredTopicHits = memory.retrieve('duplicate reconciliation beacon', 3);
+const restoredTopicHits = memory.retrieve('manual context patch beacon', 3);
 assert.equal(restoredTopicHits[0]?.m?.id ?? restoredTopicHits[0]?.id, 'm-orchid',
-  'merged metadata-only recall must still work after rebuilding indexes');
+  'explicitly updated metadata-only recall must still work after rebuilding indexes');
 assert.equal(memory.retrieve('ephemeral recall topic', 3).some(
   row => (row.m?.id ?? row.id) === 'm-stale',
 ), false, 'restored metadata index must not retain stale item IDs');
@@ -147,5 +162,6 @@ console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   directContentTop1: directHits[0]?.m?.id ?? directHits[0]?.id,
   boundedMetadataTop1: boundedMetadataHits[0]?.m?.id ?? boundedMetadataHits[0]?.id,
   reconciledMetadataTop1: reconciledMetadataHits[0]?.m?.id ?? reconciledMetadataHits[0]?.id,
+  explicitContextTop1: explicitContextHits[0]?.m?.id ?? explicitContextHits[0]?.id,
   liveItems: snapshot.items.length,
 }));
