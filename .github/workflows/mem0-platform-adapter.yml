@@ -10,6 +10,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionProvider.ts"
       - "runtime/neuro-kurisu/src/server/compound-repair-revision-host-config.mjs"
       - "runtime/neuro-kurisu/tests/p23-native-compound-repair-provider.mjs"
+      - "runtime/neuro-kurisu/tests/p23-native-provider-wiring.mjs"
       - "runtime/neuro-kurisu/tests/workpass330-production-revision-wiring.mjs"
       - "runtime/neuro-kurisu/docs/GEPA_DSPY_CANDIDATE_ADAPTER.md"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
