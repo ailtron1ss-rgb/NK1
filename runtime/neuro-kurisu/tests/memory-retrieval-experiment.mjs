@@ -172,8 +172,6 @@ assert.equal(duplicatePrecisionReport.corpusIntegrity.validForPromotion, false, 
 assert.equal(duplicatePrecisionReport.metrics.baseline.precisionAtK01, 0.2, 'precision@K must count the same relevant memory ID once even if duplicated in corpus');
 
 
-
-
 // High-fanout query: selection must remain stable when identical memory rows are reordered.
 const largeMemory = new MemoryOS2();
 for (let i = 0; i < 260; i++) largeMemory.encode({
