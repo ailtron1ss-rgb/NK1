@@ -11,7 +11,7 @@ Content-only BM25 term frequency and document frequency remain unchanged. Metada
 - Metadata values are length/count bounded; each source lane is capped at 64 unique tokens and each memory at 128 metadata tokens, selected by round-robin across tags, entities and allowlisted context fields. Allowlisted fields are filtered before the field cap, so unrelated context keys cannot starve topic metadata; arbitrary JSON context is not recursively mined.
 - Index addition and deletion update metadata postings with the canonical MemoryOS2 item lifecycle. Deduplication/reconsolidation and the explicit `updateContext()` API both capture pre-mutation metadata tokens and update only changed postings, including removal of tokens from a replaced topic; they do not scan the entire vocabulary.
 - `indexDiagnostics()` reconstructs expected metadata postings from canonical items and includes `metadataIndexMismatch` in its `pass` decision.
-- The regression uses 132 unrelated distractors so targeted memories fall outside the 128-record recent fallback; it checks metadata-only topic/entity recall, noisy-context budget fairness, direct-content priority, dedup-merge and `updateContext()` posting refresh/removal, index diagnostics, restore without stale IDs, and canonical deletion cleanup.
+- The regression uses 132 unrelated distractors so targeted memories fall outside the 128-record recent fallback; it checks metadata-only topic/entity recall, noisy-context budget fairness, direct-content priority, posting-based scoring without query-time metadata re-tokenization, dedup-merge and `updateContext()` posting refresh/removal, index diagnostics, restore without stale IDs, and canonical deletion cleanup.
 
 ## Validation and promotion boundary
 
