@@ -2,7 +2,7 @@
 
 - Restored the full `memory-retrieval-experiment.mjs` regression suite after detecting that a previous PR update had replaced the test file with only a short assertion fragment.
 - Count malformed `relevantIds` entries before normalization; mixed arrays containing non-string or blank labels now invalidate dataset integrity and block candidate promotion even if filtering would leave a matching clean-data hash.
-- Expanded regressions for duplicate-label fingerprint mismatch and malformed-label gating. This is evidence-integrity work, not a retrieval-uplift claim; `main` and the Release ZIP remain untouched pending exact-head validation.
+- Expanded regressions for duplicate-label fingerprint mismatch and malformed-label gating. Added a path-scoped GitHub Actions workflow to run runtime typecheck and `test:memory-retrieval-experiment` on relevant pull requests. This is evidence-integrity work, not a retrieval-uplift claim; `main` and the Release ZIP remain untouched pending exact-head validation.
 
 ## [NK1][WorkPass582] Bind retrieval provenance to exact relevance labels (2026-10-28)
 
