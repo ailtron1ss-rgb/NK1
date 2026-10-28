@@ -2599,3 +2599,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - `compileObservationPlan()` previously called `host.getBudget()` independently for the spine mode, spine budget, and execution planner budget, allowing a changing host budget to produce internally inconsistent decisions in one cycle.
 - Capture the budget once at stage entry and reuse its mode/remaining amount for all planning decisions. The integrated regression now returns different values on subsequent calls and asserts that the stage reads the host exactly once and both planners see the same snapshot.
 - Extended the targeted planner workflow path filter to include `ObservationPlanningStage.ts`. This closes a consistency seam; it does not claim full runtime or autonomy readiness.
+
+
+## [NK1][WorkPass595] Use perception-specific value for cognitive camera capture (2026-10-28)
+
+- `OrganismRuntime.captureCameraForCognition()` used the maximum expected value across every cognitive operation to decide whether a camera capture was useful. High-value research or project work could therefore trigger a camera capture despite low perception value.
+- Restrict the camera demand signal to `plan.expectedValue01.perception`; explicit pending vision requests and the existing motion/resource checks remain separate trigger paths.
+- Add a runtime regression proving a high research/project value does not trigger the camera, while a high perception value still dispatches through the canonical capture path. Extend the planner workflow to run this test and watch the runtime camera gate.
