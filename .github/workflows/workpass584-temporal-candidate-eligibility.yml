@@ -7,6 +7,7 @@ on:
       - "runtime/neuro-kurisu/tests/memory-retrieval-candidate-coverage.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "CHANGELOG.md"
       - ".github/workflows/workpass584-temporal-candidate-eligibility.yml"
   workflow_dispatch:
 
