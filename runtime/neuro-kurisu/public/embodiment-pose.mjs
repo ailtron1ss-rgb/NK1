@@ -35,7 +35,9 @@ const EMOTION_OFFSETS = Object.freeze({
   protective: Object.freeze({headAngleY:0.015,bodyAngleX:-0.01,bodyAngleY:0.01}),
 });
 
+/** @param {number} value @param {number} min @param {number} max @returns {number} */
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+/** @param {object} object @param {PropertyKey} key @returns {boolean} */
 const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 
 /**
@@ -55,6 +57,7 @@ export function deriveEmbodimentPose(action, emotion, arousal) {
   const base = ACTION_POSES[actionKey];
   const offset = EMOTION_OFFSETS[emotionKey];
   const affectScale = 0.35 + energy * 0.65;
+  /** @param {"headAngleX"|"headAngleY"|"bodyAngleX"|"bodyAngleY"|"bodyAngleZ"} key @returns {number} */
   const value = (key) => clamp(base[key] + (offset[key] || 0) * affectScale, -1, 1);
   const stress = ["anxiety", "frustration", "anger"].includes(emotionKey) ? 0.10 : 0;
   return Object.freeze({
