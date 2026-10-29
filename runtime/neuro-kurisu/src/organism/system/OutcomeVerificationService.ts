@@ -3,6 +3,7 @@ export type OutcomeVerificationBasis = 'none' | 'tool-contract' | 'external-post
 import type { WorldContext } from '../core/types.ts';
 import { normalizeWorldContext as normalizeCanonicalWorldContext } from '../core/WorldContextNormalizer.ts';
 import { stableJson } from '../core/StableSerialization.ts';
+import { createStableEvidenceEventId } from './EvidenceEventIdentity.ts';
 
 export interface OutcomeVerification {
   verified: boolean;
@@ -10,6 +11,8 @@ export interface OutcomeVerification {
   confidence01: number;
   externalObservation?: boolean;
   observationId?: string;
+  /** Stable join key for the verifier-owned action/decision/observation tuple; not proof by itself. */
+  evidenceEventId?: string;
   expectedPostcondition?: string;
   observedPostcondition?: string;
   notes?: string;
@@ -104,6 +107,18 @@ export function isTrustedDecisionLinkedExternalPostcondition(
     return false;
   }
 }
+function makeEvidenceEventId(context: OutcomeVerificationContext, observationId: string): string | undefined {
+  const toolId = boundedCorrelationId(context.toolId, 180);
+  const executionId = boundedCorrelationId(context.executionId, 100);
+  const decisionId = boundedCorrelationId(context.decisionId, 180);
+  if (!toolId || toolId === 'unknown-tool' ||
+      !executionId || !/^exec-[a-z0-9-]{8,80}$/i.test(executionId) ||
+      !decisionId || !observationId || observationId.length > 180) return undefined;
+  // Identity binds the canonical full request to its exact decision/execution.
+  // It supports idempotency and correlation; the WeakMap remains the trust anchor.
+  return createStableEvidenceEventId('outcome', [toolId, executionId, decisionId, observationId, context.input]);
+}
+
 const clamp = (x: unknown) => typeof x === 'number' && Number.isFinite(x) ? Math.max(0, Math.min(1, x)) : 0;
 const boundedText = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
@@ -115,7 +130,7 @@ const boundedText = (value: unknown, max: number): string | undefined => {
 const boundedCorrelationId = (value: unknown, max: number): string | undefined => {
   if (typeof value !== 'string') return undefined;
   const normalized = value.normalize('NFKC').trim();
-  if (!normalized || normalized.length > max || /[\u0000-\u001f\u007f-\u009f]/.test(normalized)) return undefined;
+  if (!normalized || normalized.length > max || Array.from(normalized).some((character) => { const code = character.charCodeAt(0); return code <= 0x1f || code === 0x7f || (code >= 0x80 && code <= 0x9f); })) return undefined;
   return normalized;
 };
 
@@ -226,6 +241,8 @@ export class OutcomeVerificationService {
         notes = 'external postcondition contradicts expected state';
       }
       const preserveExternalEvidence = external && externalEvidenceShapeValid && checked.verified === true;
+      const evidenceEventId = preserveExternalEvidence && observationId
+        ? makeEvidenceEventId(isolated, observationId) : undefined;
       const normalized: OutcomeVerification = {
         verified,
         // Preserve valid contradictory external evidence for diagnostics, but it cannot authorize success.
@@ -233,6 +250,7 @@ export class OutcomeVerificationService {
         confidence01: verified || preserveExternalEvidence ? clamp(checked.confidence01) : 0,
         externalObservation: (verified || preserveExternalEvidence) && external,
         ...((verified || preserveExternalEvidence) && observationId ? { observationId } : {}),
+        ...(evidenceEventId ? { evidenceEventId } : {}),
         ...((verified || preserveExternalEvidence) && expectedPostcondition ? { expectedPostcondition } : {}),
         ...((verified || preserveExternalEvidence) && observedPostcondition ? { observedPostcondition } : {}),
         ...(notes ? { notes } : {}),
