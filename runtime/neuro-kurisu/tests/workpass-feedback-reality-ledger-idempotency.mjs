@@ -115,7 +115,7 @@ assert.equal(invalidAggregate.snapshot().externalCount, 0, 'aggregate counts mus
 
 const runtimeSource = readFileSync(resolve(process.cwd(), 'src/organism/core/OrganismRuntime.ts'), 'utf8');
 assert.match(runtimeSource, /createRealityEvidenceEventId/);
-assert.equal((runtimeSource.match(/eventId:createRealityEvidenceEventId\(/g) ?? []).length, 5,
+assert.equal((runtimeSource.match(/eventId:createRealityEvidenceEventId\(/g) ?? []).length, 6,
   'the five runtime action/reality projections must use stable upstream event identities');
 assert.match(runtimeSource, /createStableEvidenceEventId\('cycle-lineage'/,
   'cognitive-cycle completeness must be bound to its complete stage lineage');
