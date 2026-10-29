@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { P2702PersistentPersonalityDynamics, defaultP2702PersistentPersonality } from '../src/organism/cognition/P2702PersistentPersonalityDynamics.ts';
 import { NeuralExperienceBranch, defaultNeuralExperienceBranch } from '../src/organism/cognition/NeuralExperienceBranch.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const actions={respond:.5,explore:.5,verify:.5,rest:.5,reflect:.5,wait:.5,defer:.5};
 const p=new P2702PersistentPersonalityDynamics();
