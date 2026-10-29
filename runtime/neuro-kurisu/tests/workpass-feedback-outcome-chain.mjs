@@ -140,8 +140,10 @@ assert.match(core, /isTrustedDecisionLinkedExternalPostcondition\(binding\.verif
 
 const { OrganismCore } = await import('../src/organism/core/OrganismCore.ts');
 const publicBoundary = Object.create(OrganismCore.prototype);
-publicBoundary.ready = true;
-publicBoundary.evidenceResearchSubsystem = { externalObserver: {} };
+Object.defineProperty(publicBoundary, 'ready', { value: true, configurable: true });
+Object.defineProperty(publicBoundary, 'evidenceResearchSubsystem', {
+  value: { externalObserver: {} }, configurable: true,
+});
 await assert.rejects(
   OrganismCore.prototype.ingestExternalObservation.call(publicBoundary, {
     sourceId: source.id, sourceClass: source.sourceClass, channel: source.channel,
