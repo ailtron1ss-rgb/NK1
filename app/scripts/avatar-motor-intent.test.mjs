@@ -146,10 +146,16 @@ test("the production viewers preserve motor intent and map continuous pose to th
   assert.match(viewer, /type="module"/);
   assert.ok(viewer.includes("from './embodiment-intent.mjs'"));
   assert.match(viewer, /d.type==='kurisu_embodiment_intent'/);
-  for (const token of ["ParamBodyAngleX", "ParamBodyAngleY", "ParamBodyAngleZ", "ParamBreath", "breathIntensity", "motorAction", "intentReason"]) {
+  for (const token of ["ParamBodyAngleX", "ParamBodyAngleY", "ParamBodyAngleZ", "ParamBreath", "breathIntensity"]) {
     assert.ok(viewer.includes(token), `standalone viewer must consume ${token}`);
-    assert.ok(appViewer.includes(token), `app viewer must validate or preserve ${token}`);
+    assert.ok(appViewer.includes(token), `app viewer must consume ${token}`);
   }
+  const intentContract = await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs", import.meta.url), "utf8");
+  for (const token of ["motorAction", "intentReason", "MOTOR_ACTIONS", "legacy-v1-payload"]) {
+    assert.ok(intentContract.includes(token), `shared intent contract must preserve ${token}`);
+  }
+  assert.ok(appViewer.includes("motorAction:d.body.motorAction"));
+  assert.ok(appViewer.includes("intentReason:d.body.intentReason"));
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
   assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
