@@ -1,3 +1,9 @@
+## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
+
+- Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
+- Stop `preferLab` from overriding semantic suitability: several `lab_*` sprites actually depict sleep, phone use, Dr Pepper or unrelated poses; route explore, verify, rest, reflect, respond and wait to suitable imagery.
+- Add regression assertions and detailed per-asset visual audit notes. Keep legacy file paths stable for compatibility.
+
 ## [NK1][WorkPass621] Add true 3D embodiment wired to organism state (2026-10-29)
 
 - Add a selectable Three.js WebGL body built from 3D geometry; explicitly label it as a procedural concept because no redistributable canonical Kurisu 3D model is present in the tracked source tree.

@@ -48,3 +48,13 @@ test("legacy sprites use a capped high-DPI canvas and do not fake lip-sync", () 
   assert.match(source, /говорит · статичный кадр/);
   assert.doesNotMatch(source, /ctx\.ellipse\(cx, cy \+ d\.dh/);
 });
+
+test("sprite semantics take precedence over misleading legacy filenames and sheet names", async () => {
+  const engine = await readFile(join(root, "src/legacy/avatar/spriteEngine.ts"), "utf8");
+  assert.match(engine, /explore: \["street_walk", "city_stand"/);
+  assert.match(engine, /verify: \["wet_glance", "lab_chin"/);
+  assert.match(engine, /rest: \["arms_crossed", "lab_crossed", "tired_rest"\]/);
+  assert.match(engine, /dr_pepper_break: \['lab_steeple', 'sofa_phone'\]/);
+  assert.match(engine, /visual review found several "lab_\*" filenames depict sleep, phone use or unrelated gestures/);
+  assert.doesNotMatch(engine, /if \(preferLab\) \{\s*const labCandidates/);
+});
