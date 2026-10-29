@@ -5,6 +5,7 @@ import { WorldSubsystemRuntime } from './WorldSubsystemRuntime.ts';
 import { EmbodimentSubsystemRuntime } from './EmbodimentSubsystemRuntime.ts';
 import { AgencySubsystemRuntime } from './AgencySubsystemRuntime.ts';
 import { EvidenceResearchSubsystemRuntime } from './EvidenceResearchSubsystemRuntime.ts';
+import type { ExternalObserverSourceRegistrationAuthorizer } from '../system/ExternalObserverFabric.ts';
 import { organismSystemContract, organismSystemContracts, type OrganismSystemContract, type ResolvedOrganismSystemContract, type OrganismSystemHealthSnapshot } from './OrganismSystemContract.ts';
 import { WillIntegrationBridge } from '../integration/will/WillIntegrationBridge.ts';
 import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFabric.ts';
@@ -61,6 +62,7 @@ export class OrganismSystemFabric {
     embodiment: EmbodimentSubsystemRuntime;
     agency: AgencySubsystemRuntime;
     research: EvidenceResearchSubsystemRuntime;
+    authorizeSourceRegistration: ExternalObserverSourceRegistrationAuthorizer;
     willIntegration: WillIntegrationBridge;
     luminaAdaptation: LuminaAdaptationFabric;
     hexisAdaptation: HexisAdaptationFabric;
@@ -73,7 +75,11 @@ export class OrganismSystemFabric {
     this.world=input.world ?? new WorldSubsystemRuntime();
     this.embodiment=input.embodiment ?? new EmbodimentSubsystemRuntime();
     this.agency=input.agency ?? new AgencySubsystemRuntime();
-    this.research=input.research ?? new EvidenceResearchSubsystemRuntime();
+    this.research=input.research ?? new EvidenceResearchSubsystemRuntime({
+      authorizeSourceRegistration:input.authorizeSourceRegistration,
+      // External observer and governance write through the same canonical ledger owner.
+      realityEvidenceLedger:this.governance.realityEvidenceLedger,
+    });
     this.willIntegration=input.willIntegration ?? new WillIntegrationBridge();
     this.luminaAdaptation=input.luminaAdaptation ?? new LuminaAdaptationFabric();
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
