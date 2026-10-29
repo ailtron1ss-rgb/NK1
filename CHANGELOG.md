@@ -1,7 +1,7 @@
 ## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
 
 - Reject malformed world-context coercions: null/blank numerics no longer become zero; malformed text, booleans, evidence kinds and source IDs no longer become facts.
-- Preserve known/unknown flags for object value, visibility and collection state; wire the normalizer into live OrganismRuntime → core.observe() ingress.
+- Preserve known/unknown flags for object value, visibility and collection state; wire the normalizer into live OrganismRuntime → core.observe() ingress. Run PerceptionEngine in the runtime cycle and route salient events into RuntimeEvidenceBus and multimodal workspace.
 - Gate physical observations on freshness and sampled-at plausibility; initialize baselines without false motion and represent sensor availability separately.
 - Emit sensor changes across successive cycles, make resource-pressure notifications transition-based, and detect same-cardinality world fact/object/event updates.
 - Add four focused integrity tests, `npm run test:world-perception` and a dedicated GitHub Actions gate; real device validation remains a separate gate.
