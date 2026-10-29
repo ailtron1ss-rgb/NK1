@@ -42,6 +42,8 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
+import { JsonlLearningFitnessJournal } from '../learning/LearningFitnessJournal.ts';
+import { JsonlLearningLifecycleJournal, learningLifecycleJournalPathForStateFile } from '../learning/LearningLifecycleJournal.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
@@ -276,6 +278,22 @@ export class OrganismRuntime {
       if (!config.compoundRepairRevision.engine.verifiedSkillCandidateSnapshot()) {
         throw new Error('compound-repair-revision requires a configured verified P23 candidate store');
       }
+      const learningEngine=config.compoundRepairRevision.engine;
+      const supportsLearningEvidenceJournals=
+        typeof learningEngine.configureLearningFitnessJournalIfAbsent==='function' &&
+        typeof learningEngine.configureLearningLifecycleJournalIfAbsent==='function' &&
+        typeof learningEngine.reconcileLearningLifecycleOutcomes==='function';
+      if(supportsLearningEvidenceJournals) {
+        const learningJournalBase=config.stateFile.replace(/\.json$/i,'');
+        learningEngine.configureLearningFitnessJournalIfAbsent(
+          new JsonlLearningFitnessJournal(`${learningJournalBase}.learning-fitness.jsonl`),
+        );
+        learningEngine.configureLearningLifecycleJournalIfAbsent(
+          new JsonlLearningLifecycleJournal(learningLifecycleJournalPathForStateFile(config.stateFile)),
+        );
+      } else if(process.env.NODE_ENV==='production') {
+        throw new Error('production-compound-repair-revision-requires-durable-learning-evidence-journals');
+      }
       const provideInputs = config.compoundRepairRevision.independentEvaluationConfigForRepair
         ? withIndependentCandidateEvaluation(
             config.compoundRepairRevision.provideInputs,
@@ -321,6 +339,27 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      const learningEngine=this.config.compoundRepairRevision?.engine;
+      if(learningEngine && typeof learningEngine.reconcileLearningLifecycleOutcomes==='function') {
+        const reconciliation=learningEngine.reconcileLearningLifecycleOutcomes();
+        await this.journal.write(
+          reconciliation.available?'info':'error',
+          'runtime.p23.learning-lifecycle.reconciled',
+          {
+            configured:reconciliation.configured,
+            available:reconciliation.available,
+            observedPending:reconciliation.available?reconciliation.observedPending:0,
+            observedUnknown:reconciliation.available?reconciliation.observedUnknown:0,
+            reconciledActive:reconciliation.available?reconciliation.reconciledActive:0,
+            reconciledNotCurrentlyActive:reconciliation.available?reconciliation.reconciledNotCurrentlyActive:0,
+            unresolved:reconciliation.available?reconciliation.unresolved:0,
+            reason:'reason' in reconciliation?reconciliation.reason:undefined,
+          },
+        );
+        if(process.env.NODE_ENV==='production' && reconciliation.configured && !reconciliation.available) {
+          throw new Error('production-p23-learning-lifecycle-reconciliation-unavailable');
+        }
+      }
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
