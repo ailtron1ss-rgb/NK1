@@ -10,6 +10,8 @@ export interface PromotionGateConfig {
   minAbsoluteGain: number;
   maxFamilyRegression: number;
   requirePositiveConfidenceLowerBound: boolean;
+  /** partition: family cells sum to aggregate pairs; seed-repeated: each family shares the same seed-level paired N. */
+  familyPairCountMode: 'partition' | 'seed-repeated';
 }
 
 export interface PromotionGateResult {
@@ -28,6 +30,7 @@ const DEFAULTS: PromotionGateConfig = {
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
   requirePositiveConfidenceLowerBound: true,
+  familyPairCountMode: 'partition',
 };
 
 type RecordValue = Record<string, unknown>;
@@ -105,7 +108,8 @@ export function evaluateOutcomePromotion(
       !Number.isSafeInteger(cfg.minFamilies) || cfg.minFamilies < 1 ||
       !Number.isFinite(cfg.minAbsoluteGain) || cfg.minAbsoluteGain < 0 || cfg.minAbsoluteGain > 1 ||
       !Number.isFinite(cfg.maxFamilyRegression) || cfg.maxFamilyRegression < 0 || cfg.maxFamilyRegression > 1 ||
-      typeof cfg.requirePositiveConfidenceLowerBound !== 'boolean') {
+      typeof cfg.requirePositiveConfidenceLowerBound !== 'boolean' ||
+      !['partition', 'seed-repeated'].includes(cfg.familyPairCountMode)) {
     throw new Error('invalid promotion gate configuration');
   }
 
@@ -158,7 +162,10 @@ export function evaluateOutcomePromotion(
   });
 
   const familyPairTotal = familyResults.reduce((sum, item) => sum + item.pairedN, 0);
-  if (familyPairTotal !== aggregatePairedN) reasons.push('family-pair-count-mismatch');
+  const familyCoverageMatches = cfg.familyPairCountMode === 'partition'
+    ? familyPairTotal === aggregatePairedN
+    : familyResults.length > 0 && familyResults.every(item => item.pairedN === aggregatePairedN);
+  if (!familyCoverageMatches) reasons.push('family-pair-count-mismatch');
   const finiteFamilyGains = familyResults.flatMap(item => item.gain === null ? [] : [item.gain]);
   const worstFamilyGain = finiteFamilyGains.length ? Math.min(...finiteFamilyGains) : null;
 
