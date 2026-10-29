@@ -60,6 +60,13 @@ const EMOTION_BROW: Record<EmotionLabel, number> = {
   curiosity: -5, calm: 0, joy: 2, anxiety: 4, frustration: 8, sadness: 6, anger: 10, protective: -2,
 };
 
+function automaticPoseFor(action: ActionKind, emotion: EmotionLabel, thinking: boolean): PoseOverride {
+  if (thinking || action === "reflect" || emotion === "curiosity" || action === "verify") return "thinking";
+  if (action === "explore" || (action === "respond" && (emotion === "joy" || emotion === "protective"))) return "explain";
+  if (emotion === "anger" || emotion === "frustration") return "crossed";
+  return "auto";
+}
+
 function poseFor(action: ActionKind, emotion: EmotionLabel, arousal: number, motion: MotionStyle) {
   const multiplier = motion === "soft" ? 0.55 : 1;
   const actionTilt: Record<ActionKind, number> = {
@@ -95,7 +102,7 @@ export interface KurisuOriginalStageProps {
  */
 export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
   const [outfit, setOutfit] = useState<Outfit>(() => stored("kurisu-original-outfit", OUTFITS, "lab"));
-  const [eyeTone, setEyeTone] = useState<EyeTone>(() => stored("kurisu-original-eyes", EYES, "ice"));
+  const [eyeTone, setEyeTone] = useState<EyeTone>(() => stored("kurisu-original-eyes", EYES, "violet"));
   const [hairTone, setHairTone] = useState<HairTone>(() => stored("kurisu-original-hair", HAIR, "copper"));
   const [accentTone, setAccentTone] = useState<AccentTone>(() => stored("kurisu-original-accent", ACCENTS, "cyan"));
   const [motion, setMotion] = useState<MotionStyle>(() => stored("kurisu-original-motion", MOTIONS, "soft"));
@@ -109,6 +116,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const eyes = EYES.find((choice) => choice.id === eyeTone) ?? EYES[0];
   const accent = ACCENTS.find((choice) => choice.id === accentTone) ?? ACCENTS[0];
   const pose = poseFor(action, emotion, arousal, motion);
+  const effectivePose = poseOverride === "auto" ? automaticPoseFor(action, emotion, thinking) : poseOverride;
   const mouthHeight = speaking ? Math.max(2, Math.min(14, mouthPose.open * 18)) : 2.5;
   const pupilOffsetX = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeX) ? gazeX : 0)) * 15;
   const pupilOffsetY = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeY) ? gazeY : 0)) * 10;
@@ -133,7 +141,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const coat = isLab ? "#f1f4f5" : isNight ? "#1c3442" : "#a87962";
   const coatShadow = isLab ? "#bdcbd0" : isNight ? "#10232f" : "#674b4d";
   const shirt = isNight ? "#c4d7db" : "#f4f0e9";
-  const tie = isNight ? "#67d6d3" : "#8b3a4b";
+  const tie = isNight ? "#67d6d3" : "#b52b43";
   const motionDuration = motion === "soft" ? "5.2s" : "3.1s";
 
   return (
@@ -202,12 +210,12 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
           </g>}
           <g className="nk-breath">
             {/* Pose presets change the limb silhouettes; Auto follows organism action/emotion. */}
-            {poseOverride === "crossed" ? <g>
+            {effectivePose === "crossed" ? <g>
               <path d="M164 196 Q148 194 149 216 L177 252 Q198 269 218 253 L209 234 Q198 246 185 234 L174 210Z" fill={coat} stroke={coatShadow} strokeWidth="2"/>
               <path d="M257 196 Q273 195 272 216 L242 252 Q221 269 201 253 L211 234 Q224 246 236 234 L247 210Z" fill={coat} stroke={coatShadow} strokeWidth="2"/>
               <path d="M176 250 Q195 263 210 251 Q224 263 241 247" fill="none" stroke="url(#nk-skin)" strokeWidth="10" strokeLinecap="round"/>
               <path d="M189 246 Q208 252 226 244" fill="none" stroke="#bd8283" strokeWidth="1.8" strokeLinecap="round"/>
-            </g> : poseOverride === "thinking" ? <g>
+            </g> : effectivePose === "thinking" ? <g>
               <path d="M164 196 Q148 194 144 216 L129 288 Q126 303 136 307 Q145 307 150 291 L170 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
               <path d="M132 275 L151 280 L145 298 Q139 309 131 303 Q126 294 132 275Z" fill={coat}/>
               <path d="M137 302 L141 319 L147 314 L148 304" fill="none" stroke="#dca59c" strokeWidth="2" strokeLinecap="round"/>
@@ -215,7 +223,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
               <path d="M262 228 L246 203 Q241 195 247 190 Q254 187 260 198 L275 220Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
               <path d="M248 202 L239 181 Q235 172 230 168 Q224 162 229 157 Q235 153 241 162 L257 182 L266 214Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
               <path d="M225 166 Q233 158 240 166 L244 174 Q237 180 230 175Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.2"/>
-            </g> : poseOverride === "explain" ? <g>
+            </g> : effectivePose === "explain" ? <g>
               <path d="M164 196 Q148 194 144 216 L129 242 Q121 253 112 246 Q104 240 113 231 L141 204 Q151 190 170 197Z" fill={coat} stroke={coatShadow} strokeWidth="1.5"/>
               <path d="M125 239 L110 232 Q102 228 99 221 Q97 214 104 212 Q111 211 117 218 L138 224Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
               <path d="M257 196 Q273 195 278 216 L291 287 Q294 302 284 307 Q276 307 270 290 L251 232Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.5"/>
@@ -234,9 +242,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M206 251 L210 291" stroke="#ffb4bd" strokeOpacity=".52" strokeWidth="2"/>
             {isLab ? <g fill="none" stroke={coatShadow} strokeWidth="1.5"><path d="M159 290 L189 297 M232 297 L261 289"/><path d="M165 340 L193 337 M227 337 L253 340"/></g> : null}
             {!isNight ? <path d="M189 356 L231 356 L244 385 Q210 400 176 385Z" fill="#20232d" stroke="#10131b" strokeWidth="2"/> : null}
-            {/* Signature asymmetric NK1 marker, intentionally different from the classic asset. */}
-            <path d="M147 93 L159 73 L171 96 L154 104Z" fill={accent.color} stroke="#e8ffff" strokeWidth="1.4"/>
-            <path d="M154 94 L164 88" stroke="#0b303d" strokeWidth="2"/>
+            {/* One small NK1 accent keeps the editable concept distinct without duplicating the hair ornament. */}
             <path d="M248 280 L259 280 L256 287 L247 287Z" fill={accent.color}/>
           </g>
           {/* Face and separate features. */}
@@ -261,15 +267,18 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
               <ellipse cx="210" cy={160 + mouthHeight * .45} rx="5" ry={Math.max(1, mouthHeight*.28)} fill="#e97d95" opacity=".92"/>
             </g> : <path d={EMOTION_MOUTH[emotion]} fill="none" stroke="#914657" strokeWidth="2.1" strokeLinecap="round"/>}
             {(emotion === "joy" || emotion === "anxiety" || emotion === "protective") ? <g fill="#ec8998" opacity=".32"><ellipse cx="170" cy="143" rx="10" ry="4"/><ellipse cx="250" cy="143" rx="10" ry="4"/></g> : null}
-            {poseOverride === "thinking" ? <g>
+            {effectivePose === "thinking" ? <g>
               <path d="M236 179 Q230 173 234 166 L245 156 Q251 153 256 158 L252 170 L246 184Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.4"/>
               <path d="M238 170 L248 162 M241 176 L250 169" fill="none" stroke="#c58c86" strokeWidth="1.4" strokeLinecap="round"/>
             </g> : null}
             {/* Loose front fringe with asymmetry to reinforce the NK1 silhouette. */}
             <path d="M153 92 Q151 48 187 39 Q224 32 255 58 L268 89 L248 77 L240 104 L226 82 L207 111 L195 76 L177 107 L171 88Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="1.5"/>
             <path d="M160 70 Q177 46 195 44 M208 43 Q231 44 249 64" fill="none" stroke="#f0a06f" strokeOpacity=".58" strokeWidth="2.5" strokeLinecap="round"/>
-            <path d="M256 66 L266 51 L278 68 L265 80Z" fill={accent.color} stroke="#eaffff" strokeWidth="1.3"/>
-            <path d="M263 66 L272 66" stroke="#124456" strokeWidth="2"/>
+            {/* Slim red hair clip is closer to Kurisu's recognizable silhouette than a neon diamond. */}
+            <g transform="rotate(-24 260 68)">
+              <rect x="250" y="64" width="20" height="5" rx="1.5" fill="#b52e43" stroke="#f4c0c7" strokeWidth="1"/>
+              <path d="M253 66.5H267" stroke="#fff0f1" strokeWidth="1" strokeLinecap="round"/>
+            </g>
           </g>
         </g>
         </g>
