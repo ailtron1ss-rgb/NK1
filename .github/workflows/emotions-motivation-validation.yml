@@ -1,0 +1,71 @@
+name: NK1 emotion and motivation validation
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
+      - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-333-autonomous-goal-genesis-gate.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-affect-workspace-integration-workpass39.mjs"
+      - ".github/workflows/emotions-motivation-validation.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/B273AutonomousGoalLifecycle.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs"
+      - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-333-autonomous-goal-genesis-gate.mjs"
+      - "runtime/neuro-kurisu/tests/cognitive-affect-workspace-integration-workpass39.mjs"
+      - ".github/workflows/emotions-motivation-validation.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-emotion-motivation-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  emotion-motivation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Validate appraisal, context-bound outcomes, snapshots and interoception
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-172-emotion-interoceptive-mind.mjs
+      - name: Validate intrinsic motivation input and restore contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs
+      - name: Validate endogenous goal generation, replay protection and persistence
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs
+      - name: Validate autonomous goal-genesis gate
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-333-autonomous-goal-genesis-gate.mjs
+      - name: Validate affect participation in global workspace
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/cognitive-affect-workspace-integration-workpass39.mjs
