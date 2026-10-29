@@ -155,10 +155,10 @@ interface EmbeddedImageDimensions {
 }
 
 function decodeDataUri(uri: string, errorCode: "invalid-buffer" | "invalid-image"): { mimeType: string; bytes: Uint8Array } {
-  const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=\\r\\n]+)$/iu.exec(uri);
+  const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=]+)$/iu.exec(uri);
   if (!match) reject(errorCode, "Поддерживаются только корректные base64 data URI для локальных ресурсов модели.");
   try {
-    const decoded = atob(match[2].replace(/\\s+/gu, ""));
+    const decoded = atob(match[2]);
     const bytes = new Uint8Array(decoded.length);
     for (let i = 0; i < decoded.length; i += 1) bytes[i] = decoded.charCodeAt(i);
     return { mimeType: match[1].toLowerCase(), bytes };
