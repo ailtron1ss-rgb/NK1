@@ -73,8 +73,8 @@ test("strict protocol accepts the app's envelope and normalizes speech/body fiel
   assert.equal(isEmbodimentIntentV1(value), true);
   assert.deepEqual(normalizeEmbodimentIntentV1(value), {
     stateVersion: 1, expression: "happy", expressionIntensity: 0.8, speaking: true,
-    mouthOpen: 0.65, gazeX: 0.2, gazeY: -0.1, headTilt: -0.04, gesture: true,
-    motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
+    mouthOpen: 0.65, mouthForm: 0.2, gazeX: 0.2, gazeY: -0.1, gazeDriven: true,
+    headTilt: -0.04, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
   });
 });
 
@@ -92,7 +92,7 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /d.type==='kurisu_embodiment_intent'/);
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
-  assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
+  assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
 });
 
 test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
@@ -106,4 +106,17 @@ test("Original 2D concept is selectable and keeps independent outfit/pose custom
   assert.ok(original.includes('type PoseOverride = "auto" | "crossed" | "thinking" | "explain"'));
   assert.ok(original.includes('writeAvatarPreference("kurisu-original-outfit", outfit)'));
   assert.ok(original.includes("Original 2D concept"));
+});
+
+test("the app-served viewer applies intent parameters after Cubism motion and physics updates", async () => {
+  const viewer = await readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8");
+  assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
+  assert.match(viewer, /beforeModelUpdate/);
+  assert.ok(viewer.includes("model.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides)"));
+  assert.ok(!viewer.includes("app.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides)"));
+  assert.match(viewer, /addParameterValueById/);
+  assert.match(viewer, /resolution,autoDensity:true/);
+  assert.match(viewer, /MOTION_COUNTS/);
+  assert.match(viewer, /lastIntentStateVersion/);
+  assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
 });
