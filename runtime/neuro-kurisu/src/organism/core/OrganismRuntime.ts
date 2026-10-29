@@ -281,7 +281,7 @@ export class OrganismRuntime {
         typeof learningEngine.configureLearningLifecycleJournalIfAbsent==='function' &&
         typeof learningEngine.reconcileLearningLifecycleOutcomes==='function';
       if(supportsLearningEvidenceJournals) {
-        const learningJournalBase=config.stateFile.replace(/\\.json$/i,'');
+        const learningJournalBase=config.stateFile.replace(/\.json$/i,'');
         learningEngine.configureLearningFitnessJournalIfAbsent(
           new JsonlLearningFitnessJournal(`${learningJournalBase}.learning-fitness.jsonl`),
         );
