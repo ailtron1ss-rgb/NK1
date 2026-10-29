@@ -1,3 +1,9 @@
+## [NK1][WorkPass620] Make Legacy sprite poses genuinely action-aware (2026-10-29)
+
+- Fix a remaining selector gap: the first sprite pass only chose action poses when they overlapped the current expression's candidate list, so a neutral expression could still show a crossed-arm frame during exploration/rest/verification.
+- For active non-dialogue actions (explore, verify, rest, reflect), now select from the real shipped action-specific sprite candidates, with profile and lab preferences preserved when there is a compatible candidate. Response/wait continue to respect the emotion-specific candidate set first.
+- Extend the legacy sprite regression to guard the action-driven candidate path and deterministic selection. No new sprite assets or lip-sync capability are claimed.
+
 ## [NK1][WorkPass619] Fix avatar render timing and visual-quality seams (2026-10-29)
 
 - Apply Live2D gaze/head/eye/viseme parameters at Cubism's `beforeModelUpdate` boundary, after authored motion and physics updates; earlier ticker writes could be overwritten during render.

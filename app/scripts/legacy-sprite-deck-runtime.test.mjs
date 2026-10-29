@@ -35,6 +35,9 @@ test("legacy sprite selection is deterministic and action-aware", async () => {
   assert.match(engine, /const ACTION_PREFERENCES/);
   assert.match(engine, /action\?: SpriteAction/);
   assert.match(engine, /ACTION_PREFERENCES\[action\]\.find/);
+  assert.match(engine, /const actionDriven = action === "explore"/);
+  assert.match(engine, /if \(actionDriven\) \{/);
+  assert.match(engine, /actionCandidates = ACTION_PREFERENCES\[action\]/);
   assert.doesNotMatch(engine, /Date\.now\(\)\s*\/\s*120000/);
 });
 
