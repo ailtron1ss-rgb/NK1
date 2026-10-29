@@ -1,4 +1,8 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
+import type { LearningFitnessJournalDiagnostics, LearningFitnessJournalSink } from './LearningFitnessJournal.ts';
+import type { LearningLifecycleEventEntry, LearningLifecycleJournalDiagnostics, LearningLifecycleJournalSink } from './LearningLifecycleJournal.ts';
+import { summarizeLearningRobustMetrics, type LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 import type { ActionKind, IntentCandidate, OrganismDecisionTrace, OrganismState } from '../core/types.ts';
 import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicyEngine.ts';
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
@@ -15,6 +19,20 @@ import { generateLocalSkillRevision, type SkillRevisionChatProvider } from './P2
 import type { SkillShadowEvidenceVerifier } from './VersionedSkillCandidateStore.ts';
 import { VersionedSkillCandidateStore, type ActiveSkillVersion, type SkillPromotionApproval, type SkillRollbackApproval, type SkillShadowObservation, type SkillRevisionProvenance, type VersionedSkillCandidate } from './VersionedSkillCandidateStore.ts';
 
+export const P23_REFLECTIVE_PROMOTION_POLICY = Object.freeze({
+  minimumValidationFamilies: 1,
+  minimumHoldoutFamilies: 1,
+  minimumValidationFamilyTasks: 2,
+  minimumHoldoutFamilyTasks: 2,
+  maximumValidationTaskRegression01: 0.20,
+  maximumValidationFamilyRegression01: 0.10,
+  maximumHoldoutRegression01: 0.02,
+  maximumHoldoutFamilyRegression01: 0.10,
+  minimumValidationFamilySeeds: 3,
+  minimumHoldoutFamilySeeds: 3,
+  confidenceLevel: 0.95,
+  bootstrapResamples: 2000,
+});
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
@@ -400,6 +418,8 @@ export class P23LearningEngine {
   private state = defaultP23Learning();
   private replaySelectionOptions: ReplaySelectionOptions = { maxBatchSize:64, recentQuota:32 };
   private verifiedSkillStore: VersionedSkillCandidateStore | null = null;
+  private learningFitnessJournal: LearningFitnessJournalSink | null = null;
+  private learningLifecycleJournal: LearningLifecycleJournalSink | null = null;
 
   /** Configure a bounded replay ablation; defaults remain 64 total / 32 recent. */
   configureReplaySelection(options: ReplaySelectionOptions):void {
@@ -737,6 +757,445 @@ export class P23LearningEngine {
    * staged payload and persisted evaluation fingerprint before fitness gating;
    * the store still re-verifies receipts and authenticated approval at commit.
    */
+/**
+   * Attach an optional append-only, hash-chained journal for production fitness decisions.
+   * Journal failures fail closed before promotion; no prompt/task/individual holdout rows are recorded.
+   */
+  configureLearningFitnessJournal(journal:LearningFitnessJournalSink|null):void {
+    if(journal!==null && (!journal || typeof journal.recordFitnessDecision!=='function')) {
+      throw new Error('P23 learning fitness journal sink invalid');
+    }
+    this.learningFitnessJournal=journal;
+  }
+
+  /** Configure the runtime default without replacing a sink explicitly supplied by the host. */
+  configureLearningFitnessJournalIfAbsent(journal:LearningFitnessJournalSink):void {
+    if(!journal || typeof journal.recordFitnessDecision!=='function') {
+      throw new Error('P23 learning fitness journal sink invalid');
+    }
+    if(this.learningFitnessJournal===null) this.learningFitnessJournal=journal;
+  }
+
+  /** Safe aggregate view of fitness learning history for diagnostics/dashboard consumers. */
+  learningFitnessJournalDiagnostics():
+    LearningFitnessJournalDiagnostics |
+    {configured:false;available:false} |
+    {configured:true;available:false;reason:'readback-unavailable'|'journal-read-failed'} {
+    const journal=this.learningFitnessJournal;
+    if(!journal) return {configured:false,available:false};
+    const snapshot=journal.snapshotDiagnostics;
+    if(typeof snapshot!=='function') return {configured:true,available:false,reason:'readback-unavailable'};
+    try {
+      return snapshot.call(journal);
+    } catch {
+      // Diagnostics should surface a bounded health status; promotion itself remains
+      // fail-closed because recordFitnessDecision errors are not swallowed.
+      return {configured:true,available:false,reason:'journal-read-failed'};
+    }
+  }
+
+  /** Attach an append-only journal for final activation/rejection outcomes. */
+  configureLearningLifecycleJournal(journal:LearningLifecycleJournalSink|null):void {
+    if(journal!==null && (!journal || typeof journal.recordLifecycleEvent!=='function')) {
+      throw new Error('P23 learning lifecycle journal sink invalid');
+    }
+    this.learningLifecycleJournal=journal;
+  }
+
+  /** Configure the runtime default without replacing an explicitly supplied host sink. */
+  configureLearningLifecycleJournalIfAbsent(journal:LearningLifecycleJournalSink):void {
+    if(!journal || typeof journal.recordLifecycleEvent!=='function') {
+      throw new Error('P23 learning lifecycle journal sink invalid');
+    }
+    if(this.learningLifecycleJournal===null) this.learningLifecycleJournal=journal;
+  }
+
+  /** Privacy-filtered aggregate status; pending intents indicate unresolved post-activation evidence. */
+  learningLifecycleJournalDiagnostics():
+    LearningLifecycleJournalDiagnostics |
+    {configured:false;available:false} |
+    {configured:true;available:false;reason:'readback-unavailable'|'journal-read-failed'} {
+    const journal=this.learningLifecycleJournal;
+    if(!journal) return {configured:false,available:false};
+    if(typeof journal.snapshotDiagnostics!=='function') return {configured:true,available:false,reason:'readback-unavailable'};
+    try {
+      return journal.snapshotDiagnostics();
+    } catch {
+      return {configured:true,available:false,reason:'journal-read-failed'};
+    }
+  }
+
+  /**
+   * Reconcile uncertain activation attempts against the authoritative versioned
+   * skill store. The journal's own event history is not promotion authority.
+   * Only an exact skill/version/payload match can be recorded as active.
+   */
+  reconcileLearningLifecycleOutcomes():
+    {configured:true;available:true;observedPending:number;observedUnknown:number;reconciledActive:number;reconciledNotCurrentlyActive:number;unresolved:number} |
+    {configured:false;available:false;reason:'journal-unconfigured'|'store-unconfigured'} |
+    {configured:true;available:false;reason:'readback-unavailable'|'journal-reconciliation-failed'} {
+    const journal=this.learningLifecycleJournal;
+    if(!journal) return {configured:false,available:false,reason:'journal-unconfigured'};
+    if(!this.verifiedSkillStore) return {configured:false,available:false,reason:'store-unconfigured'};
+    if(typeof journal.readAll!=='function') return {configured:true,available:false,reason:'readback-unavailable'};
+    try {
+      const entries:LearningLifecycleEventEntry[]=journal.readAll();
+      const store=this.verifiedSkillStore.snapshot();
+      const terminalAttempts=new Set(entries.filter(entry =>
+        entry.event==='promotion-rejected' ||
+        entry.event==='activation-confirmed' ||
+        entry.event==='activation-failed' ||
+        entry.event==='activation-reconciled-active' ||
+        entry.event==='activation-reconciled-not-currently-active',
+      ).map(entry=>entry.attemptId));
+      const unknownByAttempt=new Map(entries
+        .filter(entry=>entry.event==='activation-outcome-unknown')
+        .map(entry=>[entry.attemptId,entry] as const));
+      // An abrupt process exit can leave only the durable intent. Reconcile it too,
+      // but prefer the explicit unknown event when one exists for the same attempt.
+      const pendingIntents=entries.filter(entry =>
+        entry.event==='activation-intent' && !terminalAttempts.has(entry.attemptId),
+      );
+      let reconciledActive=0;
+      let reconciledNotCurrentlyActive=0;
+      let unresolved=0;
+      for(const intent of pendingIntents) {
+        const event=unknownByAttempt.get(intent.attemptId) ?? intent;
+        const candidate=store.candidates.find(item =>
+          item.candidateId===event.candidateId &&
+          item.skillId===event.skillId &&
+          item.version===event.candidateVersion &&
+          item.payloadFingerprint===event.payloadFingerprint,
+        );
+        if(!candidate) {
+          unresolved++;
+          continue;
+        }
+        const active=store.active.find(item =>
+          item.skillId===event.skillId &&
+          item.version===event.candidateVersion &&
+          item.payloadFingerprint===event.payloadFingerprint,
+        );
+        const common={
+          recordedAt:now(),
+          attemptId:event.attemptId,
+          candidateId:event.candidateId,
+          skillId:event.skillId,
+          candidateVersion:event.candidateVersion,
+          payloadFingerprint:event.payloadFingerprint,
+          evaluationFingerprint:event.evaluationFingerprint,
+          planFingerprint:event.planFingerprint,
+          environmentFingerprint:event.environmentFingerprint,
+        };
+        if(active) {
+          journal.recordLifecycleEvent({
+            ...common,
+            event:'activation-reconciled-active',
+            reasonCodes:[],
+            activatedVersion:active.version,
+          });
+          reconciledActive++;
+        } else if(candidate.status!=='active') {
+          journal.recordLifecycleEvent({
+            ...common,
+            event:'activation-reconciled-not-currently-active',
+            reasonCodes:['store-confirms-not-currently-active'],
+            activatedVersion:null,
+          });
+          reconciledNotCurrentlyActive++;
+        } else {
+          // An active candidate without the matching active record is inconsistent;
+          // never turn it into a success or a failure based on an incomplete snapshot.
+          unresolved++;
+        }
+      }
+      return {
+        configured:true,
+        available:true,
+        observedPending:pendingIntents.length,
+        observedUnknown:pendingIntents.filter(intent=>unknownByAttempt.has(intent.attemptId)).length,
+        reconciledActive,
+        reconciledNotCurrentlyActive,
+        unresolved,
+      };
+    } catch {
+      return {configured:true,available:false,reason:'journal-reconciliation-failed'};
+    }
+  }
+
+  /** Read-only view of the durable staged/active skill lifecycle; null means not configured. */
+  verifiedSkillCandidateSnapshot() {
+    return this.verifiedSkillStore?.snapshot() ?? null;
+  }
+
+  /**
+   * Run the Hermes-inspired multi-axis candidate assessment from the canonical
+   * learning engine. This is deliberately diagnostic-only: trial reports are not
+   * signed outcome artifacts, so this method cannot stage, approve, or activate
+   * a skill. The authenticated outcome ledger remains the promotion authority.
+   */
+  evaluateReflectiveSkillCandidate(
+    baseline: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] },
+    candidate: { validation: SkillLearnBenchCandidateEvaluation['reports']; holdout: SkillLearnBenchCandidateEvaluation['reports'] },
+    options: SkillLearnBenchCandidateGateOptions = {},
+  ): SkillLearnBenchCandidateGateReport {
+    return evaluateSkillLearnBenchCandidate(baseline, candidate, options);
+  }
+
+  /**
+   * Convert candidate fitness into concrete, evidence-linked revision targets.
+   * Safety failures suppress all performance tuning; this plan never mutates a skill.
+   */
+  planReflectiveSkillRevision(
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    fitness:Readonly<SkillLearnBenchCandidateGateReport>,
+  ):SkillRevisionPlan {
+    return planSkillRevision(candidateEvaluation.validation,candidateEvaluation.holdout,fitness);
+  }
+
+  /**
+   * Request a revision from the application's configured skill generator and stage
+   * its output through the canonical verified-candidate lifecycle. The generator
+   * receives validation evidence only. Holdout scores and case data are gate-only and
+   * remain opaque to optimization to prevent iterative tuning against the test set.
+   */
+  async generateAndStageReflectiveSkillRevision(
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    sourceCandidateId:string,
+    rawBaseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    rawCandidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    generate:(request:{
+      sourcePayload:unknown;
+      datasetFingerprint:string;
+      optimizerInstruction:string;
+      validationEvidence:SkillLearnBenchCandidateEvaluation['reports'];
+      targets:SkillRevisionPlan['targets'];
+      holdoutPolicy:{resultsWithheld:true;requiresFreshIndependentEvaluation:true};
+    })=>Promise<unknown>|unknown,
+    evaluateRevisedCandidate:RevisedCandidateEvaluator,
+    rawOptions:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?: string,
+  ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if(sourceEvidenceFingerprint !== undefined && !/^[a-f0-9]{64}$/.test(sourceEvidenceFingerprint)) {
+      throw new Error('repair evidence fingerprint must be a canonical SHA-256 digest');
+    }
+    if(typeof generate!=='function') throw new Error('configured skill revision generator is required');
+    if(typeof evaluateRevisedCandidate!=='function') throw new Error('independent post-generation candidate evaluator is required');
+    // Reject unauthentic or failed promotion evidence before spending resources on
+    // model generation. The store repeats this check at staging as a second boundary.
+    if(!isAuthenticVerifiedSkillPromotionProposal(proposal) || proposal.schemaVersion!==1 ||
+       proposal.gate?.accepted!==true || proposal.canActivateAutomatically!==false ||
+       proposal.authenticatedEvidenceRows<1 || proposal.unauthenticatedEvidenceRows!==0 ||
+       !/^[a-f0-9]{64}$/.test(proposal.datasetFingerprint) ||
+       !/^[a-f0-9]{64}$/.test(proposal.proposalId) || !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
+      throw new Error('reflective revision requires an authentic accepted proposal backed exclusively by authenticated evidence');
+    }
+    let baseline: {validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']};
+    let candidateEvaluation: {validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']};
+    let options: SkillLearnBenchCandidateGateOptions;
+    try {
+      baseline=snapshotPlainData(rawBaseline) as typeof rawBaseline;
+      candidateEvaluation=snapshotPlainData(rawCandidateEvaluation) as typeof rawCandidateEvaluation;
+      options=snapshotPlainData(rawOptions) as SkillLearnBenchCandidateGateOptions;
+    } catch {
+      throw new Error('reflective revision input data-boundary rejected');
+    }
+    if(!baseline||typeof baseline!=='object'||Array.isArray(baseline)||
+       !candidateEvaluation||typeof candidateEvaluation!=='object'||Array.isArray(candidateEvaluation)||
+       !options||typeof options!=='object'||Array.isArray(options)) {
+      throw new Error('reflective revision input data-boundary rejected');
+    }
+    const source=this.verifiedSkillStore.snapshot().candidates.find(item=>item.candidateId===sourceCandidateId);
+    if(!source || source.skillId!==skillId || source.status==='rolled-back') {
+      throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
+    }
+    const sourceCanonicalPayload=assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
+    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
+    const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
+    if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
+    if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    const rawGeneratedPayload=await generate({
+      sourcePayload:snapshotPlainData(source.payload),
+      datasetFingerprint:proposal.datasetFingerprint,
+      optimizerInstruction:plan.optimizerInstruction,
+      validationEvidence:snapshotPlainData(candidateEvaluation.validation) as SkillLearnBenchCandidateEvaluation['reports'],
+      targets:snapshotPlainData(plan.targets) as SkillRevisionPlan['targets'],
+      // Holdout results are gate-only. Never feed their scores, direction, or case data back into optimization.
+      holdoutPolicy:{resultsWithheld:true,requiresFreshIndependentEvaluation:true},
+    });
+    let revisedPayload: unknown;
+    try { revisedPayload=snapshotPlainData(rawGeneratedPayload); }
+    catch { throw new Error('skill revision generator returned data outside the plain-data boundary'); }
+    if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
+      throw new Error('skill revision generator returned an empty payload');
+    }
+    const canonicalPayload=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'generated');
+    // Do not spend an independent sandbox evaluation on a no-op artifact. The
+    // staging method repeats this invariant after evaluation as a second boundary.
+    if(canonicalPayload===sourceCanonicalPayload) {
+      throw new Error('reflective revision payload is unchanged from its source candidate');
+    }
+    const payloadFingerprint=createHash('sha256').update(canonicalPayload).digest('hex');
+    const rawFresh=await evaluateRevisedCandidate({
+      payload:snapshotPlainData(revisedPayload),
+      payloadFingerprint,
+      baseline:snapshotPlainData(baseline) as typeof baseline,
+      previousEvaluation:snapshotPlainData(candidateEvaluation) as typeof candidateEvaluation,
+    });
+    let fresh: Awaited<ReturnType<RevisedCandidateEvaluator>>;
+    try { fresh=snapshotPlainData(rawFresh) as Awaited<ReturnType<RevisedCandidateEvaluator>>; }
+    catch { throw new Error('independent evaluator returned data outside the plain-data boundary'); }
+    if(!fresh || typeof fresh!=='object' || fresh.payloadFingerprint!==payloadFingerprint ||
+       fresh.evaluationFingerprint!==createHash('sha256').update(canonicalize(fresh.evaluation)).digest('hex') ||
+       !fresh.evaluation || !Array.isArray(fresh.evaluation.validation) || fresh.evaluation.validation.length===0 ||
+       !Array.isArray(fresh.evaluation.holdout) || fresh.evaluation.holdout.length===0) {
+      throw new Error('independent evaluator did not return non-empty validation/holdout reports bound to the exact generated payload');
+    }
+    return this.stageReflectiveSkillRevision(
+      proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
+      sourceEvidenceFingerprint,
+    );
+  }
+
+  /**
+   * Turn a Hermes-style revision plan into a new versioned shadow candidate.
+   * The caller supplies the revised payload produced by its configured skill
+   * generator; this engine never fabricates skill content or edits the current
+   * candidate in place. Safety violations block staging, and the store still
+   * requires an authentic evidence-backed proposal. Promotion remains separate.
+   */
+  private stageReflectiveSkillRevision(
+    proposal:VerifiedSkillPromotionProposal,
+    skillId:string,
+    sourceCandidateId:string,
+    revisedPayload:unknown,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    evaluationFingerprint:string,
+    options:SkillLearnBenchCandidateGateOptions={},
+    sourceEvidenceFingerprint?: string,
+  ):{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan} {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    if(!skillId?.trim()) throw new Error('skillId must be non-empty');
+    const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
+    const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
+    if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
+    if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
+    const current=this.verifiedSkillStore.snapshot();
+    const source=current.candidates.find(item=>item.candidateId===sourceCandidateId);
+    if(!source || source.skillId!==skillId || source.status==='rolled-back') {
+      throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
+    }
+    const sourcePayload=assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
+    const revisedCanonical=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'staged');
+    if(sourcePayload===revisedCanonical) {
+      throw new Error('reflective revision payload is unchanged from its source candidate');
+    }
+    if(!/^[a-f0-9]{64}$/.test(evaluationFingerprint)) throw new Error('independent candidate evaluation fingerprint is required');
+    const revisionProvenance:SkillRevisionProvenance={
+      schemaVersion:1,
+      evaluationFingerprint,
+      sourceCandidateId:source.candidateId,
+      planFingerprint:createHash('sha256').update(canonicalize(plan)).digest('hex'),
+      datasetFingerprint:proposal.datasetFingerprint,
+      ...(sourceEvidenceFingerprint ? { sourceEvidenceFingerprint } : {}),
+      dimensions:plan.targets.map(target=>target.dimension),
+      createdAt:now(),
+    };
+    // stageCandidate validates proposal authenticity and authenticated evidence.
+    // The revision lineage is persisted on the new version; shadow execution
+    // and signed human approval are still required before runtime activation.
+    const candidate=this.verifiedSkillStore.stageCandidate(proposal,skillId,revisedPayload,revisionProvenance);
+    return {candidate,fitness,plan};
+  }
+
+  /**
+   * Require every reflective trial to resolve to a verified signed shadow receipt.
+   * This only validates provenance; it cannot stage, approve, or activate a skill.
+   */
+  bindReflectiveCandidateEvidence(
+    reports: SkillLearnBenchCandidateEvaluation['reports'],
+    observations: readonly SkillShadowObservation[],
+    candidate: Readonly<VersionedSkillCandidate>,
+    verifyEvidence: SkillShadowEvidenceVerifier,
+  ): ReflectiveEvidenceBindingReport {
+    return bindReflectiveReportsToVerifiedShadowEvidence(reports, observations, candidate, verifyEvidence);
+  }
+
+  /**
+   * Bind P23 independent evaluation provenance to signed Hermes shadow receipts.
+   * The evaluation envelope must already have passed its own digest and matched-plan
+   * checks. This method adds receipt identity/outcome binding only; it does not
+   * authenticate quality scores or grant candidate lifecycle authority.
+   */
+  bindIndependentEvaluationEvidence(
+    evaluation: Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
+    observations: readonly SkillShadowObservation[],
+    candidate: Readonly<VersionedSkillCandidate>,
+    verifyEvidence: SkillShadowEvidenceVerifier,
+  ): ReflectiveEvidenceBindingReport {
+    return bindIndependentEvaluationToVerifiedShadowEvidence(evaluation, observations, candidate, verifyEvidence);
+  }
+
+  stageVerifiedSkillCandidate(proposal:VerifiedSkillPromotionProposal, skill:PolicySkillRecord):VersionedSkillCandidate {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    const ratio01 = (value:number) => Number.isFinite(value) && value >= 0 && value <= 1;
+    const safeCount = (value:number) => Number.isSafeInteger(value) && value >= 0;
+    const validSkill = Boolean(skill) &&
+      typeof skill.id === 'string' && skill.id.trim().length > 0 &&
+      typeof skill.contextKey === 'string' && skill.contextKey.trim().length > 0 &&
+      ACTIONS.includes(skill.action) &&
+      skill.status === 'candidate' &&
+      safeCount(skill.totalUses) && safeCount(skill.trainUses) && safeCount(skill.validationUses) &&
+      skill.trainUses + skill.validationUses <= skill.totalUses &&
+      ratio01(skill.trainSuccess01) && ratio01(skill.validationSuccess01) && ratio01(skill.confidence01) &&
+      Number.isFinite(skill.createdAt) && skill.createdAt > 0 &&
+      Number.isFinite(skill.updatedAt) && skill.updatedAt >= skill.createdAt &&
+      safeCount(skill.validationWindowStartTick) && safeCount(skill.validationWindowEndTick) &&
+      skill.validationWindowEndTick >= skill.validationWindowStartTick;
+    if (!validSkill) throw new Error('candidate policy skill record is malformed or outside canonical P23 bounds');
+    return this.verifiedSkillStore.stageCandidate(proposal,skill.id,skill);
+  }
+
+  recordVerifiedSkillShadow(candidateId:string,observation:SkillShadowObservation):VersionedSkillCandidate {
+    if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
+    return this.verifiedSkillStore.recordShadowObservation(candidateId,observation);
+  }
+
+  /**
+   * Legacy report-only promotion route intentionally disabled.
+   *
+   * Signed shadow receipts bind candidate/run/task identity and binary outcome;
+   * they do not authenticate trajectory or skill-quality metrics. A caller-owned
+   * report array therefore cannot authorize production promotion, even if its
+   * arithmetic is internally consistent. Use approveIndependentlyEvaluatedSkillCandidate,
+   * which checks the fingerprinted independent evaluation envelope and its matched
+   * task/seed/split/environment/manifest provenance before activation.
+   *
+   * @deprecated Report-only reflective fitness is advisory and must not promote.
+   */
+  approveReflectiveVerifiedSkillCandidate(
+    candidateId:string,
+    approval:SkillPromotionApproval,
+    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    verifyEvidence:SkillShadowEvidenceVerifier,
+    minShadowRuns=3,
+    options:SkillLearnBenchCandidateGateOptions={},
+  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport;evidenceBinding:ReflectiveEvidenceBindingReport} {
+    throw new Error(
+      'report-only reflective promotion is disabled; use approveIndependentlyEvaluatedSkillCandidate with a fingerprinted independent evaluation envelope',
+    );
+  }
+
+  /**
+   * Promotion entry point for a candidate evaluated by the independent P23
+   * evaluator and joined to Hermes signed shadow receipts. It binds the exact
+   * staged payload and persisted evaluation fingerprint before fitness gating;
+   * the store still re-verifies receipts and authenticated approval at commit.
+   */
   approveIndependentlyEvaluatedSkillCandidate(
     candidateId:string,
     approval:SkillPromotionApproval,
@@ -744,10 +1203,40 @@ export class P23LearningEngine {
     evaluation:Parameters<typeof compareMatchedIndependentEvaluations>[1] & Parameters<typeof bindIndependentEvaluationToVerifiedShadowEvidence>[0],
     verifyEvidence:SkillShadowEvidenceVerifier,
     minShadowRuns=3,
-  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport & {matchedTrialCount:number;matchedValidationTrialCount:number;matchedHoldoutTrialCount:number;environmentFingerprint:string;planFingerprint:string};evidenceBinding:ReflectiveEvidenceBindingReport} {
+  ):{active:ActiveSkillVersion;fitness:SkillLearnBenchCandidateGateReport & {
+    matchedTrialCount:number;
+    matchedValidationTrialCount:number;
+    matchedHoldoutTrialCount:number;
+    validationFamiliesEvaluatedForSeedCoverage:number;
+    holdoutFamiliesEvaluatedForSeedCoverage:number;
+    validationFamiliesWithSufficientSeeds:number;
+    holdoutFamiliesWithSufficientSeeds:number;
+    validationFamilySeedCoverageFailures:number;
+    holdoutFamilySeedCoverageFailures:number;
+    validationFamiliesEvaluatedForConfidenceInterval:number;
+    holdoutFamiliesEvaluatedForConfidenceInterval:number;
+    validationFamilyConfidenceBoundFailures:number;
+    holdoutFamilyConfidenceBoundFailures:number;
+    validationFamilyMeanDelta:number|null;
+    validationFamilyLowerBoundMinimum:number|null;
+    validationFamilyUpperBoundMaximum:number|null;
+    holdoutFamilyMeanDelta:number|null;
+    holdoutFamilyLowerBoundMinimum:number|null;
+    holdoutFamilyUpperBoundMaximum:number|null;
+    environmentFingerprint:string;
+    planFingerprint:string;
+    learningRobustDiagnostics:{diagnosticOnly:true;validation:LearningRobustMetricSummary;holdout:LearningRobustMetricSummary};
+  };evidenceBinding:ReflectiveEvidenceBindingReport} {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
-    // Public runtime APIs can be called from untyped JavaScript despite TypeScript
-    // declarations. Reject absent/malformed envelopes before any property access.
+    // Detach hostile caller-owned envelopes before any property access. In
+    // particular, do not let getters/Proxies run before the independent evaluator's
+    // own canonical digest boundary is reached.
+    try {
+      baseline=snapshotPlainData(baseline) as typeof baseline;
+      evaluation=snapshotPlainData(evaluation) as typeof evaluation;
+    } catch {
+      throw new Error('independent promotion input data-boundary rejected');
+    }
     if(!evaluation || typeof evaluation!=='object' || !evaluation.evaluation ||
        typeof evaluation.evaluation!=='object' || !Array.isArray(evaluation.evaluation.validation) ||
        !Array.isArray(evaluation.evaluation.holdout) || !evaluation.evaluation.provenance ||
@@ -767,18 +1256,194 @@ export class P23LearningEngine {
     // Never gate on a caller-supplied collection of baseline reports. The
     // evaluator proves one-to-one task/trial/seed/split joins and identical
     // plan/environment/manifest before computing the paired SkillLearnBench gate.
-    const fitness=compareMatchedIndependentEvaluations(baseline,evaluation);
-    if(!fitness.eligible) throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
+    // Production activation must exercise domain-level checks on BOTH splits:
+    // canonical task-family labels come from the evaluator's trusted manifest,
+    // not from the skill/caller. Diagnostic callers can remain legacy-compatible,
+    // but the promotion authority must not silently skip family generalization.
+    const policy=P23_REFLECTIVE_PROMOTION_POLICY;
+    const fitness=compareMatchedIndependentEvaluations(baseline,evaluation,{
+      minimumValidationFamilies:policy.minimumValidationFamilies,
+      minimumHoldoutFamilies:policy.minimumHoldoutFamilies,
+      minimumValidationFamilyTasks:policy.minimumValidationFamilyTasks,
+      minimumHoldoutFamilyTasks:policy.minimumHoldoutFamilyTasks,
+      maximumValidationTaskRegression01:policy.maximumValidationTaskRegression01,
+      maximumValidationFamilyRegression01:policy.maximumValidationFamilyRegression01,
+      maximumHoldoutRegression01:policy.maximumHoldoutRegression01,
+      maximumHoldoutFamilyRegression01:policy.maximumHoldoutFamilyRegression01,
+    },{
+      minimumValidationFamilySeeds:policy.minimumValidationFamilySeeds,
+      minimumHoldoutFamilySeeds:policy.minimumHoldoutFamilySeeds,
+      confidenceLevel:policy.confidenceLevel,
+      bootstrapResamples:policy.bootstrapResamples,
+    });
+    this.learningFitnessJournal?.recordFitnessDecision({
+      recordedAt:now(),
+      candidateId:staged.candidateId,
+      payloadFingerprint:staged.payloadFingerprint,
+      evaluationFingerprint:evaluation.evaluationFingerprint,
+      planFingerprint:fitness.planFingerprint,
+      environmentFingerprint:fitness.environmentFingerprint,
+      decision:fitness.eligible?'fitness-accepted':'fitness-rejected',
+      reasonCodes:[...fitness.reasons],
+      matchedTrialCount:fitness.matchedTrialCount,
+      matchedValidationTrialCount:fitness.matchedValidationTrialCount,
+      matchedHoldoutTrialCount:fitness.matchedHoldoutTrialCount,
+      minimumValidationFamilies:policy.minimumValidationFamilies,
+      minimumHoldoutFamilies:policy.minimumHoldoutFamilies,
+      minimumValidationFamilyTasks:policy.minimumValidationFamilyTasks,
+      minimumHoldoutFamilyTasks:policy.minimumHoldoutFamilyTasks,
+      maximumValidationTaskRegression01:policy.maximumValidationTaskRegression01,
+      maximumValidationFamilyRegression01:policy.maximumValidationFamilyRegression01,
+      maximumHoldoutRegression01:policy.maximumHoldoutRegression01,
+      maximumHoldoutFamilyRegression01:policy.maximumHoldoutFamilyRegression01,
+      minimumValidationFamilySeeds:policy.minimumValidationFamilySeeds,
+      minimumHoldoutFamilySeeds:policy.minimumHoldoutFamilySeeds,
+      confidenceLevel:policy.confidenceLevel,
+      bootstrapResamples:policy.bootstrapResamples,
+      validation:{
+        familiesEvaluated:fitness.validationFamiliesEvaluatedForConfidenceInterval,
+        familiesWithSufficientSeeds:fitness.validationFamiliesWithSufficientSeeds,
+        seedCoverageFailures:fitness.validationFamilySeedCoverageFailures,
+        confidenceBoundFailures:fitness.validationFamilyConfidenceBoundFailures,
+        meanDelta:fitness.validationFamilyMeanDelta,
+        minimumLowerBound:fitness.validationFamilyLowerBoundMinimum,
+        maximumUpperBound:fitness.validationFamilyUpperBoundMaximum,
+      },
+      holdout:{
+        familiesEvaluated:fitness.holdoutFamiliesEvaluatedForConfidenceInterval,
+        familiesWithSufficientSeeds:fitness.holdoutFamiliesWithSufficientSeeds,
+        seedCoverageFailures:fitness.holdoutFamilySeedCoverageFailures,
+        confidenceBoundFailures:fitness.holdoutFamilyConfidenceBoundFailures,
+        meanDelta:fitness.holdoutFamilyMeanDelta,
+        minimumLowerBound:fitness.holdoutFamilyLowerBoundMinimum,
+        maximumUpperBound:fitness.holdoutFamilyUpperBoundMaximum,
+      },
+    });
+    const lifecycleAttemptId=randomUUID();
+    if(!fitness.eligible) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'promotion-rejected',
+          reasonCodes:['fitness-gate-rejected'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the authoritative rejection; no activation side effect occurred. */ }
+      throw new Error(`independent reflective fitness gate rejected candidate: ${fitness.reasons.join(',')}`);
+    }
     // Bind against the exact receipts persisted on the candidate; caller-supplied
     // alternate receipts cannot be used to pass this pre-promotion check.
-    const evidenceBinding=this.bindIndependentEvaluationEvidence(
-      evaluation,staged.shadowObservations,staged,verifyEvidence,
-    );
+    let evidenceBinding:ReflectiveEvidenceBindingReport;
+    try {
+      evidenceBinding=this.bindIndependentEvaluationEvidence(
+        evaluation,staged.shadowObservations,staged,verifyEvidence,
+      );
+    } catch (error) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'promotion-rejected',
+          reasonCodes:['verified-shadow-evidence-binding-error'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the authoritative binding error; no activation side effect occurred. */ }
+      throw error;
+    }
     if(!evidenceBinding.accepted) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'promotion-rejected',
+          reasonCodes:['verified-shadow-evidence-binding-rejected'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the authoritative rejection; no activation side effect occurred. */ }
       throw new Error(`independent evidence binding rejected candidate: ${evidenceBinding.reasons.join(',')}`);
     }
-    const active=this.approveVerifiedSkillCandidate(candidateId,approval,minShadowRuns);
-    return {active,fitness,evidenceBinding};
+    // Durable intent is required before the irreversible activation step. If this
+    // write fails, activation is not attempted and the caller can safely retry.
+    this.learningLifecycleJournal?.recordLifecycleEvent({
+      recordedAt:now(),
+      attemptId:lifecycleAttemptId,
+      candidateId:staged.candidateId,
+      skillId:staged.skillId,
+      candidateVersion:staged.version,
+      payloadFingerprint:staged.payloadFingerprint,
+      evaluationFingerprint:evaluation.evaluationFingerprint,
+      planFingerprint:fitness.planFingerprint,
+      environmentFingerprint:fitness.environmentFingerprint,
+      event:'activation-intent',
+      reasonCodes:[],
+      activatedVersion:null,
+    });
+    let active:ActiveSkillVersion;
+    try {
+      active=this.approveVerifiedSkillCandidate(candidateId,approval,minShadowRuns);
+    } catch (error) {
+      try {
+        this.learningLifecycleJournal?.recordLifecycleEvent({
+          recordedAt:now(),
+          attemptId:lifecycleAttemptId,
+          candidateId:staged.candidateId,
+          skillId:staged.skillId,
+          candidateVersion:staged.version,
+          payloadFingerprint:staged.payloadFingerprint,
+          evaluationFingerprint:evaluation.evaluationFingerprint,
+          planFingerprint:fitness.planFingerprint,
+          environmentFingerprint:fitness.environmentFingerprint,
+          event:'activation-outcome-unknown',
+          reasonCodes:['activation-result-uncertain'],
+          activatedVersion:null,
+        });
+      } catch { /* Preserve the original activation failure; pending intent remains visible. */ }
+      throw error;
+    }
+    try {
+      this.learningLifecycleJournal?.recordLifecycleEvent({
+        recordedAt:now(),
+        attemptId:lifecycleAttemptId,
+        candidateId:staged.candidateId,
+        skillId:staged.skillId,
+        candidateVersion:staged.version,
+        payloadFingerprint:staged.payloadFingerprint,
+        evaluationFingerprint:evaluation.evaluationFingerprint,
+        planFingerprint:fitness.planFingerprint,
+        environmentFingerprint:fitness.environmentFingerprint,
+        event:'activation-confirmed',
+        reasonCodes:[],
+        activatedVersion:active.version,
+      });
+    } catch { /* Never turn a committed activation into a reported failure. Pending intent exposes missing final evidence. */ }
+    const learningRobustDiagnostics = {
+      diagnosticOnly: true as const,
+      validation: summarizeLearningRobustMetrics(baseline.evaluation.validation,evaluation.evaluation.validation),
+      holdout: summarizeLearningRobustMetrics(baseline.evaluation.holdout,evaluation.evaluation.holdout),
+    };
+    return {active,fitness,evidenceBinding,learningRobustDiagnostics};
   }
 
   approveVerifiedSkillCandidate(
