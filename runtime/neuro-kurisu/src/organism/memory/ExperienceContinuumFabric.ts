@@ -498,12 +498,32 @@ export class ExperienceContinuumFabric {
     const protocol=this.state.replay.protocols.find(p=>p.id===experimentId && (!taskId || p.taskId===taskId));
     const rows=this.state.replay.experiments.filter(x=>x.experimentId===experimentId&&(!taskId||x.taskId===taskId)&&x.independentVerified);
     const on=rows.filter(x=>x.mode==='replay-on'),off=rows.filter(x=>x.mode==='replay-off');
-    const keys=new Set(rows.map(x=>x.contextKey));
-    const balanced=rows.length>0 && on.length===off.length && on.every(x=>keys.has(x.contextKey)) && off.every(x=>keys.has(x.contextKey));
+    const declaredContexts=new Set(protocol?.contextKeys??[]);
+    const undeclaredContextKeys=[...new Set(rows.map(x=>x.contextKey).filter(key=>!declaredContexts.has(key)))].sort();
+    const countsByContext=new Map<string,{on:number;off:number}>();
+    for(const row of rows){
+      const counts=countsByContext.get(row.contextKey)??{on:0,off:0};
+      counts[row.mode==='replay-on'?'on':'off']++;
+      countsByContext.set(row.contextKey,counts);
+    }
+    const balanced=rows.length>0 && on.length===off.length &&
+      [...countsByContext.values()].every(counts=>counts.on===counts.off);
     const randomized=rows.length>0 && rows.every(x=>x.randomized);
-    const matched=this.replayExperimentSummary(experimentId,taskId).matchedPairs;
+    const summary=this.replayExperimentSummary(experimentId,taskId);
+    const matched=summary.matchedPairs;
+    const duplicatePairCells=summary.duplicatePairCells;
     const required=protocol?.requiredPairs??2;
-    return {experimentId,taskId:taskId??null,protocolDefined:Boolean(protocol),randomized,balanced,matchedPairs:matched,requiredPairs:required,eligibleForConfirmatoryInference:Boolean(protocol&&protocol.randomized&&protocol.balanced&&randomized&&balanced&&matched>=required),reason:!protocol?'missing-protocol':!protocol.randomized?'protocol-not-randomized':!protocol.balanced?'protocol-not-balanced':!randomized?'trials-not-randomized':!balanced?'trial-count/context-imbalance':matched<required?'insufficient-matched-pairs':'eligible'};
+    const hasUndeclaredContexts=Boolean(protocol&&undeclaredContextKeys.length>0);
+    const hasDuplicatePairCells=duplicatePairCells>0;
+    const eligible=Boolean(protocol&&protocol.randomized&&protocol.balanced&&randomized&&balanced&&
+      !hasUndeclaredContexts&&!hasDuplicatePairCells&&matched>=required);
+    const reason=!protocol?'missing-protocol':!protocol.randomized?'protocol-not-randomized':
+      !protocol.balanced?'protocol-not-balanced':hasUndeclaredContexts?'undeclared-context-key':
+      !randomized?'trials-not-randomized':!balanced?'trial-count/context-imbalance':
+      hasDuplicatePairCells?'duplicate-pair-cell':matched<required?'insufficient-matched-pairs':'eligible';
+    return {experimentId,taskId:taskId??null,protocolDefined:Boolean(protocol),randomized,balanced,
+      undeclaredContextKeys,duplicatePairCells,matchedPairs:matched,requiredPairs:required,
+      eligibleForConfirmatoryInference:eligible,reason};
   }
 
   recordReplayExperimentTrial(input:{experimentId:string;taskId:string;mode:'replay-on'|'replay-off';preScore01:number;postScore01:number;independentVerified:boolean;randomized?:boolean;contextKey:string;pairKey?:string;at?:number}){
@@ -516,13 +536,33 @@ export class ExperienceContinuumFabric {
     const rows=this.state.replay.experiments.filter(x=>x.experimentId===experimentId&&(!taskId||x.taskId===taskId)&&x.independentVerified);
     const on=rows.filter(x=>x.mode==='replay-on'),off=rows.filter(x=>x.mode==='replay-off');
     const mean=(xs:ReplayExperimentTrial[])=>xs.length?xs.reduce((s,x)=>s+x.delta01,0)/xs.length:0;
-    const pairs=new Map<string,{on?:ReplayExperimentTrial;off?:ReplayExperimentTrial}>();
-    for(const row of rows){if(!row.pairKey)continue;const key=`${row.pairKey}|${row.taskId}|${row.contextKey}`;const pair=pairs.get(key)??{};pair[row.mode==='replay-on'?'on':'off']=row;pairs.set(key,pair);}
-    const matched=[...pairs.values()].filter(p=>p.on&&p.off) as Array<{on:ReplayExperimentTrial;off:ReplayExperimentTrial}>;
+    type PairCell={on?:ReplayExperimentTrial;off?:ReplayExperimentTrial;duplicateOn:boolean;duplicateOff:boolean};
+    const pairs=new Map<string,PairCell>();
+    for(const row of rows){
+      if(!row.pairKey)continue;
+      const key=`${row.pairKey}|${row.taskId}|${row.contextKey}`;
+      const pair=pairs.get(key)??{duplicateOn:false,duplicateOff:false};
+      const side=row.mode==='replay-on'?'on':'off';
+      if(pair[side]) {
+        if(side==='on')pair.duplicateOn=true; else pair.duplicateOff=true;
+      } else {
+        pair[side]=row;
+      }
+      pairs.set(key,pair);
+    }
+    const pairCells=[...pairs.values()];
+    const duplicatePairCells=pairCells.filter(p=>p.duplicateOn||p.duplicateOff).length;
+    // Duplicate measurements for a pair/condition are ambiguous; never let the
+    // last-arriving row overwrite earlier evidence and silently choose a winner.
+    const matched=pairCells.filter(p=>p.on&&p.off&&!p.duplicateOn&&!p.duplicateOff) as Array<{on:ReplayExperimentTrial;off:ReplayExperimentTrial}>;
     const pairedDeltas=matched.map(p=>p.on.delta01-p.off.delta01);
     const pairedMean=pairedDeltas.length?pairedDeltas.reduce((a,b)=>a+b,0)/pairedDeltas.length:null;
     const randomizedMatched=matched.length>0&&matched.every(p=>p.on.randomized&&p.off.randomized);
-    return {experimentId,taskId:taskId??null,replayOnSamples:on.length,replayOffSamples:off.length,replayOnMeanDelta01:mean(on),replayOffMeanDelta01:mean(off),matchedPairs:matched.length,pairedComparable:matched.length>=2,estimatedConditionDifference01:matched.length>=2?pairedMean:null,evidenceGrade:matched.length>=2?(randomizedMatched?'randomized-matched-observational':'matched-observational'):'insufficient'};
+    return {experimentId,taskId:taskId??null,replayOnSamples:on.length,replayOffSamples:off.length,
+      replayOnMeanDelta01:mean(on),replayOffMeanDelta01:mean(off),matchedPairs:matched.length,
+      duplicatePairCells,pairedComparable:matched.length>=2,
+      estimatedConditionDifference01:matched.length>=2?pairedMean:null,
+      evidenceGrade:matched.length>=2?(randomizedMatched?'randomized-matched-observational':'matched-observational'):'insufficient'};
   }
 
   private appendReplayEvent(event:ReplayLearningEvent){
