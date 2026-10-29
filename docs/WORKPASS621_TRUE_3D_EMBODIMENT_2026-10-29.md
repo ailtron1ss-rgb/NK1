@@ -13,7 +13,7 @@ Date: 2026-10-29
 - Add an actual Three.js WebGL stage with a procedural character-inspired 3D body made from lit meshes: head, auburn hair, hair clip, face/eyes, lab coat/lapels, red tie, skirt, tights, boots, arms and a lit platform.
 - Add a dedicated selectable `3D` mode while preserving Live2D, legacy sprites, and the separate SVG mode.
 - Permit a self-contained binary `.vrm`/`.glb` up to 90 MiB. Parsing and persistent model storage occur locally in the browser; bytes are not posted to an NK1 server. Loaded glTF animation clips, recognizable humanoid bones and named emotion/lip morph targets are used when present.
-- Connect the same snapshot/action/emotion/gaze/awake/thinking/speech-timeline props to the 3D body. The renderer does not invent an independent cognitive state.
+- Connect snapshot action/emotion, personality traits, energy, cognitive load, uncertainty, social need, novelty/curiosity, goal pressure, prediction error, gaze, awake/thinking and the speech timeline to the 3D body. The renderer does not invent an independent cognitive state.
 - Cap device pixel ratio, handle resize, and dispose the renderer, animation loop, model geometries/materials/textures and mixer on replacement/unmount.
 
 ## Limitations stated honestly
