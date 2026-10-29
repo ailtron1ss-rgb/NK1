@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { OutcomeVerificationService, isTrustedDecisionLinkedExternalPostcondition } from '../src/organism/system/OutcomeVerificationService.ts';
 import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
+import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
 
 const expected = {
   toolId: 'device.set-state',
@@ -104,6 +105,40 @@ const observed = research.externalObserver.observe(eventInput);
 assert.equal(observed.evidenceEventId, verification.evidenceEventId);
 assert.equal(ledger.findByEventId(verification.evidenceEventId)?.eventId, verification.evidenceEventId,
   'observer output must be written into the same canonical ledger');
+
+// Preserve the same verifier evidence identity in the cognitive outcome projection.
+const outcomeCognition = new OutcomeCognitionFabric();
+const originalProjection = outcomeCognition.project({
+  tick: 7, tool: expected.toolId, ok: true, verification,
+  executionId: expected.executionId, outcomeClass: 'executed-verified',
+});
+assert.equal(originalProjection.verifiedExternal, true);
+const outcomeInput = {
+  tick: 7, executionId: expected.executionId, tool: expected.toolId,
+  observationId: observed.id, evidenceEventId: verification.evidenceEventId,
+  verified: true, confidence01: 0.96,
+  expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+  assessment: 'match', sourceId: source.id, sourceClass: 'device',
+  independenceKey: source.independenceKey,
+};
+const resolvedOutcome = outcomeCognition.resolveExternalObservation(outcomeInput);
+assert.equal(resolvedOutcome.resolved, true);
+assert.equal(resolvedOutcome.record.externalObservations?.[0]?.evidenceEventId, verification.evidenceEventId,
+  'the cognitive outcome projection must retain the exact evidence event ID');
+const replayedOutcome = outcomeCognition.resolveExternalObservation(outcomeInput);
+assert.equal(replayedOutcome.resolved, true);
+assert.equal(replayedOutcome.replayed, true, 'same outcome evidence must replay idempotently');
+const conflictingOutcome = outcomeCognition.resolveExternalObservation({
+  ...outcomeInput, evidenceEventId: `outcome:${'a'.repeat(40)}`,
+});
+assert.equal(conflictingOutcome.resolved, false, 'same observation cannot be rebound to a different verifier identity');
+assert.equal(conflictingOutcome.reason, 'observation-replay-conflict');
+const malformedOutcome = outcomeCognition.resolveExternalObservation({
+  ...outcomeInput, evidenceEventId: 'forged:identity',
+});
+assert.equal(malformedOutcome.resolved, false, 'malformed evidence identities cannot be accepted by outcome projection');
+assert.equal(malformedOutcome.reason, 'evidence-event-id-invalid');
+
 const totalAfterFirst = ledger.snapshot().total;
 const replayed = research.externalObserver.observe(eventInput);
 assert.equal(replayed.id, observed.id);
