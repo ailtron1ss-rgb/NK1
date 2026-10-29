@@ -138,6 +138,22 @@ const malformedOutcome = outcomeCognition.resolveExternalObservation({
 });
 assert.equal(malformedOutcome.resolved, false, 'malformed evidence identities cannot be accepted by outcome projection');
 assert.equal(malformedOutcome.reason, 'evidence-event-id-invalid');
+const malformedPersistedOutcome = new OutcomeCognitionFabric();
+malformedPersistedOutcome.restore({
+  version: 1,
+  records: [{
+    at: 1, tick: 1, tool: expected.toolId, ok: true, verified: true,
+    basis: 'external-postcondition', confidence01: 0.96, observationId: observed.id,
+    externalObservation: true, executionId: expected.executionId,
+    externalObservations: [{
+      observationId: observed.id, evidenceEventId: 'forged:identity', verified: true,
+      confidence01: 0.96, at: 1, expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+    }],
+  }],
+  projectionIndex: [], evidenceRevisions: [],
+});
+assert.equal(malformedPersistedOutcome.snapshot().records.length, 0,
+  'persisted outcome projections with forged evidence identity must be discarded');
 
 const totalAfterFirst = ledger.snapshot().total;
 const replayed = research.externalObserver.observe(eventInput);
