@@ -1,7 +1,7 @@
 import type { ActionKind } from '../core/types.ts';
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
-import { isTrustedDecisionLinkedExternalPostcondition, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
+import { isTrustedDecisionLinkedExternalPostcondition, type ExpectedDecisionOutcomeBinding, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
