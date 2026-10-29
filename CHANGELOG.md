@@ -4,6 +4,8 @@
 - Correct the evidence-trust boundary: `user-reported` is retained as context but is not counted as independent external/device evidence and cannot satisfy promotion grounding by itself.
 - Add domain-separated stable evidence identity helpers. Wire runtime resource samples, shadow transitions, embodied actions, action consequences, neural-learning provenance, and cognitive-cycle completeness to stable upstream event IDs.
 - Add regression coverage for replay after eviction/restart, confidence inflation under a reused ID, malformed restore payloads, conflict reconstruction after restore, contradictory structured claims, and runtime call-site wiring.
+- Extend the exact verifier-owned event identity through `ExternalObserverFabric`, `RealityEvidenceLedger`, `OutcomeCognitionFabric` and `CognitiveEventFabric`; test replay idempotency, conflicting identity rejection and restore consistency across layers.
+- Rebuild `OrganismCore.ts` from the exact source baseline before applying the narrow integration, avoiding unrelated aspect-branch changes; include typecheck, subsystem ownership audit and npm script-integrity checks in the focused feedback gate.
 - Register `npm run audit:workpass-feedback-outcomes`, which combines the new ledger test with existing correlated-postcondition, receipt-integrity, finalizer-boundary, verification-binding, and typecheck gates.
 - This is a source-branch integration pass. CI execution, live device/provider verification, semantic audit of every legacy caller, and Release ZIP refresh remain pending until the branch is tested and integrated.
 
