@@ -1,0 +1,45 @@
+name: NK1 canonical memory recall acceptance
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/**"
+      - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
+      - "runtime/neuro-kurisu/tests/memory-*.mjs"
+      - "runtime/neuro-kurisu/tests/*holdout*.mjs"
+      - "runtime/neuro-kurisu/tests/integration/hexis-canonical-evidence-bridge.mjs"
+      - "runtime/neuro-kurisu/tests/mem0-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass-memory-recall-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memory-recall-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: Typecheck and canonical memory acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Typecheck runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run memory, recall, persistence, Hexis and Mem0 regression gate
+        run: npm --prefix runtime/neuro-kurisu run test:memory-acceptance
