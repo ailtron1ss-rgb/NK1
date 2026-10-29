@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { snapshotPlainData } from './LearningTrustBoundary.ts';
 
@@ -351,7 +351,7 @@ export class JsonlLearningLifecycleJournal implements LearningLifecycleJournalSi
       if (fileFd !== null) closeSync(fileFd);
       if (lockFd !== null) {
         closeSync(lockFd);
-        rmSync(lockPath, { force: true });
+        unlinkSync(lockPath);
       }
     }
   }
