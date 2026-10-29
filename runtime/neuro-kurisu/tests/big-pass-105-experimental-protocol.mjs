@@ -38,6 +38,62 @@ assert.equal(gate.matchedPairs, 2);
 const replayLedger = f.replayEvidenceLedger();
 assert.ok(Array.isArray(replayLedger));
 
+// Confirmatory inference must remain within the predeclared context manifest.
+const unplannedFabric = new ExperienceContinuumFabric({ maxNodes: 16, maxEdges: 32, maxClusters: 8 });
+unplannedFabric.createReplayExperimentProtocol({
+  id: 'exp-unplanned-context', taskId: 'task-target', randomized: true, balanced: true,
+  requiredPairs: 2, contextKeys: ['declared-c1', 'declared-c2'], at: 200,
+});
+for (const pairKey of ['rogue-p1', 'rogue-p2']) {
+  unplannedFabric.recordReplayExperimentTrial({
+    experimentId: 'exp-unplanned-context', taskId: 'task-target', mode: 'replay-on',
+    preScore01: .5, postScore01: .9, independentVerified: true,
+    randomized: true, contextKey: 'undeclared-context', pairKey, at: 201,
+  });
+  unplannedFabric.recordReplayExperimentTrial({
+    experimentId: 'exp-unplanned-context', taskId: 'task-target', mode: 'replay-off',
+    preScore01: .5, postScore01: .4, independentVerified: true,
+    randomized: true, contextKey: 'undeclared-context', pairKey, at: 202,
+  });
+}
+const unplannedGate = unplannedFabric.replayExperimentProtocolCheck('exp-unplanned-context', 'task-target');
+assert.equal(unplannedGate.matchedPairs, 2);
+assert.equal(unplannedGate.eligibleForConfirmatoryInference, false,
+  'a balanced set of trials outside the predeclared context manifest cannot confirm the hypothesis');
+assert.equal(unplannedGate.reason, 'undeclared-context-key');
+assert.deepEqual(unplannedGate.undeclaredContextKeys, ['undeclared-context']);
+
+// Duplicating one condition in a matched pair must not let the last row silently
+// replace the earlier measurement and bias the reported paired estimate.
+const duplicateFabric = new ExperienceContinuumFabric({ maxNodes: 16, maxEdges: 32, maxClusters: 8 });
+duplicateFabric.createReplayExperimentProtocol({
+  id: 'exp-duplicate-pair', taskId: 'task-target', randomized: true, balanced: true,
+  requiredPairs: 2, contextKeys: ['c1', 'c2'], at: 300,
+});
+for (const [mode, postScore01, at] of [
+  ['replay-on', .95, 301],
+  ['replay-on', .05, 302],
+  ['replay-off', .50, 303],
+  ['replay-on', .75, 304],
+  ['replay-off', .50, 305],
+]) {
+  const pairKey = at <= 303 ? 'pair-1' : 'pair-2';
+  const contextKey = at <= 303 ? 'c1' : 'c2';
+  duplicateFabric.recordReplayExperimentTrial({
+    experimentId: 'exp-duplicate-pair', taskId: 'task-target', mode,
+    preScore01: .5, postScore01, independentVerified: true, randomized: true,
+    contextKey, pairKey, at,
+  });
+}
+const duplicateSummary = duplicateFabric.replayExperimentSummary('exp-duplicate-pair', 'task-target');
+const duplicateGate = duplicateFabric.replayExperimentProtocolCheck('exp-duplicate-pair', 'task-target');
+assert.equal(duplicateSummary.duplicatePairCells, 1);
+assert.equal(duplicateSummary.matchedPairs, 1,
+  'ambiguous duplicate pair must be excluded instead of selecting the last result');
+assert.equal(duplicateGate.duplicatePairCells, 1);
+assert.equal(duplicateGate.eligibleForConfirmatoryInference, false);
+
+
 // A caller's own independentVerified/holdout booleans are claims, not proof.
 // First prove that these claims alone do not create transfer evidence.
 const u = new UnifiedLearningSubstrate();
