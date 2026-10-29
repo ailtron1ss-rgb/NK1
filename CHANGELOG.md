@@ -1,3 +1,12 @@
+## [NK1][WorkPass623] Harden reality-evidence identity and consequence feedback (2026-10-29)
+
+- Port the hardened reality evidence ledger into the current source line: explicit reality classes, bounded stable event receipts, replay deduplication, conflict quarantine, strict restore validation, and recomputed source counts.
+- Correct the evidence-trust boundary: `user-reported` is retained as context but is not counted as independent external/device evidence and cannot satisfy promotion grounding by itself.
+- Add domain-separated stable evidence identity helpers. Wire runtime resource samples, shadow transitions, embodied actions, action consequences, neural-learning provenance, and cognitive-cycle completeness to stable upstream event IDs.
+- Add regression coverage for replay after eviction/restart, confidence inflation under a reused ID, malformed restore payloads, conflict reconstruction after restore, contradictory structured claims, and runtime call-site wiring.
+- Register `npm run audit:workpass-feedback-outcomes`, which combines the new ledger test with existing correlated-postcondition, receipt-integrity, finalizer-boundary, verification-binding, and typecheck gates.
+- This is a source-branch integration pass. CI execution, live device/provider verification, semantic audit of every legacy caller, and Release ZIP refresh remain pending until the branch is tested and integrated.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
