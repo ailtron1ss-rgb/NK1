@@ -1,3 +1,12 @@
+## [NK1][WorkPass620] Preserve semantic motor goals across embodiment renderers (2026-10-29)
+
+- Add optional `motorAction` and `intentReason` fields to EmbodimentIntent v1, populated from the existing context-aware motor planner.
+- Validate supported goals and bounded machine-readable reasons in the TypeScript contract, strict runtime normalizer, app viewer boundary and JSON Schema.
+- Provide explicit compatibility fallbacks for legacy v1 messages, and test semantic round-trip, malformed-value rejection and viewer wiring.
+- This preserves the planner's goal across future 2.5D/3D adapters; it does not claim a full skeletal model or autonomous whole-body controller.
+
+---
+
 ## [NK1][WorkPass619] Wire continuous pose intent into the existing Live2D rig (2026-10-29)
 
 - Add a deterministic action/affect-to-pose mapper producing bounded normalized head yaw/pitch, torso angles, and breathing intensity.
