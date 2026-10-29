@@ -14,6 +14,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs"
       - "runtime/neuro-kurisu/tests/workpass383-p23-revision-generator-boundary.mjs"
       - "runtime/neuro-kurisu/tests/workpass402-production-promotion-family-gate.mjs"
       - "runtime/neuro-kurisu/tests/workpass404-paired-seed-confidence.mjs"
