@@ -32,7 +32,8 @@
 2. `evidence.verified === true`;
 3. `evidence.independent === true`;
 4. `source` равен `world-transition` или `external-verification`;
-5. `evidenceRef` не пуст и начинается с соответствующего source-prefix.
+5. свидетельство должно быть точным объектом, созданным `OutcomeVerificationService` и связанным с тем же tool ID, полным input, execution ID и decision ID;
+6. confidence внешней проверки должен быть не ниже 0.65.
 
 При отсутствии или недостоверности evidence outcome считается наблюдением, а не разрешением на изменение личности: повышается/сохраняется неопределённость, обновляется диагностическая причина и счётчик отклонённых попыток, но не меняются adaptive traits, value weights, relationship trust и autobiographical strength. Добавлены отдельные `verifiedLearningUpdates`, `rejectedLearningUpdates` и `lastEvidenceGateReason`.
 
