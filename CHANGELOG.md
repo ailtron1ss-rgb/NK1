@@ -1,3 +1,10 @@
+## [NK1][WorkPass622] Integrate evidence-based learning and self-development (2026-10-29)
+
+- Add bounded plain-data trust boundary, deterministic paired-seed bootstrap confidence intervals and task-balanced robust diagnostics.
+- Add append-only fitness and activation-lifecycle journals with hash-chain verification, durable activation intents and recovery reconciliation against the authoritative skill store.
+- Strengthen P23 promotion with task/family regression thresholds and paired-seed coverage; keep robust summary metrics diagnostic-only.
+- Add focused regressions and wire the WorkPass622 suite into P26 Learning Validation. External runtime dependencies and Release ZIP were not changed.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
