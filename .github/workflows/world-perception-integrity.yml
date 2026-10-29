@@ -11,6 +11,7 @@ on:
       - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
       - "runtime/neuro-kurisu/tests/world-perception-delta-integrity.mjs"
       - "runtime/neuro-kurisu/tests/world-perception-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/world-perception-runtime-ingress.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/world-perception-integrity.yml"
   pull_request:
@@ -57,6 +58,9 @@ jobs:
       - name: Verify normalized world context reaches canonical core
         working-directory: runtime/neuro-kurisu
         run: npm run test:world-perception-runtime-wiring
+      - name: Exercise event flow in a real OrganismRuntime step
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:world-perception-runtime-ingress
       - name: Type-check canonical runtime
         if: always()
         working-directory: runtime/neuro-kurisu
