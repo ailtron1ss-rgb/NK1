@@ -1384,6 +1384,11 @@ export class P23LearningEngine {
       } catch { /* Preserve the authoritative rejection; no activation side effect occurred. */ }
       throw new Error(`independent evidence binding rejected candidate: ${evidenceBinding.reasons.join(',')}`);
     }
+    const learningRobustDiagnostics = {
+      diagnosticOnly: true as const,
+      validation: summarizeLearningRobustMetrics(baseline.evaluation.validation,evaluation.evaluation.validation),
+      holdout: summarizeLearningRobustMetrics(baseline.evaluation.holdout,evaluation.evaluation.holdout),
+    };
     // Durable intent is required before the irreversible activation step. If this
     // write fails, activation is not attempted and the caller can safely retry.
     this.learningLifecycleJournal?.recordLifecycleEvent({
@@ -1438,11 +1443,6 @@ export class P23LearningEngine {
         activatedVersion:active.version,
       });
     } catch { /* Never turn a committed activation into a reported failure. Pending intent exposes missing final evidence. */ }
-    const learningRobustDiagnostics = {
-      diagnosticOnly: true as const,
-      validation: summarizeLearningRobustMetrics(baseline.evaluation.validation,evaluation.evaluation.validation),
-      holdout: summarizeLearningRobustMetrics(baseline.evaluation.holdout,evaluation.evaluation.holdout),
-    };
     return {active,fitness,evidenceBinding,learningRobustDiagnostics};
   }
 
