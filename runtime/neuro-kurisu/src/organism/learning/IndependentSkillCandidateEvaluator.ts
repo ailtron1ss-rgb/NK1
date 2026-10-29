@@ -388,7 +388,7 @@ export function createIndependentSkillCandidateEvaluator(
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          executable: trustedExecution,
+          executable,
           safetyViolationCount: safety.violationCount,
         },
         trajectory: {

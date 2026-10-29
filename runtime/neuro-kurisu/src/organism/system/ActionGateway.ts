@@ -874,6 +874,16 @@ export class ActionGateway {
   private replayLedgerEntry(entry:ActionExecutionLedgerEntry,id:string):ToolExecution {
     if(entry.response) {
       const response=structuredClone(entry.response);
+      let payloadBytes = 0;
+      try { payloadBytes = new TextEncoder().encode(stableJson(response.result ?? {})).length; } catch { payloadBytes = Infinity; }
+      const valid =
+        (!entry.executionId || response.executionId === entry.executionId) &&
+        payloadBytes <= 48 * 1024 &&
+        (response.verified !== true || response.outcomeClass === 'executed-verified') &&
+        (!response.audit || !response.audit.outcomeClass || response.audit.outcomeClass === response.outcomeClass);
+      if (!valid) {
+        return this.result(id, 'unknown', 'idempotency-recovery-required', 'idempotency-recovery-required', entry.executionId ?? `exec-${randomUUID()}`, { error: 'idempotency-recovery-required' }, 'persisted completion receipt is malformed or corrupted');
+      }
       return {...response,idempotentReplay:true,idempotencyStatus:entry.responseOmitted?'payload-omitted':'replayed'};
     }
     return this.result(id,'unknown','idempotency-recovery-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'idempotency-recovery-required'},'completed receipt has no replayable result; refusing to execute the side effect again');

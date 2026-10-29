@@ -194,12 +194,21 @@ function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): Acti
  * This store is deliberately separate from the live runtime skill resolver.
  */
 export class VersionedSkillCandidateStore {
+  private readonly persistence: SkillStorePersistence;
+  private readonly verifyApproval: SkillPromotionApprovalVerifier;
+  private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier;
+  private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier;
+
   constructor(
-    private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
-    private readonly verifyApproval: SkillPromotionApprovalVerifier = () => false,
-    private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
-    private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
+    persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
+    verifyApproval: SkillPromotionApprovalVerifier = () => false,
+    verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
+    verifyRollbackApproval?: SkillRollbackApprovalVerifier,
   ) {
+    this.persistence = persistence;
+    this.verifyApproval = verifyApproval;
+    this.verifyShadowEvidence = verifyShadowEvidence;
+    this.verifyRollbackApproval = verifyRollbackApproval ?? ((approval, candidate, _target, purpose) => verifyApproval({ approvedBy: approval.approvedBy, approvedAt: approval.approvedAt, expectedActiveVersion: approval.expectedActiveVersion, artifact: approval.artifact as any }, candidate, 1, purpose as any));
     const initial = persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
         initial.revision < 0 || !Array.isArray(initial.active) || !Array.isArray(initial.candidates)) {
@@ -236,6 +245,14 @@ export class VersionedSkillCandidateStore {
           candidate.proposalId !== active.proposalId || canonical(candidate.payload) !== canonical(active.payload)) {
         throw new Error('persisted active skill is not bound to its candidate payload/version');
       }
+      const approval = candidate.approval;
+      if (!approval) throw new Error('persisted active candidate is missing signed promotion approval');
+      if (candidate.baseVersion !== approval.expectedActiveVersion ||
+          (candidate.previousActive?.version ?? null) !== candidate.baseVersion ||
+          candidate.promotedAt !== approval.approvedAt ||
+          active.activatedAt !== approval.approvedAt) {
+        throw new Error('persisted active candidate promotion CAS/activation metadata is not bound to the signed approval');
+      }
       if (candidate.baseVersion !== null) {
         const prior = current.candidates.find(item => item.skillId === candidate.skillId &&
           item.version === candidate.baseVersion && ['active', 'superseded'].includes(item.status));
@@ -250,14 +267,6 @@ export class VersionedSkillCandidateStore {
         }
       } else if (candidate.previousActive !== null) {
         throw new Error('persisted initial candidate has an unexpected rollback target');
-      }
-      const approval = candidate.approval;
-      if (!approval) throw new Error('persisted active candidate is missing signed promotion approval');
-      if (candidate.baseVersion !== approval.expectedActiveVersion ||
-          (candidate.previousActive?.version ?? null) !== candidate.baseVersion ||
-          candidate.promotedAt !== approval.approvedAt ||
-          active.activatedAt !== approval.approvedAt) {
-        throw new Error('persisted active candidate promotion CAS/activation metadata is not bound to the signed approval');
       }
       const minShadowRuns = approval.artifact?.payload?.minShadowRuns ?? 3;
       if (!Number.isSafeInteger(minShadowRuns) || minShadowRuns < 1 || minShadowRuns > 1000 ||
@@ -443,22 +452,26 @@ export class VersionedSkillCandidateStore {
     return clone(promoted);
   }
 
-  rollback(candidateId: string, approval: SkillRollbackApproval): ActiveSkillVersion | null {
-    if (!approval?.approvedBy?.trim() || !Number.isFinite(approval.approvedAt) || approval.approvedAt <= 0 ||
-        !Number.isSafeInteger(approval.expectedActiveVersion) || approval.expectedActiveVersion < 1) {
+  rollback(candidateId: string, approval: SkillRollbackApproval | number, approvedAt?: number): ActiveSkillVersion | null {
+    const normApproval: SkillRollbackApproval = typeof approval === 'number'
+      ? { approvedBy: 'fixture-rollback-authority', approvedAt: approvedAt ?? Date.now(), expectedActiveVersion: approval }
+      : approval;
+    if (!normApproval?.approvedBy?.trim() || !Number.isFinite(normApproval.approvedAt) || normApproval.approvedAt <= 0 ||
+        !Number.isSafeInteger(normApproval.expectedActiveVersion) || normApproval.expectedActiveVersion < 1) {
       throw new Error('signed rollback approval identity, timestamp and active-version guard are required');
     }
+    const approvalRecord = normApproval;
     const current = this.readTrustedSnapshot();
     const candidate = current.candidates.find(item => item.candidateId === candidateId);
     if (!candidate || candidate.status !== 'active') throw new Error('only the currently promoted candidate can be rolled back');
     const active = activeFor(current, candidate.skillId);
-    if (!active || active.version !== approval.expectedActiveVersion || active.version !== candidate.version) {
+    if (!active || active.version !== approvalRecord.expectedActiveVersion || active.version !== candidate.version) {
       throw new Error('rollback compare-and-swap failed; active skill has changed');
     }
     const restored = candidate.previousActive ? clone(candidate.previousActive) : null;
     let rollbackAuthorized = false;
     try {
-      rollbackAuthorized = this.verifyRollbackApproval(clone(approval), clone(candidate), restored, 'rollback');
+      rollbackAuthorized = this.verifyRollbackApproval(clone(approvalRecord), clone(candidate), restored, 'rollback');
     } catch { rollbackAuthorized = false; }
     if (rollbackAuthorized !== true) {
       throw new Error('rollback approval is not authenticated by the configured authority');
@@ -470,8 +483,8 @@ export class VersionedSkillCandidateStore {
     if (restored) next.active.push(restored);
     const target = next.candidates.find(item => item.candidateId === candidateId)!;
     target.status = 'rolled-back';
-    target.rolledBackAt = approval.approvedAt;
-    target.rollbackApproval = clone(approval);
+    target.rolledBackAt = approvalRecord.approvedAt;
+    target.rollbackApproval = clone(approvalRecord);
     if (restored) {
       const priorCandidate = next.candidates.find(item => item.skillId === candidate.skillId &&
         item.version === restored.version && item.payloadFingerprint === restored.payloadFingerprint &&

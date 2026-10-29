@@ -50,8 +50,10 @@ function sameContext(a: TrustedSkillShadowRunContext, b: TrustedSkillShadowRunCo
  */
 export class AtomicFileTrustedSkillShadowRunRegistry {
   private readonly lockPath: string;
-  constructor(private readonly filePath: string) {
+  private readonly filePath: string;
+  constructor(filePath: string) {
     if (!nonEmpty(filePath)) throw new Error('trusted run registry path is required');
+    this.filePath = filePath;
     this.lockPath = `${filePath}.lock`;
   }
 

@@ -55,7 +55,7 @@ export function retrieveSkills(query:SkillRetrievalQuery, skills:readonly Retrie
       if(s.status==='rejected'&&s.validationSuccess01<=.42)reasons.push('negative-transfer-warning');
       if(!recency01||recency01<.35)reasons.push('stale-evidence');
       return {...s,similarity01,evidenceStrength01,recency01,score01,transferBias01,reasons};
-    }).filter(s=>s.similarity01>=.5&&s.score01>=.3)
+    }).filter(s=>s.similarity01>=.6&&s.score01>=.3)
     .sort((a,b)=>b.score01-a.score01||a.id.localeCompare(b.id));
   // Greedy diversity penalty avoids returning many near-duplicate contexts.
   const selected:RetrievedSkill[]=[];
