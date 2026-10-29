@@ -11,6 +11,112 @@ const duplicate = fabric.reviseBelief({ memoryId:'mem-1', confidence01:first.pos
 assert.equal(duplicate.applied, false);
 assert.equal(duplicate.reason, 'duplicate_source');
 
+// A duplicate with a higher claimed trust score is not fresh corroboration.
+// It must not change canonical Hexis belief trust or its semantic update time.
+const duplicateTrustFabric = new HexisAdaptationFabric();
+const lowTrustEvidence = duplicateTrustFabric.reviseBelief({
+  memoryId: 'mem-duplicate-trust',
+  confidence01: .3,
+  trust01: 0,
+  stance: 'supports',
+  evidence: { ref: 'same-low-trust-source', trust01: .1 },
+  at: 1_000,
+});
+assert.equal(lowTrustEvidence.applied, true);
+const beforeDuplicateTrust = duplicateTrustFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-duplicate-trust');
+assert(beforeDuplicateTrust);
+assert.equal(beforeDuplicateTrust.trust01, .05);
+const beforeDuplicateConfidence = beforeDuplicateTrust.confidence01;
+const beforeDuplicateUpdatedAt = beforeDuplicateTrust.updatedAt;
+const elevatedDuplicate = duplicateTrustFabric.reviseBelief({
+  memoryId: 'mem-duplicate-trust',
+  confidence01: beforeDuplicateConfidence,
+  trust01: .99,
+  stance: 'supports',
+  evidence: { ref: 'same-low-trust-source', trust01: .99 },
+  at: 2_000,
+});
+assert.equal(elevatedDuplicate.independent, false);
+assert.equal(elevatedDuplicate.applied, false);
+assert.equal(elevatedDuplicate.reason, 'duplicate_source');
+const afterDuplicateTrust = duplicateTrustFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-duplicate-trust');
+assert(afterDuplicateTrust);
+assert.equal(afterDuplicateTrust.confidence01, beforeDuplicateConfidence,
+  'duplicate evidence must not change confidence');
+assert.equal(afterDuplicateTrust.trust01, beforeDuplicateTrust.trust01,
+  'duplicate evidence cannot raise belief trust by supplying a larger trust01');
+assert.equal(afterDuplicateTrust.updatedAt, beforeDuplicateUpdatedAt,
+  'duplicate evidence cannot refresh the semantic update time');
+
+// The in-memory source key list is intentionally bounded to 256 entries. The
+// larger bounded audit must still prevent a replayed old source from changing a
+// belief after its key leaves that fast membership list.
+const agedEvidenceFabric = new HexisAdaptationFabric();
+const agedFirst = agedEvidenceFabric.reviseBelief({
+  memoryId: 'mem-aged-evidence',
+  confidence01: .5,
+  trust01: .5,
+  stance: 'supports',
+  evidence: { ref: 'aged-source-original', trust01: .72 },
+});
+assert.equal(agedFirst.applied, true);
+for (let index = 0; index < 256; index++) {
+  const entry = agedEvidenceFabric.reviseBelief({
+    memoryId: 'mem-aged-evidence',
+    confidence01: agedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence').confidence01,
+    trust01: .25,
+    stance: 'supports',
+    evidence: { ref: 'aged-source-' + index, trust01: .25 },
+  });
+  assert.equal(entry.applied, true, 'each new independent source should be eligible once');
+}
+const beforeAgedReplay = agedEvidenceFabric.snapshot();
+const agedBeliefBeforeReplay = beforeAgedReplay.beliefs.find(row => row.memoryId === 'mem-aged-evidence');
+assert(agedBeliefBeforeReplay);
+assert.equal(agedBeliefBeforeReplay.sourceKeys.includes('aged-source-original'), false,
+  'the original source key must be evicted from the 256-key fast list in this fixture');
+assert.ok(beforeAgedReplay.beliefAudit.some(row =>
+  row.memoryId === 'mem-aged-evidence' && row.evidence.ref === 'aged-source-original'),
+  'the bounded audit should still retain the original source event');
+const agedReplay = agedEvidenceFabric.reviseBelief({
+  memoryId: 'mem-aged-evidence',
+  confidence01: agedBeliefBeforeReplay.confidence01,
+  trust01: .99,
+  stance: 'contradicts',
+  evidence: { ref: 'aged-source-original', trust01: .99 },
+});
+assert.equal(agedReplay.independent, false,
+  'an old source still in the audit must not become independent after source-key eviction');
+assert.equal(agedReplay.applied, false,
+  'replaying old evidence with opposite polarity must not alter belief confidence');
+assert.equal(agedReplay.reason, 'duplicate_source');
+assert.equal(agedReplay.posteriorConfidence01, agedBeliefBeforeReplay.confidence01);
+assert.equal(agedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence').confidence01,
+  agedBeliefBeforeReplay.confidence01,
+  'confidence must remain unchanged when an old evidence source is replayed');
+
+// The idempotency backstop must remain effective after persistence/restore, not
+// only within the live fabric's current audit instance.
+const restoredAgedEvidenceFabric = new HexisAdaptationFabric();
+restoredAgedEvidenceFabric.restore(agedEvidenceFabric.snapshot());
+const agedBeliefAfterRestore = restoredAgedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence');
+assert(agedBeliefAfterRestore);
+assert.equal(agedBeliefAfterRestore.sourceKeys.includes('aged-source-original'), false);
+const restoredAgedReplay = restoredAgedEvidenceFabric.reviseBelief({
+  memoryId: 'mem-aged-evidence',
+  confidence01: agedBeliefAfterRestore.confidence01,
+  trust01: .99,
+  stance: 'contradicts',
+  evidence: { ref: 'aged-source-original', trust01: .99 },
+});
+assert.equal(restoredAgedReplay.independent, false,
+  'the audit-based replay guard must survive restore when the old fast-list key is absent');
+assert.equal(restoredAgedReplay.applied, false);
+assert.equal(restoredAgedReplay.reason, 'duplicate_source');
+assert.equal(restoredAgedEvidenceFabric.snapshot().beliefs.find(row => row.memoryId === 'mem-aged-evidence').confidence01,
+  agedBeliefAfterRestore.confidence01,
+  'restored replay must not re-apply old evidence to belief confidence');
+
 const t1 = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'alpha',confidence01:.7,validFrom:1000,source:'test',value:'alpha'});
 fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'beta',confidence01:.8,validFrom:2000,source:'test',value:'beta'});
 assert.equal(fabric.temporalAt('mem-1',1500)?.valueHash, t1.valueHash);
@@ -64,5 +170,5 @@ assert.equal(fabric.revokeConnectorPolicy(policy.id),true);
 
 const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:'local',risk01:.9});
 assert.equal(exec.resolvedPlacement,'sandbox');
-console.log('HEXIS_ADAPTATION_PASS');
+console.log('HEXIS_ADAPTATION_PASS', JSON.stringify({ duplicateTrustUnchanged: afterDuplicateTrust.trust01 === beforeDuplicateTrust.trust01, duplicateTimestampUnchanged: afterDuplicateTrust.updatedAt === beforeDuplicateUpdatedAt, agedReplayDetected: agedReplay.reason === 'duplicate_source', restoredAgedReplayDetected: restoredAgedReplay.reason === 'duplicate_source', agedSourceKeys: agedBeliefBeforeReplay.sourceKeys.length, auditRows: beforeAgedReplay.beliefAudit.length }));
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));

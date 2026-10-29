@@ -213,6 +213,139 @@ const replay = restored.hexisCanonicalEvidenceBridge.recordSourceTrace(memory.id
 assert.equal(replay.accepted, true);
 assert.equal(replay.added, false, 'canonical lineage must remain the duplicate authority after a runtime snapshot/restore');
 
+// The public independentSources metric must report the bounded lineage ledger,
+// not just the eight-row visible evidenceSources tail.
+const manyRuntime = new MemorySubsystemRuntime();
+const manyContent = 'Hexis lineage count fixture for bounded canonical evidence diagnostics.';
+const manyMemory = manyRuntime.fabric.encode({
+  content: manyContent,
+  kind: 'semantic',
+  source: 'hexis-lineage-count-fixture',
+  tags: ['hexis-lineage-count'],
+  context: { fixture: 'hexis-lineage-count' },
+  salience: .6,
+  emotionalWeight: .1,
+  identityRelevance: .1,
+  goalRelevance: .2,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .72,
+  epistemicStatus: 'fact',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  validFromAt: now,
+  observedAt: now,
+  provenanceClass: 'agent',
+  sourceAuthority01: .4,
+}, { commandId: 'hexis-lineage-count:seed' });
+assert(manyMemory?.id);
+let lastFanoutResult;
+for (let index = 0; index < 10; index++) {
+  const sourceContent = 'Distinct direct observation ' + index;
+  const sourceFingerprint = createHash('sha256').update(sourceContent).digest('hex');
+  const capturedAt = now - 100 + index;
+  manyRuntime.sourceMonitor.record({
+    id: 'trace-lineage-count-' + index,
+    source: 'world',
+    kind: 'independent-sensor-observation',
+    confidence: .88,
+    epistemicStatus: 'observation',
+    at: capturedAt,
+    provenance: {
+      sourceId: 'sensor:lineage-count-' + index,
+      sourceKind: 'lineage-count-fixture',
+      capturedAt,
+      evidenceClass: 'direct-observation',
+      contentFingerprint: sourceFingerprint,
+    },
+  });
+  lastFanoutResult = manyRuntime.hexisCanonicalEvidenceBridge.recordSourceTrace(
+    manyMemory.id, 'trace-lineage-count-' + index,
+  );
+  assert.equal(lastFanoutResult.accepted, true, 'each distinct source lineage should be accepted');
+  assert.equal(lastFanoutResult.added, true, 'each distinct source lineage should be recorded once');
+}
+const manyAfter = manyRuntime.fabric.canonicalSnapshot(false).items.find(row => row.id === manyMemory.id);
+assert(manyAfter);
+const visibleSourcesCount = manyAfter.evidenceSources?.length ?? 0;
+const boundedLineageCount = new Set(manyAfter.evidenceLineageKeys ?? []).size;
+assert.ok(visibleSourcesCount <= 8, 'the visible canonical evidence trail must stay bounded');
+assert.ok(boundedLineageCount > visibleSourcesCount,
+  'the compact known-lineage ledger should retain more source identities than the visible evidence tail');
+assert.equal(lastFanoutResult.independentSources, boundedLineageCount,
+  'independentSources must report unique known lineages, not the truncated visible source count');
+const replayOfEvictedVisibleSource = manyRuntime.hexisCanonicalEvidenceBridge.recordSourceTrace(
+  manyMemory.id, 'trace-lineage-count-0',
+);
+assert.equal(replayOfEvictedVisibleSource.added, false,
+  'a source absent from the visible eight-row trail must still be detected through bounded lineage history');
+assert.equal(replayOfEvictedVisibleSource.reason, 'duplicate-source-lineage');
+
+// A declared "corroborated" label is not independent proof. In an isolated
+// canonical record with no other source lineage, it must not raise per-source
+// authority above the direct-observation cap.
+const claimedCorroborationRuntime = new MemorySubsystemRuntime();
+const claimedCorroborationMemory = claimedCorroborationRuntime.fabric.encode({
+  content,
+  kind: 'semantic',
+  source: 'hexis-claimed-corroboration-fixture',
+  tags: ['hexis-claimed-corroboration'],
+  context: { fixture: 'hexis-claimed-corroboration' },
+  salience: .6,
+  emotionalWeight: .1,
+  identityRelevance: .1,
+  goalRelevance: .2,
+  socialRelevance: .1,
+  predictionError: .1,
+  confidence: .72,
+  epistemicStatus: 'fact',
+  entities: [],
+  semanticLinks: [],
+  temporalLinks: [],
+  causalLinks: [],
+  contradictionLinks: [],
+  validFromAt: now,
+  observedAt: now,
+  provenanceClass: 'agent',
+  sourceAuthority01: .4,
+}, { commandId: 'hexis-claimed-corroboration:seed' });
+assert(claimedCorroborationMemory?.id);
+const declaredCorroboratedProvenance = {
+  ...provenance,
+  sourceId: 'sensor:claimed-corroboration-only',
+  evidenceClass: 'corroborated',
+};
+claimedCorroborationRuntime.sourceMonitor.record({
+  id: 'trace-claimed-corroboration-only',
+  source: 'world',
+  kind: 'sensor-observation',
+  confidence: .99,
+  epistemicStatus: 'observation',
+  at: now,
+  provenance: declaredCorroboratedProvenance,
+});
+const claimedCorroboratedResult = claimedCorroborationRuntime.hexisCanonicalEvidenceBridge.recordSourceTrace(
+  claimedCorroborationMemory.id, 'trace-claimed-corroboration-only',
+);
+assert.equal(claimedCorroboratedResult.accepted, true);
+assert.equal(claimedCorroboratedResult.added, true);
+const claimedCorroborationKey = 'hexis-source:' + createHash('sha256')
+  .update(declaredCorroboratedProvenance.sourceId + '\u0000' + fingerprint)
+  .digest('hex');
+const claimedCorroborationAfter = claimedCorroborationRuntime.fabric.canonicalSnapshot().items
+  .find(row => row.id === claimedCorroborationMemory.id);
+assert(claimedCorroborationAfter);
+const claimedCorroborationSource = claimedCorroborationAfter.evidenceSources
+  ?.find(row => row.independenceKey === claimedCorroborationKey);
+assert(claimedCorroborationSource);
+assert.equal(claimedCorroborationSource.sourceAuthority01, .64,
+  'caller-declared corroboration must not grant a higher source-authority cap by itself');
+assert.equal(claimedCorroborationAfter.confidence, claimedCorroborationMemory.confidence,
+  'claimed corroboration remains lineage metadata and must not directly change belief confidence');
+
 const stats = runtime.hexisCanonicalEvidenceBridge.snapshotStats();
 assert(stats.attempted >= 6);
 assert(stats.accepted >= 2);
@@ -227,4 +360,8 @@ console.log('HEXIS_CANONICAL_EVIDENCE_LINEAGE=PASS', JSON.stringify({
   confidenceUnchanged: true,
   liveMemorySingleOwner: true,
   replaySafe: replay.added === false,
+  lineageCount: boundedLineageCount,
+  visibleSourceCount: visibleSourcesCount,
+  replayAfterVisibleEviction: replayOfEvictedVisibleSource.added === false,
+  declaredCorroborationAuthority: claimedCorroborationSource.sourceAuthority01,
 }));

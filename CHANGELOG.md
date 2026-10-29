@@ -2612,3 +2612,40 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
 - Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
 - No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
+
+
+## [NK1][WorkPass598] Report bounded canonical Hexis lineage counts accurately (2026-10-28)
+
+- `HexisCanonicalEvidenceBridge` returned `independentSources` as `evidenceSources.length`, but the visible evidence trail is intentionally capped at eight rows while `evidenceLineageKeys` retains a larger bounded set. After enough observations the bridge under-reported known independent lineages even while its replay guard correctly retained them.
+- Count distinct, well-formed lineage/source keys from the bounded `evidenceLineageKeys` ledger plus normalized visible rows. Use the same count for newly recorded and duplicate responses; no new writable store or unbounded ledger is introduced.
+- Extend the canonical Hexis bridge regression with ten independent source observations. It asserts the visible trail stays at eight or fewer, the reported known-lineage count includes the compact history, and replay of an observation no longer visible in the source tail remains idempotent.
+- This corrects lineage diagnostics while preserving MemoryOS2/MemoryFabric as the single canonical memory owner and does not authenticate sources or promote evidence automatically.
+
+
+## [NK1][WorkPass599] Preserve Hexis evidence idempotency after source-key eviction (2026-10-28)
+
+- `HexisAdaptationFabric.reviseBelief()` used only the bounded `sourceKeys`/`contradictingSourceKeys` arrays to decide whether evidence was independent. After 257 sources, the original key left the 256-entry fast list even though the bounded revision audit still contained the source event, allowing an old source replay to be treated as new.
+- Check the existing bounded `beliefAudit` by memory ID and canonical `sourceKey` as an idempotency backstop before applying confidence changes. This keeps contradictory replays from changing confidence while the audit still retains the original event; it adds no new store or unbounded ledger.
+- Added a regression that inserts 256 distinct sources, proves the original source key was evicted from the fast list, then replays it with opposite polarity and asserts `duplicate_source`, `applied=false`, and unchanged confidence.
+- Extend `nk1-hexis-source-lineage.yml` to run `npm run test:hexis-adaptation` so this trust-boundary regression is validated alongside canonical lineage and server replay tests.
+
+
+## [NK1][WorkPass600] Verify Hexis evidence replay protection after restore (2026-10-28)
+
+- Extend the WorkPass599 regression across snapshot/restore: after 256 newer sources evict the old source from the fast key list, restore the Hexis adapter from its snapshot and replay the original evidence with opposite polarity.
+- Assert the persisted bounded revision audit still recognizes the old source as a duplicate, does not apply a second confidence mutation, and preserves the belief's current confidence after restore.
+- The existing `nk1-hexis-source-lineage` workflow now covers this as part of `npm run test:hexis-adaptation`.
+
+
+## [NK1][WorkPass601] Keep duplicate Hexis evidence from mutating trust and update time (2026-10-28)
+
+- `HexisAdaptationFabric.reviseBelief()` could mark a source as duplicate (`applied=false`) but still raise `belief.trust01` and advance `updatedAt`, because those mutations were outside the `if (applied)` statement.
+- Only update belief trust/time for an independent source; duplicates still emit a bounded audit event and duplicate telemetry, but cannot change confidence, trust, or semantic update time by replaying the same source with a higher declared `trust01`.
+- Added a regression where a low-trust observation is replayed with trust 0.99; it verifies duplicate detection and unchanged confidence, trust and `updatedAt`.
+
+
+## [NK1][WorkPass602] Do not trust a caller-declared corroboration class for authority boosts (2026-10-28)
+
+- `HexisCanonicalEvidenceBridge` allowed `evidenceClass: 'corroborated'` to raise a source's authority cap from 0.64 to 0.76, even though the provenance envelope explicitly defines `evidenceClass` and `contentFingerprint` as declared lineage metadata rather than source authentication.
+- Use the same 0.64 per-source authority cap for both direct-observation and caller-declared corroborated labels. Actual corroboration remains represented as distinct independent source lineages; the label alone cannot increase authority.
+- Added an isolated canonical-memory regression with only one declared-corroborated source, proving it is accepted as lineage but receives authority 0.64 and does not change canonical belief confidence.

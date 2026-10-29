@@ -57,6 +57,9 @@ jobs:
       - name: Typecheck runtime contracts
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Test Hexis adaptation source replay after key eviction
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis-adaptation
       - name: Test canonical Hexis evidence lineage
         working-directory: runtime/neuro-kurisu
         run: npm run test:hexis-evidence-lineage

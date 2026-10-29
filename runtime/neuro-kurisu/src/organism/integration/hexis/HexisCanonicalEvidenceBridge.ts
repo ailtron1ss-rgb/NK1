@@ -135,14 +135,16 @@ export class HexisCanonicalEvidenceBridge {
         origin,
         memoryId: canonical.id,
         sourceRecordId: candidate.id,
-        independentSources: Array.isArray(canonical.evidenceSources) ? canonical.evidenceSources.length : 0,
+        independentSources: this.knownIndependentLineageCount(canonical),
       };
     }
 
     const provenanceClass: MemoryEvidenceSource['provenanceClass'] =
       candidate.source === 'user' ? 'user' :
       candidate.source === 'world' || candidate.source === 'tool' ? 'external' : 'device';
-    const authorityCap = provenance.evidenceClass === 'corroborated' ? 0.76 : 0.64;
+    // Evidence class is caller-declared metadata, not independent corroboration proof.
+    // Keep the per-source authority cap uniform; distinct sources remain separate lineages.
+    const authorityCap = 0.64;
     const source: MemoryEvidenceSource = {
       source: 'hexis-lineage:' + origin + ':' + candidate.source + ':' + provenance.sourceKind,
       provenanceClass,
@@ -168,11 +170,40 @@ export class HexisCanonicalEvidenceBridge {
         origin,
         memoryId: updated.id,
         sourceRecordId: candidate.id,
-        independentSources: Array.isArray(updated.evidenceSources) ? updated.evidenceSources.length : 0,
+        independentSources: this.knownIndependentLineageCount(updated),
       };
     } catch {
       return this.reject(memoryId, 'canonical-evidence-write-failed', candidate.id);
     }
+  }
+
+  /**
+   * evidenceSources is intentionally capped at eight visible rows, while
+   * evidenceLineageKeys retains a larger bounded set of known lineages. Return
+   * the count of distinct lineages known to the canonical record, not the size
+   * of the visible audit tail (which under-reported sources after the ninth add).
+   */
+  private knownIndependentLineageCount(memory: Pick<MemoryItem2, 'evidenceLineageKeys' | 'evidenceSources'>): number {
+    const known = new Set<string>();
+    const classes = new Set(['device', 'external', 'user', 'agent', 'derived', 'simulation', 'unknown']);
+    const isKnownKey = (key: string) =>
+      key.length <= 512 && (
+        (key.startsWith('lineage:') && key.length > 'lineage:'.length) ||
+        [...classes].some(provenanceClass => key.startsWith('source:' + provenanceClass + ':') && key.length > ('source:' + provenanceClass + ':').length)
+      );
+    for (const rawKey of memory.evidenceLineageKeys ?? []) {
+      if (typeof rawKey === 'string' && isKnownKey(rawKey)) known.add(rawKey);
+    }
+    for (const source of memory.evidenceSources ?? []) {
+      if (!source || typeof source.source !== 'string' || !source.source.trim() ||
+        !classes.has(String(source.provenanceClass))) continue;
+      const independent = String(source.independenceKey ?? '').trim().normalize('NFKC').toLocaleLowerCase();
+      const key = independent
+        ? 'lineage:' + independent
+        : 'source:' + String(source.provenanceClass) + ':' + source.source.trim().normalize('NFKC').toLocaleLowerCase();
+      if (isKnownKey(key)) known.add(key);
+    }
+    return known.size;
   }
 
   private hasLineage(memory: Pick<MemoryItem2, 'evidenceLineageKeys' | 'evidenceSources'>, independenceKey: string, lineageKey: string) {
