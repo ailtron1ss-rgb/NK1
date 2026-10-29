@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 
 const root=process.cwd();
 const require=createRequire(import.meta.url);
-const ts=require('/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript/lib/typescript.js');
+const ts=require(require.resolve('typescript/lib/typescript.js'));
 const roots=['src/organism/cognition','src/organism/memory','src/organism/learning','src/organism/developmental','src/organism/world','src/organism/body','src/organism/system'];
 const ignoredNames=new Set(['main','start','run','bootstrap','serve']);
 const files=[];
