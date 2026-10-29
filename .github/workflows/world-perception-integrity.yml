@@ -1,0 +1,58 @@
+name: NK1 world perception integrity
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
+      - "runtime/neuro-kurisu/tests/*perception*.mjs"
+      - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/world-perception-delta-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/world-perception-integrity.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
+      - "runtime/neuro-kurisu/src/organism/core/types.ts"
+      - "runtime/neuro-kurisu/tests/*perception*.mjs"
+      - "runtime/neuro-kurisu/tests/world-context-normalizer-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/world-perception-delta-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/world-perception-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-world-perception-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  world-perception-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Run world-context normalizer integrity tests
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:world-context-normalizer-integrity
+      - name: Run sensor integrity and stale-sample tests
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:perception-engine-signal-integrity
+      - name: Run semantic world-delta and resource-pressure tests
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:world-perception-delta-integrity
+      - name: Type-check canonical runtime
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
