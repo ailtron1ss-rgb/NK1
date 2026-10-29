@@ -4,7 +4,7 @@
 - Preserve known/unknown flags for object value, visibility and collection state; wire the normalizer into live OrganismRuntime → core.observe() ingress. Run PerceptionEngine in the runtime cycle and route salient events into RuntimeEvidenceBus and multimodal workspace.
 - Gate physical observations on freshness and sampled-at plausibility; initialize baselines without false motion and represent sensor availability separately.
 - Emit sensor changes across successive cycles, make resource-pressure notifications transition-based, and detect same-cardinality world fact/object/event updates.
-- Add four focused integrity tests, `npm run test:world-perception` and a dedicated GitHub Actions gate; real device validation remains a separate gate.
+- Add five focused integrity tests, including a real OrganismRuntime ingress smoke, `npm run test:world-perception` and a dedicated GitHub Actions gate; real device validation remains a separate gate.
 
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
