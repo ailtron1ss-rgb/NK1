@@ -1160,10 +1160,11 @@ export class OrganismCore {
     private readonly actionExecutionLedgerArchive?: FileActionExecutionLedgerArchive;
     /** BIG PASS 56: physical owner/composition root for the seven organism systems. */
     private readonly organismSystems = new OrganismSystemFabric({
-        // Registration authority comes from the declared ActionGateway tool source,
-        // never from observation payload labels supplied by callers.
         authorizeSourceRegistration: source => this.cognitiveRuntime.actionGateway.isDeclaredObservationSource({
-            sourceId: source.id, sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+            sourceId: source.id,
+            sourceClass: source.sourceClass,
+            channel: source.channel,
+            independenceKey: source.independenceKey,
         }),
     });
     /** Owns the extracted developmental/neural execution modules; Core only orchestrates them. */
@@ -12138,9 +12139,6 @@ export class OrganismCore {
             actionRef: result.executionId, tool: toolId, tick: this.persisted.state.tick,
             worldContextAfter: v.observedWorldContextAfter,
             evidenceEventId,
-            verificationBinding: trustedEventLink ? {
-                verification: v, toolId, input: actionInput!, executionId: result.executionId, decisionId: linkedDecisionId,
-            } : undefined,
             metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId, ...(evidenceEventId ? { evidenceEventId } : {}) },
             payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, ...(evidenceEventId ? { evidenceEventId } : {}) },
             expectedPostcondition: v.expectedPostcondition,
