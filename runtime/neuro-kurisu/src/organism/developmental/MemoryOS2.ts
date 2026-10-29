@@ -309,8 +309,29 @@ export interface SemanticIndexMaintenanceResult {
  indexedItems:number; corpusItems:number; remaining:number; waitingForRetry:number; nextRetryAt:number|null;
  lastRunAt:number; lastDurationMs:number; lastErrorCode:string|null; redactedInputs:number;
 }
+/** Diagnostics for defensive snapshot restore; never includes memory contents. */
+export interface MemoryRestoreDiagnostics {
+ sourceRows:number;
+ acceptedRows:number;
+ duplicateIdsResolved:number;
+ invalidRowsDropped:number;
+ truncatedRows:number;
+ identityConflictsQuarantined:number;
+}
+
+function stableMemoryJson(value:unknown):string {
+ if(Array.isArray(value))return `[${value.map(stableMemoryJson).join(',')}]`;
+ if(value&&typeof value==='object'){
+  const row=value as Record<string,unknown>;
+  return `{${Object.keys(row).filter(key=>row[key]!==undefined).sort().map(key=>`${JSON.stringify(key)}:${stableMemoryJson(row[key])}`).join(',')}}`;
+ }
+ const encoded=JSON.stringify(value);
+ return encoded===undefined?'null':encoded;
+}
+
 export class MemoryOS2{
  private state=defaultMemoryOS2();
+ private lastRestoreDiagnosticsData:MemoryRestoreDiagnostics={sourceRows:0,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:0,identityConflictsQuarantined:0};
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
