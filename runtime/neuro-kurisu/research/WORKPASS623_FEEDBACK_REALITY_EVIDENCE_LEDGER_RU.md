@@ -33,7 +33,9 @@
 - `ExternalObserverFabric` принимает verifier-owned ID, создаёт для него детерминированный observation ID, дедуплицирует точный replay и отвергает повторное использование того же ID с другим payload. Источник должен совпадать с реестром ActionGateway; caller не может повысить доверие, подменив source class/channel/independence key.
 - `EvidenceResearchSubsystemRuntime` записывает accepted observer outputs в `RealityEvidenceLedger`, применяя сохранённую при захвате надёжность источника. Пользовательский отчёт, симуляция и вывод самой модели получают отдельные классы реальности.
 - `OrganismSystemFabric` прокидывает governance ledger как единственный canonical owner в research subsystem; второго конкурирующего журнала нет. `OrganismCore` передаёт полный input и тот же verifier-owned ID лишь при сохранённой привязке к decision/exec/observer.
-- CI workflow path filters теперь включают Core, owner/fabric, verifier, observer и сквозной тест, чтобы изменения на границе доверия не обходили специализированный gate.
+- Публичный `ingestExternalObservation` повторно проверяет оригинальный verifier-owned объект и связанную пару action/decision, а не принимает событие на основании одной строки ID. Подделка/копирование корректного ID без этого объекта завершается fail-closed до записи наблюдения.
+- `OutcomeCognitionFabric` явно хранит тот же `evidenceEventId` в `externalObservations`; ID валидируется и сравнивается при replay. Тот же observation ID с другой event identity отвергается. Restore проверяет вложенные observations и отбрасывает malformed/forged event IDs в сохранённых outcome projections.
+- CI workflow path filters теперь включают Core, ActionGateway, owner/fabric, verifier, observer, OutcomeCognition, тесты и журнал, чтобы изменения на границе доверия не обходили специализированный gate.
 
 ### 4. Runtime-проекции
 
