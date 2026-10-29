@@ -35,7 +35,7 @@ export interface OperationalCycleLineageCheck {
   missingEdges: string[];
 }
 
-export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; }
+export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; evidenceEventId?:string; }
 export interface ToolReceiptRevisionProjectionRef { revisionId:string; eventId:string; projectionHash:string; projectedAt:number; }
 
 export interface ToolReceiptProjectionIndexEntry {
@@ -127,9 +127,11 @@ export class CognitiveEventFabric {
       if(!outcome.parentIds.includes(action.id) || !evidence.parentIds.includes(outcome.id)) continue;
       const externalObservations=Array.isArray(entry.externalObservations)?entry.externalObservations.slice(-32).filter((ref:any)=>{
         if(!ref||typeof ref.observationId!=='string'||!ref.observationId.trim()||ref.observationId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
+        const evidenceEventId=ref.evidenceEventId===undefined?undefined:String(ref.evidenceEventId);
+        if(ref.evidenceEventId!==undefined&&!/^outcome:[a-f0-9]{40}$/i.test(evidenceEventId??''))return false;
         const event=restoredById.get(String(ref.eventId));
-        return event?.stage==='external-evidence'&&event.payload.executionId===entry.executionId&&event.payload.observationId===ref.observationId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase();
-      }).map((ref:any)=>({observationId:String(ref.observationId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt)})):[];
+        return event?.stage==='external-evidence'&&event.payload.executionId===entry.executionId&&event.payload.observationId===ref.observationId&&event.payload.projectionHash===String(ref.projectionHash).toLowerCase()&&(event.payload.evidenceEventId??undefined)===evidenceEventId;
+      }).map((ref:any)=>({observationId:String(ref.observationId),eventId:String(ref.eventId),projectionHash:String(ref.projectionHash).toLowerCase(),projectedAt:Number(ref.projectedAt),...(ref.evidenceEventId?{evidenceEventId:String(ref.evidenceEventId)}:{})})):[];
       const receiptRevisions=Array.isArray((entry as ToolReceiptProjectionIndexEntry).receiptRevisions)?(entry as ToolReceiptProjectionIndexEntry).receiptRevisions!.slice(-32).filter((ref:any)=>{
         if(!ref||typeof ref.revisionId!=='string'||!ref.revisionId.trim()||ref.revisionId.length>180||typeof ref.eventId!=='string'||ref.eventId.length>180||!/^[a-f0-9]{64}$/i.test(String(ref.projectionHash??''))||!Number.isFinite(Number(ref.projectedAt))||Number(ref.projectedAt)<0)return false;
         const event=restoredById.get(String(ref.eventId));
@@ -322,13 +324,15 @@ export class CognitiveEventFabric {
    * The event uses a separate stage so late evidence cannot distort operational-cycle coverage.
    * Raw postcondition text is not copied into CEF; only canonical hashes/presence flags are retained.
    */
-  appendToolExternalObservation(input:{tick:number;executionId:string;toolId:string;observationId:string;verified:boolean;confidence01:number;sourceId?:string;sourceClass?:string;channel?:string;independenceKey?:string;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;at?:number}):{resolved:boolean;reason?:string;replayed?:boolean;eventId?:string;archived?:boolean}{
+  appendToolExternalObservation(input:{tick:number;executionId:string;toolId:string;observationId:string;evidenceEventId?:string;verified:boolean;confidence01:number;sourceId?:string;sourceClass?:string;channel?:string;independenceKey?:string;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;at?:number}):{resolved:boolean;reason?:string;replayed?:boolean;eventId?:string;archived?:boolean}{
     const executionId=String(input.executionId??'').trim().slice(0,180);
     const observationId=String(input.observationId??'').trim().slice(0,180);
     const toolId=String(input.toolId??'').trim().slice(0,64);
     if(!executionId)return {resolved:false,reason:'execution-id-required'};
     if(!observationId)return {resolved:false,reason:'observation-id-required'};
     if(!toolId)return {resolved:false,reason:'tool-id-required'};
+    const evidenceEventId=input.evidenceEventId===undefined?undefined:String(input.evidenceEventId).trim();
+    if(input.evidenceEventId!==undefined&&(!evidenceEventId||!/^outcome:[a-f0-9]{40}$/i.test(evidenceEventId)))return {resolved:false,reason:'evidence-event-id-invalid'};
     const entry=this.receiptProjectionIndex.get(executionId);
     const byId=new Map(this.events.map(event=>[event.id,event] as const));
     const action=entry?byId.get(entry.actionEventId):this.events.find(event=>event.stage==='tool-action'&&event.payload.executionId===executionId);
@@ -337,7 +341,7 @@ export class CognitiveEventFabric {
     if(String(action.payload.tool??'')!==toolId||String(outcome.payload.tool??'')!==toolId)return {resolved:false,reason:'execution-tool-mismatch'};
     const expected=String(input.expectedPostcondition??'').normalize('NFKC').trim().toLocaleLowerCase();
     const observed=String(input.observedPostcondition??'').normalize('NFKC').trim().toLocaleLowerCase();
-    const safePayload={executionId,toolId,observationId,verified:Boolean(input.verified),confidence01:clamp01(input.confidence01),sourceId:String(input.sourceId??'unknown').slice(0,80),sourceClass:String(input.sourceClass??'unknown').slice(0,32),channel:String(input.channel??'unknown').slice(0,32),independenceKey:String(input.independenceKey??'').slice(0,120),expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason:String(input.reason??'').slice(0,160)};
+    const safePayload={executionId,toolId,observationId,...(evidenceEventId?{evidenceEventId}:{}),verified:Boolean(input.verified),confidence01:clamp01(input.confidence01),sourceId:String(input.sourceId??'unknown').slice(0,80),sourceClass:String(input.sourceClass??'unknown').slice(0,32),channel:String(input.channel??'unknown').slice(0,32),independenceKey:String(input.independenceKey??'').slice(0,120),expectedPostconditionHash:expected?sha256Stable(expected):null,observedPostconditionHash:observed?sha256Stable(observed):null,expectedPostconditionPresent:Boolean(expected),observedPostconditionPresent:Boolean(observed),reason:String(input.reason??'').slice(0,160)};
     const projectionHash=sha256Stable(safePayload);
     const refs=entry?.externalObservations??[];
     const prior=refs.find(ref=>ref.observationId===observationId);
@@ -349,13 +353,13 @@ export class CognitiveEventFabric {
     const existing=byId.get(eventId);
     if(existing){
       if(existing.stage!=='external-evidence'||existing.payload.projectionHash!==projectionHash||existing.payload.executionId!==executionId||existing.payload.observationId!==observationId)throw new Error('external-observation-projection-conflict');
-      const ref={observationId,eventId,projectionHash,projectedAt:existing.at};
+      const ref={observationId,eventId,projectionHash,projectedAt:existing.at,...(evidenceEventId?{evidenceEventId}:{})};
       if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
       return {resolved:true,replayed:true,eventId};
     }
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const evidence=this.append({id:eventId,tick:input.tick,stage:'external-evidence',source:'external-observer-fabric',parentIds:[outcome.id],external:true,confidence01:clamp01(input.confidence01),at,payload:{...safePayload,projectionHash,receiptActionEventId:action.id,receiptOutcomeEventId:outcome.id,evidenceStatus:input.verified?'corroborated':expected&&observed&&expected!==observed?'contradicted':'unresolved'}});
-    const ref={observationId,eventId:evidence.id,projectionHash,projectedAt:at};
+    const ref={observationId,eventId:evidence.id,projectionHash,projectedAt:at,...(evidenceEventId?{evidenceEventId}:{})};
     if(entry)this.receiptProjectionIndex.set(executionId,{...entry,externalObservations:[...refs,ref].slice(-32)});
     return {resolved:true,replayed:false,eventId:evidence.id};
   }
