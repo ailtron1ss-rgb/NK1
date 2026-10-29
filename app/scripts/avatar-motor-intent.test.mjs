@@ -170,6 +170,8 @@ test("Original 2D concept is selectable and keeps independent outfit/pose custom
   assert.ok(stage.includes('saved === "legacy" || saved === "original"'));
   assert.ok(original.includes('type Outfit = "lab" | "casual" | "night"'));
   assert.ok(original.includes('type PoseOverride = "auto" | "crossed" | "thinking" | "explain"'));
+  assert.ok(original.includes("import { deriveEmbodimentPose, type MouthPose } from \"./avatar/embodimentTimeline\""));
+  assert.ok(original.includes("const intent = deriveEmbodimentPose(action, emotion, arousal)"), "Original SVG must share the organism-to-pose mapper with Live2D");
   assert.ok(original.includes('writeAvatarPreference("kurisu-original-outfit", outfit)'));
   assert.ok(original.includes("Original 2D concept"));
 });
