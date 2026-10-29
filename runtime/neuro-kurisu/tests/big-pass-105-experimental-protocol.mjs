@@ -15,21 +15,40 @@ f.observe(base, {
   tick: 1, at: 1, novelty01: .77, activeGoalIds: ['goal-A'],
   identityContinuity01: .9, valueStability01: .88, evidenceSupport01: .84,
 });
+const verifier = new OutcomeVerificationService();
+async function recordVerifiedReplay(fabric, tuple) {
+  const verified = await verifier.verify({
+    toolId: 'independent-replay-evaluator',
+    input: tuple,
+    result: { observedScore01: tuple.postScore01 },
+  }, async () => ({
+    verified: true,
+    basis: 'external-postcondition',
+    confidence01: 1,
+    externalObservation: true,
+    observationId: `replay-observation-${tuple.experimentId}-${tuple.mode}-${tuple.pairKey}-${tuple.at}`,
+    expectedPostcondition: `score=${tuple.postScore01}`,
+    observedPostcondition: `score=${tuple.postScore01}`,
+  }));
+  return fabric.recordReplayExperimentTrial({
+    ...tuple, independentVerified: true, verification: verified,
+  });
+}
 const proto = f.createReplayExperimentProtocol({
   id: 'exp105', taskId: 'task-target', sourceTaskId: 'task-source', targetTaskId: 'task-target',
   randomized: true, balanced: true, requiredPairs: 2, contextKeys: ['c1', 'c2', 'c3'], at: 100,
 });
 assert.equal(proto.requiredPairs, 2);
 for (const pair of ['c1', 'c2']) {
-  f.recordReplayExperimentTrial({
+  await recordVerifiedReplay(f, {
     experimentId: 'exp105', taskId: 'task-target', mode: 'replay-on',
-    preScore01: .5, postScore01: .76, independentVerified: true,
-    randomized: true, contextKey: pair, pairKey: `p-${pair}`, at: 1000,
+    preScore01: .5, postScore01: .76, randomized: true,
+    contextKey: pair, pairKey: `p-${pair}`, at: 1000,
   });
-  f.recordReplayExperimentTrial({
+  await recordVerifiedReplay(f, {
     experimentId: 'exp105', taskId: 'task-target', mode: 'replay-off',
-    preScore01: .5, postScore01: .57, independentVerified: true,
-    randomized: true, contextKey: pair, pairKey: `p-${pair}`, at: 1001,
+    preScore01: .5, postScore01: .57, randomized: true,
+    contextKey: pair, pairKey: `p-${pair}`, at: 1001,
   });
 }
 const gate = f.replayExperimentProtocolCheck('exp105', 'task-target');
@@ -45,15 +64,15 @@ unplannedFabric.createReplayExperimentProtocol({
   requiredPairs: 2, contextKeys: ['declared-c1', 'declared-c2'], at: 200,
 });
 for (const pairKey of ['rogue-p1', 'rogue-p2']) {
-  unplannedFabric.recordReplayExperimentTrial({
+  await recordVerifiedReplay(unplannedFabric, {
     experimentId: 'exp-unplanned-context', taskId: 'task-target', mode: 'replay-on',
-    preScore01: .5, postScore01: .9, independentVerified: true,
-    randomized: true, contextKey: 'undeclared-context', pairKey, at: 201,
+    preScore01: .5, postScore01: .9, randomized: true,
+    contextKey: 'undeclared-context', pairKey, at: 201,
   });
-  unplannedFabric.recordReplayExperimentTrial({
+  await recordVerifiedReplay(unplannedFabric, {
     experimentId: 'exp-unplanned-context', taskId: 'task-target', mode: 'replay-off',
-    preScore01: .5, postScore01: .4, independentVerified: true,
-    randomized: true, contextKey: 'undeclared-context', pairKey, at: 202,
+    preScore01: .5, postScore01: .4, randomized: true,
+    contextKey: 'undeclared-context', pairKey, at: 202,
   });
 }
 const unplannedGate = unplannedFabric.replayExperimentProtocolCheck('exp-unplanned-context', 'task-target');
@@ -79,10 +98,9 @@ for (const [mode, postScore01, at] of [
 ]) {
   const pairKey = at <= 303 ? 'pair-1' : 'pair-2';
   const contextKey = at <= 303 ? 'c1' : 'c2';
-  duplicateFabric.recordReplayExperimentTrial({
+  await recordVerifiedReplay(duplicateFabric, {
     experimentId: 'exp-duplicate-pair', taskId: 'task-target', mode,
-    preScore01: .5, postScore01, independentVerified: true, randomized: true,
-    contextKey, pairKey, at,
+    preScore01: .5, postScore01, randomized: true, contextKey, pairKey, at,
   });
 }
 const duplicateSummary = duplicateFabric.replayExperimentSummary('exp-duplicate-pair', 'task-target');
@@ -92,6 +110,25 @@ assert.equal(duplicateSummary.matchedPairs, 1,
   'ambiguous duplicate pair must be excluded instead of selecting the last result');
 assert.equal(duplicateGate.duplicatePairCells, 1);
 assert.equal(duplicateGate.eligibleForConfirmatoryInference, false);
+
+// Replay's independentVerified boolean is not evidence. Without a trusted
+// receipt, a well-formed, context-declared pair remains diagnostic only.
+const selfClaimFabric = new ExperienceContinuumFabric({ maxNodes: 16, maxEdges: 32, maxClusters: 8 });
+selfClaimFabric.createReplayExperimentProtocol({
+  id: 'exp-self-claim', taskId: 'task-target', randomized: true, balanced: true,
+  requiredPairs: 2, contextKeys: ['c1', 'c2'], at: 400,
+});
+selfClaimFabric.recordReplayExperimentTrial({
+  experimentId: 'exp-self-claim', taskId: 'task-target', mode: 'replay-on',
+  preScore01: .5, postScore01: .99, independentVerified: true,
+  randomized: true, contextKey: 'c1', pairKey: 'self-pair', at: 401,
+});
+const selfClaimSummary = selfClaimFabric.replayExperimentSummary('exp-self-claim', 'task-target');
+const selfClaimGate = selfClaimFabric.replayExperimentProtocolCheck('exp-self-claim', 'task-target');
+assert.equal(selfClaimSummary.replayOnSamples, 0);
+assert.equal(selfClaimGate.eligibleForConfirmatoryInference, false,
+  'caller-supplied independentVerified=true must never authorize a confirmatory replay result');
+
 
 
 // A caller's own independentVerified/holdout booleans are claims, not proof.
@@ -110,7 +147,6 @@ assert.equal(u.transferInferenceGate({
 'untrusted self-assertions must not satisfy the independent transfer gate');
 
 // Build process-local trusted receipts bound to each exact measurement tuple.
-const verifier = new OutcomeVerificationService();
 for (const [i, score] of [[0, .68], [1, .72], [2, .70], [3, .75]]) {
   const id = `tp-${i}`;
   const sourceTaskId = 'source';
