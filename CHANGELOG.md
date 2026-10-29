@@ -1,3 +1,12 @@
+## [NK1][WorkPass623] Gate persistent personality learning on independent evidence (2026-10-29)
+
+- Port the hardened canonical self-agency restore boundary from the divergent personality branch into `workpass70-source`: detached plain-data validation, canonical invariant fingerprint enforcement, allowlisted adaptive traits, bounded counters and finite metrics.
+- Harden `P2702PersistentPersonalityDynamics.restore`: persisted snapshots cannot replace compiled personality invariants or reorder their schema; malformed vectors and relationship/action state fall back to bounded defaults without invoking getters.
+- Separate observed outcomes from verified personality-learning updates. Stable adaptive traits, value weights, relationship trust and autobiographical strength update only when a high-confidence outcome includes independent evidence with a source-bound `world-transition:` or `external-verification:` reference.
+- Thread optional evidence provenance through the existing `NeuralExperienceBranch.afterOutcome` interface. Omitted provenance fails closed for stable personality updates while retaining uncertainty updates and diagnostics; no second learner is introduced.
+- Extend canonical self-agency and P2702 regression cases for tampered snapshots, hostile getters, invalid trait values, missing provenance and untrusted evidence source.
+- Validation status: changes are on a dedicated work branch; runtime tests and CI have **not** been executed in this environment. This entry is not a test PASS; require exact-SHA CI evidence before promotion.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
