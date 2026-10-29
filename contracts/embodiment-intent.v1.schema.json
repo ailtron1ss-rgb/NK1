@@ -49,6 +49,8 @@
         "bodyAngleY": { "type": "number", "minimum": -1, "maximum": 1 },
         "bodyAngleZ": { "type": "number", "minimum": -1, "maximum": 1 },
         "breathIntensity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "motorAction": { "enum": ["rest", "listen", "reflect", "inspect", "explain", "comfort", "respond"] },
+        "intentReason": { "type": "string", "maxLength": 96, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
         "gesture": { "type": "boolean" },
         "motionGroup": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,32}$" },
         "motionIndex": { "type": "integer", "minimum": 0, "maximum": 32 },
