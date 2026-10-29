@@ -1,3 +1,11 @@
+## [NK1][WorkPass621] Unify continuous pose policy across Live2D and Original SVG (2026-10-29)
+
+- Route the Original SVG renderer through the shared organism action/affect pose mapper instead of its own duplicate action/emotion angle table.
+- Keep only renderer-specific angle scaling and breathing timing local to SVG; the semantic source of pose remains common with Live2D.
+- Add regression coverage for shared mapping. This unifies existing 2D renderers, not a real skeletal 2.5D/3D model.
+
+---
+
 ## [NK1][WorkPass620] Preserve semantic motor goals across embodiment renderers (2026-10-29)
 
 - Add optional `motorAction` and `intentReason` fields to EmbodimentIntent v1, populated from the existing context-aware motor planner.
