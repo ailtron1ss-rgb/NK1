@@ -44,6 +44,13 @@
 
 ### 2.1. Совместимость имён humanoid-костей
 
+Кроме нормализации имён, активный Three.js adapter теперь читает реальный humanoid node map из двух форматов расширения:
+- VRM 1.0: `extensions.VRMC_vrm.humanoid.humanBones` (роль → `node`);
+- legacy VRM 0.x: `extensions.VRM.humanoid.humanBones[]` (`bone` + `node`).
+
+Map связывается с узлами GLTFLoader через `parser.associations`; это позволяет применять каноническое намерение к костям, даже если файл использует произвольные имена объектов. Если расширение/association отсутствует, остаётся совместимость по имени. Это всё ещё ограниченный моторный adapter, а не полноценный VRM expression/spring-bone/retargeting runtime.
+
+
 Новый модуль `app/src/components/avatar/humanoidBoneMap.ts` переводит распространённые имена VRM `J_Bip_L_UpperArm` / `J_Bip_R_UpperArm`, Blender `upper_arm.L/R` и Mixamo `LeftArm/RightArm` в семантические роли, которые уже понимает моторный адаптер. Это закрывает конкретное расхождение: раньше контроллер искал подстроки `leftupperarm` / `rightupperarm`, поэтому стандартные VRM bone names могли загружаться, но не получать жесты рук.
 
 Это совместимость по именам, не полноценная VRM Humanoid API-интеграция: для произвольных имён костей, humanoid retargeting, VRM constraints и expression manager всё ещё нужен VRM-aware runtime.
@@ -70,7 +77,7 @@
 
 - `app/scripts/avatar-model-validation.test.mjs` — валидный GLB, повреждённые заголовки/chunks/JSON, external URL, некорректные buffer и bufferView, выход за объявленные границы, лимиты сложности, циклическая/много-родительская/глубокая иерархия.
 - `app/scripts/avatar-3d-stage.test.mjs` — preflight до parser, запрет внешних URI и preservation существующего тела при отклонении новой модели.
-- `app/scripts/avatar-humanoid-bone-map.test.mjs` — common VRM, Blender и Mixamo bone aliases должны попадать в тот же моторный vocabulary.
+- `app/scripts/avatar-humanoid-bone-map.test.mjs` — common VRM, Blender и Mixamo bone aliases, plus VRM 1.0/0.x extension mapping must land in the same motor vocabulary.
 - `app/scripts/avatar-browser-voice-prosody.test.mjs` — детерминизм, диапазоны, позитивная просодия, деэскалация отрицательного возбуждения, влияние действия/черт и общий rate для TTS/lip timing.
 - `app/package.json` — команды `test:avatar-model-validation`, `test:avatar-3d-stage`, `test:browser-voice-prosody`. Type stripping включён для test-script path, так как новая pure logic импортируется непосредственно из TypeScript-модулей.
 - `.github/workflows/embodiment-quality-gates.yml` — отдельная проверка сборки и тестов воплощения на push/PR/ручном запуске. Она выполняет модельные проверки, voice prosody, Live2D timeline/expression cache, motor-intent regressions, app scripts, typecheck и build:dev.
