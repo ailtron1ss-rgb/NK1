@@ -1,3 +1,12 @@
+## [NK1][WorkPass619] Wire continuous pose intent into the existing Live2D rig (2026-10-29)
+
+- Add a deterministic action/affect-to-pose mapper producing bounded normalized head yaw/pitch, torso angles, and breathing intensity.
+- Extend EmbodimentIntent v1 with optional pose channels; preserve older v1 payloads and reject unknown keys or out-of-range values.
+- Connect the existing motor-intent planner and organism affect to the new body channels, then map them into the app and standalone Live2D viewers.
+- Add regression and asset-integrity checks. This does not claim a production 2.5D/3D model, skeleton, IK, modular 3D wardrobe, or autonomous whole-body motor planner.
+
+---
+
 ## [NK1][WorkPass618] Expose Original 2D avatar as a selectable mode (2026-10-29)
 
 - Integrate the existing `KurisuOriginalStage` SVG prototype into the active avatar selector beside Live2D and Legacy, without replacing the motor-intent repairs.
