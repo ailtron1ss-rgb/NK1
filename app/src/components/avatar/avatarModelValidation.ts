@@ -190,7 +190,7 @@ export function inspectSelfContainedGlb(
     if (chunkType === 0x4e4f534a) {
       if (jsonText !== null) reject("invalid-glb-chunk", "GLB содержит больше одного JSON-блока.");
       if (chunkLength > AVATAR_GLB_LIMITS.maxJsonBytes) {
-        reject("resource-limit", `JSON-манифест модели превышает `${AVATAR_GLB_LIMITS.maxJsonBytes / (1024 * 1024)} МиБ.`);
+        reject("resource-limit", "JSON-манифест модели превышает " + (AVATAR_GLB_LIMITS.maxJsonBytes / (1024 * 1024)) + " МиБ.");
       }
       try {
         jsonText = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(chunkStart, chunkEnd)).trimEnd();
