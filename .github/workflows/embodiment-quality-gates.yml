@@ -66,6 +66,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-validation
       - name: Validate 3D renderer integration and recovery
         run: npm --prefix app run test:avatar-3d-stage
+      - name: Validate affect-aware browser prosody and lip timing
+        run: npm --prefix app run test:browser-voice-prosody
       - name: Validate Live2D/speech timeline
         run: npm --prefix app run test:embodiment-timeline
       - name: Validate bounded avatar motor intent
