@@ -262,6 +262,8 @@ export function inspectSelfContainedGlb(
   let jsonText: string | null = null;
   let jsonByteLength = 0;
   let binaryByteLength = 0;
+  let binaryChunkOffset = -1;
+  let hasBinaryChunk = false;
   let chunkIndex = 0;
   while (offset < bytes.byteLength) {
     if (offset + 8 > bytes.byteLength) reject("invalid-glb-chunk", "Обрезан заголовок блока GLB.");
@@ -288,8 +290,10 @@ export function inspectSelfContainedGlb(
       }
       jsonByteLength = chunkLength;
     } else if (chunkType === 0x004e4942) {
-      if (binaryByteLength !== 0) reject("invalid-glb-chunk", "GLB содержит больше одного BIN-блока.");
+      if (hasBinaryChunk) reject("invalid-glb-chunk", "GLB содержит больше одного BIN-блока.");
+      hasBinaryChunk = true;
       binaryByteLength = chunkLength;
+      binaryChunkOffset = chunkStart;
     }
     offset = chunkEnd;
     chunkIndex += 1;
@@ -326,6 +330,21 @@ export function inspectSelfContainedGlb(
       }
     }
   }
+
+  const bufferData: Uint8Array[] = buffers.map((rawBuffer, index) => {
+    if (!isRecord(rawBuffer)) reject("invalid-buffer", `Описание buffer №${index} некорректно.`);
+    const byteLength = rawBuffer.byteLength as number;
+    if (typeof rawBuffer.uri === "string") {
+      const decoded = decodeDataUri(rawBuffer.uri, "invalid-buffer").bytes;
+      if (decoded.byteLength < byteLength) reject("invalid-buffer", `Data URI buffer №${index} короче объявленного byteLength.`);
+      return decoded.subarray(0, byteLength);
+    }
+    if (index !== 0 || binaryChunkOffset < 0) {
+      reject("invalid-buffer", `Buffer №${index} не имеет встроенного BIN-блока или data URI.`);
+    }
+    if (byteLength > binaryByteLength) reject("invalid-buffer", `BIN-блок короче объявленного buffer №${index}.`);
+    return bytes.subarray(binaryChunkOffset, binaryChunkOffset + byteLength);
+  });
 
   const nodes = arrayField(parsed, "nodes");
   const meshes = arrayField(parsed, "meshes");
@@ -388,12 +407,48 @@ export function inspectSelfContainedGlb(
       reject("invalid-buffer", `bufferView №${i} выходит за границы объявленного buffer.`);
     }
   }
+  let imagePixels = 0;
   for (let i = 0; i < images.length; i += 1) {
     const image = images[i];
-    if (!isRecord(image)) reject("invalid-buffer", `image №${i} имеет некорректный формат.`);
-    if (image.bufferView !== undefined &&
-        (!Number.isSafeInteger(image.bufferView) || (image.bufferView as number) < 0 || (image.bufferView as number) >= bufferViews.length)) {
-      reject("invalid-buffer", `image №${i} ссылается на несуществующий bufferView.`);
+    if (!isRecord(image)) reject("invalid-image", `image №${i} имеет некорректный формат.`);
+    if (image.bufferView !== undefined && image.uri !== undefined) {
+      reject("invalid-image", `image №${i} не может одновременно задавать bufferView и URI.`);
+    }
+
+    let imageBytes: Uint8Array;
+    let mimeType = typeof image.mimeType === "string" ? image.mimeType.toLowerCase() : "";
+    if (image.bufferView !== undefined) {
+      if (!Number.isSafeInteger(image.bufferView) || (image.bufferView as number) < 0 || (image.bufferView as number) >= bufferViews.length) {
+        reject("invalid-buffer", `image №${i} ссылается на несуществующий bufferView.`);
+      }
+      const bufferView = bufferViews[image.bufferView as number];
+      if (!isRecord(bufferView)) reject("invalid-buffer", `bufferView изображения №${i} имеет некорректный формат.`);
+      if (typeof mimeType !== "string" || !mimeType) reject("invalid-image", `Для image №${i} с bufferView не указан mimeType.`);
+      const length = bufferView.byteLength as number;
+      if (length > AVATAR_GLB_LIMITS.maxImageBytes) {
+        reject("resource-limit", `Encoded-текстура №${i} превышает ${AVATAR_GLB_LIMITS.maxImageBytes / (1024 * 1024)} МиБ.`);
+      }
+      const data = bufferData[bufferView.buffer as number];
+      if (!data) reject("invalid-buffer", `Image №${i} ссылается на отсутствующий buffer.`);
+      const start = (bufferView.byteOffset ?? 0) as number;
+      imageBytes = data.subarray(start, start + length);
+      if (imageBytes.byteLength !== length) reject("invalid-buffer", `Image №${i} выходит за границы бинарного buffer.`);
+    } else if (typeof image.uri === "string") {
+      const decoded = decodeDataUri(image.uri, "invalid-image");
+      imageBytes = decoded.bytes;
+      if (!mimeType) mimeType = decoded.mimeType;
+      else if (mimeType !== decoded.mimeType) reject("invalid-image", `Mime type image №${i} не совпадает с data URI.`);
+      if (imageBytes.byteLength > AVATAR_GLB_LIMITS.maxImageBytes) {
+        reject("resource-limit", `Encoded-текстура №${i} превышает ${AVATAR_GLB_LIMITS.maxImageBytes / (1024 * 1024)} МиБ.`);
+      }
+    } else {
+      reject("invalid-image", `Image №${i} должен иметь bufferView либо встроенный data URI.`);
+    }
+
+    const dimensions = readEmbeddedImageDimensions(imageBytes, mimeType);
+    imagePixels += assertSafeImageDimensions(dimensions, i);
+    if (imagePixels > AVATAR_GLB_LIMITS.maxTotalImagePixels) {
+      reject("resource-limit", `Суммарная площадь текстур превышает ${AVATAR_GLB_LIMITS.maxTotalImagePixels.toLocaleString("en-US")} пикселей.`);
     }
   }
 
@@ -407,6 +462,7 @@ export function inspectSelfContainedGlb(
     accessorCount,
     accessorElements,
     imageCount,
+    imagePixels,
     textureCount,
     animationCount,
     animationChannelCount,
