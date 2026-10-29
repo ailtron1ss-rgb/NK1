@@ -63,7 +63,7 @@ assert.equal(providerCalls.length, 1, 'the local provider must be called once th
 assert.ok(providerCalls[0].user.includes('VERIFIED_DATASET_FINGERPRINT:'));
 assert.ok(providerCalls[0].user.includes('a'.repeat(64)));
 assert.ok(providerCalls[0].user.includes('validation-task-1'));
-assert.ok(providerCalls[0].user.includes('holdoutPolicy'));
+assert.ok(providerCalls[0].user.includes('HOLDOUT_RESULTS_WITHHELD:'));
 assert.ok(providerCalls[0].user.includes('resultsWithheld'));
 assert.ok(!providerCalls[0].user.includes('holdout-secret-task'));
 assert.ok(!providerCalls[0].user.includes('gap01'), 'numeric holdout feedback must never reach the local revision model');
