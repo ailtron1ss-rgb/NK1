@@ -142,8 +142,9 @@
     if(typeof d.expression!=='string'||!Object.prototype.hasOwnProperty.call(EXPR_MAP,d.expression))return null;
     if(typeof d.mouth.viseme!=='string'||!/^[a-z]{1,16}$/.test(d.mouth.viseme))return null;
     if(typeof d.gaze.driven!=='boolean'||typeof d.body.gesture!=='boolean')return null;
-    if(typeof d.body.motionGroup!=='string'||!/^[a-zA-Z0-9_-]{1,32}$/.test(d.body.motionGroup))return null;
-    if(!Number.isInteger(d.body.motionIndex)||d.body.motionIndex<0||d.body.motionIndex>32||!Number.isSafeInteger(d.body.motionToken)||d.body.motionToken<0)return null;
+    const motionCounts={Idle:1,TapHead:1,TapBody:1,Special:2};
+    if(typeof d.body.motionGroup!=='string'||!Object.prototype.hasOwnProperty.call(motionCounts,d.body.motionGroup))return null;
+    if(!Number.isInteger(d.body.motionIndex)||d.body.motionIndex<0||d.body.motionIndex>=motionCounts[d.body.motionGroup]||!Number.isSafeInteger(d.body.motionToken)||d.body.motionToken<0)return null;
     for(const [key,min,max] of [
       ['headAngleX',-1,1],['headAngleY',-1,1],['bodyAngleX',-1,1],
       ['bodyAngleY',-1,1],['bodyAngleZ',-1,1],['breathIntensity',0,1],
