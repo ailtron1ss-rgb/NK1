@@ -4,6 +4,25 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/PairedSeedConfidence.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningRobustMetrics.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningFitnessJournal.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningLifecycleJournal.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/tests/workpass383-p23-revision-generator-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/workpass402-production-promotion-family-gate.mjs"
+      - "runtime/neuro-kurisu/tests/workpass404-paired-seed-confidence.mjs"
+      - "runtime/neuro-kurisu/tests/workpass405-learning-fitness-journal.mjs"
+      - "runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass407-learning-lifecycle-journal.mjs"
+      - "runtime/neuro-kurisu/tests/workpass408-lifecycle-store-reconciliation.mjs"
+      - "runtime/neuro-kurisu/tests/p23-true-learning.mjs"
+      - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"
@@ -93,3 +112,6 @@ jobs:
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
+      - name: Run WorkPass622 learning evidence integrity suite
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass622:learning-evidence
