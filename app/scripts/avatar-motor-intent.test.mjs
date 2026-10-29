@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { planAvatarMotorIntent } from "../src/components/avatar/motorIntent.ts";
+import { deriveEmbodimentPose } from "../../runtime/neuro-kurisu/public/embodiment-pose.mjs";
 import { isEmbodimentIntentV1, normalizeEmbodimentIntentV1 } from "../../runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs";
 
 const baseIntent = (overrides = {}) => ({
@@ -73,9 +74,42 @@ test("strict protocol accepts the app's envelope and normalizes speech/body fiel
   assert.equal(isEmbodimentIntentV1(value), true);
   assert.deepEqual(normalizeEmbodimentIntentV1(value), {
     stateVersion: 1, expression: "happy", expressionIntensity: 0.8, speaking: true,
-    mouthOpen: 0.65, gazeX: 0.2, gazeY: -0.1, headTilt: -0.04, gesture: true,
-    motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
+    mouthOpen: 0.65, gazeX: 0.2, gazeY: -0.1, headTilt: -0.04,
+    headAngleX: 0.2, headAngleY: -0.1, bodyAngleX: 0, bodyAngleY: 0, bodyAngleZ: 0, breathIntensity: 0.8,
+    gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
   });
+});
+
+test("continuous pose channels are optional for old v1 senders and bounded for new senders", () => {
+  const legacy = baseIntent();
+  assert.equal(isEmbodimentIntentV1(legacy), true);
+  const extended = baseIntent({ body: {
+    ...legacy.body, headAngleX: 0.4, headAngleY: -0.2, bodyAngleX: 0.25,
+    bodyAngleY: -0.1, bodyAngleZ: 0.05, breathIntensity: 0.7,
+  } });
+  assert.equal(isEmbodimentIntentV1(extended), true);
+  const normalized = normalizeEmbodimentIntentV1(extended);
+  assert.equal(normalized.bodyAngleX, 0.25);
+  assert.equal(normalized.bodyAngleY, -0.1);
+  assert.equal(normalized.bodyAngleZ, 0.05);
+  assert.equal(normalized.breathIntensity, 0.7);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...legacy.body, headAngleX: 1.01 } })), false);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...legacy.body, breathIntensity: -0.01 } })), false);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...legacy.body, untrustedExtra: true } })), false);
+});
+
+test("the continuous pose mapper is deterministic, bounded, and has stable fallbacks", () => {
+  const inspect = deriveEmbodimentPose("explore", "curiosity", 0.7);
+  const rest = deriveEmbodimentPose("rest", "calm", 0.15);
+  assert.notDeepEqual(inspect, rest);
+  assert.deepEqual(inspect, deriveEmbodimentPose("explore", "curiosity", 0.7));
+  assert.deepEqual(deriveEmbodimentPose("unknown", "unrecognized", Number.NaN), deriveEmbodimentPose("wait", "calm", 0.25));
+  for (const pose of [inspect, rest]) {
+    for (const key of ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ"]) {
+      assert.ok(Number.isFinite(pose[key]) && pose[key] >= -1 && pose[key] <= 1);
+    }
+    assert.ok(Number.isFinite(pose.breathIntensity) && pose.breathIntensity >= 0 && pose.breathIntensity <= 1);
+  }
 });
 
 test("invalid motion, extra protocol fields, and out-of-range data fail closed", () => {
@@ -90,6 +124,9 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /type="module"/);
   assert.ok(viewer.includes("from './embodiment-intent.mjs'"));
   assert.match(viewer, /d.type==='kurisu_embodiment_intent'/);
+  for (const token of ["ParamBodyAngleX", "ParamBodyAngleY", "ParamBodyAngleZ", "ParamBreath", "breathIntensity"]) {
+    assert.ok(viewer.includes(token), `standalone viewer must consume ${token}`);
+  }
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
   assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
