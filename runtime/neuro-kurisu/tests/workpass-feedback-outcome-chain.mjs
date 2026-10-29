@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { OutcomeVerificationService, isTrustedDecisionLinkedExternalPostcondition } from '../src/organism/system/OutcomeVerificationService.ts';
 import { OrganismSystemFabric } from '../src/organism/core/OrganismSystemFabric.ts';
 import { OutcomeCognitionFabric } from '../src/organism/system/OutcomeCognitionFabric.ts';
+import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
 
 const expected = {
   toolId: 'device.set-state',
@@ -154,6 +155,49 @@ malformedPersistedOutcome.restore({
 });
 assert.equal(malformedPersistedOutcome.snapshot().records.length, 0,
   'persisted outcome projections with forged evidence identity must be discarded');
+
+// Carry the same verifier-owned identity into the causal event fabric.
+const cef = new CognitiveEventFabric();
+const cefActionId = `cef:action:${expected.executionId}`;
+cef.append({
+  id: cefActionId, tick: 7, stage: 'tool-action', source: 'action-gateway',
+  parentIds: [expected.decisionId], external: false, confidence01: 1,
+  payload: { executionId: expected.executionId, tool: expected.toolId },
+});
+cef.append({
+  id: `cef:outcome:${expected.executionId}`, tick: 7, stage: 'tool-outcome', source: 'action-gateway',
+  parentIds: [cefActionId], external: false, confidence01: 1,
+  payload: { executionId: expected.executionId, tool: expected.toolId, ok: true },
+});
+const cefInput = {
+  tick: 7, executionId: expected.executionId, toolId: expected.toolId,
+  observationId: observed.id, evidenceEventId: verification.evidenceEventId,
+  verified: true, confidence01: 0.96, sourceId: source.id,
+  sourceClass: source.sourceClass, channel: source.channel, independenceKey: source.independenceKey,
+  expectedPostcondition: 'door=open', observedPostcondition: 'door=open',
+};
+const cefFirst = cef.appendToolExternalObservation(cefInput);
+assert.equal(cefFirst.resolved, true);
+const cefEvidence = cef.snapshot().recent.find(event => event.id === cefFirst.eventId);
+assert.equal(cefEvidence?.stage, 'external-evidence');
+assert.equal(cefEvidence?.payload.evidenceEventId, verification.evidenceEventId,
+  'CEF must retain the exact verifier identity, not only the observer ID');
+const cefReplay = cef.appendToolExternalObservation(cefInput);
+assert.equal(cefReplay.resolved, true);
+assert.equal(cefReplay.replayed, true, 'CEF re-delivery with the same identity must be idempotent');
+assert.throws(() => cef.appendToolExternalObservation({
+  ...cefInput, evidenceEventId: `outcome:${'b'.repeat(40)}`,
+}), /external-observation-projection-conflict/,
+  'CEF must reject rebinding an observation to another verifier identity');
+const invalidCef = cef.appendToolExternalObservation({
+  ...cefInput, observationId: 'obs-invalid-event-id', evidenceEventId: 'forged:identity',
+});
+assert.equal(invalidCef.resolved, false);
+assert.equal(invalidCef.reason, 'evidence-event-id-invalid');
+
+const coreRuntime = (await import('node:fs')).readFileSync(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
+assert.match(coreRuntime, /appendToolExternalObservation\(\{[\s\S]{0,350}evidenceEventId: observation\.evidenceEventId/,
+  'Core must pass the verifier identity into CEF projection');
 
 const totalAfterFirst = ledger.snapshot().total;
 const replayed = research.externalObserver.observe(eventInput);
