@@ -105,7 +105,7 @@
     "typecheck": "node scripts/typecheck-runtime.mjs",
     "test:big-pass-356:compositional-trajectory": "node --experimental-strip-types tests/big-pass-356-compositional-trajectory-restart.mjs",
     "audit:core-ownership": "node scripts/audit-core-ownership.mjs",
-    "audit:workpass-feedback-outcomes": "npm run typecheck && npm run audit:core-ownership && npm run test:workpass84:script-integrity && npm run test:workpass-feedback:reality-ledger && npm run test:workpass-feedback:outcome-chain && npm run test:workpass294:correlated-postcondition && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass94:verification-input-binding && npm run test:workpass57 && npm run test:workpass59 && npm run test:p23:verified-outcomes:full && npm run test:p2841",
+    "audit:workpass-feedback-outcomes": "npm run typecheck && npm run audit:core-ownership && npm run test:workpass84:script-integrity && npm run test:workpass-feedback:reality-ledger && npm run test:workpass-feedback:outcome-chain && npm run test:workpass294:correlated-postcondition && npm run test:workpass95:receipt-integrity && npm run test:workpass96:finalizer-boundary && npm run test:workpass94:verification-input-binding && npm run test:workpass57 && npm run test:workpass59 && npm run test:p23:verified-outcomes:full && npm run test:p2841 && npm run test:workpass69:server-smoke",
     "audit:actions-runtime": "node scripts/audit-actions-runtime.mjs",
     "test:p70:contextual-carryover": "node --experimental-strip-types tests/big-pass-70-contextual-carryover.mjs",
     "test:p64:p65": "node --experimental-strip-types tests/p64-p65-integration.mjs",
