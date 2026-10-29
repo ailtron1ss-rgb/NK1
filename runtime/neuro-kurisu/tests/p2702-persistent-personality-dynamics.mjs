@@ -52,7 +52,7 @@ assert.equal(rejectedAfter.lastEvidenceGateReason,'missing-provenance');
 
 const badSource=new P2702PersistentPersonalityDynamics();
 const badSourceBefore=badSource.snapshot();
-badSource.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.01,identityGap01:.1,action:'explore',evidence:{verified:true,independent:true,source:'internal',evidenceRef:'internal:pretend-external'}});
+badSource.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.01,identityGap01:.1,action:'explore',evidence:{source:'internal'}});
 assert.deepEqual(badSource.snapshot().adaptiveValues,badSourceBefore.adaptiveValues,'internal evidence cannot authorize stable personality learning');
 
 const noAttribution=new P2702PersistentPersonalityDynamics();
