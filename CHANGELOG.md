@@ -1,3 +1,21 @@
+## [NK1][WorkPass618] Expose Original 2D avatar as a selectable mode (2026-10-29)
+
+- Integrate the existing `KurisuOriginalStage` SVG prototype into the active avatar selector beside Live2D and Legacy, without replacing the motor-intent repairs.
+- Restore the saved Original selection and pass organism emotion, action, arousal, gaze, speaking, thinking and viseme state into the component.
+- Keep the editable clothing, colour, pose, motion-style and scale controls; explicitly classify this as a 2D concept, not a completed 2.5D/3D body.
+- Add regression assertions for selector wiring and outfit/pose persistence. Production build, browser render and Release ZIP refresh remain pending.
+
+## [NK1][WorkPass617] Bridge Live2D embodiment intent and add deterministic motor planning (2026-10-29)
+
+- Fix the protocol mismatch between `AvatarStage` (`kurisu_embodiment_intent`) and the Live2D viewer, with strict protocol-v1 validation, monotonic state-version rejection, and normalization to the bundled model's actual motion groups.
+- Route protocol-driven mouth poses into the animation ticker's `lipTarget`; previously a direct core-parameter update could be overwritten by the next frame.
+- Include `motionToken` in motion identity, allowing a semantic intent change to replay the same motion group/index without restarting it on ordinary state/viseme updates.
+- Add a deterministic bounded motor-intent selector for rest/listening/reflection/inspection/explanation/comfort/response and integrate it into the active avatar path.
+- Add `test:avatar-motor-intent` with unit/regression checks for planning, schema bounds, cancellation, viewer wiring, token-aware motion identity, and lip target routing.
+- Fix a CI-discovered regex-literal syntax error in the new viewer-wiring assertion by using a direct source-string check.
+- Replace the lip-target static regex with a direct source-string assertion after CI exposed lost escapes in the template-generated test source.
+- This is a Live2D protocol and high-level intent integration repair. It does not add a 3D skeleton, IK, garment simulation, free joint control, or measured autonomous motor-policy performance. The Release ZIP is not changed by this source-branch pass; build/E2E/device tests remain to be run.
+
 ## [NK1][WorkPass616] Wire metadata candidate mode into independent bilingual retrieval evaluation (2026-10-29)
 
 - Add an explicit `metadataRecallEnabled` benchmark option that applies only to the isolated candidate arm; the baseline arm remains the canonical retriever and is unchanged.
