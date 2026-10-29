@@ -283,8 +283,22 @@ export function createIndependentSkillCandidateEvaluator(
     ...(config.experimentAuthority.attempt === undefined ? {} : { attempt: config.experimentAuthority.attempt }),
   } : undefined;
   const taskFamilyById = new Map((authority?.manifest ?? []).map(entry => [entry.taskId, entry.family] as const));
-  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, taskFamily, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
-    ({ taskId, trialId, taskFamily:taskFamilyById.get(taskId) ?? taskFamily ?? null, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
+  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, taskFamily, seed, split, input, requiredCapabilityIds, expectedStepIds }) => {
+    const family = taskFamilyById.get(taskId) ?? taskFamily;
+    // Preserve the established plan digest for manifests without family metadata.
+    // When a trusted family exists, bind it into the digest so family-level evidence
+    // cannot be swapped after evaluator construction.
+    return {
+      taskId,
+      trialId,
+      ...(family === undefined || family === null ? {} : { taskFamily: family }),
+      seed,
+      split,
+      input,
+      requiredCapabilityIds,
+      expectedStepIds,
+    };
+  })));
   return async ({ payload, payloadFingerprint }) => {
     // Snapshot the candidate once, before the first asynchronous boundary. Re-cloning
     // the caller-owned object per trial would allow a retained reference to change
