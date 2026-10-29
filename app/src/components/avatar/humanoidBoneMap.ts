@@ -22,8 +22,8 @@ export function canonicalizeHumanoidBoneName(value: unknown): AvatarBoneRole | s
   const name = normalizeHumanoidBoneName(value);
   if (!name) return "other";
 
-  if (name === "head" || /^(?:jbipc|j?bipc?)head$/.test(name)) return "head";
-  if (name === "neck" || /^(?:jbipc|j?bipc?)neck$/.test(name)) return "neck";
+  if (name.endsWith("head") || /^(?:jbipc|j?bipc?)head$/.test(name)) return "head";
+  if (name.endsWith("neck") || /^(?:jbipc|j?bipc?)neck$/.test(name)) return "neck";
   if (name === "spine" || /^(?:jbipc|j?bipc?)spine\d*$/.test(name)) return "spine";
   if (name === "hips" || name === "pelvis" || /^(?:jbipc|j?bipc?)hips$/.test(name)) return "hips";
 
