@@ -15,11 +15,13 @@
 <body>
 <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
 <div id="status">загрузка…</div>
-<script>
+<script type="module">
+import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
 (() => {
   const status=document.getElementById('status');
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
+  let lastIntentStateVersion=0;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
   const EXPR_MAP={
@@ -40,9 +42,17 @@
     setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));
     setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1));
     const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1), intensity=clamp(bodySignal.expressionIntensity,.0,1);
+    // The ticker smooths lipCurrent toward lipTarget. Updating only the core parameter here
+    // would be overwritten by the next frame, leaving protocol-driven mouth poses invisible.
+    lipTarget=clamp(mouth+emph*.08,0,1);
     setCore('ParamMouthOpenY',Math.max(lipTarget,mouth+emph*.08));
     setCore('ParamMouthForm',(intensity-.5)*.8);
-    if(bodySignal.motionGroup){const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}`;if(k!==lastMotionKey){try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}}}
+    if(bodySignal.motionGroup){
+      const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}:${Number(bodySignal.motionToken||0)}`;
+      if(k!==lastMotionKey){
+        try{Promise.resolve(model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0))).catch(()=>{});lastMotionKey=k}catch{}
+      }
+    }
   }
   function applyExpression(expr){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
@@ -107,6 +117,13 @@
     if(ev.origin!==window.location.origin)return;
     const d=ev.data||{};
     if(d.type==='kurisu_lipsync')lipTarget=clamp(d.value,0,1);
+    else if(d.type==='kurisu_embodiment_intent'){
+      const normalized=normalizeEmbodimentIntentV1(d);
+      if(!normalized||!model||normalized.stateVersion<=lastIntentStateVersion)return;
+      lastIntentStateVersion=normalized.stateVersion;
+      applyEmbodiment(normalized);
+      applyExpression(normalized.expression);
+    }
     else if(d.type==='kurisu_embodiment')applyEmbodiment(d);
     else if(d.type==='kurisu_expression')applyExpression(String(d.expression||'neutral'));
     else if(d.type==='kurisu_gaze'){setCore('ParamAngleX',clamp(d.x,-1,1)*30);setCore('ParamAngleY',clamp(d.y,-1,1)*20);setCore('ParamEyeBallX',clamp(d.x,-1,1));setCore('ParamEyeBallY',clamp(d.y,-1,1))}

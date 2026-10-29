@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
@@ -69,6 +70,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const speechSequenceRef = useRef(0);
   const intentStateVersionRef = useRef(0);
+  const motionIntentKeyRef = useRef("");
+  const motionIntentTokenRef = useRef(0);
   const activeSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
   const lastSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
   const speechPhaseRef = useRef<SpeechPhase>("idle");
@@ -304,18 +307,33 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     };
     const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
     const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
-    const headTiltByEmotion: Record<EmotionLabel, number> = {
-      curiosity: -0.045, calm: 0, joy: 0.018, anxiety: -0.018,
-      frustration: 0.035, sadness: 0.055, anger: 0.025, protective: -0.01,
-    };
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
     const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
     const freshTextTurn = speechPhaseRef.current !== "cancelled" && speechPhaseRef.current !== "unknown" && lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000;
-    const bodyGestureActive = Boolean(activeUtterance || thinking || freshTextTurn);
-    const motionGroup = activeUtterance || freshTextTurn ? "Special" : thinking ? "TapHead" : "Idle";
-    const motionIndex = snap.emotion.label === "joy" || snap.emotion.label === "curiosity" ? 1 : 0;
-    const motionToken = activeUtterance || freshTextTurn ? Number(lastTurn?.at || 0) : thinking ? Math.max(1, Number(snap.tick || 1)) : 0;
+    const motorPlan = planAvatarMotorIntent({
+      emotion: snap.emotion.label,
+      valence: snap.emotion.valence,
+      arousal: snap.emotion.arousal,
+      action: snap.lastOption,
+      thinking,
+      speaking: activeUtterance,
+      hasFreshTurn: freshTextTurn,
+      turnText: lastTurn?.role === "kurisu" ? lastTurn.text : "",
+      awake: snap.awake,
+    });
+    const bodyGestureActive = motorPlan.gesture;
+    const motionGroup = motorPlan.motionGroup;
+    const motionIndex = motorPlan.motionIndex;
+    // Increment only when the semantic motor goal changes. Snapshot ticks and mouth frames
+    // must not continually restart the same motion clip.
+    const motionIdentity = freshTextTurn ? (session?.speechEventId ?? turnKey) : `state:${motorPlan.action}`;
+    const motionSignature = `${motorPlan.action}:${motionGroup}:${motionIndex}:${motionIdentity}`;
+    if (motionIntentKeyRef.current !== motionSignature) {
+      motionIntentKeyRef.current = motionSignature;
+      motionIntentTokenRef.current += 1;
+    }
+    const motionToken = motionIntentTokenRef.current;
     const audioTimeMs = activeSession
       ? speechAudioClockNow(activeSession, performance.now())
       : Math.max(0, Number(session?.lastAudioElapsedMs ?? 0));
@@ -336,7 +354,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
       gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
       body: {
-        headTilt: headTiltByEmotion[snap.emotion.label],
+        headTilt: motorPlan.headTilt,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
@@ -345,7 +363,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
     };
     win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
