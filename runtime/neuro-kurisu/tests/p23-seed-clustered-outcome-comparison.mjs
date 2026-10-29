@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { evaluateOutcomePromotion } from '../src/organism/learning/VerifiedOutcomePromotionGate.ts';
 
 const prompt = (name) => VerifiedOutcomeLedger.fingerprintPrompt(name);
 const tasks = [
@@ -101,6 +102,30 @@ assert.equal(families.find(x => x.family === 'memory').absoluteGain, 1);
 assert.equal(families.find(x => x.family === 'transfer').absoluteGain, 0);
 assert.equal(families.find(x => x.family === 'tool-use').absoluteGain, 0);
 assert.equal(ledger.comparePairedByFamilyAndSeed('baseline', 'candidate', 'train')[0].pairedN, 0);
+
+// The same seed contributes to each family stratum. The gate must not
+// interpret those repeated seed-level counts as a disjoint partition.
+const seedClusteredGate = evaluateOutcomePromotion(bySeed, families, {
+  minPairedTasks: 4,
+  minFamilies: 3,
+  minAbsoluteGain: 0.02,
+  maxFamilyRegression: 0.05,
+  requirePositiveConfidenceLowerBound: true,
+  familyPairCountMode: 'seed-repeated',
+});
+assert.equal(seedClusteredGate.eligible, true, JSON.stringify(seedClusteredGate));
+const incorrectPartitionGate = evaluateOutcomePromotion(bySeed, families, {
+  minPairedTasks: 4,
+  minFamilies: 3,
+  minAbsoluteGain: 0.02,
+  maxFamilyRegression: 0.05,
+  requirePositiveConfidenceLowerBound: true,
+  familyPairCountMode: 'partition',
+});
+assert.equal(incorrectPartitionGate.eligible, false);
+assert.ok(incorrectPartitionGate.reasons.includes('family-pair-count-mismatch'),
+  'mismatched aggregation units must not be silently treated as equivalent');
+
 
 const oneSeedLedger = new VerifiedOutcomeLedger(tasks.slice(0, 2));
 for (const method of ['baseline', 'candidate']) {
