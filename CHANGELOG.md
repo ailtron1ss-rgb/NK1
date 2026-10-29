@@ -1,3 +1,13 @@
+## [NK1][WorkPass619] Fix avatar render timing and visual-quality seams (2026-10-29)
+
+- Apply Live2D gaze/head/eye/viseme parameters at Cubism's `beforeModelUpdate` boundary, after authored motion and physics updates; earlier ticker writes could be overwritten during render.
+- Add small additive head/gaze offsets, constrain motion groups/indexes to actual shipped clips, and report unavailable clips instead of silently treating them as successful.
+- Enable capped DPR=2/auto-density in both Live2D viewer entry points and in the Legacy sprite canvas.
+- Replace wall-clock sprite pose cycling with deterministic action-aware selection and pass organism action/thinking state into Legacy.
+- Remove the misleading torso ring drawn over still sprites, improve SVG Original's default palette/hair clip, and make Auto pose reflect basic action/emotion context while preserving manual overrides.
+- Add regression assertions for active-viewer timing, sprite determinism, model/media references, texture profiles, motion coverage, sprite manifest integrity and SHA-locked canonical assets.
+- This source pass does not claim browser/device visual E2E or a refreshed Release ZIP; real device validation and the human license/redistribution release gate remain required.
+
 ## [NK1][WorkPass618] Expose Original 2D avatar as a selectable mode (2026-10-29)
 
 - Integrate the existing `KurisuOriginalStage` SVG prototype into the active avatar selector beside Live2D and Legacy, without replacing the motor-intent repairs.
