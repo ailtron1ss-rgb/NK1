@@ -1,4 +1,5 @@
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const ACTIONS=['respond','explore','verify','rest','reflect','wait','defer'] as const;
@@ -83,16 +84,75 @@ export class CanonicalSelfAgencyAuthority{
   private state=defaultCanonicalSelfAgencyState();
 
   restore(raw?:Partial<CanonicalSelfAgencyState>|null){
-    const d=defaultCanonicalSelfAgencyState(),r=raw??{};
+    const d=defaultCanonicalSelfAgencyState();
+    let detached:unknown;
+    try{
+      detached=snapshotPlainData(raw??{},{maxDepth:12,maxNodes:1024,maxStringUnits:32*1024,allowNonFiniteNumbers:true});
+    }catch{
+      this.state={...d,invariantIntegrity01:0,lastDecision:'identity-block',lastReason:'restored-state-boundary-rejected'};
+      return;
+    }
+    const r=detached&&typeof detached==='object'&&!Array.isArray(detached)
+      ?detached as Record<string,unknown>:{};
     const expected=d.invariantFingerprint;
-    const supplied=String(r.invariantFingerprint??expected);
-    const integrity=supplied===expected ? 1 : 0;
+    let valid=true;
+    if(r.version!==undefined&&r.version!==1)valid=false;
+    const supplied=typeof r.invariantFingerprint==='string'?r.invariantFingerprint:expected;
+    if(supplied!==expected)valid=false;
+
+    // Core invariants are compiled into the canonical profile; never restore
+    // arbitrary persisted invariant keys over that authority.
     const invariants={...d.invariants};
-    const traits={...d.adaptiveTraits,...(r.adaptiveTraits??{})};
-    for(const [k,v] of Object.entries(traits))traits[k]=clamp(Number(v));
-    this.state={...d,...r,invariants,adaptiveTraits:traits,version:1,invariantVersion:d.invariantVersion,
-      invariantFingerprint:expected,protectedIdentityAssertion:d.protectedIdentityAssertion,invariantIntegrity01:integrity,
-      lastDecision:integrity?'stable':'identity-block',lastReason:integrity?(String(r.lastReason??d.lastReason)):'invariant-fingerprint-mismatch'};
+    const traitInput=r.adaptiveTraits&&typeof r.adaptiveTraits==='object'&&!Array.isArray(r.adaptiveTraits)
+      ?r.adaptiveTraits as Record<string,unknown>:{};
+    const traits:Record<string,number>={...d.adaptiveTraits};
+    for(const key of Object.keys(d.adaptiveTraits)){
+      if(!Object.prototype.hasOwnProperty.call(traitInput,key))continue;
+      const value=traitInput[key];
+      if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>1){valid=false;continue;}
+      traits[key]=value;
+    }
+
+    const counter=(key:string,fallback:number)=>{
+      const value=r[key];
+      if(value===undefined)return fallback;
+      if(typeof value==='number'&&Number.isSafeInteger(value)&&value>=0)return value;
+      valid=false;return fallback;
+    };
+    const unit=(key:string,fallback:number)=>{
+      const value=r[key];
+      if(value===undefined)return fallback;
+      if(typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1)return value;
+      valid=false;return fallback;
+    };
+    const lastTick=r.lastTick===undefined?d.lastTick:
+      typeof r.lastTick==='number'&&Number.isSafeInteger(r.lastTick)&&r.lastTick>=0?r.lastTick:(valid=false,d.lastTick);
+    const lastReason=typeof r.lastReason==='string'&&r.lastReason.length<=180?r.lastReason:
+      (r.lastReason===undefined?d.lastReason:(valid=false,d.lastReason));
+    this.state={
+      version:1,
+      cycles:counter('cycles',d.cycles),
+      identityMutationChecks:counter('identityMutationChecks',d.identityMutationChecks),
+      identityMutationBlocks:counter('identityMutationBlocks',d.identityMutationBlocks),
+      goalAdmissionChecks:counter('goalAdmissionChecks',d.goalAdmissionChecks),
+      goalAdmissionBlocks:counter('goalAdmissionBlocks',d.goalAdmissionBlocks),
+      selfModificationChecks:counter('selfModificationChecks',d.selfModificationChecks),
+      selfModificationBlocks:counter('selfModificationBlocks',d.selfModificationBlocks),
+      invariantIntegrity01:valid?1:0,
+      agencyIntegrity01:unit('agencyIntegrity01',d.agencyIntegrity01),
+      meanIdentityContinuity01:unit('meanIdentityContinuity01',d.meanIdentityContinuity01),
+      meanActionConstraint01:unit('meanActionConstraint01',d.meanActionConstraint01),
+      meanActionConflict01:unit('meanActionConflict01',d.meanActionConflict01),
+      invariantVersion:d.invariantVersion,
+      invariantFingerprint:expected,
+      protectedIdentityAssertion:d.protectedIdentityAssertion,
+      invariants,
+      adaptiveTraits:traits,
+      lastDecision:valid&&['stable','identity-block','goal-block','self-modification-block'].includes(String(r.lastDecision??'stable'))
+        ?r.lastDecision as CanonicalSelfAgencyState['lastDecision']:'identity-block',
+      lastReason:valid?lastReason: supplied!==expected?'invariant-fingerprint-mismatch':'restored-state-fields-invalid',
+      lastTick,
+    };
   }
 
   snapshot(){return structuredClone(this.state);}

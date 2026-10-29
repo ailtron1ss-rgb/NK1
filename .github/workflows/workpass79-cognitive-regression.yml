@@ -85,3 +85,17 @@ jobs:
       - name: Exercise real server HTTP path with a controlled local provider
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass69:server-smoke
+      - name: Install locked runtime dependencies for personality regressions
+        run: npm ci --prefix runtime/neuro-kurisu --no-audit --no-fund
+      - name: Verify canonical self-agency restore and invariant boundary
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/canonical-self-agency-authority.mjs
+      - name: Verify persistent personality evidence gate, attribution and restart snapshot
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2702-persistent-personality-dynamics.mjs
+      - name: Verify relationship self-model input and restore boundary
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/relationship-self-input-boundary.mjs
+      - name: Typecheck identity and personality integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

@@ -1,3 +1,18 @@
+## [NK1][WorkPass623] Gate persistent personality learning on independent evidence (2026-10-29)
+
+- Port the hardened canonical self-agency restore boundary from the divergent personality branch into `workpass70-source`: detached plain-data validation, canonical invariant fingerprint enforcement, allowlisted adaptive traits, bounded counters and finite metrics.
+- Harden `P2702PersistentPersonalityDynamics.restore`: persisted snapshots cannot replace compiled personality invariants or reorder their schema; malformed vectors and relationship/action state fall back to bounded defaults without invoking getters.
+- Separate observed outcomes from verified personality-learning updates. Stable adaptive traits, value weights, relationship trust and autobiographical strength update only when a high-confidence outcome is accompanied by the exact trusted external-postcondition object minted by `OutcomeVerificationService`, bound to the same tool, complete input, execution ID and decision ID. A caller-created copy or prefix string cannot satisfy the WeakMap-backed trust check.
+- Thread optional evidence provenance through the existing `NeuralExperienceBranch.afterOutcome` interface. Omitted provenance fails closed for stable personality updates while retaining uncertainty updates and diagnostics; no second learner is introduced.
+- Remove action-index-based trait mutation: action `explore` must not happen to update whichever trait occupies array index 1. Trait/value attribution (`traitFeedback` / `valueFeedback`) must name a known bounded dimension and exactly match the `personalityFeedback` payload inside the verifier-bound action input. Relationship trust can change only when `relationshipId` matches the same verified input.
+- Prevent relationship trust from drifting merely because the organism selected a goal/action. Relationship trust is updated only after a verifier-minted outcome bound to the exact input and matching relationship ID; identity keys are Unicode/control-character validated and the persisted map is capped at 32 entries.
+- Add the missing shared `PlainDataSnapshot.ts` helper required by the strict canonical restore boundary and the existing `RelationshipSelf` snapshot validator.
+- Add the missing shared `PlainDataSnapshot.ts` helper required by strict canonical restore and the existing `RelationshipSelf` validator.
+- Extend canonical self-agency and P2702 regression cases for tampered snapshots, hostile getters, invalid trait values, missing provenance and untrusted evidence source.
+- Add explicit canonical-self-agency, P2702, relationship-boundary and runtime typecheck commands to the WorkPass79 CI workflow.
+- Add explicit canonical-self-agency, P2702, relationship-boundary and runtime typecheck commands to the WorkPass79 CI workflow.
+- Validation status: changes are on a dedicated work branch; runtime tests and CI have **not** been executed in this environment. This entry is not a test PASS; require exact-SHA CI evidence before promotion.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
