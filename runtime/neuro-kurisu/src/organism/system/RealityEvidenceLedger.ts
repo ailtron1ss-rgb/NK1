@@ -28,23 +28,89 @@ export interface RealityEvidenceLedgerState {
 }
 
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const REALITY_CLASSES = new Set<EvidenceRealityClass>(['external-observation','device-observation','simulator','derived','model-generated','user-reported']);
 const EXTERNAL=new Set<EvidenceRealityClass>(['external-observation','device-observation','user-reported']);
+const safeTotal = (value: unknown, fallback = 0): number => Number.isSafeInteger(value) && Number(value) >= 0 ? Number(value) : fallback;
 
 export class RealityEvidenceLedger {
   private readonly capacity:number;
   private records:RealityEvidenceRecord[]=[];
   private total=0;
 
-  constructor(capacity=384){this.capacity=Math.max(128,Math.min(2048,Math.floor(capacity)));}
+  constructor(capacity=384){this.capacity=Math.max(128,Math.min(2048,Math.floor(Number.isFinite(capacity)?capacity:384)));}
 
-  restore(raw?:Partial<RealityEvidenceLedgerState>|null):void{
-    const list=Array.isArray(raw?.recent)?raw!.recent.slice(0,this.capacity).map((x:any)=>({...x,parentIds:Array.isArray(x.parentIds)?x.parentIds.slice(0,8):[],confidence01:clamp01(Number(x.confidence01??.5))})) : [];
-    this.records=list; this.total=Math.max(list.length,Number(raw?.total??list.length));
+  private normalizeRecord(value: unknown): RealityEvidenceRecord | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const row = value as Partial<RealityEvidenceRecord>;
+    const id = typeof row.id === 'string' ? row.id.trim() : '';
+    if (!id || id.length > 256) return null;
+    if (typeof row.tick !== 'number' || !Number.isSafeInteger(row.tick) || row.tick < 0) return null;
+    if (typeof row.at !== 'number' || !Number.isFinite(row.at) || row.at < 0) return null;
+    if (typeof row.realityClass !== 'string' || !REALITY_CLASSES.has(row.realityClass as EvidenceRealityClass)) return null;
+    if (typeof row.claim !== 'string') return null;
+    if (typeof row.independenceKey !== 'string' || !row.independenceKey.trim()) return null;
+    const confidence = Number(row.confidence01 ?? 0.5);
+    if (!Number.isFinite(confidence)) return null;
+    const parentIds = Array.isArray(row.parentIds)
+      ? row.parentIds.filter((parent): parent is string => typeof parent === 'string' && parent.length > 0).slice(0, 8)
+      : [];
+    return {
+      id,
+      tick: row.tick,
+      at: row.at,
+      realityClass: row.realityClass as EvidenceRealityClass,
+      claim: row.claim.slice(0, 240),
+      confidence01: clamp01(confidence),
+      independenceKey: row.independenceKey.trim().slice(0, 160),
+      parentIds,
+    };
+  }
+
+  restore(raw?:Partial<RealityEvidenceLedgerState>|null):void {
+    const source = Array.isArray(raw?.recent) ? raw!.recent.slice(0, this.capacity * 4) : [];
+    const seen = new Set<string>();
+    const rows: RealityEvidenceRecord[] = [];
+    for (const value of source) {
+      const row = this.normalizeRecord(value);
+      if (!row || seen.has(row.id)) continue;
+      seen.add(row.id);
+      rows.push(row);
+    }
+    rows.sort((a, b) => b.at - a.at || a.id.localeCompare(b.id));
+    this.records = rows.slice(0, this.capacity);
+    this.total = Math.max(this.records.length, safeTotal(raw?.total, this.records.length));
+  }
+
+  /**
+   * Merge snapshots by immutable evidence id. Runtime and Core may project the
+   * same canonical ledger at different points in a cycle; merging must never
+   * replace evidence already recorded by another writer or count a replay twice.
+   */
+  mergeFrom(raw?:Partial<RealityEvidenceLedgerState>|null):void {
+    if (!raw || typeof raw !== 'object') return;
+    const incoming = Array.isArray(raw.recent) ? raw.recent.slice(0, this.capacity * 4) : [];
+    const seen = new Set(this.records.map(row => row.id));
+    const merged = [...this.records];
+    let added = 0;
+    for (const value of incoming) {
+      const row = this.normalizeRecord(value);
+      if (!row || seen.has(row.id)) continue;
+      seen.add(row.id);
+      merged.push(row);
+      added += 1;
+    }
+    merged.sort((a, b) => b.at - a.at || a.id.localeCompare(b.id));
+    this.records = merged.slice(0, this.capacity);
+    this.total = Math.max(this.total + added, safeTotal(raw.total, 0), this.records.length);
   }
 
   record(input:{tick:number;realityClass:EvidenceRealityClass;claim:string;confidence01?:number;independenceKey:string;parentIds?:string[];at?:number}):RealityEvidenceRecord{
-    const at=Number(input.at??Date.now());
-    const row:RealityEvidenceRecord={id:`rel:${at}:${input.tick}:${Math.random().toString(16).slice(2)}`,tick:Math.max(0,Math.floor(input.tick)),at,realityClass:input.realityClass,claim:String(input.claim||'').slice(0,240),confidence01:clamp01(input.confidence01??.5),independenceKey:String(input.independenceKey||'unknown').slice(0,160),parentIds:(input.parentIds??[]).map(String).slice(0,8)};
+    const rawAt=Number(input.at??Date.now());
+    const at=Number.isFinite(rawAt)&&rawAt>=0?rawAt:Date.now();
+    const rawTick=Number(input.tick);
+    const tick=Number.isFinite(rawTick)?Math.max(0,Math.floor(rawTick)):0;
+    const realityClass=REALITY_CLASSES.has(input.realityClass)?input.realityClass:'derived';
+    const row:RealityEvidenceRecord={id:`rel:${at}:${tick}:${Math.random().toString(16).slice(2)}`,tick,at,realityClass,claim:String(input.claim??'').slice(0,240),confidence01:clamp01(input.confidence01??.5),independenceKey:String(input.independenceKey??'unknown').trim().slice(0,160)||'unknown',parentIds:(Array.isArray(input.parentIds)?input.parentIds:[]).filter(x=>typeof x==='string'&&x.length>0).slice(0,8)};
     this.records.unshift(row); if(this.records.length>this.capacity)this.records.length=this.capacity; this.total++; return structuredClone(row);
   }
 
