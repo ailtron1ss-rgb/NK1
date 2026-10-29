@@ -37,7 +37,7 @@ npm run test:world-perception
 npm run typecheck
 ```
 
-The four focused tests are `test:world-context-normalizer-integrity`, `test:perception-engine-signal-integrity`, `test:world-perception-delta-integrity`, and `test:world-perception-runtime-wiring`.
+The five focused tests are `test:world-context-normalizer-integrity`, `test:perception-engine-signal-integrity`, `test:world-perception-delta-integrity`, `test:world-perception-runtime-wiring`, and `test:world-perception-runtime-ingress`. The last test starts a real `OrganismRuntime` cycle and asserts that its PerceptionEngine event reached the runtime evidence bus.
 
 ## Validation status
 
