@@ -1807,6 +1807,7 @@
     "test:perception-engine-signal-integrity": "node --experimental-strip-types tests/perception-engine-signal-integrity.mjs",
     "test:world-context-normalizer-integrity": "node --experimental-strip-types tests/world-context-normalizer-integrity.mjs",
     "test:world-perception-delta-integrity": "node --experimental-strip-types tests/world-perception-delta-integrity.mjs",
-    "test:world-perception": "npm run test:world-context-normalizer-integrity && npm run test:perception-engine-signal-integrity && npm run test:world-perception-delta-integrity"
+    "test:world-perception": "npm run test:world-context-normalizer-integrity && npm run test:perception-engine-signal-integrity && npm run test:world-perception-delta-integrity && npm run test:world-perception-runtime-wiring",
+    "test:world-perception-runtime-wiring": "node --experimental-strip-types tests/world-perception-runtime-wiring.mjs"
   }
 }
