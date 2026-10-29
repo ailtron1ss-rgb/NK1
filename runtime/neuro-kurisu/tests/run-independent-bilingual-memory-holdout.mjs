@@ -8,8 +8,13 @@ import { runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRet
 
 const args=process.argv.slice(2);
 const flag=(name)=>{const i=args.indexOf(name);return i<0?undefined:args[i+1];};
+const candidateMode=flag('--candidate-mode')??'canonical';
+if(candidateMode!=='canonical'&&candidateMode!=='metadata'){
+ console.error('Invalid --candidate-mode; use canonical or metadata.');
+ process.exit(2);
+}
 const input=flag('--dataset')??process.env.NK1_MEMORY_HOLDOUT_DATASET;
-if(!input){console.error('Usage: node --experimental-strip-types tests/run-independent-bilingual-memory-holdout.mjs --dataset <external-dataset.json> [--out <report.json>]');process.exit(2);}
+if(!input){console.error('Usage: node --experimental-strip-types tests/run-independent-bilingual-memory-holdout.mjs --dataset <external-dataset.json> [--candidate-mode canonical|metadata] [--out <report.json>]');process.exit(2);}
 const raw=await readFile(path.resolve(input),'utf8');
 const data=JSON.parse(raw);
 assert.equal(data.schemaVersion,1,'schemaVersion must be 1');
@@ -43,15 +48,15 @@ for(const language of ['ru','en']){
  assert.ok(holdout.filter(x=>x.answerable!==false).length>=20,language+': require 20 answerable holdout queries');
  assert.ok(holdout.filter(x=>x.answerable===false).length>=8,language+': require 8 unanswerable holdout queries');
  const langProvenance={datasetId:provenance.datasetId,datasetVersion:provenance.datasetVersion,sourceRef:provenance.sourceRef,labelingProtocol:provenance.labelingProtocol,licenseId:provenance.licenseId,contentSha256:hashRows(examples)};
- const opts={now:Number.isFinite(Number(data.now))?Number(data.now):Date.now(),k:5,bootstrapSamples:2000,maxExamples:512,minHoldoutQueries:20,minUnanswerableHoldoutQueries:8,minimumRecallUplift01:.02,maximumMrrRegression01:.01,maximumUnsupportedRetrievalRegression01:0,datasetProvenance:langProvenance,seeds};
+ const opts={now:Number.isFinite(Number(data.now))?Number(data.now):Date.now(),k:5,bootstrapSamples:2000,maxExamples:512,minHoldoutQueries:20,minUnanswerableHoldoutQueries:8,minimumRecallUplift01:.02,maximumMrrRegression01:.01,maximumUnsupportedRetrievalRegression01:0,datasetProvenance:langProvenance,metadataRecallEnabled:candidateMode==='metadata',seeds};
  const sensitivity=runMemoryOS2RetrievalExperiment(data.snapshot,examples,opts);
  assert.equal(sensitivity.datasetProvenance.contentHashValid,true,language+': label fingerprint mismatch');
  assert.equal(sensitivity.corpusIntegrity.validForPromotion,true,language+': corpus integrity failed');
  assert.equal(sensitivity.datasetIntegrity.validForPromotion,true,language+': dataset integrity failed');
  const runs=seeds.map(seed=>{const r=runMemoryOS2RetrievalBenchmark(data.snapshot,examples,{...opts,seed});return {seed,baseline:r.metrics.baseline,candidate:r.metrics.candidate,deltas:r.deltas,confidence:r.confidence,promotionGates:r.promotion.gates,promotionStatus:r.promotion.status};});
- reports[language]={datasetFingerprint:sensitivity.datasetFingerprint,corpusFingerprint:sensitivity.corpusFingerprint,retrievalConfigurationFingerprint:sensitivity.retrievalConfigurationFingerprint,datasetProvenance:sensitivity.datasetProvenance,corpusIntegrity:sensitivity.corpusIntegrity,datasetIntegrity:sensitivity.datasetIntegrity,determinism:sensitivity.determinism,sensitivity:sensitivity.sensitivity,runs,promotion:{allowedAutomatically:false,status:'requires-independent-review'}};
+ reports[language]={candidateMode,datasetFingerprint:sensitivity.datasetFingerprint,corpusFingerprint:sensitivity.corpusFingerprint,retrievalConfigurationFingerprint:sensitivity.retrievalConfigurationFingerprint,datasetProvenance:sensitivity.datasetProvenance,corpusIntegrity:sensitivity.corpusIntegrity,datasetIntegrity:sensitivity.datasetIntegrity,determinism:sensitivity.determinism,sensitivity:sensitivity.sensitivity,runs,promotion:{allowedAutomatically:false,status:'requires-independent-review'}};
 }
-const report={schemaVersion:1,generatedAt:new Date().toISOString(),evaluation:'independent-bilingual-holdout',mode:'offline-only; no-live-memory-mutation; no-auto-promotion',sourceDataset:{datasetId:provenance.datasetId,datasetVersion:provenance.datasetVersion,sourceRef:provenance.sourceRef,licenseId:provenance.licenseId,rawFileSha256:createHash('sha256').update(raw).digest('hex')},guardrails:{labelsInferredFromPredictions:false,holdoutUsedForTraining:false,sameCorpusForBaselineAndCandidate:true,languageScoresSeparated:true,promotionRequiresIndependentReview:true},reports};
+const report={schemaVersion:1,generatedAt:new Date().toISOString(),evaluation:'independent-bilingual-holdout',candidateMode,mode:'offline-only; no-live-memory-mutation; no-auto-promotion',sourceDataset:{datasetId:provenance.datasetId,datasetVersion:provenance.datasetVersion,sourceRef:provenance.sourceRef,licenseId:provenance.licenseId,rawFileSha256:createHash('sha256').update(raw).digest('hex')},guardrails:{labelsInferredFromPredictions:false,holdoutUsedForTraining:false,sameCorpusForBaselineAndCandidate:true,languageScoresSeparated:true,promotionRequiresIndependentReview:true},reports};
 const output=JSON.stringify(report,null,2)+'\n';
 const out=flag('--out'); if(out) await writeFile(path.resolve(out),output,'utf8');
 console.log(output);

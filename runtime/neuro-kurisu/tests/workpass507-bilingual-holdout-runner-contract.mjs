@@ -35,5 +35,13 @@ const result=spawnSync(process.execPath,['--experimental-strip-types',runner],{c
 assert.equal(result.error,undefined,'runner must start and parse successfully');
 assert.equal(result.status,2,'runner without an external dataset must fail closed with usage exit code 2');
 assert.match(result.stderr,/--dataset <external-dataset\.json>/,'runner must explain the required external dataset argument');
+assert.match(result.stderr,/--candidate-mode canonical\|metadata/,'runner must document the canonical and metadata candidate modes');
+const invalidMode=spawnSync(process.execPath,['--experimental-strip-types',runner,'--candidate-mode','silent-promotion'],{cwd:root,encoding:'utf8',timeout:15000});
+assert.equal(invalidMode.error,undefined,'invalid candidate mode must fail as an ordinary argument error');
+assert.equal(invalidMode.status,2,'unknown candidate modes must fail closed');
+assert.match(invalidMode.stderr,/Invalid --candidate-mode/,'invalid candidate mode must not silently fall back to canonical');
+const metadataWithoutDataset=spawnSync(process.execPath,['--experimental-strip-types',runner,'--candidate-mode','metadata'],{cwd:root,encoding:'utf8',timeout:15000});
+assert.equal(metadataWithoutDataset.status,2,'metadata mode still requires a real external dataset');
+assert.match(metadataWithoutDataset.stderr,/--dataset <external-dataset\.json>/,'metadata mode without data must explain how to provide the independent dataset');
 assert.doesNotMatch(result.stderr,/SyntaxError|ERR_MODULE_NOT_FOUND|Cannot find module/,'runner imports and syntax must be valid');
 console.log('WorkPass507 bilingual holdout runner contract: passed');
