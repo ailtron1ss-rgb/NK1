@@ -511,6 +511,35 @@ export class P23LearningEngine {
    * receives validation evidence plus an aggregate holdout signal only; raw holdout
    * examples and identifiers remain evaluation-only and are never sent for tuning.
    */
+  /**
+   * Adapt the host-owned local chat provider into the canonical P23 revision flow.
+   * Candidate generation is only a proposal: the existing evaluator, evidence
+   * binding, family/seed gates and explicit activation approval remain authoritative.
+   */
+  async generateAndStageReflectiveSkillRevisionWithLocalModel(
+    provider: SkillRevisionChatProvider,
+    proposal: Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[0],
+    skillId: string,
+    sourceCandidateId: string,
+    baseline: Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[3],
+    candidateEvaluation: Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[4],
+    evaluateRevisedCandidate: Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[6],
+    options?: Parameters<P23LearningEngine['generateAndStageReflectiveSkillRevision']>[7],
+    sourceEvidenceFingerprint?: string,
+  ): ReturnType<P23LearningEngine['generateAndStageReflectiveSkillRevision']> {
+    return this.generateAndStageReflectiveSkillRevision(
+      proposal,
+      skillId,
+      sourceCandidateId,
+      baseline,
+      candidateEvaluation,
+      request => generateLocalSkillRevision(provider, request),
+      evaluateRevisedCandidate,
+      options,
+      sourceEvidenceFingerprint,
+    );
+  }
+
   async generateAndStageReflectiveSkillRevision(
     proposal:VerifiedSkillPromotionProposal,
     skillId:string,
