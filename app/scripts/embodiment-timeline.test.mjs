@@ -237,6 +237,14 @@ test("EmbodimentIntent v1 accepts legacy payloads and bounds optional continuous
   assert.equal(isEmbodimentIntentV1(intent({ body: { ...base.body, breathIntensity: -0.01 } })), false);
 });
 
+test("optional semantic motor goal and reason are validated without breaking legacy v1", () => {
+  const base = intent();
+  assert.equal(isEmbodimentIntentV1(base), true);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...base.body, motorAction: "explain", intentReason: "explanatory-language-and-response-context" } })), true);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...base.body, motorAction: "dance" } })), false);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...base.body, intentReason: "bad reason" } })), false);
+});
+
 test("body pose mapper reacts to intention and remains finite and bounded", () => {
   const reflect = deriveEmbodimentPose("reflect", "curiosity", 0.6);
   const rest = deriveEmbodimentPose("rest", "calm", 0.2);
