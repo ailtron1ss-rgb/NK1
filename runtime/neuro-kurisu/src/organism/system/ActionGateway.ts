@@ -381,6 +381,22 @@ export class ActionGateway {
     return source?structuredClone(source):undefined;
   }
 
+  /**
+   * True only when an exact source identity is declared on a registered tool.
+   * Callers cannot mint or widen source trust by attaching labels to observations.
+   */
+  isDeclaredObservationSource(source:{sourceId:string;sourceClass:ExternalObservationSourceClass;channel:ExternalObservationChannel;independenceKey:string}):boolean {
+    for (const definition of this.tools.values()) {
+      const declared=definition.observationSource;
+      if (declared &&
+          declared.sourceId===source.sourceId &&
+          declared.sourceClass===source.sourceClass &&
+          declared.channel===source.channel &&
+          declared.independenceKey===source.independenceKey) return true;
+    }
+    return false;
+  }
+
   snapshotExecutionLedger():ActionExecutionLedgerSnapshot {
     return {version:1,records:[...this.executionLedger.values()].sort((a,b)=>b.recordedAt-a.recordedAt).map(row=>structuredClone(row)),permissions:structuredClone(this.permissionState)};
   }
