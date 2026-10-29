@@ -7,7 +7,9 @@
 - Remove action-index-based trait mutation: action `explore` must not happen to update whichever trait occupies array index 1. Trait and value updates now require explicit, bounded dimension-level attribution (`traitFeedback` / `valueFeedback`) attached to the verified outcome.
 - Prevent relationship trust from drifting merely because the organism selected a goal/action. Relationship trust is updated only after a verified, independent, source-bound outcome naming the relationship.
 - Add the missing shared `PlainDataSnapshot.ts` helper required by the strict canonical restore boundary and the existing `RelationshipSelf` snapshot validator.
+- Add the missing shared `PlainDataSnapshot.ts` helper required by strict canonical restore and the existing `RelationshipSelf` validator.
 - Extend canonical self-agency and P2702 regression cases for tampered snapshots, hostile getters, invalid trait values, missing provenance and untrusted evidence source.
+- Add explicit canonical-self-agency, P2702, relationship-boundary and runtime typecheck commands to the WorkPass79 CI workflow.
 - Add explicit canonical-self-agency, P2702, relationship-boundary and runtime typecheck commands to the WorkPass79 CI workflow.
 - Validation status: changes are on a dedicated work branch; runtime tests and CI have **not** been executed in this environment. This entry is not a test PASS; require exact-SHA CI evidence before promotion.
 
