@@ -24,6 +24,8 @@ for(const v of variants){
 
 const viewer=fs.readFileSync(path.join(root,'public/live2d/viewer.html'),'utf8');
 for(const token of ['Kurisu.mobile/Kurisu-mobile.model3.json','Kurisu/Kurisu.model3.json','kurisu_expression','kurisu_embodiment','kurisu_lipsync','kurisu_embodiment_intent','ParamBodyAngleX','ParamBodyAngleY','ParamBodyAngleZ','ParamBreath','TapHead','TapBody']) assert.ok(viewer.includes(token),`viewer missing ${token}`);
+const intentContract=fs.readFileSync(path.join(root,'public/live2d/embodiment-intent.mjs'),'utf8');
+for(const token of ['motorAction','intentReason','MOTOR_ACTIONS','legacy-v1-payload']) assert.ok(intentContract.includes(token),`intent contract missing ${token}`);
 assert.ok(viewer.includes('lastAppliedExpression'), 'viewer must cache the last applied expression');
 assert.ok(viewer.includes('expressionName===lastAppliedExpression'), 'mouth/embodiment updates must not restart an unchanged expression');
 const rootModel=JSON.parse(fs.readFileSync(path.join(root,'public/live2d/Kurisu/Kurisu.model3.json'),'utf8'));
