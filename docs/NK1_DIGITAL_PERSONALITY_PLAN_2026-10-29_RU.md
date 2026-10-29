@@ -73,7 +73,7 @@
   `deterministic: true`, seeds `[13,29,53]`, corpus 16. Это подтверждает: **улучшение
   retrieval до сих пор не доказано.**
 - `big-pass-126-memory-retrieval-benchmark` → **PASS** после починки фикстуры (PR #359, merged 2026-10-29). До этого падал на устаревшем контракте (`schemaVersion 3` против 6).
-- **417 ветвей**, **132 открытых PR**, из них большинство — draft/автогенерированные.
+- **430 ветвей** по полной выборке GitHub на 2026-10-29; открытых PR — не менее 100 по полученной выборке (API-выдача ограничена 100 элементами), поэтому прежнее число 132 не считаю повторно подтверждённым. Значительная доля PR — draft/автогенерированные.
 - **PR #236** (`Consolidate Hexis and restore-integrity passes`) → открыт, `mergeable` не вычислен (база разошлась).
 - `main` и `workpass70-source` **не имеют общего предка** (GitHub compare → 404).
 - **135 ошибок** в license-gate, `releaseRedistributionReady: false` (сверить командой `npm --prefix ../.. run audit:release-license-readiness`).
