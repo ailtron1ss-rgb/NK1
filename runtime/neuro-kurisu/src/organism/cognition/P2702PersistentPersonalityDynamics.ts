@@ -134,8 +134,14 @@ export class P2702PersistentPersonalityDynamics{
    const index=this.state.valueNames.indexOf(value.valueName);
    if(index>=0){const weight=eta*clamp(value.confidence01)*.22;this.state.valueWeights[index]=clamp(this.state.valueWeights[index]!+(value.target01-this.state.valueWeights[index]!)*weight);}
   }
+  const relationKey=typeof args.relationshipId==='string'&&args.relationshipId.length>0&&args.relationshipId.length<=128
+   &&args.relationshipId.trim()===args.relationshipId&&args.relationshipId.normalize('NFKC')===args.relationshipId
+   &&![...args.relationshipId].some(ch=>{const cp=ch.codePointAt(0)??0;return cp<=31||(cp>=127&&cp<=159);})?args.relationshipId:undefined;
   const boundRelationshipId=evidence?.expectedBinding?.input?.relationshipId;
-  if(args.relationshipId&&boundRelationshipId===args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[args.relationshipId]=clamp(prior*.94+trustSignal*.06);}
+  if(relationKey&&boundRelationshipId===relationKey){
+   if(!Object.prototype.hasOwnProperty.call(this.state.relationshipTrust,relationKey)&&Object.keys(this.state.relationshipTrust).length>=32){const oldest=Object.keys(this.state.relationshipTrust)[0];if(oldest)delete this.state.relationshipTrust[oldest];}
+   const prior=this.state.relationshipTrust[relationKey]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[relationKey]=clamp(prior*.94+trustSignal*.06);
+  }
   const uncertaintyShift=clamp(error*.35+(1-verified)*.3);
   for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
   const drift=this.state.adaptiveValues.reduce((s,x)=>s+(x-(this.state.adaptiveValues.reduce((a,b)=>a+b,0)/Math.max(1,this.state.adaptiveValues.length)))**2,0)/Math.max(1,this.state.adaptiveValues.length);
