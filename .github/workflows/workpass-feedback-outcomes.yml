@@ -19,6 +19,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
       - "runtime/neuro-kurisu/tests/workpass-feedback-reality-ledger-idempotency.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/workpass84-script-integrity.mjs"
+      - "runtime/neuro-kurisu/scripts/core-ownership-policy.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-core-ownership.mjs"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/workpass-feedback-outcomes.yml"
   pull_request:
@@ -38,6 +41,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
       - "runtime/neuro-kurisu/tests/workpass-feedback-reality-ledger-idempotency.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/workpass84-script-integrity.mjs"
+      - "runtime/neuro-kurisu/scripts/core-ownership-policy.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-core-ownership.mjs"
       - "runtime/neuro-kurisu/package-lock.json"
       - ".github/workflows/workpass-feedback-outcomes.yml"
 
