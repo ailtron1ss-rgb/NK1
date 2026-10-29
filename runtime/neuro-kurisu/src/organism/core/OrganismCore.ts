@@ -683,6 +683,8 @@ export interface OrganismSystemState {
     runtimeUnifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     runtimePerformance?: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState;
     realityEvidenceLedger?: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState;
+    /** Diagnostics for a bounded same-tick duplicate cycle-close attempt. */
+    cognitiveCycleDuplicateFeedback?: { tick:number; lastClosedTick:number; at:number };
     unifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     continuousCognitiveFabric?: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot;
     runtimeClosure?: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot;
@@ -1240,6 +1242,8 @@ export class OrganismCore {
     private cognitiveSubsystemFacadeB297!: CognitiveSubsystemFacade;
     private b297FacadeCache = { identity01: .5, agency01: .5, budget01: .5, memoryPressure01: .2, embodimentCapacity01: .75 };
     private cognitiveCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> = {};
+    /** Highest tick already evaluated by the canonical internal cycle verifier. */
+    private lastClosedCognitiveCycleTick = -1;
     private persisted: PersistedOrganism = defaultPersisted();
     private ready = false;
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
@@ -1675,6 +1679,9 @@ export class OrganismCore {
         this.cognitiveRuntime.cognitiveResourceEconomy.restore(this.persisted.system.cognitiveResourceEconomy);
         this.organismSystems.governance.realityEvidenceLedger.restore(this.persisted.system.realityEvidenceLedger);
         this.cognitiveRuntime.unifiedCognitiveCycle.restore(this.persisted.system.unifiedCognitiveCycle);
+        // Restore the cycle-close guard so replayed feedback cannot close an already-closed tick.
+        const restoredCycleTick = Number(this.persisted.system.unifiedCognitiveCycle?.lastTick ?? -1);
+        this.lastClosedCognitiveCycleTick = Number.isSafeInteger(restoredCycleTick) ? restoredCycleTick : -1;
         this.cognitiveRuntime.emotionAppraisal.restore(this.persisted.system.emotionAppraisal);
         this.organismSystems.memory.memoryCausalEconomy.restore(this.persisted.system.memoryCausalEconomy);
         this.organismSystems.memory.causalLifeGraph.restore(this.persisted.system.causalLifeGraph);
@@ -2360,7 +2367,7 @@ export class OrganismCore {
     cognitiveResourceEconomySnapshot() { return structuredClone(this.persisted.system.cognitiveResourceEconomy); }
     runtimePerformanceSnapshot() { return structuredClone(this.persisted.system.runtimePerformance); }
     setRuntimePerformance(snapshot: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState): void { this.persisted.system.runtimePerformance = structuredClone(snapshot); this.markPersistenceDirty(); }
-    realityEvidenceLedgerSnapshot() { return structuredClone(this.persisted.system.realityEvidenceLedger); }
+    realityEvidenceLedgerSnapshot() { return this.organismSystems.governance.realityEvidenceLedger.snapshot(); }
     unifiedCognitiveCycleSnapshot() { return structuredClone(this.persisted.system.unifiedCognitiveCycle); }
     b380TemporalLifeSnapshot() { return this.developmentalNeural.b380TemporalLife.snapshot(); }
     b380TemporalLifeDiagnostics() { return this.developmentalNeural.b380TemporalLife.diagnostics(); }
@@ -2495,7 +2502,16 @@ export class OrganismCore {
     emotionAppraisalSnapshot() { return structuredClone(this.persisted.system.emotionAppraisal); }
     worldModelEnsembleSnapshot() { return structuredClone(this.worldSubsystem.worldModelEnsemble.snapshot()); }
     setCognitiveResourceEconomy(snapshot: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState): void { this.persisted.system.cognitiveResourceEconomy = snapshot; }
-    setRealityEvidenceLedger(snapshot: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState): void { this.persisted.system.realityEvidenceLedger = snapshot; }
+    /** Merge projections into the canonical governance ledger; never replace one writer with another. */
+    setRealityEvidenceLedger(snapshot: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState): void {
+        this.organismSystems.governance.realityEvidenceLedger.mergeFrom(snapshot);
+        this.persisted.system.realityEvidenceLedger = this.organismSystems.governance.realityEvidenceLedger.snapshot();
+        this.markPersistenceDirty();
+    }
+    /** Single write path for Core and outer runtime reality-evidence observations. */
+    recordRealityEvidence(input: Parameters<import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedger['record']>[0]) {
+        return this.organismSystems.governance.realityEvidenceLedger.record(input);
+    }
     setUnifiedCognitiveCycle(snapshot: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState): void { this.persisted.system.unifiedCognitiveCycle = snapshot; }
     setContinuousCognitiveFabric(snapshot: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot): void { this.persisted.system.continuousCognitiveFabric = snapshot; this.markPersistenceDirty(); }
     setRealityGrounding(snapshot: import('../system/RealityGroundingController.ts').RealityGroundingState): void { this.persisted.system.realityGrounding = structuredClone(snapshot); this.markPersistenceDirty(); }
@@ -6852,7 +6868,7 @@ export class OrganismCore {
             // double-counted adaptive/temporal/recovery credit at the B297 boundary.
             const canonicalPolicySignal = canonicalPolicySignalByAction.get(candidate.action) ?? 0;
             b297BaseSourcesByAction.set(candidate.action, {
-                self: selfBias + trajectoryBias + futureSelfBias + developmentalForkBias + identityNeuralBias + p84Bias,
+                self: selfBias + trajectoryBias + futureSelfBias + developmentalForkBias + identityNeuralBias + p84Bias + clamp(this.developmentalNeural.unifiedCognitiveSubstrate.actionBias(candidate.action)),
                 personality: personalityBias + germinalBias + autobiographicalNeuralBias,
                 agency: endogenousGoalBias + autonomousLifecycleBias + autonomousSkillBias + b275Bias + b276Bias + b289Bias + continuityBias,
                 predictive: predictiveBias + p44Bias + (b293Frame.actionBias[candidate.action] ?? 0),
@@ -8607,7 +8623,14 @@ export class OrganismCore {
         const selfUpdateEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'self-update', source: 'self-model', parentIds: [learningEvent.id], confidence01: clamp(state.needs.identityCoherence), payload: { identityCoherence: state.needs.identityCoherence } });
         const cycleStageIds = { observation: this.cognitiveCycleAnchors.observation, prediction: this.cognitiveCycleAnchors.prediction, appraisal: this.cognitiveCycleAnchors.appraisal, attention: this.cognitiveCycleAnchors.attention, memory: this.cognitiveCycleAnchors.memory, goal: this.cognitiveCycleAnchors.goal, plan: this.cognitiveCycleAnchors.plan, action: this.cognitiveCycleAnchors.action, outcome: outcomeEvent.id, learning: learningEvent.id, 'self-update': selfUpdateEvent.id };
         const cycleLineage = this.cognitiveRuntime.cognitiveEventFabric.verifyOperationalCycle(cycleStageIds);
-        this.cognitiveRuntime.unifiedCognitiveCycle.evaluate({ tick: state.tick, stageIds: cycleStageIds, parentIntegrity01: cycleLineage.complete ? cycleLineage.integrity01 : 0 });
+        // Feedback can be reconciled more than once for a tick; the cycle verifier must close it only once.
+        // Treat duplicate closure as a bounded diagnostic no-op so learning/consolidation can still finish.
+        if (state.tick > this.lastClosedCognitiveCycleTick) {
+            this.cognitiveRuntime.unifiedCognitiveCycle.evaluate({ tick: state.tick, stageIds: cycleStageIds, parentIntegrity01: cycleLineage.complete ? cycleLineage.integrity01 : 0 });
+            this.lastClosedCognitiveCycleTick = state.tick;
+        } else {
+            this.persisted.system.cognitiveCycleDuplicateFeedback = { tick: state.tick, lastClosedTick: this.lastClosedCognitiveCycleTick, at: Date.now() };
+        }
         this.cognitiveCycleAnchors = {};
         const feedbackRealityClass = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase()) ? 'external-observation' : outcome.worldTransition ? 'simulator' : 'derived';
         this.organismSystems.governance.realityEvidenceLedger.record({ tick: state.tick, realityClass: feedbackRealityClass, claim: `outcome:${trace?.selected?.action ?? 'none'}`, confidence01: clamp(1 - surprise), independenceKey: `${feedbackRealityClass}:${state.tick}`, parentIds: [outcomeEvent.id], at: state.at });
