@@ -102,9 +102,9 @@ import { migratePersistedOrganism } from '../src/organism/persistence/StateMigra
 
 {
   const coreSource = fs.readFileSync(new URL('../src/organism/core/OrganismCore.ts', import.meta.url), 'utf8');
-  assert.match(coreSource, /unifiedCognitiveSubstrate\\.actionBias\\(candidate\\.action\\)/, 'unified substrate must affect governed action scoring');
+  assert.match(coreSource, /unifiedCognitiveSubstrate\.actionBias\(candidate\.action\)/, 'unified substrate must affect governed action scoring');
   assert.match(coreSource, /lastClosedCognitiveCycleTick/, 'same-tick cycle close must have a guard');
-  assert.match(coreSource, /recordRealityEvidence\\(input:/, 'Core must expose the canonical evidence write path');
+  assert.match(coreSource, /recordRealityEvidence\(input:/, 'Core must expose the canonical evidence write path');
 }
 
 console.log('NK1_COGNITIVE_UNIFIED_OWNERSHIP_REGRESSION=PASS');
