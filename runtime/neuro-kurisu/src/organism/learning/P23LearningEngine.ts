@@ -515,8 +515,8 @@ export class P23LearningEngine {
     proposal:VerifiedSkillPromotionProposal,
     skillId:string,
     sourceCandidateId:string,
-    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
-    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    rawBaseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
+    rawCandidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
     generate:(request:{
       sourcePayload:unknown;
       datasetFingerprint:string;
@@ -526,7 +526,7 @@ export class P23LearningEngine {
       holdoutPolicy:{resultsWithheld:true;requiresFreshIndependentEvaluation:true};
     })=>Promise<unknown>|unknown,
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
-    options:SkillLearnBenchCandidateGateOptions={},
+    rawOptions:SkillLearnBenchCandidateGateOptions={},
     sourceEvidenceFingerprint?: string,
   ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
     if(!this.verifiedSkillStore) throw new Error('verified skill lifecycle store is not configured');
@@ -544,41 +544,62 @@ export class P23LearningEngine {
        !/^[a-f0-9]{64}$/.test(proposal.proposalId) || !/^[a-f0-9]{64}$/.test(proposal.outcomeFingerprint)) {
       throw new Error('reflective revision requires an authentic accepted proposal backed exclusively by authenticated evidence');
     }
+    let baseline: {validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']};
+    let candidateEvaluation: {validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']};
+    let options: SkillLearnBenchCandidateGateOptions;
+    try {
+      baseline=snapshotPlainData(rawBaseline) as typeof rawBaseline;
+      candidateEvaluation=snapshotPlainData(rawCandidateEvaluation) as typeof rawCandidateEvaluation;
+      options=snapshotPlainData(rawOptions) as SkillLearnBenchCandidateGateOptions;
+    } catch {
+      throw new Error('reflective revision input data-boundary rejected');
+    }
+    if(!baseline||typeof baseline!=='object'||Array.isArray(baseline)||
+       !candidateEvaluation||typeof candidateEvaluation!=='object'||Array.isArray(candidateEvaluation)||
+       !options||typeof options!=='object'||Array.isArray(options)) {
+      throw new Error('reflective revision input data-boundary rejected');
+    }
     const source=this.verifiedSkillStore.snapshot().candidates.find(item=>item.candidateId===sourceCandidateId);
     if(!source || source.skillId!==skillId || source.status==='rolled-back') {
       throw new Error('reflective revision source candidate is missing, mismatched, or rolled back');
     }
-    assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
+    const sourceCanonicalPayload=assertReflectiveSkillPayloadWithinBudget(source.payload,'source');
     const fitness=this.evaluateReflectiveSkillCandidate(baseline,candidateEvaluation,options);
     const plan=this.planReflectiveSkillRevision(candidateEvaluation,fitness);
     if(plan.blockedBySafety) throw new Error('reflective revision blocked: resolve safety violations before performance optimization');
     if(plan.targets.length===0) throw new Error('reflective revision has no evidence-backed target; no candidate was staged');
-    const revisedPayload=await generate({
-      sourcePayload:structuredClone(source.payload),
+    const rawGeneratedPayload=await generate({
+      sourcePayload:snapshotPlainData(source.payload),
       datasetFingerprint:proposal.datasetFingerprint,
       optimizerInstruction:plan.optimizerInstruction,
-      validationEvidence:structuredClone(candidateEvaluation.validation),
-      targets:structuredClone(plan.targets),
-      // Directional scalar only: no holdout task text, trial IDs, or per-case outcomes.
+      validationEvidence:snapshotPlainData(candidateEvaluation.validation) as SkillLearnBenchCandidateEvaluation['reports'],
+      targets:snapshotPlainData(plan.targets) as SkillRevisionPlan['targets'],
+      // Holdout results are gate-only. Never feed their scores, direction, or case data back into optimization.
       holdoutPolicy:{resultsWithheld:true,requiresFreshIndependentEvaluation:true},
     });
+    let revisedPayload: unknown;
+    try { revisedPayload=snapshotPlainData(rawGeneratedPayload); }
+    catch { throw new Error('skill revision generator returned data outside the plain-data boundary'); }
     if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
       throw new Error('skill revision generator returned an empty payload');
     }
-    // Bound the generated artifact before hashing or passing it to an evaluator.
-    // Independent execution is not a substitute for a cheap preflight resource limit.
     const canonicalPayload=assertReflectiveSkillPayloadWithinBudget(revisedPayload,'generated');
-    // Generation invalidates any prior candidate report: it describes the source
-    // candidate, not this newly generated payload. Re-run the independent harness
-    // against the exact payload and require the evaluator to echo its canonical digest.
+    // Do not spend an independent sandbox evaluation on a no-op artifact. The
+    // staging method repeats this invariant after evaluation as a second boundary.
+    if(canonicalPayload===sourceCanonicalPayload) {
+      throw new Error('reflective revision payload is unchanged from its source candidate');
+    }
     const payloadFingerprint=createHash('sha256').update(canonicalPayload).digest('hex');
-    const fresh=await evaluateRevisedCandidate({
-      payload:structuredClone(revisedPayload),
+    const rawFresh=await evaluateRevisedCandidate({
+      payload:snapshotPlainData(revisedPayload),
       payloadFingerprint,
-      baseline:structuredClone(baseline),
-      previousEvaluation:structuredClone(candidateEvaluation),
+      baseline:snapshotPlainData(baseline) as typeof baseline,
+      previousEvaluation:snapshotPlainData(candidateEvaluation) as typeof candidateEvaluation,
     });
-    if(!fresh || fresh.payloadFingerprint!==payloadFingerprint ||
+    let fresh: Awaited<ReturnType<RevisedCandidateEvaluator>>;
+    try { fresh=snapshotPlainData(rawFresh) as Awaited<ReturnType<RevisedCandidateEvaluator>>; }
+    catch { throw new Error('independent evaluator returned data outside the plain-data boundary'); }
+    if(!fresh || typeof fresh!=='object' || fresh.payloadFingerprint!==payloadFingerprint ||
        fresh.evaluationFingerprint!==createHash('sha256').update(canonicalize(fresh.evaluation)).digest('hex') ||
        !fresh.evaluation || !Array.isArray(fresh.evaluation.validation) || fresh.evaluation.validation.length===0 ||
        !Array.isArray(fresh.evaluation.holdout) || fresh.evaluation.holdout.length===0) {
@@ -587,29 +608,6 @@ export class P23LearningEngine {
     return this.stageReflectiveSkillRevision(
       proposal,skillId,sourceCandidateId,revisedPayload,baseline,fresh.evaluation,fresh.evaluationFingerprint,options,
       sourceEvidenceFingerprint,
-    );
-  }
-
-  /**
-   * First-party wiring for the bounded local-model generator. Callers no longer need
-   * to hand-write an adapter callback; the canonical evidence, shadow evaluation,
-   * staging and promotion gates remain in generateAndStageReflectiveSkillRevision.
-   */
-  async generateAndStageReflectiveSkillRevisionWithLocalModel(
-    provider:SkillRevisionChatProvider,
-    proposal:VerifiedSkillPromotionProposal,
-    skillId:string,
-    sourceCandidateId:string,
-    baseline:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
-    candidateEvaluation:{validation:SkillLearnBenchCandidateEvaluation['reports'];holdout:SkillLearnBenchCandidateEvaluation['reports']},
-    evaluateRevisedCandidate:RevisedCandidateEvaluator,
-    options:SkillLearnBenchCandidateGateOptions={},
-    sourceEvidenceFingerprint?:string,
-  ):Promise<{candidate:VersionedSkillCandidate;fitness:SkillLearnBenchCandidateGateReport;plan:SkillRevisionPlan}> {
-    return this.generateAndStageReflectiveSkillRevision(
-      proposal,skillId,sourceCandidateId,baseline,candidateEvaluation,
-      request=>generateLocalSkillRevision(provider,request),
-      evaluateRevisedCandidate,options,sourceEvidenceFingerprint,
     );
   }
 
