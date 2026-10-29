@@ -67,7 +67,7 @@ function parseRecord(value:unknown):RealityEvidenceRecord|null{
   const claim=validText(value.claim,240)?value.claim:null;
   const confidence=typeof value.confidence01==='number'&&Number.isFinite(value.confidence01)&&value.confidence01>=0&&value.confidence01<=1?value.confidence01:null;
   const independenceKey=validText(value.independenceKey,160)?value.independenceKey:null;
-  const parentIds=Array.isArray(value.parentIds)&&value.parentIds.length<=8&&value.parentIds.every(parent=>validText(parent,256))?value.parentIds as string[]:null;
+  const parentIds=Array.isArray(value.parentIds)&&value.parentIds.length<=16&&value.parentIds.every(parent=>validText(parent,256))?value.parentIds as string[]:null;
   if(!id||tick<0||at===null||typeof realityClass!=='string'||!REALITY_CLASSES.has(realityClass as EvidenceRealityClass)||!claim||confidence===null||!independenceKey||!parentIds)return null;
   return {id,...(eventId?{eventId}:{}),tick,at,realityClass:realityClass as EvidenceRealityClass,claim,confidence01:confidence,independenceKey,parentIds:[...parentIds]};
 }
@@ -256,7 +256,7 @@ export class RealityEvidenceLedger {
     if(tick<0||typeof at!=='number'||!Number.isFinite(at)||at<0||
        typeof input.realityClass!=='string'||!REALITY_CLASSES.has(input.realityClass as EvidenceRealityClass)||
        !validText(input.claim,240)||typeof confidence!=='number'||!Number.isFinite(confidence)||confidence<0||confidence>1||
-       !validText(input.independenceKey,160)||!Array.isArray(parentIds)||parentIds.length>8||!parentIds.every(parent=>validText(parent,256))||
+       !validText(input.independenceKey,160)||!Array.isArray(parentIds)||parentIds.length>16||!parentIds.every(parent=>validText(parent,256))||
        (input.eventId!==undefined&&!eventId)){
       throw new TypeError('reality-evidence-input-invalid');
     }
