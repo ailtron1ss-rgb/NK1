@@ -29,3 +29,19 @@ test("legacy avatar only resizes the canvas when layout dimensions change", () =
   assert.doesNotMatch(source, /const w = canvas\.width = canvas\.clientWidth/);
   assert.doesNotMatch(source, /const h = canvas\.height = canvas\.clientHeight/);
 });
+
+test("legacy sprite selection is deterministic and action-aware", async () => {
+  const engine = await readFile(join(root, "src/legacy/avatar/spriteEngine.ts"), "utf8");
+  assert.match(engine, /const ACTION_PREFERENCES/);
+  assert.match(engine, /action\?: SpriteAction/);
+  assert.match(engine, /ACTION_PREFERENCES\[action\]\.find/);
+  assert.doesNotMatch(engine, /Date\.now\(\)\s*\/\s*120000/);
+});
+
+test("legacy sprites use a capped high-DPI canvas and do not fake lip-sync", () => {
+  assert.match(source, /window\.devicePixelRatio/);
+  assert.match(source, /ctx\.setTransform\(dpr, 0, 0, dpr, 0, 0\)/);
+  assert.match(source, /ctx\.imageSmoothingQuality = "high"/);
+  assert.match(source, /говорит · статичный кадр/);
+  assert.doesNotMatch(source, /ctx\.ellipse\(cx, cy \+ d\.dh/);
+});
