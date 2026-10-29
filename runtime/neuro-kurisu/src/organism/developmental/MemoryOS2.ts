@@ -344,6 +344,56 @@ export class MemoryOS2{
  private activePolicy:MemoryPolicyName='balanced';
  constructor(options:{signalFusionProfile?:MemoryFusionProfile;embeddingProvider?:TextEmbeddingProvider|null;metadataRecallEnabled?:boolean}={}){ this.signalFusionProfile=options.signalFusionProfile??'balanced'; this.signalFusion=new MemorySignalFusion(this.signalFusionProfile); this.embeddingProvider=options.embeddingProvider===null?undefined:(options.embeddingProvider??LocalEmbeddingProvider.fromEnvironment()); this.metadataRecallEnabled=options.metadataRecallEnabled===true; }
  embeddingConfigured(){return Boolean(this.embeddingProvider); }
+
+  restoreDiagnostics():MemoryRestoreDiagnostics{return {...this.lastRestoreDiagnosticsData};}
+  private restoredIdentityRank(item:MemoryItem2,at:number):number[]{
+   return [
+    Number(this.validAt(item,at)),
+    Number(item.epistemicStatus!=='quarantined'&&!item.dormant),
+    Number(Number(item.validFromAt??item.createdAt)<=at),
+    Number.isFinite(Number(item.revisionSequence))?Number(item.revisionSequence):1,
+    Number.isFinite(Number(item.observedAt??item.createdAt))?Number(item.observedAt??item.createdAt):0,
+    Number.isFinite(Number(item.createdAt))?Number(item.createdAt):0,
+   ];
+  }
+  private restoredIdentityFingerprint(item:MemoryItem2):string{
+   return stableMemoryJson({
+    id:item.id,content:item.content,kind:item.kind,source:item.source,epistemicStatus:item.epistemicStatus,
+    validFromAt:item.validFromAt,validUntilAt:item.validUntilAt,observedAt:item.observedAt,
+    supersedesId:item.supersedesId,supersededById:item.supersededById,
+    revisionGroupId:item.revisionGroupId,revisionSequence:item.revisionSequence,
+    evidenceLineageKeys:[...(item.evidenceLineageKeys??[])].sort(),
+   });
+  }
+  private dedupeRestoredItems(rows:MemoryItem2[]):MemoryItem2[]{
+   const groups=new Map<string,MemoryItem2[]>();
+   for(const item of rows){const group=groups.get(item.id)??[];group.push(item);groups.set(item.id,group);}
+   const at=Date.now();const result:MemoryItem2[]=[];let identityConflictsQuarantined=0;
+   for(const group of groups.values()){
+    if(group.length===1){result.push(group[0]!);continue;}
+    const rank=(item:MemoryItem2)=>this.restoredIdentityRank(item,at);
+    const compareRank=(left:MemoryItem2,right:MemoryItem2)=>{
+     const a=rank(left),b=rank(right);
+     for(let index=0;index<a.length;index++)if(a[index]!==b[index])return Number(b[index])-Number(a[index]);
+     return stableMemoryJson(left).localeCompare(stableMemoryJson(right));
+    };
+    const ordered=[...group].sort(compareRank);const selected=ordered[0]!;const selectedRank=rank(selected);
+    const tied=ordered.filter(item=>rank(item).every((value,index)=>value===selectedRank[index]));
+    const tiedFingerprints=new Set(tied.map(item=>this.restoredIdentityFingerprint(item)));
+    if(tiedFingerprints.size>1){
+     // Array order and confidence are not authority when equally-ranked records reuse
+     // an ID for different facts. Preserve an audit row, but disable recall as fact.
+     const from=selected.epistemicStatus;
+     result.push({...selected,epistemicStatus:'quarantined',confidence:0,revisionHistory:normalizeRevisionHistory([
+      ...selected.revisionHistory,{at,from,to:'quarantined',reason:'restore-duplicate-id-conflict'},
+     ])});
+     identityConflictsQuarantined++;
+    }else result.push(selected);
+   }
+   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:result.length,duplicateIdsResolved:rows.length-result.length,identityConflictsQuarantined};
+   return result;
+  }
+
  private validAt(item:MemoryItem2,at:number){const from=Number(item.validFromAt??item.createdAt),until=item.validUntilAt==null?Number.POSITIVE_INFINITY:Number(item.validUntilAt);return Number.isFinite(from)&&from<=at&&at<until;}
  private preferIndexRecord(candidate:MemoryItem2,incumbent:MemoryItem2,at:number){
   const currentDelta=Number(this.validAt(candidate,at))-Number(this.validAt(incumbent,at));if(currentDelta)return currentDelta>0;
@@ -562,7 +612,14 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
-  const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
+  const sourceItems=Array.isArray(s?.items)?s!.items:[];
+  const boundedItems=sourceItems.slice(0,1600);
+  const rawItems:any[]=[];
+  for(const candidate of boundedItems){
+   if(!candidate||typeof candidate!=='object'||Array.isArray(candidate)||typeof candidate.id!=='string'||!candidate.id.trim())continue;
+   const id=candidate.id.trim();rawItems.push(id===candidate.id?candidate:{...candidate,id});
+  }
+  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:boundedItems.length-rawItems.length,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0};
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
     semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
@@ -585,7 +642,7 @@ export class MemoryOS2{
    budgetMisses:Math.max(0,Math.floor(Number((s as any)?.budgetMisses??0))),
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
-   items:rawItems.map((m:any)=>({
+   items:this.dedupeRestoredItems(rawItems.map((m:any)=>({
     ...m,
     // P2697: cold residency is allowed to remain truly cold across restore.
     // Re-materialize vectors lazily only for candidates that actually reach
@@ -615,7 +672,7 @@ export class MemoryOS2{
     evidenceLineageKeys:[...new Set([...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])].slice(-32),
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
-  }))};
+  }))) };
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
