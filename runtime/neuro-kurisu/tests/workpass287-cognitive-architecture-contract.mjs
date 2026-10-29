@@ -1,18 +1,21 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildCognitiveArchitectureSnapshot, validateCognitiveArchitecture } from '../src/organism/core/CognitiveArchitectureMap.ts';
 
 // Regression contract: micro-cycle inputs do not contain canonical verifier evidence,
 // so claimed reward/success must not become fresh verified learning credit.
-const microCycleSource = readFileSync(resolve(process.cwd(), 'src/organism/core/OperationalMicroCycleRuntime.ts'), 'utf8');
+// Repository root is derived from this test file so the contract does not depend
+// on the caller's working directory.
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+const microCycleSource = readFileSync(resolve(root, 'runtime/neuro-kurisu/src/organism/core/OperationalMicroCycleRuntime.ts'), 'utf8');
 assert.match(microCycleSource, /const microReward = 0\.5;/, 'unverified micro-cycle reward must stay neutral');
 assert.match(microCycleSource, /const microVerified = false;/, 'micro-cycle must not self-certify a claimed outcome');
 assert.doesNotMatch(microCycleSource, /const microVerified = Boolean\(observation\.(worldEvent|success|reward)/, 'caller claims must not certify outcomes');
 
 const report = buildCognitiveArchitectureSnapshot();
 const validation = validateCognitiveArchitecture();
-const root = process.cwd();
 
 assert.equal(validation.ok, true, 'cognitive architecture map must have unique IDs, valid references, and explicit owners');
 assert.equal(report.mainSystem.id, 'kurisu-organism');
@@ -32,8 +35,12 @@ for (const subsystem of report.subsystems) {
 }
 
 const componentResults = report.subsystems.flatMap(subsystem => subsystem.components.map(component => {
-  const relative = component.replace(/^runtime\/neuro-kurisu\//, '');
-  const absolute = resolve(root, relative);
+  // Component paths in the architecture map are repo-root relative
+  // (e.g. `runtime/neuro-kurisu/src/...` and `research/research_bridge.py`).
+  // Resolve them against the repository root derived from this test file, not
+  // against process.cwd(), so the contract is independent of the caller's
+  // working directory.
+  const absolute = resolve(root, component);
   const exists = existsSync(absolute);
   return { subsystem: subsystem.id, component, exists, isDirectory: exists && statSync(absolute).isDirectory() };
 }));

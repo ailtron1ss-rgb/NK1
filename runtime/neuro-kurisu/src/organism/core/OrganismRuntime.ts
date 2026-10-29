@@ -20,7 +20,6 @@ import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
-import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
 import { RuntimeClosureLedger } from '../system/RuntimeClosureLedger.ts';
@@ -174,7 +173,6 @@ export class OrganismRuntime {
   private readonly evidenceBus = new RuntimeEvidenceBus(384);
   private readonly cognitiveEventFabric = new CognitiveEventFabric(512);
   private readonly resourceEconomy = new CognitiveResourceEconomy();
-  private readonly realityEvidence = new RealityEvidenceLedger(384);
   private readonly unifiedCycle = new UnifiedCognitiveCycle();
   private readonly continuousCognitiveFabric = new ContinuousCognitiveFabric();
   private readonly realityGrounding = new RealityGroundingController();
@@ -324,7 +322,6 @@ export class OrganismRuntime {
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
       this.resourceEconomy.restore(systemSnapshot.runtimeCognitiveResourceEconomy ?? systemSnapshot.cognitiveResourceEconomy ?? undefined);
       this.runtimePerformance.restore(systemSnapshot.runtimePerformance ?? undefined);
-      this.realityEvidence.restore(systemSnapshot.realityEvidenceLedger ?? undefined);
       this.unifiedCycle.restore(systemSnapshot.runtimeUnifiedCognitiveCycle ?? systemSnapshot.unifiedCognitiveCycle ?? undefined);
       this.continuousCognitiveFabric.restore(systemSnapshot.continuousCognitiveFabric ?? undefined);
       this.realityGrounding.restore(systemSnapshot.realityGrounding ?? undefined);
@@ -694,8 +691,8 @@ export class OrganismRuntime {
       parentIds:[predictionEvidence.id],payload:{action:worldAction,internalAction,deviceActionPending:true},
     });
     const bodyIsPhysical = body.telemetry.source === 'android-termux' && body.telemetry.staleMs === 0;
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:bodyIsPhysical?'device-observation':'derived',claim:bodyIsPhysical?'device-resource-sample':'host-resource-sample-derived',confidence01:bodyIsPhysical ? body.sensoryFreshness01*.82 : body.sensoryFreshness01*.25,independenceKey:`${bodyIsPhysical?'device':'host'}:${body.telemetry.sampledAt}`,parentIds:[observationEvidence.id]});
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'simulator',claim:'shadow-world-transition-outcome',confidence01:.72,independenceKey:`sim-shadow:${transition.at}`,parentIds:[predictionEvidence.id]});
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:bodyIsPhysical?'device-observation':'derived',claim:bodyIsPhysical?'device-resource-sample':'host-resource-sample-derived',confidence01:bodyIsPhysical ? body.sensoryFreshness01*.82 : body.sensoryFreshness01*.25,independenceKey:`${bodyIsPhysical?'device':'host'}:${body.telemetry.sampledAt}`,parentIds:[observationEvidence.id]});
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'simulator',claim:'shadow-world-transition-outcome',confidence01:.72,independenceKey:`sim-shadow:${transition.at}`,parentIds:[predictionEvidence.id]});
 
     const selectedCandidate = cycle.decision.selected;
     const expectedReward01 = Math.max(0, Math.min(1, selectedCandidate?.predictedUtility ?? expectedReward));
@@ -901,9 +898,8 @@ export class OrganismRuntime {
     });
 
     const embodiedLedgerClass = embodiedAction.realityClass === 'device-observation' ? 'device-observation' : 'derived';
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:embodiedLedgerClass,claim:`embodied-action:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`embodied:${embodiedAction.at}:${embodiedAction.source}`,parentIds:[actionEvidence.id]});
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external' ? 'device-observation' : 'simulator',claim:`action-consequence:${physicalAction}`,confidence01:grounded.evidence01,independenceKey:`consequence:${cycle.state.tick}:${embodiedAction.source}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
     if(grounded.source==='external') {
       this.core.recordExternalPerceptualEvidence({
         at:cycle.state.at,
@@ -968,8 +964,7 @@ export class OrganismRuntime {
       reason:`${grounded.source==='external'?'external-grounded':'simulation-fallback'}-neural-loop;learningScale=${learningGate.learningScale01.toFixed(3)};worldScale=${learningGate.worldModelUpdateScale01.toFixed(3)};identityScale=${learningGate.identityUpdateScale01.toFixed(3)};shadowDivergence=${shadowResolution.divergence01.toFixed(3)};causalHoldout=${holdoutReadiness01.toFixed(3)};intervention/lesion-still-required-for-causal-attribution`,
     });
     this.core.setNeuralCausalTrace(this.neuralCausalTrace.snapshot());
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:grounded.source==='external'?'device-observation':'simulator',claim:'neural-learning-input-provenance',confidence01:grounded.evidence01,independenceKey:`neural-input:${cycle.state.tick}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:grounded.source==='external'?'device-observation':'simulator',claim:'neural-learning-input-provenance',confidence01:grounded.evidence01,independenceKey:`neural-input:${cycle.state.tick}:${grounded.source}`,parentIds:[outcomeEvidence.id]});
 
     this.core.closeB380TemporalLife({tick:cycle.state.tick,at:cycle.state.at,action:embodiedAction.action,goalId:cycle.decision.selected?.goalId??null,reward01:grounded.reward01,success01:grounded.success01,surprise01:grounded.surprise01,predictionError01:clamp01(Math.max(resolvedPrediction?.error01??cycle.state.predictionError,grounded.consequenceError01)),physicalVerified01:grounded.verified01,independent01:grounded.independent01,evidenceQuality01:grounded.evidence01,recoveryEvent01:(embodiedAction.status!=='executed'||recoveryRecord.recovered)?1:0,sleepBoundary01:body.awake?0:1,external01:grounded.source==='external'?1:0});
     const b380Token=this.core.b380TemporalLifeSnapshot().lastToken;
@@ -998,8 +993,7 @@ export class OrganismRuntime {
     const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
-    this.realityEvidence.record({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
 
 
     // B364: severe embodied resource pressure is now a real durability event, not only a
@@ -1025,7 +1019,10 @@ export class OrganismRuntime {
     if(cycle.state.tick % 8 === 0 || Boolean(externalText)) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
     this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
-    this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());
+    // Sync the live canonical governance ledger into the persisted projection so
+    // reality evidence recorded after the last internal feedback write survives a
+    // restart. The setter merges, so this is idempotent for already-persisted ids.
+    this.core.setRealityEvidenceLedger(this.core.realityEvidenceLedgerSnapshot());
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
 
     this.stepsSinceConsolidation += 1;
@@ -1203,7 +1200,7 @@ export class OrganismRuntime {
   toolSnapshot(){ return this.core.actionToolsSnapshot(); }
   cognitiveResourceEconomySnapshot(){ return this.resourceEconomy.snapshot(); }
   runtimePerformanceSnapshot(){ return this.runtimePerformance.snapshot(); }
-  realityEvidenceLedgerSnapshot(){ return this.realityEvidence.snapshot(); }
+  realityEvidenceLedgerSnapshot(){ return this.core.realityEvidenceLedgerSnapshot(); }
   unifiedCognitiveCycleSnapshot(){ return this.unifiedCycle.snapshot(); }
   activeProjectSnapshot(){ return this.core.activeProjectSnapshot(); }
   runtimeDecisionSnapshot(){ const p=this.runtimeDecision(); return { ...p, body:this.embodiment.snapshot(), clocks:this.clockScheduler.snapshot() }; }

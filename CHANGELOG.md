@@ -1,3 +1,14 @@
+## [NK1][Cognitive] Unify cognitive-cycle reality-evidence ownership and repair restart/migration gaps (2026-10-29)
+
+- Make the governance `RealityEvidenceLedger` the single canonical owner of reality/simulation evidence. `OrganismRuntime` previously constructed a second `RealityEvidenceLedger(384)` and overwrote the persisted ledger on every cycle, silently discarding every Core observation/outcome claim recorded for the same tick. Runtime writes now route through the canonical `core.recordRealityEvidence(...)` path and the duplicate ledger is removed.
+- Add `RealityEvidenceLedger.mergeFrom(...)` and make `OrganismCore.setRealityEvidenceLedger(...)` union projections by immutable record id instead of replacing them, so both the internal decision loop and the outer embodied loop retain their distinct reality-class evidence. The public `realityEvidenceLedgerSnapshot()` now reads the live canonical ledger and is always defined.
+- Fix a persistence-migration data-loss defect: `migratePersistedOrganism` rebuilt `system` from an explicit key whitelist that omitted `runtimeCognitiveEventFabric`, `runtimeCognitiveResourceEconomy`, and `runtimeUnifiedCognitiveCycle`, so verified runtime cognitive-cycle state was dropped on every restart. The runtime-namespaced slots are now preserved.
+- Make the cognitive-cycle verifier robust to same-tick duplicate feedback: a second `feedback()` for an already-closed tick previously threw `cognitive cycle tick must strictly increase` and aborted the remaining learning/consolidation path. It is now a bounded, recorded no-op guarded by `lastClosedCognitiveCycleTick`, seeded from restored verifier history so a restart cannot re-close a tick.
+- Reconnect the `UnifiedCognitiveSubstrate` to the decision path: its bounded `actionBias(...)` was computed nowhere, leaving the module disconnected from behaviour. It now contributes one bounded term to governed candidate scoring alongside the existing bias chain.
+- Fix a cwd-dependent contract defect in `workpass287-cognitive-architecture-contract.mjs`: component paths are repository-root relative, but the test resolved them against `process.cwd()`, so it failed when run from the package directory. Root is now derived from the test file.
+- Add `tests/nk1-cognitive-unified-ownership-regression.mjs` covering ledger merge/dedup, migration preservation, same-tick duplicate feedback, restart round-trip of cycle/fabric/economy/ledger, and architecture-map component resolution.
+- Scope is cognitive-cycle ownership, persistence, and restart recovery. This does not claim complete digital personality, consciousness, or measured intelligence uplift.
+
 ## [NK1][WorkPass616] Wire metadata candidate mode into independent bilingual retrieval evaluation (2026-10-29)
 
 - Add an explicit `metadataRecallEnabled` benchmark option that applies only to the isolated candidate arm; the baseline arm remains the canonical retriever and is unchanged.

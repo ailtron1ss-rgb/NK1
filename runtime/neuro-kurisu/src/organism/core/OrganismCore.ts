@@ -683,6 +683,8 @@ export interface OrganismSystemState {
     runtimeUnifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     runtimePerformance?: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState;
     realityEvidenceLedger?: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState;
+    /** Diagnostics for a bounded same-tick duplicate cycle-close attempt. */
+    cognitiveCycleDuplicateFeedback?: { tick:number; lastClosedTick:number; at:number };
     unifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     continuousCognitiveFabric?: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot;
     runtimeClosure?: import('../system/RuntimeClosureLedger.ts').RuntimeClosureSnapshot;
@@ -1240,6 +1242,8 @@ export class OrganismCore {
     private cognitiveSubsystemFacadeB297!: CognitiveSubsystemFacade;
     private b297FacadeCache = { identity01: .5, agency01: .5, budget01: .5, memoryPressure01: .2, embodimentCapacity01: .75 };
     private cognitiveCycleAnchors: Partial<Record<'observation' | 'prediction' | 'appraisal' | 'attention' | 'memory' | 'goal' | 'plan' | 'action', string>> = {};
+    /** Highest tick for which the canonical cognitive cycle verifier has run. */
+    private lastClosedCognitiveCycleTick = -1;
     private persisted: PersistedOrganism = defaultPersisted();
     private ready = false;
     constructor(store: JsonStateStore<PersistedOrganism>, config: OrganismConfig = {}) {
@@ -1675,6 +1679,9 @@ export class OrganismCore {
         this.cognitiveRuntime.cognitiveResourceEconomy.restore(this.persisted.system.cognitiveResourceEconomy);
         this.organismSystems.governance.realityEvidenceLedger.restore(this.persisted.system.realityEvidenceLedger);
         this.cognitiveRuntime.unifiedCognitiveCycle.restore(this.persisted.system.unifiedCognitiveCycle);
+        // Seed the duplicate-cycle guard from restored verifier history so a
+        // restart cannot re-evaluate a tick the previous process already closed.
+        this.lastClosedCognitiveCycleTick = Number.isSafeInteger(this.persisted.system.unifiedCognitiveCycle?.lastTick ?? -1) ? Number(this.persisted.system.unifiedCognitiveCycle?.lastTick ?? -1) : -1;
         this.cognitiveRuntime.emotionAppraisal.restore(this.persisted.system.emotionAppraisal);
         this.organismSystems.memory.memoryCausalEconomy.restore(this.persisted.system.memoryCausalEconomy);
         this.organismSystems.memory.causalLifeGraph.restore(this.persisted.system.causalLifeGraph);
@@ -2360,7 +2367,9 @@ export class OrganismCore {
     cognitiveResourceEconomySnapshot() { return structuredClone(this.persisted.system.cognitiveResourceEconomy); }
     runtimePerformanceSnapshot() { return structuredClone(this.persisted.system.runtimePerformance); }
     setRuntimePerformance(snapshot: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState): void { this.persisted.system.runtimePerformance = structuredClone(snapshot); this.markPersistenceDirty(); }
-    realityEvidenceLedgerSnapshot() { return structuredClone(this.persisted.system.realityEvidenceLedger); }
+    // Read the live canonical governance ledger so the accessor is always defined,
+    // even before the first persisted projection has been written.
+    realityEvidenceLedgerSnapshot() { return this.organismSystems.governance.realityEvidenceLedger.snapshot(); }
     unifiedCognitiveCycleSnapshot() { return structuredClone(this.persisted.system.unifiedCognitiveCycle); }
     b380TemporalLifeSnapshot() { return this.developmentalNeural.b380TemporalLife.snapshot(); }
     b380TemporalLifeDiagnostics() { return this.developmentalNeural.b380TemporalLife.diagnostics(); }
@@ -2495,7 +2504,16 @@ export class OrganismCore {
     emotionAppraisalSnapshot() { return structuredClone(this.persisted.system.emotionAppraisal); }
     worldModelEnsembleSnapshot() { return structuredClone(this.worldSubsystem.worldModelEnsemble.snapshot()); }
     setCognitiveResourceEconomy(snapshot: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState): void { this.persisted.system.cognitiveResourceEconomy = snapshot; }
-    setRealityEvidenceLedger(snapshot: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState): void { this.persisted.system.realityEvidenceLedger = snapshot; }
+    /**
+     * Merge an external reality-evidence projection into the single canonical
+     * governance ledger instead of replacing it. The internal decision loop and
+     * the outer embodied loop both observe reality, but only the governance
+     * ledger owns the records; a replace here would silently drop whichever
+     * writer ran second (previously losing every Core observation/outcome claim).
+     */
+    setRealityEvidenceLedger(snapshot: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState): void { this.organismSystems.governance.realityEvidenceLedger.mergeFrom(snapshot); this.persisted.system.realityEvidenceLedger = this.organismSystems.governance.realityEvidenceLedger.snapshot(); this.markPersistenceDirty(); }
+    /** Canonical reality-evidence write path for any loop (internal or embodied). */
+    recordRealityEvidence(input: Parameters<import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedger['record']>[0]) { return this.organismSystems.governance.realityEvidenceLedger.record(input); }
     setUnifiedCognitiveCycle(snapshot: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState): void { this.persisted.system.unifiedCognitiveCycle = snapshot; }
     setContinuousCognitiveFabric(snapshot: import('../system/ContinuousCognitiveFabric.ts').ContinuousCognitiveSnapshot): void { this.persisted.system.continuousCognitiveFabric = snapshot; this.markPersistenceDirty(); }
     setRealityGrounding(snapshot: import('../system/RealityGroundingController.ts').RealityGroundingState): void { this.persisted.system.realityGrounding = structuredClone(snapshot); this.markPersistenceDirty(); }
@@ -7070,6 +7088,14 @@ export class OrganismCore {
         for (const candidate of governedCandidates) {
             candidate.score = clamp(candidate.score + this.developmentalNeural.neuralLifeConsolidationB285.actionBias(candidate.action));
         }
+        // UnifiedCognitiveSubstrate couples self/world/prediction/resource state into a
+        // single bounded action-readiness signal. Its actionBias was previously
+        // computed nowhere in the decision path, leaving the module disconnected from
+        // behaviour; apply it as one bounded contribution among the existing biases.
+        for (const candidate of governedCandidates) {
+            candidate.score = clamp(candidate.score + this.developmentalNeural.unifiedCognitiveSubstrate.actionBias(candidate.action));
+        }
+        this.persisted.system.unifiedCognitiveSubstrate = this.developmentalNeural.unifiedCognitiveSubstrate.snapshot();
         this.persisted.system.neuralLifeConsolidationB285 = this.developmentalNeural.neuralLifeConsolidationB285.snapshot();
         this.persisted.system.neuralOperatorGenesisB277 = this.developmentalNeural.neuralOperatorGenesisB277.snapshot();
         this.persisted.system.neuralPrimitiveGenesisB278 = this.developmentalNeural.neuralPrimitiveGenesisB278.snapshot();
@@ -8607,7 +8633,17 @@ export class OrganismCore {
         const selfUpdateEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'self-update', source: 'self-model', parentIds: [learningEvent.id], confidence01: clamp(state.needs.identityCoherence), payload: { identityCoherence: state.needs.identityCoherence } });
         const cycleStageIds = { observation: this.cognitiveCycleAnchors.observation, prediction: this.cognitiveCycleAnchors.prediction, appraisal: this.cognitiveCycleAnchors.appraisal, attention: this.cognitiveCycleAnchors.attention, memory: this.cognitiveCycleAnchors.memory, goal: this.cognitiveCycleAnchors.goal, plan: this.cognitiveCycleAnchors.plan, action: this.cognitiveCycleAnchors.action, outcome: outcomeEvent.id, learning: learningEvent.id, 'self-update': selfUpdateEvent.id };
         const cycleLineage = this.cognitiveRuntime.cognitiveEventFabric.verifyOperationalCycle(cycleStageIds);
-        this.cognitiveRuntime.unifiedCognitiveCycle.evaluate({ tick: state.tick, stageIds: cycleStageIds, parentIntegrity01: cycleLineage.complete ? cycleLineage.integrity01 : 0 });
+        // A cognitive cycle is closed at most once per tick. `feedback()` can be
+        // invoked more than once for the same tick (e.g. a provider reconciliation
+        // followed by outcome learning). The verifier requires strictly increasing
+        // ticks, so a second evaluation must not throw and abort the remaining
+        // learning/consolidation path: it is a bounded, recorded no-op instead.
+        if (state.tick > this.lastClosedCognitiveCycleTick) {
+            this.cognitiveRuntime.unifiedCognitiveCycle.evaluate({ tick: state.tick, stageIds: cycleStageIds, parentIntegrity01: cycleLineage.complete ? cycleLineage.integrity01 : 0 });
+            this.lastClosedCognitiveCycleTick = state.tick;
+        } else {
+            this.persisted.system.cognitiveCycleDuplicateFeedback = { tick: state.tick, lastClosedTick: this.lastClosedCognitiveCycleTick, at: Date.now() };
+        }
         this.cognitiveCycleAnchors = {};
         const feedbackRealityClass = externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase()) ? 'external-observation' : outcome.worldTransition ? 'simulator' : 'derived';
         this.organismSystems.governance.realityEvidenceLedger.record({ tick: state.tick, realityClass: feedbackRealityClass, claim: `outcome:${trace?.selected?.action ?? 'none'}`, confidence01: clamp(1 - surprise), independenceKey: `${feedbackRealityClass}:${state.tick}`, parentIds: [outcomeEvent.id], at: state.at });

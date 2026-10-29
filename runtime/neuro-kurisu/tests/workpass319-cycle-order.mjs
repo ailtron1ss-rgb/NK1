@@ -19,7 +19,11 @@ assert.notEqual(embodimentPersist, -1, 'cycle embodiment persistence must occur 
 const cycleLedger = index('const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({');
 const cycleEvaluation = index('const cycleVerification = this.unifiedCycle.evaluate({');
 const completenessEvidence = index("claim:'cognitive-cycle-completeness'");
-const cycleEvidencePersist = runtime.indexOf('this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());', completenessEvidence);
+// Cycle completeness evidence must be written through the single canonical
+// core reality-evidence contract, not a runtime-local duplicate ledger.
+const canonicalEvidenceWrite = runtime.lastIndexOf('this.core.recordRealityEvidence({', completenessEvidence);
+assert.notEqual(canonicalEvidenceWrite, -1, 'cycle completeness evidence must be written through the canonical core reality-evidence path');
+assert.doesNotMatch(runtime, /private readonly realityEvidence = new RealityEvidenceLedger/, 'runtime must not own a duplicate reality-evidence ledger');
 
 assert.ok(feedback < groundedTransitionLearning, 'feedback must execute before the cycle claims learning completed');
 assert.ok(groundedTransitionLearning < embodiedConsequenceLearning, 'world and embodied consequence learning must precede cycle closure');
@@ -30,7 +34,7 @@ assert.ok(lifeCourseUpdate < embodimentPersist, 'embodiment state must be commit
 assert.ok(embodimentPersist < cycleLedger, 'causal stages must not be declared complete before the canonical learning path finishes');
 assert.ok(cycleLedger < cycleEvaluation, 'the unified cycle must evaluate the exact ledger events that were just written');
 assert.ok(cycleEvaluation < completenessEvidence, 'completeness evidence must be derived from the post-update verification');
-assert.ok(completenessEvidence < cycleEvidencePersist, 'cycle completeness evidence must be persisted after it is recorded');
+assert.ok(cycleEvaluation < canonicalEvidenceWrite, 'cycle completeness evidence must be recorded after it is derived');
 
 const cycleBlock = runtime.slice(cycleLedger, completenessEvidence);
 assert.match(cycleBlock, /learning:\s*\{?\s*source:'core\.feedback'/);
