@@ -84,7 +84,7 @@ export interface WorldContext {
   attention: number;
   uncertainty: number;
   facts: string[];
-  objects: Array<{ id: string; label: string; location: string; value: number; visible: boolean; collected: boolean; confidence01?: number; evidenceKind?: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'; sourceId?: string }>;
+  objects: Array<{ id: string; label: string; location: string; value: number; valueKnown?: boolean; visible: boolean; visibilityKnown?: boolean; collected: boolean; collectionKnown?: boolean; confidence01?: number; evidenceKind?: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'; sourceId?: string }>;
   events: string[];
 }
 
