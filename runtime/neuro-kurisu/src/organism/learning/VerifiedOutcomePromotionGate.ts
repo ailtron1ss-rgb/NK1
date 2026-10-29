@@ -126,7 +126,7 @@ export function evaluateOutcomePromotion(
   // Prefer the cluster-bootstrap interval. Never fall back to a more optimistic
   // approximate interval when a bootstrap interval was supplied but is invalid
   // or its lower bound does not clear zero.
-  const rawAggregate = isRecord(aggregate) ? aggregate : {};
+  const rawAggregate: RecordValue = isRecord(aggregate) ? aggregate : {};
   const bootstrap = readInterval(rawAggregate.bootstrap95CI);
   const interval = bootstrap.present ? bootstrap : readInterval(rawAggregate.approximate95CI);
   if (cfg.requirePositiveConfidenceLowerBound &&
