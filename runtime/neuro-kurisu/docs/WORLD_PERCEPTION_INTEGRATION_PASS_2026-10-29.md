@@ -10,6 +10,7 @@ This change hardens the perception boundary and event detector on `workpass70-so
 - Facts and events are accepted only as strings, NFKC-normalized, trimmed and bounded; malformed objects do not become `"[object Object]"`.
 - Boolean observations require real booleans; strings such as `"false"` are not truthy facts. Separate `valueKnown`, `visibilityKnown`, and `collectionKnown` flags preserve the difference between a negative observation and no observation.
 - Evidence kinds are allow-listed, source IDs bounded, numeric confidence populated only when numeric, and objects/facts/events size-bounded.
+- The runtime owns and invokes `PerceptionEngine` each cycle; salient perception events are emitted to `RuntimeEvidenceBus` and surfaced as bounded `sensor`/`world` multimodal inputs before `core.observe()`.
 - Sensor observations are gated by freshness, reported staleness and sampled-at clock plausibility. Invalid or stale readings do not replace the last known sensor baseline.
 - The first fresh sensor sample initializes the baseline and is not falsely reported as a physical change. Sensor availability transitions are separate from movement/proximity/light changes.
 - Simultaneous sensor changes are delivered over successive perception cycles, updating only the field associated with the emitted event.
@@ -25,6 +26,7 @@ This change hardens the perception boundary and event detector on `workpass70-so
 4. World changes are content-sensitive while fact-set ordering is not treated as novelty.
 5. Resource pressure is reported on state transitions instead of at every cycle.
 6. Perception remains a signal producer; it does not become a second world-state owner, memory store, planner or action executor.
+7. Only salient perception events are injected into the multimodal workspace; quiet-cycle events do not add repetitive workspace noise.
 
 ## Run locally
 
