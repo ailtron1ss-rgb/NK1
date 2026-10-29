@@ -23,7 +23,7 @@ export interface OutcomeCognitionProjection {
     at:number; tick:number; tool:string; ok:boolean; verified:boolean;
     basis:OutcomeVerification['basis']; confidence01:number; observationId?:string;
     externalObservation:boolean; expectedPostcondition?:string; observedPostcondition?:string; executionId?:string; predictionId?:string; outcomeClass?:ActionOutcomeClass;
-    externalObservations?:Array<{observationId:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;at:number;reason?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}>;
+    externalObservations?:Array<{observationId:string;evidenceEventId?:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;at:number;reason?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}>;
     externalEvidenceStatus?:'none'|'corroborated'|'contradicted'|'mixed';
   };
   causal:CausalAccountabilityState;
@@ -202,13 +202,15 @@ export class OutcomeCognitionFabric {
     return {verificationRecord:row,causal:this.causal.snapshot(),verifiedExternal,observedWorldContextAfter:v.observedWorldContextAfter};
   }
 
-  resolveExternalObservation(input:{tick:number;executionId?:string;tool:string;observationId:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;predictionId?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}){
+  resolveExternalObservation(input:{tick:number;executionId?:string;tool:string;observationId:string;evidenceEventId?:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;predictionId?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}){
     const executionId=boundedText(input.executionId,180);
     const tool=boundedText(input.tool,180);
     const observationId=boundedText(input.observationId,180);
     if(!executionId) return {resolved:false,reason:'execution-id-required'} as const;
     if(!tool) return {resolved:false,reason:'tool-id-invalid'} as const;
     if(!observationId) return {resolved:false,reason:'observation-id-required'} as const;
+    const evidenceEventId=boundedText(input.evidenceEventId,180);
+    if(input.evidenceEventId!==undefined&&(!evidenceEventId||!/^outcome:[a-f0-9]{40}$/i.test(evidenceEventId)))return {resolved:false,reason:'evidence-event-id-invalid'} as const;
     const indexed=this.projectionIndex.get(executionId);
     const matches=indexed&&indexed.record.tool===tool
       ? [{record:indexed.record,index:this.records.findIndex(row=>row.executionId===executionId)}]
@@ -235,11 +237,11 @@ export class OutcomeCognitionFabric {
     const priorObservation=observations.find(row=>row.observationId===observationId);
     if(priorObservation){
       const same=priorObservation.verified===verified&&priorObservation.confidence01===confidence01&&priorObservation.expectedPostcondition===expected&&priorObservation.observedPostcondition===observed&&
-        (priorObservation.sourceId??undefined)===sourceId&&(priorObservation.sourceClass??undefined)===sourceClass&&(priorObservation.independenceKey??undefined)===independenceKey&&(priorObservation.assessment??'unknown')===observationAssessment;
+        (priorObservation.sourceId??undefined)===sourceId&&(priorObservation.sourceClass??undefined)===sourceClass&&(priorObservation.independenceKey??undefined)===independenceKey&&(priorObservation.assessment??'unknown')===observationAssessment&&(priorObservation.evidenceEventId??undefined)===evidenceEventId;
       if(!same) return {resolved:false,reason:'observation-replay-conflict'} as const;
       return {resolved:true,record:structuredClone(current),causal:this.causal.snapshot(),replayed:true} as const;
     }
-    const newObservation={observationId,verified,confidence01,expectedPostcondition:expected,observedPostcondition:observed,at:Date.now(),assessment:observationAssessment,
+    const newObservation={observationId,...(evidenceEventId?{evidenceEventId}:{}),verified,confidence01,expectedPostcondition:expected,observedPostcondition:observed,at:Date.now(),assessment:observationAssessment,
       ...(sourceId?{sourceId}:{}),...(sourceClass?{sourceClass}:{}),...(independenceKey?{independenceKey}:{}),...(boundedText(input.reason,160)?{reason:boundedText(input.reason,160)}:{})};
     const proposedObservations=[...observations,newObservation].slice(-8);
     const negativeSources=new Map<string,number>();
