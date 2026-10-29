@@ -1,18 +1,20 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildCognitiveArchitectureSnapshot, validateCognitiveArchitecture } from '../src/organism/core/CognitiveArchitectureMap.ts';
 
 // Regression contract: micro-cycle inputs do not contain canonical verifier evidence,
 // so claimed reward/success must not become fresh verified learning credit.
-const microCycleSource = readFileSync(resolve(process.cwd(), 'src/organism/core/OperationalMicroCycleRuntime.ts'), 'utf8');
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const microCycleSource = readFileSync(resolve(packageRoot, 'src/organism/core/OperationalMicroCycleRuntime.ts'), 'utf8');
 assert.match(microCycleSource, /const microReward = 0\.5;/, 'unverified micro-cycle reward must stay neutral');
 assert.match(microCycleSource, /const microVerified = false;/, 'micro-cycle must not self-certify a claimed outcome');
 assert.doesNotMatch(microCycleSource, /const microVerified = Boolean\(observation\.(worldEvent|success|reward)/, 'caller claims must not certify outcomes');
 
 const report = buildCognitiveArchitectureSnapshot();
 const validation = validateCognitiveArchitecture();
-const root = process.cwd();
+const root = packageRoot;
 
 assert.equal(validation.ok, true, 'cognitive architecture map must have unique IDs, valid references, and explicit owners');
 assert.equal(report.mainSystem.id, 'kurisu-organism');
