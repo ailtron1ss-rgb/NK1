@@ -18,6 +18,14 @@ export interface RetrievedSkill extends RetrievableSkill {
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const n=(x:unknown,d=0):number=>typeof x==='number'&&Number.isFinite(x)?x:d;
 
+/**
+ * Minimum context similarity for a skill to influence a *different* context.
+ * Retrieval may surface looser neighbors for inspection, but execution bias must
+ * stay within one six-bucket step (5/6), matching P23LearningEngine's transfer
+ * boundary so the two paths cannot drift apart.
+ */
+export const MIN_TRANSFER_SIMILARITY01 = 5 / 6;
+
 /** Six-bucket organism contexts are compared by feature position, not substring. */
 export function contextSimilarity01(a:string,b:string):number {
   const left=String(a).split('|'), right=String(b).split('|');
@@ -72,7 +80,10 @@ export function retrievedSkillBias(query:SkillRetrievalQuery,skills:readonly Ret
   // Do not let the mere presence of one successful skill erase contradictory
   // same-action failure evidence. Aggregate only qualified, action-matched
   // evidence and clamp the result so retrieval can nudge, never dominate policy.
+  // Evidence is additionally gated on the shared transfer floor: a skill from a
+  // dissimilar context may be retrieved for inspection, but must not bias action.
   const relevant=rows.filter(s=>
+    s.similarity01>=MIN_TRANSFER_SIMILARITY01 &&
     (query.action===undefined||s.action===query.action) &&
     ((s.status==='promoted'&&s.validationSuccess01>=.7) ||
      (s.status==='rejected'&&s.validationSuccess01<=.42)));

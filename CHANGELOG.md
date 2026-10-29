@@ -1,3 +1,11 @@
+## [NK1][WorkPass611] Enforce one cross-context skill-transfer floor for retrieval bias (2026-10-29)
+
+- `test:p23:learning` (`tests/p23-true-learning.mjs`) failed on `skills must not transfer across dissimilar contexts`: a promoted skill leaked `0.0089` into a dissimilar state. The CI workflow `workpass95-continual-skill-learning.yml` has been red since 2026-10-23 for this reason.
+- Root cause: two divergent similarity floors guarded the same documented invariant. `P23LearningEngine.skillBias` required `similarity >= 5/6`, but `retrievedSkillBias` aggregated rows retrieved with only a `>= .5` floor, so a `0.556`-similarity skill produced a non-zero bias.
+- Gate `retrievedSkillBias` on a shared `MIN_TRANSFER_SIMILARITY01 = 5/6` constant so retrieval may surface looser neighbors for inspection while execution bias stays within one six-bucket step. `retrieveSkills` and the `workpass197` transfer-safety contract are unchanged.
+- Repair two stale assertions in the same test that had been masked by the earlier failure: the replay budget is health-adaptive and hard-capped at 64 (`adaptiveReplayOptions`, covered by `p23-multi-source-learning-mechanisms.mjs`), so the exact `64`/`32` counts are now expressed as range and invariant checks.
+- Behavior change is limited to the bias path: skills from dissimilar contexts no longer influence action ranking. This is a transfer-boundary correction, not a measured learning-uplift claim.
+
 ## [NK1][WorkPass610] Restore brain-fusion runtime loading under Node 24 strip-only TypeScript (2026-10-29)
 
 - Remove TypeScript parameter properties from the five brain-fusion runtime classes so Node's strip-only TypeScript loader can import them without an unsupported-syntax exception.
