@@ -1,3 +1,11 @@
+## [NK1][WorkPass614] Add opt-in metadata-aware memory recall with index integrity checks (2026-10-29)
+
+- Add a separate bounded postings index over curated tags, entities, and an allowlist of topic/context fields; keep metadata terms out of content BM25 document-frequency statistics.
+- Add an explicit constructor flag `metadataRecallEnabled`, disabled by default, so the production/default ranker and answerability policy do not silently change before independent RU/EN holdout improvement is established.
+- When explicitly enabled, allow metadata postings to nominate candidates and give metadata its own bounded ranking channel; only sufficiently overlapping metadata may satisfy the answerability gate.
+- Rebuild and maintain metadata postings on encode/restore/removal and expose `metadataIndexMismatch` in `indexDiagnostics()`.
+- Add a read-only regression covering metadata-only discovery, baseline-default isolation, snapshot/restore, and index consistency. This is a focused synthetic contract; it does not claim independent recall uplift or automatically promote the feature.
+
 ## [NK1][WorkPass612] Make installer, doctor and CI reliability checks follow the pinned Node runtime (2026-10-29)
 
 - Read the expected Node.js major from root `.nvmrc` through a shared helper used by installer and doctor, removing stale Node 22 assumptions while the project pins Node 24.
