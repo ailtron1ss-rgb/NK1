@@ -91,6 +91,20 @@ boundedRestore.record({
 assert.equal(boundedRestore.snapshot().total, 130, 'replay after restore must not inflate lifetime event totals');
 assert.equal(boundedRestore.recent(256).some(row => row.eventId === 'event:0'), false, 'replayed historical evidence must not re-enter the active window');
 
+const completeCycle = new RealityEvidenceLedger(128);
+const cycleParents = Array.from({ length: 11 }, (_, index) => `cycle-stage:${index + 1}`);
+const completeCycleRow = completeCycle.record({
+  eventId: 'cycle:complete-lineage', tick: 42, at: 42000,
+  realityClass: 'derived', claim: 'cognitive-cycle-completeness', confidence01: 0.95,
+  independenceKey: 'cycle:42', parentIds: cycleParents,
+});
+assert.equal(completeCycleRow.parentIds.length, 11,
+  'the bounded reality ledger must preserve the full 11-stage cognitive-cycle lineage');
+const restoredCompleteCycle = new RealityEvidenceLedger(128);
+restoredCompleteCycle.restore(completeCycle.snapshot());
+assert.deepEqual(restoredCompleteCycle.findByEventId('cycle:complete-lineage')?.parentIds, cycleParents,
+  'restoration must retain the full bounded cognitive-cycle lineage');
+
 const restoreConflictBase = new RealityEvidenceLedger(128);
 restoreConflictBase.record({
   eventId: 'restore:event-1', tick: 8, at: 200, realityClass: 'device-observation',
