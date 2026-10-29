@@ -5,15 +5,18 @@ import { NeuralExperienceBranch, defaultNeuralExperienceBranch } from '../src/or
 const actions={respond:.5,explore:.5,verify:.5,rest:.5,reflect:.5,wait:.5,defer:.5};
 const p=new P2702PersistentPersonalityDynamics();
 const before=p.snapshot();
-let out=p.beforeDecision({tick:1,novelty01:.9,uncertainty01:.8,goalPressure01:.7,identityGap01:.2,reward01:.5,actionUtilities:actions,identityVector:new Array(24).fill(.2)});
+let out=p.beforeDecision({tick:1,novelty01:.9,uncertainty01:.8,goalPressure01:.7,identityGap01:.2,reward01:.5,actionUtilities:actions,identityVector:new Array(24).fill(.2),relationshipId:'research-partner'});
+assert.equal(p.snapshot().relationshipTrust['research-partner'],undefined,'decision intent alone must not change relationship trust');
 assert(out.actionBias.explore>0,'exploration should receive curiosity-driven personality bias');
-p.afterOutcome({tick:2,reward01:.95,verified01:1,predictionError01:.05,identityGap01:.1,action:'explore',identityVector:new Array(24).fill(.4),evidence:{verified:true,independent:true,source:'world-transition',evidenceRef:'world-transition:p2702-test-1'}});
+p.afterOutcome({tick:2,reward01:.95,verified01:1,predictionError01:.05,identityGap01:.1,action:'explore',identityVector:new Array(24).fill(.4),relationshipId:'research-partner',evidence:{verified:true,independent:true,source:'world-transition',evidenceRef:'world-transition:p2702-test-1',traitFeedback:{traitName:'directness',target01:.95,confidence01:.9},valueFeedback:{valueName:'curiosity',target01:.99,confidence01:.9}}});
 const after=p.snapshot();
 assert(after.learningUpdates>before.learningUpdates);
 assert(after.verifiedLearningUpdates>before.verifiedLearningUpdates);
 assert.equal(after.lastEvidenceGateReason,'verified-independent-outcome-bound');
 assert(after.autobiographicalStrength01>before.autobiographicalStrength01);
 assert(after.adaptiveValues.some((v,i)=>Math.abs(v-(before.adaptiveValues[i]??v))>1e-6));
+assert(after.valueWeights.some((v,i)=>Math.abs(v-(before.valueWeights[i]??v))>1e-6),'value weights change only for evidence-attributed dimension');
+assert(after.relationshipTrust['research-partner']>.5,'relationship trust changes only after bound verified outcome');
 const restored=new P2702PersistentPersonalityDynamics();restored.restore(after);assert.deepEqual(restored.snapshot(),after);
 
 const rejected=new P2702PersistentPersonalityDynamics();
@@ -30,6 +33,12 @@ const badSource=new P2702PersistentPersonalityDynamics();
 const badSourceBefore=badSource.snapshot();
 badSource.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.01,identityGap01:.1,action:'explore',evidence:{verified:true,independent:true,source:'internal',evidenceRef:'internal:pretend-external'}});
 assert.deepEqual(badSource.snapshot().adaptiveValues,badSourceBefore.adaptiveValues,'internal evidence cannot authorize stable personality learning');
+
+const noAttribution=new P2702PersistentPersonalityDynamics();
+const noAttributionBefore=noAttribution.snapshot();
+noAttribution.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.01,identityGap01:.1,action:'explore',evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:without-dimension'}});
+assert.deepEqual(noAttribution.snapshot().adaptiveValues,noAttributionBefore.adaptiveValues,'verified outcome without trait attribution must not pick an arbitrary trait by action index');
+assert.deepEqual(noAttribution.snapshot().valueWeights,noAttributionBefore.valueWeights,'verified outcome without value attribution must not move every value weight');
 
 const canonicalDefaults=defaultP2702PersistentPersonality();
 const tampered=new P2702PersistentPersonalityDynamics();
