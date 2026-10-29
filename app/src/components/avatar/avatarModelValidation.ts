@@ -285,8 +285,15 @@ export function inspectSelfContainedGlb(
     const bufferView = bufferViews[i];
     if (!isRecord(bufferView) || !Number.isSafeInteger(bufferView.buffer) ||
         (bufferView.buffer as number) < 0 || (bufferView.buffer as number) >= buffers.length ||
-        !Number.isSafeInteger(bufferView.byteLength) || (bufferView.byteLength as number) < 0) {
-      reject("invalid-buffer", `bufferView №${i} ссылается на некорректный buffer или byteLength.`);
+        !Number.isSafeInteger(bufferView.byteLength) || (bufferView.byteLength as number) < 0 ||
+        (bufferView.byteOffset !== undefined && (!Number.isSafeInteger(bufferView.byteOffset) || (bufferView.byteOffset as number) < 0))) {
+      reject("invalid-buffer", `bufferView №${i} ссылается на некорректный buffer, byteOffset или byteLength.`);
+    }
+    const backingBuffer = buffers[bufferView.buffer as number];
+    if (!isRecord(backingBuffer)) reject("invalid-buffer", `bufferView №${i} ссылается на некорректный buffer.`);
+    const byteOffset = (bufferView.byteOffset ?? 0) as number;
+    if (byteOffset + (bufferView.byteLength as number) > (backingBuffer.byteLength as number)) {
+      reject("invalid-buffer", `bufferView №${i} выходит за границы объявленного buffer.`);
     }
   }
   for (let i = 0; i < images.length; i += 1) {
