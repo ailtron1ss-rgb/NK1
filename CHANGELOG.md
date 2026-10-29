@@ -1,3 +1,10 @@
+## [NK1][WorkPass609] Repair stale big-pass-126 retrieval benchmark fixture against the current provenance contract (2026-10-29)
+
+- `tests/big-pass-126-memory-retrieval-benchmark.mjs` asserted `schemaVersion === 3` while the report schema advanced to 6, and its `datasetProvenance` omitted the now-required `licenseId` and `contentSha256`. Both caused the suite to abort on the first assertion, masking every downstream check.
+- Bind provenance to the exact canonical dataset via `fingerprintMemoryRetrievalDataset(examples)` instead of a hardcoded or omitted hash; add the explicit `licenseId` required for `provenanceComplete`.
+- Rebind the sliced `insufficient` sub-case provenance to that slice's own fingerprint so it still exercises the `insufficient-labelled-holdout-or-corpus` gate rather than failing earlier on provenance.
+- This is a test-fixture repair only. It restores coverage of the existing retrieval benchmark; it does not change retrieval behavior, does not claim recall uplift, and leaves `recallDelta=0` / `not-promoted` unchanged.
+
 ## [NK1][WorkPass608] Attribute retrieval cost to the selected execution path (2026-10-28)
 
 - Add isolated lexical preview diagnostics so candidateCount/cost no longer reads whichever query last mutated live MemoryOS2 diagnostic state.
