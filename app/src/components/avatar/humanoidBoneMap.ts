@@ -22,10 +22,14 @@ export function buildHumanoidRoleMap(extensionRoot: unknown): Map<number, Avatar
   if (!extensionRoot || typeof extensionRoot !== "object") return new Map();
   const root = extensionRoot as Record<string, unknown>;
   const result = new Map<number, AvatarBoneRole | string>();
+  const supportedRoles = new Set<string>([
+    "head", "neck", "spine", "hips",
+    "leftupperarm", "rightupperarm", "leftlowerarm", "rightlowerarm",
+  ]);
   const add = (node: unknown, role: unknown) => {
     if (!Number.isSafeInteger(node) || (node as number) < 0 || typeof role !== "string") return;
     const canonical = canonicalizeHumanoidBoneName(role);
-    if (canonical !== "other") result.set(node as number, canonical);
+    if (supportedRoles.has(canonical)) result.set(node as number, canonical);
   };
 
   // VRM 1.0: extensions.VRMC_vrm.humanoid.humanBones is a role-keyed object.
