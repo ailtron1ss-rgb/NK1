@@ -6,6 +6,9 @@
 - Add focused regressions and wire the WorkPass622 suite into P26 Learning Validation. External runtime dependencies and Release ZIP were not changed.
 - Wire hash-chained fitness/lifecycle journals to the canonical P23 engine at OrganismRuntime startup; reconcile pending activation intents against authoritative store state and fail closed in production when integrity reconciliation is unavailable.
 - Hide all holdout metrics from the revision generator; reject hostile accessor-bearing candidate/evaluator envelopes and unchanged revisions before independent evaluation.
+- Add the host-owned local-model generator adapter to P23 and explicitly test that revision prompts receive the holdout-withheld policy but never numeric holdout feedback.
+- Preserve the established independent-evaluator plan fingerprint when no task-family metadata is configured, while binding trusted family labels when present.
+- Preserve `duplicate-attempt` idempotency diagnostics for exact duplicate ledger cells without weakening unique evidence-reference enforcement; add adjacent ledger/evaluator regressions to the focused suite.
 - Fix continual-outcome fixture receipts to be unique across task/method/seed, preserving strict anti-replay evidence identity.
 
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
