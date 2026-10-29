@@ -1,3 +1,11 @@
+## [NK1][WorkPass617] Wire continuous organism pose intent into Live2D (2026-10-29)
+
+- Add a deterministic, bounded action/affect-to-pose mapper and optional normalized head yaw/pitch, torso angles, and breathing intensity to the existing EmbodimentIntent v1 contract.
+- Drive the existing Live2D body-angle and breathing parameters in both the app viewer and standalone runtime viewer while preserving older v1 payloads and legacy standalone messages.
+- Extend schema validation and regression coverage. This is a focused pose-control integration, not a claim that a full 2.5D/3D skeleton or autonomous whole-body motion planner exists.
+
+---
+
 ## [NK1][WorkPass616] Wire metadata candidate mode into independent bilingual retrieval evaluation (2026-10-29)
 
 - Add an explicit `metadataRecallEnabled` benchmark option that applies only to the isolated candidate arm; the baseline arm remains the canonical retriever and is unchanged.
