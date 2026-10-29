@@ -4,6 +4,25 @@ import { NeuralExperienceBranch, defaultNeuralExperienceBranch } from '../src/or
 import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const actions={respond:.5,explore:.5,verify:.5,rest:.5,reflect:.5,wait:.5,defer:.5};
+
+async function makeTrustedEvidence(id, traitFeedback, valueFeedback) {
+  const context = {
+    toolId: 'personality-test-action',
+    input: { operation: 'change-profile', evidenceCase: id },
+    result: { status: 'completed' },
+    executionId: 'exec-12345678',
+    decisionId: `decision-${id}`,
+  };
+  const service = new OutcomeVerificationService();
+  const verification = await service.verify(context, () => ({
+    verified: true, basis: 'external-postcondition', confidence01: 0.95, externalObservation: true,
+    observationId: `obs-${id}`, expectedPostcondition: 'profile-updated', observedPostcondition: 'profile-updated',
+  }));
+  assert.equal(verification.verified, true);
+  return { source: 'external-verification', verification,
+    expectedBinding: { toolId: context.toolId, input: context.input, executionId: context.executionId, decisionId: context.decisionId },
+    ...(traitFeedback ? { traitFeedback } : {}), ...(valueFeedback ? { valueFeedback } : {}) };
+}
 const p=new P2702PersistentPersonalityDynamics();
 const before=p.snapshot();
 let out=p.beforeDecision({tick:1,novelty01:.9,uncertainty01:.8,goalPressure01:.7,identityGap01:.2,reward01:.5,actionUtilities:actions,identityVector:new Array(24).fill(.2),relationshipId:'research-partner'});
