@@ -24,7 +24,9 @@
     "test:scripts": "node --experimental-strip-types --test 'scripts/**/*.test.mjs'",
     "assets:sync": "node scripts/sync-canonical-public-assets.mjs",
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
-    "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs"
+    "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs",
+    "test:avatar-model-validation": "node --experimental-strip-types --test scripts/avatar-model-validation.test.mjs",
+    "test:avatar-3d-stage": "node --test scripts/avatar-3d-stage.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
