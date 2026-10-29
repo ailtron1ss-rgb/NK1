@@ -1,0 +1,12 @@
+export const MAX_AVATAR_MODEL_BYTES = 90 * 1024 * 1024;
+const DB = "nk1-avatar-model-store";
+const VERSION = 1;
+const STORE = "active-model";
+const KEY = "current";
+type RecordValue = { blob: Blob; name: string; updatedAt: number };
+function openDatabase(): Promise<IDBDatabase> {
+ return new Promise((resolve,reject)=>{if(typeof indexedDB==="undefined"){reject(new Error("IndexedDB is unavailable"));return;}const request=indexedDB.open(DB,VERSION);request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(STORE))request.result.createObjectStore(STORE);};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error??new Error("Could not open avatar store"));request.onblocked=()=>reject(new Error("Avatar database upgrade is blocked"));});
+}
+export async function loadStoredAvatarModel():Promise<{blob:Blob;name:string}|null>{const db=await openDatabase();try{return await new Promise((resolve,reject)=>{const request=db.transaction(STORE,"readonly").objectStore(STORE).get(KEY);request.onsuccess=()=>{const value=request.result as RecordValue|undefined;resolve(value?.blob instanceof Blob&&typeof value.name==="string"?{blob:value.blob,name:value.name}:null);};request.onerror=()=>reject(request.error??new Error("Could not read avatar"));});}finally{db.close();}}
+export async function saveAvatarModel(blob:Blob,name:string):Promise<void>{if(!(blob instanceof Blob)||!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES)throw new Error("Avatar file must be non-empty and at most 90 MB");const safeName=String(name||"avatar.vrm").replace(/[\r\n\0]/g,"").slice(0,180)||"avatar.vrm";const db=await openDatabase();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put({blob,name:safeName,updatedAt:Date.now()} satisfies RecordValue,KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error??new Error("Could not save avatar"));tx.onabort=()=>reject(tx.error??new Error("Avatar save aborted"));});}finally{db.close();}}
+export async function clearStoredAvatarModel():Promise<void>{const db=await openDatabase();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(KEY);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error??new Error("Could not clear avatar"));tx.onabort=()=>reject(tx.error??new Error("Avatar reset aborted"));});}finally{db.close();}}

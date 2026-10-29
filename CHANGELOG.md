@@ -1,3 +1,10 @@
+## [NK1][WorkPass621] Add true 3D embodiment wired to organism state (2026-10-29)
+
+- Add a selectable Three.js WebGL body built from 3D geometry; explicitly label it as a procedural concept because no redistributable canonical Kurisu 3D model is present in the tracked source tree.
+- Allow self-contained local binary VRM/GLB models up to 90 MiB to replace the concept, with browser-local IndexedDB persistence, safe reset, model bounds/centering, available animation clips and recognized bone/morph targets. Model bytes are never uploaded to NK1 servers.
+- Wire the same action, emotion, arousal/valence, gaze, wake/sleep, thinking and speech-viseme state from OrganismSnapshot into the 3D body; preserve Live2D, sprites and the authored SVG concept.
+- Pin Three.js 0.180.0 in app dependencies/lockfile, add regression tests and document visual/VRM/licensing boundaries. No unverified third-party model asset was copied.
+
 ## [NK1][WorkPass620] Make Legacy sprite poses genuinely action-aware (2026-10-29)
 
 - Fix a remaining selector gap: the first sprite pass only chose action poses when they overlapped the current expression's candidate list, so a neutral expression could still show a crossed-arm frame during exploration/rest/verification.
