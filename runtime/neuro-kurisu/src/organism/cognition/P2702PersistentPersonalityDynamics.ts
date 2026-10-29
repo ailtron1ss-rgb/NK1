@@ -1,7 +1,7 @@
 import type { ActionKind } from '../core/types.ts';
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
-import { isTrustedDecisionLinkedExternalPostcondition, type ExpectedDecisionOutcomeBinding, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
+import { isTrustedDecisionLinkedExternalPostcondition, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
@@ -100,9 +100,10 @@ export class P2702PersistentPersonalityDynamics{
  afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;evidence?:{source:'external-verification'|'internal';verification?:unknown;expectedBinding?:ExpectedDecisionOutcomeBinding;traitFeedback?:{traitName:string;target01:number;confidence01:number};valueFeedback?:{valueName:string;target01:number;confidence01:number}}}){
   const reward=clamp(args.reward01),verified=clamp(args.verified01),error=clamp(args.predictionError01);
   const evidence=args.evidence;
-  const trustedVerification:OutcomeVerification|null = evidence?.source==='external-verification'&&evidence.expectedBinding
-   &&isTrustedDecisionLinkedExternalPostcondition(evidence.verification,evidence.expectedBinding)
-   ?evidence.verification:null;
+  let trustedVerification:OutcomeVerification|null=null;
+  if(evidence?.source==='external-verification'&&evidence.expectedBinding&&isTrustedDecisionLinkedExternalPostcondition(evidence.verification,evidence.expectedBinding)){
+   trustedVerification=evidence.verification;
+  }
   const accepted=Boolean(verified>=.99&&trustedVerification&&trustedVerification.verified===true&&trustedVerification.confidence01>=.65&&trustedVerification.externalObservation===true);
   this.state.learningUpdates++;if(Number.isSafeInteger(args.tick)&&Number(args.tick)>=0)this.state.tick=Number(args.tick);this.state.lastReward01=reward;
   if(!accepted){
