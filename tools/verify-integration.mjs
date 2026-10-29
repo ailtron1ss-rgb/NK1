@@ -16,7 +16,7 @@ const run = (label, command, args, options = {}) => new Promise((resolvePromise)
   child.on('close', code => resolvePromise({ label, code, out: String(out), err: String(err) }));
 });
 
-function record(label, ok, detail = '') { results.push({ label, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${label}${detail ? ` — ${detail}` : ''}`); }
+function record(label, ok, detail = '', environmentRequired = false) { results.push({ label, ok, detail, environmentRequired }); console.log(`${ok ? 'PASS' : 'FAIL'} ${label}${detail ? ` — ${detail}` : ''}`); }
 
 for (const path of [
   'runtime/neuro-kurisu/src/server/server.mjs',
@@ -58,27 +58,33 @@ try {
     if(!decision.res.ok) return {res:decision.res,data:decision.data};
     return await fetchJson(base,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({approvalId:blocked.data.approvalRequest.id})});
   };
+  const probe = (label, data, detail) => record(label, data?.ok === true && data?.status === 'pass', detail, !data?.ok && /torch/i.test(data?.error ?? ''));
   const nc = await runApprovedProbe('neurocore');
-  record('research:neurocore-probe-after-approval', nc.res.ok && Boolean(nc.data?.ok) && nc.data?.status === 'pass', `delta=${nc.data?.delta ?? '—'}`);
+  probe('research:neurocore-probe-after-approval', nc.data, `delta=${nc.data?.delta ?? '—'}`);
   const nm = await runApprovedProbe('nomega-registry');
-  record('research:nomega-registry-after-approval', nm.res.ok && Boolean(nm.data?.ok) && nm.data?.status === 'pass', `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'}`);
+  probe('research:nomega-registry-after-approval', nm.data, `modules=${nm.data?.total_modules ?? '—'} cycles=${nm.data?.cycles ?? '—'}`);
   const dc = await runApprovedProbe('deepcode');
-  record('research:deepcode-probe-after-approval', dc.res.ok && Boolean(dc.data?.ok) && dc.data?.status === 'pass', `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'}`);
+  probe('research:deepcode-probe-after-approval', dc.data, `smoke=${dc.data?.result?.smoke ?? '—'} learn_steps=${dc.data?.result?.learn_steps ?? '—'}`);
 } catch (error) {
   record('runtime/bridge:http', false, String(error));
 } finally {
   runtime?.kill('SIGTERM'); bridge?.kill('SIGTERM');
 }
 
+const appDepsPresent = existsSync(resolve(ROOT, 'app/node_modules'));
 for (const [label, command, args] of [
   ['ui:typecheck', 'npm', ['--prefix', 'app', 'run', 'typecheck']],
   ['runtime:typecheck', 'npm', ['--prefix', 'runtime/neuro-kurisu', 'run', 'typecheck']],
 ]) {
   const r = await run(label, command, args);
-  record(label, r.code === 0, (r.err || r.out).trim().split('\n').slice(-3).join(' | '));
+  record(label, r.code === 0, (r.err || r.out).trim().split('\n').slice(-3).join(' | '), label === 'ui:typecheck' && !appDepsPresent);
 }
 
-const environmentBlocked = !existsSync(resolve(ROOT, 'app/node_modules'));
-const summary = { ok: results.every(r => r.ok), environmentBlocked, results, generatedAt: new Date().toISOString() };
+const environmentBlocked = !appDepsPresent;
+const failures = results.filter(r => !r.ok);
+const failedLabels = failures.map(r => r.label);
+const blockedByEnvironment = failures.length > 0 && failures.every(r => r.environmentRequired);
+const summary = { ok: failures.length === 0, environmentBlocked, blockedByEnvironment, failedLabels, results, generatedAt: new Date().toISOString() };
 console.log(JSON.stringify(summary, null, 2));
-process.exitCode = summary.ok ? 0 : 1;
+// 0 = fully verified, 1 = real failure(s), 2 = only environment-blocked checks could not run.
+process.exitCode = summary.ok ? 0 : (blockedByEnvironment ? 2 : 1);
