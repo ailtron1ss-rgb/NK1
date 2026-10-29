@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-const require=createRequire(import.meta.url);
-const ts=require('/opt/nvm/versions/node/v22.16.0/lib/node_modules/typescript/lib/typescript.js');
+import { ts } from './lib/resolve-typescript.mjs';
 const root=process.cwd();
 const ignored=new Set(['node_modules','.git','legacy-original','state','history']);
 const files=[];
