@@ -5,10 +5,12 @@ import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerifi
 
 const actions={respond:.5,explore:.5,verify:.5,rest:.5,reflect:.5,wait:.5,defer:.5};
 
-async function makeTrustedEvidence(id, traitFeedback, valueFeedback) {
+async function makeTrustedEvidence(id, traitFeedback, valueFeedback, relationshipId) {
   const context = {
     toolId: 'personality-test-action',
-    input: { operation: 'change-profile', evidenceCase: id },
+    input: { operation: 'change-profile', evidenceCase: id,
+      ...(relationshipId ? { relationshipId } : {}),
+      ...(traitFeedback || valueFeedback ? { personalityFeedback: { ...(traitFeedback ? { traitFeedback } : {}), ...(valueFeedback ? { valueFeedback } : {}) } } : {}) },
     result: { status: 'completed' },
     executionId: 'exec-12345678',
     decisionId: `decision-${id}`,
@@ -28,7 +30,7 @@ const before=p.snapshot();
 let out=p.beforeDecision({tick:1,novelty01:.9,uncertainty01:.8,goalPressure01:.7,identityGap01:.2,reward01:.5,actionUtilities:actions,identityVector:new Array(24).fill(.2),relationshipId:'research-partner'});
 assert.equal(p.snapshot().relationshipTrust['research-partner'],undefined,'decision intent alone must not change relationship trust');
 assert(out.actionBias.explore>0,'exploration should receive curiosity-driven personality bias');
-const trustedEvidence=await makeTrustedEvidence('accepted',{traitName:'directness',target01:.95,confidence01:.9},{valueName:'curiosity',target01:.99,confidence01:.9});
+const trustedEvidence=await makeTrustedEvidence('accepted',{traitName:'directness',target01:.95,confidence01:.9},{valueName:'curiosity',target01:.99,confidence01:.9},'research-partner');
 p.afterOutcome({tick:2,reward01:.95,verified01:1,predictionError01:.05,identityGap01:.1,action:'explore',identityVector:new Array(24).fill(.4),relationshipId:'research-partner',evidence:trustedEvidence});
 const after=p.snapshot();
 assert(after.learningUpdates>before.learningUpdates);
@@ -38,6 +40,7 @@ assert(after.autobiographicalStrength01>before.autobiographicalStrength01);
 assert(after.adaptiveValues.some((v,i)=>Math.abs(v-(before.adaptiveValues[i]??v))>1e-6));
 assert(after.valueWeights.some((v,i)=>Math.abs(v-(before.valueWeights[i]??v))>1e-6),'value weights change only for evidence-attributed dimension');
 assert(after.relationshipTrust['research-partner']>.5,'relationship trust changes only after bound verified outcome');
+assert.equal(after.adaptiveValues[1],before.adaptiveValues[1],'action index must not mutate an unrelated adaptive trait');
 const restored=new P2702PersistentPersonalityDynamics();restored.restore(after);assert.deepEqual(restored.snapshot(),after);
 
 const rejected=new P2702PersistentPersonalityDynamics();
