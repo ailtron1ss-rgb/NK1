@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { getOutfit, type VisualProfileId, OUTFITS } from "./outfitCatalog";
 import { resolveSpritePath } from "./spriteEngine";
 import { readAvatarPreference, writeAvatarPreference } from "./safeLocalStorage";
-import type { EmotionLabel } from "@/organism/types";
+import type { ActionKind, EmotionLabel } from "@/organism/types";
 
 const EXPRESSION: Record<EmotionLabel, string> = {
   curiosity: "thinking",
@@ -27,7 +27,12 @@ function persistOutfit(outfit: VisualProfileId): void {
   writeAvatarPreference("kurisu-visual-profile", outfit);
 }
 
-export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel; speaking: boolean }) {
+export function LegacySpriteDeck({
+  emotion,
+  speaking,
+  action = "wait",
+  thinking = false,
+}: { emotion: EmotionLabel; speaking: boolean; action?: ActionKind; thinking?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const currentRef = useRef<HTMLImageElement | null>(null);
   const previousRef = useRef<HTMLImageElement | null>(null);
@@ -44,7 +49,12 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
 
   useEffect(() => {
     let cancelled = false;
-    const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", { preferLab: outfit === "lab_coat" || outfit === "formal", profile: getOutfit(outfit) });
+    const visualAction = thinking ? "reflect" : speaking ? "respond" : action;
+    const url = resolveSpritePath(EXPRESSION[emotion] ?? "neutral", {
+      preferLab: outfit === "lab_coat" || outfit === "formal",
+      profile: getOutfit(outfit),
+      action: visualAction,
+    });
     const img = new Image();
     img.onload = () => {
       // A slow prior request must not overwrite the newest emotion/outfit sprite.
@@ -80,10 +90,16 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
       blend.current = Math.min(1, blend.current + dt * 2.5);
       const w = canvas.clientWidth || 320;
       const h = canvas.clientHeight || 360;
-      // Resizing clears the bitmap and resets the drawing context; only do it
-      // when the layout dimensions actually change, not on every animation frame.
-      if (canvas.width !== w) canvas.width = w;
-      if (canvas.height !== h) canvas.height = h;
+      const rawDpr = Number(window.devicePixelRatio || 1);
+      const dpr = Math.max(1, Math.min(2, Number.isFinite(rawDpr) ? rawDpr : 1));
+      const bitmapWidth = Math.max(1, Math.round(w * dpr));
+      const bitmapHeight = Math.max(1, Math.round(h * dpr));
+      // Keep the backing bitmap sharp on phones; draw in logical CSS pixels.
+      if (canvas.width !== bitmapWidth) canvas.width = bitmapWidth;
+      if (canvas.height !== bitmapHeight) canvas.height = bitmapHeight;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.clearRect(0, 0, w, h);
       const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#14141c"); g.addColorStop(1, "#08080c"); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
       const cx = w / 2;
@@ -105,11 +121,10 @@ export function LegacySpriteDeck({ emotion, speaking }: { emotion: EmotionLabel;
         ctx.fillText("Legacy sprite asset unavailable", cx, cy);
         ctx.textAlign = "start";
       }
-      if (speakingRef.current && d) {
-        ctx.strokeStyle = `rgba(255,59,48,${0.20 + 0.2 * Math.sin(time * 8)})`; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.ellipse(cx, cy + d.dh * .35, d.dw * .22, 8, 0, 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "10px monospace"; ctx.fillText(`${getOutfit(outfitRef.current).nameRu} · legacy visual`, 10, 16);
+      // These are complete still illustrations, not mouth-rigged frames.
+      ctx.fillStyle = "rgba(255,255,255,.68)";
+      ctx.font = "10px monospace";
+      ctx.fillText(`${getOutfit(outfitRef.current).nameRu} · ${speakingRef.current ? "говорит · статичный кадр" : "поза по действию"}`, 10, 16);
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw); return () => cancelAnimationFrame(raf);
