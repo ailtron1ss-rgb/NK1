@@ -27,18 +27,27 @@
 - `createRealityEvidenceEventId` создаёт идентификатор проекции, связанный с исходным событием, ролью проекции и discriminator.
 - Ни одна функция идентичности не удостоверяет истинность данных и не должна подменять проверку источника.
 
-### 3. Runtime-привязка
+### 3. Связь verifier → observer → canonical ledger
 
-Шесть проекций в `OrganismRuntime` теперь получают стабильный event ID, привязанный к родительскому событию: resource sample, shadow transition, embodied action, action consequence, neural-learning provenance и cognitive-cycle completeness. Это делает повторную проекцию одной и той же причинной записи идемпотентной; несовпадающая нагрузка под тем же ключом приводит к карантину вместо объединения сомнительных данных.
+- `OutcomeVerificationService` теперь возвращает необязательный `evidenceEventId` только для структурно валидного внешнего postcondition с доказанным host-owned `toolId + executionId + decisionId + complete input + observationId`. Идентификатор — join key; реальный authority-check остаётся на точном объекте, выданном verifier в текущем процессе.
+- `ExternalObserverFabric` принимает verifier-owned ID, создаёт для него детерминированный observation ID, дедуплицирует точный replay и отвергает повторное использование того же ID с другим payload. Источник должен совпадать с реестром ActionGateway; caller не может повысить доверие, подменив source class/channel/independence key.
+- `EvidenceResearchSubsystemRuntime` записывает accepted observer outputs в `RealityEvidenceLedger`, применяя сохранённую при захвате надёжность источника. Пользовательский отчёт, симуляция и вывод самой модели получают отдельные классы реальности.
+- `OrganismSystemFabric` прокидывает governance ledger как единственный canonical owner в research subsystem; второго конкурирующего журнала нет. `OrganismCore` передаёт полный input и тот же verifier-owned ID лишь при сохранённой привязке к decision/exec/observer.
+- CI workflow path filters теперь включают Core, owner/fabric, verifier, observer и сквозной тест, чтобы изменения на границе доверия не обходили специализированный gate.
+
+### 4. Runtime-проекции
+
+Шесть проекций в `OrganismRuntime` получают стабильный event ID, связанный с родительским событием: resource sample, shadow transition, embodied action, action consequence, neural-learning provenance и cognitive-cycle completeness. Это делает повторную проекцию одной причинной записи идемпотентной; несовпадающая нагрузка под тем же ключом приводит к карантину.
 
 ## Проверки
 
-Добавлен тест `tests/workpass-feedback-reality-ledger-idempotency.mjs`, зарегистрированный как `test:workpass-feedback:reality-ledger`. Он проверяет детерминированные ID, hostile input, replay, conservative confidence down-calibration, запрет inflation, отделение пользовательского отчёта, независимое corroboration, конфликтующие утверждения, ограниченное окно, восстановление и runtime wiring.
+- `tests/workpass-feedback-reality-ledger-idempotency.mjs` проверяет детерминированные ID, hostile input, replay, conservative confidence down-calibration, запрет inflation, отделение пользовательского отчёта, corroboration/contradiction, bounded receipts и restore.
+- `tests/workpass-feedback-outcome-chain.mjs` проверяет identity binding на полном tuple, отсутствие join ID при неполном lineage, передачу той же identity в Observer, общий owner ledger, отказ при payload conflict и replay после restore.
+- Существующие regression gates: WorkPass294 correlation, WorkPass95 receipt integrity, WorkPass96 finalizer boundary и WorkPass94 verification-input binding.
+- Полная команда: `npm run audit:workpass-feedback-outcomes`.
 
-Полный локальный/CI gate: `npm run audit:workpass-feedback-outcomes`.
-
-**Статус проверки на момент создания документа:** тесты включены в код и команду аудита; фактический результат исполнения этой новой команды не заявляется до получения CI/рантайм evidence на точном SHA.
+Статус каждого gate фиксируется по workflow run и exact commit SHA; наличие тестового файла само по себе не считается PASS.
 
 ## Границы результата
 
-Этот проход укрепляет слой журналирования и идемпотентности; он не доказывает, что любой provider receipt автоматически равен реальному эффекту, не подтверждает все внешние действия устройства и не закрывает весь путь `ActionGateway → independent postcondition → verified outcome → learner`. Для полного закрытия нужны независимые provider/device observations, проверка восстановления pending receipt, а также подтверждение, что обучающий контур получает ровно один сигнал только от допустимого верифицированного результата.
+Этот проход закрывает внутренний путь identity/callback/ledger и регрессии на повтор/конфликт/restore, если новый gate проходит на актуальном SHA. Он не доказывает, что каждый provider receipt равен реальному физическому эффекту, не является испытанием на настоящем Android/устройстве и не подтверждает все инструменты в production. Для полного завершения нужны независимые provider/device E2E, fault-injection с timeout после внешнего side effect, проверка pending receipt, и доказательство что обучающий контур получает ровно один допустимый сигнал только от корректно верифицированного outcome.
