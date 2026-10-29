@@ -174,7 +174,12 @@ try {
   const observer=await (await fetch(`http://127.0.0.1:${port}/api/organism/external-observer`)).json(); if(!observer.ok || observer.summary?.version!==2 || !Array.isArray(observer.causalAutobiography)) throw new Error('external observer endpoint mismatch');
   const reality=await (await fetch(`http://127.0.0.1:${port}/api/organism/persistent-reality`)).json(); if(!reality.ok || !reality.summary || !Array.isArray(reality.continuity)) throw new Error('persistent reality endpoint mismatch');
   const autobiography=await (await fetch(`http://127.0.0.1:${port}/api/organism/autobiographical-continuity`)).json(); if(!autobiography.ok || !autobiography.summary || !Array.isArray(autobiography.continuity)) throw new Error('autobiographical continuity endpoint mismatch');
-  const observed=await fetch(`http://127.0.0.1:${port}/api/organism/external-observer/observe`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sourceId:'server-smoke',sourceClass:'device',channel:'sensor',claimKey:'smoke',observedPostcondition:'smoke=ok',confidence01:.95,expectedPostcondition:'smoke=ok'})}); if(!observed.ok) throw new Error('external observer ingestion endpoint');
+  const observerBefore=await (await fetch(`http://127.0.0.1:${port}/api/organism/external-observer`)).json();
+  const observed=await fetch(`http://127.0.0.1:${port}/api/organism/external-observer/observe`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({sourceId:'server-smoke',sourceClass:'device',channel:'sensor',claimKey:'smoke',observedPostcondition:'smoke=ok',confidence01:.95,expectedPostcondition:'smoke=ok'})});
+  const observedBody=await observed.json();
+  if(observed.status!==400 || observedBody.ok!==false || observedBody.error!=='external-observer-source-not-registered') throw new Error(`unregistered caller cannot mint independent device evidence: HTTP ${observed.status} ${JSON.stringify(observedBody)}`);
+  const observerAfter=await (await fetch(`http://127.0.0.1:${port}/api/organism/external-observer`)).json();
+  if(observerAfter.summary.totalObservations!==observerBefore.summary.totalObservations) throw new Error('rejected source must not mutate the observer ledger');
   console.log('SERVER_SMOKE=PASS');
 } finally {
   if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
