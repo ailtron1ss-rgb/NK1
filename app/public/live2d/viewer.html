@@ -151,6 +151,9 @@
       const value=d.body[key];
       if(value!==undefined&&(typeof value!=='number'||!Number.isFinite(value)||value<min||value>max))return null;
     }
+    const motorActions=['rest','listen','reflect','inspect','explain','comfort','respond'];
+    if(d.body.motorAction!==undefined&&!motorActions.includes(d.body.motorAction))return null;
+    if(d.body.intentReason!==undefined&&(typeof d.body.intentReason!=='string'||d.body.intentReason.length>96||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(d.body.intentReason)))return null;
     return {
       protocolVersion:1,
       stateVersion:d.stateVersion,
@@ -178,6 +181,8 @@
       bodyAngleY:finiteNumber(d.body.bodyAngleY,-1,1),
       bodyAngleZ:finiteNumber(d.body.bodyAngleZ,-1,1),
       breathIntensity:finiteNumber(d.body.breathIntensity,0,1,finiteNumber(d.expressionIntensity,0,1)),
+      motorAction:d.body.motorAction||({Idle:'listen',TapHead:'reflect',TapBody:'inspect',Special:'respond'}[d.body.motionGroup]),
+      intentReason:d.body.intentReason||'legacy-v1-payload',
       gesture:d.body.gesture,
       motionGroup:d.body.motionGroup,
       motionIndex:d.body.motionIndex,
