@@ -1,6 +1,6 @@
 ## [NK1][WorkPass623] Harden local 3D model import and affect-aware browser voice (2026-10-29)
 
-- Preflight local VRM/GLB files before Three.js parsing: validate the GLB 2.0 header/chunks/JSON, block network-backed buffer/image URLs, enforce scene/accessor/animation limits, and reject broken bufferView ranges and cyclic/deep/multiply-parented node graphs.
+- Preflight local VRM/GLB files before Three.js parsing: validate the GLB 2.0 header/chunks/JSON, block network-backed buffer/image URLs, enforce scene/accessor/animation limits, and reject broken bufferView ranges and cyclic/deep/multiply-parented node graphs. Inspect embedded PNG/JPEG headers before GPU decode; cap encoded image size, per-texture dimensions/pixels, and total decoded texture pixels to reduce texture-memory/decompression risks.
 - Preserve the previous working model or procedural 3D fallback when a new model file fails validation or parsing; invalid extensions no longer report a failed state while continuing to display the previous model.
 - Normalize common VRM `J_Bip_*`, Blender `.L/.R`, and Mixamo humanoid arm/head/neck names into the existing 3D motor adapter vocabulary so action gestures work across common naming conventions.
 - Derive browser Web Speech pitch/rate/volume from the canonical emotion, valence, arousal, dominance, action and existing personality traits. Bound all outputs and de-escalate high negative arousal rather than automatically increasing loudness.
