@@ -232,6 +232,28 @@ export class PerceptionEngine {
           return this.state.lastEvent!;
         }
       }
+      const resourcePressure = (current.battery01 !== null && current.battery01 < 0.18)
+        || (current.thermal01 !== null && current.thermal01 > 0.72);
+      if (resourcePressure && !this.state.resourcePressureActive) {
+        this.state.resourcePressureActive = true;
+        this.state.baseline = current;
+        this.state = push(this.state, {
+          kind:'resource', salience:0.78, novelty:0.32, confidence:0.97, source:'android',
+          detail:'resource pressure detected',
+          evidence:[`battery=${current.battery01?.toFixed(2) ?? 'unknown'}`,`thermal=${current.thermal01?.toFixed(2) ?? 'unknown'}`],
+        });
+        return this.state.lastEvent!;
+      }
+      if (!resourcePressure && this.state.resourcePressureActive) {
+        this.state.resourcePressureActive = false;
+        this.state.baseline = current;
+        this.state = push(this.state, {
+          kind:'resource', salience:0.38, novelty:0.28, confidence:0.9, source:'android',
+          detail:'resource pressure cleared',
+          evidence:[`battery=${current.battery01?.toFixed(2) ?? 'unknown'}`,`thermal=${current.thermal01?.toFixed(2) ?? 'unknown'}`],
+        });
+        return this.state.lastEvent!;
+      }
       if (changed(baseline.motion01,current.motion01,0.18)) {
         this.state.sensorChanges += 1;
         this.state.baseline = { ...baseline, motion01: current.motion01 };
@@ -260,28 +282,6 @@ export class PerceptionEngine {
         this.state.sensorChanges += 1;
         this.state.baseline = { ...baseline, battery01: current.battery01 };
         this.state = push(this.state, { kind:'resource', salience:clamp(0.35+Math.abs(current.battery01-baseline.battery01)*2.4), novelty:clamp(Math.abs(current.battery01-baseline.battery01)), confidence:0.96, source:'android', detail:'battery state changed', evidence:[`from=${baseline.battery01.toFixed(2)}`,`to=${current.battery01.toFixed(2)}`] });
-        return this.state.lastEvent!;
-      }
-      const resourcePressure = (current.battery01 !== null && current.battery01 < 0.18)
-        || (current.thermal01 !== null && current.thermal01 > 0.72);
-      if (resourcePressure && !this.state.resourcePressureActive) {
-        this.state.resourcePressureActive = true;
-        this.state.baseline = current;
-        this.state = push(this.state, {
-          kind:'resource', salience:0.78, novelty:0.32, confidence:0.97, source:'android',
-          detail:'resource pressure detected',
-          evidence:[`battery=${current.battery01?.toFixed(2) ?? 'unknown'}`,`thermal=${current.thermal01?.toFixed(2) ?? 'unknown'}`],
-        });
-        return this.state.lastEvent!;
-      }
-      if (!resourcePressure && this.state.resourcePressureActive) {
-        this.state.resourcePressureActive = false;
-        this.state.baseline = current;
-        this.state = push(this.state, {
-          kind:'resource', salience:0.38, novelty:0.28, confidence:0.9, source:'android',
-          detail:'resource pressure cleared',
-          evidence:[`battery=${current.battery01?.toFixed(2) ?? 'unknown'}`,`thermal=${current.thermal01?.toFixed(2) ?? 'unknown'}`],
-        });
         return this.state.lastEvent!;
       }
       this.state.baseline = current;
