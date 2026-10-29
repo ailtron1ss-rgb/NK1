@@ -76,6 +76,7 @@ test("strict protocol accepts the app's envelope and normalizes speech/body fiel
     stateVersion: 1, expression: "happy", expressionIntensity: 0.8, speaking: true,
     mouthOpen: 0.65, gazeX: 0.2, gazeY: -0.1, headTilt: -0.04,
     headAngleX: 0.2, headAngleY: -0.1, bodyAngleX: 0, bodyAngleY: 0, bodyAngleZ: 0, breathIntensity: 0.8,
+    motorAction: "respond", intentReason: "legacy-v1-payload",
     gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
   });
 });
@@ -112,6 +113,23 @@ test("continuous pose mapper is deterministic, bounded and neutral-safe on inval
   }
 });
 
+test("semantic motor goal and bounded rationale survive strict normalization", () => {
+  const legacy = normalizeEmbodimentIntentV1(baseIntent());
+  assert.equal(legacy.motorAction, "respond", "old Special motion maps to a semantic compatibility fallback");
+  assert.equal(legacy.intentReason, "legacy-v1-payload");
+  const value = baseIntent({ body: {
+    ...baseIntent().body,
+    motorAction: "explain",
+    intentReason: "explanatory-language-and-response-context",
+  } });
+  assert.equal(isEmbodimentIntentV1(value), true);
+  const normalized = normalizeEmbodimentIntentV1(value);
+  assert.equal(normalized.motorAction, "explain");
+  assert.equal(normalized.intentReason, "explanatory-language-and-response-context");
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, motorAction: "dance" } })), false);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, intentReason: "bad reason" } })), false);
+});
+
 test("invalid motion, extra protocol fields, and out-of-range data fail closed", () => {
   assert.equal(isEmbodimentIntentV1(baseIntent({ body: { headTilt: 0, gesture: true, motionGroup: "Special", motionIndex: 2, motionToken: 4 } })), false);
   assert.equal(isEmbodimentIntentV1({ ...baseIntent(), hiddenDebugPayload: true }), false);
@@ -119,13 +137,18 @@ test("invalid motion, extra protocol fields, and out-of-range data fail closed",
   assert.equal(normalizeEmbodimentIntentV1(baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1", mouth: { open: 0.8, form: 0, viseme: "a" } })).mouthOpen, 0);
 });
 
-test("the production viewer listens to the protocol emitted by AvatarStage and uses token-aware motion identity", async () => {
+test("the production viewers preserve motor intent and map continuous pose to the available rig", async () => {
   const viewer = await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8");
+  const appViewer = await readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8");
+  const stage = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
+  assert.ok(stage.includes("motorAction: motorPlan.action"));
+  assert.ok(stage.includes("intentReason: motorPlan.reason"));
   assert.match(viewer, /type="module"/);
   assert.ok(viewer.includes("from './embodiment-intent.mjs'"));
   assert.match(viewer, /d.type==='kurisu_embodiment_intent'/);
-  for (const token of ["ParamBodyAngleX", "ParamBodyAngleY", "ParamBodyAngleZ", "ParamBreath", "breathIntensity"]) {
+  for (const token of ["ParamBodyAngleX", "ParamBodyAngleY", "ParamBodyAngleZ", "ParamBreath", "breathIntensity", "motorAction", "intentReason"]) {
     assert.ok(viewer.includes(token), `standalone viewer must consume ${token}`);
+    assert.ok(appViewer.includes(token), `app viewer must validate or preserve ${token}`);
   }
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
