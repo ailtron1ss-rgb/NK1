@@ -2619,3 +2619,60 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added regressions for NFKC, punctuation/symbols, whitespace normalization, order-independent fingerprints, changed-input sensitivity, and fail-closed missing-dataset behavior.
 - Added a dedicated GitHub Actions workflow to run the contract and the existing independent-holdout safety regression without modifying the concurrently changing runtime package script chain.
 - No synthetic dataset is claimed as independent evidence, no live memory is mutated, and no retrieval uplift or Release ZIP update is claimed.
+
+
+## [NK1][WorkPass586] Apply cadence discounts to cognitive metabolism weights (2026-10-28)
+
+- Fixed a reversed guard in `CognitiveExecutionPlanner.compile()`: `cadenceFactor = 1 / cadenceCycles` is in `(0, 1]`, so the previous `cadenceFactor > 1` condition could never scale a domain's metabolism weight.
+- Long-cadence domains now receive proportionally lower budget shares while the planner preserves normalized total share. Added a direct regression comparing research cadence 1 vs 8 and a focused CI workflow for typecheck plus the cadence test.
+- This changes resource allocation only; it does not assert improved organism behavior until the target tests pass. `main` and the Release ZIP remain untouched.
+
+
+## [NK1][WorkPass587] Enforce aggregate cognitive execution budget (2026-10-28)
+
+- Enforce the remaining compute budget across the full operation plan, even when high-demand or interrupt forcing raises execution priority. An operation is skipped with the explicit `budget-exhausted` reason if its cost would exceed the remaining aggregate budget.
+- Allocate the budget in explicit critical/hot/warm/cold tier order, preserving the declared order within a tier. This prevents lower-priority cold research from consuming capacity before affordable warm project/shadow work.
+- Add a low-budget/high-demand regression that verifies affordable hot-path work runs, expensive research is gated, and summed planned costs never exceed the budget.
+- Extend the focused planner workflow to run both cadence-weighting and aggregate-budget regressions. This is a resource-allocation safety correction, not an end-to-end autonomy uplift claim; `main` and Release ZIP remain untouched.
+
+
+## [NK1][WorkPass591] Verify budgeted planner integration through observation stage (2026-10-28)
+
+- Added an integration regression for `compileObservationPlan()` that uses the real cognitive frame builder, resource-budget handoff, cognitive execution planner and plan-persistence callback with bounded fixture ports.
+- The test verifies the effective budget passed to the planner, confirms warm project work is preserved ahead of cold research, checks aggregate planned cost, and ensures perception refresh and stored execution plan derive from the same result.
+- Extended the scoped planner CI workflow to run the integrated observation-stage test after typecheck and the two direct planner regressions. This validates the planning seam, not the entire production cycle; no `main` or Release ZIP changes.
+
+
+## [NK1][WorkPass592] Use one budget snapshot across an observation planning cycle (2026-10-28)
+
+- `compileObservationPlan()` previously called `host.getBudget()` independently for the spine mode, spine budget, and execution planner budget, allowing a changing host budget to produce internally inconsistent decisions in one cycle.
+- Capture the budget once at stage entry and reuse its mode/remaining amount for all planning decisions. The integrated regression now returns different values on subsequent calls and asserts that the stage reads the host exactly once and both planners see the same snapshot.
+- Extended the targeted planner workflow path filter to include `ObservationPlanningStage.ts`. This closes a consistency seam; it does not claim full runtime or autonomy readiness.
+
+
+## [NK1][WorkPass595] Use perception-specific value for cognitive camera capture (2026-10-28)
+
+- `OrganismRuntime.captureCameraForCognition()` used the maximum expected value across every cognitive operation to decide whether a camera capture was useful. High-value research or project work could therefore trigger a camera capture despite low perception value.
+- Restrict the camera demand signal to `plan.expectedValue01.perception`; explicit pending vision requests and the existing motion/resource checks remain separate trigger paths.
+- Add a runtime regression proving a high research/project value does not trigger the camera, while a high perception value still dispatches through the canonical capture path. Extend the planner workflow to run this test and watch the runtime camera gate.
+
+
+## [NK1][WorkPass596] Enforce the perception planner gate on EVC-driven camera capture (2026-10-28)
+
+- The perception-specific EVC trigger now respects `plan.run.perception`; a high expected value alone cannot override an explicit planner decision to skip perception.
+- Preserve explicit reactive exceptions: a concrete pending vision request or strong motion signal can still trigger camera capture, subject to the existing battery, thermal, RAM, awake, and idempotency safeguards.
+- Extended the runtime regression with a high-perception-EVC/planner-off case and a pending-vision override case; added no new workflow dependency because both execute in the existing focused planner/camera CI job.
+
+
+## [NK1][WorkPass597] Enable the Node 22.12 SQLite feature for runtime gate tests (2026-10-28)
+
+- The new runtime camera-gate regression imports `OrganismRuntime`, which reaches the built-in `node:sqlite` module during initialization. The workflow pins Node 22.12.0, where SQLite is gated behind `--experimental-sqlite`; without the flag the test crashed before reaching its assertions.
+- Add `--experimental-sqlite` to this test script only. The workflow still uses the repository's established Node 22.12.0 version, and the correction makes the test exercise the runtime gate instead of failing during module initialization.
+
+
+## [NK1][WorkPass603] Enforce cognitive execution-plan gates in the runtime loop (2026-10-28)
+
+- `stepInternal()` previously ignored the result of `cognitiveBudgetSpend('planning', ...)` and always executed the full four-step beam search. It also performed counterfactual rollout and the alternative-action shadow sweep without checking the matching `run` flags in `CognitiveExecutionPlan`.
+- Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
+- Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
+- Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.

@@ -618,17 +618,31 @@ export class OrganismRuntime {
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
     const activePerceptionRequestId = this.core.activePerceptionPendingId();
+    const executionPlan = this.core.cognitiveExecutionPlanSnapshot();
     const fusedObservation = modalityEvents.slice(-6).map((x:any)=>`[${x.modality}] ${x.summary}`).join(' | ');
-    const cognitiveProposal = await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal);
+    const slowCognitionAllowed = executionPlan?.run?.['slow-cognition'] !== false;
+    const cognitiveProposal = slowCognitionAllowed
+      ? await this.generateCognitiveProposal(cycle, fusedObservation, Boolean(options.deliberate), !externalText, options.signal)
+      : null;
     if (cognitiveProposal) {
       this.core.recordMultimodalObservation({ modality:'world', summary:`cognitive-proposal: ${cognitiveProposal.summary}`, confidence:1-cognitiveProposal.uncertainty, salience:.42, evidence:cognitiveProposal.evidenceNeeded.slice(0,6), content:cognitiveProposal.hypotheses.join(' | ') });
     }
     const internalAction = cycle.decision.selected?.action ?? 'wait';
     const observationEvidence = this.evidenceBus.publish({tick:cycle.state.tick,kind:'observation',source:'runtime',confidence01:.72,payload:{external:Boolean(externalText),predictionError:cycle.state.predictionError,selectedAction:internalAction}});
-    this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning');
-    const plan = this.plans.build(cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null, internalAction, 4, 4);
-    const simBudget=this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout');
-    const branches = simBudget.accepted
+    const projectAllowed = executionPlan?.run?.project !== false;
+    const planningBudget = projectAllowed
+      ? this.core.cognitiveBudgetSpend('planning',undefined,cycle.state.needs.uncertainty,'action-planning')
+      : { accepted: false };
+    const selectedGoal = cycle.goals.find(g => g.id === cycle.decision.selected?.goalId) ?? null;
+    const plan = planningBudget.accepted && projectAllowed
+      ? this.plans.build(selectedGoal, internalAction, 4, 4)
+      : this.plans.buildBudgetFallback(selectedGoal, internalAction, projectAllowed ? 'planning-budget-exhausted' : 'planner-project-gated');
+    const worldRolloutAllowed = executionPlan?.run?.['world-rollout'] !== false;
+    const shadowPassAllowed = executionPlan?.run?.shadow !== false;
+    const simBudget = worldRolloutAllowed && shadowPassAllowed
+      ? this.core.cognitiveBudgetSpend('simulation',undefined,cycle.state.needs.uncertainty,'counterfactual-rollout')
+      : { accepted: false };
+    const branches = simBudget.accepted && worldRolloutAllowed && shadowPassAllowed
       ? this.counterfactuals.imagine(plan.steps[0]?.environmentAction, resourceAllocation.maxCounterfactualBranches, 4)
       : [];
     await this.core.recordCounterfactuals(branches);
@@ -640,8 +654,12 @@ export class OrganismRuntime {
     // after reality arbitration decides that no authoritative external outcome exists.
     const shadowTransition = this.environment.simulate(worldAction, before);
     const transition = shadowTransition;
-    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction);
-    const matchedProjections = matchedCandidates.map(action => ({ action, projection: this.environment.project(action, before) }));
+    const matchedCandidates: import('../world/WorldEnvironment.ts').EnvironmentAction[] = shadowPassAllowed
+      ? ['observe','inspect','move','collect','rest','communicate'].filter((a): a is import('../world/WorldEnvironment.ts').EnvironmentAction => a !== worldAction)
+      : [];
+    const matchedProjections = shadowPassAllowed
+      ? matchedCandidates.map(action => ({ action, projection: this.environment.project(action, before) }))
+      : [];
     const matched = matchedProjections.filter(x => x.projection.valid).sort((a,b) => b.projection.reward-a.projection.reward)[0] ?? null;
     if (matched) {
       const matchedAction = matched.action;
@@ -1357,10 +1375,13 @@ export class OrganismRuntime {
     return this.enqueue(async () => {
       const body = this.embodiment.snapshot();
       const plan = this.core.cognitiveExecutionPlanSnapshot();
-      const demand = plan ? Math.max(...Object.values(plan.expectedValue01).map(Number), 0) : 0;
+      // Camera capture demand is modality-specific; a high-value research/project operation must not wake the camera by accident.
+      const demand = plan ? clamp01(Number(plan.expectedValue01?.perception ?? 0)) : 0;
       const next = this.core.p41NextPerception();
       const motion01 = Number(body.telemetry.motion01 ?? 0);
-      const visionNeeded = next?.modality === 'vision' || demand > .62 || motion01 > .5;
+      const plannerAllowsPerception = plan?.run?.perception !== false;
+      // EVC-driven camera work obeys the planner; queued vision requests and strong motion remain explicit reactive triggers.
+      const visionNeeded = next?.modality === 'vision' || motion01 > .5 || (plannerAllowsPerception && demand > .62);
       const resourceBlocked = body.telemetry.battery01 < .12 || body.thermalStrain01 > .82 || body.telemetry.ramPressure01 > .88 || !body.awake;
       if (!visionNeeded || resourceBlocked) return { ok:false, skipped:true, reason:resourceBlocked?'resource-gate':'low-vision-utility', demand01:demand, nextPerception:next, resourceGate:resourceBlocked };
       if (!options.idempotencyKey) return { ok:false, skipped:false, error:'camera-capture-idempotency-key-required' };

@@ -41,6 +41,7 @@ const OPS:CognitiveExecutionOperation[]=['perception','memory','world-rollout','
 const TIER:Record<CognitiveExecutionOperation,ExecutionTier>={
   perception:'hot',memory:'hot','world-rollout':'warm',research:'cold',shadow:'warm',project:'warm','slow-cognition':'cold',
 };
+const TIER_ORDER:Record<ExecutionTier,number>={critical:0,hot:1,warm:2,cold:3};
 const BASE_COST:Record<CognitiveExecutionOperation,number>={perception:.035,memory:.025,'world-rollout':.12,research:.28,shadow:.08,project:.10,'slow-cognition':.18};
 const DOMAIN:Record<CognitiveExecutionOperation,CognitiveDomain>={perception:'embodiment',memory:'memory','world-rollout':'world',research:'research',shadow:'self',project:'agency','slow-cognition':'governance'};
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -101,7 +102,8 @@ export class CognitiveExecutionPlanner{
       const cadenceFactor=1/Math.max(1,contract?.cadenceCycles??1);
       rawWeights[domain]=Math.max(.01, criticality*(.45+priority*.75)*(.70+cheapness*.30)*(active?1:0.28)*(domain==='research'?(.65+(pressure?.informationUrgency01 ?? 0)*.65):1)*(domain==='governance'?1.12:1));
       plan.metabolism[domain]={domain,priority01:priority,budgetShare01:0,estimatedLoad01:active?clamp(frame.complexity01*(domain==='embodiment'?1.2:domain==='memory'?.85:1)):0,active};
-      if(cadenceFactor>1) rawWeights[domain]*=cadenceFactor;
+      // Cadence factors are discounts in (0, 1]; the former >1 guard made this adjustment unreachable.
+      if(cadenceFactor<1) rawWeights[domain]*=cadenceFactor;
     }
     const totalWeight=Math.max(.01,Object.values(rawWeights).reduce((sum,x)=>sum+x,0));
     for(const domain of domainList) plan.metabolism[domain].budgetShare01=clamp(rawWeights[domain]/totalWeight);
@@ -114,7 +116,8 @@ export class CognitiveExecutionPlanner{
       plan.metabolism.governance.budgetShare01=governanceFloor;
       if(donorTotal>0) for(const domain of donorDomains) plan.metabolism[domain].budgetShare01=clamp(plan.metabolism[domain].budgetShare01-(deficit*(plan.metabolism[domain].budgetShare01/donorTotal)));
     }
-    for(const op of OPS){
+    let budgetRemaining=budget;
+    for(const op of [...OPS].sort((a,b)=>TIER_ORDER[TIER[a]]-TIER_ORDER[TIER[b]]||OPS.indexOf(a)-OPS.indexOf(b))){
       const domain=frame.domains[DOMAIN[op]];
       const metabolism=plan.metabolism[DOMAIN[op]];
       const tier=TIER[op];
@@ -149,12 +152,17 @@ export class CognitiveExecutionPlanner{
       // Hard safety rule: governance does not disappear under pressure; slow work does.
       if(op==='slow-cognition' && (frame.thermal01>.80||frame.ramPressure01>.86||frame.energy01<.18)) run=false;
       if((tier==='cold'||tier==='warm') && lowResource && !forced) run=false;
+      // `forced` raises priority but never creates compute capacity: a scheduled plan
+      // must fit the remaining aggregate budget, not only each operation's local share.
+      let budgetBlocked=false;
+      if(run&&cost>budgetRemaining+1e-9){run=false;budgetBlocked=true;}
+      if(run)budgetRemaining=Math.max(0,budgetRemaining-cost);
       plan.run[op]=Boolean(run);
       plan.cost01[op]=run?cost:0;
       plan.informationGain01[op]=run?informationGain:0;
       const s=plan.stats[op]; s.opportunities+=1;
       if(run){s.runs+=1;s.forced+=forced?1:0;s.estimatedCost01=clamp(s.estimatedCost01*.95+cost*.05);s.lastReason=`run:${tier};evc=${expectedValue.toFixed(2)};cheap=${cheap};forced=${forced}`;}
-      else{s.skips+=1;s.estimatedSavings01=clamp(s.estimatedSavings01*.95+cost*.05);s.lastReason=`skip:${!domain?'domain-cold':!spineRun?'spine-gated':lowResource?'resource-guard':expectedValue<valueThreshold?'evc-low':'cadence'}`;}
+      else{s.skips+=1;s.estimatedSavings01=clamp(s.estimatedSavings01*.95+cost*.05);s.lastReason=`skip:${budgetBlocked?'budget-exhausted':!domain?'domain-cold':!spineRun?'spine-gated':lowResource?'resource-guard':expectedValue<valueThreshold?'evc-low':'cadence'}`;}
     }
     this.plan=plan;
     return this.snapshot();
