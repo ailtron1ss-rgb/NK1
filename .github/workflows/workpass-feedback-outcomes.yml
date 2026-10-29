@@ -3,7 +3,7 @@ name: NK1 Feedback Outcome Ledger Gate
 on:
   push:
     branches:
-      - "work/feedback-outcome-ledger-hardening-2026-10-29"
+      - "work/feedback-outcome-current-2026-10-29"
       - "workpass70-source"
     paths:
       - "runtime/neuro-kurisu/src/organism/system/RealityEvidenceLedger.ts"
@@ -14,6 +14,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeCognitionFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
       - "runtime/neuro-kurisu/tests/workpass-feedback-outcome-chain.mjs"
@@ -37,6 +38,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeCognitionFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
       - "runtime/neuro-kurisu/tests/workpass-feedback-outcome-chain.mjs"
