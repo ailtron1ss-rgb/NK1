@@ -194,41 +194,42 @@ export class RealityEvidenceLedger {
     for(const value of rawRows){
       let row=parseRecord(value);
       if(!row|| (row.eventId&&quarantine.has(row.eventId)))continue;
-      if(row.eventId){
-        const receipt=receipts.get(row.eventId);
+      const rowEventId=row.eventId;
+      if(rowEventId){
+        const receipt=receipts.get(rowEventId);
         if(receipt){
           if(sameEventPayloadExceptConfidence(receipt,row)){
             row={...row,confidence01:Math.min(receipt.confidence01,row.confidence01)};
           }else if(!sameEventPayload(receipt,row)){
-            quarantineId(row.eventId);
-            receipts.delete(row.eventId);
+            quarantineId(rowEventId);
+            receipts.delete(rowEventId);
             continue;
           }
         }else{
           mergeReceipt(row);
         }
-        if(quarantine.has(row.eventId))continue;
-        const prior=activeById.get(row.eventId);
+        if(quarantine.has(rowEventId))continue;
+        const prior=activeById.get(rowEventId);
         if(prior){
           if(sameEventPayload(prior,row))continue;
           if(sameEventPayloadExceptConfidence(prior,row)){
             const confidence01=Math.min(prior.confidence01,row.confidence01);
             const normalized={...prior,confidence01};
-            const index=records.findIndex(record=>record.eventId===row!.eventId);
+            const index=records.findIndex(record=>record.eventId===rowEventId);
             if(index>=0)records[index]=normalized;
-            activeById.set(row.eventId,normalized);
-            const receiptNow=receipts.get(row.eventId);
+            activeById.set(rowEventId,normalized);
+            const receiptNow=receipts.get(rowEventId);
             if(receiptNow&&sameEventPayloadExceptConfidence(receiptNow,normalized)&&confidence01<receiptNow.confidence01){
-              receipts.set(row.eventId,{...receiptNow,confidence01});
+              receipts.set(rowEventId,{...receiptNow,confidence01});
             }
           }else{
-            quarantineId(row.eventId);
-            receipts.delete(row.eventId);
+            quarantineId(rowEventId);
+            receipts.delete(rowEventId);
           }
           continue;
         }
         if(records.length>=this.capacity)continue;
-        activeById.set(row.eventId,row);
+        activeById.set(rowEventId,row);
         records.push(row);
       }else if(records.length<this.capacity){
         records.push(row);
