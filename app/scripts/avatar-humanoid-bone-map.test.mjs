@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { canonicalizeHumanoidBoneName, normalizeHumanoidBoneName } from "../src/components/avatar/humanoidBoneMap.ts";
+import { buildHumanoidRoleMap, canonicalizeHumanoidBoneName, normalizeHumanoidBoneName } from "../src/components/avatar/humanoidBoneMap.ts";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -24,6 +24,48 @@ test("maps common Blender and Mixamo aliases without inventing roles for unknown
   assert.equal(canonicalizeHumanoidBoneName("mixamorig:Head"), "head");
   assert.equal(canonicalizeHumanoidBoneName("SomeCustomProp"), "somecustomprop");
   assert.equal(normalizeHumanoidBoneName(null), "");
+});
+
+test("reads VRM 1.0 humanoid node roles even when imported node names are custom", () => {
+  const roles = buildHumanoidRoleMap({
+    VRMC_vrm: {
+      humanoid: {
+        humanBones: {
+          head: { node: 5 },
+          leftUpperArm: { node: 8 },
+          rightUpperArm: { node: 11 },
+          leftLowerArm: { node: 9 },
+        },
+      },
+    },
+  });
+  assert.equal(roles.get(5), "head");
+  assert.equal(roles.get(8), "leftupperarm");
+  assert.equal(roles.get(11), "rightupperarm");
+  assert.equal(roles.get(9), "leftlowerarm");
+});
+
+test("reads legacy VRM 0.x humanoid node roles and ignores invalid entries", () => {
+  const roles = buildHumanoidRoleMap({
+    VRM: {
+      humanoid: {
+        humanBones: [
+          { bone: "head", node: 2 },
+          { bone: "leftUpperArm", node: 7 },
+          { bone: "rightUpperArm", node: 10 },
+          { bone: "leftLowerArm", node: 8 },
+          { bone: "unknown-custom-role", node: 12 },
+          { bone: "rightLowerArm", node: -1 },
+        ],
+      },
+    },
+  });
+  assert.equal(roles.get(2), "head");
+  assert.equal(roles.get(7), "leftupperarm");
+  assert.equal(roles.get(10), "rightupperarm");
+  assert.equal(roles.get(8), "leftlowerarm");
+  assert.equal(roles.has(12), false);
+  assert.equal(roles.has(-1), false);
 });
 
 test("the active 3D stage uses the canonicalized bone roles", async () => {
