@@ -42,6 +42,30 @@ export class RealityEvidenceLedger {
     this.records=list; this.total=Math.max(list.length,Number(raw?.total??list.length));
   }
 
+  /**
+   * Union an externally produced ledger projection into this ledger instead of
+   * replacing it. The outer embodied loop and the internal decision loop each
+   * observe distinct reality classes for the same tick; a plain `restore()`
+   * from either writer silently discards the other writer's observation and
+   * outcome provenance. Records are deduplicated by immutable id.
+   */
+  mergeFrom(raw?:Partial<RealityEvidenceLedgerState>|null):void{
+    const incoming=Array.isArray(raw?.recent)?raw!.recent:[];
+    if(!incoming.length){ this.total=Math.max(this.total,Number(raw?.total??this.total)); return; }
+    const seen=new Set(this.records.map(row=>row.id));
+    const merged=[...this.records];
+    for(const value of incoming){
+      if(!value||typeof value!=='object')continue;
+      const row=value as RealityEvidenceRecord;
+      if(typeof row.id!=='string'||!row.id||seen.has(row.id))continue;
+      seen.add(row.id);
+      merged.push({...row,parentIds:Array.isArray(row.parentIds)?row.parentIds.slice(0,8):[],confidence01:clamp01(Number(row.confidence01??.5))});
+    }
+    merged.sort((a,b)=>(Number(b.at)||0)-(Number(a.at)||0));
+    this.records=merged.slice(0,this.capacity);
+    this.total=Math.max(this.total,Number(raw?.total??0),this.records.length);
+  }
+
   record(input:{tick:number;realityClass:EvidenceRealityClass;claim:string;confidence01?:number;independenceKey:string;parentIds?:string[];at?:number}):RealityEvidenceRecord{
     const at=Number(input.at??Date.now());
     const row:RealityEvidenceRecord={id:`rel:${at}:${input.tick}:${Math.random().toString(16).slice(2)}`,tick:Math.max(0,Math.floor(input.tick)),at,realityClass:input.realityClass,claim:String(input.claim||'').slice(0,240),confidence01:clamp01(input.confidence01??.5),independenceKey:String(input.independenceKey||'unknown').slice(0,160),parentIds:(input.parentIds??[]).map(String).slice(0,8)};
