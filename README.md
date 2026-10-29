@@ -36,6 +36,10 @@ SHA-256 полного архива:
 
 Эта сборка — **implementation hotfix, не production-approved**. Не подтверждены production build вместе с миграцией БД, настоящий browser/Live2D E2E, синхронизация реального Android/Termux audio, независимый multi-seed retrieval uplift (текущий benchmark всё ещё показывает `recallDelta=0`), длительный soak и полный license review. Никаких выводов о субъективном сознании или общей интеллектуальной эффективности из этих тестов не делается.
 
+## Стратегический мастер-план
+
+- [NK1 / Neuro Kurisu — Масштабный мастер-план интеграции и завершения проекта (2026-10-28)](docs/MASTER_PLAN_2026-10-28_RU.md): 300 рабочих шагов, 30 фаз и 14 upstream-стандартов/кандидатов.
+
 ## Следующий этап
 
 Следующий крупный проход должен сосредоточиться на независимой оценке retrieval/learning: paired seeds, неизменяемый holdout, task success, regret, calibration, forgetting, catastrophic failures и ресурсная стоимость. Ничего не продвигать автоматически без устойчивого улучшения на независимом наборе.
