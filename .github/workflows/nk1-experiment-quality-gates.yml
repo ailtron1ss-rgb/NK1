@@ -18,6 +18,7 @@ on:
       - "runtime/neuro-kurisu/tests/scientific-method-verification-gate-workpass595.mjs"
       - "runtime/neuro-kurisu/tests/workpass490-intrinsic-experiment-boundaries.mjs"
       - "runtime/neuro-kurisu/tests/big-pass-105-experimental-protocol.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-103-memory-transfer.mjs"
       - "runtime/neuro-kurisu/tools/experimental-protocol-audit.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
@@ -75,6 +76,9 @@ jobs:
       - name: Verify intrinsic experiments remain hypotheses
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass490-intrinsic-experiment-boundaries.mjs
+      - name: Verify memory-transfer and replay evidence integrity
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/big-pass-103-memory-transfer.mjs
       - name: Verify matched replay/transfer protocol
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-105-experimental-protocol.mjs
