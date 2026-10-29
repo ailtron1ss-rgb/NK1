@@ -4,6 +4,16 @@
  */
 
 export type SpriteId = string;
+export type SpriteAction = "respond" | "explore" | "verify" | "rest" | "reflect" | "wait";
+
+const ACTION_PREFERENCES: Readonly<Record<SpriteAction, readonly string[]>> = {
+  respond: ["soft_smile", "lab_explain", "neutral_front", "lab_crossed"],
+  explore: ["lab_profile", "street_walk", "lab_chin", "thinking_chin", "lab_think"],
+  verify: ["lab_steeple", "steeple_focus", "whiteboard_write", "whiteboard", "lab_think"],
+  rest: ["tired_rest", "lab_tired", "sofa_phone", "phone_lean"],
+  reflect: ["thinking_chin", "lab_chin", "steeple_focus", "lab_steeple"],
+  wait: ["neutral_front", "soft_smile", "lab_crossed", "arms_close"],
+};
 
 const EXPR_MAP: Record<string, string[]> = {
   neutral: ['neutral_front', 'lab_crossed', 'arms_close', 'lab_profile'],
@@ -42,7 +52,7 @@ const SHEET_OF: Record<string, string> = {};
 
 import type { VisualProfileDef } from "./outfitCatalog";
 
-export function resolveSpritePath(expression: string, options: { preferLab?: boolean; profile?: VisualProfileDef } = {}): string {
+export function resolveSpritePath(expression: string, options: { preferLab?: boolean; profile?: VisualProfileDef; action?: SpriteAction } = {}): string {
   const preferLab = options.preferLab ?? true;
   const profile = options.profile;
   const key = String(expression || 'neutral').toLowerCase();
@@ -58,16 +68,16 @@ export function resolveSpritePath(expression: string, options: { preferLab?: boo
   }
   if (!candidates) candidates = EXPR_MAP.neutral;
   if (profile?.spritePreferences?.length) {
-    const preferred = profile.spritePreferences.filter((id) => candidates!.includes(id));
+    const preferred = profile.spritePreferences.filter((spriteId) => candidates!.includes(spriteId));
     if (preferred.length) candidates = preferred;
   }
-  let id = candidates[0];
+  // Stable selection avoids a surprise pose jump caused by a wall-clock bucket.
   if (preferLab) {
-    const lab = candidates.find(c => c.startsWith('lab_') || SHEET_OF[c] === 'sheet_lab');
-    if (lab) id = lab;
+    const labCandidates = candidates.filter(c => c.startsWith("lab_") || SHEET_OF[c] === "sheet_lab");
+    if (labCandidates.length) candidates = labCandidates;
   }
-  const idx = Math.floor(Date.now() / 120000) % candidates.length;
-  id = candidates[idx] || id;
+  const action = options.action ?? "wait";
+  const id = ACTION_PREFERENCES[action].find((candidate) => candidates!.includes(candidate)) ?? candidates[0];
   const sheet = SHEET_OF[id] || 'sheet_anime_office';
   return `/sprites/${sheet}/${id}.png`;
 }
