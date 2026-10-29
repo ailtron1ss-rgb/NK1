@@ -107,3 +107,14 @@ test("Original 2D concept is selectable and keeps independent outfit/pose custom
   assert.ok(original.includes('writeAvatarPreference("kurisu-original-outfit", outfit)'));
   assert.ok(original.includes("Original 2D concept"));
 });
+
+test("the app-served viewer applies intent parameters after Cubism motion and physics updates", async () => {
+  const viewer = await readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8");
+  assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
+  assert.match(viewer, /beforeModelUpdate/);
+  assert.match(viewer, /addParameterValueById/);
+  assert.match(viewer, /resolution,autoDensity:true/);
+  assert.match(viewer, /MOTION_COUNTS/);
+  assert.match(viewer, /lastIntentStateVersion/);
+  assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
+});
