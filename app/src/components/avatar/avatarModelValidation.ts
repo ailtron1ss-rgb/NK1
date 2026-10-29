@@ -66,6 +66,13 @@ function list(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+function arrayField(source: JsonRecord, key: string): unknown[] {
+  const value = source[key];
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) reject("invalid-json", `Поле ${key} в JSON-манифесте должно быть массивом.`);
+  return value;
+}
+
 function boundedCount(
   value: unknown[],
   max: number,
@@ -86,7 +93,7 @@ function validateNodeGraph(nodes: unknown[]): void {
   for (let i = 0; i < nodes.length; i += 1) {
     const node = nodes[i];
     if (!isRecord(node)) reject("invalid-hierarchy", `Узел модели №${i} имеет неверный формат.`);
-    const childList = list(node.children);
+    const childList = arrayField(node, "children");
     const unique = new Set<number>();
     children[i] = [];
 
@@ -217,8 +224,8 @@ export function inspectSelfContainedGlb(
     reject("unsupported-gltf-version", "Поддерживаются только модели glTF/GLB 2.0.");
   }
 
-  const buffers = list(parsed.buffers);
-  const images = list(parsed.images);
+  const buffers = arrayField(parsed, "buffers");
+  const images = arrayField(parsed, "images");
   assertNoExternalUris(buffers, "buffer");
   assertNoExternalUris(images, "image");
 
@@ -235,12 +242,12 @@ export function inspectSelfContainedGlb(
     }
   }
 
-  const nodes = list(parsed.nodes);
-  const meshes = list(parsed.meshes);
-  const accessors = list(parsed.accessors);
-  const textures = list(parsed.textures);
-  const materials = list(parsed.materials);
-  const animations = list(parsed.animations);
+  const nodes = arrayField(parsed, "nodes");
+  const meshes = arrayField(parsed, "meshes");
+  const accessors = arrayField(parsed, "accessors");
+  const textures = arrayField(parsed, "textures");
+  const materials = arrayField(parsed, "materials");
+  const animations = arrayField(parsed, "animations");
   const nodeCount = boundedCount(nodes, AVATAR_GLB_LIMITS.maxNodes, "nodes");
   const meshCount = boundedCount(meshes, AVATAR_GLB_LIMITS.maxMeshes, "meshes");
   const accessorCount = boundedCount(accessors, AVATAR_GLB_LIMITS.maxAccessors, "accessors");
@@ -252,7 +259,7 @@ export function inspectSelfContainedGlb(
   let primitiveCount = 0;
   for (const mesh of meshes) {
     if (!isRecord(mesh)) reject("resource-limit", "Обнаружена запись mesh неверного формата.");
-    primitiveCount += list(mesh.primitives).length;
+    primitiveCount += arrayField(mesh, "primitives").length;
     if (primitiveCount > AVATAR_GLB_LIMITS.maxPrimitives) {
       reject("resource-limit", `В модели больше ${AVATAR_GLB_LIMITS.maxPrimitives} mesh primitives.`);
     }
@@ -273,14 +280,14 @@ export function inspectSelfContainedGlb(
   let animationChannelCount = 0;
   for (const animation of animations) {
     if (!isRecord(animation)) reject("resource-limit", "Обнаружена запись animation неверного формата.");
-    animationChannelCount += list(animation.channels).length;
+    animationChannelCount += arrayField(animation, "channels").length;
     if (animationChannelCount > AVATAR_GLB_LIMITS.maxAnimationChannels) {
       reject("resource-limit", "В модели слишком много анимационных каналов.");
     }
   }
 
   validateNodeGraph(nodes);
-  const bufferViews = list(parsed.bufferViews);
+  const bufferViews = arrayField(parsed, "bufferViews");
   for (let i = 0; i < bufferViews.length; i += 1) {
     const bufferView = bufferViews[i];
     if (!isRecord(bufferView) || !Number.isSafeInteger(bufferView.buffer) ||
