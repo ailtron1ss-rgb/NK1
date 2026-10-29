@@ -92,7 +92,7 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /d.type==='kurisu_embodiment_intent'/);
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
-  assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
+  assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
 });
 
 test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
@@ -118,5 +118,5 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /resolution,autoDensity:true/);
   assert.match(viewer, /MOTION_COUNTS/);
   assert.match(viewer, /lastIntentStateVersion/);
-  assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
+  assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
 });
