@@ -5,6 +5,7 @@
 - Include `motionToken` in motion identity, allowing a semantic intent change to replay the same motion group/index without restarting it on ordinary state/viseme updates.
 - Add a deterministic bounded motor-intent selector for rest/listening/reflection/inspection/explanation/comfort/response and integrate it into the active avatar path.
 - Add `test:avatar-motor-intent` with unit/regression checks for planning, schema bounds, cancellation, viewer wiring, token-aware motion identity, and lip target routing.
+- Fix a CI-discovered regex-literal syntax error in the new viewer-wiring assertion by using a direct source-string check.
 - This is a Live2D protocol and high-level intent integration repair. It does not add a 3D skeleton, IK, garment simulation, free joint control, or measured autonomous motor-policy performance. The Release ZIP is not changed by this source-branch pass; build/E2E/device tests remain to be run.
 
 ## [NK1][WorkPass616] Wire metadata candidate mode into independent bilingual retrieval evaluation (2026-10-29)

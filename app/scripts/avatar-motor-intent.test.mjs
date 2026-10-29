@@ -88,7 +88,7 @@ test("invalid motion, extra protocol fields, and out-of-range data fail closed",
 test("the production viewer listens to the protocol emitted by AvatarStage and uses token-aware motion identity", async () => {
   const viewer = await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8");
   assert.match(viewer, /type="module"/);
-  assert.match(viewer, /from './embodiment-intent.mjs'/);
+  assert.ok(viewer.includes("from './embodiment-intent.mjs'"));
   assert.match(viewer, /d.type==='kurisu_embodiment_intent'/);
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
