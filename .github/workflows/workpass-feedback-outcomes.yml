@@ -1,0 +1,71 @@
+name: NK1 Feedback Outcome Ledger Gate
+
+on:
+  push:
+    branches:
+      - "work/feedback-outcome-ledger-hardening-2026-10-29"
+      - "workpass70-source"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/RealityEvidenceLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EvidenceEventIdentity.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/tests/workpass-feedback-outcome-chain.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/tests/workpass-feedback-reality-ledger-idempotency.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/workpass84-script-integrity.mjs"
+      - "runtime/neuro-kurisu/scripts/core-ownership-policy.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-core-ownership.mjs"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass-feedback-outcomes.yml"
+  pull_request:
+    branches:
+      - "workpass70-source"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/RealityEvidenceLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/system/EvidenceEventIdentity.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/EvidenceResearchSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismSystemFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+      - "runtime/neuro-kurisu/tests/workpass-feedback-outcome-chain.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/tests/workpass-feedback-reality-ledger-idempotency.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/tests/workpass84-script-integrity.mjs"
+      - "runtime/neuro-kurisu/scripts/core-ownership-policy.mjs"
+      - "runtime/neuro-kurisu/scripts/audit-core-ownership.mjs"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass-feedback-outcomes.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  feedback-outcome-gate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate stable evidence identity, receipts, postconditions and recovery
+        run: npm run audit:workpass-feedback-outcomes
