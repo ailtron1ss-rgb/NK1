@@ -362,7 +362,8 @@ export const MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES = 256 * 1024;
 export function assertReflectiveSkillPayloadWithinBudget(value:unknown, label='candidate'):string {
   const canonical = canonicalize(value);
   const bytes = Buffer.byteLength(canonical, 'utf8');
-  if (bytes > MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES) {
+  const payloadBytes = typeof value === 'string' ? Buffer.byteLength(value, 'utf8') : bytes;
+  if (payloadBytes > MAX_REFLECTIVE_SKILL_PAYLOAD_BYTES) {
     throw new Error('p23-reflective-skill-payload-too-large:' + label + ':' + bytes);
   }
   return canonical;

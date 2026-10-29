@@ -53,13 +53,16 @@ export class UnifiedCognitiveCycle {
     // conservatively incomplete; otherwise a truncated/corrupt snapshot could
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
+    const hasInconsistentCounts = source.completeCycles !== undefined && source.incompleteCycles !== undefined &&
+      (safeCounter(source.completeCycles) + safeCounter(source.incompleteCycles) !== cycles || safeCounter(source.completeCycles) > cycles);
     const hasMissingArray=Array.isArray(source.lastMissingStages);
     const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
-    const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
+    const malformedMissing=rawMissing.some(stage=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
-    const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
+    let missing=filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
-    const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    const lastComplete=cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0&&!hasInconsistentCounts&&!malformedMissing;
+    if(!lastComplete&&missing.length===0) missing=[...REQUIRED];
     this.state={
       version:1,
       cycles,
@@ -69,7 +72,7 @@ export class UnifiedCognitiveCycle {
       meanStageCoverage01:safeMetric(source.meanStageCoverage01),
       meanCausalContinuity01:safeMetric(source.meanCausalContinuity01),
       lastTick,
-      lastComplete:cycles>0&&completeCycles>0&&lastTick>=0&&source.lastComplete===true&&missing.length===0,
+      lastComplete,
       lastMissingStages:missing,
     };
   }
