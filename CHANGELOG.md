@@ -1,3 +1,10 @@
+## [NK1][WorkPass616] Wire metadata candidate mode into independent bilingual retrieval evaluation (2026-10-29)
+
+- Add an explicit `metadataRecallEnabled` benchmark option that applies only to the isolated candidate arm; the baseline arm remains the canonical retriever and is unchanged.
+- Bind the candidate mode into the retrieval-configuration SHA-256 fingerprint and report it in experiment configuration/guardrails, so a result cannot be mistaken for the canonical configuration.
+- Add `--candidate-mode canonical|metadata` to the external bilingual holdout runner. Canonical is the default; unknown values fail closed. Metadata mode requires the same independently sourced and labelled external dataset, corpus and provenance requirements as canonical evaluation.
+- Extend runner contract and synthetic benchmark tests to check configuration isolation, fingerprint changes, the persistent independent-review gate, and the absence of automatic promotion. Synthetic tests validate plumbing only and do not claim retrieval uplift.
+
 ## [NK1][WorkPass615] Unify the cross-context skill-transfer safety floor (2026-10-29)
 
 - Export one `MIN_TRANSFER_SIMILARITY01 = 5 / 6` constant and use it in both P23LearningEngine's legacy bias path and SkillRetrievalAugmentation's retrieved-skill bias path. Similarity below this floor may still be surfaced for inspection, but cannot influence action ranking.

@@ -32,10 +32,16 @@ Query fingerprints use Unicode NFKC normalization, lowercase conversion, and Uni
 
 ## Run
 
-From `runtime/neuro-kurisu` with Node 22.12+:
+From `runtime/neuro-kurisu` with Node 24:
 
 ```sh
-node --experimental-strip-types tests/run-independent-bilingual-memory-holdout.mjs --dataset /secure/path/nk1-memory-holdout.json --out /secure/path/nk1-memory-holdout-report.json
+node --experimental-strip-types tests/run-independent-bilingual-memory-holdout.mjs --dataset /secure/path/nk1-memory-holdout.json --candidate-mode canonical --out /secure/path/nk1-memory-holdout-report.json
+# After the baseline run, evaluate the opt-in metadata candidate against the same labelled data:
+node --experimental-strip-types tests/run-independent-bilingual-memory-holdout.mjs --dataset /secure/path/nk1-memory-holdout.json --candidate-mode metadata --out /secure/path/nk1-memory-metadata-candidate-report.json
 ```
 
 The runner reports Russian and English separately, uses five paired bootstrap seeds (13, 29, 53, 71, 101), binds labels to SHA-256 fingerprints, and records corpus/configuration fingerprints, integrity checks, baseline/candidate metrics, deltas and confidence intervals. The report is evidence for review, never an automatic promotion decision. Seeds vary resampling only; they do not train the retriever. Keep private/user memory data outside public commits and use a controlled local file or CI artifact.
+
+## Candidate mode
+
+`--candidate-mode canonical` is the default and evaluates the existing canonical retriever. `--candidate-mode metadata` opts the isolated candidate arm into the metadata postings channel while the baseline arm remains canonical. The mode is included in the retrieval-configuration fingerprint and report. This switch never mutates live memory and never promotes a candidate; an external dataset with independently labelled train/holdout queries and complete provenance is still required. Run both modes against the same immutable dataset version and compare per-language paired metrics; synthetic contract tests are not independent evidence.

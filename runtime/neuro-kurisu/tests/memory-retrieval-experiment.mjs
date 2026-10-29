@@ -100,6 +100,23 @@ assert.equal(bilingualReport.languageStratification.slices.ru.unanswerableHoldou
 assert.equal(bilingualReport.promotion.allowed, false, 'synthetic bilingual data cannot establish provenance or auto-promote retrieval');
 assert.equal(bilingualReport.languageStratification.gates.promotionEligible, false, 'synthetic fixtures must not satisfy language-specific real-uplift confidence gates');
 
+// The opt-in metadata candidate must be represented in the benchmark fingerprint;
+// the canonical baseline remains unchanged and synthetic data cannot auto-promote.
+const metadataBilingualReport = runMemoryOS2RetrievalBenchmark(snapshot, bilingualExamples, {
+  now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance,
+  metadataRecallEnabled: true,
+});
+assert.equal(bilingualReport.experimentConfiguration.candidateMetadataRecallEnabled, false,
+  'canonical retrieval is the default candidate mode');
+assert.equal(metadataBilingualReport.experimentConfiguration.candidateMetadataRecallEnabled, true,
+  'benchmark report must identify the metadata candidate mode');
+assert.notEqual(metadataBilingualReport.retrievalConfigurationFingerprint, bilingualReport.retrievalConfigurationFingerprint,
+  'retrieval fingerprint must bind the candidate-mode change');
+assert.equal(metadataBilingualReport.promotion.allowed, false,
+  'synthetic fixtures cannot qualify metadata recall for promotion');
+assert.equal(metadataBilingualReport.guardrails.candidateModeAutoPromoted, false);
+
+
 // A single-language set must not meet the required bilingual promotion contract.
 const englishOnlyReport = runMemoryOS2RetrievalBenchmark(snapshot, bilingualExamples.map(row => ({ ...row, language: 'en' })), { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance });
 assert.equal(englishOnlyReport.languageStratification.gates.bothRequiredLanguagesPresent, false);

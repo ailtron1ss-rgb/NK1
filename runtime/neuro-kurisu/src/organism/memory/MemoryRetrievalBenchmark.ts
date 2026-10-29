@@ -48,6 +48,8 @@ export interface MemoryRetrievalBenchmarkOptions {
   bootstrapSamples?: number;
   seed?: number;
   datasetProvenance?: MemoryRetrievalBenchmarkProvenance;
+  /** Explicitly enable opt-in metadata recall for the candidate arm only; default is canonical retrieval. */
+  metadataRecallEnabled?: boolean;
   /** Offline experiments may raise this bounded limit; the HTTP API leaves it at 64. */
   maxExamples?: number;
 }
@@ -116,7 +118,7 @@ const canonicalJsonValue=(value:unknown):unknown=>{
   return value;
 };
 const corpusFingerprint=(rows:MemoryItem2[])=>createHash('sha256').update(JSON.stringify([...rows].sort((a,b)=>a.id.localeCompare(b.id)).map(row=>canonicalJsonValue(row)))).digest('hex');
-const retrievalConfigurationFingerprint=(snapshot:MemoryOSState2)=>createHash('sha256').update(JSON.stringify(canonicalJsonValue({algorithm:RETRIEVAL_ALGORITHM_VERSION,tokenization:'NFKC Unicode words plus standalone single-digit numbers',version:snapshot?.version??null,adaptiveMemoryPolicy:snapshot?.adaptiveMemoryPolicy??null,linkUpdates:snapshot?.linkUpdates??0,semanticQueries:snapshot?.semanticQueries??0}))).digest('hex');
+const retrievalConfigurationFingerprint=(snapshot:MemoryOSState2,options:MemoryRetrievalBenchmarkOptions={})=>createHash('sha256').update(JSON.stringify(canonicalJsonValue({algorithm:RETRIEVAL_ALGORITHM_VERSION,tokenization:'NFKC Unicode words plus standalone single-digit numbers',candidateMetadataRecallEnabled:options.metadataRecallEnabled===true,version:snapshot?.version??null,adaptiveMemoryPolicy:snapshot?.adaptiveMemoryPolicy??null,linkUpdates:snapshot?.linkUpdates??0,semanticQueries:snapshot?.semanticQueries??0}))).digest('hex');
 const isCurrent=(m:MemoryItem2,now:number)=>!m.dormant&&m.epistemicStatus!=='quarantined'&&(m.supersededById==null||m.validUntilAt!=null)&&(m.validFromAt==null||Number(m.validFromAt)<=now)&&(m.validUntilAt==null||Number(m.validUntilAt)>now);
 function p95(values:number[]){if(!values.length)return 0;const a=[...values].sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)]??0;}
 function textField(value:unknown,max=200){return typeof value==='string'?value.trim().slice(0,max):'';}
@@ -343,11 +345,11 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   // when sourceItems exceeds the limit, but candidate retrieval must not secretly inspect
   // rows that the baseline was forbidden to index.
   const boundedSnapshotForBenchmark = { ...structuredClone(snapshot), items: structuredClone(corpus) } as MemoryOSState2;
-  const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{const setupStarted=performance.now();const isolated=new MemoryOS2();isolated.restore(structuredClone(boundedSnapshotForBenchmark));const setupMs=performance.now()-setupStarted;const started=performance.now();const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};};
+  const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{const setupStarted=performance.now();const isolated=new MemoryOS2({metadataRecallEnabled:options.metadataRecallEnabled===true});isolated.restore(structuredClone(boundedSnapshotForBenchmark));const setupMs=performance.now()-setupStarted;const started=performance.now();const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};};
 
   const baselineEval=evaluate(holdout,baseline,k,now);const candidateEval=evaluate(holdout,candidate,k,now);
   const trainBaseline=evaluate(train,baseline,k,now);const trainCandidate=evaluate(train,candidate,k,now);
-  const datasetFingerprint=stableFingerprint(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot);
+  const datasetFingerprint=stableFingerprint(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot,options);
   const seed=providedSeed??Number.parseInt(createHash('sha256').update(`${datasetFingerprint}:${corpusHash}`).digest('hex').slice(0,8),16);
   const confidence={
     method:'paired-query-bootstrap-percentile-interval' as const,
@@ -484,13 +486,13 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     schemaVersion:6 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
     datasetIntegrity:{...dataIntegrity,validForPromotion:dataIntegrity.validForPromotion&&provenanceComplete,provenanceComplete},
-    experimentConfiguration:{seedInputValid,requestedSeed:seedWasProvided?(Number.isFinite(requestedSeed)?requestedSeed:String(options.seed)):'auto-derived',effectiveSeed:seed,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance},
+    experimentConfiguration:{seedInputValid,requestedSeed:seedWasProvided?(Number.isFinite(requestedSeed)?requestedSeed:String(options.seed)):'auto-derived',effectiveSeed:seed,candidateMetadataRecallEnabled:options.metadataRecallEnabled===true,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance},
     datasetProvenance:{...provenance,contentHashValid},
     baselineConfiguration,baselineConfigurationFingerprint,
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
     deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
     languageStratification,
     promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumUnanswerableHoldoutQueries:minUnanswerableHoldout,minimumLanguageTrainQueries:minLanguageTrainQueries,minimumLanguageAnswerableHoldoutQueries:minLanguageAnswerableHoldoutQueries,minimumLanguageUnanswerableHoldoutQueries:minLanguageUnanswerableHoldoutQueries,requiredLanguages:['en','ru'],minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
-    guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,minimumLanguageStratifiedQualityRequired:true,bothEnglishAndRussianRequiredForPromotion:true,perLanguageConfidenceBoundsRequired:true,languageLabelsMustBeExplicit:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,bootstrapSeed:seed},
+    guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,minimumLanguageStratifiedQualityRequired:true,bothEnglishAndRussianRequiredForPromotion:true,perLanguageConfidenceBoundsRequired:true,languageLabelsMustBeExplicit:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,candidateModeExplicit:true,candidateModeAutoPromoted:false,bootstrapSeed:seed},
   };
 }
