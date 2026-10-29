@@ -8,6 +8,10 @@ export const AVATAR_GLB_LIMITS = Object.freeze({
   maxAccessors: 20_000,
   maxAccessorElements: 8_000_000,
   maxImages: 256,
+  maxImageBytes: 24 * 1024 * 1024,
+  maxImageDimension: 8_192,
+  maxImagePixels: 16_777_216,
+  maxTotalImagePixels: 33_554_432,
   maxTextures: 512,
   maxMaterials: 2_000,
   maxAnimations: 200,
@@ -25,7 +29,9 @@ export type AvatarModelValidationCode =
   | "external-resource"
   | "resource-limit"
   | "invalid-hierarchy"
-  | "invalid-buffer";
+  | "invalid-buffer"
+  | "invalid-image"
+  | "unsupported-image";
 
 export class AvatarModelValidationError extends Error {
   readonly code: AvatarModelValidationCode;
@@ -47,6 +53,7 @@ export interface AvatarGlbInspection {
   accessorCount: number;
   accessorElements: number;
   imageCount: number;
+  imagePixels: number;
   textureCount: number;
   animationCount: number;
   animationChannelCount: number;
@@ -140,6 +147,88 @@ function assertNoExternalUris(items: unknown[], label: string): void {
       );
     }
   }
+}
+
+interface EmbeddedImageDimensions {
+  width: number;
+  height: number;
+}
+
+function decodeDataUri(uri: string, errorCode: "invalid-buffer" | "invalid-image"): { mimeType: string; bytes: Uint8Array } {
+  const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=\\r\\n]+)$/iu.exec(uri);
+  if (!match) reject(errorCode, "Поддерживаются только корректные base64 data URI для локальных ресурсов модели.");
+  try {
+    const decoded = atob(match[2].replace(/\\s+/gu, ""));
+    const bytes = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i += 1) bytes[i] = decoded.charCodeAt(i);
+    return { mimeType: match[1].toLowerCase(), bytes };
+  } catch {
+    return reject(errorCode, "Base64 data URI модели повреждён.");
+  }
+}
+
+function readJpegDimensions(bytes: Uint8Array): EmbeddedImageDimensions | null {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  const sof = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+  let offset = 2;
+  let scanned = 0;
+  while (offset + 4 <= bytes.length && scanned < 4096) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      scanned += 1;
+      continue;
+    }
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    if (offset >= bytes.length) break;
+    const marker = bytes[offset++];
+    if (marker === 0xd9 || marker === 0xda) break;
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) continue;
+    if (offset + 2 > bytes.length) break;
+    const segmentLength = (bytes[offset] << 8) | bytes[offset + 1];
+    if (segmentLength < 2 || offset + segmentLength > bytes.length) break;
+    if (sof.has(marker)) {
+      if (segmentLength < 7) break;
+      const payload = offset + 2;
+      return {
+        height: (bytes[payload + 1] << 8) | bytes[payload + 2],
+        width: (bytes[payload + 3] << 8) | bytes[payload + 4],
+      };
+    }
+    offset += segmentLength;
+    scanned += segmentLength;
+  }
+  return null;
+}
+
+function readEmbeddedImageDimensions(bytes: Uint8Array, mimeType: string): EmbeddedImageDimensions {
+  if (mimeType === "image/png") {
+    const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    if (bytes.length < 24 || !signature.every((byte, index) => bytes[index] === byte) ||
+        bytes[12] !== 0x49 || bytes[13] !== 0x48 || bytes[14] !== 0x44 || bytes[15] !== 0x52) {
+      reject("invalid-image", "PNG-текстура модели имеет повреждённый заголовок.");
+    }
+    return { width: new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(16, false),
+      height: new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(20, false) };
+  }
+  if (mimeType === "image/jpeg") {
+    const dimensions = readJpegDimensions(bytes);
+    if (dimensions) return dimensions;
+    reject("invalid-image", "Не удалось безопасно определить размеры JPEG-текстуры модели.");
+  }
+  reject("unsupported-image", `Неподдерживаемый формат встроенной текстуры: ${mimeType || "не указан"}. Используйте PNG или JPEG.`);
+}
+
+function assertSafeImageDimensions(dimensions: EmbeddedImageDimensions, index: number): number {
+  const { width, height } = dimensions;
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0) {
+    reject("invalid-image", `Изображение модели №${index} имеет нулевые или некорректные размеры.`);
+  }
+  const pixels = width * height;
+  if (width > AVATAR_GLB_LIMITS.maxImageDimension || height > AVATAR_GLB_LIMITS.maxImageDimension ||
+      pixels > AVATAR_GLB_LIMITS.maxImagePixels) {
+    reject("resource-limit", `Текстура №${index} превышает допустимый предел ${AVATAR_GLB_LIMITS.maxImageDimension}px или ${AVATAR_GLB_LIMITS.maxImagePixels.toLocaleString("en-US")} пикселей.`);
+  }
+  return pixels;
 }
 
 /**
