@@ -38,10 +38,28 @@ const validation=f.recordReplayValidation({...verificationInput,verification,at:
 assert.equal(validation.independentVerified,true,'only the exact service-minted receipt may authorize retention learning');
 assert.ok(f.snapshot().replay.validated===1);
 assert.ok(f.snapshot().graphNodes[0].stability01>=before);
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.8,independentVerified:true,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1200});
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.74,independentVerified:true,randomized:true,contextKey:'x2',pairKey:'pair-2',at:1300});
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-off',preScore01:.5,postScore01:.56,independentVerified:true,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1400});
-f.recordReplayExperimentTrial({experimentId:'exp103',taskId:'task-X',mode:'replay-off',preScore01:.5,postScore01:.59,independentVerified:true,randomized:true,contextKey:'x2',pairKey:'pair-2',at:1500});
+const recordReplayWithReceipt=async(input)=>{
+  const verificationInput={
+    experimentId:'exp103',taskId:'task-X',mode:input.mode,
+    preScore01:input.preScore01,postScore01:input.postScore01,
+    randomized:true,contextKey:input.contextKey,pairKey:input.pairKey,at:input.at
+  };
+  const postcondition=`replay-score:${input.experimentId}:${input.mode}:${input.pairKey}:${input.postScore01}`;
+  const verification=await verificationService.verify({
+    toolId:'memory.replay-experiment-postcondition',
+    input:verificationInput,
+    result:{postScore01:input.postScore01}
+  },()=>({
+    verified:true,basis:'external-postcondition',confidence01:.99,externalObservation:true,
+    observationId:`obs-${input.experimentId}-${input.mode}-${input.pairKey}`,
+    expectedPostcondition:postcondition,observedPostcondition:postcondition
+  }));
+  return f.recordReplayExperimentTrial({...input,independentVerified:true,verification});
+};
+await recordReplayWithReceipt({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.8,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1200});
+await recordReplayWithReceipt({experimentId:'exp103',taskId:'task-X',mode:'replay-on',preScore01:.5,postScore01:.74,randomized:true,contextKey:'x2',pairKey:'pair-2',at:1300});
+await recordReplayWithReceipt({experimentId:'exp103',taskId:'task-X',mode:'replay-off',preScore01:.5,postScore01:.56,randomized:true,contextKey:'x1',pairKey:'pair-1',at:1400});
+await recordReplayWithReceipt({experimentId:'exp103',taskId:'task-X',mode:'replay-off',preScore01:.5,postScore01:.59,randomized:true,contextKey:'x2',pairKey:'pair-2',at:1500});
 const exp=f.replayExperimentSummary('exp103','task-X');
 assert.equal(exp.pairedComparable,true); assert.equal(exp.evidenceGrade,'randomized-matched-observational'); assert.ok((exp.estimatedConditionDifference01??0)>.1);
 
