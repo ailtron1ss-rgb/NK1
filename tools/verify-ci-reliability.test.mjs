@@ -76,6 +76,20 @@ test("rejects a too-short cognitive regression timeout", () => {
   assert.match(errors.join("\n"), /at least 15 minutes/);
 });
 
+test("rejects a workflow Node pin that drifts from the shared .nvmrc major", () => {
+  const drifted = pinnedWorkflow.replace("node-version-file: '.nvmrc'", 'node-version: "22.12.0"');
+  const errors = validateCiConfig({
+    workflows: { "p26-learning-validation.yml": drifted },
+    nodeVersion: "24\n"
+  });
+  assert.match(errors.join("\n"), /node-version 22\.12\.0 disagrees with root \.nvmrc major 24/);
+  const aligned = validateCiConfig({
+    workflows: { "p26-learning-validation.yml": drifted.replace("22.12.0", "24") },
+    nodeVersion: "24\n"
+  });
+  assert.deepEqual(aligned, []);
+});
+
 test("requires cognitive CI for pull requests targeting rebuild", () => {
   const missingTarget = pinnedWorkflow.replace("      - rebuild\n", "");
   const errors = validateCiConfig({

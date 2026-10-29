@@ -1,3 +1,11 @@
+## [NK1][WorkPass612] Make installer, doctor and CI reliability checks follow the pinned Node runtime (2026-10-29)
+
+- Read the expected Node.js major from root `.nvmrc` through a shared helper used by installer and doctor, removing stale Node 22 assumptions while the project pins Node 24.
+- Define a shipped artifact as a Git-tracked path rather than any ignored local `node_modules` or runtime state found on a developer machine; retain a conservative filesystem fallback when Git is unavailable.
+- Extend the CI reliability gate and regression tests to reject workflow Node pins that drift from root `.nvmrc`.
+- Make the installer-deadline regression treat terminated zombie processes as no longer running, avoiding false failures on hosts that delay reaping orphaned children.
+- The P26 Node workflow pin is already corrected by earlier merged changes and is intentionally not duplicated here. This change does not alter license approval gates or claim release readiness.
+
 ## [NK1][WorkPass611] Restore scale-invariant latent-program revision and constitutional vote polarity (2026-10-29)
 
 - Make the B276 structure-revision gate scale-invariant: retain the absolute credit-spread floor and also permit revision when relative spread is material at a sufficient mean credit level. This prevents upstream reward gating from disabling program revision merely by compressing credit magnitude.
