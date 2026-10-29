@@ -18,6 +18,9 @@ export interface RetrievedSkill extends RetrievableSkill {
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const n=(x:unknown,d=0):number=>typeof x==='number'&&Number.isFinite(x)?x:d;
 
+/** Shared transfer threshold: retrieved skills may be inspected below this floor, but cannot bias execution. */
+export const MIN_TRANSFER_SIMILARITY01 = 5 / 6;
+
 /** Six-bucket organism contexts are compared by feature position, not substring. */
 export function contextSimilarity01(a:string,b:string):number {
   const left=String(a).split('|'), right=String(b).split('|');
@@ -73,6 +76,7 @@ export function retrievedSkillBias(query:SkillRetrievalQuery,skills:readonly Ret
   // same-action failure evidence. Aggregate only qualified, action-matched
   // evidence and clamp the result so retrieval can nudge, never dominate policy.
   const relevant=rows.filter(s=>
+    s.similarity01>=MIN_TRANSFER_SIMILARITY01 &&
     (query.action===undefined||s.action===query.action) &&
     ((s.status==='promoted'&&s.validationSuccess01>=.7) ||
      (s.status==='rejected'&&s.validationSuccess01<=.42)));

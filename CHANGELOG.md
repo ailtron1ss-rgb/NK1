@@ -1,3 +1,10 @@
+## [NK1][WorkPass615] Unify the cross-context skill-transfer safety floor (2026-10-29)
+
+- Export one `MIN_TRANSFER_SIMILARITY01 = 5 / 6` constant and use it in both P23LearningEngine's legacy bias path and SkillRetrievalAugmentation's retrieved-skill bias path. Similarity below this floor may still be surfaced for inspection, but cannot influence action ranking.
+- Fix a real safety regression where a promoted skill with similarity `0.556` added a nonzero execution bias despite the legacy path rejecting the same dissimilar context.
+- Replace brittle exact replay counts in `p23-true-learning.mjs` with the actual health-adaptive replay invariants: positive bounded count, no duplicates, newest/recent coverage, and retention of older evidence. Goal-aware replay receives the same budget-cap and recent-window checks.
+- This is a transfer-boundary and test-validity repair, not a measured learning-uplift claim.
+
 ## [NK1][WorkPass614] Add opt-in metadata-aware memory recall with index integrity checks (2026-10-29)
 
 - Add a separate bounded postings index over curated tags, entities, and an allowlist of topic/context fields; keep metadata terms out of content BM25 document-frequency statistics.
