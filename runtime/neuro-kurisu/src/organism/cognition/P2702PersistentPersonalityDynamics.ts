@@ -118,17 +118,24 @@ export class P2702PersistentPersonalityDynamics{
   const signal=clamp(reward*.55+verified*.25+(1-error)*.20);const eta=this.state.plasticity01*(.55+Math.abs(reward-.5));
   // Do not infer a personality dimension from an action index. Learn only the trait/value
   // dimension explicitly attributed by the independently verified evidence.
+  const attribution=evidence?.expectedBinding?.input?.personalityFeedback;
+  const attributionRecord=attribution&&typeof attribution==='object'&&!Array.isArray(attribution)?attribution as Record<string,unknown>:{};
   const trait=evidence?.traitFeedback;
-  if(trait&&typeof trait.traitName==='string'&&Number.isFinite(trait.target01)&&trait.target01>=0&&trait.target01<=1&&Number.isFinite(trait.confidence01)&&trait.confidence01>=0&&trait.confidence01<=1){
+  const boundTrait=attributionRecord.traitFeedback&&typeof attributionRecord.traitFeedback==='object'&&!Array.isArray(attributionRecord.traitFeedback)?attributionRecord.traitFeedback as Record<string,unknown>:{};
+  const traitBound=Boolean(trait&&boundTrait.traitName===trait.traitName&&boundTrait.target01===trait.target01&&boundTrait.confidence01===trait.confidence01);
+  if(traitBound&&trait&&typeof trait.traitName==='string'&&Number.isFinite(trait.target01)&&trait.target01>=0&&trait.target01<=1&&Number.isFinite(trait.confidence01)&&trait.confidence01>=0&&trait.confidence01<=1){
    const index=this.state.adaptiveNames.indexOf(trait.traitName);
    if(index>=0){const weight=eta*clamp(trait.confidence01)*.5;this.state.adaptiveValues[index]=clamp(this.state.adaptiveValues[index]!+(trait.target01-this.state.adaptiveValues[index]!)*weight);}
   }
   const value=evidence?.valueFeedback;
-  if(value&&typeof value.valueName==='string'&&Number.isFinite(value.target01)&&value.target01>=0&&value.target01<=1&&Number.isFinite(value.confidence01)&&value.confidence01>=0&&value.confidence01<=1){
+  const boundValue=attributionRecord.valueFeedback&&typeof attributionRecord.valueFeedback==='object'&&!Array.isArray(attributionRecord.valueFeedback)?attributionRecord.valueFeedback as Record<string,unknown>:{};
+  const valueBound=Boolean(value&&boundValue.valueName===value.valueName&&boundValue.target01===value.target01&&boundValue.confidence01===value.confidence01);
+  if(valueBound&&value&&typeof value.valueName==='string'&&Number.isFinite(value.target01)&&value.target01>=0&&value.target01<=1&&Number.isFinite(value.confidence01)&&value.confidence01>=0&&value.confidence01<=1){
    const index=this.state.valueNames.indexOf(value.valueName);
    if(index>=0){const weight=eta*clamp(value.confidence01)*.22;this.state.valueWeights[index]=clamp(this.state.valueWeights[index]!+(value.target01-this.state.valueWeights[index]!)*weight);}
   }
-  if(args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[args.relationshipId]=clamp(prior*.94+trustSignal*.06);}
+  const boundRelationshipId=evidence?.expectedBinding?.input?.relationshipId;
+  if(args.relationshipId&&boundRelationshipId===args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[args.relationshipId]=clamp(prior*.94+trustSignal*.06);}
   const uncertaintyShift=clamp(error*.35+(1-verified)*.3);
   for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
   const drift=this.state.adaptiveValues.reduce((s,x)=>s+(x-(this.state.adaptiveValues.reduce((a,b)=>a+b,0)/Math.max(1,this.state.adaptiveValues.length)))**2,0)/Math.max(1,this.state.adaptiveValues.length);
