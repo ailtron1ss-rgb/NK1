@@ -377,6 +377,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         bodyAngleY: bodyPose.bodyAngleY,
         bodyAngleZ: bodyPose.bodyAngleZ,
         breathIntensity: bodyPose.breathIntensity,
+        motorAction: motorPlan.action,
+        intentReason: motorPlan.reason,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
