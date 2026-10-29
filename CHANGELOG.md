@@ -1,3 +1,8 @@
+## [NK1][WorkPass611] Align workpass586 workflow with the Node 24 repository pin (2026-10-29)
+
+- `workpass586-cognitive-planner-cadence.yml` hardcoded `node-version: "22.12.0"` while `.nvmrc` and every other workflow select Node 24. `audit:actions-runtime` therefore failed on the base with `setup-node@v7 pins Node.js 22.12.0 but the repository requires 24`, which is a live step of `workpass95-continual-skill-learning.yml`.
+- Select `node-version: "24"` so the workflow matches the repository runtime contract. No runtime behavior or test logic changes.
+
 ## [NK1][WorkPass609] Repair stale big-pass-126 retrieval benchmark fixture against the current provenance contract (2026-10-29)
 
 - `tests/big-pass-126-memory-retrieval-benchmark.mjs` asserted `schemaVersion === 3` while the report schema advanced to 6, and its `datasetProvenance` omitted the now-required `licenseId` and `contentSha256`. Both caused the suite to abort on the first assertion, masking every downstream check.
