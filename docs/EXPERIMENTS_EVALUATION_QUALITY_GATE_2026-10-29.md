@@ -264,10 +264,11 @@ Workflow PASS подтверждает только успешно выполн�
 - `p23-verified-outcome-promotion-gate.mjs` расширен adversarial cases: NaN/невалидный gain, несогласованные pass rates/gain, overcount wins, malformed/reversed intervals, семейная регрессия и расхождение bootstrap-vs-approximate.
 
 ### Replay/transfer evidence
-- `big-pass-105-experimental-protocol.mjs` больше не принимает собственные boolean-поля `independentVerified`/`holdout` как доказательство. Тест подтверждает, что самоутверждение не открывает transfer gate; положительные пробы связываются с exact process-local verification receipt, выданным `OutcomeVerificationService` для точного tuple измерения.
-- `ExperienceContinuumFabric.ts`: replay confirmation теперь проверяет, что измеренные контексты входят в predeclared context manifest и количество replay-on/replay-off сбалансировано по каждому контексту.
+- `UnifiedLearningSubstrate.recordTransferProbe` не засчитывает caller-supplied boolean `independentVerified`/`holdout` как доказательство; валидная probe должна иметь exact process-local receipt, связанный с тем же measurement tuple.
+- `ExperienceContinuumFabric.recordReplayExperimentTrial` теперь применяет аналогичную границу доверия: `independentVerified: true` без точного receipt не создаёт независимую запись. Receipt связывает experiment/task, mode, before/after score, randomized flag, context, pair и timestamp; malformed score/ID/time отвергаются вместо преобразования clamp в правдоподобный результат.
+- Replay confirmatory gate проверяет, что контексты входят в predeclared context manifest и replay-on/replay-off сбалансированы по каждому контексту.
 - Дубликаты одной condition-cell для пары больше не перезаписывают предыдущую строку по принципу «последняя запись победила». Дублирующаяся пара отмечается неоднозначной, исключается из paired estimate и блокирует confirmatory gate.
-- В `big-pass-105` добавлены тесты на незаявленный контекст и дублированную пару.
+- В `big-pass-105` добавлены тесты на неподтверждённые self-assertions, trusted receipt, незаявленный контекст и дублированную пару.
 
 ### Путь запуска и документация
 - Добавлен `.github/workflows/nk1-experiment-quality-gates.yml` для exact-PR-SHA typecheck, promotion gate, ledger integration, seed-clustered comparison, deterministic plan + CLI, holdout provenance, ScientificMethodEngine, intrinsic experiment boundaries, replay/transfer protocol и source audit.
@@ -275,8 +276,9 @@ Workflow PASS подтверждает только успешно выполн�
 - Настоящий протокол, семантика метрик, матрица испытаний, cross-aspect dependencies, release requirements и статусные правила записаны в этом документе.
 
 ### Валидированный статус
-- **Проверено GitHub Actions:** на коммите `c91ef078f4b903c0249f1f12082bfb79807a44b7` новый `NK1 Experiment Quality Gates` завершился `success`: typecheck и все десять тестовых/аудит-шагов прошли.
-- После этого были добавлены явный `familyPairCountMode` и команда `test:experiments:quality`. Эти более поздние изменения требуют нового exact-head CI; успех предыдущего SHA нельзя переносить на новый коммит.
+- **Проверено GitHub Actions:** на коммите `32944907cf9399cf1f18da39d022ef0eb3685f80` новый `NK1 Experiment Quality Gates` завершился `success`: typecheck и все десять тестовых/аудит-шагов прошли, включая доверенный replay receipt, проверку контекстного manifest и duplicate-pair rejection.
+- На этом SHA также зелёными завершились `cognitive-contracts`, `Runtime typecheck and semantic vector integrity`, `Typecheck and cadence-weight regression`. Остальные общие runtime/evaluation workflows на момент записи ещё проходили очередь; их статус нужно сверять по PR #386, без переноса статуса между SHA.
+- Команда `npm run test:experiments:quality` объединяет ключевые проверки для повторяемого локального запуска.
 - Внешние независимые эксперименты с настоящей production-моделью/устройством в этом проходе не выполнялись. Синтетические регрессии подтверждают контракт кода, а не реальный прирост интеллектуальных способностей.
 - Release ZIP и `main` не изменялись.
 
