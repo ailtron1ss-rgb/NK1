@@ -62,10 +62,6 @@ function isRecord(value: unknown): value is JsonRecord {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function list(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
 function arrayField(source: JsonRecord, key: string): unknown[] {
   const value = source[key];
   if (value === undefined) return [];
