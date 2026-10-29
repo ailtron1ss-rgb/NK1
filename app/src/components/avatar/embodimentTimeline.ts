@@ -6,6 +6,10 @@
  * visemes and re-anchors them to actual speech boundary events. It is a useful
  * lip-sync approximation, not acoustic/phoneme-level ground truth.
  */
+
+import { deriveEmbodimentPose } from "../../../../runtime/neuro-kurisu/public/embodiment-pose.mjs";
+export { deriveEmbodimentPose };
+
 export type VisemeName = "rest" | "closed" | "teeth" | "wide" | "open" | "round" | "neutral";
 export type SpeechPhase = "idle" | "starting" | "speaking" | "ended" | "cancelled" | "unknown";
 
@@ -50,6 +54,16 @@ export interface EmbodimentIntentV1 {
   gaze: { x: number; y: number; driven: boolean };
   body: {
     headTilt: number;
+    /** Optional normalized head yaw; older v1 senders may omit it. */
+    headAngleX?: number;
+    /** Optional normalized head pitch; older v1 senders may omit it. */
+    headAngleY?: number;
+    /** Optional normalized torso angles mapped by each renderer to its own rig. */
+    bodyAngleX?: number;
+    bodyAngleY?: number;
+    bodyAngleZ?: number;
+    /** Optional breathing intensity in [0, 1]. */
+    breathIntensity?: number;
     gesture: boolean;
     motionGroup: string;
     motionIndex: number;
@@ -270,5 +284,12 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   if (!intent.body || !Number.isFinite(intent.body.headTilt) || intent.body.headTilt < -0.15 || intent.body.headTilt > 0.15) return false;
   if (typeof intent.body.gesture !== "boolean" || typeof intent.body.motionGroup !== "string" || !/^[a-zA-Z0-9_-]{1,32}$/.test(intent.body.motionGroup)) return false;
   if (!Number.isInteger(intent.body.motionIndex) || intent.body.motionIndex < 0 || intent.body.motionIndex > 32 || !Number.isSafeInteger(intent.body.motionToken) || intent.body.motionToken < 0) return false;
+  for (const [value, min, max] of [
+    [intent.body.headAngleX, -1, 1], [intent.body.headAngleY, -1, 1],
+    [intent.body.bodyAngleX, -1, 1], [intent.body.bodyAngleY, -1, 1],
+    [intent.body.bodyAngleZ, -1, 1], [intent.body.breathIntensity, 0, 1],
+  ] as const) {
+    if (value !== undefined && (!Number.isFinite(value) || value < min || value > max)) return false;
+  }
   return Number.isFinite(intent.voiceEmphasis) && Number(intent.voiceEmphasis) >= 0 && Number(intent.voiceEmphasis) <= 1;
 }
