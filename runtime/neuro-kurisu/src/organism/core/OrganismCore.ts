@@ -11705,6 +11705,7 @@ export class OrganismCore {
                     executionId: input.actionRef,
                     toolId: input.tool ?? 'external-observation',
                     observationId: observation.id,
+                    evidenceEventId: observation.evidenceEventId,
                     verified: assessment.verified,
                     confidence01: Math.min(assessment.confidence01, observation.confidence01),
                     sourceId: observation.sourceId,
