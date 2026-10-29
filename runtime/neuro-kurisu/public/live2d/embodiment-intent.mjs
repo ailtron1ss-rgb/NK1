@@ -7,6 +7,8 @@ const TOP_KEYS = [
 const MOUTH_KEYS = ["open", "form", "viseme"];
 const GAZE_KEYS = ["x", "y", "driven"];
 const BODY_KEYS = ["headTilt", "gesture", "motionGroup", "motionIndex", "motionToken"];
+const OPTIONAL_BODY_KEYS = ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ", "breathIntensity"];
+const ALLOWED_BODY_KEYS = [...BODY_KEYS, ...OPTIONAL_BODY_KEYS];
 const MOTION_COUNTS = Object.freeze({ Idle: 1, TapHead: 1, TapBody: 1, Special: 2 });
 const PHASES = new Set(["idle", "starting", "speaking", "ended", "cancelled", "unknown"]);
 const CLOCK_SOURCES = new Set([
@@ -44,7 +46,9 @@ export function isEmbodimentIntentV1(value) {
       !finiteBetween(value.gaze.y, -1, 1) ||
       typeof value.gaze.driven !== "boolean") return false;
 
-  if (!exactKeys(value.body, BODY_KEYS) ||
+  if (!isRecord(value.body) ||
+      !BODY_KEYS.every((key) => Object.hasOwn(value.body, key)) ||
+      !Object.keys(value.body).every((key) => ALLOWED_BODY_KEYS.includes(key)) ||
       !finiteBetween(value.body.headTilt, -0.15, 0.15) ||
       typeof value.body.gesture !== "boolean" ||
       typeof value.body.motionGroup !== "string" ||
@@ -52,6 +56,13 @@ export function isEmbodimentIntentV1(value) {
       !Number.isSafeInteger(value.body.motionIndex) ||
       value.body.motionIndex < 0 || value.body.motionIndex >= MOTION_COUNTS[value.body.motionGroup] ||
       !Number.isSafeInteger(value.body.motionToken) || value.body.motionToken < 0) return false;
+  for (const [key, min, max] of [
+    ["headAngleX", -1, 1], ["headAngleY", -1, 1],
+    ["bodyAngleX", -1, 1], ["bodyAngleY", -1, 1], ["bodyAngleZ", -1, 1],
+    ["breathIntensity", 0, 1],
+  ]) {
+    if (Object.hasOwn(value.body, key) && !finiteBetween(value.body[key], min, max)) return false;
+  }
 
   if (value.speechPhase === "speaking" && (!value.speechEventId || !value.audioClockId)) return false;
   if (value.speechPhase === "cancelled" &&
@@ -72,6 +83,12 @@ export function normalizeEmbodimentIntentV1(value) {
     gazeX: value.gaze.x,
     gazeY: value.gaze.y,
     headTilt: value.body.headTilt,
+    headAngleX: value.body.headAngleX ?? value.gaze.x,
+    headAngleY: value.body.headAngleY ?? value.gaze.y,
+    bodyAngleX: value.body.bodyAngleX ?? 0,
+    bodyAngleY: value.body.bodyAngleY ?? 0,
+    bodyAngleZ: value.body.bodyAngleZ ?? 0,
+    breathIntensity: value.body.breathIntensity ?? value.expressionIntensity,
     gesture: value.body.gesture && value.speechPhase !== "cancelled",
     motionGroup: value.body.motionGroup,
     motionIndex: value.body.motionIndex,
