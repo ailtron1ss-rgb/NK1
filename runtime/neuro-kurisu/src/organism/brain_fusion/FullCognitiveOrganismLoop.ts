@@ -21,8 +21,11 @@ export interface CognitiveCycleState {
  */
 export class FullCognitiveOrganismLoop {
   private readonly recent: OrganismExperience[] = [];
+  private readonly limit: number;
 
-  constructor(private readonly limit = 512) {}
+  constructor(limit = 512) {
+    this.limit = limit;
+  }
 
   step(experience: OrganismExperience): CognitiveCycleState {
     this.recent.push(experience);
