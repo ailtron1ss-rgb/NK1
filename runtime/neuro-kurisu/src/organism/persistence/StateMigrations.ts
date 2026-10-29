@@ -3,7 +3,7 @@ import { defaultB349State } from '../system/B349NeuralDevelopmentalSpine.ts';
 import { defaultB2525State } from '../cognition/B2525LearnedLatentTransitionField.ts';
 import type { WorldModelSnapshot } from '../world/WorldModel.ts';
 import { defaultSelfModel } from '../cognition/SelfModelV2.ts';
-import { attend } from '../cognition/AttentionSchema.ts';
+import { attend, defaultAttentionAllocatorState } from '../cognition/AttentionSchema.ts';
 import { DEFAULT_ADAPTIVE_VALUES } from '../cognition/ValuePlasticity.ts';
 import { defaultBodyState } from '../body/EmbodiedBody.ts';
 import { defaultPerceptionRoutingState } from '../body/PerceptionRouter.ts';
@@ -355,7 +355,7 @@ export interface PersistedShapeCurrent {
 }
 
 const defaultNeeds = () => ({ energy:0.82, cognitiveLoad:0.18, uncertainty:0.35, socialNeed:0.28, novelty:0.42, identityCoherence:0.88, goalPressure:0.18 });
-const defaultMemoryFacet = (): MemoryFacet => ({ eventLog:[], autobiographicalMemories:[], selfModel:defaultSelfModel(), attention:attend({target:'none',reason:'migration',salience:0,confidence:0.2,budget:0.82}), socialModel:[], adaptiveValues:{...DEFAULT_ADAPTIVE_VALUES}, workspace:{capacity:5,items:[],broadcastId:'',recurrence:0,lastCompetition:0,ignition01:0,sourceDiversity01:0,coalitionStability01:0}, semanticGraph:{nodes:[],edges:[],updates:0}, experiments:[], counterfactuals:[], lastRetrievedMemoryIds:[] });
+const defaultMemoryFacet = (): MemoryFacet => ({ eventLog:[], autobiographicalMemories:[], selfModel:defaultSelfModel(), attention:attend({target:'none',reason:'migration',salience:0,confidence:0.2,budget:0.82}),attentionAllocator:defaultAttentionAllocatorState(), socialModel:[], adaptiveValues:{...DEFAULT_ADAPTIVE_VALUES}, workspace:{capacity:5,items:[],broadcastId:'',recurrence:0,lastCompetition:0,ignition01:0,sourceDiversity01:0,coalitionStability01:0}, semanticGraph:{nodes:[],edges:[],updates:0}, experiments:[], counterfactuals:[], lastRetrievedMemoryIds:[] });
 
 const defaultEmbodimentFacet = (): EmbodimentFacet => ({ body:defaultBodyState(), bodyEvents:[], sleepSessions:[], lastSensorAt:0, sensorFailures:0, perceptionRouting:defaultPerceptionRoutingState(), multimodal:defaultMultimodalState(), toolAudit:[], p35:defaultP35SemanticWorldBody(), p37:defaultP37EmbodiedSensorium(), p40SemanticIntelligence:defaultP40SemanticIntelligence(), p41SemanticPerception:defaultP41SemanticPerception(), p41NativePerception:defaultP41NativePerception(), p41TemporalPerception:defaultP41TemporalPerception(), p42Experience:defaultP42(), p43Imagery:defaultP43(), perceptualEvidence:defaultPerceptualEvidence(), cameraEvidence:defaultCameraEvidenceState() });
 const defaultLearningFacet = (): LearningFacet => ({

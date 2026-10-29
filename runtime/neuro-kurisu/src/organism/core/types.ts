@@ -301,6 +301,8 @@ export interface MemoryFacet {
   autobiographicalMemories: import('../memory/MultiTimescaleMemory.ts').MemoryRecord[];
   selfModel: import('../cognition/SelfModelV2.ts').SelfModelV2;
   attention: import('../cognition/AttentionSchema.ts').OrganismAttentionState;
+  /** Bounded allocator state (dwell/inhibition/switch counters). */
+  attentionAllocator?: import('../cognition/AttentionSchema.ts').AttentionAllocatorState;
   socialModel: import('../cognition/SocialWorldModel.ts').SocialPrediction[];
   adaptiveValues: import('../cognition/ValuePlasticity.ts').AdaptiveValueWeights;
   workspace: import('../cognition/RecurrentWorkspaceV2.ts').WorkspaceStateV2;

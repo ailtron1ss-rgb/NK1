@@ -6,6 +6,7 @@ import { SelfModelEngine } from '../cognition/SelfModelV2.ts';
 import { SocialWorldModel } from '../cognition/SocialWorldModel.ts';
 import { ValuePlasticity } from '../cognition/ValuePlasticity.ts';
 import { RecurrentWorkspaceV2 } from '../cognition/RecurrentWorkspaceV2.ts';
+import { AttentionAllocator } from '../cognition/AttentionSchema.ts';
 import { SemanticMemoryGraph } from '../memory/SemanticMemoryGraph.ts';
 import { MemoryOS2 } from '../developmental/MemoryOS2.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
@@ -43,6 +44,8 @@ export class MemorySubsystemRuntime {
   readonly socialModel = new SocialWorldModel();
   readonly valuePlasticity = new ValuePlasticity();
   readonly workspaceV2 = new RecurrentWorkspaceV2();
+  /** Canonical attention allocator; its bounded state is persisted with memory. */
+  readonly attentionAllocator = new AttentionAllocator();
   readonly semanticMemory = new SemanticMemoryGraph();
   readonly memoryOS = new MemoryOS2();
   readonly memorySubstrate = new MemorySubstrateCoordinator();
@@ -80,6 +83,9 @@ export class MemorySubsystemRuntime {
     this.socialModel.restore(memory.socialModel);
     this.valuePlasticity.restore(memory.adaptiveValues);
     this.workspaceV2.restore(memory.workspace);
+    // Attention allocation state (dwell/inhibition/switch counts) is part of the
+    // organism's working memory and must survive a restart.
+    this.attentionAllocator.restore(memory.attentionAllocator);
     this.semanticMemory.restore(memory.semanticGraph);
     this.memoryOS.restore(advanced.memoryOS);
     this.fabric.restore(advanced.memoryFabric);
@@ -113,7 +119,7 @@ export class MemorySubsystemRuntime {
   snapshot() { return {
     events:this.events.recent(64), memories:this.memories.snapshot({clone:false}),
     selfModel:this.selfModel.snapshot(), socialModel:this.socialModel.snapshot(), adaptiveValues:this.valuePlasticity.snapshot(),
-    workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
+    workspace:this.workspaceV2.snapshot(), attentionAllocator:this.attentionAllocator.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
     p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), hexisSourceMonitor:this.sourceMonitor.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
     p75:this.p75MemoryContinuumOS.snapshot(), fabric:this.fabric.snapshot(), experienceContinuum:this.experienceContinuum.snapshot(), hippocampal:this.hippocampal.snapshot(), hippocampalFormation:this.hippocampalFormation.snapshot(), consolidationController:this.consolidationController.snapshot(), memoryLifecycleAuthority:this.memoryLifecycleAuthority.snapshot(),

@@ -43,8 +43,34 @@ export class B283CompetingPredictiveHypotheses{
   private state=B283CompetingPredictiveHypotheses.create();
   static create(){return defaultB283State();}
   snapshot(){return structuredClone(this.state);}
-  restore(raw:unknown){const base=defaultB283State();if(!raw||typeof raw!=='object'){this.state=base;return;}const r=raw as Partial<B283State>;this.state={...base,...r,
-    hypotheses:Array.isArray(r.hypotheses)?r.hypotheses.map((h,i)=>({ ...base.hypotheses[i%HYPOTHESES],...h,id:i,latent:Array.isArray(h.latent)?h.latent.slice(0,DIM):base.hypotheses[i%HYPOTHESES]!.latent,predictor:Array.isArray(h.predictor)?h.predictor:base.hypotheses[i%HYPOTHESES]!.predictor,actionTransition:Array.isArray(h.actionTransition)?h.actionTransition:base.hypotheses[i%HYPOTHESES]!.actionTransition,actionWeights:Array.isArray(h.actionWeights)?h.actionWeights:base.hypotheses[i%HYPOTHESES]!.actionWeights})):base.hypotheses,
+  restore(raw:unknown){const base=defaultB283State();if(!raw||typeof raw!=='object'){this.state=base;return;}const r=raw as Partial<B283State>;
+    // WorkPass-A03: the hypothesis set, the active pointer and the commit pointer
+    // all come from persisted data. Unbounded hypotheses, out-of-range ids or an
+    // unknown status previously crashed (or silently re-activated) the competitor.
+    const hypotheses=Array.isArray(r.hypotheses)?r.hypotheses.slice(0,HYPOTHESES).map((h,i)=>{
+      const orig=(h??{}) as Partial<B283HypothesisRecord>;const fixture=base.hypotheses[i%HYPOTHESES]!;
+      const status=orig.status==='committed'||orig.status==='rejected'||orig.status==='superseded'||orig.status==='active'?orig.status:'active';
+      return {...fixture,...orig,id:i,
+        latent:Array.isArray(orig.latent)?orig.latent.slice(0,DIM):fixture.latent,
+        predictor:Array.isArray(orig.predictor)?orig.predictor:fixture.predictor,
+        actionTransition:Array.isArray(orig.actionTransition)?orig.actionTransition:fixture.actionTransition,
+        actionWeights:Array.isArray(orig.actionWeights)?orig.actionWeights:fixture.actionWeights,
+        posterior01:clamp01(Number(orig.posterior01??fixture.posterior01)),
+        confidence01:clamp01(Number(orig.confidence01??fixture.confidence01)),
+        evidence01:clamp01(Number(orig.evidence01??fixture.evidence01)),
+        lastError01:clamp01(Number(orig.lastError01??fixture.lastError01)),
+        age:Math.max(0,Math.floor(Number(orig.age??0))),dwell:Math.max(0,Math.floor(Number(orig.dwell??0))),
+        switches:Math.max(0,Math.floor(Number(orig.switches??0))),status};
+    }):base.hypotheses;
+    while(hypotheses.length<HYPOTHESES)hypotheses.push({...base.hypotheses[hypotheses.length%HYPOTHESES]!,id:hypotheses.length});
+    const activeRaw=Number(r.activeHypothesisId??0);
+    const activeHypothesisId=Number.isSafeInteger(activeRaw)&&activeRaw>=0&&activeRaw<HYPOTHESES?activeRaw:0;
+    const committedRaw=r.committedHypothesisId;
+    const committedHypothesisId=typeof committedRaw==='number'&&Number.isSafeInteger(committedRaw)&&committedRaw>=0&&committedRaw<HYPOTHESES?committedRaw:null;
+    const previousRaw=r.previousCommittedHypothesisId;
+    const previousCommittedHypothesisId=typeof previousRaw==='number'&&Number.isSafeInteger(previousRaw)&&previousRaw>=0&&previousRaw<HYPOTHESES?previousRaw:null;
+    this.state={...base,...r,activeHypothesisId,committedHypothesisId,previousCommittedHypothesisId,
+    hypotheses,
     globalLatent:Array.isArray(r.globalLatent)?r.globalLatent.slice(0,DIM):base.globalLatent,predictedNext:Array.isArray(r.predictedNext)?r.predictedNext.slice(0,DIM):base.predictedNext,
     plannedSequence:Array.isArray(r.plannedSequence)?r.plannedSequence.filter((x): x is ActionKind => ACTIONS.includes(x as ActionKind)).slice(0,5):base.plannedSequence,plannedReturn01:clamp01(Number(r.plannedReturn01??base.plannedReturn01)),planningSteps:Math.max(0,Math.floor(Number(r.planningSteps??base.planningSteps))),planningUpdates:Math.max(0,Math.floor(Number(r.planningUpdates??base.planningUpdates))),
     history:Array.isArray(r.history)?r.history.slice(-240):[]
@@ -63,14 +89,21 @@ export class B283CompetingPredictiveHypotheses{
       return {h,pred,evidence,error,prior};
     });
     const temperature=.55+((input.uncertainty01??.5)*.35);
-    const exps=predictions.map(x=>Math.exp((x.evidence-.5)/temperature));const z=Math.max(1e-9,exps.reduce((a,b)=>a+b,0));
-    predictions.forEach((x,i)=>x.h.posterior01=exps[i]!/z);
+    // Only live hypotheses compete. A rejected or superseded hypothesis used to
+    // keep its posterior weight and could win the next step and even be
+    // re-committed, which made `rejectActive()` advisory rather than binding.
+    const live=predictions.filter(x=>x.h.status==='active'||x.h.id===this.state.committedHypothesisId);
+    const competing=live.length?live:predictions;
+    const exps=competing.map(x=>Math.exp((x.evidence-.5)/temperature));const z=Math.max(1e-9,exps.reduce((a,b)=>a+b,0));
+    competing.forEach((x,i)=>x.h.posterior01=exps[i]!/z);
+    for(const x of predictions) if(!competing.includes(x)) x.h.posterior01=0;
     predictions.sort((a,b)=>b.h.posterior01-a.h.posterior01);
-    const best=predictions[0]!; const prev=this.state.activeHypothesisId; if(prev!==best.h.id){best.h.switches++;this.state.hypothesisSwitches++;best.h.dwell=0;}
+    const best=competing.slice().sort((a,b)=>b.h.posterior01-a.h.posterior01)[0]!;
+    const prev=this.state.activeHypothesisId; if(prev!==best.h.id){best.h.switches++;this.state.hypothesisSwitches++;best.h.dwell=0;}
     else best.h.dwell++;
     this.state.activeHypothesisId=best.h.id; this.state.globalLatent=best.pred.slice(); this.state.predictedNext=best.pred.slice();
-    const posteriorEntropy=clamp01(-predictions.reduce((s,x)=>s+x.h.posterior01*Math.log2(Math.max(1e-9,x.h.posterior01)),0)/2);
-    const diversity=clamp01(predictions.slice(1).reduce((s,x)=>s+Math.sqrt(Math.max(0,1-cosine01(x.pred,best.pred))),0)/3);
+    const posteriorEntropy=clamp01(-competing.reduce((s,x)=>s+x.h.posterior01*Math.log2(Math.max(1e-9,x.h.posterior01)),0)/2);
+    const diversity=clamp01(competing.slice(1).reduce((s,x)=>s+Math.sqrt(Math.max(0,1-cosine01(x.pred,best.pred))),0)/3);
     this.state.posteriorEntropy01=posteriorEntropy;this.state.diversity01=diversity;
     this.state.selfAlignment01=clamp01(.55+.45*cosine01(best.pred,input.selfLatent?.slice(0,DIM)??new Array(DIM).fill(0)));
     this.state.personalityFit01=clamp01(.55+.45*cosine01(best.pred,input.personalityVector?.slice(0,DIM)??new Array(DIM).fill(0)));
@@ -113,9 +146,18 @@ export class B283CompetingPredictiveHypotheses{
   planThreeStep(input:{tick?:number;goalVector?:number[];selfLatent?:number[];worldLatent?:number[];memoryLatent?:number[];uncertainty01?:number;autonomy01?:number;beamWidth?:number}){return this.planHorizon({...input,horizon:3});}
   planningBias(action:ActionKind){const idx=this.state.plannedSequence.indexOf(action);if(idx<0)return 0;const returnGate=1+Math.max(0,this.state.plannedReturn01-.55)*2;const strength=idx===0?.20*returnGate:idx===1?.055*returnGate:.018*Math.pow(.62,Math.max(0,idx-2))*returnGate;return clamp11(strength);}
   proposeHypothesis(){return this.state.hypotheses.filter(h=>h.status==='active').map(h=>({id:h.id,posterior01:h.posterior01,evidence01:h.evidence01,confidence01:h.confidence01,selfAlignment01:this.state.selfAlignment01,personalityFit01:this.state.personalityFit01}));}
-  commitActive(tick=this.state.tick){const h=this.state.hypotheses[this.state.activeHypothesisId]!;if(h.confidence01<.56||h.evidence01<.56)return {committed:false,reason:'insufficient-evidence',hypothesisId:h.id};if(this.state.committedHypothesisId!==null&&this.state.committedHypothesisId!==h.id){const old=this.state.hypotheses[this.state.committedHypothesisId]!;old.status='superseded';this.state.previousCommittedHypothesisId=old.id;}else{this.state.previousCommittedHypothesisId=this.state.committedHypothesisId;}h.status='committed';h.acceptedAt=tick;this.state.committedHypothesisId=h.id;this.state.commits++;return {committed:true,reason:'evidence-gated-commit',hypothesisId:h.id};}
-  rejectActive(tick=this.state.tick){const h=this.state.hypotheses[this.state.activeHypothesisId]!;const wasCommitted=this.state.committedHypothesisId===h.id;h.status='rejected';h.rejectedAt=tick;this.state.rejects++;if(wasCommitted){this.state.committedHypothesisId=this.state.previousCommittedHypothesisId;this.state.activeHypothesisId=this.state.previousCommittedHypothesisId??0;}else if(this.state.committedHypothesisId!==null)this.state.activeHypothesisId=this.state.committedHypothesisId;return {rejected:true,hypothesisId:h.id,activeHypothesisId:this.state.activeHypothesisId,restoredCommit:this.state.committedHypothesisId};}
+  commitActive(tick=this.state.tick){const h=this.state.hypotheses[this.state.activeHypothesisId]!;if(!h)return {committed:false,reason:'no-active-hypothesis',hypothesisId:-1};if(h.status!=='active')return {committed:false,reason:'hypothesis-not-active',hypothesisId:h.id,status:h.status};if(h.confidence01<.56||h.evidence01<.56)return {committed:false,reason:'insufficient-evidence',hypothesisId:h.id};if(this.state.committedHypothesisId!==null&&this.state.committedHypothesisId!==h.id){const old=this.state.hypotheses[this.state.committedHypothesisId]!;old.status='superseded';this.state.previousCommittedHypothesisId=old.id;}else{this.state.previousCommittedHypothesisId=this.state.committedHypothesisId;}h.status='committed';h.acceptedAt=tick;this.state.committedHypothesisId=h.id;this.state.commits++;return {committed:true,reason:'evidence-gated-commit',hypothesisId:h.id};}
+  rejectActive(tick=this.state.tick){const h=this.state.hypotheses[this.state.activeHypothesisId]!;const wasCommitted=this.state.committedHypothesisId===h.id;h.status='rejected';h.rejectedAt=tick;this.state.rejects++;if(wasCommitted){this.state.committedHypothesisId=this.state.previousCommittedHypothesisId;this.state.activeHypothesisId=this.state.previousCommittedHypothesisId??0;}else if(this.state.committedHypothesisId!==null)this.state.activeHypothesisId=this.state.committedHypothesisId;
+    // The active pointer must never remain on the hypothesis that was just
+    // rejected: downstream readouts index the active hypothesis directly.
+    const activeNow=this.state.hypotheses[this.state.activeHypothesisId];
+    if(!activeNow||activeNow.status!=='active'){const live=this.state.hypotheses.filter(x=>x.status==='active').sort((a,b)=>b.posterior01-a.posterior01)[0]??this.state.hypotheses.find(x=>x.status==='committed');this.state.activeHypothesisId=live?.id??0;}
+    return {rejected:true,hypothesisId:h.id,activeHypothesisId:this.state.activeHypothesisId,restoredCommit:this.state.committedHypothesisId};}
   rollback(tick=this.state.tick){const h=this.state.hypotheses[this.state.activeHypothesisId]!;if(this.state.committedHypothesisId===null)return {rolledBack:false,reason:'no-commit'};if(h.id===this.state.committedHypothesisId)return {rolledBack:false,reason:'active-is-commit'};this.state.activeHypothesisId=this.state.committedHypothesisId;this.state.rollbacks++;return {rolledBack:true,hypothesisId:this.state.activeHypothesisId,tick};}
+  /** Re-opens a rejected hypothesis with a decayed posterior. Without this a
+   *  rejection was permanent: the competitor stayed in the set but could never
+   *  be reconsidered even when later evidence supported it. */
+  reopenHypothesis(id?:number){const target=id??this.state.hypotheses.find(h=>h.status==='rejected')?.id;if(target===undefined)return {reopened:false,reason:'no-rejected-hypothesis'};const h=this.state.hypotheses.find(x=>x.id===target);if(!h||h.status!=='rejected')return {reopened:false,reason:'not-rejected',hypothesisId:target};h.status='active';h.posterior01=clamp01(h.posterior01*.5);h.dwell=0;h.rejectedAt=undefined;return {reopened:true,hypothesisId:h.id,posterior01:h.posterior01};}
   lesionHypothesis(id:number,fraction01=.5){const h=this.state.hypotheses.find(x=>x.id===id);if(!h)return {causalDrop01:0};const before=h.evidence01;h.evidence01=clamp01(h.evidence01*(1-fraction01));const after=h.evidence01;h.evidence01=before;const drop=clamp01(before-after);this.state.lesionDrop01=drop;return {hypothesisId:id,causalDrop01:drop};}
   diagnostics(){const active=this.state.hypotheses[this.state.activeHypothesisId]!;return {...structuredClone(this.state),activeHypothesis:{id:active.id,status:active.status,posterior01:active.posterior01,evidence01:active.evidence01,confidence01:active.confidence01},committedHypothesisId:this.state.committedHypothesisId};}
 }

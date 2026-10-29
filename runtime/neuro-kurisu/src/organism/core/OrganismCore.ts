@@ -21,7 +21,7 @@ import { makeEvent } from '../memory/EventSourcing.ts';
 import { MultiTimescaleMemory } from '../memory/MultiTimescaleMemory.ts';
 import { AutobiographicalMemory } from '../memory/AutobiographicalMemory.ts';
 import { defaultSelfModel } from '../cognition/SelfModelV2.ts';
-import { attend } from '../cognition/AttentionSchema.ts';
+import { attend, AttentionAllocator } from '../cognition/AttentionSchema.ts';
 import { SocialWorldModel } from '../cognition/SocialWorldModel.ts';
 import { ValuePlasticity, DEFAULT_ADAPTIVE_VALUES } from '../cognition/ValuePlasticity.ts';
 import { RecurrentWorkspaceV2 } from '../cognition/RecurrentWorkspaceV2.ts';
@@ -4303,9 +4303,29 @@ export class OrganismCore {
                 n.socialNeed = clamp(n.socialNeed - 0.04);
         }
         state.predictionError = clamp(state.predictionError * 0.82 + effectiveSurprise * 0.30);
-        const attentionTarget = normalizedObservation.worldContext?.location || (activeGoalPressureFallback(this.persisted.goals));
-        this.persisted.facets.memory.attention = attend({ target: attentionTarget || 'internal-state', reason: surprise > 0.45 ? 'prediction-error' : novelty > 0.35 ? 'novelty' : 'goal-pressure', salience: Math.max(surprise, novelty, n.goalPressure), confidence: state.attentionBudget, budget: state.attentionBudget });
+        // Attention allocation. The budget is recomputed *before* allocation so
+        // confidence reflects this cycle's resources, not the previous cycle's
+        // (the previous ordering assigned the stale budget to the new target).
         state.attentionBudget = clamp(1 - n.cognitiveLoad * 0.52 - (1 - n.energy) * 0.28);
+        const attentionTarget = normalizedObservation.worldContext?.location || (activeGoalPressureFallback(this.persisted.goals));
+        const activeGoalForAttention = this.persisted.goals.find(goal => goal.status === 'active');
+        const lastMemoryForAttention = (this.persisted.facets.memory.lastRetrievedMemoryIds ?? []).at(-1);
+        const attentionCandidates: import('../cognition/AttentionSchema.ts').AttentionCandidateInput[] = [];
+        if (attentionTarget) attentionCandidates.push({ target: `world:${attentionTarget}`, source: 'world', taskRelevance01: clamp(0.35 + (hasExternalSignal ? 0.35 : 0) + (normalizedObservation.worldContext?.uncertainty ?? 0) * 0.2), urgency01: clamp(effectiveSurprise * 0.6 + (observation.text ? 0.2 : 0)), novelty01: novelty, uncertainty01: clamp(normalizedObservation.worldContext?.uncertainty ?? n.uncertainty), predictedValue01: clamp(0.35 + (hasExternalSignal ? 0.3 : 0)), resourceCost01: clamp(n.cognitiveLoad * 0.35) });
+        if (activeGoalForAttention) attentionCandidates.push({ target: `goal:${activeGoalForAttention.id}`, source: 'goal', goalRelevance01: clamp(0.55 + n.goalPressure * 0.4), taskRelevance01: 0.45, urgency01: clamp(n.goalPressure * 0.85), uncertainty01: n.uncertainty, predictedValue01: clamp(0.4 + n.goalPressure * 0.35), emotionalSalience01: clamp(Math.abs((this.persisted.system.emotionAppraisal?.meanValence01 ?? 0.5) - 0.5) * 0.9), resourceCost01: clamp(n.cognitiveLoad * 0.3) });
+        if (state.predictionError > 0.28) attentionCandidates.push({ target: 'prediction:model-error', source: 'prediction', goalRelevance01: clamp(n.goalPressure * 0.5), taskRelevance01: clamp(state.predictionError * 0.9), urgency01: clamp(state.predictionError * 0.75), novelty01: novelty, uncertainty01: n.uncertainty, predictedValue01: clamp(0.45 + state.predictionError * 0.3), resourceCost01: clamp((1 - n.energy) * 0.4) });
+        if (lastMemoryForAttention) attentionCandidates.push({ target: `memory:${lastMemoryForAttention}`, source: 'memory', taskRelevance01: clamp(0.3 + (observation.text ? 0.35 : 0)), urgency01: 0.2, uncertainty01: n.uncertainty, predictedValue01: 0.4, emotionalSalience01: clamp((this.persisted.system.emotionAppraisal?.meanAttentionCapture01 ?? 0.2) * 0.6), resourceCost01: 0.2 });
+        if (n.energy < 0.35 || n.cognitiveLoad > 0.72) attentionCandidates.push({ target: 'interoception:resource-pressure', source: 'interoception', taskRelevance01: clamp(1 - n.energy), urgency01: clamp(1 - n.energy + n.cognitiveLoad * 0.4), uncertainty01: 0.3, predictedValue01: 0.5, emotionalSalience01: clamp((this.persisted.system.emotionAppraisal?.meanStress01 ?? 0.2)), resourceCost01: clamp(n.cognitiveLoad) });
+        if (observation.text?.trim()) attentionCandidates.push({ target: 'social:utterance', source: 'social', taskRelevance01: 0.8, urgency01: 0.55, novelty01: novelty, predictedValue01: 0.7, emotionalSalience01: clamp(social), resourceCost01: 0.15 });
+        // A stale allocator clock (restored snapshot ahead of the current tick)
+        // must degrade to a single-target record, never abort the cycle.
+        try {
+            this.persisted.facets.memory.attention = this.memorySubsystem.attentionAllocator.allocate({ tick: state.tick, candidates: attentionCandidates, attentionBudget01: state.attentionBudget, capacity: 3, latencyPressure01: clamp(n.cognitiveLoad * 0.8) });
+            this.persisted.facets.memory.attentionAllocator = this.memorySubsystem.attentionAllocator.snapshot();
+        } catch {
+            const fallbackTarget = attentionCandidates[0]?.target ?? 'internal-state';
+            this.persisted.facets.memory.attention = attend({ target: fallbackTarget, reason: 'fallback:allocator-clock', salience: clamp(Math.max(effectiveSurprise, novelty, n.goalPressure)), confidence: state.attentionBudget * 0.5, budget: state.attentionBudget, tick: state.tick });
+        }
         const bodyTelemetry = { energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, capacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad), load01: n.cognitiveLoad };
         const p66Homeostasis = this.p66InteroceptiveHomeostasis.observe({ tick: state.tick + 1, at: Date.now(), ...bodyTelemetry, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError, novelty01: state.needs.novelty });
         const interoceptiveFrame = this.organismSystems.embodiment.interoceptiveStateEstimator.observe({ energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, cognitiveLoad01: bodyTelemetry.load01, sleepPressure01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, capacity01: bodyTelemetry.capacity01, sensoryFreshness01: observation.embodiment?.sensoryFreshness01 ?? .5, externalInput: hasExternalSignal });
@@ -7650,7 +7670,22 @@ export class OrganismCore {
         else {
             this.memorySubsystem.selfModel.restore(defaultSelfModel());
         }
-        const wsItems = candidates.slice(0, 8).map(c => ({ id: c.id, source: 'decision', content: { action: c.action, goalId: c.goalId, score: c.score }, salience: c.score, createdAt: state.at }));
+        // Working workspace competition. Beyond the action candidates, the
+        // workspace now also carries the current attention focus, the leading
+        // retrieval and the prediction-error signal, so competition and source
+        // diversity reflect real competing content instead of a single source.
+        const wsItems: import('../cognition/RecurrentWorkspaceV2.ts').OrganismWorkspaceItem[] = candidates.slice(0, 8).map(c => ({ id: c.id, source: 'decision', content: { action: c.action, goalId: c.goalId, score: c.score }, salience: clamp(c.score), createdAt: state.tick }));
+        const attentionNow = this.persisted.facets.memory.attention;
+        if (attentionNow?.decision) {
+            wsItems.push({ id: `attention:${attentionNow.decision.target}`, source: 'attention', content: { target: attentionNow.decision.target, reason: attentionNow.decision.reason, score: attentionNow.decision.score }, salience: clamp(attentionNow.decision.score), createdAt: state.tick });
+        }
+        const leadingMemoryId = (this.persisted.facets.memory.lastRetrievedMemoryIds ?? []).at(-1);
+        if (leadingMemoryId) {
+            wsItems.push({ id: `memory:${leadingMemoryId}`, source: 'memory', content: { memoryId: leadingMemoryId }, salience: clamp(0.35 + (observation.text ? 0.25 : 0) + state.predictionError * 0.2), createdAt: state.tick });
+        }
+        if (state.predictionError > 0.3) {
+            wsItems.push({ id: 'prediction:model-error', source: 'prediction', content: { predictionError01: state.predictionError }, salience: clamp(state.predictionError * 0.95), createdAt: state.tick });
+        }
         const ws2 = this.memorySubsystem.workspaceV2.compete(wsItems, state.tick);
         this.persisted.facets.memory.workspace = ws2;
         const globalWorkspace = this.cognitiveRuntime.globalWorkspace.compete(candidates.slice(0, 8).map(c => ({
@@ -7924,7 +7959,7 @@ export class OrganismCore {
         const observationEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'observation', source: observation.text ? 'user' : 'runtime', external: Boolean(observation.text || observation.worldContext || observation.vision || observation.audio), confidence01: clamp(1 - state.predictionError), payload: { hasText: Boolean(observation.text), hasWorld: Boolean(observation.worldContext), hasVision: Boolean(observation.vision), hasAudio: Boolean(observation.audio) } });
         const predictionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'prediction', source: 'core.predictive-selection', parentIds: [observationEvent.id], confidence01: clamp(Number(selectedIntent?.confidence ?? .5)), payload: { predictedUtility: clamp(Number(selectedIntent?.predictedUtility ?? .5)), action: selectedAction } });
         const appraisalEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'appraisal', source: 'core.homeostatic-appraisal', parentIds: [observationEvent.id, predictionEvent.id], confidence01: clamp(1 - state.predictionError), payload: { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, socialNeed01: state.needs.socialNeed, goalPressure01: state.needs.goalPressure, identityCoherence01: state.needs.identityCoherence, predictionError01: state.predictionError } });
-        const attentionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'attention', source: 'core.global-workspace', parentIds: [appraisalEvent.id, predictionEvent.id], confidence01: clamp(workspaceSnapshotNow.items.length / Math.max(1, workspaceSnapshotNow.capacity)), payload: { workspaceItemIds: workspaceSnapshotNow.items.slice(-12).map(item => item.id), workspaceCapacity: workspaceSnapshotNow.capacity, attentionBudget01: state.attentionBudget, recurrence01: this.persisted.facets.memory.workspace.recurrence } });
+        const attentionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'attention', source: 'core.attention-workspace', parentIds: [appraisalEvent.id, predictionEvent.id], confidence01: clamp(workspaceSnapshotNow.items.length / Math.max(1, workspaceSnapshotNow.capacity)), payload: { workspaceItemIds: workspaceSnapshotNow.items.slice(-12).map(item => item.id), workspaceCapacity: workspaceSnapshotNow.capacity, attentionBudget01: state.attentionBudget, recurrence01: this.persisted.facets.memory.workspace.recurrence, attentionTarget: this.persisted.facets.memory.attention.target, attentionReason: this.persisted.facets.memory.attention.reason, attentionDecisionId: this.persisted.facets.memory.attention.decision ? AttentionAllocator.decisionId(this.persisted.facets.memory.attention.decision, state.tick) : null, attentionResourceMode: this.persisted.facets.memory.attention.decision?.resourceMode ?? null, workspaceSources: [...new Set(workspaceSnapshotNow.items.map(item => item.source))], workspaceSuppressed: workspaceSnapshotNow.lastDecision?.suppressed ?? [] } });
         const retrievedMemoryIds = (this.persisted.facets.memory.lastRetrievedMemoryIds ?? []).slice(-12);
         const memoryEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'memory', source: 'core.active-memory-context', parentIds: [attentionEvent.id, observationEvent.id], confidence01: clamp(retrievedMemoryIds.length / 8), payload: { retrievedMemoryIds, retrievedCount: retrievedMemoryIds.length, memoryEventCount: this.memorySubsystem.events.recent(8, false).length, identityContinuity01: identityContinuity.continuity } });
         const activeGoalIds = this.persisted.goals.filter(goal => goal.status === 'active').slice(0, 12).map(goal => goal.id);
