@@ -11657,12 +11657,31 @@ export class OrganismCore {
         autonomous?: boolean;
         /** Trusted verifier-owned join key; a string alone is not authority. */
         evidenceEventId?: string;
+        /** Internal binding carries the original verifier-minted object, not a serialized copy. */
+        verificationBinding?: {
+            verification: unknown;
+            toolId: string;
+            input: Record<string, unknown>;
+            executionId: string;
+            decisionId: string;
+        };
     }, options: { checkpoint?: boolean } = {}) {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
         const observer = this.evidenceResearchSubsystem.externalObserver;
+        const binding = input.verificationBinding;
+        const trustedEvidenceEventId = input.evidenceEventId !== undefined &&
+            Boolean(binding && input.evidenceEventId === (binding.verification as OutcomeVerification | undefined)?.evidenceEventId &&
+                input.actionRef === binding.executionId && input.decisionId === binding.decisionId &&
+                isTrustedDecisionLinkedExternalPostcondition(binding.verification, {
+                    toolId: binding.toolId, input: binding.input, executionId: binding.executionId, decisionId: binding.decisionId,
+                }));
+        if (input.evidenceEventId !== undefined && !trustedEvidenceEventId) {
+            throw new Error('external-observation-evidence-event-identity-not-verifier-bound');
+        }
+        const { verificationBinding: _verificationBinding, ...observerInput } = input;
         const observationIdsBefore = new Set(observer.snapshot().observations.map(row => row.id));
-        const observation = observer.observe(input);
+        const observation = observer.observe(observerInput);
         const replayedObservation = observationIdsBefore.has(observation.id);
         const assessment = input.expectedPostcondition ? observer.assess(observation.id, input.expectedPostcondition) : null;
         const reconciliation = input.expectedPostcondition ? observer.reconcileClaim(observation.claimKey, input.expectedPostcondition) : observer.reconcileClaim(observation.claimKey);
@@ -12119,6 +12138,9 @@ export class OrganismCore {
             actionRef: result.executionId, tool: toolId, tick: this.persisted.state.tick,
             worldContextAfter: v.observedWorldContextAfter,
             evidenceEventId,
+            verificationBinding: trustedEventLink ? {
+                verification: v, toolId, input: actionInput!, executionId: result.executionId, decisionId: linkedDecisionId,
+            } : undefined,
             metadata: { verificationBasis: v.basis, verifierObservationId: v.observationId, gatewayExecutionId: result.executionId, ...(evidenceEventId ? { evidenceEventId } : {}) },
             payload: { verifierObservationId: v.observationId, expectedPostcondition: v.expectedPostcondition, observedPostcondition: v.observedPostcondition, ...(evidenceEventId ? { evidenceEventId } : {}) },
             expectedPostcondition: v.expectedPostcondition,
