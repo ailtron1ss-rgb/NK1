@@ -92,5 +92,5 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /d.type==='kurisu_embodiment_intent'/);
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
-  assert.match(viewer, /lipTarget=clamp(mouth+emph*.08,0,1)/);
+  assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
 });
