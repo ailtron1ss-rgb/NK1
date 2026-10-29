@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
-import type { MouthPose } from "./avatar/embodimentTimeline";
+import { deriveEmbodimentPose, type MouthPose } from "./avatar/embodimentTimeline";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -62,17 +62,13 @@ const EMOTION_BROW: Record<EmotionLabel, number> = {
 
 function poseFor(action: ActionKind, emotion: EmotionLabel, arousal: number, motion: MotionStyle) {
   const multiplier = motion === "soft" ? 0.55 : 1;
-  const actionTilt: Record<ActionKind, number> = {
-    respond: 0, explore: 5, verify: 2, rest: -4, reflect: -7, wait: -1,
-  };
-  const emotionTilt: Record<EmotionLabel, number> = {
-    curiosity: -3, calm: 0, joy: 2, anxiety: -2, frustration: 2, sadness: 4, anger: 1, protective: -1,
-  };
-  const energy = Math.max(0, Math.min(1, Number.isFinite(arousal) ? arousal : 0.25));
+  // Live2D and NK1 Original now share the same normalized organism-to-pose mapper.
+  // Each renderer applies its own visual scale; emotion/intent are not redefined here.
+  const intent = deriveEmbodimentPose(action, emotion, arousal);
   return {
-    head: (actionTilt[action] + emotionTilt[emotion]) * multiplier,
-    body: (actionTilt[action] * 0.22 + (energy - 0.4) * 1.5) * multiplier,
-    breathMs: Math.max(2.8, 4.6 - energy * 1.3),
+    head: intent.headAngleX * 24 * multiplier,
+    body: intent.bodyAngleX * 10 * multiplier,
+    breathMs: Math.max(2.8, 5.2 - intent.breathIntensity * 1.5),
   };
 }
 
