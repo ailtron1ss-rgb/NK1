@@ -7,6 +7,7 @@ import vm from "node:vm";
 import {
   buildVisemeTimeline,
   CLOSED_MOUTH,
+  deriveEmbodimentPose,
   isEmbodimentIntentV1,
   appendVisemeClockAnchor,
   reanchorMonotonicAudioClock,
@@ -226,4 +227,25 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign origins are rejected");
   dispatch(message({ stateVersion: 4, audioTimeMs: 160 }), location.origin, {});
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign message sources are rejected");
+});
+
+test("EmbodimentIntent v1 accepts legacy body payloads and bounds optional continuous pose channels", () => {
+  const base = intent();
+  assert.equal(isEmbodimentIntentV1(base), true);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...base.body, bodyAngleX: 0.5, breathIntensity: 0.8 } })), true);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...base.body, bodyAngleZ: 1.01 } })), false);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...base.body, breathIntensity: -0.01 } })), false);
+});
+
+test("body pose mapper reacts to intent and remains finite and bounded for arbitrary inputs", () => {
+  const reflect = deriveEmbodimentPose("reflect", "curiosity", 0.6);
+  const rest = deriveEmbodimentPose("rest", "calm", 0.2);
+  assert.notDeepEqual(reflect, rest);
+  assert.deepEqual(deriveEmbodimentPose("unknown", "unknown", Number.NaN), deriveEmbodimentPose("wait", "calm", 0.25));
+  for (const pose of [reflect, rest]) {
+    for (const key of ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ"]) {
+      assert.ok(Number.isFinite(pose[key]) && pose[key] >= -1 && pose[key] <= 1);
+    }
+    assert.ok(Number.isFinite(pose.breathIntensity) && pose.breathIntensity >= 0 && pose.breathIntensity <= 1);
+  }
 });
