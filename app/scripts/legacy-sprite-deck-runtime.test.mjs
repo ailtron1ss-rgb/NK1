@@ -10,7 +10,7 @@ const source = await readFile(join(root, "src/legacy/avatar/LegacySpriteDeck.tsx
 test("legacy avatar keeps one animation loop while speaking and outfit values change", () => {
   assert.match(source, /const speakingRef = useRef\(speaking\)/);
   assert.match(source, /const outfitRef = useRef\(outfit\)/);
-  assert.match(source, /if \(speakingRef\.current && d\)/);
+  assert.match(source, /говорит · статичный кадр/);
   assert.match(source, /getOutfit\(outfitRef\.current\)\.nameRu/);
   assert.match(source, /raf = requestAnimationFrame\(draw\); return \(\) => cancelAnimationFrame\(raf\);\s*\}, \[\]\);/);
 });
@@ -24,8 +24,8 @@ test("stale legacy sprite image callbacks cannot replace the newest requested sp
 
 test("legacy avatar only resizes the canvas when layout dimensions change", () => {
   assert.match(source, /const w = canvas\.clientWidth \|\| 320;\s*const h = canvas\.clientHeight \|\| 360;/);
-  assert.match(source, /if \(canvas\.width !== w\) canvas\.width = w;/);
-  assert.match(source, /if \(canvas\.height !== h\) canvas\.height = h;/);
+  assert.match(source, /if \(canvas\.width !== bitmapWidth\) canvas\.width = bitmapWidth;/);
+  assert.match(source, /if \(canvas\.height !== bitmapHeight\) canvas\.height = bitmapHeight;/);
   assert.doesNotMatch(source, /const w = canvas\.width = canvas\.clientWidth/);
   assert.doesNotMatch(source, /const h = canvas\.height = canvas\.clientHeight/);
 });
