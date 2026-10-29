@@ -137,4 +137,19 @@ assert.match(core, /external-observation-evidence-event-identity-not-verifier-bo
   'the public Core boundary must reject a caller-supplied verifier identity without the original verifier binding');
 assert.match(core, /isTrustedDecisionLinkedExternalPostcondition\(binding\.verification/,
   'event identity acceptance must be rechecked against the exact verifier-owned object');
+
+const { OrganismCore } = await import('../src/organism/core/OrganismCore.ts');
+const publicBoundary = Object.create(OrganismCore.prototype);
+publicBoundary.ready = true;
+publicBoundary.evidenceResearchSubsystem = { externalObserver: {} };
+await assert.rejects(
+  OrganismCore.prototype.ingestExternalObservation.call(publicBoundary, {
+    sourceId: source.id, sourceClass: source.sourceClass, channel: source.channel,
+    independenceKey: source.independenceKey, claimKey: 'caller-forged-claim',
+    observedPostcondition: 'door=open', confidence01: 0.99, actionRef: expected.executionId,
+    decisionId: expected.decisionId, evidenceEventId: verification.evidenceEventId,
+  }, { checkpoint: false }),
+  /external-observation-evidence-event-identity-not-verifier-bound/,
+  'public ingestion must reject an ID copied from a valid receipt when the original verifier object is not bound',
+);
 console.log('NK1_FEEDBACK_OUTCOME_CHAIN=PASS verifierBoundId=true actionDecisionInputBound=true stableReplay=true sharedLedgerOwner=true conflictRejected=true restoreNoInflation=true');
