@@ -1,6 +1,7 @@
 import type { ActionKind } from '../core/types.ts';
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
+import { isTrustedDecisionLinkedExternalPostcondition, type ExpectedDecisionOutcomeBinding, type OutcomeVerification } from '../system/OutcomeVerificationService.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
@@ -96,16 +97,17 @@ export class P2702PersistentPersonalityDynamics{
   // Relationship trust is updated only from the verified outcome path below, not from decision intent alone.
   return {actionBias:bias,traitVector:this.state.adaptiveValues.slice(),valueVector:this.state.valueWeights.slice(),identityContinuity01:this.state.identityContinuity01,coherence01:this.state.coherence01,stability01:this.state.stability01,contradiction01:this.state.contradiction01};
  }
- afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string;traitFeedback?:{traitName:string;target01:number;confidence01:number};valueFeedback?:{valueName:string;target01:number;confidence01:number}}}){
+ afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;evidence?:{source:'external-verification'|'internal';verification?:unknown;expectedBinding?:ExpectedDecisionOutcomeBinding;traitFeedback?:{traitName:string;target01:number;confidence01:number};valueFeedback?:{valueName:string;target01:number;confidence01:number}}}){
   const reward=clamp(args.reward01),verified=clamp(args.verified01),error=clamp(args.predictionError01);
-  const evidence=args.evidence,evidenceRef=String(evidence?.evidenceRef??'').trim().slice(0,240);
-  const allowedSource=evidence?.source==='world-transition'||evidence?.source==='external-verification';
-  const sourceBound=evidence?.source==='world-transition'?evidenceRef.startsWith('world-transition:'):evidence?.source==='external-verification'?evidenceRef.startsWith('external-verification:'):false;
-  const accepted=Boolean(verified>=.99&&evidence?.verified===true&&evidence.independent===true&&allowedSource&&sourceBound&&evidenceRef);
+  const evidence=args.evidence;
+  const trustedVerification:OutcomeVerification|null = evidence?.source==='external-verification'&&evidence.expectedBinding
+   &&isTrustedDecisionLinkedExternalPostcondition(evidence.verification,evidence.expectedBinding)
+   ?evidence.verification:null;
+  const accepted=Boolean(verified>=.99&&trustedVerification&&trustedVerification.verified===true&&trustedVerification.confidence01>=.65&&trustedVerification.externalObservation===true);
   this.state.learningUpdates++;if(Number.isSafeInteger(args.tick)&&Number(args.tick)>=0)this.state.tick=Number(args.tick);this.state.lastReward01=reward;
   if(!accepted){
    this.state.rejectedLearningUpdates++;
-   this.state.lastEvidenceGateReason=!evidence?'missing-provenance':verified<.99?'outcome-below-verification-threshold':!evidence.verified?'outcome-unverified':!evidence.independent?'outcome-not-independent':!allowedSource?'untrusted-evidence-source':!sourceBound?'evidence-source-binding-mismatch':'missing-evidence-reference';
+   this.state.lastEvidenceGateReason=!evidence?'missing-provenance':evidence.source!=='external-verification'?'untrusted-evidence-source':!evidence.expectedBinding?'missing-decision-binding':!trustedVerification?'untrusted-or-unbound-verification':verified<.99?'outcome-below-verification-threshold':'verification-confidence-too-low';
    // Unverified outcomes may increase uncertainty, but cannot rewrite stable personality state.
    const uncertaintyShift=clamp(error*.55+(1-verified)*.45);
    for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
