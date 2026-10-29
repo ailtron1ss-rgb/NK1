@@ -583,7 +583,7 @@ export class MemoryOS2{
  private provenanceClassFor(source:string,explicit?:MemoryProvenanceClass):MemoryProvenanceClass{if(explicit&&['device','external','user','agent','derived','simulation','unknown'].includes(explicit))return explicit;const s=String(source).toLowerCase();if(s.includes('device')||s.includes('android'))return 'device';if(s.includes('external')||s.includes('api')||s.includes('os'))return 'external';if(s.includes('user'))return 'user';if(s.includes('simulation')||s.includes('synthetic'))return 'simulation';if(s.includes('agent')||s.includes('model')||s.includes('llm'))return 'agent';if(s.includes('derived'))return 'derived';return 'unknown';}
  private sourceAuthorityDefault(provenanceClass:MemoryProvenanceClass){return ({device:.95,external:.9,user:.86,agent:.68,derived:.52,simulation:.28,unknown:.5} as Record<MemoryProvenanceClass,number>)[provenanceClass]??.5;}
  private evidenceKey(evidence:Pick<MemoryEvidenceSource,'source'|'provenanceClass'|'independenceKey'>){
-  const independent=String(evidence.independenceKey??'').trim().normalize('NFKC').toLocaleLowerCase();
+  const independent=String(evidence.independenceKey??'').trim().normalize('NFKC').toLowerCase();
   if(independent)return `lineage:${independent}`;
   return `source:${String(evidence.provenanceClass)}:${String(evidence.source??'').trim().normalize('NFKC').toLocaleLowerCase()}`;
  }

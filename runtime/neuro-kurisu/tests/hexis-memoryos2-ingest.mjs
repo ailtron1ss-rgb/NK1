@@ -29,7 +29,7 @@ const evidence = {
   sourceKind: 'tool_receipt',
   stance: 'refutes',
   observedAt: 1_798_000_000_000,
-  independenceKey: 'tool-run:independent-1',
+  independenceKey: 'TOOL-RUN:INDEPENDENT-1',
   authority01: 0.9,
   confidenceBefore: 0.8,
   confidenceAfter: 0.2,
@@ -47,9 +47,29 @@ assert.equal(memory.get(target.id)?.confidence, 0.7,
   'upstream confidence deltas must not overwrite NK1 confidence');
 assert.equal(memory.get(target.id)?.context?.hexisLastEvidenceStance, 'refutes');
 assert.equal(memory.get(target.id)?.evidenceSources?.some(row => row.source.includes('hex-evidence-1')), true);
+assert.equal(memory.get(target.id)?.evidenceLineageKeys?.includes('lineage:tool-run:independent-1'), true,
+  'the canonical replay guard must persist the normalized independent lineage');
+
+// A different event ID from the same upstream origin must not count as independent corroboration.
+const sameLineageCopy = {
+  ...evidence,
+  evidenceId: 'hex-evidence-2',
+  sourceRef: 'tool:second-wrapper-for-same-run',
+  independenceKey: 'tool-run:independent-1',
+};
+const sourcesBeforeSameLineageReplay = memory.get(target.id)?.evidenceSources?.length ?? 0;
+const sameLineageResult = applyReviewedHexisEvidence(memory, target.id, sameLineageCopy, { reviewed: true });
+assert.equal(sameLineageResult.status, 'duplicate',
+  'different event IDs from one independenceKey must not count as independent evidence');
+assert.equal(memory.get(target.id)?.evidenceSources?.length ?? 0, sourcesBeforeSameLineageReplay,
+  'same-lineage replay must not append another evidence source');
 
 // A shorter evidence ID must not collide with a longer ID sharing its prefix.
-const longerId = { ...evidence, evidenceId: 'hex-evidence-10' };
+const longerId = {
+  ...evidence,
+  evidenceId: 'hex-evidence-10',
+  independenceKey: 'tool-run:independent-10',
+};
 const longerRecorded = applyReviewedHexisEvidence(memory, target.id, longerId, { reviewed: true });
 assert.equal(longerRecorded.status, 'recorded');
 const shorterTarget = memory.encode({
