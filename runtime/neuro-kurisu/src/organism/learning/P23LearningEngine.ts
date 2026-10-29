@@ -4,7 +4,7 @@ import type { AdaptivePolicyEngine, AdaptivePolicyState } from './AdaptivePolicy
 import { selectReplayBatch, type ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
 import { selectCausalReplayBatch } from './CausalReplaySampler.ts';
 import { adaptiveReplayLearningRate, adaptiveReplayOptions, bellmanTarget, calibratedConfidence, forgettingRisk, repairOpportunity, scoreReplayPriority, transferConfidence, wilsonLowerBound } from './MultiSourceLearningMechanisms.ts';
-import { retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
+import { MIN_TRANSFER_SIMILARITY01, retrievedSkillBias } from './SkillRetrievalAugmentation.ts';
 import { rankLearningTargets, reflectOnOutcomes } from './OutcomeReflectionCurriculum.ts';
 import { isAuthenticVerifiedSkillPromotionProposal, type VerifiedSkillPromotionProposal } from './VerifiedSkillPromotion.ts';
 import { evaluateSkillLearnBenchCandidate, type SkillLearnBenchCandidateEvaluation, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport } from './SkillLearnBenchAdapter.ts';
@@ -1046,7 +1046,7 @@ export class P23LearningEngine {
     for(const row of skills){
       if(row.action!==action || row.validationUses<4 || row.confidence01<.4) continue;
       const similarity=contextSimilarity(key,row.contextKey);
-      if(similarity<5/6) continue;
+      if(similarity<MIN_TRANSFER_SIMILARITY01) continue;
       const support=Math.min(1,row.validationUses/8);
       const calibratedTransfer=transferConfidence({shared:Math.round(similarity*6),total:6,sourceValidation01:row.validationSuccess01,independentN:row.validationUses,distance01:1-similarity});
       if(row.status==='promoted' && row.validationSuccess01>=.70){
