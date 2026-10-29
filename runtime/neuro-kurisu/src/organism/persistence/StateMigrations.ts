@@ -300,6 +300,9 @@ export interface PersistedShapeCurrent {
     b335AutonomousProjectHoldout?: import('../system/B335AutonomousProjectHoldoutGate.ts').B335State;
     cognitiveEventFabric?: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot;
     cognitiveResourceEconomy?: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState;
+    runtimeCognitiveEventFabric?: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot;
+    runtimeCognitiveResourceEconomy?: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState;
+    runtimeUnifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
     runtimePerformance?: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState;
     interoceptiveState?: any;
     autonomousPersonhood?: any;
