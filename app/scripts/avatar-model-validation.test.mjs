@@ -118,6 +118,9 @@ test("rejects malformed buffer declarations instead of trusting the extension", 
   expectCode(makeGlb(minimalJson({
     images: [{ bufferView: 8, mimeType: "image/png" }],
   })), "invalid-buffer");
+  expectCode(makeGlb(minimalJson({
+    bufferViews: [{ buffer: 0, byteOffset: 3, byteLength: 4 }],
+  })), "invalid-buffer");
 });
 
 test("bounds scene complexity before the renderer allocates geometry", () => {
