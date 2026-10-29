@@ -53,6 +53,18 @@ export function validateCiConfig({ workflows, nodeVersion }) {
     if (/ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION\s*[:=]\s*true/i.test(text)) {
       errors.push(`${name}: do not opt out of the retired Node.js 20 Actions runtime.`);
     }
+
+    // Guard against per-workflow Node drift: a hardcoded setup-node version must
+    // match the root .nvmrc major, otherwise prefer node-version-file: .nvmrc.
+    const pinnedMajor = /^(\d+)/.exec(pinnedNode)?.[1];
+    for (const match of text.matchAll(/^\s*node-version:\s*['"]?([^\s'"]+)['"]?\s*$/gm)) {
+      const value = match[1];
+      if (value.startsWith("${{")) continue;
+      const major = /^v?(\d+)/.exec(value)?.[1];
+      if (major && pinnedMajor && major !== pinnedMajor) {
+        errors.push(`${name}: node-version ${value} disagrees with root .nvmrc major ${pinnedMajor}; use node-version-file: .nvmrc.`);
+      }
+    }
   }
 
   if (!Object.keys(workflows ?? {}).length) errors.push("No workflow YAML files were found.");
