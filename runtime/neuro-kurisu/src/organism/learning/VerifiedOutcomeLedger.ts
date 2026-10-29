@@ -199,16 +199,18 @@ export class VerifiedOutcomeLedger {
       return { rejection: { code: code ?? 'invalid-outcome', taskId: safeTaskId, method: safeMethod, detail: detail || 'outcome is malformed' } };
     }
     const key = this.key(trustedOutcome);
-    if (seenEvidenceRefs.has(trustedOutcome.evidenceRef)) {
-      return { rejection: {
-        code: 'duplicate-evidence-ref', taskId: safeTaskId, method: safeMethod,
-        detail: 'one evidence receipt cannot attest multiple ledger outcomes',
-      } };
-    }
+    // Prefer the more specific idempotency result when both the attempt and receipt
+    // are repeated. A receipt reused for a different cell is still rejected below.
     if (seenKeys.has(key)) {
       return { rejection: {
         code: 'duplicate-attempt', taskId: safeTaskId, method: safeMethod,
         detail: 'this task/method/seed/attempt already has an outcome',
+      } };
+    }
+    if (seenEvidenceRefs.has(trustedOutcome.evidenceRef)) {
+      return { rejection: {
+        code: 'duplicate-evidence-ref', taskId: safeTaskId, method: safeMethod,
+        detail: 'one evidence receipt cannot attest multiple ledger outcomes',
       } };
     }
     const accepted: VerifiedTaskOutcome = {
