@@ -39,7 +39,7 @@ engine.generateAndStageReflectiveSkillRevision = async (...args) => {
       evidenceIds: ['validation-trial-1'],
       directive: 'Improve the evidenced action ordering.',
     }],
-    holdoutGeneralization: { gap01: -.1, requiresFreshIndependentEvaluation: true },
+    holdoutPolicy: { resultsWithheld: true, requiresFreshIndependentEvaluation: true },
   });
 };
 
@@ -63,7 +63,10 @@ assert.equal(providerCalls.length, 1, 'the local provider must be called once th
 assert.ok(providerCalls[0].user.includes('VERIFIED_DATASET_FINGERPRINT:'));
 assert.ok(providerCalls[0].user.includes('a'.repeat(64)));
 assert.ok(providerCalls[0].user.includes('validation-task-1'));
+assert.ok(providerCalls[0].user.includes('holdoutPolicy'));
+assert.ok(providerCalls[0].user.includes('resultsWithheld'));
 assert.ok(!providerCalls[0].user.includes('holdout-secret-task'));
+assert.ok(!providerCalls[0].user.includes('gap01'), 'numeric holdout feedback must never reach the local revision model');
 assert.equal(forwarded[6], evaluate);
 assert.equal(forwarded[7].minPairedTasks, 3);
 assert.equal(forwarded[8], 'b'.repeat(64));
