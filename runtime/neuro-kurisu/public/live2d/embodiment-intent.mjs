@@ -7,8 +7,9 @@ const TOP_KEYS = [
 const MOUTH_KEYS = ["open", "form", "viseme"];
 const GAZE_KEYS = ["x", "y", "driven"];
 const BODY_KEYS = ["headTilt", "gesture", "motionGroup", "motionIndex", "motionToken"];
-const OPTIONAL_BODY_KEYS = ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ", "breathIntensity"];
+const OPTIONAL_BODY_KEYS = ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ", "breathIntensity", "motorAction", "intentReason"];
 const ALLOWED_BODY_KEYS = [...BODY_KEYS, ...OPTIONAL_BODY_KEYS];
+const MOTOR_ACTIONS = new Set(["rest", "listen", "reflect", "inspect", "explain", "comfort", "respond"]);
 const MOTION_COUNTS = Object.freeze({ Idle: 1, TapHead: 1, TapBody: 1, Special: 2 });
 const PHASES = new Set(["idle", "starting", "speaking", "ended", "cancelled", "unknown"]);
 const CLOCK_SOURCES = new Set([
@@ -63,6 +64,11 @@ export function isEmbodimentIntentV1(value) {
   ]) {
     if (Object.hasOwn(value.body, key) && !finiteBetween(value.body[key], min, max)) return false;
   }
+  if (Object.hasOwn(value.body, "motorAction") &&
+      (typeof value.body.motorAction !== "string" || !MOTOR_ACTIONS.has(value.body.motorAction))) return false;
+  if (Object.hasOwn(value.body, "intentReason") &&
+      (typeof value.body.intentReason !== "string" || value.body.intentReason.length > 96 ||
+       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.body.intentReason))) return false;
 
   if (value.speechPhase === "speaking" && (!value.speechEventId || !value.audioClockId)) return false;
   if (value.speechPhase === "cancelled" &&
@@ -74,6 +80,7 @@ export function isEmbodimentIntentV1(value) {
 export function normalizeEmbodimentIntentV1(value) {
   if (!isEmbodimentIntentV1(value)) return null;
   const speaking = value.speechPhase === "speaking";
+  const legacyActionByMotion = { Idle: "listen", TapHead: "reflect", TapBody: "inspect", Special: "respond" };
   return {
     stateVersion: value.stateVersion,
     expression: value.expression,
@@ -89,6 +96,8 @@ export function normalizeEmbodimentIntentV1(value) {
     bodyAngleY: value.body.bodyAngleY ?? 0,
     bodyAngleZ: value.body.bodyAngleZ ?? 0,
     breathIntensity: value.body.breathIntensity ?? value.expressionIntensity,
+    motorAction: value.body.motorAction ?? legacyActionByMotion[value.body.motionGroup],
+    intentReason: value.body.intentReason ?? "legacy-v1-payload",
     gesture: value.body.gesture && value.speechPhase !== "cancelled",
     motionGroup: value.body.motionGroup,
     motionIndex: value.body.motionIndex,
