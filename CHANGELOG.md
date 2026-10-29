@@ -4,6 +4,8 @@
 - Harden `P2702PersistentPersonalityDynamics.restore`: persisted snapshots cannot replace compiled personality invariants or reorder their schema; malformed vectors and relationship/action state fall back to bounded defaults without invoking getters.
 - Separate observed outcomes from verified personality-learning updates. Stable adaptive traits, value weights, relationship trust and autobiographical strength update only when a high-confidence outcome includes independent evidence with a source-bound `world-transition:` or `external-verification:` reference.
 - Thread optional evidence provenance through the existing `NeuralExperienceBranch.afterOutcome` interface. Omitted provenance fails closed for stable personality updates while retaining uncertainty updates and diagnostics; no second learner is introduced.
+- Remove action-index-based trait mutation: action `explore` must not happen to update whichever trait occupies array index 1. Trait and value updates now require explicit, bounded dimension-level attribution (`traitFeedback` / `valueFeedback`) attached to the verified outcome.
+- Prevent relationship trust from drifting merely because the organism selected a goal/action. Relationship trust is updated only after a verified, independent, source-bound outcome naming the relationship.
 - Extend canonical self-agency and P2702 regression cases for tampered snapshots, hostile getters, invalid trait values, missing provenance and untrusted evidence source.
 - Validation status: changes are on a dedicated work branch; runtime tests and CI have **not** been executed in this environment. This entry is not a test PASS; require exact-SHA CI evidence before promotion.
 
