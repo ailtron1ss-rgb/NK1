@@ -5,7 +5,7 @@
 - Prevent cross-context global calibration fallback once an action has its own contextual outcome history; expose the number of recorded contexts in diagnostics.
 - Fix P66 hysteresis ordering so the returned mode, persisted `lastMode`, mode counters, and recent history all record the same effective mode.
 - Expand WorkPass172 regressions and add a targeted GitHub Actions workflow for affect, motivation, endogenous goal lifecycle and workspace integration.
-- Validation status: code and workflow committed on `work/emotions-motivation-closure-2026-10-29`; do not call the tests green until the corresponding Actions run succeeds. No Release ZIP or `main` update is claimed.
+- Validation: targeted workflow passed on code SHA `e3f79e0cda5c5137a93c4067793b4e8e52ee05aa` ([Actions run 40931747804](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40931747804)); typecheck/cadence regression and source-lineage contract also passed on that SHA. Physical Android/Termux, voice output, browser/Live2D E2E and soak remain unverified. No Release ZIP or `main` update is claimed.
 
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
