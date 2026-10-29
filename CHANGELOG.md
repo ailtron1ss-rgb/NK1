@@ -1,3 +1,29 @@
+## [NK1][WorkPass621] Unify continuous pose policy across Live2D and Original SVG (2026-10-29)
+
+- Route the Original SVG renderer through the shared organism action/affect pose mapper instead of its own duplicate action/emotion angle table.
+- Keep only renderer-specific angle scaling and breathing timing local to SVG; the semantic source of pose remains common with Live2D.
+- Add regression coverage for shared mapping. This unifies existing 2D renderers, not a real skeletal 2.5D/3D model.
+
+---
+
+## [NK1][WorkPass620] Preserve semantic motor goals across embodiment renderers (2026-10-29)
+
+- Add optional `motorAction` and `intentReason` fields to EmbodimentIntent v1, populated from the existing context-aware motor planner.
+- Validate supported goals and bounded machine-readable reasons in the TypeScript contract, strict runtime normalizer, app viewer boundary and JSON Schema.
+- Provide explicit compatibility fallbacks for legacy v1 messages, and test semantic round-trip, malformed-value rejection and viewer wiring.
+- This preserves the planner's goal across future 2.5D/3D adapters; it does not claim a full skeletal model or autonomous whole-body controller.
+
+---
+
+## [NK1][WorkPass619] Wire continuous pose intent into the existing Live2D rig (2026-10-29)
+
+- Add a deterministic action/affect-to-pose mapper producing bounded normalized head yaw/pitch, torso angles, and breathing intensity.
+- Extend EmbodimentIntent v1 with optional pose channels; preserve older v1 payloads and reject unknown keys or out-of-range values.
+- Connect the existing motor-intent planner and organism affect to the new body channels, then map them into the app and standalone Live2D viewers.
+- Add regression and asset-integrity checks. This does not claim a production 2.5D/3D model, skeleton, IK, modular 3D wardrobe, or autonomous whole-body motor planner.
+
+---
+
 ## [NK1][WorkPass618] Expose Original 2D avatar as a selectable mode (2026-10-29)
 
 - Integrate the existing `KurisuOriginalStage` SVG prototype into the active avatar selector beside Live2D and Legacy, without replacing the motor-intent repairs.

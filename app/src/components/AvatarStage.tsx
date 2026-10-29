@@ -9,6 +9,7 @@ import {
   appendVisemeClockAnchor,
   buildVisemeTimeline,
   CLOSED_MOUTH,
+  deriveEmbodimentPose,
   reanchorMonotonicAudioClock,
   sampleMonotonicAudioClock,
   sampleVisemeClock,
@@ -337,6 +338,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     // Increment only when the semantic motor goal changes. Snapshot ticks and mouth frames
     // must not continually restart the same motion clip.
     const motionIdentity = freshTextTurn ? (session?.speechEventId ?? turnKey) : `state:${motorPlan.action}`;
+    const bodyPoseAction =
+      motorPlan.action === "rest" ? "rest" :
+      motorPlan.action === "reflect" ? "reflect" :
+      motorPlan.action === "inspect" ? (snap.lastOption === "verify" ? "verify" : "explore") :
+      motorPlan.action === "respond" || motorPlan.action === "explain" || motorPlan.action === "comfort" ? "respond" : "wait";
+    const bodyPose = deriveEmbodimentPose(bodyPoseAction, snap.emotion.label, snap.emotion.arousal);
     const motionSignature = `${motorPlan.action}:${motionGroup}:${motionIndex}:${motionIdentity}`;
     if (motionIntentKeyRef.current !== motionSignature) {
       motionIntentKeyRef.current = motionSignature;
@@ -364,6 +371,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
       body: {
         headTilt: motorPlan.headTilt,
+        headAngleX: bodyPose.headAngleX,
+        headAngleY: bodyPose.headAngleY,
+        bodyAngleX: bodyPose.bodyAngleX,
+        bodyAngleY: bodyPose.bodyAngleY,
+        bodyAngleZ: bodyPose.bodyAngleZ,
+        breathIntensity: bodyPose.breathIntensity,
+        motorAction: motorPlan.action,
+        intentReason: motorPlan.reason,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
