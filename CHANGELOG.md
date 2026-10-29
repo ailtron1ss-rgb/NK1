@@ -1,3 +1,10 @@
+## [NK1][WorkPass618] Expose Original 2D avatar as a selectable mode (2026-10-29)
+
+- Integrate the existing `KurisuOriginalStage` SVG prototype into the active avatar selector beside Live2D and Legacy, without replacing the motor-intent repairs.
+- Restore the saved Original selection and pass organism emotion, action, arousal, gaze, speaking, thinking and viseme state into the component.
+- Keep the editable clothing, colour, pose, motion-style and scale controls; explicitly classify this as a 2D concept, not a completed 2.5D/3D body.
+- Add regression assertions for selector wiring and outfit/pose persistence. Production build, browser render and Release ZIP refresh remain pending.
+
 ## [NK1][WorkPass617] Bridge Live2D embodiment intent and add deterministic motor planning (2026-10-29)
 
 - Fix the protocol mismatch between `AvatarStage` (`kurisu_embodiment_intent`) and the Live2D viewer, with strict protocol-v1 validation, monotonic state-version rejection, and normalization to the bundled model's actual motion groups.

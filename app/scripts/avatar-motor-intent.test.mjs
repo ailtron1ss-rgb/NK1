@@ -94,3 +94,16 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /motionToken||0/);
   assert.ok(viewer.includes("lipTarget=clamp(mouth+emph*.08,0,1)"));
 });
+
+test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
+  const stage = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
+  const original = await readFile(new URL("../src/components/KurisuOriginalStage.tsx", import.meta.url), "utf8");
+  assert.ok(stage.includes('type ViewMode = "live2d" | "legacy" | "original"'));
+  assert.ok(stage.includes('onClick={() => setMode("original")}'));
+  assert.ok(stage.includes("<KurisuOriginalStage"));
+  assert.ok(stage.includes('saved === "legacy" || saved === "original"'));
+  assert.ok(original.includes('type Outfit = "lab" | "casual" | "night"'));
+  assert.ok(original.includes('type PoseOverride = "auto" | "crossed" | "thinking" | "explain"'));
+  assert.ok(original.includes('writeAvatarPreference("kurisu-original-outfit", outfit)'));
+  assert.ok(original.includes("Original 2D concept"));
+});
