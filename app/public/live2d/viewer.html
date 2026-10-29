@@ -113,7 +113,7 @@
       const fit=()=>{if(!model)return;const screenW=app.screen.width,screenH=app.screen.height;const scale=Math.min(screenW/model.width,screenH/model.height)*.92;model.scale.set(scale);model.x=screenW/2;model.y=screenH*.99;model.anchor.set(.5,1)};
       fit();window.addEventListener('resize',fit,{passive:true});app.stage.addChild(model);
       status.textContent=`ок · ${assetProfile}`;send('live2d_ready',{profile:assetProfile,modelPath});
-      app.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides);
+      model.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides);
        app.ticker.add(() => {
          if(!model)return;
          const now=performance.now();
