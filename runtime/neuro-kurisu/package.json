@@ -1803,6 +1803,10 @@
     "test:memory-semantic-vector-integrity": "node --experimental-strip-types tests/memory-semantic-vector-integrity.mjs",
     "test:memoryos2-metadata-retrieval": "node --experimental-strip-types tests/memoryos2-metadata-retrieval.mjs",
     "test:memory-fabric-semantic-retrieval": "node --experimental-strip-types tests/memory-fabric-semantic-retrieval.mjs",
-    "test:workpass610:brain-fusion-strip-only": "node --experimental-strip-types tests/workpass610-brain-fusion-strip-only-runtime-load.mjs"
+    "test:workpass610:brain-fusion-strip-only": "node --experimental-strip-types tests/workpass610-brain-fusion-strip-only-runtime-load.mjs",
+    "test:perception-engine-signal-integrity": "node --experimental-strip-types tests/perception-engine-signal-integrity.mjs",
+    "test:world-context-normalizer-integrity": "node --experimental-strip-types tests/world-context-normalizer-integrity.mjs",
+    "test:world-perception-delta-integrity": "node --experimental-strip-types tests/world-perception-delta-integrity.mjs",
+    "test:world-perception": "npm run test:world-context-normalizer-integrity && npm run test:perception-engine-signal-integrity && npm run test:world-perception-delta-integrity"
   }
 }
