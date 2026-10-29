@@ -73,8 +73,8 @@ test("strict protocol accepts the app's envelope and normalizes speech/body fiel
   assert.equal(isEmbodimentIntentV1(value), true);
   assert.deepEqual(normalizeEmbodimentIntentV1(value), {
     stateVersion: 1, expression: "happy", expressionIntensity: 0.8, speaking: true,
-    mouthOpen: 0.65, gazeX: 0.2, gazeY: -0.1, headTilt: -0.04, gesture: true,
-    motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
+    mouthOpen: 0.65, mouthForm: 0.2, gazeX: 0.2, gazeY: -0.1, gazeDriven: true,
+    headTilt: -0.04, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
   });
 });
 
