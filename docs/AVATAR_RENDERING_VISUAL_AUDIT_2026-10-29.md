@@ -63,3 +63,46 @@ These are engineering estimates, not measured artistic-quality scores or benchma
 
 ## Release state
 This code pass does not overwrite or claim to refresh the Release ZIP. The source-release workflow must pass its exact-SHA checks, provenance and human license/redistribution gate before any new archive can be called published.
+
+## WorkPass622 — semantic review of the actual PNG pixels (2026-10-29)
+
+The files were opened and visually checked, not just stat'ed. **All 32 files exist, but several historical ids do not describe their visible content.** The issue was in the semantic labels/routing, not missing file paths. Renaming the files would break existing external references, so the legacy filenames are kept and the selector now uses the visible content rather than trusting those names or the sheet category.
+
+Examples confirmed from the actual PNGs:
+
+| Existing sprite id | What the image actually shows | Suitable use after remap |
+|---|---|---|
+| `arms_crossed` | Reclining with eyes closed, resting/asleep | Rest/tired |
+| `office_embarrassed` | Stern pose with crossed arms | Neutral/tsundere/angry |
+| `neutral_front` | Side profile writing/drawing at a whiteboard | Focused/whiteboard |
+| `shocked` | Frontal city portrait with a mild, nearly neutral expression | Wait/neutral |
+| `tired_rest` | Blushing, looking down with folded arms | Embarrassed/flustered |
+| `whiteboard` | Close-up with mouth open as if speaking/exclaiming | Respond/surprised |
+| `rain_kneel` | Standing thoughtfully in a lab at a board | Reflect/whiteboard |
+| `reach_out` | Kneeling in the rain, arms wrapped around herself | Sad/protective scene |
+| `lab_think` and `drpepper_dusk` | Forward-reaching gesture with mouth open | Respond/passionate |
+| `sunset_phone` | Full-body, arms-crossed pose against clockwork imagery | Neutral/tsundere |
+| `clockwork` | Holding and looking at a phone | Phone |
+| `arms_close` | Close-up crossed-arms portrait | Neutral/tsundere |
+| `sofa_phone` | Holding a Dr Pepper can outdoors | Dr Pepper break |
+| `passionate_reach` | Sitting/reclining on a sofa while using a phone | Phone/quiet rest |
+| `whiteboard_write` | Close-up with fingers steepled in thought | Reflect/verify |
+| `steeple_focus` | Over-shoulder side glance in a wet/dark setting | Looking away/tender-sad |
+| `wet_glance` | Writing at a whiteboard | Focused/whiteboard |
+| `lab_chin` | At a computer with a hand to her face | Think/verify |
+| `lab_tired` | Eyes closed, smiling, both hands open in an expressive gesture | Happy/respond |
+| `lab_crossed` | Resting her head on her arms at a desk | Rest/tired |
+| `lab_drpepper` | Side profile looking up, arms crossed | Looking away/neutral |
+| `lab_explain` | Close-up crossed arms, stern expression | Neutral/tsundere |
+| `lab_profile` | Hands folded in a thoughtful pose | Reflect/think |
+| `lab_steeple` | Holding a Dr Pepper can, wide-eyed/surprised | Dr Pepper break/surprised |
+| `lab_shocked` | Hands over her mouth in shock | Surprised |
+
+Changes in this pass:
+
+- Reorder expression candidates to correspond to the visible pose/emotion.
+- Route exploration to the actual walking image first, verification to the whiteboard/computer images, rest to the actually reclining/sleeping images, and reflection to the real thinking poses.
+- Stop filtering action poses solely by the `lab_*` filename/sheet. That old filter caused exploration to choose a desk-thinking pose, and made rest/respond/Dr Pepper actions choose incorrect poses.
+- Avoid a static-sprite mouth animation illusion: speaking status remains explicit, but the PNG mouth is not altered and no torso actuator is drawn.
+
+Validation boundary: this is a visual content audit plus deterministic selection regression tests. It does not turn static PNGs into rigged/animated assets; Live2D/3D remains the path for articulated motion.
