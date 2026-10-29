@@ -7,6 +7,7 @@ on:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
       - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
       - "runtime/neuro-kurisu/src/organism/learning/PairedSeedConfidence.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningRobustMetrics.ts"
