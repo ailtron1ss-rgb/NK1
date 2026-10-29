@@ -36,9 +36,9 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   function setCore(id,value){try{const core=model?.internalModel?.coreModel;if(core?.setParameterValueById)core.setParameterValueById(id,value)}catch{}}
   function applyEmbodiment(d){
     bodySignal=d||{};
-    const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1);
-    lipTarget=clamp(mouth+emph*.08,0,1);
-    if(!bodySignal.speaking)lipTarget=0.015;
+    const mouth=clamp(bodySignal.mouthOpen,0,1);
+    // Mouth aperture follows the supplied viseme exactly; voice emphasis is a separate channel.
+    lipTarget=bodySignal.speaking?mouth:0.015;
     lipFormTarget=bodySignal.speaking?clamp(bodySignal.mouthForm,-1,1):0;
     if(bodySignal.expression)applyExpression(bodySignal.expression);
     if(bodySignal.motionGroup){
