@@ -1,4 +1,5 @@
-import { FullCognitiveOrganismLoop, OrganismExperience, CognitiveCycleState } from './FullCognitiveOrganismLoop.ts';
+import { FullCognitiveOrganismLoop } from './FullCognitiveOrganismLoop.ts';
+import type { OrganismExperience, CognitiveCycleState } from './FullCognitiveOrganismLoop.ts';
 
 export interface RuntimeDecision {
   state: CognitiveCycleState;

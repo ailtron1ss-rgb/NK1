@@ -1,3 +1,10 @@
+## [NK1][WorkPass610] Restore brain-fusion runtime loading under Node 24 strip-only TypeScript (2026-10-29)
+
+- Remove TypeScript parameter properties from the five brain-fusion runtime classes so Node's strip-only TypeScript loader can import them without an unsupported-syntax exception.
+- Separate erased lifecycle interfaces into a type-only import and export the brain-fusion runtime modules through the organism barrel.
+- Replace the invalid `node --check`-against-TypeScript fallback with `stripTypeScriptTypes`, and resolve the pinned compiler from runtime, app, or root lockfiles before syntax-only fallback.
+- Add a direct runtime-load regression and include it in `test:rebuild-recovered`. This validates module loading and constructor defaults only; it does not claim improved learning, recall, autonomy, or consciousness.
+
 ## [NK1][WorkPass609] Repair stale big-pass-126 retrieval benchmark fixture against the current provenance contract (2026-10-29)
 
 - `tests/big-pass-126-memory-retrieval-benchmark.mjs` asserted `schemaVersion === 3` while the report schema advanced to 6, and its `datasetProvenance` omitted the now-required `licenseId` and `contentSha256`. Both caused the suite to abort on the first assertion, masking every downstream check.
