@@ -1,16 +1,20 @@
 import { createHash } from 'node:crypto';
-import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
+import { bootstrapMeanConfidenceInterval } from './PairedSeedConfidence.ts';
+import { evaluateSkillLearnBenchCandidate, evaluateSkillLearnBenchTrial, type SkillLearnBenchCandidateGateOptions, type SkillLearnBenchCandidateGateReport, type SkillLearnBenchTrialReport } from './SkillLearnBenchAdapter.ts';
 import type { RevisedCandidateEvaluator } from './P23LearningEngine.ts';
 import {
-  recordPlannedLearningOutcome,
   validateLearningExperimentPlan,
   type LearningExperimentPlan,
 } from './LearningExperimentPlan.ts';
-import { VerifiedOutcomeLedger, type TaskManifestEntry } from './VerifiedOutcomeLedger.ts';
+import { VerifiedOutcomeLedger, type TaskManifestEntry, type VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
+import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBoundary.ts';
+import { summarizeLearningRobustMetrics, type LearningRobustMetricSummary } from './LearningRobustMetrics.ts';
 
 export interface IndependentCandidateTask {
   taskId: string;
   trialId: string;
+  /** Optional when no canonical manifest family is available. */
+  taskFamily?: string;
   seed: number;
   split: 'validation' | 'holdout';
   input: unknown;
@@ -78,13 +82,15 @@ export interface IndependentCandidateEvaluationConfig {
   serviceTimeoutMs?: number;
 }
 const isDigest = (x: unknown): x is string => typeof x === 'string' && /^[a-f0-9]{64}$/i.test(x);
-const isSafeRunId = (value: unknown): value is string =>
-  typeof value === 'string' && value.length > 0 && value.length <= 256 &&
-  value.trim() === value &&
-  !Array.from(value).some(character => {
-    const code = character.codePointAt(0) ?? 0;
-    return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
-  });
+const isSafeRunId = (value: unknown): value is string => isSafeLearningIdentity(value, 256);
+
+// Explicit cardinality limits complement byte/depth limits: cheap-to-encode arrays can still
+// cause excessive Set construction, equality checks, verifier work, and report amplification.
+const MAX_INDEPENDENT_EVALUATION_TASKS = 4096;
+const MAX_TASK_CAPABILITY_IDS = 128;
+const MAX_EXPECTED_STEP_IDS = 512;
+const MAX_OBSERVED_STEP_IDS = 512;
+const MAX_VERIFIED_CAPABILITY_IDS = 128;
 // Must match P23LearningEngine's canonicalize exactly or its post-generation
 // payload/evaluation digest gate will reject a genuine evaluator result.
 function canonical(value: unknown, ancestors = new Set<object>()): string {
@@ -113,6 +119,7 @@ function canonical(value: unknown, ancestors = new Set<object>()): string {
   }
 }
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+
 async function runWithServiceDeadline<T>(
   label: string,
   timeoutMs: number,
@@ -132,8 +139,11 @@ async function runWithServiceDeadline<T>(
     if (timer !== undefined) clearTimeout(timer);
   }
 }
-function validateConfig(config: IndependentCandidateEvaluationConfig): void {
-  if (!config || !Array.isArray(config.tasks) || config.tasks.length < 2 ||
+function validateConfig(config: IndependentCandidateEvaluationConfig, tasks: IndependentCandidateTask[]): void {
+  if (!Array.isArray(tasks) || tasks.length > MAX_INDEPENDENT_EVALUATION_TASKS) {
+    throw new Error('independent-candidate-evaluator-task-count-limit');
+  }
+  if (!config || tasks.length < 2 ||
       !config.executor || typeof config.executor.execute !== 'function' ||
       !config.verifier || typeof config.verifier.verify !== 'function' ||
       !config.safetyScanner || typeof config.safetyScanner.scan !== 'function' ||
@@ -158,22 +168,25 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
   const keys = new Set<string>();
   const trialIds = new Set<string>();
   const splitTasks = { validation: new Set<string>(), holdout: new Set<string>() };
-  for (const task of config.tasks) {
-    if (!task || typeof task.taskId !== 'string' || !task.taskId.trim() ||
-        typeof task.trialId !== 'string' || !task.trialId.trim() ||
+  for (const task of tasks) {
+    if (task && ((Array.isArray(task.requiredCapabilityIds) && task.requiredCapabilityIds.length > MAX_TASK_CAPABILITY_IDS) ||
+        (Array.isArray(task.expectedStepIds) && task.expectedStepIds.length > MAX_EXPECTED_STEP_IDS))) {
+      throw new Error('independent-candidate-evaluator-task-shape-limit');
+    }
+    if (!task || !isSafeLearningIdentity(task.taskId, 256) || !isSafeLearningIdentity(task.trialId, 256) ||
+        (task.taskFamily !== undefined && !isSafeLearningIdentity(task.taskFamily, 128)) ||
         !Number.isSafeInteger(task.seed) || task.seed < 0 ||
         !['validation', 'holdout'].includes(task.split) ||
         !Array.isArray(task.requiredCapabilityIds) || task.requiredCapabilityIds.length === 0 ||
-        task.requiredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
+        task.requiredCapabilityIds.some(id => !isSafeLearningIdentity(id, 256)) ||
         new Set(task.requiredCapabilityIds).size !== task.requiredCapabilityIds.length ||
         !Array.isArray(task.expectedStepIds) || task.expectedStepIds.length === 0 ||
-        task.expectedStepIds.some(id => typeof id !== 'string' || !id.trim()) ||
+        task.expectedStepIds.some(id => !isSafeLearningIdentity(id, 256)) ||
         new Set(task.expectedStepIds).size !== task.expectedStepIds.length) {
       throw new Error('independent-candidate-evaluator-task-invalid');
     }
     try {
-      // Fail before execution if the task cannot be safely snapshotted for provenance.
-      structuredClone(task.input);
+      // Task inputs were detached through descriptor-only reads before validation.
       canonical(task.input);
     } catch {
       throw new Error('independent-candidate-evaluator-task-input-invalid');
@@ -195,7 +208,7 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
   const authority = config.experimentAuthority;
   if (authority) {
     if (!Array.isArray(authority.manifest) || !(authority.ledger instanceof VerifiedOutcomeLedger) ||
-        typeof authority.method !== 'string' || !authority.method.trim() ||
+        !isSafeLearningIdentity(authority.method, 180) ||
         (authority.attempt !== undefined && (!Number.isSafeInteger(authority.attempt) || authority.attempt < 1))) {
       throw new Error('independent-candidate-experiment-authority-invalid');
     }
@@ -209,7 +222,7 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
       throw new Error('independent-candidate-experiment-plan-mismatch');
     }
     const manifestById = new Map<string, TaskManifestEntry>(authority.manifest.map(entry => [entry.taskId, entry] as const));
-    for (const task of config.tasks) {
+    for (const task of tasks) {
       const manifestEntry = manifestById.get(task.taskId);
       const prompt = task.input && typeof task.input === 'object'
         ? (task.input as Record<string, unknown>).prompt
@@ -237,8 +250,17 @@ function validateConfig(config: IndependentCandidateEvaluationConfig): void {
 export function createIndependentSkillCandidateEvaluator(
   config: IndependentCandidateEvaluationConfig,
 ): RevisedCandidateEvaluator {
-  validateConfig(config);
-  const tasks = config.tasks.map(task => structuredClone(task));
+  let tasks: IndependentCandidateTask[];
+  try {
+    const detachedTasks = snapshotPlainData(config?.tasks);
+    if (!Array.isArray(detachedTasks)) throw new Error('tasks-not-array');
+    tasks = detachedTasks as IndependentCandidateTask[];
+  } catch {
+    // Accessors are rejected without invocation; malformed task inputs cannot reach
+    // the sandbox or rewrite their fingerprints during asynchronous evaluation.
+    throw new Error('independent-candidate-evaluator-task-input-invalid');
+  }
+  validateConfig(config, tasks);
   // Capture validated environment identity rather than reading it from the mutable
   // caller-owned config on every run. Otherwise post-construction mutation can relabel
   // an evaluation with a different runtime/tool-policy fingerprint.
@@ -253,22 +275,23 @@ export function createIndependentSkillCandidateEvaluator(
   // plan/manifest objects live here would let post-validation mutation silently
   // change scheduled run IDs while retaining the original evaluator plan fingerprint.
   const authority = config.experimentAuthority ? {
-    manifest: structuredClone(config.experimentAuthority.manifest),
+    manifest: snapshotPlainData(config.experimentAuthority.manifest) as TaskManifestEntry[],
     ledger: config.experimentAuthority.ledger,
-    validationPlan: structuredClone(config.experimentAuthority.validationPlan),
-    holdoutPlan: structuredClone(config.experimentAuthority.holdoutPlan),
+    validationPlan: snapshotPlainData(config.experimentAuthority.validationPlan) as LearningExperimentPlan,
+    holdoutPlan: snapshotPlainData(config.experimentAuthority.holdoutPlan) as LearningExperimentPlan,
     method: config.experimentAuthority.method,
     ...(config.experimentAuthority.attempt === undefined ? {} : { attempt: config.experimentAuthority.attempt }),
   } : undefined;
-  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
-    ({ taskId, trialId, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
+  const taskFamilyById = new Map((authority?.manifest ?? []).map(entry => [entry.taskId, entry.family] as const));
+  const planFingerprint = sha256(canonical(tasks.map(({ taskId, trialId, taskFamily, seed, split, input, requiredCapabilityIds, expectedStepIds }) =>
+    ({ taskId, trialId, taskFamily:taskFamilyById.get(taskId) ?? taskFamily ?? null, seed, split, input, requiredCapabilityIds, expectedStepIds }))));
   return async ({ payload, payloadFingerprint }) => {
     // Snapshot the candidate once, before the first asynchronous boundary. Re-cloning
     // the caller-owned object per trial would allow a retained reference to change
     // later trials while they still carry the fingerprint computed for the original.
     let candidatePayload: unknown;
     try {
-      candidatePayload = structuredClone(payload);
+      candidatePayload = snapshotPlainData(payload);
     } catch {
       throw new Error('independent-candidate-evaluator-payload-not-cloneable');
     }
@@ -305,15 +328,15 @@ export function createIndependentSkillCandidateEvaluator(
         // The executor is outside this trust boundary. Detach its returned object
         // immediately so later mutation of a retained reference cannot rewrite the
         // trace while verification or safety scanning is awaiting other services.
-        execution = structuredClone(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
+        execution = snapshotPlainData(await runWithServiceDeadline('candidate-sandbox-execution', serviceTimeoutMs, signal => executeCandidate({
           payload: structuredClone(candidatePayload),
           task: structuredClone(task),
           context: structuredClone(executionContext),
           signal,
-        })));
+        }))) as CandidateExecutionResult;
         if (!execution || !isSafeRunId(execution.runId) ||
-            !Array.isArray(execution.observedStepIds) ||
-            execution.observedStepIds.some(step => typeof step !== 'string' || !step.trim()) ||
+            !Array.isArray(execution.observedStepIds) || execution.observedStepIds.length > MAX_OBSERVED_STEP_IDS ||
+            execution.observedStepIds.some(step => !isSafeLearningIdentity(step, 256)) ||
             new Set(execution.observedStepIds).size !== execution.observedStepIds.length) {
           throw new Error('candidate-sandbox-result-invalid');
         }
@@ -326,15 +349,16 @@ export function createIndependentSkillCandidateEvaluator(
       }
       if (execution) {
         try {
-          const verified = await runWithServiceDeadline('independent-task-verification', serviceTimeoutMs, signal => verifyCandidate({
+          const verified = snapshotPlainData(await runWithServiceDeadline('independent-task-verification', serviceTimeoutMs, signal => verifyCandidate({
             task: structuredClone(task),
             execution: structuredClone(execution),
             context: structuredClone(executionContext),
             signal,
-          }));
+          }))) as { bindingVerified: boolean; passed: boolean; coveredCapabilityIds: string[] };
           if (!verified || typeof verified.bindingVerified !== 'boolean' ||
               typeof verified.passed !== 'boolean' || !Array.isArray(verified.coveredCapabilityIds) ||
-              verified.coveredCapabilityIds.some(id => typeof id !== 'string' || !id.trim()) ||
+              verified.coveredCapabilityIds.length > MAX_VERIFIED_CAPABILITY_IDS ||
+              verified.coveredCapabilityIds.some(id => !isSafeLearningIdentity(id, 256)) ||
               new Set(verified.coveredCapabilityIds).size !== verified.coveredCapabilityIds.length) {
             throw new Error('independent-task-verifier-result-invalid');
           }
@@ -353,12 +377,12 @@ export function createIndependentSkillCandidateEvaluator(
           verifierPassed = false;
         }
       }
-      const safety = await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
+      const safety = snapshotPlainData(await runWithServiceDeadline('independent-candidate-safety-scan', serviceTimeoutMs, signal => scanCandidateSafety({
         payload: structuredClone(candidatePayload), task: structuredClone(task),
         ...(execution ? { execution: structuredClone(execution) } : {}),
         context: structuredClone(executionContext),
         signal,
-      }));
+      }))) as { violationCount: number };
       if (!safety || !Number.isSafeInteger(safety.violationCount) || safety.violationCount < 0) {
         throw new Error('independent-candidate-safety-result-invalid');
       }
@@ -371,7 +395,7 @@ export function createIndependentSkillCandidateEvaluator(
         plannedRunId: plannedRun?.runId ?? null,
         seed: task.seed,
         split: task.split,
-        // Executability records whether a well-formed candidate execution completed; it is distinct from verifier trust.
+        // Executability records the observed run; verification separately controls trust.
         executable,
         observedStepIds: bindingVerified ? execution?.observedStepIds ?? [] : [],
         bindingVerified,
@@ -384,12 +408,13 @@ export function createIndependentSkillCandidateEvaluator(
       const taskPassed = trustedExecution && verifierPassed && safety.violationCount === 0;
       const report = evaluateSkillLearnBenchTrial({
         taskId: task.taskId,
+        ...(taskFamilyById.has(task.taskId) || task.taskFamily !== undefined ? { taskFamily: taskFamilyById.get(task.taskId) ?? task.taskFamily } : {}),
         trialId: task.trialId,
         verifierPassed: taskPassed,
         skill: {
           requiredCapabilityIds: task.requiredCapabilityIds,
           coveredCapabilityIds,
-          // Keep functional executability separate from trusted/bound success. Verification still gates task success above.
+          // A valid execution may exist even when its outcome evidence is untrusted.
           executable,
           safetyViolationCount: safety.violationCount,
         },
@@ -569,19 +594,194 @@ export function recordIndependentEvaluationOutcomes(
       throw new Error('independent-evaluation-ledger-cell-already-recorded');
     }
   }
-  for (const item of pending) {
-    const result = recordPlannedLearningOutcome(authority.ledger, item.plan, item.runId, {
+  const batch: VerifiedTaskOutcome[] = pending.map(item => {
+    const scheduled = item.plan.runs.find(candidate => candidate.runId === item.runId);
+    if (!scheduled) throw new Error('independent-evaluation-ledger-run-not-scheduled');
+    return {
+      taskId: scheduled.taskId,
+      taskVersion: scheduled.taskVersion,
+      method: scheduled.method,
+      seed: scheduled.seed,
       attempt,
       passed: item.passed,
       authority: 'independent-verifier',
+      verifierId: scheduled.verifierId,
       evidenceRef: item.evidenceRef,
       observedAt,
-    });
-    if (!result.accepted) throw new Error('independent-evaluation-ledger-rejected-outcome');
+    };
+  });
+  const batchResult = authority.ledger.recordBatch(batch);
+  if (batchResult.accepted !== batch.length) {
+    throw new Error('independent-evaluation-ledger-atomic-batch-rejected');
   }
-  return { accepted: pending.length };
+  return { accepted: batchResult.accepted };
 }
 
+
+/**
+ * Optional multi-seed replication policy for independently bound candidate comparisons.
+ * A seed counts only when every sufficiently sampled task in a family has a paired
+ * baseline/candidate report at that seed. Caller task names are not used to infer families.
+ */
+export interface IndependentEvaluationFamilySeedCoverageOptions {
+  /** Minimum common paired seeds required for each sufficiently sampled validation family; 0 disables the extra check. */
+  minimumValidationFamilySeeds?: number;
+  /** Minimum common paired seeds required for each sufficiently sampled holdout family; 0 disables the extra check. */
+  minimumHoldoutFamilySeeds?: number;
+  /** Confidence level for deterministic bootstrap intervals; default 0.95. */
+  confidenceLevel?: number;
+  /** Number of deterministic bootstrap resamples; default 2000. */
+  bootstrapResamples?: number;
+}
+
+interface IndependentFamilySeedCoverageReport {
+  familiesEvaluated: number;
+  familiesWithSufficientSeeds: number;
+  familySeedCoverageFailures: number;
+}
+
+function independentFamilySeedCoverage<TBinding extends { seed: number }>(
+  reports: SkillLearnBenchTrialReport[],
+  bindings: Map<string, TBinding>,
+  minimumTasks: number,
+  minimumSeeds: number,
+): IndependentFamilySeedCoverageReport {
+  const byFamily = new Map<string, Map<string, Set<number>>>();
+  for (const report of reports) {
+    const family = report.taskFamily;
+    if (!family) continue;
+    const key = JSON.stringify([report.taskId, report.trialId]);
+    const binding = bindings.get(key);
+    if (!binding) throw new Error('matched-independent-evaluation-family-seed-binding-missing');
+    const taskId = report.taskId.trim();
+    const taskSeeds = byFamily.get(family) ?? new Map<string, Set<number>>();
+    const seeds = taskSeeds.get(taskId) ?? new Set<number>();
+    seeds.add(binding.seed);
+    taskSeeds.set(taskId, seeds);
+    byFamily.set(family, taskSeeds);
+  }
+
+  let familiesEvaluated = 0;
+  let familiesWithSufficientSeeds = 0;
+  let familySeedCoverageFailures = 0;
+  for (const taskSeeds of byFamily.values()) {
+    if (taskSeeds.size < minimumTasks) continue;
+    familiesEvaluated++;
+    const seedSets = [...taskSeeds.values()];
+    const commonSeeds = [...seedSets[0]].filter(seed => seedSets.every(seeds => seeds.has(seed)));
+    if (commonSeeds.length >= minimumSeeds) familiesWithSufficientSeeds++;
+    else familySeedCoverageFailures++;
+  }
+
+  // A requested seed policy must not silently pass when no canonical family
+  // is evaluable (missing labels or too few distinct tasks).
+  if (minimumSeeds > 0 && familiesEvaluated === 0) familySeedCoverageFailures = 1;
+  return { familiesEvaluated, familiesWithSufficientSeeds, familySeedCoverageFailures };
+}
+
+interface IndependentFamilyConfidenceReport {
+  familiesEvaluated: number;
+  confidenceBoundFailures: number;
+  /** Worst lower bound across covered families; null means no family could be evaluated. */
+  minimumLowerBound: number | null;
+  /** Worst upper bound across covered families; null means no family could be evaluated. */
+  maximumUpperBound: number | null;
+  /** Equal-weight mean of per-family paired-seed mean deltas, not a task-pooled mean. */
+  meanDelta: number | null;
+}
+
+function independentFamilyConfidenceBounds<TBaselineBinding extends { seed: number }, TCandidateBinding extends { seed: number }>(
+  baselineReports: SkillLearnBenchTrialReport[],
+  candidateReports: SkillLearnBenchTrialReport[],
+  baselineBindings: Map<string, TBaselineBinding>,
+  candidateBindings: Map<string, TCandidateBinding>,
+  minimumTasks: number,
+  minimumSeeds: number,
+  confidenceLevel: number,
+  resamples: number,
+  planFingerprint: string,
+  split: 'validation' | 'holdout',
+  maximumRegression: number,
+  requirePositiveLowerBound: boolean,
+): IndependentFamilyConfidenceReport {
+  if (minimumSeeds === 0) return {
+    familiesEvaluated: 0, confidenceBoundFailures: 0,
+    minimumLowerBound: null, maximumUpperBound: null, meanDelta: null,
+  };
+  const baselineByKey = new Map(baselineReports.map(report => [
+    JSON.stringify([report.taskId.trim(), report.trialId.trim()]), report,
+  ] as const));
+  const byFamily = new Map<string, Map<string, Map<number, { baseline: number[]; candidate: number[] }>>>();
+  for (const candidateReport of candidateReports) {
+    const family = candidateReport.taskFamily;
+    if (!family) continue;
+    const key = JSON.stringify([candidateReport.taskId.trim(), candidateReport.trialId.trim()]);
+    const baselineReport = baselineByKey.get(key);
+    const candidateBinding = candidateBindings.get(key);
+    const baselineBinding = baselineBindings.get(key);
+    if (!baselineReport || !candidateBinding || !baselineBinding ||
+        candidateBinding.seed !== baselineBinding.seed) {
+      throw new Error('matched-independent-evaluation-family-confidence-binding-missing');
+    }
+    if (baselineReport.taskFamily !== family) {
+      throw new Error('matched-independent-evaluation-family-confidence-mismatch');
+    }
+    const taskId = candidateReport.taskId.trim();
+    const tasks = byFamily.get(family) ?? new Map<string, Map<number, { baseline: number[]; candidate: number[] }>>();
+    const seeds = tasks.get(taskId) ?? new Map<number, { baseline: number[]; candidate: number[] }>();
+    const values = seeds.get(candidateBinding.seed) ?? { baseline: [], candidate: [] };
+    values.baseline.push(0.5 * baselineReport.taskSuccess.passRate +
+      0.3 * baselineReport.trajectoryQuality.aggregate + 0.2 * baselineReport.skillQuality.aggregate);
+    values.candidate.push(0.5 * candidateReport.taskSuccess.passRate +
+      0.3 * candidateReport.trajectoryQuality.aggregate + 0.2 * candidateReport.skillQuality.aggregate);
+    seeds.set(candidateBinding.seed, values);
+    tasks.set(taskId, seeds);
+    byFamily.set(family, tasks);
+  }
+
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
+  let familiesEvaluated = 0;
+  let confidenceBoundFailures = 0;
+  const lowerBounds: number[] = [];
+  const upperBounds: number[] = [];
+  const familyMeanDeltas: number[] = [];
+  for (const [family, tasks] of byFamily.entries()) {
+    if (tasks.size < minimumTasks) continue;
+    const seedSets = [...tasks.values()].map(seeds => new Set(seeds.keys()));
+    const commonSeeds = [...seedSets[0]].filter(seed => seedSets.every(seeds => seeds.has(seed))).sort((a, b) => a - b);
+    if (commonSeeds.length < minimumSeeds) continue; // covered by the seed-coverage gate
+    const deltas = commonSeeds.map(seed => {
+      const perTask = [...tasks.values()].map(seeds => {
+        const values = seeds.get(seed)!;
+        return { baseline: mean(values.baseline), candidate: mean(values.candidate) };
+      });
+      return mean(perTask.map(row => row.candidate)) - mean(perTask.map(row => row.baseline));
+    });
+    const deterministicSeed = createHash('sha256')
+      .update(JSON.stringify([planFingerprint, split, family, commonSeeds, deltas.length]))
+      .digest().readUInt32BE(0);
+    const interval = bootstrapMeanConfidenceInterval(deltas, {
+      confidenceLevel, resamples, seed: deterministicSeed,
+    });
+    familiesEvaluated++;
+    lowerBounds.push(interval.lower);
+    upperBounds.push(interval.upper);
+    familyMeanDeltas.push(interval.mean);
+    const failed = requirePositiveLowerBound
+      ? interval.lower <= 0
+      : interval.lower < -maximumRegression;
+    if (failed) confidenceBoundFailures++;
+  }
+  return {
+    familiesEvaluated,
+    confidenceBoundFailures,
+    minimumLowerBound: lowerBounds.length ? Number(Math.min(...lowerBounds).toFixed(6)) : null,
+    maximumUpperBound: upperBounds.length ? Number(Math.max(...upperBounds).toFixed(6)) : null,
+    meanDelta: familyMeanDeltas.length
+      ? Number((familyMeanDeltas.reduce((sum, value) => sum + value, 0) / familyMeanDeltas.length).toFixed(6))
+      : null,
+  };
+}
 
 /**
  * Compare two independently evaluated payloads only after proving that every
@@ -641,12 +841,35 @@ export function compareMatchedIndependentEvaluations(
       };
     };
   },
+  gateOptions: SkillLearnBenchCandidateGateOptions = {},
+  seedCoverageOptions: IndependentEvaluationFamilySeedCoverageOptions = {},
 ): SkillLearnBenchCandidateGateReport & {
   matchedTrialCount: number;
   matchedValidationTrialCount: number;
   matchedHoldoutTrialCount: number;
+  validationFamiliesEvaluatedForSeedCoverage: number;
+  holdoutFamiliesEvaluatedForSeedCoverage: number;
+  validationFamiliesWithSufficientSeeds: number;
+  holdoutFamiliesWithSufficientSeeds: number;
+  validationFamilySeedCoverageFailures: number;
+  holdoutFamilySeedCoverageFailures: number;
+  validationFamiliesEvaluatedForConfidenceInterval: number;
+  holdoutFamiliesEvaluatedForConfidenceInterval: number;
+  validationFamilyConfidenceBoundFailures: number;
+  holdoutFamilyConfidenceBoundFailures: number;
+  validationFamilyMeanDelta: number | null;
+  validationFamilyLowerBoundMinimum: number | null;
+  validationFamilyUpperBoundMaximum: number | null;
+  holdoutFamilyMeanDelta: number | null;
+  holdoutFamilyLowerBoundMinimum: number | null;
+  holdoutFamilyUpperBoundMaximum: number | null;
   environmentFingerprint: string;
   planFingerprint: string;
+  learningRobustDiagnostics: {
+    diagnosticOnly: true;
+    validation: LearningRobustMetricSummary;
+    holdout: LearningRobustMetricSummary;
+  };
 } {
   const validEnvelope = (value: typeof baseline, label: string): void => {
     if (!value || !isDigest(value.payloadFingerprint) || !isDigest(value.evaluationFingerprint) ||
@@ -733,16 +956,130 @@ export function compareMatchedIndependentEvaluations(
       throw new Error('matched-independent-evaluation-task-seed-split-mismatch');
     }
   }
+  // Validate the two numeric gate knobs from own data descriptors before taking the
+  // plain-data snapshot. This preserves the stable, field-specific error contract for
+  // NaN/Infinity while refusing accessors without executing untrusted getters.
+  if (!seedCoverageOptions || typeof seedCoverageOptions !== 'object' || Array.isArray(seedCoverageOptions)) {
+    throw new Error('matched-independent-evaluation-seed-coverage-options-invalid');
+  }
+  for (const [key, label] of [
+    ['minimumValidationFamilySeeds', 'validation'],
+    ['minimumHoldoutFamilySeeds', 'holdout'],
+  ] as const) {
+    const descriptor = Object.getOwnPropertyDescriptor(seedCoverageOptions, key);
+    if (!descriptor) continue;
+    if (!Object.hasOwn(descriptor, 'value')) {
+      throw new Error('matched-independent-evaluation-seed-coverage-options-invalid');
+    }
+    const value = descriptor.value;
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 0 || value > 1000)) {
+      throw new RangeError(`matched-independent-evaluation-minimum-${label}-family-seeds-invalid`);
+    }
+  }
+  const seedOptions = snapshotPlainData(seedCoverageOptions) as IndependentEvaluationFamilySeedCoverageOptions;
+  if (!seedOptions || typeof seedOptions !== 'object' || Array.isArray(seedOptions)) {
+    throw new Error('matched-independent-evaluation-seed-coverage-options-invalid');
+  }
+  const minimumValidationFamilySeeds = seedOptions.minimumValidationFamilySeeds ?? 0;
+  const minimumHoldoutFamilySeeds = seedOptions.minimumHoldoutFamilySeeds ?? 0;
+  for (const [value, label] of [
+    [minimumValidationFamilySeeds, 'validation'],
+    [minimumHoldoutFamilySeeds, 'holdout'],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > 1000) {
+      throw new RangeError(`matched-independent-evaluation-minimum-${label}-family-seeds-invalid`);
+    }
+  }
+  const confidenceLevel = seedOptions.confidenceLevel ?? 0.95;
+  const bootstrapResamples = seedOptions.bootstrapResamples ?? 2000;
+  if (!Number.isFinite(confidenceLevel) || confidenceLevel <= 0.5 || confidenceLevel >= 1) {
+    throw new RangeError('matched-independent-evaluation-confidence-level-invalid');
+  }
+  if (!Number.isSafeInteger(bootstrapResamples) || bootstrapResamples < 100 || bootstrapResamples > 50_000) {
+    throw new RangeError('matched-independent-evaluation-bootstrap-resamples-invalid');
+  }
   const gate = evaluateSkillLearnBenchCandidate(
     { validation: baseline.evaluation.validation, holdout: baseline.evaluation.holdout },
     { validation: candidate.evaluation.validation, holdout: candidate.evaluation.holdout },
+    gateOptions,
   );
+  const validationSeedCoverage = independentFamilySeedCoverage(
+    candidate.evaluation.validation, candidateBindings,
+    gateOptions.minimumValidationFamilyTasks ?? 2, minimumValidationFamilySeeds,
+  );
+  const holdoutSeedCoverage = independentFamilySeedCoverage(
+    candidate.evaluation.holdout, candidateBindings,
+    gateOptions.minimumHoldoutFamilyTasks ?? 2, minimumHoldoutFamilySeeds,
+  );
+  const validationConfidence = independentFamilyConfidenceBounds(
+    baseline.evaluation.validation, candidate.evaluation.validation,
+    baselineBindings, candidateBindings,
+    gateOptions.minimumValidationFamilyTasks ?? 2, minimumValidationFamilySeeds,
+    confidenceLevel, bootstrapResamples, bp.planFingerprint, 'validation',
+    gateOptions.maximumValidationFamilyRegression01 ?? 0.10, true,
+  );
+  const holdoutConfidence = independentFamilyConfidenceBounds(
+    baseline.evaluation.holdout, candidate.evaluation.holdout,
+    baselineBindings, candidateBindings,
+    gateOptions.minimumHoldoutFamilyTasks ?? 2, minimumHoldoutFamilySeeds,
+    confidenceLevel, bootstrapResamples, bp.planFingerprint, 'holdout',
+    gateOptions.maximumHoldoutFamilyRegression01 ?? 0.10, false,
+  );
+  // RLiable-inspired robust summaries are observable diagnostics only. The promotion
+  // decision above remains owned by the existing confidence/coverage/safety gates.
+  const learningRobustDiagnostics = {
+    diagnosticOnly: true as const,
+    validation: summarizeLearningRobustMetrics(
+      baseline.evaluation.validation, candidate.evaluation.validation,
+    ),
+    holdout: summarizeLearningRobustMetrics(
+      baseline.evaluation.holdout, candidate.evaluation.holdout,
+    ),
+  };
+  const reasons = [...gate.reasons];
+  const feedback = [...gate.feedback];
+  if (validationSeedCoverage.familySeedCoverageFailures > 0) {
+    reasons.push('validation-family-seed-coverage-insufficient');
+    feedback.push('At least one sufficiently sampled validation family lacks the required common paired seeds; collect more independent runs before promotion.');
+  }
+  if (holdoutSeedCoverage.familySeedCoverageFailures > 0) {
+    reasons.push('holdout-family-seed-coverage-insufficient');
+    feedback.push('At least one sufficiently sampled holdout family lacks the required common paired seeds; collect more independent runs before promotion.');
+  }
+  if (validationConfidence.confidenceBoundFailures > 0) {
+    reasons.push('validation-family-improvement-confidence-insufficient');
+    feedback.push('At least one validation family lacks a positive lower bootstrap bound for paired-seed improvement; collect or inspect more independent runs before promotion.');
+  }
+  if (holdoutConfidence.confidenceBoundFailures > 0) {
+    reasons.push('holdout-family-confidence-bound-regression-exceeds-tolerance');
+    feedback.push('At least one holdout family lower bootstrap bound exceeds the tolerated regression; improve robustness without tuning against holdout examples.');
+  }
   return {
     ...gate,
+    eligible: reasons.length === 0,
+    reasons,
+    feedback,
     matchedTrialCount: baselineBindings.size,
     matchedValidationTrialCount: [...baselineBindings.values()].filter(row => row.split === 'validation').length,
     matchedHoldoutTrialCount: [...baselineBindings.values()].filter(row => row.split === 'holdout').length,
+    validationFamiliesEvaluatedForSeedCoverage: validationSeedCoverage.familiesEvaluated,
+    holdoutFamiliesEvaluatedForSeedCoverage: holdoutSeedCoverage.familiesEvaluated,
+    validationFamiliesWithSufficientSeeds: validationSeedCoverage.familiesWithSufficientSeeds,
+    holdoutFamiliesWithSufficientSeeds: holdoutSeedCoverage.familiesWithSufficientSeeds,
+    validationFamilySeedCoverageFailures: validationSeedCoverage.familySeedCoverageFailures,
+    holdoutFamilySeedCoverageFailures: holdoutSeedCoverage.familySeedCoverageFailures,
+    validationFamiliesEvaluatedForConfidenceInterval: validationConfidence.familiesEvaluated,
+    holdoutFamiliesEvaluatedForConfidenceInterval: holdoutConfidence.familiesEvaluated,
+    validationFamilyConfidenceBoundFailures: validationConfidence.confidenceBoundFailures,
+    holdoutFamilyConfidenceBoundFailures: holdoutConfidence.confidenceBoundFailures,
+    validationFamilyMeanDelta: validationConfidence.meanDelta,
+    validationFamilyLowerBoundMinimum: validationConfidence.minimumLowerBound,
+    validationFamilyUpperBoundMaximum: validationConfidence.maximumUpperBound,
+    holdoutFamilyMeanDelta: holdoutConfidence.meanDelta,
+    holdoutFamilyLowerBoundMinimum: holdoutConfidence.minimumLowerBound,
+    holdoutFamilyUpperBoundMaximum: holdoutConfidence.maximumUpperBound,
     environmentFingerprint: bp.environmentFingerprint,
     planFingerprint: bp.planFingerprint,
+    learningRobustDiagnostics,
   };
 }
