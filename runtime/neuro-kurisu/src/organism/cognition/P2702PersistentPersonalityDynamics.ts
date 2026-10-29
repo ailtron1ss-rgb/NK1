@@ -93,10 +93,10 @@ export class P2702PersistentPersonalityDynamics{
   this.state.identityContinuity01=clamp(this.state.identityContinuity01*.97+(1-selfErr)*.03);
   this.state.coherence01=clamp(this.state.coherence01*.95+(1-this.state.contradiction01)*.05);
   this.state.stability01=clamp(this.state.stability01*.98+(1-this.state.drift01)*.02);
-  if(args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;this.state.relationshipTrust[args.relationshipId]=clamp(prior*.995+(1-args.identityGap01)*.005);}
+  // Relationship trust is updated only from the verified outcome path below, not from decision intent alone.
   return {actionBias:bias,traitVector:this.state.adaptiveValues.slice(),valueVector:this.state.valueWeights.slice(),identityContinuity01:this.state.identityContinuity01,coherence01:this.state.coherence01,stability01:this.state.stability01,contradiction01:this.state.contradiction01};
  }
- afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string}}){
+ afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string;traitFeedback?:{traitName:string;target01:number;confidence01:number};valueFeedback?:{valueName:string;target01:number;confidence01:number}}}){
   const reward=clamp(args.reward01),verified=clamp(args.verified01),error=clamp(args.predictionError01);
   const evidence=args.evidence,evidenceRef=String(evidence?.evidenceRef??'').trim().slice(0,240);
   const allowedSource=evidence?.source==='world-transition'||evidence?.source==='external-verification';
@@ -113,9 +113,18 @@ export class P2702PersistentPersonalityDynamics{
   }
   this.state.verifiedLearningUpdates++;this.state.lastEvidenceGateReason='verified-independent-outcome-bound';
   const signal=clamp(reward*.55+verified*.25+(1-error)*.20);const eta=this.state.plasticity01*(.55+Math.abs(reward-.5));
-  const actionIndex=ACTIONS.indexOf(args.action);const ai=actionIndex<0?0:actionIndex%this.state.adaptiveValues.length;
-  this.state.adaptiveValues[ai]=clamp((this.state.adaptiveValues[ai]??.5)+(signal-.5)*eta);
-  const valueEta=eta*.22;for(let i=0;i<this.state.valueWeights.length;i++)this.state.valueWeights[i]=clamp(this.state.valueWeights[i]!+(signal-.5)*valueEta*(i<2?.35:1));
+  // Do not infer a personality dimension from an action index. Learn only the trait/value
+  // dimension explicitly attributed by the independently verified evidence.
+  const trait=evidence?.traitFeedback;
+  if(trait&&typeof trait.traitName==='string'&&Number.isFinite(trait.target01)&&trait.target01>=0&&trait.target01<=1&&Number.isFinite(trait.confidence01)&&trait.confidence01>=0&&trait.confidence01<=1){
+   const index=this.state.adaptiveNames.indexOf(trait.traitName);
+   if(index>=0){const weight=eta*clamp(trait.confidence01)*.5;this.state.adaptiveValues[index]=clamp(this.state.adaptiveValues[index]!+(trait.target01-this.state.adaptiveValues[index]!)*weight);}
+  }
+  const value=evidence?.valueFeedback;
+  if(value&&typeof value.valueName==='string'&&Number.isFinite(value.target01)&&value.target01>=0&&value.target01<=1&&Number.isFinite(value.confidence01)&&value.confidence01>=0&&value.confidence01<=1){
+   const index=this.state.valueNames.indexOf(value.valueName);
+   if(index>=0){const weight=eta*clamp(value.confidence01)*.22;this.state.valueWeights[index]=clamp(this.state.valueWeights[index]!+(value.target01-this.state.valueWeights[index]!)*weight);}
+  }
   if(args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[args.relationshipId]=clamp(prior*.94+trustSignal*.06);}
   const uncertaintyShift=clamp(error*.35+(1-verified)*.3);
   for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
