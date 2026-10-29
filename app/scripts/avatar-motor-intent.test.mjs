@@ -112,6 +112,8 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   const viewer = await readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8");
   assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
   assert.match(viewer, /beforeModelUpdate/);
+  assert.ok(viewer.includes("model.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides)"));
+  assert.ok(!viewer.includes("app.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides)"));
   assert.match(viewer, /addParameterValueById/);
   assert.match(viewer, /resolution,autoDensity:true/);
   assert.match(viewer, /MOTION_COUNTS/);
