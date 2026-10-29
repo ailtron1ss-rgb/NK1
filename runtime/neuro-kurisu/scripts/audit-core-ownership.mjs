@@ -60,7 +60,7 @@ for(const [name, coreText, ownerText] of moved){
   if(!new RegExp(`new\\s+${name}\\s*\\(`).test(ownerText)) errors.push(`owner-missing-constructor:${name}`);
 }
 const fabricText=await readFile(new URL('../src/organism/core/OrganismSystemFabric.ts', import.meta.url), 'utf8');
-if(!core.includes('new OrganismSystemFabric()')) errors.push('organism-system-fabric-missing');
+if(!/new\\s+OrganismSystemFabric\\s*\\(/.test(core)) errors.push('organism-system-fabric-missing');
 for(const owner of ['SelfSubsystemRuntime','GovernanceSubsystemRuntime','MemorySubsystemRuntime','WorldSubsystemRuntime','EmbodimentSubsystemRuntime','AgencySubsystemRuntime','EvidenceResearchSubsystemRuntime']){
   if(!new RegExp(`new\\s+${owner}\\s*\\(`).test(fabricText)) errors.push(`fabric-missing-constructor:${owner}`);
 }
