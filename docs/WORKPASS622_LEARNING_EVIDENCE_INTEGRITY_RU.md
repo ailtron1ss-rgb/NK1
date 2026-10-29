@@ -63,7 +63,9 @@
 
 ## CI и точность доказательств
 
-**Предварительные CI-результаты:** P26 Learning Validation прошёл на SHA `0992c29e608438568e3b8736f30d6df695cd544e` с typecheck и WorkPass622 suite, но более широкий `NeuroCore core regression validation` на этом SHA выявил три совместимые регрессии/пропуска: отсутствующий P23 local-model adapter, изменившийся fingerprint задач без family metadata и приоритет `duplicate-evidence-ref` над точным `duplicate-attempt`. Эти три точки исправлены последующими коммитами в этой ветке; исправленный latest HEAD нужно повторно проверить, и до этого нельзя считать общий regression gate закрытым.
+**P26 Learning Validation: PASS на точном SHA `7e9dfc4ee10acd4ac3b14ba3f423fc64aa1ddacf`** — [run #40936204151](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40936204151). Подтверждены `Typecheck runtime`, continual experience replay, существующая P26 learning regression и `Run WorkPass622 learning evidence integrity suite`. Suite включает проверки local-model adapter и скрытия holdout, plain-data границ, независимого evaluator/provenance, receipt anti-replay, paired-seed доверительных интервалов, family/task regression gates, fitness/lifecycle журналов, runtime wiring/reconciliation и P23 learning.
+    
+**Ограничение:** полный `NeuroCore core regression validation` ранее упал на старом SHA `0992c29e608438568e3b8736f30d6df695cd544e` до трёх исправлений: отсутствующего local-model adapter, fingerprint drift при отсутствии family metadata и неверного приоритета duplicate errors. Исправления теперь покрываются P26 suite и соответствующие тесты проходят в актуальном P26 run, но полный общий workflow на новом SHA ещё не подтверждён. Поэтому ветка остаётся PR для ревью; не следует объявлять полный core regression gate закрытым.
 
 ## Что доказывает эта работа, а что ещё нет
 
