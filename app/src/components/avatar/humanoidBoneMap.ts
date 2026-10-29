@@ -18,6 +18,50 @@ export function normalizeHumanoidBoneName(value: unknown): string {
   return String(value ?? "").toLocaleLowerCase().replace(/[^a-z0-9]/gu, "");
 }
 
+export function buildHumanoidRoleMap(extensionRoot: unknown): Map<number, AvatarBoneRole | string> {
+  if (!extensionRoot || typeof extensionRoot !== "object") return new Map();
+  const root = extensionRoot as Record<string, unknown>;
+  const result = new Map<number, AvatarBoneRole | string>();
+  const add = (node: unknown, role: unknown) => {
+    if (!Number.isSafeInteger(node) || (node as number) < 0 || typeof role !== "string") return;
+    const canonical = canonicalizeHumanoidBoneName(role);
+    if (canonical !== "other") result.set(node as number, canonical);
+  };
+
+  // VRM 1.0: extensions.VRMC_vrm.humanoid.humanBones is a role-keyed object.
+  const modern = root.VRMC_vrm;
+  if (modern && typeof modern === "object") {
+    const humanoid = (modern as Record<string, unknown>).humanoid;
+    const humanBones = humanoid && typeof humanoid === "object"
+      ? (humanoid as Record<string, unknown>).humanBones
+      : null;
+    if (humanBones && typeof humanBones === "object" && !Array.isArray(humanBones)) {
+      for (const [role, binding] of Object.entries(humanBones as Record<string, unknown>)) {
+        if (binding && typeof binding === "object") add((binding as Record<string, unknown>).node, role);
+      }
+    }
+  }
+
+  // VRM 0.x: extensions.VRM.humanoid.humanBones is an array of { bone, node }.
+  const legacy = root.VRM;
+  if (legacy && typeof legacy === "object") {
+    const humanoid = (legacy as Record<string, unknown>).humanoid;
+    const humanBones = humanoid && typeof humanoid === "object"
+      ? (humanoid as Record<string, unknown>).humanBones
+      : null;
+    if (Array.isArray(humanBones)) {
+      for (const binding of humanBones) {
+        if (binding && typeof binding === "object") {
+          const item = binding as Record<string, unknown>;
+          add(item.node, item.bone);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 export function canonicalizeHumanoidBoneName(value: unknown): AvatarBoneRole | string {
   const name = normalizeHumanoidBoneName(value);
   if (!name) return "other";
