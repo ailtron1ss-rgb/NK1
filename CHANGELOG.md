@@ -6,6 +6,17 @@
 - Emit sensor changes across successive cycles, make resource-pressure notifications transition-based, and detect same-cardinality world fact/object/event updates.
 - Add five focused integrity tests, including a real OrganismRuntime ingress smoke, `npm run test:world-perception` and a dedicated GitHub Actions gate; real device validation remains a separate gate.
 
+
+## [NK1][WorkPass623] Harden feedback, evidence identity and consequence recovery (2026-10-29)
+
+- Port the bounded reality-evidence ledger with replay receipts, conflict quarantine, strict snapshot restore and source-class separation; user-reported context no longer counts as independent external/device evidence.
+- Bind externally verified postconditions to the exact tool, execution, decision, complete input and verifier observation. Stable evidence IDs are join/idempotency keys, never proof by themselves.
+- Wire the same verifier-owned identity through ExternalObserverFabric, the governance-owned RealityEvidenceLedger, OutcomeCognitionFabric and CognitiveEventFabric; reject event-ID rebinding and forged/malformed persisted identities.
+- Keep one canonical ledger owner, authorize observation sources against registered ActionGateway tools and preserve captured source trust across restart.
+- Give six runtime evidence projections stable upstream causal IDs. Preserve all 11 bounded cognitive-cycle parent links with restore regression coverage.
+- Add dedicated feedback CI gate and tests for replay after eviction/restart, confidence inflation, conflicting evidence, forged identity ingress, outcome projection identity, CEF replay/restore, and full cycle lineage.
+- This integration is on the current source branch. The dedicated gate must pass on this exact head; provider/device E2E, timeout-after-side-effect fault injection, physical Android/Termux validation, and Release ZIP refresh remain separate pending gates.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
