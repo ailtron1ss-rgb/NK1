@@ -1,3 +1,9 @@
+## [NK1][WorkPass611] Restore scale-invariant latent-program revision and constitutional vote polarity (2026-10-29)
+
+- Make the B276 structure-revision gate scale-invariant: retain the absolute credit-spread floor and also permit revision when relative spread is material at a sufficient mean credit level. This prevents upstream reward gating from disabling program revision merely by compressing credit magnitude.
+- Pass constitutional constraint pressure with the correct polarity at both quorum vote sites, so stronger constraints are not inverted into an approval signal.
+- Scope is limited to latent-program revision reachability and quorum polarity. Prior focused tests passed on the original candidate branch; this clean port needs exact-head CI before merge. No memory recall uplift or end-to-end autonomy claim is made.
+
 ## [NK1][WorkPass610] Restore brain-fusion runtime loading under Node 24 strip-only TypeScript (2026-10-29)
 
 - Remove TypeScript parameter properties from the five brain-fusion runtime classes so Node's strip-only TypeScript loader can import them without an unsupported-syntax exception.
