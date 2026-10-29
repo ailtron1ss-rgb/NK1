@@ -1167,7 +1167,7 @@ export class P23LearningEngine {
         activatedVersion:active.version,
       });
     } catch { /* Never turn a committed activation into a reported failure. Pending intent exposes missing final evidence. */ }
-    return {active,fitness,evidenceBinding,learningRobustDiagnostics};
+    return {active,fitness:{...fitness,learningRobustDiagnostics},evidenceBinding};
   }
 
   approveVerifiedSkillCandidate(
