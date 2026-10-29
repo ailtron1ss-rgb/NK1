@@ -148,7 +148,7 @@ try {
     assert.equal(treeTimed.receipt.status, 'timed-out');
     await new Promise(resolve => setTimeout(resolve, 400));
     await assert.rejects(() => readFile(descendantMarker, 'utf8'), error => error.code === 'ENOENT');
-  
+
   }
 
   const capped = await runLearningProcess(run, 'b'.repeat(64), {
