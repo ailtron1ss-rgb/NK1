@@ -47,8 +47,10 @@
 3. `runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts`
 4. `runtime/neuro-kurisu/src/organism/cognition/NeuralExperienceBranch.ts`
 5. `runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs`
-6. `CHANGELOG.md`
-7. `runtime/neuro-kurisu/PERSONALITY_SELF_MODEL_INTEGRATION_WORKPASS623_RU.md`
+6. `runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts` (previously missing in the source branch despite existing imports)
+7. `.github/workflows/workpass79-cognitive-regression.yml` (targeted regression steps added)
+8. `CHANGELOG.md`
+9. `runtime/neuro-kurisu/PERSONALITY_SELF_MODEL_INTEGRATION_WORKPASS623_RU.md`
 
 ## 4. Покрытие регрессий
 
@@ -72,7 +74,7 @@ node --experimental-strip-types tests/relationship-self-input-boundary.mjs
 npm run typecheck
 ```
 
-После этого обязательны runtime integration suites для self-model/personality, и CI для точного PR head SHA. В текущем окружении локальный `git clone` не сработал из-за отсутствия разрешения DNS на `github.com`, поэтому тесты здесь не запускались. Никакие тестовые PASS не заявляются.
+В WorkPass79 добавлены четыре явных CI-команды, чтобы изменения личности не зависели только от общих runtime-тестов. Локальный `git clone` не сработал из-за отсутствия разрешения DNS на `github.com`, поэтому локальные тесты здесь не запускались. CI выявил отсутствующий `PlainDataSnapshot.ts`; файл добавлен в рабочую ветку. Следующий прогон должен подтвердить закрытие этой ошибки и пройти целевые тесты на точном head SHA.
 
 ## 6. Блокеры до promotion
 
