@@ -20,7 +20,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
 (() => {
   const status=document.getElementById('status');
   const parent=window.parent;
-  let model=null,app=null,lipTarget=0,lipCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
+  let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
   let lastIntentStateVersion=0;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
