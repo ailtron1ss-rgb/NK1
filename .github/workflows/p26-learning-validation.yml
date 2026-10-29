@@ -15,6 +15,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
       - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs"
+      - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-integration.mjs"
       - "runtime/neuro-kurisu/tests/workpass622-runtime-learning-journal-wiring.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
       - "runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs"
