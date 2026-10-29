@@ -523,7 +523,7 @@ export class P23LearningEngine {
       optimizerInstruction:string;
       validationEvidence:SkillLearnBenchCandidateEvaluation['reports'];
       targets:SkillRevisionPlan['targets'];
-      holdoutGeneralization:{gap01:number;requiresFreshIndependentEvaluation:true};
+      holdoutPolicy:{resultsWithheld:true;requiresFreshIndependentEvaluation:true};
     })=>Promise<unknown>|unknown,
     evaluateRevisedCandidate:RevisedCandidateEvaluator,
     options:SkillLearnBenchCandidateGateOptions={},
@@ -560,7 +560,7 @@ export class P23LearningEngine {
       validationEvidence:structuredClone(candidateEvaluation.validation),
       targets:structuredClone(plan.targets),
       // Directional scalar only: no holdout task text, trial IDs, or per-case outcomes.
-      holdoutGeneralization:{gap01:fitness.holdoutDelta01,requiresFreshIndependentEvaluation:true},
+      holdoutPolicy:{resultsWithheld:true,requiresFreshIndependentEvaluation:true},
     });
     if(revisedPayload===undefined || revisedPayload===null || (typeof revisedPayload==='string'&&!revisedPayload.trim())) {
       throw new Error('skill revision generator returned an empty payload');
