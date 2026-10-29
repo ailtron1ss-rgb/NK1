@@ -156,19 +156,21 @@ malformedPersistedOutcome.restore({
 assert.equal(malformedPersistedOutcome.snapshot().records.length, 0,
   'persisted outcome projections with forged evidence identity must be discarded');
 
-// Carry the same verifier-owned identity into the causal event fabric.
+// Carry the same verifier-owned identity into a receipt-indexed causal event trace.
 const cef = new CognitiveEventFabric();
-const cefActionId = `cef:action:${expected.executionId}`;
 cef.append({
-  id: cefActionId, tick: 7, stage: 'tool-action', source: 'action-gateway',
-  parentIds: [expected.decisionId], external: false, confidence01: 1,
-  payload: { executionId: expected.executionId, tool: expected.toolId },
+  id: expected.decisionId, tick: 7, stage: 'goal', source: 'decision-trace',
+  external: false, confidence01: 1, payload: { decisionId: expected.decisionId },
 });
-cef.append({
-  id: `cef:outcome:${expected.executionId}`, tick: 7, stage: 'tool-outcome', source: 'action-gateway',
-  parentIds: [cefActionId], external: false, confidence01: 1,
-  payload: { executionId: expected.executionId, tool: expected.toolId, ok: true },
+const receiptTrace = cef.appendToolReceiptTrace({
+  tick: 7, executionId: expected.executionId, toolId: expected.toolId,
+  decisionId: expected.decisionId, ok: true, verified: true,
+  outcomeClass: 'executed-verified', confidence01: 0.96,
+  verificationBasis: 'external-postcondition', externalObservation: true,
+  observationId: observed.id, expectedPostcondition: 'door=open',
+  observedPostcondition: 'door=open', observationIntegrated: true,
 });
+assert.equal(receiptTrace.replayed, false);
 const cefInput = {
   tick: 7, executionId: expected.executionId, toolId: expected.toolId,
   observationId: observed.id, evidenceEventId: verification.evidenceEventId,
@@ -178,18 +180,31 @@ const cefInput = {
 };
 const cefFirst = cef.appendToolExternalObservation(cefInput);
 assert.equal(cefFirst.resolved, true);
-const cefEvidence = cef.snapshot().recent.find(event => event.id === cefFirst.eventId);
+const cefSnapshot = cef.snapshot();
+const cefEvidence = cefSnapshot.recent.find(event => event.id === cefFirst.eventId);
 assert.equal(cefEvidence?.stage, 'external-evidence');
 assert.equal(cefEvidence?.payload.evidenceEventId, verification.evidenceEventId,
   'CEF must retain the exact verifier identity, not only the observer ID');
-const cefReplay = cef.appendToolExternalObservation(cefInput);
+const cefRef = cefSnapshot.receiptProjectionIndex?.find(entry => entry.executionId === expected.executionId)?.externalObservations?.find(ref => ref.observationId === observed.id);
+assert.equal(cefRef?.evidenceEventId, verification.evidenceEventId,
+  'the bounded CEF receipt index must retain the verifier identity');
+
+const restoredCef = new CognitiveEventFabric();
+restoredCef.restore(cefSnapshot);
+const restoredCefRef = restoredCef.snapshot().receiptProjectionIndex?.find(entry => entry.executionId === expected.executionId)?.externalObservations?.find(ref => ref.observationId === observed.id);
+assert.equal(restoredCefRef?.evidenceEventId, verification.evidenceEventId,
+  'CEF restore must preserve the external evidence identity only when it matches the event payload');
+const restoredCefEvent = restoredCef.snapshot().recent.find(event => event.id === cefFirst.eventId);
+assert.equal(restoredCefEvent?.payload.evidenceEventId, verification.evidenceEventId);
+const cefReplay = restoredCef.appendToolExternalObservation(cefInput);
 assert.equal(cefReplay.resolved, true);
-assert.equal(cefReplay.replayed, true, 'CEF re-delivery with the same identity must be idempotent');
-assert.throws(() => cef.appendToolExternalObservation({
+assert.equal(cefReplay.replayed, true, 're-delivery after restore must remain idempotent');
+assert.equal(cefReplay.eventId, cefFirst.eventId);
+assert.throws(() => restoredCef.appendToolExternalObservation({
   ...cefInput, evidenceEventId: `outcome:${'b'.repeat(40)}`,
 }), /external-observation-projection-conflict/,
   'CEF must reject rebinding an observation to another verifier identity');
-const invalidCef = cef.appendToolExternalObservation({
+const invalidCef = restoredCef.appendToolExternalObservation({
   ...cefInput, observationId: 'obs-invalid-event-id', evidenceEventId: 'forged:identity',
 });
 assert.equal(invalidCef.resolved, false);
