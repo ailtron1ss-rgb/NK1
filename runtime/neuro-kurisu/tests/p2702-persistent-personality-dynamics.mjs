@@ -57,7 +57,7 @@ assert.deepEqual(badSource.snapshot().adaptiveValues,badSourceBefore.adaptiveVal
 
 const noAttribution=new P2702PersistentPersonalityDynamics();
 const noAttributionBefore=noAttribution.snapshot();
-noAttribution.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.01,identityGap01:.1,action:'explore',evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:without-dimension'}});
+noAttribution.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.01,identityGap01:.1,action:'explore',evidence:await makeTrustedEvidence('no-attribution')});
 assert.deepEqual(noAttribution.snapshot().adaptiveValues,noAttributionBefore.adaptiveValues,'verified outcome without trait attribution must not pick an arbitrary trait by action index');
 assert.deepEqual(noAttribution.snapshot().valueWeights,noAttributionBefore.valueWeights,'verified outcome without value attribution must not move every value weight');
 
