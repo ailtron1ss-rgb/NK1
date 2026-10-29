@@ -3,6 +3,7 @@ import type { ActionKind, EmotionLabel } from "@/organism/types";
 import type { MouthPose } from "./avatar/embodimentTimeline";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
+import { inspectSelfContainedGlb } from "./avatar/avatarModelValidation";
 import * as THREE from "three";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
@@ -44,17 +45,18 @@ export function Avatar3DStage(props:Props){
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[state,setState]=useState<"procedural"|"loading"|"loaded"|"error"|"webgl-unavailable">("procedural"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("Реальная лицензированная модель Курису не включена в текущий репозиторий.");
  latest.current=props;
  const loadModel=useCallback(async(blob:Blob,name:string,persist:boolean)=>{
-  if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){setState("error");setMessage("Файл должен быть непустым и не больше 90 МБ.");return;}
+  const failLoad=(reason:string)=>{const active=runtime.current;setState(active?.loaded?"loaded":active?"error":"webgl-unavailable");setMessage(`${reason}${active?.loaded?" Предыдущая модель остаётся активной.":" Процедурное тело остаётся активным."}`);};
+  if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){failLoad("Файл должен быть непустым и не больше 90 МБ.");return;}
   const rt=runtime.current;if(!rt){setState("error");setMessage("3D-сцена ещё запускается; повторите загрузку.");return;}
   const token=++loadToken.current;setState("loading");setMessage("Загрузка локальной модели…");
-  try{const data=await blob.arrayBuffer();if(token!==loadToken.current)return;new GLTFLoader().parse(data,"",(gltf:any)=>{
+  try{const data=await blob.arrayBuffer();if(token!==loadToken.current)return;inspectSelfContainedGlb(data,MAX_AVATAR_MODEL_BYTES);new GLTFLoader().parse(data,"",(gltf:any)=>{
    if(token!==loadToken.current||runtime.current!==rt){disposeTree(gltf.scene);return;}
    try{const root=gltf.scene;if(!root)throw new Error("В файле нет glTF-сцены.");const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
     if(rt.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.loaded=root;rt.scene.add(root);rt.body.root.visible=false;rt.bones=bonesOf(root);rt.clips=Array.isArray(gltf.animations)?gltf.animations:[];rt.mixer=rt.clips.length?new THREE.AnimationMixer(root):null;rt.clipName="";setModelName(name);setState("loaded");setMessage(rt.bones.length?"Модель загружена; NK1 управляет взглядом, эмоцией, речью и распознанными костями.":"Геометрия загружена; скелет не найден, поэтому движения тела ограничены.");
     if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена локально в браузере; файл не отправляется на сервер.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
-   }catch(e){disposeTree(gltf.scene);setState("error");setMessage(e instanceof Error?e.message:"Не удалось подготовить модель.");}
-  },()=>{if(token!==loadToken.current)return;setState("error");setMessage("Не прочитан бинарный VRM/GLB. Нужен самодостаточный файл с геометрией и текстурами внутри.");});
-  }catch(e){setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
+   }catch(e){disposeTree(gltf.scene);failLoad(e instanceof Error?e.message:"Не удалось подготовить модель.");}
+  },(error:any)=>{if(token!==loadToken.current)return;failLoad(error instanceof Error?error.message:"Не прочитан бинарный VRM/GLB. Используйте самодостаточный GLB/VRM с геометрией и текстурами внутри.");});
+  }catch(e){if(token!==loadToken.current)return;failLoad(e instanceof Error?e.message:"Ошибка чтения модели.");}
  },[]);
  useEffect(()=>{
   const el=host.current;if(!el)return;let renderer:any;let raf=0;let observer:ResizeObserver|null=null;let disposed=false;
