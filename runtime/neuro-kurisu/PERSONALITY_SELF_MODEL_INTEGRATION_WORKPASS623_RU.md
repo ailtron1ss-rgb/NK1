@@ -29,11 +29,10 @@
 `afterOutcome` больше не трактует числовой `verified01` как достаточное основание для устойчивого изменения личности. Для постоянного обновления требуются одновременно:
 
 1. `verified01 >= 0.99`;
-2. `evidence.verified === true`;
-3. `evidence.independent === true`;
-4. `source` равен `world-transition` или `external-verification`;
-5. свидетельство должно быть точным объектом, созданным `OutcomeVerificationService` и связанным с тем же tool ID, полным input, execution ID и decision ID;
-6. confidence внешней проверки должен быть не ниже 0.65.
+2. `source` равен `external-verification`;
+3. свидетельство — точный объект, созданный `OutcomeVerificationService` и связанный с тем же tool ID, полным input, execution ID и decision ID;
+4. объект должен пройти `isTrustedDecisionLinkedExternalPostcondition`, включая сверку точного action input;
+5. confidence внешней проверки должен быть не ниже 0.65.
 
 При отсутствии или недостоверности evidence outcome считается наблюдением, а не разрешением на изменение личности: повышается/сохраняется неопределённость, обновляется диагностическая причина и счётчик отклонённых попыток, но не меняются adaptive traits, value weights, relationship trust и autobiographical strength. Добавлены отдельные `verifiedLearningUpdates`, `rejectedLearningUpdates` и `lastEvidenceGateReason`.
 
