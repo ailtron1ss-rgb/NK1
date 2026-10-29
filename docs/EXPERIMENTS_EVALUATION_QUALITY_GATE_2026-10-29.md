@@ -255,9 +255,28 @@ Workflow PASS подтверждает только успешно выполн�
 
 ## 11. Реализация этого прохода
 
-- Усилен `VerifiedOutcomePromotionGate.ts`: добавлена проверка границ и согласованности метрик, paired counts, семей и интервалов.
-- `bootstrap95CI` получает приоритет перед `approximate95CI`, когда доступен, чтобы положительный approximate интервал не обходил отрицательный seed-cluster interval.
-- Расширен `p23-verified-outcome-promotion-gate.mjs`: добавлены тесты на NaN/невалидные gain, несовпадение gain и pass rates, overcount wins, malformed/reversed intervals, family regression и bootstrap-vs-approximate disagreement.
-- Добавлен `.github/workflows/nk1-experiment-quality-gates.yml`, связывающий типизацию, протоколы, независимые evidence tests и исходные регрессии одной CI-границей.
+В рамках этого инженерного прохода сделаны адресные изменения только в рабочей ветке `workpass-experiments-evaluation-2026-10-29` от `workpass70-source`.
 
-**Статус на момент создания документа:** изменения отправлены в отдельную рабочую ветку; успешное выполнение нового workflow не считается подтверждённым до завершения GitHub Actions на актуальном SHA. Внешние независимые эксперименты с реальной моделью и устройством не выполнялись этим проходом.
+### Promotion gate и статистический контракт
+- Усилен `VerifiedOutcomePromotionGate.ts`: проверяются границы и согласованность метрик, paired counts, семей, доверительных интервалов, уникальность family и допустимость конфигурации.
+- `bootstrap95CI` получает приоритет перед `approximate95CI`, если bootstrap присутствует. Нельзя обойти отрицательный или некорректный seed-cluster interval более оптимистичным approximate interval.
+- Добавлены два явных режима family coverage: `partition` (семейные task cells составляют разбиение общего числа paired observations) и `seed-repeated` (каждое семейство имеет тот же seed-level paired N, что и aggregate). Несогласованная единица анализа блокирует promotion.
+- `p23-verified-outcome-promotion-gate.mjs` расширен adversarial cases: NaN/невалидный gain, несогласованные pass rates/gain, overcount wins, malformed/reversed intervals, семейная регрессия и расхождение bootstrap-vs-approximate.
+
+### Replay/transfer evidence
+- `big-pass-105-experimental-protocol.mjs` больше не принимает собственные boolean-поля `independentVerified`/`holdout` как доказательство. Тест подтверждает, что самоутверждение не открывает transfer gate; положительные пробы связываются с exact process-local verification receipt, выданным `OutcomeVerificationService` для точного tuple измерения.
+- `ExperienceContinuumFabric.ts`: replay confirmation теперь проверяет, что измеренные контексты входят в predeclared context manifest и количество replay-on/replay-off сбалансировано по каждому контексту.
+- Дубликаты одной condition-cell для пары больше не перезаписывают предыдущую строку по принципу «последняя запись победила». Дублирующаяся пара отмечается неоднозначной, исключается из paired estimate и блокирует confirmatory gate.
+- В `big-pass-105` добавлены тесты на незаявленный контекст и дублированную пару.
+
+### Путь запуска и документация
+- Добавлен `.github/workflows/nk1-experiment-quality-gates.yml` для exact-PR-SHA typecheck, promotion gate, ledger integration, seed-clustered comparison, deterministic plan + CLI, holdout provenance, ScientificMethodEngine, intrinsic experiment boundaries, replay/transfer protocol и source audit.
+- Добавлена команда `npm run test:experiments:quality` для повторяемого локального запуска ключевого набора.
+- Настоящий протокол, семантика метрик, матрица испытаний, cross-aspect dependencies, release requirements и статусные правила записаны в этом документе.
+
+### Валидированный статус
+- **Проверено GitHub Actions:** на коммите `c91ef078f4b903c0249f1f12082bfb79807a44b7` новый `NK1 Experiment Quality Gates` завершился `success`: typecheck и все десять тестовых/аудит-шагов прошли.
+- После этого были добавлены явный `familyPairCountMode` и команда `test:experiments:quality`. Эти более поздние изменения требуют нового exact-head CI; успех предыдущего SHA нельзя переносить на новый коммит.
+- Внешние независимые эксперименты с настоящей production-моделью/устройством в этом проходе не выполнялись. Синтетические регрессии подтверждают контракт кода, а не реальный прирост интеллектуальных способностей.
+- Release ZIP и `main` не изменялись.
+
