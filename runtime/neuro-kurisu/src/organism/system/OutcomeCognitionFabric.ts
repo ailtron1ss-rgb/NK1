@@ -23,7 +23,7 @@ export interface OutcomeCognitionProjection {
     at:number; tick:number; tool:string; ok:boolean; verified:boolean;
     basis:OutcomeVerification['basis']; confidence01:number; observationId?:string;
     externalObservation:boolean; expectedPostcondition?:string; observedPostcondition?:string; executionId?:string; predictionId?:string; outcomeClass?:ActionOutcomeClass;
-    externalObservations?:Array<{observationId:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;at:number;reason?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}>;
+    externalObservations?:Array<{observationId:string;evidenceEventId?:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;at:number;reason?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}>;
     externalEvidenceStatus?:'none'|'corroborated'|'contradicted'|'mixed';
   };
   causal:CausalAccountabilityState;
@@ -93,11 +93,37 @@ export class OutcomeCognitionFabric {
   constructor(maxRecords=96){this.maxRecords=Math.max(32,maxRecords);this.maxProjectionIndex=Math.max(256,Math.min(2048,this.maxRecords*8));}
 
   restore(snapshot?:{version?:number; records?:OutcomeCognitionProjection['verificationRecord'][]; projectionIndex?:OutcomeProjectionIndexEntry[]; evidenceRevisions?:OutcomeProjectionEvidenceRevision[]; causal?:CausalAccountabilityState}){
+    const validExternalObservation=(value:unknown):boolean=>{
+      if(!value||typeof value!=='object'||Array.isArray(value))return false;
+      const row=value as Record<string,unknown>;
+      if(!boundedText(row.observationId,180)||typeof row.verified!=='boolean'||
+          typeof row.confidence01!=='number'||!Number.isFinite(row.confidence01)||row.confidence01<0||row.confidence01>1||
+          typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0)return false;
+      if(row.evidenceEventId!==undefined){
+        const eventId=boundedText(row.evidenceEventId,180);
+        if(!eventId||!/^outcome:[a-f0-9]{40}$/i.test(eventId))return false;
+      }
+      for(const key of ['expectedPostcondition','observedPostcondition'] as const){
+        if(row[key]!==undefined&&!boundedText(row[key],1024))return false;
+      }
+      if(row.reason!==undefined&&!boundedText(row.reason,160))return false;
+      if(row.sourceId!==undefined&&!boundedText(row.sourceId,180))return false;
+      if(row.independenceKey!==undefined&&!boundedText(row.independenceKey,120))return false;
+      if(row.assessment!==undefined&&!['match','mismatch','unknown'].includes(String(row.assessment)))return false;
+      if(row.sourceClass!==undefined&&!['os','device','user','external-api','world','organism','simulator','unknown'].includes(String(row.sourceClass)))return false;
+      return true;
+    };
     const validRecord=(value:unknown):value is OutcomeCognitionProjection['verificationRecord']=>{
-      if(!value||typeof value!=='object')return false;
+      if(!value||typeof value!=='object'||Array.isArray(value))return false;
       const row=value as OutcomeCognitionProjection['verificationRecord'];
-      return Number.isFinite(Number(row.at))&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
-        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean';
+      const observationsValid=row.externalObservations===undefined||
+        (Array.isArray(row.externalObservations)&&row.externalObservations.length<=8&&row.externalObservations.every(validExternalObservation));
+      return Number.isFinite(Number(row.at))&&row.at>=0&&Number.isSafeInteger(row.tick)&&row.tick>=0&&
+        typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
+        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&
+        typeof row.confidence01==='number'&&Number.isFinite(row.confidence01)&&row.confidence01>=0&&row.confidence01<=1&&
+        (row.observationId===undefined||Boolean(boundedText(row.observationId,180)))&&observationsValid&&
+        (row.externalEvidenceStatus===undefined||['none','corroborated','contradicted','mixed'].includes(row.externalEvidenceStatus));
     };
     this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];
     this.projectionIndex.clear();
@@ -202,13 +228,15 @@ export class OutcomeCognitionFabric {
     return {verificationRecord:row,causal:this.causal.snapshot(),verifiedExternal,observedWorldContextAfter:v.observedWorldContextAfter};
   }
 
-  resolveExternalObservation(input:{tick:number;executionId?:string;tool:string;observationId:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;predictionId?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}){
+  resolveExternalObservation(input:{tick:number;executionId?:string;tool:string;observationId:string;evidenceEventId?:string;verified:boolean;confidence01:number;expectedPostcondition?:string;observedPostcondition?:string;reason?:string;predictionId?:string;assessment?:'match'|'mismatch'|'unknown';sourceId?:string;sourceClass?:'os'|'device'|'user'|'external-api'|'world'|'organism'|'simulator'|'unknown';independenceKey?:string}){
     const executionId=boundedText(input.executionId,180);
     const tool=boundedText(input.tool,180);
     const observationId=boundedText(input.observationId,180);
     if(!executionId) return {resolved:false,reason:'execution-id-required'} as const;
     if(!tool) return {resolved:false,reason:'tool-id-invalid'} as const;
     if(!observationId) return {resolved:false,reason:'observation-id-required'} as const;
+    const evidenceEventId=boundedText(input.evidenceEventId,180);
+    if(input.evidenceEventId!==undefined&&(!evidenceEventId||!/^outcome:[a-f0-9]{40}$/i.test(evidenceEventId)))return {resolved:false,reason:'evidence-event-id-invalid'} as const;
     const indexed=this.projectionIndex.get(executionId);
     const matches=indexed&&indexed.record.tool===tool
       ? [{record:indexed.record,index:this.records.findIndex(row=>row.executionId===executionId)}]
@@ -235,11 +263,11 @@ export class OutcomeCognitionFabric {
     const priorObservation=observations.find(row=>row.observationId===observationId);
     if(priorObservation){
       const same=priorObservation.verified===verified&&priorObservation.confidence01===confidence01&&priorObservation.expectedPostcondition===expected&&priorObservation.observedPostcondition===observed&&
-        (priorObservation.sourceId??undefined)===sourceId&&(priorObservation.sourceClass??undefined)===sourceClass&&(priorObservation.independenceKey??undefined)===independenceKey&&(priorObservation.assessment??'unknown')===observationAssessment;
+        (priorObservation.sourceId??undefined)===sourceId&&(priorObservation.sourceClass??undefined)===sourceClass&&(priorObservation.independenceKey??undefined)===independenceKey&&(priorObservation.assessment??'unknown')===observationAssessment&&(priorObservation.evidenceEventId??undefined)===evidenceEventId;
       if(!same) return {resolved:false,reason:'observation-replay-conflict'} as const;
       return {resolved:true,record:structuredClone(current),causal:this.causal.snapshot(),replayed:true} as const;
     }
-    const newObservation={observationId,verified,confidence01,expectedPostcondition:expected,observedPostcondition:observed,at:Date.now(),assessment:observationAssessment,
+    const newObservation={observationId,...(evidenceEventId?{evidenceEventId}:{}),verified,confidence01,expectedPostcondition:expected,observedPostcondition:observed,at:Date.now(),assessment:observationAssessment,
       ...(sourceId?{sourceId}:{}),...(sourceClass?{sourceClass}:{}),...(independenceKey?{independenceKey}:{}),...(boundedText(input.reason,160)?{reason:boundedText(input.reason,160)}:{})};
     const proposedObservations=[...observations,newObservation].slice(-8);
     const negativeSources=new Map<string,number>();
