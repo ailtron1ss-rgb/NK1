@@ -93,11 +93,37 @@ export class OutcomeCognitionFabric {
   constructor(maxRecords=96){this.maxRecords=Math.max(32,maxRecords);this.maxProjectionIndex=Math.max(256,Math.min(2048,this.maxRecords*8));}
 
   restore(snapshot?:{version?:number; records?:OutcomeCognitionProjection['verificationRecord'][]; projectionIndex?:OutcomeProjectionIndexEntry[]; evidenceRevisions?:OutcomeProjectionEvidenceRevision[]; causal?:CausalAccountabilityState}){
+    const validExternalObservation=(value:unknown):boolean=>{
+      if(!value||typeof value!=='object'||Array.isArray(value))return false;
+      const row=value as Record<string,unknown>;
+      if(!boundedText(row.observationId,180)||typeof row.verified!=='boolean'||
+          typeof row.confidence01!=='number'||!Number.isFinite(row.confidence01)||row.confidence01<0||row.confidence01>1||
+          typeof row.at!=='number'||!Number.isFinite(row.at)||row.at<0)return false;
+      if(row.evidenceEventId!==undefined){
+        const eventId=boundedText(row.evidenceEventId,180);
+        if(!eventId||!/^outcome:[a-f0-9]{40}$/i.test(eventId))return false;
+      }
+      for(const key of ['expectedPostcondition','observedPostcondition'] as const){
+        if(row[key]!==undefined&&!boundedText(row[key],1024))return false;
+      }
+      if(row.reason!==undefined&&!boundedText(row.reason,160))return false;
+      if(row.sourceId!==undefined&&!boundedText(row.sourceId,180))return false;
+      if(row.independenceKey!==undefined&&!boundedText(row.independenceKey,120))return false;
+      if(row.assessment!==undefined&&!['match','mismatch','unknown'].includes(String(row.assessment)))return false;
+      if(row.sourceClass!==undefined&&!['os','device','user','external-api','world','organism','simulator','unknown'].includes(String(row.sourceClass)))return false;
+      return true;
+    };
     const validRecord=(value:unknown):value is OutcomeCognitionProjection['verificationRecord']=>{
-      if(!value||typeof value!=='object')return false;
+      if(!value||typeof value!=='object'||Array.isArray(value))return false;
       const row=value as OutcomeCognitionProjection['verificationRecord'];
-      return Number.isFinite(Number(row.at))&&typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
-        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean';
+      const observationsValid=row.externalObservations===undefined||
+        (Array.isArray(row.externalObservations)&&row.externalObservations.length<=8&&row.externalObservations.every(validExternalObservation));
+      return Number.isFinite(Number(row.at))&&row.at>=0&&Number.isSafeInteger(row.tick)&&row.tick>=0&&
+        typeof row.tool==='string'&&row.tool.length>0&&row.tool.length<=180&&
+        ['none','tool-contract','external-postcondition'].includes(row.basis)&&typeof row.ok==='boolean'&&typeof row.verified==='boolean'&&
+        typeof row.confidence01==='number'&&Number.isFinite(row.confidence01)&&row.confidence01>=0&&row.confidence01<=1&&
+        (row.observationId===undefined||Boolean(boundedText(row.observationId,180)))&&observationsValid&&
+        (row.externalEvidenceStatus===undefined||['none','corroborated','contradicted','mixed'].includes(row.externalEvidenceStatus));
     };
     this.records=Array.isArray(snapshot?.records)?snapshot.records.filter(validRecord).slice(-this.maxRecords).map(r=>structuredClone(r)):[];
     this.projectionIndex.clear();
