@@ -35,6 +35,7 @@
 - `OrganismSystemFabric` прокидывает governance ledger как единственный canonical owner в research subsystem; второго конкурирующего журнала нет. `OrganismCore` передаёт полный input и тот же verifier-owned ID лишь при сохранённой привязке к decision/exec/observer.
 - Публичный `ingestExternalObservation` повторно проверяет оригинальный verifier-owned объект и связанную пару action/decision, а не принимает событие на основании одной строки ID. Подделка/копирование корректного ID без этого объекта завершается fail-closed до записи наблюдения.
 - `OutcomeCognitionFabric` явно хранит тот же `evidenceEventId` в `externalObservations`; ID валидируется и сравнивается при replay. Тот же observation ID с другой event identity отвергается. Restore проверяет вложенные observations и отбрасывает malformed/forged event IDs в сохранённых outcome projections.
+- `CognitiveEventFabric.appendToolExternalObservation` также принимает тот же verifier-owned ID, включает его в канонический payload/fingerprint и сохраняет в replay projection index. Повтор с другим ID для того же observation отклоняется, а restore проверяет согласованность ID между index ref и событием.
 - CI workflow path filters теперь включают Core, ActionGateway, owner/fabric, verifier, observer, OutcomeCognition, тесты и журнал, чтобы изменения на границе доверия не обходили специализированный gate.
 
 ### 4. Runtime-проекции
