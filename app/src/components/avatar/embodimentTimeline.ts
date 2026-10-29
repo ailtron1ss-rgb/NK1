@@ -62,6 +62,10 @@ export interface EmbodimentIntentV1 {
     bodyAngleZ?: number;
     /** Optional normalized breathing intensity. */
     breathIntensity?: number;
+    /** Semantic motor goal survives renderer changes; not a renderer-specific clip. */
+    motorAction?: "rest" | "listen" | "reflect" | "inspect" | "explain" | "comfort" | "respond";
+    /** Stable, machine-readable reason supplied by the motor planner. */
+    intentReason?: string;
     gesture: boolean;
     motionGroup: string;
     motionIndex: number;
@@ -289,5 +293,10 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   ] as const) {
     if (value !== undefined && (!Number.isFinite(value) || value < min || value > max)) return false;
   }
+  const motorActions = ["rest", "listen", "reflect", "inspect", "explain", "comfort", "respond"];
+  if (intent.body.motorAction !== undefined && !motorActions.includes(intent.body.motorAction)) return false;
+  if (intent.body.intentReason !== undefined &&
+      (typeof intent.body.intentReason !== "string" || intent.body.intentReason.length > 96 ||
+       !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(intent.body.intentReason))) return false;
   return Number.isFinite(intent.voiceEmphasis) && Number(intent.voiceEmphasis) >= 0 && Number(intent.voiceEmphasis) <= 1;
 }
