@@ -21,6 +21,7 @@
 - `LearningFitnessJournal` — append-only JSONL-журнал агрегированных fitness-решений, со связью candidate/payload/evaluation/plan/environment fingerprints, hash chain, ограничениями размера и отказом при повреждённой цепочке. Не пишет prompt, task IDs, имена семейств и отдельные holdout-строки.
 - `LearningLifecycleJournal` — журнал intent/confirmed/failed/unknown/reconciled переходов активации. Незавершённый intent не считается успехом или неудачей автоматически.
 - `P23LearningEngine` теперь поддерживает подключение журналов, ограниченные диагностические snapshots и reconciliation спорной активации по авторитетному versioned skill store.
+- `OrganismRuntime` автоматически подключает журналы к каноническому P23 при заданном контуре ревизии, выполняет сверку незавершённых intent при старте и в production завершает запуск fail-closed при недоступности integrity journal.
 - В независимом promotion-пути P23 фиксируется результат fitness-gate, затем evidence binding, durable activation intent и terminal outcome. Запись intent происходит до активации; если intent не записывается, активация не начинается. После неопределённого результата состояние остаётся pending для reconciliation.
 - Диагностическая сводка validation и holdout рассчитывается до активации и явно помечена `diagnosticOnly: true`. Она не обходит family/seed gate, подписанные receipts, отдельный approval или rollback.
 
@@ -47,8 +48,15 @@
 - `workpass406-learning-robust-metrics.mjs`
 - `workpass407-learning-lifecycle-journal.mjs`
 - `workpass408-lifecycle-store-reconciliation.mjs`
+- `workpass622-runtime-learning-journal-wiring.mjs`
+- `p23-hermes-production-promotion-gate.mjs`
+- `p23-continual-outcome-matrix.mjs`
 
 Добавлен скрипт `npm run test:workpass622:learning-evidence`; workflow P26 расширен path filters и отдельным шагом этой suite. `package-lock.json` не изменялся, так как новые внешние runtime-зависимости не добавлялись.
+
+## CI и точность доказательств
+
+**CI:** P26 Learning Validation прошёл на SHA `8eed23535b51ed2963f551a9d430136c1ced30c6`; это подтверждает typecheck, P26 regression и WorkPass622 suite на том промежуточном HEAD. После добавления production runtime-wiring и полного P23/continual matrix набора требуется повторный прогон на окончательном HEAD PR.
 
 ## Что доказывает эта работа, а что ещё нет
 
