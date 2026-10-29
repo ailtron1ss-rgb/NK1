@@ -1,3 +1,16 @@
+## [NK1][WorkPass622] Integrate evidence-based learning and self-development (2026-10-29)
+
+- Add bounded plain-data trust boundary, deterministic paired-seed bootstrap confidence intervals and task-balanced robust diagnostics.
+- Add append-only fitness and activation-lifecycle journals with hash-chain verification, durable activation intents and recovery reconciliation against the authoritative skill store.
+- Strengthen P23 promotion with task/family regression thresholds and paired-seed coverage; keep robust summary metrics diagnostic-only.
+- Add focused regressions and wire the WorkPass622 suite into P26 Learning Validation. External runtime dependencies and Release ZIP were not changed.
+- Wire hash-chained fitness/lifecycle journals to the canonical P23 engine at OrganismRuntime startup; reconcile pending activation intents against authoritative store state and fail closed in production when integrity reconciliation is unavailable.
+- Hide all holdout metrics from the revision generator; reject hostile accessor-bearing candidate/evaluator envelopes and unchanged revisions before independent evaluation.
+- Add the host-owned local-model generator adapter to P23 and explicitly test that revision prompts receive the holdout-withheld policy but never numeric holdout feedback.
+- Preserve the established independent-evaluator plan fingerprint when no task-family metadata is configured, while binding trusted family labels when present.
+- Preserve `duplicate-attempt` idempotency diagnostics for exact duplicate ledger cells without weakening unique evidence-reference enforcement; add adjacent ledger/evaluator regressions to the focused suite.
+- Fix continual-outcome fixture receipts to be unique across task/method/seed, preserving strict anti-replay evidence identity.
+
 ## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
 
 - Reject malformed world-context coercions: null/blank numerics no longer become zero; malformed text, booleans, evidence kinds and source IDs no longer become facts.

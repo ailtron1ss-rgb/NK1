@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
+import { generateLocalSkillRevision } from '../src/organism/learning/P23LocalModelSkillRevisionGenerator.ts';
 
 const providerCalls = [];
 const provider = {
@@ -39,7 +40,7 @@ engine.generateAndStageReflectiveSkillRevision = async (...args) => {
       evidenceIds: ['validation-trial-1'],
       directive: 'Improve the evidenced action ordering.',
     }],
-    holdoutGeneralization: { gap01: -.1, requiresFreshIndependentEvaluation: true },
+    holdoutPolicy: { resultsWithheld: true, requiresFreshIndependentEvaluation: true },
   });
 };
 
@@ -63,9 +64,36 @@ assert.equal(providerCalls.length, 1, 'the local provider must be called once th
 assert.ok(providerCalls[0].user.includes('VERIFIED_DATASET_FINGERPRINT:'));
 assert.ok(providerCalls[0].user.includes('a'.repeat(64)));
 assert.ok(providerCalls[0].user.includes('validation-task-1'));
+assert.ok(providerCalls[0].user.includes('HOLDOUT_RESULTS_WITHHELD:'));
+assert.ok(providerCalls[0].user.includes('resultsWithheld'));
 assert.ok(!providerCalls[0].user.includes('holdout-secret-task'));
+assert.ok(!providerCalls[0].user.includes('gap01'), 'numeric holdout feedback must never reach the local revision model');
 assert.equal(forwarded[6], evaluate);
 assert.equal(forwarded[7].minPairedTasks, 3);
 assert.equal(forwarded[8], 'b'.repeat(64));
+
+// The trust contract is enforced before calling the model: callers cannot provide
+// numerical/directional holdout feedback, even if they bypass P23's normal adapter.
+const providerCallsBeforeInvalidPolicy = providerCalls.length;
+await assert.rejects(
+  () => generateLocalSkillRevision(provider, {
+    datasetFingerprint: 'a'.repeat(64),
+    sourcePayload,
+    optimizerInstruction: 'Attempt to optimize against holdout, which must be rejected.',
+    validationEvidence: [],
+    targets: [{
+      dimension: 'trajectory',
+      priority01: .8,
+      affectedTaskIds: ['validation-task-1'],
+      evidenceCount: 1,
+      evidenceIds: ['validation-trial-1'],
+      directive: 'Improve validation performance.',
+    }],
+    holdoutPolicy: { resultsWithheld: false, requiresFreshIndependentEvaluation: true },
+  }),
+  /p23-revision-holdout-results-must-remain-withheld/,
+);
+assert.equal(providerCalls.length, providerCallsBeforeInvalidPolicy,
+  'invalid holdout policy must be rejected before any model request');
 
 console.log('P23_LOCAL_MODEL_SKILL_REVISION_INTEGRATION=PASS');
