@@ -7,6 +7,7 @@ import vm from "node:vm";
 import {
   buildVisemeTimeline,
   CLOSED_MOUTH,
+  deriveEmbodimentPose,
   isEmbodimentIntentV1,
   appendVisemeClockAnchor,
   reanchorMonotonicAudioClock,
@@ -174,7 +175,7 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   );
   script = script.replace(
     "applyEmbodiment(intent);\n  });\n  boot();",
-    "applyEmbodiment(intent);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget};\n  });\n  boot();"
+    "applyEmbodiment(intent);\n    window.__w70AppliedCount=(window.__w70AppliedCount||0)+1;\n    window.__w70LastApplied={stateVersion:intent.stateVersion,speechEventId:intent.speechEventId,audioClockId:intent.audioClockId,speechPhase:intent.speechPhase,audioTimeMs:intent.audioTimeMs,speaking:intent.speaking,mouthOpen:lipTarget,mouthForm:lipFormTarget,bodyAngleX:bodySignal.bodyAngleX,bodyAngleY:bodySignal.bodyAngleY,bodyAngleZ:bodySignal.bodyAngleZ,breathIntensity:bodySignal.breathIntensity};\n  });\n  boot();"
   );
   const listeners = new Map();
   const parent = { postMessage() {} };
@@ -204,12 +205,16 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
     clockSource: "speech-synthesis-boundary-anchored-monotonic", priority: 70, cancellationToken: "cancel:speech-real-handler",
     expression: "thinking", expressionIntensity: .5, mouth: { open: .72, form: .2, viseme: "open" },
     gaze: { x: .1, y: -.1, driven: true },
-    body: { headTilt: .02, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 1 }, voiceEmphasis: .3,
+    body: { headTilt: .02, headAngleX: .2, headAngleY: -.1, bodyAngleX: .3, bodyAngleY: -.2, bodyAngleZ: .1, breathIntensity: .7, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 1 }, voiceEmphasis: .3,
     ...overrides,
   });
   dispatch(message());
   assert.equal(fakeWindow.__w70AppliedCount, 1);
   assert.equal(fakeWindow.__w70LastApplied.mouthOpen, .72);
+  assert.equal(fakeWindow.__w70LastApplied.bodyAngleX, .3);
+  assert.equal(fakeWindow.__w70LastApplied.bodyAngleY, -.2);
+  assert.equal(fakeWindow.__w70LastApplied.bodyAngleZ, .1);
+  assert.equal(fakeWindow.__w70LastApplied.breathIntensity, .7);
   dispatch(message({ mouth: { open: .1, form: 0, viseme: "closed" } }));
   assert.equal(fakeWindow.__w70AppliedCount, 1, "duplicate stateVersion must be rejected");
   dispatch(message({ stateVersion: 2, audioTimeMs: 140 }));
@@ -226,4 +231,44 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign origins are rejected");
   dispatch(message({ stateVersion: 4, audioTimeMs: 160 }), location.origin, {});
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign message sources are rejected");
+});
+
+test("organism action and affect derive a deterministic bounded continuous body pose", () => {
+  const curious = deriveEmbodimentPose("explore", "curiosity", 0.7);
+  const resting = deriveEmbodimentPose("rest", "calm", 0.15);
+  assert.deepEqual(Object.keys(curious).sort(), [
+    "bodyAngleX", "bodyAngleY", "bodyAngleZ", "breathIntensity", "headAngleX", "headAngleY",
+  ]);
+  for (const pose of [curious, resting, deriveEmbodimentPose("unknown", "unrecognised", Number.NaN)]) {
+    for (const key of ["headAngleX", "headAngleY", "bodyAngleX", "bodyAngleY", "bodyAngleZ"]) {
+      assert.ok(Number.isFinite(pose[key]) && pose[key] >= -1 && pose[key] <= 1, `${key} must remain a bounded finite normalized intent`);
+    }
+    assert.ok(Number.isFinite(pose.breathIntensity) && pose.breathIntensity >= 0 && pose.breathIntensity <= 1);
+  }
+  assert.notDeepEqual(curious, resting, "different action/affect states should change the continuous pose");
+  assert.deepEqual(deriveEmbodimentPose("unknown", "unrecognised", Number.NaN), deriveEmbodimentPose("wait", "calm", 0.25),
+    "unknown inputs and non-finite arousal use a stable neutral-safe fallback");
+});
+
+test("optional continuous body channels preserve v1 compatibility and reject out-of-range values", () => {
+  assert.equal(isEmbodimentIntentV1(intent()), true, "older v1 payloads may omit new optional channels");
+  const bodyBase = { headTilt: 0.02, gesture: false, motionGroup: "Idle", motionIndex: 0, motionToken: 0 };
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...bodyBase, bodyAngleX: 0.4, breathIntensity: 0.7 } })), true);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...bodyBase, bodyAngleZ: 1.01 } })), false);
+  assert.equal(isEmbodimentIntentV1(intent({ body: { ...bodyBase, breathIntensity: -0.01 } })), false);
+});
+
+test("both Live2D viewers map shared continuous body intent to model parameters", async () => {
+  const appViewer = await readFile(join(root, "public/live2d/viewer.html"), "utf8");
+  const runtimeViewer = await readFile(join(root, "../runtime/neuro-kurisu/public/live2d/viewer.html"), "utf8");
+  for (const [name, viewer] of [["app", appViewer], ["runtime", runtimeViewer]]) {
+    assert.match(viewer, /ParamBodyAngleX/);
+    assert.match(viewer, /ParamBodyAngleY/);
+    assert.match(viewer, /ParamBodyAngleZ/);
+    assert.match(viewer, /ParamBreath/);
+    assert.match(viewer, /bodyAngleX/);
+    assert.match(viewer, /breathIntensity/);
+    assert.match(viewer, /kurisu_embodiment_intent/);
+    assert.ok(viewer.length > 5000, `${name} viewer remains a real runtime, not a placeholder`);
+  }
 });
