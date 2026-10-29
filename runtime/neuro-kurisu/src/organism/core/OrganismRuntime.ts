@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
+import { PerceptionEngine } from '../cognition/PerceptionEngine.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
@@ -146,6 +147,7 @@ export class OrganismRuntime {
   readonly consolidation = new OfflineConsolidation();
   readonly counterfactuals = new CounterfactualEngine(this.environment);
   readonly embodiment = new EmbodimentRuntime();
+  private readonly perceptionEngine = new PerceptionEngine();
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
@@ -616,8 +618,41 @@ export class OrganismRuntime {
     const observation = { ...rawObservation, worldContext: normalizedWorldContext };
     // Validate the normalized observation before any nested fields are consumed.
     assertCognitiveCycleBoundaryInput(observation, 'full');
+    const perceptionEvent = this.perceptionEngine.perceive({
+      body,
+      world: observation.worldContext,
+      text: externalText,
+      surprise: observation.surprise,
+    });
+    if (perceptionEvent.kind !== 'quiet') {
+      this.evidenceBus.publish({
+        tick: this.core.operationalStatusSnapshot().tick,
+        kind: 'observation',
+        source: 'perception-engine',
+        confidence01: perceptionEvent.confidence,
+        payload: {
+          eventId: perceptionEvent.id,
+          eventKind: perceptionEvent.kind,
+          eventSource: perceptionEvent.source,
+          salience01: perceptionEvent.salience,
+          novelty01: perceptionEvent.novelty,
+          detail: perceptionEvent.detail,
+          evidence: perceptionEvent.evidence.slice(0, 8),
+        },
+      });
+    }
     const modalityEvents = [];
     if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
+    if (perceptionEvent.kind !== 'quiet' && perceptionEvent.source !== 'social') {
+      const perceptionModality = perceptionEvent.source === 'android' ? 'sensor' : 'world';
+      modalityEvents.push(this.core.recordMultimodalObservation({
+        modality: perceptionModality,
+        summary: `${perceptionEvent.kind}: ${perceptionEvent.detail}`.slice(0, 500),
+        confidence: perceptionEvent.confidence,
+        salience: perceptionEvent.salience,
+        evidence: perceptionEvent.evidence.slice(0, 8),
+      }));
+    }
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
     const fused = this.core.multimodalSnapshot();
