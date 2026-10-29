@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { AttentionAllocator, attend, normalizeAttentionState } from '../src/organism/cognition/AttentionSchema.ts';
+import { RecurrentWorkspaceV2, defaultWorkspaceStateV2 } from '../src/organism/cognition/RecurrentWorkspaceV2.ts';
+import { updateWorkspaceIgnition, defaultWorkspaceIgnition } from '../src/organism/cognition/WorkspaceIgnitionMetrics.ts';
 
 // --- Section 1: attention allocation over competing targets ------------------
 const allocator = new AttentionAllocator();
@@ -132,4 +134,105 @@ assert.equal(normalized.salience, 0);
 assert.equal(normalized.confidence, .2);
 assert.deepEqual(normalized.inhibited, ['keep']);
 
-console.log(JSON.stringify({ pass: true, sections: 2, allocations: traceA.length + 6, switches: snapshot.switches }));
+
+// --- Section 3: bounded working workspace -----------------------------------
+function items(n, salienceScale = 1, createdAt = 1) {
+  return Array.from({ length: n }, (_, i) => ({ id: `i${i}`, source: i % 2 ? 'memory' : 'decision', content: { i }, salience: ((n - i) / n) * salienceScale, createdAt }));
+}
+
+// 3a. Bounded capacity: the coalition never exceeds capacity and duplicates
+//     never consume two slots (the pre-fix defect).
+const ws = new RecurrentWorkspaceV2();
+const wide = ws.compete([...items(12), ...items(12).map(x => ({ ...x, salience: .99 }))], 1);
+assert.equal(wide.items.length, 5);
+assert.equal(new Set(wide.items.map(x => x.id)).size, wide.items.length);
+assert.equal(wide.competitors, 12, 'duplicate ids must collapse to one competitor');
+assert.ok(wide.lastCompetition <= 12);
+
+// 3b. Growth is bounded across many cycles even if the caller keeps growing.
+let live = [...items(20)];
+for (let tick = 2; tick <= 200; tick++) live = [...live, ...items(20).map(x => ({ ...x, id: `${x.id}-${tick}` }))];
+const bounded = ws.compete(live, 200);
+assert.equal(bounded.items.length, 5);
+assert.ok(ws.snapshot().suppressed.length <= 8, 'suppression memory must be bounded');
+assert.ok(ws.snapshot().items.length <= ws.snapshot().capacity);
+
+// 3c. Retention: a resident is retained while it stays competitive...
+const retainWs = new RecurrentWorkspaceV2();
+retainWs.compete(items(5), 1);
+const retained = retainWs.compete(items(5).map(x => ({ ...x, salience: x.id === 'i0' ? .5 : .1 })), 2);
+assert.ok(retained.lastDecision.retained.includes('i0'), 'a competitive resident must be retained');
+// ...and loses its slot once it stops being observed for long enough.
+let decayed = retained;
+for (let tick = 3; tick <= 400; tick++) decayed = retainWs.compete(items(3).map(x => ({ ...x, id: `new${tick}` })), tick);
+assert.ok(!decayed.items.some(x => x.id === 'i0'), 'tenure must be bounded, not permanent');
+assert.ok(retained.lastDecision.admitted.length >= 0);
+
+// 3d. Suppression: an item that loses a contested slot cannot immediately
+//     re-enter, which prevents single-cycle thrash.
+const suppWs = new RecurrentWorkspaceV2();
+suppWs.compete(items(8), 1);
+const suppressedIds = suppWs.snapshot().lastDecision.suppressed;
+assert.ok(suppressedIds.length > 0, 'losing competitors must be recorded as suppressed');
+for (let tick = 2; tick <= 3; tick++) {
+  const windowed = suppWs.compete(items(8), tick);
+  assert.ok(windowed.items.every(item => !suppressedIds.includes(item.id)), 'suppressed ids must not re-enter during their window');
+}
+const afterWindow = suppWs.compete(items(8), 5);
+assert.ok(afterWindow.items.some(item => suppressedIds.includes(item.id)), 'suppression must expire so useful content can return');
+
+// 3e. Removal: explicit removal drops the item and is counted.
+const removeWs = new RecurrentWorkspaceV2();
+removeWs.compete(items(3), 1);
+assert.equal(removeWs.remove('i0'), true);
+assert.equal(removeWs.remove('i0'), false);
+assert.ok(!removeWs.snapshot().items.some(x => x.id === 'i0'));
+
+// 3f. Restart determinism: snapshot -> restore -> identical next competition.
+const restartWs = new RecurrentWorkspaceV2();
+restartWs.compete(items(6), 5);
+const restoredWs = new RecurrentWorkspaceV2();
+restoredWs.restore(structuredClone(restartWs.snapshot()));
+assert.deepEqual(restoredWs.snapshot().items, restartWs.snapshot().items);
+assert.deepEqual(restoredWs.compete(items(6), 6), restartWs.compete(items(6), 6));
+assert.equal(restoredWs.snapshot().broadcastId, restartWs.snapshot().broadcastId, 'broadcast id must be reproducible');
+
+// 3g. A hostile snapshot cannot make the workspace unbounded or non-finite.
+const hostile = new RecurrentWorkspaceV2();
+hostile.restore({
+  capacity: 1e9, recurrence: 1e9, lastCompetition: -7, ignition01: Number.NaN,
+  sourceDiversity01: 4, coalitionStability01: Number.POSITIVE_INFINITY,
+  items: Array.from({ length: 400 }, (_, i) => ({ id: `h${i}`, source: 'x', content: {}, salience: 5, createdAt: -1 })),
+  suppressed: [{ id: 'ok', ticksRemaining: 1e9 }, { id: 'bad\u0001id', ticksRemaining: 2 }, { ticksRemaining: 2 }],
+});
+const hostileState = hostile.snapshot();
+assert.equal(hostileState.capacity, 24);
+assert.ok(hostileState.items.length <= 24);
+assert.ok(Number.isFinite(hostileState.recurrence) && hostileState.recurrence <= 1);
+assert.ok(Number.isFinite(hostileState.ignition01) && hostileState.ignition01 >= 0);
+assert.equal(hostileState.lastCompetition, 0);
+assert.equal(hostileState.suppressed.length, 1);
+assert.equal(hostileState.suppressed[0].id, 'ok');
+assert.equal(hostileState.suppressed[0].ticksRemaining, 64, 'suppression windows must be capped');
+assert.deepEqual(defaultWorkspaceStateV2().items, []);
+
+// 3h. Malformed item input is dropped rather than admitted.
+const malformed = new RecurrentWorkspaceV2().compete([
+  { id: '', salience: 1 }, { id: '   ', salience: 1 }, null, 42, { id: 'ok', source: 'z', content: null, salience: Number.NaN, createdAt: 'x' },
+], 1);
+assert.equal(malformed.items.length, 1);
+assert.equal(malformed.items[0].id, 'ok');
+assert.equal(malformed.items[0].salience, 0);
+assert.equal(malformed.items[0].createdAt, 1);
+
+// 3i. Ignition metric must be capacity-normalised, not saturated by any
+//     non-empty competition (the pre-fix `clamp(lastCompetition)` defect).
+const oneOfFive = updateWorkspaceIgnition(defaultWorkspaceIgnition(), { ...defaultWorkspaceStateV2(), items: [items(1)[0]], lastCompetition: 1, recurrence: 0 }, 0);
+const fiveOfFive = updateWorkspaceIgnition(defaultWorkspaceIgnition(), { ...defaultWorkspaceStateV2(), items: items(5), lastCompetition: 5, recurrence: 0 }, 0);
+assert.ok(oneOfFive.competitionIntensity < .5, 'a single competitor must not read as maximum competition');
+assert.ok(fiveOfFive.competitionIntensity > oneOfFive.competitionIntensity, 'more competition must raise the metric');
+assert.ok(oneOfFive.limitedCapacity < .05, 'an under-filled workspace must not read as capacity limited');
+assert.ok(fiveOfFive.limitedCapacity > .95, 'a full workspace must read as capacity limited');
+
+
+console.log(JSON.stringify({ pass: true, sections: 3, allocations: traceA.length + 6, workspace: { capacity: bounded.capacity, competitors: bounded.competitors } }));
