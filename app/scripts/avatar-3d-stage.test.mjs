@@ -14,6 +14,18 @@ test("local VRM/GLB upload is bounded and browser-local",async()=>{
  const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/avatarModelStore.ts"),"utf8");
  assert.match(stage,/accept="\.vrm,\.glb,model\/gltf-binary"/);assert.match(stage,/MAX_AVATAR_MODEL_BYTES/);assert.match(stage,/saveAvatarModel\(blob,name\)/);assert.match(stage,/loadStoredAvatarModel/);assert.match(stage,/clearStoredAvatarModel/);assert.match(store,/90 \* 1024 \* 1024/);assert.match(store,/indexedDB\.open/);assert.doesNotMatch(stage,/https?:\/\/[^"'\s]+\.glb/i);
 });
+test("all local VRM/GLB imports are preflighted before GLTFLoader and prior model survives rejection",async()=>{
+ const stage=await readFile(stagePath,"utf8"),validator=await readFile(path.join(root,"src/components/avatar/avatarModelValidation.ts"),"utf8");
+ assert.match(stage,/inspectSelfContainedGlb\(data,MAX_AVATAR_MODEL_BYTES\)/);
+ assert.ok(stage.indexOf("inspectSelfContainedGlb(data,MAX_AVATAR_MODEL_BYTES)")<stage.indexOf("new GLTFLoader().parse(data"));
+ assert.match(stage,/active\?\.loaded\?"loaded":active\?"error":"webgl-unavailable"/);
+ assert.match(stage,/Предыдущая модель остаётся активной/);
+ assert.match(validator,/external-resource/);
+ assert.match(validator,/startsWith\("data:"\)/);
+ assert.match(validator,/maxAccessorElements: 8_000_000/);
+ assert.match(validator,/maxHierarchyDepth: 256/);
+});
+
 test("the 3D body consumes organism emotion, action, arousal/valence, gaze, sleep and speech",async()=>{
  const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
  for(const key of ["emotion","arousal","valence","dominance","energy","cognitiveLoad","uncertainty","socialNeed","novelty","goalPressure","curiosity","predictionError","traits","gazeX","gazeY","speaking","mouthPose","thinking","awake","action"])assert.ok(stage.includes(key),"Missing state: "+key);

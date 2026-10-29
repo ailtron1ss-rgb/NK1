@@ -1,0 +1,84 @@
+name: NK1 avatar and embodiment quality gates
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - feature/embodiment-model-hardening-2026-10-29
+    paths:
+      - "app/src/components/avatar/**"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/scripts/avatar-*.test.mjs"
+      - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/scripts/test-live2d-expression-cache.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/embodiment-quality-gates.yml"
+      - "contracts/embodiment-intent.v1.schema.json"
+      - "runtime/neuro-kurisu/public/live2d/**"
+      - "runtime/neuro-kurisu/src/organism/body/**"
+      - "CHANGELOG.md"
+  pull_request:
+    branches:
+      - workpass70-source
+      - main
+    paths:
+      - "app/**"
+      - "contracts/embodiment-intent.v1.schema.json"
+      - "runtime/neuro-kurisu/public/live2d/**"
+      - "runtime/neuro-kurisu/src/organism/body/**"
+      - ".github/workflows/embodiment-quality-gates.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-embodiment-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  app-embodiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Verify pinned Node.js runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version mismatch" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Install app dependencies
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Validate local VRM/GLB preflight and resource limits
+        run: npm --prefix app run test:avatar-model-validation
+      - name: Validate 3D renderer integration and recovery
+        run: npm --prefix app run test:avatar-3d-stage
+      - name: Validate VRM and DCC humanoid bone aliases
+        run: npm --prefix app run test:avatar-humanoid-bones
+      - name: Validate affect-aware browser prosody and lip timing
+        run: npm --prefix app run test:browser-voice-prosody
+      - name: Validate Live2D/speech timeline
+        run: npm --prefix app run test:embodiment-timeline
+      - name: Validate bounded avatar motor intent
+        run: npm --prefix app run test:avatar-motor-intent
+      - name: Validate Live2D expression cache
+        run: npm --prefix app run test:live2d-expression-cache
+      - name: Run app script regressions
+        run: npm --prefix app run test:scripts
+      - name: Typecheck app
+        run: npm --prefix app run typecheck
+      - name: Build app bundle
+        run: npm --prefix app run build:dev

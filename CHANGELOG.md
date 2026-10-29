@@ -1,3 +1,13 @@
+## [NK1][WorkPass623] Harden local 3D model import and affect-aware browser voice (2026-10-29)
+
+- Preflight local VRM/GLB files before Three.js parsing: validate the GLB 2.0 header/chunks/JSON, block network-backed buffer/image URLs, enforce scene/accessor/animation limits, and reject broken bufferView ranges and cyclic/deep/multiply-parented node graphs. Inspect embedded PNG/JPEG headers before GPU decode; cap encoded image size, per-texture dimensions/pixels, and total decoded texture pixels to reduce texture-memory/decompression risks.
+- Preserve the previous working model or procedural 3D fallback when a new model file fails validation or parsing; invalid extensions no longer report a failed state while continuing to display the previous model.
+- Normalize common VRM `J_Bip_*`, Blender `.L/.R`, and Mixamo humanoid arm/head/neck names into the existing 3D motor adapter vocabulary so action gestures work across common naming conventions. Read VRM 1.0 `VRMC_vrm.humanoid.humanBones` and legacy VRM 0.x `VRM.humanoid.humanBones` node mappings as well, so custom node names can still receive semantic motor intent.
+- Derive browser Web Speech pitch/rate/volume from the canonical emotion, valence, arousal, dominance, action and existing personality traits. Bound all outputs and de-escalate high negative arousal rather than automatically increasing loudness.
+- Use the same affect-derived speech rate for the Web Speech utterance and the viseme timeline.
+- Add focused regression suites for GLB structure/resource limits, 3D import state recovery, browser voice prosody and lip-timeline binding; add an embodiment-specific CI workflow for targeted tests, app scripts, typecheck and build.
+- This is source hardening, not proof of full VRM semantics or real-device audio accuracy. Browser/Android E2E, p50/p95 lip-sync measurements, unified browser/Termux voice lifecycle, original 2.5D art/rig, licensed canonical 3D asset and final Release ZIP refresh remain open gates.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
