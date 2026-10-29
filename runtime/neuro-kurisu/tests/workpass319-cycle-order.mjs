@@ -19,7 +19,7 @@ assert.notEqual(embodimentPersist, -1, 'cycle embodiment persistence must occur 
 const cycleLedger = index('const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({');
 const cycleEvaluation = index('const cycleVerification = this.unifiedCycle.evaluate({');
 const completenessEvidence = index("claim:'cognitive-cycle-completeness'");
-const cycleEvidencePersist = runtime.indexOf('this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());', completenessEvidence);
+const cycleEvidencePersist = runtime.indexOf('this.core.setRealityEvidenceLedger(this.core.realityEvidenceLedgerSnapshot());', completenessEvidence);
 
 assert.ok(feedback < groundedTransitionLearning, 'feedback must execute before the cycle claims learning completed');
 assert.ok(groundedTransitionLearning < embodiedConsequenceLearning, 'world and embodied consequence learning must precede cycle closure');
