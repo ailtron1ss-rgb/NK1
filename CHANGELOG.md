@@ -1,3 +1,12 @@
+## [NK1][emotion-motivation] Harden contextual affect learning and homeostatic hysteresis (2026-10-29)
+
+- Port the focused emotion-engine change set without merging the divergent aspect branch: bounded plain-data snapshots, strict input/state normalization, and context-bound outcome calibration keyed by action, emotion episode label, and regulation-pressure band.
+- Bind supplied `emotionId` values to an existing appraisal episode; reject missing links before mutating calibration and preserve the episode's appraisal-time regulatory context for delayed outcomes.
+- Prevent cross-context global calibration fallback once an action has its own contextual outcome history; expose the number of recorded contexts in diagnostics.
+- Fix P66 hysteresis ordering so the returned mode, persisted `lastMode`, mode counters, and recent history all record the same effective mode.
+- Expand WorkPass172 regressions and add a targeted GitHub Actions workflow for affect, motivation, endogenous goal lifecycle and workspace integration.
+- Validation status: code and workflow committed on `work/emotions-motivation-closure-2026-10-29`; do not call the tests green until the corresponding Actions run succeeds. No Release ZIP or `main` update is claimed.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
