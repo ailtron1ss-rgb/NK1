@@ -133,4 +133,8 @@ assert.match(core, /isDeclaredObservationSource\(\{/,
 assert.match(core, /actionInput\?: Record<string, unknown>/);
 assert.match(core, /evidenceEventId\?: string/);
 assert.match(core, /evidenceEventId,/);
+assert.match(core, /external-observation-evidence-event-identity-not-verifier-bound/,
+  'the public Core boundary must reject a caller-supplied verifier identity without the original verifier binding');
+assert.match(core, /isTrustedDecisionLinkedExternalPostcondition\(binding\.verification/,
+  'event identity acceptance must be rechecked against the exact verifier-owned object');
 console.log('NK1_FEEDBACK_OUTCOME_CHAIN=PASS verifierBoundId=true actionDecisionInputBound=true stableReplay=true sharedLedgerOwner=true conflictRejected=true restoreNoInflation=true');
