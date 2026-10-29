@@ -61,6 +61,16 @@ noAttribution.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.
 assert.deepEqual(noAttribution.snapshot().adaptiveValues,noAttributionBefore.adaptiveValues,'verified outcome without trait attribution must not pick an arbitrary trait by action index');
 assert.deepEqual(noAttribution.snapshot().valueWeights,noAttributionBefore.valueWeights,'verified outcome without value attribution must not move every value weight');
 
+const forged=new P2702PersistentPersonalityDynamics();
+const forgedBefore=forged.snapshot();
+const forgedBinding={toolId:'personality-test-action',input:{operation:'change-profile',evidenceCase:'forged'},executionId:'exec-12345678',decisionId:'decision-forged'};
+forged.afterOutcome({tick:1,reward01:.99,verified01:1,predictionError01:.01,identityGap01:.1,action:'explore',evidence:{
+ source:'external-verification',expectedBinding:forgedBinding,
+ verification:{verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,observationId:'obs-forged',expectedPostcondition:'ready',observedPostcondition:'ready'}
+}});
+assert.deepEqual(forged.snapshot().adaptiveValues,forgedBefore.adaptiveValues,'a caller-built verification-shaped object is not verifier-minted evidence');
+assert.equal(forged.snapshot().lastEvidenceGateReason,'untrusted-or-unbound-verification');
+
 const canonicalDefaults=defaultP2702PersistentPersonality();
 const tampered=new P2702PersistentPersonalityDynamics();
 tampered.restore({...after,invariantNames:['responsibility'],invariantValues:[0],adaptiveValues:[2,...after.adaptiveValues.slice(1)]});
