@@ -112,6 +112,7 @@ test("rejects network-backed resources instead of allowing implicit fetches", ()
 
 test("rejects malformed buffer declarations instead of trusting the extension", () => {
   expectCode(makeGlb(minimalJson({ buffers: [{ byteLength: 400 }] })), "invalid-buffer");
+  expectCode(makeGlb(minimalJson({ images: { uri: "data:image/png;base64,AA==" } })), "invalid-json");
   expectCode(makeGlb(minimalJson({
     bufferViews: [{ buffer: 5, byteOffset: 0, byteLength: 4 }],
   })), "invalid-buffer");
