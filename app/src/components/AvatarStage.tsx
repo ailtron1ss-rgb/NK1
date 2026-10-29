@@ -7,6 +7,7 @@ import {
   appendVisemeClockAnchor,
   buildVisemeTimeline,
   CLOSED_MOUTH,
+  deriveEmbodimentPose,
   reanchorMonotonicAudioClock,
   sampleMonotonicAudioClock,
   sampleVisemeClock,
@@ -308,6 +309,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       curiosity: -0.045, calm: 0, joy: 0.018, anxiety: -0.018,
       frustration: 0.035, sadness: 0.055, anger: 0.025, protective: -0.01,
     };
+    // One deterministic pose adapter maps the live organism state to continuous rig intent.
+    const bodyPose = deriveEmbodimentPose(snap.lastOption, snap.emotion.label, snap.emotion.arousal);
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
     const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
@@ -337,6 +340,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
       body: {
         headTilt: headTiltByEmotion[snap.emotion.label],
+        headAngleX: bodyPose.headAngleX,
+        headAngleY: bodyPose.headAngleY,
+        bodyAngleX: bodyPose.bodyAngleX,
+        bodyAngleY: bodyPose.bodyAngleY,
+        bodyAngleZ: bodyPose.bodyAngleZ,
+        breathIntensity: bodyPose.breathIntensity,
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
