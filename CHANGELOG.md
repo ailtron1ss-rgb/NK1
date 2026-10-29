@@ -1,3 +1,9 @@
+## [NK1][WorkPass611] Restore scale-invariant latent-program revision and constitutional vote polarity (2026-10-29)
+
+- Make the B276 structure-revision gate scale-invariant by retaining the absolute credit-spread floor and allowing a relative spread threshold when mean learned credit is material. This prevents upstream reward gating from permanently suppressing revision solely by changing the scale of credit values.
+- Pass constitutional constraint pressure with the correct polarity to quorum voting, so stronger constraints are not accidentally interpreted as stronger approval.
+- Scope is confined to latent-program revision reachability and vote polarity. Existing targeted B276/trajectory tests previously passed on the candidate source; this isolated port requires fresh exact-head CI before merge. No memory recall uplift or full-autonomy claim is made.
+
 ## [NK1][WorkPass609] Repair stale big-pass-126 retrieval benchmark fixture against the current provenance contract (2026-10-29)
 
 - `tests/big-pass-126-memory-retrieval-benchmark.mjs` asserted `schemaVersion === 3` while the report schema advanced to 6, and its `datasetProvenance` omitted the now-required `licenseId` and `contentSha256`. Both caused the suite to abort on the first assertion, masking every downstream check.
