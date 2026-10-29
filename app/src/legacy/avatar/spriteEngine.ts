@@ -67,7 +67,16 @@ export function resolveSpritePath(expression: string, options: { preferLab?: boo
     }
   }
   if (!candidates) candidates = EXPR_MAP.neutral;
-  if (profile?.spritePreferences?.length) {
+  const action = options.action ?? "wait";
+  const actionDriven = action === "explore" || action === "verify" || action === "rest" || action === "reflect";
+  // Active non-dialogue actions should actually change the pose category instead of
+  // silently falling back to a neutral expression frame with no matching action pose.
+  if (actionDriven) {
+    const actionCandidates = ACTION_PREFERENCES[action].filter((spriteId) => Boolean(SHEET_OF[spriteId]));
+    const profileActionCandidates = profile?.spritePreferences?.filter((spriteId) => actionCandidates.includes(spriteId)) ?? [];
+    if (profileActionCandidates.length) candidates = profileActionCandidates;
+    else if (actionCandidates.length) candidates = actionCandidates;
+  } else if (profile?.spritePreferences?.length) {
     const preferred = profile.spritePreferences.filter((spriteId) => candidates!.includes(spriteId));
     if (preferred.length) candidates = preferred;
   }
@@ -76,8 +85,9 @@ export function resolveSpritePath(expression: string, options: { preferLab?: boo
     const labCandidates = candidates.filter(c => c.startsWith("lab_") || SHEET_OF[c] === "sheet_lab");
     if (labCandidates.length) candidates = labCandidates;
   }
-  const action = options.action ?? "wait";
-  const id = ACTION_PREFERENCES[action].find((candidate) => candidates!.includes(candidate)) ?? candidates[0];
+  const id = actionDriven
+    ? candidates[0]
+    : ACTION_PREFERENCES[action].find((candidate) => candidates!.includes(candidate)) ?? candidates[0];
   const sheet = SHEET_OF[id] || 'sheet_anime_office';
   return `/sprites/${sheet}/${id}.png`;
 }
