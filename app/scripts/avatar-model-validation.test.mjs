@@ -52,6 +52,47 @@ function minimalJson(overrides = {}) {
   };
 }
 
+function pngHeader(width, height) {
+  const bytes = new Uint8Array(33);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(8, 13, false);
+  bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+  view.setUint32(16, width, false);
+  view.setUint32(20, height, false);
+  bytes[24] = 8;
+  bytes[25] = 6;
+  return Array.from(bytes);
+}
+
+function jpegHeader(width, height) {
+  return [
+    0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08,
+    (height >> 8) & 0xff, height & 0xff,
+    (width >> 8) & 0xff, width & 0xff,
+    0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00,
+  ];
+}
+
+function textureGlb(imagesToCreate) {
+  const bin = [1, 2, 3, 4];
+  const bufferViews = [{ buffer: 0, byteOffset: 0, byteLength: 4 }];
+  const images = [];
+  for (const image of imagesToCreate) {
+    const offset = bin.length;
+    const imageBytes = image.format === "jpeg" ? jpegHeader(image.width, image.height) : pngHeader(image.width, image.height);
+    bin.push(...imageBytes);
+    bufferViews.push({ buffer: 0, byteOffset: offset, byteLength: imageBytes.length });
+    images.push({ bufferView: bufferViews.length - 1, mimeType: image.format === "jpeg" ? "image/jpeg" : "image/png" });
+  }
+  const json = minimalJson({
+    buffers: [{ byteLength: bin.length }],
+    bufferViews,
+    images,
+  });
+  return makeGlb(json, bin);
+}
+
 function expectCode(bytes, code, options) {
   assert.throws(
     () => inspectSelfContainedGlb(bytes, options?.maxBytes),
@@ -108,6 +149,32 @@ test("rejects network-backed resources instead of allowing implicit fetches", ()
     buffers: [{ byteLength: 4, uri: "data:application/octet-stream;base64,AQIDBA==" }],
   });
   assert.equal(inspectSelfContainedGlb(makeGlb(embedded, null)).nodeCount, 1);
+});
+
+test("sniffs PNG/JPEG dimensions and accepts a bounded 4K texture", () => {
+  const png = inspectSelfContainedGlb(textureGlb([{ width: 4096, height: 4096 }]));
+  assert.equal(png.imagePixels, 4096 * 4096);
+  const jpeg = inspectSelfContainedGlb(textureGlb([{ width: 320, height: 240, format: "jpeg" }]));
+  assert.equal(jpeg.imagePixels, 320 * 240);
+});
+
+test("rejects pathological texture dimensions and excessive total decoded pixels", () => {
+  expectCode(textureGlb([{ width: 16384, height: 1 }]), "resource-limit");
+  expectCode(textureGlb([{ width: 0, height: 1024 }]), "invalid-image");
+  expectCode(textureGlb([
+    { width: 4096, height: 4096 },
+    { width: 4096, height: 4096 },
+    { width: 4096, height: 4096 },
+  ]), "resource-limit");
+});
+
+test("validates data-URI image headers before texture decode", () => {
+  const bytes = Uint8Array.from(pngHeader(64, 32));
+  const uri = `data:image/png;base64,${Buffer.from(bytes).toString("base64")}`;
+  const glb = makeGlb(minimalJson({ images: [{ uri }] }));
+  const result = inspectSelfContainedGlb(glb);
+  assert.equal(result.imagePixels, 64 * 32);
+  expectCode(makeGlb(minimalJson({ images: [{ uri: "data:image/svg+xml;base64,PHN2Zy8+" }] })), "unsupported-image");
 });
 
 test("rejects malformed buffer declarations instead of trusting the extension", () => {
