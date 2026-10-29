@@ -21,6 +21,10 @@
 - `LearningFitnessJournal` — append-only JSONL-журнал агрегированных fitness-решений, со связью candidate/payload/evaluation/plan/environment fingerprints, hash chain, ограничениями размера и отказом при повреждённой цепочке. Не пишет prompt, task IDs, имена семейств и отдельные holdout-строки.
 - `LearningLifecycleJournal` — журнал intent/confirmed/failed/unknown/reconciled переходов активации. Незавершённый intent не считается успехом или неудачей автоматически.
 - `P23LearningEngine` теперь поддерживает подключение журналов, ограниченные диагностические snapshots и reconciliation спорной активации по авторитетному versioned skill store.
+- Добавлен адаптер `generateAndStageReflectiveSkillRevisionWithLocalModel`, который подключает host-owned local chat provider к каноническому P23 lifecycle и не обходит независимую оценку/approval.
+- `OrganismRuntime` автоматически подключает журналы к каноническому P23 при заданном контуре ревизии, выполняет сверку незавершённых intent при старте и в production завершает запуск fail-closed при недоступности integrity journal.
+- Сохранена обратная совместимость evaluator plan fingerprint: task-family попадает в digest только при наличии значения из доверенного manifest/config; для задач без family metadata прежний digest остаётся прежним.
+- Уточнен порядок отказов ledger: точное повторение task/method/seed/attempt возвращает `duplicate-attempt`; повторное использование receipt для другой ячейки по-прежнему блокируется как `duplicate-evidence-ref`. Защита от повторного receipt не отключена.
 - `OrganismRuntime` автоматически подключает журналы к каноническому P23 при заданном контуре ревизии, выполняет сверку незавершённых intent при старте и в production завершает запуск fail-closed при недоступности integrity journal.
 - В независимом promotion-пути P23 фиксируется результат fitness-gate, затем evidence binding, durable activation intent и terminal outcome. Запись intent происходит до активации; если intent не записывается, активация не начинается. После неопределённого результата состояние остаётся pending для reconciliation.
 - Диагностическая сводка validation и holdout рассчитывается до активации и явно помечена `diagnosticOnly: true`. Она не обходит family/seed gate, подписанные receipts, отдельный approval или rollback.
@@ -49,6 +53,9 @@
 - `workpass407-learning-lifecycle-journal.mjs`
 - `workpass408-lifecycle-store-reconciliation.mjs`
 - `workpass622-runtime-learning-journal-wiring.mjs`
+- `p23-local-model-skill-revision-integration.mjs`
+- `p23-verified-outcome-ledger.mjs`
+- `workpass203-independent-candidate-evaluator.mjs`
 - `p23-hermes-production-promotion-gate.mjs`
 - `p23-continual-outcome-matrix.mjs`
 
@@ -56,7 +63,7 @@
 
 ## CI и точность доказательств
 
-**CI:** P26 Learning Validation прошёл на SHA `8eed23535b51ed2963f551a9d430136c1ced30c6`; это подтверждает typecheck, P26 regression и WorkPass622 suite на том промежуточном HEAD. После добавления production runtime-wiring и полного P23/continual matrix набора требуется повторный прогон на окончательном HEAD PR.
+**Предварительные CI-результаты:** P26 Learning Validation прошёл на SHA `0992c29e608438568e3b8736f30d6df695cd544e` с typecheck и WorkPass622 suite, но более широкий `NeuroCore core regression validation` на этом SHA выявил три совместимые регрессии/пропуска: отсутствующий P23 local-model adapter, изменившийся fingerprint задач без family metadata и приоритет `duplicate-evidence-ref` над точным `duplicate-attempt`. Эти три точки исправлены последующими коммитами в этой ветке; исправленный latest HEAD нужно повторно проверить, и до этого нельзя считать общий regression gate закрытым.
 
 ## Что доказывает эта работа, а что ещё нет
 
