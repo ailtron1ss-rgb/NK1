@@ -73,7 +73,7 @@ export function LegacySpriteDeck({
       img.onload = null;
       img.onerror = null;
     };
-  }, [emotion, outfit]);
+  }, [emotion, outfit, action, thinking, speaking]);
 
   useEffect(() => { persistOutfit(outfit); }, [outfit]);
 
