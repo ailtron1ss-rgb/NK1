@@ -1136,7 +1136,7 @@ export class NeuralExperienceBranch {
 
   commitAction(action:ActionKind,utilities:Record<ActionKind,number>){this.continuity.commitAction(action);if(this.state.lastExperience){this.state.lastExperience.action=action;this.state.lastExperience.actionUtilities={...utilities};}}
 
-  afterOutcome(i:{tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number;nextInput:number[];holdout01?:number;identityGap01?:number;goalPressure01?:number;identityVector?:number[];embodied?:{nextFeatures?:number[];sensorFreshness01?:number;sensors?:Record<string,{tick:number;values:number[];freshness01:number;confidence01:number;ageTicks:number;source:string}>}}){
+  afterOutcome(i:{tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number;nextInput:number[];holdout01?:number;identityGap01?:number;goalPressure01?:number;identityVector?:number[];evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string};embodied?:{nextFeatures?:number[];sensorFreshness01?:number;sensors?:Record<string,{tick:number;values:number[];freshness01:number;confidence01:number;ageTicks:number;source:string}>}}){
     if(!this.state.enabled)return;const token=this.state.lastExperience;if(!token)return;
     const error=clamp(i.predictionError01),reward=clamp(i.reward01),verified=clamp(i.verified01),surprise=clamp(Math.abs(reward-token.prediction01)*.7+error*.3);
     const syntheticPromotions=this.verifiedSyntheticTrajectoryGate.observeOutcome({tick:i.tick,action:i.action,reward01:reward,nextLatent:i.nextInput,verified01:verified,holdout01:clamp(i.holdout01??0),contextId:Number(token.contextId??0)});
@@ -1200,7 +1200,7 @@ export class NeuralExperienceBranch {
     }
     // Runtime-owned submodule state is synchronized at the durable/public snapshot boundary.
     const continuityDiag=this.continuity.metrics();
-    this.persistentPersonality.afterOutcome({tick:i.tick,reward01:reward,verified01:verified,predictionError01:error,identityGap01:i.identityGap01??.5,action:i.action,identityVector:i.identityVector});
+    this.persistentPersonality.afterOutcome({tick:i.tick,reward01:reward,verified01:verified,predictionError01:error,identityGap01:i.identityGap01??.5,action:i.action,identityVector:i.identityVector,evidence:i.evidence});
     this.globalWorkspaceConvergence.learnOutcome({reward01:reward,verified01:verified,predictionError01:error});
     const temporalLearn=this.temporalSubstrate.learn(token.input,reward,error,verified);
     this.state.temporalSubstrate=this.temporalSubstrate.snapshot();
