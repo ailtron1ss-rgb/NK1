@@ -1,3 +1,11 @@
+## [NK1][WorkPass612] Make installer, doctor and CI reliability checks follow the pinned Node runtime (2026-10-29)
+
+- Read the expected Node.js major from the repository root `.nvmrc` through a shared helper used by the installer and doctor, removing a stale Node 22 hardcode when the project pins Node 24.
+- Define a shipped artifact as a Git-tracked path, not any ignored local `node_modules` or runtime-state directory found on a developer's machine; retain the conservative filesystem fallback when Git is unavailable.
+- Extend the CI reliability gate and regression tests to reject workflow Node pins that drift from the root `.nvmrc` major.
+- Make the installer-deadline test treat a terminated zombie process as no longer running, avoiding a false failure on hosts that do not promptly reap orphans.
+- The P26 workflow Node pin is already aligned to `.nvmrc` by prior merged changes and is intentionally not duplicated here. This change does not alter the release-license gate or claim product-level readiness.
+
 ## [NK1][WorkPass610] Restore brain-fusion runtime loading under Node 24 strip-only TypeScript (2026-10-29)
 
 - Remove TypeScript parameter properties from the five brain-fusion runtime classes so Node's strip-only TypeScript loader can import them without an unsupported-syntax exception.
