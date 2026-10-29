@@ -1,6 +1,6 @@
 # NK1 / Mem0 — WorkPass 1
 
-**Date:** 2026-10-24  
+**Date:** 2026-10-24
 **Scope:** opt-in Mem0 Platform recall bridge; no automatic cloud export and no second canonical memory store.
 
 ## Architecture decision
