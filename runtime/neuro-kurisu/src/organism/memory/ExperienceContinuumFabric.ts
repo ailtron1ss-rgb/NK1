@@ -526,9 +526,42 @@ export class ExperienceContinuumFabric {
       eligibleForConfirmatoryInference:eligible,reason};
   }
 
-  recordReplayExperimentTrial(input:{experimentId:string;taskId:string;mode:'replay-on'|'replay-off';preScore01:number;postScore01:number;independentVerified:boolean;randomized?:boolean;contextKey:string;pairKey?:string;at?:number}){
-    const trial:ReplayExperimentTrial={id:`rx:${input.experimentId}:${input.taskId}:${Date.now()}`,experimentId:clean(input.experimentId,64),taskId:clean(input.taskId,96),mode:input.mode,preScore01:clamp(input.preScore01),postScore01:clamp(input.postScore01),delta01:clamp(input.postScore01)-clamp(input.preScore01),independentVerified:Boolean(input.independentVerified),randomized:Boolean(input.randomized),contextKey:clean(input.contextKey,96),pairKey:input.pairKey?clean(input.pairKey,96):undefined,at:input.at??Date.now()};
-    this.state.replay.experiments.push(trial); if(this.state.replay.experiments.length>128)this.state.replay.experiments=this.state.replay.experiments.slice(-128);
+  recordReplayExperimentTrial(input:{
+    experimentId:string;taskId:string;mode:'replay-on'|'replay-off';
+    preScore01:number;postScore01:number;independentVerified:boolean;
+    randomized?:boolean;contextKey:string;pairKey?:string;at?:number;
+    /** Process-local verifier receipt bound to the exact measurement tuple. */
+    verification?:OutcomeVerification;
+  }){
+    const experimentId=clean(input?.experimentId,64);
+    const taskId=clean(input?.taskId,96);
+    const contextKey=clean(input?.contextKey,96);
+    const pairKey=input?.pairKey?clean(input.pairKey,96):undefined;
+    const at=input?.at??Date.now();
+    const valid=Boolean(experimentId&&taskId&&contextKey&&
+      (input?.mode==='replay-on'||input?.mode==='replay-off')&&
+      Number.isFinite(input?.preScore01)&&input.preScore01>=0&&input.preScore01<=1&&
+      Number.isFinite(input?.postScore01)&&input.postScore01>=0&&input.postScore01<=1&&
+      Number.isSafeInteger(at)&&at>=0);
+    if(!valid)throw new Error('invalid replay experiment trial');
+    const randomized=input.randomized===true;
+    // The boolean supplied by a caller is a claim only. Independent status is
+    // earned exclusively by a current-process verifier receipt bound to every
+    // field that affects this observation and its paired estimate.
+    const verificationInput={
+      experimentId,taskId,mode:input.mode,preScore01:input.preScore01,
+      postScore01:input.postScore01,randomized,contextKey,pairKey:pairKey??null,at,
+    };
+    const independentlyVerified=input.independentVerified===true&&
+      isTrustedExternalPostconditionVerification(input.verification,verificationInput);
+    const trial:ReplayExperimentTrial={
+      id:`rx:${experimentId}:${taskId}:${at}:${this.state.replay.experiments.length}`,
+      experimentId,taskId,mode:input.mode,preScore01:input.preScore01,postScore01:input.postScore01,
+      delta01:input.postScore01-input.preScore01,independentVerified:independentlyVerified,
+      randomized,contextKey,...(pairKey?{pairKey}:{}),at,
+    };
+    this.state.replay.experiments.push(trial);
+    if(this.state.replay.experiments.length>128)this.state.replay.experiments=this.state.replay.experiments.slice(-128);
     return this.replayExperimentSummary(trial.experimentId,trial.taskId);
   }
 
