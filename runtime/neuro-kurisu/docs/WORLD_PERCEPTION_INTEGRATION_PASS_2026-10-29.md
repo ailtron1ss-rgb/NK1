@@ -6,7 +6,7 @@ This change hardens the perception boundary and event detector on `workpass70-so
 
 ## Implemented in this pass
 
-- A world-context normalizer treats missing/malformed numbers as unknown/default rather than coercing `null`/empty strings into zero.
+- A world-context normalizer treats missing/malformed numbers as unknown/default rather than coercing `null`/empty strings into zero, and is wired into the live `OrganismRuntime → core.observe()` ingress.
 - Facts and events are accepted only as strings, NFKC-normalized, trimmed and bounded; malformed objects do not become `"[object Object]"`.
 - Boolean observations require real booleans; strings such as `"false"` are not truthy facts. Separate `valueKnown`, `visibilityKnown`, and `collectionKnown` flags preserve the difference between a negative observation and no observation.
 - Evidence kinds are allow-listed, source IDs bounded, numeric confidence populated only when numeric, and objects/facts/events size-bounded.
@@ -15,7 +15,7 @@ This change hardens the perception boundary and event detector on `workpass70-so
 - Simultaneous sensor changes are delivered over successive perception cycles, updating only the field associated with the emitted event.
 - Sustained battery/thermal pressure is edge-triggered: emit on pressure onset and clearance rather than repeat the same alarm each tick.
 - World-change detection compares semantic content (facts, objects, events and contextual metrics), not only list lengths. A fact replacement with unchanged cardinality is detectable; reordering an unordered fact set does not create artificial novelty.
-- Added regression tests for same-cardinality world changes, known/unknown observation flags, stale/future telemetry and recurring pressure alarms.
+- Added regression tests for same-cardinality world changes, known/unknown observation flags, stale/future telemetry, recurring pressure alarms and canonical runtime ingress wiring.
 
 ## Invariants
 
@@ -35,7 +35,7 @@ npm run test:world-perception
 npm run typecheck
 ```
 
-The three focused tests are `test:world-context-normalizer-integrity`, `test:perception-engine-signal-integrity`, and `test:world-perception-delta-integrity`.
+The four focused tests are `test:world-context-normalizer-integrity`, `test:perception-engine-signal-integrity`, `test:world-perception-delta-integrity`, and `test:world-perception-runtime-wiring`.
 
 ## Validation status
 
