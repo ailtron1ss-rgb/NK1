@@ -190,7 +190,7 @@ export function inspectSelfContainedGlb(
         reject("resource-limit", `JSON-манифест модели превышает `${AVATAR_GLB_LIMITS.maxJsonBytes / (1024 * 1024)} МиБ.`);
       }
       try {
-        jsonText = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(chunkStart, chunkEnd)).replace(/[\\u0000\\u0020]+$/u, "");
+        jsonText = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(chunkStart, chunkEnd)).trimEnd();
       } catch {
         reject("invalid-json", "JSON-блок модели не является корректным UTF-8.");
       }
