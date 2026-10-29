@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
 import { WorldEnvironment, type EnvironmentAction, type PersistedWorld } from '../world/WorldEnvironment.ts';
@@ -603,8 +604,17 @@ export class OrganismRuntime {
       await this.consolidateInternal();
     await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog());
     }
-    const observation = this.environment.toOrganismObservation();
-    // Validate the actual runtime-to-core observation boundary before nested fields are read.
+    const rawObservation = this.environment.toOrganismObservation();
+    // Normalize world data at the actual runtime-to-core boundary. The helper
+    // preserves "unknown" instead of coercing malformed observations to facts.
+    const normalizedWorldContext = normalizeWorldContext(rawObservation.worldContext, {
+      tick: this.core.operationalStatusSnapshot().tick,
+    });
+    if (!normalizedWorldContext) {
+      throw new Error('World context normalization failed at OrganismRuntime boundary');
+    }
+    const observation = { ...rawObservation, worldContext: normalizedWorldContext };
+    // Validate the normalized observation before any nested fields are consumed.
     assertCognitiveCycleBoundaryInput(observation, 'full');
     const modalityEvents = [];
     if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
