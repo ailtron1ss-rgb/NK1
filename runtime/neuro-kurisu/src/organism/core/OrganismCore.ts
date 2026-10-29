@@ -1159,7 +1159,7 @@ export class OrganismCore {
     private readonly store: JsonStateStore<PersistedOrganism>;
     private readonly actionExecutionLedgerArchive?: FileActionExecutionLedgerArchive;
     /** BIG PASS 56: physical owner/composition root for the seven organism systems. */
-    private readonly organismSystems = new OrganismSystemFabric({
+    private readonly organismSystems: OrganismSystemFabric = new OrganismSystemFabric({
         authorizeSourceRegistration: source => this.cognitiveRuntime.actionGateway.isDeclaredObservationSource({
             sourceId: source.id,
             sourceClass: source.sourceClass,
