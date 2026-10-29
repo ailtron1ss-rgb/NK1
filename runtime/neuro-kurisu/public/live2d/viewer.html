@@ -36,9 +36,14 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   function setCore(id,value){try{const core=model?.internalModel?.coreModel;if(core?.setParameterValueById)core.setParameterValueById(id,value)}catch{}}
   function applyEmbodiment(d){
     bodySignal=d||{};
-    setCore('ParamAngleX',clamp(bodySignal.gazeX,-1,1)*30);
-    setCore('ParamAngleY',clamp(bodySignal.gazeY,-1,1)*20);
+    const headAngleX=clamp(bodySignal.headAngleX===undefined?bodySignal.gazeX:bodySignal.headAngleX,-1,1);
+    const headAngleY=clamp(bodySignal.headAngleY===undefined?bodySignal.gazeY:bodySignal.headAngleY,-1,1);
+    setCore('ParamAngleX',headAngleX*30);
+    setCore('ParamAngleY',headAngleY*20);
     setCore('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35);
+    setCore('ParamBodyAngleX',clamp(bodySignal.bodyAngleX,-1,1)*10);
+    setCore('ParamBodyAngleY',clamp(bodySignal.bodyAngleY,-1,1)*10);
+    setCore('ParamBodyAngleZ',clamp(bodySignal.bodyAngleZ,-1,1)*10);
     setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));
     setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1));
     const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1), intensity=clamp(bodySignal.expressionIntensity,.0,1);
@@ -100,6 +105,10 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
         if(blinkT>0){blinkT*=.72;if(now>blinkUntil)blinkT=Math.max(0,blinkT-.12)}
         if(now>=nextSaccade){targetEyeX=(Math.random()-.5)*.35;targetEyeY=(Math.random()-.5)*.18;nextSaccade=now+1100+Math.random()*3200}
         setCore('ParamMouthOpenY',lipCurrent);
+        setCore('ParamBodyAngleX',clamp(bodySignal.bodyAngleX,-1,1)*10);
+        setCore('ParamBodyAngleY',clamp(bodySignal.bodyAngleY,-1,1)*10);
+        setCore('ParamBodyAngleZ',clamp(bodySignal.bodyAngleZ,-1,1)*10);
+        setCore('ParamBreath',0.5+Math.sin(now/1100)*(0.045+clamp(bodySignal.breathIntensity,0,1)*0.08));
         setCore('ParamEyeLOpen',1-blinkT);setCore('ParamEyeROpen',1-blinkT);
         if(!bodySignal.gazeX&&!bodySignal.gazeY){setCore('ParamEyeBallX',eyeX);setCore('ParamEyeBallY',eyeY)}
       });
