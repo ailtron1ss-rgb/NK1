@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Neuro‑Kurisu · Live2D</title>
   <style>
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020806}
-    body{background-image:radial-gradient(circle at 50% 40%,rgba(0,255,120,.10),transparent 55%)}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#040912}
+    body{background:radial-gradient(ellipse at 50% 28%,rgba(56,112,148,.22),transparent 54%),radial-gradient(ellipse at 50% 80%,rgba(111,79,143,.10),transparent 46%),#040912}
     #canvas-wrap{position:absolute;inset:0}
-    canvas{width:100%!important;height:100%!important}
-    #status{position:absolute;left:7px;bottom:6px;z-index:5;font:10px monospace;color:rgba(210,255,230,.42);pointer-events:none}
+    canvas{width:100%!important;height:100%!important;image-rendering:auto}
+    #status{position:absolute;left:8px;bottom:8px;z-index:5;font:10px monospace;letter-spacing:.02em;color:rgba(225,241,255,.78);padding:4px 6px;border:1px solid rgba(173,211,235,.14);border-radius:6px;background:rgba(2,7,13,.45);backdrop-filter:blur(8px);pointer-events:none}
   </style>
 </head>
 <body>
@@ -29,24 +29,52 @@
     focused:'Stanby Smile',smile:'Stanby Smile',tender:'Blush 1',sarcastic:'Stanby Smile',
     smug:'Stanby Smile',looking_away:'Stanby Scared',tired:'Stanby Scared'
   };
+  const MOTION_COUNTS=Object.freeze({Idle:1,TapHead:1,TapBody:1,Special:2});
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,Number.isFinite(Number(n))?Number(n):0));
   function loadScript(src,fallback){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>fallback?loadScript(fallback).then(resolve,reject):reject(new Error('не удалось загрузить '+src));document.head.appendChild(s)})}
   function send(type,extra={}){try{parent&&parent.postMessage({type,...extra},window.location.origin)}catch{}}
   function setCore(id,value){try{const core=model?.internalModel?.coreModel;if(core?.setParameterValueById)core.setParameterValueById(id,value)}catch{}}
   function applyEmbodiment(d){
     bodySignal=d||{};
-    setCore('ParamAngleX',clamp(bodySignal.gazeX,-1,1)*30);
-    setCore('ParamAngleY',clamp(bodySignal.gazeY,-1,1)*20);
-    setCore('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35);
-    setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));
-    setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1));
-    const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1), intensity=clamp(bodySignal.expressionIntensity,.0,1);
-    lipTarget=bodySignal.speaking?mouth:0.015;
+    const mouth=clamp(bodySignal.mouthOpen,0,1), emph=clamp(bodySignal.voiceEmphasis,0,1);
+    lipTarget=clamp(mouth+emph*.08,0,1);
+    if(!bodySignal.speaking)lipTarget=0.015;
     lipFormTarget=bodySignal.speaking?clamp(bodySignal.mouthForm,-1,1):0;
-    setCore('ParamMouthOpenY',Math.max(lipTarget,mouth+emph*.08));
-    if(!bodySignal.speaking) setCore('ParamMouthForm',(intensity-.5)*.8);
-    if(bodySignal.expression) applyExpression(bodySignal.expression);
-    if(bodySignal.motionGroup){const token=Number.isSafeInteger(bodySignal.motionToken)&&bodySignal.motionToken>=0?bodySignal.motionToken:0;const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}:${token}`;if(k!==lastMotionKey){try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}}}
+    if(bodySignal.expression)applyExpression(bodySignal.expression);
+    if(bodySignal.motionGroup){
+      const token=Number.isSafeInteger(bodySignal.motionToken)&&bodySignal.motionToken>=0?bodySignal.motionToken:0;
+      const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}:${token}`;
+      if(k!==lastMotionKey){
+        try{
+          Promise.resolve(model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0)))
+            .then(ok=>{if(ok===false)send('live2d_motion_unavailable',{group:String(bodySignal.motionGroup),index:Number(bodySignal.motionIndex||0)})})
+            .catch(err=>send('live2d_motion_error',{error:String(err?.message||err).slice(0,180)}));
+          lastMotionKey=k;
+        }catch{}
+      }
+    }
+  }
+  function addCoreOffset(id,offset,min,max){
+    try{
+      const core=model?.internalModel?.coreModel;
+      if(core&&typeof core.addParameterValueById==='function')core.addParameterValueById(id,clamp(offset,min,max),1);
+    }catch{}
+  }
+  function applyModelParameterOverrides(){
+    const core=model?.internalModel?.coreModel;
+    if(!core)return;
+    // Authored motion and physics run first; small NK1 offsets are composited after them.
+    addCoreOffset('ParamAngleX',clamp(bodySignal.gazeX,-.4,.4)*7,-30,30);
+    addCoreOffset('ParamAngleY',clamp(bodySignal.gazeY,-.4,.4)*5,-30,30);
+    addCoreOffset('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35,-30,30);
+    const set=(key,value)=>{try{core.setParameterValueById(key,value,1)}catch{}};
+    const gazeX=bodySignal.gazeDriven?clamp(bodySignal.gazeX,-.4,.4):0;
+    const gazeY=bodySignal.gazeDriven?clamp(bodySignal.gazeY,-.4,.4):0;
+    set('ParamEyeBallX',clamp(gazeX+eyeX*.35,-1,1));
+    set('ParamEyeBallY',clamp(gazeY+eyeY*.35,-1,1));
+    set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
+    set('ParamMouthOpenY',clamp(lipCurrent,0,1));
+    if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
   }
   function applyExpression(expr){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
@@ -77,31 +105,28 @@
       await loadScript('./vendor/cubism4.min.js');
       const PIXI=window.PIXI;
       if(!PIXI?.live2d)throw new Error('Live2D runtime не найден');
-      app=new PIXI.Application({view:document.getElementById('canvas'),autoStart:true,backgroundAlpha:0,resizeTo:window,antialias:true,powerPreference:'low-power'});
+      const resolution=Math.max(1,Math.min(2,Number(window.devicePixelRatio)||1));
+       app=new PIXI.Application({view:document.getElementById('canvas'),autoStart:true,backgroundAlpha:0,resizeTo:window,antialias:true,resolution,autoDensity:true,powerPreference:'low-power'});
       const {Live2DModel}=PIXI.live2d;
       model=await Live2DModel.from(modelPath,{autoInteract:false});
       if(!model?.width)throw new Error('модель без размера');
-      const fit=()=>{if(!model)return;const scale=Math.min(app.screen.width/model.width,app.screen.height/model.height)*.92;model.scale.set(scale);model.x=app.screen.width/2;model.y=app.screen.height*.98;model.anchor.set(.5,1)};
+      const fit=()=>{if(!model)return;const screenW=app.screen.width,screenH=app.screen.height;const scale=Math.min(screenW/model.width,screenH/model.height)*.92;model.scale.set(scale);model.x=screenW/2;model.y=screenH*.99;model.anchor.set(.5,1)};
       fit();window.addEventListener('resize',fit,{passive:true});app.stage.addChild(model);
       status.textContent=`ок · ${assetProfile}`;send('live2d_ready',{profile:assetProfile,modelPath});
-      app.ticker.add(() => {
-        if(!model)return;
-        const now=performance.now();
-        const active=Boolean(bodySignal.speaking||bodySignal.expressionIntensity>.5||bodySignal.gesture);
-        const targetFps=active?30:14;
-        const every=1000/targetFps;
-        if(now-(model.__nkLastFrame||0)<every)return;model.__nkLastFrame=now;
-        lipCurrent+=(lipTarget-lipCurrent)*.30;
-        lipFormCurrent+=(lipFormTarget-lipFormCurrent)*.30;
-        eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
-        if(now>=nextBlink){blinkT=1;blinkUntil=now+115;nextBlink=now+6500+Math.random()*7500}
-        if(blinkT>0){blinkT*=.72;if(now>blinkUntil)blinkT=Math.max(0,blinkT-.12)}
-        if(!bodySignal.gazeDriven&&now>=nextSaccade){targetEyeX=(Math.random()-.5)*.35;targetEyeY=(Math.random()-.5)*.18;nextSaccade=now+1100+Math.random()*3200}
-        setCore('ParamMouthOpenY',lipCurrent);
-        setCore('ParamMouthForm',bodySignal.speaking?lipFormCurrent:(clamp(bodySignal.expressionIntensity,0,1)-.5)*.8);
-        setCore('ParamEyeLOpen',1-blinkT);setCore('ParamEyeROpen',1-blinkT);
-        if(bodySignal.gazeDriven){setCore('ParamEyeBallX',clamp(bodySignal.gazeX,-1,1));setCore('ParamEyeBallY',clamp(bodySignal.gazeY,-1,1))}else if(!bodySignal.gazeX&&!bodySignal.gazeY){setCore('ParamEyeBallX',eyeX);setCore('ParamEyeBallY',eyeY)}
-      });
+      app.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides);
+       app.ticker.add(() => {
+         if(!model)return;
+         const now=performance.now();
+         const active=Boolean(bodySignal.speaking||bodySignal.expressionIntensity>.5||bodySignal.gesture);
+         const every=1000/(active?30:14);
+         if(now-(model.__nkLastFrame||0)<every)return;model.__nkLastFrame=now;
+         lipCurrent+=(lipTarget-lipCurrent)*.30;
+         lipFormCurrent+=(lipFormTarget-lipFormCurrent)*.30;
+         eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
+         if(now>=nextBlink){blinkT=1;blinkUntil=now+115;nextBlink=now+6500+Math.random()*7500}
+         if(blinkT>0){blinkT*=.72;if(now>blinkUntil)blinkT=Math.max(0,blinkT-.12)}
+         if(now>=nextSaccade){const amp=bodySignal.speaking?.12:.24;targetEyeX=(Math.random()-.5)*amp;targetEyeY=(Math.random()-.5)*amp*.52;nextSaccade=now+1200+Math.random()*3200}
+       });
     }catch(err){status.textContent='fallback';send('live2d_error',{error:String(err?.message||err)})}
   }
   document.getElementById('canvas').addEventListener('pointerdown',ev=>{
@@ -133,8 +158,8 @@
     if(typeof d.expression!=='string'||!Object.prototype.hasOwnProperty.call(EXPR_MAP,d.expression))return null;
     if(typeof d.mouth.viseme!=='string'||!/^[a-z]{1,16}$/.test(d.mouth.viseme))return null;
     if(typeof d.gaze.driven!=='boolean'||typeof d.body.gesture!=='boolean')return null;
-    if(typeof d.body.motionGroup!=='string'||!/^[a-zA-Z0-9_-]{1,32}$/.test(d.body.motionGroup))return null;
-    if(!Number.isInteger(d.body.motionIndex)||d.body.motionIndex<0||d.body.motionIndex>32||!Number.isSafeInteger(d.body.motionToken)||d.body.motionToken<0)return null;
+    if(typeof d.body.motionGroup!=='string'||!Object.prototype.hasOwnProperty.call(MOTION_COUNTS,d.body.motionGroup))return null;
+    if(!Number.isInteger(d.body.motionIndex)||d.body.motionIndex<0||d.body.motionIndex>=MOTION_COUNTS[d.body.motionGroup]||!Number.isSafeInteger(d.body.motionToken)||d.body.motionToken<0)return null;
     return {
       protocolVersion:1,
       stateVersion:d.stateVersion,
