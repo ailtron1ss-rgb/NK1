@@ -1,3 +1,11 @@
+## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
+
+- Reject malformed world-context coercions: null/blank numerics no longer become zero; malformed text, booleans, evidence kinds and source IDs no longer become facts.
+- Preserve known/unknown flags for object value, visibility and collection state.
+- Gate physical observations on freshness and sampled-at plausibility; initialize baselines without false motion and represent sensor availability separately.
+- Emit sensor changes across successive cycles, make resource-pressure notifications transition-based, and detect same-cardinality world fact/object/event updates.
+- Add three focused integrity tests and `npm run test:world-perception`; real device validation remains a separate gate.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
