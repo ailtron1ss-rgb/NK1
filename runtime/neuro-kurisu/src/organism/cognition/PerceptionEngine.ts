@@ -92,7 +92,7 @@ const sensorBoolean = (value: unknown): boolean | null =>
   typeof value === 'boolean' ? value : null;
 const boundedText = (value: unknown, limit = 240): string => {
   if (typeof value !== 'string') return '';
-  return value.normalize('NFKC').replace(/\\s+/g, ' ').trim().slice(0, limit);
+  return value.normalize('NFKC').replace(/\s+/g, ' ').trim().slice(0, limit);
 };
 
 function quantized(value: unknown): number | null {
