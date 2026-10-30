@@ -174,7 +174,7 @@ export class P2702PersistentPersonalityDynamics{
    this.state.adaptiveValues[index]=clamp((this.state.adaptiveValues[index]??.5)+(signal-.5)*eta*target.weight);
   }
   const receiptId=String(args.evidenceReceiptId??'').trim().slice(0,180);
-  const receipt=/^reb:(\\d+):(\\d+):outcome$/.exec(receiptId);
+  const receipt=/^reb:(\d+):(\d+):outcome$/.exec(receiptId);
   const receiptBound=Boolean(receipt&&Number(receipt[1])===args.tick&&args.evidenceRef===`external-verification:${receiptId}`);
   const strongIndependentOutcome=receiptBound&&verified>=.9&&evidence>=.72&&independent>=.8&&consequence>=.7;
   // Core values and relationship trust have a higher evidential bar than behavioral habits.
