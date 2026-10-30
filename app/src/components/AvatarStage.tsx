@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
-import { deriveAffectiveExpression } from "./avatar/affectiveExpression";
+import { deriveAffectiveExpression, smoothAffectiveExpression } from "./avatar/affectiveExpression";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -69,6 +69,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const speechSequenceRef = useRef(0);
   const intentStateVersionRef = useRef(0);
+  const affectiveProfileRef = useRef<{ profile: ReturnType<typeof deriveAffectiveExpression>; at: number } | null>(null);
   const motionIntentKeyRef = useRef("");
   const motionIntentTokenRef = useRef(0);
   const activeSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
@@ -307,12 +308,20 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   useEffect(() => {
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
-    const affective = deriveAffectiveExpression({
+    const rawAffective = deriveAffectiveExpression({
       emotion: snap.emotion.label,
       valence: snap.emotion.valence,
       arousal: snap.emotion.arousal,
       dominance: snap.emotion.dominance,
     });
+    const affectiveAt = performance.now();
+    const previousAffective = affectiveProfileRef.current;
+    const affective = smoothAffectiveExpression(
+      previousAffective?.profile ?? null,
+      rawAffective,
+      previousAffective ? affectiveAt - previousAffective.at : 0,
+    );
+    affectiveProfileRef.current = { profile: affective, at: affectiveAt };
     const expression = affective.expression;
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
