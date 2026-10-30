@@ -1,3 +1,10 @@
+## [NK1][WorkPass634] Add humanoid motion retargeting primitives (2026-10-30)
+
+- Added a pure, data-only source/target humanoid profile with semantic role intersection, missing-role reporting, rest-local quaternion snapshots, per-bone length ratios, and avatar-height scaling.
+- Added rest-pose-relative local rotation transfer, configurable angular caps, and bounded root translation. Malformed quaternions and non-finite inputs fail closed.
+- Added focused regression coverage for quaternion math, source/target rest-pose normalization, target-rest-relative transfer, missing roles, safety bounds, and invalid dimensions.
+- This is the mathematical retargeting core only: differing local-axis calibration, VRMA mixer integration, IK, foot contact, and browser multi-rig E2E remain pending.
+
 ## [NK1][WorkPass633] Expand full-body VRM humanoid mapping (2026-10-30)
 
 - Expand the semantic bone vocabulary from the upper-body motor subset to torso, shoulders, arms, hands, all finger joints, legs, feet, and toes.
