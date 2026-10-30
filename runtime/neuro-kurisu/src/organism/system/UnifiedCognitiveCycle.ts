@@ -67,6 +67,10 @@ const ownArrayValues=(value:unknown,max:number):{values:unknown[];valid:boolean}
   }catch{return {values:[],valid:false};}
 };
 const isRecordLike=(value:unknown):value is Record<string,unknown> => value!==null&&typeof value==='object'&&!Array.isArray(value);
+const hasOwnSafely=(record:unknown,key:string):boolean=>{
+  if(record===null||typeof record!=='object')return false;
+  try{return Object.getOwnPropertyDescriptor(record,key)!==undefined;}catch{return true;}
+};
 const ownValue=(record:unknown,key:string):unknown=>{
   if(record===null||typeof record!=='object')return undefined;
   try{
@@ -122,7 +126,7 @@ export class UnifiedCognitiveCycle {
     const stageIds=envelope.stageIds;
     const parentIntegrity01=envelope.parentIntegrity01;
     if(!isRecordLike(stageIds))throw new TypeError('stageIds must be an object');
-    if(!Number.isSafeInteger(tick)||typeof tick!=='number'||tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
+    if(typeof tick!=='number'||!Number.isSafeInteger(tick)||tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
     if(tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
     if(typeof parentIntegrity01!=='number'||!Number.isFinite(parentIntegrity01)||parentIntegrity01<0||parentIntegrity01>1) {
       throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
@@ -139,7 +143,7 @@ export class UnifiedCognitiveCycle {
     // Preserve six-stage legacy callers, but once a caller advertises any
     // extended phase it must provide the complete eleven-stage spine. This
     // prevents a partially upgraded runtime from claiming a complete cycle.
-    const requiresExtendedSpine=EXTENDED_MARKERS.some(stage=>Object.getOwnPropertyDescriptor(stageIds,stage)!==undefined);
+    const requiresExtendedSpine=EXTENDED_MARKERS.some(stage=>hasOwnSafely(stageIds,stage));
     const requiredStages=requiresExtendedSpine?EXTENDED_REQUIRED:LEGACY_REQUIRED;
     // Every required phase must identify a distinct event, including the five
     // extended phases. Reusing an event across two phases is missing evidence.
