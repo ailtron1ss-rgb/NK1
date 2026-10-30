@@ -44,8 +44,8 @@ test("captures semantic local and frame-relative world rest rotations", () => {
   assert.deepEqual([...snapshot.roleToNode.keys()], ["hips", "spine", "head"]);
   assert.deepEqual(snapshot.roleToNode.get("head"), 2);
   assert.ok(close(snapshot.restLocalRotation.get("hips"), [0, 0, 0, 1]));
-  // The rig root is rotated, but the frame-relative basis removes that root transform.
-  assert.ok(close(snapshot.restWorldRotation.get("hips"), [0, 0, 0, 1]));
+  // Root rotation is preserved in the shared external frame for source/target calibration.
+  assert.ok(close(snapshot.restWorldRotation.get("hips"), [0, 0, Math.SQRT1_2, Math.SQRT1_2]));
   assert.ok(snapshot.height > 1.5 && snapshot.height < 1.7);
   assert.equal(snapshot.boneLength.get("hips"), 0.7);
 });
@@ -59,7 +59,7 @@ test("two differently placed rig roots produce rotations in the same external fr
   const sourceSnapshot = captureHumanoidRigSnapshot(source.root, source.bones, frame);
   const targetSnapshot = captureHumanoidRigSnapshot(target.root, target.bones, frame);
 
-  assert.ok(close(sourceSnapshot.restWorldRotation.get("spine"), [0, 0, 0, 1]));
+  assert.ok(close(sourceSnapshot.restWorldRotation.get("spine"), [0, 0, Math.SQRT1_2, Math.SQRT1_2]));
   assert.ok(close(targetSnapshot.restWorldRotation.get("spine"), [0, 0, 0, 1]));
 });
 
