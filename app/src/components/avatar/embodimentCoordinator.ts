@@ -1,4 +1,4 @@
-import type { SemanticBodyState } from "./embodimentSwitch";
+import { validateSemanticBodyState, type SemanticBodyState } from "./embodimentSwitch";
 
 export type EmbodimentSwitchPhase =
   | "idle" | "preparing" | "applying" | "verifying" | "rolling-back" | "committed" | "failed";
@@ -23,7 +23,7 @@ export interface AdapterVerification {
 
 export interface EmbodimentAdapter {
   readonly id: string;
-  readonly mode: SemanticBodyState extends never ? never : "live2d" | "depth2d" | "vrm3d";
+  readonly mode: "live2d" | "depth2d" | "vrm3d";
   prepare(state: SemanticBodyState, signal: AbortSignal): Promise<void>;
   apply(state: SemanticBodyState, signal: AbortSignal): Promise<AdapterApplyReceipt>;
   verify(receipt: AdapterApplyReceipt, signal: AbortSignal): Promise<AdapterVerification>;
@@ -39,6 +39,7 @@ export interface EmbodimentSwitchEvent {
 }
 
 export type EmbodimentSwitchOutcome =
+  | { status: "unchanged"; activeAdapterId: string; revision: number }
   | { status: "committed"; activeAdapterId: string; revision: number; receipt: AdapterApplyReceipt; verification: AdapterVerification }
   | { status: "rolled-back"; activeAdapterId: string; revision: number; reason: string }
   | { status: "failed"; activeAdapterId: string; revision: number; reason: string };
@@ -87,14 +88,11 @@ export class EmbodimentSwitchCoordinator {
     const source = this.active;
     const revision = snapshot?.revision;
     if (this.busy) return { status: "failed", activeAdapterId: source.id, revision: Number.isSafeInteger(revision) ? revision : -1, reason: "switch-in-progress" };
-    if (!snapshot || !Number.isSafeInteger(revision) || revision < 0 || revision < this.lastRevision) {
+    if (!validateSemanticBodyState(snapshot) || !Number.isSafeInteger(revision) || revision < this.lastRevision) {
       return { status: "failed", activeAdapterId: source.id, revision: Number.isSafeInteger(revision) ? revision : -1, reason: "stale-or-invalid-state-revision" };
     }
     if (destination === source || destination.id === source.id) {
-      return { status: "committed", activeAdapterId: source.id, revision, receipt: {
-        adapterId: source.id, stateRevision: revision, appliedAtMonotonicMs: 0,
-        acceptedChannels: [], rejectedChannels: [], executionId: "no-op",
-      }, verification: { verified: true, stateRevision: revision, observedAtMonotonicMs: 0, observedChannels: [], mismatches: [] } };
+      return { status: "unchanged", activeAdapterId: source.id, revision };
     }
     if (!destination.id.trim()) return { status: "failed", activeAdapterId: source.id, revision, reason: "invalid-destination-adapter-id" };
 
@@ -110,8 +108,8 @@ export class EmbodimentSwitchCoordinator {
     try {
       if (controller.signal.aborted) throw new Error("switch-aborted");
       emit("preparing");
-      await destination.prepare(snapshot, controller.signal);
       prepared = true;
+      await destination.prepare(snapshot, controller.signal);
       if (controller.signal.aborted) throw new Error("switch-aborted");
 
       emit("applying");
@@ -140,9 +138,9 @@ export class EmbodimentSwitchCoordinator {
       emit("rolling-back", reason);
       try {
         const rollbackReceipt = await source.apply(snapshot, new AbortController().signal);
+        if (!isValidReceipt(rollbackReceipt, source.id, revision)) throw new Error("invalid-source-rollback-receipt");
         const rollbackVerification = await source.verify(rollbackReceipt, new AbortController().signal);
-        if (!isValidReceipt(rollbackReceipt, source.id, revision)
-          || !isValidVerification(rollbackVerification, revision)
+        if (!isValidVerification(rollbackVerification, revision)
           || !rollbackVerification.verified || rollbackVerification.mismatches.length) {
           throw new Error("source-rollback-verification-failed");
         }
