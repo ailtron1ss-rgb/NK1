@@ -354,7 +354,7 @@ export class TemporalObjectTracker {
       if(d[0]===edge&&t[0]===edge&&dMargin>=this.config.ambiguityMargin&&tMargin>=this.config.ambiguityMargin)accepted.push(edge);
     }
     const assignedDetections=new Set<number>(),assignedTracks=new Set<string>();
-    let associatedTrackCount=0,newTrackCount=0,ambiguousCount=0,untrackedCount=0;
+    let associatedTrackCount=0,newTrackCount=0,ambiguousCount=duplicateLocalDetections.size,untrackedCount=0;
     for(const edge of accepted){
       if(assignedDetections.has(edge.detectionIndex)||assignedTracks.has(edge.trackId))continue;
       const index=edge.detectionIndex,track=state.tracks.find(item=>item.id===edge.trackId);
