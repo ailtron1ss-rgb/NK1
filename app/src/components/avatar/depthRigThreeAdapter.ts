@@ -25,7 +25,7 @@ export function applyDepthRigTransforms(
   });
 
   const errors: string[] = [];
-  for (const name of duplicates) errors.push(`duplicate-scene-node:${name}`);
+  for (const name of duplicates) if (transforms.some((transform) => transform.id === name)) errors.push(`duplicate-scene-node:${name}`);
   const seen = new Set<string>();
   for (const transform of transforms) {
     if (seen.has(transform.id)) errors.push(`duplicate-transform:${transform.id}`);
