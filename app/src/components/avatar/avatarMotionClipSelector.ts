@@ -14,12 +14,12 @@ export function selectActionMotionClip<T extends AvatarMotionClipLike>(
   action: AvatarMotionAction,
 ): T | null {
   const rules: Record<AvatarMotionAction, RegExp> = {
-    respond: /talk|speak|gesture|explain|wave/i,
-    explore: /look|walk|explore|turn|inspect/i,
-    verify: /think|inspect|focus|work|write/i,
-    rest: /idle|rest|breath|sit/i,
-    reflect: /think|ponder|idle/i,
-    wait: /idle|stand|breath/i,
+    respond: /respond|talk|speak|gesture|explain|wave/i,
+    explore: /explore|look|walk|turn|inspect/i,
+    verify: /verify|check|think|inspect|focus|work|write/i,
+    rest: /rest|idle|breath|sit/i,
+    reflect: /reflect|think|ponder|idle/i,
+    wait: /wait|idle|stand|breath/i,
   };
   const rule = rules[action];
   return clips.find((clip) => rule.test(String(clip.name ?? ""))) ?? null;
