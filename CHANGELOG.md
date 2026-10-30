@@ -1,3 +1,8 @@
+## [NK1][аспект9] Fix browser speech cleanup syntax (2026-10-30)
+
+- Correct the `try/catch` block in the AvatarStage speech-effect cleanup so the module parses and cancellation cleanup remains best-effort.
+- This is a source-level syntax correction; TypeScript/build/test execution is still pending.
+
 ## [NK1][аспект9] Add versioned speech lifecycle protocol (2026-10-30)
 
 - Define SpeechLifecycleEventV1 with stable utterance/event IDs, provider identity, clock identity, monotonic timestamp, ordered sequence, lifecycle phase and optional provider boundary/error metadata.
