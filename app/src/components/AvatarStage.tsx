@@ -127,6 +127,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const saved = readAvatarPreference("kurisu-avatar-mode");
     return saved === "legacy" || saved === "original" || saved === "2.5d" || saved === "3d" ? saved : "live2d";
   });
+  const currentModeRef = useRef(mode);
+  currentModeRef.current = mode;
   const lastTurn = snap.chat[snap.chat.length - 1];
   const originalGazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
     explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
@@ -169,7 +171,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       }
       if (ev.data.type === "live2d_intent_ack") {
         const version = ev.data.stateVersion;
-        if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0 || version !== latestIntentStateVersionRef.current) return;
+        if (currentModeRef.current !== "live2d" || typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0 || version !== latestIntentStateVersionRef.current) return;
         if (ev.data.appliedRevision !== version || ev.data.complete !== false) return;
         if (ev.data.status !== "parameters-observed" && ev.data.status !== "accepted-unverified") return;
         if (ev.data.visualCompletionVerified !== false) return;
@@ -188,6 +190,13 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, []);
+
+  useEffect(() => {
+    if (mode !== "live2d") {
+      latestIntentStateVersionRef.current = 0;
+      setIntentAck(null);
+    }
+  }, [mode]);
 
   useEffect(() => {
     // Each preference is best-effort: a blocked storage write must not prevent avatar/voice controls.
