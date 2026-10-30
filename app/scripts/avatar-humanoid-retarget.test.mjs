@@ -72,8 +72,8 @@ test("world-rest calibration conjugates source-local motion into target-local ax
   const output = retargetLocalRotations(profile, new Map([["head", xQuarter]]), { requireAxisCalibration: true });
   assert.ok(output.has("head"));
   const expected = multiplyQuaternion(multiplyQuaternion(zQuarter, xQuarter), inverseQuaternion(zQuarter));
-  assert.ok(output.get("head")!.every((value, index) => Math.abs(value - expected[index]) < 1e-8));
-  assert.ok(Math.abs(output.get("head")![1] - yQuarter[1]) < 1e-8);
+  assert.ok(output.get("head").every((value, index) => Math.abs(value - expected[index]) < 1e-8));
+  assert.ok(Math.abs(output.get("head")[1] - yQuarter[1]) < 1e-8);
 });
 
 test("strict axis calibration skips roles that have no paired world-rest frame", () => {
