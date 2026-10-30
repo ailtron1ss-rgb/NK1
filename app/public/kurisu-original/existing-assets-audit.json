@@ -686,6 +686,15 @@
   "semanticAuditSummary": {
     "matchedPriorAuditIds": 25,
     "requiresFreshVisualReview": 7,
-    "policy": "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified."
+    "policy": "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified.",
+    "unmatchedIds": [
+      "embarrassed",
+      "phone_look",
+      "thinking_chin",
+      "soft_smile",
+      "city_stand",
+      "phone_lean",
+      "street_walk"
+    ]
   }
 }
