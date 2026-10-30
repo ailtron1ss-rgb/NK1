@@ -5,6 +5,9 @@
 - Add shared-channel pose blending and monotonic transition progress, plus focused regression tests.
 - Document transactional prepare/commit/rollback, adapter lifecycle, rig capability manifests, cross-renderer E2E and release gates. This is the first contract foundation; React renderer lifecycle integration and real 2D/2.5D/3D round-trip validation remain pending.
 
+- Add a transactional adapter coordinator with prepare/apply/independent-verify/commit sequencing, monotonic revision checks, single-flight protection, destination cleanup and verified source rollback. Execution is committed only from a matching adapter receipt plus independent verification; no-op mode changes are not represented as executed.
+- Add coordinator regression coverage for commit, verification failure and rollback, stale revisions, and concurrent switch rejection. This remains a renderer-neutral coordinator; concrete Live2D/depth-2D/VRM adapter wiring and browser/device E2E are still pending.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
