@@ -1,5 +1,6 @@
 ## [NK1][WorkPass Memory] Keep metadata recall indexes coherent (2026-10-30)
 
+- Cover metadata-index cleanup on explicit forget and verify that snapshot/restore cannot resurrect forgotten topic or entity postings.
 - Record real context changes in revision history and reconsolidation counters; idempotent patches do not create false revisions.
 - Synchronize the metadata inverted index whenever `MemoryOS2.updateContext()` changes curated context fields.
 - Synchronize the same index when duplicate `encode()` calls merge tags, entities and context into an existing canonical memory.
