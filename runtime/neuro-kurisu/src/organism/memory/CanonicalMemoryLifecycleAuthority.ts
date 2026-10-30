@@ -14,7 +14,7 @@ const safePlan=(raw:unknown):CanonicalMemoryLifecycleState['lastPlan']=>{
   const keys=['traces','events','goals','memories','semanticItems'] as const;
   if(keys.some(key=>safeCounter(b[key],-1)<0))return undefined;
   const action=row.action;
-  if(action!=='idle'&&action!=='trim'&&action!=='compact'&&action!=='protect')return undefined;
+  if(action!=='idle'&&action!=='trim'&&action!=='compact')return undefined;
   return {budgets:{traces:safeCounter(b.traces),events:safeCounter(b.events),goals:safeCounter(b.goals),memories:safeCounter(b.memories),semanticItems:safeCounter(b.semanticItems)},action,pressure01:clamp01(typeof row.pressure01==='number'?row.pressure01:0),hotLoad01:clamp01(typeof row.hotLoad01==='number'?row.hotLoad01:0)};
 };
 const safeDecisions=(raw:unknown):ConsolidationDecision[]=>{
