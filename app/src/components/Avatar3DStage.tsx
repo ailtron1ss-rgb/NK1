@@ -4,7 +4,7 @@ import type { MouthPose } from "./avatar/embodimentTimeline";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 import { createVRMAnimationClip, VRMAnimationLoaderPlugin, VRMLookAtQuaternionProxy } from "@pixiv/three-vrm-animation";
-import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
+import { clearStoredAvatarAnimation, clearStoredAvatarModel, loadStoredAvatarAnimation, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarAnimation, saveAvatarModel } from "./avatar/avatarModelStore";
 import { inspectSelfContainedGlb } from "./avatar/avatarModelValidation";
 import { buildHumanoidRoleMap, canonicalizeHumanoidBoneName } from "./avatar/humanoidBoneMap";
 import { summarizeVrmLicenseMetadata } from "./avatar/vrmLicenseMetadata";
@@ -107,15 +107,15 @@ export function Avatar3DStage(props:Props){
    return()=>{disposed=true;cancelAnimationFrame(raf);observer?.disconnect();window.removeEventListener("resize",resize);renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointermove",move);renderer.domElement.removeEventListener("pointerup",up);renderer.domElement.removeEventListener("pointercancel",up);rt.mixer?.stopAllAction();if(rt.vrm){VRMUtils.deepDispose(rt.vrm.scene);disposeTree(rt.body.root);}else disposeTree(scene);renderer.dispose();renderer.domElement.remove();runtime.current=null;setReady(false);};
   }catch(e){setState("webgl-unavailable");setMessage("WebGL недоступен. Включите аппаратное ускорение или используйте браузер с поддержкой WebGL.");setStorageMessage(e instanceof Error?e.message.slice(0,160):"Ошибка запуска 3D-рендерера");return()=>renderer?.dispose?.();}
  },[]);
- const loadVrma=useCallback(async(file:File)=>{
+ const loadVrma=useCallback(async(blob:Blob,name:string,persist:boolean)=>{
   const rt=runtime.current;
   const fail=(reason:string)=>setMessage(`VRMA: ${reason}`);
   if(!rt?.vrm||!rt.mixer){fail("сначала загрузите VRM-персонажа.");return;}
-  if(!file.size||file.size>MAX_AVATAR_MODEL_BYTES){fail("файл пуст или превышает 90 МиБ.");return;}
+  if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){fail("файл пуст или превышает 90 МиБ.");return;}
   const token=++animationToken.current;
   setMessage("Проверка и загрузка VRMA-анимации…");
   try{
-   const data=await file.arrayBuffer();
+   const data=await blob.arrayBuffer();
    if(token!==animationToken.current||runtime.current!==rt)return;
    inspectSelfContainedGlb(data,MAX_AVATAR_MODEL_BYTES);
    const loader=new GLTFLoader();
@@ -126,7 +126,7 @@ export function Avatar3DStage(props:Props){
      const animations=Array.isArray(gltf.userData?.vrmAnimations)?gltf.userData.vrmAnimations:[];
      if(!animations.length)throw new Error("в файле не найдено расширение VRMC_vrm_animation.");
      if(animations.length>20)throw new Error("файл содержит больше 20 анимаций.");
-     const fileBase=file.name.replace(/\.vrma$/iu,"").slice(0,96)||"vrma";
+     const fileBase=name.replace(/\.vrma$/iu,"").slice(0,96)||"vrma";
      const clips=animations.map((animation:any,index:number)=>{
       const clip=createVRMAnimationClip(animation,rt.vrm);
       const sourceName=typeof animation?.name==="string"?animation.name:"";
@@ -140,6 +140,7 @@ export function Avatar3DStage(props:Props){
      rt.clips=[...rt.modelClips,...rt.vrmaClips];
      rt.clipName="";
      setMessage(`VRMA подключена: ${clips.map((clip:any)=>clip.name).join(", ")}. Для автоматического выбора используйте имена idle, respond, explore, verify, reflect или rest.`);
+     if(persist)void saveAvatarAnimation(blob,name).then(()=>setStorageMessage("VRMA сохранена локально в IndexedDB браузера.")).catch(()=>setStorageMessage("VRMA подключена, но браузер не разрешил её сохранить."));
     }catch(error){
      disposeTree(gltf.scene);
      fail(error instanceof Error?error.message:"не удалось преобразовать VRMA в клип.");
@@ -147,10 +148,16 @@ export function Avatar3DStage(props:Props){
    },(error:any)=>{if(token!==animationToken.current)return;fail(error instanceof Error?error.message:"не удалось разобрать VRMA GLB.");});
   }catch(error){if(token!==animationToken.current)return;fail(error instanceof Error?error.message:"ошибка чтения VRMA.");}
  },[]);
+ useEffect(()=>{
+  if(state!=="loaded"||!modelName||!runtime.current?.vrm)return;
+  let cancelled=false;
+  void loadStoredAvatarAnimation().then((saved)=>{if(!cancelled&&saved)void loadVrma(saved.blob,saved.name,false);}).catch(()=>{if(!cancelled)setStorageMessage("VRMA IndexedDB недоступна; используйте ручную загрузку .vrma.");});
+  return()=>{cancelled=true;};
+ },[state,modelName,loadVrma]);
  useEffect(()=>{if(!ready)return;let cancelled=false;void loadStoredAvatarModel().then((saved)=>{if(!cancelled&&saved)void loadModel(saved.blob,saved.name,false);}).catch(()=>{if(!cancelled)setStorageMessage("IndexedDB недоступна; процедурное тело остаётся рабочим.");});return()=>{cancelled=true;};},[ready,loadModel]);
  const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){const hasModel=Boolean(runtime.current?.loaded);setState(hasModel?"loaded":"error");setMessage(`Поддерживаются бинарные модели .vrm и .glb.${hasModel?" Предыдущая модель остаётся активной.":" Процедурное тело остаётся активным."}`);return;}void loadModel(file,file.name,true);};
- const onAnimationFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(file)void loadVrma(file);};
- const reset=async()=>{loadToken.current++;animationToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.modelClips=[];rt.vrmaClips=[];rt.vrmaDefaultClip=null;rt.clipName="";rt.bones=[];rt.vrm=null;rt.lookAtProxy=null;rt.vrmExpressionKeys=[];rt.vrmExpressionDefinitions=[];rt.vrmMorphTargets=[];rt.body.root.visible=true;}setModelName("");setState(rt?"procedural":"webgl-unavailable");setMessage("");try{await clearStoredAvatarModel();setStorageMessage("Используется процедурное 3D-тело; выбранная модель удалена из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
+ const onAnimationFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(file)void loadVrma(file,file.name,true);};
+ const reset=async()=>{loadToken.current++;animationToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.modelClips=[];rt.vrmaClips=[];rt.vrmaDefaultClip=null;rt.clipName="";rt.bones=[];rt.vrm=null;rt.lookAtProxy=null;rt.vrmExpressionKeys=[];rt.vrmExpressionDefinitions=[];rt.vrmMorphTargets=[];rt.body.root.visible=true;}setModelName("");setState(rt?"procedural":"webgl-unavailable");setMessage("");try{await Promise.all([clearStoredAvatarModel(),clearStoredAvatarAnimation()]);setStorageMessage("Используется процедурное 3D-тело; VRM и VRMA удалены из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
   <div ref={host} className="absolute inset-0"/>
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p></div></div>:null}
