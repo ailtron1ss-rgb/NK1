@@ -166,6 +166,7 @@ jobs:
           node --experimental-strip-types tests/workpass71-continuum-timescale.mjs
           node --experimental-strip-types tests/workpass69-speech-interruption-gateway.mjs
           node --experimental-strip-types tests/termux-tts-concurrency-workpass69.mjs
+          npm run test:workpass628:native-speech-events
           node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs
           node --experimental-strip-types tests/organism-smoke.mjs
           node --experimental-strip-types tests/memory-retrieval-experiment.mjs
