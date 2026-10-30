@@ -1,5 +1,7 @@
 ## [NK1][Aspect 11] Add renderer-neutral body switching contract (2026-10-30)
 
+- Add revision-bound Live2D parameter readback acknowledgement after Cubism `beforeModelUpdate`; report observed values only when the core readback API is available, otherwise return accepted-unverified. Expression/motion remain explicitly unverified and the acknowledgement is partial (`complete: false`), so it is not an adapter receipt and cannot authorize a cross-renderer commit.
+
 - Add a versioned semantic body snapshot that preserves emotion, gaze, speech clock, motor intent, supported pose channels and wardrobe identity across renderer changes.
 - Add capability-aware handoff planning for Live2D, depth-2D and VRM3D; unsupported joints/features are reported explicitly rather than claimed as executed.
 - Add shared-channel pose blending and monotonic transition progress, plus focused regression tests.
