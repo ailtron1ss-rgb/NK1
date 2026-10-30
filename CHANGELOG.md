@@ -1,3 +1,12 @@
+## [NK1][Aspect 15] Harden renderer-scoped garment selection (2026-10-30)
+
+- Add a single selection validator that rejects unknown asset IDs, duplicate IDs, cross-renderer assets and multiple garments in one slot before renderer mutation.
+- Sanitize stale and cross-renderer IDs during per-slot updates while preserving valid independent slots.
+- Skip malformed IDs/slots and repeated IDs when choosing default garment variants.
+- Gate VRM apply in Avatar3DStage on the validated selection contract.
+- Add regressions for invalid selection classes and slot-preserving updates.
+- New tests are pending exact-HEAD GitHub Actions verification; no production garment art, Live2D/2.5D switching, device E2E or Release ZIP refresh is claimed.
+
 ## [NK1][Aspect 15] Enforce one-per-slot defaults and verify exact-head suite (2026-10-30)
 
 - Add default VRM wardrobe selection that selects at most one asset per slot even when a bundle contains alternative garments.
