@@ -46,7 +46,7 @@ export class P80UnifiedSelfState {
     this.state.agency01=clamp(this.state.agency01*.92+agency*.08);
     this.state.realityAlignment01=clamp(this.state.realityAlignment01*.93+realityAlignment*.07);
     this.state.noveltyPressure01=clamp(this.state.noveltyPressure01*.88+noveltyPressure*.12);
-    this.state.lastReason=\`mode=\${mode};streak=\${modeStreak};novelty=\${this.state.noveltyPressure01.toFixed(3)}\`;
+    this.state.lastReason='mode='+mode+';streak='+modeStreak+';novelty='+this.state.noveltyPressure01.toFixed(3);
     return this.snapshot();
   }
   actionBias(action:P80Mode):number {
