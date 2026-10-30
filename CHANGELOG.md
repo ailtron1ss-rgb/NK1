@@ -1,3 +1,13 @@
+## [NK1][executor] Preserve unresolved project side-effect checkpoints (2026-10-30)
+
+- Hardened `AutonomousProjectExecutor.restore()`: reconstruct state only from own data properties, ignore accessors without executing them, validate step/checkpoint identities, bound arrays and numeric counters, and clone only bounded JSON-like `toolInput` data.
+- Preserve an unresolved operation across stale snapshots and reject snapshot replacement that would erase, replace, or regress its operation identity/stage. Checkpoint identity mismatches prefer the side-effect checkpoint and discard only the incompatible project plan cursor.
+- `clearStepOperation()` now only clears a pre-Gateway `prepared` intent or a `receipt-recorded` operation after its projection has completed. Pending, waiting-approval, and reconciliation-required operations remain locked.
+- `ensure()` no longer replaces a project while a side effect or its receipt projection is unresolved; after reconciliation and explicit clear, a new project may be initialized.
+- Reject overlong or control-character project/step/tool/idempotency/decision identities instead of truncating them into collisions. Refuse operation-sequence overflow.
+- Extend WorkPass60 checkpoint regressions for stale/accessor-backed restores, pending/reconciliation clear denial, project-switch preservation, safe receipt-recorded release, invalid identities, and sequence exhaustion.
+- Wire project checkpoint/reconciliation, receipt replay, persistence, and subsystem snapshot regressions into `workpass71-validation.yml`.
+
 ## [NK1][executor] Restore project-executor snapshot round-trip identity and re-align stale executor regressions (2026-10-30)
 
 - Restore the snapshot round-trip contract in `AutonomousProjectExecutor`: the default state now declares `lastOutcomeId`, so a fresh `snapshot()` and a `restore()`d snapshot expose the same own-key set. Previously `restore()` materialized `lastOutcomeId` while the default state omitted it, so `snapshot()` diverged (`lastOutcomeId: undefined`) after a save/restore cycle. This unblocked the `big-pass-49` subsystem-runtime round-trip regression.
