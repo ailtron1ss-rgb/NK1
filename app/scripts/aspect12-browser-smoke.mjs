@@ -68,8 +68,48 @@ async function inspectViewport(browser, name, viewport) {
       resourceCount: resources.length,
       transferSizeBytes: resources.reduce((sum, item) => sum + (item.transferSize || 0), 0),
       jsResourceCount: resources.filter(item => /\.m?js(?:\?|$)/i.test(item.name)).length,
-      // Capture likely layout offenders so a failing viewport check is actionable.
+      // Diagnose both visible off-canvas boxes and clipped scroll containers.
+      // scrollWidth can exceed the viewport even when every element's border box
+      // remains inside it (for example, a transformed child or pseudo-element).
       overflowCandidates: [...document.querySelectorAll("body *")]
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          const before = getComputedStyle(element, "::before");
+          const after = getComputedStyle(element, "::after");
+          return {
+            tag: element.tagName.toLowerCase(),
+            id: element.id || null,
+            className: typeof element.className === "string" ? element.className.slice(0, 160) : null,
+            left: Math.round(rect.left * 10) / 10,
+            right: Math.round(rect.right * 10) / 10,
+            width: Math.round(rect.width * 10) / 10,
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+            scrollDelta: element.scrollWidth - element.clientWidth,
+            minWidth: style.minWidth,
+            maxWidth: style.maxWidth,
+            computedWidth: style.width,
+            transform: style.transform,
+            gridTemplateColumns: style.gridTemplateColumns,
+            flex: style.flex,
+            position: style.position,
+            overflowX: style.overflowX,
+            whiteSpace: style.whiteSpace,
+            beforeContent: before.content,
+            beforeWidth: before.width,
+            beforeTransform: before.transform,
+            afterContent: after.content,
+            afterWidth: after.width,
+            afterTransform: after.transform,
+            text: (element.innerText || "").trim().replace(/\\s+/g, " ").slice(0, 80),
+          };
+        })
+        .filter((item) => item.width > 0 && (item.right > window.innerWidth + 1 || item.left < -1))
+        .sort((a, b) => b.right - a.right)
+        .slice(0, 12),
+      scrollContainers: [document.documentElement, document.body, ...document.querySelectorAll("body *")]
+        .filter((element) => element.scrollWidth > element.clientWidth + 1)
         .map((element) => {
           const rect = element.getBoundingClientRect();
           const style = getComputedStyle(element);
@@ -79,15 +119,27 @@ async function inspectViewport(browser, name, viewport) {
             className: typeof element.className === "string" ? element.className.slice(0, 160) : null,
             left: Math.round(rect.left * 10) / 10,
             right: Math.round(rect.right * 10) / 10,
-            width: Math.round(rect.width * 10) / 10,
-            position: style.position,
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+            scrollDelta: element.scrollWidth - element.clientWidth,
+            minWidth: style.minWidth,
+            computedWidth: style.width,
+            transform: style.transform,
             overflowX: style.overflowX,
-            text: (element.innerText || "").trim().replace(/\\s+/g, " ").slice(0, 100),
+            gridTemplateColumns: style.gridTemplateColumns,
+            flex: style.flex,
           };
         })
-        .filter((item) => item.width > 0 && (item.right > window.innerWidth + 1 || item.left < -1))
-        .sort((a, b) => b.right - a.right)
-        .slice(0, 12),
+        .sort((a, b) => b.scrollDelta - a.scrollDelta)
+        .slice(0, 20),
+      viewportMeta: document.querySelector('meta[name="viewport"]')?.content ?? null,
+      rootMetrics: {
+        innerWidth: window.innerWidth,
+        documentClientWidth: document.documentElement.clientWidth,
+        documentScrollWidth: document.documentElement.scrollWidth,
+        bodyClientWidth: document.body.clientWidth,
+        bodyScrollWidth: document.body.scrollWidth,
+      },
     };
   });
   const result = {
