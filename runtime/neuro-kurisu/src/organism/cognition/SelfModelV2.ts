@@ -44,7 +44,7 @@ export class SelfModelEngine {
     restored.agencyBelief=unit(source.agencyBelief,defaults.agencyBelief);
     restored.recentErrors=Array.isArray(source.recentErrors)?source.recentErrors.slice(-64).map((x:unknown)=>unit(x,0.5)):[];
     restored.preferredStrategies=Array.isArray(source.preferredStrategies)
-      ? [...new Set(source.preferredStrategies.filter((x:unknown)=>typeof x==='string'&&x.trim()).map((x:string)=>x.trim().slice(0,64)))].slice(0,8)
+      ? [...new Set(source.preferredStrategies.filter((x:unknown):x is string=>typeof x==='string'&&x.trim().length>0).map((x:string)=>x.trim().slice(0,64)))].slice(0,8)
       : [];
     restored.updatedAt=Math.max(0,finite(source.updatedAt,defaults.updatedAt));
     restored.recoveryCount=integer(source.recoveryCount);
