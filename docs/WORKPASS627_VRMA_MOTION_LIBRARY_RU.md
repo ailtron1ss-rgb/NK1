@@ -57,7 +57,7 @@ For a clip containing lookAtTrack, the runtime creates VRMLookAtQuaternionProxy 
 The existing avatar IndexedDB was version 1 with an active-model object store. It is now version 2 and adds an independent active-animation object store:
 - model replacement updates only the model record;
 - uploaded VRMA updates only the animation record;
-- loading a saved VRM restores the saved VRMA sidecar and recompiles it against the newly loaded character;
+- loading a saved VRM restores the saved VRMA sidecar and recompiles it against the newly loaded character; each successful VRM replacement increments a separate model revision, so the sidecar is recompiled even when the new model has the same filename;
 - reset clears both records.
 
 The migration creates the new object store only when it does not already exist; it preserves the existing active-model store and its saved Blob. Separate model/animation size constants and safe filename normalization remain in place. IndexedDB failure does not block the in-memory import; the UI reports that persistence was unavailable.
