@@ -1,3 +1,10 @@
+## [NK1][аспект06] Route concurrent affect components into intrinsic motivation (2026-10-30)
+
+- Extend the existing intrinsic motivation input with an optional bounded mixed-affect distribution while retaining the legacy single-label signal.
+- Aggregate component-weighted exploration, regulation, engagement and connection contributions; preserve normalized component provenance in the existing drive state.
+- Add a regression case where curiosity, anxiety and frustration coexist and must contribute to both exploration and regulation rather than collapsing to one dominant label.
+- Pending Actions validation and live OrganismCore wiring review; no claim of full end-to-end integration.
+
 ## [NK1][аспект06] Add concurrent mixed-affect appraisal and weighted action tendencies (2026-10-30)
 
 - Preserve up to four simultaneous affective components from continuous appraisal evidence instead of reducing the internal affect state to one mutually exclusive label.
