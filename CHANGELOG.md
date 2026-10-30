@@ -1,3 +1,11 @@
+## [NK1][планирование] Master plan завершения до 100% (2026-10-30)
+
+- Добавлен единый аспектный backlog с двумя независимыми оценками: степень реализации и степень сквозной доказанности.
+- Зафиксированы фактические пробелы и порядок интеграции когнитивных, memory/learning, affect/personality, perception/tool, voice, motor и embodiment направлений.
+- Добавлена архитектура одного OrganismState с взаимозаменяемыми 2D/2.5D/3D renderer adapters и транзакцией переключения тела.
+- Зафиксированы критерии DoD, device/soak/release gates, а также запрет считать симуляцию или неподтверждённый outcome реальным действием.
+- План не меняет статусы лицензий и не заявляет об обновлении Release ZIP.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
