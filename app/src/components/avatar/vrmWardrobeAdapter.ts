@@ -224,6 +224,13 @@ export function attachVerifiedVrmGarment(input: {
     }
   });
 
+  const previous: Array<{ node: ObjectNode; visible: boolean | undefined; userData: Record<string, unknown> }> = [];
+  visit(avatarRoot, (node) => {
+    if (node !== clone && node.userData?.nk1WardrobeSlot === slot) {
+      previous.push({ node, visible: node.visible, userData: { ...(node.userData ?? {}) } });
+    }
+  });
+
   try {
     for (const mesh of meshes) {
       const mappedBones = mesh.skeleton.bones.map((bone) => {
@@ -240,12 +247,6 @@ export function attachVerifiedVrmGarment(input: {
       mesh.bind(remapped, mesh.bindMatrix);
     }
     clone.userData = { ...(clone.userData ?? {}), nk1WardrobeSlot: slot, nk1WardrobeAssetId: assetId };
-    const previous: Array<{ node: ObjectNode; visible: boolean | undefined; userData: Record<string, unknown> }> = [];
-    visit(avatarRoot, (node) => {
-      if (node !== clone && node.userData?.nk1WardrobeSlot === slot) {
-        previous.push({ node, visible: node.visible, userData: { ...(node.userData ?? {}) } });
-      }
-    });
     avatarRoot.add(clone);
     for (const old of previous) {
       old.node.visible = false;
