@@ -34,6 +34,9 @@ test("imported avatar stage applies the shared facial timeline through semantic 
  assert.ok(stage.includes("applySemanticMorphTargets(rt.morphTargets,morphValues)"));
  assert.ok(stage.includes("rt.morphTargets.push"));
  assert.ok(stage.includes("rt.morphTargets=[]"));
+ const baselineReset=stage.indexOf("rt.morphTargets.forEach((target)=>{target.influences[target.index]=target.baseInfluence;})");
+ const mixerUpdate=stage.indexOf("rt.mixer?.update(dt)");
+ assert.ok(baselineReset>=0&&mixerUpdate>baselineReset,"baseline must be restored before authored animation updates");
 });
 
 test("semantic expression composes with stronger authored morph animation",()=>{
