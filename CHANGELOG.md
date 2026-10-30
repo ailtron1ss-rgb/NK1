@@ -1,3 +1,80 @@
+## [NK1][Aspect 09] Shared semantic gesture motor for 3D embodiment (2026-10-30)
+
+- Added `resolveAvatarGestureArmTargets(...)`: converts the cognitive gesture profiles (`considering`, `presenting`, `examining`, `reassuring`, `emphatic`) into bounded, asymmetric shoulder targets with affect and awake-state modulation.
+- Wired `Avatar3DStage` to the same `planAvatarMotorIntent(...)` used by the Live2D path. Both procedural body arms and recognized upper-arm/shoulder bones in imported GLB/VRM rigs now consume the shared gesture plan; the previous independent action-only arm table was removed.
+- Added tests for bounded outputs, asymmetric presenting posture, anger/protective/sadness modulation, asleep neutralization, and 3D stage integration.
+- Scope remains deliberately honest: this is a shared high-level motor policy and shoulder adapter, not full-body IK, finger articulation, collision avoidance, or garment physics. Those require a humanoid rig with elbow/wrist joints and a dedicated retarget/IK layer.
+
+## [NK1][Aspect 09 — Live2D] Strict motion routing and verified regression pass (2026-10-30)
+
+- Both app and runtime viewers now reject an unknown motion group, a non-integer index, or an index outside the actual registered Cubism clip count before requesting playback. This also protects the legacy compatibility message path, not only the strict EmbodimentIntentV1 path.
+- The production contract checks that both viewer motion inventories match the canonical model and that each viewer enforces the same bounds.
+- Current HEAD `b8f2995bd086681b198529259a68bf75cf09909a` passed all six PR status checks, including the full targeted-and-regression job, app script suite, app typecheck, app development build, runtime typecheck, Live2D regressions, speech/persistence tests and the broader memory/cognitive regression set.
+- Browser/Android visual calibration, low-memory profile, sustained device soak and real acoustic phoneme lip-sync remain outstanding. The Release ZIP was not changed.
+
+## [NK1][Aspect 09 — Live2D] Frame-rate-independent expression, gaze, lip and blink control (2026-10-30)
+
+- Replace per-frame interpolation factors with elapsed-time smoothing shared by the app and runtime viewers.
+- Keep app `viewer.html` as a classic inline script for the existing message-handler regression harness; dynamically import the shared helpers before Cubism initialization. Runtime viewer imports the same helpers statically. Facial expression, mouth opening/form, semantic gaze and micro-saccades now respond consistently across 14/30/60/144 Hz and after background-tab stalls.
+- Replace the accumulating blink multiplier with a bounded 180 ms symmetric time-sampled envelope; repeated blinks no longer depend on ticker frequency.
+- Add expression-specific eye openness so tired, sad, focused and other expressions do not all force the eyes to the same fully-open baseline.
+- Hoist face profiles out of the per-frame update path to avoid recreating the profile map on every Cubism update.
+- Add a production contract test for model file references, CDI parameter writes, physics input/output IDs, registered expressions/motion groups, and app/runtime helper parity.
+- This is a code-level timing and asset-integrity improvement. Visual calibration, real browser rendering, Android thermal/memory soak, and measured lip-sync/interrupt latency remain unverified.
+
+## [NK1][Aspect 01 — Live2D] Guard asynchronous Cubism motion transitions (2026-10-30)
+
+- Add monotonic request sequencing to both app and runtime viewers so stale promise completions cannot overwrite newer motion state or emit obsolete errors.
+- Clear the active deduplication key after a current request fails or returns `false`, allowing a later intent to retry; handle synchronous exceptions consistently.
+- Add regression assertions for both viewer paths. Actual browser/Android transition latency remains unmeasured.
+
+## [NK1][Aspect 01 — Live2D] Force-preempt Cubism motion on speech cancellation (2026-10-30)
+
+- Verified the pinned `pixi-live2d-display@0.4.0` API and use its `MotionPriority.FORCE` value (3) when a validated cancelled speech intent selects `Idle[0]`; ordinary intents retain NORMAL priority (2).
+- Preserve `speechPhase` through the runtime normalizer and add regression coverage for both app and runtime viewer entry points.
+- Cubism 4's motion manager stops the prior motion queue when the forced motion begins; real browser/Android latency remains unmeasured.
+
+## [NK1][Aspect 01 — Live2D] Reset expressive pose on speech cancellation (2026-10-30)
+
+- On cancelled speech, AvatarStage now emits the shipped `Idle[0]` motion and clears gesture profile/intensity and head tilt, preventing the interrupted response pose from remaining the active intent.
+- Added a focused regression guard and documented that actual Cubism clip interruption timing still requires browser/Android visual validation.
+
+## [NK1][Aspect 01 — Live2D] Bind cancellation tokens to speech event identity (2026-10-30)
+
+- Tightened app and runtime protocol validation so a cancelled speech envelope must carry exactly `cancel:${speechEventId}`, preventing a cancellation marker for one utterance from being replayed against another.
+- Added app/runtime regression coverage; the viewer already enforced the same exact identity relation.
+
+## [NK1][Aspect 01 — Live2D] Route explanations to an authored hand-motion clip (2026-10-30)
+
+- Inspected the registered Cubism motion assets and confirmed `Special[1]` contains shoulder, arm and hand parameter curves.
+- Explanatory motor intent now selects that shipped clip; regression coverage reads the actual motion JSON and verifies its upper-limb channels.
+- Visual/device acceptance remains pending.
+
+## [NK1][Aspect 01 — Live2D] Semantic gesture type contract fix (2026-10-30)
+
+- Added optional, backward-compatible `gestureProfile` and `gestureIntensity` fields to the app-side EmbodimentIntentV1 TypeScript contract.
+- Validate supported gesture profiles and the 0..0.8 intensity bound at the app boundary, matching the runtime normalizer and JSON schema.
+
+## [NK1][Aspect 01 — Live2D] Semantic upper-body gesture composition (2026-10-30)
+
+- Forward bounded gesture profile/intensity through the existing EmbodimentIntentV1 envelope with backward-compatible optional fields.
+- Apply subtle profile-driven offsets to confirmed ParamBodyAngleX/Y channels in app and runtime viewers.
+- Extend contract validation and regression coverage; unknown profiles and out-of-range intensity fail closed.
+
+## [NK1][Aspect 01 — Live2D] Semantic gesture profiles (2026-10-30)
+
+- Distinguish considering, presenting, examining, reassuring and emphatic gesture intent with bounded intensity.
+- Compose profile-specific micro head-tilt with the existing authored motion selection; keep the strict EmbodimentIntentV1 protocol and existing Cubism motion groups unchanged.
+- Add planner regression coverage; explicit limitation: this does not add arm IK or new authored hand-motion assets.
+
+## [NK1][Aspect 01 — Live2D] Continuous expressive face and torso control (2026-10-30)
+
+- Added bounded brow, eye-smile and cheek channels driven by the current emotional expression and intensity, using parameters confirmed in the canonical Kurisu CDI3 rig.
+- Added subtle continuous torso follow-through and breathing through existing body-angle and breath parameters; authored motion and physics remain the primary animation layer.
+- Kept the app-served and runtime viewer implementations synchronized and added regression assertions for the new channels.
+- Added the Aspect 01 workpass document with baseline, constraints, validation gates and remaining work.
+- Browser/device visual acceptance and exact-HEAD CI remain pending; the latest Release ZIP was not modified.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -2794,3 +2871,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+- [NK1][Aspect 01] Added low-pass blending for continuous Live2D facial channels to reduce abrupt expression changes; app/runtime viewers remain synchronized. Browser and Android visual tuning remains pending.
+- [NK1][Aspect 01] Smoothed semantic eye targets independently from micro-saccades and replaced random blink/saccade timing with state-version-seeded deterministic sequences in both Live2D viewers; real-device visual tuning remains pending.

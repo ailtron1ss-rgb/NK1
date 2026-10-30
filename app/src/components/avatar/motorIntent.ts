@@ -17,11 +17,17 @@ export interface AvatarMotorIntentInput {
   awake: boolean;
 }
 
+export type AvatarGestureProfile = "none" | "considering" | "presenting" | "examining" | "reassuring" | "emphatic";
+
 export interface AvatarMotorIntentPlan {
   action: AvatarMotorAction;
+  gestureProfile: AvatarGestureProfile;
+  gestureIntensity: number;
   motionGroup: AvatarMotionGroup;
   motionIndex: 0 | 1;
   headTilt: number;
+  gazeX: number;
+  gazeY: number;
   gesture: boolean;
   reason: string;
 }
@@ -49,6 +55,45 @@ const COMFORT_CUES = /(?:\b(?:sorry|that sounds hard|i understand|i'm here|take 
  * available Live2D rig. This is a deterministic intent selector, not a 3D IK solver:
  * it chooses only motion groups that exist in Kurisu.model3.json.
  */
+/**
+ * Resolve a semantic gesture into bounded shoulder targets for rigs that expose
+ * independently transformable arms. Values are radians around the rig bind pose.
+ * This is a reusable motor adapter, not a claim of elbow/wrist IK.
+ */
+export interface AvatarArmTargets { left: number; right: number }
+
+export function resolveAvatarGestureArmTargets(
+  profile: AvatarGestureProfile,
+  intensity: number,
+  emotion: AvatarMotorEmotion,
+  awake: boolean,
+): AvatarArmTargets {
+  if (!awake) return { left: 0.025, right: -0.025 };
+  const gain = clamp(intensity, 0, 0.8) / 0.8;
+  const targets: Record<AvatarGestureProfile, AvatarArmTargets> = {
+    none: { left: 0.025, right: -0.025 },
+    considering: { left: -0.12, right: 0.16 },
+    presenting: { left: -0.24, right: 0.46 },
+    examining: { left: -0.34, right: -0.42 },
+    reassuring: { left: -0.08, right: 0.18 },
+    emphatic: { left: -0.48, right: 0.52 },
+  };
+  const base = targets[profile] ?? targets.none;
+  let left = base.left * gain;
+  let right = base.right * gain;
+  if (emotion === "anger" || emotion === "frustration") {
+    left = -0.58 * Math.max(gain, 0.55);
+    right = 0.58 * Math.max(gain, 0.55);
+  } else if (emotion === "protective") {
+    left -= 0.1 * gain;
+    right -= 0.1 * gain;
+  } else if (emotion === "sadness" || emotion === "anxiety") {
+    left *= 0.72;
+    right *= 0.72;
+  }
+  return { left: clamp(left, -0.8, 0.8), right: clamp(right, -0.8, 0.8) };
+}
+
 export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMotorIntentPlan {
   const emotion = input.emotion in EMOTION_TILT ? input.emotion : "calm";
   const action = typeof input.action === "string" ? input.action : "wait";
@@ -90,11 +135,13 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
   const motionGroup: AvatarMotionGroup =
     intent === "rest" || intent === "listen" ? "Idle" :
     intent === "reflect" ? "TapHead" :
-    intent === "inspect" || intent === "explain" || intent === "comfort" ? "TapBody" : "Special";
+    intent === "inspect" || intent === "comfort" ? "TapBody" : "Special";
 
+  // The shipped Special[1] clip contains authored shoulder, arm and hand curves.
+  // Route explicit explanations through it instead of the face/torso-only TapBody clip.
   // The bundled model has exactly two Special motions; other groups have one each.
   const motionIndex: 0 | 1 = motionGroup === "Special" &&
-    (emotion === "joy" || valence >= 0.68 || /(?:\b(?:great|excellent|excited|happy)\b|отлично|прекрасно|здорово|ура)/iu.test(text))
+    (intent === "explain" || emotion === "joy" || valence >= 0.68 || /(?:\b(?:great|excellent|excited|happy)\b|отлично|прекрасно|здорово|ура)/iu.test(text))
       ? 1 : 0;
 
   const actionTilt =
@@ -102,11 +149,33 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
     intent === "inspect" ? -0.008 :
     intent === "comfort" ? 0.018 : 0;
   const headTilt = clamp(EMOTION_TILT[emotion] + actionTilt, -0.15, 0.15);
+  // Gaze is a semantic motor channel: each intent has a stable attention target.
+  // Small valence/arousal offsets add affect without letting emotion override the task.
+  const gazeTargets: Record<AvatarMotorAction, { x: number; y: number }> = {
+    rest: { x: -0.06, y: 0.075 }, listen: { x: -0.035, y: -0.005 },
+    reflect: { x: -0.19, y: -0.14 }, inspect: { x: 0.24, y: 0.04 },
+    explain: { x: 0.14, y: -0.035 }, comfort: { x: -0.08, y: 0.065 },
+    respond: { x: 0.01, y: 0.01 },
+  };
+  const gazeTarget = gazeTargets[intent];
+  const gazeX = clamp(gazeTarget.x + (valence - 0.5) * 0.12, -0.4, 0.4);
+  const gazeY = clamp(gazeTarget.y - arousal * 0.025, -0.4, 0.4);
+
   const gesture =
     intent === "inspect" || intent === "explain" ||
     (intent === "reflect" && arousal >= 0.28) ||
     (intent === "comfort" && arousal >= 0.2) ||
     (intent === "respond" && arousal >= 0.45);
+  // A semantic gesture profile enriches the existing authored motion selection.
+  // It deliberately stays inside the current rig's supported channels: no fake arm IK.
+  const gestureProfile: AvatarGestureProfile = !gesture ? "none" :
+    intent === "reflect" ? "considering" :
+    intent === "explain" ? "presenting" :
+    intent === "inspect" ? "examining" :
+    intent === "comfort" ? "reassuring" : "emphatic";
+  const gestureBase = intent === "explain" || intent === "inspect" ? 0.38 :
+    intent === "reflect" ? 0.22 : intent === "comfort" ? 0.2 : 0.16;
+  const gestureIntensity = gesture ? clamp(gestureBase + arousal * 0.32, 0, 0.8) : 0;
 
-  return { action: intent, motionGroup, motionIndex, headTilt, gesture, reason };
+  return { action: intent, motionGroup, motionIndex, headTilt, gazeX, gazeY, gesture, gestureProfile, gestureIntensity, reason };
 }

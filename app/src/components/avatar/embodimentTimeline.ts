@@ -51,6 +51,9 @@ export interface EmbodimentIntentV1 {
   body: {
     headTilt: number;
     gesture: boolean;
+    /** Optional in protocol v1 so older senders remain wire-compatible. */
+    gestureProfile?: "none" | "considering" | "presenting" | "examining" | "reassuring" | "emphatic";
+    gestureIntensity?: number;
     motionGroup: string;
     motionIndex: number;
     motionToken: number;
@@ -261,6 +264,7 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   if (intent.clockSource !== "none" && intent.clockSource !== "speech-synthesis-boundary-anchored-monotonic" && intent.clockSource !== "speech-synthesis-elapsed-time-anchored-monotonic") return false;
   if (!Number.isFinite(intent.priority) || Number(intent.priority) < 0 || Number(intent.priority) > 100) return false;
   if (intent.cancellationToken !== null && (typeof intent.cancellationToken !== "string" || intent.cancellationToken.length > 220)) return false;
+  if (intent.speechPhase === "cancelled" && (!intent.speechEventId || intent.cancellationToken !== `cancel:${intent.speechEventId}`)) return false;
   if (typeof intent.expression !== "string" || intent.expression.length > 32) return false;
   if (!Number.isFinite(intent.expressionIntensity) || Number(intent.expressionIntensity) < 0 || Number(intent.expressionIntensity) > 1) return false;
   if (!intent.mouth || !Number.isFinite(intent.mouth.open) || intent.mouth.open < 0 || intent.mouth.open > 1) return false;
@@ -269,6 +273,9 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   if (!intent.gaze || !Number.isFinite(intent.gaze.x) || intent.gaze.x < -1 || intent.gaze.x > 1 || !Number.isFinite(intent.gaze.y) || intent.gaze.y < -1 || intent.gaze.y > 1 || typeof intent.gaze.driven !== "boolean") return false;
   if (!intent.body || !Number.isFinite(intent.body.headTilt) || intent.body.headTilt < -0.15 || intent.body.headTilt > 0.15) return false;
   if (typeof intent.body.gesture !== "boolean" || typeof intent.body.motionGroup !== "string" || !/^[a-zA-Z0-9_-]{1,32}$/.test(intent.body.motionGroup)) return false;
+  const gestureProfiles = ["none", "considering", "presenting", "examining", "reassuring", "emphatic"] as const;
+  if (intent.body.gestureProfile !== undefined && !gestureProfiles.includes(intent.body.gestureProfile)) return false;
+  if (intent.body.gestureIntensity !== undefined && (!Number.isFinite(intent.body.gestureIntensity) || intent.body.gestureIntensity < 0 || intent.body.gestureIntensity > 0.8)) return false;
   if (!Number.isInteger(intent.body.motionIndex) || intent.body.motionIndex < 0 || intent.body.motionIndex > 32 || !Number.isSafeInteger(intent.body.motionToken) || intent.body.motionToken < 0) return false;
   return Number.isFinite(intent.voiceEmphasis) && Number(intent.voiceEmphasis) >= 0 && Number(intent.voiceEmphasis) <= 1;
 }

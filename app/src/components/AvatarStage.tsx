@@ -311,12 +311,6 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
     const expression = EXPR[snap.emotion.label] ?? "neutral";
-    const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
-      explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
-      respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
-    };
-    const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
-    const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
     const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
@@ -332,9 +326,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       turnText: lastTurn?.role === "kurisu" ? lastTurn.text : "",
       awake: snap.awake,
     });
-    const bodyGestureActive = motorPlan.gesture;
-    const motionGroup = motorPlan.motionGroup;
-    const motionIndex = motorPlan.motionIndex;
+    // A cancelled utterance is a hard embodiment boundary: return to the shipped idle
+    // clip and clear gesture offsets instead of replaying the interrupted response pose.
+    const speechCancelled = speechPhaseRef.current === "cancelled";
+    const bodyGestureActive = !speechCancelled && motorPlan.gesture;
+    const motionGroup = speechCancelled ? "Idle" : motorPlan.motionGroup;
+    const motionIndex = speechCancelled ? 0 : motorPlan.motionIndex;
     // Increment only when the semantic motor goal changes. Snapshot ticks and mouth frames
     // must not continually restart the same motion clip.
     const motionIdentity = freshTextTurn ? (session?.speechEventId ?? turnKey) : `state:${motorPlan.action}`;
@@ -362,10 +359,16 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       expression,
       expressionIntensity: snap.emotion.arousal,
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      gaze: { x: motorPlan.gazeX, y: motorPlan.gazeY, driven: true },
       body: {
-        headTilt: motorPlan.headTilt,
+        // Profile-specific micro-tilt composes with the authored clip; the CDI3 rig has no arm IK.
+        headTilt: speechCancelled ? 0 : Math.max(-0.15, Math.min(0.15, motorPlan.headTilt + (
+          motorPlan.gestureProfile === "considering" || motorPlan.gestureProfile === "examining" ? -1 :
+          motorPlan.gestureProfile === "none" ? 0 : 1
+        ) * motorPlan.gestureIntensity * 0.018)),
         gesture: bodyGestureActive,
+        gestureProfile: speechCancelled ? "none" : motorPlan.gestureProfile,
+        gestureIntensity: speechCancelled ? 0 : motorPlan.gestureIntensity,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,

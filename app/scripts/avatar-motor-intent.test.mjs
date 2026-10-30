@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { planAvatarMotorIntent } from "../src/components/avatar/motorIntent.ts";
+import { planAvatarMotorIntent, resolveAvatarGestureArmTargets } from "../src/components/avatar/motorIntent.ts";
+import { isEmbodimentIntentV1 as isAppEmbodimentIntentV1 } from "../src/components/avatar/embodimentTimeline.ts";
 import { isEmbodimentIntentV1, normalizeEmbodimentIntentV1 } from "../../runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs";
 
 const baseIntent = (overrides = {}) => ({
@@ -20,7 +21,7 @@ const baseIntent = (overrides = {}) => ({
   expressionIntensity: 0.8,
   mouth: { open: 0.65, form: 0.2, viseme: "a" },
   gaze: { x: 0.2, y: -0.1, driven: true },
-  body: { headTilt: -0.04, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4 },
+  body: { headTilt: -0.04, gesture: true, gestureProfile: "presenting", gestureIntensity: 0.5, motionGroup: "Special", motionIndex: 1, motionToken: 4 },
   voiceEmphasis: 0.5,
   ...overrides,
 });
@@ -33,6 +34,8 @@ test("rest state suppresses gestures and selects the shipped Idle motion", () =>
   assert.equal(plan.action, "rest");
   assert.equal(plan.motionGroup, "Idle");
   assert.equal(plan.gesture, false);
+  assert.ok(plan.gazeX >= -0.4 && plan.gazeX <= 0.4);
+  assert.ok(plan.gazeY >= -0.4 && plan.gazeY <= 0.4);
 });
 
 test("cognitive reflection chooses TapHead without inventing unsupported motion groups", () => {
@@ -51,8 +54,52 @@ test("explanatory language produces an inspectable body-level gesture intention"
     speaking: true, hasFreshTurn: true, turnText: "Смотри, я объясню, что показывают данные.", awake: true,
   });
   assert.equal(plan.action, "explain");
-  assert.equal(plan.motionGroup, "TapBody");
+  assert.equal(plan.motionGroup, "Special");
+  assert.equal(plan.motionIndex, 1, "explanations should select the shipped upper-limb gesture clip");
   assert.equal(plan.gesture, true);
+  assert.ok(plan.gazeX > 0, "explanation should direct attention toward the explanatory target");
+});
+
+test("the explanatory motion selection points to a shipped clip with authored arm and hand curves", async () => {
+  const motionPath = new URL("../../runtime/neuro-kurisu/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json", import.meta.url);
+  const motion = JSON.parse(await readFile(motionPath, "utf8"));
+  const ids = new Set(motion.Curves.filter((curve) => curve.Target === "Parameter").map((curve) => curve.Id));
+  for (const id of ["ParamArmLA", "ParamArmRA", "ParamHandL", "ParamHandR"]) assert.ok(ids.has(id), `missing authored gesture curve: ${id}`);
+  const plan = planAvatarMotorIntent({ emotion: "calm", valence: 0.5, arousal: 0.7, action: "respond", thinking: false, speaking: true, hasFreshTurn: true, turnText: "Смотри, объясню результат.", awake: true });
+  assert.equal(plan.motionGroup, "Special");
+  assert.equal(plan.motionIndex, 1);
+});
+
+test("gesture profiles distinguish cognition, presentation, inspection and reassurance", () => {
+  const base = { emotion: "calm", valence: 0.5, arousal: 0.7, thinking: false, speaking: true, hasFreshTurn: true, awake: true };
+  const explain = planAvatarMotorIntent({ ...base, action: "respond", turnText: "Смотри, объясню результат." });
+  const inspect = planAvatarMotorIntent({ ...base, action: "explore", speaking: false, hasFreshTurn: false, turnText: "" });
+  const reflect = planAvatarMotorIntent({ ...base, action: "reflect", speaking: false, hasFreshTurn: false, turnText: "" });
+  const comfort = planAvatarMotorIntent({ ...base, emotion: "sadness", valence: 0.2, action: "respond", turnText: "Я рядом, понимаю тебя." });
+  assert.equal(explain.gestureProfile, "presenting");
+  assert.equal(inspect.gestureProfile, "examining");
+  assert.equal(reflect.gestureProfile, "considering");
+  assert.equal(comfort.gestureProfile, "reassuring");
+  for (const plan of [explain, inspect, reflect, comfort]) {
+    assert.ok(plan.gestureIntensity > 0 && plan.gestureIntensity <= 0.8);
+  }
+  const rest = planAvatarMotorIntent({ ...base, awake: false, speaking: false, hasFreshTurn: false, turnText: "" });
+  assert.equal(rest.gestureProfile, "none");
+  assert.equal(rest.gestureIntensity, 0);
+});
+
+test("semantic gaze follows the selected motor goal and remains deterministic", () => {
+  const base = { emotion: "calm", valence: 0.5, arousal: 0.3, thinking: false, speaking: false, hasFreshTurn: false, turnText: "", awake: true };
+  const inspect = planAvatarMotorIntent({ ...base, action: "explore" });
+  const reflect = planAvatarMotorIntent({ ...base, action: "reflect" });
+  const comfort = planAvatarMotorIntent({ ...base, emotion: "sadness", valence: 0.2, action: "respond", speaking: true, turnText: "Я рядом, понимаю тебя." });
+  assert.ok(inspect.gazeX > reflect.gazeX);
+  assert.ok(comfort.gazeY > reflect.gazeY);
+  assert.deepEqual(inspect, planAvatarMotorIntent({ ...base, action: "explore" }));
+  for (const plan of [inspect, reflect, comfort]) {
+    assert.ok(plan.gazeX >= -0.4 && plan.gazeX <= 0.4);
+    assert.ok(plan.gazeY >= -0.4 && plan.gazeY <= 0.4);
+  }
 });
 
 test("planner output is deterministic and remains within available asset ranges", () => {
@@ -72,10 +119,31 @@ test("strict protocol accepts the app's envelope and normalizes speech/body fiel
   const value = baseIntent();
   assert.equal(isEmbodimentIntentV1(value), true);
   assert.deepEqual(normalizeEmbodimentIntentV1(value), {
-    stateVersion: 1, expression: "happy", expressionIntensity: 0.8, speaking: true,
+    stateVersion: 1, speechPhase: "speaking", expression: "happy", expressionIntensity: 0.8, speaking: true,
     mouthOpen: 0.65, mouthForm: 0.2, gazeX: 0.2, gazeY: -0.1, gazeDriven: true,
-    headTilt: -0.04, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
+    headTilt: -0.04, gesture: true, gestureProfile: "presenting", gestureIntensity: 0.5, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
   });
+});
+
+test("optional semantic gesture fields remain bounded and legacy v1 envelopes still normalize", () => {
+  const legacy = baseIntent();
+  delete legacy.body.gestureProfile;
+  delete legacy.body.gestureIntensity;
+  assert.equal(isEmbodimentIntentV1(legacy), true);
+  assert.equal(normalizeEmbodimentIntentV1(legacy).gestureProfile, "none");
+  assert.equal(normalizeEmbodimentIntentV1(legacy).gestureIntensity, 0);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureIntensity: 0.81 } })), false);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureProfile: "invented" } })), false);
+});
+
+test("app EmbodimentIntentV1 validates optional semantic gesture fields and legacy payloads", () => {
+  const legacy = baseIntent();
+  delete legacy.body.gestureProfile;
+  delete legacy.body.gestureIntensity;
+  assert.equal(isAppEmbodimentIntentV1(legacy), true);
+  assert.equal(isAppEmbodimentIntentV1(baseIntent()), true);
+  assert.equal(isAppEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureProfile: "invented" } })), false);
+  assert.equal(isAppEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureIntensity: 0.81 } })), false);
 });
 
 test("invalid motion, extra protocol fields, and out-of-range data fail closed", () => {
@@ -83,6 +151,41 @@ test("invalid motion, extra protocol fields, and out-of-range data fail closed",
   assert.equal(isEmbodimentIntentV1({ ...baseIntent(), hiddenDebugPayload: true }), false);
   assert.equal(isEmbodimentIntentV1(baseIntent({ gaze: { x: 5, y: 0, driven: true } })), false);
   assert.equal(normalizeEmbodimentIntentV1(baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1", mouth: { open: 0.8, form: 0, viseme: "a" } })).mouthOpen, 0);
+  const cancelled = baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1" });
+  assert.equal(isEmbodimentIntentV1(cancelled), true);
+  assert.equal(isEmbodimentIntentV1({ ...cancelled, cancellationToken: "cancel:another-speech" }), false);
+  assert.equal(isAppEmbodimentIntentV1(cancelled), true);
+  assert.equal(isAppEmbodimentIntentV1({ ...cancelled, cancellationToken: "cancel:another-speech" }), false);
+});
+
+test("speech cancellation resets the avatar to idle and clears expressive gesture offsets", async () => {
+  const stage = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /const speechCancelled = speechPhaseRef\.current === "cancelled"/);
+  assert.match(stage, /const motionGroup = speechCancelled \? "Idle" : motorPlan\.motionGroup/);
+  assert.match(stage, /const motionIndex = speechCancelled \? 0 : motorPlan\.motionIndex/);
+  assert.match(stage, /headTilt: speechCancelled \? 0/);
+  assert.match(stage, /gestureProfile: speechCancelled \? "none" : motorPlan\.gestureProfile/);
+  assert.match(stage, /gestureIntensity: speechCancelled \? 0 : motorPlan\.gestureIntensity/);
+  assert.match(stage, /gesture: bodyGestureActive/);
+});
+
+
+test("speech cancellation force-preempts the active Cubism clip in both viewer runtimes", async () => {
+  const viewers = await Promise.all([
+    readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8"),
+    readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8"),
+  ]);
+  for (const viewer of viewers) {
+    assert.match(viewer, /MOTION_PRIORITY_FORCE=3/);
+    assert.match(viewer, /speechPhase==='cancelled'\?MOTION_PRIORITY_FORCE:MOTION_PRIORITY_NORMAL/);
+    assert.match(viewer, /model\.motion\(group,index,priority\)/);
+    assert.match(viewer, /motionRequestSequence/);
+    assert.match(viewer, /request!==motionRequestSequence/);
+    assert.match(viewer, /if\(lastMotionKey===k\)lastMotionKey=''/);
+  }
+  const cancelled = normalizeEmbodimentIntentV1(baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1" }));
+  assert.equal(cancelled.speechPhase, "cancelled");
+  assert.equal(cancelled.speaking, false);
 });
 
 test("the production viewer listens to the protocol emitted by AvatarStage and uses token-aware motion identity", async () => {
@@ -93,6 +196,14 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
   assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
+  assert.match(viewer, /ParamBrowLY/);
+  assert.match(viewer, /ParamEyeLSmile/);
+  assert.match(viewer, /ParamCheek/);
+  assert.match(viewer, /ParamBreath/);
+  assert.match(viewer, /ParamBodyAngleX/);
+  assert.match(viewer, /gestureDirection\*gestureDrive\*\.12/);
+  assert.match(viewer, /faceState\.brow=smoothToward\(faceState\.brow,face\.brow\*facialGain/);
+  assert.doesNotMatch(viewer, /const blend=\.18/);
 });
 
 test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
@@ -101,6 +212,7 @@ test("Original 2D concept is selectable and keeps independent outfit/pose custom
   assert.ok(stage.includes('type ViewMode = "live2d" | "legacy" | "original" | "3d"'));
   assert.ok(stage.includes('onClick={() => setMode("original")}'));
   assert.ok(stage.includes("<KurisuOriginalStage"));
+  assert.ok(stage.includes("gaze: { x: motorPlan.gazeX, y: motorPlan.gazeY, driven: true }"));
   assert.ok(stage.includes('saved === "legacy" || saved === "original" || saved === "3d"'));
   assert.ok(original.includes('type Outfit = "lab" | "casual" | "night"'));
   assert.ok(original.includes('type PoseOverride = "auto" | "crossed" | "thinking" | "explain"'));
@@ -119,4 +231,50 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /MOTION_COUNTS/);
   assert.match(viewer, /lastIntentStateVersion/);
   assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
+  assert.match(viewer, /ParamBrowLY/);
+  assert.match(viewer, /ParamEyeLSmile/);
+  assert.match(viewer, /ParamCheek/);
+  assert.match(viewer, /ParamBreath/);
+  assert.match(viewer, /ParamBodyAngleX/);
+  assert.match(viewer, /semanticEyeX=smoothToward\(semanticEyeX,clamp\(bodySignal\.gazeX/);
+  assert.match(viewer, /deterministicUnit/);
+  assert.doesNotMatch(viewer, /Math\.random\(\)/);
+});
+
+
+test("both Live2D viewer entry points smooth semantic gaze and avoid nondeterministic random motion", async () => {
+  const viewers = await Promise.all([
+    readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8"),
+    readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8"),
+  ]);
+  for (const viewer of viewers) {
+    assert.match(viewer, /smoothToward\(semanticEyeX,clamp\(bodySignal\.gazeX/);
+    assert.match(viewer, /smoothToward\(semanticEyeY,clamp\(bodySignal\.gazeY/);
+    assert.match(viewer, /lastIntentStateVersion\*17/);
+    assert.match(viewer, /lastIntentStateVersion\*31/);
+    assert.doesNotMatch(viewer, /Math\.random\(\)/);
+  }
+});
+
+test("semantic gesture profiles produce bounded asymmetric arm targets for procedural and imported rigs", () => {
+  const presenting = resolveAvatarGestureArmTargets("presenting", 0.8, "calm", true);
+  const considering = resolveAvatarGestureArmTargets("considering", 0.4, "curiosity", true);
+  const angry = resolveAvatarGestureArmTargets("emphatic", 0.8, "anger", true);
+  const asleep = resolveAvatarGestureArmTargets("presenting", 0.8, "joy", false);
+  assert.ok(presenting.right > presenting.left);
+  assert.ok(considering.left >= -0.8 && considering.right <= 0.8);
+  assert.ok(angry.left < 0 && angry.right > 0);
+  assert.deepEqual(asleep, { left: 0.025, right: -0.025 });
+  for (const target of [presenting, considering, angry, asleep]) {
+    assert.ok(Math.abs(target.left) <= 0.8 && Math.abs(target.right) <= 0.8);
+  }
+});
+
+test("3D stage consumes the shared cognitive motor planner instead of a separate action-only gesture table", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /planAvatarMotorIntent\(/);
+  assert.match(stage, /resolveAvatarGestureArmTargets\(/);
+  assert.match(stage, /motorPlan\.gestureProfile/);
+  assert.match(stage, /armTargets\.left/);
+  assert.match(stage, /armTargets\.right/);
 });
