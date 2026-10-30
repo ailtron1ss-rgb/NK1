@@ -284,9 +284,11 @@ export class P41SemanticPerceptionEngine {
       if(e){
         targets.push(e.id);
         const box=o.bbox;
+        const bboxConfidence=Number(o.bboxConfidence01??0);
         const validBox=Boolean(box&&[box.x,box.y,box.width,box.height].every(value=>typeof value==='number'&&Number.isFinite(value))
           &&box.x>=0&&box.y>=0&&box.width>0&&box.height>0&&box.x+box.width<=1.000001&&box.y+box.height<=1.000001);
-        if(validBox&&Number(o.bboxConfidence01??0)>=.42&&at>=(e.imageBoxAt??0)){
+        const validBoxConfidence=Number.isFinite(bboxConfidence)&&bboxConfidence>=.42&&bboxConfidence<=1;
+        if(validBox&&validBoxConfidence&&at>=(e.imageBoxAt??0)){
           e.imageBox={x:box!.x,y:box!.y,width:box!.width,height:box!.height};
           e.imageBoxCameraId=cameraId;
           e.imageBoxAt=at;
