@@ -71,6 +71,12 @@ assert.throws(() => registry.register({
   'candidate fingerprints must be actual SHA-256 strings, not coerced values');
 assert.throws(() => registry.register({
   ...input,
+  campaignId: 'nk1-memory-eval-2026-invalid3',
+  sourceCommitSha: 'not-a-git-sha',
+}), /invalid experiment campaign registration/,
+  'source revision must be an exact Git commit SHA');
+assert.throws(() => registry.register({
+  ...input,
   candidateFingerprints: { ...candidateFingerprints, 'candidate-a': hash('tampered candidate config') },
 }), /different registration/);
 assert.throws(() => registry.register({ ...input, campaignId: 'nk1-memory-eval-2026-02' }),
@@ -150,6 +156,44 @@ for (const run of plan.runs) {
   assert.equal(accepted.accepted, true, accepted.rejection);
 }
 assert.equal(ledger.snapshot().acceptedOutcomes, plan.counts.runs);
+
+// Signed verifier artifacts must identify the exact source revision registered
+// before the holdout was opened, not merely a matching method label/fingerprint.
+const wrongSourceLedger = new VerifiedOutcomeLedger(manifest);
+let wrongSourceObservedAt = 1_800_000_100_000;
+for (let index = 0; index < plan.runs.length; index++) {
+  const run = plan.runs[index];
+  const baselinePassed = run.seed % 3 === 0;
+  const passed = run.method === 'candidate-a' ? true : baselinePassed;
+  const fingerprint = run.method === 'baseline-v1'
+    ? baselineFingerprint
+    : candidateFingerprints[run.method];
+  const payload = {
+    schemaVersion: 1,
+    artifactId: `wrong-source-artifact-${run.runId}`,
+    runId: run.runId,
+    manifestFingerprint: plan.manifestFingerprint,
+    sourceCommitSha: index === 0 ? '0'.repeat(40) : input.sourceCommitSha,
+    taskId: run.taskId,
+    taskVersion: run.taskVersion,
+    method: run.method,
+    methodFingerprint: fingerprint,
+    seed: run.seed,
+    attempt: 1,
+    passed,
+    verifierId: run.verifierId,
+    observedAt: wrongSourceObservedAt++,
+  };
+  const accepted = ingestSignedOutcomeArtifact(
+    wrongSourceLedger, manifest, signOutcomePayloadForFixture(payload, privatePem), trustedKeys,
+  );
+  assert.equal(accepted.accepted, true);
+}
+assert.throws(
+  () => registry.evaluate(input.campaignId, plan, wrongSourceLedger),
+  /does not match the registered plan or candidate fingerprint/,
+  'a valid signature from the trusted verifier cannot move an outcome between source revisions',
+);
 
 const result = registry.evaluate(input.campaignId, plan, ledger);
 assert.equal(registry.get(input.campaignId).status, 'finalized');
