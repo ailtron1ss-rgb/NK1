@@ -6,6 +6,7 @@ const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0))
 const now = () => Date.now();
 const MAX_TRACK_GAP_MS=30_000;
 const MAX_TRACK_ASSOCIATION_DISTANCE=.75;
+const MIN_TRACK_ASSOCIATION_MARGIN=.15;
 const MAX_CROSS_MODAL_ASSOCIATION_MS=5_000;
 function normalizePerceptualLabel(value:unknown):string{
   if(typeof value!=='string')return '';
@@ -337,7 +338,13 @@ export class P41SemanticPerceptionEngine {
         .map(x=>({entity:x,distance:positionDistance(x.position!,pos)}))
         .filter(x=>x.distance<=MAX_TRACK_ASSOCIATION_DISTANCE)
         .sort((a,b)=>a.distance-b.distance);
-      e=candidates[0]?.entity;
+      const nearest=candidates[0];
+      const runnerUp=candidates[1];
+      // Do not let deterministic sorting turn an ambiguous geometric match
+      // into a fabricated identity link.
+      if(nearest&&(!runnerUp||runnerUp.distance-nearest.distance>=MIN_TRACK_ASSOCIATION_MARGIN)){
+        e=nearest.entity;
+      }
     }
     // Without either a provider track ID or geometry, retain legacy singleton
     // semantics rather than manufacturing multiple indistinguishable objects.
