@@ -2875,3 +2875,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Унаследованные ключи `constructor`, `toString`, `__proto__` теперь корректно откатываются к `calm`, не попадая в прототип объекта таблицы профилей.
 - Добавлены регрессионные тесты для prototype-property names и проверки конечности выходных параметров.
 - CI для этого изменения ожидается; визуальная/акустическая калибровка и Android E2E остаются отдельными задачами.
+
+
+### [NK1][аспект7] Semantic facial morph mapping for imported VRM/GLB (2026-10-30)
+
+- Добавлен renderer-neutral resolver для распознаваемых joy/sadness/anger/mouth-open/mouth-O/blink morph targets, включая распространённые EyeBlink и VRoid Fcl_MTH_A / Fcl_MTH_O.
+- Импортированный 3D-аватар теперь получает blink pulse и viseme values из общего временного snapshot; неизвестные morph channels остаются нетронутыми.
+- Добавлены regression tests, npm script и расширение aspect-07 CI workflow.
+- Это best-effort mapping по именам, не полноценный VRM ExpressionManager; конкретный VRM/GLB и конкуренция с анимационными клипами требуют отдельной визуальной проверки.
