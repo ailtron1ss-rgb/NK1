@@ -412,6 +412,7 @@ export interface AdvancedDevelopmentFacet {
   p76IdentityLifeOS: import('../system/P76IdentityLifeOS.ts').P76State;
   p77RealityExperimentOS: import('../system/P77RealityExperimentOS.ts').P77State;
   p78AutobiographicalSelfContinuity: import('../developmental/P78AutobiographicalSelfContinuity.ts').P78State;
+  p2702PersistentPersonality?: import('../cognition/P2702PersistentPersonalityDynamics.ts').P2702PersonalityState;
   p79EmbodiedSituationModel: import('../world/P79EmbodiedSituationModel.ts').P79State;
   p80UnifiedSelfState: import('../cognition/P80UnifiedSelfState.ts').P80State;
   p81PredictiveAttention: import('../cognition/P81PredictiveAttention.ts').P81State;
