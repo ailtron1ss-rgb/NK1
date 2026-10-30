@@ -35,18 +35,40 @@ export class P2702PersistentPersonalityDynamics{
  private state=defaultState();
  snapshot(){return deep(this.state);}
  restore(raw?:Partial<P2702PersonalityState>|null){
-  const d=defaultState(),r:any=raw??{};this.state={...d,...deep(r),version:1,
-   invariantNames:Array.isArray(r.invariantNames)?r.invariantNames.slice(0,32):d.invariantNames,
-   invariantValues:Array.isArray(r.invariantValues)?r.invariantValues.slice(0,32).map((x:number)=>clamp(x)):d.invariantValues,
-   adaptiveNames:Array.isArray(r.adaptiveNames)?r.adaptiveNames.slice(0,32):d.adaptiveNames,
-   adaptiveValues:Array.isArray(r.adaptiveValues)?r.adaptiveValues.slice(0,32).map((x:number)=>clamp(x)):d.adaptiveValues,
-   valueNames:Array.isArray(r.valueNames)?r.valueNames.slice(0,32):d.valueNames,
-   valueWeights:Array.isArray(r.valueWeights)?r.valueWeights.slice(0,32).map((x:number)=>clamp(x)):d.valueWeights,
-   relationshipTrust:r.relationshipTrust&&typeof r.relationshipTrust==='object'?Object.fromEntries(Object.entries(r.relationshipTrust).slice(0,32).map(([k,v])=>[k,clamp(Number(v))])):d.relationshipTrust,
-   selfBeliefs:Array.isArray(r.selfBeliefs)?r.selfBeliefs.slice(0,16).map((x:number)=>clamp(x)):d.selfBeliefs,
-   selfUncertainty:Array.isArray(r.selfUncertainty)?r.selfUncertainty.slice(0,16).map((x:number)=>clamp(x,.03,.97)):d.selfUncertainty,
-   tensionState:Array.isArray(r.tensionState)?r.tensionState.slice(0,16).map((x:number)=>clamp(x)):d.tensionState,
-   actionPreference:{...d.actionPreference,...(r.actionPreference??{})}};
+  const d=defaultState(),r:any=raw&&typeof raw==='object'?raw:{};
+  const names=(value:unknown,fallback:string[])=>{
+   const rows=Array.isArray(value)?value.filter((x):x is string=>typeof x==='string'&&x.trim().length>0).map(x=>x.trim().slice(0,64)).slice(0,32):fallback;
+   return rows.length?rows:fallback.slice();
+  };
+  const values=(value:unknown,count:number,fallback:number[],min=0,max=1)=>Array.from({length:count},(_,i)=>{
+   const candidate=Array.isArray(value)?Number(value[i]??fallback[i]??.5):Number(fallback[i]??.5);
+   return clamp(candidate,min,max);
+  });
+  const count=(value:unknown)=>Math.max(0,Math.min(1_000_000,Math.floor(Number.isFinite(Number(value))?Number(value):0)));
+  const invariantNames=names(r.invariantNames,d.invariantNames);
+  const adaptiveNames=names(r.adaptiveNames,d.adaptiveNames);
+  const valueNames=names(r.valueNames,d.valueNames);
+  const trustSource=r.relationshipTrust&&typeof r.relationshipTrust==='object'&&!Array.isArray(r.relationshipTrust)?Object.entries(r.relationshipTrust):[];
+  const relationshipTrust=Object.fromEntries(trustSource.filter(([k])=>typeof k==='string'&&k.trim().length>0).slice(0,32).map(([k,v])=>[String(k).slice(0,80),clamp(Number(v))]));
+  const actionPreference=Object.fromEntries(ACTIONS.map(action=>[action,clamp(Number(r.actionPreference?.[action]??0),-1,1)])) as Record<ActionKind,number>;
+  this.state={...d,...deep(r),version:1,
+   tick:count(r.tick),experienceCount:count(r.experienceCount),learningUpdates:count(r.learningUpdates),
+   invariantNames,invariantValues:values(r.invariantValues,invariantNames.length,d.invariantValues),
+   adaptiveNames,adaptiveValues:values(r.adaptiveValues,adaptiveNames.length,d.adaptiveValues),
+   valueNames,valueWeights:values(r.valueWeights,valueNames.length,d.valueWeights),
+   relationshipTrust,
+   selfBeliefs:values(r.selfBeliefs,8,d.selfBeliefs),
+   selfUncertainty:values(r.selfUncertainty,8,d.selfUncertainty,.03,.97),
+   tensionState:values(r.tensionState,d.tensionState.length,d.tensionState),
+   actionPreference,
+   stability01:clamp(Number(r.stability01??d.stability01)),
+   coherence01:clamp(Number(r.coherence01??d.coherence01)),
+   identityContinuity01:clamp(Number(r.identityContinuity01??d.identityContinuity01)),
+   contradiction01:clamp(Number(r.contradiction01??d.contradiction01)),
+   plasticity01:clamp(Number(r.plasticity01??d.plasticity01)),
+   drift01:clamp(Number(r.drift01??d.drift01)),
+   autobiographicalStrength01:clamp(Number(r.autobiographicalStrength01??d.autobiographicalStrength01)),
+   lastReward01:clamp(Number(r.lastReward01??d.lastReward01))};
  }
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
   this.state.tick=args.tick;this.state.experienceCount++;this.state.lastReward01=clamp(args.reward01??.5);
