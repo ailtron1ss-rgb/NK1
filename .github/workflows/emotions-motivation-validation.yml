@@ -59,6 +59,9 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Validate runtime TypeScript source syntax and semantic types when compiler is available
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types scripts/typecheck-runtime.mjs
       - name: Validate appraisal, context-bound outcomes, snapshots and interoception
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-172-emotion-interoceptive-mind.mjs
