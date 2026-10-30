@@ -1613,6 +1613,7 @@
     "test:unicode-tokenizer-workpass36": "node --experimental-strip-types tests/unicode-tokenizer-workpass36.mjs",
     "test:release-contract-alignment-workpass36": "node --experimental-strip-types tests/release-contract-alignment-workpass36.mjs",
     "test:action-gateway-idempotency-workpass37": "node --experimental-strip-types tests/action-gateway-idempotency-workpass37.mjs",
+    "test:tool-input-contracts-workpass624": "node --experimental-strip-types tests/tool-input-contracts-workpass624.mjs",
     "audit:workpass37": "npm run typecheck && npm run test:release-contract-alignment-workpass37 && npm run test:action-gateway-idempotency-workpass37 && npm run test:will-agency-prearbitration && npm run test:outcome-verification-hardening && npm run test:memory-compatibility-lineage-workpass36 && npm run test:memory-revision-history-workpass36 && node --experimental-strip-types tests/server-smoke.mjs",
     "test:release-contract-alignment-workpass37": "node --experimental-strip-types tests/release-contract-alignment-workpass37.mjs",
     "test:action-ledger-archive-workpass38": "node --experimental-strip-types tests/action-ledger-archive-workpass38.mjs",
