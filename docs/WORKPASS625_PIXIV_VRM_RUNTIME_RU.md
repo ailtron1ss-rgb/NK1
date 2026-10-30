@@ -33,7 +33,7 @@
 
 ### 3. Humanoid rig и движения
 
-Если VRM предоставляет humanoid.getNormalizedBoneNode, мотор NK1 теперь берёт normalized nodes для head/neck/left/right upper/lower arm. Именно эти узлы являются правильной точкой приложения нормализованного pose intent: последующий vrm.update(dt) синхронизирует normalized rig с raw skeleton. Если конкретной normalized bone нет, адаптер сохраняет предыдущий fallback на raw GLTF bones и parser associations.
+Если VRM предоставляет humanoid.getNormalizedBoneNode, мотор NK1 теперь берёт normalized nodes для head/neck/left/right upper/lower arm. Именно эти узлы являются правильной точкой приложения нормализованного pose intent: последующий vrm.update(dt) синхронизирует normalized rig с raw skeleton. Если конкретной normalized bone нет, адаптер сохраняет предыдущий fallback на raw GLTF bones и parser associations. Порядок кадра также важен: сначала восстанавливается baseline и обновляется AnimationMixer, затем к normalized nodes добавляется моторный offset NK1, и после этого вызывается VRM.update(dt), который переносит нормализованную позу на raw skeleton. Поэтому VRM Humanoid sync больше не стирает жесты, как это могло происходить при прямом управлении raw bones.
 
 Это устраняет важный конфликт предыдущей версии: прямое изменение raw bones до vrm.update могло быть перезаписано Humanoid sync.
 
