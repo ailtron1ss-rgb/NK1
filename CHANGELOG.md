@@ -3,6 +3,7 @@
 - Add bounded confidence-gated appraisal modulators for personality hypotheses, previous mood, cognitive load and social relevance; preserve their normalized provenance per emotion episode.
 - Wire canonical appraisal output and P66 homeostatic pressure into `IntrinsicMotivationEngine`, giving curiosity, anxiety/frustration, protection, joy/calm and sadness bounded influence over internal drive vectors.
 - Fix outcome attribution: feedback now credits the pre-action emotion episode that influenced the decision before creating a separate post-outcome episode.
+- Move affect-aware intrinsic-drive calculation before B272 and project a confidence-gated six-channel drive profile into endogenous goal dimensions (curiosity/truth, coherence, competence, connection, energy/recovery); B273 continues through the canonical admitted goal vector.
 - Add trace-derived `outcomeId` receipts with idempotent replay, conflicting-payload rejection and one-credit-per-emotion-episode protection.
 - Preserve signed, confidence-gated affect action bias so regulation pressure can inhibit exploration as well as encourage recovery; keep signals bounded and subordinate to planner/governance gates.
 - Preserve P66 hysteresis state/history consistency and bounded plain-data snapshots; add WorkPass289 direct and OrganismCore causal integration coverage.
