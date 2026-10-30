@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { orderDepthRigNodes, resolveDepthRigPose, resolveDepthRigWorldPose, validateDepthRig } from "../src/components/avatar/depthRig.ts";
+import { resolveDepthRigPoseFromEmbodimentIntent } from "../src/components/avatar/embodimentIntentAdapter.ts";
 
 const transform = { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1 };
 const node = (id, role, parentId, depthOrder) => ({
@@ -142,4 +143,25 @@ test("accumulates local z offsets independently from painter depth order", () =>
   const world = resolveDepthRigWorldPose(depthRig).transforms;
   assert.ok(Math.abs(world.head.z - 0.25) < 1e-12);
   assert.deepEqual(orderDepthRigNodes(depthRig).map((entry) => entry.id), ["torso", "head", "root"]);
+});
+
+test("adapts the canonical EmbodimentIntent v1 body without introducing another intent owner", () => {
+  const pose = resolveDepthRigPoseFromEmbodimentIntent(rig, {
+    type: "kurisu_embodiment_intent", protocolVersion: 1, expressionIntensity: 0.75,
+    gaze: { x: 0.4, y: -0.2, driven: true },
+    body: { headTilt: 0.075, gesture: true, motionGroup: "TapBody", motionIndex: 0 },
+  });
+  assert.equal(pose.rigId, rig.id);
+  assert.equal(pose.deltas.head.x, 0.0072);
+  assert.equal(pose.deltas.head.y, -0.0024);
+  assert.equal(pose.deltas.head.rotation, 3.5);
+  assert.equal(pose.deltas["arm-left"].rotation, -24);
+});
+
+test("rejects malformed EmbodimentIntent v1 adapter payloads", () => {
+  assert.throws(() => resolveDepthRigPoseFromEmbodimentIntent(rig, {
+    type: "kurisu_embodiment_intent", protocolVersion: 2, expressionIntensity: 1,
+    gaze: { x: 0, y: 0, driven: true },
+    body: { headTilt: 0, gesture: false, motionGroup: "Idle", motionIndex: 0 },
+  }), /Invalid EmbodimentIntent/);
 });
