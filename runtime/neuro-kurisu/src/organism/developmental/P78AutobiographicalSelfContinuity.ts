@@ -37,7 +37,7 @@ export interface P78State {
   processedEventKeys:string[];
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const boundedText=(value:unknown,max=180)=>String(value??'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
+const boundedText=(value:unknown,max=180)=>String(value??'').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
 const hasBoundEvidence=(event:P78Event)=>event.evidenceStatus==='verified-independent'&&/^([a-z][a-z0-9-]*):[^\s]{1,220}$/i.test(String(event.evidenceRef??'').trim());
 const isAuthored=(event:P78Event)=>event.authorship==='self-initiated'||event.authorship==='self-selected';
 export const defaultP78=():P78State=>({
