@@ -1,4 +1,5 @@
 import {
+  orderDepthRigNodes,
   resolveDepthRigPose,
   type DepthRigDefinition,
   type DepthRigPose,
@@ -97,12 +98,12 @@ export function resolveDepthRigPoseFromMotorFrame(
   frame: MotorFrameV1,
   bindings: readonly DepthRigJointBinding[],
 ): DepthRigPose {
-  if (!frame || frame.version !== 1 || !frame.joints || typeof frame.joints !== "object"
+  if (!frame || frame.version !== 1 || !frame.joints || typeof frame.joints !== "object" || Array.isArray(frame.joints)
     || !["idle", "moving", "holding", "rejected", "expired"].includes(frame.phase)
     || !Array.isArray(bindings)) {
     throw new Error("Invalid motor frame v1 payload.");
   }
-  const nodes = new Set(rig.nodes.map((node) => node.id));
+  const nodes = new Set(orderDepthRigNodes(rig).map((node) => node.id));
   const seenNodes = new Set<string>();
   const deltas: Record<string, { rotation: number }> = {};
   if (frame.goalId === null || frame.phase === "idle" || frame.phase === "rejected" || frame.phase === "expired") {
@@ -115,7 +116,7 @@ export function resolveDepthRigPoseFromMotorFrame(
     }
     seenNodes.add(binding.nodeId);
     const joint = frame.joints[binding.jointId];
-    if (!joint || joint.available !== true || !Number.isFinite(joint.targetAngleRad)) continue;
+    if (!joint || joint.id !== binding.jointId || joint.available !== true || !Number.isFinite(joint.targetAngleRad)) continue;
     const rest = binding.restAngleRad ?? 0;
     const degreesPerRadian = binding.degreesPerRadian ?? (180 / Math.PI);
     const maxAbs = binding.maxAbsDegrees ?? 45;
