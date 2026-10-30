@@ -94,16 +94,24 @@ export class P2702PersistentPersonalityDynamics{
   const canonCuriosity=this.state.invariantValues[this.state.invariantNames.indexOf('curiosity')]??.96;
   const rigor=this.state.invariantValues[this.state.invariantNames.indexOf('scientificRigor')]??.95;
   const autonomy=this.state.invariantValues[this.state.invariantNames.indexOf('intellectualIndependence')]??.92;
-  const responsibility=this.state.invariantValues[this.state.invariantNames.indexOf('responsibility')]??.90;
   const adaptive=(name:string)=>this.state.adaptiveValues[this.state.adaptiveNames.indexOf(name)]??.5;
+  const value=(name:string)=>this.state.valueWeights[this.state.valueNames.indexOf(name)]??.5;
+  const relationshipKey=typeof args.relationshipId==='string'?args.relationshipId.trim().normalize('NFKC'):'';
+  const relationshipTrust=relationshipKey?this.state.relationshipTrust[relationshipKey]??.5:.5;
+  const responsibility=this.state.invariantValues[this.state.invariantNames.indexOf('responsibility')]??.90;
+  const privacy=value('privacy'),loyalty=value('loyalty'),relationshipValue=value('relationship');
   const bias:Record<ActionKind,number>=Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>;
-  bias.explore=clamp(canonCuriosity*.05*args.novelty01 + adaptive('playfulness')*.008);
-  bias.verify=clamp((rigor*.05+adaptive('composure')*.015)*args.uncertainty01);
-  bias.reflect=clamp((autonomy*.028+adaptive('guardedness')*.014)*args.identityGap01);
-  bias.respond=clamp((adaptive('warmth')*.025+adaptive('directness')*.018)*(1-args.identityGap01));
-  bias.rest=clamp((1-args.goalPressure01)*.012);
-  bias.wait=clamp(args.uncertainty01*.012*(1-responsibility*.5));
-  bias.defer=clamp(args.uncertainty01*.016*(1-adaptive('directness')));
+  // Stable values and adaptive traits shape candidate preference, but remain a small
+  // additive prior; OrganismCore's existing arbiters still choose the action.
+  bias.explore=clamp((canonCuriosity*.043+value('curiosity')*.008)*args.novelty01 + adaptive('playfulness')*.008);
+  bias.verify=clamp((rigor*.043+value('truth')*.008+value('science')*.008+adaptive('composure')*.012)*args.uncertainty01);
+  bias.reflect=clamp((autonomy*.025+adaptive('guardedness')*.012)*args.identityGap01 + this.state.contradiction01*.006);
+  const relationalApproach=(relationshipTrust-.5)*.025*(1-privacy*.45);
+  const relationalCommitment=(loyalty-.5)*.006+(relationshipValue-.5)*.006;
+  bias.respond=clamp((adaptive('warmth')*.020+adaptive('directness')*.015)*(1-args.identityGap01)+relationalApproach+relationalCommitment);
+  bias.rest=clamp((1-args.goalPressure01)*.010);
+  bias.wait=clamp(args.uncertainty01*.010*(1-responsibility*.5));
+  bias.defer=clamp(args.uncertainty01*.014*(1-adaptive('directness')));
   for(const a of ACTIONS)this.state.actionPreference[a]=clamp((args.actionUtilities[a]??.5)-.5);
   const observedIdentity=Array.isArray(args.identityVector)?args.identityVector.slice(0,this.state.selfBeliefs.length):[];
   let identityError=0,identitySamples=0;
