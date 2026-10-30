@@ -137,7 +137,7 @@ assert.ok(Object.values(prepared.actionBias).every(x=>Number.isFinite(x)&&Math.a
 assert.ok(prepared.personality.traitVector.every(Number.isFinite));
 assert.ok(Object.values(prepared.selfModelActionBias).every(Number.isFinite));
 
-const decisionInput = { tick: 20, novelty01: 0.8, uncertainty01: 0.8, goalPressure01: 0.3, identityGap01: 0.2, actionUtilities };
+const decisionInput = { tick: 20, novelty01: 0.8, uncertainty01: 0.8, goalPressure01: 0.3, identityGap01: 0.2, actionUtilities: { respond: 0.5, explore: 0.5, verify: 0.5, rest: 0.5, reflect: 0.5, wait: 0.5, defer: 0.5 } };
 const trustedPersonality = new P2702PersistentPersonalityDynamics();
 trustedPersonality.restore({ relationshipTrust: { user: 0.95 } });
 const cautiousPersonality = new P2702PersistentPersonalityDynamics();
