@@ -168,6 +168,7 @@ export class TemporalObjectTracker {
       label:string;
       kind?:string;
       trackId?:string;
+      firstSeenAt?:number;
       lastSeenAt:number;
       observations?:number;
       imageBox?:NormalizedBoundingBox;
@@ -206,7 +207,7 @@ export class TemporalObjectTracker {
       state.tracks.push({
         id:localId,label:clean(entity.label).toLocaleLowerCase(),kind:kindOf(entity.kind),
         bbox:{...box},confidence01:clamp(entity.imageBoxConfidence01??.5),
-        firstSeenAt:Number.isFinite(entity.lastSeenAt)?Math.min(imageAt,entity.lastSeenAt):imageAt,
+        firstSeenAt:Number.isFinite(entity.firstSeenAt)?Math.min(imageAt,Number(entity.firstSeenAt)):imageAt,
         lastSeenAt:imageAt,hits:Math.max(1,Math.floor(Number(entity.observations??1))),
         providerOwned:false,velocityX:0,velocityY:0,velocityWidth:0,velocityHeight:0,
       });
