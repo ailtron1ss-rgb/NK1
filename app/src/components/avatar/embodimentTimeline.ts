@@ -264,6 +264,7 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   if (intent.clockSource !== "none" && intent.clockSource !== "speech-synthesis-boundary-anchored-monotonic" && intent.clockSource !== "speech-synthesis-elapsed-time-anchored-monotonic") return false;
   if (!Number.isFinite(intent.priority) || Number(intent.priority) < 0 || Number(intent.priority) > 100) return false;
   if (intent.cancellationToken !== null && (typeof intent.cancellationToken !== "string" || intent.cancellationToken.length > 220)) return false;
+  if (intent.speechPhase === "cancelled" && (!intent.speechEventId || intent.cancellationToken !== `cancel:${intent.speechEventId}`)) return false;
   if (typeof intent.expression !== "string" || intent.expression.length > 32) return false;
   if (!Number.isFinite(intent.expressionIntensity) || Number(intent.expressionIntensity) < 0 || Number(intent.expressionIntensity) > 1) return false;
   if (!intent.mouth || !Number.isFinite(intent.mouth.open) || intent.mouth.open < 0 || intent.mouth.open > 1) return false;
