@@ -2882,3 +2882,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][WorkPass644] Add deterministic 2.5D Blender blockout and real GLB export gate (2026-10-30)
+
+- Added `tools/blender/create_nk1_depth_rig_demo.py`, a reproducible non-production mannequin scene with a named parent hierarchy for root, torso, head, face/eyes, front/back hair, coat panels and both arm chains. The generated meshes bake dimensions into geometry so the runtime's unit node-scale contract does not erase their shape.
+- Extended the focused GitHub Actions job to install Blender, generate the scene, run the existing Blender-to-GLB exporter, and validate the resulting binary GLB with NK1's dependency-free validator. Both Python helpers receive syntax compilation first.
+- This turns the previous syntax-only exporter check into a real headless export/metadata/hierarchy validation gate. The blockout is technical geometry, not finished Kurisu art; browser rendering, device rendering and the canonical Release ZIP remain separate gates.
