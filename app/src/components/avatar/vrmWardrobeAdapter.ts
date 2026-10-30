@@ -1,6 +1,6 @@
 import type { WardrobeSwitchPlan } from "./wardrobePack.ts";
 
-type BoneLike = { name?: string; userData?: Record<string, unknown>; parent?: unknown };
+type BoneLike = { name?: string; isBone?: boolean; userData?: Record<string, unknown>; parent?: unknown };
 type SkeletonLike = { bones: BoneLike[]; boneInverses: unknown[]; constructor: new (bones: BoneLike[], inverses: unknown[]) => unknown };
 type SkinnedMeshLike = {
   isSkinnedMesh?: boolean;
@@ -65,12 +65,22 @@ export function inspectVrmGarmentRig(
   const errors: string[] = [];
   const avatarBones = new Map<string, BoneLike>();
   const duplicateTargetBones = new Set<string>();
+  const targetInverses = new Map<string, unknown>();
   visit(avatarRoot, (node) => {
-    if (!node.isSkinnedMesh && !node.skeleton && node.constructor?.name !== "Bone") return;
+    if (!node.isBone && node.constructor?.name !== "Bone") return;
     const name = normalizeBoneName(String(node.name ?? ""));
     if (!name) return;
     if (avatarBones.has(name)) duplicateTargetBones.add(name);
     else avatarBones.set(name, node as BoneLike);
+  });
+  visit(avatarRoot, (node) => {
+    const skeleton = node.isSkinnedMesh ? node.skeleton as SkeletonLike | undefined : undefined;
+    if (!skeleton) return;
+    skeleton.bones.forEach((bone, index) => {
+      const name = normalizeBoneName(String(bone.name ?? ""));
+      const inverse = skeleton.boneInverses[index];
+      if (name && inverse !== undefined && !targetInverses.has(name)) targetInverses.set(name, inverse);
+    });
   });
   if (duplicateTargetBones.size) {
     errors.push(...[...duplicateTargetBones].map((name) => `avatar-duplicate-bone:${name}`));
@@ -142,7 +152,7 @@ export function attachVerifiedVrmGarment(input: {
   const clone = garmentRoot.clone(true);
   const targetBones = new Map<string, BoneLike>();
   visit(avatarRoot, (node) => {
-    if (node.constructor?.name === "Bone" || node.isSkinnedMesh || node.skeleton) {
+    if (node.isBone || node.constructor?.name === "Bone") {
       const key = normalizeBoneName(String(node.name ?? ""));
       if (key && !targetBones.has(key)) targetBones.set(key, node as BoneLike);
     }
@@ -161,12 +171,8 @@ export function attachVerifiedVrmGarment(input: {
         if (!target) throw new Error(`missing-avatar-bone:${normalizeBoneName(String(bone.name ?? ""))}`);
         return target;
       });
-      const inverseByName = new Map<string, unknown>();
-      mesh.skeleton.bones.forEach((bone, index) => {
-        inverseByName.set(normalizeBoneName(String(bone.name ?? "")), mesh.skeleton.boneInverses[index]);
-      });
       const inverses = mappedBones.map((bone) => {
-        const inverse = inverseByName.get(normalizeBoneName(String(bone.name ?? "")));
+        const inverse = targetInverses.get(normalizeBoneName(String(bone.name ?? "")));
         if (inverse === undefined) throw new Error(`missing-bind-inverse:${normalizeBoneName(String(bone.name ?? ""))}`);
         return inverse;
       });
