@@ -1,4 +1,8 @@
-## [NK1][Aspect04] Harden hierarchical pose regression (2026-10-30)
+## [NK1][Aspect04] Bridge EmbodimentIntent v1 and correct pose regression (2026-10-30)
+
+- Add a narrow adapter from the existing v1 embodiment envelope to the 2.5D depth rig; preserve the current semantic owner and map bounded gaze/head tilt/motion groups to rig pose hints.
+- Add adapter validation tests and include its path in the dedicated CI workflow.
+- Correct world-space test expectations to include inherited parent rotations and use tolerance for accumulated floating-point depth.
 
 - Correct world-space expectations to include inherited torso/neck rotations; compare accumulated depth with a floating-point tolerance.
 - CI log identified both mismatches; no runtime transform change was required.
