@@ -1,3 +1,9 @@
+## [NK1][WorkPass629] Speech-viseme priority and safe VRMA picker (2026-10-30)
+
+- Give active NK1 speech visemes (aa/ih/ou/ee/oh) priority over VRMA-authored vowel morph tracks while TTS is speaking; preserve the rest of the animation's emotion, body and LookAt channels and resume VRMA mouth tracks after speech.
+- Reject non-.vrma files in the sidecar animation picker so a character GLB cannot be mistaken for a VRMA motion asset.
+- Add regression tests for viseme priority and the separate VRMA picker contract.
+
 ## [NK1][WorkPass628] Deterministic action clip arbitration across VRMA and embedded motions (2026-10-30)
 
 - Extract action clip selection into a pure avatarMotionClipSelector adapter.
