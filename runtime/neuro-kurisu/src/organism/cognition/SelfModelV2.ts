@@ -74,7 +74,7 @@ export class SelfModelEngine {
     return Math.max(-0.06, Math.min(0.06, selfConsistency*0.045 + (predictedMatch-.5)*0.028 + agency + identity));
   }
 
-  learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string}}){
+  learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string;evidenceReceiptId?:string}}){
     const unit=(value:number,fallback=.5)=>Math.max(0,Math.min(1,Number.isFinite(value)?value:fallback));
     const alignment=unit(input.goalAlignment01);
     const reward=unit(input.reward01);
@@ -89,10 +89,15 @@ export class SelfModelEngine {
     // but high-level self-beliefs move only when a trusted, independent outcome is explicitly bound.
     const evidence=input.evidence;
     const evidenceRef=String(evidence?.evidenceRef??'').trim().slice(0,240);
-    const allowedSource=evidence?.source==='world-transition'||evidence?.source==='external-verification';
-    const sourceRefBound=evidence?.source==='world-transition'?evidenceRef.startsWith('world-transition:'):evidence?.source==='external-verification'?evidenceRef.startsWith('external-verification:'):false;
-    const gateAccepted=Boolean(evidence?.verified&&evidence.independent&&allowedSource&&sourceRefBound&&evidenceRef);
-    const gateReason=gateAccepted?'verified-independent-outcome-bound':!evidence?'missing-provenance':!evidence.verified?'outcome-unverified':!evidence.independent?'outcome-not-independent':!allowedSource?'untrusted-evidence-source':!sourceRefBound?'evidence-source-binding-mismatch':'missing-evidence-reference';
+    const evidenceReceiptId=String(evidence?.evidenceReceiptId??'').trim().slice(0,180);
+    const receipt=/^reb:(\\d+):(\\d+):outcome$/.exec(evidenceReceiptId);
+    const allowedSource=evidence?.source==='external-verification';
+    const receiptBound=Boolean(
+      allowedSource&&receipt&&Number(receipt[1])===input.tick&&
+      evidenceRef===`external-verification:${evidenceReceiptId}`
+    );
+    const gateAccepted=Boolean(evidence?.verified&&evidence.independent&&receiptBound);
+    const gateReason=gateAccepted?'verified-independent-outcome-bound':!evidence?'missing-provenance':!evidence.verified?'outcome-unverified':!evidence.independent?'outcome-not-independent':!allowedSource?'untrusted-evidence-source':!receiptBound?'receipt-not-bound-to-outcome-event':'missing-evidence-reference';
     if(gateAccepted){
       this.model.agencyBelief=Math.max(0,Math.min(1,this.model.agencyBelief*.985 + (alignment-.5)*.024 + (reward-.5)*.012));
       this.model.identityCoherence=Math.max(0,Math.min(1,this.model.identityCoherence*.99 + (alignment-.5)*.016));
