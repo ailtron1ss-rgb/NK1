@@ -47,3 +47,21 @@ test("Original 2D component remains an organism-state-driven SVG concept with pe
   assert.match(source, /kurisu-original-pose/);
   assert.match(source, /aria-expanded=\{settingsOpen\}/);
 });
+
+
+test("future 2.5D handoff defines rig-safe anatomy, pivots, depth and deformation gates without claiming a rig", () => {
+  const handoff = contract.future2_5dHandoff;
+  assert.equal(handoff.status, "requirements-only-not-rigged");
+  assert.equal(handoff.coordinateSystem.origin, "top-left");
+  assert.ok(handoff.depthPlanes.length >= 8);
+  assert.ok(handoff.requiredMovingGroups.includes("forearm-left"));
+  assert.ok(handoff.requiredMovingGroups.includes("jaw"));
+  for (const field of ["id", "parentId", "zIndex", "pivot", "restTransform", "bounds", "occlusion", "deformation", "sourceAssetId"]) assert.ok(handoff.layerRecordRequiredFields.includes(field));
+  assert.equal(handoff.pivotRules.everyMovingGroupRequiresPivot, true);
+  assert.equal(handoff.occlusionRules.hiddenAnatomyMustExtendBeyondGarmentAndHairMasks, true);
+  assert.equal(handoff.meshRules.meshIsOptionalUntilRiggingPhase, true);
+  assert.ok(handoff.deformationTestPoses.includes("torso-yaw-and-lean"));
+  assert.equal(handoff.cameraAndDepth.doNotInferDepthFromFlatColorOrLayerOrderAlone, true);
+  assert.ok(handoff.acceptanceGates.includes("no-visible-seams-holes-or-texture-edge-fringing"));
+  assert.match(handoff.promotionPolicy, /visual sign-off and provenance/);
+});
