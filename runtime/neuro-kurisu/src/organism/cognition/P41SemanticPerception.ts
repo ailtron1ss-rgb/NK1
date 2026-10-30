@@ -20,6 +20,14 @@ function finitePosition(x:unknown,y:unknown,z:unknown):{x:number;y:number;z:numb
   if(![x,y,z].every(v=>typeof v==='number'&&Number.isFinite(v)))return null;
   return {x:Number(x),y:Number(y),z:Number(z)};
 }
+function normalizedImageBox(value:unknown):P41ImageBox|undefined{
+  if(!value||typeof value!=='object')return undefined;
+  const box=value as Record<string,unknown>;
+  if(![box.x,box.y,box.width,box.height].every(v=>typeof v==='number'&&Number.isFinite(v)))return undefined;
+  const x=Number(box.x),y=Number(box.y),width=Number(box.width),height=Number(box.height);
+  if(x<0||y<0||width<=0||height<=0||x+width>1.000001||y+height>1.000001)return undefined;
+  return {x,y,width,height};
+}
 function positionDistance(a:{x:number;y:number;z:number},b:{x:number;y:number;z:number}):number{
   return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2+(a.z-b.z)**2);
 }
@@ -204,7 +212,18 @@ export class P41SemanticPerceptionEngine {
     const d=defaultP41SemanticPerception(); const r=raw??{};
     this.state={...d,...r,
       scene:{...d.scene,...(r.scene??{})},
-      entities:Array.isArray(r.entities)?r.entities.slice(-192):[],
+      entities:Array.isArray(r.entities)?r.entities.slice(-192).map((entity:any)=>{
+        const imageBox=normalizedImageBox(entity?.imageBox);
+        const cameraId=Number.isSafeInteger(entity?.imageBoxCameraId)&&Number(entity.imageBoxCameraId)>=0?Number(entity.imageBoxCameraId):undefined;
+        const imageAt=Number.isFinite(entity?.imageBoxAt)&&Number(entity.imageBoxAt)>=0?Number(entity.imageBoxAt):undefined;
+        const boxConfidence=Number.isFinite(entity?.imageBoxConfidence01)&&Number(entity.imageBoxConfidence01)>=.42&&Number(entity.imageBoxConfidence01)<=1?Number(entity.imageBoxConfidence01):undefined;
+        const snapshotAt=Number(r.snapshots?.[0]?.at??entity?.lastSeenAt??0);
+        const validImageEvidence=Boolean(imageBox&&cameraId!==undefined&&imageAt!==undefined&&imageAt<=snapshotAt&&boxConfidence!==undefined);
+        return {
+          ...entity,
+          ...(validImageEvidence?{imageBox,imageBoxCameraId:cameraId,imageBoxAt:imageAt,imageBoxConfidence01:boxConfidence}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
+        };
+      }):[],
       relations:Array.isArray(r.relations)?r.relations.slice(-384):[],
       events:Array.isArray(r.events)?r.events.slice(-128):[],
       snapshots:Array.isArray(r.snapshots)?r.snapshots.slice(-128):[],
