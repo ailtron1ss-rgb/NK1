@@ -32,6 +32,8 @@ export interface P41PerceptualEntity {
   kind:P41EntityKind;
   /** Stable sensor/vendor track key. Absent for legacy singletons or untracked concepts. */
   trackId?:string;
+  /** Coordinate-frame identifier; spatial association is forbidden across unknown/different frames. */
+  positionFrameId?:string;
   /** IDs from other modalities that were safely associated with this same object track. */
   trackAliases?:string[];
   confidence01:number;
@@ -162,7 +164,7 @@ export interface P41SemanticInput {
     cameraId?:number;
     sceneLabel?:string;
     confidence01?:number;
-    objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;x?:number;y?:number;z?:number}>;
+    objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number}>;
     relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;
     events?:Array<{label:string;confidence01?:number}>;
     latencyMs?:number;
@@ -170,7 +172,7 @@ export interface P41SemanticInput {
   };
   audio?:{events?:Array<{label:string;confidence01?:number}>;relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;latencyMs?:number;semantic:boolean};
   sensor?:{location?:string;orientationDeg?:number;energy01?:number;thermal01?:number;capacity01?:number;motion01?:number;freshness01?:number};
-  world?:{scene?:string;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string}>;events?:string[]};
+  world?:{scene?:string;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string}>;events?:string[]};
   at?:number;
 }
 
@@ -207,7 +209,11 @@ export class P41SemanticPerceptionEngine {
   snapshot(){return structuredClone(this.state);}
 
   ingest(input:P41SemanticInput){
-    const at=input.at??now();
+    const requestedAt=Number(input.at??now());
+    const latestAt=this.state.snapshots[0]?.at??0;
+    if(!Number.isFinite(requestedAt)||requestedAt<0)return this.snapshot();
+    if(latestAt>0&&requestedAt<latestAt)return this.snapshot();
+    const at=requestedAt;
     if(input.text?.trim()) this.ingestText(input.text,at);
     if(input.vision) this.ingestVision(input.vision,at);
     if(input.audio) this.ingestAudio(input.audio,at);
@@ -243,7 +249,7 @@ export class P41SemanticPerceptionEngine {
   ingestVision(v:NonNullable<P41SemanticInput['vision']>,at:number){
     if(!v.semantic){ this.queuePending('vision','semantic scene/object extraction',.74,.5,at); this.epistemic.add({at,modality:'vision',claim:'semantic-vision-unresolved',source:'unresolved',confidence01:.12}); return; }
     if(v.sceneLabel){
-      const label=String(v.sceneLabel).slice(0,120);
+      const label=normalizePerceptualLabel(v.sceneLabel).slice(0,120);
       this.state.scene={label,confidence01:clamp(v.confidence01??.55),stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.08:.42),at};
       this.epistemic.add({at,modality:'vision',claim:`scene:${label}`,source:'model-output',confidence01:Number(v.confidence01??.55)});
     }
@@ -253,7 +259,8 @@ export class P41SemanticPerceptionEngine {
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'vision:'+cameraId+':'+(cleanTrackId(o.sourceId)||'backend')+':'+suppliedTrackId:undefined;
       const position=finitePosition(o.x,o.y,o.z);
-      const e=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.5),.66,'vision',at,position,'model-output',namespacedTrackId);
+      const positionFrameId=cleanTrackId(o.coordinateFrameId);
+      const e=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.5),.66,'vision',at,position,'model-output',namespacedTrackId,positionFrameId);
       if(e)targets.push(e.id);
     }
     for(const e of (v.events??[]).slice(0,16)) this.upsertEvent(String(e.label),clamp(e.confidence01??.45),'vision',at,'model-output');
@@ -295,9 +302,10 @@ export class P41SemanticPerceptionEngine {
 
   private expirePending(at:number){ for(const p of this.state.pending){ if(p.status==='pending'&&p.expiresAt<=at) p.status='expired'; } }
 
-  private upsertEntity(label:string,kind:P41EntityKind,confidence01:number,salience01:number,modality:P41Modality,at:number,pos:{x:number;y:number;z:number}|null,evidenceKind:P41EvidenceKind,suppliedTrackId?:string){
+  private upsertEntity(label:string,kind:P41EntityKind,confidence01:number,salience01:number,modality:P41Modality,at:number,pos:{x:number;y:number;z:number}|null,evidenceKind:P41EvidenceKind,suppliedTrackId?:string,positionFrameId?:string){
     const key=normalizePerceptualLabel(label); if(!key) return null;
     const explicitTrackId=cleanTrackId(suppliedTrackId);
+    const safePositionFrameId=cleanTrackId(positionFrameId);
     let e=explicitTrackId?this.state.entities.find(x=>x.trackId===explicitTrackId||x.trackAliases?.includes(explicitTrackId)):undefined;
     // Cross-modal association is allowed only when there is exactly one recent
     // same-label candidate that has not already been observed by this modality.
@@ -313,7 +321,7 @@ export class P41SemanticPerceptionEngine {
     // a coordinate frame. A same-frame detection cannot consume a track twice.
     if(!e&&pos){
       const candidates=this.state.entities
-        .filter(x=>x.label===key&&x.kind===kind&&x.position&&x.lastSeenAt<at&&at-x.lastSeenAt<=MAX_TRACK_GAP_MS)
+        .filter(x=>x.label===key&&x.kind===kind&&safePositionFrameId&&x.positionFrameId===safePositionFrameId&&x.position&&x.lastSeenAt<at&&at-x.lastSeenAt<=MAX_TRACK_GAP_MS)
         .map(x=>({entity:x,distance:positionDistance(x.position!,pos)}))
         .filter(x=>x.distance<=MAX_TRACK_ASSOCIATION_DISTANCE)
         .sort((a,b)=>a.distance-b.distance);
@@ -322,15 +330,16 @@ export class P41SemanticPerceptionEngine {
     // Without either a provider track ID or geometry, retain legacy singleton
     // semantics rather than manufacturing multiple indistinguishable objects.
     if(!e&&!explicitTrackId&&!pos)e=this.state.entities.find(x=>x.label===key&&x.kind===kind&&!x.trackId);
-    const trackId=explicitTrackId??(pos?'auto-track-'+(++this.state.nextTrackSequence):undefined);
+    const canTrackPosition=Boolean(pos&&safePositionFrameId);
+    const trackId=explicitTrackId??(!e&&canTrackPosition?'auto-track-'+(++this.state.nextTrackSequence):undefined);
     if(!e){
       const id=stableId('entity',kind+':'+key+':'+(trackId??'singleton'));
-      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],position:pos,velocity:null,trackAliases:[]};
+      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],position:pos,positionFrameId:safePositionFrameId||undefined,velocity:null,trackAliases:[]};
       this.state.entities.unshift(e);
     }else{
       const previousAt=e.lastSeenAt;
       const previousPosition=e.position;
-      if(pos&&previousPosition&&at>previousAt&&at-previousAt<=MAX_TRACK_GAP_MS){
+      if(pos&&previousPosition&&safePositionFrameId&&e.positionFrameId===safePositionFrameId&&at>previousAt&&at-previousAt<=MAX_TRACK_GAP_MS){
         const dt=Math.max(.001,(at-previousAt)/1000);
         const measured={x:(pos.x-previousPosition.x)/dt,y:(pos.y-previousPosition.y)/dt,z:(pos.z-previousPosition.z)/dt};
         e.velocity=e.velocity
@@ -344,7 +353,11 @@ export class P41SemanticPerceptionEngine {
       e.observations++;
       if(!e.modalities.includes(modality))e.modalities.push(modality);
       if(pos)e.position=pos;
-      if(trackId)e.trackId=trackId;
+      if(safePositionFrameId)e.positionFrameId=safePositionFrameId;
+      if(explicitTrackId&&e.trackId&&e.trackId!==explicitTrackId){
+        e.trackAliases=[...new Set([...(e.trackAliases??[]),explicitTrackId])].slice(-12);
+      }else if(explicitTrackId&&!e.trackId)e.trackId=explicitTrackId;
+      else if(trackId&&!e.trackId)e.trackId=trackId;
     }
     this.state.entities=this.state.entities.slice(0,192);
     return e;
@@ -359,7 +372,7 @@ export class P41SemanticPerceptionEngine {
   }
 
   private upsertEvent(label:string,confidence01:number,modality:P41Modality,at:number,evidenceKind:P41EvidenceKind){
-    const key=label.trim().toLowerCase(); if(!key)return;
+    const key=normalizePerceptualLabel(label); if(!key)return;
     let e=this.state.events.find(x=>x.label===key);
     if(!e)e={id:stableId('event',key),label:key,confidence01:clamp(confidence01),modalities:[modality],startedAt:at,lastAt:at,persistence01:.5,evidenceKind};
     else {e.confidence01=clamp(e.confidence01*.78+confidence01*.22);e.lastAt=at;e.persistence01=clamp(e.persistence01*.82+.18);if(!e.modalities.includes(modality))e.modalities.push(modality);e.evidenceKind=evidenceKind;}
