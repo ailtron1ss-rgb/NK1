@@ -86,6 +86,12 @@ assert.deepEqual(
   restoredP41.entities.filter(entity=>entity.label==='chair').map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
   p41Chairs.map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
 );
+const corruptedP41=JSON.parse(JSON.stringify(persistedP41));
+corruptedP41.entities.find(entity=>entity.label==='chair').imageBox={x:.9,y:.1,width:.3,height:.3};
+const strictP41Restore=new P41SemanticPerceptionEngine();
+strictP41Restore.restore(corruptedP41);
+assert.equal(strictP41Restore.snapshot().entities.find(entity=>entity.label==='chair')?.imageBox,undefined);
+
 const persistedGrounded=JSON.parse(JSON.stringify(groundedWorld.snapshot()));
 const restoredGroundedWorld=new GroundedWorldState();
 restoredGroundedWorld.restore(persistedGrounded);
@@ -93,6 +99,11 @@ assert.deepEqual(
   restoredGroundedWorld.snapshot().entities.filter(entity=>entity.label==='chair').map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
   groundedWorld.snapshot().entities.filter(entity=>entity.label==='chair').map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
 );
+const corruptedGrounded=JSON.parse(JSON.stringify(persistedGrounded));
+corruptedGrounded.entities.find(entity=>entity.label==='chair').imageBox={x:.9,y:.1,width:.3,height:.3};
+const strictGroundedRestore=new GroundedWorldState();
+strictGroundedRestore.restore(corruptedGrounded);
+assert.equal(strictGroundedRestore.snapshot().entities.find(entity=>entity.label==='chair')?.imageBox,undefined);
 
 // Simulate process restart: restore local temporal identities from the persisted
 // canonical P41 snapshot, then continue tracking on a third camera frame.
