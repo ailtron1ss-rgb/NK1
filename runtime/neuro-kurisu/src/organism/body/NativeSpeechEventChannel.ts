@@ -45,6 +45,7 @@ export function createNativeSpeechEventChannel(
 ): NativeSpeechEventChannel {
   const listeners = new Set<(event: NativeSpeechProviderEventV1) => void>();
   const sequences = new Map<string, number>();
+  const lastTimes = new Map<string, number>();
   const pending: NativeSpeechProviderEventV1[] = [];
   let dispatching = false;
   let eventCounter = 0;
@@ -53,12 +54,19 @@ export function createNativeSpeechEventChannel(
     publish(operationIdInput, input) {
       const operationId = String(operationIdInput ?? '').trim().slice(0, 140);
       if (!operationId || !input || typeof input.phase !== 'string') return null;
-      const monotonicTimeMs = Number(now());
-      if (!Number.isFinite(monotonicTimeMs) || monotonicTimeMs < 0) return null;
+      const clockSample = Number(now());
+      if (!Number.isFinite(clockSample) || clockSample < 0) return null;
+      // Defend the wire contract against an injected/reset clock moving backwards.
+      const monotonicTimeMs = Math.max(clockSample, lastTimes.get(operationId) ?? 0);
+      lastTimes.set(operationId, monotonicTimeMs);
       const sequence = (sequences.get(operationId) ?? 0) + 1;
       sequences.set(operationId, sequence);
       // Keep this diagnostic channel bounded even if callers generate unbounded IDs.
-      if (sequences.size > 256) sequences.delete(sequences.keys().next().value as string);
+      if (sequences.size > 256) {
+        const oldestOperationId = sequences.keys().next().value as string;
+        sequences.delete(oldestOperationId);
+        lastTimes.delete(oldestOperationId);
+      }
       eventCounter += 1;
       const event: NativeSpeechProviderEventV1 = Object.freeze({
         protocol: 'nk1.native-speech-provider-event',
