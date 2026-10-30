@@ -6,6 +6,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
       - "runtime/neuro-kurisu/tests/p41-perceptual-integrity-deep-pass.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/p41-integration.mjs"
       - "runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
@@ -24,6 +25,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
       - "runtime/neuro-kurisu/tests/p41-perceptual-integrity-deep-pass.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/p41-integration.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
@@ -74,6 +77,9 @@ jobs:
       - name: Run canonical P41 semantic perception regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p41:semantic-perception
+      - name: Run Core P41 cross-modal identity integration
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p41:integration
       - name: Run P41 instance tracking, calibration, and epistemic integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:p41:perceptual-integrity-deep-pass
