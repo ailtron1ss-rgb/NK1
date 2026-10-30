@@ -26,7 +26,9 @@
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
     "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs",
     "test:browser-voice-prosody": "node --experimental-strip-types --test scripts/browser-voice-prosody.test.mjs",
-    "test:native-speech-provider-events": "node --experimental-strip-types --test scripts/native-speech-provider-events.test.mjs"
+    "test:native-speech-provider-events": "node --experimental-strip-types --test scripts/native-speech-provider-events.test.mjs",
+    "validate:original-2d-assets": "node scripts/validate-original-2d-assets.mjs",
+    "test:original-2d-existing-assets": "node --test scripts/original-2d-existing-assets.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
