@@ -15,6 +15,60 @@ const complete=cycle.evaluate({tick:1,stageIds:stages,parentIntegrity01:0.9});
 assert.equal(complete.complete,true);
 assert.equal(complete.stageCoverage01,1);
 assert.deepEqual(complete.missingStages,[]);
+
+// Six-stage callers remain supported for older integrations.
+const partialExtended = new UnifiedCognitiveCycle();
+const partialExtendedResult = partialExtended.evaluate({
+  tick: 1,
+  stageIds: { ...stages, appraisal: 'app-1', attention: 'attention-1' },
+  parentIntegrity01: 1,
+});
+assert.equal(partialExtendedResult.complete, false, 'advertising extended phases requires all eleven phases');
+assert.equal(partialExtendedResult.stageCoverage01, 8 / 11);
+assert.deepEqual(partialExtendedResult.missingStages, ['memory', 'goal', 'plan']);
+
+// A complete extended caller must supply eleven distinct event identities.
+const fullExtended = new UnifiedCognitiveCycle();
+const fullExtendedIds = {
+  observation: 'obs-ext',
+  prediction: 'pred-ext',
+  appraisal: 'app-ext',
+  attention: 'attention-ext',
+  memory: 'memory-ext',
+  goal: 'goal-ext',
+  plan: 'plan-ext',
+  action: 'action-ext',
+  outcome: 'outcome-ext',
+  learning: 'learning-ext',
+  'self-update': 'self-ext',
+};
+const fullExtendedResult = fullExtended.evaluate({ tick: 1, stageIds: fullExtendedIds, parentIntegrity01: 1 });
+assert.equal(fullExtendedResult.complete, true);
+assert.equal(fullExtendedResult.stageCoverage01, 1);
+assert.deepEqual(fullExtendedResult.missingStages, []);
+
+// Even an explicitly present but undefined extended phase opts into the strict spine.
+const explicitlyExtended = new UnifiedCognitiveCycle();
+const explicitlyExtendedResult = explicitlyExtended.evaluate({
+  tick: 1,
+  stageIds: { ...stages, appraisal: undefined },
+  parentIntegrity01: 1,
+});
+assert.equal(explicitlyExtendedResult.complete, false);
+assert.ok(explicitlyExtendedResult.missingStages.includes('appraisal'));
+assert.ok(explicitlyExtendedResult.missingStages.includes('plan'));
+
+// Reusing an event identity across extended phases cannot manufacture completeness.
+const duplicateExtended = new UnifiedCognitiveCycle();
+const duplicateExtendedResult = duplicateExtended.evaluate({
+  tick: 1,
+  stageIds: { ...fullExtendedIds, goal: fullExtendedIds.memory },
+  parentIntegrity01: 1,
+});
+assert.equal(duplicateExtendedResult.complete, false);
+assert.ok(duplicateExtendedResult.missingStages.includes('memory'));
+assert.ok(duplicateExtendedResult.missingStages.includes('goal'));
+
 const duplicateIds=cycle.evaluate({tick:2,stageIds:{...stages,prediction:stages.observation},parentIntegrity01:1});
 assert.equal(duplicateIds.complete,false);
 assert.ok(duplicateIds.missingStages.includes('observation'));
