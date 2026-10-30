@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { attachVerifiedVrmGarment, inspectVrmGarmentRig } from "../src/components/avatar/vrmWardrobeAdapter.ts";
+import { attachVerifiedVrmGarment, collectVrmAvatarRigIdentityDescriptors, inspectVrmGarmentRig } from "../src/components/avatar/vrmWardrobeAdapter.ts";
 
 class Bone {
   constructor(name) { this.name=name; this.children=[]; this.isBone=true; }
@@ -58,4 +58,14 @@ test("successful replacement hides the prior garment only after new attachment",
  const target=avatar();const previous=new Group("old-coat");previous.userData={nk1WardrobeSlot:"outerwear"};target.add(previous);
  const result=attachVerifiedVrmGarment({garmentRoot:garment(),avatarRoot:target,slot:"outerwear",assetId:"coat-v1",plan});
  assert.equal(result.applied,true);assert.equal(result.replaced,1);assert.equal(previous.visible,false);
+});
+
+
+test("attached wardrobe bones do not change the canonical avatar rig identity",()=>{
+ const target=avatar();
+ const before=collectVrmAvatarRigIdentityDescriptors(target);
+ const result=attachVerifiedVrmGarment({garmentRoot:garment(),avatarRoot:target,slot:"outerwear",assetId:"coat-v1",plan});
+ assert.equal(result.applied,true);
+ const after=collectVrmAvatarRigIdentityDescriptors(target);
+ assert.deepEqual(after,before);
 });
