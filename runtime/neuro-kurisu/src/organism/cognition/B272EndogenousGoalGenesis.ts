@@ -78,6 +78,10 @@ export function defaultB272State():B272State{
   return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
 }
 
+export interface B272IntrinsicDriveProfile {
+  epistemic:number; novelty:number; competence:number; coherence:number; social:number; homeostatic:number; confidence01:number;
+}
+
 export interface B272StepInput {
   tick:number;
   selfLatent:number[];
@@ -91,6 +95,8 @@ export interface B272StepInput {
   /** Optional calibrated drive signal from IntrinsicMotivationEngine. */
   intrinsicDrive01?:number;
   intrinsicDriveConfidence01?:number;
+  /** Confidence-gated six-channel drive vector; affective and allostatic state enters goal synthesis here. */
+  intrinsicDrives?:B272IntrinsicDriveProfile;
   lastAction:ActionKind|null;
   lastReward01:number;
 }
@@ -237,18 +243,31 @@ export class B272EndogenousGoalGenesis {
       clamp11(input.needs.novelty01-.5),clamp11(input.needs.uncertainty01-.5),clamp11(input.needs.goalPressure01-.5),clamp11(input.needs.energy01-.5),
       clamp11(input.needs.socialNeed01-.5),clamp11(input.predictionError01-.5),clamp11(input.autobiographicalContinuity01-.5),clamp11(input.identityContinuity01-.5)
     ];
+    const drives=input.intrinsicDrives;
+    const driveConfidence=clamp01(drives?.confidence01??0);
+    const driveProjection=[
+      ((drives?.epistemic??.5)-.5)*.34+((drives?.novelty??.5)-.5)*.42,
+      ((drives?.epistemic??.5)-.5)*.64,
+      ((drives?.coherence??.5)-.5)*.68,
+      ((drives?.competence??.5)-.5)*.68,
+      ((drives?.social??.5)-.5)*.68,
+      0,
+      0,
+      ((drives?.homeostatic??.5)-.5)*.68,
+    ];
     const traits=[t.curiosity,t['truth-seeking'],t['self-reflection'],t['self-preservation'],t.care,t['social-attunement'],t.persistence,t['self-reflection']];
     return scalar.map((v,i)=>{
       const selfRaw=dot(this.state.selfProjectionWeights[i]!, input.selfLatent.slice(0,16));
       const worldRaw=dot(this.state.worldProjectionWeights[i]!, input.worldLatent.slice(0,16));
       const traitTerm=clamp11(Number(traits[i]??.5)-.5);
-      return clamp11(v*.76+traitTerm*.20+Math.tanh(selfRaw*.9)*.02+Math.tanh(worldRaw*.9)*.02);
+      return clamp11(v*.70+traitTerm*.18+(driveProjection[i]??0)*driveConfidence*.12+Math.tanh(selfRaw*.9)*.02+Math.tanh(worldRaw*.9)*.02);
     });
   }
   private generateCandidate(input:B272StepInput):B272GoalCandidate{
     const base=this.buildInternalVector(input);
     const conflict=clamp01(.28*input.predictionError01+.24*input.needs.uncertainty01+.18*(1-input.autobiographicalContinuity01)+.16*(1-input.identityContinuity01)+.14*(1-input.needs.energy01));
-    const intrinsic=Math.max(clamp01(input.intrinsicReward01),clamp01(input.intrinsicDrive01??0)*clamp01(input.intrinsicDriveConfidence01??0));
+    const profileDrive=input.intrinsicDrives?Math.max(input.intrinsicDrives.epistemic,input.intrinsicDrives.novelty,input.intrinsicDrives.competence,input.intrinsicDrives.coherence,input.intrinsicDrives.social,input.intrinsicDrives.homeostatic)*clamp01(input.intrinsicDrives.confidence01):0;
+    const intrinsic=Math.max(clamp01(input.intrinsicReward01),clamp01(input.intrinsicDrive01??0)*clamp01(input.intrinsicDriveConfidence01??0),profileDrive);
     const candidates:number[][]=[];
     for(let k=0;k<4;k++){
       const prev=this.state.currentGoal.length?this.state.currentGoal:zeroGoal();
@@ -286,6 +305,10 @@ const learned=this.learnedGoalValue(v,input.tick);
     for(const [name,value] of [['predictionError01',input.predictionError01],['autobiographicalContinuity01',input.autobiographicalContinuity01],['identityContinuity01',input.identityContinuity01],['intrinsicReward01',input.intrinsicReward01],['lastReward01',input.lastReward01]] as const)if(!isUnit(value))throw new RangeError(`B272 ${name} must be in [0,1]`);
     if(input.intrinsicDrive01!==undefined&&!isUnit(input.intrinsicDrive01))throw new RangeError('B272 intrinsicDrive01 must be in [0,1]');
     if(input.intrinsicDriveConfidence01!==undefined&&!isUnit(input.intrinsicDriveConfidence01))throw new RangeError('B272 intrinsicDriveConfidence01 must be in [0,1]');
+    if(input.intrinsicDrives!==undefined){
+      if(!isRecord(input.intrinsicDrives)||!['epistemic','novelty','competence','coherence','social','homeostatic','confidence01'].every(key=>isUnit((input.intrinsicDrives as Record<string,unknown>)[key])))
+        throw new RangeError('B272 intrinsicDrives profile must contain bounded finite channels');
+    }
     if(input.lastAction!==null&&!isAction(input.lastAction))throw new RangeError('B272 lastAction is invalid');
     if(this.state.steps>=Number.MAX_SAFE_INTEGER||this.state.generatedGoals>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 step counter reached its safe integer limit');
     const c=this.generateCandidate({...input,tick}); const idx=c.actionScores.indexOf(Math.max(...c.actionScores)); const action=ACTIONS[idx]??'reflect';
