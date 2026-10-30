@@ -17,9 +17,9 @@ assert.equal(legacy.chapters, 0, 'unverified outcomes must not create autobiogra
 assert.equal(legacy.selfAuthorship01, 0.5, 'unknown authorship must not inflate self-authorship');
 
 const verifiedEvents = [
-  { tick: 3, at: 300, action: 'explore', outcome: 0.1, evidenceStatus: 'verified-independent', evidenceRef: 'world-transition:episode-3', authorship: 'self-initiated', episodeId: 'episode-3' },
-  { tick: 4, at: 400, action: 'verify', outcome: 0.9, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:episode-4', authorship: 'self-selected', episodeId: 'episode-4' },
-  { tick: 5, at: 500, action: 'reflect', outcome: 0.5, evidenceStatus: 'verified-independent', evidenceRef: 'world-transition:episode-5', authorship: 'user-directed', episodeId: 'episode-5' }
+  { tick: 3, at: 300, action: 'explore', outcome: 0.1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:3:31:outcome', authorship: 'self-initiated', episodeId: 'episode-3' },
+  { tick: 4, at: 400, action: 'verify', outcome: 0.9, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:4:32:outcome', authorship: 'self-selected', episodeId: 'episode-4' },
+  { tick: 5, at: 500, action: 'reflect', outcome: 0.5, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:5:33:outcome', authorship: 'user-directed', episodeId: 'episode-5' }
 ];
 const grounded = p.observe(verifiedEvents);
 assert.equal(grounded.verifiedOutcomeSamples, 3);
@@ -63,7 +63,7 @@ const normalizedReplay = normalized.observe([
 assert.deepEqual(normalizedReplay, normalizedFirst, 'whitespace normalization must make equivalent event keys idempotent');
 
 const malformedEvidence = new P78AutobiographicalSelfContinuity().observe([
-  { tick: 41, at: 4100, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'world-transition:bad receipt' }
+  { tick: 41, at: 4100, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:41:44:outcome' }
 ]);
 assert.equal(malformedEvidence.verifiedOutcomeSamples, 0, 'evidence references containing whitespace are not bound receipts');
 assert.equal(malformedEvidence.unverifiedOutcomeSamples, 1);
@@ -72,4 +72,9 @@ const unknownIssuer = new P78AutobiographicalSelfContinuity().observe([
 ]);
 assert.equal(unknownIssuer.verifiedOutcomeSamples, 0, 'unknown issuer namespaces cannot enter autobiographical verified history');
 assert.equal(unknownIssuer.unverifiedOutcomeSamples, 1);
+const wrongTickReceipt = new P78AutobiographicalSelfContinuity().observe([
+  { tick: 43, at: 4300, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:42:45:outcome' }
+]);
+assert.equal(wrongTickReceipt.verifiedOutcomeSamples, 0, 'receipt tick must match the autobiographical event tick');
+assert.equal(wrongTickReceipt.unverifiedOutcomeSamples, 1);
 console.log('P78_AUTOBIOGRAPHICAL_PROVENANCE=PASS');
