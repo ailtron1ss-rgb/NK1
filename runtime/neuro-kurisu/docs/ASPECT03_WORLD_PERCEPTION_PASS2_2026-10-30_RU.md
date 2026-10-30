@@ -128,6 +128,35 @@ VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `c
 
 Это не добавляет калибровку камеры и не преобразует координаты изображения в world-space. Источник обязан передать откалиброванный frame ID самостоятельно.
 
+### 3.8. Временное отслеживание экземпляров объектов между кадрами
+
+Файлы:
+- `src/organism/body/TemporalObjectTracker.ts`
+- `src/organism/body/VisionSemanticBackend.ts`
+- `src/organism/body/GeminiVisionSemanticBackend.ts`
+- `src/organism/core/OrganismRuntime.ts`
+
+Добавлено:
+- отдельный runtime tracker с состоянием на каждую камеру;
+- нормализованный 2D bbox, отдельная `bboxConfidence01`, camera ID и capture execution receipt;
+- сохранение provider-owned track IDs без подмены локальными;
+- локальные session-scoped IDs выдаются только при валидной рамке и явной достаточной localization confidence;
+- ассоциация по IoU + расстоянию центров + ограничению изменения площади;
+- однозначность проверяется в обоих направлениях (detection→track и track→detection);
+- при неоднозначности ID не назначается;
+- одинаковые подписи сохраняют отдельные экземпляры при разных bbox;
+- перекрывающиеся дубли в одном кадре не создают две фиктивные сущности;
+- отдельные camera namespaces, max-gap, max-age, stale timestamp и duplicate receipt guards;
+- одинаковый SHA изображения не используется как frame ID: неподвижная сцена всё равно даёт новый capture, а идемпотентный повтор одного receipt не удваивает tracking update;
+- runtime возвращает tracking metrics вместе с semantic result.
+
+Gemini может вернуть приблизительный normalized 2D bbox только когда объект ясно локализован; при недостаточной уверенности bbox опускается. Уверенность существования объекта не заменяет отдельную уверенность локализации. Эти bbox остаются model-output, не становятся observed и не создают 3D-координат.
+
+Ограничения:
+- данный трекер не выполняет optical flow, Kalman prediction, appearance embeddings или re-identification после длительного исчезновения;
+- tracking надёжен только настолько, насколько backend даёт согласованные рамки; LLM bbox — это приближённая локализация, не ground truth;
+- полноценный production tracker (ByteTrack/BoT-SORT-подобный detector pipeline) и независимые IDF1/HOTA оценки остаются следующим этапом.
+
 ## 4. Регрессионные тесты
 
 Новый тест:
@@ -141,7 +170,9 @@ VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `c
 - unknown value/visibility/collection не превращаются в ложные утверждения;
 - устаревшее observed evidence не считается текущим и сохраняется как historical;
 - calibrated x/y/z передаются между Core, P41 и GroundedWorldState только вместе с coordinateFrameId;
-- неполная или unframed геометрия остаётся unknown.
+- неполная или unframed геометрия остаётся unknown;
+- два последовательных кадра с одинаковыми объектами и валидными рамками сохраняют ID при перестановке detection order;
+- ambiguous matches, duplicate boxes, stale frame receipts и истёкшие треки не порождают ложных идентификаторов.
 
 Новый тест:
 - `tests/gemini-vision-mime-integrity.mjs`
