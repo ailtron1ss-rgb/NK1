@@ -54,7 +54,16 @@ export class P2702PersistentPersonalityDynamics{
   const adaptiveValues=mappedValues(r.adaptiveNames,r.adaptiveValues,d.adaptiveNames,d.adaptiveValues);
   const valueWeights=mappedValues(r.valueNames,r.valueWeights,d.valueNames,d.valueWeights);
   const trustSource=r.relationshipTrust&&typeof r.relationshipTrust==='object'&&!Array.isArray(r.relationshipTrust)?Object.entries(r.relationshipTrust):[];
-  const relationshipTrust=Object.fromEntries(trustSource.filter(([k])=>typeof k==='string'&&k.trim().length>0&&String(k).length<=80&&!['__proto__','prototype','constructor'].includes(String(k))).slice(0,32).map(([k,v])=>[String(k).slice(0,80),clamp(Number(v))]));
+  const relationshipTrust:Record<string,number>={};
+  for(const [rawKey,rawValue] of trustSource){
+   if(typeof rawKey!=='string')continue;
+   const key=rawKey.trim().normalize('NFKC');
+   if(!key||key.length>80||['__proto__','prototype','constructor'].includes(key)||
+      [...key].some(char=>{const code=char.charCodeAt(0);return code<=31||(code>=127&&code<=159);})||
+      Object.prototype.hasOwnProperty.call(relationshipTrust,key))continue;
+   if(Object.keys(relationshipTrust).length>=32)break;
+   relationshipTrust[key]=clamp(Number(rawValue));
+  }
   const actionPreference=Object.fromEntries(ACTIONS.map(action=>[action,clamp(Number(r.actionPreference?.[action]??0),-1,1)])) as Record<ActionKind,number>;
   this.state={...d,...deep(r),version:1,
    tick:count(r.tick),experienceCount:count(r.experienceCount),learningUpdates:count(r.learningUpdates),
@@ -143,7 +152,7 @@ export class P2702PersistentPersonalityDynamics{
   // Relationship trust is outcome evidence, not a proxy for the organism's own continuity.
   return {actionBias:bias,traitVector:this.state.adaptiveValues.slice(),valueVector:this.state.valueWeights.slice(),identityContinuity01:this.state.identityContinuity01,coherence01:this.state.coherence01,stability01:this.state.stability01,contradiction01:this.state.contradiction01};
  }
- afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;learningScale01?:number;evidence01?:number;independent01?:number;consequence01?:number}){
+ afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;learningScale01?:number;evidence01?:number;independent01?:number;consequence01?:number;evidenceReceiptId?:string;evidenceRef?:string}){
   const reward=clamp(args.reward01),verified=clamp(args.verified01),error=clamp(args.predictionError01);
   const learningScale=clamp(args.learningScale01??.5),evidence=clamp(args.evidence01??.5),independent=clamp(args.independent01??0),consequence=clamp(args.consequence01??0);
   const signal=clamp(reward*.55+verified*.25+(1-error)*.20);const eta=this.state.plasticity01*(.55+Math.abs(reward-.5))*learningScale;
@@ -164,7 +173,10 @@ export class P2702PersistentPersonalityDynamics{
    if(index<0||index>=this.state.adaptiveValues.length)continue;
    this.state.adaptiveValues[index]=clamp((this.state.adaptiveValues[index]??.5)+(signal-.5)*eta*target.weight);
   }
-  const strongIndependentOutcome=verified>=.9&&evidence>=.72&&independent>=.8&&consequence>=.7;
+  const receiptId=String(args.evidenceReceiptId??'').trim().slice(0,180);
+  const receipt=/^reb:(\\d+):(\\d+):outcome$/.exec(receiptId);
+  const receiptBound=Boolean(receipt&&Number(receipt[1])===args.tick&&args.evidenceRef===`external-verification:${receiptId}`);
+  const strongIndependentOutcome=receiptBound&&verified>=.9&&evidence>=.72&&independent>=.8&&consequence>=.7;
   // Core values and relationship trust have a higher evidential bar than behavioral habits.
   if(strongIndependentOutcome){
    const autobiographicalEvidence=clamp(evidence*.45+independent*.30+consequence*.25);
