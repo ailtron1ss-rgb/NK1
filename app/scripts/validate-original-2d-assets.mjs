@@ -109,7 +109,28 @@ async function main() {
     if (asset.status === "not-authored") {
       requireCondition(asset.sourceFile == null && asset.previewFile == null && asset.sha256 == null,
         `${asset.id}: not-authored assets must not claim files or hashes`);
+      requireCondition(asset.provenance == null,
+        `${asset.id}: not-authored assets must not claim provenance`);
       continue;
+    }
+
+    const provenance = asset.provenance;
+    requireCondition(isRecord(provenance), `${asset.id}: verified provenance record is required before authored/in-progress status`);
+    if (isRecord(provenance)) {
+      requireCondition(typeof provenance.creator === "string" && provenance.creator.trim().length > 0,
+        `${asset.id}: provenance.creator is required`);
+      requireCondition(typeof provenance.sourceUrl === "string" && /^https:\/\//i.test(provenance.sourceUrl),
+        `${asset.id}: provenance.sourceUrl must be HTTPS`);
+      requireCondition(typeof provenance.licenseId === "string" && provenance.licenseId.trim().length > 0,
+        `${asset.id}: provenance.licenseId is required`);
+      requireCondition(typeof provenance.permissionEvidence === "string" && provenance.permissionEvidence.trim().length > 0,
+        `${asset.id}: provenance.permissionEvidence is required`);
+      requireCondition(provenance.redistributionAllowed === true,
+        `${asset.id}: redistribution permission must be explicitly verified`);
+      requireCondition(typeof provenance.verifiedAt === "string" && !Number.isNaN(Date.parse(provenance.verifiedAt)),
+        `${asset.id}: provenance.verifiedAt must be a valid timestamp`);
+      requireCondition(typeof provenance.verifiedBy === "string" && provenance.verifiedBy.trim().length > 0,
+        `${asset.id}: provenance.verifiedBy is required`);
     }
 
     const sourcePath = safeAssetPath(asset.sourceFile, asset.id, "sourceFile");
