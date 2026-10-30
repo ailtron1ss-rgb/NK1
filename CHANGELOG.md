@@ -1,3 +1,8 @@
+## [NK1][WorkPass634] Align Aspect 04 workflow with repository CI policy (2026-10-30)
+
+- Upgrade the dedicated depth-rig workflow from checkout/setup-node v4 to approved v7 actions and pin Node through the root `.nvmrc` (Node 24), resolving the CI reliability audit failures found on PR #409.
+- Add `embodimentIntentAdapter.ts` to the push path filter so changes to the explicit PR #410 motor-frame adapter trigger the focused depth-rig gate.
+
 ## [NK1][Aspect04] Bind motor joint targets to depth-rig nodes (2026-10-30)
 
 - Add explicit joint-to-node binding records and a renderer-neutral adapter for PR #410 MotorFrame targets.
