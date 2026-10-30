@@ -11,7 +11,39 @@ export interface UnifiedCognitiveSubstrateState {
   lastReason: string;
 }
 
+type UnknownRecord = Record<string, unknown>;
+
 const clamp = (x:number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const isRecord = (value:unknown): value is UnknownRecord =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+function recordOrEmpty(value:unknown): UnknownRecord {
+  // Only own enumerable fields are eligible for restoration. Persisted JSON cannot
+  // legitimately rely on prototype inheritance; this also closes polluted-object paths.
+  return isRecord(value) ? Object.fromEntries(Object.entries(value)) : {};
+}
+
+/** Persisted counters are untrusted: never coerce strings, fractions or infinities. */
+function safeCounter(value:unknown, fallback:number):number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : fallback;
+}
+
+/** Normalized signals are finite numbers in [0, 1]; malformed values use their domain default. */
+function safeMetric(value:unknown, fallback:number):number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? clamp(value)
+    : fallback;
+}
+
+/** Bounded labels keep restored metadata inert and prevent control-character injection. */
+function safeLabel(value:unknown, fallback:string, maxLength=160):string {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxLength || /[\u0000-\u001f\u007f-\u009f]/u.test(normalized)) return fallback;
+  return normalized;
+}
 
 export const defaultUnifiedCognitiveSubstrate = (): UnifiedCognitiveSubstrateState => ({
   version:1, cycles:0, lastTick:0,
@@ -24,25 +56,84 @@ export const defaultUnifiedCognitiveSubstrate = (): UnifiedCognitiveSubstrateSta
   lastReason:'initial',
 });
 
-/** Bounded cross-system projection. It never owns canonical domain state. */
+/**
+ * Bounded cross-system projection. It never owns canonical domain state.
+ *
+ * Restore is deliberately an allow-list projection: persisted snapshots may be
+ * old, partial or malformed, so unknown fields and non-finite values must not
+ * leak back into the live cognitive runtime.
+ */
 export class UnifiedCognitiveSubstrate {
   private state = defaultUnifiedCognitiveSubstrate();
 
-  restore(raw?: Partial<UnifiedCognitiveSubstrateState> | null) {
+  restore(raw?: Partial<UnifiedCognitiveSubstrateState> | null):void {
     const d = defaultUnifiedCognitiveSubstrate();
-    const r = raw ?? {};
+    const r = recordOrEmpty(raw);
+    if (r.version !== undefined && r.version !== 1) {
+      throw new RangeError('unsupported unified cognitive substrate state version');
+    }
+
+    const self = recordOrEmpty(r.self);
+    const world = recordOrEmpty(r.world);
+    const prediction = recordOrEmpty(r.prediction);
+    const resources = recordOrEmpty(r.resources);
+    const coupling = recordOrEmpty(r.coupling);
+    const provenance = recordOrEmpty(r.provenance);
+
     this.state = {
-      ...d, ...r,
-      self:{...d.self,...(r.self??{})},
-      world:{...d.world,...(r.world??{})},
-      prediction:{...d.prediction,...(r.prediction??{})},
-      resources:{...d.resources,...(r.resources??{})},
-      coupling:{...d.coupling,...(r.coupling??{})},
-      provenance:{...d.provenance,...(r.provenance??{})},
+      version:1,
+      cycles:safeCounter(r.cycles,d.cycles),
+      lastTick:safeCounter(r.lastTick,d.lastTick),
+      self:{
+        continuity01:safeMetric(self.continuity01,d.self.continuity01),
+        coherence01:safeMetric(self.coherence01,d.self.coherence01),
+        agency01:safeMetric(self.agency01,d.self.agency01),
+        realityAlignment01:safeMetric(self.realityAlignment01,d.self.realityAlignment01),
+        mode:safeLabel(self.mode,d.self.mode,48),
+        lastAction:safeLabel(self.lastAction,d.self.lastAction,96),
+      },
+      world:{
+        confidence01:safeMetric(world.confidence01,d.world.confidence01),
+        uncertainty01:safeMetric(world.uncertainty01,d.world.uncertainty01),
+        entityCount:safeCounter(world.entityCount,d.world.entityCount),
+        eventCount:safeCounter(world.eventCount,d.world.eventCount),
+        relationCount:safeCounter(world.relationCount,d.world.relationCount),
+        conflict01:safeMetric(world.conflict01,d.world.conflict01),
+        newEntityRate01:safeMetric(world.newEntityRate01,d.world.newEntityRate01),
+      },
+      prediction:{
+        error01:safeMetric(prediction.error01,d.prediction.error01),
+        openCount:safeCounter(prediction.openCount,d.prediction.openCount),
+        agingCount:safeCounter(prediction.agingCount,d.prediction.agingCount),
+        expiredCount:safeCounter(prediction.expiredCount,d.prediction.expiredCount),
+        priority01:safeMetric(prediction.priority01,d.prediction.priority01),
+      },
+      resources:{
+        battery01:safeMetric(resources.battery01,d.resources.battery01),
+        thermal01:safeMetric(resources.thermal01,d.resources.thermal01),
+        ramPressure01:safeMetric(resources.ramPressure01,d.resources.ramPressure01),
+        computeCapacity01:safeMetric(resources.computeCapacity01,d.resources.computeCapacity01),
+        scarcity01:safeMetric(resources.scarcity01,d.resources.scarcity01),
+        efficiency01:safeMetric(resources.efficiency01,d.resources.efficiency01),
+      },
+      coupling:{
+        selfWorld01:safeMetric(coupling.selfWorld01,d.coupling.selfWorld01),
+        predictionGrounding01:safeMetric(coupling.predictionGrounding01,d.coupling.predictionGrounding01),
+        memoryPressure01:safeMetric(coupling.memoryPressure01,d.coupling.memoryPressure01),
+        actionReadiness01:safeMetric(coupling.actionReadiness01,d.coupling.actionReadiness01),
+      },
+      provenance:{
+        evidenceCoverage01:safeMetric(provenance.evidenceCoverage01,d.provenance.evidenceCoverage01),
+        realObservationCoverage01:safeMetric(provenance.realObservationCoverage01,d.provenance.realObservationCoverage01),
+        unknown01:safeMetric(provenance.unknown01,d.provenance.unknown01),
+      },
+      lastReason:safeLabel(r.lastReason,d.lastReason,240),
     };
   }
 
-  snapshot() { return structuredClone(this.state); }
+  snapshot():UnifiedCognitiveSubstrateState {
+    return structuredClone(this.state);
+  }
 
   integrate(input: {
     tick:number;
@@ -51,7 +142,17 @@ export class UnifiedCognitiveSubstrate {
     prediction:UnifiedCognitiveSubstrateState['prediction'];
     resources:UnifiedCognitiveSubstrateState['resources'];
     memoryPressure01:number; evidenceCoverage01:number; realObservationCoverage01:number; unknown01:number; reason?:string;
-  }) {
+  }):UnifiedCognitiveSubstrateState {
+    if (!Number.isSafeInteger(input.tick) || input.tick < 1) {
+      throw new RangeError('unified cognitive substrate tick must be a positive safe integer');
+    }
+    if (input.tick <= this.state.lastTick) {
+      throw new RangeError('unified cognitive substrate tick must strictly increase');
+    }
+    if (this.state.cycles >= Number.MAX_SAFE_INTEGER) {
+      throw new RangeError('unified cognitive substrate cycle counter reached its safe integer limit');
+    }
+
     const selfWorld = clamp(
       input.self.realityAlignment01*.30 +
       input.world.confidence01*.34 +
@@ -73,13 +174,50 @@ export class UnifiedCognitiveSubstrate {
     );
     this.state = {
       version:1, cycles:this.state.cycles+1, lastTick:input.tick,
-      self:{...input.self,continuity01:clamp(input.self.continuity01),coherence01:clamp(input.self.coherence01),agency01:clamp(input.self.agency01),realityAlignment01:clamp(input.self.realityAlignment01)},
-      world:{...input.world,confidence01:clamp(input.world.confidence01),uncertainty01:clamp(input.world.uncertainty01),conflict01:clamp(input.world.conflict01),newEntityRate01:clamp(input.world.newEntityRate01)},
-      prediction:{...input.prediction,error01:clamp(input.prediction.error01),priority01:clamp(input.prediction.priority01)},
-      resources:{...input.resources,battery01:clamp(input.resources.battery01),thermal01:clamp(input.resources.thermal01),ramPressure01:clamp(input.resources.ramPressure01),computeCapacity01:clamp(input.resources.computeCapacity01),scarcity01:clamp(input.resources.scarcity01),efficiency01:clamp(input.resources.efficiency01)},
-      coupling:{selfWorld01:selfWorld,predictionGrounding01:predictionGrounding,memoryPressure01:clamp(input.memoryPressure01),actionReadiness01:actionReadiness},
-      provenance:{evidenceCoverage01:clamp(input.evidenceCoverage01),realObservationCoverage01:clamp(input.realObservationCoverage01),unknown01:clamp(input.unknown01)},
-      lastReason:input.reason ?? `tick=${input.tick};selfWorld=${selfWorld.toFixed(2)};predictionGrounding=${predictionGrounding.toFixed(2)}`,
+      self:{
+        continuity01:clamp(input.self.continuity01),
+        coherence01:clamp(input.self.coherence01),
+        agency01:clamp(input.self.agency01),
+        realityAlignment01:clamp(input.self.realityAlignment01),
+        mode:safeLabel(input.self.mode,this.state.self.mode,48),
+        lastAction:safeLabel(input.self.lastAction,this.state.self.lastAction,96),
+      },
+      world:{
+        confidence01:clamp(input.world.confidence01),
+        uncertainty01:clamp(input.world.uncertainty01),
+        entityCount:safeCounter(input.world.entityCount,this.state.world.entityCount),
+        eventCount:safeCounter(input.world.eventCount,this.state.world.eventCount),
+        relationCount:safeCounter(input.world.relationCount,this.state.world.relationCount),
+        conflict01:clamp(input.world.conflict01),
+        newEntityRate01:clamp(input.world.newEntityRate01),
+      },
+      prediction:{
+        error01:clamp(input.prediction.error01),
+        openCount:safeCounter(input.prediction.openCount,this.state.prediction.openCount),
+        agingCount:safeCounter(input.prediction.agingCount,this.state.prediction.agingCount),
+        expiredCount:safeCounter(input.prediction.expiredCount,this.state.prediction.expiredCount),
+        priority01:clamp(input.prediction.priority01),
+      },
+      resources:{
+        battery01:clamp(input.resources.battery01),
+        thermal01:clamp(input.resources.thermal01),
+        ramPressure01:clamp(input.resources.ramPressure01),
+        computeCapacity01:clamp(input.resources.computeCapacity01),
+        scarcity01:clamp(input.resources.scarcity01),
+        efficiency01:clamp(input.resources.efficiency01),
+      },
+      coupling:{
+        selfWorld01:selfWorld,
+        predictionGrounding01:predictionGrounding,
+        memoryPressure01:clamp(input.memoryPressure01),
+        actionReadiness01:actionReadiness,
+      },
+      provenance:{
+        evidenceCoverage01:clamp(input.evidenceCoverage01),
+        realObservationCoverage01:clamp(input.realObservationCoverage01),
+        unknown01:clamp(input.unknown01),
+      },
+      lastReason:safeLabel(input.reason,this.state.lastReason,240),
     };
     return this.snapshot();
   }
