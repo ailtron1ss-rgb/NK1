@@ -93,6 +93,13 @@ test("VRMA-authored expression and LookAt tracks are not overwritten by static o
   assert.match(stage, /rt\.vrm\.lookAt\.target=rt\.lookAtTarget/);
 });
 
+test("live speech visemes take priority over VRMA vowel morph tracks", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /const speechVisemeKeys=p\.speaking\?new Set\(\["aa","ih","ou","ee","oh"\]\):null/);
+  assert.match(stage, /if\(speechVisemeKeys\?\.has\(key\)\)rt\.vrm\.expressionManager\.setValue\(key,expressionWeights\[key\]\?\?0\)/);
+  assert.match(stage, /else if\(!protectedKeys\.has\(key\)\)rt\.vrm\.expressionManager\.setValue/);
+});
+
 test("motion clip changes cross-fade instead of calling stopAllAction for every state transition", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /function transitionClip\(rt:Runtime,clip:any,timeScale:number,fadeSeconds=\.22\)/);
