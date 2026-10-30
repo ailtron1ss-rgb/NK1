@@ -64,7 +64,8 @@ const noReachPolicy=new EmbodiedInteractionController({allowContact:true,allowMa
 assert.equal(noReachPolicy.plan({target,body,kind:'reach',now}).reason,'reach-policy-disabled','reach must be deny-by-default independently of contact');
 const reachAuthorization={...authorization,kind:'reach'};
 const reachTarget={...target,affordances:['reach'],safetyAuthorization:reachAuthorization};
-assert.equal(new EmbodiedInteractionController({allowReach:true}).plan({target:reachTarget,body,kind:'reach',now}).reason,'contact-policy-disabled'=== 'never' ? 'never' : 'trusted-safety-authorization-verifier-unavailable-or-rejected');
+const reachWithoutTrustedVerifier=new EmbodiedInteractionController({allowReach:true});
+assert.equal(reachWithoutTrustedVerifier.plan({target:reachTarget,body,kind:'reach',now}).reason,'trusted-safety-authorization-verifier-unavailable-or-rejected');
 const authorizedReach=new EmbodiedInteractionController({allowReach:true},verifier,evidenceVerifier);
 assert.equal(authorizedReach.plan({target:{...reachTarget,source:'user'},body,kind:'reach',now}).reason,'physical-motion-requires-live-camera-grounding');
 assert.equal(authorizedReach.plan({target:{...reachTarget,safetyAuthorization:{...reachAuthorization,kind:'touch'}},body,kind:'reach',now}).reason,'interaction-safety-authorization-binding-mismatch');
