@@ -1,3 +1,8 @@
+## [NK1][Aspect04] Harden hierarchical pose regression (2026-10-30)
+
+- Correct world-space expectations to include inherited torso/neck rotations; compare accumulated depth with a floating-point tolerance.
+- CI log identified both mismatches; no runtime transform change was required.
+
 ## [NK1][Aspect04] Establish layered 2.5D depth-rig contract (2026-10-30)
 
 - Add a versioned rig model for depth-ordered artwork layers, parent hierarchy, normalized pivots and rest transforms.
