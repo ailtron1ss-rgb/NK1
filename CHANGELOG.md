@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Decouple motor integration from cognitive cadence (2026-10-30)
+
+- Add an explicitly started, bounded 20 Hz monotonic motor loop to the organism-owned motor composition; the loop advances the one canonical controller and publishes its latest frame independently of slow cognitive cycles.
+- Start the loop only after a calibrated skeleton is explicitly configured, stop it on reconfiguration and runtime shutdown, and expose bounded loop diagnostics.
+- Preserve the goal-authority boundary: continuous stepping does not synthesize goals; only already-approved upstream MotorGoals can move joints.
+- Add timer regression coverage for independent ticks, clean stop and zero loop errors; extend the HTTP diagnostics smoke contract.
+- This enables continuous progression of an approved goal but does not claim autonomous goal genesis, production Kurisu calibration, or renderer/device readback.
+
 ## [NK1][Embodiment] Expose read-only MotorFrame HTTP bridge (2026-10-30)
 
 - Add `GET /api/organism/motor-frame` as a bounded read-only snapshot of the organism-owned canonical MotorFrame channel and diagnostics.
@@ -9,7 +17,7 @@
 
 - Add an organism-owned motor runtime composition around the single canonical EmbodiedMotorController and bounded MotorFrameChannel.
 - Expose explicit skeleton configuration, approved-goal submission, frame subscription and latest-frame snapshot through OrganismRuntime.
-- Advance configured motor state on each completed cognitive step using a monotonic runtime clock; publish no frames until a calibrated skeleton is configured.
+- Advance configured motor state on an independent bounded 20 Hz monotonic loop; stop it at the runtime durability/shutdown boundary and publish no frames until a calibrated skeleton is configured.
 - Preserve the safety boundary: no goals are synthesized from emotion, gaze, speech, UI state or simulated world actions. The upstream action/ethical gate must supply an already-approved MotorGoal.
 - Add focused regression coverage for unconfigured fail-closed behavior, idle/no-fabricated-goal semantics, approved-goal movement, defensive frame snapshots and monotonic-clock enforcement.
 - Renderer/device readback, calibrated Kurisu skeleton profiles and endogenous cognitive motor-goal generation remain pending.
