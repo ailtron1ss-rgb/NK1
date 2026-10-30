@@ -50,6 +50,7 @@ test("existing sprite audit exactly inventories the legacy manifest without prom
   assert.deepEqual(inventory.semanticAuditSummary, {
     matchedPriorAuditIds: 25,
     requiresFreshVisualReview: 7,
+    unmatchedIds: ["embarrassed", "phone_look", "thinking_chin", "soft_smile", "city_stand", "phone_lean", "street_walk"],
     policy: "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified.",
   });
   assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "matched-prior-pixel-audit").length, 25);
