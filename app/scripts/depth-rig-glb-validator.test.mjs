@@ -44,17 +44,18 @@ test("rejects duplicate IDs, missing parents and cyclic manifest graphs", () => 
   const nodes = [
     { id: "root", parentId: "head", role: "root", position: [0, 0, 0], pivot: [0, 0], rotation: [0, 0, 0], depth: 0, parallax: 0 },
     { id: "head", parentId: "root", role: "head", position: [0, 1, 0], pivot: [0, 0], rotation: [0, 0, 0], depth: 0, parallax: 0 },
-    { id: "head", parentId: "missing", role: "head", position: [0, 1, 0], pivot: [0, 0], rotation: [0, 0, 0], depth: 0, parallax: 0 },
+    { id: "head", parentId: "root", role: "head", position: [0, 1, 0], pivot: [0, 0], rotation: [0, 0, 0], depth: 0, parallax: 0 },
+    { id: "orphan", parentId: "missing", role: "custom", position: [0, 0, 0], pivot: [0, 0], rotation: [0, 0, 0], depth: 0, parallax: 0 },
   ];
-  const result = validateDepthRigGlb(glb(document(manifest(nodes), ["root", "head"])));
+  const result = validateDepthRigGlb(glb(document(manifest(nodes), ["root", "head", "orphan"])));
   assert.ok(result.errors.includes("duplicate-node:head"));
-  assert.ok(result.errors.includes("missing-parent:head"));
+  assert.ok(result.errors.includes("missing-parent:orphan"));
   assert.ok(result.errors.some((error) => error.startsWith("parent-cycle:")));
 });
 
 test("fails closed for malformed or truncated GLB containers", () => {
   assert.ok(validateDepthRigGlb(Buffer.from("not a glb")).errors.includes("invalid-glb-magic-or-header"));
-  const broken = glb(document()).subarray(0, 18);
+  const broken = glb(document()).subarray(0, 20);
   assert.ok(validateDepthRigGlb(broken).errors.includes("glb-length-mismatch"));
 });
 
