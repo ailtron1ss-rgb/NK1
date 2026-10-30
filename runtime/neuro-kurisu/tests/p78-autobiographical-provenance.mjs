@@ -43,6 +43,15 @@ const corrupted = new P78AutobiographicalSelfContinuity();
 corrupted.restore({ ...modeOnlyChange, verifiedOutcomeSamples: -50, selfAuthorship01: 4 });
 assert.equal(corrupted.snapshot().verifiedOutcomeSamples, 0);
 assert.equal(corrupted.snapshot().selfAuthorship01, 1);
+const nonFiniteCounters = new P78AutobiographicalSelfContinuity();
+nonFiniteCounters.restore({ ...modeOnlyChange, chapters: Infinity, samples: NaN, verifiedOutcomeSamples: Infinity, unverifiedOutcomeSamples: -Infinity, authorshipEvidenceSamples: NaN, lastObservationKey: 'x'.repeat(9000), recentSummary: 'y'.repeat(9000) });
+assert.equal(nonFiniteCounters.snapshot().chapters, 0);
+assert.equal(nonFiniteCounters.snapshot().samples, 0);
+assert.equal(nonFiniteCounters.snapshot().verifiedOutcomeSamples, 0);
+assert.equal(nonFiniteCounters.snapshot().unverifiedOutcomeSamples, 0);
+assert.equal(nonFiniteCounters.snapshot().authorshipEvidenceSamples, 0);
+assert.equal(nonFiniteCounters.snapshot().lastObservationKey.length, 0);
+assert.equal(nonFiniteCounters.snapshot().recentSummary.length, 512);
 
 const normalized = new P78AutobiographicalSelfContinuity();
 const normalizedFirst = normalized.observe([
