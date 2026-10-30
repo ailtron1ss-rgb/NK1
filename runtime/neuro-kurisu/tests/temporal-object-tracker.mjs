@@ -166,6 +166,20 @@ assert.equal(motionNext.metrics.associatedTrackCount,1);
 assert.equal(motionNext.objects[0].trackId,motionSeed.objects[0].trackId);
 
 // Provider-owned IDs are preserved even when no 2D box is available.
+const detectorTracker=new TemporalObjectTracker({sessionId:'detector-source'});
+const detectorFrame=detectorTracker.update({cameraId:7,at:1_000,objects:[
+  {label:'person',sourceId:'detector-back-camera',bbox:box(.3,.2),bboxConfidence01:.93,confidence01:.95},
+]});
+const detectorP41=new P41SemanticPerceptionEngine();
+const detectorSnapshot=detectorP41.ingest({
+  at:1_000,
+  vision:{cameraId:7,semantic:true,objects:detectorFrame.objects},
+});
+assert.ok(detectorSnapshot.entities[0].trackId?.includes(':detector-back-camera:nk1-temporal-box-tracker:'));
+const detectorRestored=new TemporalObjectTracker({sessionId:'detector-restored'});
+assert.equal(detectorRestored.restoreFromPerception(detectorSnapshot.entities,1_100).restored,1);
+
+// Provider-owned IDs are preserved even when no 2D box is available.
 const provider=tracker.update({cameraId:1,at:1_000,objects:[
   {label:'person',trackId:'vendor-17',sourceId:'detector-A',confidence01:.95},
 ]});
