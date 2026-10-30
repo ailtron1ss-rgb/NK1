@@ -5,7 +5,7 @@ import type { MemoryConsolidationController, ConsolidationCandidate, Consolidati
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const safeCounter=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;
-const safeLabel=(value:unknown,max=128):string|undefined=>typeof value==='string'&&value.trim().length>0&&value.length<=max&&!/[\\u0000-\\u001f\\u007f]/.test(value)?value.trim():undefined;
+const safeLabel=(value:unknown,max=128):string|undefined=>typeof value==='string'&&value.trim().length>0&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value)?value.trim():undefined;
 const safePlan=(raw:unknown):CanonicalMemoryLifecycleState['lastPlan']=>{
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return undefined;
   const row=raw as Record<string,unknown>, budgets=row.budgets;
