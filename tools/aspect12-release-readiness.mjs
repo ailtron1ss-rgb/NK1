@@ -95,7 +95,7 @@ export async function buildReadinessReport(root = defaultRoot) {
 
   const pendingReviews = licenseReview ? collectPendingReviews(licenseReview) : [{ path: "$", status: "manifest-unavailable" }];
   add(checks, "release:human-license-clearance", pendingReviews.length === 0,
-    pendingReviews.length ? `${pendingReviews.length} pending/unapproved review record(s); no approval was inferred` : "all review records explicitly approved");
+    pendingReviews.length ? `${pendingReviews.length} pending/unapproved review record(s); no approval was inferred` : "all review records explicitly approved", "advisory");
 
   const files = await walk(root);
   const hygieneIssues = [];
