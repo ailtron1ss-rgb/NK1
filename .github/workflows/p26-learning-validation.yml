@@ -10,6 +10,7 @@ on:
       - "runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs"
       - "runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs"
       - "runtime/neuro-kurisu/tests/p23-paired-outcome-identity.mjs"
+      - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
