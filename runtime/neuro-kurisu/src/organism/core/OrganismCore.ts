@@ -4176,7 +4176,7 @@ export class OrganismCore {
                 vision: observation.vision ? { sceneLabel: observation.vision.sceneLabel, confidence01: observation.vision.confidence01, objects: observation.vision.objects?.map(o => ({ ...o, kind: o.kind === 'body-part' ? 'body' : o.kind })) as any, relations: observation.vision.relations, events: [], semantic: Boolean(observation.vision.objects?.length || observation.vision.sceneLabel), latencyMs: 0 } : undefined,
                 audio: observation.audio ? { events: observation.audio.events, relations: [], semantic: Boolean(observation.audio.events?.length), latencyMs: 0 } : undefined,
                 sensor: observation.embodiment ? { energy01: observation.embodiment.bodyEnergy01, thermal01: observation.embodiment.thermalStrain01, capacity01: observation.embodiment.cognitiveCapacity01, freshness01: observation.embodiment.sensoryFreshness01, location: normalizedObservation.worldContext?.location } : undefined,
-                world: normalizedObservation.worldContext ? { scene: normalizedObservation.worldContext.location, objects: normalizedObservation.worldContext.objects?.map(o => ({ label: o.label, kind: 'object' as const, confidence01: o.visible ? .65 : .35 })), events: normalizedObservation.worldContext.events } : undefined,
+                world: normalizedObservation.worldContext ? { scene: normalizedObservation.worldContext.location, objects: normalizedObservation.worldContext.objects?.map(o => ({ label: o.label, kind: 'object' as const, confidence01: o.visible ? .65 : .35, trackId: String(o.id ?? ''), sourceId: typeof o.sourceId === 'string' ? o.sourceId : 'world-context' })), events: normalizedObservation.worldContext.events } : undefined,
                 at: state.at,
             });
         const semanticP41 = perceptionRefresh
@@ -10596,6 +10596,20 @@ export class OrganismCore {
     p41PerceptionSummary() { return this.embodimentSubsystem.p41SemanticPerception.semanticSummary(); }
     p41NextPerception() { return this.embodimentSubsystem.p41SemanticPerception.nextPerception(); }
     p41FulfillPerception(id: string, success: boolean) { const ok = this.embodimentSubsystem.p41SemanticPerception.fulfill(id, success); this.persisted.facets.embodiment.p41SemanticPerception = this.embodimentSubsystem.p41SemanticPerception.snapshot(); return ok; }
+    p41ObserveModalityOutcome(input: Parameters<import('../cognition/P41SemanticPerception.ts').P41SemanticPerceptionEngine['observeModalityOutcome']>[0]) {
+        // A caller-supplied source label is not a receipt. Require the exact
+        // independent outcome event to exist in the Core-owned evidence snapshot.
+        const receipt = this.persisted.system.runtimeEvidence?.recent?.find((event: any) => event?.id === input.evidenceId);
+        if (!receipt || receipt.kind !== 'outcome' || receipt.external01 !== true || receipt.source !== input.evidenceSource) return false;
+        const payload = receipt.payload as Record<string, unknown>;
+        if (payload?.modality !== input.modality
+            || payload?.predictedConfidence01 !== input.predictedConfidence01
+            || payload?.correctness01 !== input.correctness01
+            || payload?.evidenceSource !== input.evidenceSource) return false;
+        const ok = this.embodimentSubsystem.p41SemanticPerception.observeModalityOutcome(input);
+        if (ok) this.persisted.facets.embodiment.p41SemanticPerception = this.embodimentSubsystem.p41SemanticPerception.snapshot();
+        return ok;
+    }
     p40SemanticSnapshot() { return this.embodimentSubsystem.p40SemanticIntelligence.snapshot(); }
     p40SemanticSummary() { return this.embodimentSubsystem.p40SemanticIntelligence.semanticSummary(); }
     p40ModelEcologySnapshot() { return this.organismSystems.self.p40ModelEcology.snapshot(); }

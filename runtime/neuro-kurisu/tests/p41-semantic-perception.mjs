@@ -29,9 +29,11 @@ assert.ok(second.pending.some(p=>p.modality==='audio' && p.status==='pending'));
 assert.ok(second.snapshots.length===2);
 assert.ok(second.metrics.temporalBinding01>0);
 
-const pending = engine.nextPerception();
+const pending = engine.nextPerception(2_050);
 assert.ok(pending && ['vision','audio'].includes(pending.modality));
+const empiricalReliabilityBeforeFulfil = engine.snapshot().modalityReliability[pending.modality].reliability01;
 assert.equal(engine.fulfill(pending.id,true,2_100),true);
 const after = engine.snapshot();
-assert.ok(after.modalityReliability[pending.modality].reliability01 > 0);
+assert.equal(after.modalityReliability[pending.modality].reliability01, empiricalReliabilityBeforeFulfil, 'successful service fulfilment is not proof of semantic correctness');
+assert.ok(after.modalityReliability[pending.modality].serviceSuccess01 > .5);
 console.log(`P41_SEMANTIC_PERCEPTION=PASS entities=${after.entities.length} events=${after.events.length} pending=${after.pending.length} temporal=${after.metrics.temporalBinding01.toFixed(3)}`);
