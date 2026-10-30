@@ -5,7 +5,8 @@ import {resolveDepthRigPose,stepSecondaryMotion,validateDepthRig} from "../src/c
 const rig={version:1,id:"kurisu-2p5d-test",units:"scene",nodes:[
 {id:"root",parentId:null,role:"root",position:[0,0,0],pivot:[0,0],rotation:[0,0,0],depth:0,parallax:0},
 {id:"torso",parentId:"root",role:"torso",position:[0,-.2,.1],pivot:[0,0],rotation:[0,0,0],depth:.1,parallax:.5},
-{id:"left-arm",parentId:"torso",role:"left-upper-arm",position:[-.25,.25,.08],pivot:[0,0],rotation:[0,0,0],depth:.2,parallax:.5},\n{id:"head",parentId:"torso",role:"head",position:[0,.6,.2],pivot:[0,-.4],rotation:[0,0,0],depth:.3,parallax:.8},
+{id:"left-arm",parentId:"torso",role:"left-upper-arm",position:[-.25,.25,.08],pivot:[0,0],rotation:[0,0,0],depth:.2,parallax:.5},
+{id:"head",parentId:"torso",role:"head",position:[0,.6,.2],pivot:[0,-.4],rotation:[0,0,0],depth:.3,parallax:.8},
 {id:"eyes",parentId:"head",role:"eyes",position:[0,.05,.04],pivot:[0,0],rotation:[0,0,0],depth:.5,parallax:1},
 {id:"hair-front",parentId:"head",role:"hair-front",position:[0,0,.08],pivot:[0,0],rotation:[0,0,0],depth:.8,parallax:1.2},
 {id:"coat-tail",parentId:"torso",role:"coat-tail",position:[0,-.5,-.05],pivot:[0,.5],rotation:[0,0,0],depth:-.1,parallax:.7}]};
