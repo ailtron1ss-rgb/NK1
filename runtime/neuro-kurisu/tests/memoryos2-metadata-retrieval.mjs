@@ -64,10 +64,26 @@ assert.equal(restored.indexDiagnostics().pass, true,
 assert.equal(restored.previewRetrieve('mycelium', 3)[0]?.id, 'm-hidden',
   'metadata recall should survive snapshot/restore');
 // Canonical context edits must update metadata postings immediately, not only after restore.
+const contextBefore = candidate.snapshot();
+const hiddenBefore = contextBefore.items.find(row => row.id === 'm-hidden');
+assert(hiddenBefore);
 const contextUpdated = candidate.updateContext('m-hidden', {
   topic: 'terrarium propagation schedule',
   category: 'horticulture',
-});
+}, 'metadata-recall-context-revision');
+const contextAfter = candidate.snapshot();
+const hiddenAfter = contextAfter.items.find(row => row.id === 'm-hidden');
+assert(hiddenAfter);
+assert.equal(contextAfter.reconsolidations, contextBefore.reconsolidations + 1,
+  'a real context change must advance canonical reconsolidation state');
+assert.equal(hiddenAfter.revisionHistory[0]?.reason, 'metadata-recall-context-revision',
+  'a real context change must be auditable in the memory revision history');
+const revisionCountAfterChange = hiddenAfter.revisionHistory.length;
+candidate.updateContext('m-hidden', { topic: 'terrarium propagation schedule' });
+assert.equal(candidate.snapshot().reconsolidations, contextAfter.reconsolidations,
+  'an idempotent context update must not create a false reconsolidation');
+assert.equal(candidate.snapshot().items.find(row => row.id === 'm-hidden')?.revisionHistory.length, revisionCountAfterChange,
+  'an idempotent context update must not create duplicate revision history');
 assert.equal(contextUpdated.topic, 'terrarium propagation schedule');
 assert.equal(candidate.indexDiagnostics().pass, true,
   'updateContext must keep the metadata inverted index aligned with the canonical row');
