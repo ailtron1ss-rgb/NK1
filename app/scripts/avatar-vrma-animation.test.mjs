@@ -93,6 +93,14 @@ test("VRMA-authored expression and LookAt tracks are not overwritten by static o
   assert.match(stage, /rt\.vrm\.lookAt\.target=rt\.lookAtTarget/);
 });
 
+test("restored VRMA is recompiled after every successful avatar replacement, including same-name files", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /\[modelRevision,setModelRevision\]=useState\(0\)/);
+  assert.match(stage, /setModelRevision\(\(revision\)=>revision\+1\)/);
+  assert.match(stage, /\},\[state,modelName,modelRevision,loadVrma\]\)/);
+  assert.match(stage, /createVRMAnimationClip\(animation,rt\.vrm\)/);
+});
+
 test("the VRMA picker rejects ordinary GLB character files", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /if\(!file\.name\.toLowerCase\(\)\.endsWith\("\.vrma"\)\)/);
