@@ -201,4 +201,31 @@ const saturated=new UnifiedCognitiveCycle();
 saturated.restore({cycles:Number.MAX_SAFE_INTEGER,completeCycles:Number.MAX_SAFE_INTEGER,incompleteCycles:0,brokenLineages:0,lastTick:0,lastComplete:true,lastMissingStages:[]});
 assert.throws(()=>saturated.evaluate({tick:1,stageIds:stages,parentIntegrity01:1}),/safe integer limit/);
 
+// Accessor-backed cycle snapshots and inputs are treated as missing data.
+let restoreGetterCalled = false;
+const getterSnapshot = { version: 1 };
+Object.defineProperty(getterSnapshot, 'cycles', { enumerable: true, get() { restoreGetterCalled = true; return 20; } });
+const accessorRestore = new UnifiedCognitiveCycle();
+accessorRestore.restore(getterSnapshot);
+assert.equal(restoreGetterCalled, false);
+assert.equal(accessorRestore.snapshot().cycles, 0);
+
+let stageGetterCalled = false;
+const getterStageIds = { prediction: 'pred-accessor', action: 'act-accessor', outcome: 'out-accessor', learning: 'learn-accessor', 'self-update': 'self-accessor' };
+Object.defineProperty(getterStageIds, 'observation', { enumerable: true, get() { stageGetterCalled = true; return 'obs-accessor'; } });
+const accessorInputCycle = new UnifiedCognitiveCycle();
+const accessorInputResult = accessorInputCycle.evaluate({ tick: 1, stageIds: getterStageIds, parentIntegrity01: 1 });
+assert.equal(stageGetterCalled, false);
+assert.equal(accessorInputResult.complete, false);
+assert.ok(accessorInputResult.missingStages.includes('observation'));
+
+let missingArrayGetterCalled = false;
+const maliciousMissing = new Array(1);
+Object.defineProperty(maliciousMissing, '0', { enumerable: true, get() { missingArrayGetterCalled = true; return 'action'; } });
+const accessorArrayRestore = new UnifiedCognitiveCycle();
+accessorArrayRestore.restore({ version: 1, cycles: 1, completeCycles: 1, lastTick: 1, lastComplete: true, lastMissingStages: maliciousMissing });
+assert.equal(missingArrayGetterCalled, false);
+assert.equal(accessorArrayRestore.snapshot().lastComplete, false);
+assert.deepEqual(accessorArrayRestore.snapshot().lastMissingStages, ['observation','prediction','action','outcome','learning','self-update']);
+
 console.log('WorkPass287 unified cognitive-cycle contract: PASS');
