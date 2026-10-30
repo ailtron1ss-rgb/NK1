@@ -16,7 +16,6 @@ const retry=safe.plan({target,body,kind:'grasp',now:now+1,hand:'right'});
 assert.equal(safe.assessExecution({planId:retry.next.id,status:'executed',postcondition:'verified',observedTargetId:'other'}).accepted,false);
 const verified=safe.assessExecution({planId:retry.next.id,status:'executed',postcondition:'verified',observedTargetId:target.id});
 assert.equal(verified.phase,'completed');
-assert.equal(deniedFrame.plan({target,body:{...body,frameId:'camera-local'},kind:'look',now}).reason,'spatial-coordinate-frame-mismatch');
 const deniedFrame=new EmbodiedInteractionController();
 assert.equal(deniedFrame.plan({target,body:{...body,frameId:'camera-local'},kind:'look',now}).reason,'spatial-coordinate-frame-mismatch');
 const denied=new EmbodiedInteractionController();
