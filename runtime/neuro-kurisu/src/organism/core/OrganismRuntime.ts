@@ -1389,7 +1389,7 @@ export class OrganismRuntime {
           const trackedFrame=this.temporalObjectTracker.update({
             cameraId:normalizedCameraId,
             at:evidence.at,
-            frameId:evidence.sha256,
+            frameId:toolExecution.executionId, // execution identity, not image hash: identical static frames are still new captures.
             objects:semantic.objects??[],
           });
           trackingMetrics=trackedFrame.metrics;
