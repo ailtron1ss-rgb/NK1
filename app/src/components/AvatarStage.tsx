@@ -323,7 +323,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         lastSpeechSessionRef.current = active;
         speechPhaseRef.current = "cancelled";
         recordSpeechLifecycle(active, "cancelled", performance.now());
-        try { synth.cancel(); catch { /* no-op */ }
+        try { synth.cancel(); } catch { /* no-op */ }
         setMouthPose(CLOSED_MOUTH);
         setVoiceStatus(voiceEnabled ? "ready" : "off");
       }
