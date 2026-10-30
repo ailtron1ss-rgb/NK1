@@ -38,7 +38,7 @@ test("VRMA sidecars are preflighted, converted against the active VRM, and bound
 test("the VRM mixer exists even when the character file contains no embedded animations", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /rt\.mixer=new THREE\.AnimationMixer\(root\)/);
-  assert.match(stage, /rt\.vrmaClips\[\]=\[\]/);
+  assert.match(stage, /rt\.vrmaClips=\[\]/);
   assert.match(stage, /rt\.clips=\[\.\.\.rt\.modelClips,\.\.\.rt\.vrmaClips\]/);
 });
 
@@ -85,7 +85,8 @@ test("VRMA-authored expression and LookAt tracks are not overwritten by static o
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /animation\?\.expressionTracks\?\.preset\?\.keys\?\.\(\)/);
   assert.match(stage, /animation\?\.expressionTracks\?\.custom\?\.keys\?\.\(\)/);
-  assert.match(stage, /rt\.vrmaExpressionKeysByClip\[clip\.name\]=/);
+  assert.match(stage, /expressionKeysByClip\[clip\.name\]=/);
+  assert.match(stage, /rt\.vrmaExpressionKeysByClip=expressionKeysByClip/);
   assert.match(stage, /protectedKeys\.has\(key\)/);
   assert.match(stage, /rt\.activeLookAtClip=rt\.vrmaLookAtClipNames\.includes/);
   assert.match(stage, /if\(rt\.activeLookAtClip\)rt\.vrm\.lookAt\.target=null/);
