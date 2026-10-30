@@ -1,3 +1,10 @@
+## [NK1][WorkPass639] Pass revisioned motor frames through the avatar stage boundary (2026-10-30)
+
+- Expose optional typed PR #410-compatible `MotorFrame` and explicit depth-rig motor bindings on the parent `AvatarStage`, then forward them unchanged to `Avatar3DStage`.
+- Keep the source optional and externally supplied: no motor goal or frame is synthesized from emotion, action, gaze, or UI state. Without a real frame, the existing semantic fallback remains active.
+- Add `AvatarStage.tsx` to both focused workflow path filters so this integration boundary is covered by the depth-rig gate.
+- This closes the React pass-through seam only; it does not claim that OrganismCore currently produces/publishes MotorFrames or that an end-to-end motor action has been executed and read back by a renderer.
+
 ## [NK1][WorkPass638] Canonicalize the 2.5D depth-rig integration path (2026-10-30)
 
 - Select PR #408 `DepthRigManifest` as the single current runtime schema because it is the schema wired into `Avatar3DStage` and the Three.js scene adapter; keep PR #409's normalized affine contract as a source of migration requirements, not a competing runtime.
