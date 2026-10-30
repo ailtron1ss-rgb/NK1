@@ -110,6 +110,16 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Project executor checkpoint, reconciliation, and replay regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/neuro-kurisu
+          node --experimental-strip-types tests/workpass60-project-step-checkpoint.mjs
+          node --experimental-strip-types tests/workpass60-project-reconciliation-resume.mjs
+          node --experimental-strip-types tests/project-execution-idempotency.mjs
+          node --experimental-strip-types tests/project-execution-persistence.mjs
+          node --experimental-strip-types tests/big-pass-49-subsystem-runtime.mjs
       - name: Hexis evidence lineage and server restart persistence
         run: npm --prefix runtime/neuro-kurisu run test:hexis-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
       - name: Memory retrieval experiment including unanswerable holdout
