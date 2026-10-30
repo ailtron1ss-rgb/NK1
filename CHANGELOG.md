@@ -1,8 +1,8 @@
 ## [NK1][аспект9] Unify browser voice prosody with organism state (2026-10-30)
 
-- Replace fixed browser TTS rate/pitch settings with a bounded prosody plan derived from the utterance emotion, organism action, arousal, valence, cognitive load, uncertainty and social need.
-- Build the viseme timeline from the exact speech rate applied to the utterance, and publish the same prosodic emphasis through the versioned embodiment intent.
-- Keep negative high-arousal delivery regulated rather than escalating hostility; add regression tests for language inference, safe parameter bounds and affect/cognitive modulation.
+- Replace fixed browser TTS settings and its duplicate affect mapper with an adapter to the canonical `VoiceEmbodiment.buildVoicePlan`, shared with the native Termux runtime; browser uses a neutral body baseline where device telemetry is unavailable.
+- Share language, breath mode, tone, pause budget, pitch, rate, volume and emphasis across delivery paths; build visemes from the exact selected speech rate and publish the same emphasis through the versioned embodiment intent.
+- Strengthen frustration/anger de-escalation in the canonical planner and add field-for-field browser/runtime parity tests plus bounded-parameter regressions.
 - This is a source-level integration; browser/device acoustic E2E, provider phoneme timing and refreshed Release ZIP remain pending.
 
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
