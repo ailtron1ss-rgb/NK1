@@ -116,7 +116,7 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
   }
 };
 const safeString = (value: unknown, max: number): string | undefined =>
-  typeof value === 'string' && value.length > 0 && value.length <= max && !/[\\u0000-\\u001f\\u007f]/.test(value)
+  typeof value === 'string' && value.length > 0 && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value)
     ? value
     : undefined;
 const safeCounter = (value: unknown, fallback = 0): number =>
@@ -414,7 +414,7 @@ export class AutonomousProjectExecutor {
         typeof stage === 'string' && validStages.includes(stage) &&
         typeof startedAt === 'number' && Number.isFinite(startedAt) && startedAt >= 0 &&
         typeof updatedAt === 'number' && Number.isFinite(updatedAt) && updatedAt >= 0 &&
-        !/[\\u0000-\\u001f\\u007f]/.test(operationKey)
+        !/[\u0000-\u001f\u007f]/.test(operationKey)
       );
       if (identityValid) {
         activeOperation = {
@@ -422,13 +422,13 @@ export class AutonomousProjectExecutor {
           projectId: opProjectId!,
           stepId: stepId!,
           toolId: toolId!,
-          requestFingerprint: requestFingerprint.toLowerCase(),
+          requestFingerprint: (requestFingerprint as string).toLowerCase(),
           operationKey: operationKey!,
           decisionId: decisionId!,
-          sequence,
+          sequence: sequence as number,
           stage: stage as ProjectStepCheckpointStage,
-          startedAt,
-          updatedAt,
+          startedAt: startedAt as number,
+          updatedAt: updatedAt as number,
         };
         for (const [key, limit] of [['executionId', 180], ['outcomeClass', 100], ['approvalRequestId', 180]] as const) {
           const value = safeString(field(key).value, limit);
@@ -484,9 +484,13 @@ export class AutonomousProjectExecutor {
     // Protect an existing in-memory checkpoint from an accessor-backed/invalid
     // attempted replacement. JSON snapshots are plain data, but public callers
     // should not be able to make restore evaluate arbitrary properties.
+    const currentOperation = this.state.activeOperation;
+    if (currentOperation && currentOperation.stage !== 'prepared') {
+      // A stale or malformed snapshot must not erase or downgrade an in-flight side effect.
+      if (!activeOperation || activeOperation.operationKey !== currentOperation.operationKey ||
+          activeOperation.updatedAt < currentOperation.updatedAt) return;
+    }
     if (!operationRead.valid && this.hasUnresolvedStepOperation()) return;
-    if (activeOperation === undefined && this.hasUnresolvedStepOperation() &&
-        (canonicalProjectId !== this.state.projectId || canonicalSteps.length === 0)) return;
     this.state = state;
   }
 
