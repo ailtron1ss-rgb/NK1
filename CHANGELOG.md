@@ -1,3 +1,8 @@
+## [NK1][Aspect 01 — Live2D] Semantic gesture type contract fix (2026-10-30)
+
+- Added optional, backward-compatible `gestureProfile` and `gestureIntensity` fields to the app-side EmbodimentIntentV1 TypeScript contract.
+- Validate supported gesture profiles and the 0..0.8 intensity bound at the app boundary, matching the runtime normalizer and JSON schema.
+
 ## [NK1][Aspect 01 — Live2D] Semantic upper-body gesture composition (2026-10-30)
 
 - Forward bounded gesture profile/intensity through the existing EmbodimentIntentV1 envelope with backward-compatible optional fields.
