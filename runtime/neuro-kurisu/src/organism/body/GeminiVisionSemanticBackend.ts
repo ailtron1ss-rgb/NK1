@@ -60,7 +60,7 @@ export class GeminiVisionSemanticBackend implements VisionSemanticBackend {
       const p=parsePayload(text);
       const objects=Array.isArray(p.objects)?p.objects.slice(0,48).map((o:any)=>{
         const bbox=isValidNormalizedBoundingBox(o?.bbox)?{x:Number(o.bbox.x),y:Number(o.bbox.y),width:Number(o.bbox.width),height:Number(o.bbox.height)}:undefined;
-        const bboxConfidence01=bbox?clamp(Number(o.bboxConfidence01??o.confidence01??0)):undefined;
+        const bboxConfidence01=bbox?clamp(Number(o.bboxConfidence01??0)):undefined;
         return {
           label:String(o.label??'unknown').slice(0,120),
           kind:normalizeKind(o.kind) as any,
