@@ -38,7 +38,11 @@ export interface P78State {
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const boundedText=(value:unknown,max=180)=>String(value??'').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
-const hasBoundEvidence=(event:P78Event)=>event.evidenceStatus==='verified-independent'&&/^(?:world-transition|external-verification):[^\s]{1,220}$/i.test(String(event.evidenceRef??'').trim());
+const hasBoundEvidence=(event:P78Event)=>{
+  if(event.evidenceStatus!=='verified-independent')return false;
+  const receipt=/^external-verification:reb:(\d+):(\d+):outcome$/i.exec(String(event.evidenceRef??'').trim());
+  return Boolean(receipt&&Number(receipt[1])===event.tick);
+};
 const isAuthored=(event:P78Event)=>event.authorship==='self-initiated'||event.authorship==='self-selected';
 export const defaultP78=():P78State=>({
   version:2,chapters:0,samples:0,continuity01:.5,narrativeCoherence01:.5,selfAuthorship01:.5,
