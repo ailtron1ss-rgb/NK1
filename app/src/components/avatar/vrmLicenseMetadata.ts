@@ -1,4 +1,5 @@
 export interface VrmLicenseSummary {
+  metadataPresent: boolean;
   modelName: string;
   authors: string[];
   licenseUrlPresent: boolean;
@@ -7,7 +8,7 @@ export interface VrmLicenseSummary {
   commercialUsage: string;
   modification: string;
   avatarPermission: string;
-  summary: string;
+    summary: metadataPresent ? `VRM metadata: ${modelName} · ${authorSummary} · ${licenseSummary} · ${creditSummary} · ${redistributionSummary}. Verify the creator original terms before using or distributing this model.` : `No VRM license metadata found for ${modelName}. Verify the creator, source, and usage rights before using or distributing this model.`,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -43,6 +44,7 @@ export function summarizeVrmLicenseMetadata(
   input: unknown,
   fileName = "avatar.vrm",
 ): VrmLicenseSummary {
+  const metadataPresent = isRecord(input) && ["name", "title", "authors", "author", "licenseUrl", "otherLicenseUrl", "licenseName", "metaVersion"].some((key) => metadata[key] !== undefined);
   const metadata = isRecord(input) ? input : {};
   const modelName = safeText(metadata.name ?? metadata.title, 96) || safeText(fileName, 96) || "avatar";
   const authors = safeAuthors(metadata.authors ?? metadata.author);
@@ -77,6 +79,7 @@ export function summarizeVrmLicenseMetadata(
 
   return {
     modelName,
+    metadataPresent,
     authors,
     licenseUrlPresent,
     creditNotation,
