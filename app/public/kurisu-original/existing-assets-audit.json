@@ -97,7 +97,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Resting/reclining with eyes closed",
+        "semanticRole": "rest",
+        "recommendedUse": "Rest or sleep reference; do not label as crossed-arms",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "embarrassed",
@@ -108,7 +116,13 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "requires-fresh-visual-review",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "reverifiedInThisPass": false,
+        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+      }
     },
     {
       "id": "neutral_front",
@@ -119,7 +133,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Side-profile whiteboard writing/drawing",
+        "semanticRole": "focused-whiteboard",
+        "recommendedUse": "Focused work or whiteboard reference; not a frontal neutral portrait",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "phone_look",
@@ -130,7 +152,13 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "requires-fresh-visual-review",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "reverifiedInThisPass": false,
+        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+      }
     },
     {
       "id": "shocked",
@@ -141,7 +169,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Frontal city portrait with a mild, nearly neutral expression",
+        "semanticRole": "neutral-wait",
+        "recommendedUse": "Neutral/wait portrait; not a strong shock expression",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "thinking_chin",
@@ -152,7 +188,13 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "requires-fresh-visual-review",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "reverifiedInThisPass": false,
+        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+      }
     },
     {
       "id": "tired_rest",
@@ -163,7 +205,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Blushing, looking down with folded arms",
+        "semanticRole": "embarrassed-flustered",
+        "recommendedUse": "Flustered/embarrassed expression direction",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "whiteboard",
@@ -174,7 +224,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Close-up, mouth open as if speaking or exclaiming",
+        "semanticRole": "speaking-surprised",
+        "recommendedUse": "Speaking or emphatic response close-up",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "arms_close",
@@ -185,7 +243,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Close-up crossed-arms portrait",
+        "semanticRole": "neutral-tsundere",
+        "recommendedUse": "Neutral/guarded close-up",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "drpepper_dusk",
@@ -196,7 +262,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Forward-reaching gesture with mouth open",
+        "semanticRole": "respond-passionate",
+        "recommendedUse": "Expressive response or passionate gesture; not a beverage break",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "passionate_reach",
@@ -207,7 +281,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Sitting or reclining on a sofa while using a phone",
+        "semanticRole": "phone-quiet-rest",
+        "recommendedUse": "Phone use or quiet-rest composition; not reaching forward",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "sofa_phone",
@@ -218,7 +300,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Holding a Dr Pepper can outdoors",
+        "semanticRole": "dr-pepper-break",
+        "recommendedUse": "Beverage-break prop reference; not sofa/phone",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "soft_smile",
@@ -229,7 +319,13 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "requires-fresh-visual-review",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "reverifiedInThisPass": false,
+        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+      }
     },
     {
       "id": "steeple_focus",
@@ -240,7 +336,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Over-shoulder side glance in a wet/dark setting",
+        "semanticRole": "looking-away-tender-sad",
+        "recommendedUse": "Looking-away or tender/sad scene",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "wet_glance",
@@ -251,7 +355,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Writing at a whiteboard",
+        "semanticRole": "focused-whiteboard",
+        "recommendedUse": "Focused work or whiteboard activity; not a wet glance",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "whiteboard_write",
@@ -262,7 +374,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Close-up with fingers steepled in thought",
+        "semanticRole": "reflect-verify",
+        "recommendedUse": "Reflective or verification pose; not writing",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_chin",
@@ -273,7 +393,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "At a computer with a hand to her face",
+        "semanticRole": "think-verify",
+        "recommendedUse": "Thinking or verification at a computer",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_crossed",
@@ -284,7 +412,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Resting her head on her arms at a desk",
+        "semanticRole": "rest",
+        "recommendedUse": "Desk-rest or tired pose; not crossed arms",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_drpepper",
@@ -295,7 +431,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Side profile looking up, arms crossed",
+        "semanticRole": "looking-away-neutral",
+        "recommendedUse": "Looking-away or neutral/guarded side profile",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_explain",
@@ -306,7 +450,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Close-up crossed arms, stern expression",
+        "semanticRole": "neutral-tsundere",
+        "recommendedUse": "Neutral/guarded or stern close-up; not explaining",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_profile",
@@ -317,7 +469,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Hands folded in a thoughtful pose",
+        "semanticRole": "reflect-think",
+        "recommendedUse": "Reflective/thinking pose",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_shocked",
@@ -328,7 +488,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Hands over her mouth in shock",
+        "semanticRole": "surprised",
+        "recommendedUse": "Surprised expression",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_steeple",
@@ -339,7 +507,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Holding a Dr Pepper can, wide-eyed/surprised",
+        "semanticRole": "dr-pepper-surprised",
+        "recommendedUse": "Beverage prop and surprised expression",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_tired",
@@ -350,7 +526,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Eyes closed, smiling, both hands open in an expressive gesture",
+        "semanticRole": "happy-respond",
+        "recommendedUse": "Happy or expressive response; not tired/rest",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "city_stand",
@@ -361,7 +545,13 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "requires-fresh-visual-review",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "reverifiedInThisPass": false,
+        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+      }
     },
     {
       "id": "clockwork",
@@ -372,7 +562,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Holding and looking at a phone",
+        "semanticRole": "phone",
+        "recommendedUse": "Phone interaction",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "lab_think",
@@ -383,7 +581,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Forward-reaching gesture with mouth open",
+        "semanticRole": "respond-passionate",
+        "recommendedUse": "Expressive response or passionate gesture; not a thinking pose",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "phone_lean",
@@ -394,7 +600,13 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "requires-fresh-visual-review",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "reverifiedInThisPass": false,
+        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+      }
     },
     {
       "id": "rain_kneel",
@@ -405,7 +617,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Standing thoughtfully in a lab at a board",
+        "semanticRole": "reflect-whiteboard",
+        "recommendedUse": "Reflection or whiteboard activity; not kneeling in rain",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "reach_out",
@@ -416,7 +636,15 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Kneeling in rain, arms wrapped around herself",
+        "semanticRole": "sad-protective",
+        "recommendedUse": "Sad/protective scene; not an outreach gesture",
+        "reverifiedInThisPass": false
+      }
     },
     {
       "id": "street_walk",
@@ -427,7 +655,13 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "requires-fresh-visual-review",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "reverifiedInThisPass": false,
+        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+      }
     },
     {
       "id": "sunset_phone",
@@ -438,7 +672,20 @@
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
       "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-      "licenseStatus": "not-revalidated-in-this-inventory"
+      "licenseStatus": "not-revalidated-in-this-inventory",
+      "semanticAudit": {
+        "status": "matched-prior-pixel-audit",
+        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+        "depictedContent": "Full-body arms-crossed pose against clockwork imagery",
+        "semanticRole": "neutral-tsundere",
+        "recommendedUse": "Neutral/guarded full-body pose; not phone use",
+        "reverifiedInThisPass": false
+      }
     }
-  ]
+  ],
+  "semanticAuditSummary": {
+    "matchedPriorAuditIds": 25,
+    "requiresFreshVisualReview": 7,
+    "policy": "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified."
+  }
 }
