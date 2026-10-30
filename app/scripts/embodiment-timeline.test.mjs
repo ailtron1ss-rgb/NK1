@@ -232,3 +232,41 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   dispatch(message({ stateVersion: 4, audioTimeMs: 160 }), location.origin, {});
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign message sources are rejected");
 });
+
+test("speech clock anchors reject duplicate, rewound and malformed provider boundaries", () => {
+  const initial = [{ charIndex: 0, audioTimeMs: 0, timelineTimeMs: 0 }];
+  const refined = appendVisemeClockAnchor(initial, { charIndex: 0, audioTimeMs: 12, timelineTimeMs: 18 });
+  assert.equal(refined.length, 1);
+  assert.equal(refined[0].audioTimeMs, 12, "the first provider boundary may refine the synthetic origin");
+  const advanced = appendVisemeClockAnchor(refined, { charIndex: 5, audioTimeMs: 180, timelineTimeMs: 210 });
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: 5, audioTimeMs: 190, timelineTimeMs: 220 }), advanced,
+    "duplicate character boundaries must not move an established anchor");
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: 6, audioTimeMs: 179, timelineTimeMs: 230 }), advanced,
+    "audio time must remain monotonic even when character offsets advance");
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: 6, audioTimeMs: Number.NaN, timelineTimeMs: 230 }), advanced);
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: -1, audioTimeMs: 240, timelineTimeMs: 250 }), advanced);
+});
+
+test("speech clock anchor history is bounded without losing the newest calibration", () => {
+  let anchors = [{ charIndex: 0, audioTimeMs: 0, timelineTimeMs: 0 }];
+  for (let i = 1; i <= 24; i++) {
+    anchors = appendVisemeClockAnchor(anchors, {
+      charIndex: i * 3,
+      audioTimeMs: i * 100,
+      timelineTimeMs: i * 115,
+    });
+  }
+  assert.equal(anchors.length, 16);
+  assert.equal(anchors.at(-1).charIndex, 72);
+  assert.equal(anchors.at(-1).audioTimeMs, 2400);
+  assert.ok(sampleVisemeClock(anchors, 2500) > anchors.at(-1).timelineTimeMs);
+});
+
+test("invalid monotonic clock samples fail closed at the last known high-water mark", () => {
+  assert.equal(sampleMonotonicAudioClock(420, Number.NaN, 10, 900), 420);
+  assert.equal(sampleMonotonicAudioClock(420, 300, Number.NaN, 900), 420);
+  const anchored = reanchorMonotonicAudioClock(420, 300, 10, 900, Number.NaN);
+  assert.equal(anchored.highWaterMs, 1190);
+  assert.equal(anchored.anchorElapsedMs, 1190);
+  assert.equal(sampleMonotonicAudioClock(anchored.highWaterMs, anchored.anchorElapsedMs, anchored.anchorPerformanceAtMs, 950), 1240);
+});
