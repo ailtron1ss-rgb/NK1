@@ -2810,3 +2810,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Viewer использует ID параметров, подтверждённые `Kurisu.cdi3.json`, и заменяет случайные тайминги моргания/саккад детерминированным jitter.
 - Добавлен regression test и CI path/step.
 - Визуальная калибровка и Android/browser E2E пока не заявляются.
+
+### [NK1][аспект7] Shared 3D facial intent
+
+- Подключён общий `FacialMicrochannels` к процедурному Three.js avatar: глаза, брови, щёки и напряжение рта получают те же сигналы, что и Live2D.
+- Импортированные VRM/GLB morph targets по-прежнему используют только распознаваемые имена; полноценная VRM expression mapping и spring-bone runtime не заявляются.
