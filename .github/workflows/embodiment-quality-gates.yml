@@ -68,6 +68,8 @@ jobs:
         run: npm --prefix app run test:avatar-3d-stage
       - name: Validate VRM and DCC humanoid bone aliases
         run: npm --prefix app run test:avatar-humanoid-bones
+      - name: Validate native VRM facial expressions and morph targets
+        run: npm --prefix app run test:avatar-vrm-expressions
       - name: Validate affect-aware browser prosody and lip timing
         run: npm --prefix app run test:browser-voice-prosody
       - name: Validate Live2D/speech timeline
