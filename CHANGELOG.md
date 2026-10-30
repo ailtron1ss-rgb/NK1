@@ -1,3 +1,8 @@
+## [NK1][Aspect 01 — Live2D] Reset expressive pose on speech cancellation (2026-10-30)
+
+- On cancelled speech, AvatarStage now emits the shipped `Idle[0]` motion and clears gesture profile/intensity and head tilt, preventing the interrupted response pose from remaining the active intent.
+- Added a focused regression guard and documented that actual Cubism clip interruption timing still requires browser/Android visual validation.
+
 ## [NK1][Aspect 01 — Live2D] Bind cancellation tokens to speech event identity (2026-10-30)
 
 - Tightened app and runtime protocol validation so a cancelled speech envelope must carry exactly `cancel:${speechEventId}`, preventing a cancellation marker for one utterance from being replayed against another.
