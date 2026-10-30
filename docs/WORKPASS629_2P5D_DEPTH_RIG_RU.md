@@ -117,3 +117,5 @@ node scripts/depth-rig-glb-validator.mjs ../build/kurisu-depth-rig.glb
 - `Avatar3DStage` теперь читает `nk1DepthRigFaceBindings` из extras той же glTF scene, что и manifest, и передаёт bindings в `applyDepthRigFaceMorphs(...)` на каждом кадре.
 - Метаданные рассматриваются как недоверенные: неизвестные/повреждённые каналы и alias-значения безопасно отбрасываются существующим resolver; отсутствие bindings сохраняет стандартный alias lookup.
 - При сбросе модели bindings очищаются вместе с depth-rig и secondary-motion state, чтобы не переносить настройки одного GLB на другой.
+
+- Focused CI дополнительно компилирует Python exporter через `python -m py_compile`; это проверяет синтаксис без Blender runtime. Сам экспорт Blender-сцены остаётся внешним asset-build шагом.
