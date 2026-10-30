@@ -98,3 +98,72 @@ export function stepDepthRigSecondaryMotion(
   return {...transform,rotation:[transform.rotation[0],transform.rotation[1],transform.rotation[2]+state.position] as [number,number,number]};
  });
 }
+
+
+/** Structural subset of the renderer-neutral PR #410 MotorFrame contract. */
+export interface DepthRigMotorJointFrameV1 {
+ id:string;
+ angleRad:number;
+ targetAngleRad:number;
+ velocityRadPerSec:number;
+ available:boolean;
+}
+export interface DepthRigMotorFrameV1 {
+ version:1;
+ goalId:string|null;
+ phase:"idle"|"moving"|"holding"|"rejected"|"expired";
+ joints:Record<string,DepthRigMotorJointFrameV1>;
+}
+export type DepthRigMotorChannel = "headYaw"|"headPitch"|"headRoll"|"torsoYaw"|"torsoPitch"|"torsoRoll"|"leftArm"|"leftForearm"|"rightArm"|"rightForearm";
+export interface DepthRigMotorBinding { jointId:string; channel:DepthRigMotorChannel; gain?:number }
+export interface DepthRigMotorIntentResult {
+ intent:DepthRigIntent;
+ status:"inactive"|"applied"|"no-bindings"|"rejected";
+ reason:string;
+ appliedChannels:string[];
+}
+const MOTOR_CHANNEL_LIMITS:Record<DepthRigMotorChannel,number>={
+ headYaw:.65,headPitch:.45,headRoll:.35,torsoYaw:.3,torsoPitch:.25,torsoRoll:.2,
+ leftArm:1.8,leftForearm:2.2,rightArm:1.8,rightForearm:2.2,
+};
+/**
+ * Merge an actual motor-controller frame into the semantic depth-rig intent.
+ * Bindings are explicit: no renderer bone/node names are inferred. The current
+ * measured angle is used (not targetAngleRad), so a moving motor frame cannot
+ * teleport the rendered puppet to its future target. Invalid frames fail closed
+ * to the supplied semantic intent and return a diagnostic status.
+ */
+export function resolveDepthRigIntentFromMotorFrame(
+ base:DepthRigIntent,
+ frame:DepthRigMotorFrameV1|null|undefined,
+ bindings:readonly DepthRigMotorBinding[],
+):DepthRigMotorIntentResult {
+ const fallback:DepthRigIntent={...(base??{})};
+ const result=(status:DepthRigMotorIntentResult["status"],reason:string,appliedChannels:string[]=[]):DepthRigMotorIntentResult=>({intent:fallback,status,reason,appliedChannels});
+ if(frame===null||frame===undefined)return result("inactive","motor-frame-not-provided");
+ const phases=["idle","moving","holding","rejected","expired"];
+ if(frame.version!==1||!phases.includes(frame.phase)||!(frame.goalId===null||(typeof frame.goalId==="string"&&frame.goalId.trim().length>0))
+  ||!frame.joints||typeof frame.joints!=="object"||Array.isArray(frame.joints))return result("rejected","invalid-motor-frame-envelope");
+ if(frame.goalId===null||!(frame.phase==="moving"||frame.phase==="holding"))return result("inactive","motor-frame-has-no-active-goal");
+ if(!Array.isArray(bindings)||bindings.length>32)return result("rejected","invalid-motor-binding-list");
+ const seenJoints=new Set<string>(),seenChannels=new Set<DepthRigMotorChannel>(),next:DepthRigIntent={...fallback},appliedChannels:string[]=[];
+ for(const binding of bindings){
+  if(!binding||typeof binding.jointId!=="string"||!/^[a-z][a-z0-9._-]{0,63}$/i.test(binding.jointId)
+   ||!Object.hasOwn(MOTOR_CHANNEL_LIMITS,binding.channel)||seenJoints.has(binding.jointId)||seenChannels.has(binding.channel))
+   return result("rejected","invalid-or-duplicate-motor-binding");
+  const gain=binding.gain??1;
+  if(!Number.isFinite(gain)||gain===0||Math.abs(gain)>4)return result("rejected","invalid-motor-binding-gain");
+  seenJoints.add(binding.jointId);seenChannels.add(binding.channel);
+  const joint=frame.joints[binding.jointId];
+  if(joint===undefined)continue;
+  if(!joint||joint.id!==binding.jointId||typeof joint.available!=="boolean"
+   ||![joint.angleRad,joint.targetAngleRad,joint.velocityRadPerSec].every(Number.isFinite))
+   return result("rejected","invalid-motor-joint-state");
+  if(!joint.available)continue;
+  const limit=MOTOR_CHANNEL_LIMITS[binding.channel];
+  next[binding.channel]=clamp(joint.angleRad*gain,-limit,limit);
+  appliedChannels.push(binding.channel);
+ }
+ if(!appliedChannels.length)return result("no-bindings","no-available-bound-joints");
+ return {intent:next,status:"applied",reason:"motor-frame-applied",appliedChannels:appliedChannels.sort()};
+}
