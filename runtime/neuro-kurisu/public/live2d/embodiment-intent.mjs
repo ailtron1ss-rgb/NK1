@@ -72,6 +72,7 @@ export function normalizeEmbodimentIntentV1(value) {
   const speaking = value.speechPhase === "speaking";
   return {
     stateVersion: value.stateVersion,
+    speechPhase: value.speechPhase,
     expression: value.expression,
     expressionIntensity: value.expressionIntensity,
     speaking,
