@@ -186,8 +186,11 @@ export class TemporalObjectTracker {
         ?Math.floor(Number(entity.imageBoxCameraId)):-1;
       const imageAt=Number(entity.imageBoxAt);
       const trackId=clean(entity.trackId,240);
-      const prefix=cameraId>=0?`vision:${cameraId}:nk1-temporal-box-tracker:`:'';
-      const localId=prefix&&trackId.startsWith(prefix)?trackId.slice(prefix.length):'';
+      const cameraPrefix=cameraId>=0?`vision:${cameraId}:`:'';
+      const namespacedSource=cameraPrefix&&trackId.startsWith(cameraPrefix)?trackId.slice(cameraPrefix.length):'';
+      const trackerMarker=':nk1-temporal-box-tracker:';
+      const trackerMarkerAt=namespacedSource.lastIndexOf(trackerMarker);
+      const localId=trackerMarkerAt>=0?namespacedSource.slice(trackerMarkerAt+trackerMarker.length):'';
       const box=entity.imageBox;
       if(cameraId<0||!localId.startsWith('local:')||!box||!isValidNormalizedBoundingBox(box)
         ||!Number.isFinite(imageAt)||imageAt>at||at-imageAt>this.config.maxTrackAgeMs
