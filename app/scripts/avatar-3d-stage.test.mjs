@@ -58,7 +58,7 @@ test("existing sprite and Live2D files remain available",async()=>{
 
 test("separate GLTF motion source is baked onto the active rig without reprocessing Pixiv VRMA",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/Motion source GLB/);
+ assert.match(stage,/Motion source VRM\/GLB/);
  assert.match(stage,/loadMotionSource=useCallback/);
  assert.match(stage,/captureHumanoidRigSnapshot\(root,bones,rt\.scene\)/);
  assert.match(stage,/rebuildModelMotionClips\(rt\)/);
