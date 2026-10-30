@@ -1,3 +1,11 @@
+## [NK1][WorkPass633] Expand full-body VRM humanoid mapping (2026-10-30)
+
+- Expand the semantic bone vocabulary from the upper-body motor subset to torso, shoulders, arms, hands, all finger joints, legs, feet, and toes.
+- Resolve VRM 1.0 role-keyed and VRM 0.x bone-array node indices while preserving strict rejection of unknown roles and invalid node indices.
+- Add Blender/Mixamo/J_Bip aliases, including finger joint numbering, and collect normalized VRM nodes across the full humanoid skeleton in the active 3D stage.
+- Extend regression coverage for custom node names, full-body roles, finger chains, and legacy mappings.
+- Scope: semantic mapping and runtime node discovery only; this does not claim IK, locomotion, contact solving, or successful visual retargeting.
+
 ## [NK1][WorkPass632] Rebind persisted VRMA on same-name avatar replacement (2026-10-30)
 
 - Add a model revision token that increments on each successful imported avatar replacement.
