@@ -3,6 +3,7 @@ import { EventLog } from '../memory/EventSourcing.ts';
 import { MultiTimescaleMemory } from '../memory/MultiTimescaleMemory.ts';
 import { AutobiographicalMemory } from '../memory/AutobiographicalMemory.ts';
 import { SelfModelEngine } from '../cognition/SelfModelV2.ts';
+import { UserModelEngine } from '../cognition/UserModelEngine.ts';
 import { SocialWorldModel } from '../cognition/SocialWorldModel.ts';
 import { ValuePlasticity } from '../cognition/ValuePlasticity.ts';
 import { RecurrentWorkspaceV2 } from '../cognition/RecurrentWorkspaceV2.ts';
@@ -40,6 +41,8 @@ export class MemorySubsystemRuntime {
   readonly memories = new MultiTimescaleMemory();
   readonly autobiographical = new AutobiographicalMemory();
   readonly selfModel = new SelfModelEngine();
+  /** Evidence-backed partner profile; only explicit, low-sensitivity claims reach prompt context. */
+  readonly userModel = new UserModelEngine();
   readonly socialModel = new SocialWorldModel();
   readonly valuePlasticity = new ValuePlasticity();
   readonly workspaceV2 = new RecurrentWorkspaceV2();
@@ -77,6 +80,7 @@ export class MemorySubsystemRuntime {
     this.events.restore(memory.eventLog);
     this.memories.restore(memory.autobiographicalMemories);
     this.selfModel.restore(memory.selfModel);
+    this.userModel.restore(memory.userModel);
     this.socialModel.restore(memory.socialModel);
     this.valuePlasticity.restore(memory.adaptiveValues);
     this.workspaceV2.restore(memory.workspace);
@@ -112,7 +116,7 @@ export class MemorySubsystemRuntime {
 
   snapshot() { return {
     events:this.events.recent(64), memories:this.memories.snapshot({clone:false}),
-    selfModel:this.selfModel.snapshot(), socialModel:this.socialModel.snapshot(), adaptiveValues:this.valuePlasticity.snapshot(),
+    selfModel:this.selfModel.snapshot(), userModel:this.userModel.snapshot(), socialModel:this.socialModel.snapshot(), adaptiveValues:this.valuePlasticity.snapshot(),
     workspace:this.workspaceV2.snapshot(), semanticGraph:this.semanticMemory.snapshot(), memoryOS:this.memoryOS.snapshot(),
     unifiedMemory:this.unifiedMemory.snapshot(), p47:this.p47MemoryMind.snapshot(), p59:this.p59MemoryOperatingSystem.snapshot(),
     p62:this.p62MemoryFabric.snapshot(), p65:this.p65EpistemicLedger.snapshot(), hexisSourceMonitor:this.sourceMonitor.snapshot(), p70:this.p70MemoryLifecycleGovernor.snapshot(),
