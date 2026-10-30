@@ -60,8 +60,8 @@ export function captureHumanoidRigSnapshot(
   const localBounds = new THREE.Box3();
   const nodeToRoot = new THREE.Matrix4();
   root.traverse((candidate) => {
-    const geometry = (candidate as THREE.Mesh).geometry;
-    if (!(candidate as THREE.Mesh).isMesh || !geometry) return;
+    const geometry = (candidate as any).geometry;
+    if (!(candidate as any).isMesh || !geometry) return;
     if (!geometry.boundingBox) geometry.computeBoundingBox();
     if (!geometry.boundingBox) return;
     nodeToRoot.copy(inverseRootWorld).multiply(candidate.matrixWorld);
