@@ -139,6 +139,7 @@ export class GroundedWorldState {
     const mergeEntity=(incoming:GroundedEntity)=>{
       const old=findMatch(incoming);
       if(!old){rows.push({...incoming,modalities:[...incoming.modalities],trackAliases:[...(incoming.trackAliases??[])],sourceIds:[...(incoming.sourceIds??[])],modalityEvidenceKinds:{...(incoming.modalityEvidenceKinds??{})}});return;}
+      const previousLastSeenAt=old.lastSeenAt;
       const previousFrame=old.positionFrameId;
       const nextFrame=incoming.positionFrameId;
       const frameChanged=Boolean(previousFrame&&nextFrame&&previousFrame!==nextFrame);
@@ -152,7 +153,7 @@ export class GroundedWorldState {
       old.sourceIds=[...new Set([...(old.sourceIds??[]),...(incoming.sourceIds??[])])].slice(-16);
       old.modalityEvidenceKinds={...(old.modalityEvidenceKinds??{}),...(incoming.modalityEvidenceKinds??{})};
       old.observationCount=Math.max(1,old.observationCount)+Math.max(1,incoming.observationCount);
-      if(incoming.lastSeenAt>=old.lastSeenAt){
+      if(incoming.lastSeenAt>=previousLastSeenAt){
         old.presenceStatus=incoming.presenceStatus;
         old.visibilityKnown=incoming.visibilityKnown??old.visibilityKnown;
       }
@@ -289,7 +290,6 @@ export class GroundedWorldState {
       uncertainty,facts,
       objects:entities.filter(x=>x.kind!=='event'&&x.kind!=='concept').slice(0,64).map(x=>{
         const evidenceKinds=Object.values(x.modalityEvidenceKinds??{}).map(normalizeEvidence);
-        const evidenceKind= as never;
         const canonicalKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=evidenceKinds.includes('conflict')?'conflict':evidenceKinds.includes('observed')?'observed':evidenceKinds.includes('model-output')?'model-output':evidenceKinds.includes('derived')?'derived':'unresolved';
         return {
           id:x.id,label:x.label,location,
