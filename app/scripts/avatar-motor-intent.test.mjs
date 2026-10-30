@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { planAvatarMotorIntent } from "../src/components/avatar/motorIntent.ts";
+import { planAvatarMotorIntent, resolveAvatarGestureArmTargets } from "../src/components/avatar/motorIntent.ts";
 import { isEmbodimentIntentV1 as isAppEmbodimentIntentV1 } from "../src/components/avatar/embodimentTimeline.ts";
 import { isEmbodimentIntentV1, normalizeEmbodimentIntentV1 } from "../../runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs";
 
@@ -254,4 +254,27 @@ test("both Live2D viewer entry points smooth semantic gaze and avoid nondetermin
     assert.match(viewer, /lastIntentStateVersion\*31/);
     assert.doesNotMatch(viewer, /Math\.random\(\)/);
   }
+});
+
+test("semantic gesture profiles produce bounded asymmetric arm targets for procedural and imported rigs", () => {
+  const presenting = resolveAvatarGestureArmTargets("presenting", 0.8, "calm", true);
+  const considering = resolveAvatarGestureArmTargets("considering", 0.4, "curiosity", true);
+  const angry = resolveAvatarGestureArmTargets("emphatic", 0.8, "anger", true);
+  const asleep = resolveAvatarGestureArmTargets("presenting", 0.8, "joy", false);
+  assert.ok(presenting.right > presenting.left);
+  assert.ok(considering.left >= -0.8 && considering.right <= 0.8);
+  assert.ok(angry.left < 0 && angry.right > 0);
+  assert.deepEqual(asleep, { left: 0.025, right: -0.025 });
+  for (const target of [presenting, considering, angry, asleep]) {
+    assert.ok(Math.abs(target.left) <= 0.8 && Math.abs(target.right) <= 0.8);
+  }
+});
+
+test("3D stage consumes the shared cognitive motor planner instead of a separate action-only gesture table", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /planAvatarMotorIntent\(/);
+  assert.match(stage, /resolveAvatarGestureArmTargets\(/);
+  assert.match(stage, /motorPlan\.gestureProfile/);
+  assert.match(stage, /armTargets\.left/);
+  assert.match(stage, /armTargets\.right/);
 });
