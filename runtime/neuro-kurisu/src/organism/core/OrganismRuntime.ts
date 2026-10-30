@@ -1390,7 +1390,7 @@ export class OrganismRuntime {
         semantic = { ...semantic, latencyMs: Math.max(0, Date.now()-started) };
         if (semantic.semantic) {
           this.core.recordSemanticVisionFrame();
-          this.core.p41PerceptionIngest({ vision: { sceneLabel: semantic.sceneLabel, confidence01: semantic.confidence01, objects: semantic.objects, relations: semantic.relations, events: semantic.events, latencyMs: semantic.latencyMs, semantic: true }, at: evidence.at });
+          this.core.p41PerceptionIngest({ vision: { cameraId: normalizedCameraId, sceneLabel: semantic.sceneLabel, confidence01: semantic.confidence01, objects: semantic.objects, relations: semantic.relations, events: semantic.events, latencyMs: semantic.latencyMs, semantic: true }, at: evidence.at });
           const pendingVision=this.core.p41NextPerception();
           if(pendingVision?.modality==='vision') this.core.p41FulfillPerception(pendingVision.id,true);
         }
