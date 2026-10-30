@@ -115,6 +115,20 @@ assert.equal(postMutationRestore.indexDiagnostics().pass, true,
 assert.equal(postMutationRestore.previewRetrieve('terrarium', 3)[0]?.id, 'm-hidden');
 assert.equal(postMutationRestore.previewRetrieve('renewal', 3)[0]?.id, 'm-budget');
 
+// Forget must remove every curated-metadata posting, not only content tokens.
+assert.equal(postMutationRestore.forgetById('m-budget', 'metadata-recall-forget-regression'), true);
+assert.equal(postMutationRestore.indexDiagnostics().pass, true,
+  'forget must remove metadata postings and preserve index consistency');
+assert.equal(postMutationRestore.previewRetrieve('renewal', 3).some(row => row.id === 'm-budget'), false,
+  'forgotten memories must not remain discoverable through topic metadata');
+assert.equal(postMutationRestore.previewRetrieve('RenewalDesk', 3).some(row => row.id === 'm-budget'), false,
+  'forgotten memories must not remain discoverable through entity metadata');
+const afterForgetRestore = new MemoryOS2({ embeddingProvider: null, metadataRecallEnabled: true });
+afterForgetRestore.restore(postMutationRestore.snapshot());
+assert.equal(afterForgetRestore.indexDiagnostics().pass, true,
+  'forget followed by snapshot/restore must not resurrect metadata postings');
+assert.equal(afterForgetRestore.previewRetrieve('renewal', 3).some(row => row.id === 'm-budget'), false);
+
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   baselineTop1: baselineResult.items[0]?.id ?? null,
   metadataTop1: candidateResult.items[0]?.id ?? null,
