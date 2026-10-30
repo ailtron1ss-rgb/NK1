@@ -48,7 +48,7 @@ A VRMA may contain:
 - preset/custom expression tracks;
 - an optional LookAt quaternion track.
 
-NK1 extracts the expression keys from each VRMAnimation before compiling the clip. While a VRMA clip owns a key, the static organism-expression adapter does not repeatedly set that same key. Other expressions remain driven by organism emotion, valence/arousal, existing viseme timeline, blink, and gaze signals. A short transition guard keeps outgoing/incoming animated expression keys reserved during cross-fade.
+NK1 extracts the expression keys from each VRMAnimation before compiling the clip. While a VRMA clip owns a key, the static organism-expression adapter does not repeatedly set that same key. Other expressions remain driven by organism emotion, valence/arousal, blink, and gaze signals. While NK1 is actively speaking, its grapheme-timeline vowel visemes (aa/ih/ou/ee/oh) temporarily take priority over VRMA-authored mouth tracks; when speech ends, VRMA mouth animation resumes. This preserves the actual spoken phrase without discarding the rest of the authored facial motion. A short transition guard keeps outgoing/incoming animated expression keys reserved during cross-fade.
 
 For a clip containing lookAtTrack, the runtime creates VRMLookAtQuaternionProxy on the VRM scene and disables the procedural lookAt target for that active clip. When no LookAt track is active, gazeX/gazeY continues to drive the ordinary VRM LookAt target. This avoids two writers fighting over the same yaw/pitch channel.
 
