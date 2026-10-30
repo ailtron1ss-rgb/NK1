@@ -162,3 +162,18 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 Добавлен `vrm-wardrobe-adapter.test.mjs`: нормализованные имена костей, отсутствующая и дублирующаяся кость, статический/non-skinned ресурс, запрет asset ID вне switch plan, успешное remap и замена слота. Набор включён в `npm run test:wardrobe`; добавлен отдельный PR workflow `.github/workflows/nk1-wardrobe-validation.yml` (Node 22.12, `npm ci`, focused wardrobe suite).
 
 **Граница:** adapter написан, но пока не подключён к `Avatar3DStage` загрузчику VRM/GLB и не имеет настоящего garment pack для проверки. Требуются loader/UI для выбора pack и asset ID, rights/provenance gate, реальные skinned garment meshes с корректным rig/rest pose, материалы/occlusion, визуальные тесты на нескольких позах и Android/desktop E2E. Никакой фактический outfit-switch на загруженной пользовательской модели пока не заявляется.
+
+
+## Шестой инженерный проход — verified VRM wardrobe pack loader (2026-10-30)
+
+Добавлен `vrmWardrobePackLoader.ts` — первая исполняемая orchestration-цепочка от байтов пакета до применения одежды к уже загруженному Three.js avatar:
+- повторно выполняет структурную, SHA-256/size, whole-pack, renderer, body и rig-проверку через общий runtime gate;
+- разрешает только `vrm3d` assets в формате бинарного `.glb`;
+- до вызова GLTFLoader проверяет GLB v2 header/length/JSON chunk и блокирует внешние buffer/image URI, чтобы загрузчик не вытягивал произвольные ресурсы по сети;
+- парсит и проверяет все ожидаемые garment roots, затем preflight-проверяет их skinned meshes, кости и bind pose относительно текущего avatar;
+- применяет комплект как пакетную операцию; если attachment или acknowledgement не проходит, удаляет добавленные элементы и восстанавливает видимость/metadata предыдущих слотов.
+
+Добавлен `vrm-wardrobe-pack-loader.test.mjs`: корректный self-contained GLB, external URI rejection, успешное применение после byte verification и rollback при ошибке parse. Suite подключён к `npm run test:wardrobe` и отдельному GitHub Actions path filter.
+
+**Что теперь реально сделано:** существует production API для проверки, GLB parsing, rig preflight и применения VRM garment pack. **Что ещё не сделано:** UI выбора/импорта пакета, постоянное состояние гардероба, вызов API из `Avatar3DStage`, реальные rights-cleared skinned garment GLB, адаптеры Live2D/2.5D, визуальный E2E и Android/desktop проверки. Тестовый GLB в suite — структурная фикстура, а не одежда для Курису.
+
