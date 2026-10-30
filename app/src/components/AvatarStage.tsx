@@ -95,6 +95,18 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
   };
   const originalGaze = originalGazeByAction[snap.lastOption] ?? originalGazeByAction.wait;
+  const facialProfile = deriveFacialMicrochannels({
+    emotion: snap.emotion.label,
+    valence: snap.emotion.valence,
+    arousal: snap.emotion.arousal,
+    dominance: snap.emotion.dominance,
+    expressionIntensity: deriveAffectiveExpression({
+      emotion: snap.emotion.label,
+      valence: snap.emotion.valence,
+      arousal: snap.emotion.arousal,
+      dominance: snap.emotion.dominance,
+    }).expressionIntensity,
+  });
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
 
   const stopSpeech = () => {
