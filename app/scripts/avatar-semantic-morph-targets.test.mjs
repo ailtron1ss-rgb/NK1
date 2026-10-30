@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applySemanticMorphTargets, resolveSemanticMorphTargets, semanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
+import { applySemanticMorphTargets, resolveSemanticMorphTargets, semanticMorphValues, smoothSemanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
 
 test("semantic resolver recognizes common VRM/GLB face morph labels",()=>{
  const targets=resolveSemanticMorphTargets({Joy:0,EyeBlinkLeft:1,eye_close_right:2,viseme_aa:3,viseme_O:4,Fcl_MTH_Sad:5,Fcl_EYE_Angry:6,UnknownRigChannel:7,Fcl_MTH_A:8,Fcl_MTH_O:9,negative:-1});
@@ -31,7 +31,7 @@ test("imported avatar stage applies the shared facial timeline through semantic 
  assert.ok(stage.includes("semanticMorphValues"));
  assert.ok(stage.includes("blink:p.awake?facialMotion.blinkClosure*.92:0"));
  assert.ok(stage.includes("mouthOpen:p.mouthPose.open"));
- assert.ok(stage.includes("applySemanticMorphTargets(rt.morphTargets,morphValues)"));
+ assert.ok(stage.includes("applySemanticMorphTargets(rt.morphTargets,rt.morphState)"));
  assert.ok(stage.includes("rt.morphTargets.push"));
  assert.ok(stage.includes("rt.morphTargets=[]"));
  const baselineReset=stage.indexOf("rt.morphTargets.forEach((target)=>{target.influences[target.index]=target.baseInfluence;})");
@@ -51,4 +51,17 @@ test("semantic expression composes with stronger authored morph animation",()=>{
  assert.deepEqual(influences,[.9,.6,.8,.7]);
  applySemanticMorphTargets(bindings,{joy:0,sadness:0,anger:0,mouthOpen:0,mouthOh:0,blink:0});
  assert.deepEqual(influences,[.9,.6,.8,.7],"semantic layer must not erase a running authored clip");
+});
+
+test("imported expression smoothing is bounded with fast speech and slower affect release",()=>{
+ const zero={joy:0,sadness:0,anger:0,mouthOpen:0,mouthOh:0,blink:0};
+ const target={joy:1,sadness:0,anger:0,mouthOpen:1,mouthOh:1,blink:1};
+ const first=smoothSemanticMorphValues(zero,target,.05);
+ assert.ok(first.joy>0&&first.joy<1);
+ assert.ok(first.mouthOpen>first.joy,"viseme channels must react faster than affect");
+ const released=smoothSemanticMorphValues(first,zero,.05);
+ assert.ok(released.mouthOpen<first.mouthOpen);
+ assert.ok(released.joy>released.mouthOpen,"affect release is slower than speech release");
+ const unchanged=smoothSemanticMorphValues(first,target,0);
+ assert.deepEqual(unchanged,first);
 });
