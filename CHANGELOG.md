@@ -2794,3 +2794,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][WorkPass628] Add renderer-independent bounded body motor foundation (2026-10-30)
+
+- Add a deterministic two-bone 3D IK solver with pole-vector handling and projection of unreachable targets into the reachable annulus; degenerate and non-finite input cannot leak NaN/Infinity into the pose.
+- Add per-joint motor proposal arbitration: highest priority wins, equal-priority sources blend by bounded weight, unsupported joints and malformed targets fail closed with explicit rejection reasons.
+- Add delta-time and per-joint speed-limited pose advancement to avoid frame-rate-dependent jumps and unbounded joint changes.
+- Add renderer capability filtering so Live2D, future 2.5D rigs and VRM adapters report unsupported channels instead of silently claiming execution.
+- Add deterministic regression coverage for IK geometry, unreachable targets, priority arbitration, invalid data, speed bounds and capability negotiation.
+- This is a tested control/math foundation, not yet a complete full-body runtime integration; balance, contact/grasping, renderer adapters and device E2E remain explicit follow-up gates.
