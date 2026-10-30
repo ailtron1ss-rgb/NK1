@@ -56,3 +56,31 @@ These commands are documented as required checks; they have **not** been execute
 3. Connect SelfModel prediction/calibration and P2702 trait adaptation to the same evidence identity without introducing a second identity owner.
 4. Add restart + contradictory-evidence + self-correction integration tests.
 5. Run typecheck and targeted tests on the exact branch SHA before opening a promotion PR.
+
+## Второй инженерный проход: интеграция владельцев состояния
+
+### Единая схема владения
+
+- SelfSubsystemRuntime теперь владеет P2702PersistentPersonalityDynamics и восстанавливает его из facets.advanced.p2702PersistentPersonality.
+- SelfModelEngine остаётся единственным экземпляром у MemorySubsystemRuntime; отдельную копию в Self-подсистеме не создавали.
+- OrganismSystemFabric создаёт PersonalitySelfModelBridge и соединяет три существующих владельца: P78 (автобиографическая память), P2702 (адаптивные черты/ценности) и SelfModel (предсказание/калибровка/agency).
+- PersistenceProjectionCoordinator записывает P2702 в advanced identity projection, чтобы адаптивные черты не сбрасывались после перезапуска.
+- Bridge не хранит копию состояния и не выбирает действие. preparePersonalityDecision возвращает сигналы для канонического селектора; recordPersonalityOutcome проводит результат через provenance gate прежде, чем высокоуровневые self-beliefs обновятся.
+
+### Сквозной provenance gate и защита от replay
+
+- В P78 добавлен ограниченный журнал processedEventKeys (до 512 ключей), сохраняемый в snapshot. Он блокирует повтор старого события даже после промежуточных эпизодов и восстановления runtime.
+- P78 синтаксически отделяет подтверждённое событие от legacy/unverified данных; bridge дополнительно разрешает для high-level SelfModel update только issuer namespaces world-transition: и external-verification:.
+- Причина отказа не теряется: синтаксически оформленный, но неподдержанный issuer доходит до SelfModel как неподтверждённый доверенный источник и отклоняется его allow-list.
+- Исправлена нормализация управляющих символов/пробелов и строгая проверка evidence reference на пробельные символы.
+
+### Тестовый охват
+
+tests/personality-selfmodel-bridge.mjs проверяет приём разрешённого receipt, отказ неизвестного namespace, единичное обучение P2702, недопуск duplicate replay до downstream learners, replay после рестарта и санитизацию испорченных snapshots.
+tests/p78-autobiographical-provenance.mjs дополнен проверкой не соседнего replay после restore, эквивалентности whitespace-normalized событий и отказа evidence reference с пробелами.
+
+## Степень готовности и оставшиеся блокеры
+
+Реализована композиционная интеграция владельцев и persistence path, но пока не заявляется, что основной OrganismCore уже вызывает bridge на каждом фактическом цикле. Ветка предоставляет явные методы через OrganismSystemFabric; следующий этап — найти точный outcome-finalization callsite, связать его с фактическим CEF/causal receipt, а preparePersonalityDecision — с уже существующим этапом формирования candidate scores, не создавая второго selector.
+
+Реальные CEF receipts всё ещё не проверяются cryptographically/against canonical ledger на уровне bridge; namespace allow-list — временная дополнительная защита, а не доказательство подписи. До promotion обязательны typecheck, целевые тесты на точном SHA, restart/contradiction E2E и подтверждение фактического вызова из runtime cycle.
