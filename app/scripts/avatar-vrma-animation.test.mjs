@@ -93,6 +93,12 @@ test("VRMA-authored expression and LookAt tracks are not overwritten by static o
   assert.match(stage, /rt\.vrm\.lookAt\.target=rt\.lookAtTarget/);
 });
 
+test("the VRMA picker rejects ordinary GLB character files", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /if\(!file\.name\.toLowerCase\(\)\.endsWith\("\.vrma"\)\)/);
+  assert.match(stage, /Для отдельной анимации выберите файл \.vrma/);
+});
+
 test("live speech visemes take priority over VRMA vowel morph tracks", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /const speechVisemeKeys=p\.speaking\?new Set\(\["aa","ih","ou","ee","oh"\]\):null/);
