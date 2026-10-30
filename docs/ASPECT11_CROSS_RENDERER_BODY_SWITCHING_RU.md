@@ -148,3 +148,15 @@ OrganismCore → EmbodimentIntentV1 / MotorGoal → MotorFrame (#410) → render
 **Решение:** оставить `motionStatus: started` только как подтверждение успешного dispatch. Не добавлять `motion-completed` и не выставлять `visualCompletionVerified` без собственного проверяемого механизма, который коррелирует конкретный motion token с наблюдаемым завершением и представленным кадром. Следующий корректный путь — собственный adapter-level instrumentation/renderer frame evidence, а не угадывание имён событий SDK.
 
 Источники API: [MotionManager 0.4.0](https://guansss.github.io/pixi-live2d-display/api/classes/index.MotionManager.html), [MotionManagerEvents 0.4.0](https://guansss.github.io/pixi-live2d-display/api/interfaces/index.MotionManagerEvents.html), [InternalModel 0.4.0](https://guansss.github.io/pixi-live2d-display/api/classes/index.InternalModel.html).
+
+## Мост моторных кадров в семантическую позу (добавлено 2026-10-30)
+
+`app/src/components/avatar/motorFrameMapper.ts` переводит кадр `MotorFrame` в renderer-neutral `pose` только через явный профиль калибровки `schemaVersion: 1`. Каждая запись профиля связывает один ID сустава с одним `BodyChannel`, коэффициентом масштаба, смещением и границами. Дубли суставов/каналов запрещены.
+
+- Источник позы — `angleRad` (текущее состояние сустава), а не `targetAngleRad` (командная цель).
+- Кадры с некорректной структурой, устаревшим tick/time, просроченным возрастом, фазами `rejected/expired` отклоняются.
+- Недоступные и неизвестные суставы отдельно перечисляются; отсутствующие значения не подменяются нулями.
+- Результат несёт cursor `tick/atMs` и неизменно `rendererPoseVerified: false`: это вход для renderer adapter, а не подтверждение применения/показа позы.
+- Проверки включены в `test:embodiment-switch` и workflow `nk1-embodiment-switch.yml`.
+
+Граница следующего этапа: адаптер должен применить semantic pose к конкретному Live2D/DepthRig/VRM рендереру, прочитать фактические параметры/кости после обновления кадра и вернуть независимую revision-bound verification. До этого моторный mapping не разрешает commit переключения и не считается визуально исполненным действием.
