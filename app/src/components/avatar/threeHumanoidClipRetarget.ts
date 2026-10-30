@@ -74,7 +74,8 @@ export function retargetThreeHumanoidClip(
     position: node.position.clone(),
     quaternion: node.quaternion.clone(),
   }]));
-  const sourceRootInitial = { position: sourceRoot.position.clone(), quaternion: sourceRoot.quaternion.clone(), scale: sourceRoot.scale.clone() };\n  const sourceHips = sourceByRole.get("hips")?.node;
+  const sourceRootInitial = { position: sourceRoot.position.clone(), quaternion: sourceRoot.quaternion.clone(), scale: sourceRoot.scale.clone() };
+  const sourceHips = sourceByRole.get("hips")?.node;
   const targetHips = targetByRole.get("hips")?.node;
   const sourceHipsPosition = sourceHips?.position.clone();
   const targetHipsPosition = targetHips?.position.clone();
@@ -132,6 +133,9 @@ export function retargetThreeHumanoidClip(
       node.quaternion.copy(initial.quaternion);
       node.scale.copy(initial.scale);
     }
+    sourceRoot.position.copy(sourceRootInitial.position);
+    sourceRoot.quaternion.copy(sourceRootInitial.quaternion);
+    sourceRoot.scale.copy(sourceRootInitial.scale);
     sourceRoot.updateMatrixWorld(true);
   }
 
