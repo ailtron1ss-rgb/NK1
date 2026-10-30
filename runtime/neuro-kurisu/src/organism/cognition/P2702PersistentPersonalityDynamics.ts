@@ -12,7 +12,7 @@ export interface P2702PersonalityState {
  version:1; tick:number; experienceCount:number; learningUpdates:number;
  invariantNames:string[]; invariantValues:number[]; adaptiveNames:string[]; adaptiveValues:number[];
  valueNames:string[]; valueWeights:number[]; relationshipTrust:Record<string,number>;
- selfBeliefs:number[]; selfUncertainty:number[]; tensionState:number[]; actionPreference:Record<ActionKind,number>;
+ selfBeliefNames:string[]; selfBeliefs:number[]; selfUncertainty:number[]; tensionState:number[]; actionPreference:Record<ActionKind,number>;
  stability01:number; coherence01:number; identityContinuity01:number; contradiction01:number;
  plasticity01:number; drift01:number; autobiographicalStrength01:number; lastReward01:number;
 }
@@ -25,6 +25,7 @@ const defaultState=():P2702PersonalityState=>{
   invariantNames:inv.map(([k])=>k),invariantValues:inv.map(([,v])=>v),
   adaptiveNames:ad.map(([k])=>k),adaptiveValues:ad.map(([,v])=>v),
   valueNames:values,valueWeights:[.98,.96,.90,.92,.84,.88,.96,.72],relationshipTrust:{},
+  selfBeliefNames:['continuity','coherence','agency','reality-grounding','stability','goal-continuity','memory-continuity','authorship-continuity'],
   selfBeliefs:[.72,.68,.76,.64,.58,.70,.62,.74],selfUncertainty:new Array(8).fill(.28),
   tensionState:new Array(KURISU_ORGANISM_CANON.tensions.length).fill(.5),
   actionPreference:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,
@@ -57,7 +58,8 @@ export class P2702PersistentPersonalityDynamics{
    adaptiveNames,adaptiveValues:values(r.adaptiveValues,adaptiveNames.length,d.adaptiveValues),
    valueNames,valueWeights:values(r.valueWeights,valueNames.length,d.valueWeights),
    relationshipTrust,
-   selfBeliefs:values(r.selfBeliefs,8,d.selfBeliefs),
+   selfBeliefNames:d.selfBeliefNames.slice(),
+   selfBeliefs:values(r.selfBeliefs,d.selfBeliefNames.length,d.selfBeliefs),
    selfUncertainty:values(r.selfUncertainty,8,d.selfUncertainty,.03,.97),
    tensionState:values(r.tensionState,d.tensionState.length,d.tensionState),
    actionPreference,
