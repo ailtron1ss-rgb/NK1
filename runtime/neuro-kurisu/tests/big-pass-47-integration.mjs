@@ -23,10 +23,12 @@ assert.ok(migrated.schemaVersion>=90);
 assert.equal(migrated.system.skillAcquisitionBenchmark,undefined);
 
 const skill = new SkillAcquisitionBenchmark();
-for(let i=0;i<12;i++) skill.observe({action:'explore',contextKey:`holdout-${i}`,outcome01:i<4?.4:.86});
+for(let i=0;i<4;i++) skill.observe({action:'explore',contextKey:`baseline-${i}`,outcome01:.4,phase:'baseline'});
+for(let i=0;i<8;i++) skill.observe({action:'explore',contextKey:`holdout-${i}`,outcome01:.86,phase:'holdout'});
 const ss=skill.summary();
 assert.equal(ss.samples,12);
 assert.ok(ss.novelContexts>=12);
+assert.equal(ss.holdoutEligible,true);
 assert.ok(ss.holdoutMean01>ss.baselineMean01);
 assert.ok(ss.gain01>=0);
 

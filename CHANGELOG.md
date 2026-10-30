@@ -1,3 +1,10 @@
+## [NK1][learning-integrity] Restore skill-acquisition holdout integrity after baseline regression (2026-10-30)
+
+- Restore the learning/holdout split contract in `SkillAcquisitionBenchmark` that the WorkPass70 baseline import had reverted: holdout evidence counts only distinct, independently labelled context keys; eligibility requires at least three accepted holdout contexts; empty and prototype-named keys are rejected; derived `gain01` stays at zero until evidence is eligible and clears on contamination or registry saturation; legacy snapshots recompute the accepted count from the unique phase registry.
+- Stop labelling runtime outcome telemetry (compound-skill execution and project-research observations) as `holdout`; these are learning data unless an explicit independent evaluation protocol labels them otherwise.
+- Align the `big-pass-47` integration regression with the explicit split contract and wire the previously unreferenced `skill-acquisition-split-integrity` regression into the core validation workflow so the contract cannot silently regress again.
+- No learning uplift is claimed: production learning effectiveness, transfer, forgetting curves and independent labelled holdout performance remain unmeasured.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
