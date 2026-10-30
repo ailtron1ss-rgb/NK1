@@ -9,6 +9,7 @@ import {
 } from './OutcomeVerificationService.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import type { ExternalObservationChannel, ExternalObservationSourceClass } from './ExternalObserverFabric.ts';
+import { cloneFrozenToolInputContract, cloneFrozenToolOutputContract, validateToolInputContract, validateToolOutputContract, type ToolInputContract, type ToolOutputContract } from './ToolInputContract.ts';
 
 export type ActionOutcomeClass =
   | 'unavailable'
@@ -161,6 +162,10 @@ export type ToolReceiptLookup =
 export interface ToolDefinition {
   id:string; capability:string; destructive:boolean; projectAllowed?:boolean;
   execute:(input:Record<string,unknown>, context?:ToolExecutionContext)=>Promise<Record<string,unknown>>;
+  /** Declarative input contract checked before approval, receipt admission and execution. */
+  inputContract?: ToolInputContract;
+  /** Optional output contract; invalid output is recorded as executed-but-unverified. */
+  outputContract?: ToolOutputContract;
   /** This action is unsafe to invoke without a stable key and durable receipt ledger. */
   requiresIdempotencyKey?:boolean;
   /**
@@ -193,6 +198,15 @@ export interface ToolExecution {
 }
 const DEFAULT_ALLOWED:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const unavailableVerification:OutcomeVerification={verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'not executed'};
+/**
+ * Even legacy tools without a declared schema must receive inert JSON data.
+ * This envelope rejects accessors, proxies, cycles, exotic prototypes and
+ * oversized/deep payloads before hashing, previewing, approving or executing.
+ * Per-tool contracts remain stricter and take precedence when registered.
+ */
+const DEFAULT_TOOL_INPUT_ENVELOPE:ToolInputContract=Object.freeze({
+  type:'object', additionalProperties:true, maxProperties:32, maxSerializedBytes:65_536,
+});
 function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerification):{ok:boolean;verified:boolean;outcomeClass:ActionOutcomeClass;contradicted:boolean} {
   const assessment=assessExternalPostcondition(verification);
   const contradicted=toolOk && assessment==='contradiction';
@@ -410,6 +424,9 @@ export class ActionGateway {
     const permissionClass=this.permissionClassFor(toolId) ?? (DIRECT_PERMISSION_ACTIONS.has(toolId)?'device':null);
     if(!permissionClass) throw new Error('approval-not-required-for-this-tool');
     if(!['execute','reconcile','direct'].includes(operation)) throw new Error('invalid-approval-operation');
+    const registered=this.tools.get(toolId);
+    const inputValidation=validateToolInputContract(input,registered?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!inputValidation.valid) throw new Error('approval-input-invalid');
     let requestHash:string;
     try { requestHash=this.approvalFingerprint(toolId,input,options,operation); } catch { throw new Error('approval-input-not-serializable'); }
     const at=Date.now(); this.expirePermissionRequests(at);
@@ -446,6 +463,9 @@ export class ActionGateway {
     return this.withPermissionAdmission(async()=>{
     const permissionClass=this.permissionClassFor(toolId) ?? (DIRECT_PERMISSION_ACTIONS.has(toolId)?'device':null);
     if(!permissionClass) return {ok:true};
+    const registered=this.tools.get(toolId);
+    const inputValidation=validateToolInputContract(input,registered?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!inputValidation.valid) return {ok:false,reason:'approval-input-invalid'};
     if(!approvalId) return {ok:false,reason:'user-approval-required'};
     let fingerprint:string; try{fingerprint=this.approvalFingerprint(toolId,input,options,operation);}catch{return {ok:false,reason:'approval-input-not-serializable'};}
     const now=Date.now(); this.expirePermissionRequests(now);
@@ -548,16 +568,82 @@ export class ActionGateway {
       if(!['filesystem','http','process','device','camera','audio','sensor','user','world','tool','unknown'].includes(source.channel)) throw new Error('invalid-tool-observation-channel');
     }
     if(this.tools.has(def.id)) throw new Error(`duplicate-tool-id:${def.id}`);
-    this.tools.set(def.id,def);
+    const registered = (def.inputContract || def.outputContract) ? {
+      ...def,
+      ...(def.inputContract ? { inputContract: cloneFrozenToolInputContract(def.inputContract) } : {}),
+      ...(def.outputContract ? { outputContract: cloneFrozenToolOutputContract(def.outputContract) } : {}),
+    } : def;
+    this.tools.set(def.id,registered);
   }
   listTools() {
-    return [...this.tools.values()].map(t=>({
+    return [...this.tools.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(t=>({
       id:t.id,capability:t.capability,destructive:t.destructive,projectAllowed:Boolean(t.projectAllowed),
+      hasInputContract:Boolean(t.inputContract),inputSchema:t.inputContract?structuredClone(t.inputContract):undefined,
+      hasOutputContract:Boolean(t.outputContract),outputSchema:t.outputContract?structuredClone(t.outputContract):undefined,
       permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),
     }));
   }
 
+  /**
+   * Read-only coverage report for the registered tool surface. It exposes missing
+   * governance gates without silently changing legacy tool behavior; migrations can
+   * be prioritized by risk and measured from CI/runtime snapshots.
+   */
+  toolGovernanceReport() {
+    const tools=[...this.tools.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(tool=>{
+      const permissionClass=tool.permissionClass??inferPermissionClass(tool.id,tool.capability)??null;
+      const durableReceiptRequired=requiresDurableIdempotency(tool);
+      const highRisk=tool.destructive || durableReceiptRequired ||
+        (permissionClass!==null && ['device','filesystem','code','system','self-modification'].includes(permissionClass));
+      const required={
+        approval:permissionClass!==null,
+        inputContract:highRisk,
+        outputContract:highRisk && durableReceiptRequired,
+        durableReceipt:durableReceiptRequired,
+        independentVerifier:tool.destructive,
+        providerReconciliation:durableReceiptRequired,
+      };
+      const present={
+        approval:permissionClass===null || Boolean(this.executionLedgerPersister),
+        inputContract:Boolean(tool.inputContract),
+        outputContract:Boolean(tool.outputContract),
+        durableReceipt:Boolean(this.executionLedgerPersister),
+        independentVerifier:Boolean(tool.verify),
+        providerReconciliation:Boolean(tool.reconcile),
+      };
+      const gaps=Object.keys(required).filter(key=>required[key as keyof typeof required] && !present[key as keyof typeof present]);
+      return {
+        id:tool.id, capability:tool.capability, permissionClass,
+        riskTier:tool.destructive || permissionClass==='self-modification' ? 'critical' as const : highRisk ? 'elevated' as const : 'standard' as const,
+        required, present, gaps,
+      };
+    });
+    const count=(key:'inputContract'|'outputContract'|'durableReceipt'|'independentVerifier'|'providerReconciliation')=>
+      tools.filter(row=>row.required[key] && row.present[key]).length;
+    const required=(key:'inputContract'|'outputContract'|'durableReceipt'|'independentVerifier'|'providerReconciliation')=>
+      tools.filter(row=>row.required[key]).length;
+    return {
+      version:1 as const,
+      generatedAt:Date.now(),
+      totals:{
+        registered:tools.length,
+        critical:tools.filter(row=>row.riskTier==='critical').length,
+        elevated:tools.filter(row=>row.riskTier==='elevated').length,
+        withGaps:tools.filter(row=>row.gaps.length>0).length,
+        inputContracts:{present:count('inputContract'),required:required('inputContract')},
+        outputContracts:{present:count('outputContract'),required:required('outputContract')},
+        durableReceipts:{present:count('durableReceipt'),required:required('durableReceipt')},
+        independentVerifiers:{present:count('independentVerifier'),required:required('independentVerifier')},
+        providerReconciliation:{present:count('providerReconciliation'),required:required('providerReconciliation')},
+      },
+      tools,
+    };
+  }
+
   async executeTool(id:string,input:Record<string,unknown>={},reason='tool-request',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
+    const registeredTool=this.tools.get(id);
+    const validation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!validation.valid) return this.result(id,registeredTool?.capability??'unknown','tool-input-invalid','gate-check-failed','exec-' + randomUUID(),{error:'tool-input-invalid',issues:validation.issues},'tool arguments must be inert bounded JSON and satisfy the registered contract before approval, receipt admission or executor entry');
     const rawKey=options?.idempotencyKey;
     if(rawKey===undefined || rawKey===null || rawKey==='') {
       if(requiresDurableIdempotency(this.tools.get(id))) return this.result(id,this.tools.get(id)?.capability??'unknown','idempotency-key-required','idempotency-key-required',`exec-${randomUUID()}`,{error:'idempotency-key-required'},'this operation is classified as side-effecting or high-risk and requires a stable key plus durable receipt ledger');
@@ -599,6 +685,9 @@ export class ActionGateway {
    * fail-closed for later reconciliation.
    */
   async reconcileToolExecution(id:string,input:Record<string,unknown>={},reason='tool-receipt-reconciliation',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
+    const registeredTool=this.tools.get(id);
+    const inputValidation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!inputValidation.valid) return this.result(id,registeredTool?.capability??'unknown','reconciliation-input-invalid','gate-check-failed',`exec-${randomUUID()}`,{error:'reconciliation-input-invalid',issues:inputValidation.issues},'receipt reconciliation requires the original bounded JSON request before provider lookup');
     const rawKey=options?.idempotencyKey;
     if(rawKey===undefined||rawKey===null||rawKey==='') return this.result(id,'unknown','reconciliation-idempotency-key-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'reconciliation-idempotency-key-required'},'receipt reconciliation requires the original idempotency key');
     const key=String(rawKey).trim();
@@ -957,6 +1046,15 @@ export class ActionGateway {
 
     try {
       const result=await tool.execute(input,{executionId,idempotencyKey:context.idempotencyKey,decisionId:context.decisionId,autonomous:context.autonomous===true});
+      if(tool.outputContract) {
+        const validation=validateToolOutputContract(result,tool.outputContract);
+        if(!validation.valid) {
+          const invalidOutput={error:'tool-output-invalid',issues:validation.issues};
+          const outputVerification:OutcomeVerification={verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'tool executor was entered but its result failed the registered output contract; the external effect must remain unverified and may require read-only reconciliation'};
+          const outputAudit=this.auditTool(id,false,'tool-output-invalid',false,tool.capability,invalidOutput,'none',outputVerification,executionId,'executed-unverified',competenceConfidence01);
+          return {ok:false,verified:false,executionId,tool:id,capability:tool.capability,result:invalidOutput,audit:outputAudit,verification:outputVerification,outcomeClass:'executed-unverified',competenceConfidence01};
+        }
+      }
       // A negative adapter response is not evidence that a remote side effect did
       // not happen: some providers apply the operation and then return an error/lost
       // ACK. For durable keyed mutators, require explicit `effectStatus: not-applied`
