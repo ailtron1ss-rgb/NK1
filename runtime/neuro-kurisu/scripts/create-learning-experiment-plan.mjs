@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createLearningExperimentPlan, validateLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
+import { createLearningExperimentPlan, validateLearningExperimentPlan, validateResearchGradeLearningExperimentPlan } from '../src/organism/learning/LearningExperimentPlan.ts';
 
 function argument(name, fallback) {
   const index = process.argv.indexOf(name);
@@ -32,6 +32,8 @@ async function main() {
     resetMethodPrefix: argument('--reset-method-prefix', 'hard-reset-every-'),
   });
   validateLearningExperimentPlan(plan, manifest);
+  const researchGrade = process.argv.includes('--research-grade');
+  if (researchGrade) validateResearchGradeLearningExperimentPlan(plan, manifest);
   const target = path.resolve(outputPath);
   const directory = path.dirname(target);
   await mkdir(directory, { recursive: true });
@@ -49,7 +51,7 @@ async function main() {
     await rm(temporary, { force: true }).catch(() => undefined);
     throw error;
   }
-  process.stdout.write(JSON.stringify({ status: 'PLAN_CREATED', output: target, planFingerprint: plan.planFingerprint, counts: plan.counts }) + '\n');
+  process.stdout.write(JSON.stringify({ status: 'PLAN_CREATED', output: target, planFingerprint: plan.planFingerprint, researchGrade, counts: plan.counts }) + '\n');
 }
 main().catch(error => {
   process.stderr.write(`PLAN_CREATION_FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
