@@ -33,6 +33,8 @@ test("rest state suppresses gestures and selects the shipped Idle motion", () =>
   assert.equal(plan.action, "rest");
   assert.equal(plan.motionGroup, "Idle");
   assert.equal(plan.gesture, false);
+  assert.ok(plan.gazeX >= -0.4 && plan.gazeX <= 0.4);
+  assert.ok(plan.gazeY >= -0.4 && plan.gazeY <= 0.4);
 });
 
 test("cognitive reflection chooses TapHead without inventing unsupported motion groups", () => {
@@ -53,6 +55,21 @@ test("explanatory language produces an inspectable body-level gesture intention"
   assert.equal(plan.action, "explain");
   assert.equal(plan.motionGroup, "TapBody");
   assert.equal(plan.gesture, true);
+  assert.ok(plan.gazeX > 0, "explanation should direct attention toward the explanatory target");
+});
+
+test("semantic gaze follows the selected motor goal and remains deterministic", () => {
+  const base = { emotion: "calm", valence: 0.5, arousal: 0.3, thinking: false, speaking: false, hasFreshTurn: false, turnText: "", awake: true };
+  const inspect = planAvatarMotorIntent({ ...base, action: "explore" });
+  const reflect = planAvatarMotorIntent({ ...base, action: "reflect" });
+  const comfort = planAvatarMotorIntent({ ...base, emotion: "sadness", valence: 0.2, action: "respond", speaking: true, turnText: "Я рядом, понимаю тебя." });
+  assert.ok(inspect.gazeX > reflect.gazeX);
+  assert.ok(comfort.gazeY > reflect.gazeY);
+  assert.deepEqual(inspect, planAvatarMotorIntent({ ...base, action: "explore" }));
+  for (const plan of [inspect, reflect, comfort]) {
+    assert.ok(plan.gazeX >= -0.4 && plan.gazeX <= 0.4);
+    assert.ok(plan.gazeY >= -0.4 && plan.gazeY <= 0.4);
+  }
 });
 
 test("planner output is deterministic and remains within available asset ranges", () => {
@@ -108,6 +125,7 @@ test("Original 2D concept is selectable and keeps independent outfit/pose custom
   assert.ok(stage.includes('type ViewMode = "live2d" | "legacy" | "original" | "3d"'));
   assert.ok(stage.includes('onClick={() => setMode("original")}'));
   assert.ok(stage.includes("<KurisuOriginalStage"));
+  assert.ok(stage.includes("gaze: { x: motorPlan.gazeX, y: motorPlan.gazeY, driven: true }"));
   assert.ok(stage.includes('saved === "legacy" || saved === "original" || saved === "3d"'));
   assert.ok(original.includes('type Outfit = "lab" | "casual" | "night"'));
   assert.ok(original.includes('type PoseOverride = "auto" | "crossed" | "thinking" | "explain"'));
