@@ -59,9 +59,23 @@ async function main() {
     [manifest, "assets"],
     [manifest, "statusVocabulary"],
   ];
+  const malformedAsset = Array.isArray(manifest?.assets) && manifest.assets.some((asset) =>
+    !isRecord(asset) ||
+    typeof asset.id !== "string" || !asset.id.trim() ||
+    typeof asset.kind !== "string" || !asset.kind.trim() ||
+    typeof asset.variant !== "string" || !asset.variant.trim() ||
+    typeof asset.status !== "string" || !asset.status.trim()
+  );
+  const malformedVocabulary = Array.isArray(manifest?.statusVocabulary) &&
+    !manifest.statusVocabulary.every((status) => typeof status === "string" && status.trim());
+  const malformedContractGroups = isRecord(contract) &&
+    ["requiredViews", "requiredExpressions", "requiredOutfits", "requiredAccessorySlots"]
+      .some((key) => Array.isArray(contract[key]) &&
+        !contract[key].every((value) => typeof value === "string" && value.trim()));
   if (!isRecord(contract) || !isRecord(manifest) ||
-      requiredArrays.some(([owner, key]) => !isRecord(owner) || !Array.isArray(owner[key]))) {
-    console.error("Original 2D asset validation failed: malformed contract or manifest structure (expected contract arrays, assets array and statusVocabulary array).");
+      requiredArrays.some(([owner, key]) => !isRecord(owner) || !Array.isArray(owner[key])) ||
+      malformedAsset || malformedVocabulary || malformedContractGroups) {
+    console.error("Original 2D asset validation failed: malformed contract or manifest structure (expected string contract groups, object asset entries and string status vocabulary).");
     process.exitCode = 1;
     return;
   }
