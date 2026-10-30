@@ -32,3 +32,9 @@ test("existing sprite and Live2D files remain available",async()=>{
  for(const cell of manifest.cells){const file=path.resolve(root,"public",cell.file);assert.ok(file.startsWith(path.join(root,"public")+path.sep));assert.ok((await stat(file)).size>20000,"Missing sprite: "+cell.file);}
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
+
+
+test("decimal ternary literals stay distinct from optional chaining syntax",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.doesNotMatch(stage,/\\?\\.(?=\\d)/,"decimal-valued ternaries must include whitespace after ? so TypeScript parses them as conditional expressions");
+});
