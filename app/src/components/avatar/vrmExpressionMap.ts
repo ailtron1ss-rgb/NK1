@@ -328,18 +328,23 @@ function isMorphObject(value: unknown): value is VrmMorphTargetObject {
 }
 
 function collectMorphObjects(root: unknown): VrmMorphTargetObject[] {
-  if (!isRecord(root)) return [];
+  if (root === null || typeof root !== "object") return [];
   const result: VrmMorphTargetObject[] = [];
   const visited = new Set<object>();
   const visit = (candidate: unknown) => {
-    if (!isRecord(candidate) || visited.has(candidate)) return;
+    if (candidate === null || typeof candidate !== "object" || visited.has(candidate)) return;
     visited.add(candidate);
     if (isMorphObject(candidate)) result.push(candidate);
   };
 
-  if (isMorphObject(root)) visit(root);
-  else if (typeof root.traverse === "function") {
-    (root.traverse as (visitor: (object: unknown) => void) => void).call(root, visit);
+  const rootHasMorphTargets = isMorphObject(root);
+  if (rootHasMorphTargets) {
+    visit(root);
+  } else {
+    const traverse = (root as { traverse?: unknown }).traverse;
+    if (typeof traverse === "function") {
+      (traverse as (visitor: (object: unknown) => void) => void).call(root, visit);
+    }
   }
   return result;
 }
