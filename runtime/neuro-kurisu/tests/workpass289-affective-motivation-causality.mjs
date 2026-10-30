@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { EmotionAppraisalEngine } from '../src/organism/system/EmotionAppraisalEngine.ts';
 import { IntrinsicMotivationEngine } from '../src/organism/cognition/IntrinsicMotivationEngine.ts';
+import { B272EndogenousGoalGenesis } from '../src/organism/cognition/B272EndogenousGoalGenesis.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 
@@ -124,6 +125,41 @@ const motivationRestore = new IntrinsicMotivationEngine();
 motivationRestore.restore(anxiousDrive);
 assert.deepEqual(motivationRestore.snapshot(), anxiousDrive,
   'affective influence diagnostics must survive intrinsic-drive restore');
+
+// The six-channel drive profile must reach the existing endogenous goal vector,
+// not stop at diagnostics or create a second planner.
+const goalInput = {
+  tick: 1,
+  selfLatent: Array.from({length:16},(_,i)=>Math.sin(i*.31)),
+  worldLatent: Array.from({length:16},(_,i)=>Math.cos(i*.27)),
+  needs: { energy01:.7, uncertainty01:.35, novelty01:.45, goalPressure01:.4, socialNeed01:.25 },
+  traits: { curiosity:.6, 'truth-seeking':.65, 'self-reflection':.6, 'self-preservation':.62, care:.55, 'social-attunement':.52, persistence:.68 },
+  predictionError01:.2, autobiographicalContinuity01:.75, identityContinuity01:.78,
+  intrinsicReward01:.5, lastAction:null, lastReward01:.5,
+};
+const neutralGoal = new B272EndogenousGoalGenesis().step({...goalInput});
+const curiosityGoal = new B272EndogenousGoalGenesis().step({
+  ...goalInput,
+  intrinsicDrives: { epistemic:.9, novelty:.95, competence:.5, coherence:.5, social:.5, homeostatic:.2, confidence01:.95 },
+});
+const recoveryGoal = new B272EndogenousGoalGenesis().step({
+  ...goalInput,
+  intrinsicDrives: { epistemic:.25, novelty:.2, competence:.5, coherence:.5, social:.5, homeostatic:.95, confidence01:.95 },
+});
+assert.notDeepEqual(curiosityGoal.goalVector, neutralGoal.goalVector,
+  'an evidence-weighted affective drive profile must change the endogenous goal vector');
+assert.ok(curiosityGoal.goalVector[0] > recoveryGoal.goalVector[0],
+  'curiosity/epistemic drives should bias the curiosity dimension above a recovery-dominant profile');
+assert.ok(curiosityGoal.goalVector[7] < recoveryGoal.goalVector[7],
+  'homeostatic pressure should bias the energy/recovery dimension');
+const invalidGoalCore = new B272EndogenousGoalGenesis();
+const invalidGoalBefore = invalidGoalCore.snapshot();
+assert.throws(() => invalidGoalCore.step({
+  ...goalInput,
+  intrinsicDrives: { epistemic:1.5, novelty:.2, competence:.5, coherence:.5, social:.5, homeostatic:.5, confidence01:1 },
+}), /B272 intrinsicDrives/);
+assert.deepEqual(invalidGoalCore.snapshot(), invalidGoalBefore,
+  'malformed intrinsic drive profiles must not mutate endogenous goal state');
 
 // Verify the actual OrganismCore path: appraisal → motivation → action trace →
 // outcome receipt. The post-outcome feeling must not steal credit from the
