@@ -46,7 +46,7 @@ test("VRMA LookAt quaternion tracks have the official proxy node and animation s
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /new VRMLookAtQuaternionProxy\(vrm\.lookAt\)/);
   assert.match(stage, /rt\.lookAtProxy\.name="lookAtQuaternionProxy"/);
-  assert.match(stage, /selectClip\(rt\.vrmaClips,p\.action\)\|\|selectClip\(rt\.modelClips,p\.action\)\|\|rt\.vrmaDefaultClip/);
+  assert.match(stage, /selectAvatarMotionClip\(\{vrmaClips:rt\.vrmaClips,modelClips:rt\.modelClips/);
   assert.match(stage, /accept="\.vrma,model\/gltf-binary"/);
   assert.match(stage, /onChange=\{onAnimationFile\}/);
 });
