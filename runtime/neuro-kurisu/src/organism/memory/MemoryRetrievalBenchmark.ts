@@ -550,10 +550,27 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
       if(!slice.length)continue;
       const categoryBaseline=evaluate(slice,baseline,k,now);
       const categoryCandidate=evaluate(slice,candidate,k,now);
+      const categoryAnswerableGroups=new Map<string,number>();
+      const categoryUnanswerableGroups=new Map<string,number>();
+      for(const row of slice){
+        const groupId=row.conversationId?.trim()||`query:${row.id}`;
+        const target=row.answerable===false?categoryUnanswerableGroups:categoryAnswerableGroups;
+        target.set(groupId,(target.get(groupId)??0)+1);
+      }
+      const summarizeCategoryGroups=(counts:Map<string,number>)=>{
+        const sizes=[...counts.values()].sort((a,b)=>a-b),n=sizes.length;
+        const median=n?(n%2?sizes[(n-1)/2]!:(sizes[n/2-1]!+sizes[n/2]!)/2):0;
+        const total=sizes.reduce((sum,value)=>sum+value,0),maximum=n?sizes[n-1]!:0;
+        return {independentConversations:n,queries:total,minClusterSize:n?sizes[0]!:0,medianClusterSize:Number(median.toFixed(2)),maxClusterSize:maximum,largestClusterShare01:Number((maximum/Math.max(1,total)).toFixed(4))};
+      };
       taskCategorySlices[category]={
         category,holdoutQueries:slice.length,
         answerableHoldoutQueries:slice.filter(row=>row.answerable!==false).length,
         unanswerableHoldoutQueries:slice.filter(row=>row.answerable===false).length,
+        independentAnswerableConversations:categoryAnswerableGroups.size,
+        independentUnanswerableConversations:categoryUnanswerableGroups.size,
+        answerableClusterSizes:summarizeCategoryGroups(categoryAnswerableGroups),
+        unanswerableClusterSizes:summarizeCategoryGroups(categoryUnanswerableGroups),
         baseline:categoryBaseline.metrics,
         candidate:categoryCandidate.metrics,
         deltas:{
