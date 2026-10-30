@@ -23,15 +23,23 @@ export type VrmRigCalibrationResult =
 const axes = new Set(["x", "y", "z"]);
 const finite = (values: readonly number[]) => values.every(Number.isFinite);
 
-function validArmCalibration(value: unknown): value is AxisCalibration & { shoulderBoneName: string; elbowBoneName: string } {
+function validArmIdentity(value: unknown): value is AxisCalibration & { shoulderBoneName: string; elbowBoneName: string } {
   if (!value || typeof value !== "object") return false;
   const c = value as Record<string, unknown>;
-  return typeof c.shoulderBoneName === "string" && c.shoulderBoneName.length > 0
-    && typeof c.elbowBoneName === "string" && c.elbowBoneName.length > 0
+  return typeof c.shoulderBoneName === "string" && c.shoulderBoneName.trim().length > 0
+    && typeof c.elbowBoneName === "string" && c.elbowBoneName.trim().length > 0
     && axes.has(String(c.shoulderAxis)) && axes.has(String(c.elbowAxis))
     && (c.shoulderSign === 1 || c.shoulderSign === -1)
-    && (c.elbowSign === 1 || c.elbowSign === -1)
-    && finite([c.shoulderOffsetRad, c.elbowOffsetRad, c.shoulderMinRad, c.shoulderMaxRad, c.elbowMinRad, c.elbowMaxRad] as number[])
+    && (c.elbowSign === 1 || c.elbowSign === -1);
+}
+
+function validArmCalibration(value: unknown): value is AxisCalibration & { shoulderBoneName: string; elbowBoneName: string } {
+  if (!validArmIdentity(value)) return false;
+  const c = value as unknown as Record<string, unknown>;
+  const numeric = [c.shoulderOffsetRad, c.elbowOffsetRad, c.shoulderMinRad, c.shoulderMaxRad, c.elbowMinRad, c.elbowMaxRad] as number[];
+  const limit = Math.PI * 2;
+  return finite(numeric)
+    && numeric.every((n) => Math.abs(n) <= limit)
     && (c.shoulderMinRad as number) <= (c.shoulderMaxRad as number)
     && (c.elbowMinRad as number) <= (c.elbowMaxRad as number);
 }
@@ -46,9 +54,10 @@ export function validateVrmRigCalibrationProfile(
   if (p.schemaVersion !== 1) return { accepted: false, reason: "unsupported-schema" };
   if (typeof p.modelFingerprint !== "string" || !p.modelFingerprint || typeof p.coordinateFrameId !== "string" || !p.coordinateFrameId
     || (p.calibrationMethod !== "manual-measured" && p.calibrationMethod !== "validated-import")
-    || !validArmCalibration(p.left) || !validArmCalibration(p.right)) {
+    || !validArmIdentity(p.left) || !validArmIdentity(p.right)) {
     return { accepted: false, reason: "invalid-profile" };
   }
+  if (!validArmCalibration(p.left) || !validArmCalibration(p.right)) return { accepted: false, reason: "invalid-calibration" };
   if (p.modelFingerprint !== context.modelFingerprint) return { accepted: false, reason: "model-fingerprint-mismatch" };
   if (p.coordinateFrameId !== context.coordinateFrameId) return { accepted: false, reason: "coordinate-frame-mismatch" };
   if (!context.left || context.left.shoulder.name !== p.left.shoulderBoneName || context.left.elbow.name !== p.left.elbowBoneName) {
@@ -57,7 +66,6 @@ export function validateVrmRigCalibrationProfile(
   if (!context.right || context.right.shoulder.name !== p.right.shoulderBoneName || context.right.elbow.name !== p.right.elbowBoneName) {
     return { accepted: false, reason: "right-rig-mismatch" };
   }
-  if (!validArmCalibration(p.left) || !validArmCalibration(p.right)) return { accepted: false, reason: "invalid-calibration" };
   const freezeArm = (arm: VrmRigCalibrationProfile["left"]) => Object.freeze({ ...arm });
   const frozen = Object.freeze({
     schemaVersion: 1 as const,
