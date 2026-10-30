@@ -121,6 +121,7 @@ export class UnifiedCognitiveCycle {
   }
 
   evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
+    if(!isRecordLike(input))throw new TypeError('input must be an object');
     const envelope=ownRecord(input);
     const tick=envelope.tick;
     const stageIds=envelope.stageIds;
@@ -133,7 +134,7 @@ export class UnifiedCognitiveCycle {
     }
 
     if(this.state.cycles>=Number.MAX_SAFE_INTEGER)throw new RangeError('cognitive cycle counter reached its safe integer limit');
-    const validIds:Partial<Record<UnifiedCognitiveCycleStage,string>>={};
+    const validIds:Partial<Record<UnifiedCycleStage,string>>={};
     for(const stage of ALL_STAGES) {
       // Only explicit own data-property IDs are evidence; inherited fields and
       // accessor-backed IDs are never evaluated or accepted.
