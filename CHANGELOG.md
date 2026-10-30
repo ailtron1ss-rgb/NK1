@@ -1,3 +1,10 @@
+## [NK1][Aspect 09 — Live2D] Strict motion routing and verified regression pass (2026-10-30)
+
+- Both app and runtime viewers now reject an unknown motion group, a non-integer index, or an index outside the actual registered Cubism clip count before requesting playback. This also protects the legacy compatibility message path, not only the strict EmbodimentIntentV1 path.
+- The production contract checks that both viewer motion inventories match the canonical model and that each viewer enforces the same bounds.
+- Current HEAD `b8f2995bd086681b198529259a68bf75cf09909a` passed all six PR status checks, including the full targeted-and-regression job, app script suite, app typecheck, app development build, runtime typecheck, Live2D regressions, speech/persistence tests and the broader memory/cognitive regression set.
+- Browser/Android visual calibration, low-memory profile, sustained device soak and real acoustic phoneme lip-sync remain outstanding. The Release ZIP was not changed.
+
 ## [NK1][Aspect 09 — Live2D] Frame-rate-independent expression, gaze, lip and blink control (2026-10-30)
 
 - Replace per-frame interpolation factors with elapsed-time smoothing shared by the app and runtime viewers.
