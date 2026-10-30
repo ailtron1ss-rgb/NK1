@@ -58,6 +58,9 @@ jobs:
       - name: Audit canonical cognitive subsystem ownership after runtime extraction
         working-directory: runtime/neuro-kurisu
         run: npm run audit:core-ownership
+      - name: Verify autobiographical provenance, personality bridge, and live runtime wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:personality
       - name: Test cold-memory retrieval and residency invariants
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass80:memory-residency
