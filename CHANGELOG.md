@@ -1,3 +1,12 @@
+## [NK1][Aspect 13/09] Harden local VRM/GLB import and affect-aware speech — 2026-10-30
+
+- Preflight user-supplied binary VRM/GLB before invoking GLTFLoader: GLB 2.0 container/chunk integrity, self-contained buffer/image URIs, hierarchy, bufferView bounds, image signatures/dimensions and bounded scene/accessor/animation complexity.
+- Preserve the last successfully loaded model when a new file is rejected or fails parsing; never replace the working body before preflight and parser success.
+- Stop AnimationMixer actions and uncache the prior rig root before model replacement, reset or stage unmount disposes resources.
+- Derive bounded browser TTS pitch/rate/volume from the canonical emotion appraisal, action and personality traits. Use the same rate for synthesis and the approximate viseme timeline; regulate high negative arousal rather than amplifying it.
+- Add validator, import-lifecycle and prosody regressions plus a dedicated Node 24 workflow for tests, app typecheck and build.
+- Evidence boundary: source and regression coverage are committed here; hosted exact-HEAD CI and browser/Android visual/audio E2E must pass before promotion. This does not grant model redistribution rights, implement a complete VRM runtime, or update the canonical Release ZIP.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.

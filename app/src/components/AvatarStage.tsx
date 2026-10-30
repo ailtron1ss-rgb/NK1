@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
+import { deriveBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -163,7 +164,16 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
         const language = inferSpeechLanguage(text);
-        const rate = 0.96;
+        const prosody = deriveBrowserVoiceProsody({
+          emotion: lastTurn.emotion ?? snap.emotion.label,
+          valence: snap.emotion.valence,
+          arousal: snap.emotion.arousal,
+          dominance: snap.emotion.dominance,
+          action: snap.lastOption,
+          traits: snap.identity.traits,
+        });
+        // One bounded rate controls both SpeechSynthesis and the approximate viseme clock.
+        const rate = prosody.rate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
         const session: BrowserSpeechSession = {
@@ -184,9 +194,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         setVoiceStatus("ready");
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
-        utterance.rate = rate;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
-        utterance.pitch = utteranceEmotion === "joy" ? 1.03 : utteranceEmotion === "frustration" || utteranceEmotion === "anger" ? 0.92 : 1.0;
+        utterance.rate = prosody.rate;
+        utterance.pitch = prosody.pitch;
+        utterance.volume = prosody.volume;
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;

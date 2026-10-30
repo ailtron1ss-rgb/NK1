@@ -1,0 +1,52 @@
+name: NK1 avatar import and voice hardening
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - work/nk1-avatar-hardening-prosody-2026-10-30
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/avatarModelValidation.ts"
+      - "app/src/components/avatar/browserVoiceProsody.ts"
+      - "app/scripts/avatar-*.test.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/avatar-import-integrity.yml"
+      - "CHANGELOG.md"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "app/**"
+      - ".github/workflows/avatar-import-integrity.yml"
+      - "CHANGELOG.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-import-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  avatar-import-and-voice:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Validate avatar import and voice contracts
+        run: npm --prefix app run test:avatar-hardening
+      - name: Typecheck app
+        run: npm --prefix app run typecheck
+      - name: Build app bundle
+        run: npm --prefix app run build:dev
