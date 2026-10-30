@@ -3095,3 +3095,15 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][executor] Preserve project side-effect checkpoints across restore and project switches (2026-10-30)
+
+- Restore executor snapshots through validated own data fields rather than object spread. Bound step/outcome/counter/tool-input records and validate checkpoint stage, identity, sequence and timestamps without invoking accessors.
+- Keep an unresolved operation lock if a stale or malformed snapshot attempts to erase, replace or regress it. When project-plan identity conflicts with an in-flight checkpoint, retain the checkpoint as the side-effect authority and discard only the incompatible plan cursor.
+- Clear an operation only while it is a pre-Gateway `prepared` intent or after a `receipt-recorded` operation has had its progress projection applied. Pending, waiting-approval and reconciliation-required checkpoints remain locked.
+- Prevent `ensure()` and project switching from replacing the active executor while an external side effect or receipt projection is unresolved. After reconciliation and explicit clear, a new project may be initialized.
+- Reject overlong/control-character project, step, tool, idempotency and decision identifiers rather than truncating them into collisions; reject sequence exhaustion.
+- Add adversarial checkpoint, stale restore, project-switch, replay, persistence and subsystem snapshot regressions; wire them into the central WorkPass71 workflow.
+- This protects the executor's local operation ledger. Real external tool idempotency still depends on the ActionGateway/provider honoring the same idempotency key and on a correlated postcondition receipt; device-level execution evidence is separate.
+- No production autonomous-execution success or Release ZIP update is claimed.
+
