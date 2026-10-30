@@ -13,13 +13,14 @@ const bridge=new PersonalitySelfModelBridge(p78,personality,selfModel);
 const verifiedEvent={
   tick:10,at:1000,action:'explore',outcome:0.9,
   evidenceStatus:'verified-independent',
-  evidenceRef:'world-transition:receipt-10',
+  evidenceRef:'external-verification:reb:10:11:outcome',
   authorship:'self-initiated',
   episodeId:'episode-10',
 };
 const accepted=bridge.recordOutcome({
   event:verifiedEvent,action:'explore',reward01:0.9,goalAlignment01:0.85,
   predictionError01:0.1,identityGap01:0.05,relationshipId:'user',identityVector:[0.95,0.2,0.8,0.4,0.6,0.7,0.5,0.8],
+  evidenceReceiptId:'reb:10:11:outcome',learningScale01:1,evidence01:0.9,independent01:0.9,consequence01:0.9,
 });
 assert.equal(accepted.newEvent,true);
 assert.equal(accepted.evidenceAccepted,true);
@@ -43,6 +44,7 @@ assert.equal(unbound.newEvent,true);
 assert.equal(unbound.evidenceAccepted,false,'P78 syntax alone must not bypass the CEF receipt namespace gate');
 assert.equal(unbound.selfModelUpdate?.identityUpdateAccepted,false);
 assert.equal(unbound.selfModel.lastIdentityGate?.reason,'outcome-unverified');
+assert.equal(unbound.personality.relationshipTrust.user,undefined,'unbound outcomes cannot move relationship trust');
 assert.equal(unbound.personality.learningUpdates,2);
 assert.deepEqual(unbound.personality.selfBeliefs,selfBeliefsBeforeUnbound,'unsupported receipt namespaces cannot update autobiographical self-beliefs');
 
@@ -76,15 +78,18 @@ assert.equal(restoredPersonality.snapshot().learningUpdates,2);
 // Corrupted persisted state is bounded and action-keyed.
 const hardenedPersonality=new P2702PersistentPersonalityDynamics();
 hardenedPersonality.restore({
-  experienceCount:-9,learningUpdates:Infinity,adaptiveNames:['curiosity','directness'],
-  adaptiveValues:[NaN,9,-4],relationshipTrust:{'friend':2,'bad':NaN},
+  experienceCount:-9,learningUpdates:Infinity,adaptiveNames:['directness','warmth','curiosity'],
+  adaptiveValues:[9,0.1,0.99],relationshipTrust:{'friend':2,'bad':NaN},
   actionPreference:{explore:4,respond:-4,unknown:9},stability01:8,
 });
 const safePersonality=hardenedPersonality.snapshot();
 assert.equal(safePersonality.experienceCount,0);
 assert.deepEqual(safePersonality.selfBeliefNames,['continuity','coherence','agency','reality-grounding','stability','goal-continuity','memory-continuity','authorship-continuity']);
 assert.equal(safePersonality.learningUpdates,0);
-assert.equal(safePersonality.adaptiveValues.length,2);
+assert.deepEqual(safePersonality.adaptiveNames,['sarcasm','warmth','guardedness','tenderness','directness','playfulness','composure','embarrassmentSensitivity']);
+assert.equal(safePersonality.adaptiveValues.length,8);
+assert.equal(safePersonality.adaptiveValues[4],1,'restored values are aligned by semantic trait name, not array position');
+assert.equal(safePersonality.adaptiveValues[1],0.1);
 assert.ok(safePersonality.adaptiveValues.every(x=>x>=0&&x<=1));
 assert.equal(safePersonality.actionPreference.explore,1);
 assert.equal(safePersonality.actionPreference.respond,-1);
@@ -124,18 +129,23 @@ assert.equal(Number.isFinite(poisonedOutcome.quality01), true, 'non-finite rewar
 assert.ok(Number.isFinite(poisonedOutcomeModel.snapshot().goalAlignmentEMA01));
 const boundedRelationships = new P2702PersistentPersonalityDynamics();
 const actionUtilities = { respond: 0.5, explore: 0.5, verify: 0.5, rest: 0.5, reflect: 0.5, wait: 0.5, defer: 0.5 };
-for (let i = 0; i < 40; i++) boundedRelationships.beforeDecision({
-  tick: i + 1, novelty01: 0.2, uncertainty01: 0.2, goalPressure01: 0.2, identityGap01: 0.1,
-  actionUtilities, relationshipId: `relationship-${i}`,
-});
 boundedRelationships.beforeDecision({
-  tick: 41, novelty01: 0.2, uncertainty01: 0.2, goalPressure01: 0.2, identityGap01: 0.1,
-  actionUtilities, relationshipId: '__proto__',
+  tick: 1, novelty01: 0.2, uncertainty01: 0.2, goalPressure01: 0.2, identityGap01: 0.1,
+  actionUtilities, relationshipId: 'decision-only',
+});
+assert.equal(Object.keys(boundedRelationships.snapshot().relationshipTrust).length,0,'decision preparation must not invent relationship trust');
+for (let i = 0; i < 40; i++) boundedRelationships.afterOutcome({
+  tick: i + 2, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1,
+  action: 'respond', relationshipId: `relationship-${i}`, evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1,
+});
+boundedRelationships.afterOutcome({
+  tick: 42, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1,
+  action: 'respond', relationshipId: '__proto__', evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1,
 });
 assert.ok(Object.keys(boundedRelationships.snapshot().relationshipTrust).length <= 32);
 assert.equal(Object.hasOwn(boundedRelationships.snapshot().relationshipTrust, '__proto__'), false);
 const dimensionSafePersonality = new P2702PersistentPersonalityDynamics();
-dimensionSafePersonality.afterOutcome({ tick: 1, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1, action: 'reflect', identityVector: [NaN, 0.99] });
+dimensionSafePersonality.afterOutcome({ tick: 1, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1, action: 'reflect', identityVector: [NaN, 0.99], evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1 });
 assert.equal(dimensionSafePersonality.snapshot().selfBeliefs[0], 0.72, 'invalid vector dimensions are skipped without shifting following coordinates');
 assert.ok(dimensionSafePersonality.snapshot().selfBeliefs[1] > 0.68);
 const p80 = new P80UnifiedSelfState();
