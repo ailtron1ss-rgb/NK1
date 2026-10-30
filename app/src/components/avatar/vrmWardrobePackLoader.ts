@@ -71,6 +71,26 @@ function collectSlotNodes(root: AvatarRoot): Array<{ node: any; visible: boolean
   return nodes;
 }
 
+function disposeWardrobeTree(root: any): void {
+  const geometries = new Set<any>();
+  const materials = new Set<any>();
+  const textures = new Set<any>();
+  const visit = (node: any) => {
+    if (node.geometry) geometries.add(node.geometry);
+    for (const material of (Array.isArray(node.material) ? node.material : node.material ? [node.material] : [])) {
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value && typeof value === "object" && (value as any).isTexture) textures.add(value);
+      }
+    }
+  };
+  if (typeof root?.traverse === "function") root.traverse(visit);
+  else if (root) visit(root);
+  for (const geometry of geometries) geometry.dispose?.();
+  for (const texture of textures) texture.dispose?.();
+  for (const material of materials) material.dispose?.();
+}
+
 /**
  * Production orchestration: verify all bytes, parse only self-contained GLBs,
  * preflight every rig, then attach the complete requested set. If any attach
@@ -142,7 +162,10 @@ export async function applyVerifiedVrmWardrobePack(input: VrmWardrobePackApplyIn
   }
 
   if (errors.length || added.length !== prepared.length) {
-    for (const node of added) (input.avatarRoot as any).remove?.(node);
+    for (const node of added) {
+      (input.avatarRoot as any).remove?.(node);
+      disposeWardrobeTree(node);
+    }
     for (const snapshot of previous) {
       snapshot.node.visible = snapshot.visible;
       snapshot.node.userData = { ...snapshot.userData };
@@ -157,12 +180,28 @@ export async function applyVerifiedVrmWardrobePack(input: VrmWardrobePackApplyIn
     loadedAssetIds,
   });
   if (!acknowledged) {
-    for (const node of added) (input.avatarRoot as any).remove?.(node);
+    for (const node of added) {
+      (input.avatarRoot as any).remove?.(node);
+      disposeWardrobeTree(node);
+    }
     for (const snapshot of previous) {
       snapshot.node.visible = snapshot.visible;
       snapshot.node.userData = { ...snapshot.userData };
     }
     return { committed: false, preparation, loadedAssetIds: [], errors: ["wardrobe:renderer-acknowledgement-rejected"] };
+  }
+
+  // Commit cleanup only after the complete new set is attached and acknowledged.
+  // Keep unrelated wardrobe slots intact; dispose replaced roots to avoid hidden-mesh leaks.
+  const replacedSlots = new Set(requestedSlots as string[]);
+  for (const snapshot of previous) {
+    const slot = snapshot.userData.nk1WardrobeSlot;
+    if (typeof slot !== "string" || !replacedSlots.has(slot)) continue;
+    const node = snapshot.node as any;
+    const parent = node.parent as { remove?: (child: unknown) => void } | undefined;
+    if (typeof parent?.remove === "function") parent.remove(node);
+    else (input.avatarRoot as any).remove?.(node);
+    disposeWardrobeTree(node);
   }
   return { committed: true, preparation, loadedAssetIds, errors: [] };
 }
