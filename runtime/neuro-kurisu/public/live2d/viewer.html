@@ -115,8 +115,12 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     const arousal=clamp(bodySignal.expressionIntensity,0,1);
     const breathPhase=performance.now()/1900;
     set('ParamBreath',clamp(.5+Math.sin(breathPhase)*(.035+arousal*.045),0,1));
-    addCoreOffset('ParamBodyAngleX',clamp(gazeX*.9,-.5,.5),-8,8);
-    addCoreOffset('ParamBodyAngleY',clamp(gazeY*.65,-.35,.35),-6,6);
+    const gestureDirection=bodySignal.gestureProfile==='considering'||bodySignal.gestureProfile==='examining'?-1:
+      bodySignal.gestureProfile==='presenting'||bodySignal.gestureProfile==='emphatic'?1:
+      bodySignal.gestureProfile==='reassuring'?.35:0;
+    const gestureDrive=clamp(bodySignal.gestureIntensity,0,.8);
+    addCoreOffset('ParamBodyAngleX',clamp(gazeX*.9+gestureDirection*gestureDrive*.12,-.5,.5),-8,8);
+    addCoreOffset('ParamBodyAngleY',clamp(gazeY*.65+(bodySignal.gestureProfile==='reassuring'?gestureDrive*.035:0),-.35,.35),-6,6);
     addCoreOffset('ParamBodyAngleZ',clamp(bodySignal.headTilt,-.15,.15)*7,-5,5);
   }
   function applyExpression(expr){
