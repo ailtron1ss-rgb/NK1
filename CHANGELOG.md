@@ -2826,3 +2826,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added a conservative VRM/GLB left-arm bone resolver and a bind-pose-relative planar-IK pose mapper.
 - Require explicit per-model axis/sign/offset/joint-limit calibration; missing or ambiguous bones and invalid/non-finite calibration are refused instead of guessing.
 - Added five deterministic adapter tests and a dedicated CI step. The adapter computes pose targets only; live `Avatar3DStage` execution, right-arm mapping, 3D IK and collision-aware motion remain pending.
+
+
+## 2026-10-30 — Aspect 10: bilateral VRM rig discovery in Avatar3DStage
+
+- Extended the humanoid rig resolver to independently detect left and right upper-arm/lower-arm chains with ambiguity rejection.
+- Integrated discovery into local VRM/GLB loading in `Avatar3DStage`; the stage reports which arm chains are recognized and explicitly does not claim IK execution.
+- Added a stage source-contract regression and included the stage/test paths in the focused workflow filters.
