@@ -235,5 +235,5 @@ test("the production 3D stage compiles VRM bindings once and applies them from o
   assert.match(stage, /bindVrmExpressionTargets\(rt\.vrmExpressionDefinitions,gltf\.parser\?\.associations\?\.entries\?\.\(\)\?\?\[\]\)/);
   assert.match(stage, /deriveVrmExpressionWeights\(rt\.vrmExpressionDefinitions/);
   assert.match(stage, /applyVrmMorphTargetWeights\(rt\.vrmMorphTargets,expressionWeights\)/);
-  assert.match(stage, /rt\.vrmExpressionTargets/ === undefined ? /never/ : /buildVrmExpressionMap/);
+  assert.match(stage, /rt\\.vrmMorphTargets/);
 });
