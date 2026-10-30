@@ -50,6 +50,22 @@ async function main() {
     return;
   }
 
+  const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+  const requiredArrays = [
+    [contract, "requiredViews"],
+    [contract, "requiredExpressions"],
+    [contract, "requiredOutfits"],
+    [contract, "requiredAccessorySlots"],
+    [manifest, "assets"],
+    [manifest, "statusVocabulary"],
+  ];
+  if (!isRecord(contract) || !isRecord(manifest) ||
+      requiredArrays.some(([owner, key]) => !isRecord(owner) || !Array.isArray(owner[key]))) {
+    console.error("Original 2D asset validation failed: malformed contract or manifest structure (expected contract arrays, assets array and statusVocabulary array).");
+    process.exitCode = 1;
+    return;
+  }
+
   requireCondition(manifest.schemaVersion === 1, "unsupported manifest schemaVersion");
   requireCondition(manifest.characterContract === contract.id, "manifest points at a different character contract");
   requireCondition(manifest.assetCount === manifest.assets?.length, "assetCount does not match assets.length");
