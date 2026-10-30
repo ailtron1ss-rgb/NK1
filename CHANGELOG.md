@@ -1,5 +1,7 @@
 ## [NK1][Aspect 02] Establish Original 2D art identity and production contract (2026-10-30)
 
+- Add an executable `npm run validate:original-2d-assets` gate that checks contract coverage, safe asset paths, file existence, SHA-256 integrity and source/preview separation before artwork can advance through the manifest. It reports authored versus pending slots without treating the planning inventory as completed art.
+
 - Add a 24-slot machine-readable asset inventory for the master character, six turnarounds, ten expressions, three independent outfits and four accessory slots; all entries explicitly remain `not-authored` until real source artwork and verified exports exist.
 - Add manifest regression gates for contract coverage, unique IDs, safe relative paths, honest status transitions and SHA-256/source/preview provenance before review or approval.
 
