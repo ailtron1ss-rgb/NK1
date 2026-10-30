@@ -102,3 +102,8 @@ The contract is provider-neutral and names a native TTS provider, but the native
 - При bounded eviction удаляются и sequence, и timestamp state одного operation ID, поэтому диагностическая память остаётся ограниченной.
 - Добавлен regression для clock samples 100 → 95 → 120 с ожидаемыми event timestamps 100 → 100 → 120.
 - На текущем HEAD `92f2c6d1e57f61eb4f6110ec808d2f264e203308` новый hosted CI run пока не появился. Последняя проверенная Core Regression на предыдущем HEAD прошла; этот follow-up не объявляется CI-валидированным до нового запуска.
+
+
+## Runtime subscription seam для native TTS (30.10.2026)
+
+Добавлен `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)` — стабильная точка подписки для host-слоя. UI/host может получать process telemetry, не импортируя `AndroidEmbodimentBridge` или singleton-канал напрямую. Возвращаемая функция снимает подписку. События сохраняют operation ID и `playbackVerified=false`: это не playback start/end и не основание запускать/останавливать lip-sync как будто аудио подтверждено. Добавлен тест доставки и unsubscribe. Следующий слой — транспорт в app host/Event Router с защитой от устаревших operation ID.
