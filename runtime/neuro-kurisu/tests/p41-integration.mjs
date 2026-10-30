@@ -41,7 +41,14 @@ assert.ok(terminalTracks[0].modalities.includes('vision') && terminalTracks[0].m
 assert.ok(terminalTracks[0].trackId?.includes('t1'), 'canonical world object identity must survive semantic fusion');
 
 const calibrationReceiptId = 'p41-human-annotation-receipt-0001';
-runtime.core.setRuntimeEvidence({
+const calibrationInput = {
+  modality:'vision',
+  predictedConfidence01:.9,
+  correctness01:.8,
+  evidenceId:calibrationReceiptId,
+  evidenceSource:'human-annotation',
+};
+const calibrationReceipt = {
   version: 2,
   capacity: 128,
   total: 1,
@@ -63,15 +70,15 @@ runtime.core.setRuntimeEvidence({
   lineageIntegrity01: 1,
   coverage01: 1,
   recentWindowTicks: 32,
-});
-const calibrationInput = {
-  modality:'vision',
-  predictedConfidence01:.9,
-  correctness01:.8,
-  evidenceId:calibrationReceiptId,
-  evidenceSource:'human-annotation',
 };
-assert.equal(runtime.core.p41ObserveModalityOutcome(calibrationInput), true, 'Core accepts calibration backed by an exact independent receipt');
+runtime.core.setRuntimeEvidence({
+  ...calibrationReceipt,
+  externalCount: 0,
+  recent: [{ ...calibrationReceipt.recent[0], id:'internal-outcome-not-independent', external01:false }],
+});
+assert.equal(runtime.core.p41ObserveModalityOutcome({ ...calibrationInput, evidenceId:'internal-outcome-not-independent' }), false, 'an internal outcome is not an independent calibration receipt');
+runtime.core.setRuntimeEvidence(calibrationReceipt);
+assert.equal(runtime.core.p41ObserveModalityOutcome(calibrationInput), true, 'Core accepts calibration backed by an exact external receipt');
 assert.equal(runtime.core.p41ObserveModalityOutcome(calibrationInput), false, 'calibration evidence cannot be replayed');
 assert.equal(runtime.core.p41ObserveModalityOutcome({ ...calibrationInput, evidenceId:'unbacked-model-claim' }), false, 'a source label without a Core-owned receipt is not trusted');
 await runtime.core.flush();
