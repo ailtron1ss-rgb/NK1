@@ -126,6 +126,51 @@ export async function verifyWardrobeAssetBytes(
   return { valid: true, reason: "verified", actualBytes: bytes.byteLength, actualSha256 };
 }
 
+export interface WardrobePackPayloadVerification {
+  valid: boolean;
+  reason: "verified" | "manifest-invalid" | "missing-file" | "unexpected-file" | "asset-invalid";
+  verifiedAssetIds: string[];
+  failures: Array<{ path: string; reason: WardrobeAssetByteVerification["reason"] | "missing-file" }>;
+}
+
+/** Whole-pack gate: every declared path must exist and pass its own byte check. */
+export async function verifyWardrobePackPayload(
+  manifest: WardrobePackManifest,
+  files: ReadonlyMap<string, ArrayBuffer | Uint8Array>,
+  cryptoProvider: Pick<Crypto, "subtle"> | undefined = globalThis.crypto,
+): Promise<WardrobePackPayloadVerification> {
+  if (!validateWardrobePackManifest(manifest).valid) {
+    return { valid: false, reason: "manifest-invalid", verifiedAssetIds: [], failures: [] };
+  }
+  const declaredPaths = new Set(manifest.assets.map((asset) => asset.path));
+  for (const path of files.keys()) {
+    if (!declaredPaths.has(path)) {
+      return { valid: false, reason: "unexpected-file", verifiedAssetIds: [], failures: [{ path, reason: "invalid-input" }] };
+    }
+  }
+  const verifiedAssetIds: string[] = [];
+  const failures: WardrobePackPayloadVerification["failures"] = [];
+  for (const asset of manifest.assets) {
+    const bytes = files.get(asset.path);
+    if (!bytes) {
+      failures.push({ path: asset.path, reason: "missing-file" });
+      continue;
+    }
+    const result = await verifyWardrobeAssetBytes(asset, bytes, cryptoProvider);
+    if (result.valid) verifiedAssetIds.push(asset.id);
+    else failures.push({ path: asset.path, reason: result.reason });
+  }
+  if (failures.length) {
+    return {
+      valid: false,
+      reason: failures.some((failure) => failure.reason === "missing-file") ? "missing-file" : "asset-invalid",
+      verifiedAssetIds,
+      failures,
+    };
+  }
+  return { valid: true, reason: "verified", verifiedAssetIds, failures: [] };
+}
+
 export interface WardrobeSwitchRequest {
   requestId: string;
   fromOutfitId: string;
