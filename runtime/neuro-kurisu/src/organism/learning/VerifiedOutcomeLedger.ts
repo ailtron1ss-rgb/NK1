@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { isSafeLearningIdentity, snapshotPlainData } from './LearningTrustBoundary.ts';
 
 export type OutcomeAuthority = 'independent-verifier' | 'human-review' | 'self-report';
 export type EvaluationSplit = 'train' | 'validation' | 'holdout';
@@ -28,7 +29,7 @@ export interface VerifiedTaskOutcome {
 export interface OutcomeRejection {
   code: 'unknown-task' | 'version-mismatch' | 'invalid-method' | 'invalid-seed' | 'invalid-attempt' |
     'self-report-not-authoritative' | 'verifier-mismatch' | 'missing-evidence' |
-    'invalid-time' | 'duplicate-attempt' | 'invalid-outcome';
+    'invalid-time' | 'duplicate-attempt' | 'duplicate-evidence-ref' | 'invalid-evidence-reference' | 'invalid-outcome';
   taskId: string;
   method: string;
   detail: string;
@@ -86,18 +87,27 @@ function bootstrapMean95CI(values: number[], identity: string, replicates = 4000
 export class VerifiedOutcomeLedger {
   private readonly manifest = new Map<string, TaskManifestEntry>();
   private readonly outcomes = new Map<string, VerifiedTaskOutcome>();
+  /** One evidence receipt is one measurement; it cannot attest multiple ledger cells. */
+  private readonly evidenceRefs = new Map<string, string>();
   private readonly rejections: OutcomeRejection[] = [];
   private readonly promptOwners = new Map<string, string>();
 
   constructor(entries: TaskManifestEntry[]) {
-    if (!Array.isArray(entries)) throw new Error('task manifest must be an array');
-    for (const entry of entries) {
+    let detachedEntries: unknown;
+    try {
+      detachedEntries = snapshotPlainData(entries);
+    } catch {
+      throw new Error('task manifest data boundary rejected accessor, cyclic, unsupported or oversized input');
+    }
+    if (!Array.isArray(detachedEntries)) throw new Error('task manifest must be an array');
+    for (const rawEntry of detachedEntries) {
+      const entry = rawEntry as Partial<TaskManifestEntry> | null;
       if (!entry || typeof entry !== 'object' ||
-          typeof entry.taskId !== 'string' || !entry.taskId.trim() ||
-          typeof entry.family !== 'string' || !entry.family.trim() ||
-          typeof entry.version !== 'string' || !entry.version.trim() ||
-          typeof entry.verifierId !== 'string' || !entry.verifierId.trim() ||
-          !['train', 'validation', 'holdout'].includes(entry.split) ||
+          !isSafeLearningIdentity(entry.taskId, 256) ||
+          !isSafeLearningIdentity(entry.family, 180) ||
+          !isSafeLearningIdentity(entry.version, 180) ||
+          !isSafeLearningIdentity(entry.verifierId, 256) ||
+          !['train', 'validation', 'holdout'].includes(entry.split as string) ||
           typeof entry.promptFingerprint !== 'string' ||
           !/^[a-f0-9]{64}$/i.test(entry.promptFingerprint)) {
         throw new Error('invalid task manifest entry');
@@ -111,8 +121,12 @@ export class VerifiedOutcomeLedger {
           throw new Error(`cross-split prompt leakage: ${prior} / ${entry.taskId}`);
         }
       }
-      this.promptOwners.set(fingerprint, entry.taskId);
-      this.manifest.set(entry.taskId, Object.freeze({ ...entry, promptFingerprint: fingerprint }));
+      const manifestEntry: TaskManifestEntry = {
+        taskId: entry.taskId, family: entry.family, split: entry.split as EvaluationSplit,
+        promptFingerprint: fingerprint, verifierId: entry.verifierId, version: entry.version,
+      };
+      this.promptOwners.set(fingerprint, manifestEntry.taskId);
+      this.manifest.set(manifestEntry.taskId, Object.freeze(manifestEntry));
     }
   }
 
@@ -136,36 +150,135 @@ export class VerifiedOutcomeLedger {
     return createHash('sha256').update(normalized).digest('hex');
   }
 
-  record(outcome: VerifiedTaskOutcome): { accepted: boolean; rejection?: OutcomeRejection } {
-    const safeTaskId = typeof outcome?.taskId === 'string' ? outcome.taskId : '';
-    const safeMethod = typeof outcome?.method === 'string' ? outcome.method : '';
+  private prepareOutcome(
+    rawOutcome: unknown,
+    seenKeys: ReadonlySet<string>,
+    seenEvidenceRefs: ReadonlySet<string>,
+  ): { key: string; outcome: VerifiedTaskOutcome } | { rejection: OutcomeRejection } {
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData(rawOutcome, { allowNonFiniteNumbers: true });
+    } catch {
+      return { rejection: {
+        code: 'invalid-outcome',
+        taskId: '',
+        method: '',
+        detail: 'outcome data boundary rejected accessor, cyclic, unsupported or oversized input',
+      } };
+    }
+
+    const outcome = detached && typeof detached === 'object' && !Array.isArray(detached)
+      ? detached as Partial<VerifiedTaskOutcome>
+      : null;
+    const safeTaskId = isSafeLearningIdentity(outcome?.taskId, 256) ? outcome!.taskId as string : '';
+    const safeMethod = isSafeLearningIdentity(outcome?.method, 180) ? outcome!.method as string : '';
     const task = this.manifest.get(safeTaskId);
     let code: OutcomeRejection['code'] | undefined;
     let detail = '';
-    if (!outcome || typeof outcome !== 'object' || typeof outcome.taskId !== 'string' ||
-        typeof outcome.taskVersion !== 'string' || typeof outcome.verifierId !== 'string' ||
+
+    if (!outcome || !isSafeLearningIdentity(outcome.taskId, 256) ||
+        !isSafeLearningIdentity(outcome.taskVersion, 180) ||
+        !isSafeLearningIdentity(outcome.verifierId, 256) ||
         typeof outcome.evidenceRef !== 'string' || typeof outcome.passed !== 'boolean' ||
-        !['independent-verifier', 'human-review', 'self-report'].includes(outcome.authority)) {
+        !['independent-verifier', 'human-review', 'self-report'].includes(outcome.authority as string)) {
       code = 'invalid-outcome'; detail = 'outcome shape or authority fields are malformed';
     }
     else if (!task) { code = 'unknown-task'; detail = 'task is not in the versioned manifest'; }
     else if (task.version !== outcome.taskVersion) { code = 'version-mismatch'; detail = 'outcome references a different task version'; }
-    else if (typeof outcome.method !== 'string' || !outcome.method.trim()) { code = 'invalid-method'; detail = 'method must be a non-empty string'; }
-    else if (!Number.isSafeInteger(outcome.seed) || outcome.seed < 0) { code = 'invalid-seed'; detail = 'seed must be a non-negative safe integer'; }
-    else if (!Number.isSafeInteger(outcome.attempt) || outcome.attempt < 1) { code = 'invalid-attempt'; detail = 'attempt must be a positive safe integer'; }
+    else if (!isSafeLearningIdentity(outcome.method, 180)) { code = 'invalid-method'; detail = 'method must be a bounded normalized identity'; }
+    else if (!Number.isSafeInteger(outcome.seed) || (outcome.seed as number) < 0) { code = 'invalid-seed'; detail = 'seed must be a non-negative safe integer'; }
+    else if (!Number.isSafeInteger(outcome.attempt) || (outcome.attempt as number) < 1) { code = 'invalid-attempt'; detail = 'attempt must be a positive safe integer'; }
     else if (outcome.authority === 'self-report') { code = 'self-report-not-authoritative'; detail = 'self-assessed success cannot become ground truth'; }
     else if (outcome.authority === 'independent-verifier' && task.verifierId !== outcome.verifierId) { code = 'verifier-mismatch'; detail = 'verifier does not match the manifest'; }
-    else if (!outcome.evidenceRef.trim()) { code = 'missing-evidence'; detail = 'accepted outcomes require an evidence reference'; }
-    else if (!Number.isFinite(outcome.observedAt) || outcome.observedAt <= 0) { code = 'invalid-time'; detail = 'observedAt must be a positive finite timestamp'; }
-    const key = code ? '' : this.key(outcome);
-    if (!code && this.outcomes.has(key)) { code = 'duplicate-attempt'; detail = 'this task/method/seed/attempt already has an outcome'; }
-    if (code) {
-      const rejection: OutcomeRejection = { code, taskId: safeTaskId, method: safeMethod, detail };
-      this.rejections.push(rejection);
-      return { accepted: false, rejection };
+    else if (outcome.evidenceRef.length === 0) { code = 'missing-evidence'; detail = 'accepted outcomes require an evidence reference'; }
+    else if (!isSafeLearningIdentity(outcome.evidenceRef, 1024)) { code = 'invalid-evidence-reference'; detail = 'evidence reference must be bounded, normalized, trimmed and free of control characters'; }
+    else if (!Number.isFinite(outcome.observedAt) || (outcome.observedAt as number) <= 0) { code = 'invalid-time'; detail = 'observedAt must be a positive finite timestamp'; }
+
+    const trustedOutcome = outcome as VerifiedTaskOutcome | null;
+    if (code || !trustedOutcome) {
+      return { rejection: { code: code ?? 'invalid-outcome', taskId: safeTaskId, method: safeMethod, detail: detail || 'outcome is malformed' } };
     }
-    this.outcomes.set(key, Object.freeze({ ...outcome }));
+    const key = this.key(trustedOutcome);
+    if (seenEvidenceRefs.has(trustedOutcome.evidenceRef)) {
+      return { rejection: {
+        code: 'duplicate-evidence-ref', taskId: safeTaskId, method: safeMethod,
+        detail: 'one evidence receipt cannot attest multiple ledger outcomes',
+      } };
+    }
+    if (seenKeys.has(key)) {
+      return { rejection: {
+        code: 'duplicate-attempt', taskId: safeTaskId, method: safeMethod,
+        detail: 'this task/method/seed/attempt already has an outcome',
+      } };
+    }
+    const accepted: VerifiedTaskOutcome = {
+      taskId: trustedOutcome.taskId,
+      taskVersion: trustedOutcome.taskVersion,
+      method: trustedOutcome.method,
+      seed: trustedOutcome.seed,
+      attempt: trustedOutcome.attempt,
+      passed: trustedOutcome.passed,
+      authority: trustedOutcome.authority,
+      verifierId: trustedOutcome.verifierId,
+      evidenceRef: trustedOutcome.evidenceRef,
+      observedAt: trustedOutcome.observedAt,
+    };
+    return { key, outcome: accepted };
+  }
+
+  record(rawOutcome: VerifiedTaskOutcome): { accepted: boolean; rejection?: OutcomeRejection } {
+    const prepared = this.prepareOutcome(rawOutcome, new Set(this.outcomes.keys()), new Set(this.evidenceRefs.keys()));
+    if ('rejection' in prepared) {
+      this.rejections.push(prepared.rejection);
+      return { accepted: false, rejection: prepared.rejection };
+    }
+    this.outcomes.set(prepared.key, Object.freeze(prepared.outcome));
+    this.evidenceRefs.set(prepared.outcome.evidenceRef, prepared.key);
     return { accepted: true };
+  }
+
+  /**
+   * Atomically record one experiment's outcomes. All rows are detached and validated
+   * against both existing ledger contents and each other before any row is committed.
+   * If one row fails, the ledger's accepted outcomes remain unchanged.
+   */
+  recordBatch(rawOutcomes: readonly VerifiedTaskOutcome[]): { accepted: number; rejection?: OutcomeRejection } {
+    let detached: unknown;
+    try {
+      detached = snapshotPlainData(rawOutcomes, { allowNonFiniteNumbers: true });
+    } catch {
+      const rejection: OutcomeRejection = {
+        code: 'invalid-outcome', taskId: '', method: '',
+        detail: 'outcome batch data boundary rejected accessor, cyclic, unsupported or oversized input',
+      };
+      this.rejections.push(rejection);
+      return { accepted: 0, rejection };
+    }
+    if (!Array.isArray(detached)) {
+      const rejection: OutcomeRejection = {
+        code: 'invalid-outcome', taskId: '', method: '', detail: 'outcome batch must be an array',
+      };
+      this.rejections.push(rejection);
+      return { accepted: 0, rejection };
+    }
+    const seenKeys = new Set(this.outcomes.keys());
+    const seenEvidenceRefs = new Set(this.evidenceRefs.keys());
+    const preparedRows: Array<{ key: string; outcome: VerifiedTaskOutcome }> = [];
+    for (const raw of detached) {
+      const prepared = this.prepareOutcome(raw, seenKeys, seenEvidenceRefs);
+      if ('rejection' in prepared) {
+        this.rejections.push(prepared.rejection);
+        return { accepted: 0, rejection: prepared.rejection };
+      }
+      preparedRows.push(prepared);
+      seenKeys.add(prepared.key);
+      seenEvidenceRefs.add(prepared.outcome.evidenceRef);
+    }
+    for (const prepared of preparedRows) {
+      this.outcomes.set(prepared.key, Object.freeze(prepared.outcome));
+      this.evidenceRefs.set(prepared.outcome.evidenceRef, prepared.key);
+    }
+    return { accepted: preparedRows.length };
   }
 
   comparePaired(baseline: string, candidate: string, split: EvaluationSplit = 'holdout'): PairedMethodSummary {
@@ -328,7 +441,8 @@ export class VerifiedOutcomeLedger {
     if (ledger.outcomes.size !== snapshot.acceptedOutcomes) throw new Error('accepted outcome count mismatch');
     const allowed = new Set<OutcomeRejection['code']>([
       'unknown-task', 'version-mismatch', 'invalid-method', 'invalid-seed', 'invalid-attempt',
-      'self-report-not-authoritative', 'verifier-mismatch', 'missing-evidence', 'invalid-time', 'duplicate-attempt', 'invalid-outcome',
+      'self-report-not-authoritative', 'verifier-mismatch', 'missing-evidence', 'invalid-time',
+      'duplicate-attempt', 'duplicate-evidence-ref', 'invalid-evidence-reference', 'invalid-outcome',
     ]);
     for (const item of snapshot.rejections as OutcomeRejection[]) {
       if (!item || !allowed.has(item.code) || typeof item.taskId !== 'string' ||
