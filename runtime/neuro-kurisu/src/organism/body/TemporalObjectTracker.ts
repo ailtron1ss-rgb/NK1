@@ -162,6 +162,61 @@ export class TemporalObjectTracker {
     else this.cameras.delete(Math.max(0,Math.floor(Number(cameraId)||0)));
   }
 
+  /** Rebuild local tracks from the persisted canonical P41 snapshot after process restart. */
+  restoreFromPerception(
+    entities:readonly Array<{
+      label:string;
+      kind?:string;
+      trackId?:string;
+      lastSeenAt:number;
+      observations?:number;
+      imageBox?:NormalizedBoundingBox;
+      imageBoxCameraId?:number;
+      imageBoxAt?:number;
+      imageBoxConfidence01?:number;
+    }>,
+    at=Date.now(),
+  ){
+    this.cameras.clear();
+    if(!Number.isFinite(at)||at<0)return {restored:0,skipped:entities.length};
+    let restored=0,skipped=0;
+    const seen=new Set<string>();
+    for(const entity of entities){
+      const cameraId=Number.isFinite(entity.imageBoxCameraId)&&Number(entity.imageBoxCameraId)>=0
+        ?Math.floor(Number(entity.imageBoxCameraId)):-1;
+      const imageAt=Number(entity.imageBoxAt);
+      const trackId=clean(entity.trackId,240);
+      const prefix=cameraId>=0?`vision:${cameraId}:nk1-temporal-box-tracker:`:'';
+      const localId=prefix&&trackId.startsWith(prefix)?trackId.slice(prefix.length):'';
+      const box=entity.imageBox;
+      if(cameraId<0||!localId.startsWith('local:')||!box||!isValidNormalizedBoundingBox(box)
+        ||!Number.isFinite(imageAt)||imageAt>at||at-imageAt>this.config.maxTrackAgeMs
+        ||Number(entity.imageBoxConfidence01??0)<this.config.minimumBoxConfidence01
+        ||!clean(entity.label)){
+        skipped++;continue;
+      }
+      const key=cameraId+':'+localId;
+      if(seen.has(key)){skipped++;continue;}
+      seen.add(key);
+      const state=this.cameras.get(cameraId)??{lastFrameAt:imageAt,tracks:[]};
+      state.lastFrameAt=Math.max(state.lastFrameAt,imageAt);
+      state.tracks.push({
+        id:localId,label:clean(entity.label).toLocaleLowerCase(),kind:kindOf(entity.kind),
+        bbox:{...box},confidence01:clamp(entity.imageBoxConfidence01??.5),
+        firstSeenAt:Number.isFinite(entity.lastSeenAt)?Math.min(imageAt,entity.lastSeenAt):imageAt,
+        lastSeenAt:imageAt,hits:Math.max(1,Math.floor(Number(entity.observations??1))),
+        providerOwned:false,velocityX:0,velocityY:0,velocityWidth:0,velocityHeight:0,
+      });
+      this.cameras.set(cameraId,state);
+      restored++;
+    }
+    for(const state of this.cameras.values()){
+      state.tracks.sort((a,b)=>b.lastSeenAt-a.lastSeenAt);
+      state.tracks=state.tracks.slice(0,this.config.maxTracksPerCamera);
+    }
+    return {restored,skipped};
+  }
+
   snapshot(cameraId?:number){
     const entries=[...this.cameras.entries()].filter(([id])=>cameraId===undefined||id===cameraId);
     return entries.map(([id,state])=>({
