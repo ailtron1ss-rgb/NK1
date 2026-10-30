@@ -2841,3 +2841,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Aspect 08] Add VRM skinned-garment adapter (2026-10-30)
+
+- Added `vrmWardrobeAdapter.ts` to inspect actual garment and avatar bone hierarchies, reject missing/ambiguous bone names and missing target bind-pose inverses, and remap compatible skinned meshes onto the loaded avatar skeleton.
+- Garment attachment is gated by a ready wardrobe switch plan containing the exact asset ID. The adapter prepares/remaps a cloned garment before touching the live avatar; a successful attach tags the garment slot and only then hides the previous garment in that slot.
+- Added focused tests for normalized bone mapping, missing/duplicate bones, non-skinned assets, switch-plan authorization, successful skeleton remapping and slot replacement. Wired the suite into `npm run test:wardrobe`.
+- This is a renderer adapter contract, not a finished wardrobe UI or a claim that licensed garment assets are already present. The existing VRM upload flow does not yet load wardrobe packs or invoke this adapter; real-model visual E2E and CI execution remain pending.
