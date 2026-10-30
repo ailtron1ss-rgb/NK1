@@ -198,6 +198,15 @@ export interface ToolExecution {
 }
 const DEFAULT_ALLOWED:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const unavailableVerification:OutcomeVerification={verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'not executed'};
+/**
+ * Even legacy tools without a declared schema must receive inert JSON data.
+ * This envelope rejects accessors, proxies, cycles, exotic prototypes and
+ * oversized/deep payloads before hashing, previewing, approving or executing.
+ * Per-tool contracts remain stricter and take precedence when registered.
+ */
+const DEFAULT_TOOL_INPUT_ENVELOPE:ToolInputContract=Object.freeze({
+  type:'object', additionalProperties:true, maxProperties:32, maxSerializedBytes:65_536,
+});
 function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerification):{ok:boolean;verified:boolean;outcomeClass:ActionOutcomeClass;contradicted:boolean} {
   const assessment=assessExternalPostcondition(verification);
   const contradicted=toolOk && assessment==='contradiction';
@@ -415,6 +424,9 @@ export class ActionGateway {
     const permissionClass=this.permissionClassFor(toolId) ?? (DIRECT_PERMISSION_ACTIONS.has(toolId)?'device':null);
     if(!permissionClass) throw new Error('approval-not-required-for-this-tool');
     if(!['execute','reconcile','direct'].includes(operation)) throw new Error('invalid-approval-operation');
+    const registered=this.tools.get(toolId);
+    const inputValidation=validateToolInputContract(input,registered?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!inputValidation.valid) throw new Error('approval-input-invalid');
     let requestHash:string;
     try { requestHash=this.approvalFingerprint(toolId,input,options,operation); } catch { throw new Error('approval-input-not-serializable'); }
     const at=Date.now(); this.expirePermissionRequests(at);
@@ -451,6 +463,9 @@ export class ActionGateway {
     return this.withPermissionAdmission(async()=>{
     const permissionClass=this.permissionClassFor(toolId) ?? (DIRECT_PERMISSION_ACTIONS.has(toolId)?'device':null);
     if(!permissionClass) return {ok:true};
+    const registered=this.tools.get(toolId);
+    const inputValidation=validateToolInputContract(input,registered?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!inputValidation.valid) return {ok:false,reason:'approval-input-invalid'};
     if(!approvalId) return {ok:false,reason:'user-approval-required'};
     let fingerprint:string; try{fingerprint=this.approvalFingerprint(toolId,input,options,operation);}catch{return {ok:false,reason:'approval-input-not-serializable'};}
     const now=Date.now(); this.expirePermissionRequests(now);
@@ -571,10 +586,8 @@ export class ActionGateway {
 
   async executeTool(id:string,input:Record<string,unknown>={},reason='tool-request',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
     const registeredTool=this.tools.get(id);
-    if(registeredTool?.inputContract) {
-      const validation=validateToolInputContract(input,registeredTool.inputContract);
-      if(!validation.valid) return this.result(id,registeredTool.capability,'tool-input-invalid','gate-check-failed','exec-' + randomUUID(),{error:'tool-input-invalid',issues:validation.issues},'tool arguments failed the registered contract before approval, receipt admission or executor entry');
-    }
+    const validation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!validation.valid) return this.result(id,registeredTool?.capability??'unknown','tool-input-invalid','gate-check-failed','exec-' + randomUUID(),{error:'tool-input-invalid',issues:validation.issues},'tool arguments must be inert bounded JSON and satisfy the registered contract before approval, receipt admission or executor entry');
     const rawKey=options?.idempotencyKey;
     if(rawKey===undefined || rawKey===null || rawKey==='') {
       if(requiresDurableIdempotency(this.tools.get(id))) return this.result(id,this.tools.get(id)?.capability??'unknown','idempotency-key-required','idempotency-key-required',`exec-${randomUUID()}`,{error:'idempotency-key-required'},'this operation is classified as side-effecting or high-risk and requires a stable key plus durable receipt ledger');
@@ -616,6 +629,9 @@ export class ActionGateway {
    * fail-closed for later reconciliation.
    */
   async reconcileToolExecution(id:string,input:Record<string,unknown>={},reason='tool-receipt-reconciliation',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
+    const registeredTool=this.tools.get(id);
+    const inputValidation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
+    if(!inputValidation.valid) return this.result(id,registeredTool?.capability??'unknown','reconciliation-input-invalid','gate-check-failed',`exec-${randomUUID()}`,{error:'reconciliation-input-invalid',issues:inputValidation.issues},'receipt reconciliation requires the original bounded JSON request before provider lookup');
     const rawKey=options?.idempotencyKey;
     if(rawKey===undefined||rawKey===null||rawKey==='') return this.result(id,'unknown','reconciliation-idempotency-key-required','idempotency-recovery-required',`exec-${randomUUID()}`,{error:'reconciliation-idempotency-key-required'},'receipt reconciliation requires the original idempotency key');
     const key=String(rawKey).trim();
