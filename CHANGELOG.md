@@ -1,3 +1,9 @@
+## [NK1][аспект9] Harden speech clock boundary handling (2026-10-30)
+
+- Extend the shared speech-timeline regression suite for duplicate provider boundaries, backward audio timestamps, malformed values, origin refinement, bounded anchor history and invalid monotonic-clock samples.
+- Verify that the newest calibration survives anchor-window trimming and that invalid clock input preserves or advances only from the monotonic high-water mark.
+- These are regression contracts for the existing browser speech clock; they do not claim acoustic/phoneme alignment or device playback validation.
+
 ## [NK1][аспект9] Unify browser voice prosody with organism state (2026-10-30)
 
 - Replace fixed browser TTS settings and its duplicate affect mapper with an adapter to the canonical `VoiceEmbodiment.buildVoicePlan`, shared with the native Termux runtime; browser uses a neutral body baseline where device telemetry is unavailable.
