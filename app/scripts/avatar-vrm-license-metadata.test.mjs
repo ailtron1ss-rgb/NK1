@@ -23,7 +23,7 @@ test("reads VRM 1.0 author, license, credit and commercial-use declarations with
   assert.equal(summary.commercialUsage, "personalNonProfit");
   assert.equal(summary.modification, "prohibited");
   assert.equal(summary.avatarPermission, "onlySeparatelyLicensedPerson");
-  assert.match(summary.summary, /Verify the creator original terms/);
+  assert.match(summary.summary, /Verify the creator.s original terms/);
 });
 
 test("reads legacy VRM 0.x author/license metadata but does not assume permission", () => {
