@@ -2,7 +2,7 @@
 
 - Add a production GLTFLoader-backed orchestration API that accepts already-ingested pack bytes, verifies the complete manifest payload and renderer/body/rig contract, and only then parses requested VRM/3D garment assets.
 - Require self-contained GLB v2 containers; reject malformed headers/JSON and external buffer/image URIs before GLTFLoader can resolve network resources.
-- Preflight every garment skeleton against the active avatar before modifying the scene. Attach the complete requested set only after preparation succeeds; on any attachment/acknowledgement failure, remove new garments and restore prior slot visibility/metadata.
+- Preflight every garment skeleton against the active avatar before modifying the scene; reject duplicate requested slots so a pack cannot replace one newly attached garment with another. Attach the complete requested set only after preparation succeeds; on any attachment/acknowledgement failure, remove new garments and restore prior slot visibility/metadata.
 - Add focused tests for GLB container validation, external-resource rejection, successful verified application and parse-failure rollback. Wire the suite into the wardrobe workflow.
 - Boundary: this is now a real loader/application API, but no pack ingestion UI, persistent wardrobe state, real garment assets, Avatar3DStage controls, Live2D/depth-2D adapter or visual device E2E is claimed.
 
