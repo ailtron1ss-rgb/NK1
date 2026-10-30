@@ -37,26 +37,28 @@ export class P2702PersistentPersonalityDynamics{
  snapshot(){return deep(this.state);}
  restore(raw?:Partial<P2702PersonalityState>|null){
   const d=defaultState(),r:any=raw&&typeof raw==='object'?raw:{};
-  const names=(value:unknown,fallback:string[])=>{
-   const rows=Array.isArray(value)?value.filter((x):x is string=>typeof x==='string'&&x.trim().length>0).map(x=>x.trim().slice(0,64)).slice(0,32):fallback;
-   return rows.length?rows:fallback.slice();
+  // Trait/value schemas are code-owned, not snapshot-owned. Restore by semantic name
+  // so an older/reordered/corrupted array cannot silently change what a trait means.
+  const mappedValues=(sourceNames:unknown,sourceValues:unknown,canonicalNames:string[],fallback:number[],min=0,max=1)=>{
+   const names=Array.isArray(sourceNames)?sourceNames:[];
+   return canonicalNames.map((name,index)=>{
+    const sourceIndex=names.length?names.findIndex(x=>x===name):index;
+    const raw=Array.isArray(sourceValues)&&sourceIndex>=0?sourceValues[sourceIndex]:fallback[index];
+    return clamp(Number(raw??fallback[index]??.5),min,max);
+   });
   };
-  const values=(value:unknown,count:number,fallback:number[],min=0,max=1)=>Array.from({length:count},(_,i)=>{
-   const candidate=Array.isArray(value)?Number(value[i]??fallback[i]??.5):Number(fallback[i]??.5);
-   return clamp(candidate,min,max);
-  });
-  const count=(value:unknown)=>Math.max(0,Math.min(1_000_000,Math.floor(Number.isFinite(Number(value))?Number(value):0)));
-  const invariantNames=names(r.invariantNames,d.invariantNames);
-  const adaptiveNames=names(r.adaptiveNames,d.adaptiveNames);
-  const valueNames=names(r.valueNames,d.valueNames);
+  const count=(value:unknown)=>Math.max(0,Math.min(1_000_000,Math.floor(Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):0)));
+  const invariantValues=mappedValues(r.invariantNames,r.invariantValues,d.invariantNames,d.invariantValues);
+  const adaptiveValues=mappedValues(r.adaptiveNames,r.adaptiveValues,d.adaptiveNames,d.adaptiveValues);
+  const valueWeights=mappedValues(r.valueNames,r.valueWeights,d.valueNames,d.valueWeights);
   const trustSource=r.relationshipTrust&&typeof r.relationshipTrust==='object'&&!Array.isArray(r.relationshipTrust)?Object.entries(r.relationshipTrust):[];
   const relationshipTrust=Object.fromEntries(trustSource.filter(([k])=>typeof k==='string'&&k.trim().length>0&&String(k).length<=80&&!['__proto__','prototype','constructor'].includes(String(k))).slice(0,32).map(([k,v])=>[String(k).slice(0,80),clamp(Number(v))]));
   const actionPreference=Object.fromEntries(ACTIONS.map(action=>[action,clamp(Number(r.actionPreference?.[action]??0),-1,1)])) as Record<ActionKind,number>;
   this.state={...d,...deep(r),version:1,
    tick:count(r.tick),experienceCount:count(r.experienceCount),learningUpdates:count(r.learningUpdates),
-   invariantNames,invariantValues:values(r.invariantValues,invariantNames.length,d.invariantValues),
-   adaptiveNames,adaptiveValues:values(r.adaptiveValues,adaptiveNames.length,d.adaptiveValues),
-   valueNames,valueWeights:values(r.valueWeights,valueNames.length,d.valueWeights),
+   invariantNames:d.invariantNames.slice(),invariantValues,
+   adaptiveNames:d.adaptiveNames.slice(),adaptiveValues,
+   valueNames:d.valueNames.slice(),valueWeights,
    relationshipTrust,
    selfBeliefNames:d.selfBeliefNames.slice(),
    selfBeliefs:values(r.selfBeliefs,d.selfBeliefNames.length,d.selfBeliefs),
@@ -112,12 +114,13 @@ export class P2702PersistentPersonalityDynamics{
   this.state.identityContinuity01=clamp(this.state.identityContinuity01*.97+(1-selfErr)*.03);
   this.state.coherence01=clamp(this.state.coherence01*.95+(1-this.state.contradiction01)*.05);
   this.state.stability01=clamp(this.state.stability01*.98+(1-this.state.drift01)*.02);
-  if(args.relationshipId)this.updateRelationshipTrust(args.relationshipId,1-clamp(args.identityGap01),.005);
+  // Relationship trust is outcome evidence, not a proxy for the organism's own continuity.
   return {actionBias:bias,traitVector:this.state.adaptiveValues.slice(),valueVector:this.state.valueWeights.slice(),identityContinuity01:this.state.identityContinuity01,coherence01:this.state.coherence01,stability01:this.state.stability01,contradiction01:this.state.contradiction01};
  }
- afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string}){
+ afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string;learningScale01?:number;evidence01?:number;independent01?:number;consequence01?:number}){
   const reward=clamp(args.reward01),verified=clamp(args.verified01),error=clamp(args.predictionError01);
-  const signal=clamp(reward*.55+verified*.25+(1-error)*.20);const eta=this.state.plasticity01*(.55+Math.abs(reward-.5));
+  const learningScale=clamp(args.learningScale01??.5),evidence=clamp(args.evidence01??.5),independent=clamp(args.independent01??0),consequence=clamp(args.consequence01??0);
+  const signal=clamp(reward*.55+verified*.25+(1-error)*.20);const eta=this.state.plasticity01*(.55+Math.abs(reward-.5))*learningScale;
   // Action semantics map to named traits, never to unrelated array positions.
   // A successful response must not train sarcasm merely because both enumerations
   // happen to have an item at index zero.
@@ -135,13 +138,19 @@ export class P2702PersistentPersonalityDynamics{
    if(index<0||index>=this.state.adaptiveValues.length)continue;
    this.state.adaptiveValues[index]=clamp((this.state.adaptiveValues[index]??.5)+(signal-.5)*eta*target.weight);
   }
-  const valueEta=eta*.22;for(let i=0;i<this.state.valueWeights.length;i++)this.state.valueWeights[i]=clamp(this.state.valueWeights[i]!+(signal-.5)*valueEta*(i<2?.35:1));
-  if(args.relationshipId){const trustSignal=clamp(reward*.55+verified*.3+(1-clamp(args.identityGap01))*.15);this.updateRelationshipTrust(args.relationshipId,trustSignal,.06);}
+  const strongIndependentOutcome=verified>=.9&&evidence>=.72&&independent>=.8&&consequence>=.7;
+  // Core values and relationship trust have a higher evidential bar than behavioral habits.
+  if(strongIndependentOutcome){
+   const valueEta=eta*.12;
+   for(let i=0;i<this.state.valueWeights.length;i++)this.state.valueWeights[i]=clamp(this.state.valueWeights[i]!+(signal-.5)*valueEta*(i<2?.35:1));
+   if(args.relationshipId){const trustSignal=clamp(reward*.55+verified*.3+(1-clamp(args.identityGap01))*.15);this.updateRelationshipTrust(args.relationshipId,trustSignal,.025);}
+  }
   const uncertaintyShift=clamp(error*.35+(1-verified)*.3);
-  for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
+  const uncertaintyRate=.03*learningScale;
+  for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*(1-uncertaintyRate)+uncertaintyShift*uncertaintyRate,.03,.97);
   // Identity beliefs learn more slowly than habits and only from the verified lane.
   const observedIdentity=Array.isArray(args.identityVector)?args.identityVector.slice(0,this.state.selfBeliefs.length):[];
-  if(verified>=.9&&observedIdentity.length){
+  if(strongIndependentOutcome&&observedIdentity.length){
    for(let i=0;i<observedIdentity.length;i++){
     if(!Number.isFinite(observedIdentity[i]))continue;
     const observed=clamp(observedIdentity[i]!);
@@ -152,7 +161,7 @@ export class P2702PersistentPersonalityDynamics{
     this.state.selfUncertainty[i]=clamp(uncertainty*.985+Math.abs(observed-prior)*.015,.03,.97);
    }
   }
-  this.state.learningUpdates++;
+  this.state.learningUpdates=Math.min(1_000_000,this.state.learningUpdates+1);
  }
  metrics(){return deep(this.state);}
 }
