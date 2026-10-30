@@ -76,3 +76,13 @@
 - `Avatar3DStage` now uses this resolver in its existing morph-target update path, preserving the ordinary bone/3D path and not requiring every model to implement the full facial set.
 
 The resolver is a runtime contract, not a claim that the repository already contains a finished Kurisu face asset or a complete viseme library. A production asset still needs artist-authored eye/brow/mouth shapes and visual calibration.
+
+
+## WorkPass — asymmetric face rig and speech viseme integration
+
+- Face controls now distinguish left/right blink, brow raise/furrow and eye aim axes. Legacy symmetric channels remain supported for older GLB/VRM assets.
+- Added AA/EE/IH/OH/OU/FV/MBP/L viseme channels, bounded viseme weights and a frame-rate-independent blend helper for expression transitions.
+- Avatar3DStage maps the existing grapheme timeline categories (open, wide, round, teeth, closed) to the closest supported viseme family and passes current gaze into the face adapter. This remains a grapheme-level approximation: it is not acoustic phoneme recognition.
+- Custom artist bindings are validated defensively; malformed values are ignored. Overlapping aliases were removed so generic mouth-open channels cannot overwrite dedicated viseme morphs.
+- Tests cover asymmetric eyelids/brows, gaze bounds, viseme selection, blend convergence, partial morph sets, ambiguous aliases and malformed binding metadata.
+- The production art asset, calibration and Android/desktop visual E2E remain outstanding.
