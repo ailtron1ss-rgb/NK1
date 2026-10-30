@@ -1,3 +1,4 @@
+- Update local-model revision regressions to the explicit holdout-blind policy contract; assert that numeric holdout direction is not sent to the optimizer and reject legacy feedback without the policy gate.
 ## [NK1][обучение] Fail-closed P23 staging and holdout integrity (2026-10-30)
 
 - Reject a background P23 result that claims `candidate-staged` without a non-empty stable candidate ID; do not increment staged metrics, emit a runtime anomaly, and journal the outcome as an error.
