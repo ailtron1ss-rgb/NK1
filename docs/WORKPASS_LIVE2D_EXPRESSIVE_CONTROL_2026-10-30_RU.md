@@ -120,6 +120,7 @@ This workpass improves the existing Cubism avatar only. It does not claim to cre
 
 ### Изменения этого прохода
 
+- App viewer остаётся классическим inline script ради совместимости message-handler regression harness и динамически импортирует timing helpers до запуска Cubism; runtime viewer импортирует их статически.
 - Вынесены общие чистые функции `smoothToward`, `smoothingAlpha` и `sampleBlink` в `temporal-smoothing.mjs`; идентичная версия размещена в app и runtime asset roots, а контрактный тест проверяет побайтное равенство.
 - App viewer переведён на ES module entry point и импортирует те же проверяемые временные функции, что и runtime viewer.
 - Сглаживание мимики, рта, формы рта, семантического взгляда и микросаккад теперь зависит от elapsed seconds и time constant, а не от количества кадров.
