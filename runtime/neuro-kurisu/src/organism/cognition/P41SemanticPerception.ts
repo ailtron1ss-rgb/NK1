@@ -47,6 +47,8 @@ export interface P41PerceptualEntity {
   modalities:P41Modality[];
   /** Last timestamp each modality independently observed this entity. */
   modalityLastSeenAt?:Partial<Record<P41Modality,number>>;
+  /** Provenance for each modality; missing legacy entries remain unresolved. */
+  modalityEvidenceKinds?:Partial<Record<P41Modality,P41EvidenceKind>>;
   position:{x:number;y:number;z:number}|null;
   /** Smoothed velocity in the same coordinate frame as position, per second. */
   velocity?:{x:number;y:number;z:number}|null;
@@ -179,7 +181,7 @@ export interface P41SemanticInput {
   };
   audio?:{events?:Array<{label:string;confidence01?:number}>;relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;latencyMs?:number;semantic:boolean};
   sensor?:{location?:string;orientationDeg?:number;energy01?:number;thermal01?:number;capacity01?:number;motion01?:number;freshness01?:number};
-  world?:{scene?:string;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string}>;events?:string[]};
+  world?:{scene?:string;evidenceKind?:P41EvidenceKind;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;evidenceKind?:P41EvidenceKind}>;events?:string[]};
   at?:number;
 }
 
@@ -295,11 +297,13 @@ export class P41SemanticPerceptionEngine {
   }
 
   ingestWorld(w:NonNullable<P41SemanticInput['world']>,at:number){
-    if(w.scene){ const label=String(w.scene).slice(0,120); this.state.scene={label,confidence01:.68,stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.05:.5),at}; this.epistemic.add({at,modality:'world',claim:`scene:${label}`,source:'observed',confidence01:.68}); }
+    const sceneEvidenceKind=w.evidenceKind??'unresolved';
+    if(w.scene){ const label=String(w.scene).slice(0,120); this.state.scene={label,confidence01:clamp(w.objects?.length?Math.max(...w.objects.map(o=>Number.isFinite(o.confidence01)?Number(o.confidence01):.5)):.35),stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.05:.5),at}; this.epistemic.add({at,modality:'world',claim:`scene:${label}`,source:sceneEvidenceKind,confidence01:this.state.scene.confidence01}); }
     for(const o of (w.objects??[]).slice(0,24)){
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
-      this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.6),.52,'world',at,null,'observed',namespacedTrackId);
+      const evidenceKind=o.evidenceKind??sceneEvidenceKind;
+      this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,null,evidenceKind,namespacedTrackId);
     }
     for(const e of (w.events??[]).slice(0,16)) this.upsertEvent(String(e),.6,'world',at,'observed');
     this.recordModality('world',.7,0);
@@ -353,7 +357,7 @@ export class P41SemanticPerceptionEngine {
     const trackId=explicitTrackId??(!e&&canTrackPosition?'auto-track-'+(++this.state.nextTrackSequence):undefined);
     if(!e){
       const id=stableId('entity',kind+':'+key+':'+(trackId??'singleton'));
-      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],modalityLastSeenAt:{[modality]:at},position:pos,positionFrameId:safePositionFrameId||undefined,velocity:null,trackAliases:[]};
+      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],modalityLastSeenAt:{[modality]:at},modalityEvidenceKinds:{[modality]:evidenceKind},position:pos,positionFrameId:safePositionFrameId||undefined,velocity:null,trackAliases:[]};
       this.state.entities.unshift(e);
     }else{
       const previousAt=e.lastSeenAt;
@@ -372,6 +376,7 @@ export class P41SemanticPerceptionEngine {
       e.observations++;
       if(!e.modalities.includes(modality))e.modalities.push(modality);
       e.modalityLastSeenAt={...(e.modalityLastSeenAt??{}),[modality]:at};
+      e.modalityEvidenceKinds={...(e.modalityEvidenceKinds??{}),[modality]:evidenceKind};
       if(pos)e.position=pos;
       if(safePositionFrameId)e.positionFrameId=safePositionFrameId;
       if(explicitTrackId&&e.trackId&&e.trackId!==explicitTrackId){
