@@ -15,7 +15,7 @@ function requireCondition(condition, message) {
 }
 
 function safeAssetPath(value, assetId, field) {
-  if (typeof value !== "string" || !value.trim() || value.includes("\\\\") || isAbsolute(value)) {
+  if (typeof value !== "string" || !value.trim() || value.includes("\\") || isAbsolute(value)) {
     errors.push(`${assetId}: ${field} must be a non-empty relative POSIX path`);
     return null;
   }
@@ -89,6 +89,8 @@ async function main() {
 
     const sourceBytes = await verifyFile(sourcePath, asset.id, "sourceFile");
     const previewBytes = await verifyFile(previewPath, asset.id, "previewFile");
+    if (sourceBytes) requireCondition(sourceBytes.length > 0, `${asset.id}: source file is empty`);
+    if (previewBytes) requireCondition(previewBytes.length > 0, `${asset.id}: preview file is empty`);
     if (sourceBytes && /^[a-f0-9]{64}$/i.test(asset.sha256 ?? "")) {
       const actualHash = createHash("sha256").update(sourceBytes).digest("hex");
       requireCondition(actualHash === asset.sha256.toLowerCase(), `${asset.id}: source SHA-256 mismatch`);
