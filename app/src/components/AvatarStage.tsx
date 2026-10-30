@@ -302,6 +302,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
           speechPhaseRef.current = "unknown";
+          recordSpeechLifecycle(session, "error", performance.now(), { errorCode: "start-failed" });
           utteranceRef.current = null;
           setVoiceStatus("unknown");
           setMouthPose(CLOSED_MOUTH);
