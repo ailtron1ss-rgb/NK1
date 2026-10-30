@@ -13,6 +13,7 @@ on:
       - "app/scripts/depth-rig-glb-validator.mjs"
       - "app/scripts/depth-rig-glb-validator.test.mjs"
       - "tools/blender/export_nk1_depth_rig.py"
+      - "tools/blender/create_nk1_depth_rig_demo.py"
       - ".github/workflows/nk1-2p5d-depth-rig.yml"
   push:
     branches:
@@ -45,8 +46,18 @@ jobs:
       - name: Install app dependencies without lifecycle scripts
         working-directory: app
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Compile Blender exporter Python syntax
-        run: python -m py_compile tools/blender/export_nk1_depth_rig.py
+      - name: Compile Blender helpers Python syntax
+        run: python -m py_compile tools/blender/export_nk1_depth_rig.py tools/blender/create_nk1_depth_rig_demo.py
+      - name: Install Blender for a real headless GLB export smoke test
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y blender
+      - name: Generate deterministic 2.5D blockout scene
+        run: blender --background --python tools/blender/create_nk1_depth_rig_demo.py
+      - name: Export the generated Blender scene to GLB
+        run: blender --background nk1-depth-rig-demo.blend --python tools/blender/export_nk1_depth_rig.py -- --output build/nk1-depth-rig-demo.glb --collection NK1_RIG
+      - name: Validate the actual Blender-exported GLB
+        run: node app/scripts/depth-rig-glb-validator.mjs build/nk1-depth-rig-demo.glb
       - name: Validate depth-rig contracts, face channels, Three.js adapter and exported GLB
         working-directory: app
         run: node --experimental-strip-types --test scripts/depth-rig.test.mjs scripts/depth-rig-face.test.mjs scripts/depth-rig-three-adapter.test.mjs scripts/depth-rig-glb-validator.test.mjs
