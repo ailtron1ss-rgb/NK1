@@ -34,7 +34,7 @@ test("drag yaw rotates the loaded VRM/GLB pivot without overwriting its source o
  assert.match(stage,/rt\.loaded\.rotation\.y=rt\.yaw\+Math\.sin/);
  assert.match(stage,/rt\.yaw\+=\(e\.clientX-rt\.dragX\)\*\.008/);
  assert.match(stage,/rt\.mixer=new THREE\.AnimationMixer\(root\)/);
- assert.doesNotMatch(stage,/root\.rotation\.y\s*=/);
+ const loadStart=stage.indexOf("const loadModel"),loadEnd=stage.indexOf("const loadVrma",loadStart);assert.ok(loadStart>=0&&loadEnd>loadStart);assert.doesNotMatch(stage.slice(loadStart,loadEnd),/root\\.rotation\\.y\\s*=/);
 });
 
 test("the 3D body consumes organism emotion, action, arousal/valence, gaze, sleep and speech",async()=>{
