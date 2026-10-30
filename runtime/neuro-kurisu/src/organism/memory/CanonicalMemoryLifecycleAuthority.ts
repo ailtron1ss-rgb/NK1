@@ -49,11 +49,10 @@ const safePlan=(raw:unknown):CanonicalMemoryLifecycleState['lastPlan']=>{
   return {budgets:{traces:safeCounter(b.traces),events:safeCounter(b.events),goals:safeCounter(b.goals),memories:safeCounter(b.memories),semanticItems:safeCounter(b.semanticItems)},action,pressure01:clamp01(typeof row.pressure01==='number'?row.pressure01:0),hotLoad01:clamp01(typeof row.hotLoad01==='number'?row.hotLoad01:0)};
 };
 const safeDecisions=(raw:unknown):ConsolidationDecision[]=>{
-  if(!Array.isArray(raw))return [];
+  const array=ownArrayValues(raw,32);
+  if(!array.valid)return [];
   const routes=new Set(['hippocampal','cortical','procedural','defer']);
-  const values:unknown[]=[];
-  for(let i=0;i<Math.min(raw.length,32);i++)if(Object.hasOwn(raw,i))values.push(raw[i]);
-  return values.flatMap(value=>{
+  return array.values.flatMap(value=>{
     const row=ownRecord(value),id=safeLabel(row.id,128),reason=safeLabel(row.reason,240);
     if(!id||!reason||!routes.has(String(row.route)))return [];
     const numbers=['priority01','plasticity01','retention01','overconsolidationRisk01','reinforcement01'] as const;
@@ -153,26 +152,37 @@ export class CanonicalMemoryLifecycleAuthority {
 
   run(input:CanonicalMemoryLifecycleInput){
     const tick=this.assertNextTick(input.tick);
+    if(this.state.cycles>=Number.MAX_SAFE_INTEGER||this.state.maintenanceRuns>=Number.MAX_SAFE_INTEGER){
+      throw new RangeError('Canonical memory lifecycle counter reached its safe integer limit');
+    }
     const pressure=clamp01(input.pressure01);
     const memoryLoad=clamp01(input.workingSet01);
-    const plan=this.governor.plan(input);
-    const maintenance=this.fabric.maintain({
-      tick,
-      pressure01:pressure,
-      maxItems:plan.budgets.memories,
-      hotBudget:plan.budgets.memories>=520?64:48,
-      warmBudget:plan.budgets.memories>=520?256:192,
-      coldBudget:Math.max(256,Math.min(960,plan.budgets.memories)),
-      identityTension01:input.identityTension01??0,
-    });
-    this.state.cycles++;
-    this.state.lastTick=tick;
-    this.state.lastPlan=plan;
-    this.state.lastConsolidation=[];
-    this.state.meanPressure01=clamp01(this.state.meanPressure01*.97+pressure*.03);
-    this.state.meanMemoryLoad01=clamp01(this.state.meanMemoryLoad01*.97+memoryLoad*.03);
-    this.state.maintenanceRuns+=maintenance.skipped?0:1;
-    return {plan,maintenance,consolidation:[]};
+    // Governor.plan() records its own counters. Roll it back if the canonical
+    // fabric maintenance fails, so retrying the same tick cannot double-count.
+    const governorBefore=this.governor.snapshot();
+    try{
+      const plan=this.governor.plan(input);
+      const maintenance=this.fabric.maintain({
+        tick,
+        pressure01:pressure,
+        maxItems:plan.budgets.memories,
+        hotBudget:plan.budgets.memories>=520?64:48,
+        warmBudget:plan.budgets.memories>=520?256:192,
+        coldBudget:Math.max(256,Math.min(960,plan.budgets.memories)),
+        identityTension01:input.identityTension01??0,
+      });
+      this.state.cycles++;
+      this.state.lastTick=tick;
+      this.state.lastPlan=plan;
+      this.state.lastConsolidation=[];
+      this.state.meanPressure01=clamp01(this.state.meanPressure01*.97+pressure*.03);
+      this.state.meanMemoryLoad01=clamp01(this.state.meanMemoryLoad01*.97+memoryLoad*.03);
+      this.state.maintenanceRuns+=maintenance.skipped?0:1;
+      return {plan,maintenance,consolidation:[]};
+    }catch(error){
+      this.governor.restore(governorBefore);
+      throw error;
+    }
   }
 
   consolidate(input:{candidates:ConsolidationCandidate[];batchSize?:number;pressure01?:number;awake01?:number}){
