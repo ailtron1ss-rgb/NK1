@@ -1,3 +1,11 @@
+## [NK1][2.5D] Asymmetric facial rig and speech visemes (2026-10-30)
+
+- Expanded the renderer-independent face contract with independent left/right eyelid closure, brow raise/furrow, eye gaze axes, and eight viseme channels (AA, EE, IH, OH, OU, FV, MBP, L).
+- Added bounded speech-viseme resolution and frame-rate-independent expression blending; malformed artist binding metadata is ignored safely rather than crashing the avatar.
+- Wired the existing grapheme speech timeline's mouth categories into the imported GLB/VRM face morph adapter, including gaze and a deliberately slight asymmetric blink.
+- Added regression coverage for asymmetry, gaze clamping, viseme exclusivity, transition convergence, optional morphs, alias ambiguity, and malformed custom bindings.
+- These are runtime contracts and adapter behavior, not a claim that a production Kurisu face asset or artist-authored viseme shapes are already present.
+
 ## [NK1][WorkPass635] Feed explicit autonomous motor frames into the 2.5D renderer (2026-10-30)
 
 - Add a fail-closed adapter from the PR #410 `MotorFrame` shape into the integrated Three.js depth-rig intent contract; renderer channels are connected only through explicit joint bindings, never guessed IDs.
