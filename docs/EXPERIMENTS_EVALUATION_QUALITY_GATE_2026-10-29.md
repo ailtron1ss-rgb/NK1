@@ -410,3 +410,16 @@ Confirmatory preregistration теперь сохраняет `sourceCommitSha` (
 Так исключается смешивание в одной выборке запусков из разных исходных ревизий под одним и тем же текстовым названием метода. `methodFingerprint` остаётся отдельным полем: один commit может запускать разные настройки/модели, а одна модель может быть запущена разным runtime-кодом.
 
 Legacy signed artifacts по-прежнему могут существовать без `sourceCommitSha` для старых не-confirmatory ledger workflows. Но они не принимаются в новую confirmatory campaign. Это обратно совместимый ingestion contract с более строгим promotion contract.
+
+### 12.13 Граница доверия: verifier claim ≠ build provenance
+
+`sourceCommitSha` теперь является обязательным для confirmatory campaign и входит в подписываемый `SignedOutcomePayload`. Это сильнее простой метки в JSON: trusted verifier подписывает точную комбинацию `runId`, manifest, метода, fingerprint конфигурации, seed, результата, времени и SHA исходной ревизии. Campaign отказывает, если хоть один корректно подписанный outcome относится к другому SHA.
+
+Но здесь важно различать два утверждения:
+
+1. **Что NK1 сейчас проверяет:** доверенный verifier подписал, что конкретный исход относится к указанному 40-символьному Git commit. Ключ verifier должен быть заранее включён в `trustedVerifierKeys`. Наличие подписи доказывает целостность сообщения и владение ключом, но не само по себе то, что verifier действительно checkout'нул именно этот commit.
+2. **Чего ещё нет:** независимой проверки того, что сборочная платформа получила указанный исходник, исполнила утверждённый workflow и произвела конкретный бинарный/runtime artifact. Для этого нужен подписанный build provenance с builder identity, workflow/run identity, resolved source dependency и digest выходного артефакта.
+
+Для следующей ступени доверия ориентируемся на **in-toto Attestation Framework**: envelope отвечает за аутентификацию, Statement связывает attestation с immutable subject по digest, а predicate описывает контекст происхождения. См. [in-toto Attestation Framework v1.2](https://github.com/in-toto/attestation/blob/main/spec/README.md) и [Statement v1](https://github.com/in-toto/attestation/blob/main/spec/v1/statement.md). Для build provenance совместимая схема SLSA использует `https://slsa.dev/provenance/v1`, связывает subject artifact с builder identity и build definition; см. [SLSA provenance specification](https://github.com/slsa-framework/slsa/blob/main/spec/build-provenance.md) и [SLSA v1.1](https://slsa.dev/spec/v1.1/). GitHub Artifact Attestations отдельно описывает подписанные claims о repository, workflow, organization, event и commit SHA: [GitHub documentation](https://docs.github.com/en/actions/concepts/security/artifact-attestations).
+
+**Текущий статус:** SLSA/in-toto ingestion и проверка builder-attestation в NK1 не реализованы. `sourceCommitSha` — verifier-signed execution claim, а не build attestation и не доказательство воспроизводимой сборки. Не считать этот контур SLSA-compliant и не повышать release assurance только за счёт поля SHA.
