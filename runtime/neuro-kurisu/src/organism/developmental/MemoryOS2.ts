@@ -1374,13 +1374,19 @@ export class MemoryOS2{
    return structuredClone(replacement);
  }
 
- updateContext(id:string, patch:Record<string,string|undefined>) {
+ updateContext(id:string, patch:Record<string,string|undefined>, reason='context-update') {
    const m=this.itemIndex.get(String(id));if(!m)return null;
    const before=estimateMemoryBytes(m);
+   const previousContext=JSON.stringify(m.context??{});
    const previousMetadataTokens=this.metadataTokens(m);
    m.context=mergeMemoContext(m.context,patch);
    this.syncMetadataIndex(m,previousMetadataTokens);
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+   if(previousContext!==JSON.stringify(m.context??{})){
+     const at=Date.now();
+     this.recordRevision(m,{at,from:m.epistemicStatus,to:m.epistemicStatus,reason:String(reason||'context-update').slice(0,240)});
+     this.state.reconsolidations++;
+   }
    return structuredClone(m.context??{});
  }
  /** Merge one independently attributed evidence source through the canonical MemoryOS2 owner. */
