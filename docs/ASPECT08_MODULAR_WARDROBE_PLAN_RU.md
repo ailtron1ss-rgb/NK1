@@ -88,10 +88,10 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 - Wardrobe domain/data contract: 90% for the metadata/control foundation.
 - Selection policy: 75% for the current implementation slice; recommendations remain advisory until a user-enabled runtime applies them.
 - Pack declaration + actual-byte/whole-payload integrity gates: 90% for the validation foundation.
-- VRM/3D pack loader and application API: 80% for the isolated loader/rig-preflight/rollback contract; UI and Avatar3DStage integration remain pending.
+- VRM/3D pack loader and uploaded Avatar3DStage invocation: 90% for the software integration contract; real garment assets and visual E2E remain pending.
 - Actual interchangeable garment assets: 0% verified.
 - Live2D/2.5D renderer application: 0% integrated; Live2D capability inspection is present but no garment switch contract is confirmed.
-- Whole Aspect 08: 48% (conservative; procedural 3D outfit selection is now integrated into Avatar3DStage, while licensed garment packs for uploaded VRM models, persistence, Live2D/2.5D, visual E2E and device validation remain substantial).
+- Whole Aspect 08: 52% (conservative; procedural outfits and verified VRM pack invocation are integrated, while real compatible/licensed garments, persistent state, Live2D/2.5D, visual E2E and device validation remain substantial).
 
 ## Next work
 
