@@ -1,3 +1,9 @@
+## [NK1][WorkPass642] Verify Blender exporter syntax and stage metadata handoff (2026-10-30)
+
+- Add focused source-contract regressions proving that Blender's scene extras are consumed by Avatar3DStage for both the depth manifest and custom face morph bindings, and that bindings are cleared on model reset.
+- Compile the Blender helper with Python's `py_compile` in focused CI; this catches syntax regressions without pretending Blender itself or an authored scene is available on the runner.
+- Correct the first GLB-validator fixture failures based on the actual GitHub Actions trace. The exact-HEAD rerun is the validation authority.
+
 ## [NK1][WorkPass641] Consume artist face bindings from GLB scene extras (2026-10-30)
 
 - Read optional `nk1DepthRigFaceBindings` from the same glTF scene extras as the canonical depth-rig manifest and pass the mapping to the face morph resolver.
