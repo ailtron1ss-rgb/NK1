@@ -105,6 +105,8 @@ export class PersonalitySelfModelBridge {
       action:input.action,relationshipId:input.relationshipId,identityVector:input.identityVector,
       learningScale01:input.learningScale01,evidence01:input.evidence01,
       independent01:input.independent01,consequence01:input.consequence01,
+      evidenceReceiptId:evidenceAccepted?receiptId:undefined,
+      evidenceRef:evidenceAccepted?evidenceRef:undefined,
     });
     const selfModelUpdate=this.selfModel.learnGoalOutcome({
       action:input.action,goalAlignment01:input.goalAlignment01,reward01:input.reward01,tick:input.event.tick,
