@@ -7,12 +7,16 @@ on:
       - 'runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs'
       - 'runtime/neuro-kurisu/tests/aspect10-grounded-bridge.mjs'
       - 'runtime/neuro-kurisu/src/organism/body/GroundedInteractionBridge.ts'
+      - 'app/src/components/avatar/planarArmIK.ts'
+      - 'app/scripts/planar-arm-ik.test.mjs'
       - '.github/workflows/aspect10-embodied-interaction.yml'
   push:
     branches: [aspect10-embodied-world-interaction-2026-10-30]
     paths:
       - 'runtime/neuro-kurisu/src/organism/body/EmbodiedInteractionController.ts'
       - 'runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs'
+      - 'app/src/components/avatar/planarArmIK.ts'
+      - 'app/scripts/planar-arm-ik.test.mjs'
       - '.github/workflows/aspect10-embodied-interaction.yml'
 permissions:
   contents: read
@@ -26,3 +30,5 @@ jobs:
           node-version: '22.12.0'
       - name: Run grounded interaction safety contract
         run: npm --prefix runtime/neuro-kurisu run test:aspect10:interaction
+      - name: Run renderer-independent humanoid arm IK tests
+        run: npm --prefix app run test:planar-arm-ik
