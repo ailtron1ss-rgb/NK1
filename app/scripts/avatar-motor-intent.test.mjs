@@ -179,6 +179,9 @@ test("speech cancellation force-preempts the active Cubism clip in both viewer r
     assert.match(viewer, /MOTION_PRIORITY_FORCE=3/);
     assert.match(viewer, /speechPhase==='cancelled'\?MOTION_PRIORITY_FORCE:MOTION_PRIORITY_NORMAL/);
     assert.match(viewer, /model\.motion\(String\(bodySignal\.motionGroup\),Number\(bodySignal\.motionIndex\|\|0\),priority\)/);
+    assert.match(viewer, /motionRequestSequence/);
+    assert.match(viewer, /request!==motionRequestSequence/);
+    assert.match(viewer, /if\(lastMotionKey===k\)lastMotionKey=''/);
   }
   const cancelled = normalizeEmbodimentIntentV1(baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1" }));
   assert.equal(cancelled.speechPhase, "cancelled");
