@@ -13,6 +13,7 @@ export interface InteractionTarget {
   id:string;
   label:string;
   position:SpatialPoint;
+  frameId:string;
   confidence01:number;
   visible:boolean;
   observedAt:number;
@@ -22,6 +23,7 @@ export interface InteractionTarget {
   radiusM?:number;
 }
 export interface InteractionBody {
+  frameId:string;
   head:SpatialPoint;
   leftHand:SpatialPoint;
   rightHand:SpatialPoint;
@@ -87,7 +89,9 @@ export class EmbodiedInteractionController {
   clear(){this.active=null;}
   plan(input:{target:InteractionTarget;body:InteractionBody;kind:InteractionKind;now?:number;hand?:'left'|'right'}):InteractionAssessment {
     const {target,body,kind}=input; const now=input.now??Date.now();
+    if(!Number.isFinite(now))return {accepted:false,phase:'blocked',reason:'invalid-planning-time'};
     if(!target||!safeId(String(target.id??'')))return {accepted:false,phase:'blocked',reason:'invalid-target-id'};
+    if(typeof target.frameId!=='string'||!target.frameId.trim()||target.frameId!==body?.frameId)return {accepted:false,phase:'blocked',reason:'spatial-coordinate-frame-mismatch'};
     if(!finitePoint(target.position)||!finitePoint(body?.head)||!finitePoint(body?.leftHand)||!finitePoint(body?.rightHand))return {accepted:false,phase:'blocked',reason:'invalid-spatial-coordinates'};
     if(!Number.isFinite(target.observedAt)||target.observedAt>now+1000||now-target.observedAt>this.policy.maxObservationAgeMs)return {accepted:false,phase:'blocked',reason:'stale-or-future-observation'};
     const confidence=clamp(target.confidence01);
