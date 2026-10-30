@@ -38,7 +38,7 @@ try {
       'candidate-v1': hash('candidate-config'),
       'reset-1': hash('reset-config'),
     },
-    primaryMetric: 'pass-rate',
+    primaryMetric: 'task-pass-rate',
     registeredAt: 1_800_000_000_000,
   };
 
