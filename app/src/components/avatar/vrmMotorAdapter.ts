@@ -11,18 +11,18 @@ const CHANNELS: Record<string, { aliases: string[]; axis: "x" | "y" | "z" }> = {
   headPitch: { aliases: ["head", "mixamorighead"], axis: "x" },
   headRoll: { aliases: ["head", "mixamorighead"], axis: "z" },
   neckYaw: { aliases: ["neck", "mixamorigneck", "jbipcneck"], axis: "y" },
-  neckPitch: { aliases: ["neck", "mixamorigneck"], axis: "x" },
+  neckPitch: { aliases: ["neck", "mixamorigneck", "jbipcneck"], axis: "x" },
   spinePitch: { aliases: ["spine", "chest", "upperchest", "mixamorigspine", "jbipcspine", "jbipcchest", "jbipcupperchest"], axis: "x" },
   leftShoulderPitch: { aliases: ["leftupperarm", "leftarm", "leftshoulder", "mixamorigleftarm", "jbiplupperarm"], axis: "x" },
-  leftShoulderRoll: { aliases: ["leftupperarm", "leftarm", "leftshoulder", "mixamorigleftarm"], axis: "z" },
+  leftShoulderRoll: { aliases: ["leftupperarm", "leftarm", "leftshoulder", "mixamorigleftarm", "jbiplupperarm"], axis: "z" },
   leftElbowFlex: { aliases: ["leftlowerarm", "leftforearm", "mixamorigleftforearm", "jbipllowerarm"], axis: "x" },
   rightShoulderPitch: { aliases: ["rightupperarm", "rightarm", "rightshoulder", "mixamorigrightarm", "jbiprupperarm"], axis: "x" },
-  rightShoulderRoll: { aliases: ["rightupperarm", "rightarm", "rightshoulder", "mixamorigrightarm"], axis: "z" },
+  rightShoulderRoll: { aliases: ["rightupperarm", "rightarm", "rightshoulder", "mixamorigrightarm", "jbiprupperarm"], axis: "z" },
   rightElbowFlex: { aliases: ["rightlowerarm", "rightforearm", "mixamorigrightforearm", "jbiprlowerarm"], axis: "x" },
   leftHipFlex: { aliases: ["leftupperleg", "leftupleg", "mixamorigleftupleg", "jbiplupperleg"], axis: "x" },
   leftKneeFlex: { aliases: ["leftlowerleg", "leftleg", "mixamorigleftleg", "jbipllowerleg"], axis: "x" },
   rightHipFlex: { aliases: ["rightupperleg", "rightupleg", "mixamorigrightupleg", "jbiprupperleg"], axis: "x" },
-  rightKneeFlex: { aliases: ["rightlowerleg", "rightleg", "mixamorigrightleg", "jbiprlowerleg"], axis: "x" },
+  rightKneeFlex: { aliases: ["rightlowerleg", "rightleg", "mixamorigrightleg", "jbipr lowerleg".replace(/ /g, "")], axis: "x" },
 };
 
 export interface VrmMotorApplyResult {
@@ -38,8 +38,8 @@ export interface VrmMotorAdapter {
 
 /**
  * Adapts NK1 canonical joint channels to a loaded VRM/GLB humanoid-like skeleton.
- * It applies offsets on top of the current animation-mixer pose, so the mixer remains
- * the base animation source while organism intent supplies bounded additive control.
+ * The caller restores the animation/bind pose before each mixer update; this adapter
+ * then adds the bounded NK1 offsets over that frame's current mixer result.
  */
 export function createVrmMotorAdapter(root: NodeLike): VrmMotorAdapter {
   const nodes: NodeLike[] = [];
