@@ -32,6 +32,14 @@ The production `OrganismCore.ts` is a very large file (about 1.32 MB in the Git 
 `UnifiedCognitiveSubstrate` is a bounded read-only projection, not a canonical owner. Its old `restore()` used nested object spreads over persisted input. That admitted malformed values and unknown properties into the runtime projection. Its `integrate()` accepted duplicate or decreasing ticks and did not guard its cycle counter against safe-integer overflow.
 
 ### Implementation
+### Additional memory-lifecycle integrity fix
+
+A deeper pass found the same unsafe restore pattern in `CanonicalMemoryLifecycleAuthority`: persisted fields were spread into live state, and the authority did not reject duplicate or decreasing ticks before invoking maintenance.
+
+The authority now restores only the declared schema, validates counters, clamps normalized metrics, filters the persisted P70 plan and consolidation decisions, ignores unknown fields, and rejects unsupported versions before replacing the last valid state. Both `run()` and `maintainCanonical()` now share one strictly increasing non-negative safe-integer tick boundary.
+
+Added `workpass618-canonical-memory-lifecycle-integrity.mjs`, an npm script, and a CI step. The test covers corrupt restore fields, invalid decisions, unsupported-version non-mutation, duplicate/stale ticks and shared tick ownership.
+
 
 1. Restore now performs an allow-list projection for every nested domain.
 2. Non-finite/malformed metrics fall back to domain defaults; finite metrics are clamped to `[0,1]`.
@@ -48,6 +56,8 @@ The production `OrganismCore.ts` is a very large file (about 1.32 MB in the Git 
 ## Files changed
 
 - `runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts`
+- `runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts`
+- `runtime/neuro-kurisu/tests/workpass618-canonical-memory-lifecycle-integrity.mjs`
 - `runtime/neuro-kurisu/tests/workpass617-unified-substrate-restore-integrity.mjs`
 - `runtime/neuro-kurisu/package.json`
 - `.github/workflows/workpass287-288-cognitive-contracts.yml`
