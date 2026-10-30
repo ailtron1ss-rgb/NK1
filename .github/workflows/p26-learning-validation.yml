@@ -26,6 +26,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/hexis-correction-memory.mjs"
       - "runtime/neuro-kurisu/tests/p23-learning-attempt-diagnosis.mjs"
+      - "runtime/neuro-kurisu/tests/workpass293-autonomous-p23-revision.mjs"
       - "runtime/neuro-kurisu/tests/p23-reflection-reason-runtime-wiring.mjs"
       - "runtime/neuro-kurisu/tests/workpass383-p23-revision-generator-boundary.mjs"
       - "runtime/neuro-kurisu/tests/workpass402-production-promotion-family-gate.mjs"
@@ -82,6 +83,9 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Verify bounded P23 background revision and fail-closed staging
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass293:p23-revision
       - name: Validate learning input integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:learning-input-integrity
