@@ -70,6 +70,8 @@ jobs:
         run: npm --prefix app run test:avatar-humanoid-bones
       - name: Validate native VRM facial expressions and morph targets
         run: npm --prefix app run test:avatar-vrm-expressions
+      - name: Validate official Pixiv VRM runtime integration
+        run: npm --prefix app run test:avatar-pixiv-vrm-runtime
       - name: Validate affect-aware browser prosody and lip timing
         run: npm --prefix app run test:browser-voice-prosody
       - name: Validate Live2D/speech timeline
