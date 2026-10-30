@@ -1,3 +1,12 @@
+## [NK1][2.5D] Deliver canonical MotorFrames to the avatar stage (2026-10-30)
+
+- Add the app API client for the backend's read-only `GET /api/organism/motor-frame` snapshot.
+- When 3D or 2.5D mode is selected, poll the latest server-owned frame at a bounded 1 Hz cadence; stop polling when the user switches to another avatar mode.
+- Validate the response envelope and every joint's identity, availability and numeric state before forwarding the measured angle data to the existing explicit-binding adapter.
+- Keep semantic animation as the fallback when the backend is unavailable, the skeleton is unconfigured, or no calibrated bindings are supplied. The UI cannot submit or fabricate motor frames.
+- Add the API file to the focused workflow and run the app TypeScript check there.
+- This is a transport bridge only: the server currently has no calibrated Kurisu skeleton profile or autonomous motor-goal source, and no production joint bindings or visual postcondition are claimed. This UI path depends on the read-only endpoint introduced by PR #410.
+
 ## [NK1][2.5D] Repair exported-GLB validator regression fixtures (2026-10-30)
 
 - Fix a missing local GLB document in the parent/TRS mismatch test, which caused a ReferenceError before exercising the validator.
