@@ -159,6 +159,6 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 - разрешает attachment только при `ready` switch plan и наличии точного asset ID в `expectedAssetIds`;
 - сначала клонирует и переназначает весь garment, затем добавляет его в сцену и только после успешного attach скрывает прежний предмет того же slot. Ошибка подготовки не меняет активный образ.
 
-Добавлен `vrm-wardrobe-adapter.test.mjs`: нормализованные имена костей, отсутствующая и дублирующаяся кость, статический/non-skinned ресурс, запрет asset ID вне switch plan, успешное remap и замена слота. Набор включён в `npm run test:wardrobe`.
+Добавлен `vrm-wardrobe-adapter.test.mjs`: нормализованные имена костей, отсутствующая и дублирующаяся кость, статический/non-skinned ресурс, запрет asset ID вне switch plan, успешное remap и замена слота. Набор включён в `npm run test:wardrobe`; добавлен отдельный PR workflow `.github/workflows/nk1-wardrobe-validation.yml` (Node 22.12, `npm ci`, focused wardrobe suite).
 
 **Граница:** adapter написан, но пока не подключён к `Avatar3DStage` загрузчику VRM/GLB и не имеет настоящего garment pack для проверки. Требуются loader/UI для выбора pack и asset ID, rights/provenance gate, реальные skinned garment meshes с корректным rig/rest pose, материалы/occlusion, визуальные тесты на нескольких позах и Android/desktop E2E. Никакой фактический outfit-switch на загруженной пользовательской модели пока не заявляется.
