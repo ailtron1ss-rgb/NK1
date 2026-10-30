@@ -3,11 +3,16 @@
  *
  * OrganismCore remains the canonical owner of cognitive/action selection.
  * This circuit only arbitrates among renderer-neutral motor subgoals after an
- * organism action/intent has been authorized. It reuses NK1's basal-ganglia
- * selector and cerebellar predictor instead of creating competing learners.
+ * organism action/intent has been authorized. Learning is accepted only from
+ * the exact process-local receipt minted by OutcomeVerificationService.
  */
 import { BasalGangliaSelectionCircuit } from "./BasalGangliaSelectionCircuit.ts";
 import { CerebellarPredictiveController } from "./CerebellarPredictiveController.ts";
+import {
+  isTrustedDecisionLinkedExternalPostcondition,
+  type ExpectedDecisionOutcomeBinding,
+  type OutcomeVerification,
+} from "./OutcomeVerificationService.ts";
 import {
   EmbodiedMotorController,
   type MotorGoal,
@@ -56,6 +61,7 @@ export interface MotorArbitrationResult {
   ranked: Array<{ id: string; action: string; gate01: number; utility01: number; confidence01: number }>;
 }
 
+/** Legacy caller-asserted shape. It is intentionally no longer accepted for learning. */
 export interface VerifiedMotorOutcome {
   evidenceId: string;
   action: string;
@@ -69,6 +75,13 @@ export interface VerifiedMotorOutcome {
   goalId: string;
 }
 
+interface PendingMotorGoal {
+  action: string;
+  verificationToolId: string | null;
+  predictedUtility01: number;
+  proposedTick: number;
+}
+
 export interface MotorArbitrationSnapshot {
   version: 1;
   basalGanglia: ReturnType<BasalGangliaSelectionCircuit["snapshot"]>;
@@ -76,6 +89,7 @@ export interface MotorArbitrationSnapshot {
   controller: MotorControllerSnapshot;
   creditedEvidenceIds: string[];
   pendingGoalIds: string[];
+  pendingGoalMetadata?: Record<string, PendingMotorGoal>;
   lastResult: MotorArbitrationResult | null;
 }
 
@@ -87,6 +101,7 @@ export class MotorGoalArbiter {
   private cerebellar = new CerebellarPredictiveController();
   private creditedEvidenceIds = new Set<string>();
   private pendingGoalIds = new Set<string>();
+  private pendingGoalMetadata = new Map<string, PendingMotorGoal>();
   private lastResult: MotorArbitrationResult | null = null;
 
   constructor(controller: EmbodiedMotorController) { this.controller = controller; }
@@ -175,10 +190,19 @@ export class MotorGoalArbiter {
       reason = result.reason;
       if (accepted) {
         motorFrame = this.controller.step(context.nowMs);
-        this.pendingGoalIds.add(selected!.goal.id);
+        this.pendingGoalIds.add(selected.goal.id);
+        this.pendingGoalMetadata.set(selected.goal.id, {
+          action: selected.goal.action,
+          verificationToolId: selected.goal.verificationToolId ?? null,
+          predictedUtility01: clamp(selected.predictedUtility01),
+          proposedTick: context.tick,
+        });
         if (this.pendingGoalIds.size > 2048) {
           const oldest = this.pendingGoalIds.values().next().value;
-          if (oldest) this.pendingGoalIds.delete(oldest);
+          if (oldest) {
+            this.pendingGoalIds.delete(oldest);
+            this.pendingGoalMetadata.delete(oldest);
+          }
         }
       }
     } else if (!selected) {
@@ -201,32 +225,64 @@ export class MotorGoalArbiter {
     return result;
   }
 
-  recordVerifiedOutcome(outcome: VerifiedMotorOutcome): { accepted: boolean; reason: string } {
-    if (!outcome || outcome.verified !== true || outcome.independent !== true) {
-      return { accepted: false, reason: "independent-verification-required" };
+  /**
+   * Only an exact OutcomeVerificationService receipt, still present in its
+   * process-local WeakMap and bound to the matching gateway ticket, may train
+   * motor policies. A serialized/reconstructed receipt deliberately fails.
+   */
+  recordTrustedOutcome(input: {
+    goalId: string;
+    receipt: OutcomeVerification;
+    binding: ExpectedDecisionOutcomeBinding;
+    tick: number;
+    dopamine01: number;
+  }): { accepted: boolean; reason: string } {
+    if (!input || typeof input.goalId !== "string" || !input.goalId.trim()) {
+      return { accepted: false, reason: "invalid-motor-outcome-goal-id" };
     }
-    if (!/^[a-z0-9][a-z0-9._:-]{2,127}$/i.test(outcome.evidenceId)) {
-      return { accepted: false, reason: "invalid-evidence-id" };
-    }
-    if (this.creditedEvidenceIds.has(outcome.evidenceId)) {
-      return { accepted: false, reason: "duplicate-evidence-credit" };
-    }
-    if (typeof outcome.goalId !== "string" || !this.pendingGoalIds.has(outcome.goalId)) {
+    const pending = this.pendingGoalMetadata.get(input.goalId);
+    if (!pending || !this.pendingGoalIds.has(input.goalId)) {
       return { accepted: false, reason: "no-matching-executed-goal" };
     }
-    if (![outcome.predictedUtility01, outcome.actualUtility01, outcome.surprise01, outcome.dopamine01].every(Number.isFinite)
-      || !Number.isSafeInteger(outcome.tick) || outcome.tick < 0 || !String(outcome.action ?? "").trim()) {
-      return { accepted: false, reason: "invalid-outcome" };
+    if (!pending.verificationToolId || input.binding?.toolId !== pending.verificationToolId) {
+      return { accepted: false, reason: "motor-goal-verification-tool-mismatch" };
     }
-    this.creditedEvidenceIds.add(outcome.evidenceId);
-    this.pendingGoalIds.delete(outcome.goalId);
+    if (!isTrustedDecisionLinkedExternalPostcondition(input.receipt, input.binding)) {
+      return { accepted: false, reason: "trusted-external-postcondition-receipt-required" };
+    }
+    const evidenceId = input.receipt.observationId;
+    if (!evidenceId || !/^[a-z0-9][a-z0-9._:-]{2,179}$/i.test(evidenceId)) {
+      return { accepted: false, reason: "invalid-trusted-observation-id" };
+    }
+    if (this.creditedEvidenceIds.has(evidenceId)) {
+      return { accepted: false, reason: "duplicate-evidence-credit" };
+    }
+    if (input.receipt.confidence01 < 0.6) {
+      return { accepted: false, reason: "trusted-receipt-confidence-below-learning-threshold" };
+    }
+    if (!Number.isSafeInteger(input.tick) || input.tick < pending.proposedTick ||
+        !Number.isFinite(input.dopamine01) || input.dopamine01 < 0 || input.dopamine01 > 1) {
+      return { accepted: false, reason: "invalid-motor-outcome-context" };
+    }
+
+    const predictedUtility01 = pending.predictedUtility01;
+    const actualUtility01 = clamp(input.receipt.confidence01);
+    const surprise01 = Math.abs(actualUtility01 - predictedUtility01);
+    this.creditedEvidenceIds.add(evidenceId);
+    this.pendingGoalIds.delete(input.goalId);
+    this.pendingGoalMetadata.delete(input.goalId);
     if (this.creditedEvidenceIds.size > 2048) {
       const oldest = this.creditedEvidenceIds.values().next().value;
       if (oldest) this.creditedEvidenceIds.delete(oldest);
     }
-    this.cerebellar.recordOutcome(outcome.action, outcome.predictedUtility01, outcome.actualUtility01, outcome.surprise01, outcome.tick);
-    this.basalGanglia.recordOutcome(outcome.action, outcome.actualUtility01, outcome.surprise01, outcome.tick, outcome.dopamine01);
-    return { accepted: true, reason: "independently-verified-motor-outcome-credited" };
+    this.cerebellar.recordOutcome(pending.action, predictedUtility01, actualUtility01, surprise01, input.tick);
+    this.basalGanglia.recordOutcome(pending.action, actualUtility01, surprise01, input.tick, input.dopamine01);
+    return { accepted: true, reason: "trusted-external-postcondition-credited" };
+  }
+
+  /** Caller-provided booleans are not evidence and can never authorize learning. */
+  recordVerifiedOutcome(_outcome: VerifiedMotorOutcome): { accepted: boolean; reason: string } {
+    return { accepted: false, reason: "trusted-external-postcondition-receipt-required" };
   }
 
   snapshot(): MotorArbitrationSnapshot {
@@ -237,6 +293,7 @@ export class MotorGoalArbiter {
       controller: this.controller.snapshot(),
       creditedEvidenceIds: [...this.creditedEvidenceIds].slice(-2048),
       pendingGoalIds: [...this.pendingGoalIds].slice(-2048),
+      pendingGoalMetadata: Object.fromEntries(this.pendingGoalMetadata.entries()),
       lastResult: this.lastResult ? structuredClone(this.lastResult) : null,
     };
   }
@@ -247,6 +304,17 @@ export class MotorGoalArbiter {
     this.controller.restore(snapshot?.controller);
     this.creditedEvidenceIds = new Set((snapshot?.creditedEvidenceIds ?? []).filter((id) => typeof id === "string").slice(-2048));
     this.pendingGoalIds = new Set((snapshot?.pendingGoalIds ?? []).filter((id) => typeof id === "string").slice(-2048));
+    const metadata = snapshot?.pendingGoalMetadata ?? {};
+    this.pendingGoalMetadata = new Map([...this.pendingGoalIds].flatMap((id) => {
+      const item = metadata[id];
+      return item && typeof item.action === "string" && Number.isFinite(item.predictedUtility01) &&
+        Number.isSafeInteger(item.proposedTick) ? [[id, {
+          action: item.action,
+          verificationToolId: typeof item.verificationToolId === "string" ? item.verificationToolId : null,
+          predictedUtility01: clamp(item.predictedUtility01),
+          proposedTick: item.proposedTick,
+        }] as const] : [];
+    }));
     this.lastResult = snapshot?.lastResult ? structuredClone(snapshot.lastResult) : null;
   }
 
@@ -255,6 +323,7 @@ export class MotorGoalArbiter {
       basalGanglia: this.basalGanglia.diagnostics(),
       cerebellar: this.cerebellar.diagnostics(),
       creditedEvidenceCount: this.creditedEvidenceIds.size,
+      pendingGoalCount: this.pendingGoalIds.size,
       lastSelectedAction: this.lastResult?.selectedAction ?? null,
     };
   }
