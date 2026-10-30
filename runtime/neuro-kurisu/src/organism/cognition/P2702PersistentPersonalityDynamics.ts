@@ -47,6 +47,7 @@ export class P2702PersistentPersonalityDynamics{
     return clamp(Number(raw??fallback[index]??.5),min,max);
    });
   };
+  const values=(value:unknown,length:number,fallback:number[],min=0,max=1)=>Array.from({length},(_,i)=>clamp(Number(Array.isArray(value)?(value[i]??fallback[i]??.5):(fallback[i]??.5)),min,max));
   const count=(value:unknown)=>Math.max(0,Math.min(1_000_000,Math.floor(Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):0)));
   const invariantValues=mappedValues(r.invariantNames,r.invariantValues,d.invariantNames,d.invariantValues);
   const adaptiveValues=mappedValues(r.adaptiveNames,r.adaptiveValues,d.adaptiveNames,d.adaptiveValues);
