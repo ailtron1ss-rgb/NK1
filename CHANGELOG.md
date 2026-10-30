@@ -1,3 +1,9 @@
+## [NK1][Aspect 02] Add machine-readable layered-art handoff schema (2026-10-30)
+
+- Add a JSON Schema 2020-12 contract for future authored layer manifests: normalized canvas coordinates, explicit depth planes, stable layer IDs, parent/pivot/transform/bounds, occlusion and underpaint metadata, optional mesh topology constraints, source provenance, and human review state.
+- Require explicit author/source/license/redistribution fields and separate draft/revision/approved review state; a schema-valid file is not itself art approval or a rig-readiness claim.
+- No production artwork, layer manifest, mesh, depth map or rig is created by this schema-only step. Existing 24 production slots remain not-authored; Release ZIP unchanged.
+
 ## [NK1][Aspect 02] Define rig-safe 2.5D handoff requirements for original character art (2026-10-30)
 
 - Extend the machine-readable character contract with explicit depth-plane semantics, normalized pivot coordinates, parent/transform records, occlusion/hidden-anatomy rules, optional mesh constraints, deformation test poses, camera/depth rules, texture budgets and promotion gates.
