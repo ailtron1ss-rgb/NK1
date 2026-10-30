@@ -70,6 +70,18 @@ export class P2702PersistentPersonalityDynamics{
    autobiographicalStrength01:clamp(Number(r.autobiographicalStrength01??d.autobiographicalStrength01)),
    lastReward01:clamp(Number(r.lastReward01??d.lastReward01))};
  }
+private updateRelationshipTrust(relationshipId:unknown,trustSignal:number,rate:number){
+  if(typeof relationshipId!=='string')return;
+  const key=relationshipId.trim().normalize('NFKC');
+  if(!key||key.length>80||[...key].some(char=>{const code=char.charCodeAt(0);return code<=31||(code>=127&&code<=159);}))return;
+  if(!Object.prototype.hasOwnProperty.call(this.state.relationshipTrust,key)&&Object.keys(this.state.relationshipTrust).length>=32){
+    const oldest=Object.keys(this.state.relationshipTrust)[0];
+    if(oldest)delete this.state.relationshipTrust[oldest];
+  }
+  const prior=this.state.relationshipTrust[key]??.5;
+  const boundedRate=clamp(rate);
+  this.state.relationshipTrust[key]=clamp(prior*(1-boundedRate)+clamp(trustSignal)*boundedRate);
+}
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
   this.state.tick=args.tick;this.state.experienceCount++;this.state.lastReward01=clamp(args.reward01??.5);
   const tension=clamp(args.identityGap01*.5+args.uncertainty01*.3+args.novelty01*.2);
@@ -93,7 +105,7 @@ export class P2702PersistentPersonalityDynamics{
   this.state.identityContinuity01=clamp(this.state.identityContinuity01*.97+(1-selfErr)*.03);
   this.state.coherence01=clamp(this.state.coherence01*.95+(1-this.state.contradiction01)*.05);
   this.state.stability01=clamp(this.state.stability01*.98+(1-this.state.drift01)*.02);
-  if(args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;this.state.relationshipTrust[args.relationshipId]=clamp(prior*.995+(1-args.identityGap01)*.005);}
+  if(args.relationshipId)this.updateRelationshipTrust(args.relationshipId,1-clamp(args.identityGap01),.005);
   return {actionBias:bias,traitVector:this.state.adaptiveValues.slice(),valueVector:this.state.valueWeights.slice(),identityContinuity01:this.state.identityContinuity01,coherence01:this.state.coherence01,stability01:this.state.stability01,contradiction01:this.state.contradiction01};
  }
  afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string}){
@@ -117,7 +129,7 @@ export class P2702PersistentPersonalityDynamics{
    this.state.adaptiveValues[index]=clamp((this.state.adaptiveValues[index]??.5)+(signal-.5)*eta*target.weight);
   }
   const valueEta=eta*.22;for(let i=0;i<this.state.valueWeights.length;i++)this.state.valueWeights[i]=clamp(this.state.valueWeights[i]!+(signal-.5)*valueEta*(i<2?.35:1));
-  if(args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[args.relationshipId]=clamp(prior*.94+trustSignal*.06);}
+  if(args.relationshipId){const trustSignal=clamp(reward*.55+verified*.3+(1-clamp(args.identityGap01))*.15);this.updateRelationshipTrust(args.relationshipId,trustSignal,.06);}
   const uncertaintyShift=clamp(error*.35+(1-verified)*.3);
   for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
   // Identity beliefs learn more slowly than habits and only from the verified lane.
