@@ -191,7 +191,7 @@ export interface P41SemanticInput {
   };
   audio?:{events?:Array<{label:string;confidence01?:number}>;relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;latencyMs?:number;semantic:boolean};
   sensor?:{location?:string;orientationDeg?:number;energy01?:number;thermal01?:number;capacity01?:number;motion01?:number;freshness01?:number};
-  world?:{scene?:string;evidenceKind?:P41EvidenceKind;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number;evidenceKind?:P41EvidenceKind}>;events?:string[]};
+  world?:{scene?:string;evidenceKind?:P41EvidenceKind;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number;bbox2D?:P41ImageBox;bboxCameraId?:number;bboxAt?:number;bboxConfidence01?:number;evidenceKind?:P41EvidenceKind}>;events?:string[]};
   at?:number;
 }
 
@@ -335,7 +335,17 @@ export class P41SemanticPerceptionEngine {
       const evidenceKind=o.evidenceKind??sceneEvidenceKind;
       const coordinateFrameId=cleanTrackId(o.coordinateFrameId);
       const position=coordinateFrameId?finitePosition(o.x,o.y,o.z):null;
-      this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined);
+      const entity=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined);
+      const box=o.bbox2D;
+      const validBox=Boolean(box&&[box.x,box.y,box.width,box.height].every(value=>typeof value==='number'&&Number.isFinite(value))
+        &&box.x>=0&&box.y>=0&&box.width>0&&box.height>0&&box.x+box.width<=1.000001&&box.y+box.height<=1.000001);
+      const boxAt=Number.isFinite(o.bboxAt)?Number(o.bboxAt):at;
+      if(entity&&validBox&&Number.isFinite(o.bboxCameraId)&&Number(o.bboxCameraId)>=0&&Number(o.bboxConfidence01??0)>=.42&&boxAt>=(entity.imageBoxAt??0)){
+        entity.imageBox={x:box!.x,y:box!.y,width:box!.width,height:box!.height};
+        entity.imageBoxCameraId=Math.floor(Number(o.bboxCameraId));
+        entity.imageBoxAt=boxAt;
+        entity.imageBoxConfidence01=clamp(o.bboxConfidence01??0);
+      }
     }
     for(const e of (w.events??[]).slice(0,16)) this.upsertEvent(String(e),.6,'world',at,sceneEvidenceKind);
     this.recordModality('world',.7,0);
