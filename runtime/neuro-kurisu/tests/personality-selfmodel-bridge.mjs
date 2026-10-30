@@ -188,16 +188,26 @@ boundedRelationships.beforeDecision({
 assert.equal(Object.keys(boundedRelationships.snapshot().relationshipTrust).length,0,'decision preparation must not invent relationship trust');
 for (let i = 0; i < 40; i++) boundedRelationships.afterOutcome({
   tick: i + 2, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1,
-  action: 'respond', relationshipId: `relationship-${i}`, evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1,
+  action: 'respond', relationshipId: `relationship-${i}`, evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, evidenceReceiptId:`reb:${i+2}:1:outcome`, evidenceRef:`external-verification:reb:${i+2}:1:outcome`,
 });
 boundedRelationships.afterOutcome({
   tick: 42, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1,
-  action: 'respond', relationshipId: '__proto__', evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1,
+  action: 'respond', relationshipId: '__proto__', evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, evidenceReceiptId:'reb:42:1:outcome', evidenceRef:'external-verification:reb:42:1:outcome',
 });
 assert.ok(Object.keys(boundedRelationships.snapshot().relationshipTrust).length <= 32);
 assert.equal(Object.hasOwn(boundedRelationships.snapshot().relationshipTrust, '__proto__'), false);
+const directP2702Bypass = new P2702PersistentPersonalityDynamics();
+const directP2702Before = directP2702Bypass.snapshot();
+directP2702Bypass.afterOutcome({ tick: 50, reward01: 1, verified01: 1, predictionError01: 0, identityGap01: 0, action: 'respond', identityVector:[1,1,1,1,1,1,1,1], relationshipId:'user', learningScale01:1, evidence01:1, independent01:1, consequence01:1 });
+assert.deepEqual(directP2702Bypass.snapshot().valueWeights,directP2702Before.valueWeights,'direct callers cannot update stable values without an exact receipt');
+assert.deepEqual(directP2702Bypass.snapshot().selfBeliefs,directP2702Before.selfBeliefs,'direct callers cannot update self-beliefs without an exact receipt');
+assert.deepEqual(directP2702Bypass.snapshot().relationshipTrust,directP2702Before.relationshipTrust,'direct callers cannot update relationship trust without an exact receipt');
+const relationshipRestore = new P2702PersistentPersonalityDynamics();
+relationshipRestore.restore({ relationshipTrust:{ 'Ａlice':0.9, 'Alice':0.2, 'bad\\u0000key':1, '__proto__':1, 'constructor':1 } });
+assert.equal(Object.keys(relationshipRestore.snapshot().relationshipTrust).length,1,'restore normalizes Unicode and drops duplicate/unsafe relationship IDs');
+assert.equal(relationshipRestore.snapshot().relationshipTrust.Alice,0.9);
 const dimensionSafePersonality = new P2702PersistentPersonalityDynamics();
-dimensionSafePersonality.afterOutcome({ tick: 1, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1, action: 'reflect', identityVector: [NaN, 0.99], evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1 });
+dimensionSafePersonality.afterOutcome({ tick: 1, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1, action: 'reflect', identityVector: [NaN, 0.99], evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, evidenceReceiptId:'reb:1:1:outcome', evidenceRef:'external-verification:reb:1:1:outcome' });
 assert.equal(dimensionSafePersonality.snapshot().selfBeliefs[0], 0.72, 'invalid vector dimensions are skipped without shifting following coordinates');
 assert.ok(dimensionSafePersonality.snapshot().selfBeliefs[1] > 0.68);
 const p80 = new P80UnifiedSelfState();
