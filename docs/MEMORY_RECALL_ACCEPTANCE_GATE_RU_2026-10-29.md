@@ -49,6 +49,7 @@
 - Перефразирование, склонения/морфология, опечатки и смешанные RU/EN запросы.
 - Точные идентификаторы, числа и кодовые имена.
 - Типизированный recall: autobiographical/profile, episodic, goal, procedural, causal.
+- Agentic environment recall: static-state, dynamic-state, workflow-knowledge, environment-gotcha, premise-awareness (benchmark annotations, not new runtime memory kinds).
 - No-answer и нерелевантные distractors: правильный abstention.
 - Непротиворечивость результата при разном порядке snapshot и после перезапуска.
 - Отдельное измерение retrieval failure и answer/reasoning failure.
@@ -130,3 +131,4 @@ npm run test:memory-acceptance
 - [Двуязычные gate rules](https://github.com/ailtron1ss-rgb/NK1/blob/workpass70-source/docs/WORKPASS496_BILINGUAL_MEMORY_RETRIEVAL_GATES_RU.md)
 - [Протокол эксперимента retrieval](https://github.com/ailtron1ss-rgb/NK1/blob/workpass70-source/docs/MEMORY_RETRIEVAL_EXPERIMENT_PROTOCOL_2026-10-10.md)
 - [Hexis evidence lineage](https://github.com/ailtron1ss-rgb/NK1/blob/workpass70-source/docs/WORKPASS509_HEXIS_TRACE_IDENTITY_AND_FUTURE_EVIDENCE_RU.md)
+- [LongMemEval-V2 agentic memory benchmark](https://github.com/xiaowu0162/LongMemEval-V2)
