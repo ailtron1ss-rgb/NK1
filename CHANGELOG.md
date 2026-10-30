@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Stream MotorFrames to renderers with bounded backpressure (2026-10-30)
+
+- Add `GET /api/organism/motor-frame/stream` as a read-only server-sent event stream backed by the canonical MotorFrameChannel subscription.
+- Send only server-produced frames; replay the latest snapshot on connection, include a compact configured/has-frame status event, and send bounded keep-alive comments.
+- Coalesce writes while the response is backpressured so a slow renderer retains only the latest pending frame instead of building an unbounded output queue.
+- Dispose the channel subscription and heartbeat on response close/abort. Keep the ordinary JSON snapshot endpoint for diagnostics and non-stream clients.
+- Add a server smoke test for the stream content type and fail-closed unconfigured status. This does not claim a calibrated production skeleton or actual renderer pose application.
+
 ## [NK1][Embodiment] Decouple motor integration from cognitive cadence (2026-10-30)
 
 - Add an explicitly started, bounded 20 Hz monotonic motor loop to the organism-owned motor composition; the loop advances the one canonical controller and publishes its latest frame independently of slow cognitive cycles.
