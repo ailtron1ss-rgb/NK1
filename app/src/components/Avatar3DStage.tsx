@@ -89,7 +89,7 @@ export function Avatar3DStage(props:Props){
         gesture,
         gestureIntensity:p.awake?clamp(p.speaking?.92:p.action==="wait"?.12:.58,0,1):.08,
       });
-      const revision=Number.isSafeInteger(p.revision)&&p.revision>=0?p.revision:0;
+      const revision=typeof p.revision==="number"&&Number.isSafeInteger(p.revision)&&p.revision>=0?p.revision:0;
       const result=applyDepthRigPreparedScenePoseV1(rt.depthRigScene,depthPose,{stateRevision:revision,executionId:"depth-rig-frame-"+revision+"-"+(++rt.depthRigFrame)});
       // A scene readback is deliberately not called GPU presentation evidence.
       if(result.status!=="applied") console.warn("NK1 2.5D renderer rejected pose",result.errors);
