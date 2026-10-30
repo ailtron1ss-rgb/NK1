@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GARMENTS, OUTFITS, getOutfit, isSafeWardrobeAssetPath, recommendOutfit, resolveOutfitAssets, validateWardrobeCatalog } from "../src/components/avatar/wardrobeSystem.ts";
+import { GARMENTS, OUTFITS, getOutfit, isSafeWardrobeAssetPath, recommendOutfit, resolveOutfitAssets, resolveWardrobeSelection, validateWardrobeCatalog } from "../src/components/avatar/wardrobeSystem.ts";
 
 test("wardrobe catalog has unique garments, valid outfit references and no slot collisions",()=>{
  assert.deepEqual(validateWardrobeCatalog(),[]);
@@ -37,4 +37,26 @@ test("asset resolution exposes only verified renderer-specific assets",()=>{
 });
 test("unknown outfit ids fall back deterministically to the canonical first outfit",()=>{
  assert.equal(getOutfit("unknown").id,"lab_coat");
+});
+
+
+test("wardrobe selection composes independent slots without pretending missing art is renderable",()=>{
+ const selection=resolveWardrobeSelection(["coat-lab","bottom-neutral","shoes-neutral","hair-clip-red"],"vrm3d");
+ assert.equal(selection.valid,true);
+ assert.equal(selection.ready,false);
+ assert.equal(selection.garments.length,4);
+ assert.equal(selection.assets.length,0);
+ assert.deepEqual(selection.missingGarmentIds,["coat-lab","bottom-neutral","shoes-neutral","hair-clip-red"]);
+});
+test("wardrobe selection rejects duplicate slots, unknown IDs and repeated garments",()=>{
+ const duplicateSlot=resolveWardrobeSelection(["top-casual","top-hoodie"],"vrm3d");
+ assert.ok(duplicateSlot.errors.includes("selection:duplicate-slot:top"));
+ const duplicateId=resolveWardrobeSelection(["coat-lab","coat-lab"],"vrm3d");
+ assert.ok(duplicateId.errors.includes("selection:duplicate-garment:coat-lab"));
+ const unknown=resolveWardrobeSelection(["not-a-garment"],"vrm3d");
+ assert.ok(unknown.errors.includes("selection:unknown-garment:not-a-garment"));
+});
+test("untrusted non-string asset paths fail closed instead of throwing",()=>{
+ assert.equal(isSafeWardrobeAssetPath(17),false);
+ assert.equal(isSafeWardrobeAssetPath({toString:()=>"safe.png"}),false);
 });
