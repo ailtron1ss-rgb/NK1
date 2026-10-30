@@ -1,3 +1,10 @@
+## [NK1][аспект9] Add native Termux speech provider event channel (2026-10-30)
+
+- Add a process-local, identity-bound event channel for Termux TTS command request, process spawn/exit/error and interrupt outcomes. Events carry per-operation sequence numbers and monotonic timestamps; observer failures are isolated from speech execution.
+- Keep provider-process telemetry separate from SpeechLifecycleEventV1: every native provider event explicitly carries `playbackVerified=false`. A successful process exit is still not evidence that Android audio reached the listener or finished playing.
+- Wire AndroidEmbodimentBridge to publish the process events and add deterministic regressions for operation isolation, ordering, monotonic time, unsubscribe behavior and the playback-verification boundary.
+- This is a native runtime observability seam, not yet a transport into the app/Live2D timeline. A host/UI adapter and real Android audio readback remain pending.
+
 ## [NK1][аспект9] Fix negative-arousal prosody regression (2026-10-30)
 
 - Increase the canonical anxiety and anger/frustration de-escalation deltas so negative high-arousal delivery is measurably slower than the calm baseline even when the `respond` action initially selects a focused/warm tone.
