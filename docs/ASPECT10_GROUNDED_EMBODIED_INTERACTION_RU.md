@@ -65,3 +65,9 @@ Expected: deterministic planner tests covering grounded look, reach, contact pol
 - The adapter requires explicit per-rig axis, sign, offset and joint-limit calibration. It refuses missing/ambiguous bones, invalid calibration and non-finite bind poses; it does not assume a universal VRM bone axis.
 - Added deterministic adapter tests and a dedicated CI step.
 - This is a mapping/pose-calculation seam only: `Avatar3DStage` does not yet apply these targets to a live rig. Right-arm mapping, calibrated model profiles, 3D IK, collision checks and execution/postcondition wiring remain pending.
+
+### Подключение к 3D-сцене
+
+- `Avatar3DStage` теперь использует resolver при загрузке локального VRM/GLB и сообщает, какие из левой/правой цепей верхняя рука + предплечье удалось однозначно распознать.
+- Resolver поддерживает обе стороны и отказывается от неоднозначных/неполных пар. Это discovery-интеграция: существующие клипы и моторные смещения остаются прежними; рассчитанные IK-углы ещё не применяются к костям.
+- Добавлена проверка source contract для 3D-сцены; CI path filters включают stage и его тест.
