@@ -124,7 +124,7 @@ export interface P41PerceptionState {
   /** Monotonic IDs for anonymous spatial tracks. */
   nextTrackSequence:number;
   actionBias:Record<ActionKind,number>;
-  metrics:{grounding01:number;temporalBinding01:number;objectPermanence01:number;crossModalAgreement01:number;crossModalEvidenceCoverage01:number;activePerceptionUtility01:number;unresolvedRate01:number;updates:number;sceneContinuity01:number;temporalGrounding01:number;evidenceTraceability01:number};
+  metrics:{grounding01:number;temporalBinding01:number;objectPermanence01:number;crossModalAgreement01:number;crossModalEvidenceCoverage01:number;outcomeAlignment01:number;activePerceptionUtility01:number;unresolvedRate01:number;updates:number;sceneContinuity01:number;temporalGrounding01:number;evidenceTraceability01:number};
   continuity?:ContinuityState;
   epistemic?:EpistemicState;
   lastCheckpointAt:number;
@@ -144,7 +144,7 @@ export const defaultP41SemanticPerception = ():P41PerceptionState => ({
     world:{reliability01:.66,observations:0,conflict01:0,latency01:.14,reportedQuality01:.66,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
   },
   actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,
-  metrics:{grounding01:.18,temporalBinding01:.12,objectPermanence01:.05,crossModalAgreement01:.5,crossModalEvidenceCoverage01:0,activePerceptionUtility01:.1,unresolvedRate01:0,updates:0,sceneContinuity01:.1,temporalGrounding01:.1,evidenceTraceability01:.1},
+  metrics:{grounding01:.18,temporalBinding01:.12,objectPermanence01:.05,crossModalAgreement01:.5,crossModalEvidenceCoverage01:0,outcomeAlignment01:.5,activePerceptionUtility01:.1,unresolvedRate01:0,updates:0,sceneContinuity01:.1,temporalGrounding01:.1,evidenceTraceability01:.1},
   continuity:defaultPerceptualContinuityState(),
   epistemic:defaultEpistemicState(),
   calibrationEvidenceIds:[],
@@ -232,7 +232,7 @@ export class P41SemanticPerceptionEngine {
       id:stableId('snapshot',`${this.state.tick}:${at}:${this.state.scene.label}`),tick:this.state.tick,at,
       scene:this.state.scene.label,entityIds:this.state.entities.filter(e=>e.present01>.25).slice(0,32).map(e=>e.id),
       eventIds:this.state.events.slice(0,16).map(e=>e.id),relationIds:this.state.relations.slice(0,32).map(r=>r.id),
-      uncertainty01:clamp(1-this.state.metrics.crossModalAgreement01),coherence01:clamp((this.state.metrics.grounding01+this.state.metrics.temporalBinding01)/2),selfLocation: this.state.entities.find(e=>e.kind==='body')?.label??'unknown'
+      uncertainty01:clamp(1-this.state.metrics.crossModalEvidenceCoverage01),coherence01:clamp((this.state.metrics.grounding01+this.state.metrics.temporalBinding01)/2),selfLocation: this.state.entities.find(e=>e.kind==='body')?.label??'unknown'
     });
     this.state.snapshots=this.state.snapshots.slice(0,128);
     this.state.tick++;
@@ -431,13 +431,13 @@ export class P41SemanticPerceptionEngine {
     this.state.metrics.objectPermanence01=clamp(this.state.metrics.objectPermanence01*.94+Math.min(1,repeated/8)*.06);
     const bestPending=this.state.pending.filter(p=>p.status==='pending').sort((a,b)=>b.priority01-a.priority01)[0];
     this.state.metrics.activePerceptionUtility01=clamp(bestPending?.priority01??this.state.metrics.activePerceptionUtility01*.96);
-    const restRisk=clamp((1-this.state.metrics.crossModalAgreement01)*.25+(1-this.state.metrics.grounding01)*.15);
+    const restRisk=clamp((1-this.state.metrics.crossModalEvidenceCoverage01)*.25+(1-this.state.metrics.grounding01)*.15);
     this.state.actionBias.rest=clamp(this.state.actionBias.rest*.92+restRisk*.08);
-    this.state.actionBias.verify=clampSigned(this.state.actionBias.verify*.92+(1-this.state.metrics.crossModalAgreement01)*.08);
+    this.state.actionBias.verify=clampSigned(this.state.actionBias.verify*.92+(this.state.metrics.unresolvedRate01*.05+(1-this.state.metrics.crossModalEvidenceCoverage01)*.03));
     this.state.actionBias.explore=clampSigned(this.state.actionBias.explore*.92+(this.state.metrics.objectPermanence01>0.5?.02:0));
     this.state.actionBias.respond=clampSigned(this.state.actionBias.respond*.92+this.state.modalityReliability.text.reliability01*.025);
     this.state.actionBias.reflect=clampSigned(this.state.actionBias.reflect*.92+(this.state.metrics.unresolvedRate01*.02));
-    this.state.actionBias.wait=clampSigned(this.state.actionBias.wait*.92+(this.state.metrics.crossModalAgreement01<.4?.025:0));
+    this.state.actionBias.wait=clampSigned(this.state.actionBias.wait*.92+(this.state.metrics.crossModalEvidenceCoverage01<.1&&this.state.metrics.unresolvedRate01>.5?.025:0));
     this.state.actionBias.defer=clampSigned(this.state.actionBias.defer*.92+restRisk*.025);
     this.state.lastCheckpointAt=at;
   }
@@ -456,7 +456,7 @@ export class P41SemanticPerceptionEngine {
     h.serviceSuccess01=clamp(h.serviceSuccess01*.9+(success?1:0)*.1);
     return true;
   }
-  observeOutcome(success01:number,surprise01:number){const s=clamp(success01),u=clamp(surprise01);this.state.metrics.crossModalAgreement01=clamp(this.state.metrics.crossModalAgreement01*.93+s*.04-u*.03);return this.snapshot();}
+  observeOutcome(success01:number,surprise01:number){const s=clamp(success01),u=clamp(surprise01);this.state.metrics.outcomeAlignment01=clamp(this.state.metrics.outcomeAlignment01*.93+s*.04-u*.03);return this.snapshot();}
   semanticSummary(){return {scene:this.state.scene,entities:this.state.entities.slice(0,12),events:this.state.events.slice(0,8),relations:this.state.relations.slice(0,16),nextPerception:this.nextPerception(),metrics:this.state.metrics,continuity:this.continuity.snapshot(),epistemic:this.epistemic.summary()};}
 }
 function clampSigned(n:number){return Math.max(-1,Math.min(1,Number.isFinite(n)?n:0));}
