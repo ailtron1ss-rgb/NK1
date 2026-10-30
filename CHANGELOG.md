@@ -1,3 +1,45 @@
+## [NK1][Aspect04] Harden renderer world-matrix propagation (2026-10-30)
+
+- Explicitly mark each bound Three.js-compatible layer target as `matrixWorldNeedsUpdate` after writing its canonical local matrix, so an already-rendered object cannot retain a stale world transform.
+- Add a regression assertion for the world-matrix invalidation signal.
+
+## [NK1][Aspect04] Add renderer-facing depth-rig adapter (2026-10-30)
+
+- Add a renderer-neutral adapter that writes canonical hierarchical affine matrices and explicit painter order into renderer-owned layer objects; it is structurally compatible with Three.js Object3D without importing or duplicating the scene graph.
+- Apply optional authored local pivot offsets, reject duplicate/unknown bindings and non-finite matrices, and report missing layer bindings rather than silently inventing artwork.
+- Add focused regression tests for matrix emission, pivot translation, render order and fail-closed binding validation.
+
+## [NK1][WorkPass634] Align Aspect 04 workflow with repository CI policy (2026-10-30)
+
+- Upgrade the dedicated depth-rig workflow from checkout/setup-node v4 to approved v7 actions and pin Node through the root `.nvmrc` (Node 24), resolving the CI reliability audit failures found on PR #409.
+- Add `embodimentIntentAdapter.ts` to the push path filter so changes to the explicit PR #410 motor-frame adapter trigger the focused depth-rig gate.
+
+## [NK1][Aspect04] Bind motor joint targets to depth-rig nodes (2026-10-30)
+
+- Add explicit joint-to-node binding records and a renderer-neutral adapter for PR #410 MotorFrame targets.
+- Apply bounded radian-to-degree deltas only for active goals; idle/rejected/expired frames do not animate, unavailable joints are ignored, and malformed bindings fail closed.
+- Add focused tests for target mapping, clamp behavior and invalid binding rejection.
+
+## [NK1][Aspect04] Bridge EmbodimentIntent v1 and harden float assertions (2026-10-30)
+
+- A second hosted run exposed two remaining strict-equality checks on composed decimal rotations; both are now tolerance-based. Runtime pose math remains unchanged.
+
+- Add a narrow adapter from the existing v1 embodiment envelope to the 2.5D depth rig; preserve the current semantic owner and map bounded gaze/head tilt/motion groups to rig pose hints.
+- Add adapter validation tests and include its path in the dedicated CI workflow.
+- Correct world-space test expectations to include inherited parent rotations and use tolerance for accumulated floating-point depth.
+
+- Correct world-space expectations to include inherited torso/neck rotations; compare accumulated depth with a floating-point tolerance.
+- CI log identified both mismatches; no runtime transform change was required.
+
+## [NK1][Aspect04] Establish layered 2.5D depth-rig contract (2026-10-30)
+
+- Add a versioned rig model for depth-ordered artwork layers, parent hierarchy, normalized pivots and rest transforms.
+- Validate root cardinality, unique IDs, parent references, cycles, finite transforms and pivot bounds; malformed inputs fail closed.
+- Map bounded semantic body intent into additive head, neck, torso, hair, garment and basic arm-gesture deltas without creating a second emotion/intent owner.
+- Add focused regression tests and a dedicated GitHub Actions gate.
+- Add the Aspect 04 production plan for layered master artwork, hidden-area paint, occlusion, face rig, IK, secondary motion, modular garments and release acceptance.
+- Honest boundary: this is a code contract/pose foundation, not a rendered 2.5D model. Production art, GLB, IK execution, garment physics and desktop/Android visual E2E remain pending.
+
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
 - Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
@@ -2802,12 +2844,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
-
-## [Unreleased] — 2026-10-30
-
-### Added
-- Added `docs/NK1_EXECUTION_PLAN_100_PERCENT_RU_2026-10-30.md`: refreshed source/release baseline, branch divergence and exact CI blockers, aspect-by-aspect readiness estimates, and staged completion criteria including selectable 2D/2.5D/3D embodiment.
-- Recorded the canonical delivery distinction: `workpass70-source` is the working source tree, `main` is the release workflow/report branch, and the latest verified Release ZIP remains the 2026-10-19 WorkPass70 Hotfix 1 asset.
-
-### Evidence boundary
-- The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
