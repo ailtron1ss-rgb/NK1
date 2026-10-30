@@ -36,6 +36,8 @@ assert.equal(modeOnlyChange.samples, grounded.samples + verifiedEvents.length, '
 const restored = new P78AutobiographicalSelfContinuity();
 restored.restore(modeOnlyChange);
 assert.deepEqual(restored.snapshot(), modeOnlyChange, 'autobiographical evidence counters must survive restore');
+const nonAdjacentReplay = restored.observe([verifiedEvents[0]]);
+assert.deepEqual(nonAdjacentReplay, modeOnlyChange, 'an older event replayed after newer events and a restart must remain idempotent');
 
 const corrupted = new P78AutobiographicalSelfContinuity();
 corrupted.restore({ ...modeOnlyChange, verifiedOutcomeSamples: -50, selfAuthorship01: 4 });
