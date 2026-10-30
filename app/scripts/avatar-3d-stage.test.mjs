@@ -36,5 +36,5 @@ test("existing sprite and Live2D files remain available",async()=>{
 
 test("decimal ternary literals stay distinct from optional chaining syntax",async()=>{
  const stage=await readFile(stagePath,"utf8");
- assert.doesNotMatch(stage,/\\?\\.(?=\\d)/,"decimal-valued ternaries must include whitespace after ? so TypeScript parses them as conditional expressions");
+ assert.doesNotMatch(stage,/\?\.(?=\d)/,"decimal-valued ternaries must include whitespace after ? so TypeScript parses them as conditional expressions");
 });
