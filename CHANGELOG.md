@@ -1,3 +1,9 @@
+## [NK1][Aspect 01 — Live2D] Route explanations to an authored hand-motion clip (2026-10-30)
+
+- Inspected the registered Cubism motion assets and confirmed `Special[1]` contains shoulder, arm and hand parameter curves.
+- Explanatory motor intent now selects that shipped clip; regression coverage reads the actual motion JSON and verifies its upper-limb channels.
+- Visual/device acceptance remains pending.
+
 ## [NK1][Aspect 01 — Live2D] Semantic gesture type contract fix (2026-10-30)
 
 - Added optional, backward-compatible `gestureProfile` and `gestureIntensity` fields to the app-side EmbodimentIntentV1 TypeScript contract.
