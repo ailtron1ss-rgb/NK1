@@ -10,6 +10,8 @@ export interface SignedOutcomePayload {
   taskId: string;
   taskVersion: string;
   method: string;
+  /** Content hash of the exact baseline/candidate configuration evaluated by this run. */
+  methodFingerprint?: string;
   seed: number;
   attempt: number;
   passed: boolean;
@@ -104,6 +106,7 @@ export function ingestSignedOutcomeArtifact(
   if (!isNonEmptyString(payload.artifactId) || !isNonEmptyString(payload.runId) ||
       !isNonEmptyString(payload.taskId) || !isNonEmptyString(payload.taskVersion) ||
       !isNonEmptyString(payload.method) || !isNonEmptyString(payload.verifierId) ||
+      (payload.methodFingerprint !== undefined && !/^[a-f0-9]{64}$/i.test(payload.methodFingerprint)) ||
       !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
       !Number.isSafeInteger(payload.attempt) || payload.attempt < 1 ||
       typeof payload.passed !== 'boolean' ||
