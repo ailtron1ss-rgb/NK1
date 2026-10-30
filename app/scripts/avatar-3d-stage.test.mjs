@@ -26,6 +26,17 @@ test("all local VRM/GLB imports are preflighted before GLTFLoader and prior mode
  assert.match(validator,/maxHierarchyDepth: 256/);
 });
 
+test("drag yaw rotates the loaded VRM/GLB pivot without overwriting its source orientation",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/const pivot=new THREE\.Group\(\);pivot\.name="NK1AvatarMotionPivot";pivot\.add\(root\)/);
+ assert.match(stage,/rt\.loaded=pivot/);
+ assert.match(stage,/rt\.scene\.add\(pivot\)/);
+ assert.match(stage,/rt\.loaded\.rotation\.y=rt\.yaw\+Math\.sin/);
+ assert.match(stage,/rt\.yaw\+=\(e\.clientX-rt\.dragX\)\*\.008/);
+ assert.match(stage,/rt\.mixer=new THREE\.AnimationMixer\(root\)/);
+ assert.doesNotMatch(stage,/root\.rotation\.y\s*=/);
+});
+
 test("the 3D body consumes organism emotion, action, arousal/valence, gaze, sleep and speech",async()=>{
  const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
  for(const key of ["emotion","arousal","valence","dominance","energy","cognitiveLoad","uncertainty","socialNeed","novelty","goalPressure","curiosity","predictionError","traits","gazeX","gazeY","speaking","mouthPose","thinking","awake","action"])assert.ok(stage.includes(key),"Missing state: "+key);
