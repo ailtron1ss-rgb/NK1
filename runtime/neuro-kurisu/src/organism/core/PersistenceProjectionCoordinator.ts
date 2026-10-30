@@ -32,6 +32,7 @@ export class PersistenceProjectionCoordinator {
     target.worldModel=ctx.worldSubsystem.world.persisted();
     target.facets.memory.eventLog=ctx.memorySubsystem.events.recent(budgetAction.eventLimit);
     target.facets.memory.selfModel=this.snapshotOnce('snap:memorySubsystem.selfModel', ctx.memorySubsystem.selfModel);
+    target.facets.memory.userModel=this.snapshotOnce('snap:memorySubsystem.userModel', ctx.memorySubsystem.userModel);
     target.facets.memory.socialModel=this.snapshotOnce('snap:memorySubsystem.socialModel', ctx.memorySubsystem.socialModel);
     target.facets.memory.adaptiveValues=this.snapshotOnce('snap:memorySubsystem.valuePlasticity', ctx.memorySubsystem.valuePlasticity);
     target.facets.memory.autobiographicalMemories=ctx.memorySubsystem.memorySubstrate.projectCompatibilityRecords(ctx.memorySubsystem.memoryOS.snapshot({clone:false}), budgetAction.compatibilityMemoryLimit);
