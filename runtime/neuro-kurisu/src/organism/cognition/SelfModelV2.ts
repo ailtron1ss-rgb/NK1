@@ -75,8 +75,9 @@ export class SelfModelEngine {
   }
 
   learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string}}){
-    const alignment=Math.max(0,Math.min(1,input.goalAlignment01));
-    const reward=Math.max(0,Math.min(1,input.reward01));
+    const unit=(value:number,fallback=.5)=>Math.max(0,Math.min(1,Number.isFinite(value)?value:fallback));
+    const alignment=unit(input.goalAlignment01);
+    const reward=unit(input.reward01);
     const quality=0.5*alignment+0.5*reward;
     const lr=0.04 + 0.04*Math.abs(quality-.5);
     this.model.goalAlignmentEMA01=Math.max(0,Math.min(1,this.model.goalAlignmentEMA01*(1-lr)+quality*lr));
@@ -99,7 +100,7 @@ export class SelfModelEngine {
     } else {
       this.model.identityGateRejectedCount=(this.model.identityGateRejectedCount??0)+1;
     }
-    this.model.lastIdentityGate={accepted:gateAccepted,reason:gateReason,at:Number.isFinite(input.tick)?input.tick:0,evidenceRef:gateAccepted?evidenceRef:null};
+    this.model.lastIdentityGate={accepted:gateAccepted,reason:gateReason,at:Number.isFinite(input.tick)?Math.max(0,input.tick):0,evidenceRef:gateAccepted?evidenceRef:null};
     if (input.action) this.model.preferredStrategies=[input.action,...this.model.preferredStrategies.filter(x=>x!==input.action)].slice(0,8);
     this.model.updatedAt=Date.now();
     return {updated:true,action:input.action,quality01:quality,goalAlignment01:this.model.goalAlignment01,goalAlignmentEMA01:this.model.goalAlignmentEMA01,actionBias11:this.actionBias(input.action),agencyBelief:this.model.agencyBelief,identityCoherence:this.model.identityCoherence,identityUpdateAccepted:gateAccepted,identityUpdateReason:gateReason,identityGateAcceptedCount:this.model.identityGateAcceptedCount,identityGateRejectedCount:this.model.identityGateRejectedCount};
