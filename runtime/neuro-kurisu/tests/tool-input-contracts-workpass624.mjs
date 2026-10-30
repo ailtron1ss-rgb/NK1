@@ -144,20 +144,20 @@ legacyGateway.registerTool({
   destructive: false,
   execute: async () => { legacyCalls += 1; return { ok: true }; },
 });
-let getterCalls = 0;
+let legacyGetterCalls = 0;
 const accessorInput = {};
-Object.defineProperty(accessorInput, "query", { enumerable: true, get() { getterCalls += 1; return "side-effect"; } });
+Object.defineProperty(accessorInput, "query", { enumerable: true, get() { legacyGetterCalls += 1; return "side-effect"; } });
 const accessorResult = await legacyGateway.executeTool("fixture.legacy.safe", accessorInput);
 assert.equal(accessorResult.outcomeClass, "gate-check-failed");
 assert.equal(accessorResult.result.error, "tool-input-invalid");
-assert.equal(getterCalls, 0, "input validation must inspect descriptors without invoking getters");
+assert.equal(legacyGetterCalls, 0, "input validation must inspect descriptors without invoking getters");
 assert.equal(legacyCalls, 0, "unsafe legacy inputs must be rejected before executor entry");
 
-let proxyTraps = 0;
-const proxyInput = new Proxy({}, { getPrototypeOf() { proxyTraps += 1; throw new Error("proxy-trap"); } });
+let legacyProxyTraps = 0;
+const proxyInput = new Proxy({}, { getPrototypeOf() { legacyProxyTraps += 1; throw new Error("proxy-trap"); } });
 const proxyResult = await legacyGateway.executeTool("fixture.legacy.safe", proxyInput);
 assert.equal(proxyResult.result.error, "tool-input-invalid");
-assert.equal(proxyTraps, 0, "proxy detection must happen before reflective traps");
+assert.equal(legacyProxyTraps, 0, "proxy detection must happen before reflective traps");
 
 const cyclicInput = {};
 cyclicInput.self = cyclicInput;
@@ -178,7 +178,7 @@ assert.equal(approvalGetterCalls, 0, "approval preview must reject accessors bef
 // Reconciliation is also a public ingress and must not hash or query providers with unsafe input.
 const reconcileResult = await legacyGateway.reconcileToolExecution("fixture.legacy.safe", proxyInput, "unsafe-reconcile", { idempotencyKey: "reconcile-key" });
 assert.equal(reconcileResult.result.error, "reconciliation-input-invalid");
-assert.equal(proxyTraps, 0);
+assert.equal(legacyProxyTraps, 0);
 
 // Governance coverage is observable without silently changing legacy registration behavior.
 legacyGateway.registerTool({
