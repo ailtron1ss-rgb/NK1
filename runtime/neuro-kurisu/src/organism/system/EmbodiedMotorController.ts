@@ -141,10 +141,11 @@ export class EmbodiedMotorController {
     const unknown = Object.keys(goal.targetJointAnglesRad).filter((id) => !this.definitions.has(id));
     if (unknown.length) return { accepted: false, reason: `unknown-joints:${unknown.slice(0, 4).join(",")}` };
     const current = this.state.activeGoal;
-    if (current && current.id !== goal.id && current.interruptible === false && goal.priority <= current.priority) {
+    const currentMoving = current ? Object.values(this.state.joints).some((joint) => Math.abs(joint.targetAngleRad - joint.angleRad) > 0.002) : false;
+    if (current && currentMoving && current.id !== goal.id && current.interruptible === false && goal.priority <= current.priority) {
       return { accepted: false, reason: "active-goal-protected" };
     }
-    if (current && current.id !== goal.id && goal.priority < current.priority) {
+    if (current && currentMoving && current.id !== goal.id && goal.priority < current.priority) {
       return { accepted: false, reason: "lower-priority-than-active-goal" };
     }
     for (const joint of Object.values(this.state.joints)) joint.targetAngleRad = joint.angleRad;
