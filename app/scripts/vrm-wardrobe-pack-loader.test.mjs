@@ -53,6 +53,7 @@ test("verified self-contained GLB pack is parsed, rig-checked and applied as one
   const result=await applyVerifiedVrmWardrobePack({...input,parseGlb:async()=>({scene:garment()})});
   assert.equal(result.committed,true);assert.deepEqual(result.loadedAssetIds,["coat-v1"]);
   assert.equal(old.visible,false);
+  assert.equal(target.children.includes(old),false,"replaced garment root is removed after commit");
   assert.equal(target.children.some((node)=>node.userData?.nk1WardrobeAssetId==="coat-v1"),true);
 });
 
@@ -81,4 +82,28 @@ test("one switch cannot request two independently replacing garments for the sam
   const result=await applyVerifiedVrmWardrobePack({...input,parseGlb:async()=>{parsed=true;return {scene:garment()};}});
   assert.equal(result.committed,false);assert.equal(parsed,false);
   assert.ok(result.errors.includes("wardrobe:duplicate-or-unknown-slot-in-switch"));
+});
+
+
+test("one verified pack can attach garments across distinct slots without polluting the base skeleton",async()=>{
+  const bytes=glb(),target=avatar(),input=inputFor(bytes,target);
+  const secondPath="garments/shoes.glb";
+  const digest=createHash("sha256").update(bytes).digest("hex");
+  input.manifest.assets.push({
+    id:"shoes-v1",garmentId:"neutral-shoes",slot:"footwear",renderer:"vrm3d",
+    path:secondPath,sha256:digest,bytes:bytes.byteLength,mime:"model/gltf-binary"
+  });
+  input.files.set(secondPath,bytes);
+  input.request.expectedAssetIds.push("shoes-v1");
+  let parsed=0;
+  const result=await applyVerifiedVrmWardrobePack({
+    ...input,
+    parseGlb:async()=>{parsed++;return {scene:garment()};}
+  });
+  assert.equal(result.committed,true);
+  assert.deepEqual(result.loadedAssetIds,["coat-v1","shoes-v1"]);
+  assert.equal(parsed,2);
+  const roots=target.children.filter(node=>node.userData?.nk1WardrobeAssetId);
+  assert.equal(roots.length,2);
+  assert.deepEqual(roots.map(node=>node.userData.nk1WardrobeSlot).sort(),["footwear","outerwear"]);
 });
