@@ -33,8 +33,10 @@ export interface TemporalObjectTrackerConfig {
   minimumAssociationScore?:number;
   /** Required score margin over the second-best candidate. */
   ambiguityMargin?:number;
-  /** Minimum confidence of a model-produced box before it can seed identity. */
+  /** Minimum box-localization confidence to associate with an existing track. */
   minimumBoxConfidence01?:number;
+  /** Higher confidence required before a detection may create a new local identity. */
+  minimumNewTrackBoxConfidence01?:number;
   maxTracksPerCamera?:number;
   sessionId?:string;
 }
@@ -64,6 +66,10 @@ interface Track {
   lastSeenAt:number;
   hits:number;
   providerOwned:boolean;
+  velocityX:number;
+  velocityY:number;
+  velocityWidth:number;
+  velocityHeight:number;
 }
 
 interface CameraState {
@@ -107,6 +113,31 @@ function sizeRatio(a:NormalizedBoundingBox,b:NormalizedBoundingBox){
   if(ar<=0||br<=0)return Number.POSITIVE_INFINITY;
   return Math.max(ar,br)/Math.min(ar,br);
 }
+function predictTrackBox(track:Track,at:number):NormalizedBoundingBox{
+  const dt=Math.max(0,Math.min(1.5,(at-track.lastSeenAt)/1000));
+  const previous=center(track.bbox);
+  const width=Math.max(.01,Math.min(1,track.bbox.width+track.velocityWidth*dt));
+  const height=Math.max(.01,Math.min(1,track.bbox.height+track.velocityHeight*dt));
+  const x=previous.x+track.velocityX*dt-width/2;
+  const y=previous.y+track.velocityY*dt-height/2;
+  return {x,y,width,height};
+}
+function updateTrackMotion(track:Track,next:NormalizedBoundingBox,at:number){
+  const dt=(at-track.lastSeenAt)/1000;
+  if(dt>0&&dt<=30){
+    const before=center(track.bbox),after=center(next);
+    const measuredX=Math.max(-1.5,Math.min(1.5,(after.x-before.x)/dt));
+    const measuredY=Math.max(-1.5,Math.min(1.5,(after.y-before.y)/dt));
+    const measuredWidth=Math.max(-1,Math.min(1,(next.width-track.bbox.width)/dt));
+    const measuredHeight=Math.max(-1,Math.min(1,(next.height-track.bbox.height)/dt));
+    track.velocityX=track.velocityX*.65+measuredX*.35;
+    track.velocityY=track.velocityY*.65+measuredY*.35;
+    track.velocityWidth=track.velocityWidth*.65+measuredWidth*.35;
+    track.velocityHeight=track.velocityHeight*.65+measuredHeight*.35;
+  }
+  track.bbox={...next};
+  track.lastSeenAt=at;
+}
 
 export class TemporalObjectTracker {
   private readonly cameras=new Map<number,CameraState>();
@@ -119,7 +150,8 @@ export class TemporalObjectTracker {
       maxTrackAgeMs:Math.max(1_000,Math.min(120_000,Math.floor(config.maxTrackAgeMs??30_000))),
       minimumAssociationScore:clamp(config.minimumAssociationScore??.28),
       ambiguityMargin:clamp(config.ambiguityMargin??.10),
-      minimumBoxConfidence01:clamp(config.minimumBoxConfidence01??.55),
+      minimumBoxConfidence01:clamp(config.minimumBoxConfidence01??.42),
+      minimumNewTrackBoxConfidence01:clamp(config.minimumNewTrackBoxConfidence01??.72),
       maxTracksPerCamera:Math.max(8,Math.min(256,Math.floor(config.maxTracksPerCamera??128))),
       sessionId:clean(config.sessionId,64)||randomUUID().slice(0,12),
     };
@@ -192,8 +224,15 @@ export class TemporalObjectTracker {
         bbox:{...object.bbox!},confidence01:clamp(object.confidence01??.5),
         firstSeenAt:trackIndex>=0?state.tracks[trackIndex].firstSeenAt:at,
         lastSeenAt:at,hits:trackIndex>=0?state.tracks[trackIndex].hits+1:1,providerOwned:true,
+        velocityX:0,velocityY:0,velocityWidth:0,velocityHeight:0,
       };
-      if(trackIndex>=0)state.tracks[trackIndex]=track;
+      if(trackIndex>=0){
+        const previous=state.tracks[trackIndex];
+        track.velocityX=previous.velocityX;track.velocityY=previous.velocityY;
+        track.velocityWidth=previous.velocityWidth;track.velocityHeight=previous.velocityHeight;
+        updateTrackMotion(track,object.bbox!,at);
+        state.tracks[trackIndex]=track;
+      }
       else state.tracks.push(track);
     }
 
@@ -223,9 +262,10 @@ export class TemporalObjectTracker {
       const label=clean(detection.label).toLocaleLowerCase(),kind=kindOf(detection.kind);
       for(const track of localTracks){
         if(track.label!==label||!(track.kind===kind||track.kind==='unknown'||kind==='unknown'))continue;
-        const iou=intersectionOverUnion(box,track.bbox);
-        const distance=centerDistance01(box,track.bbox);
-        const ratio=sizeRatio(box,track.bbox);
+        const predictedBox=predictTrackBox(track,at);
+        const iou=intersectionOverUnion(box,predictedBox);
+        const distance=centerDistance01(box,predictedBox);
+        const ratio=sizeRatio(box,predictedBox);
         if(ratio>4||!(iou>=.05||distance<=.09))continue;
         const score=clamp(.72*iou+.28*Math.max(0,1-distance/.25));
         if(score>=this.config.minimumAssociationScore)edges.push({detectionIndex,trackId:track.id,score});
@@ -253,7 +293,7 @@ export class TemporalObjectTracker {
       const index=edge.detectionIndex,track=state.tracks.find(item=>item.id===edge.trackId);
       if(!track)continue;
       const detection=objects[index];
-      track.bbox={...detection.bbox!};track.lastSeenAt=at;track.hits++;
+      updateTrackMotion(track,detection.bbox!,at);track.hits++;
       track.confidence01=clamp(track.confidence01*.65+clamp(detection.confidence01??.5)*.35);
       outputs[index].trackId=track.id;
       outputs[index].sourceId=[clean(detection.sourceId),'nk1-temporal-box-tracker'].filter(Boolean).join(':');
@@ -267,11 +307,15 @@ export class TemporalObjectTracker {
       if(isAmbiguous){
         outputs[index].trackingStatus='ambiguous';ambiguousCount++;continue;
       }
+      if(clamp(objects[index].bboxConfidence01??0)<this.config.minimumNewTrackBoxConfidence01){
+        outputs[index].trackingStatus='untracked';untrackedCount++;continue;
+      }
       const id='local:'+this.config.sessionId+':'+cameraId+':'+(++this.nextTrackSequence);
       state.tracks.push({
         id,label:clean(objects[index].label).toLocaleLowerCase(),kind:kindOf(objects[index].kind),
         bbox:{...objects[index].bbox!},confidence01:clamp(objects[index].confidence01??.5),
         firstSeenAt:at,lastSeenAt:at,hits:1,providerOwned:false,
+        velocityX:0,velocityY:0,velocityWidth:0,velocityHeight:0,
       });
       outputs[index].trackId=id;
       outputs[index].sourceId=[clean(objects[index].sourceId),'nk1-temporal-box-tracker'].filter(Boolean).join(':');
