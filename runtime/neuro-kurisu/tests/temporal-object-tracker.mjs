@@ -76,10 +76,28 @@ assert.deepEqual(groundedChairs.map(object=>object.bbox2D).sort((a,b)=>a.x-b.x),
   {x:.72,y:.11,width:.18,height:.3},
 ]);
 
+// Serialize and restore both canonical P41 and GroundedWorldState before
+// rebuilding the tracker. This models a real runtime process restart.
+const persistedP41=JSON.parse(JSON.stringify(secondSemantic));
+const restoredP41Engine=new P41SemanticPerceptionEngine();
+restoredP41Engine.restore(persistedP41);
+const restoredP41=restoredP41Engine.snapshot();
+assert.deepEqual(
+  restoredP41.entities.filter(entity=>entity.label==='chair').map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
+  p41Chairs.map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
+);
+const persistedGrounded=JSON.parse(JSON.stringify(groundedWorld.snapshot()));
+const restoredGroundedWorld=new GroundedWorldState();
+restoredGroundedWorld.restore(persistedGrounded);
+assert.deepEqual(
+  restoredGroundedWorld.snapshot().entities.filter(entity=>entity.label==='chair').map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
+  groundedWorld.snapshot().entities.filter(entity=>entity.label==='chair').map(entity=>entity.imageBox).sort((a,b)=>a.x-b.x),
+);
+
 // Simulate process restart: restore local temporal identities from the persisted
 // canonical P41 snapshot, then continue tracking on a third camera frame.
 const restartedTracker=new TemporalObjectTracker({sessionId:'new-process'});
-const restoreResult=restartedTracker.restoreFromPerception(secondSemantic.entities,1_600);
+const restoreResult=restartedTracker.restoreFromPerception(restoredP41.entities,1_600);
 assert.equal(restoreResult.restored,2);
 const third=restartedTracker.update({
   cameraId:0,at:2_000,frameId:'receipt-3',
@@ -91,6 +109,12 @@ const third=restartedTracker.update({
 assert.equal(third.metrics.associatedTrackCount,2);
 assert.equal(third.objects[0].trackId,second.objects[0].trackId);
 assert.equal(third.objects[1].trackId,second.objects[1].trackId);
+const thirdSemantic=restoredP41Engine.ingest({
+  at:2_000,
+  vision:{cameraId:0,semantic:true,sceneLabel:'laboratory',confidence01:.9,objects:third.objects},
+});
+assert.equal(thirdSemantic.entities.filter(entity=>entity.label==='chair').length,2);
+assert.ok(thirdSemantic.entities.filter(entity=>entity.label==='chair').every(entity=>entity.imageBoxAt===2_000));
 
 // A single prior track cannot be assigned to two competing current detections.
 const ambiguousTracker=new TemporalObjectTracker({sessionId:'ambiguity',maxTrackGapMs:2_000});
