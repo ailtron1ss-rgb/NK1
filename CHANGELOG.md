@@ -1,3 +1,9 @@
+## [NK1][Aspect 08] Strengthen uploaded VRM target identity with SHA-256 (2026-10-30)
+
+- Replace the 32-bit non-cryptographic skeleton-name fingerprint with a SHA-256 digest over normalized bone ancestry descriptors and the rig contract version.
+- Require Web Crypto for target identity calculation; if it is unavailable, the UI does not fabricate an identity and pack application fails closed.
+- This fingerprint is a stable compatibility key, not a substitute for the loader's per-bone bind-pose preflight.
+
 ## [NK1][Aspect 08] Connect verified wardrobe packs to uploaded VRM models (2026-10-30)
 
 - Add local NK1 wardrobe JSON bundle v1 ingestion (manifest plus base64 payload map); no ZIP parser or remote asset fetch is implied.
