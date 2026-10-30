@@ -31,6 +31,8 @@ on:
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/scripts/avatar-original-facial-wiring.test.mjs"
       - "app/scripts/avatar-affective-expression.test.mjs"
       - "app/package.json"
       - ".github/workflows/avatar-affective-expression.yml"
