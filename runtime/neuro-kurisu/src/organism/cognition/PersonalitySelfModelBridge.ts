@@ -16,12 +16,18 @@ export interface PersonalityOutcomeRecord {
   relationshipId?:string;
   /** Optional compact identity estimate from the canonical self-state owner. */
   identityVector?:number[];
+  /** Exact RuntimeEvidenceBus outcome event ID supplied by OrganismRuntime. */
+  evidenceReceiptId?:string;
+  learningScale01?:number;
+  evidence01?:number;
+  independent01?:number;
+  consequence01?:number;
 }
 
 export interface PersonalityOutcomeResult {
   newEvent:boolean;
   evidenceAccepted:boolean;
-  evidenceReason:'accepted'|'duplicate-event'|'outcome-not-independent'|'unsupported-receipt-namespace';
+  evidenceReason:'accepted'|'duplicate-event'|'outcome-not-independent'|'unsupported-receipt-namespace'|'receipt-not-bound-to-event';
   p78:P78State;
   personality:ReturnType<P2702PersistentPersonalityDynamics['snapshot']>;
   selfModel:ReturnType<SelfModelEngine['snapshot']>;
@@ -66,33 +72,45 @@ export class PersonalitySelfModelBridge {
     }
 
     const evidenceRef=String(input.event.evidenceRef??'').trim().slice(0,240);
+    const receiptId=String(input.evidenceReceiptId??'').trim().slice(0,180);
     const source:EvidenceSource=evidenceRef.startsWith('world-transition:')
       ? 'world-transition'
       : evidenceRef.startsWith('external-verification:')
         ? 'external-verification'
         : 'internal';
+    // RuntimeEvidenceBus IDs are monotonic and encode tick + event kind. Bind the
+    // autobiographical reference to that exact ID, not merely to a trusted prefix.
+    const receiptMatch=/^reb:(\\d+):(\\d+):outcome$/.exec(receiptId);
+    const receiptBound=Boolean(
+      receiptMatch && Number(receiptMatch[1])===input.event.tick &&
+      source==='external-verification' &&
+      evidenceRef===`external-verification:${receiptId}`
+    );
     const p78Verified=Boolean(
       p78.verifiedOutcomeSamples>before.verifiedOutcomeSamples &&
       input.event.evidenceStatus==='verified-independent'
     );
-    // P78 checks provenance shape; this boundary additionally allow-lists trusted receipt issuers.
-    const evidenceAccepted=p78Verified&&source!=='internal';
+    const evidenceAccepted=p78Verified&&receiptBound;
     const evidenceReason:PersonalityOutcomeResult['evidenceReason']=evidenceAccepted
       ? 'accepted'
       : input.event.evidenceStatus!=='verified-independent' || !input.event.evidenceRef
         ? 'outcome-not-independent'
-        : 'unsupported-receipt-namespace';
+        : source==='internal'
+          ? 'unsupported-receipt-namespace'
+          : 'receipt-not-bound-to-event';
 
     this.personality.afterOutcome({
       tick:input.event.tick,reward01:input.reward01,verified01:evidenceAccepted?1:0,
       predictionError01:input.predictionError01,identityGap01:input.identityGap01,
       action:input.action,relationshipId:input.relationshipId,identityVector:input.identityVector,
+      learningScale01:input.learningScale01,evidence01:input.evidence01,
+      independent01:input.independent01,consequence01:input.consequence01,
     });
     const selfModelUpdate=this.selfModel.learnGoalOutcome({
       action:input.action,goalAlignment01:input.goalAlignment01,reward01:input.reward01,tick:input.event.tick,
       evidence:{
-        verified:p78Verified,independent:p78Verified,source,
-        evidenceRef:p78Verified?evidenceRef:undefined,
+        verified:evidenceAccepted,independent:evidenceAccepted,source,
+        evidenceRef:evidenceAccepted?evidenceRef:undefined,
       },
     });
     return {
