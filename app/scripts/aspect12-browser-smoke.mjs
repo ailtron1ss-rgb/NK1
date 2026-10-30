@@ -80,8 +80,13 @@ async function inspectViewport(browser, name, viewport) {
 }
 
 async function main() {
+  // This script is launched with plain Node, not through npm, so app/.bin is
+  // not injected into PATH. Resolve Vite from the locked app installation and
+  // run it through Node while retaining with-app-env's canonical hydration.
+  const viteCli = path.join(appRoot, "node_modules", "vite", "bin", "vite.js");
   const server = spawn(process.execPath, [
-    "scripts/with-app-env.mjs", "vite", "dev", "--host", "127.0.0.1", "--port", "8080", "--strictPort",
+    "scripts/with-app-env.mjs", process.execPath, viteCli, "dev",
+    "--host", "127.0.0.1", "--port", "8080", "--strictPort",
   ], { cwd: appRoot, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
   let serverOutput = "";
   server.stdout.on("data", chunk => { serverOutput = (serverOutput + chunk.toString()).slice(-6000); });
