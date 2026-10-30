@@ -1,3 +1,9 @@
+## [NK1][аспект7] Add deterministic 3D blink and saccade micro-motion (2026-10-30)
+
+- Add a pure renderer-neutral micro-motion adapter for bounded blink closure and deterministic saccade pulses.
+- Drive procedural 3D eye geometry from the shared affective blink/saccade cadence; attenuate saccades while speaking.
+- Add regressions for pulse determinism, bounds, speech attenuation and renderer wiring. Imported VRM expression mapping remains pending.
+
 ## [NK1][аспект7] Preserve continuous breathing phase across affect changes (2026-10-30)
 
 - Integrate breathing phase from the actual frame delta and current breaths-per-minute instead of recomputing phase from total runtime multiplied by the latest cadence.
