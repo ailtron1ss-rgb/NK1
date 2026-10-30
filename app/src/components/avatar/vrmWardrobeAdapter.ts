@@ -16,6 +16,7 @@ type ObjectNode = {
   children?: ObjectNode[];
   userData?: Record<string, unknown>;
   isSkinnedMesh?: boolean;
+  isBone?: boolean;
   skeleton?: SkeletonLike;
   bindMatrix?: unknown;
   bind?: (skeleton: unknown, bindMatrix: unknown) => void;
@@ -106,6 +107,7 @@ export function inspectVrmGarmentRig(
       }
       const targetBone = avatarBones.get(name);
       if (!targetBone) errors.push(`missing-avatar-bone:${name}`);
+      else if (!targetInverses.has(name)) errors.push(`missing-avatar-bind-inverse:${name}`);
       else mappings.set(name, targetBone);
     }
   }
