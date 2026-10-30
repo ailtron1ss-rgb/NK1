@@ -34,7 +34,7 @@ export function normalizeHumanoidBoneName(value: unknown): string {
 
 const aliases: ReadonlyArray<readonly [RegExp, string]> = [
   [/^(?:jbipc)?(?:hips|pelvis|roothips)$/, "hips"],
-  [/^jbipcspine\\d*$/, "spine"],
+  [/^jbipcspine$/, "spine"],
   [/^jbipcneck$/, "neck"],
   [/^jbipchead$/, "head"],
   [/^(?:mixamorig)?(?:hips|pelvis|roothips)$/, "hips"],
