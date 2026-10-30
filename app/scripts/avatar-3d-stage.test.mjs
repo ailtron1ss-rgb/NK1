@@ -43,6 +43,18 @@ test("the 3D body consumes organism emotion, action, arousal/valence, gaze, slee
  for(const key of ["b.head.rotation","b.leftArm.rotation","b.rightArm.rotation","b.mouth.scale","rt.mood.color","rt.mixer"])assert.ok(stage.includes(key),"Missing body response: "+key);
  assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/mouthPose=\{mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
 });
+test("VRM runtime advances SpringBone after animation and detaches mixer before rig disposal",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/function stopAndDetachMixer\(rt:Runtime,root:any=rt\.rigRoot\)/);
+ assert.match(stage,/mixer\.stopAllAction\(\);if\(root\)mixer\.uncacheRoot\(root\);rt\.mixer=null/);
+ assert.ok(stage.indexOf("stopAndDetachMixer(rt,rt.rigRoot);if(rt.loaded)")<stage.indexOf("VRMUtils.deepDispose(rt.loaded)"));
+ assert.ok(stage.indexOf("stopAndDetachMixer(rt,rt.rigRoot);if(rt?.loaded)")<stage.indexOf("rt.scene.remove(rt.loaded)"));
+ const mixerUpdate=stage.indexOf("rt.mixer?.update(dt)");
+ const vrmUpdate=stage.indexOf("rt.vrm?.update(dt)");
+ assert.ok(mixerUpdate>=0&&vrmUpdate>mixerUpdate,"VRM physics must consume the final mixer pose");
+ assert.match(stage,/Official VRM\.update advances ExpressionManager, LookAt, node constraints and SpringBone simulation/);
+ assert.match(stage,/stopAndDetachMixer\(rt,rt\.rigRoot\);if\(rt\.motionSource\)/);
+});
 test("renderer resources and animation loops are disposed and high-DPI rendering is capped",async()=>{
  const stage=await readFile(stagePath,"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/selectAvatarMotionClip\(\{vrmaClips:rt\.vrmaClips,modelClips:rt\.modelClips/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);
 });
