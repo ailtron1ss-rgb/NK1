@@ -104,8 +104,8 @@ export class CanonicalMemoryLifecycleAuthority {
       lastTick:raw?.lastTick===-1?-1:(safeTick(raw?.lastTick)??-1),
       lastPlan:safePlan(raw?.lastPlan),
       lastConsolidation:safeDecisions(raw?.lastConsolidation),
-      meanPressure01:clamp01(typeof raw?.meanPressure01==='number'?raw.meanPressure01:d.meanPressure01),
-      meanMemoryLoad01:clamp01(typeof raw?.meanMemoryLoad01==='number'?raw.meanMemoryLoad01:d.meanMemoryLoad01),
+      meanPressure01:clamp01(typeof raw?.meanPressure01==='number'&&Number.isFinite(raw.meanPressure01)?raw.meanPressure01:d.meanPressure01),
+      meanMemoryLoad01:clamp01(typeof raw?.meanMemoryLoad01==='number'&&Number.isFinite(raw.meanMemoryLoad01)?raw.meanMemoryLoad01:d.meanMemoryLoad01),
     };
   }
 
