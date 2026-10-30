@@ -52,6 +52,7 @@
 | Image-space regression | Проверять прохождение двух одинаковых объектов и reject out-of-frame/no-camera boxes |
 | Runtime tracker restore | Rehydrate camera-local tracks from persisted canonical P41 image boxes |
 | Restart regression | Verify P41 + GroundedWorldState snapshots survive JSON round-trip and tracking continues with same IDs |
+| Snapshot fail-closed restore | Revalidate camera-bound boxes after restore and drop damaged/future/unbound geometry |
 
 ## Текущий статус
 
