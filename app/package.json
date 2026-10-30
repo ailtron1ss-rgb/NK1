@@ -35,7 +35,8 @@
     "test:avatar-vrm-model-capabilities": "node --experimental-strip-types --test scripts/avatar-vrm-model-capabilities.test.mjs",
     "test:avatar-vrma-animation": "node --experimental-strip-types --test scripts/avatar-vrma-animation.test.mjs",
     "test:avatar-motion-clip-selector": "node --experimental-strip-types --test scripts/avatar-motion-clip-selector.test.mjs",
-    "test:avatar-25d-depth": "node --experimental-strip-types --test scripts/avatar-25d-depth.test.mjs"
+    "test:avatar-25d-depth": "node --experimental-strip-types --test scripts/avatar-25d-depth.test.mjs",
+    "test:avatar-humanoid-retarget": "node --experimental-strip-types --test scripts/avatar-humanoid-retarget.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
