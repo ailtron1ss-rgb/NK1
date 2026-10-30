@@ -1,7 +1,7 @@
 ## [NK1][Aspect 11] Correlate Live2D expression and motion dispatch acknowledgements (2026-10-30)
 
 - Wait for Cubism parameter readback and all requested expression/motion SDK promises before emitting one revision-bound partial ACK.
-- Distinguish `started`, `unavailable`, `error`, and `not-requested`; handle unchanged actions without leaving the ACK pending and ignore stale asynchronous completions.
+- Distinguish `started`, `unavailable`, `error`, and `not-requested`; handle unchanged actions without leaving the ACK pending, clear only the matching motion deduplication key after failed dispatch so a later intent can retry, and ignore stale asynchronous completions.
 - Surface action dispatch telemetry in AvatarStage while explicitly keeping `complete: false` and `visualCompletionVerified: false`; this is not animation-completion evidence, a presented-frame receipt, or permission to commit a renderer handoff.
 - Add focused regressions for action status, stale revision handling, no-op actions, fail-closed Cubism readback, and parent-side trust validation. Exact-head CI validation is pending.
 
