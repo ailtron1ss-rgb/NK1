@@ -165,6 +165,9 @@ function semanticVision(objects, at, extra = {}) {
   engine.ingest({ at: 70_000, audio: { semantic: false } });
   const audio = engine.nextPerception(70_001);
   assert.ok(audio);
+  engine.ingest({ at: 70_002, audio: { semantic: false } });
+  assert.equal(engine.snapshot().pending.filter(item => item.modality === 'audio' && item.status === 'pending').length, 1, 'repeated unresolved samples must not enqueue duplicate live requests');
+  assert.equal(engine.nextPerception(70_003)?.id, audio.id);
   assert.equal(engine.nextPerception(audio.expiresAt + 1), null);
   assert.equal(engine.fulfill(audio.id, true, audio.expiresAt + 2), false);
   assert.equal(engine.snapshot().pending.find(item => item.id === audio.id)?.status, 'expired');
