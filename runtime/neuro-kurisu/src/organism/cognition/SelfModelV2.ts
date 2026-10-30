@@ -90,7 +90,7 @@ export class SelfModelEngine {
     const evidence=input.evidence;
     const evidenceRef=String(evidence?.evidenceRef??'').trim().slice(0,240);
     const evidenceReceiptId=String(evidence?.evidenceReceiptId??'').trim().slice(0,180);
-    const receipt=/^reb:(\\d+):(\\d+):outcome$/.exec(evidenceReceiptId);
+    const receipt=/^reb:(\d+):(\d+):outcome$/.exec(evidenceReceiptId);
     const allowedSource=evidence?.source==='external-verification';
     const receiptBound=Boolean(
       allowedSource&&receipt&&Number(receipt[1])===input.tick&&
