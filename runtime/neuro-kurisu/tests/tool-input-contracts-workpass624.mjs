@@ -17,7 +17,7 @@ const gateway = new ActionGateway();
 let calls = 0;
 gateway.registerTool({ id: "catalog.search", capability: "catalog.read", destructive: false, inputContract: contract, execute: async input => { calls++; return { ok: true, query: String(input.query) }; } });
 assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.hasInputContract, true);
-assert.equal((await gateway.executeTool("catalog.search", { query: "NK1 architecture", limit: 3, filters: { kinds: ["memory", "tool"] } })).ok, true);
+assert.equal((await gateway.executeTool("catalog.search", { query: "nk1 architecture", limit: 3, filters: { kinds: ["memory", "tool"] } })).ok, true);
 assert.equal(calls, 1);
 
 const bad = [
