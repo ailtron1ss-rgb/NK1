@@ -50,3 +50,14 @@ The contract is provider-neutral and names a native TTS provider, but the native
 
 - При проверке полного lifecycle cleanup обнаружен синтаксически некорректный `try/catch` в cleanup-функции speech-effect. Исправлен на корректную конструкцию `try { synth.cancel(); } catch { ... }`, чтобы best-effort cancellation не блокировала разбор модуля.
 - Исправление внесено в исходник и CHANGELOG. Оно не считается подтверждением успешного TypeScript/build/test: эти проверки всё ещё необходимо выполнить в окружении проекта.
+
+
+## Follow-up — устранение CI-регрессии отрицательного аффекта
+
+- Hosted run `41019591325` выявил реальную регрессию в `negative high-arousal affect is de-escalated by the canonical plan`: anxiety rate не была ниже calm при `action=respond`, поскольку выбор `focused` тона перекрывал базовый warm-профиль, а прежняя поправка была недостаточной.
+- Усилены отдельные поправки anxiety и frustration/anger в единственном каноническом `buildVoicePlan`; границы параметров остаются ограниченными существующим clamp.
+- Это исправление внесено в исходник и CHANGELOG. Проверка на новом HEAD ещё не завершена; до успешного повторного CI регрессия считается исправленной на уровне кода, но не валидированной.
+
+## Native TTS wiring — уточнённая граница
+
+`EmbodimentRuntime.speak()` получает только итоговый `SpeechGatewayResult`, а `AndroidEmbodimentBridge.speakViaTermuxWithOutcome()` отслеживает процесс и operation ID. В текущем контракте нет канала доставки промежуточных provider events из ActionGateway обратно в avatar timeline. Кроме того, `termux-tts-speak` process close не является доказательством завершения Android audio playback. Поэтому native `started`/`ended`/`boundary` нельзя безопасно синтезировать из текущих данных; следующий шаг — добавить явный event sink через gateway и сохранять `playbackVerified=false` там, где подтверждения нет.
