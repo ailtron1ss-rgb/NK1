@@ -34,11 +34,18 @@ export interface PersonalityOutcomeResult {
  * It owns no shadow state: P78, P2702 and SelfModel remain their canonical owners.
  */
 export class PersonalitySelfModelBridge {
+  private readonly autobiography:P78AutobiographicalSelfContinuity;
+  private readonly personality:P2702PersistentPersonalityDynamics;
+  private readonly selfModel:SelfModelEngine;
   constructor(
-    private readonly autobiography:P78AutobiographicalSelfContinuity,
-    private readonly personality:P2702PersistentPersonalityDynamics,
-    private readonly selfModel:SelfModelEngine,
-  ) {}
+    autobiography:P78AutobiographicalSelfContinuity,
+    personality:P2702PersistentPersonalityDynamics,
+    selfModel:SelfModelEngine,
+  ) {
+    this.autobiography=autobiography;
+    this.personality=personality;
+    this.selfModel=selfModel;
+  }
 
   prepareDecision(input:Parameters<P2702PersistentPersonalityDynamics['beforeDecision']>[0]) {
     const personality=this.personality.beforeDecision(input);
