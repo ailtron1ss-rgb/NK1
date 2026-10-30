@@ -38,6 +38,12 @@ damagedSnapshot.items[0].observedAt = now + 3_600_000;
 
 const damaged = new MemoryOS2({ signalFusionProfile: 'balanced', embeddingProvider: null });
 damaged.restore(damagedSnapshot);
+const repairedHashAfterRestore = damaged.snapshot().items[0].contentHash;
+assert.notEqual(repairedHashAfterRestore, 'not-the-canonical-content-hash',
+  'restore should repair the content hash before the record is indexed');
+const restoreDiagnostics = damaged.restoreDiagnostics();
+assert.equal(restoreDiagnostics.contentHashMismatchesRepaired, 1,
+  'restore must retain evidence that a serialized content hash was repaired');
 const report = damaged.doctor({ at: now });
 assert.equal(report.readOnly, true, 'doctor must never repair or rewrite memory automatically');
 assert.equal(report.pass, false, 'content hash inconsistency should fail doctor');
@@ -52,8 +58,8 @@ assert.equal(capped.issues.length, 1, 'doctor must cap detailed issue payloads')
 assert.equal(capped.errors, 1, 'severity counters must include issues beyond the display cap');
 assert.ok(capped.warnings > 0, 'warning counters must include issues beyond the display cap');
 assert.equal(capped.truncated, true, 'doctor must mark a capped issue list as truncated');
-assert.equal(damaged.snapshot().items[0].contentHash, 'not-the-canonical-content-hash',
-  'read-only doctor must not mutate the record it reports');
+assert.equal(damaged.snapshot().items[0].contentHash, repairedHashAfterRestore,
+  'read-only doctor must not mutate the already-normalized record it reports');
 
 console.log('WORKPASS314_MEMORY_DOCTOR=PASS', JSON.stringify({
   cleanPass: healthy.pass,
@@ -61,4 +67,5 @@ console.log('WORKPASS314_MEMORY_DOCTOR=PASS', JSON.stringify({
   errors: report.errors,
   warnings: report.warnings,
   capped: capped.truncated,
+  restoreHashRepairs: restoreDiagnostics.contentHashMismatchesRepaired,
 }));
