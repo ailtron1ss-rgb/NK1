@@ -65,6 +65,30 @@ test("VRMA sidecars persist separately and restore after the VRM model is loaded
   assert.match(stage, /clearStoredAvatarAnimation\(\)/);
 });
 
+test("separate IndexedDB object store persists and restores VRMA sidecars", async () => {
+  const store = await readFile(path.join(appRoot, "src/components/avatar/avatarModelStore.ts"), "utf8");
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(store, /const VERSION = 2/);
+  assert.match(store, /const MODEL_STORE = "active-model"/);
+  assert.match(store, /const ANIMATION_STORE = "active-animation"/);
+  assert.match(store, /export function loadStoredAvatarAnimation/);
+  assert.match(store, /export function saveAvatarAnimation/);
+  assert.match(store, /export function clearStoredAvatarAnimation/);
+  assert.match(store, /MAX_AVATAR_ANIMATION_BYTES/);
+  assert.match(stage, /saveAvatarAnimation\(blob,name\)/);
+  assert.match(stage, /loadStoredAvatarAnimation\(\)/);
+  assert.match(stage, /loadVrma\(saved\.blob,saved\.name,false\)/);
+  assert.match(stage, /clearStoredAvatarAnimation\(\)/);
+});
+
+test("motion clip changes cross-fade instead of calling stopAllAction for every state transition", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /function transitionClip\(rt:Runtime,clip:any,timeScale:number,fadeSeconds=\.22\)/);
+  assert.match(stage, /rt\.activeAction\.fadeOut\(fadeSeconds\)/);
+  assert.match(stage, /next\.fadeIn\(fadeSeconds\)\.play\(\)/);
+  assert.match(stage, /transitionClip\(rt,clip,p\.awake\?\.55\+energy\*\.45:\.3\)/);
+});
+
 test("replacing or resetting the VRM invalidates any in-flight VRMA load", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /animationToken\.current\+\+;const token=\+\+loadToken\.current/);
