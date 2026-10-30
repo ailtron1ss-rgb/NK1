@@ -20,6 +20,7 @@ export interface ExperimentCampaignRegistration {
   split: 'holdout';
   manifestFingerprint: string;
   holdoutManifestFingerprint: string;
+  sourceCommitSha: string;
   planFingerprint: string;
   baselineMethod: string;
   baselineFingerprint: string;
@@ -47,6 +48,7 @@ export interface RegisterExperimentCampaignInput {
   baselineMethod: string;
   baselineFingerprint: string;
   candidateFingerprints: Record<string, string>;
+  sourceCommitSha: string;
   primaryMetric: string;
   promotionPolicy?: Partial<PromotionGateConfig>;
   registeredAt: number;
@@ -104,6 +106,7 @@ export class ExperimentCampaignRegistry {
         typeof input.campaignId !== 'string' ||
         !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/.test(input.campaignId) ||
         !nonEmpty(input.baselineMethod) || !isSha256(input.baselineFingerprint) ||
+        typeof input.sourceCommitSha !== 'string' || !/^[a-f0-9]{40}$/i.test(input.sourceCommitSha) ||
         input.primaryMetric !== 'task-pass-rate' || !Number.isSafeInteger(input.registeredAt) ||
         input.registeredAt <= 0 || !input.plan || !Array.isArray(input.manifest) ||
         !isRecord(input.candidateFingerprints)) {
@@ -145,6 +148,7 @@ export class ExperimentCampaignRegistry {
       split: 'holdout',
       manifestFingerprint,
       holdoutManifestFingerprint,
+      sourceCommitSha: input.sourceCommitSha.toLowerCase(),
       planFingerprint: input.plan.planFingerprint,
       baselineMethod: input.baselineMethod,
       baselineFingerprint: input.baselineFingerprint.toLowerCase(),
@@ -228,6 +232,7 @@ export class ExperimentCampaignRegistry {
       if (payload.schemaVersion !== 1 ||
           payload.runId !== run.runId ||
           payload.manifestFingerprint !== registration.manifestFingerprint ||
+          payload.sourceCommitSha !== registration.sourceCommitSha ||
           payload.taskId !== run.taskId ||
           payload.taskVersion !== run.taskVersion ||
           payload.method !== run.method ||
@@ -309,6 +314,7 @@ export class ExperimentCampaignRegistry {
           expected !== registrationFingerprint(withoutFingerprint) ||
           !isSha256(registration.manifestFingerprint) ||
           !isSha256(registration.holdoutManifestFingerprint) ||
+          !/^[a-f0-9]{40}$/i.test(registration.sourceCommitSha) ||
           !isSha256(registration.planFingerprint) ||
           !isSha256(registration.baselineFingerprint) ||
           !Array.isArray(registration.candidates) || !registration.candidates.length ||
