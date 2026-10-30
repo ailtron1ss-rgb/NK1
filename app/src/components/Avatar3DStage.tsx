@@ -86,7 +86,7 @@ export function Avatar3DStage(props:Props){
      speaking:p.speaking,awake:p.awake,mouthPose:p.mouthPose,
      gazeX:p.gazeX,gazeY:p.gazeY,
      blink:p.awake&&Math.sin(t*.83)>.994?.92:0,
-    });
+    },{applyVrmOverrides:!rt.vrm?.expressionManager});
     if(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length){
       for(const key of rt.vrmExpressionKeys)rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
     }else if(rt.vrmMorphTargets.length){
