@@ -115,13 +115,15 @@
       "gitBlobSha1": "785cfafb9db647a4bf964d1323b488b7d665479a",
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
-      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "visualReview": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#embarrassed",
       "licenseStatus": "not-revalidated-in-this-inventory",
       "semanticAudit": {
-        "status": "requires-fresh-visual-review",
-        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-        "reverifiedInThisPass": false,
-        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+        "status": "pixel-reviewed-this-pass",
+        "source": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#embarrassed",
+        "depictedContent": "Upper-body portrait with arms folded across the chest; composed, guarded expression, not visibly embarrassed.",
+        "semanticRole": "guarded-crossed-arms",
+        "recommendedUse": "Reserved or mildly defensive crossed-arms pose; do not use as a blush/embarrassment reference.",
+        "reverifiedInThisPass": true
       }
     },
     {
@@ -151,13 +153,15 @@
       "gitBlobSha1": "ec2b15c2c692dba83e541aab3946cbcc3c64840f",
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
-      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "visualReview": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#phone_look",
       "licenseStatus": "not-revalidated-in-this-inventory",
       "semanticAudit": {
-        "status": "requires-fresh-visual-review",
-        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-        "reverifiedInThisPass": false,
-        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+        "status": "pixel-reviewed-this-pass",
+        "source": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#phone_look",
+        "depictedContent": "Tight close-up looking down at a handheld smartphone; lips slightly parted.",
+        "semanticRole": "phone-attention-closeup",
+        "recommendedUse": "Phone interaction and attentive close-up; useful for screen-directed gaze reference.",
+        "reverifiedInThisPass": true
       }
     },
     {
@@ -187,13 +191,15 @@
       "gitBlobSha1": "0260c52532a5bbb5a52fc80c2bcc421d3d1de4e0",
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
-      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "visualReview": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#thinking_chin",
       "licenseStatus": "not-revalidated-in-this-inventory",
       "semanticAudit": {
-        "status": "requires-fresh-visual-review",
-        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-        "reverifiedInThisPass": false,
-        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+        "status": "pixel-reviewed-this-pass",
+        "source": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#thinking_chin",
+        "depictedContent": "Leaning her cheek/head into one hand while reclining on a pale surface; faint relaxed smile.",
+        "semanticRole": "reclining-hand-supported-rest",
+        "recommendedUse": "Relaxed resting/reclining pose; not a hand-on-chin analytical thinking pose.",
+        "reverifiedInThisPass": true
       }
     },
     {
@@ -318,13 +324,15 @@
       "gitBlobSha1": "d3c6c6593fe535cf05b620a8d37ac91d8f6b50bb",
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
-      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "visualReview": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#soft_smile",
       "licenseStatus": "not-revalidated-in-this-inventory",
       "semanticAudit": {
-        "status": "requires-fresh-visual-review",
-        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-        "reverifiedInThisPass": false,
-        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+        "status": "pixel-reviewed-this-pass",
+        "source": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#soft_smile",
+        "depictedContent": "Bright outdoor upper-body portrait, eyes closed, smiling warmly; lab shirt and loosened red tie under a coat.",
+        "semanticRole": "warm-eyes-closed-smile",
+        "recommendedUse": "Warm happy/relieved expression and outdoor lighting reference.",
+        "reverifiedInThisPass": true
       }
     },
     {
@@ -544,13 +552,15 @@
       "gitBlobSha1": "d8cab0ccc67183ed307c6f3ee2a84e9b9b87bc1d",
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
-      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "visualReview": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#city_stand",
       "licenseStatus": "not-revalidated-in-this-inventory",
       "semanticAudit": {
-        "status": "requires-fresh-visual-review",
-        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-        "reverifiedInThisPass": false,
-        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+        "status": "pixel-reviewed-this-pass",
+        "source": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#city_stand",
+        "depictedContent": "Full-body city street portrait, standing front-facing with arms folded; long coat, shorts and boots.",
+        "semanticRole": "urban-fullbody-crossed-arms",
+        "recommendedUse": "Full-body silhouette, street outfit and neutral guarded stance reference.",
+        "reverifiedInThisPass": true
       }
     },
     {
@@ -599,13 +609,15 @@
       "gitBlobSha1": "dc2508c6bd26e663eee7a484b0c1466fe72ededb",
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
-      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "visualReview": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#phone_lean",
       "licenseStatus": "not-revalidated-in-this-inventory",
       "semanticAudit": {
-        "status": "requires-fresh-visual-review",
-        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-        "reverifiedInThisPass": false,
-        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+        "status": "pixel-reviewed-this-pass",
+        "source": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#phone_lean",
+        "depictedContent": "Three-quarter side view at sunset, looking down at a smartphone while leaning against a railing.",
+        "semanticRole": "sunset-phone-profile",
+        "recommendedUse": "Phone-use gesture, side/three-quarter profile and sunset lighting reference.",
+        "reverifiedInThisPass": true
       }
     },
     {
@@ -654,13 +666,15 @@
       "gitBlobSha1": "cfa96d104d049c0ce070f9446cb70151f961e15b",
       "classification": "legacy-static-pose-reference",
       "productionArtMaster": false,
-      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "visualReview": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#street_walk",
       "licenseStatus": "not-revalidated-in-this-inventory",
       "semanticAudit": {
-        "status": "requires-fresh-visual-review",
-        "source": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
-        "reverifiedInThisPass": false,
-        "note": "No exact manifest-ID match was found in the prior audit table; do not infer pose or expression from the filename."
+        "status": "pixel-reviewed-this-pass",
+        "source": "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md#street_walk",
+        "depictedContent": "Full-body front-facing street scene; standing or pausing mid-step with arms relaxed, city signage and pedestrians behind.",
+        "semanticRole": "urban-fullbody-standing-pause",
+        "recommendedUse": "Streetwear/full-body proportion and urban scene reference; image reads as a paused stance rather than a clear walking stride.",
+        "reverifiedInThisPass": true
       }
     },
     {
@@ -685,9 +699,15 @@
   ],
   "semanticAuditSummary": {
     "matchedPriorAuditIds": 25,
-    "requiresFreshVisualReview": 7,
-    "policy": "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified.",
-    "unmatchedIds": [
+    "pixelReviewedThisPassIds": 7,
+    "requiresFreshVisualReview": 0,
+    "unmatchedIds": [],
+    "policy": "25 descriptions remain attributed to the prior WorkPass622 visual audit. Seven previously unmatched images were fetched and visually inspected directly in this pass; their labels are based on visible pixels, not filenames. License/provenance remains unverified."
+  },
+  "pixelReview": {
+    "date": "2026-10-30",
+    "method": "Fetched the exact PNG blobs from the workpass70-source Git ref through the GitHub Contents API using base64 encoding; decoded images were inspected directly in this pass. Blob SHA-1 and decoded byte sizes were checked against the inventory.",
+    "reviewedIds": [
       "embarrassed",
       "phone_look",
       "thinking_chin",
@@ -695,6 +715,7 @@
       "city_stand",
       "phone_lean",
       "street_walk"
-    ]
+    ],
+    "scope": "Visual semantic description only. This does not establish authorship, redistribution license, source prompt, or editable/layered provenance."
   }
 }
