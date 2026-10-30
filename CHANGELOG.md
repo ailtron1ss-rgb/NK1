@@ -2802,3 +2802,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Required a capability adapter and independently verified postcondition; unknown execution remains uncertain rather than being reported as success.
 - Added focused deterministic regression tests and a dedicated GitHub Actions workflow.
 - Physical object manipulation, camera calibration, IK adapters and real-device verification remain explicitly pending.
+
+
+## 2026-10-30 — Aspect 10 perception-to-interaction grounding
+
+- Added `GroundedInteractionBridge` to join calibrated camera detections with canonical `GroundedWorldState` entities; it refuses to invent metric coordinates because the canonical semantic world currently stores no 3D positions.
+- Require fresh visible camera detection, matching visible canonical object, and confidence from both sources before producing an interaction target.
+- Tightened contact/manipulation: simulated and world-model targets cannot authorize physical contact; live camera grounding is required.
+- Added bridge regression tests and included them in the focused Aspect 10 CI command.
+- Still pending: actual camera calibration/transform, IK/renderer adapters, collision-aware trajectory execution and hardware-backed postconditions.
