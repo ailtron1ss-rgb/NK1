@@ -66,6 +66,7 @@ export interface VerifiedMotorOutcome {
   tick: number;
   verified: boolean;
   independent: boolean;
+  goalId: string;
 }
 
 export interface MotorArbitrationSnapshot {
@@ -74,6 +75,7 @@ export interface MotorArbitrationSnapshot {
   cerebellar: ReturnType<CerebellarPredictiveController["snapshot"]>;
   controller: MotorControllerSnapshot;
   creditedEvidenceIds: string[];
+  pendingGoalIds: string[];
   lastResult: MotorArbitrationResult | null;
 }
 
@@ -84,6 +86,7 @@ export class MotorGoalArbiter {
   private basalGanglia = new BasalGangliaSelectionCircuit();
   private cerebellar = new CerebellarPredictiveController();
   private creditedEvidenceIds = new Set<string>();
+  private pendingGoalIds = new Set<string>();
   private lastResult: MotorArbitrationResult | null = null;
 
   constructor(controller: EmbodiedMotorController) { this.controller = controller; }
@@ -170,7 +173,14 @@ export class MotorGoalArbiter {
       const result = this.controller.setGoal(selected.goal, context.nowMs);
       accepted = result.accepted;
       reason = result.reason;
-      if (accepted) motorFrame = this.controller.step(context.nowMs);
+      if (accepted) {
+        motorFrame = this.controller.step(context.nowMs);
+        this.pendingGoalIds.add(selected!.goal.id);
+        if (this.pendingGoalIds.size > 2048) {
+          const oldest = this.pendingGoalIds.values().next().value;
+          if (oldest) this.pendingGoalIds.delete(oldest);
+        }
+      }
     } else if (!selected) {
       reason = "basal-ganglia-selected-no-candidate";
     }
@@ -198,6 +208,9 @@ export class MotorGoalArbiter {
     if (!/^[a-z0-9][a-z0-9._:-]{2,127}$/i.test(outcome.evidenceId)) {
       return { accepted: false, reason: "invalid-evidence-id" };
     }
+    if (typeof outcome.goalId !== "string" || !this.pendingGoalIds.has(outcome.goalId)) {
+      return { accepted: false, reason: "no-matching-executed-goal" };
+    }
     if (this.creditedEvidenceIds.has(outcome.evidenceId)) {
       return { accepted: false, reason: "duplicate-evidence-credit" };
     }
@@ -206,6 +219,7 @@ export class MotorGoalArbiter {
       return { accepted: false, reason: "invalid-outcome" };
     }
     this.creditedEvidenceIds.add(outcome.evidenceId);
+    this.pendingGoalIds.delete(outcome.goalId);
     if (this.creditedEvidenceIds.size > 2048) {
       const oldest = this.creditedEvidenceIds.values().next().value;
       if (oldest) this.creditedEvidenceIds.delete(oldest);
@@ -222,6 +236,7 @@ export class MotorGoalArbiter {
       cerebellar: this.cerebellar.snapshot(),
       controller: this.controller.snapshot(),
       creditedEvidenceIds: [...this.creditedEvidenceIds].slice(-2048),
+      pendingGoalIds: [...this.pendingGoalIds].slice(-2048),
       lastResult: this.lastResult ? structuredClone(this.lastResult) : null,
     };
   }
@@ -231,6 +246,7 @@ export class MotorGoalArbiter {
     this.cerebellar.restore(snapshot?.cerebellar);
     this.controller.restore(snapshot?.controller);
     this.creditedEvidenceIds = new Set((snapshot?.creditedEvidenceIds ?? []).filter((id) => typeof id === "string").slice(-2048));
+    this.pendingGoalIds = new Set((snapshot?.pendingGoalIds ?? []).filter((id) => typeof id === "string").slice(-2048));
     this.lastResult = snapshot?.lastResult ? structuredClone(snapshot.lastResult) : null;
   }
 
