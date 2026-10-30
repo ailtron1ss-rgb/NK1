@@ -1,3 +1,9 @@
+## [NK1][WorkPass636] Audit current visual assets before 2.5D art production (2026-10-30)
+
+- Inventory the canonical Live2D model/physics/CDI3, the 32 complete legacy sprite PNGs and the editable SVG concept; distinguish reusable visual references from actual layered source art.
+- Document the hash-locked runtime-to-app Live2D asset hydration path, confirmed model capabilities and the missing production PSD/ORA/GLB with hidden-area paint, pivots and occlusion masks.
+- Add a staged art-production specification and readiness matrix. No new images were generated; no Release ZIP change.
+
 ## [NK1][2.5D] Asymmetric facial rig and speech visemes (2026-10-30)
 
 - Expanded the renderer-independent face contract with independent left/right eyelid closure, brow raise/furrow, eye gaze axes, and eight viseme channels (AA, EE, IH, OH, OU, FV, MBP, L).
