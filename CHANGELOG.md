@@ -1,3 +1,9 @@
+## [NK1][аспект9] Preserve observer ordering under reentrant native events (2026-10-30)
+
+- Queue nested publications while dispatching so all subscribers observe the same total event order even if one observer synchronously publishes another event.
+- Add a regression proving reentrant publication cannot make later subscribers observe sequence 2 before sequence 1.
+- The new change is source- and test-committed; hosted CI for this follow-up is pending.
+
 ## [NK1][аспект9] Use runtime-compatible monotonic clock for native speech events (2026-10-30)
 
 - The first hosted runtime typecheck identified that the minimal runtime declaration set does not include `node:perf_hooks`. Use the Node global `performance.now()` instead; it remains monotonic and is available in the pinned Node runtime without introducing a new shim/dependency.
