@@ -63,7 +63,11 @@ export function validateWardrobePackManifest(manifest: WardrobePackManifest): Wa
   const paths = new Set<string>();
   let totalBytes = 0;
   for (const asset of manifest.assets) {
-    if (!asset || !ID.test(asset.id ?? "")) errors.push("asset:invalid-id");
+    if (!asset || typeof asset !== "object") {
+      errors.push("asset:not-object");
+      continue;
+    }
+    if (!ID.test(asset.id ?? "")) errors.push("asset:invalid-id");
     else if (ids.has(asset.id)) errors.push(`asset:duplicate-id:${asset.id}`);
     else ids.add(asset.id);
     if (!nonEmpty(asset.garmentId, 100)) errors.push(`asset:invalid-garment-id:${asset?.id ?? "unknown"}`);
@@ -76,9 +80,12 @@ export function validateWardrobePackManifest(manifest: WardrobePackManifest): Wa
     if (!Number.isSafeInteger(asset.bytes) || asset.bytes <= 0 || asset.bytes > MAX_WARDROBE_ASSET_BYTES) {
       errors.push(`asset:invalid-size:${asset?.id ?? "unknown"}`);
     } else totalBytes += asset.bytes;
-    if (!["image/png", "image/webp", "image/jpeg", "model/gltf-binary", "model/gltf+json"].includes(asset.mime)) {
-      errors.push(`asset:unsupported-mime:${asset?.id ?? "unknown"}`);
-    }
+    const mimeByExtension: Record<string, string> = {
+      png: "image/png", webp: "image/webp", jpg: "image/jpeg", jpeg: "image/jpeg",
+      glb: "model/gltf-binary", vrm: "model/gltf-binary", gltf: "model/gltf+json",
+    };
+    const extension = String(asset.path ?? "").split(".").pop()?.toLowerCase() ?? "";
+    if (mimeByExtension[extension] !== asset.mime) errors.push(`asset:mime-extension-mismatch:${asset?.id ?? "unknown"}`);
   }
   if (totalBytes > 128 * 1024 * 1024) errors.push("manifest:pack-size-limit-exceeded");
   return { valid: errors.length === 0, errors, totalBytes };
@@ -120,8 +127,9 @@ export function createWardrobeSwitchPlan(request: WardrobeSwitchRequest): Wardro
   if (request.targetBodyId !== request.packBodyId) errors.push("switch:body-mismatch");
   if (request.targetRigVersion !== request.packRigVersion) errors.push("switch:rig-mismatch");
   if (!request.toOutfitId || request.toOutfitId === request.fromOutfitId) errors.push("switch:invalid-target");
-  if (!Array.isArray(request.expectedAssetIds) || request.expectedAssetIds.length === 0) errors.push("switch:no-renderable-assets");
+  if (!Array.isArray(request.expectedAssetIds) || request.expectedAssetIds.length === 0 || request.expectedAssetIds.some((id) => !nonEmpty(id, 120))) errors.push("switch:no-renderable-assets");
   if (new Set(request.expectedAssetIds ?? []).size !== (request.expectedAssetIds ?? []).length) errors.push("switch:duplicate-asset-id");
+  if (!RENDERERS.includes(request.renderer)) errors.push("switch:invalid-renderer");
   return {
     status: errors.length ? "blocked" : "ready",
     requestId: request.requestId,
