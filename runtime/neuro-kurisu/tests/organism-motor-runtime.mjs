@@ -47,4 +47,20 @@ assert.equal(motor.diagnostics().channel.published, 3);
 dispose();
 assert.equal(motor.diagnostics().channel.listenerCount, 0);
 
-console.log('Organism motor runtime integration: 11 assertions passed.');
+const continuous = new OrganismMotorRuntime();
+continuous.configureSkeleton([{
+  id: 'head-yaw', minAngleRad: -0.8, maxAngleRad: 0.8, restAngleRad: 0,
+  maxSpeedRadPerSec: 1.5,
+}]);
+let monotonic = 0;
+continuous.startContinuous(20, () => { monotonic += 20; return monotonic; });
+await new Promise((resolve) => setTimeout(resolve, 115));
+continuous.stopContinuous();
+const stoppedTick = continuous.latestFrame()?.tick ?? 0;
+assert.ok(stoppedTick >= 3, 'continuous loop must advance independently of cognitive steps');
+assert.equal(continuous.diagnostics().continuousLoopRunning, false);
+await new Promise((resolve) => setTimeout(resolve, 55));
+assert.equal(continuous.latestFrame()?.tick, stoppedTick, 'stop must prevent further motor ticks');
+assert.equal(continuous.diagnostics().continuousLoopErrors, 0);
+
+console.log('Organism motor runtime integration: 15 assertions passed.');
