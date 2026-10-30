@@ -77,6 +77,8 @@ export interface P41PerceptualEvent {
   lastAt:number;
   persistence01:number;
   evidenceKind:P41EvidenceKind;
+  modalityLastSeenAt?:Partial<Record<P41Modality,number>>;
+  modalityEvidenceKinds?:Partial<Record<P41Modality,P41EvidenceKind>>;
 }
 
 export interface P41PendingPerception {
@@ -308,7 +310,7 @@ export class P41SemanticPerceptionEngine {
       const evidenceKind=o.evidenceKind??sceneEvidenceKind;
       this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,null,evidenceKind,namespacedTrackId);
     }
-    for(const e of (w.events??[]).slice(0,16)) this.upsertEvent(String(e),.6,'world',at,'observed');
+    for(const e of (w.events??[]).slice(0,16)) this.upsertEvent(String(e),.6,'world',at,sceneEvidenceKind);
     this.recordModality('world',.7,0);
   }
 
@@ -430,8 +432,16 @@ export class P41SemanticPerceptionEngine {
   private upsertEvent(label:string,confidence01:number,modality:P41Modality,at:number,evidenceKind:P41EvidenceKind){
     const key=normalizePerceptualLabel(label); if(!key)return;
     let e=this.state.events.find(x=>x.label===key);
-    if(!e)e={id:stableId('event',key),label:key,confidence01:clamp(confidence01),modalities:[modality],startedAt:at,lastAt:at,persistence01:.5,evidenceKind};
-    else {e.confidence01=clamp(e.confidence01*.78+confidence01*.22);e.lastAt=at;e.persistence01=clamp(e.persistence01*.82+.18);if(!e.modalities.includes(modality))e.modalities.push(modality);e.evidenceKind=evidenceKind;}
+    if(!e)e={id:stableId('event',key),label:key,confidence01:clamp(confidence01),modalities:[modality],startedAt:at,lastAt:at,persistence01:.5,evidenceKind,modalityLastSeenAt:{[modality]:at},modalityEvidenceKinds:{[modality]:evidenceKind}};
+    else {
+      e.confidence01=clamp(e.confidence01*.78+confidence01*.22);
+      e.lastAt=Math.max(e.lastAt,at);
+      e.persistence01=clamp(e.persistence01*.82+.18);
+      if(!e.modalities.includes(modality))e.modalities.push(modality);
+      e.evidenceKind=evidenceKind;
+      e.modalityLastSeenAt={...(e.modalityLastSeenAt??{}),[modality]:at};
+      e.modalityEvidenceKinds={...(e.modalityEvidenceKinds??{}),[modality]:evidenceKind};
+    }
     if(!this.state.events.some(x=>x.id===e!.id))this.state.events.unshift(e!);
     this.state.events=this.state.events.slice(0,128);
   }
