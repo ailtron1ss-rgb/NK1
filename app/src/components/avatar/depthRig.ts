@@ -191,3 +191,73 @@ export function resolveDepthRigPose(rig: DepthRigDefinition, intent: DepthRigInt
   }
   return { rigId: rig.id, deltas };
 }
+
+
+/** Affine 2D transform in column-vector form, plus accumulated depth. */
+export interface DepthRigWorldTransform {
+  a: number; b: number; c: number; d: number; tx: number; ty: number; z: number;
+  rotation: number; scaleX: number; scaleY: number;
+}
+export interface DepthRigWorldPose {
+  rigId: string;
+  /** Parent-composed transforms keyed by node id; renderer applies pivot at draw time. */
+  transforms: Readonly<Record<string, DepthRigWorldTransform>>;
+}
+const composeWorld = (
+  parent: DepthRigWorldTransform | null,
+  local: DepthRigTransform,
+): DepthRigWorldTransform => {
+  const radians = local.rotation * Math.PI / 180;
+  const cos = Math.cos(radians), sin = Math.sin(radians);
+  const a = cos * local.scaleX, b = sin * local.scaleX;
+  const c = -sin * local.scaleY, d = cos * local.scaleY;
+  if (!parent) return { a, b, c, d, tx: local.x, ty: local.y, z: local.z,
+    rotation: local.rotation, scaleX: local.scaleX, scaleY: local.scaleY };
+  return {
+    a: parent.a * a + parent.c * b, b: parent.b * a + parent.d * b,
+    c: parent.a * c + parent.c * d, d: parent.b * c + parent.d * d,
+    tx: parent.a * local.x + parent.c * local.y + parent.tx,
+    ty: parent.b * local.x + parent.d * local.y + parent.ty,
+    z: parent.z + local.z,
+    rotation: parent.rotation + local.rotation,
+    scaleX: parent.scaleX * local.scaleX, scaleY: parent.scaleY * local.scaleY,
+  };
+};
+
+/**
+ * Resolve rest transforms plus additive pose deltas through the parent graph.
+ * Positions are normalized artwork units; rotations are degrees; z is additive.
+ * Pivots remain authored per layer and are intentionally applied by the renderer,
+ * because only it knows the source image dimensions and crop rectangle.
+ */
+export function resolveDepthRigWorldPose(
+  rig: DepthRigDefinition,
+  pose?: DepthRigPose | null,
+): DepthRigWorldPose {
+  const ordered = orderDepthRigNodes(rig);
+  if (pose && pose.rigId !== rig.id) throw new Error("Depth rig pose belongs to another rig.");
+  const byId = new Map(ordered.map((node) => [node.id, node]));
+  const transforms: Record<string, DepthRigWorldTransform> = {};
+  const resolve = (id: string): DepthRigWorldTransform => {
+    const cached = transforms[id];
+    if (cached) return cached;
+    const node = byId.get(id);
+    if (!node) throw new Error(`Missing depth rig node: ${id}`);
+    const delta = pose?.deltas[node.id] ?? {};
+    const local: DepthRigTransform = {
+      x: node.rest.x + (delta.x ?? 0), y: node.rest.y + (delta.y ?? 0),
+      z: node.rest.z + (delta.z ?? 0), rotation: node.rest.rotation + (delta.rotation ?? 0),
+      scaleX: node.rest.scaleX * (delta.scaleX ?? 1), scaleY: node.rest.scaleY * (delta.scaleY ?? 1),
+    };
+    const parent = node.parentId === null ? null : resolve(node.parentId);
+    const world = composeWorld(parent, local);
+    if (![world.a, world.b, world.c, world.d, world.tx, world.ty, world.z,
+      world.rotation, world.scaleX, world.scaleY].every(Number.isFinite)) {
+      throw new Error(`Non-finite world transform for depth rig node: ${id}`);
+    }
+    transforms[id] = world;
+    return world;
+  };
+  for (const node of ordered) resolve(node.id);
+  return { rigId: rig.id, transforms };
+}
