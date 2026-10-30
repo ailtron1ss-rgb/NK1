@@ -52,7 +52,10 @@ test("reads VRM 1.0 preset/custom expression maps and node morphTargetBinds", ()
   assert.equal(happy.isBinary, true);
   assert.equal(happy.overrideMouth, "blend");
   assert.equal(happy.overrideBlink, "block");
-  assert.deepEqual(happy.binds, [{ targetKind: "node", targetIndex: 5, morphIndex: 2, weight: 0.75 }]);
+  assert.deepEqual(happy.binds, [
+    { targetKind: "node", targetIndex: 5, morphIndex: 2, weight: 0.75 },
+    { targetKind: "node", targetIndex: 5, morphIndex: 3, weight: 1 },
+  ]);
   assert.ok(definitions.some((item) => item.key === "aa"));
   assert.equal(definitions.some((item) => item.key === "happy" && item.binds.some((bind) => bind.targetIndex === 8)), false);
   assert.equal(definitions.some((item) => item.key === "custom_cheek_twitch"), false);
