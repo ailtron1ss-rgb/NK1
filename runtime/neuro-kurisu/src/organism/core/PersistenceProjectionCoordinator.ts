@@ -184,6 +184,7 @@ export class PersistenceProjectionCoordinator {
       }
       if(materialize.has('identity')) {
       target.facets.advanced.p78AutobiographicalSelfContinuity=this.snapshotOnce('snap:selfSubsystem.p78AutobiographicalSelfContinuity', ctx.selfSubsystem.p78AutobiographicalSelfContinuity);
+      target.facets.advanced.p2702PersistentPersonality=this.snapshotOnce('snap:selfSubsystem.p2702PersistentPersonality', ctx.selfSubsystem.p2702PersistentPersonality);
       }
       if(materialize.has('identity')) {
       target.facets.advanced.p79EmbodiedSituationModel=this.snapshotOnce('snap:worldSubsystem.p79EmbodiedSituationModel', ctx.worldSubsystem.p79EmbodiedSituationModel);
