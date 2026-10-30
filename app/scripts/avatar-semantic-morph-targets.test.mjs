@@ -31,7 +31,9 @@ test("imported avatar stage applies the shared facial timeline through semantic 
  assert.ok(stage.includes("semanticMorphValues"));
  assert.ok(stage.includes("blink:p.awake?facialMotion.blinkClosure*.92:0"));
  assert.ok(stage.includes("mouthOpen:p.mouthPose.open"));
- assert.ok(stage.includes("applySemanticMorphTargets(rt.morphTargets,morphValues)"));\n assert.ok(stage.includes("rt.morphTargets.push"));\n assert.ok(stage.includes("rt.morphTargets=[]"));
+ assert.ok(stage.includes("applySemanticMorphTargets(rt.morphTargets,morphValues)"));
+ assert.ok(stage.includes("rt.morphTargets.push"));
+ assert.ok(stage.includes("rt.morphTargets=[]"));
 });
 
 test("semantic expression composes with stronger authored morph animation",()=>{
