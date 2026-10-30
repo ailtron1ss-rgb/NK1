@@ -83,3 +83,40 @@ test("prevents overlapping switches while a destination is preparing", async () 
   assert.equal((await firstPromise).status, "committed");
   assert.equal(coordinator.activeAdapterId, "vrm");
 });
+
+test("does not commit when verification omits an accepted channel", async () => {
+  const source = adapter("live");
+  const target = adapter("vrm", { verify: async receipt => ({
+    verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    observedChannels: [], mismatches: [],
+  }) });
+  const coordinator = new EmbodimentSwitchCoordinator(source);
+  const result = await coordinator.switchTo(target, snapshot);
+  assert.equal(result.status, "rolled-back");
+  assert.equal(result.reason, "destination-verification-failed");
+  assert.equal(coordinator.activeAdapterId, "live");
+});
+
+test("does not commit when verification predates the apply receipt", async () => {
+  const source = adapter("live");
+  const target = adapter("vrm", { verify: async receipt => ({
+    verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 199,
+    observedChannels: ["headYaw"], mismatches: [],
+  }) });
+  const coordinator = new EmbodimentSwitchCoordinator(source);
+  const result = await coordinator.switchTo(target, snapshot);
+  assert.equal(result.status, "rolled-back");
+  assert.equal(coordinator.activeAdapterId, "live");
+});
+
+test("rejects empty or malformed apply channel claims", async () => {
+  const source = adapter("live");
+  const target = adapter("vrm", { apply: async state => ({
+    adapterId: "vrm", stateRevision: state.revision, appliedAtMonotonicMs: 200,
+    acceptedChannels: [], rejectedChannels: [], executionId: "empty-execution",
+  }) });
+  const coordinator = new EmbodimentSwitchCoordinator(source);
+  const result = await coordinator.switchTo(target, snapshot);
+  assert.equal(result.status, "rolled-back");
+  assert.equal(result.reason, "invalid-apply-receipt");
+});
