@@ -2820,3 +2820,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Make the adapter's Euler assertions precision-safe instead of requiring exact binary floating-point equality.
 - Clarify the adapter's frame contract: `Avatar3DStage` restores the model's baseline bone pose, updates the animation mixer, and then applies NK1 offsets for that frame. This avoids accumulating motor offsets across frames.
 - Preserve fail-closed behavior for missing bones and non-finite channels. Exact-head CI after these fixes is still pending.
+
+
+## [NK1][WorkPass631–632] Expand humanoid coverage and resolve strict TypeScript failures (2026-10-30)
+
+- Extend VRM regression coverage to bilateral `J_Bip_*` upper/lower arms and legs plus spine, including the right knee alias.
+- Fix strict TypeScript inference for the two heterogeneous motor proposals by explicitly typing the proposal collection as `MotorProposal[]`.
+- Default optional proposal weights before passing them into finite-number validation; this removes the strict optional-property error found in CI.
+- The motor/adapter unit tests were locally executed under Node 22 with type stripping; exact-head CI/typecheck remains the release gate.
