@@ -91,7 +91,7 @@ export class P2702PersistentPersonalityDynamics{
   const responsibility=this.state.invariantValues[this.state.invariantNames.indexOf('responsibility')]??.90;
   const adaptive=(name:string)=>this.state.adaptiveValues[this.state.adaptiveNames.indexOf(name)]??.5;
   const bias:Record<ActionKind,number>=Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>;
-  bias.explore=clamp((adaptive('curiosity')*.05+canonCuriosity*.025)*args.novelty01 + adaptive('playfulness')*.008);
+  bias.explore=clamp(canonCuriosity*.05*args.novelty01 + adaptive('playfulness')*.008);
   bias.verify=clamp((rigor*.05+adaptive('composure')*.015)*args.uncertainty01);
   bias.reflect=clamp((autonomy*.028+adaptive('guardedness')*.014)*args.identityGap01);
   bias.respond=clamp((adaptive('warmth')*.025+adaptive('directness')*.018)*(1-args.identityGap01));
