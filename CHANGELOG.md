@@ -1,3 +1,10 @@
+## [NK1][WorkPass628] Deterministic action clip arbitration across VRMA and embedded motions (2026-10-30)
+
+- Extract action clip selection into a pure avatarMotionClipSelector adapter.
+- Prefer semantic VRMA action matches, then semantic embedded model matches, then explicit VRMA default, and only then idle fallback.
+- Prevent a sidecar containing only idle/breath clips from masking an embedded respond/explore/verify gesture.
+- Add unit tests for action-specific priority, default fallback, idle fallback and empty motion sets; add a dedicated CI gate and align 3D/VRMA integration assertions.
+
 ## [NK1][WorkPass627] VRMA sidecar motion library with persistence and blend (2026-10-30)
 
 - Add @pixiv/three-vrm-animation 3.5.5 (MIT) and register VRMAnimationLoaderPlugin alongside VRMLoaderPlugin.
