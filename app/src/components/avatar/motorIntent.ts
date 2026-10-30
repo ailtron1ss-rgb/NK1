@@ -55,6 +55,45 @@ const COMFORT_CUES = /(?:\b(?:sorry|that sounds hard|i understand|i'm here|take 
  * available Live2D rig. This is a deterministic intent selector, not a 3D IK solver:
  * it chooses only motion groups that exist in Kurisu.model3.json.
  */
+/**
+ * Resolve a semantic gesture into bounded shoulder targets for rigs that expose
+ * independently transformable arms. Values are radians around the rig bind pose.
+ * This is a reusable motor adapter, not a claim of elbow/wrist IK.
+ */
+export interface AvatarArmTargets { left: number; right: number }
+
+export function resolveAvatarGestureArmTargets(
+  profile: AvatarGestureProfile,
+  intensity: number,
+  emotion: AvatarMotorEmotion,
+  awake: boolean,
+): AvatarArmTargets {
+  if (!awake) return { left: 0.025, right: -0.025 };
+  const gain = clamp(intensity, 0, 0.8) / 0.8;
+  const targets: Record<AvatarGestureProfile, AvatarArmTargets> = {
+    none: { left: 0.025, right: -0.025 },
+    considering: { left: -0.12, right: 0.16 },
+    presenting: { left: -0.24, right: 0.46 },
+    examining: { left: -0.34, right: -0.42 },
+    reassuring: { left: -0.08, right: 0.18 },
+    emphatic: { left: -0.48, right: 0.52 },
+  };
+  const base = targets[profile] ?? targets.none;
+  let left = base.left * gain;
+  let right = base.right * gain;
+  if (emotion === "anger" || emotion === "frustration") {
+    left = -0.58 * Math.max(gain, 0.55);
+    right = 0.58 * Math.max(gain, 0.55);
+  } else if (emotion === "protective") {
+    left -= 0.1 * gain;
+    right -= 0.1 * gain;
+  } else if (emotion === "sadness" || emotion === "anxiety") {
+    left *= 0.72;
+    right *= 0.72;
+  }
+  return { left: clamp(left, -0.8, 0.8), right: clamp(right, -0.8, 0.8) };
+}
+
 export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMotorIntentPlan {
   const emotion = input.emotion in EMOTION_TILT ? input.emotion : "calm";
   const action = typeof input.action === "string" ? input.action : "wait";
