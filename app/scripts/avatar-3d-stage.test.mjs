@@ -89,3 +89,13 @@ test("partial native VRM facial maps leave unbound semantic channels to the GLB 
  assert.match(stage,/speechSemantics\.filter\(\(semantic\)=>!nativeSemantics\.has\(semantic\)\)/);
  assert.ok(stage.indexOf("applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights)")<stage.indexOf("applyThreeFacialSemanticWeights(rt.facialMorphTargets,genericWeights,speechVisemes)"));
 });
+
+test("partial VRM ExpressionManager coverage falls through to generic GLB facial semantics",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ const managerBranch=stage.slice(stage.indexOf("if(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length)"),stage.indexOf("}else{\n      if(rt.vrmMorphTargets.length)"));
+ assert.match(managerBranch,/managerOwnedSemantics=new Set\(rt\.vrmExpressionKeys\)/);
+ assert.match(managerBranch,/genericWeights=Object\.fromEntries\(Object\.entries\(expressionWeights\)\.filter/);
+ assert.match(managerBranch,/speechSemantics\.filter\(\(semantic\)=>!managerOwnedSemantics\.has\(semantic\)\)/);
+ assert.match(managerBranch,/applyThreeFacialSemanticWeights\(rt\.facialMorphTargets,genericWeights,genericSpeechVisemes\)/);
+ assert.ok(managerBranch.indexOf("rt.vrm.expressionManager.setValue")<managerBranch.indexOf("applyThreeFacialSemanticWeights"));
+});
