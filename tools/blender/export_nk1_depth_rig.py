@@ -139,7 +139,7 @@ def read_glb_document(glb_path):
         if end > len(data):
             raise ValueError("truncated GLB chunk")
         if kind == JSON_CHUNK:
-            document = json.loads(data[start:end].decode("utf-8").rstrip(" \\t\\r\\n\\0"))
+            document = json.loads(data[start:end].decode("utf-8").rstrip(" \t\r\n\0"))
         offset = end
     if document is None:
         raise ValueError("GLB JSON chunk is missing")
