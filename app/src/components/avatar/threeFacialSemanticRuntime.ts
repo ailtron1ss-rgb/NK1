@@ -3,7 +3,7 @@ import {
   composeFacialWeights,
   type FacialSemantic,
   type FacialWeight,
-} from "./facialSemanticMap";
+} from "./facialSemanticMap.ts";
 
 export type ThreeFacialMorphTarget = Readonly<{
   object: {
