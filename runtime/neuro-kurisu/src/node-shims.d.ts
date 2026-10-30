@@ -50,7 +50,7 @@ declare module 'node:fs/promises' {
   export function readdir(path:string):Promise<string[]>;
 }
 declare module 'node:path' {
-  const path: { join(...parts:string[]):string; dirname(path:string):string; basename(path:string):string; isAbsolute(path:string):boolean; resolve(...parts:string[]):string; sep:string; };
+  const path: { join(...parts:string[]):string; dirname(path:string):string; basename(path:string):string; isAbsolute(path:string):boolean; resolve(...parts:string[]):string; relative(from:string,to:string):string; sep:string; };
   export default path;
   export function dirname(path:string):string;
   export function join(...parts:string[]):string;
