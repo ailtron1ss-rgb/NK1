@@ -32,7 +32,28 @@ test("existing sprite audit exactly inventories the legacy manifest without prom
     assert.match(asset.gitBlobSha1, /^[a-f0-9]{40}$/);
     assert.ok(Number.isInteger(asset.bytes) && asset.bytes > 20_000);
     assert.ok(asset.path.startsWith("app/public/sprites/") && asset.path.endsWith(".png"));
+
+    assert.ok(asset.semanticAudit && typeof asset.semanticAudit === "object");
+    assert.equal(asset.semanticAudit.reverifiedInThisPass, false);
+    if (asset.semanticAudit.status === "matched-prior-pixel-audit") {
+      assert.ok(asset.semanticAudit.depictedContent);
+      assert.ok(asset.semanticAudit.semanticRole);
+      assert.ok(asset.semanticAudit.recommendedUse);
+      assert.equal(asset.semanticAudit.source, "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622");
+    } else {
+      assert.equal(asset.semanticAudit.status, "requires-fresh-visual-review");
+      assert.match(asset.semanticAudit.note, /do not infer/i);
+      assert.equal(asset.semanticAudit.depictedContent, undefined);
+    }
   }
+
+  assert.deepEqual(inventory.semanticAuditSummary, {
+    matchedPriorAuditIds: 27,
+    requiresFreshVisualReview: 5,
+    policy: "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified.",
+  });
+  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "matched-prior-pixel-audit").length, 27);
+  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "requires-fresh-visual-review").length, 5);
 
   const counts = Object.fromEntries(
     Object.entries(inventory.groups).map(([sheet, group]) => [sheet, group.count]),
