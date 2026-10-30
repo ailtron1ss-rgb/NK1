@@ -1,4 +1,6 @@
 import { actionCost } from './ActionCostPolicy.ts';
+import type { LearningFitnessJournalSink } from '../learning/LearningFitnessJournal.ts';
+import type { LearningLifecycleJournalSink } from '../learning/LearningLifecycleJournal.ts';
 import { sha256Stable } from './StableSerialization.ts';
 import { memoRuntimeContext } from '../developmental/MemoRuntimeContext.ts';
 import { randomUUID, createHash } from 'node:crypto';
@@ -11150,6 +11152,14 @@ export class OrganismCore {
      */
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
         return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } } });
+    }
+    /** Attach the single durable P23 journal pair to the organism's actual in-process learner. */
+    configureP23LearningJournals(sinks: {
+        fitness: LearningFitnessJournalSink;
+        lifecycle: LearningLifecycleJournalSink;
+    }): void {
+        this.developmentalNeural.p23Learning.configureLearningFitnessJournalIfAbsent(sinks.fitness);
+        this.developmentalNeural.p23Learning.configureLearningLifecycleJournalIfAbsent(sinks.lifecycle);
     }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
