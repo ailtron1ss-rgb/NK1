@@ -27,6 +27,7 @@ const ACTIONS:ActionKind[] = ['respond','explore','verify','rest','reflect','wai
 export type P41Modality = 'text'|'vision'|'audio'|'sensor'|'world';
 export type P41EvidenceKind = 'observed'|'model-output'|'derived'|'unresolved';
 export type P41EntityKind = 'person'|'object'|'place'|'event'|'concept'|'body'|'unknown';
+export interface P41ImageBox {x:number;y:number;width:number;height:number;}
 
 export interface P41PerceptualEntity {
   id:string;
@@ -50,6 +51,11 @@ export interface P41PerceptualEntity {
   /** Provenance for each modality; missing legacy entries remain unresolved. */
   modalityEvidenceKinds?:Partial<Record<P41Modality,P41EvidenceKind>>;
   position:{x:number;y:number;z:number}|null;
+  /** Last normalized 2D image-space localization; never interpreted as world coordinates. */
+  imageBox?:P41ImageBox;
+  imageBoxCameraId?:number;
+  imageBoxAt?:number;
+  imageBoxConfidence01?:number;
   /** Smoothed velocity in the same coordinate frame as position, per second. */
   velocity?:{x:number;y:number;z:number}|null;
 }
@@ -177,7 +183,7 @@ export interface P41SemanticInput {
     cameraId?:number;
     sceneLabel?:string;
     confidence01?:number;
-    objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number}>;
+    objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number;bbox?:P41ImageBox;bboxConfidence01?:number}>;
     relations?:Array<{from:string;relation:string;to:string;confidence01?:number;fromTrackId?:string;toTrackId?:string;fromSourceId?:string;toSourceId?:string}>;
     events?:Array<{label:string;confidence01?:number}>;
     latencyMs?:number;
@@ -275,7 +281,18 @@ export class P41SemanticPerceptionEngine {
       const position=finitePosition(o.x,o.y,o.z);
       const positionFrameId=cleanTrackId(o.coordinateFrameId);
       const e=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.5),.66,'vision',at,position,'model-output',namespacedTrackId,positionFrameId);
-      if(e)targets.push(e.id);
+      if(e){
+        targets.push(e.id);
+        const box=o.bbox;
+        const validBox=Boolean(box&&[box.x,box.y,box.width,box.height].every(value=>typeof value==='number'&&Number.isFinite(value))
+          &&box.x>=0&&box.y>=0&&box.width>0&&box.height>0&&box.x+box.width<=1.000001&&box.y+box.height<=1.000001);
+        if(validBox&&Number(o.bboxConfidence01??0)>=.42&&at>=(e.imageBoxAt??0)){
+          e.imageBox={x:box!.x,y:box!.y,width:box!.width,height:box!.height};
+          e.imageBoxCameraId=cameraId;
+          e.imageBoxAt=at;
+          e.imageBoxConfidence01=clamp(o.bboxConfidence01??0);
+        }
+      }
     }
     for(const e of (v.events??[]).slice(0,16)) this.upsertEvent(String(e.label),clamp(e.confidence01??.45),'vision',at,'model-output');
     for(const r of (v.relations??[]).slice(0,32)){
