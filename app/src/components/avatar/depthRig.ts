@@ -69,9 +69,10 @@ export interface DepthRigPose {
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, Number.isFinite(value) ? value : 0));
 
-const finiteTransform = (t: DepthRigTransform | null | undefined): boolean =>
-  Boolean(t && typeof t === "object")
-  && [t.x, t.y, t.z, t.rotation, t.scaleX, t.scaleY].every(Number.isFinite);
+const finiteTransform = (t: DepthRigTransform | null | undefined): boolean => {
+  if (!t || typeof t !== "object") return false;
+  return [t.x, t.y, t.z, t.rotation, t.scaleX, t.scaleY].every(Number.isFinite);
+};
 
 export function validateDepthRig(rig: DepthRigDefinition): DepthRigDiagnostic[] {
   const diagnostics: DepthRigDiagnostic[] = [];
