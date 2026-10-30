@@ -49,7 +49,9 @@
 | P41 image-space entity fields | Сохранять bbox отдельно от calibrated world x/y/z
 | WorldContext image-space schema | Переносить рамку только с camera ID, timestamp и bbox confidence
 | GroundedWorldState image-box round-trip | Возвращать последнюю 2D рамку в WorldContext без потери camera namespace
-| Image-space regression | Проверять прохождение двух одинаковых объектов и reject out-of-frame/no-camera boxes
+| Image-space regression | Проверять прохождение двух одинаковых объектов и reject out-of-frame/no-camera boxes |
+| Runtime tracker restore | Rehydrate camera-local tracks from persisted canonical P41 image boxes |
+| Restart regression | Verify P41 + GroundedWorldState snapshots survive JSON round-trip and tracking continues with same IDs |
 
 ## Текущий статус
 
