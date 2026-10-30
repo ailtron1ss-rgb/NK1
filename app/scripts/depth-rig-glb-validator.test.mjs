@@ -81,6 +81,19 @@ test("rejects a manifest root when the exported glTF places it beneath another n
   assert.ok(result.errors.includes("parent-mismatch:root"));
 });
 
+
+test("accepts quaternion-to-Euler XYZ round trips and rejects exported rotation drift", () => {
+  const json = document();
+  const angle = Math.PI / 2;
+  json.nodes[1].rotation = [0, 0, Math.sin(angle / 2), Math.cos(angle / 2)];
+  const rig = manifest();
+  rig.nodes[1].rotation = [0, 0, angle];
+  assert.deepEqual(validateDepthRigGlb(glb(document(rig))), { ok: true, errors: [] });
+  rig.nodes[1].rotation = [0, 0, 0];
+  const result = validateDepthRigGlb(glb(document(rig)));
+  assert.ok(result.errors.includes("rotation-mismatch:head"));
+});
+
 test("Avatar3DStage consumes scene extras for both depth rig and artist face bindings", async () => {
   const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
   assert.ok(stage.includes("sceneRoot.userData?.nk1DepthRigManifest"));
