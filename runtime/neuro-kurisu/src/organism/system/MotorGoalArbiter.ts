@@ -80,12 +80,13 @@ export interface MotorArbitrationSnapshot {
 const clamp = (n: number): number => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 
 export class MotorGoalArbiter {
+  private readonly controller: EmbodiedMotorController;
   private basalGanglia = new BasalGangliaSelectionCircuit();
   private cerebellar = new CerebellarPredictiveController();
   private creditedEvidenceIds = new Set<string>();
   private lastResult: MotorArbitrationResult | null = null;
 
-  constructor(private readonly controller: EmbodiedMotorController) {}
+  constructor(controller: EmbodiedMotorController) { this.controller = controller; }
 
   propose(candidates: readonly MotorGoalCandidate[], context: MotorArbitrationContext): MotorArbitrationResult {
     const safe = (candidates ?? []).filter((candidate) =>
