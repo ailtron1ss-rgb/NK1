@@ -19,6 +19,7 @@ export interface PersonalityOutcomeRecord {
   /** Exact RuntimeEvidenceBus outcome event ID supplied by OrganismRuntime. */
   evidenceReceiptId?:string;
   learningScale01?:number;
+  identityUpdateScale01?:number;
   evidence01?:number;
   independent01?:number;
   consequence01?:number;
@@ -103,7 +104,7 @@ export class PersonalitySelfModelBridge {
       tick:input.event.tick,reward01:input.reward01,verified01:evidenceAccepted?1:0,
       predictionError01:input.predictionError01,identityGap01:input.identityGap01,
       action:input.action,relationshipId:input.relationshipId,identityVector:input.identityVector,
-      learningScale01:input.learningScale01,evidence01:input.evidence01,
+      learningScale01:input.learningScale01,identityUpdateScale01:input.identityUpdateScale01,evidence01:input.evidence01,
       independent01:input.independent01,consequence01:input.consequence01,
       evidenceReceiptId:evidenceAccepted?receiptId:undefined,
       evidenceRef:evidenceAccepted?evidenceRef:undefined,
