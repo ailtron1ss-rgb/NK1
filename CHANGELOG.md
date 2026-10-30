@@ -1,11 +1,11 @@
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
-- Track identical object instances separately using stable provider IDs or geometry in an explicitly shared coordinate frame; preserve primary IDs and cross-modal aliases, estimate smoothed velocity, and do not correlate across unknown frames.
-- Measure current cross-modal evidence coverage using per-modality observation timestamps and a bounded freshness window; separate action-outcome alignment from semantic corroboration.
+- Track identical object instances separately using stable provider IDs or geometry in an explicitly shared coordinate frame; preserve primary IDs and cross-modal aliases, estimate smoothed velocity, and do not correlate across unknown frames. Require a Core-owned evidence receipt before applying empirical calibration.
+- Measure current cross-modal evidence coverage using per-modality observation timestamps and a bounded freshness window; separate action-outcome alignment from semantic corroboration. Retry IDs are generation-scoped and epistemic claim replay is idempotent.
 - Separate reported model quality, service success and empirically verified accuracy; calibrate only from human/independent evidence IDs with replay protection.
 - Distinguish same-modality persistence, independent cross-modal corroboration and explicit claim supersession; expire stale active-perception requests and reject time-rewound P41 samples.
-- Add deep P41 and Core integration regressions, document research inspirations and retain backward compatibility for existing persisted P41 snapshots. Physical device and independent labelled-dataset validation remain separate gates.
+- Add deep P41 and Core integration regressions (including verifier receipt validation), document research inspirations and retain backward compatibility for existing persisted P41 snapshots. Physical device and independent labelled-dataset validation remain separate gates.
 
 ## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
 
