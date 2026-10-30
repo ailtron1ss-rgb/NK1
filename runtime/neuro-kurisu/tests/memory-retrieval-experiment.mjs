@@ -118,6 +118,9 @@ assert.equal(groupedReport.datasetIntegrity.conversationAnnotationUsed, true);
 assert.equal(groupedReport.datasetIntegrity.conversationAnnotationComplete, true);
 assert.equal(groupedReport.datasetIntegrity.uniqueTrainConversationGroups, 2);
 assert.equal(groupedReport.datasetIntegrity.uniqueHoldoutConversationGroups, 2);
+assert.deepEqual(groupedReport.datasetIntegrity.answerableHoldoutClusterSizes, {
+  clusters: 2, queries: 8, min: 4, median: 4, max: 4, mean: 4, largestClusterShare01: 0.5, maxToMedianRatio: 1,
+});
 assert.equal(groupedReport.confidence.recallAtK01.independentClusters, 2);
 assert.equal(groupedReport.confidence.mrr01.independentClusters, 2);
 assert.equal(groupedReport.promotion.gates.sufficientIndependentHoldoutGroups, false,
