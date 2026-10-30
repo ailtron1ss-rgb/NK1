@@ -12,7 +12,7 @@ export interface P2702PersonalityState {
  version:1; tick:number; experienceCount:number; learningUpdates:number;
  invariantNames:string[]; invariantValues:number[]; adaptiveNames:string[]; adaptiveValues:number[];
  valueNames:string[]; valueWeights:number[]; relationshipTrust:Record<string,number>;
- selfBeliefNames:string[]; selfBeliefs:number[]; selfUncertainty:number[]; tensionState:number[]; actionPreference:Record<ActionKind,number>;
+ selfBeliefNames:string[]; selfBeliefs:number[]; selfUncertainty:number[]; tensionNames:string[]; tensionState:number[]; actionPreference:Record<ActionKind,number>;
  stability01:number; coherence01:number; identityContinuity01:number; contradiction01:number;
  plasticity01:number; drift01:number; autobiographicalStrength01:number; lastReward01:number;
 }
@@ -27,10 +27,11 @@ const defaultState=():P2702PersonalityState=>{
   valueNames:values,valueWeights:[.98,.96,.90,.92,.84,.88,.96,.72],relationshipTrust:{},
   selfBeliefNames:['continuity','coherence','agency','reality-grounding','stability','goal-continuity','memory-continuity','authorship-continuity'],
   selfBeliefs:[.72,.68,.76,.64,.58,.70,.62,.74],selfUncertainty:new Array(8).fill(.28),
-  tensionState:new Array(KURISU_ORGANISM_CANON.tensions.length).fill(.5),
+  tensionNames:KURISU_ORGANISM_CANON.tensions.slice(),tensionState:new Array(KURISU_ORGANISM_CANON.tensions.length).fill(.5),
   actionPreference:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,
   stability01:.86,coherence01:.78,identityContinuity01:.9,contradiction01:.08,plasticity01:.08,drift01:0,autobiographicalStrength01:.1,lastReward01:.5};
 };
+const PERSONALITY_BASELINE=defaultState();
 
 export class P2702PersistentPersonalityDynamics{
  private state=defaultState();
@@ -64,7 +65,8 @@ export class P2702PersistentPersonalityDynamics{
    selfBeliefNames:d.selfBeliefNames.slice(),
    selfBeliefs:values(r.selfBeliefs,d.selfBeliefNames.length,d.selfBeliefs),
    selfUncertainty:values(r.selfUncertainty,8,d.selfUncertainty,.03,.97),
-   tensionState:values(r.tensionState,d.tensionState.length,d.tensionState),
+   tensionNames:d.tensionNames.slice(),
+   tensionState:values(r.tensionState,d.tensionNames.length,d.tensionState),
    actionPreference,
    stability01:clamp(Number(r.stability01??d.stability01)),
    coherence01:clamp(Number(r.coherence01??d.coherence01)),
@@ -131,7 +133,7 @@ export class P2702PersistentPersonalityDynamics{
   this.state.contradiction01=clamp(this.state.contradiction01*.94+(selfErr*.55+tension*.45)*.06);
   this.state.identityContinuity01=clamp(this.state.identityContinuity01*.97+(1-selfErr)*.03);
   this.state.coherence01=clamp(this.state.coherence01*.95+(1-this.state.contradiction01)*.05);
-  const canon=defaultState();
+  const canon=PERSONALITY_BASELINE;
   const traitDrift=this.state.adaptiveNames.reduce((sum,name,index)=>sum+Math.abs((this.state.adaptiveValues[index]??.5)-(canon.adaptiveValues[canon.adaptiveNames.indexOf(name)]??.5)),0)/Math.max(1,this.state.adaptiveNames.length);
   const valueDrift=this.state.valueNames.reduce((sum,name,index)=>sum+Math.abs((this.state.valueWeights[index]??.5)-(canon.valueWeights[canon.valueNames.indexOf(name)]??.5)),0)/Math.max(1,this.state.valueNames.length);
   const measuredDrift=clamp(traitDrift*.72+valueDrift*.28);
@@ -189,5 +191,21 @@ export class P2702PersistentPersonalityDynamics{
   this.state.learningUpdates=Math.min(1_000_000,this.state.learningUpdates+1);
  }
  metrics(){return deep(this.state);}
+ diagnostics(){
+  const named=(names:string[],values:number[])=>Object.fromEntries(names.map((name,index)=>[name,clamp(values[index]??.5)]));
+  return {
+   tick:this.state.tick,experienceCount:this.state.experienceCount,learningUpdates:this.state.learningUpdates,
+   invariants:named(this.state.invariantNames,this.state.invariantValues),
+   traits:named(this.state.adaptiveNames,this.state.adaptiveValues),
+   values:named(this.state.valueNames,this.state.valueWeights),
+   tensions:named(this.state.tensionNames,this.state.tensionState),
+   relationshipTrust:{...this.state.relationshipTrust},
+   selfBeliefs:named(this.state.selfBeliefNames,this.state.selfBeliefs),
+   selfUncertainty:named(this.state.selfBeliefNames,this.state.selfUncertainty),
+   stability01:this.state.stability01,coherence01:this.state.coherence01,
+   identityContinuity01:this.state.identityContinuity01,contradiction01:this.state.contradiction01,
+   drift01:this.state.drift01,autobiographicalStrength01:this.state.autobiographicalStrength01,
+  };
+ }
 }
 export const defaultP2702PersistentPersonality=():P2702PersonalityState=>defaultState();
