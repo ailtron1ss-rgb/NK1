@@ -30,6 +30,8 @@ export interface NativeSpeechProviderEventInput {
   reason?: string;
 }
 
+const MAX_PENDING_NATIVE_SPEECH_EVENTS = 1024;
+
 export interface NativeSpeechEventChannel {
   publish(operationId: string, input: NativeSpeechProviderEventInput): NativeSpeechProviderEventV1 | null;
   subscribe(listener: (event: NativeSpeechProviderEventV1) => void): () => void;
@@ -48,12 +50,16 @@ export function createNativeSpeechEventChannel(
   const lastTimes = new Map<string, number>();
   const pending: NativeSpeechProviderEventV1[] = [];
   let dispatching = false;
+  let pendingHead = 0;
   let eventCounter = 0;
 
   return {
     publish(operationIdInput, input) {
       const operationId = String(operationIdInput ?? '').trim().slice(0, 140);
       if (!operationId || !input || typeof input.phase !== 'string') return null;
+      // Reentrant observers can publish while a dispatch is in progress. Refuse
+      // excess work before mutating sequence/time state so memory remains bounded.
+      if (pending.length - pendingHead >= MAX_PENDING_NATIVE_SPEECH_EVENTS) return null;
       const clockSample = Number(now());
       if (!Number.isFinite(clockSample) || clockSample < 0) return null;
       // Defend the wire contract against an injected/reset clock moving backwards.
@@ -88,14 +94,16 @@ export function createNativeSpeechEventChannel(
       if (!dispatching) {
         dispatching = true;
         try {
-          while (pending.length) {
-            const next = pending.shift();
+          while (pendingHead < pending.length) {
+            const next = pending[pendingHead++];
             if (!next) continue;
             for (const listener of [...listeners]) {
               try { listener(next); } catch { /* observers must never affect speech execution */ }
             }
           }
         } finally {
+          pending.length = 0;
+          pendingHead = 0;
           dispatching = false;
         }
       }
