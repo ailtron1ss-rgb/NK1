@@ -251,15 +251,15 @@ The user-facing project taxonomy calls wardrobe work **Aspect 15**; the existing
 - Verified interchangeable garment art: 0%.
 - Live2D garment switching: 0% verified; Cubism drawable/part mapping remains uninspected at binary/editor level.
 - 2.5D garment layers: 0% production assets and renderer application.
-- Persistent outfit/garment selection: not implemented.
+- Persistent outfit/garment selection: IndexedDB store, exact body/rig key, saved selection and full SHA-256 re-verification on restore are implemented; real browser quota/restart/device E2E remains unverified.
 - Desktop/Android visual E2E: not verified.
-- Whole Aspect 15 estimate: 56%. The estimate must not be raised until the new HEAD CI and end-to-end evidence are available.
+- Whole Aspect 15 estimate: 58% after persistence and stale-request cancellation code; the estimate is conservative and does not include any claim of production garment art or visual/device verification.
 
 ### Next work — remaining completion gates
 
 1. Produce the first rights-cleared modular garment pack for the exact uploaded VRM target body and rig fingerprint. Include skinned outerwear, top/bottom and footwear assets, material textures, checksums and full provenance.
 2. Add a pack authoring/inspection tool that can read the avatar rig fingerprint, list supported slots/bones and report bind-pose differences before export.
-3. Add persistent outfit state and local pack storage with versioning, quota handling, migration and corruption recovery. Restore only after the same body ID/rig version is loaded and every stored asset re-verifies.
+3. Validate the new versioned IndexedDB store in real browsers/Android: quota exhaustion, blocked upgrades, corruption recovery, restart restore, deletion and same-body/rig mismatch. Current code re-verifies the manifest and every stored asset hash before restore; migrations beyond schema v1 remain a future gate.
 4. Inspect the canonical Kurisu moc3 using the licensed Cubism SDK/Editor; only then decide whether any real drawable/part toggles can support a Live2D wardrobe adapter. Do not infer clothing switches from physics or expression parameters.
 5. Author a layered 2.5D body/garment master with occlusion underdraw, masks, pivots, deformation weights and per-pose validation.
 6. Add renderer adapters for Live2D and DepthRig using the same pack/switch contract and explicit capability reports.
@@ -268,3 +268,14 @@ The user-facing project taxonomy calls wardrobe work **Aspect 15**; the existing
 9. Record asset provenance, license evidence and SHA-256 manifest in the final release inventory.
 
 No real garment art, licensing entitlement, Live2D switch, 2.5D renderer application or device E2E is claimed by this pass.
+
+
+## Aspect 15 persistence and stale-request hardening (2026-10-30)
+
+- Added `wardrobePackStore.ts`: versioned IndexedDB records keyed by exact base-body SHA-256 identity and rig contract version; only rights-self-attested, manifest-valid packs with verified bytes can be saved.
+- The store caps a saved pack at 128 MiB, records the selected VRM asset IDs and the prior self-attestation timestamp, and preserves bytes locally without uploading them.
+- Restore re-checks the body/rig key, manifest target, stored record schema, selected renderer/slots, whole-pack size and all SHA-256 hashes. A missing, corrupt or incompatible record fails closed and is not attached to a different body.
+- Avatar3DStage restores a stored outfit only after the exact same body identity is loaded and the saved bytes are re-verified.
+- The VRM pack loader accepts an `isCurrent` predicate. If the active model changes or resets during async GLB parsing, the stale wardrobe request is cancelled before scene mutation and prepared resources are disposed.
+- Added tests for body/rig-specific keys, slot-safe stored selections and stale-request cancellation/cleanup.
+- These are code-level persistence and cancellation paths. Real browser IndexedDB quota/restart tests, Android E2E and real garment GLBs remain unverified.
