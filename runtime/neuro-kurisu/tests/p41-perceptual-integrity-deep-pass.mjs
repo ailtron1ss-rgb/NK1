@@ -101,6 +101,15 @@ function semanticVision(objects, at, extra = {}) {
     world: { objects: [{ label: 'book', trackId: 'book-world', sourceId: 'world' }] },
   });
   assert.equal(afterAmbiguousWorld.entities.filter(entity => entity.label === 'book').length, 3);
+
+  const stale = new P41SemanticPerceptionEngine();
+  stale.ingest(semanticVision([{ label: 'mug', trackId: 'mug-v', sourceId: 'vision' }], 45_000));
+  const staleWorld = stale.ingest({
+    at: 55_001,
+    world: { objects: [{ label: 'mug', trackId: 'mug-world', sourceId: 'world' }] },
+  });
+  assert.equal(staleWorld.entities.filter(entity => entity.label === 'mug').length, 2, 'old visual evidence must not silently corroborate a much later world observation');
+  assert.equal(staleWorld.metrics.crossModalEvidenceCoverage01, 0, 'stale modality history must not count as current cross-modal coverage');
 }
 
 // Model-reported confidence is not empirical accuracy; only an independent receipt may calibrate reliability.
@@ -191,10 +200,12 @@ function semanticVision(objects, at, extra = {}) {
 {
   const graph = new PerceptualEpistemicGraph();
   const first = graph.add({ at: 1, modality: 'vision', claim: 'door is open', source: 'model-output', confidence01: 0.6 });
-  graph.add({ at: 2, modality: 'world', claim: 'door is open', source: 'observed', confidence01: 0.9 });
-  assert.equal(graph.snapshot().corroboratedPairs, 1);
+  graph.add({ at: 2, modality: 'vision', claim: 'door is open', source: 'model-output', confidence01: 0.7 });
+  assert.equal(graph.snapshot().corroboratedPairs, 0, 'repeated same-modality claims are not independent corroboration');
+  graph.add({ at: 3, modality: 'world', claim: 'door is open', source: 'observed', confidence01: 0.9 });
+  assert.equal(graph.snapshot().corroboratedPairs, 2);
   assert.equal(graph.snapshot().resolvedPairs, 0);
-  graph.add({ at: 3, modality: 'vision', claim: 'door is closed', source: 'observed', confidence01: 0.9, supersedes: first.id });
+  graph.add({ at: 4, modality: 'vision', claim: 'door is closed', source: 'observed', confidence01: 0.9, supersedes: first.id });
   assert.equal(graph.snapshot().resolvedPairs, 1);
 }
 
