@@ -24,6 +24,7 @@ The intent is to improve the reliability of the organism's *world model*, not to
 - Scene relations can bind endpoints to exact entity IDs through track IDs/aliases. A label-only endpoint is resolved only when exactly one matching entity exists; repeated chairs/tables remain intentionally ambiguous rather than being attached to an arbitrary instance.
 - Existing label-only relation IDs are upgraded in place when identity becomes resolvable.
 - Spatial nearest-neighbour association is allowed only when a coordinate-frame ID is explicitly declared and matches the previous observation; camera backends may provide this frame metadata, otherwise geometry is stored but not used to claim track continuity.
+- Spatial association also requires a clear nearest-neighbour margin; equidistant or near-equal candidates remain unresolved instead of using stable sorting as fabricated certainty.
 - Without a stable provider ID or a declared common frame, the system does not invent spatial continuity.
 - Cross-modal association is conservative: a new modality ID is attached only when exactly one recent same-label candidate is available. Ambiguous repeated objects remain separate.
 - A primary track ID is never overwritten by a secondary modality's alias.
