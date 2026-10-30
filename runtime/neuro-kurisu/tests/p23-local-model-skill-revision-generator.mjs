@@ -55,6 +55,7 @@ await assert.rejects(
 await assert.rejects(
   () => generateLocalSkillRevision(provider, {
     ...request,
+    holdoutPolicy: undefined,
     holdoutGeneralization: { gap01: -0.1, requiresFreshIndependentEvaluation: true },
   }),
   /p23-revision-holdout-results-must-remain-withheld/,
