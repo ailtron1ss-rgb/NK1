@@ -1,3 +1,10 @@
+## [NK1][Aspect 11] Correlate Live2D expression and motion dispatch acknowledgements (2026-10-30)
+
+- Wait for Cubism parameter readback and all requested expression/motion SDK promises before emitting one revision-bound partial ACK.
+- Distinguish `started`, `unavailable`, `error`, and `not-requested`; handle unchanged actions without leaving the ACK pending and ignore stale asynchronous completions.
+- Surface action dispatch telemetry in AvatarStage while explicitly keeping `complete: false` and `visualCompletionVerified: false`; this is not animation-completion evidence, a presented-frame receipt, or permission to commit a renderer handoff.
+- Add focused regressions for action status, stale revision handling, no-op actions, fail-closed Cubism readback, and parent-side trust validation. Exact-head CI validation is pending.
+
 ## [NK1][Aspect 11] Resolve canonical 2.5D and motor ownership across renderer PRs (2026-10-30)
 
 - Compare the actual implementation diffs of PR #408, #409, #410 and #405; designate #408 DepthRigManifest/Three.js runtime as the sole 2.5D implementation path, #410 as the sole joint-space motor substrate, and #415 as renderer handoff orchestration only.
