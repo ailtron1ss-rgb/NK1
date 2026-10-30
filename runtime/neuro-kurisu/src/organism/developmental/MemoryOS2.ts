@@ -410,13 +410,21 @@ export class MemoryOS2{
    const createdAt=finite(row.createdAt,finite(row.observedAt,now));
    const observedAt=finite(row.observedAt,createdAt);
    const validFromAt=finite(row.validFromAt,createdAt);
-   const validUntilAt=row.validUntilAt==null?null:finite(row.validUntilAt,Number.NaN);
+   const validUntilProvided=row.validUntilAt!=null;
+   const validUntilCandidate=validUntilProvided?finite(row.validUntilAt,Number.NaN):null;
+   // A malformed expiry must never turn an expiring memory into a timeless fact.
+   const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:validUntilCandidate;
    const provenanceClasses=new Set(['device','external','user','agent','derived','simulation','unknown']);
    const explicitProvenance=provenanceClasses.has(String(row.provenanceClass))?row.provenanceClass as MemoryProvenanceClass:undefined;
-   const source=typeof row.source==='string'&&row.source.trim()?row.source.trim().slice(0,240):'unknown';
+   const sourceIsValid=typeof row.source==='string'&&Boolean(row.source.trim());
+   const source=sourceIsValid?row.source.trim().slice(0,240):'unknown';
    const provenanceClass=this.provenanceClassFor(source,explicitProvenance);
    const statusValues=new Set(['fact','belief','hypothesis','unknown','quarantined']);
-   const epistemicStatus=statusValues.has(String(row.epistemicStatus))?row.epistemicStatus as EpistemicStatus:'unknown';
+   const statusIsValid=statusValues.has(String(row.epistemicStatus));
+   const rawConfidence=Number(row.confidence);
+   const confidenceIsValid=Number.isFinite(rawConfidence)&&rawConfidence>=0&&rawConfidence<=1;
+   const epistemicStatus=statusIsValid&&sourceIsValid&&(row.epistemicStatus!=='fact'||confidenceIsValid)
+    ?row.epistemicStatus as EpistemicStatus:'unknown';
    const context:Record<string,string>={};
    if(row.context&&typeof row.context==='object'&&!Array.isArray(row.context)){
     for(const [key,value] of Object.entries(row.context).slice(0,24)){
@@ -452,7 +460,7 @@ export class MemoryOS2{
     socialRelevance:clamp(finite(row.socialRelevance,0)),
     predictionError:clamp(finite(row.predictionError,0)),
     temperature01:clamp(finite(row.temperature01,0)),
-    confidence:clamp(finite(row.confidence,.5)),
+    confidence:confidenceIsValid?clamp(rawConfidence):.5,
     epistemicStatus,
     source,
     entities:boundedStrings(row.entities,24,160).length?boundedStrings(row.entities,24,160):extractEntities(content),
@@ -1601,12 +1609,17 @@ export class MemoryOS2{
   const at=Number.isFinite(options.at)?Number(options.at):Date.now();
   const maxIssues=Math.max(1,Math.min(128,Math.floor(options.maxIssues??64)));
   const items=this.state.items;
+  const restore=this.restoreDiagnostics();
   const idCounts=new Map<string,number>();
   const hashCounts=new Map<string,number>();
   const revisionMembers=new Map<string,MemoryItem2[]>();
   const issues:Array<{code:string;severity:'error'|'warning';memoryId:string|null;detail:string}> = [];
   let totalErrors=0,totalWarnings=0;
   const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(severity==='error')totalErrors++;else totalWarnings++;if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
+  if(restore.invalidRowsDropped>0)add('restore-invalid-rows-dropped','error',null,String(restore.invalidRowsDropped)+' malformed snapshot rows were rejected before indexing.');
+  if(restore.truncatedRows>0)add('restore-row-limit-truncated','error',null,String(restore.truncatedRows)+' snapshot rows exceeded the 1600-record restore limit.');
+  if(restore.duplicateIdsResolved>0)add('restore-duplicate-ids-resolved','warning',null,String(restore.duplicateIdsResolved)+' duplicate-ID rows were resolved using temporal/revision authority.');
+  if(restore.identityConflictsQuarantined>0)add('restore-identity-conflicts-quarantined','error',null,String(restore.identityConflictsQuarantined)+' tied conflicting memory identities were quarantined.');
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
   const ids=new Set(items.map(item=>item.id));
   let hashMismatch=0,invalidConfidence=0,invalidStatus=0,danglingRevision=0,danglingLinks=0,duplicateContent=0,futureEvidence=0,duplicateEvidenceKeys=0;
@@ -1655,7 +1668,7 @@ export class MemoryOS2{
   if(!index.pass)add('index-integrity-failure','error',null,'The canonical memory indexes disagree with the persisted memory list.');
   const errors=totalErrors;
   const warnings=totalWarnings;
-  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
+  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,restore,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1,restoreInvalidRows:restore.invalidRowsDropped,restoreTruncatedRows:restore.truncatedRows,restoreDuplicateIds:restore.duplicateIdsResolved,restoreIdentityConflicts:restore.identityConflictsQuarantined},indexes:index};
  }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
