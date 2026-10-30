@@ -34,6 +34,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
+      - name: Install app dependencies without lifecycle scripts
+        working-directory: app
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate depth-rig contracts, face channels and Three.js adapter
         working-directory: app
         run: node --experimental-strip-types --test scripts/depth-rig.test.mjs scripts/depth-rig-face.test.mjs scripts/depth-rig-three-adapter.test.mjs
