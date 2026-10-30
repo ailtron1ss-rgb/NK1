@@ -312,10 +312,7 @@ export class P41SemanticPerceptionEngine {
     // Ambiguous repeated objects remain separate instead of being force-merged.
     if(!e&&explicitTrackId){
       const crossModal=this.state.entities.filter(x=>x.label===key&&x.kind===kind&&!x.modalities.includes(modality)&&at>=x.lastSeenAt&&at-x.lastSeenAt<=5_000);
-      if(crossModal.length===1){
-        e=crossModal[0];
-        e.trackAliases=[...new Set([...(e.trackAliases??[]),explicitTrackId])].slice(-12);
-      }
+      if(crossModal.length===1)e=crossModal[0];
     }
     // Spatial nearest-neighbour association is only used when observations share
     // a coordinate frame. A same-frame detection cannot consume a track twice.
