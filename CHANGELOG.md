@@ -1,3 +1,11 @@
+## [NK1][WorkPass643] Make VRMA facial-expression ownership deterministic (2026-10-30)
+
+- Extracted VRMA expression-channel ownership into a pure helper with explicit fade-in, clip-switch, fade-out, and release semantics.
+- The outgoing and incoming clips retain ownership only during the transition window; transition-only channels are released at zero, while active-clip channels remain protected.
+- Restricted speech override to available vowel visemes (aa/ih/ou/ee/oh), without overriding unrelated emotion, blink, or gaze channels.
+- Added focused regressions for clip entry/switch/stop, exact release, invalid keys/deltas, and available-viseme filtering; wired them into the existing avatar stage test command.
+- This verifies the arbitration contract and runtime wiring only. Real VRMA asset playback, browser/device E2E and speech/avatar timing remain pending. No Release ZIP update.
+
 ## [WorkPass642] — Исправление whitespace-sensitive regression test
 
 - Исправлен статический тест композиции facial semantic weights: теперь он допускает форматирование с пробелами и переносами строк, сохраняя проверку порядка и аргументов.
