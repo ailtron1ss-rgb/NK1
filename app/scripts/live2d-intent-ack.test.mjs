@@ -28,3 +28,15 @@ test("readback is fail-closed when the Cubism getter is missing or values are no
   assert.match(viewer, /typeof core\.getParameterValueById==='function'/);
   assert.match(viewer, /if\(Number\.isFinite\(value\)\)observed\[id\]=value;\s*else readable=false;/);
 });
+
+
+test("AvatarStage accepts only the latest same-origin partial ACK and never upgrades it to a receipt", async () => {
+  const avatarUrl = new URL("../src/components/AvatarStage.tsx", import.meta.url);
+  const avatar = await readFile(avatarUrl, "utf8");
+  assert.match(avatar, /ev\.origin !== window\.location\.origin \|\| ev\.source !== frame\.current\?\.contentWindow/);
+  assert.match(avatar, /version !== latestIntentStateVersionRef\.current/);
+  assert.match(avatar, /ev\.data\.appliedRevision !== version \|\| ev\.data\.complete !== false/);
+  assert.match(avatar, /expressionStatus !== "not-independently-verified" \|\| ev\.data\.motionStatus !== "not-independently-verified"/);
+  assert.match(avatar, /partial parameter ACK is not a renderer receipt/);
+  assert.match(avatar, /latestIntentStateVersionRef\.current = intent\.stateVersion/);
+});
