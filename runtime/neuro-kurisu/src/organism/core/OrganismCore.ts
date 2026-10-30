@@ -9459,7 +9459,7 @@ export class OrganismCore {
             this.persisted.facets.embodiment.p41TemporalPerception = this.embodimentSubsystem.p41TemporalPerception.snapshot();
             (this.persisted.facets.embodiment as any).p37 = this.embodimentSubsystem.p37EmbodiedSensorium.snapshot();
             this.worldSubsystem.p24WorldIdentity.identityObserve({ action: trace.selected.action, goal: selectedGoalTitle, summary: `outcome=${gatedSuccess01.toFixed(2)}`, confidence01: clamp(1 - gatedSurprise01) });
-            this.developmentalNeural.p23Learning.recordExperience(trace, state, { success: gatedSuccess01, reward: gatedReward01, surprise: gatedSurprise01 }, this.cognitiveRuntime.adaptivePolicy);
+            this.developmentalNeural.p23Learning.recordExperience(trace, state, { success: gatedSuccess01, reward: gatedReward01, surprise: gatedSurprise01, notes: outcome.notes }, this.cognitiveRuntime.adaptivePolicy);
             if (!outcome.worldTransition) {
                 const p27Before = this.cognitiveRuntime.lastP27Latent ?? this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({ sensorState: trace.stateBefore }));
                 const p27After = this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({ sensorState: state, world: this.cognitiveRuntime.lastGroundedWorldContext ?? undefined }));
