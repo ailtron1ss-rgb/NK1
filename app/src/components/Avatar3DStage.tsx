@@ -153,6 +153,14 @@ export function Avatar3DStage(props:Props){
         if(speechVisemeKeys?.has(key))rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
         else if(!protectedKeys.has(key))rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
       }
+      // ExpressionManager only owns presets/custom expressions that the
+      // loaded VRM actually exposes. Fill semantic gaps (for example a model
+      // with happy/blink but no vowel presets) through the generic GLB map.
+      const managerOwnedSemantics=new Set(rt.vrmExpressionKeys);
+      const genericWeights=Object.fromEntries(Object.entries(expressionWeights).filter(([key])=>!managerOwnedSemantics.has(key)));
+      const speechSemantics=["aa","ih","ou","ee","oh"] as const;
+      const genericSpeechVisemes=p.speaking?speechSemantics.filter((semantic)=>!managerOwnedSemantics.has(semantic)).map((semantic)=>({semantic,weight:genericWeights[semantic]??0})):[];
+      applyThreeFacialSemanticWeights(rt.facialMorphTargets,genericWeights,genericSpeechVisemes);
       if(rt.expressionTransitionRemaining>0){rt.expressionTransitionRemaining=Math.max(0,rt.expressionTransitionRemaining-dt);if(rt.expressionTransitionRemaining===0)rt.transitionExpressionKeys=[];}
     }else{
       if(rt.vrmMorphTargets.length)applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights);
