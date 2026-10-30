@@ -1,3 +1,9 @@
+## [NK1][Aspect 01 — Live2D] Semantic gesture profiles (2026-10-30)
+
+- Distinguish considering, presenting, examining, reassuring and emphatic gesture intent with bounded intensity.
+- Compose profile-specific micro head-tilt with the existing authored motion selection; keep the strict EmbodimentIntentV1 protocol and existing Cubism motion groups unchanged.
+- Add planner regression coverage; explicit limitation: this does not add arm IK or new authored hand-motion assets.
+
 ## [NK1][Aspect 01 — Live2D] Continuous expressive face and torso control (2026-10-30)
 
 - Added bounded brow, eye-smile and cheek channels driven by the current emotional expression and intensity, using parameters confirmed in the canonical Kurisu CDI3 rig.
