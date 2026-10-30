@@ -2839,4 +2839,4 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 ## [NK1][Aspect 03] Harden backward-compatible local track restoration (2026-10-30)
 
 - Accept a direct legacy `local:` track ID as well as the current P41 source-qualified form, while still rejecting non-local provider IDs.
-- Add temporary structured diagnostics to the restart regression to expose the exact persisted track identity and image-evidence fields if the integration gate remains red.
+- Retain the restart regression for two same-label objects and their identity continuity; remove temporary console diagnostics from the test after the failure investigation.
