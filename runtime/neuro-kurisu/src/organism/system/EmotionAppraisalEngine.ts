@@ -9,6 +9,8 @@ import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
  */
 export type EmotionLabel = 'curiosity'|'calm'|'joy'|'anxiety'|'frustration'|'sadness'|'anger'|'protective';
 export type EmotionActionTendency = 'explore'|'engage'|'verify'|'reflect'|'rest'|'protect'|'withdraw'|'approach';
+export interface MixedEmotionComponent { label:EmotionLabel; intensity01:number; confidence01:number; evidence01:number; }
+export interface AffectiveActionTendency { tendency:EmotionActionTendency; weight01:number; }
 
 export interface EmotionAppraisalInfluenceProfile {
   personality?: { curiosity01?:number; caution01?:number; care01?:number; persistence01?:number; confidence01?:number };
@@ -38,6 +40,9 @@ export interface EmotionEpisode {
   memorySalienceMultiplier01:number;
   confidence01:number;
   cause:string;
+  /** Concurrent affect distribution; optional for legacy snapshots. */
+  mixedAffect?:MixedEmotionComponent[];
+  actionTendencies?:AffectiveActionTendency[];
   /** Auditable, confidence-gated context modifiers used for this appraisal. */
   modulators?:NormalizedEmotionAppraisalInfluences;
 }
@@ -113,6 +118,19 @@ const ACTION_TENDENCIES:readonly EmotionActionTendency[]=['explore','engage','ve
 type RegulationBand='low'|'medium'|'high';
 const regulationBand=(value:number):RegulationBand=>value<.34?'low':value<.67?'medium':'high';
 const contextOutcomeKey=(action:string,label:EmotionLabel,pressure01:number)=>JSON.stringify([action,label,regulationBand(pressure01)]);
+const deriveMixedAffect=(a:{relevance01:number;goalCongruence01:number;controllability01:number;novelty01:number;selfRelevance01:number;socialMeaning01:number;uncertainty01:number},v:{stress:number;arousal:number;dominance:number;predictionError:number;homeostaticPressure:number;confidence:number}):MixedEmotionComponent[]=>{
+ const incongruence=1-a.goalCongruence01, lowControl=1-a.controllability01;
+ const scores:Record<EmotionLabel,number>={curiosity:c(a.novelty01*(.45+a.uncertainty01*.55)),calm:c(a.controllability01*(1-v.stress)*(.55+(1-v.arousal)*.45)),joy:c(a.goalCongruence01*(.55+a.socialMeaning01*.45)*(.5+v.confidence*.5)),anxiety:c(a.uncertainty01*lowControl*.72+v.stress*.28),frustration:c(v.predictionError*incongruence*.65+lowControl*incongruence*.35),sadness:c(a.socialMeaning01*(1-v.confidence)*incongruence),anger:c(incongruence*v.dominance*(1-a.uncertainty01)*.72+v.stress*incongruence*.28),protective:c(v.homeostaticPressure*.55+v.stress*.25+a.selfRelevance01*lowControl*.20)};
+ const ranked=(Object.entries(scores) as [EmotionLabel,number][]).filter(([,x])=>x>=.055).sort((x,y)=>y[1]-x[1]).slice(0,4);
+ if(!ranked.length)return [{label:'calm',intensity01:1,confidence01:v.confidence,evidence01:0}];
+ const total=ranked.reduce((n,x)=>n+x[1],0);
+ return ranked.map(([label,evidence01])=>({label,evidence01,intensity01:evidence01/total,confidence01:c(v.confidence*(.55+evidence01*.45))}));
+};
+const ACTION_BY_EMOTION:Record<EmotionLabel,EmotionActionTendency>={curiosity:'explore',calm:'engage',joy:'approach',anxiety:'verify',frustration:'reflect',sadness:'withdraw',anger:'protect',protective:'protect'};
+const deriveActionTendencies=(items:MixedEmotionComponent[]):AffectiveActionTendency[]=>{
+ const weights=new Map<EmotionActionTendency,number>();for(const item of items){const action=ACTION_BY_EMOTION[item.label];weights.set(action,(weights.get(action)??0)+item.intensity01);}
+ return [...weights.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5).map(([tendency,weight01])=>({tendency,weight01:c(weight01)}));
+};
 const safeKey=(value:unknown,max=256):value is string=>typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&!Array.from(value).some(ch=>{const code=ch.charCodeAt(0);return code<32||(code>=127&&code<=159);})&&!['__proto__','prototype','constructor','toString','hasOwnProperty'].includes(value);
 function normalizeInfluences(value:unknown):NormalizedEmotionAppraisalInfluences {
   if(value===undefined||value===null) return {
@@ -445,9 +463,12 @@ export class EmotionAppraisalEngine {
     else if(a.socialMeaning01>.72 && valence>.66){label='joy';actionTendency='approach';}
     else if(a.novelty01>.64 && a.uncertainty01>.35){label='curiosity';actionTendency='explore';}
     else if(valence<.34 && dominance>.65){label='anger';actionTendency='protect';}
+    const confidence=c(.45+a.relevance01*.35+a.controllability01*.20);
+    const mixedAffect=deriveMixedAffect(a,{stress,arousal,dominance,predictionError:input.predictionError01??0,homeostaticPressure:input.homeostaticPressure01??0,confidence});
+    const actionTendencies=deriveActionTendencies(mixedAffect);
     const attentionCapture=c(arousal*.55+a.relevance01*.25+a.selfRelevance01*.20);
     const n=this.state.episodes+1;
-    const episode:EmotionEpisode={id:`emo:${input.tick}:${appraisalAt}:${n}`,tick:input.tick,at:appraisalAt,label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state',modulators:m};
+    const episode:EmotionEpisode={id:`emo:${input.tick}:${appraisalAt}:${n}`,tick:input.tick,at:appraisalAt,label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:confidence,mixedAffect,actionTendencies,cause:input.external?'external-experience':'internal-state',modulators:m};
     const moodState=this.moodAfterEpisode(episode);
     this.state={...this.state,mood:moodState,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
     return structuredClone(episode);
@@ -500,7 +521,7 @@ export class EmotionAppraisalEngine {
     return Math.max(-.09,Math.min(.09,(matchBias+regulationBias+learned)*appraisalReliability*attentionGain));
   }
 
-  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,mood:this.moodSnapshot(this.state.lastAt),meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length,processedOutcomeReceipts:Object.keys(this.state.outcomeReceipts).length};}
+  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,mixedAffect:this.state.history[0]?.mixedAffect??[],actionTendencies:this.state.history[0]?.actionTendencies??[],mood:this.moodSnapshot(this.state.lastAt),meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length,processedOutcomeReceipts:Object.keys(this.state.outcomeReceipts).length};}
 
 }
 export const defaultEmotionAppraisalState=()=>empty();
