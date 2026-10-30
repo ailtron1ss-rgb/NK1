@@ -128,3 +128,18 @@ test("rejects a pose produced for a different rig and never emits non-finite mat
     rigId: rig.id, deltas: { head: { scaleX: Number.MAX_VALUE, scaleY: Number.MAX_VALUE } },
   }), /Non-finite world transform/);
 });
+
+
+test("accumulates local z offsets independently from painter depth order", () => {
+  const depthRig = {
+    ...rig,
+    nodes: [
+      { ...node("root", "root", null, 10), rest: { ...transform, z: 0.1 } },
+      { ...node("torso", "torso", "root", 0), rest: { ...transform, z: 0.2 } },
+      { ...node("head", "head", "torso", 5), rest: { ...transform, z: -0.05 } },
+    ],
+  };
+  const world = resolveDepthRigWorldPose(depthRig).transforms;
+  assert.equal(world.head.z, 0.25);
+  assert.deepEqual(orderDepthRigNodes(depthRig).map((entry) => entry.id), ["torso", "head", "root"]);
+});
