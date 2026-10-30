@@ -12,6 +12,8 @@ export interface SignedOutcomePayload {
   method: string;
   /** Content hash of the exact baseline/candidate configuration evaluated by this run. */
   methodFingerprint?: string;
+  /** Exact Git commit that supplied the runtime source for this outcome. */
+  sourceCommitSha?: string;
   seed: number;
   attempt: number;
   passed: boolean;
@@ -107,6 +109,7 @@ export function ingestSignedOutcomeArtifact(
       !isNonEmptyString(payload.taskId) || !isNonEmptyString(payload.taskVersion) ||
       !isNonEmptyString(payload.method) || !isNonEmptyString(payload.verifierId) ||
       (payload.methodFingerprint !== undefined && !/^[a-f0-9]{64}$/i.test(payload.methodFingerprint)) ||
+      (payload.sourceCommitSha !== undefined && !/^[a-f0-9]{40}$/i.test(payload.sourceCommitSha)) ||
       !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
       !Number.isSafeInteger(payload.attempt) || payload.attempt < 1 ||
       typeof payload.passed !== 'boolean' ||
