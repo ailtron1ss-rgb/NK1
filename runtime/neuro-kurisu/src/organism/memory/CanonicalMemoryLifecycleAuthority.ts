@@ -8,10 +8,36 @@ const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSa
 const safeLabel=(value:unknown,max=128):string|undefined=>typeof value==='string'&&value.trim().length>0&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value)?value.trim():undefined;
 
 /** Copy only own enumerable data fields from untrusted persisted records. */
-const ownRecord=(value:unknown):Record<string,unknown> =>
-  value!==null&&typeof value==='object'&&!Array.isArray(value)
-    ? Object.fromEntries(Object.entries(value))
-    : {};
+const ownRecord=(value:unknown):Record<string,unknown> => {
+  if(value===null||typeof value!=='object'||Array.isArray(value))return Object.create(null) as Record<string,unknown>;
+  const result=Object.create(null) as Record<string,unknown>;
+  let keys:string[];
+  try{keys=Object.keys(value);}catch{return result;}
+  for(const key of keys.slice(0,64)){
+    try{
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value'))continue;
+      Object.defineProperty(result,key,{value:descriptor.value,enumerable:true,writable:true,configurable:true});
+    }catch{/* ignore invalid persisted fields */}
+  }
+  return result;
+};
+const ownArrayValues=(value:unknown,max:number):{values:unknown[];valid:boolean}=>{
+  if(!Array.isArray(value))return {values:[],valid:false};
+  try{
+    const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+    if(!lengthDescriptor||!Object.hasOwn(lengthDescriptor,'value')||typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0)return {values:[],valid:false};
+    const length=lengthDescriptor.value;
+    const values:unknown[]=[];
+    let valid=length<=max;
+    for(let i=0;i<Math.min(length,max);i++){
+      const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+      if(!descriptor||!Object.hasOwn(descriptor,'value')){valid=false;continue;}
+      values.push(descriptor.value);
+    }
+    return {values,valid};
+  }catch{return {values:[],valid:false};}
+};
 
 const safePlan=(raw:unknown):CanonicalMemoryLifecycleState['lastPlan']=>{
   const row=ownRecord(raw);
