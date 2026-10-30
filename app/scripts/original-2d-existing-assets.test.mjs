@@ -7,8 +7,10 @@ import test from "node:test";
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inventoryPath = path.join(appRoot, "public/kurisu-original/existing-assets-audit.json");
 const spriteManifestPath = path.join(appRoot, "public/sprites/manifest.json");
+const priorAuditSource = "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622";
+const currentPixelReviewSource = "docs/ASPECT_02_LEGACY_SPRITE_PIXEL_REVIEW_2026-10-30.md";
 
-test("existing sprite audit exactly inventories the legacy manifest without promoting stills to production art", async () => {
+test("existing sprite audit exactly inventories legacy assets and distinguishes prior/current pixel reviews", async () => {
   const inventory = JSON.parse(await readFile(inventoryPath, "utf8"));
   const manifest = JSON.parse(await readFile(spriteManifestPath, "utf8"));
   assert.equal(inventory.schemaVersion, 1);
@@ -18,6 +20,11 @@ test("existing sprite audit exactly inventories the legacy manifest without prom
   assert.equal(inventory.totalAssets, 32);
   assert.equal(inventory.policy.eligibleAsProductionLayeredMaster, false);
   assert.equal(inventory.policy.eligibleAs2d5dLayerSource, false);
+  assert.equal(inventory.pixelReview.date, "2026-10-30");
+  assert.deepEqual(inventory.pixelReview.reviewedIds, [
+    "embarrassed", "phone_look", "thinking_chin", "soft_smile",
+    "city_stand", "phone_lean", "street_walk",
+  ]);
 
   const byPath = new Map(inventory.assets.map((asset) => [asset.path.split("/").slice(2).join("/"), asset]));
   assert.equal(byPath.size, inventory.assets.length);
@@ -32,29 +39,35 @@ test("existing sprite audit exactly inventories the legacy manifest without prom
     assert.match(asset.gitBlobSha1, /^[a-f0-9]{40}$/);
     assert.ok(Number.isInteger(asset.bytes) && asset.bytes > 20_000);
     assert.ok(asset.path.startsWith("app/public/sprites/") && asset.path.endsWith(".png"));
-
     assert.ok(asset.semanticAudit && typeof asset.semanticAudit === "object");
-    assert.equal(asset.semanticAudit.reverifiedInThisPass, false);
+
     if (asset.semanticAudit.status === "matched-prior-pixel-audit") {
+      assert.equal(asset.semanticAudit.reverifiedInThisPass, false);
       assert.ok(asset.semanticAudit.depictedContent);
       assert.ok(asset.semanticAudit.semanticRole);
       assert.ok(asset.semanticAudit.recommendedUse);
-      assert.equal(asset.semanticAudit.source, "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622");
+      assert.equal(asset.semanticAudit.source, priorAuditSource);
+    } else if (asset.semanticAudit.status === "pixel-reviewed-this-pass") {
+      assert.equal(asset.semanticAudit.reverifiedInThisPass, true);
+      assert.ok(asset.semanticAudit.depictedContent);
+      assert.ok(asset.semanticAudit.semanticRole);
+      assert.ok(asset.semanticAudit.recommendedUse);
+      assert.ok(asset.semanticAudit.source.startsWith(currentPixelReviewSource + "#"));
+      assert.equal(asset.visualReview, asset.semanticAudit.source);
     } else {
-      assert.equal(asset.semanticAudit.status, "requires-fresh-visual-review");
-      assert.match(asset.semanticAudit.note, /do not infer/i);
-      assert.equal(asset.semanticAudit.depictedContent, undefined);
+      assert.fail(`unexpected or unresolved semantic status for ${asset.id}: ${asset.semanticAudit.status}`);
     }
   }
 
   assert.deepEqual(inventory.semanticAuditSummary, {
     matchedPriorAuditIds: 25,
-    requiresFreshVisualReview: 7,
-    unmatchedIds: ["embarrassed", "phone_look", "thinking_chin", "soft_smile", "city_stand", "phone_lean", "street_walk"],
-    policy: "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified.",
+    pixelReviewedThisPassIds: 7,
+    requiresFreshVisualReview: 0,
+    unmatchedIds: [],
+    policy: "25 descriptions remain attributed to the prior WorkPass622 visual audit. Seven previously unmatched images were fetched and visually inspected directly in this pass; their labels are based on visible pixels, not filenames. License/provenance remains unverified.",
   });
   assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "matched-prior-pixel-audit").length, 25);
-  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "requires-fresh-visual-review").length, 7);
+  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "pixel-reviewed-this-pass").length, 7);
 
   const counts = Object.fromEntries(
     Object.entries(inventory.groups).map(([sheet, group]) => [sheet, group.count]),
