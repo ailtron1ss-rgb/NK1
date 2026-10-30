@@ -1,3 +1,10 @@
+## [NK1][аспект7] Add bounded affect-to-expression embodiment adapter (2026-10-30)
+
+- Add a pure affective-expression adapter mapping canonical emotion, valence, arousal and dominance into bounded expression intensity, gaze offsets, head tilt, gesture readiness and voice emphasis.
+- Wire the adapter into Live2D AvatarStage while retaining the existing motor-intent selector as the owner of semantic action/motion choice and preserving EmbodimentIntentV1 compatibility.
+- Add regression tests for all canonical emotion labels, malformed/extreme input bounds, arousal response, body-cue variation and deterministic output.
+- Add a targeted GitHub Actions workflow and Russian implementation note. CI and visual runtime validation are pending on the exact branch HEAD; no Release ZIP or main update is claimed.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
