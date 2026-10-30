@@ -127,7 +127,6 @@ assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
 assert.equal(reconciled.lastComplete,true,'aggregate counter reconciliation must not rewrite the independently valid latest-cycle completion flag');
 
-
 const undercountRestore=new UnifiedCognitiveCycle();
 undercountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:99,lastTick:8,lastComplete:false,lastMissingStages:['action']});
 const undercounted=undercountRestore.snapshot();
@@ -140,10 +139,34 @@ emptyRestore.restore({cycles:0,lastTick:-1,lastComplete:true,lastMissingStages:[
 assert.equal(emptyRestore.snapshot().lastComplete,false);
 assert.deepEqual(emptyRestore.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
 
+const inheritedRestore = new UnifiedCognitiveCycle();
+inheritedRestore.restore(Object.assign(Object.create({
+  cycles: 9,
+  completeCycles: 9,
+  lastTick: 22,
+  lastComplete: true,
+  meanStageCoverage01: 1,
+  lastMissingStages: [],
+}), { version: 1 }));
+assert.equal(inheritedRestore.snapshot().cycles, 0);
+assert.equal(inheritedRestore.snapshot().completeCycles, 0);
+assert.equal(inheritedRestore.snapshot().lastTick, -1);
+assert.equal(inheritedRestore.snapshot().lastComplete, false);
+assert.deepEqual(inheritedRestore.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update'],
+  'inherited persisted fields must not be trusted by restore');
+
+const inheritedMissing = new Array(1);
+const inheritedArrayPrototype = Object.create(Array.prototype, { 0: { value: 'action', enumerable: true } });
+Object.setPrototypeOf(inheritedMissing, inheritedArrayPrototype);
+const inheritedArrayRestore = new UnifiedCognitiveCycle();
+inheritedArrayRestore.restore({ cycles: 1, completeCycles: 1, lastTick: 1, lastComplete: true, lastMissingStages: inheritedMissing });
+assert.equal(inheritedArrayRestore.snapshot().lastComplete, false);
+assert.deepEqual(inheritedArrayRestore.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update'],
+  'inherited array indexes must not satisfy missing-stage state');
+
 const leaked=cycle.snapshot();
 leaked.lastMissingStages.push('goal');
 assert.equal(cycle.snapshot().lastMissingStages.includes('goal'),false);
-
 
 const missingCountRestore=new UnifiedCognitiveCycle();
 missingCountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:9,lastTick:9,lastComplete:false,lastMissingStages:['action']});

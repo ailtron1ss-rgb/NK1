@@ -5,26 +5,31 @@
  * The governor returns retention budgets; it does not silently delete meaning.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const ownRecord=(value:unknown):Record<string,unknown> =>
+  value!==null&&typeof value==='object'&&!Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value))
+    : {};
 export interface P70State {version:1;cycles:number;maintenanceRuns:number;prunedRecords:number;compactions:number;meanHotLoad01:number;meanPressure01:number;lastAction:'idle'|'trim'|'compact'|'protect';lastAt:number;}
 export const defaultP70=():P70State=>({version:1,cycles:0,maintenanceRuns:0,prunedRecords:0,compactions:0,meanHotLoad01:.18,meanPressure01:.18,lastAction:'idle',lastAt:0});
 export class P70MemoryLifecycleGovernor {
  private state=defaultP70();
  restore(raw?:Partial<P70State>|null){
    const d=defaultP70();
-   if(raw?.version!==undefined&&raw.version!==1)throw new Error('Unsupported P70 memory lifecycle state version');
+   const source=ownRecord(raw);
+   if(source.version!==undefined&&source.version!==1)throw new Error('Unsupported P70 memory lifecycle state version');
    const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
    const metric=(value:unknown,fallback:number)=>clamp(typeof value==='number'&&Number.isFinite(value)?value:fallback);
-   const action=raw?.lastAction;
+   const action=source.lastAction;
    this.state={
      version:1,
-     cycles:count(raw?.cycles),
-     maintenanceRuns:count(raw?.maintenanceRuns),
-     prunedRecords:count(raw?.prunedRecords),
-     compactions:count(raw?.compactions),
-     meanHotLoad01:metric(raw?.meanHotLoad01,d.meanHotLoad01),
-     meanPressure01:metric(raw?.meanPressure01,d.meanPressure01),
+     cycles:count(source.cycles),
+     maintenanceRuns:count(source.maintenanceRuns),
+     prunedRecords:count(source.prunedRecords),
+     compactions:count(source.compactions),
+     meanHotLoad01:metric(source.meanHotLoad01,d.meanHotLoad01),
+     meanPressure01:metric(source.meanPressure01,d.meanPressure01),
      lastAction:action==='idle'||action==='trim'||action==='compact'||action==='protect'?action:'idle',
-     lastAt:typeof raw?.lastAt==='number'&&Number.isFinite(raw.lastAt)&&raw.lastAt>=0?raw.lastAt:0,
+     lastAt:typeof source.lastAt==='number'&&Number.isFinite(source.lastAt)&&source.lastAt>=0?source.lastAt:0,
    };
  }
  snapshot(){return structuredClone(this.state);}

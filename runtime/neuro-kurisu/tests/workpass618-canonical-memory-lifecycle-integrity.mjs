@@ -18,6 +18,9 @@ governor.restore({
 assert.deepEqual(governor.snapshot(), {
   ...defaultP70(), meanPressure01: 1,
 });
+const inheritedGovernor = Object.assign(Object.create({ cycles: 12, meanPressure01: 0.99, lastAction: 'protect' }), { version: 1 });
+governor.restore(inheritedGovernor);
+assert.deepEqual(governor.snapshot(), defaultP70(), 'P70 restore must ignore inherited state fields');
 const validGovernorState = governor.snapshot();
 assert.throws(() => governor.restore({ version: 2 }), /Unsupported P70 memory lifecycle state version/);
 assert.deepEqual(governor.snapshot(), validGovernorState);
@@ -67,6 +70,22 @@ assert.deepEqual(restored.lastPlan, {
 });
 assert.equal(restored.lastConsolidation.length, 1);
 assert.equal(Object.hasOwn(restored.lastConsolidation[0], 'injected'), false);
+
+// Inherited root and nested projection fields are not part of persisted state.
+const inheritedBudgets = Object.create({ traces: 10, events: 20, goals: 2, memories: 300, semanticItems: 900 });
+const inheritedPlan = Object.create({ budgets: inheritedBudgets, action: 'trim', pressure01: 0.7, hotLoad01: 0.4 });
+const inheritedDecision = Object.create({ id: 'memory-prototype', route: 'hippocampal', reason: 'inherited', priority01: 0.8, plasticity01: 0.7, retention01: 0.9, overconsolidationRisk01: 0.1, reinforcement01: 0.8 });
+authority.restore(Object.assign(Object.create({ cycles: 12, lastTick: 20, meanPressure01: 0.9 }), {
+  version: 1,
+  lastPlan: inheritedPlan,
+  lastConsolidation: [inheritedDecision],
+}));
+const inheritedSnapshot = authority.snapshot();
+assert.equal(inheritedSnapshot.cycles, 0);
+assert.equal(inheritedSnapshot.lastTick, -1);
+assert.equal(inheritedSnapshot.meanPressure01, 0.18);
+assert.equal(inheritedSnapshot.lastPlan, undefined, 'inherited nested budget fields must not become a lifecycle plan');
+assert.deepEqual(inheritedSnapshot.lastConsolidation, [], 'inherited decision fields must not become consolidation evidence');
 
 // Unsupported versions fail closed without replacing the last valid state.
 const beforeUnsupported = authority.snapshot();

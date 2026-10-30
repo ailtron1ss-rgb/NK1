@@ -36,6 +36,10 @@ const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
 const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
 const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
 const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+const ownRecord=(value:unknown):Record<string,unknown> =>
+  value!==null&&typeof value==='object'&&!Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value))
+    : {};
 
 export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...LEGACY_REQUIRED]});
 
@@ -43,7 +47,7 @@ export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
 
   restore(raw?:Partial<UnifiedCognitiveCycleState>|null):void {
-    const source=raw??{};
+    const source=ownRecord(raw);
     const cycles=safeCounter(source.cycles);
     // Restored counters must describe one coherent history: complete and
     // incomplete are disjoint subsets of cycles, and broken lineages are a
@@ -56,8 +60,18 @@ export class UnifiedCognitiveCycle {
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
     const hasMissingArray=Array.isArray(source.lastMissingStages);
-    const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...LEGACY_REQUIRED];
-    const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
+    const missingSource=hasMissingArray?source.lastMissingStages as unknown[]:[];
+    const rawMissing:unknown[]=[];
+    let malformedMissing=hasMissingArray&&missingSource.length>64;
+    if(hasMissingArray) {
+      for(let i=0;i<Math.min(missingSource.length,64);i++) {
+        if(Object.hasOwn(missingSource,i))rawMissing.push(missingSource[i]);
+        else malformedMissing=true;
+      }
+    } else {
+      rawMissing.push(...LEGACY_REQUIRED);
+    }
+    malformedMissing ||= rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
     const normalizedMissing=malformedMissing?[...LEGACY_REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;

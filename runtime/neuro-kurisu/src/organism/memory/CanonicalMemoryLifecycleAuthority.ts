@@ -6,13 +6,18 @@ const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const safeCounter=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
 const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;
 const safeLabel=(value:unknown,max=128):string|undefined=>typeof value==='string'&&value.trim().length>0&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value)?value.trim():undefined;
+
+/** Copy only own enumerable data fields from untrusted persisted records. */
+const ownRecord=(value:unknown):Record<string,unknown> =>
+  value!==null&&typeof value==='object'&&!Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value))
+    : {};
+
 const safePlan=(raw:unknown):CanonicalMemoryLifecycleState['lastPlan']=>{
-  if(!raw||typeof raw!=='object'||Array.isArray(raw))return undefined;
-  const row=raw as Record<string,unknown>, budgets=row.budgets;
-  if(!budgets||typeof budgets!=='object'||Array.isArray(budgets))return undefined;
-  const b=budgets as Record<string,unknown>;
+  const row=ownRecord(raw);
+  const b=ownRecord(row.budgets);
   const keys=['traces','events','goals','memories','semanticItems'] as const;
-  if(keys.some(key=>safeCounter(b[key],-1)<0))return undefined;
+  if(keys.some(key=>!Object.hasOwn(b,key)||safeCounter(b[key],-1)<0))return undefined;
   const action=row.action;
   if(action!=='idle'&&action!=='trim'&&action!=='compact')return undefined;
   return {budgets:{traces:safeCounter(b.traces),events:safeCounter(b.events),goals:safeCounter(b.goals),memories:safeCounter(b.memories),semanticItems:safeCounter(b.semanticItems)},action,pressure01:clamp01(typeof row.pressure01==='number'?row.pressure01:0),hotLoad01:clamp01(typeof row.hotLoad01==='number'?row.hotLoad01:0)};
@@ -20,9 +25,10 @@ const safePlan=(raw:unknown):CanonicalMemoryLifecycleState['lastPlan']=>{
 const safeDecisions=(raw:unknown):ConsolidationDecision[]=>{
   if(!Array.isArray(raw))return [];
   const routes=new Set(['hippocampal','cortical','procedural','defer']);
-  return raw.slice(0,32).flatMap(value=>{
-    if(!value||typeof value!=='object'||Array.isArray(value))return [];
-    const row=value as Record<string,unknown>,id=safeLabel(row.id,128),reason=safeLabel(row.reason,240);
+  const values:unknown[]=[];
+  for(let i=0;i<Math.min(raw.length,32);i++)if(Object.hasOwn(raw,i))values.push(raw[i]);
+  return values.flatMap(value=>{
+    const row=ownRecord(value),id=safeLabel(row.id,128),reason=safeLabel(row.reason,240);
     if(!id||!reason||!routes.has(String(row.route)))return [];
     const numbers=['priority01','plasticity01','retention01','overconsolidationRisk01','reinforcement01'] as const;
     if(numbers.some(key=>typeof row[key]!=='number'||!Number.isFinite(row[key])))return [];
@@ -95,18 +101,19 @@ export class CanonicalMemoryLifecycleAuthority {
 
   restore(raw?:Partial<CanonicalMemoryLifecycleState>|null){
     const d=defaultCanonicalMemoryLifecycleState();
-    if(raw?.version!==undefined&&raw.version!==1)throw new Error('Unsupported canonical memory lifecycle state version');
-    const lastPlan=safePlan(raw?.lastPlan);
+    const source=ownRecord(raw);
+    if(source.version!==undefined&&source.version!==1)throw new Error('Unsupported canonical memory lifecycle state version');
+    const lastPlan=safePlan(source.lastPlan);
     this.state={
       version:1,
-      cycles:safeCounter(raw?.cycles),
-      maintenanceRuns:safeCounter(raw?.maintenanceRuns),
-      consolidationRuns:safeCounter(raw?.consolidationRuns),
-      lastTick:raw?.lastTick===-1?-1:(safeTick(raw?.lastTick)??-1),
+      cycles:safeCounter(source.cycles),
+      maintenanceRuns:safeCounter(source.maintenanceRuns),
+      consolidationRuns:safeCounter(source.consolidationRuns),
+      lastTick:source.lastTick===-1?-1:(safeTick(source.lastTick)??-1),
       ...(lastPlan?{lastPlan}:{}),
-      lastConsolidation:safeDecisions(raw?.lastConsolidation),
-      meanPressure01:clamp01(typeof raw?.meanPressure01==='number'&&Number.isFinite(raw.meanPressure01)?raw.meanPressure01:d.meanPressure01),
-      meanMemoryLoad01:clamp01(typeof raw?.meanMemoryLoad01==='number'&&Number.isFinite(raw.meanMemoryLoad01)?raw.meanMemoryLoad01:d.meanMemoryLoad01),
+      lastConsolidation:safeDecisions(source.lastConsolidation),
+      meanPressure01:clamp01(typeof source.meanPressure01==='number'&&Number.isFinite(source.meanPressure01)?source.meanPressure01:d.meanPressure01),
+      meanMemoryLoad01:clamp01(typeof source.meanMemoryLoad01==='number'&&Number.isFinite(source.meanMemoryLoad01)?source.meanMemoryLoad01:d.meanMemoryLoad01),
     };
   }
 
