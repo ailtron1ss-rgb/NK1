@@ -2837,3 +2837,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Corrected the inventory with observed content, semantic roles, recommended reference uses, verified Git blob SHA-1 values and decoded byte sizes. In particular, the misleading filenames are not treated as ground truth (for example, `embarrassed` is a guarded crossed-arms portrait and `thinking_chin` is a reclining hand-supported rest pose).
 - Added a dated pixel-review record and strengthened the regression to distinguish 25 prior-audit descriptions from seven directly reviewed images; the unresolved visual-review queue is now 0/32.
 - This is semantic visual review only. Authorship, redistribution rights, source prompts, layered masters, production art and 2.5D suitability remain unverified; no Release ZIP was changed.
+
+
+## [NK1][Aspect 02] Add dedicated original 2D asset CI gates (2026-10-30)
+
+- Added `.github/workflows/aspect-02-original-2d-art-contract.yml` so the art-contract validator, legacy sprite inventory/pixel-review regression, and SVG/manifest contract tests run on the Aspect 02 work branch and pull requests targeting `workpass70-source`.
+- The workflow verifies the repository-pinned Node.js version and runs dependency-free Node checks directly; it does not require an install step.
+- The first workflow dispatch from the implementation commit was observed queued; its result must be checked on the latest branch head before treating these gates as validated.
