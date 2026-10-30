@@ -19,7 +19,6 @@ assert.notEqual(embodimentPersist, -1, 'cycle embodiment persistence must occur 
 const cycleLedger = index('const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({');
 const cycleEvaluation = index('const cycleVerification = this.unifiedCycle.evaluate({');
 const completenessEvidence = index("claim:'cognitive-cycle-completeness'");
-const cycleEvidencePersist = runtime.indexOf('this.core.setRealityEvidenceLedger(this.realityEvidence.snapshot());', completenessEvidence);
 
 assert.ok(feedback < groundedTransitionLearning, 'feedback must execute before the cycle claims learning completed');
 assert.ok(groundedTransitionLearning < embodiedConsequenceLearning, 'world and embodied consequence learning must precede cycle closure');
@@ -30,7 +29,12 @@ assert.ok(lifeCourseUpdate < embodimentPersist, 'embodiment state must be commit
 assert.ok(embodimentPersist < cycleLedger, 'causal stages must not be declared complete before the canonical learning path finishes');
 assert.ok(cycleLedger < cycleEvaluation, 'the unified cycle must evaluate the exact ledger events that were just written');
 assert.ok(cycleEvaluation < completenessEvidence, 'completeness evidence must be derived from the post-update verification');
-assert.ok(completenessEvidence < cycleEvidencePersist, 'cycle completeness evidence must be persisted after it is recorded');
+
+// Cycle completeness evidence must be persisted through the single canonical
+// reality-evidence owner. A runtime-owned second ledger silently overwrote the
+// evidence OrganismCore recorded for the same tick.
+assert.equal(runtime.includes('new RealityEvidenceLedger'), false, 'the runtime must not own a second reality-evidence ledger');
+assert.match(runtime.slice(completenessEvidence - 260, completenessEvidence + 80), /this\.core\.recordRealityEvidence\(/, 'cycle completeness evidence must be written through the canonical core ledger');
 
 const cycleBlock = runtime.slice(cycleLedger, completenessEvidence);
 assert.match(cycleBlock, /learning:\s*\{?\s*source:'core\.feedback'/);

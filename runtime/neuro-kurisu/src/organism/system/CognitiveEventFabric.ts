@@ -74,6 +74,8 @@ const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const isRecord=(value:unknown):value is Record<string,unknown>=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const cleanPayload=(x:unknown):Record<string,unknown>=>isRecord(x)?{...x}:{};
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
+/** Stage order of one operational cognitive cycle; shared by anchors and lineage checks. */
+const OPERATIONAL_CYCLE_STAGES:OperationalCycleStageName[]=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'];
 
 export class CognitiveEventFabric {
   private readonly capacity:number;
@@ -479,6 +481,26 @@ export class CognitiveEventFabric {
   }
 
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
+
+  /**
+   * Durable recovery surface for a cycle that is still waiting for its outcome.
+   *
+   * The live cycle anchors are process-local. A restart between observation and
+   * outcome verification must not lose the causal spine, so the persisted ledger
+   * is treated as the authoritative record: the newest same-tick event for each
+   * operational stage is the anchor for that stage. Only one cycle exists per
+   * tick, so "newest" cannot cross-contaminate concurrent cycles.
+   */
+  stageAnchorsForTick(tick:number):OperationalCycleStageIds{
+    const ids:OperationalCycleStageIds={};
+    if(!Number.isSafeInteger(tick)||tick<0)return ids;
+    for(const stage of OPERATIONAL_CYCLE_STAGES){
+      // this.events is newest-first, so the first same-tick match is the latest stage record.
+      const event=this.events.find(candidate=>candidate.tick===tick&&candidate.stage===stage);
+      if(event)ids[stage]=event.id;
+    }
+    return ids;
+  }
 
   snapshot():CognitiveEventFabricSnapshot{
     const known=new Set(this.events.map(e=>e.id));

@@ -1,0 +1,81 @@
+# STAGED WORKFLOW — copy to `.github/workflows/aspect01-unified-cognitive-cycle.yml`
+#
+# It lives here because the automation identity used to produce this branch has no
+# `workflows` permission, so a commit that adds a workflow file is rejected by GitHub.
+# A maintainer with `workflows` permission must install it verbatim. Until then the
+# regression is still runnable with:
+#   cd runtime/neuro-kurisu && npm run test:aspect01:unified-cognitive-cycle
+name: Aspect 01 unified cognitive cycle
+
+on:
+  push:
+    paths:
+      - '.github/workflows/aspect01-unified-cognitive-cycle.yml'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/RealityEvidenceLedger.ts'
+      - 'runtime/neuro-kurisu/tests/aspect01-unified-cognitive-cycle.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass319-cycle-order.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.nvmrc'
+  pull_request:
+    branches:
+      - workpass70-source
+      - main
+    paths:
+      - '.github/workflows/aspect01-unified-cognitive-cycle.yml'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/RealityEvidenceLedger.ts'
+      - 'runtime/neuro-kurisu/tests/aspect01-unified-cognitive-cycle.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass319-cycle-order.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.nvmrc'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-aspect01-cognitive-cycle-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  unified-cognitive-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          package-manager-cache: false
+      - name: Verify Node.js pin
+        run: node -e "const expected=require('fs').readFileSync('.nvmrc','utf8').trim(); const actual=process.versions.node; if(!actual.startsWith(expected.split('.').slice(0,2).join('.'))) { console.error({expected,actual}); process.exit(1); }"
+      - name: Install pinned runtime dependency graph
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
+      - name: Audit canonical cognitive subsystem ownership
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:core-ownership
+      - name: Unified cognitive-cycle contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass287:cognitive-cycle
+      - name: Cycle causal ordering contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass319-cycle-order.mjs
+      - name: Complete deterministic cognitive cycle executes end to end
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:aspect01:unified-cognitive-cycle
+      - name: Runtime integration and reality-gated loop regressions
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/big-pass-162-runtime-integration.mjs
+          node --experimental-strip-types tests/big-pass-372-reality-gated-loop.mjs

@@ -41,6 +41,7 @@
     "test:workpass292:evidence-lanes": "node --experimental-strip-types tests/workpass292-evidence-lanes.mjs",
     "test:workpass288:intrinsic-motivation": "node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs",
     "test:workpass287:cognitive-cycle": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs",
+    "test:aspect01:unified-cognitive-cycle": "node --experimental-strip-types tests/aspect01-unified-cognitive-cycle.mjs",
     "test:workpass84:script-integrity": "node tests/workpass84-script-integrity.mjs",
     "test:workpass87:superseded-memory": "node --experimental-strip-types tests/workpass87-superseded-current-retrieval.mjs",
     "test:p2840:boundary": "node --experimental-strip-types tests/p2840-reality-boundary.mjs",

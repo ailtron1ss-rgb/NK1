@@ -1,4 +1,13 @@
-## [NK1][WorkPass616] Wire metadata candidate mode into independent bilingual retrieval evaluation (2026-10-29)
+## [NK1][Aspect01] Repair the unified cognitive core execution path and prove one complete cycle (2026-10-30)
+
+- Make `OrganismCore` the single owner of reality/simulation evidence: the runtime no longer constructs, restores or persists a second `RealityEvidenceLedger`. The shadow ledger silently erased the core's `observation:*`/`outcome:*` rows, so user perception (`user-reported`) and independent evidence never reached the canonical ledger (`tests/big-pass-162-runtime-integration.mjs` failed on `externalCount`).
+- Persist the open cycle's causal ledger in `observe()` and recover missing anchors through the new `CognitiveEventFabric.stageAnchorsForTick(tick)`, so a restart between perception and outcome verification no longer emits an unparented outcome that bricks the lineage (`completeCycles:0, brokenLineages:1` before the fix).
+- Make outcome delivery at-most-once per cycle: a duplicate `feedback()` is rejected before any mutation and recorded as `feedback-duplicate-ignored` instead of re-running the learning path and then throwing `RangeError`.
+- Align the core/envelope stage contracts: the core `attention` stage now records `broadcastId`/`selectedCandidateIds`; the core `memory` stage records retrieval ids and exposed cycle-memory ids separately, and the runtime envelope records `cycleMemoryIds`/`cycleMemoryCount` instead of mislabelling the compatibility projection as retrieval.
+- Add `tests/aspect01-unified-cognitive-cycle.mjs` (and its workflow): boots the real `OrganismRuntime`, asserts one causally connected 11-stage chain per tick with the artifact each stage actually passes on, reflection feeding the next cycle's memory, determinism across two identical runtimes, restart-safe cycle closure, duplicate-outcome idempotency and the single-ledger invariant.
+- Update the WorkPass319 ordering contract for the canonical ledger writer. No consciousness, semantic-recall, production-readiness or learning-uplift claim is made.
+
+
 
 - Add an explicit `metadataRecallEnabled` benchmark option that applies only to the isolated candidate arm; the baseline arm remains the canonical retriever and is unchanged.
 - Bind the candidate mode into the retrieval-configuration SHA-256 fingerprint and report it in experiment configuration/guardrails, so a result cannot be mistaken for the canonical configuration.
