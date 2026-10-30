@@ -124,4 +124,9 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /MOTION_COUNTS/);
   assert.match(viewer, /lastIntentStateVersion/);
   assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
+  assert.match(viewer, /ParamBrowLY/);
+  assert.match(viewer, /ParamEyeLSmile/);
+  assert.match(viewer, /ParamCheek/);
+  assert.match(viewer, /ParamBreath/);
+  assert.match(viewer, /ParamBodyAngleX/);
 });
