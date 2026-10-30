@@ -43,6 +43,7 @@ The production `OrganismCore.ts` is a very large file (about 1.32 MB in the Git 
 8. Integration rejects cycle-counter overflow before mutating state.
 9. Returned snapshots remain detached from canonical projection state.
 10. A dedicated regression test is registered in `package.json` and the cognitive-contract GitHub Actions workflow.
+11. `UnifiedCognitiveCycle` preserves legacy six-stage callers, but when any extended phase is explicitly present it requires the full eleven-stage spine and eleven distinct event IDs; partial extended cycles can no longer be counted as complete.
 
 ## Files changed
 
