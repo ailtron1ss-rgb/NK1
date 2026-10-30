@@ -48,7 +48,8 @@ test("VRM runtime advances SpringBone after animation and detaches mixer before 
  assert.match(stage,/function stopAndDetachMixer\(rt:Runtime,root:any=rt\.rigRoot\)/);
  assert.match(stage,/mixer\.stopAllAction\(\);if\(root\)mixer\.uncacheRoot\(root\);rt\.mixer=null/);
  assert.ok(stage.indexOf("stopAndDetachMixer(rt,rt.rigRoot);if(rt.loaded)")<stage.indexOf("VRMUtils.deepDispose(rt.loaded)"));
- assert.ok(stage.indexOf("stopAndDetachMixer(rt,rt.rigRoot);if(rt?.loaded)")<stage.indexOf("rt.scene.remove(rt.loaded)"));
+ const reset=stage.slice(stage.indexOf("const reset=async()=>"));
+ assert.ok(reset.indexOf("stopAndDetachMixer(rt,rt.rigRoot);if(rt?.loaded)")<reset.indexOf("rt.scene.remove(rt.loaded)"));
  const mixerUpdate=stage.indexOf("rt.mixer?.update(dt)");
  const vrmUpdate=stage.indexOf("rt.vrm?.update(dt)");
  assert.ok(mixerUpdate>=0&&vrmUpdate>mixerUpdate,"VRM physics must consume the final mixer pose");
