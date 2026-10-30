@@ -17,10 +17,11 @@ export class PerceptualEpistemicGraph {
       ? this.state.claims.find(x=>x.id===input.supersedes&&x.id!==c.id)
       : undefined;
     const similar=this.state.claims.filter(x=>x.claim===claim&&x.id!==c.id);
-    // Repeating the same proposition is corroboration, not contradiction
-    // resolution. Resolution requires an explicit supersedes edge.
+    const independentCorroboration=similar.filter(x=>x.modality!==input.modality);
+    // Repeating the same proposition from the same modality is persistence,
+    // not independent corroboration. Resolution needs an explicit supersedes edge.
     if(superseded)this.state.resolvedPairs++;
-    else if(similar.length)this.state.corroboratedPairs+=similar.length;
+    else if(independentCorroboration.length)this.state.corroboratedPairs+=independentCorroboration.length;
     this.state.claims.unshift(c); this.state.claims=this.state.claims.slice(0,256);
     this.state.meanConfidence01=clamp(this.state.claims.reduce((s,x)=>s+x.confidence01,0)/Math.max(1,this.state.claims.length));
     this.state.lastAt=input.at; return structuredClone(c);
