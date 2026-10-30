@@ -66,6 +66,7 @@ const ownArrayValues=(value:unknown,max:number):{values:unknown[];valid:boolean}
     return {values,valid};
   }catch{return {values:[],valid:false};}
 };
+const isRecordLike=(value:unknown):value is Record<string,unknown> => value!==null&&typeof value==='object'&&!Array.isArray(value);
 const ownValue=(record:unknown,key:string):unknown=>{
   if(record===null||typeof record!=='object')return undefined;
   try{
@@ -93,17 +94,9 @@ export class UnifiedCognitiveCycle {
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
     const hasMissingArray=Array.isArray(source.lastMissingStages);
-    const missingSource=hasMissingArray?source.lastMissingStages as unknown[]:[];
-    const rawMissing:unknown[]=[];
-    let malformedMissing=hasMissingArray&&missingSource.length>64;
-    if(hasMissingArray) {
-      for(let i=0;i<Math.min(missingSource.length,64);i++) {
-        if(Object.hasOwn(missingSource,i))rawMissing.push(missingSource[i]);
-        else malformedMissing=true;
-      }
-    } else {
-      rawMissing.push(...LEGACY_REQUIRED);
-    }
+    const missingArray=hasMissingArray?ownArrayValues(source.lastMissingStages,64):{values:[...LEGACY_REQUIRED],valid:true};
+    const rawMissing:unknown[]=missingArray.values;
+    let malformedMissing=hasMissingArray&&!missingArray.valid;
     malformedMissing ||= rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
     const normalizedMissing=malformedMissing?[...LEGACY_REQUIRED]:filteredMissing;
@@ -124,26 +117,29 @@ export class UnifiedCognitiveCycle {
   }
 
   evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
-    if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
-    if(input.stageIds===null||typeof input.stageIds!=='object'||Array.isArray(input.stageIds))throw new TypeError('stageIds must be an object');
-    if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
-    if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
-    if(typeof input.parentIntegrity01!=='number'||!Number.isFinite(input.parentIntegrity01)||input.parentIntegrity01<0||input.parentIntegrity01>1) {
+    const envelope=ownRecord(input);
+    const tick=envelope.tick;
+    const stageIds=envelope.stageIds;
+    const parentIntegrity01=envelope.parentIntegrity01;
+    if(!isRecordLike(stageIds))throw new TypeError('stageIds must be an object');
+    if(!Number.isSafeInteger(tick)||typeof tick!=='number'||tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
+    if(tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
+    if(typeof parentIntegrity01!=='number'||!Number.isFinite(parentIntegrity01)||parentIntegrity01<0||parentIntegrity01>1) {
       throw new RangeError('parentIntegrity01 must be a finite value in [0, 1]');
     }
 
     if(this.state.cycles>=Number.MAX_SAFE_INTEGER)throw new RangeError('cognitive cycle counter reached its safe integer limit');
-    const validIds:Partial<Record<UnifiedCycleStage,string>>={};
+    const validIds:Partial<Record<UnifiedCognitiveCycleStage,string>>={};
     for(const stage of ALL_STAGES) {
-      // Only explicitly supplied stage IDs are evidence; inherited properties
-      // from polluted prototypes must never satisfy a required cognitive step.
-      const id=Object.hasOwn(input.stageIds,stage)?input.stageIds[stage]:undefined;
+      // Only explicit own data-property IDs are evidence; inherited fields and
+      // accessor-backed IDs are never evaluated or accepted.
+      const id=ownValue(stageIds,stage);
       if(validStageId(id))validIds[stage]=id;
     }
     // Preserve six-stage legacy callers, but once a caller advertises any
     // extended phase it must provide the complete eleven-stage spine. This
     // prevents a partially upgraded runtime from claiming a complete cycle.
-    const requiresExtendedSpine=EXTENDED_MARKERS.some(stage=>Object.hasOwn(input.stageIds,stage));
+    const requiresExtendedSpine=EXTENDED_MARKERS.some(stage=>Object.getOwnPropertyDescriptor(stageIds,stage)!==undefined);
     const requiredStages=requiresExtendedSpine?EXTENDED_REQUIRED:LEGACY_REQUIRED;
     // Every required phase must identify a distinct event, including the five
     // extended phases. Reusing an event across two phases is missing evidence.
@@ -155,7 +151,7 @@ export class UnifiedCognitiveCycle {
     const present=requiredStages.filter(stage=>validIds[stage]!==undefined&&idCounts.get(validIds[stage]!)===1);
     const missing=requiredStages.filter(stage=>validIds[stage]===undefined||idCounts.get(validIds[stage]!)!==1);
     const coverage=present.length/requiredStages.length;
-    const causal=input.parentIntegrity01;
+    const causal=parentIntegrity01;
     const complete=missing.length===0&&causal>=0.5;
     const cycles=this.state.cycles+1;
     this.state={
@@ -166,11 +162,11 @@ export class UnifiedCognitiveCycle {
       brokenLineages:this.state.brokenLineages+(causal<0.5?1:0),
       meanStageCoverage01:(this.state.meanStageCoverage01*(cycles-1)+coverage)/cycles,
       meanCausalContinuity01:(this.state.meanCausalContinuity01*(cycles-1)+causal)/cycles,
-      lastTick:input.tick,
+      lastTick:tick,
       lastComplete:complete,
       lastMissingStages:missing,
     };
-    return {tick:input.tick,stageCoverage01:coverage,causalContinuity01:causal,complete,missingStages:[...missing]};
+    return {tick,stageCoverage01:coverage,causalContinuity01:causal,complete,missingStages:[...missing]};
   }
 
   snapshot():UnifiedCognitiveCycleState {
