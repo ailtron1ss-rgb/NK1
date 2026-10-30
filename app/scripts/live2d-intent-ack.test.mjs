@@ -38,7 +38,7 @@ test("unchanged expression and unchanged motion do not leave an ACK pending", ()
 });
 
 test("failed motion dispatch releases only its own deduplication key for retry", () => {
-  assert.match(viewer, /const clearFailedMotion=\(\)=>\{if\(lastMotionKey===k\)lastMotionKey='';\}/);
+  assert.match(viewer, /const clearFailedMotion=\(\)=>\{if\(lastMotionKey===k\)lastMotionKey=''\};/);
   assert.match(viewer, /if\(!started&&onNotStarted\)onNotStarted\(\)/);
   assert.match(viewer, /if\(onNotStarted\)onNotStarted\(\)/);
 });
