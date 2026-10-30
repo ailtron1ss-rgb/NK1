@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getVrmArmCalibration, validateVrmRigCalibrationProfile } from "../src/components/avatar/vrmRigCalibrationProfile.ts";
+import { getVrmArmCalibration, parseVrmRigCalibrationProfileJson, serializeVrmRigCalibrationProfileJson, validateVrmRigCalibrationProfile } from "../src/components/avatar/vrmRigCalibrationProfile.ts";
 
 const calibration = { shoulderAxis:"z", elbowAxis:"z", shoulderSign:1, elbowSign:1, shoulderOffsetRad:0, elbowOffsetRad:0, shoulderMinRad:-1.2, shoulderMaxRad:1.2, elbowMinRad:0, elbowMaxRad:2.4 };
 const bone = (name) => ({ name, rotation:{x:0,y:0,z:0} });
@@ -18,4 +18,18 @@ test("classifies structurally valid but physically invalid calibration separatel
 });
 test("rejects blank bone identities as malformed profile data",()=>{
   assert.deepEqual(validateVrmRigCalibrationProfile({...profile,left:{...profile.left,shoulderBoneName:"  "}},context),{accepted:false,reason:"invalid-profile"});
+});
+
+test("imports JSON only after exact loaded-rig validation and round-trips deterministically",()=>{
+  const json=serializeVrmRigCalibrationProfileJson(profile,context);
+  assert.equal(typeof json,"string");
+  const imported=parseVrmRigCalibrationProfileJson(json,context);
+  assert.equal(imported.accepted,true);
+  if(imported.accepted){
+    assert.deepEqual(imported.profile,validateVrmRigCalibrationProfile(profile,context).profile);
+    assert.equal(serializeVrmRigCalibrationProfileJson(imported.profile,context),json);
+  }
+  assert.deepEqual(parseVrmRigCalibrationProfileJson("{not-json",context),{accepted:false,reason:"invalid-profile"});
+  assert.deepEqual(parseVrmRigCalibrationProfileJson(" ".repeat(32_769),context),{accepted:false,reason:"invalid-profile"});
+  assert.equal(serializeVrmRigCalibrationProfileJson(profile,{...context,modelFingerprint:"sha256:other"}),null);
 });
