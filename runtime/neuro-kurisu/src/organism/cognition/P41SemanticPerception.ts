@@ -298,7 +298,7 @@ export class P41SemanticPerceptionEngine {
   }
 
   private queuePending(modality:P41Modality,query:string,gain:number,cost:number,at:number){
-    const id=stableId('pending',`${modality}:${query}`); if(this.state.pending.some(x=>x.id===id&&x.status==='pending')) return;
+    const id=stableId('pending',`${this.state.tick}:${at}:${modality}:${query}`); if(this.state.pending.some(x=>x.id===id&&x.status==='pending')) return;
     this.state.pending.unshift({id,modality,query,expectedInformationGain01:clamp(gain),estimatedCost01:clamp(cost),priority01:clamp(gain/(.1+cost)),createdAt:at,expiresAt:at+300000,status:'pending'});
     this.state.pending=this.state.pending.slice(0,64);
   }
