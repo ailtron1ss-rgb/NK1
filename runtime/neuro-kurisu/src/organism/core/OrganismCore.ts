@@ -10600,7 +10600,7 @@ export class OrganismCore {
         // A caller-supplied source label is not a receipt. Require the exact
         // independent outcome event to exist in the Core-owned evidence snapshot.
         const receipt = this.persisted.system.runtimeEvidence?.recent?.find((event: any) => event?.id === input.evidenceId);
-        if (!receipt || receipt.kind !== 'outcome' || receipt.source !== input.evidenceSource) return false;
+        if (!receipt || receipt.kind !== 'outcome' || receipt.external01 !== true || receipt.source !== input.evidenceSource) return false;
         const payload = receipt.payload as Record<string, unknown>;
         if (payload?.modality !== input.modality
             || payload?.predictedConfidence01 !== input.predictedConfidence01
