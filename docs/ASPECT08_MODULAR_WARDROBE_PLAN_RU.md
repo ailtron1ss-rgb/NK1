@@ -98,3 +98,9 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 4. Author the first rights-cleared modular 3D garment pack for the canonical body.
 5. Produce a depth-2D layered garment pack from source art.
 6. Only then connect renderer application APIs and visual E2E.
+
+## Second-pass implementation: byte-level integrity
+
+`verifyWardrobeAssetBytes` now checks the actual `ArrayBuffer` / `Uint8Array` received by a future loader against the manifest's declared byte count and SHA-256 digest using Web Crypto. It returns explicit outcomes for verified bytes, size mismatch, hash mismatch, invalid metadata and unavailable crypto. The check is deliberately independent from licensing: a matching digest establishes byte identity only, not rights or attribution.
+
+The focused regression suite includes the published SHA-256 test vector for `abc`, plus tampered-hash, incorrect-size and unavailable-provider cases. The runtime loader still needs to call this gate before renderer acknowledgement; no loader or actual clothing assets are claimed in this pass.
