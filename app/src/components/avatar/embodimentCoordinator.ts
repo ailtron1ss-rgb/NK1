@@ -68,13 +68,15 @@ export class EmbodimentSwitchCoordinator {
   private active: EmbodimentAdapter;
   private busy = false;
   private lastRevision = -1;
+  private readonly onEvent: (event: EmbodimentSwitchEvent) => void;
 
   constructor(
     initialAdapter: EmbodimentAdapter,
-    private readonly onEvent: (event: EmbodimentSwitchEvent) => void = () => undefined,
+    onEvent: (event: EmbodimentSwitchEvent) => void = () => undefined,
   ) {
     if (!initialAdapter.id.trim()) throw new TypeError("invalid-initial-adapter-id");
     this.active = initialAdapter;
+    this.onEvent = onEvent;
   }
 
   get activeAdapterId(): string { return this.active.id; }
