@@ -62,6 +62,15 @@ test("idle fallback is considered after semantic matches and explicit default ar
   assert.equal(selectIdleMotionClip([clip("nonmatching"), modelIdle]), modelIdle);
 });
 
+test("recognizes canonical organism action names as explicit motion tags", () => {
+  assert.equal(selectActionMotionClip([clip("respond")], "respond")?.name, "respond");
+  assert.equal(selectActionMotionClip([clip("explore")], "explore")?.name, "explore");
+  assert.equal(selectActionMotionClip([clip("verify")], "verify")?.name, "verify");
+  assert.equal(selectActionMotionClip([clip("reflect")], "reflect")?.name, "reflect");
+  assert.equal(selectActionMotionClip([clip("wait")], "wait")?.name, "wait");
+  assert.equal(selectActionMotionClip([clip("rest")], "rest")?.name, "rest");
+});
+
 test("returns null when no action, default, or idle clip exists", () => {
   assert.equal(selectAvatarMotionClip({
     action: "explore",
