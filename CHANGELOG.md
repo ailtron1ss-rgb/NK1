@@ -1,3 +1,9 @@
+## [NK1][Aspect 02] Test the layered-art handoff schema contract (2026-10-30)
+
+- Add a focused regression that loads the checked-in JSON Schema and asserts the required layer fields, depth/pivot metadata, explicit provenance fields, review-state vocabulary and optional mesh boundary.
+- Keep the schema contract test in the existing dedicated Aspect 02 CI workflow; no new runtime dependency is introduced.
+- Schema conformance is a structural gate only; semantic graph checks, painted-art review, deformation validation and license evidence remain separate approval requirements.
+
 ## [NK1][Aspect 02] Add machine-readable layered-art handoff schema (2026-10-30)
 
 - Add a JSON Schema 2020-12 contract for future authored layer manifests: normalized canvas coordinates, explicit depth planes, stable layer IDs, parent/pivot/transform/bounds, occlusion and underpaint metadata, optional mesh topology constraints, source provenance, and human review state.
