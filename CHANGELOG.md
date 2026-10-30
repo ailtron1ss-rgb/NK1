@@ -3101,3 +3101,15 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Aspect 01] Harden unified cognitive state, memory lifecycle and cycle lineage (2026-10-30)
+
+- Replace spread-based snapshot restore in UnifiedCognitiveSubstrate, P70MemoryLifecycleGovernor, CanonicalMemoryLifecycleAuthority and UnifiedCognitiveCycle with field allow-lists and own data-property projection. Accessor-backed persisted values are ignored without invoking getters.
+- Normalize substrate state by domain: safe integer counters, finite bounded metrics, bounded inert labels, detached snapshots and monotonic positive ticks. Live integrate() input now also uses own data fields and safe fallbacks.
+- Preserve the 6-phase legacy cycle contract while requiring all 11 distinct event IDs whenever any extended phase is advertised. Inherited fields, accessor-backed stage IDs, sparse missing-stage arrays, duplicate identities and regressing ticks cannot complete a cycle. The extended-stage type identifier and null-input error boundary are fixed.
+- Harden P70 memory budget counts, timestamps and counters against fractions, non-finite values and overflow.
+- Enforce one monotonic tick owner for canonical memory lifecycle maintenance. Duplicate maintenance at the same tick is an idempotent no-op; failed fabric maintenance restores the governor snapshot so retrying the tick does not double-count a planned maintenance cycle.
+- Bound and validate persisted consolidation decisions and retention plans; unknown versions fail closed without partially replacing valid state.
+- Add dedicated regressions for malformed/inherited/accessor-backed snapshots, unsafe counters, extended cycle lineage, duplicate ticks and transactional governor rollback.
+- Add focused npm scripts and a dedicated GitHub Actions workflow for Aspect 01. Full runtime call-path lineage, interruption/restart-in-the-middle, long-run heap/latency and Android validation remain open acceptance gates; no 10k-cycle or production readiness claim is made.
+
