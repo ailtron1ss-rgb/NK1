@@ -31,6 +31,11 @@
 | Event and stale-evidence regression | Проверить provenance событий и stale boundary |
 | Same-cycle scene provenance precedence | Не понижать результат vision данными unresolved из той же сцены и того же цикла |
 | Same-cycle regression | Закрепить приоритет свежего vision evidence |
+| WorldContext schema: calibrated position | Передавать x/y/z только с объявленным coordinateFrameId |
+| Normalizer spatial gate | Отклонять неполные и unframed координаты, не ограничивать реальные world units диапазоном [0,1] |
+| Core → P41 spatial ingress | Сохранять координаты и frame для моторного/пространственного планирования |
+| GroundedWorldState spatial round-trip | Не терять position/frame при консолидации и повторной выдаче WorldContext |
+| Spatial regression | Проверять frame-bound coordinates и запрет image-plane → 3D promotion |
 
 ## Текущий статус
 
