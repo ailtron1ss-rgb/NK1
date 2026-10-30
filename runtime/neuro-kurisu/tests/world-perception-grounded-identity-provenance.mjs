@@ -15,6 +15,7 @@ const state = engine.ingest({
       { label: 'chair', trackId: 'chair-A', sourceId: 'sensor-feed', confidence01: 0.91, evidenceKind: 'model-output' },
       { label: 'chair', trackId: 'chair-B', sourceId: 'sensor-feed', confidence01: 0.88, evidenceKind: 'model-output' },
     ],
+    events: ['person-entered-room'],
   },
 });
 
@@ -25,6 +26,7 @@ for (const chair of chairs) {
   assert.equal(chair.modalityEvidenceKinds?.world, 'model-output');
 }
 assert.equal(state.sceneEvidenceKind, 'model-output', 'scene provenance must survive semantic ingestion');
+assert.equal(state.events.find(event => event.label === 'person-entered-room')?.evidenceKind, 'model-output');
 
 // A model result must not be upgraded to a direct observation while compiling evidence.
 const compiler = new PerceptualEvidenceCompiler();
@@ -33,6 +35,7 @@ const entityEvidence = evidence.evidence.filter(row => row.claim.startsWith('ent
 assert.equal(entityEvidence.length, 2, 'evidence compiler must retain both object instances');
 assert.ok(entityEvidence.every(row => row.kind === 'model-output'));
 assert.equal(evidence.evidence.find(row => row.claim === 'scene:laboratory')?.kind, 'model-output');
+assert.equal(evidence.evidence.find(row => row.claim.includes('person-entered-room'))?.kind, 'model-output');
 
 // A later Core world snapshot carries stable IDs, but has no measured value,
 // collection status, or visual-visibility observation. Those unknowns stay unknown.
@@ -71,6 +74,14 @@ const unknown = unknownEngine.ingest({
 });
 assert.equal(unknown.entities.find(entity => entity.label === 'desk')?.modalityEvidenceKinds?.world, 'unresolved');
 assert.equal(unknown.sceneEvidenceKind, 'unresolved');
+assert.equal(unknown.events.find(event => event.label === 'person-entered-room'), undefined);
+
+const unknownEventEngine = new P41SemanticPerceptionEngine();
+const unknownEvent = unknownEventEngine.ingest({
+  at: 2_500,
+  world: { scene: 'office', events: ['door-opened'] },
+});
+assert.equal(unknownEvent.events.find(event => event.label === 'door-opened')?.evidenceKind, 'unresolved');
 
 const observedEngine = new P41SemanticPerceptionEngine();
 const observed = observedEngine.ingest({
@@ -79,6 +90,7 @@ const observed = observedEngine.ingest({
 });
 assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'observed');
 assert.equal(observed.sceneEvidenceKind, 'observed');
+assert.equal(observed.events.find(event => event.label === 'door-opened')?.evidenceKind, 'observed');
 
 // Explicit unknown flags must survive the untrusted world-context boundary.
 const normalized = normalizeWorldContext({
