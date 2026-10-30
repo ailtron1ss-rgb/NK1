@@ -14,7 +14,7 @@ assert.doesNotMatch(microCycleSource, /const microVerified = Boolean\(observatio
 
 const report = buildCognitiveArchitectureSnapshot();
 const validation = validateCognitiveArchitecture();
-const root = packageRoot;
+const repositoryRoot = resolve(packageRoot, '../..');
 
 assert.equal(validation.ok, true, 'cognitive architecture map must have unique IDs, valid references, and explicit owners');
 assert.equal(report.mainSystem.id, 'kurisu-organism');
@@ -34,8 +34,9 @@ for (const subsystem of report.subsystems) {
 }
 
 const componentResults = report.subsystems.flatMap(subsystem => subsystem.components.map(component => {
+  const isRuntimeComponent = component.startsWith('runtime/neuro-kurisu/');
   const relative = component.replace(/^runtime\/neuro-kurisu\//, '');
-  const absolute = resolve(root, relative);
+  const absolute = resolve(isRuntimeComponent ? packageRoot : repositoryRoot, relative);
   const exists = existsSync(absolute);
   return { subsystem: subsystem.id, component, exists, isDirectory: exists && statSync(absolute).isDirectory() };
 }));
