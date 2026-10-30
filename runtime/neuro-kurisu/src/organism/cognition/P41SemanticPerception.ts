@@ -108,6 +108,7 @@ export interface P41PerceptionState {
   version:1;
   tick:number;
   scene:{label:string;confidence01:number;stability01:number;at:number};
+  sceneEvidenceKind?:P41EvidenceKind;
   entities:P41PerceptualEntity[];
   relations:P41PerceptualRelation[];
   events:P41PerceptualEvent[];
@@ -144,6 +145,7 @@ export const defaultP41SemanticPerception = ():P41PerceptionState => ({
   version:1,
   tick:0,
   scene:{label:'unknown',confidence01:.12,stability01:.15,at:0},
+  sceneEvidenceKind:'unresolved',
   entities:[], relations:[], events:[], snapshots:[], pending:[],
   modalityReliability:{
     text:{reliability01:.72,observations:0,conflict01:0,latency01:.15,reportedQuality01:.45,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
@@ -260,6 +262,7 @@ export class P41SemanticPerceptionEngine {
     if(v.sceneLabel){
       const label=normalizePerceptualLabel(v.sceneLabel).slice(0,120);
       this.state.scene={label,confidence01:clamp(v.confidence01??.55),stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.08:.42),at};
+      this.state.sceneEvidenceKind='model-output';
       this.epistemic.add({at,modality:'vision',claim:`scene:${label}`,source:'model-output',confidence01:Number(v.confidence01??.55)});
     }
     const targets:string[]=[];
@@ -298,7 +301,7 @@ export class P41SemanticPerceptionEngine {
 
   ingestWorld(w:NonNullable<P41SemanticInput['world']>,at:number){
     const sceneEvidenceKind=w.evidenceKind??'unresolved';
-    if(w.scene){ const label=String(w.scene).slice(0,120); this.state.scene={label,confidence01:clamp(w.objects?.length?Math.max(...w.objects.map(o=>Number.isFinite(o.confidence01)?Number(o.confidence01):.5)):.35),stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.05:.5),at}; this.epistemic.add({at,modality:'world',claim:`scene:${label}`,source:sceneEvidenceKind,confidence01:this.state.scene.confidence01}); }
+    if(w.scene){ const label=String(w.scene).slice(0,120); this.state.scene={label,confidence01:clamp(w.objects?.length?Math.max(...w.objects.map(o=>Number.isFinite(o.confidence01)?Number(o.confidence01):.5)):.35),stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.05:.5),at}; this.state.sceneEvidenceKind=sceneEvidenceKind; this.epistemic.add({at,modality:'world',claim:`scene:${label}`,source:sceneEvidenceKind,confidence01:this.state.scene.confidence01}); }
     for(const o of (w.objects??[]).slice(0,24)){
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
