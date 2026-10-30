@@ -1,3 +1,9 @@
+## [NK1][Aspect 08] Verify complete wardrobe pack payloads before activation (2026-10-30)
+
+- Add a whole-pack verification gate that requires every manifest-declared file, rejects undeclared extra files and verifies each payload's exact byte length and SHA-256 before the pack can be treated as byte-verified.
+- Add regression coverage for complete valid payload, missing declared file and unexpected extra file.
+- The gate remains a pure payload validator; filesystem/network ingestion, signature trust and license-rights review remain separate integration responsibilities.
+
 ## [NK1][Aspect 08] Verify wardrobe asset bytes before renderer activation (2026-10-30)
 
 - Add browser/Node Web Crypto SHA-256 verification for actual wardrobe asset bytes, including exact byte-length checks and explicit mismatch/unavailable-crypto outcomes.
