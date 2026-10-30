@@ -6,7 +6,7 @@ import { neuroApi } from "@/neuro-kurisu/api";
 const fmt = (value: unknown) => JSON.stringify(value, null, 2);
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-md border border-border bg-bg p-2"><p className="text-[10px] uppercase tracking-wider text-subtle">{label}</p><p className="mt-1 break-all font-mono text-sm text-fg">{value}</p></div>;
+  return <div className="min-w-0 rounded-md border border-border bg-bg p-2"><p className="text-[10px] uppercase tracking-wider text-subtle">{label}</p><p className="mt-1 break-all font-mono text-sm text-fg">{value}</p></div>;
 }
 
 export function HexisControlConsole() {
