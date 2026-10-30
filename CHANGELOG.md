@@ -1,13 +1,63 @@
-## [NK1][executor] Restore snapshot identity and protect project-step side effects (2026-10-30)
+## [NK1][Aspect 02] Require verified rights provenance before accepting authored art (2026-10-30)
 
-- Align the executor's default snapshot own-key shape with restore output by explicitly initializing `lastOutcomeId`; update stale version assertions to schema v7 and point failure simulation at the current plan step's `preferredTool`.
-- Rebuild restored executor state only from own data properties. Accessors are not evaluated; step arrays, outcome IDs, counters, optional tool inputs and active checkpoint fields are bounded and validated.
-- Keep the active side-effect checkpoint authoritative if a stale or malformed snapshot tries to erase, replace, or regress it. If checkpoint identity and a restored project plan disagree, retain the checkpoint and discard only the incompatible plan cursor.
-- Refuse to clear pending, waiting-approval or reconciliation-required operations. Clear only a pre-Gateway `prepared` intent or a `receipt-recorded` operation after its progress projection is applied.
-- Prevent `ensure()` and routine empty-project resets from replacing a project while its side effect or result projection is unresolved. After an explicit receipt reconciliation and clear, a new project can be initialized.
-- Reject overlong/control-character operation identities instead of silently truncating distinct projects, steps, tools, idempotency keys or decisions into collisions; refuse sequence overflow.
-- Add regressions for accessor-backed restores, stale snapshots, pending/reconciliation clear denial, project switch preservation, reconciled release, identity limits and sequence exhaustion.
-- Wire checkpoint, provider reconciliation, receipt replay, persistence and subsystem round-trip checks into the central WorkPass71 validation workflow.
+- Close the promotion gap in the executable Original 2D validator: every authored/in-progress/review/approved/exported slot now requires a provenance record with creator, HTTPS source URL, explicit license identifier, permission evidence, affirmative redistribution clearance, verification timestamp and verifier.
+- Keep uncreated slots honest: `not-authored` entries must not carry files, hashes or provenance claims.
+- Extend manifest and validator regressions to guard the rights gate. The existing 24-slot inventory remains entirely `not-authored`; this change does not clear the legacy sprites' licenses, create artwork or update the Release ZIP.
+
+## [NK1][Aspect 02] Test the layered-art handoff schema contract (2026-10-30)
+
+- Add a focused regression that loads the checked-in JSON Schema and asserts the required layer fields, depth/pivot metadata, explicit provenance fields, review-state vocabulary and optional mesh boundary.
+- Keep the schema contract test in the existing dedicated Aspect 02 CI workflow; no new runtime dependency is introduced.
+- Schema conformance is a structural gate only; semantic graph checks, painted-art review, deformation validation and license evidence remain separate approval requirements.
+
+## [NK1][Aspect 02] Add machine-readable layered-art handoff schema (2026-10-30)
+
+- Add a JSON Schema 2020-12 contract for future authored layer manifests: normalized canvas coordinates, explicit depth planes, stable layer IDs, parent/pivot/transform/bounds, occlusion and underpaint metadata, optional mesh topology constraints, source provenance, and human review state.
+- Require explicit author/source/license/redistribution fields and separate draft/revision/approved review state; a schema-valid file is not itself art approval or a rig-readiness claim.
+- No production artwork, layer manifest, mesh, depth map or rig is created by this schema-only step. Existing 24 production slots remain not-authored; Release ZIP unchanged.
+
+## [NK1][Aspect 02] Define rig-safe 2.5D handoff requirements for original character art (2026-10-30)
+
+- Extend the machine-readable character contract with explicit depth-plane semantics, normalized pivot coordinates, parent/transform records, occlusion/hidden-anatomy rules, optional mesh constraints, deformation test poses, camera/depth rules, texture budgets and promotion gates.
+- Document that layer order is not physical depth, 2.5D readiness cannot be inferred from flat sprites, and hidden anatomy must survive maximum approved pose masks without holes or seams.
+- Add a focused contract regression proving the handoff schema covers moving groups, pivots, depth, occlusion and deformation while remaining explicitly requirements-only.
+- No artwork, rig, mesh, depth map or approved production asset is claimed; the 24-slot manifest remains planning-only and the Release ZIP is unchanged.
+
+## [NK1][Aspect 02] Add semantic truth labels to the legacy sprite reference inventory (2026-10-30)
+
+- Transcribe the prior WorkPass622 pixel-audit descriptions into per-sprite semantic metadata for 25 exact manifest-ID matches, including corrected pose/action roles where filenames are misleading.
+- Leave seven unmatched legacy IDs explicitly listed in the inventory as pending fresh visual review; never infer expression or pose from a filename. Record that this pass did not re-open or re-verify the PNG pixels.
+- Extend the inventory regression to enforce exact 25/7 coverage, source attribution, honest review status and the absence of inferred labels for unmatched sprites.
+- Preserve all 32 source PNGs as static references only; no production art, licensing clearance, 2.5D layers or Release ZIP update is claimed.
+
+## [NK1][Aspect 02] Inventory existing static sprite references without promoting them to production art (2026-10-30)
+
+- Add a source-tree inventory for all 32 existing public sprite PNGs, retaining their manifest IDs, sheet grouping, byte sizes and Git blob SHA-1 identifiers at the observed `workpass70-source` commit.
+- Explicitly classify these files as legacy static-pose references, not Original 2D layered masters or 2.5D source layers; preserve the separate visual-audit reference and mark licensing as not revalidated.
+- Add a regression test proving the inventory exactly covers the 32 sprite-manifest entries and cannot silently claim production-art eligibility; expose it as `npm run test:original-2d-existing-assets`.
+- This is a provenance/indexing pass, not a pixel re-review, rights clearance, artwork creation or Release ZIP update.
+
+## [NK1][Aspect 02] Reject malformed asset entries before inventory checks (2026-10-30)
+
+- Fail closed when a manifest contains null, primitive or structurally incomplete asset entries, or when contract groups/status vocabulary contain non-string values. This prevents malformed JSON structures from reaching inventory filters and property access as uncaught runtime exceptions.
+
+## [NK1][Aspect 02] Fail closed on malformed art manifests (2026-10-30)
+
+- Guard the executable Original 2D asset validator against non-object contracts/manifests and malformed required arrays before inventory iteration. Invalid structure now produces a controlled validation failure instead of an unhandled `.filter`/`Set` exception.
+- Preserve the explicit boundary: the inventory remains a planning contract and no production artwork is inferred from empty slots.
+
+## [NK1][Aspect 02] Establish Original 2D art identity and production contract (2026-10-30)
+
+- Add an executable `npm run validate:original-2d-assets` gate that checks contract coverage, safe asset paths, file existence, SHA-256 integrity and source/preview separation before artwork can advance through the manifest. It reports authored versus pending slots without treating the planning inventory as completed art.
+
+- Add a 24-slot machine-readable asset inventory for the master character, six turnarounds, ten expressions, three independent outfits and four accessory slots; all entries explicitly remain `not-authored` until real source artwork and verified exports exist.
+- Add manifest regression gates for contract coverage, unique IDs, safe relative paths, honest status transitions and SHA-256/source/preview provenance before review or approval.
+
+- Add a machine-readable Original 2D character art contract that pins the current SVG concept identity, palette, composition guides, required views/expressions/outfits, layer order and production handoff requirements.
+- Add a Russian production brief defining the visual identity lock, turnaround/expression/outfit/prop sheets, stable layer naming, pivot metadata, export/provenance requirements and acceptance gates.
+- Scope SVG paint-server IDs with React `useId`, preventing gradients, pattern and filter references from colliding when multiple Original 2D previews are mounted in the same document.
+- Add focused regressions for instance-scoped SVG references, identity defaults, art-contract boundaries and state-driven component wiring.
+- This pass improves the Original 2D foundation and art-production contract; it does not claim that layered production artwork, a finished expression atlas, independent garment assets or a 2.5D rig have been authored.
 
 ## [NK1][аспект16] WorkPass631 — bounded native speech event fan-out (2026-10-30)
 
@@ -2896,3 +2946,14 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][executor] Restore snapshot identity and protect project-step side effects (2026-10-30)
+
+- Align the executor's default snapshot own-key shape with restore output by explicitly initializing `lastOutcomeId`; update stale version assertions to schema v7 and point failure simulation at the current plan step's `preferredTool`.
+- Rebuild restored executor state only from own data properties. Accessors are not evaluated; step arrays, outcome IDs, counters, optional tool inputs and active checkpoint fields are bounded and validated.
+- Keep the active side-effect checkpoint authoritative if a stale or malformed snapshot tries to erase, replace, or regress it. If checkpoint identity and a restored project plan disagree, retain the checkpoint and discard only the incompatible plan cursor.
+- Refuse to clear pending, waiting-approval or reconciliation-required operations. Clear only a pre-Gateway `prepared` intent or a `receipt-recorded` operation after its progress projection is applied.
+- Prevent `ensure()` and routine empty-project resets from replacing a project while its side effect or result projection is unresolved. After an explicit receipt reconciliation and clear, a new project can be initialized.
+- Reject overlong/control-character operation identities instead of silently truncating distinct projects, steps, tools, idempotency keys or decisions; refuse sequence overflow.
+- Add regressions for accessor-backed restores, stale snapshots, pending/reconciliation clear denial, project switch preservation, reconciled release, identity limits and sequence exhaustion.
+- Wire checkpoint, provider reconciliation, receipt replay, persistence and subsystem round-trip checks into the central WorkPass71 validation workflow.
