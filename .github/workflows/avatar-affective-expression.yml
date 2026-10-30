@@ -1,0 +1,42 @@
+name: NK1 affective expression validation
+
+on:
+  push:
+    paths:
+      - "app/src/components/avatar/affectiveExpression.ts"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/scripts/avatar-affective-expression.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/avatar-affective-expression.yml"
+  pull_request:
+    paths:
+      - "app/src/components/avatar/affectiveExpression.ts"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/scripts/avatar-affective-expression.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/avatar-affective-expression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-affective-expression-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  affective-expression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Run affective expression regression tests
+        working-directory: app
+        run: node --experimental-strip-types --test scripts/avatar-affective-expression.test.mjs
+      - name: Typecheck app
+        working-directory: app
+        run: npm ci && npm run typecheck
