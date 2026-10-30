@@ -1807,8 +1807,9 @@
     "test:perception-engine-signal-integrity": "node --experimental-strip-types tests/perception-engine-signal-integrity.mjs",
     "test:world-context-normalizer-integrity": "node --experimental-strip-types tests/world-context-normalizer-integrity.mjs",
     "test:world-perception-delta-integrity": "node --experimental-strip-types tests/world-perception-delta-integrity.mjs",
-    "test:world-perception": "npm run test:world-context-normalizer-integrity && npm run test:perception-engine-signal-integrity && npm run test:world-perception-delta-integrity && npm run test:world-perception-runtime-wiring && npm run test:world-perception-runtime-ingress",
+    "test:world-perception": "npm run test:world-context-normalizer-integrity && npm run test:perception-engine-signal-integrity && npm run test:world-perception-delta-integrity && npm run test:world-perception-runtime-wiring && npm run test:world-perception-runtime-ingress && npm run test:p41:semantic-perception && npm run test:p41:perceptual-integrity-deep-pass && npm run test:p41:truthfulness",
     "test:world-perception-runtime-wiring": "node --experimental-strip-types tests/world-perception-runtime-wiring.mjs",
-    "test:world-perception-runtime-ingress": "node --experimental-strip-types tests/world-perception-runtime-ingress.mjs"
+    "test:world-perception-runtime-ingress": "node --experimental-strip-types tests/world-perception-runtime-ingress.mjs",
+    "test:p41:perceptual-integrity-deep-pass": "node --experimental-strip-types tests/p41-perceptual-integrity-deep-pass.mjs"
   }
 }
