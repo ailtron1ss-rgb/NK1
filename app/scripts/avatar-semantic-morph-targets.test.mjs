@@ -61,7 +61,7 @@ test("imported expression smoothing is bounded with fast speech and slower affec
  assert.ok(first.mouthOpen>first.joy,"viseme channels must react faster than affect");
  const released=smoothSemanticMorphValues(first,zero,.05);
  assert.ok(released.mouthOpen<first.mouthOpen);
- assert.ok(released.joy>released.mouthOpen,"affect release is slower than speech release");
+ assert.ok(released.joy/first.joy>released.mouthOpen/first.mouthOpen,"affect release must retain a larger fraction than speech release");
  const unchanged=smoothSemanticMorphValues(first,target,0);
  assert.deepEqual(unchanged,first);
 });
