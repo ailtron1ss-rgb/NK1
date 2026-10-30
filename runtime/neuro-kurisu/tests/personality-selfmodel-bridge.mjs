@@ -131,4 +131,8 @@ boundedRelationships.beforeDecision({
 });
 assert.ok(Object.keys(boundedRelationships.snapshot().relationshipTrust).length <= 32);
 assert.equal(Object.hasOwn(boundedRelationships.snapshot().relationshipTrust, '__proto__'), false);
+const dimensionSafePersonality = new P2702PersistentPersonalityDynamics();
+dimensionSafePersonality.afterOutcome({ tick: 1, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1, action: 'reflect', identityVector: [NaN, 0.99] });
+assert.equal(dimensionSafePersonality.snapshot().selfBeliefs[0], 0.72, 'invalid vector dimensions are skipped without shifting following coordinates');
+assert.ok(dimensionSafePersonality.snapshot().selfBeliefs[1] > 0.68);
 console.log('PERSONALITY_SELFMODEL_BRIDGE=PASS');
