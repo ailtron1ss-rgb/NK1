@@ -2803,3 +2803,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
 - [NK1][Aspect 12] Extend the Chromium viewport smoke report with the 12 most likely off-canvas DOM elements (bounds, selectors, overflow styles and text) to identify the source of mobile horizontal overflow.
+
+- [NK1][Aspect 12] Extend mobile overflow diagnostics to report clipped scroll containers, root/body widths, computed sizing, transforms, grid/flex constraints, and pseudo-element styles; visible border-box checks alone missed the 31 px document overflow.
