@@ -85,6 +85,10 @@ export async function applyVerifiedVrmWardrobePack(input: VrmWardrobePackApplyIn
     return { committed: false, preparation, loadedAssetIds: [], errors: preparation.errors };
   }
   const assets = new Map(input.manifest.assets.map((asset) => [asset.id, asset]));
+  const requestedSlots = preparation.plan.expectedAssetIds.map((assetId) => assets.get(assetId)?.slot);
+  if (requestedSlots.some((slot) => !slot) || new Set(requestedSlots).size !== requestedSlots.length) {
+    return { committed: false, preparation, loadedAssetIds: [], errors: ["wardrobe:duplicate-or-unknown-slot-in-switch"] };
+  }
   const parse = input.parseGlb ?? defaultParseGlb;
   const prepared: Array<{ asset: WardrobePackAsset; scene: AvatarRoot }> = [];
   const errors: string[] = [];
