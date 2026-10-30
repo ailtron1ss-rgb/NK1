@@ -80,7 +80,7 @@ export class PersonalitySelfModelBridge {
         : 'internal';
     // RuntimeEvidenceBus IDs are monotonic and encode tick + event kind. Bind the
     // autobiographical reference to that exact ID, not merely to a trusted prefix.
-    const receiptMatch=/^reb:(\\d+):(\\d+):outcome$/.exec(receiptId);
+    const receiptMatch=/^reb:(\d+):(\d+):outcome$/.exec(receiptId);
     const receiptBound=Boolean(
       receiptMatch && Number(receiptMatch[1])===input.event.tick &&
       source==='external-verification' &&
