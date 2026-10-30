@@ -194,3 +194,9 @@ test("idle motor frames do not animate and duplicate or unsafe bindings fail clo
     { nodeId: "head", jointId: "a", maxAbsDegrees: 100 },
   ]), /calibration/);
 });
+
+test("validates calibration even when a bound motor joint is absent", () => {
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, {
+    version: 1, goalId: "goal.missing-joint", phase: "moving", joints: {},
+  }, [{ nodeId: "head", jointId: "not-present", maxAbsDegrees: 100 }]), /calibration/);
+});
