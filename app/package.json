@@ -9,6 +9,7 @@
   "scripts": {
     "test:avatar-storage": "node --experimental-strip-types --test src/legacy/avatar/safeLocalStorage.test.mjs",
     "test:live2d-expression-cache": "node scripts/test-live2d-expression-cache.mjs",
+    "test:live2d-production-contract": "node --test scripts/live2d-production-contract.test.mjs",
     "dev": "node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
     "build": "node scripts/with-app-env.mjs vite build && npm run db:migrate",
     "db:migrate": "node scripts/migrate.mjs",
