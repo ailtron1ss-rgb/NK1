@@ -151,6 +151,15 @@ export function attachVerifiedVrmGarment(input: {
 
   const clone = garmentRoot.clone(true);
   const targetBones = new Map<string, BoneLike>();
+  const targetInverses = new Map<string, unknown>();
+  visit(avatarRoot, (node) => {
+    const skeleton = node.isSkinnedMesh ? node.skeleton as SkeletonLike | undefined : undefined;
+    if (skeleton) skeleton.bones.forEach((bone, index) => {
+      const key = normalizeBoneName(String(bone.name ?? ""));
+      const inverse = skeleton.boneInverses[index];
+      if (key && inverse !== undefined && !targetInverses.has(key)) targetInverses.set(key, inverse);
+    });
+  });
   visit(avatarRoot, (node) => {
     if (node.isBone || node.constructor?.name === "Bone") {
       const key = normalizeBoneName(String(node.name ?? ""));
