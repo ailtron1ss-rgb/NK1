@@ -100,6 +100,18 @@ jobs:
         run: npm --prefix app run typecheck
       - name: App production-like development build
         run: npm --prefix app run build:dev
+      - name: Install Chromium for browser E2E smoke
+        run: npx --prefix app playwright install --with-deps chromium
+      - name: Desktop/mobile browser smoke and performance capture
+        run: node app/scripts/aspect12-browser-smoke.mjs
+      - name: Upload browser smoke report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nk1-aspect12-browser-smoke-${{ github.sha }}
+          path: artifacts/aspect12-browser-smoke.json
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Runtime organism smoke
