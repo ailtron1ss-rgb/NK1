@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
+import { MEMORY_RETRIEVAL_TASK_CATEGORIES } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 const MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024;
 const MAX_LABEL_BYTES = 4 * 1024 * 1024;
@@ -86,7 +87,7 @@ function parseLabels(text) {
     if (typeof row.query !== 'string' || !row.query.trim() || row.query.length > 500) throw new Error(`labels-invalid-query-line:${index + 1}`);
     if (row.answerable !== undefined && typeof row.answerable !== 'boolean') throw new Error(`labels-invalid-answerable-line:${index + 1}`);
     if (row.language !== undefined && !['en', 'ru', 'other'].includes(row.language)) throw new Error(`labels-invalid-language-line:${index + 1}`);
-    if (row.category !== undefined && !['single-hop', 'multi-hop', 'multi-session', 'temporal', 'knowledge-update', 'contradiction', 'preference', 'procedural', 'open-domain', 'abstention', 'static-state', 'dynamic-state', 'workflow-knowledge', 'environment-gotcha', 'premise-awareness', 'other'].includes(row.category)) throw new Error(`labels-invalid-category-line:${index + 1}`);
+    if (row.category !== undefined && !MEMORY_RETRIEVAL_TASK_CATEGORIES.includes(row.category)) throw new Error(`labels-invalid-category-line:${index + 1}`);
     if (row.conversationId !== undefined && (typeof row.conversationId !== 'string' || !row.conversationId.trim() || row.conversationId.length > 160)) throw new Error(`labels-invalid-conversationId-line:${index + 1}`);
     const answerable = row.answerable !== false;
     if (!Array.isArray(row.relevantIds) || row.relevantIds.length > 24 ||
