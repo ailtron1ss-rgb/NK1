@@ -44,7 +44,7 @@
 
 1. Изготовить PSD/слоистый master с дорисованными скрытыми областями.
 2. Создать Blender scene и экспортёр GLB с именованными узлами, pivots, alpha masks и depth.
-3. Создать Three.js DepthRigStage и добавить отдельный 2.5D режим в AvatarStage.
+3. Подключить manifest `root.userData.nk1DepthRigManifest` к существующему Avatar3DStage: GLB без manifest остаётся обычной 3D-моделью; GLB с manifest проходит валидацию и получает semantic pose каждый кадр. Отдельный пользовательский переключатель 2.5D/Live2D/3D и художественный asset ещё не готовы.
 4. Подключить общий EmbodimentIntent через capability-aware adapter.
 5. Добавить shape layers лица, веки, mouth shapes, ограничения деформации и вторичную физику.
 6. Добавить реальные outfit meshes/layers и attach points.
