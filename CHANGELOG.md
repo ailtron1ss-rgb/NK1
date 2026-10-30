@@ -1,3 +1,7 @@
+## [NK1][Aspect 02] Reject malformed asset entries before inventory checks (2026-10-30)
+
+- Fail closed when a manifest contains null, primitive or structurally incomplete asset entries, or when contract groups/status vocabulary contain non-string values. This prevents malformed JSON structures from reaching inventory filters and property access as uncaught runtime exceptions.
+
 ## [NK1][Aspect 02] Fail closed on malformed art manifests (2026-10-30)
 
 - Guard the executable Original 2D asset validator against non-object contracts/manifests and malformed required arrays before inventory iteration. Invalid structure now produces a controlled validation failure instead of an unhandled `.filter`/`Set` exception.
