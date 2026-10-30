@@ -21,6 +21,6 @@ assert.equal(denied.plan({target,body,kind:'touch',now}).reason,'contact-not-exp
 assert.equal(denied.plan({target:{...target,label:'hot chemical container'},body,kind:'touch',now}).reason,'hazardous-or-unknown-object-contact-denied');
 assert.equal(denied.plan({target:{...target,observedAt:now-9000},body,kind:'look',now}).reason,'stale-or-future-observation');
 assert.equal(denied.plan({target:{...target,confidence01:.2},body,kind:'look',now}).accepted,false);
-assert.equal(denied.plan({target,body:{...body,reachM:.05},kind:'grasp',now}).reason,'target-outside-arm-reach');
+assert.equal(safe.plan({target,body:{...body,reachM:.05},kind:'grasp',now}).reason,'target-outside-arm-reach');
 assert.equal(safe.assessExecution({planId:'old-plan',status:'executed',postcondition:'verified'}).reason,'stale-or-unknown-plan-id');
 console.log(JSON.stringify({pass:true,tests:12,coverage:['grounded-look','reachability','contact-policy','hazard-denial','freshness','confidence','affordance','adapter-gate','postcondition-required','target-binding','idempotent-plan-identity','stale-plan-rejection']}));
