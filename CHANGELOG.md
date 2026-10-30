@@ -2811,3 +2811,180 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ### Evidence boundary
 - The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
+
+## [NK1][Aspect 15] Add reproducible garment authoring preflight (2026-10-30)
+
+- Add `wardrobe-authoring-preflight.mjs` to validate local wardrobe pack manifests and payloads before import.
+- Verify safe manifest paths, file existence, exact byte lengths, SHA-256 and declared MIME signatures.
+- Inspect GLB v2 chunk structure and reject malformed containers, external buffer/image URIs, and GLBs without meshes.
+- Add focused tests for valid assets, tampering, MIME mismatch, traversal, self-contained GLB and external resource rejection.
+- Add `npm run wardrobe:preflight` and `npm run test:wardrobe:authoring`.
+- Document reproducible Blender garment authoring, Humanoid bind-pose/weights, pose acceptance, 2.5D hidden underdraw/deformation and Cubism capability evidence.
+- This is a production-pipeline tool/documentation increment; no production garment art or rights-cleared pack is claimed, and CI/device verification is pending.
+
+
+## [NK1][Aspect 15] Harden renderer-scoped garment selection (2026-10-30)
+
+- Add a single selection validator that rejects unknown asset IDs, duplicate IDs, cross-renderer assets and multiple garments in one slot before renderer mutation.
+- Sanitize stale and cross-renderer IDs during per-slot updates while preserving valid independent slots.
+- Skip malformed IDs/slots and repeated IDs when choosing default garment variants.
+- Gate VRM apply in Avatar3DStage on the validated selection contract.
+- Add regressions for invalid selection classes and slot-preserving updates.
+- New tests are pending exact-HEAD GitHub Actions verification; no production garment art, Live2D/2.5D switching, device E2E or Release ZIP refresh is claimed.
+
+
+## [NK1][Aspect 15] Enforce one-per-slot defaults and verify exact-head suite (2026-10-30)
+
+- Add default VRM wardrobe selection that selects at most one asset per slot even when a bundle contains alternative garments.
+- Selecting an alternative item replaces only the selected slot while preserving all other selected clothing and accessories.
+- Dedicated wardrobe validation on code HEAD `52ea82e3bf60f0524a32ad5bb2d5212b4d38b6dc`: **62 passed, 0 failed, 0 skipped** (run #41086075600).
+- Remaining non-code acceptance gates: real rights-cleared garment GLBs, production 2.5D/Live2D adapters, real browser IndexedDB quota/restart checks, Android/desktop visual E2E and Release ZIP refresh.
+
+
+## [NK1][Aspect 15] Persist body-bound wardrobe and cancel stale applications (2026-10-30)
+
+- Add a versioned IndexedDB store for verified outfit packs, keyed by the exact avatar body fingerprint and rig contract version.
+- Save selected VRM asset IDs and pack bytes only after user rights self-attestation, manifest validation, complete payload verification and renderer commit; cap stored pack size at 128 MiB.
+- Re-verify schema, body/rig identity, slot selection and every SHA-256 digest before restoring an outfit to the same avatar.
+- Restore previously selected VRM wardrobe on exact body re-load; a different body/rig fails closed.
+- Add an `isCurrent` guard to asynchronous GLB wardrobe application so model replacement/reset cancels stale requests before scene mutation and disposes prepared resources.
+- Add persistence selection and stale-load cancellation regressions.
+- Evidence boundary: the 52/52 wardrobe workflow pass predates this persistence/cancellation series; current HEAD checks must pass before these new changes are called CI-verified. Browser quota/restart, Android E2E and production garment assets remain pending.
+
+
+## [NK1][Aspect 15] Harden modular wardrobe selection and multi-slot VRM commits (2026-10-30)
+
+- Exclude wardrobe-tagged scene subtrees from base VRM rig discovery and body identity so attached clothing cannot alter the target body's fingerprint or pollute later garment remapping.
+- Support verified multi-slot VRM packs, rollback-safe replacement, and commit-only disposal of replaced geometry/material/texture resources.
+- Add independent per-asset selection in the uploaded VRM stage; unselected slots remain unchanged.
+- Add `resolveWardrobeSelection` for slot composition, duplicate/unknown item checks, dependency/exclusion rules and renderer-specific asset readiness.
+- Reject malformed non-string asset paths and invalid byte payloads without throwing.
+- Add regressions for stable body identity, multiple garments in distinct slots, replaced-root cleanup, per-slot UI selection and malformed input handling.
+- Evidence boundary: prior wardrobe workflow checkpoint was 45/45; this commit series still requires CI on the new HEAD. Real garment packs, persistent selection, Live2D/2.5D application, visual/device E2E and Release ZIP refresh remain pending.
+
+
+## [NK1][Aspect 08] Harden wardrobe bundle ingestion before base64 decoding (2026-10-30)
+
+- Validate the manifest before allocating decoded payload buffers.
+- Reject undeclared paths, missing manifest assets, invalid base64 and encoded lengths inconsistent with each declared byte size.
+- Verify decoded byte length before handing the bundle to the cryptographic loader; SHA-256 verification remains mandatory there.
+- Extend Avatar3DStage source-contract regression coverage for these fail-closed import rules.
+
+
+## [NK1][Aspect 08] Strengthen uploaded VRM target identity with SHA-256 (2026-10-30)
+
+- Replace the 32-bit non-cryptographic skeleton-name fingerprint with a SHA-256 digest over normalized bone ancestry descriptors and the rig contract version.
+- Require Web Crypto for target identity calculation; if it is unavailable, the UI does not fabricate an identity and pack application fails closed.
+- This fingerprint is a stable compatibility key, not a substitute for the loader's per-bone bind-pose preflight.
+
+
+## [NK1][Aspect 08] Connect verified wardrobe packs to uploaded VRM models (2026-10-30)
+
+- Add local NK1 wardrobe JSON bundle v1 ingestion (manifest plus base64 payload map); no ZIP parser or remote asset fetch is implied.
+- Expose a deterministic skeleton-name fingerprint and rig contract version for pack authoring; show the exact target identity in the stage UI.
+- Wire the uploaded-model stage to the existing verified VRM pack loader, including byte/hash checks, renderer/body/rig validation, self-contained GLB parsing, skeleton preflight and rollback.
+- Require explicit user self-attestation of usage rights before application, while clearly stating that the app does not independently verify legal rights or provenance.
+- Add focused regression coverage for the uploaded VRM pack path. Actual compatible garment GLBs, persistence and visual/device E2E remain pending.
+
+
+## [NK1][Aspect 08] Integrate selectable procedural outfits into Avatar3DStage (2026-10-30)
+
+- Add three actual procedural 3D clothing silhouettes to the stage: lab coat, casual top and hoodie. Outfit controls switch geometry visibility rather than merely changing a label; the selected variant is applied to the live procedural body and reset remains compatible with the existing model lifecycle.
+- Add stage regression coverage and include it in the dedicated wardrobe test command/workflow path filters.
+- Boundary: this improves the built-in procedural concept only. It does not retrofit clothing onto arbitrary uploaded VRM models or substitute for rights-cleared garment assets, pack ingestion, persistent selection, or renderer-specific visual E2E.
+
+
+## [NK1][Aspect 08] Add verified VRM wardrobe pack application pipeline (2026-10-30)
+
+- Add a production GLTFLoader-backed orchestration API that accepts already-ingested pack bytes, verifies the complete manifest payload and renderer/body/rig contract, and only then parses requested VRM/3D garment assets.
+- Require self-contained GLB v2 containers; reject malformed headers/JSON and external buffer/image URIs before GLTFLoader can resolve network resources.
+- Preflight every garment skeleton against the active avatar before modifying the scene; reject duplicate requested slots so a pack cannot replace one newly attached garment with another. Attach the complete requested set only after preparation succeeds; on any attachment/acknowledgement failure, remove new garments and restore prior slot visibility/metadata.
+- Add focused tests for GLB container validation, external-resource rejection, successful verified application and parse-failure rollback. Wire the suite into the wardrobe workflow.
+- Boundary: this is now a real loader/application API, but no pack ingestion UI, persistent wardrobe state, real garment assets, Avatar3DStage controls, Live2D/depth-2D adapter or visual device E2E is claimed.
+
+
+## [NK1][Aspect 08] Connect verified wardrobe packs to the switch runtime (2026-10-30)
+
+- Add a runtime preparation boundary that verifies manifest structure and every payload byte before a renderer switch plan can become ready.
+- Bind requested asset IDs to the selected renderer's manifest entries; reject unverified IDs, cross-renderer IDs, tampered payloads and body/rig mismatches.
+- Keep renderer acknowledgement as a separate final commit gate; no filesystem/network loader, actual clothing art or renderer implementation is claimed.
+
+
+## [NK1][Aspect 08] Inspect actual Live2D garment-switch capabilities (2026-10-30)
+
+- Inventory the canonical Kurisu Cubism model metadata and add a conservative capability inspector for model3/CDI/expression JSON.
+- Distinguish static texture atlases and clothing-related physics from true independent garment switching; expression-only controls remain limited; even an explicit wardrobe-named parameter is only a candidate until its moc3 drawable/part mapping is verified.
+- Add focused regressions for no-switch, expression-only and explicit wardrobe parameter cases; include them in `npm run test:wardrobe`.
+- No model binary parsing, drawable/part inspection, actual garment assets or renderer switching is claimed; the moc3 drawable/part inspection remains a separate required gate.
+
+
+## [NK1][Aspect 08] Verify complete wardrobe pack payloads before activation (2026-10-30)
+
+- Add a whole-pack verification gate that requires every manifest-declared file, rejects undeclared extra files and verifies each payload's exact byte length and SHA-256 before the pack can be treated as byte-verified.
+- Add regression coverage for complete valid payload, missing declared file and unexpected extra file.
+- The gate remains a pure payload validator; filesystem/network ingestion, signature trust and license-rights review remain separate integration responsibilities.
+
+
+## [NK1][Aspect 08] Verify wardrobe asset bytes before renderer activation (2026-10-30)
+
+- Add browser/Node Web Crypto SHA-256 verification for actual wardrobe asset bytes, including exact byte-length checks and explicit mismatch/unavailable-crypto outcomes.
+- Add regressions for a known SHA-256 vector, tampered hash, incorrect declared size and unavailable crypto provider.
+- Keep licensing/provenance review separate: a matching digest proves byte identity, not permission to redistribute or use an asset.
+
+
+## [NK1][Aspect 08] Add licensed wardrobe pack gate and renderer-acknowledged switching (2026-10-30)
+
+- Add a versioned wardrobe pack manifest contract requiring source, license, attribution, target body/rig identity, unique asset IDs/paths, SHA-256 declarations, supported MIME types and bounded asset sizes.
+- Add a two-phase outfit-switch protocol: validate compatibility and plan first; change the active outfit only after the selected renderer acknowledges every expected asset for the exact request. Stale, partial or failed acknowledgements preserve the previous outfit.
+- Add regression tests for missing license/provenance, unsafe paths, invalid hashes, size limits, body/rig mismatch, stale acknowledgements, partial loads and successful commit.
+- Boundary: manifest validation checks declarations; the asset loader must still hash actual bytes. This pass defines the integration contract and does not claim a renderer, persistent wardrobe UI, actual garment pack or visual E2E.
+- Extend `npm run test:wardrobe` to run both domain and pack/switch protocol suites.
+
+
+## [NK1][Aspect 08] Add modular wardrobe domain and guarded outfit recommendation (2026-10-30)
+
+- Replace the legacy-only outfit-label concept with a renderer-independent wardrobe domain: typed garment slots, six outfit families, garment dependencies/exclusions and per-renderer asset states for Live2D, depth-2D and VRM/3D.
+- Add safe relative asset-path validation and resolve only explicitly verified assets; missing art is not represented as an available garment.
+- Add context-aware outfit recommendations based on sleep/rest, intent, energy and thermal comfort. User-pinned choices take precedence; autonomous recommendations require explicit opt-in and remain separate from applying a renderer change.
+- Add focused regression coverage for catalog integrity, asset path traversal/remote URL rejection, user override, opt-in and verified-only asset resolution; expose `npm run test:wardrobe`.
+- Evidence boundary: metadata/control foundation is implemented; no new garment meshes, textures, licensed wardrobe pack, renderer-specific clothing switch or visual E2E is claimed. All newly defined garment assets remain explicitly marked missing pending authored/rights-cleared assets.
+
+
+## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)
+
+- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.
+- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.
+- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.
+
+
+## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
+
+- Added a reusable sequential-task metric module reporting final average score, peak-to-final forgetting, backward transfer, and forward transfer relative to an explicit reference policy.
+- Enforces a square task-by-stage score matrix, unique task identities, finite [0,1] scores and explicit handling of missing pre-training baselines; unavailable forward-transfer values remain null rather than being fabricated.
+- Added focused regression coverage and wired it into the full P23 verified-outcome suite. The module consumes measured scores; it does not itself run a model or establish NK1 performance.
+- Research adaptation: continual-learning evaluation commonly separates final competence from forgetting and transfer. This is an NK1-local metric implementation, not copied benchmark code. Use the same tasks/seeds and a fixed reference policy before comparing replay strategies; do not compare results across changed task manifests.
+
+
+## [NK1][Aspect 08] Add VRM skinned-garment adapter (2026-10-30)
+
+- Added `vrmWardrobeAdapter.ts` to inspect actual garment and avatar bone hierarchies, reject missing/ambiguous bone names, missing bind-pose inverses and incompatible rest-pose matrices, and remap compatible skinned meshes onto the loaded avatar skeleton.
+- Garment attachment is gated by a ready wardrobe switch plan containing the exact asset ID. The adapter prepares/remaps a cloned garment before touching the live avatar; a successful attach tags the garment slot and only then hides the previous garment in that slot.
+- Added focused tests for normalized bone mapping, missing/duplicate bones, non-skinned assets, switch-plan authorization, successful skeleton remapping, bind-pose mismatch and slot replacement. Wired the suite into `npm run test:wardrobe` and added `.github/workflows/nk1-wardrobe-validation.yml` to run it on relevant PR changes.
+- This is a renderer adapter contract, not a finished wardrobe UI or a claim that licensed garment assets are already present. The existing VRM upload flow does not yet load wardrobe packs or invoke this adapter; real-model visual E2E and CI execution remain pending.
+
+
+
+## [NK1][Aspect 08] Fix wardrobe CI failures from first exact-head run (2026-10-30)
+
+- Align the dedicated wardrobe workflow with the repository `.nvmrc` Node pin instead of hard-coding Node 22.12.
+- Correct Live2D capability classification so a wardrobe parameter already bound through an expression is reported as limited, not an independent candidate switch.
+- Compare VRM fallback bind-pose bone identities using the same normalized naming rule as skeleton mapping.
+- Reject renderer acknowledgements whose raw loaded-asset list contains duplicates, even when set de-duplication would otherwise make the expected IDs appear complete.
+- Changes are driven by three concrete failures in the first wardrobe CI run; rerun the workflow on the new head before claiming validation.
+
+
+## [NK1][Aspect 15] Make preflight fixtures honor declared asset extensions (2026-10-30)
+
+- Generate test asset paths from the declared MIME (`.png`, `.jpg`, `.webp`, `.glb`, `.gltf`) so fixtures pass the manifest's intentional MIME-extension contract before exercising byte/signature/GLB validation.
+- Keep tampering tests bound to the actual fixture path; the tests now reach the intended preflight checks instead of stopping early on a fixture-format error.
+- No production validation was relaxed: extension, signature, SHA-256, GLB self-containment and traversal checks remain enforced.

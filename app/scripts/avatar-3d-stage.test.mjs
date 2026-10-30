@@ -32,3 +32,61 @@ test("existing sprite and Live2D files remain available",async()=>{
  for(const cell of manifest.cells){const file=path.resolve(root,"public",cell.file);assert.ok(file.startsWith(path.join(root,"public")+path.sep));assert.ok((await stat(file)).size>20000,"Missing sprite: "+cell.file);}
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
+
+
+test("procedural 3D avatar exposes real selectable lab-coat, casual and hoodie geometry",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/wardrobe:casual/);assert.match(stage,/wardrobe:hoodie/);assert.match(stage,/function applyProceduralOutfit/);assert.match(stage,/node\.visible=lab/);for(const label of ["Лабораторный халат","Повседневный","Худи"])assert.ok(stage.includes(label),"Missing outfit control: "+label);assert.match(stage,/aria-pressed=\{proceduralOutfit===/);});
+
+
+test("uploaded VRM stage exposes a rights-confirmed verified wardrobe pack application path",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/applyVerifiedVrmWardrobePack/);
+ assert.match(stage,/readWardrobeBundle/);
+ assert.match(stage,/validateWardrobePackManifest\(value\.manifest\)/);
+ assert.match(stage,/expectedBase64Length/);
+ assert.match(stage,/Файл не объявлен в manifest/);
+ assert.match(stage,/В bundle отсутствуют файлы/);
+ assert.match(stage,/nk1-wardrobe-pack/);
+ assert.match(stage,/avatarWardrobeBodyId/);
+ assert.match(stage,/globalThis\.crypto\.subtle\.digest\("SHA-256"/);
+ assert.match(stage,/normalized|toLowerCase/);
+ assert.match(stage,/targetRigVersion:WARDROBE_RIG_VERSION/);
+ assert.match(stage,/renderer:"vrm3d"/);
+ assert.match(stage,/wardrobeRightsConfirmed/);
+ assert.match(stage,/Подтверждаю, что имею право использовать все ресурсы/);
+ assert.match(stage,/Применить выбранные элементы к VRM/);
+ assert.match(stage,/setWardrobePack\(null\)/);
+});
+
+
+test("VRM wardrobe UI supports independent slot selection and keeps body identity wardrobe-independent",async()=>{
+ const stage=await readFile(stagePath,"utf8"),adapter=await readFile(path.join(root,"src/components/avatar/vrmWardrobeAdapter.ts"),"utf8");
+ assert.match(stage,/collectVrmAvatarRigIdentityDescriptors/);
+ assert.match(stage,/wardrobeSelectedAssetIds/);
+ assert.match(stage,/defaultWardrobeAssetSelection\(pack\.manifest,"vrm3d"\)/);
+ assert.match(stage,/updateWardrobeAssetSelection\(wardrobePack\.manifest,"vrm3d",current,asset\.id,checked\)/);
+ assert.match(stage,/validateWardrobeAssetSelection\(wardrobePack\.manifest,"vrm3d",wardrobeSelectedAssetIds\)/);
+ assert.match(stage,/Выберите элементы, которые нужно заменить/);
+ assert.match(stage,/expectedAssetIds=\[\.\.\.new Set\(wardrobeSelectedAssetIds\)\]/);
+ assert.match(stage,/checked=event\.currentTarget\.checked/);
+ assert.match(adapter,/visitBaseAvatarRig/);
+ assert.match(adapter,/nk1WardrobeSlot !== undefined/);
+ assert.match(adapter,/collectVrmAvatarRigIdentityDescriptors/);
+});
+
+
+test("VRM wardrobe selection persists only against exact body/rig identity and restores after hash verification",async()=>{
+ const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/wardrobePackStore.ts"),"utf8");
+ assert.match(stage,/saveStoredWardrobePack/);
+ assert.match(stage,/loadStoredWardrobePack/);
+ assert.match(stage,/rightsAttested:wardrobeRightsConfirmed/);
+ assert.match(stage,/loadStoredWardrobePack\(bodyId,WARDROBE_RIG_VERSION\)/);
+ assert.match(stage,/isCurrent:\(\)=>loadToken\.current===token&&runtime\.current===rt&&rt\.loaded===root/);
+ assert.match(stage,/isCurrent:\(\)=>requestToken===loadToken\.current&&runtime\.current===rt&&rt\.loaded===targetRoot/);
+ assert.match(stage,/stored\.status!=="restored"/);
+ assert.match(stage,/setWardrobeSelectedAssetIds\(restored\.selectedAssetIds\)/);
+ assert.match(store,/indexedDB\.open/);
+ assert.match(store,/verifyWardrobePackPayload/);
+ assert.match(store,/record\.bodyId !== bodyId \|\| record\.rigVersion !== rigVersion/);
+ assert.match(store,/rightsAttestedAt/);
+ assert.match(store,/MAX_STORED_WARDROBE_BYTES/);
+});
