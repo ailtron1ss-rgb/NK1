@@ -1,3 +1,10 @@
+## [NK1][аспект9] Add versioned speech lifecycle protocol (2026-10-30)
+
+- Define SpeechLifecycleEventV1 with stable utterance/event IDs, provider identity, clock identity, monotonic timestamp, ordered sequence, lifecycle phase and optional provider boundary/error metadata.
+- Wire browser SpeechSynthesis queued/start/boundary/end/cancel/error callbacks into the protocol; reject stale callbacks by session identity and reject duplicate, out-of-order, cross-clock, regressing-character and post-terminal events.
+- Add deterministic contract regressions for valid lifecycle progression, malformed boundaries, cancellation terminality and stale boundary rejection.
+- This creates a shared protocol surface for a native adapter; native TTS is not yet wired to emit it, and no acoustic alignment or device playback validation is claimed.
+
 ## [NK1][аспект9] Harden speech clock boundary handling (2026-10-30)
 
 - Extend the shared speech-timeline regression suite for duplicate provider boundaries, backward audio timestamps, malformed values, origin refinement, bounded anchor history and invalid monotonic-clock samples.
