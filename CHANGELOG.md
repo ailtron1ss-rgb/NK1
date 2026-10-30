@@ -1,3 +1,8 @@
+## [NK1][CI] Correct normalized import-recovery assertion — 2026-10-30
+
+- Fix the final whitespace-normalized import-recovery assertion so the localized diagnostic is compared in the same normalized form as the source text.
+- Runtime import/recovery behavior is unchanged; the preceding exact-head run had 26/27 avatar hardening checks passing and identified this one remaining assertion-only failure.
+
 ## [NK1][CI] Align avatar integrity regression contracts with the renderer — 2026-10-30
 
 - Replace whitespace-sensitive source assertions with normalized structural checks for failed-import recovery, mixer disposal ordering and shared speech/viseme rate.

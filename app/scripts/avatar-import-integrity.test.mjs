@@ -15,7 +15,7 @@ test("every user-supplied VRM/GLB is preflighted before Three.js parses it", asy
 test("failed imports preserve the last successfully loaded model", async () => {
   const stage = compact(await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8"));
   assert.ok(stage.includes('constactive=runtime.current?.loaded;setState(active?"loaded":"error")'));
-  assert.ok(stage.includes("Предыдущая модель остаётся активной"));
+  assert.ok(stage.includes("Предыдущаямодельостаётсяактивной"));
 });
 
 test("mixer actions are stopped and uncached before replaced/reset model resources are disposed", async () => {
