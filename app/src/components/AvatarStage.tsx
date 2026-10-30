@@ -364,6 +364,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           motorPlan.gestureProfile === "none" ? 0 : 1
         ) * motorPlan.gestureIntensity * 0.018)),
         gesture: bodyGestureActive,
+        gestureProfile: motorPlan.gestureProfile,
+        gestureIntensity: motorPlan.gestureIntensity,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
