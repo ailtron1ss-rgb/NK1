@@ -61,3 +61,10 @@ The contract is provider-neutral and names a native TTS provider, but the native
 ## Native TTS wiring — уточнённая граница
 
 `EmbodimentRuntime.speak()` получает только итоговый `SpeechGatewayResult`, а `AndroidEmbodimentBridge.speakViaTermuxWithOutcome()` отслеживает процесс и operation ID. В текущем контракте нет канала доставки промежуточных provider events из ActionGateway обратно в avatar timeline. Кроме того, `termux-tts-speak` process close не является доказательством завершения Android audio playback. Поэтому native `started`/`ended`/`boundary` нельзя безопасно синтезировать из текущих данных; следующий шаг — добавить явный event sink через gateway и сохранять `playbackVerified=false` там, где подтверждения нет.
+
+
+## Follow-up — повторная hosted CI-проверка после de-escalation fix
+
+- На HEAD `94ea1495df92b24151b16a8d9967bfb103c8c8cd` получены шесть завершённых успешных GitHub Actions workflow, включая `NeuroCore core regression validation` (run `41026176662`).
+- Таким образом, ранее упавший тест отрицательного высоко-arousal аффекта прошёл в новом запуске CI вместе с пятью другими связанными workflow. Это подтверждает соответствующие hosted regression gates на данном HEAD, но не заменяет локальный полный app build, браузерный E2E, Android/Termux audio capture или акустическое измерение lip-sync.
+- Native event sink остаётся следующим архитектурным шагом: текущий gateway передаёт executor-у только execution identity/idempotency metadata и возвращает финальный результат. Промежуточные callback-события нельзя протащить через durable JSON receipt как обычные данные; для них нужен отдельный process-local event channel с жёсткой привязкой к execution/utterance ID и фильтрацией поздних событий.
