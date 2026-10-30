@@ -31,7 +31,8 @@
     "test:avatar-speech-prosody": "node --experimental-strip-types --test scripts/avatar-speech-prosody.test.mjs",
     "test:avatar-original-facial-wiring": "node --experimental-strip-types --test scripts/avatar-original-facial-wiring.test.mjs",
     "test:avatar-semantic-morph-targets": "node --experimental-strip-types --test scripts/avatar-semantic-morph-targets.test.mjs",
-    "test:avatar-affective-body-language": "node --experimental-strip-types --test scripts/avatar-affective-body-language.test.mjs scripts/avatar-affective-body-language-wiring.test.mjs"
+    "test:avatar-affective-body-language": "node --experimental-strip-types --test scripts/avatar-affective-body-language.test.mjs scripts/avatar-affective-body-language-wiring.test.mjs",
+    "test:avatar-affective-arm-posture": "node --experimental-strip-types --test scripts/avatar-affective-arm-posture.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
