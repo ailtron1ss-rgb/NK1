@@ -22,7 +22,7 @@ function adapter(id, options = {}) {
     async verify(receipt) {
       calls.push("verify");
       if (options.verify) return options.verify(receipt);
-      return { adapterId: id, executionId: receipt.executionId, adapterId: "vrm", executionId: receipt.executionId, verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+      return { adapterId: id, executionId: receipt.executionId, verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
         observedChannels: ["headYaw"], mismatches: [] };
     },
     async dispose() { calls.push("dispose"); },
