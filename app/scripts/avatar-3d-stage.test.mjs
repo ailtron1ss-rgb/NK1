@@ -17,7 +17,7 @@ test("local VRM/GLB upload is bounded and browser-local",async()=>{
 test("all local VRM/GLB imports are preflighted before GLTFLoader and prior model survives rejection",async()=>{
  const stage=await readFile(stagePath,"utf8"),validator=await readFile(path.join(root,"src/components/avatar/avatarModelValidation.ts"),"utf8");
  assert.match(stage,/inspectSelfContainedGlb\(data,MAX_AVATAR_MODEL_BYTES\)/);
- assert.ok(stage.indexOf("inspectSelfContainedGlb(data,MAX_AVATAR_MODEL_BYTES)")<stage.indexOf("new GLTFLoader().parse(data"));
+ assert.ok(stage.indexOf("inspectSelfContainedGlb(data,MAX_AVATAR_MODEL_BYTES)")<stage.indexOf("loader.parse(data"));
  assert.match(stage,/active\?\.loaded\?"loaded":active\?"error":"webgl-unavailable"/);
  assert.match(stage,/Предыдущая модель остаётся активной/);
  assert.match(validator,/external-resource/);
