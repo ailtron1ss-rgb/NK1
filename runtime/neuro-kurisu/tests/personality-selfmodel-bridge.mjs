@@ -35,9 +35,12 @@ assert.equal(accepted.personality.adaptiveValues[0], 0.68, 'explore outcomes mus
 assert.equal(accepted.personality.adaptiveValues[4], 0.86, 'explore outcomes must not accidentally train directness by array index');
 assert.ok(accepted.personality.selfBeliefs[0] > 0.72, 'verified identity evidence slowly updates self-beliefs');
 assert.ok(accepted.personality.selfBeliefs[1] < 0.68, 'self-belief vectors are updated dimension by dimension');
+assert.ok(accepted.personality.valueWeights[0] > 0.98,'verified independent evidence may slowly update protected value weights');
+assert.ok(accepted.personality.relationshipTrust.user > 0.5,'relationship trust changes only on a strong independent outcome');
 
 const selfBeliefsBeforeUnbound=[...personality.snapshot().selfBeliefs];
 const trustBeforeUnbound={...personality.snapshot().relationshipTrust};
+const valuesBeforeUnbound=[...personality.snapshot().valueWeights];
 const unbound=bridge.recordOutcome({
   event:{tick:11,at:1100,action:'respond',outcome:0.8,evidenceStatus:'verified-independent',evidenceRef:'local-cache:maybe'},
   action:'respond',reward01:0.8,goalAlignment01:0.8,predictionError01:0.2,identityGap01:0.1,identityVector:[0,0,0,0,0,0,0,0],
@@ -47,6 +50,7 @@ assert.equal(unbound.evidenceAccepted,false,'P78 syntax alone must not bypass th
 assert.equal(unbound.selfModelUpdate?.identityUpdateAccepted,false);
 assert.equal(unbound.selfModel.lastIdentityGate?.reason,'outcome-unverified');
 assert.deepEqual(unbound.personality.relationshipTrust,trustBeforeUnbound,'unbound outcomes cannot move relationship trust');
+assert.deepEqual(unbound.personality.valueWeights,valuesBeforeUnbound,'unbound outcomes cannot rewrite stable values');
 assert.equal(unbound.personality.learningUpdates,2);
 assert.deepEqual(unbound.personality.selfBeliefs,selfBeliefsBeforeUnbound,'unsupported receipt namespaces cannot update autobiographical self-beliefs');
 const mismatchedReceipt = bridge.recordOutcome({
@@ -58,6 +62,7 @@ assert.equal(mismatchedReceipt.evidenceAccepted,false,'receipt ID must exactly m
 assert.equal(mismatchedReceipt.evidenceReason,'receipt-not-bound-to-event');
 assert.equal(mismatchedReceipt.selfModel.lastIdentityGate?.accepted,false);
 assert.deepEqual(mismatchedReceipt.personality.selfBeliefs,selfBeliefsBeforeUnbound,'mismatched receipts cannot update self beliefs');
+assert.deepEqual(mismatchedReceipt.personality.valueWeights,valuesBeforeUnbound,'mismatched receipts cannot update stable values');
 
 // A non-adjacent replay must not become a second experience or update either downstream learner.
 const beforeReplay={samples:p78.snapshot().samples,updates:personality.snapshot().learningUpdates,accepted:selfModel.snapshot().identityGateAcceptedCount,rejected:selfModel.snapshot().identityGateRejectedCount};
@@ -131,6 +136,23 @@ assert.equal(Object.keys(prepared.actionBias).length, 7);
 assert.ok(Object.values(prepared.actionBias).every(x=>Number.isFinite(x)&&Math.abs(x)<=0.1));
 assert.ok(prepared.personality.traitVector.every(Number.isFinite));
 assert.ok(Object.values(prepared.selfModelActionBias).every(Number.isFinite));
+
+const decisionInput = { tick: 20, novelty01: 0.8, uncertainty01: 0.8, goalPressure01: 0.3, identityGap01: 0.2, actionUtilities };
+const trustedPersonality = new P2702PersistentPersonalityDynamics();
+trustedPersonality.restore({ relationshipTrust: { user: 0.95 } });
+const cautiousPersonality = new P2702PersistentPersonalityDynamics();
+cautiousPersonality.restore({ relationshipTrust: { user: 0.05 } });
+const trustedBias = trustedPersonality.beforeDecision({ ...decisionInput, relationshipId: 'user' }).actionBias;
+const cautiousBias = cautiousPersonality.beforeDecision({ ...decisionInput, relationshipId: 'user' }).actionBias;
+assert.ok(trustedBias.respond > cautiousBias.respond,'earned relationship trust changes the social approach prior');
+const scienceNames=['truth','science','autonomy','responsibility','privacy','loyalty','curiosity','relationship'];
+const evidenceDriven = new P2702PersistentPersonalityDynamics();
+evidenceDriven.restore({ valueNames: scienceNames, valueWeights: [0.99,0.99,0.9,0.9,0.8,0.8,0.96,0.72] });
+const lowEvidenceValues = new P2702PersistentPersonalityDynamics();
+lowEvidenceValues.restore({ valueNames: scienceNames, valueWeights: [0.1,0.1,0.9,0.9,0.8,0.8,0.96,0.72] });
+const strongVerificationBias = evidenceDriven.beforeDecision(decisionInput).actionBias.verify;
+const weakVerificationBias = lowEvidenceValues.beforeDecision(decisionInput).actionBias.verify;
+assert.ok(strongVerificationBias > weakVerificationBias,'truth/science value weights strengthen verification preference');
 
 const forgedReceiptModel = new SelfModelEngine();
 const forgedReceiptResult = forgedReceiptModel.learnGoalOutcome({
