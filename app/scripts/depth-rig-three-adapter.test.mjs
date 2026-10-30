@@ -58,3 +58,18 @@ test("ignores duplicate names that are outside the manifest contract", () => {
   assert.equal(result.ok, true);
   assert.equal(result.applied, 1);
 });
+
+test("rejects an imported hierarchy that disagrees with manifest parent IDs before mutation", () => {
+  const root = new THREE.Group();
+  const expectedParent = new THREE.Group(); expectedParent.name = "expected";
+  const wrongParent = new THREE.Group(); wrongParent.name = "wrong";
+  const head = new THREE.Group(); head.name = "head";
+  root.add(expectedParent, wrongParent);
+  wrongParent.add(head);
+  const before = head.position.toArray();
+  const result = applyDepthRigTransforms(root, [transform("head")], [
+    { id: "head", parentId: "expected" },
+  ]);
+  assert.deepEqual(result, { ok: false, applied: 0, errors: ["parent-mismatch:head"] });
+  assert.deepEqual(head.position.toArray(), before);
+});
