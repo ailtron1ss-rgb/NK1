@@ -1,5 +1,5 @@
 import type { MutableEulerLike, VrmArmBoneMap, ArmSide, AxisCalibration } from "./vrmHumanoidRigAdapter";
-import { calibrateVrmArmFromMeasurement, validateVrmRigCalibrationProfile, type VrmArmCalibrationMeasurement, type VrmRigCalibrationContext, type VrmRigCalibrationProfile, type VrmRigCalibrationResult } from "./vrmRigCalibrationProfile";
+import { calibrateVrmArmFromMeasurement, validateVrmRigCalibrationProfile, type VrmArmCalibrationMeasurement, type VrmRigCalibrationContext, type VrmRigCalibrationProfile, type VrmRigCalibrationResult } from "./vrmRigCalibrationProfile.ts";
 
 type Rotation = Readonly<{ x: number; y: number; z: number }>;
 type ArmCapture = Readonly<{ shoulder: Rotation; elbow: Rotation }>;
