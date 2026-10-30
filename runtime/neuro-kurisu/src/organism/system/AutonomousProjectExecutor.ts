@@ -111,6 +111,7 @@ export const defaultAutonomousProjectExecutor = (): ProjectExecutionState => ({
   completedAt: 0,
   lastDecisionAt: 0,
   lastTick: 0,
+  lastOutcomeId: undefined,
   lastOutcomeVerified: false,
   failedAttempts: 0,
   processedOutcomeIds: [],
