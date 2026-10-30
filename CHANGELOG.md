@@ -2,7 +2,7 @@
 
 - Reuse the same cognitive/affective motor proposal resolver, joint bounds and speed limiter for both the built-in procedural 3D body and imported VRM/GLB rigs; remove the previous loaded-model-only execution gap.
 - Bind the procedural `headIntent`, `leftArm` and `rightArm` groups to the canonical head/shoulder channels through the existing adapter contract. Preserve additive application over the procedural pose and the loaded model's per-frame mixer baseline.
-- Add a regression fixture for the procedural rig aliases and additive application. The procedural body still has rigid upper/lower limbs and does not claim elbow, wrist, hand, foot or IK execution.
+- Add a regression fixture for the procedural rig aliases and additive application. Previous procedural shoulder offsets are removed before the next base-pose update to avoid accumulation; imported rigs retain bind-pose restore → mixer → motor-overlay ordering. The procedural body still has rigid upper/lower limbs and does not claim elbow, wrist, hand, foot or IK execution.
 - Exact-head CI, typecheck and browser validation remain required; the latest Release ZIP is unchanged.
 
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
