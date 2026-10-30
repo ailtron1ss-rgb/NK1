@@ -82,3 +82,37 @@ export function getVrmArmCalibration(profile: VrmRigCalibrationProfile, side: Ar
   const { shoulderBoneName: _shoulder, elbowBoneName: _elbow, ...calibration } = profile[side];
   return calibration;
 }
+
+
+/** Parse and validate an imported JSON profile against the currently loaded rig. */
+export function parseVrmRigCalibrationProfileJson(
+  json: string,
+  context: VrmRigCalibrationContext,
+): VrmRigCalibrationResult {
+  if (typeof json !== "string" || json.length === 0 || json.length > 32_768) {
+    return { accepted: false, reason: "invalid-profile" };
+  }
+  try {
+    return validateVrmRigCalibrationProfile(JSON.parse(json) as unknown, context);
+  } catch {
+    return { accepted: false, reason: "invalid-profile" };
+  }
+}
+
+/** Export only a profile that still matches the loaded model and resolved bilateral rig. */
+export function serializeVrmRigCalibrationProfileJson(
+  profile: VrmRigCalibrationProfile,
+  context: VrmRigCalibrationContext,
+): string | null {
+  const result = validateVrmRigCalibrationProfile(profile, context);
+  if (!result.accepted) return null;
+  const p = result.profile;
+  return JSON.stringify({
+    schemaVersion: p.schemaVersion,
+    modelFingerprint: p.modelFingerprint,
+    coordinateFrameId: p.coordinateFrameId,
+    calibrationMethod: p.calibrationMethod,
+    left: { ...p.left },
+    right: { ...p.right },
+  }, null, 2);
+}
