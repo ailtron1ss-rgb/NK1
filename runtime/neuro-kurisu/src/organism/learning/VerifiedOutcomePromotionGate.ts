@@ -5,7 +5,10 @@ export interface FamilyOutcomeSummary extends PairedMethodSummary {
 }
 
 export interface PromotionGateConfig {
-  minPairedTasks: number;
+  /** Minimum number of independent paired seeds, not task cells. */
+  minIndependentSeeds: number;
+  /** @deprecated Use minIndependentSeeds. Accepted as a compatibility alias. */
+  minPairedTasks?: number;
   minFamilies: number;
   minAbsoluteGain: number;
   maxFamilyRegression: number;
@@ -19,6 +22,9 @@ export interface PromotionGateConfig {
 export interface PromotionGateResult {
   eligible: boolean;
   reasons: string[];
+  /** Number of complete independent paired seeds in the primary comparison. */
+  independentSeeds: number;
+  /** @deprecated Compatibility alias for independentSeeds. */
   pairedTasks: number;
   familyCount: number;
   aggregateGain: number | null;
@@ -33,7 +39,7 @@ export interface PromotionGateResult {
 }
 
 const DEFAULTS: PromotionGateConfig = {
-  minPairedTasks: 30,
+  minIndependentSeeds: 30,
   minFamilies: 3,
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
@@ -46,8 +52,17 @@ const DEFAULTS: PromotionGateConfig = {
 export function normalizePromotionGateConfig(
   config: Partial<PromotionGateConfig> = {},
 ): PromotionGateConfig {
-  const cfg = { ...DEFAULTS, ...config };
-  if (!Number.isSafeInteger(cfg.minPairedTasks) || cfg.minPairedTasks < 1 ||
+  const legacyMinimum = config.minPairedTasks;
+  const explicitMinimum = config.minIndependentSeeds;
+  if (legacyMinimum !== undefined && explicitMinimum !== undefined && legacyMinimum !== explicitMinimum) {
+    throw new Error('conflicting minIndependentSeeds and deprecated minPairedTasks values');
+  }
+  const cfg: PromotionGateConfig = {
+    ...DEFAULTS,
+    ...config,
+    minIndependentSeeds: explicitMinimum ?? legacyMinimum ?? DEFAULTS.minIndependentSeeds,
+  };
+  if (!Number.isSafeInteger(cfg.minIndependentSeeds) || cfg.minIndependentSeeds < 1 ||
       !Number.isSafeInteger(cfg.minFamilies) || cfg.minFamilies < 1 ||
       !Number.isFinite(cfg.minAbsoluteGain) || cfg.minAbsoluteGain < 0 || cfg.minAbsoluteGain > 1 ||
       !Number.isFinite(cfg.maxFamilyRegression) || cfg.maxFamilyRegression < 0 || cfg.maxFamilyRegression > 1 ||
@@ -56,6 +71,7 @@ export function normalizePromotionGateConfig(
       !Number.isFinite(cfg.familyWiseAlpha) || cfg.familyWiseAlpha <= 0 || cfg.familyWiseAlpha >= 1) {
     throw new Error('invalid promotion gate configuration');
   }
+  delete cfg.minPairedTasks;
   return cfg;
 }
 
@@ -143,16 +159,7 @@ export function evaluateOutcomePromotion(
   families: FamilyOutcomeSummary[],
   config: Partial<PromotionGateConfig> = {},
 ): PromotionGateResult {
-  const cfg = { ...DEFAULTS, ...config };
-  if (!Number.isSafeInteger(cfg.minPairedTasks) || cfg.minPairedTasks < 1 ||
-      !Number.isSafeInteger(cfg.minFamilies) || cfg.minFamilies < 1 ||
-      !Number.isFinite(cfg.minAbsoluteGain) || cfg.minAbsoluteGain < 0 || cfg.minAbsoluteGain > 1 ||
-      !Number.isFinite(cfg.maxFamilyRegression) || cfg.maxFamilyRegression < 0 || cfg.maxFamilyRegression > 1 ||
-      typeof cfg.requirePositiveConfidenceLowerBound !== 'boolean' ||
-      !['partition', 'seed-repeated'].includes(cfg.familyPairCountMode) ||
-      !Number.isFinite(cfg.familyWiseAlpha) || cfg.familyWiseAlpha <= 0 || cfg.familyWiseAlpha >= 1) {
-    throw new Error('invalid promotion gate configuration');
-  }
+  const cfg = normalizePromotionGateConfig(config);
 
   const reasons: string[] = validateSummary(aggregate, 'aggregate');
   if (!Array.isArray(families)) reasons.push('invalid-family-list');
@@ -161,7 +168,7 @@ export function evaluateOutcomePromotion(
 
   const aggregatePairedN = isRecord(aggregate) && isCount(aggregate.pairedN) ? aggregate.pairedN : 0;
   const aggregateGain = isRecord(aggregate) && isGain(aggregate.absoluteGain) ? aggregate.absoluteGain : null;
-  if (aggregatePairedN < cfg.minPairedTasks) reasons.push('insufficient-paired-tasks');
+  if (aggregatePairedN < cfg.minIndependentSeeds) reasons.push('insufficient-independent-seeds');
   if (aggregatePairedN <= 0 || aggregateGain === null) {
     reasons.push('missing-aggregate-evidence');
   } else if (aggregateGain < cfg.minAbsoluteGain) {
@@ -222,6 +229,7 @@ export function evaluateOutcomePromotion(
   return {
     eligible: reasons.length === 0,
     reasons: [...new Set(reasons)],
+    independentSeeds: aggregatePairedN,
     pairedTasks: aggregatePairedN,
     familyCount: safeFamilies.length,
     aggregateGain,
