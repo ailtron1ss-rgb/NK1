@@ -22,6 +22,7 @@ export function deriveFacialMicroMotion(input:FacialMicroMotionInput):FacialMicr
   const blinkDuration=clamp(input.blinkDurationMs,90,145);
   const blinkPhase=clamp(input.blinkPhaseMs,0,10500);
   const blinkClosure=blinkPhase<blinkDuration?Math.sin(Math.PI*blinkPhase/blinkDuration):0;
+  // Saccades are brief pulses, not a continuous sinusoid; the renderer owns the phase clock.
   const saccadePhase=clamp(input.saccadePhaseMs,0,4200);
   const index=Number.isSafeInteger(input.saccadeIndex)?Math.abs(input.saccadeIndex):0;
   const [directionX,directionY]=DIRECTIONS[index%DIRECTIONS.length];
