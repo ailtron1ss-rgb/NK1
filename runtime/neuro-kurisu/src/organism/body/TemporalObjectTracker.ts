@@ -230,6 +230,7 @@ export class TemporalObjectTracker {
         const previous=state.tracks[trackIndex];
         track.velocityX=previous.velocityX;track.velocityY=previous.velocityY;
         track.velocityWidth=previous.velocityWidth;track.velocityHeight=previous.velocityHeight;
+        track.bbox={...previous.bbox};track.lastSeenAt=previous.lastSeenAt;
         updateTrackMotion(track,object.bbox!,at);
         state.tracks[trackIndex]=track;
       }
