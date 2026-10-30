@@ -372,3 +372,28 @@ Family summaries по типам задач сохраняются как защ
 ### 12.8 CI regression для durable store
 
 `p23-experiment-campaign-file-store.mjs` проверяет restore после рестарта, повторный захват одного holdout из второго экземпляра store, exclusive lock, rollback callback error, checksum tampering, size limit и отсутствие оставшегося lock после штатных ошибок. Тест и source path добавлены в существующий `WorkPass108 paired evidence identity and verified promotion gate` workflow, который уже присутствует в base branch и потому запускается на PR-коммитах. Статус exact-head проверки остаётся `UNVERIFIED` до завершения этого workflow.
+
+### 12.9 Единица выборки названа прямо: independent seeds
+
+После перехода на seed-clustered сравнение поле `pairedN` фактически означает число полных независимых seed, а не количество задач. Старые имена создавали риск неверно трактовать порог: `minPairedTasks: 30` можно было прочитать как 30 task-cells, хотя promotion gate требовал 30 независимых запусков.
+
+Теперь основной параметр — `minIndependentSeeds`, по умолчанию 30. Старый `minPairedTasks` оставлен только как deprecated compatibility alias на период миграции; при передаче обоих полей с разными значениями конфигурация отклоняется. Результат содержит `independentSeeds`; поле `pairedTasks` временно сохранено как совместимый alias и не меняет единицу статистики.
+
+### 12.10 Ограничение вычислительного бюджета exact sign-test
+
+Точный биномиальный sign-test не использует нормальную аппроксимацию, но его наивная реализация могла создавать массив, пропорциональный числу discordant seed. Это ненужный риск для runtime, принимающего внешние сводки.
+
+Текущая версия:
+- ограничивает exact computation одним миллионом discordant независимых пар;
+- суммирует биномиальный хвост рекуррентно с O(1) дополнительной памятью;
+- при превышении лимита promotion gate добавляет `uncomputable-aggregate-sign-test-evidence` / family-эквивалент и блокирует решение;
+- никогда не принимает переданное caller значение p-value как замену вычислению, если исходные counts не могут быть перепроверены.
+
+Порог — защитный лимит вычислений, а не статистическая рекомендация. Практический confirmatory дизайн NK1 рассчитан на десятки/сотни независимых seed, не на миллион.
+
+### 12.11 Primary metric имеет executable contract
+
+До изменения campaign registry принимал произвольную непустую строку `primaryMetric`, но evaluation фактически вычислял только средний task pass-rate из signed boolean outcomes. Это могло создать ложную запись, будто эксперимент был зарегистрирован по latency, reward или recovery, хотя такой показатель не извлекался из artifact.
+
+Теперь registry принимает только `task-pass-rate` — реальный поддерживаемый endpoint текущей реализации. Другие показатели потребуют расширить signed outcome schema, добавить соответствующие наблюдения/единицы измерения, реализовать агрегацию и сравнение, после чего вводить новый schema/policy version. Campaign restore повторно проверяет эту семантику, типы fingerprints, уникальность/сортировку candidate set и нормализованную promotion policy.
+
