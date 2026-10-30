@@ -55,6 +55,14 @@
 - Add a transactional adapter coordinator with prepare/apply/independent-verify/commit sequencing, monotonic revision checks, single-flight protection, destination cleanup and verified source rollback. Execution is committed only from a matching adapter receipt plus independent verification; no-op mode changes are not represented as executed.
 - Add coordinator regression coverage for commit, verification failure and rollback, stale revisions, and concurrent switch rejection. This remains a renderer-neutral coordinator; concrete Live2D/depth-2D/VRM adapter wiring and browser/device E2E are still pending.
 
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -2851,9 +2859,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
-
-### Aspect 11 — Live2D SDK observability boundary
-
-- Documented the pinned pixi-live2d-display 0.4.0 motion API: `model.motion()` resolves on successful start; `MotionManager.isFinished()`/`playing` are manager-wide, not per-motion completion evidence.
-- Confirmed the documented `MotionManagerEvents` do not expose a public per-motion completion event. Kept `started` and `visualCompletionVerified: false` semantics; no unsupported completion event was invented.
-- Next gate: adapter-owned token-correlated completion instrumentation plus rendered-frame evidence before any full apply receipt.
