@@ -1,3 +1,11 @@
+## [Unreleased] — Personality / SelfModel continuity integration
+
+- Added a canonical P78 → P2702 → SelfModel bridge and wired it into the existing OrganismCore candidate-scoring and feedback paths.
+- Forwarded the RuntimeEvidenceBus outcome-event ID through LearningProvenance; autobiographical verified learning now additionally requires strong external verification/independence/consequence gates and an allow-listed receipt namespace.
+- Added persistent P78 event replay protection, semantic P2702 trait mapping, named self-belief dimensions, bounded relationship identity state, and safer P78/P80/P2702/SelfModel snapshot restoration.
+- Added personality provenance, bridge, runtime-wiring and unified-self-state regression tests; exposed them as npm run test:personality and integrated that command into the WorkPass79 cognitive runtime regression workflow.
+- The branch remains a draft PR. The issuer namespace and RuntimeEvidenceBus event ID are provenance constraints, not cryptographic CEF receipt attestation. Full typecheck/regression and current-base synchronization remain required before promotion.
+
 ## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
 
 - Reject malformed world-context coercions: null/blank numerics no longer become zero; malformed text, booleans, evidence kinds and source IDs no longer become facts.
