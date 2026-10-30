@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
+import { buildBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -45,6 +46,7 @@ type BrowserSpeechSession = {
   anchorAudioPerformanceAtMs: number;
   anchorAudioElapsedMs: number;
   clockSource: "speech-synthesis-elapsed-time-anchored-monotonic" | "speech-synthesis-boundary-anchored-monotonic";
+  voiceEmphasis: number;
 };
 
 function speechAudioClockNow(session: BrowserSpeechSession, nowMs: number): number {
@@ -162,8 +164,19 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (activeSpeechSessionRef.current) stopSpeech();
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
-        const language = inferSpeechLanguage(text);
-        const rate = 0.96;
+        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
+        const prosody = buildBrowserVoiceProsody({
+          text,
+          emotion: utteranceEmotion,
+          action: snap.lastOption,
+          arousal: snap.emotion.arousal,
+          valence: snap.emotion.valence,
+          cognitiveLoad: snap.needs.cognitiveLoad,
+          uncertainty: snap.needs.uncertainty,
+          socialNeed: snap.needs.socialNeed,
+        });
+        const language = prosody.language || inferSpeechLanguage(text);
+        const rate = prosody.rate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
         const session: BrowserSpeechSession = {
@@ -176,6 +189,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           anchorAudioPerformanceAtMs: performance.now(),
           anchorAudioElapsedMs: 0,
           clockSource: "speech-synthesis-boundary-anchored-monotonic",
+          voiceEmphasis: prosody.emphasis01,
         };
         activeSpeechSessionRef.current = session;
         lastSpeechSessionRef.current = session;
@@ -185,8 +199,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
         utterance.rate = rate;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
-        utterance.pitch = utteranceEmotion === "joy" ? 1.03 : utteranceEmotion === "frustration" || utteranceEmotion === "anger" ? 0.92 : 1.0;
+        utterance.pitch = prosody.pitch;
+        utterance.volume = prosody.volume;
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;
@@ -370,7 +384,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
-      voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
+      voiceEmphasis: activeUtterance ? (session?.voiceEmphasis ?? 0) : 0,
     };
     win.postMessage(intent, window.location.origin);
   }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
