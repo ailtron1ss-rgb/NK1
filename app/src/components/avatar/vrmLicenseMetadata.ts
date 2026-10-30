@@ -8,7 +8,7 @@ export interface VrmLicenseSummary {
   commercialUsage: string;
   modification: string;
   avatarPermission: string;
-    summary: metadataPresent ? `VRM metadata: ${modelName} · ${authorSummary} · ${licenseSummary} · ${creditSummary} · ${redistributionSummary}. Verify the creator original terms before using or distributing this model.` : `No VRM license metadata found for ${modelName}. Verify the creator, source, and usage rights before using or distributing this model.`,
+  summary: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -26,10 +26,7 @@ function safeText(value: unknown, maxLength = 96): string {
 
 function safeAuthors(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value
-      .map((author) => safeText(author, 72))
-      .filter(Boolean)
-      .slice(0, 3);
+    return value.map((author) => safeText(author, 72)).filter(Boolean).slice(0, 3);
   }
   const single = safeText(value, 72);
   return single ? [single] : [];
@@ -44,11 +41,18 @@ export function summarizeVrmLicenseMetadata(
   input: unknown,
   fileName = "avatar.vrm",
 ): VrmLicenseSummary {
-  const metadataPresent = isRecord(input) && ["name", "title", "authors", "author", "licenseUrl", "otherLicenseUrl", "licenseName", "metaVersion"].some((key) => metadata[key] !== undefined);
   const metadata = isRecord(input) ? input : {};
+  const metadataPresent =
+    isRecord(input) &&
+    ["name", "title", "authors", "author", "licenseUrl", "otherLicenseUrl", "otherPermissionUrl", "licenseName", "metaVersion"]
+      .some((key) => metadata[key] !== undefined);
+
   const modelName = safeText(metadata.name ?? metadata.title, 96) || safeText(fileName, 96) || "avatar";
   const authors = safeAuthors(metadata.authors ?? metadata.author);
-  const licenseUrl = safeText(metadata.licenseUrl, 256) || safeText(metadata.otherLicenseUrl, 256) || safeText(metadata.otherPermissionUrl, 256);
+  const licenseUrl =
+    safeText(metadata.licenseUrl, 256) ||
+    safeText(metadata.otherLicenseUrl, 256) ||
+    safeText(metadata.otherPermissionUrl, 256);
   const licenseUrlPresent = /^https?:\/\//iu.test(licenseUrl);
   const creditNotation = metadata.creditNotation === "required"
     ? "required"
@@ -77,9 +81,13 @@ export function summarizeVrmLicenseMetadata(
       : "redistribution rule unspecified";
   const licenseSummary = licenseUrlPresent ? "license URL metadata present" : "no valid license URL metadata";
 
+  const summary = metadataPresent
+    ? `VRM metadata: ${modelName} · ${authorSummary} · ${licenseSummary} · ${creditSummary} · ${redistributionSummary}. Verify the creator's original terms before using or distributing this model.`
+    : `No VRM license metadata found for ${modelName}. Verify the creator, source, and usage rights before using or distributing this model.`;
+
   return {
-    modelName,
     metadataPresent,
+    modelName,
     authors,
     licenseUrlPresent,
     creditNotation,
@@ -87,6 +95,6 @@ export function summarizeVrmLicenseMetadata(
     commercialUsage,
     modification,
     avatarPermission,
-    summary: `VRM metadata: ${modelName} · ${authorSummary} · ${licenseSummary} · ${creditSummary} · ${redistributionSummary}. Verify the creator's original terms before using or distributing this model.`,
+    summary,
   };
 }
