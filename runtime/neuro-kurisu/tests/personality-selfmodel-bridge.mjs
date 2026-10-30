@@ -119,4 +119,16 @@ const poisonedOutcome = poisonedOutcomeModel.learnGoalOutcome({
 });
 assert.equal(Number.isFinite(poisonedOutcome.quality01), true, 'non-finite rewards must not poison self calibration');
 assert.ok(Number.isFinite(poisonedOutcomeModel.snapshot().goalAlignmentEMA01));
+const boundedRelationships = new P2702PersistentPersonalityDynamics();
+const actionUtilities = { respond: 0.5, explore: 0.5, verify: 0.5, rest: 0.5, reflect: 0.5, wait: 0.5, defer: 0.5 };
+for (let i = 0; i < 40; i++) boundedRelationships.beforeDecision({
+  tick: i + 1, novelty01: 0.2, uncertainty01: 0.2, goalPressure01: 0.2, identityGap01: 0.1,
+  actionUtilities, relationshipId: `relationship-${i}`,
+});
+boundedRelationships.beforeDecision({
+  tick: 41, novelty01: 0.2, uncertainty01: 0.2, goalPressure01: 0.2, identityGap01: 0.1,
+  actionUtilities, relationshipId: '__proto__',
+});
+assert.ok(Object.keys(boundedRelationships.snapshot().relationshipTrust).length <= 32);
+assert.equal(Object.hasOwn(boundedRelationships.snapshot().relationshipTrust, '__proto__'), false);
 console.log('PERSONALITY_SELFMODEL_BRIDGE=PASS');
