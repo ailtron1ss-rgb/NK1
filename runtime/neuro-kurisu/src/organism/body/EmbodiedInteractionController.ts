@@ -104,6 +104,7 @@ export class EmbodiedInteractionController {
     const d=distance(from,target.position);
     if(d>this.policy.maxTargetDistanceM)return {accepted:false,phase:'blocked',reason:'target-outside-interaction-workspace'};
     if(contactKinds.has(kind)){
+      if(target.source!=='camera')return {accepted:false,phase:'blocked',reason:'contact-requires-live-camera-grounding'};
       if(!this.policy.allowContact||target.safeToTouch!==true)return {accepted:false,phase:'blocked',reason:'contact-not-explicitly-authorized'};
       if(confidence<this.policy.minContactConfidence01)return {accepted:false,phase:'uncertain',reason:'insufficient-grounding-for-contact'};
     }
