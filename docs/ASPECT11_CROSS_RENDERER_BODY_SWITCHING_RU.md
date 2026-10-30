@@ -134,3 +134,17 @@ OrganismCore → EmbodimentIntentV1 / MotorGoal → MotorFrame (#410) → render
 4. Не сливать #405 как независимый controller; извлечь полезные alias/mapping части в #410/#408.
 5. Не называть blockout-модель готовым персонажем и не обновлять Release ZIP до проверки production assets и E2E.
 
+
+
+## Проверка границ наблюдаемости Pixi Live2D Display 0.4.0
+
+Проверена документация именно закреплённой в viewer версии `pixi-live2d-display@0.4.0` (MotionManager, InternalModel, MotionManagerEvents):
+
+- `model.motion(group, index)` возвращает `Promise<boolean>`: `true` означает успешный запуск motion, а не окончание клипа.
+- `internalModel.motionManager` предоставляет `isFinished()` и `playing`, но это агрегированное состояние менеджера, не подтверждение завершения конкретного `group/index/motionToken`. Фоновая/idle motion также может влиять на это состояние.
+- В документированном `MotionManagerEvents` перечислены `destroy`, `motionLoaded` и `motionLoadError`; публичного per-motion completion event в этой версии не обнаружено. Внутренний callback `_startMotion(..., onFinish)` защищённый/абстрактный, поэтому viewer не должен подменять его недокументированным событием.
+- `InternalModel` подтверждает доступ к `coreModel` и `motionManager`, но само наличие обновления параметров или завершившегося менеджера не доказывает, что нужный визуальный результат был представлен GPU.
+
+**Решение:** оставить `motionStatus: started` только как подтверждение успешного dispatch. Не добавлять `motion-completed` и не выставлять `visualCompletionVerified` без собственного проверяемого механизма, который коррелирует конкретный motion token с наблюдаемым завершением и представленным кадром. Следующий корректный путь — собственный adapter-level instrumentation/renderer frame evidence, а не угадывание имён событий SDK.
+
+Источники API: [MotionManager 0.4.0](https://guansss.github.io/pixi-live2d-display/api/classes/index.MotionManager.html), [MotionManagerEvents 0.4.0](https://guansss.github.io/pixi-live2d-display/api/interfaces/index.MotionManagerEvents.html), [InternalModel 0.4.0](https://guansss.github.io/pixi-live2d-display/api/classes/index.InternalModel.html).
