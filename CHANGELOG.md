@@ -2819,3 +2819,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Added confidence, coordinate-frame, segment-length and joint-limit guards; unreachable targets are conservatively clamped and the result is explicitly a plan, not executed motion.
 - Added seven deterministic IK regression tests and a focused CI step.
 - VRM/GLB bone mapping, 3D IK, collision-aware trajectories and execution remain pending.
+
+
+## 2026-10-30 — Aspect 10 calibrated VRM rig adapter foundation
+
+- Added a conservative VRM/GLB left-arm bone resolver and a bind-pose-relative planar-IK pose mapper.
+- Require explicit per-model axis/sign/offset/joint-limit calibration; missing or ambiguous bones and invalid/non-finite calibration are refused instead of guessing.
+- Added five deterministic adapter tests and a dedicated CI step. The adapter computes pose targets only; live `Avatar3DStage` execution, right-arm mapping, 3D IK and collision-aware motion remain pending.
