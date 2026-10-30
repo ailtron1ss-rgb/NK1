@@ -28,6 +28,8 @@ export function deriveBodyDynamics(input:BodyDynamicsInput):BodyDynamicsFrame {
   const sleepBias=input.awake?0:-2.1;
   const breathsPerMinute=clamp(10+arousal*4.8+energy*1.4+emotionBias+sleepBias,6,19);
   const elapsed=clamp(input.elapsedSeconds,0,86400*365);
+  // A live renderer supplies an integrated phase accumulator; do not multiply its
+  // whole runtime by the newly changed BPM, which would create a phase discontinuity.
   const fallbackCycles=elapsed*breathsPerMinute/60;
   const rawCycles=Number.isFinite(input.phaseCycles)?input.phaseCycles!:fallbackCycles;
   const normalizedCycles=((rawCycles%1)+1)%1;
