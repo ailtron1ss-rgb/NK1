@@ -4,6 +4,23 @@ import { PerceptualEpistemicGraph, defaultEpistemicState, type EpistemicState } 
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const now = () => Date.now();
+const MAX_TRACK_GAP_MS=30_000;
+const MAX_TRACK_ASSOCIATION_DISTANCE=.75;
+function normalizePerceptualLabel(value:unknown):string{
+  if(typeof value!=='string')return '';
+  return value.normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase().slice(0,180);
+}
+function cleanTrackId(value:unknown):string{
+  if(typeof value!=='string')return '';
+  return value.normalize('NFKC').replace(/[\r\n\t]+/g,' ').trim().slice(0,120);
+}
+function finitePosition(x:unknown,y:unknown,z:unknown):{x:number;y:number;z:number}|null{
+  if(![x,y,z].every(v=>typeof v==='number'&&Number.isFinite(v)))return null;
+  return {x:Number(x),y:Number(y),z:Number(z)};
+}
+function positionDistance(a:{x:number;y:number;z:number},b:{x:number;y:number;z:number}):number{
+  return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2+(a.z-b.z)**2);
+}
 const ACTIONS:ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 export type P41Modality = 'text'|'vision'|'audio'|'sensor'|'world';
 export type P41EvidenceKind = 'observed'|'model-output'|'derived'|'unresolved';
@@ -13,6 +30,8 @@ export interface P41PerceptualEntity {
   id:string;
   label:string;
   kind:P41EntityKind;
+  /** Stable sensor/vendor track key. Absent for legacy singletons or untracked concepts. */
+  trackId?:string;
   confidence01:number;
   salience01:number;
   present01:number;
@@ -21,6 +40,8 @@ export interface P41PerceptualEntity {
   observations:number;
   modalities:P41Modality[];
   position:{x:number;y:number;z:number}|null;
+  /** Smoothed velocity in the same coordinate frame as position, per second. */
+  velocity?:{x:number;y:number;z:number}|null;
 }
 
 export interface P41PerceptualRelation {
@@ -79,9 +100,27 @@ export interface P41PerceptionState {
   events:P41PerceptualEvent[];
   snapshots:P41PerceptualSnapshot[];
   pending:P41PendingPerception[];
-  modalityReliability:Record<P41Modality,{reliability01:number;observations:number;conflict01:number;latency01:number}>;
+  modalityReliability:Record<P41Modality,{
+    /** Empirical correctness estimate. Only independent/human-labelled outcomes may update it. */
+    reliability01:number;
+    observations:number;
+    conflict01:number;
+    latency01:number;
+    /** Reported detector/model quality, deliberately kept separate from empirical accuracy. */
+    reportedQuality01:number;
+    /** Tool/service completion is not semantic correctness. */
+    serviceSuccess01:number;
+    calibrationSamples:number;
+    calibrationMae01:number;
+    calibrationBias01:number;
+    lastVerifiedAt:number;
+  }>;
+  /** Bounded IDs prevent replaying one verifier receipt to inflate calibration. */
+  calibrationEvidenceIds:string[];
+  /** Monotonic IDs for anonymous spatial tracks. */
+  nextTrackSequence:number;
   actionBias:Record<ActionKind,number>;
-  metrics:{grounding01:number;temporalBinding01:number;objectPermanence01:number;crossModalAgreement01:number;activePerceptionUtility01:number;unresolvedRate01:number;updates:number;sceneContinuity01:number;temporalGrounding01:number;evidenceTraceability01:number};
+  metrics:{grounding01:number;temporalBinding01:number;objectPermanence01:number;crossModalAgreement01:number;crossModalEvidenceCoverage01:number;activePerceptionUtility01:number;unresolvedRate01:number;updates:number;sceneContinuity01:number;temporalGrounding01:number;evidenceTraceability01:number};
   continuity?:ContinuityState;
   epistemic?:EpistemicState;
   lastCheckpointAt:number;
@@ -94,16 +133,18 @@ export const defaultP41SemanticPerception = ():P41PerceptionState => ({
   scene:{label:'unknown',confidence01:.12,stability01:.15,at:0},
   entities:[], relations:[], events:[], snapshots:[], pending:[],
   modalityReliability:{
-    text:{reliability01:.72,observations:0,conflict01:0,latency01:.15},
-    vision:{reliability01:.38,observations:0,conflict01:0,latency01:.48},
-    audio:{reliability01:.30,observations:0,conflict01:0,latency01:.46},
-    sensor:{reliability01:.62,observations:0,conflict01:0,latency01:.18},
-    world:{reliability01:.66,observations:0,conflict01:0,latency01:.14},
+    text:{reliability01:.72,observations:0,conflict01:0,latency01:.15,reportedQuality01:.45,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
+    vision:{reliability01:.38,observations:0,conflict01:0,latency01:.48,reportedQuality01:.45,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
+    audio:{reliability01:.30,observations:0,conflict01:0,latency01:.46,reportedQuality01:.42,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
+    sensor:{reliability01:.62,observations:0,conflict01:0,latency01:.18,reportedQuality01:.62,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
+    world:{reliability01:.66,observations:0,conflict01:0,latency01:.14,reportedQuality01:.66,serviceSuccess01:.5,calibrationSamples:0,calibrationMae01:0,calibrationBias01:0,lastVerifiedAt:0},
   },
   actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,
-  metrics:{grounding01:.18,temporalBinding01:.12,objectPermanence01:.05,crossModalAgreement01:.5,activePerceptionUtility01:.1,unresolvedRate01:0,updates:0,sceneContinuity01:.1,temporalGrounding01:.1,evidenceTraceability01:.1},
+  metrics:{grounding01:.18,temporalBinding01:.12,objectPermanence01:.05,crossModalAgreement01:.5,crossModalEvidenceCoverage01:0,activePerceptionUtility01:.1,unresolvedRate01:0,updates:0,sceneContinuity01:.1,temporalGrounding01:.1,evidenceTraceability01:.1},
   continuity:defaultPerceptualContinuityState(),
   epistemic:defaultEpistemicState(),
+  calibrationEvidenceIds:[],
+  nextTrackSequence:0,
   lastCheckpointAt:0,lastHash:'',
 });
 
@@ -115,10 +156,19 @@ function stableId(prefix:string, seed:string){
 
 export interface P41SemanticInput {
   text?:string;
-  vision?:{sceneLabel?:string;confidence01?:number;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;x?:number;y?:number;z?:number}>;relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;events?:Array<{label:string;confidence01?:number}>;latencyMs?:number;semantic:boolean};
+  vision?:{
+    cameraId?:number;
+    sceneLabel?:string;
+    confidence01?:number;
+    objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;x?:number;y?:number;z?:number}>;
+    relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;
+    events?:Array<{label:string;confidence01?:number}>;
+    latencyMs?:number;
+    semantic:boolean;
+  };
   audio?:{events?:Array<{label:string;confidence01?:number}>;relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;latencyMs?:number;semantic:boolean};
   sensor?:{location?:string;orientationDeg?:number;energy01?:number;thermal01?:number;capacity01?:number;motion01?:number;freshness01?:number};
-  world?:{scene?:string;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number}>;events?:string[]};
+  world?:{scene?:string;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string}>;events?:string[]};
   at?:number;
 }
 
@@ -136,9 +186,13 @@ export class P41SemanticPerceptionEngine {
       events:Array.isArray(r.events)?r.events.slice(-128):[],
       snapshots:Array.isArray(r.snapshots)?r.snapshots.slice(-128):[],
       pending:Array.isArray(r.pending)?r.pending.slice(-64):[],
-      modalityReliability:{...d.modalityReliability,...(r.modalityReliability??{})},
+      modalityReliability:Object.fromEntries((Object.keys(d.modalityReliability) as P41Modality[]).map(modality=>[
+        modality,{...d.modalityReliability[modality],...(r.modalityReliability?.[modality]??{})}
+      ])) as P41PerceptionState['modalityReliability'],
       actionBias:{...d.actionBias,...(r.actionBias??{})},
       metrics:{...d.metrics,...(r.metrics??{})},
+      calibrationEvidenceIds:Array.isArray(r.calibrationEvidenceIds)?r.calibrationEvidenceIds.filter((x):x is string=>typeof x==='string').slice(-256):[],
+      nextTrackSequence:Number.isSafeInteger(r.nextTrackSequence)&&Number(r.nextTrackSequence)>=0?Number(r.nextTrackSequence):0,
       continuity:d.continuity,
       epistemic:d.epistemic,
     };
@@ -192,7 +246,14 @@ export class P41SemanticPerceptionEngine {
       this.epistemic.add({at,modality:'vision',claim:`scene:${label}`,source:'model-output',confidence01:Number(v.confidence01??.55)});
     }
     const targets:string[]=[];
-    for(const o of (v.objects??[]).slice(0,32)){ const e=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.5),.66,'vision',at,(o.x==null&&o.y==null&&o.z==null)?null:{x:Number(o.x??0),y:Number(o.y??0),z:Number(o.z??0)},'model-output'); if(e)targets.push(e.id); }
+    const cameraId=Math.max(0,Math.floor(Number(v.cameraId??0)||0));
+    for(const o of (v.objects??[]).slice(0,32)){
+      const suppliedTrackId=cleanTrackId(o.trackId);
+      const namespacedTrackId=suppliedTrackId?'vision:'+cameraId+':'+(cleanTrackId(o.sourceId)||'backend')+':'+suppliedTrackId:undefined;
+      const position=finitePosition(o.x,o.y,o.z);
+      const e=this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.5),.66,'vision',at,position,'model-output',namespacedTrackId);
+      if(e)targets.push(e.id);
+    }
     for(const e of (v.events??[]).slice(0,16)) this.upsertEvent(String(e.label),clamp(e.confidence01??.45),'vision',at,'model-output');
     for(const r of (v.relations??[]).slice(0,32)) this.upsertRelation(r.from,r.relation,r.to,clamp(r.confidence01??.5),'vision',at,'model-output');
     if(targets.length)this.epistemic.add({at,modality:'vision',claim:`objects:${targets.length}`,source:'model-output',confidence01:Number(v.confidence01??.5),targetIds:targets});
@@ -215,7 +276,11 @@ export class P41SemanticPerceptionEngine {
 
   ingestWorld(w:NonNullable<P41SemanticInput['world']>,at:number){
     if(w.scene){ const label=String(w.scene).slice(0,120); this.state.scene={label,confidence01:.68,stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.05:.5),at}; this.epistemic.add({at,modality:'world',claim:`scene:${label}`,source:'observed',confidence01:.68}); }
-    for(const o of (w.objects??[]).slice(0,24)) this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.6),.52,'world',at,null,'observed');
+    for(const o of (w.objects??[]).slice(0,24)){
+      const suppliedTrackId=cleanTrackId(o.trackId);
+      const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
+      this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.6),.52,'world',at,null,'observed',namespacedTrackId);
+    }
     for(const e of (w.events??[]).slice(0,16)) this.upsertEvent(String(e),.6,'world',at,'observed');
     this.recordModality('world',.7,0);
   }
@@ -228,11 +293,47 @@ export class P41SemanticPerceptionEngine {
 
   private expirePending(at:number){ for(const p of this.state.pending){ if(p.status==='pending'&&p.expiresAt<=at) p.status='expired'; } }
 
-  private upsertEntity(label:string,kind:P41EntityKind,confidence01:number,salience01:number,modality:P41Modality,at:number,pos:{x:number;y:number;z:number}|null,evidenceKind:P41EvidenceKind){
-    const key=label.trim().toLowerCase(); if(!key) return null;
-    let e=this.state.entities.find(x=>x.label===key&&x.kind===kind);
-    if(!e){ e={id:stableId('entity',`${kind}:${key}`),label:key,kind,confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],position:pos}; this.state.entities.unshift(e); }
-    else { e.confidence01=clamp(e.confidence01*.72+confidence01*.28); e.salience01=clamp(e.salience01*.72+salience01*.28); e.present01=clamp(e.present01*.6+.4); e.lastSeenAt=at; e.observations++; if(!e.modalities.includes(modality)) e.modalities.push(modality); if(pos)e.position=pos; }
+  private upsertEntity(label:string,kind:P41EntityKind,confidence01:number,salience01:number,modality:P41Modality,at:number,pos:{x:number;y:number;z:number}|null,evidenceKind:P41EvidenceKind,suppliedTrackId?:string){
+    const key=normalizePerceptualLabel(label); if(!key) return null;
+    const explicitTrackId=cleanTrackId(suppliedTrackId);
+    let e=explicitTrackId?this.state.entities.find(x=>x.trackId===explicitTrackId):undefined;
+    // Spatial nearest-neighbour association is only used when observations share
+    // a coordinate frame. A same-frame detection cannot consume a track twice.
+    if(!e&&pos){
+      const candidates=this.state.entities
+        .filter(x=>x.label===key&&x.kind===kind&&x.position&&x.lastSeenAt<at&&at-x.lastSeenAt<=MAX_TRACK_GAP_MS)
+        .map(x=>({entity:x,distance:positionDistance(x.position!,pos)}))
+        .filter(x=>x.distance<=MAX_TRACK_ASSOCIATION_DISTANCE)
+        .sort((a,b)=>a.distance-b.distance);
+      e=candidates[0]?.entity;
+    }
+    // Without either a provider track ID or geometry, retain legacy singleton
+    // semantics rather than manufacturing multiple indistinguishable objects.
+    if(!e&&!explicitTrackId&&!pos)e=this.state.entities.find(x=>x.label===key&&x.kind===kind&&!x.trackId);
+    const trackId=explicitTrackId??(pos?'auto-track-'+(++this.state.nextTrackSequence):undefined);
+    if(!e){
+      const id=stableId('entity',kind+':'+key+':'+(trackId??'singleton'));
+      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],position:pos,velocity:null};
+      this.state.entities.unshift(e);
+    }else{
+      const previousAt=e.lastSeenAt;
+      const previousPosition=e.position;
+      if(pos&&previousPosition&&at>previousAt&&at-previousAt<=MAX_TRACK_GAP_MS){
+        const dt=Math.max(.001,(at-previousAt)/1000);
+        const measured={x:(pos.x-previousPosition.x)/dt,y:(pos.y-previousPosition.y)/dt,z:(pos.z-previousPosition.z)/dt};
+        e.velocity=e.velocity
+          ? {x:e.velocity.x*.65+measured.x*.35,y:e.velocity.y*.65+measured.y*.35,z:e.velocity.z*.65+measured.z*.35}
+          : measured;
+      }
+      e.confidence01=clamp(e.confidence01*.72+confidence01*.28);
+      e.salience01=clamp(e.salience01*.72+salience01*.28);
+      e.present01=clamp(e.present01*.6+.4);
+      e.lastSeenAt=at;
+      e.observations++;
+      if(!e.modalities.includes(modality))e.modalities.push(modality);
+      if(pos)e.position=pos;
+      if(trackId)e.trackId=trackId;
+    }
     this.state.entities=this.state.entities.slice(0,192);
     return e;
   }
@@ -255,16 +356,50 @@ export class P41SemanticPerceptionEngine {
   }
 
   private recordModality(modality:P41Modality,quality01:number,latencyMs:number){
-    const h=this.state.modalityReliability[modality]; h.observations++; h.reliability01=clamp(h.reliability01*.94+clamp(quality01)*.06); h.latency01=clamp(h.latency01*.9+clamp(latencyMs/15000)*.1);
+    const h=this.state.modalityReliability[modality];
+    h.observations++;
+    h.reportedQuality01=clamp(h.reportedQuality01*.94+clamp(quality01)*.06);
+    h.latency01=clamp(h.latency01*.9+clamp(latencyMs/15000)*.1);
+  }
+
+  /** Only independent verification or a human label may update empirical modality accuracy. */
+  observeModalityOutcome(input:{
+    modality:P41Modality;
+    predictedConfidence01:number;
+    correctness01:number;
+    evidenceId:string;
+    evidenceSource:'human-annotation'|'independent-verifier';
+    at?:number;
+  }):boolean{
+    if(input.evidenceSource!=='human-annotation'&&input.evidenceSource!=='independent-verifier')return false;
+    const evidenceId=cleanTrackId(input.evidenceId);
+    if(!evidenceId||this.state.calibrationEvidenceIds.includes(evidenceId))return false;
+    if(!Number.isFinite(input.predictedConfidence01)||!Number.isFinite(input.correctness01))return false;
+    if(input.predictedConfidence01<0||input.predictedConfidence01>1||input.correctness01<0||input.correctness01>1)return false;
+    const at=Number.isFinite(input.at)&&Number(input.at)>0?Number(input.at):now();
+    const h=this.state.modalityReliability[input.modality];
+    const error=Math.abs(input.predictedConfidence01-input.correctness01);
+    const bias=input.predictedConfidence01-input.correctness01;
+    h.reliability01=clamp(h.reliability01*.9+input.correctness01*.1);
+    h.calibrationMae01=clamp(h.calibrationSamples===0?error:h.calibrationMae01*.9+error*.1);
+    h.calibrationBias01=clampSigned(h.calibrationSamples===0?bias:h.calibrationBias01*.9+bias*.1);
+    h.calibrationSamples++;
+    h.lastVerifiedAt=at;
+    this.state.calibrationEvidenceIds.unshift(evidenceId);
+    this.state.calibrationEvidenceIds=this.state.calibrationEvidenceIds.slice(0,256);
+    return true;
   }
 
   private reconcile(at:number){
     for(const e of this.state.entities){const age=Math.max(0,at-e.lastSeenAt);e.present01=clamp(e.present01*Math.exp(-Math.min(age,300000)/180000));}
     const active=this.state.entities.filter(e=>e.present01>.25).slice(0,32);
-    const modalityValues=Object.values(this.state.modalityReliability).map(x=>x.reliability01);
-    const spread=modalityValues.length?Math.max(...modalityValues)-Math.min(...modalityValues):0;
-    const conflicts=Object.values(this.state.modalityReliability).reduce((s,x)=>s+x.conflict01,0)/5;
-    this.state.metrics.crossModalAgreement01=clamp(.92-spread*.65-conflicts*.35);
+    // Confidence priors from unrelated modalities do not prove agreement.
+    // Track the fraction of active entities independently corroborated by at
+    // least two modalities; retain crossModalAgreement as an outcome-calibrated
+    // metric until explicit contradictory evidence is available.
+    const corroborated=active.filter(e=>new Set(e.modalities).size>=2).length;
+    const coverage=active.length?corroborated/active.length:0;
+    this.state.metrics.crossModalEvidenceCoverage01=clamp(this.state.metrics.crossModalEvidenceCoverage01*.9+coverage*.1);
     const unresolved=this.state.pending.filter(x=>x.status==='pending').length;
     this.state.metrics.unresolvedRate01=clamp(unresolved/Math.max(1,this.state.pending.length));
     this.state.metrics.grounding01=clamp(this.state.metrics.grounding01*.95+(active.length? .65:.05)*.05);
@@ -285,9 +420,20 @@ export class P41SemanticPerceptionEngine {
     this.state.lastCheckpointAt=at;
   }
 
-  nextPerception(){return this.state.pending.filter(x=>x.status==='pending').sort((a,b)=>b.priority01-a.priority01)[0]??null;}
+  nextPerception(at=now()){
+    this.expirePending(at);
+    return this.state.pending.filter(x=>x.status==='pending'&&x.expiresAt>at).sort((a,b)=>b.priority01-a.priority01)[0]??null;
+  }
   bias(action:ActionKind){return Number(this.state.actionBias[action]??0);}
-  fulfill(id:string,success:boolean,at=now()){const p=this.state.pending.find(x=>x.id===id);if(!p)return false;p.status=success?'fulfilled':'rejected';if(success){const h=this.state.modalityReliability[p.modality];h.reliability01=clamp(h.reliability01+.03);}return true;}
+  fulfill(id:string,success:boolean,at=now()){
+    const p=this.state.pending.find(x=>x.id===id);
+    if(!p||p.status!=='pending')return false;
+    if(!Number.isFinite(at)||at>=p.expiresAt){p.status='expired';return false;}
+    p.status=success?'fulfilled':'rejected';
+    const h=this.state.modalityReliability[p.modality];
+    h.serviceSuccess01=clamp(h.serviceSuccess01*.9+(success?1:0)*.1);
+    return true;
+  }
   observeOutcome(success01:number,surprise01:number){const s=clamp(success01),u=clamp(surprise01);this.state.metrics.crossModalAgreement01=clamp(this.state.metrics.crossModalAgreement01*.93+s*.04-u*.03);return this.snapshot();}
   semanticSummary(){return {scene:this.state.scene,entities:this.state.entities.slice(0,12),events:this.state.events.slice(0,8),relations:this.state.relations.slice(0,16),nextPerception:this.nextPerception(),metrics:this.state.metrics,continuity:this.continuity.snapshot(),epistemic:this.epistemic.summary()};}
 }
