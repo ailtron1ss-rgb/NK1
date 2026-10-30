@@ -1,3 +1,11 @@
+## [NK1][WorkPass626] Surface VRM author and license metadata (2026-10-30)
+
+- Read VRM 1.0 author arrays and legacy 0.x author/license fields from the official runtime metadata.
+- Display bounded model name/author, license-URL presence, credit notation, redistribution, commercial-use, modification and avatar-permission declarations alongside the active local model.
+- Explicitly mark missing or malformed metadata as unverified; never infer legal permission from a metadata flag, fetch metadata URLs, or silently treat local import as permission to redistribute.
+- Add a regression suite for 0.x/1.0 metadata, missing fields, unsafe URLs and control/length bounds, plus a dedicated CI step.
+- This is provenance visibility only, not a legal validation or a third-party asset license audit.
+
 ## [NK1][WorkPass625] Integrate official Pixiv VRM runtime (2026-10-30)
 
 - Pin @pixiv/three-vrm 3.5.5 (MIT) with verified npm registry integrity metadata and compatibility with Three.js 0.180.0.
