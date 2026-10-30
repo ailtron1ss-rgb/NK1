@@ -30,6 +30,8 @@ on:
       - "runtime/neuro-kurisu/tests/workpass408-lifecycle-store-reconciliation.mjs"
       - "runtime/neuro-kurisu/tests/workpass419-p23-retry-backoff-store.mjs"
       - "runtime/neuro-kurisu/tests/workpass421-learning-journal-bootstrap.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
+      - "runtime/neuro-kurisu/tests/p36-*.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"
