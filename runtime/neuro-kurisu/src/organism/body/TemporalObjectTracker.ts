@@ -167,7 +167,7 @@ export class TemporalObjectTracker {
     state.tracks=state.tracks.filter(track=>at>=track.lastSeenAt&&at-track.lastSeenAt<=this.config.maxTrackAgeMs);
     const outputs:TemporalTrackedDetection[]=objects.map(object=>({...object,trackingStatus:clean(object.trackId)?'provider':'untracked'}));
     const usableBox=(object:TemporalDetection)=>isValidNormalizedBoundingBox(object.bbox)
-      &&clamp(object.bboxConfidence01??object.confidence01??0)>=this.config.minimumBoxConfidence01
+      &&clamp(object.bboxConfidence01??0)>=this.config.minimumBoxConfidence01
       &&Boolean(clean(object.label));
     const boxIndices=objects.map((object,index)=>usableBox(object)?index:-1).filter(index=>index>=0);
     const providerTrackCount=objects.filter(object=>Boolean(clean(object.trackId))).length;
