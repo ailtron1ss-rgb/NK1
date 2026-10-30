@@ -96,13 +96,14 @@ export class CanonicalMemoryLifecycleAuthority {
   restore(raw?:Partial<CanonicalMemoryLifecycleState>|null){
     const d=defaultCanonicalMemoryLifecycleState();
     if(raw?.version!==undefined&&raw.version!==1)throw new Error('Unsupported canonical memory lifecycle state version');
+    const lastPlan=safePlan(raw?.lastPlan);
     this.state={
       version:1,
       cycles:safeCounter(raw?.cycles),
       maintenanceRuns:safeCounter(raw?.maintenanceRuns),
       consolidationRuns:safeCounter(raw?.consolidationRuns),
       lastTick:raw?.lastTick===-1?-1:(safeTick(raw?.lastTick)??-1),
-      lastPlan:safePlan(raw?.lastPlan),
+      ...(lastPlan?{lastPlan}:{}),
       lastConsolidation:safeDecisions(raw?.lastConsolidation),
       meanPressure01:clamp01(typeof raw?.meanPressure01==='number'&&Number.isFinite(raw.meanPressure01)?raw.meanPressure01:d.meanPressure01),
       meanMemoryLoad01:clamp01(typeof raw?.meanMemoryLoad01==='number'&&Number.isFinite(raw.meanMemoryLoad01)?raw.meanMemoryLoad01:d.meanMemoryLoad01),
