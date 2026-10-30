@@ -1,3 +1,68 @@
+## [NK1][Aspect 11] Reject malformed renderer channel evidence (2026-10-30)
+
+- Require accepted, rejected and independently observed channel lists to contain only non-blank unique identifiers.
+- Reject contradictory apply receipts that claim the same channel as both accepted and rejected; malformed claims cannot pass the handoff verification gate.
+- Add regression coverage for whitespace-only IDs, duplicate channel claims, contradictory receipts and malformed observation lists.
+
+
+## [NK1][Aspect 11] Map measured motor frames into calibrated semantic pose (2026-10-30)
+
+- Add a renderer-neutral motor-frame mapper that consumes current measured joint angles (`angleRad`), never commanded target angles, and requires an explicit versioned rig calibration profile.
+- Reject malformed, stale, rewound, expired and rejected frames; reject duplicate joint/channel mappings and invalid calibration bounds. Report unavailable and unmapped joints rather than inventing pose channels.
+- Mark mapped samples as not renderer-verified; mapping is not evidence that a pose was applied or displayed. Add focused regressions for calibration, clamping, freshness, malformed profiles and empty mappings.
+
+
+## [NK1][Aspect 11] Reject blank semantic handoff identifiers (2026-10-30)
+
+- Require non-blank bounded expression labels and action names; nullable speech-event, intent and wardrobe IDs must be either null or non-blank bounded strings.
+- Preserve null as the explicit absence value while rejecting empty/whitespace-only identifiers before renderer adapter lifecycle begins.
+- Add regression cases for empty and whitespace-only fields plus the valid all-null optional-ID case.
+
+
+## [NK1][Aspect 11] Validate complete semantic body snapshot fields (2026-10-30)
+
+- Reject malformed expression labels, gaze target IDs, speech event IDs, intent IDs and wardrobe IDs at the renderer-neutral handoff boundary.
+- Bound identifier lengths and reject blank world-target references before any adapter lifecycle can run.
+- Add focused regressions for malformed field types, whitespace-only target IDs and oversized identifiers.
+
+
+## [NK1][Aspect 11] Fail closed on partial renderer verification (2026-10-30)
+
+- Require a non-empty, unique accepted-channel set in every adapter apply receipt; reject malformed channel claims before verification.
+- Require independent verification to observe every accepted channel for the same state revision, with a monotonic observation timestamp no earlier than the apply receipt. A positive verified flag with incomplete/stale observations cannot commit.
+- Apply the same strict verification contract to source rollback, and add regression cases for missing channel observations, time-order violations and empty apply receipts.
+
+
+## [NK1][Aspect 11] Correlate Live2D expression and motion dispatch acknowledgements (2026-10-30)
+
+- Wait for Cubism parameter readback and all requested expression/motion SDK promises before emitting one revision-bound partial ACK.
+- Distinguish `started`, `unavailable`, `error`, and `not-requested`; handle unchanged actions without leaving the ACK pending, clear only the matching motion deduplication key after failed dispatch so a later intent can retry, and ignore stale asynchronous completions.
+- Surface action dispatch telemetry in AvatarStage while explicitly keeping `complete: false` and `visualCompletionVerified: false`; this is not animation-completion evidence, a presented-frame receipt, or permission to commit a renderer handoff.
+- Add focused regressions for action status, stale revision handling, no-op actions, fail-closed Cubism readback, and parent-side trust validation. Exact-head CI validation is pending.
+
+
+## [NK1][Aspect 11] Resolve canonical 2.5D and motor ownership across renderer PRs (2026-10-30)
+
+- Compare the actual implementation diffs of PR #408, #409, #410 and #405; designate #408 DepthRigManifest/Three.js runtime as the sole 2.5D implementation path, #410 as the sole joint-space motor substrate, and #415 as renderer handoff orchestration only.
+- Record migration-only value from #409 (normalized pivots/rest transforms/affine layer contract) without creating a competing runtime schema; prohibit a second controller from #405.
+- Document the canonical OrganismCore → EmbodimentIntent/MotorGoal → measured MotorFrame → renderer adapter data path and preserve honest Draft/release gates.
+
+
+## [NK1][Aspect 11] Add renderer-neutral body switching contract (2026-10-30)
+
+- Connect the Live2D partial parameter acknowledgement to `AvatarStage`: accept only same-origin messages from the active iframe, correlate the exact latest intent revision, validate the partial/unverified status boundary, and expose bounded diagnostic telemetry. This does not create an adapter receipt or permit a cross-renderer commit.
+
+- Add revision-bound Live2D parameter readback acknowledgement after Cubism `beforeModelUpdate`; report observed values only when the core readback API is available, otherwise return accepted-unverified. Expression/motion remain explicitly unverified and the acknowledgement is partial (`complete: false`), so it is not an adapter receipt and cannot authorize a cross-renderer commit.
+
+- Add a versioned semantic body snapshot that preserves emotion, gaze, speech clock, motor intent, supported pose channels and wardrobe identity across renderer changes.
+- Add capability-aware handoff planning for Live2D, depth-2D and VRM3D; unsupported joints/features are reported explicitly rather than claimed as executed.
+- Add shared-channel pose blending and monotonic transition progress, plus focused regression tests.
+- Document transactional prepare/commit/rollback, adapter lifecycle, rig capability manifests, cross-renderer E2E and release gates. This is the first contract foundation; React renderer lifecycle integration and real 2D/2.5D/3D round-trip validation remain pending.
+
+- Add a transactional adapter coordinator with prepare/apply/independent-verify/commit sequencing, monotonic revision checks, single-flight protection, destination cleanup and verified source rollback. Execution is committed only from a matching adapter receipt plus independent verification; no-op mode changes are not represented as executed.
+- Add coordinator regression coverage for commit, verification failure and rollback, stale revisions, and concurrent switch rejection. This remains a renderer-neutral coordinator; concrete Live2D/depth-2D/VRM adapter wiring and browser/device E2E are still pending.
+
+
 ## [NK1][Aspect04] Harden renderer world-matrix propagation (2026-10-30)
 
 - Explicitly mark each bound Three.js-compatible layer target as `matrixWorldNeedsUpdate` after writing its canonical local matrix, so an already-rendered object cannot retain a stale world transform.
