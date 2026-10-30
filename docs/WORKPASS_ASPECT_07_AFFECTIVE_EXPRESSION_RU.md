@@ -159,3 +159,9 @@ NK1 Original теперь получает тот же `FacialMicrochannels` sna
 Добавлены отдельные regression tests на стандартные EyeBlink, VRoid A/O, неизвестные каналы, синхронизацию речи/эмоции и некорректные числовые входы; тест включён в affective-expression CI.
 
 Ограничения: это best-effort mapping по именам morph targets, а не полноценный VRM ExpressionManager/plugin. Для моделей с VRM expression presets, нестандартными названиями или анимационными клипами, которые одновременно пишут те же morph influences, нужна отдельная интеграция и проверка конкретного файла.
+
+### Дополнение — кэширование и композиция morph targets с авторской анимацией
+
+Импортированные GLB/VRM morph targets теперь разрешаются один раз при загрузке модели и сохраняются как компактный список binding-ов; покадровый полный обход графа сцены удалён. Перед обновлением AnimationMixer значения распознанных каналов возвращаются к исходному baseline модели, затем authored clip обновляет свои треки, и только после этого affect/viseme слой применяет ограниченный semantic floor. Это позволяет не перетирать более сильную анимацию модели и одновременно не оставлять эмоциональные morph значения «залипшими» после смены состояния.
+
+Добавлен unit test композиции каналов с authored animation values. Это всё ещё generic GLTF morph bridge, а не VRM ExpressionManager: официальные VRM preset expressions, look-at constraints и VRM humanoid runtime не декодируются без отдельного VRM loader plugin. Неизвестные morph targets остаются нетронутыми.
