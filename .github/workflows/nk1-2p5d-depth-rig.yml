@@ -51,11 +51,11 @@ jobs:
       - name: Install Blender for a real headless GLB export smoke test
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y blender
+          sudo apt-get install --no-install-recommends -y blender python3-numpy
       - name: Generate deterministic 2.5D blockout scene
         run: blender --background --python tools/blender/create_nk1_depth_rig_demo.py
       - name: Export the generated Blender scene to GLB
-        run: blender --background nk1-depth-rig-demo.blend --python tools/blender/export_nk1_depth_rig.py -- --output build/nk1-depth-rig-demo.glb --collection NK1_RIG
+        run: PYTHONPATH=/usr/lib/python3/dist-packages blender --background nk1-depth-rig-demo.blend --python tools/blender/export_nk1_depth_rig.py -- --output build/nk1-depth-rig-demo.glb --collection NK1_RIG
       - name: Validate the actual Blender-exported GLB
         run: node app/scripts/depth-rig-glb-validator.mjs build/nk1-depth-rig-demo.glb
       - name: Validate depth-rig contracts, face channels, Three.js adapter and exported GLB
