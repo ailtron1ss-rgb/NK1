@@ -1,0 +1,39 @@
+name: NK1 2.5D depth-rig runtime
+on:
+  pull_request:
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/depthRig.ts"
+      - "app/src/components/avatar/depthRigThreeAdapter.ts"
+      - "app/src/components/avatar/depthRigFace.ts"
+      - "app/scripts/depth-rig.test.mjs"
+      - "app/scripts/depth-rig-face.test.mjs"
+      - "app/scripts/depth-rig-three-adapter.test.mjs"
+      - ".github/workflows/nk1-2p5d-depth-rig.yml"
+  push:
+    branches:
+      - "work/nk1-2p5d-depth-rig-2026-10-30"
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/depthRig.ts"
+      - "app/src/components/avatar/depthRigThreeAdapter.ts"
+      - "app/src/components/avatar/depthRigFace.ts"
+      - "app/scripts/depth-rig.test.mjs"
+      - "app/scripts/depth-rig-face.test.mjs"
+      - "app/scripts/depth-rig-three-adapter.test.mjs"
+      - ".github/workflows/nk1-2p5d-depth-rig.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  depth-rig-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Validate depth-rig contracts, face channels and Three.js adapter
+        working-directory: app
+        run: node --experimental-strip-types --test scripts/depth-rig.test.mjs scripts/depth-rig-face.test.mjs scripts/depth-rig-three-adapter.test.mjs
