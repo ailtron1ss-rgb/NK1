@@ -60,7 +60,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   }
   function actionStatus(promise,pending,channel){
     Promise.resolve(promise).then(ok=>{
-      settleIntentAction(pending,channel,ok===true?'started':ok===false?'unavailable':'unavailable');
+      settleIntentAction(pending,channel,ok==='not-requested'?'not-requested':ok===true?'started':'unavailable');
     }).catch(()=>settleIntentAction(pending,channel,'error'));
   }
   function applyEmbodiment(d,pending=null){
@@ -71,7 +71,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     lipFormTarget=bodySignal.speaking?clamp(bodySignal.mouthForm,-1,1):0;
     if(bodySignal.expression){
       if(pending)pending.expressionStatus='pending';
-      const result=applyExpression(bodySignal.expression);
+      const result=applyExpression(bodySignal.expression,pending?.stateVersion??null);
       if(pending)actionStatus(result,pending,'expression');
     }
     if(bodySignal.motionGroup){
@@ -137,14 +137,14 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     // parameter values, not expression/motion completion or a presented GPU frame.
     flushIntentParameterReadback(core);
   }
-  function applyExpression(expr){
+  function applyExpression(expr,revision=null){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
     if(!model||typeof model.expression!=='function')return Promise.resolve(false);
-    if(expressionName===lastAppliedExpression)return Promise.resolve(false);
+    if(expressionName===lastAppliedExpression)return Promise.resolve('not-requested');
     let result;
     try{result=model.expression(expressionName)}catch(error){return Promise.reject(error)}
     return Promise.resolve(result).then(ok=>{
-      if(ok===true&&lastIntentStateVersion>=0)lastAppliedExpression=expressionName;
+      if(ok===true&&(revision===null||revision===lastIntentStateVersion))lastAppliedExpression=expressionName;
       return ok;
     });
   }
@@ -212,8 +212,8 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       pendingIntentReadback={
         stateVersion:normalized.stateVersion,
         expression:normalized.expression,
-        expressionStatus:normalized.expression?'pending':'not-requested',
-        motionStatus:normalized.motionGroup?'pending':'not-requested',
+        expressionStatus:'not-requested',
+        motionStatus:'not-requested',
         readback:null,
         emitted:false,
       };
