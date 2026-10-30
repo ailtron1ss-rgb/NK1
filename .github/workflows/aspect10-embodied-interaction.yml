@@ -1,0 +1,26 @@
+name: NK1 Aspect 10 embodied interaction
+on:
+  pull_request:
+    branches: [workpass70-source, main]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/body/EmbodiedInteractionController.ts'
+      - 'runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs'
+      - '.github/workflows/aspect10-embodied-interaction.yml'
+  push:
+    branches: [aspect10-embodied-world-interaction-2026-10-30]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/body/EmbodiedInteractionController.ts'
+      - 'runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs'
+      - '.github/workflows/aspect10-embodied-interaction.yml'
+permissions:
+  contents: read
+jobs:
+  deterministic-interaction-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+      - name: Run grounded interaction safety contract
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs
