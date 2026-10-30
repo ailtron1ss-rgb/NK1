@@ -1,0 +1,54 @@
+name: NK1 Aspect 01 cognitive core integrity
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P70MemoryLifecycleGovernor.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
+      - "runtime/neuro-kurisu/tests/workpass617-unified-substrate-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/workpass618-canonical-memory-lifecycle-integrity.mjs"
+      - ".github/workflows/nk1-aspect01-cognitive-core-integrity.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/P70MemoryLifecycleGovernor.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts"
+      - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
+      - "runtime/neuro-kurisu/tests/workpass617-unified-substrate-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/workpass618-canonical-memory-lifecycle-integrity.mjs"
+      - ".github/workflows/nk1-aspect01-cognitive-core-integrity.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-unified-cognitive-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Unified cognitive substrate restore and tick integrity
+        run: npm --prefix runtime/neuro-kurisu run test:aspect01:unified-substrate-integrity
+      - name: Canonical memory lifecycle restore and transaction integrity
+        run: npm --prefix runtime/neuro-kurisu run test:aspect01:canonical-memory-lifecycle-integrity
+      - name: Unified cognitive cycle and eleven-stage lineage
+        run: npm --prefix runtime/neuro-kurisu run test:aspect01:unified-cycle-integrity
