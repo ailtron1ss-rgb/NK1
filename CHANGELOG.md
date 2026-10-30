@@ -1,3 +1,9 @@
+## [NK1][Aspect 08] Verify wardrobe asset bytes before renderer activation (2026-10-30)
+
+- Add browser/Node Web Crypto SHA-256 verification for actual wardrobe asset bytes, including exact byte-length checks and explicit mismatch/unavailable-crypto outcomes.
+- Add regressions for a known SHA-256 vector, tampered hash, incorrect declared size and unavailable crypto provider.
+- Keep licensing/provenance review separate: a matching digest proves byte identity, not permission to redistribute or use an asset.
+
 ## [NK1][Aspect 08] Add licensed wardrobe pack gate and renderer-acknowledged switching (2026-10-30)
 
 - Add a versioned wardrobe pack manifest contract requiring source, license, attribution, target body/rig identity, unique asset IDs/paths, SHA-256 declarations, supported MIME types and bounded asset sizes.
