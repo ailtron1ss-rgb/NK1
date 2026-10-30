@@ -1,0 +1,64 @@
+name: NK1 Aspect 10 embodied interaction
+on:
+  pull_request:
+    branches: [workpass70-source, main]
+    paths:
+      - '.nvmrc'
+      - 'runtime/neuro-kurisu/src/organism/body/EmbodiedInteractionController.ts'
+      - 'runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs'
+      - 'runtime/neuro-kurisu/tests/aspect10-grounded-bridge.mjs'
+      - 'runtime/neuro-kurisu/src/organism/body/GroundedInteractionBridge.ts'
+      - 'app/src/components/avatar/planarArmIK.ts'
+      - 'app/scripts/planar-arm-ik.test.mjs'
+      - 'app/src/components/avatar/vrmHumanoidRigAdapter.ts'
+      - 'app/scripts/vrm-humanoid-rig-adapter.test.mjs'
+      - 'app/src/components/avatar/vrmRigCalibrationProfile.ts'
+      - 'app/scripts/vrm-rig-calibration-profile.test.mjs'
+      - 'app/src/components/avatar/vrmRigCalibrationSession.ts'
+      - 'app/scripts/vrm-rig-calibration-session.test.mjs'
+      - 'app/src/components/Avatar3DStage.tsx'
+      - 'app/src/components/avatar/avatarModelFingerprint.ts'
+      - 'app/scripts/avatar-model-fingerprint.test.mjs'
+      - 'app/scripts/avatar-3d-stage.test.mjs'
+      - '.github/workflows/aspect10-embodied-interaction.yml'
+  push:
+    branches: [aspect10-embodied-world-interaction-2026-10-30]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/body/EmbodiedInteractionController.ts'
+      - 'runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs'
+      - 'runtime/neuro-kurisu/tests/aspect10-grounded-bridge.mjs'
+      - 'runtime/neuro-kurisu/src/organism/body/GroundedInteractionBridge.ts'
+      - 'app/src/components/avatar/planarArmIK.ts'
+      - 'app/scripts/planar-arm-ik.test.mjs'
+      - 'app/src/components/avatar/vrmHumanoidRigAdapter.ts'
+      - 'app/scripts/vrm-humanoid-rig-adapter.test.mjs'
+      - 'app/src/components/avatar/vrmRigCalibrationProfile.ts'
+      - 'app/scripts/vrm-rig-calibration-profile.test.mjs'
+      - 'app/src/components/avatar/vrmRigCalibrationSession.ts'
+      - 'app/scripts/vrm-rig-calibration-session.test.mjs'
+      - 'app/src/components/Avatar3DStage.tsx'
+      - 'app/scripts/avatar-3d-stage.test.mjs'
+      - '.github/workflows/aspect10-embodied-interaction.yml'
+permissions:
+  contents: read
+jobs:
+  deterministic-interaction-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Run grounded interaction safety contract
+        run: npm --prefix runtime/neuro-kurisu run test:aspect10:interaction
+      - name: Run renderer-independent humanoid arm IK tests
+        run: npm --prefix app run test:planar-arm-ik
+      - name: Run calibrated VRM humanoid rig adapter tests
+        run: npm --prefix app run test:vrm-humanoid-rig
+      - name: Run model-bound VRM calibration profile tests
+        run: npm --prefix app run test:vrm-rig-calibration-profile
+      - name: Run provenance-aware VRM calibration session tests
+        run: npm --prefix app run test:vrm-rig-calibration-session
+      - name: Run exact avatar model fingerprint tests
+        run: npm --prefix app run test:avatar-model-fingerprint
