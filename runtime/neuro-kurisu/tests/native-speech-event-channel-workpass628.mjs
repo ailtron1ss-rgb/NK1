@@ -63,3 +63,13 @@ test('reentrant observers preserve a single delivery order for every subscriber'
   assert.deepEqual(first, [1, 2]);
   assert.deepEqual(second, [1, 2]);
 });
+
+
+test('native event timestamps never regress within one operation when the clock sample moves backwards', () => {
+  const samples = [100, 95, 120];
+  const channel = createNativeSpeechEventChannel(() => samples.shift());
+  const first = channel.publish('speech-clock', { phase: 'command-requested' });
+  const second = channel.publish('speech-clock', { phase: 'process-spawned' });
+  const third = channel.publish('speech-clock', { phase: 'process-exited', exitCode: 0 });
+  assert.deepEqual([first.monotonicTimeMs, second.monotonicTimeMs, third.monotonicTimeMs], [100, 100, 120]);
+});
