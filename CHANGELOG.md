@@ -1,3 +1,8 @@
+## [NK1][аспект9] Use runtime-compatible monotonic clock for native speech events (2026-10-30)
+
+- The first hosted runtime typecheck identified that the minimal runtime declaration set does not include `node:perf_hooks`. Use the Node global `performance.now()` instead; it remains monotonic and is available in the pinned Node runtime without introducing a new shim/dependency.
+- The original native-event typecheck failure is corrected in source. The new HEAD must pass the rerun before this is considered validated.
+
 ## [NK1][аспект9] Add native Termux speech provider event channel (2026-10-30)
 
 - Add a process-local, identity-bound event channel for Termux TTS command request, process spawn/exit/error and interrupt outcomes. Events carry per-operation sequence numbers and monotonic timestamps; observer failures are isolated from speech execution.
