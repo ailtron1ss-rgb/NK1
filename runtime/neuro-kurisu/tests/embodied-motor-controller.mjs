@@ -99,3 +99,60 @@ test("two-bone IK solves reachable targets and safely clamps unreachable targets
   assert.ok(unreachable.reachError > 2.9);
   assert.throws(() => solvePlanarTwoBoneIK({ upperLength: 0, lowerLength: 1, targetX: 0, targetY: 1 }), /invalid/);
 });
+
+
+import { MotorGoalArbiter } from "../src/organism/system/MotorGoalArbiter.ts";
+
+test("motor subgoal arbitration reuses basal-ganglia and cerebellar controllers", () => {
+  const motor = new EmbodiedMotorController();
+  motor.configureSkeleton(skeleton());
+  const arbiter = new MotorGoalArbiter(motor);
+  const candidates = [
+    { id: "candidate.explain", goal: goal(), corticalValue01: .92, predictedUtility01: .9, confidence01: .92, effort01: .2 },
+    { id: "candidate.rest", goal: goal({ id: "goal.rest.02", action: "rest", priority: 10, targetJointAnglesRad: { spine: 0 } }), corticalValue01: .35, predictedUtility01: .3, confidence01: .8, effort01: .1 },
+  ];
+  const result = arbiter.propose(candidates, {
+    tick: 1, nowMs: 10, dopamine01: .85, predictionError01: .2, uncertainty01: .12,
+    novelty01: .25, energy01: .9, thermal01: .1, cognitiveCapacity01: .9,
+    conflict01: .05, goalPressure01: .9,
+  });
+  assert.equal(result.accepted, true, result.reason);
+  assert.equal(result.selectedCandidateId, "candidate.explain");
+  assert.equal(result.selectedAction, "explain");
+  assert.equal(result.ranked.length, 2);
+  assert.equal(arbiter.diagnostics().basalGanglia.selections, 1);
+  assert.equal(arbiter.diagnostics().cerebellar.predictions, 2);
+});
+
+test("motor learning only credits unique independently verified outcomes", () => {
+  const motor = new EmbodiedMotorController();
+  motor.configureSkeleton(skeleton());
+  const arbiter = new MotorGoalArbiter(motor);
+  arbiter.propose([{ id: "candidate.explain", goal: goal(), corticalValue01: .9, predictedUtility01: .9, confidence01: .9, effort01: .2 }], {
+    tick: 1, nowMs: 10, dopamine01: .8, predictionError01: .2, uncertainty01: .1,
+    novelty01: .2, energy01: .9, thermal01: .1, cognitiveCapacity01: .9,
+    conflict01: .05, goalPressure01: .9,
+  });
+  const evidence = { evidenceId: "sensor.motor.outcome.001", action: "explain", predictedUtility01: .7, actualUtility01: .9, surprise01: .2, dopamine01: .8, tick: 2, verified: true, independent: true };
+  assert.deepEqual(arbiter.recordVerifiedOutcome({ ...evidence, verified: false }), { accepted: false, reason: "independent-verification-required" });
+  assert.deepEqual(arbiter.recordVerifiedOutcome(evidence), { accepted: true, reason: "independently-verified-motor-outcome-credited" });
+  assert.deepEqual(arbiter.recordVerifiedOutcome(evidence), { accepted: false, reason: "duplicate-evidence-credit" });
+  const diagnostics = arbiter.diagnostics();
+  assert.equal(diagnostics.creditedEvidenceCount, 1);
+  assert.equal(diagnostics.cerebellar.outcomeUpdates, 1);
+  assert.equal(diagnostics.basalGanglia.outcomeUpdates, 1);
+});
+
+test("arbiter snapshot preserves evidence deduplication across restart", () => {
+  const motor = new EmbodiedMotorController();
+  motor.configureSkeleton(skeleton());
+  const arbiter = new MotorGoalArbiter(motor);
+  const evidence = { evidenceId: "sensor.motor.outcome.002", action: "explain", predictedUtility01: .6, actualUtility01: .8, surprise01: .1, dopamine01: .7, tick: 3, verified: true, independent: true };
+  assert.equal(arbiter.recordVerifiedOutcome(evidence).accepted, true);
+  const restoredMotor = new EmbodiedMotorController();
+  restoredMotor.configureSkeleton(skeleton());
+  const restored = new MotorGoalArbiter(restoredMotor);
+  restored.restore(arbiter.snapshot());
+  assert.deepEqual(restored.recordVerifiedOutcome(evidence), { accepted: false, reason: "duplicate-evidence-credit" });
+  assert.equal(restored.diagnostics().cerebellar.outcomeUpdates, 1);
+});
