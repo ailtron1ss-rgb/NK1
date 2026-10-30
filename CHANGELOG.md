@@ -1,3 +1,11 @@
+## [NK1][WorkPass624] Native VRM facial expressions mapped to organism affect and speech (2026-10-30)
+
+- Compile native VRM 1.0 `VRMC_vrm.expressions` preset/custom maps and legacy VRM 0.x `blendShapeMaster.blendShapeGroups` rather than guessing every morph target by its display name.
+- Resolve VRM 1.0 node bindings and VRM 0.x mesh bindings through Three.js GLTFLoader parser associations; expand multi-primitive groups and deduplicate morph targets once at model-load time.
+- Drive authored `happy/angry/sad/relaxed/surprised`, `aa/ih/ou/ee/oh`, blink and look-at morphs from the existing organism emotion, valence/arousal, viseme, awake and gaze signals.
+- Normalize legacy 0–100 BlendShape weights, apply VRM isBinary and procedural overrideMouth/overrideBlink/overrideLookAt semantics, and clamp accumulated morph weights without touching unrelated morph slots.
+- Add native VRM expression tests and a dedicated CI step. MaterialColorBind, TextureTransformBind, MToon, spring bones, constraints, full VRM LookAt, real-asset visual E2E and phone soak remain outside this pass.
+
 ## [NK1][WorkPass623] Harden local 3D model import and affect-aware browser voice (2026-10-29)
 
 - Preflight local VRM/GLB files before Three.js parsing: validate the GLB 2.0 header/chunks/JSON, block network-backed buffer/image URLs, enforce scene/accessor/animation limits, and reject broken bufferView ranges and cyclic/deep/multiply-parented node graphs. Inspect embedded PNG/JPEG headers before GPU decode; cap encoded image size, per-texture dimensions/pixels, and total decoded texture pixels to reduce texture-memory/decompression risks.
