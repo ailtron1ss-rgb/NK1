@@ -604,10 +604,10 @@ export class ActionGateway {
         providerReconciliation:durableReceiptRequired,
       };
       const present={
-        approval:permissionClass===null || true,
+        approval:permissionClass===null || Boolean(this.executionLedgerPersister),
         inputContract:Boolean(tool.inputContract),
         outputContract:Boolean(tool.outputContract),
-        durableReceipt:!durableReceiptRequired || durableReceiptRequired,
+        durableReceipt:Boolean(this.executionLedgerPersister),
         independentVerifier:Boolean(tool.verify),
         providerReconciliation:Boolean(tool.reconcile),
       };
