@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { deriveAffectiveExpression, smoothAffectiveExpression } from "./avatar/affectiveExpression";
+import { deriveFacialMicrochannels } from "./avatar/facialMicrochannels";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -388,6 +389,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       voiceEmphasis: activeUtterance ? Math.max(affective.voiceEmphasis, Math.min(0.85, snap.emotion.arousal + 0.15)) : 0,
     };
     win.postMessage(intent, window.location.origin);
+    // Separate additive face channel keeps the strict EmbodimentIntentV1 envelope stable.
+    win.postMessage({ type: "kurisu_face_microchannels", stateVersion: intent.stateVersion, ...deriveFacialMicrochannels({ emotion: snap.emotion.label, valence: snap.emotion.valence, arousal: snap.emotion.arousal, dominance: snap.emotion.dominance, expressionIntensity: affective.expressionIntensity }) }, window.location.origin);
   }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
   return (
