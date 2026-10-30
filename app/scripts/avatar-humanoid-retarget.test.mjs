@@ -78,5 +78,5 @@ test("invalid dimensions and missing source pose fail closed without NaN output"
   const profile = buildHumanoidRetargetProfile(rig({ height: 0 }), rig({ height: Number.NaN }));
   const output = retargetLocalRotations(profile, new Map([["hips", [Number.NaN, 0, 0, 1]]]));
   for (const q of output.values()) assert.ok(q.every(Number.isFinite));
-  assert.deepEqual(retargetRootTranslation([Number.NaN, 1, 2], profile), [0, 1, 2]);
+  assert.deepEqual(retargetRootTranslation([Number.NaN, 1, 2], profile, 10), [0, 1, 2]);
 });
