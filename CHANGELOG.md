@@ -1,3 +1,11 @@
+## [NK1][Aspect 01 — Live2D] Continuous expressive face and torso control (2026-10-30)
+
+- Added bounded brow, eye-smile and cheek channels driven by the current emotional expression and intensity, using parameters confirmed in the canonical Kurisu CDI3 rig.
+- Added subtle continuous torso follow-through and breathing through existing body-angle and breath parameters; authored motion and physics remain the primary animation layer.
+- Kept the app-served and runtime viewer implementations synchronized and added regression assertions for the new channels.
+- Added the Aspect 01 workpass document with baseline, constraints, validation gates and remaining work.
+- Browser/device visual acceptance and exact-HEAD CI remain pending; the latest Release ZIP was not modified.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
