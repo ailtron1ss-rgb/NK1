@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { orderDepthRigNodes, resolveDepthRigPose, validateDepthRig } from "../src/components/avatar/depthRig.ts";
+import { orderDepthRigNodes, resolveDepthRigPose, resolveDepthRigWorldPose, validateDepthRig } from "../src/components/avatar/depthRig.ts";
 
 const transform = { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1 };
 const node = (id, role, parentId, depthOrder) => ({
@@ -84,4 +84,47 @@ test("rejects malformed node objects and missing rest transforms without throwin
   const diagnostics = validateDepthRig(invalid);
   assert.ok(diagnostics.some((entry) => entry.code === "invalid-id"));
   assert.ok(diagnostics.some((entry) => entry.code === "invalid-number"));
+});
+
+
+test("composes child transforms through rotated and scaled parent hierarchy", () => {
+  const composedRig = {
+    ...rig,
+    nodes: [
+      { ...node("root", "root", null, 0), rest: { ...transform, x: 0.1, y: 0.2, rotation: 90, scaleX: 2, scaleY: 2 } },
+      { ...node("torso", "torso", "root", 1), rest: { ...transform, x: 0.5, y: 0, rotation: 0 } },
+      { ...node("head", "head", "torso", 2), rest: { ...transform, x: 0, y: 0.25, rotation: 10 } },
+    ],
+  };
+  const world = resolveDepthRigWorldPose(composedRig).transforms;
+  assert.ok(Math.abs(world.torso.tx - 0.1) < 1e-9);
+  assert.ok(Math.abs(world.torso.ty - 1.2) < 1e-9);
+  assert.ok(Math.abs(world.head.tx + 0.4) < 1e-9);
+  assert.ok(Math.abs(world.head.ty - 1.2) < 1e-9);
+  assert.equal(world.head.rotation, 100);
+  assert.equal(world.head.z, 0);
+});
+
+test("applies additive pose deltas over rest transforms and accumulates depth", () => {
+  const pose = resolveDepthRigPose(rig, {
+    headYaw: 0, headPitch: 0, headRoll: 1, torsoYaw: 0.5, torsoLean: 0.2,
+    breath: 0, gesture: "none", gestureIntensity: 0,
+  });
+  const world = resolveDepthRigWorldPose(rig, pose);
+  assert.equal(world.transforms.head.rotation, 7);
+  assert.equal(world.transforms.torso.rotation, 2);
+  assert.equal(world.transforms["hair-front"].rotation, -1.8);
+});
+
+test("rejects a pose produced for a different rig and never emits non-finite matrices", () => {
+  assert.throws(() => resolveDepthRigWorldPose(rig, { rigId: "other", deltas: {} }), /another rig/);
+  const invalid = {
+    ...rig,
+    nodes: rig.nodes.map((entry) => entry.id === "head"
+      ? { ...entry, rest: { ...transform, scaleX: Number.MAX_VALUE, scaleY: Number.MAX_VALUE } }
+      : entry),
+  };
+  assert.throws(() => resolveDepthRigWorldPose(invalid, {
+    rigId: rig.id, deltas: { head: { scaleX: Number.MAX_VALUE, scaleY: Number.MAX_VALUE } },
+  }), /Non-finite world transform/);
 });
