@@ -134,5 +134,52 @@ assert.throws(() => mutator.registerTool({
   execute: async () => ({ ok: true }),
 }), /array-items-required/);
 
+// Legacy tools without a per-tool schema still cross the shared inert-JSON envelope.
+let legacyCalls = 0;
+const legacyGateway = new ActionGateway({ live: true });
+legacyGateway.setExecutionLedgerPersister(async () => {});
+legacyGateway.registerTool({
+  id: "fixture.legacy.safe",
+  capability: "catalog.read",
+  destructive: false,
+  execute: async () => { legacyCalls += 1; return { ok: true }; },
+});
+let getterCalls = 0;
+const accessorInput = {};
+Object.defineProperty(accessorInput, "query", { enumerable: true, get() { getterCalls += 1; return "side-effect"; } });
+const accessorResult = await legacyGateway.executeTool("fixture.legacy.safe", accessorInput);
+assert.equal(accessorResult.outcomeClass, "gate-check-failed");
+assert.equal(accessorResult.result.error, "tool-input-invalid");
+assert.equal(getterCalls, 0, "input validation must inspect descriptors without invoking getters");
+assert.equal(legacyCalls, 0, "unsafe legacy inputs must be rejected before executor entry");
+
+let proxyTraps = 0;
+const proxyInput = new Proxy({}, { getPrototypeOf() { proxyTraps += 1; throw new Error("proxy-trap"); } });
+const proxyResult = await legacyGateway.executeTool("fixture.legacy.safe", proxyInput);
+assert.equal(proxyResult.result.error, "tool-input-invalid");
+assert.equal(proxyTraps, 0, "proxy detection must happen before reflective traps");
+
+const cyclicInput = {};
+cyclicInput.self = cyclicInput;
+assert.equal((await legacyGateway.executeTool("fixture.legacy.safe", cyclicInput)).result.error, "tool-input-invalid");
+assert.equal((await legacyGateway.executeTool("fixture.legacy.safe", { payload: "x".repeat(70_000) })).result.error, "tool-input-invalid");
+assert.equal(legacyCalls, 0);
+
+// Approval previews and fingerprints are another trust boundary: they must not execute getters.
+let approvalGetterCalls = 0;
+const approvalInput = {};
+Object.defineProperty(approvalInput, "target", { enumerable: true, get() { approvalGetterCalls += 1; return "recipient"; } });
+await assert.rejects(
+  legacyGateway.requestToolApproval("http.integration.outbound", approvalInput, "unsafe-preview", {}, "direct"),
+  /approval-input-invalid/,
+);
+assert.equal(approvalGetterCalls, 0, "approval preview must reject accessors before reading values");
+
+// Reconciliation is also a public ingress and must not hash or query providers with unsafe input.
+const reconcileResult = await legacyGateway.reconcileToolExecution("fixture.legacy.safe", proxyInput, "unsafe-reconcile", { idempotencyKey: "reconcile-key" });
+assert.equal(reconcileResult.result.error, "reconciliation-input-invalid");
+assert.equal(proxyTraps, 0);
+
 console.log("TOOL_INPUT_CONTRACTS_WORKPASS624_PASS");
+console.log("TOOL_INPUT_BOUNDARY_HARDENING_WORKPASS632_PASS");
 console.log(JSON.stringify({ rejectedInputCases: bad.length + 6, validCalls: calls + mutations, outputExecutions, ledgerWrites, outputLedgerWrites }, null, 2));
