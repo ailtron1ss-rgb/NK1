@@ -62,7 +62,7 @@ test("separate GLTF motion source is baked onto the active rig without reprocess
  assert.match(stage,/loadMotionSource=useCallback/);
  assert.match(stage,/captureHumanoidRigSnapshot\(root,bones,rt\.scene\)/);
  assert.match(stage,/rebuildModelMotionClips\(rt\)/);
- assert.match(stage,/retargetThreeHumanoidClip\(source\.root,source\.bones,source\.snapshot,rt\.rigRoot,rt\.bones,rt\.rigSnapshot,clip/);
+ assert.match(stage,/retargetThreeHumanoidClip\(\s*source\.root,source\.bones,source\.snapshot,\s*rt\.rigRoot,rt\.bones,rt\.rigSnapshot,clip/);
  const vrmaStart=stage.indexOf("const loadVrma=useCallback");
  const vrmaEnd=stage.indexOf("useEffect(()=>{",vrmaStart);
  assert.ok(vrmaStart>=0&&vrmaEnd>vrmaStart);
