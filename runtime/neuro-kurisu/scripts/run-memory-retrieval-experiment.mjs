@@ -16,6 +16,7 @@ function usage() {
     '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>]',
     '',
     'The label file is JSONL; optional explicit language labels are "en", "ru", or "other".',
+    'Optional task categories: single-hop, multi-hop, multi-session, temporal, knowledge-update, contradiction, preference, procedural, open-domain, abstention, static-state, dynamic-state, workflow-knowledge, environment-gotcha, premise-awareness, other.',
     'A tagged benchmark requires all rows tagged and both en and ru for promotion; per-language holdout gates run separately.',
     'For multi-session tasks, provide an anonymized conversationId on every row; train/holdout must be split by conversation.',
     'Bootstrap confidence intervals resample whole conversationId clusters (or individual query IDs when ungrouped).',
