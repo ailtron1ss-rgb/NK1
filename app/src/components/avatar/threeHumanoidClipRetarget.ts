@@ -5,6 +5,7 @@ import {
   retargetRootTranslation,
   type HumanoidRole,
   type HumanoidRetargetProfile,
+  type HumanoidRigProfileInput,
 } from "./humanoidRetarget";
 import type { HumanoidBoneNode } from "./threeHumanoidRigSnapshot";
 
@@ -33,16 +34,10 @@ export interface ThreeHumanoidRetargetResult {
 export function retargetThreeHumanoidClip(
   sourceRoot: THREE.Object3D,
   sourceBones: readonly HumanoidBoneNode[],
-  sourceRest: ReturnType<typeof buildHumanoidRetargetProfile> extends never ? never : {
-    roleToNode: ReadonlyMap<HumanoidRole, number>;
-    restLocalRotation: ReadonlyMap<HumanoidRole, readonly [number, number, number, number]>;
-    restWorldRotation?: ReadonlyMap<HumanoidRole, readonly [number, number, number, number]>;
-    boneLength?: ReadonlyMap<HumanoidRole, number>;
-    height: number;
-  },
+  sourceRest: HumanoidRigProfileInput,
   targetRoot: THREE.Object3D,
   targetBones: readonly HumanoidBoneNode[],
-  targetRest: typeof sourceRest,
+  targetRest: HumanoidRigProfileInput,
   sourceClip: THREE.AnimationClip,
   options: ThreeHumanoidRetargetOptions = {},
 ): ThreeHumanoidRetargetResult {
