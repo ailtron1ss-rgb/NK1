@@ -47,8 +47,8 @@ jobs:
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Unified cognitive substrate restore and tick integrity
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass617-unified-substrate-restore-integrity.mjs
+        run: npm --prefix runtime/neuro-kurisu run test:aspect01:unified-substrate-integrity
       - name: Canonical memory lifecycle restore and transaction integrity
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass618-canonical-memory-lifecycle-integrity.mjs
+        run: npm --prefix runtime/neuro-kurisu run test:aspect01:canonical-memory-lifecycle-integrity
       - name: Unified cognitive cycle and eleven-stage lineage
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs
+        run: npm --prefix runtime/neuro-kurisu run test:aspect01:unified-cycle-integrity
