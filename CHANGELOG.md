@@ -1,3 +1,10 @@
+## [NK1][Affect] Fix conditional animation-speed expression (2026-10-30)
+
+- Исправлен тернарный выбор базовой скорости animation clip с явными ветвями awake/asleep.
+- Устранена ошибка TypeScript TS1005 в Avatar3DStage.tsx.
+- Affective-expression validation и NeuroCore core regression прошли на исправленном HEAD; WorkPass110 metrics проверяется отдельно.
+
+
 ## [NK1][аспект14] Remove emotion-to-fixed-pose overrides in 3D arm posture (2026-10-30)
 
 - Add deriveAffectiveArmPosture, a pure renderer-neutral modulator that accepts the motor planner's existing left/right arm targets and continuously adjusts openness, tension, gesture amplitude, stillness and dominance.
