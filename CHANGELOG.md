@@ -6,6 +6,14 @@
 - Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
 
 
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -2802,29 +2810,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
-
-## [Unreleased] — 2026-10-30
-
-### Added
-- Added `docs/NK1_EXECUTION_PLAN_100_PERCENT_RU_2026-10-30.md`: refreshed source/release baseline, branch divergence and exact CI blockers, aspect-by-aspect readiness estimates, and staged completion criteria including selectable 2D/2.5D/3D embodiment.
-- Recorded the canonical delivery distinction: `workpass70-source` is the working source tree, `main` is the release workflow/report branch, and the latest verified Release ZIP remains the 2026-10-19 WorkPass70 Hotfix 1 asset.
-
-### Evidence boundary
-- The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
-
-## [NK1][Aspect 8] Governed tool execution and safety boundary (2026-10-30)
-
-- Add a dependency-free, bounded JSON-schema-inspired input contract subset; reject unsupported schema keywords instead of silently accepting them.
-- Validate tool arguments at the canonical ActionGateway boundary before approval consumption, durable receipt admission or executor entry; clone and deeply freeze registered contracts.
-- Add output contracts; invalid executor output is recorded as executed-but-unverified, and keyed side effects remain replay-safe.
-- Expose stable input/output schema descriptors in the tool catalog; migrate Android listen, device telemetry and simulator world observation to explicit contracts.
-- Bound schema regex complexity and reject unsupported repeated constructs; align Proxy detection with the repository Node type surface.
-- Apply a shared inert JSON envelope to legacy tools without explicit schemas. Reject accessors, Proxies, cycles, exotic prototypes, non-JSON values, excessive nesting/property counts and payloads above 64 KiB before execution, approval preview or receipt reconciliation.
-- Add a read-only risk-weighted governance report for registered tools, exposing contract, approval, durable receipt, verifier and reconciliation coverage gaps without silently changing legacy tool permissions.
-- Add focused regressions and wire the tool-contract suite into core CI. Exact-head CI and runtime typecheck remain pending until GitHub reports checks for this branch head.
-
-
-## [NK1][Aspect 08] Correct alphanumeric bounded-pattern fixture (2026-10-30)
-
-- Preserve safe bounded quantifier support and update the short-code fixture to match its intended `nk1` value: the accepted character class now explicitly includes digits.
-- Keep negative coverage for nested and multiple repetitions; do not broaden the validator's repetition policy.
