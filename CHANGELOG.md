@@ -1,3 +1,9 @@
+## [NK1][WorkPass626] Adopt output contracts for live runtime tools (2026-10-30)
+
+- Declare output schemas for Android listen, device telemetry and simulator world observation in the existing ActionGateway registrations.
+- Tighten device freshness so a result cannot be marked verified without a finite positive sample timestamp; omit unavailable telemetry metrics instead of emitting undefined values.
+- Keep provider outcome verification separate from schema validation: a schema-valid device/tool result is not, by itself, proof of an external postcondition.
+
 ## [NK1][WorkPass625] Validate tool outputs and stabilize catalog descriptors (2026-10-30)
 
 - Add optional output contracts and validate returned data after executor entry; invalid outputs become executed-unverified and keyed operations retain replay-safe receipts instead of being falsely labelled as not executed.
