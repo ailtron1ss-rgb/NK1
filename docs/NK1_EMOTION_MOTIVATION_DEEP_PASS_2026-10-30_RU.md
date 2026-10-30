@@ -133,12 +133,11 @@
 7. 24–72-часовой soak с проверкой памяти, повторных receipts, гомеостатического дрейфа, очередей инициативы и ограничений ресурсов.
 8. После merge и чистой интеграции сформировать новый Release ZIP из проверенного SHA. Здесь `main` и Release ZIP не обновлялись.
 
-## 7. Источники для дальнейшей проверки
+## 7. Исследовательские источники и что именно адаптировано
 
-- Computational Models of Emotion — обзор appraisal/dimensional/decision and RL approaches (2026).
-- Systematic guidelines for extending appraisal processes in computational models of emotion (2026).
-- Closed-loop computational emotion-regulation framework: motivation, execution and feedback (2026).
-- Linking homeostasis to reinforcement learning: internal state control of motivated behavior (2025/2026).
-- Computational interoception and homeostatic RL / active-inference review.
+1. **Castellanos et al. (2026), “Systematic guidelines for extending the appraisal process in computational models of emotion”.** *Cognitive Systems Research*. DOI: [10.1016/j.cogsys.2026.101442](https://doi.org/10.1016/j.cogsys.2026.101442). Работа выделяет модификаторы appraisal — личностные характеристики, настроение, когнитивное состояние, социальные/культурные нормы — и предлагает оформлять каждый как отдельный компонент с явным контрактом, входами/выходами и системной проверкой. Именно поэтому в NK1 введены независимые группы `personality/mood/cognitive/social`, отдельные confidence и сохранение использованного профиля в эпизоде.
+2. **Chen et al. (2026), “Toward a computational analogy of emotion regulation: A closed-loop framework integrating motivation, execution, and feedback”.** *Acta Psychologica*, 267, 107082. DOI: [10.1016/j.actpsy.2026.107082](https://doi.org/10.1016/j.actpsy.2026.107082). Авторы рассматривают регуляцию эмоций как рекурсивный цикл мотивации, выполнения, мониторинга и корректировки. В NK1 это используется как инженерная аналогия для цепочки appraisal → drive → decision → outcome receipt → calibrated update.
+3. **Yoshida, Sprekeler & Gutkin (2025), “Linking homeostasis to reinforcement learning: internal state control of motivated behavior”.** *Current Opinion in Behavioral Sciences*, 66, 101611. DOI: [10.1016/j.cobeha.2025.101611](https://doi.org/10.1016/j.cobeha.2025.101611). Homeostatically Regulated Reinforcement Learning трактует внутренний дефицит как основу мотивации и ценности регуляции. В NK1 P66 pressure передаётся в drive-модель как сигнал потребности, но не используется как подтверждение внешнего успеха или reward-квитанция.
+4. **“Computational Models of Emotion: A Brief Survey” (22 September 2026).** *The Oxford Handbook of Affectivism*. [Oxford Academic](https://academic.oup.com/edited-volume/63397/chapter-abstract/576083017). Обзор охватывает appraisal- и dimensional-подходы, decision-theoretic модели и reinforcement learning, подчёркивая проблему переносимости моделей и качества оценки. Это обосновывает необходимость ablation, независимых seeds и внешних behavioural gates, а не только наличия эмоциональных переменных.
 
-Эти работы обосновывают дизайн гипотез и интерфейсов, но не доказывают, что NK1 уже воспроизводит эмоциональное или субъективное переживание.
+Эти публикации обосновывают проектные гипотезы и выбор интерфейсов. Они не доказывают, что NK1 воспроизводит субъективное переживание или биологические эмоции; это инженерная модель наблюдаемых регуляторных и поведенческих функций.
