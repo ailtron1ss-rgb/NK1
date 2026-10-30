@@ -55,7 +55,8 @@ function bindPoseMatches(source: unknown, target: unknown): boolean {
   }
   const sourceBone = (source as { bone?: unknown })?.bone;
   const targetBone = (target as { bone?: unknown })?.bone;
-  return typeof sourceBone === "string" && sourceBone === targetBone;
+  return typeof sourceBone === "string" && typeof targetBone === "string" &&
+    normalizeBoneName(sourceBone) === normalizeBoneName(targetBone);
 }
 
 function visit(root: ObjectNode, callback: (node: ObjectNode) => void): void {
