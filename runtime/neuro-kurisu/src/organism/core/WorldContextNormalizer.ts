@@ -66,17 +66,22 @@ export function normalizeWorldContext(
       const confidence = isFiniteNumeric(candidate?.confidence01)
         ? clamp01(candidate?.confidence01, 0)
         : undefined;
+      // A producer may explicitly state that a placeholder value is unknown.
+      // Do not turn its numeric storage sentinel (for example 0) into a fact.
+      const valueKnown = candidate?.valueKnown === false ? false : isFiniteNumeric(candidate?.value);
+      const visibilityKnown = candidate?.visibilityKnown === false ? false : typeof candidate?.visible === 'boolean';
+      const collectionKnown = candidate?.collectionKnown === false ? false : typeof candidate?.collected === 'boolean';
 
       return {
         id,
         label,
         location: objectLocation,
-        value: clamp01(candidate?.value, 0),
-        valueKnown: isFiniteNumeric(candidate?.value),
+        value: valueKnown ? clamp01(candidate?.value, 0) : 0,
+        valueKnown,
         visible: candidate?.visible === true,
-        visibilityKnown: typeof candidate?.visible === 'boolean',
+        visibilityKnown,
         collected: candidate?.collected === true,
-        collectionKnown: typeof candidate?.collected === 'boolean',
+        collectionKnown,
         ...(confidence !== undefined ? { confidence01: confidence } : {}),
         ...(evidenceKind ? { evidenceKind } : {}),
         ...(sourceId ? { sourceId } : {}),
