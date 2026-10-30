@@ -90,7 +90,7 @@ test("reports repository LICENSE/NOTICE files missing from the human review inve
   const report = await buildReadinessReport(root);
   const coverage = report.checks.find(x => x.id === "release:license-inventory-coverage");
   assert.equal(coverage.pass, false);
-  assert.match(coverage.detail, /research\\/vendor\\/Example\\/LICENSE/);
+  assert.ok(coverage.detail.includes("research/vendor/Example/LICENSE"));
 });
 
 test("accepts complete repository LICENSE/NOTICE path coverage without inferring approval", async t => {
