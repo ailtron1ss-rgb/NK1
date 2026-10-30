@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { deriveFacialMicrochannels } from "../src/components/avatar/facialMicrochannels.ts";
+import { deriveFacialMicroMotion } from "../src/components/avatar/facialMicroMotion.ts";
 const base={valence:.5,arousal:.5,dominance:.5,expressionIntensity:.7};
 test("facial microchannels are finite, deterministic and bounded",()=>{
  for(const emotion of ["curiosity","calm","joy","anxiety","frustration","sadness","anger","protective"]){
@@ -53,4 +54,22 @@ test("temporal micro-motor cadence is bounded and responds to arousal/context",(
  assert.ok(alert.blinkIntervalMs<calm.blinkIntervalMs);
  assert.ok(alert.saccadeIntervalMs<calm.saccadeIntervalMs);
  assert.ok(alert.saccadeAmplitude>calm.saccadeAmplitude);
+});
+
+test("3D blink and saccade pulses are deterministic, bounded and speech-aware",()=>{
+ const baseMotion={blinkPhaseMs:52,blinkDurationMs:105,saccadePhaseMs:0,saccadeIndex:0,saccadeAmplitude:.2,speaking:false};
+ const first=deriveFacialMicroMotion(baseMotion),again=deriveFacialMicroMotion(baseMotion);
+ assert.deepEqual(first,again);
+ assert.ok(first.blinkClosure>.9&&first.blinkClosure<=1);
+ assert.ok(Math.abs(first.saccadeX)<=.25&&Math.abs(first.saccadeY)<=.25);
+ const speaking=deriveFacialMicroMotion({...baseMotion,speaking:true});
+ assert.ok(Math.abs(speaking.saccadeX)<Math.abs(first.saccadeX));
+ assert.equal(deriveFacialMicroMotion({...baseMotion,saccadePhaseMs:180}).saccadeX,0);
+ assert.equal(deriveFacialMicroMotion({...baseMotion,saccadePhaseMs:180}).saccadeY,0);
+ assert.equal(deriveFacialMicroMotion({...baseMotion,blinkPhaseMs:200}).blinkClosure,0);
+});
+test("3D face renderer consumes shared blink and saccade cadence",async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const stage=await readFile(new URL("../src/components/Avatar3DStage.tsx",import.meta.url),"utf8");
+ for(const token of ["deriveFacialMicroMotion","blinkElapsedMs","saccadeElapsedMs","saccadeIndex","p.facial.blinkIntervalMs","p.facial.saccadeIntervalMs","facialMotion.blinkClosure","facialMotion.saccadeX","facialMotion.saccadeY","eyeDetails"])assert.ok(stage.includes(token),token);
 });
