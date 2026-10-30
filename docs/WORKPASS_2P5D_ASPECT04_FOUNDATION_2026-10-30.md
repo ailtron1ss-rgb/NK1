@@ -100,3 +100,15 @@ npm run build
 ```
 
 This pass only adds a pure TypeScript contract and Node tests; the commands above have not been executed in a GitHub checkout during this connector pass. CI evidence must be attached to the exact resulting commit before calling the code validated.
+
+
+## Follow-up: canonical intent adapter
+
+- Added `app/src/components/avatar/embodimentIntentAdapter.ts` as a narrow adapter from the existing `EmbodimentIntent v1` body envelope to the depth-rig pose contract.
+- The adapter preserves the existing semantic owner: it translates bounded gaze/head tilt and existing motion-group intent; it does not introduce a second emotion engine or replace the runtime motor controller.
+- `TapHead`, `TapBody`, and `Special` map conservatively to rig-level gesture hints. Fine-grained joint trajectories and joint-to-artwork calibration remain a separate explicit binding step.
+- Added malformed-envelope and intent-to-pose regression coverage. The dedicated workflow now includes the adapter in its path filters.
+
+## CI correction
+
+The first exact-head run failed in two assertions, not in the transform implementation: expected world rotations omitted inherited parent rotations, and accumulated floating-point depth was compared with strict equality. Both assertions were corrected to match the documented hierarchy semantics and use a numeric tolerance. The corrected exact-head workflow run is the acceptance gate; no pass is claimed until GitHub reports it successful.
