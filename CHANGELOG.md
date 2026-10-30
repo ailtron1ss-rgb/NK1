@@ -7,16 +7,7 @@
 - Bound schema regex complexity and reject unsupported repeated constructs; align Proxy detection with the repository Node type surface.
 - Apply a shared inert JSON envelope to legacy tools without explicit schemas. Reject accessors, Proxies, cycles, exotic prototypes, non-JSON values, excessive nesting/property counts and payloads above 64 KiB before execution, approval preview or receipt reconciliation.
 - Add a read-only risk-weighted governance report for registered tools, exposing contract, approval, durable receipt, verifier and reconciliation coverage gaps without silently changing legacy tool permissions.
-- Keep the bounded-pattern fixture on a neutral read-only tool ID (`catalog.bounded-label`); avoid the `code` token, which correctly invokes the existing elevated code-tool policy. The fixture still verifies `^[a-z0-9]{2,5}## [NK1][Aspect 8] Governed tool execution and safety boundary (2026-10-30)
-
-- Add a dependency-free, bounded JSON-schema-inspired input contract subset; reject unsupported schema keywords instead of silently accepting them.
-- Validate tool arguments at the canonical ActionGateway boundary before approval consumption, durable receipt admission or executor entry; clone and deeply freeze registered contracts.
-- Add output contracts; invalid executor output is recorded as executed-but-unverified, and keyed side effects remain replay-safe.
-- Expose stable input/output schema descriptors in the tool catalog; migrate Android listen, device telemetry and simulator world observation to explicit contracts.
-- Bound schema regex complexity and reject unsupported repeated constructs; align Proxy detection with the repository Node type surface.
-- Apply a shared inert JSON envelope to legacy tools without explicit schemas. Reject accessors, Proxies, cycles, exotic prototypes, non-JSON values, excessive nesting/property counts and payloads above 64 KiB before execution, approval preview or receipt reconciliation.
-- Add a read-only risk-weighted governance report for registered tools, exposing contract, approval, durable receipt, verifier and reconciliation coverage gaps without silently changing legacy tool permissions.
- accepts `nk1`, while negative tests for nested and multiple repetitions remain.
+- Keep the bounded-quantifier fixture on a neutral read-only tool ID (`catalog.bounded-label`) so the existing `code` permission classifier does not treat a string-validation test as an elevated tool. The regression still checks acceptance of the intended three-character label and retains negative coverage for unsafe repetition patterns.
 - Add focused regressions and wire the tool-contract suite into core CI. Exact-head CI and runtime typecheck remain pending until GitHub reports checks for this branch head.
 
 ## [NK1][Aspect 11] Establish unified 2D / 2.5D / 3D body switching (2026-10-30)
