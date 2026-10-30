@@ -52,5 +52,9 @@ assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(makePaylo
 assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(makePayload({ taskVersion: '2', artifactId: 'artifact-004' })), keys).rejection, 'manifest-task-or-verifier-mismatch');
 assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, { payload: null, signature: '' }, keys).rejection, 'invalid-artifact-schema');
 assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(makePayload({ artifactId: 17 })), keys).rejection, 'invalid-artifact-fields');
+assert.equal(ingestSignedOutcomeArtifact(ledger, manifest, artifactFor(makePayload({
+  artifactId: 'artifact-invalid-source',
+  sourceCommitSha: 'not-a-git-sha',
+})), keys).rejection, 'invalid-artifact-fields');
 assert.equal(outcomePayloadFingerprint(validPayload).length, 64);
 console.log('P23_SIGNED_OUTCOME_ARTIFACT=PASS');
