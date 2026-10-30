@@ -178,5 +178,8 @@ export function createP36DevelopmentalOutcomeEvaluator({stateDirectory}) {
 
   console.log('P36_HOST_EVALUATOR_BOOTSTRAP=PASS signatures-reingested=32 private-key-blocked=true tampered-artifact-blocked=true separate-maturity-module=true');
 } finally {
+  // Restore the fixture directory's owner permissions before recursive cleanup.
+  // The test intentionally makes signed artifacts read-only to the runtime user.
+  await chmod(path.join(temporary,'signed-artifacts'),0o700).catch(()=>{});
   await rm(temporary,{recursive:true,force:true});
 }
