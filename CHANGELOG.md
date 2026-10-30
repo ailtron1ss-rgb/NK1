@@ -2811,3 +2811,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ### Evidence boundary
 - The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
+
+## [NK1][Aspect 12] Restore independent learning holdout integrity (2026-10-30)
+
+- Restore explicit learning/holdout phase separation; missing phase is treated as learning and runtime outcome telemetry cannot label itself as independent holdout.
+- Count only unique, independently labelled context keys; reject empty/prototype-named/overlength keys and recompute eligibility from the canonical registry during restore.
+- Harden snapshot restoration against accessors and malformed counters, normalize Unicode context identity, prevent recent-window eviction from fabricating novelty, and fail closed on registry saturation.
+- Add adversarial restore/context-identity regressions and wire the split-integrity suite into the Node 24 WorkPass71 validation workflow.
+- Exact predecessor PR head passed 10/10 associated workflows; this current-source port requires its own exact-head CI. No `recallDelta` uplift or production learning effectiveness is claimed.
