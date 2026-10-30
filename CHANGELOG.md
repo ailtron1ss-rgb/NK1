@@ -1,3 +1,10 @@
+## [NK1][Aspect 02] Define rig-safe 2.5D handoff requirements for original character art (2026-10-30)
+
+- Extend the machine-readable character contract with explicit depth-plane semantics, normalized pivot coordinates, parent/transform records, occlusion/hidden-anatomy rules, optional mesh constraints, deformation test poses, camera/depth rules, texture budgets and promotion gates.
+- Document that layer order is not physical depth, 2.5D readiness cannot be inferred from flat sprites, and hidden anatomy must survive maximum approved pose masks without holes or seams.
+- Add a focused contract regression proving the handoff schema covers moving groups, pivots, depth, occlusion and deformation while remaining explicitly requirements-only.
+- No artwork, rig, mesh, depth map or approved production asset is claimed; the 24-slot manifest remains planning-only and the Release ZIP is unchanged.
+
 ## [NK1][Aspect 02] Add semantic truth labels to the legacy sprite reference inventory (2026-10-30)
 
 - Transcribe the prior WorkPass622 pixel-audit descriptions into per-sprite semantic metadata for 25 exact manifest-ID matches, including corrected pose/action roles where filenames are misleading.
