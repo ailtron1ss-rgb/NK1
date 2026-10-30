@@ -8,7 +8,7 @@ export interface DepthRigValidation { ok:boolean; errors:string[]; order:string[
 const MAX_NODES=128, MAX_POSITION=20;
 const ROLES=new Set<DepthRigRole>(["root","head","face","eyes","hair-front","hair-back","torso","left-upper-arm","left-forearm","left-hand","right-upper-arm","right-forearm","right-hand","coat-front","coat-tail","accessory","custom"]);
 const clamp=(v:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,Number.isFinite(v)?v:0));
-const tuple=(v:unknown,n:number):v is number[]=>Array.isArray(v)&&v.length===n&&v.every(Number.isFinite);
+const tuple=(v:unknown,n:number):v is number[]=>Array.isArray(v)&&v.length===n&&v.every((item: number) => Number.isFinite(item));
 
 /** Validate a layered illustration hierarchy before it reaches a renderer. */
 export function validateDepthRig(manifest:DepthRigManifest):DepthRigValidation {
