@@ -486,9 +486,17 @@ export class AutonomousProjectExecutor {
     // should not be able to make restore evaluate arbitrary properties.
     const currentOperation = this.state.activeOperation;
     if (currentOperation && currentOperation.stage !== 'prepared') {
-      // A stale or malformed snapshot must not erase or downgrade an in-flight side effect.
+      // A stale or malformed snapshot must not erase, replace or downgrade an in-flight side effect.
+      const allowedRestoreStages: Record<ProjectStepCheckpointStage, readonly ProjectStepCheckpointStage[]> = {
+        prepared: ['prepared', 'pending', 'waiting-approval', 'receipt-recorded', 'reconciliation-required'],
+        pending: ['pending', 'waiting-approval', 'receipt-recorded', 'reconciliation-required'],
+        'waiting-approval': ['waiting-approval', 'pending', 'reconciliation-required'],
+        'receipt-recorded': ['receipt-recorded', 'reconciliation-required'],
+        'reconciliation-required': ['reconciliation-required', 'receipt-recorded', 'waiting-approval'],
+      };
       if (!activeOperation || activeOperation.operationKey !== currentOperation.operationKey ||
-          activeOperation.updatedAt < currentOperation.updatedAt) return;
+          activeOperation.updatedAt < currentOperation.updatedAt ||
+          !allowedRestoreStages[currentOperation.stage].includes(activeOperation.stage)) return;
     }
     if (!operationRead.valid && this.hasUnresolvedStepOperation()) return;
     this.state = state;
@@ -511,11 +519,18 @@ export class AutonomousProjectExecutor {
     decisionId?: string;
   }): { ok: true; checkpoint: ProjectStepExecutionCheckpoint; reused: boolean } |
      { ok: false; error: 'project-step-reconciliation-required'; checkpoint: ProjectStepExecutionCheckpoint } {
-    const projectId = String(input.projectId ?? '').trim().slice(0,180);
-    const stepId = String(input.stepId ?? 'unplanned').trim().slice(0,120) || 'unplanned';
-    const toolId = String(input.toolId ?? '').trim().slice(0,180);
-    const requestFingerprint = String(input.requestFingerprint ?? '').toLowerCase();
-    if (!projectId || !toolId || !/^[a-f0-9]{64}$/.test(requestFingerprint)) {
+    const projectId = typeof input.projectId === 'string' ? input.projectId.trim() : '';
+    const rawStepId = typeof input.stepId === 'string' ? input.stepId.trim() : 'unplanned';
+    const stepId = rawStepId || 'unplanned';
+    const toolId = typeof input.toolId === 'string' ? input.toolId.trim() : '';
+    const requestFingerprint = typeof input.requestFingerprint === 'string' ? input.requestFingerprint.toLowerCase() : '';
+    const suppliedOperationKey = typeof input.idempotencyKey === 'string' ? input.idempotencyKey.trim() : '';
+    const suppliedDecisionId = typeof input.decisionId === 'string' ? input.decisionId.trim() : '';
+    if (!projectId || projectId.length > 180 || stepId.length > 120 || !toolId || toolId.length > 180 ||
+        /[\\u0000-\\u001f\\u007f]/.test(projectId) || /[\\u0000-\\u001f\\u007f]/.test(stepId) ||
+        /[\\u0000-\\u001f\\u007f]/.test(toolId) || !/^[a-f0-9]{64}$/.test(requestFingerprint) ||
+        (suppliedOperationKey && (suppliedOperationKey.length > 160 || /[\\u0000-\\u001f\\u007f]/.test(suppliedOperationKey))) ||
+        (suppliedDecisionId && (suppliedDecisionId.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(suppliedDecisionId)))) {
       throw new Error('project-step-checkpoint-invalid-identity');
     }
     const active = this.state.activeOperation;
@@ -532,14 +547,14 @@ export class AutonomousProjectExecutor {
       this.state.activeOperation = undefined;
     }
 
-    const sequence = Math.max(0, Math.floor(this.state.operationSequence)) + 1;
+    const priorSequence = safeCounter(this.state.operationSequence);
+    if (priorSequence >= Number.MAX_SAFE_INTEGER) throw new Error('project-step-checkpoint-sequence-exhausted');
+    const sequence = priorSequence + 1;
     this.state.operationSequence = sequence;
-    const operationKey = input.idempotencyKey
-      ? String(input.idempotencyKey).trim()
-      : `project-step:${sha256Stable({ projectId, stepId, toolId, requestFingerprint, sequence }).slice(0,56)}`;
-    const decisionId = input.decisionId
-      ? String(input.decisionId).trim()
-      : `decision:project-step:${sha256Stable({ projectId, stepId, toolId, requestFingerprint, sequence, operationKey }).slice(0,48)}`;
+    const operationKey = suppliedOperationKey ||
+      `project-step:${sha256Stable({ projectId, stepId, toolId, requestFingerprint, sequence }).slice(0,56)}`;
+    const decisionId = suppliedDecisionId ||
+      `decision:project-step:${sha256Stable({ projectId, stepId, toolId, requestFingerprint, sequence, operationKey }).slice(0,48)}`;
     const now = Date.now();
     const checkpoint: ProjectStepExecutionCheckpoint = {
       version: 1, projectId, stepId, toolId, requestFingerprint,
