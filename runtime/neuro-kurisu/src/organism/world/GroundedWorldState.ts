@@ -26,6 +26,11 @@ export interface GroundedEntity {
   positionFrameId?:string;
   position?:{x:number;y:number;z:number}|null;
   velocity?:{x:number;y:number;z:number}|null;
+  /** Latest camera-space box; explicitly distinct from calibrated world position. */
+  imageBox?:{x:number;y:number;width:number;height:number};
+  imageBoxCameraId?:number;
+  imageBoxAt?:number;
+  imageBoxConfidence01?:number;
   /** Per-modality provenance is retained across world-model consolidation. */
   modalityEvidenceKinds?:Partial<Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>>;
   sourceIds?:string[];
@@ -157,6 +162,12 @@ export class GroundedWorldState {
       old.trackAliases=[...new Set([...(old.trackAliases??[]),...(incoming.trackAliases??[]),...(incoming.trackId&&old.trackId!==incoming.trackId?[incoming.trackId]:[])])].filter(Boolean).slice(-16);
       old.sourceIds=[...new Set([...(old.sourceIds??[]),...(incoming.sourceIds??[])])].slice(-16);
       old.modalityEvidenceKinds={...(old.modalityEvidenceKinds??{}),...(incoming.modalityEvidenceKinds??{})};
+      if(incoming.imageBox&&Number.isFinite(incoming.imageBoxAt)&&(incoming.imageBoxAt??-1)>=(old.imageBoxAt??-1)){
+        old.imageBox={...incoming.imageBox};
+        old.imageBoxCameraId=incoming.imageBoxCameraId;
+        old.imageBoxAt=incoming.imageBoxAt;
+        old.imageBoxConfidence01=incoming.imageBoxConfidence01;
+      }
       old.observationCount=incoming.lastSeenAt>previousLastSeenAt
         ?Math.max(old.observationCount+1,incoming.observationCount)
         :Math.max(old.observationCount,incoming.observationCount);
@@ -189,6 +200,14 @@ export class GroundedWorldState {
       const visibleKnown=o.visibilityKnown===false?false:(o.visibilityKnown===true||typeof o.visible==='boolean');
       const coordinateFrameId=cleanIdentity(o.coordinateFrameId);
       const hasPosition=Boolean(coordinateFrameId)&&[o.x,o.y,o.z].every(value=>typeof value==='number'&&Number.isFinite(value));
+      const imageBox=o.bbox2D;
+      const imageBoxCameraId=Number.isFinite(o.bboxCameraId)&&Number(o.bboxCameraId)>=0?Math.floor(Number(o.bboxCameraId)):-1;
+      const imageBoxAt=Number.isFinite(o.bboxAt)&&Number(o.bboxAt)>=0?Number(o.bboxAt):-1;
+      const imageBoxConfidence01=clamp(Number(o.bboxConfidence01??0));
+      const hasImageBox=Boolean(imageBox&&imageBoxCameraId>=0&&imageBoxAt>=0&&imageBoxConfidence01>0
+        &&[imageBox.x,imageBox.y,imageBox.width,imageBox.height].every(value=>typeof value==='number'&&Number.isFinite(value))
+        &&imageBox.x>=0&&imageBox.y>=0&&imageBox.width>0&&imageBox.height>0
+        &&imageBox.x+imageBox.width<=1.000001&&imageBox.y+imageBox.height<=1.000001);
       const incoming:GroundedEntity={
         id:objectId?('world-'+stableHash(sourceId+':'+objectId)):'world-'+stableHash(o.label+':'+at),
         label:norm(o.label)||'unknown',kind:'object',
@@ -200,6 +219,7 @@ export class GroundedWorldState {
         modalityEvidenceKinds:{world:evidenceKind},
         sourceIds:sourceId?[sourceId]:[],
         ...(hasPosition?{position:{x:Number(o.x),y:Number(o.y),z:Number(o.z)},positionFrameId:coordinateFrameId}:{position:null}),
+        ...(hasImageBox?{imageBox:{x:Number(imageBox!.x),y:Number(imageBox!.y),width:Number(imageBox!.width),height:Number(imageBox!.height)},imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{}),
         value:Number.isFinite(o.value)?o.value:0,
         valueKnown:o.valueKnown===true,
         visibilityKnown:visibleKnown,
@@ -227,6 +247,7 @@ export class GroundedWorldState {
         positionFrameId:x.positionFrameId,
         position:x.position?{...x.position}:null,
         velocity:x.velocity?{...x.velocity}:null,
+        ...(x.imageBox?{imageBox:{...x.imageBox},imageBoxCameraId:x.imageBoxCameraId,imageBoxAt:x.imageBoxAt,imageBoxConfidence01:x.imageBoxConfidence01}:{}),
         modalityEvidenceKinds:evidenceKinds,
         sourceIds:[...new Set(x.modalities)],
         visibilityKnown:x.modalities.includes('vision'),
@@ -335,6 +356,9 @@ export class GroundedWorldState {
           sourceId:x.sourceIds?.[0]??x.id,
           ...(x.position&&x.positionFrameId?{
             x:x.position.x,y:x.position.y,z:x.position.z,coordinateFrameId:x.positionFrameId,
+          }:{ }),
+          ...(x.imageBox?{
+            bbox2D:{...x.imageBox},bboxCameraId:x.imageBoxCameraId,bboxAt:x.imageBoxAt,bboxConfidence01:x.imageBoxConfidence01,
           }:{ }),
         };
       }),
