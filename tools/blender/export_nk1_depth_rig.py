@@ -4,15 +4,9 @@ Run:
   blender --background character.blend --python tools/blender/export_nk1_depth_rig.py -- \
     --output build/kurisu-depth-rig.glb --collection NK1_RIG
 
-Each object in the rig collection must have a string custom property
-'nk1_role' matching the runtime DepthRigRole union. Object names are stable
-manifest IDs and must survive glTF export unchanged. Optional custom properties:
-nk1_pivot_x, nk1_pivot_y, nk1_depth, nk1_parallax. The active scene may define
-'nk1_face_bindings' as a mapping of face channels to lists of morph target names.
-
-The exporter writes the manifest into the active glTF scene's extras. This is
-intentional: Three.js GLTFLoader exposes scene extras as gltf.scene.userData,
-which is the metadata location consumed by Avatar3DStage.
+Rig object names are stable manifest IDs. Every rig object's parent must also be
+inside the rig collection. Runtime transforms are read back from the exported
+glTF nodes (not copied from Blender's pre-export coordinate system).
 """
 from __future__ import annotations
 
@@ -25,6 +19,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from mathutils import Matrix, Quaternion, Vector
 
 MAGIC = 0x46546C67
 JSON_CHUNK = 0x4E4F534A
@@ -74,10 +69,11 @@ def build_manifest(collection, manifest_id):
         node_id = obj.name
         if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", node_id, re.I):
             raise ValueError("unsafe rig object name: " + node_id)
+        if obj.parent is not None and obj.parent not in object_set:
+            raise ValueError("rig object has a parent outside the rig collection: " + node_id)
         role = obj.get("nk1_role")
         if role not in ROLES:
             raise ValueError("object " + node_id + " needs valid nk1_role custom property")
-        parent_id = obj.parent.name if obj.parent in object_set else None
         pivot = [
             float(obj.get("nk1_pivot_x", 0.0)),
             float(obj.get("nk1_pivot_y", 0.0)),
@@ -92,11 +88,12 @@ def build_manifest(collection, manifest_id):
             raise ValueError("nk1_parallax must be within [0, 2]: " + node_id)
         nodes.append({
             "id": node_id,
-            "parentId": parent_id,
+            "parentId": obj.parent.name if obj.parent else None,
             "role": role,
-            "position": finite_tuple(obj.location, 3, node_id + " position"),
+            # Filled from the actual exported glTF node after Blender's axis conversion.
+            "position": [0.0, 0.0, 0.0],
             "pivot": pivot,
-            "rotation": finite_tuple(obj.rotation_euler, 3, node_id + " rotation"),
+            "rotation": [0.0, 0.0, 0.0],
             "depth": depth,
             "parallax": parallax,
             "visible": not obj.hide_render,
@@ -124,14 +121,15 @@ def normalize_face_bindings(raw):
     return result
 
 
-def read_glb_chunks(data):
+def read_glb_document(glb_path):
+    data = glb_path.read_bytes()
     if len(data) < 20:
         raise ValueError("exported file is not a complete GLB")
     magic, version, total = struct.unpack_from("<III", data, 0)
     if magic != MAGIC or version != 2 or total != len(data):
         raise ValueError("invalid GLB header")
-    chunks = []
     offset = 12
+    document = None
     while offset < len(data):
         if offset + 8 > len(data):
             raise ValueError("truncated GLB chunk header")
@@ -140,26 +138,74 @@ def read_glb_chunks(data):
         end = start + length
         if end > len(data):
             raise ValueError("truncated GLB chunk")
-        chunks.append((kind, data[start:end]))
+        if kind == JSON_CHUNK:
+            document = json.loads(data[start:end].decode("utf-8").rstrip(" \\t\\r\\n\\0"))
         offset = end
-    return chunks
+    if document is None:
+        raise ValueError("GLB JSON chunk is missing")
+    return document
 
 
-def inject_scene_extras(glb_path, manifest, face_bindings):
+def exported_node_trs(node, node_id):
+    if "matrix" in node:
+        raise ValueError("exported rig node uses a matrix transform; apply transforms in Blender so glTF emits TRS: " + node_id)
+    translation = Vector(finite_tuple(node.get("translation", [0.0, 0.0, 0.0]), 3, node_id + " exported translation"))
+    raw_rotation = finite_tuple(node.get("rotation", [0.0, 0.0, 0.0, 1.0]), 4, node_id + " exported rotation")
+    quaternion = Quaternion((raw_rotation[3], raw_rotation[0], raw_rotation[1], raw_rotation[2]))
+    if quaternion.magnitude < 1e-8:
+        raise ValueError("exported glTF rotation quaternion is degenerate: " + node_id)
+    quaternion.normalize()
+    euler = quaternion.to_euler("XYZ")
+    return list(translation), finite_tuple(euler, 3, node_id + " exported Euler rotation")
+
+
+def reconcile_manifest_with_gltf(manifest, document):
+    gltf_nodes = document.get("nodes", [])
+    by_name = {}
+    for index, node in enumerate(gltf_nodes):
+        name = node.get("name")
+        if isinstance(name, str):
+            by_name.setdefault(name, []).append((index, node))
+    parent_by_index = {}
+    for parent_index, parent_node in enumerate(gltf_nodes):
+        for child_index in parent_node.get("children", []):
+            if not isinstance(child_index, int) or child_index < 0 or child_index >= len(gltf_nodes):
+                raise ValueError("exported glTF contains an invalid child node index")
+            if child_index in parent_by_index:
+                raise ValueError("exported glTF node has multiple parents: " + str(gltf_nodes[child_index].get("name")))
+            parent_by_index[child_index] = parent_index
+
+    rig_ids = {entry["id"] for entry in manifest["nodes"]}
+    for entry in manifest["nodes"]:
+        matches = by_name.get(entry["id"], [])
+        if len(matches) != 1:
+            raise ValueError("rig node name must occur exactly once in exported glTF: " + entry["id"])
+        index, gltf_node = matches[0]
+        parent_index = parent_by_index.get(index)
+        parent_name = gltf_nodes[parent_index].get("name") if parent_index is not None else None
+        if parent_name is not None and parent_name not in rig_ids:
+            raise ValueError("exported rig node is parented beneath a non-rig node: " + entry["id"])
+        entry["parentId"] = parent_name
+        entry["position"], entry["rotation"] = exported_node_trs(gltf_node, entry["id"])
+    return manifest
+
+
+def inject_scene_extras(glb_path, manifest, face_bindings, document):
     data = glb_path.read_bytes()
-    chunks = read_glb_chunks(data)
+    chunks = []
+    offset = 12
+    while offset < len(data):
+        length, kind = struct.unpack_from("<II", data, offset)
+        start = offset + 8
+        chunks.append((kind, data[start:start + length]))
+        offset = start + length
     json_index = next((index for index, (kind, _) in enumerate(chunks) if kind == JSON_CHUNK), None)
     if json_index is None:
         raise ValueError("GLB JSON chunk is missing")
-    document = json.loads(chunks[json_index][1].decode("utf-8").rstrip(" \\t\\r\\n\\0"))
     scene_index = int(document.get("scene", 0))
     scenes = document.get("scenes", [])
     if scene_index < 0 or scene_index >= len(scenes):
         raise ValueError("GLB active scene is missing")
-    node_names = {node.get("name") for node in document.get("nodes", [])}
-    missing = [node["id"] for node in manifest["nodes"] if node["id"] not in node_names]
-    if missing:
-        raise ValueError("rig object names missing from exported glTF nodes: " + ", ".join(missing))
     extras = scenes[scene_index].setdefault("extras", {})
     extras["nk1DepthRigManifest"] = manifest
     if face_bindings:
@@ -188,8 +234,10 @@ def main():
         export_format="GLB",
         export_extras=True,
     )
-    inject_scene_extras(output, manifest, face_bindings)
-    print("NK1 depth-rig GLB exported and validated: " + str(output))
+    document = read_glb_document(output)
+    reconcile_manifest_with_gltf(manifest, document)
+    inject_scene_extras(output, manifest, face_bindings, document)
+    print("NK1 depth-rig GLB exported and reconciled with glTF node transforms: " + str(output))
     print("Manifest nodes: " + str(len(manifest["nodes"])))
 
 
