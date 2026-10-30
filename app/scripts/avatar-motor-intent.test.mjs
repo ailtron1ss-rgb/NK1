@@ -151,6 +151,11 @@ test("invalid motion, extra protocol fields, and out-of-range data fail closed",
   assert.equal(isEmbodimentIntentV1({ ...baseIntent(), hiddenDebugPayload: true }), false);
   assert.equal(isEmbodimentIntentV1(baseIntent({ gaze: { x: 5, y: 0, driven: true } })), false);
   assert.equal(normalizeEmbodimentIntentV1(baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1", mouth: { open: 0.8, form: 0, viseme: "a" } })).mouthOpen, 0);
+  const cancelled = baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1" });
+  assert.equal(isEmbodimentIntentV1(cancelled), true);
+  assert.equal(isEmbodimentIntentV1({ ...cancelled, cancellationToken: "cancel:another-speech" }), false);
+  assert.equal(isAppEmbodimentIntentV1(cancelled), true);
+  assert.equal(isAppEmbodimentIntentV1({ ...cancelled, cancellationToken: "cancel:another-speech" }), false);
 });
 
 test("the production viewer listens to the protocol emitted by AvatarStage and uses token-aware motion identity", async () => {
