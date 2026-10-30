@@ -1,3 +1,10 @@
+## [NK1][WorkPass633] Route procedural 3D body through the shared motor layer (2026-10-30)
+
+- Reuse the same cognitive/affective motor proposal resolver, joint bounds and speed limiter for both the built-in procedural 3D body and imported VRM/GLB rigs; remove the previous loaded-model-only execution gap.
+- Bind the procedural `headIntent`, `leftArm` and `rightArm` groups to the canonical head/shoulder channels through the existing adapter contract. Preserve additive application over the procedural pose and the loaded model's per-frame mixer baseline.
+- Add a regression fixture for the procedural rig aliases and additive application. Previous procedural shoulder offsets are removed before the next base-pose update to avoid accumulation; imported rigs retain bind-pose restore → mixer → motor-overlay ordering. The procedural body still has rigid upper/lower limbs and does not claim elbow, wrist, hand, foot or IK execution.
+- Exact-head CI, typecheck and browser validation remain required; the latest Release ZIP is unchanged.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -2794,3 +2801,37 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][WorkPass628] Add renderer-independent bounded body motor foundation (2026-10-30)
+
+- Add a deterministic two-bone 3D IK solver with pole-vector handling and projection of unreachable targets into the reachable annulus; degenerate and non-finite input cannot leak NaN/Infinity into the pose.
+- Add per-joint motor proposal arbitration: highest priority wins, equal-priority sources blend by bounded weight, unsupported joints and malformed targets fail closed with explicit rejection reasons.
+- Add delta-time and per-joint speed-limited pose advancement to avoid frame-rate-dependent jumps and unbounded joint changes.
+- Add renderer capability filtering so Live2D, future 2.5D rigs and VRM adapters report unsupported channels instead of silently claiming execution.
+- Add deterministic regression coverage for IK geometry, unreachable targets, priority arbitration, invalid data, speed bounds and capability negotiation.
+- This is a tested control/math foundation, not yet a complete full-body runtime integration; balance, contact/grasping, renderer adapters and device E2E remain explicit follow-up gates.
+
+
+## [NK1][WorkPass629] Connect canonical motor intents to loaded 3D humanoid rigs (2026-10-30)
+
+- Add a renderer adapter that recognizes common VRM/Mixamo humanoid bone aliases and exposes only channels actually present in the loaded skeleton.
+- Apply canonical NK1 head, neck, spine, shoulder, elbow and leg channels as bounded additive offsets over the active GLTF animation-mixer pose.
+- Resolve cognitive-action and affective-expression proposals by priority, advance them with per-joint speed limits, and report unsupported channels instead of pretending every model supports every movement.
+- Keep IK, balance, contact, grasping, world interaction and clothing physics explicitly unsupported until a real execution backend exists.
+- Add deterministic adapter tests for alias mapping, additive animation layering and fail-closed unsupported/non-finite channels.
+
+
+## [NK1][WorkPass630] Correct VRM neck capability mapping and adapter regressions (2026-10-30)
+
+- Fix VRM `J_Bip_C_Neck` capability discovery for both neck yaw and pitch; the initial adapter regression had exposed a missing canonical alias.
+- Make the adapter's Euler assertions precision-safe instead of requiring exact binary floating-point equality.
+- Clarify the adapter's frame contract: `Avatar3DStage` restores the model's baseline bone pose, updates the animation mixer, and then applies NK1 offsets for that frame. This avoids accumulating motor offsets across frames.
+- Preserve fail-closed behavior for missing bones and non-finite channels. Exact-head CI after these fixes is still pending.
+
+
+## [NK1][WorkPass631–632] Expand humanoid coverage and resolve strict TypeScript failures (2026-10-30)
+
+- Extend VRM regression coverage to bilateral `J_Bip_*` upper/lower arms and legs plus spine, including the right knee alias.
+- Fix strict TypeScript inference for the two heterogeneous motor proposals by explicitly typing the proposal collection as `MotorProposal[]`.
+- Default optional proposal weights before passing them into finite-number validation; this removes the strict optional-property error found in CI.
+- The motor/adapter unit tests were locally executed under Node 22 with type stripping; exact-head CI/typecheck remains the release gate.
