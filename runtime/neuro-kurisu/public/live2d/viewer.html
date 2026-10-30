@@ -58,10 +58,15 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     pending[`${channel}Status`]=status;
     maybeEmitIntentAck(pending);
   }
-  function actionStatus(promise,pending,channel){
+  function actionStatus(promise,pending,channel,onNotStarted=null){
     Promise.resolve(promise).then(ok=>{
-      settleIntentAction(pending,channel,ok==='not-requested'?'not-requested':ok===true?'started':'unavailable');
-    }).catch(()=>settleIntentAction(pending,channel,'error'));
+      const started=ok===true;
+      if(!started&&onNotStarted)onNotStarted();
+      settleIntentAction(pending,channel,ok==='not-requested'?'not-requested':started?'started':'unavailable');
+    }).catch(()=>{
+      if(onNotStarted)onNotStarted();
+      settleIntentAction(pending,channel,'error');
+    });
   }
   function applyEmbodiment(d,pending=null){
     bodySignal=d||{};
@@ -85,8 +90,9 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
           let result;
           try{result=model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0))}
           catch{result=Promise.reject(new Error('motion-call-failed'))}
-          if(pending)actionStatus(result,pending,'motion');
-          else Promise.resolve(result).catch(()=>{});
+          const clearFailedMotion=()=>{if(lastMotionKey===k)lastMotionKey=''};
+          if(pending)actionStatus(result,pending,'motion',clearFailedMotion);
+          else Promise.resolve(result).then(ok=>{if(ok!==true)clearFailedMotion()}).catch(clearFailedMotion);
         }
       }
     }
