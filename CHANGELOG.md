@@ -1,3 +1,9 @@
+## [NK1][Aspect 11] Validate complete semantic body snapshot fields (2026-10-30)
+
+- Reject malformed expression labels, gaze target IDs, speech event IDs, intent IDs and wardrobe IDs at the renderer-neutral handoff boundary.
+- Bound identifier lengths and reject blank world-target references before any adapter lifecycle can run.
+- Add focused regressions for malformed field types, whitespace-only target IDs and oversized identifiers.
+
 ## [NK1][Aspect 11] Fail closed on partial renderer verification (2026-10-30)
 
 - Require a non-empty, unique accepted-channel set in every adapter apply receipt; reject malformed channel claims before verification.
