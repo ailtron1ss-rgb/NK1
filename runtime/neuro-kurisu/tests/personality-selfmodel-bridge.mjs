@@ -18,7 +18,7 @@ const verifiedEvent={
 };
 const accepted=bridge.recordOutcome({
   event:verifiedEvent,action:'explore',reward01:0.9,goalAlignment01:0.85,
-  predictionError01:0.1,identityGap01:0.05,relationshipId:'user',
+  predictionError01:0.1,identityGap01:0.05,relationshipId:'user',identityVector:[0.95,0.2,0.8,0.4,0.6,0.7,0.5,0.8],
 });
 assert.equal(accepted.newEvent,true);
 assert.equal(accepted.evidenceAccepted,true);
@@ -26,6 +26,11 @@ assert.equal(accepted.evidenceReason,'accepted');
 assert.equal(accepted.selfModelUpdate?.identityUpdateAccepted,true);
 assert.equal(accepted.selfModel.lastIdentityGate?.accepted,true);
 assert.equal(accepted.personality.learningUpdates,1);
+assert.ok(accepted.personality.adaptiveValues[1] > 0.63, 'respond outcomes train warmth by trait name');
+assert.ok(accepted.personality.adaptiveValues[4] > 0.86, 'respond outcomes train directness by trait name');
+assert.equal(accepted.personality.adaptiveValues[0], 0.68, 'respond outcomes must not accidentally train sarcasm by array index');
+assert.ok(accepted.personality.selfBeliefs[0] > 0.72, 'verified identity evidence slowly updates self-beliefs');
+assert.ok(accepted.personality.selfBeliefs[1] < 0.68, 'self-belief vectors are updated dimension by dimension');
 
 const unbound=bridge.recordOutcome({
   event:{tick:11,at:1100,action:'respond',outcome:0.8,evidenceStatus:'verified-independent',evidenceRef:'local-cache:maybe'},
@@ -101,6 +106,8 @@ const prepared = bridge.prepareDecision({
   actionUtilities: { respond: 0.5, explore: 0.6, verify: 0.8, rest: 0.2, reflect: 0.7, wait: 0.3, defer: 0.4 },
 });
 assert.equal(Object.keys(prepared.selfModelActionBias).length, 7);
+assert.equal(Object.keys(prepared.actionBias).length, 7);
+assert.ok(Object.values(prepared.actionBias).every(x=>Number.isFinite(x)&&Math.abs(x)<=0.1));
 assert.ok(prepared.personality.traitVector.every(Number.isFinite));
 assert.ok(Object.values(prepared.selfModelActionBias).every(Number.isFinite));
 
