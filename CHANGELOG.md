@@ -1,3 +1,10 @@
+## [NK1][Avatar] Fix Live2D expressive-control 3D syntax regression (2026-10-30)
+
+- Исправлена потерянная ссылка на объект: b.head.rotation.z вместо некорректного .head.rotation.z.
+- Устранена ошибка TypeScript TS1128 в Avatar3DStage.tsx.
+- Повторная проверка запускается на точном HEAD PR #406; до browser/Android E2E визуальный аспект остаётся открытым.
+
+
 ## [NK1][Aspect 09] Shared semantic gesture motor for 3D embodiment (2026-10-30)
 
 - Added `resolveAvatarGestureArmTargets(...)`: converts the cognitive gesture profiles (`considering`, `presenting`, `examining`, `reassuring`, `emphatic`) into bounded, asymmetric shoulder targets with affect and awake-state modulation.
