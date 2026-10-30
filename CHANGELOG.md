@@ -1,5 +1,7 @@
 ## [NK1][Aspect 11] Add renderer-neutral body switching contract (2026-10-30)
 
+- Connect the Live2D partial parameter acknowledgement to `AvatarStage`: accept only same-origin messages from the active iframe, correlate the exact latest intent revision, validate the partial/unverified status boundary, and expose bounded diagnostic telemetry. This does not create an adapter receipt or permit a cross-renderer commit.
+
 - Add revision-bound Live2D parameter readback acknowledgement after Cubism `beforeModelUpdate`; report observed values only when the core readback API is available, otherwise return accepted-unverified. Expression/motion remain explicitly unverified and the acknowledgement is partial (`complete: false`), so it is not an adapter receipt and cannot authorize a cross-renderer commit.
 
 - Add a versioned semantic body snapshot that preserves emotion, gaze, speech clock, motor intent, supported pose channels and wardrobe identity across renderer changes.
