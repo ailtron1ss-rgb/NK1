@@ -1,3 +1,8 @@
+## [NK1][learning-integrity] Verify runtime outcome provenance (2026-10-30)
+
+- Extend the real OrganismCore project-step integration regression to inspect the durable skill-context registry after a runtime project action and reject any runtime-generated sample labelled as independent holdout.
+- Assert the benchmark summary explicitly distinguishes a unique-context floor from independent evaluator evidence; this prevents local eligibility from being mistaken for a promotion verdict.
+
 ## [NK1][learning-integrity] Harden holdout snapshot restore and context identity (2026-10-30)
 
 - Replaced spread-based restoration of skill-acquisition state with descriptor-only reads of own data properties; accessors are not evaluated, malformed snapshots are bounded, and compromised evidence state disables holdout eligibility.
