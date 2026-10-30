@@ -7,13 +7,15 @@ const viewer = await readFile(viewerUrl, "utf8");
 
 test("Live2D ACK is revision-bound and waits for Cubism readback plus requested action starts", () => {
   const intentHandler = viewer.indexOf("pendingIntentReadback={");
-  const updateHook = viewer.indexOf("model.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides)");
-  const readback = viewer.indexOf("function flushIntentParameterReadback(core)");
+  const maybeEmit = viewer.indexOf("function maybeEmitIntentAck(pending)");
   const emit = viewer.indexOf("send('live2d_intent_ack'");
+  const readback = viewer.indexOf("function flushIntentParameterReadback(core)");
+  const updateHook = viewer.indexOf("model.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides)");
   const applyHook = viewer.indexOf("flushIntentParameterReadback(core);");
   assert.ok(intentHandler >= 0, "intent revision must be retained");
-  assert.ok(readback >= 0 && emit > readback, "ACK emission must follow the readback routine");
-  assert.ok(applyHook > readback && updateHook > applyHook, "readback must run through the Cubism model-update hook");
+  assert.ok(maybeEmit >= 0 && emit > maybeEmit, "ACK must be emitted only by the guarded ACK aggregator");
+  assert.ok(readback > maybeEmit && readback < updateHook, "readback routine must be registered through the Cubism model-update hook");
+  assert.ok(applyHook > readback && updateHook > applyHook, "readback must run after Cubism parameter setters");
   assert.match(viewer, /if\(pending\.expressionStatus==='pending'\|\|pending\.motionStatus==='pending'\)return;/);
   assert.match(viewer, /pending\.readback=/);
   assert.match(viewer, /pending\.stateVersion!==lastIntentStateVersion/);
