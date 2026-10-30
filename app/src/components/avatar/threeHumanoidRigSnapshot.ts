@@ -47,7 +47,9 @@ export function captureHumanoidRigSnapshot(
 
     const child = node.children.find((candidate) => candidate instanceof THREE.Bone);
     if (child) {
-      const length = child.position.length();
+      const parentPosition = node.getWorldPosition(new THREE.Vector3());
+      const childPosition = child.getWorldPosition(new THREE.Vector3());
+      const length = parentPosition.distanceTo(childPosition);
       if (Number.isFinite(length) && length > 1e-5) boneLength.set(name, length);
     }
   });
@@ -85,7 +87,7 @@ export function captureHumanoidRigSnapshot(
   }
   const minY = Math.min(minBoneY, localBounds.isEmpty() ? 0 : localBounds.min.y);
   const maxY = Math.max(maxBoneY, localBounds.isEmpty() ? 0 : localBounds.max.y);
-  const measuredHeight = maxY - minY;
+  const measuredHeight = (maxY - minY) * Math.abs(root.scale.y);
   const height = Number.isFinite(measuredHeight) && measuredHeight > 1e-5 ? measuredHeight : 1;
 
   return {
