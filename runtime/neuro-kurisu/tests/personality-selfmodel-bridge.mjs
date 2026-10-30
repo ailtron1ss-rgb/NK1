@@ -96,4 +96,18 @@ assert.equal('unknown' in safeSelf.selfConsistentAction11,false);
 assert.equal(safeSelf.recoveryCount,0);
 assert.equal(safeSelf.identityGateAcceptedCount,0);
 
+const prepared = bridge.prepareDecision({
+  tick: 12, novelty01: 0.7, uncertainty01: 0.4, goalPressure01: 0.3, identityGap01: 0.2,
+  actionUtilities: { respond: 0.5, explore: 0.6, verify: 0.8, rest: 0.2, reflect: 0.7, wait: 0.3, defer: 0.4 },
+});
+assert.equal(Object.keys(prepared.selfModelActionBias).length, 7);
+assert.ok(prepared.personality.traitVector.every(Number.isFinite));
+assert.ok(Object.values(prepared.selfModelActionBias).every(Number.isFinite));
+
+const poisonedOutcomeModel = new SelfModelEngine();
+const poisonedOutcome = poisonedOutcomeModel.learnGoalOutcome({
+  action: 'verify', goalAlignment01: NaN, reward01: Infinity, tick: 13,
+});
+assert.equal(Number.isFinite(poisonedOutcome.quality01), true, 'non-finite rewards must not poison self calibration');
+assert.ok(Number.isFinite(poisonedOutcomeModel.snapshot().goalAlignmentEMA01));
 console.log('PERSONALITY_SELFMODEL_BRIDGE=PASS');
