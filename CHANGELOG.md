@@ -1,3 +1,9 @@
+## [NK1][Aspect 11] Map measured motor frames into calibrated semantic pose (2026-10-30)
+
+- Add a renderer-neutral motor-frame mapper that consumes current measured joint angles (`angleRad`), never commanded target angles, and requires an explicit versioned rig calibration profile.
+- Reject malformed, stale, rewound, expired and rejected frames; reject duplicate joint/channel mappings and invalid calibration bounds. Report unavailable and unmapped joints rather than inventing pose channels.
+- Mark mapped samples as not renderer-verified; mapping is not evidence that a pose was applied or displayed. Add focused regressions for calibration, clamping, freshness, malformed profiles and empty mappings.
+
 ## [NK1][Aspect 11] Reject blank semantic handoff identifiers (2026-10-30)
 
 - Require non-blank bounded expression labels and action names; nullable speech-event, intent and wardrobe IDs must be either null or non-blank bounded strings.
