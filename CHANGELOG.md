@@ -5,6 +5,10 @@
 - Added persistent P78 event replay protection, semantic P2702 trait mapping, named self-belief dimensions, bounded relationship identity state, and safer P78/P80/P2702/SelfModel snapshot restoration.
 - Added personality provenance, bridge, runtime-wiring and unified-self-state regression tests; exposed them as npm run test:personality and integrated that command into the WorkPass79 cognitive runtime regression workflow.
 - The branch remains a draft PR. The issuer namespace and RuntimeEvidenceBus event ID are provenance constraints, not cryptographic CEF receipt attestation. Full typecheck/regression and current-base synchronization remain required before promotion.
+- Tightened P78 ingress, PersonalitySelfModelBridge, SelfModelEngine and P2702PersistentPersonalityDynamics to require the same exact RuntimeEvidenceBus `outcome` ID, matching tick and identical evidence reference before high-level identity/value/trust writes; unverified experiences only receive bounded evidence-weighted habit learning.
+- Added P2702 canonical-name restore mapping, five live named value tensions, measured trait/value drift, evidence-derived autobiographical strength, and diagnostic projections; earned relationship trust and truth/science values now make small changes to existing action priors without introducing another selector.
+- Hardened relationship-key restoration (NFKC, control characters, prototype keys, 32-entry cap), made P78 observation-batch signatures structural JSON, and removed duplicate P2702 persistence projection writes.
+- Added direct-call bypass, receipt mismatch/tick, value/trust isolation, relationship restore normalization and personality-diagnostic regression coverage. Exact-head CI remains pending/unverified; these checks are not claimed as passed.
 
 ## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
 
