@@ -181,7 +181,7 @@ export class IntrinsicMotivationEngine {
 
   proposeGoal():{title:string;reason:string;source:'intrinsic'|'homeostatic';importance:number;urgency:number;confidence:number}|null{
     const d=this.state;
-    const affectSuffix=d.affectiveInfluence.label==='none'?'':`${affectSuffix}`;
+    const affectSuffix=d.affectiveInfluence.label==='none'?'':`;affect=${d.affectiveInfluence.label}`;
     if(d.overall<.52)return null;
     if(d.dominant==='epistemic')return {title:'Получить наблюдение, которое сильнее всего уменьшит неопределённость',reason:`intrinsic-epistemic=${d.epistemic.toFixed(2)}${affectSuffix}`,source:'intrinsic',importance:d.epistemic,urgency:d.epistemic*.9,confidence:.62};
     if(d.dominant==='novelty')return {title:'Исследовать новое состояние среды и проверить границы известного',reason:`intrinsic-novelty=${d.novelty.toFixed(2)}${affectSuffix}`,source:'intrinsic',importance:d.novelty,urgency:d.novelty*.78,confidence:.58};
