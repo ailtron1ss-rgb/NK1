@@ -1,3 +1,10 @@
+## [NK1][Aspect 04] Canonical 2.5D GLB scene adapter (2026-10-30)
+
+- Keep the merged `DepthRigDefinition` as the single 2.5D authoring/pose schema; do not add a competing `DepthRigManifest`.
+- Add a versioned glTF `nk1DepthRigAssetV1` envelope with explicit scene units, layer dimensions, exact object-name bindings and a parent hierarchy contract.
+- Add a Three.js adapter with exact hierarchy validation, pivot compensation, bounded semantic pose application, per-node readback and atomic rollback.
+- Expose a separate 2.5D avatar mode. It requires an authored GLB rig and never substitutes the procedural 3D concept for a 2.5D body.
+- The adapter receipt explicitly marks GPU presented-frame verification as false. Production Kurisu layered art and browser/Android visual E2E remain open.
 ## [NK1][Aspect 03] Carry grounded world-perception and temporal identity into latest source (2026-10-30)
 
 - Preserve evidence provenance and epistemic uncertainty through the canonical OrganismCore → P41 → GroundedWorldState path, including explicit evidence kinds, source/track identity, calibrated coordinate-frame IDs and image-space metadata.
