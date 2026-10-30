@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createNativeSpeechEventChannel } from '../src/organism/body/NativeSpeechEventChannel.ts';
+
+test('native provider events preserve per-operation identity and monotonic sequence', () => {
+  let now = 10;
+  const channel = createNativeSpeechEventChannel(() => now++);
+  const received = [];
+  channel.subscribe(event => received.push(event));
+  const requested = channel.publish('speech-A', { phase: 'command-requested' });
+  const spawned = channel.publish('speech-A', { phase: 'process-spawned' });
+  const exited = channel.publish('speech-A', { phase: 'process-exited', exitCode: 0, signal: null });
+  const other = channel.publish('speech-B', { phase: 'command-requested' });
+  assert.deepEqual([requested.sequence, spawned.sequence, exited.sequence, other.sequence], [1, 2, 3, 1]);
+  assert.deepEqual([requested.monotonicTimeMs, spawned.monotonicTimeMs, exited.monotonicTimeMs], [10, 11, 12]);
+  assert.equal(exited.operationId, 'speech-A');
+  assert.equal(exited.playbackVerified, false);
+  assert.equal(received.length, 4);
+});
+
+test('native event observers cannot disrupt provider execution and can unsubscribe', () => {
+  const channel = createNativeSpeechEventChannel(() => 1);
+  const seen = [];
+  channel.subscribe(() => { throw new Error('observer-failure'); });
+  const unsubscribe = channel.subscribe(event => seen.push(event.phase));
+  assert.equal(channel.publish('speech-C', { phase: 'interrupt-requested' }).phase, 'interrupt-requested');
+  unsubscribe();
+  channel.publish('speech-C', { phase: 'interrupt-unconfirmed', reason: 'still unknown' });
+  assert.deepEqual(seen, ['interrupt-requested']);
+});
+
+test('invalid operation identity and invalid monotonic time fail closed', () => {
+  const channel = createNativeSpeechEventChannel(() => Number.NaN);
+  assert.equal(channel.publish('speech-D', { phase: 'command-requested' }), null);
+  const validClock = createNativeSpeechEventChannel(() => 0);
+  assert.equal(validClock.publish('  ', { phase: 'command-requested' }), null);
+});
+
+test('native process events are explicitly not playback lifecycle evidence', () => {
+  const channel = createNativeSpeechEventChannel(() => 42);
+  const spawned = channel.publish('speech-E', { phase: 'process-spawned' });
+  const exited = channel.publish('speech-E', { phase: 'process-exited', exitCode: 0 });
+  assert.equal(spawned.playbackVerified, false);
+  assert.equal(exited.playbackVerified, false);
+  assert.equal(spawned.phase, 'process-spawned');
+  assert.equal(exited.phase, 'process-exited');
+});
