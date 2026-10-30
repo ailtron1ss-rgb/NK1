@@ -1,0 +1,13 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { getVrmArmCalibration, validateVrmRigCalibrationProfile } from "../src/components/avatar/vrmRigCalibrationProfile.ts";
+
+const calibration = { shoulderAxis:"z", elbowAxis:"z", shoulderSign:1, elbowSign:1, shoulderOffsetRad:0, elbowOffsetRad:0, shoulderMinRad:-1.2, shoulderMaxRad:1.2, elbowMinRad:0, elbowMaxRad:2.4 };
+const bone = (name) => ({ name, rotation:{x:0,y:0,z:0} });
+const context = { modelFingerprint:"sha256:avatar-a", coordinateFrameId:"avatar-root-m", left:{shoulder:bone("LeftUpperArm"),elbow:bone("LeftLowerArm")}, right:{shoulder:bone("RightUpperArm"),elbow:bone("RightLowerArm")} };
+const profile = { schemaVersion:1, modelFingerprint:"sha256:avatar-a", coordinateFrameId:"avatar-root-m", calibrationMethod:"manual-measured", left:{...calibration,shoulderBoneName:"LeftUpperArm",elbowBoneName:"LeftLowerArm"}, right:{...calibration,shoulderBoneName:"RightUpperArm",elbowBoneName:"RightLowerArm"} };
+
+test("accepts and deeply freezes an exact bilateral model calibration",()=>{const result=validateVrmRigCalibrationProfile(profile,context);assert.equal(result.accepted,true);if(!result.accepted)return;assert.ok(Object.isFrozen(result.profile));assert.ok(Object.isFrozen(result.profile.left));assert.equal(getVrmArmCalibration(result.profile,"right").shoulderAxis,"z");});
+test("rejects profiles from a different model or coordinate frame",()=>{assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,modelFingerprint:"sha256:other"}),{accepted:false,reason:"model-fingerprint-mismatch"});assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,coordinateFrameId:"camera"}),{accepted:false,reason:"coordinate-frame-mismatch"});});
+test("rejects missing, ambiguous-by-identity and mismatched arm rigs",()=>{assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,left:null}),{accepted:false,reason:"left-rig-mismatch"});assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,right:{...context.right,elbow:bone("RightForearmOther")}}),{accepted:false,reason:"right-rig-mismatch"});});
+test("rejects unknown schema, malformed values and invalid joint ranges",()=>{assert.deepEqual(validateVrmRigCalibrationProfile({...profile,schemaVersion:2},context),{accepted:false,reason:"unsupported-schema"});assert.deepEqual(validateVrmRigCalibrationProfile({...profile,left:{...profile.left,shoulderSign:0}},context),{accepted:false,reason:"invalid-profile"});assert.deepEqual(validateVrmRigCalibrationProfile({...profile,right:{...profile.right,elbowMinRad:3,elbowMaxRad:1}},context),{accepted:false,reason:"invalid-profile"});});
