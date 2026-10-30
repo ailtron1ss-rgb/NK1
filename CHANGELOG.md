@@ -9,6 +9,8 @@
 - Added P2702 canonical-name restore mapping, five live named value tensions, measured trait/value drift, evidence-derived autobiographical strength, and diagnostic projections; earned relationship trust and truth/science values now make small changes to existing action priors without introducing another selector.
 - Hardened relationship-key restoration (NFKC, control characters, prototype keys, 32-entry cap), made P78 observation-batch signatures structural JSON, and removed duplicate P2702 persistence projection writes.
 - Added direct-call bypass, receipt mismatch/tick, value/trust isolation, relationship restore normalization and personality-diagnostic regression coverage. Exact-head CI remains pending/unverified; these checks are not claimed as passed.
+- Carried the numeric evidence envelope into the P78 event and SelfModel boundary; P78, SelfModel and P2702 now independently require verified ≥ 0.85, independent ≥ 0.80, evidence ≥ 0.72, consequence ≥ 0.70 and identityUpdateScale ≥ 0.45 before high-level identity/autobiography/value/trust promotion.
+- Treat a RuntimeEvidenceBus receipt ID as immutable replay identity: changing the payload while reusing the same `reb:<tick>:<sequence>:outcome` ID cannot create a second P78 episode. Mode-sensitive dedupe remains tested for unreceipted legacy observations.
 
 ## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
 
