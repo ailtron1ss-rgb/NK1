@@ -64,3 +64,15 @@
 - Важно: селектор не создаёт художественную 2.5D модель и не помечает произвольный GLB как 2.5D. Он только открывает capability уже импортированного проверенного depth rig.
 
 Проверка на exact HEAD выполняется GitHub Actions после коммитов; до завершения CI локальный build/Android visual E2E не заявляются как пройденные.
+
+
+## WorkPass — semantic face rig
+
+`app/src/components/avatar/depthRigFace.ts` separates organism affect/speech from the concrete art asset:
+
+- `resolveDepthRigFacePose(...)` emits bounded channels for blink, brow raise/furrow, smile/frown, mouth open/wide/round and core emotion shapes.
+- `applyDepthRigFaceMorphs(...)` maps known aliases or artist-provided bindings to imported GLB/VRM morph targets. Every channel is optional: absent shapes are reported as missing and do not reject the model.
+- Ambiguous names that normalize to the same morph key are skipped rather than writing to an arbitrary target.
+- `Avatar3DStage` now uses this resolver in its existing morph-target update path, preserving the ordinary bone/3D path and not requiring every model to implement the full facial set.
+
+The resolver is a runtime contract, not a claim that the repository already contains a finished Kurisu face asset or a complete viseme library. A production asset still needs artist-authored eye/brow/mouth shapes and visual calibration.
