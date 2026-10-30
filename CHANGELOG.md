@@ -1,3 +1,8 @@
+## [NK1][Affect] Make decimal conditional expressions unambiguous (2026-10-30)
+
+- Normalized decimal-valued ternary branches in Avatar3DStage.tsx so TypeScript cannot tokenize them as optional chaining.
+- Preserved the existing numeric values and behavior; this is a syntax-only repair for affect-driven body animation.
+
 ## [NK1][Affect] Fix conditional animation-speed expression (2026-10-30)
 
 - Исправлен тернарный выбор базовой скорости animation clip с явными ветвями awake/asleep.
