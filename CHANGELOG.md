@@ -1,3 +1,12 @@
+## [NK1][аспект06] Add persistent time-decaying mood with stale-event protection (2026-10-30)
+
+- Add one canonical persisted `AffectiveMoodState` beside time-bound emotion episodes; mood valence, arousal and confidence decay independently toward documented baselines using explicit half-life parameters.
+- Make `moodSnapshot(at)` a pure time projection; use established persistent mood as the canonical appraisal modifier to prevent double-counting the previous emotion episode.
+- Reject stale/out-of-order emotional episodes from rewinding persistent mood while retaining them in event history and incrementing a diagnostic counter.
+- Restore the mood state from checkpoints and migrate older snapshots from the latest valid emotion episode with reduced confidence.
+- Add causal regression cases for positive mood formation, arousal shift, valence/arousal/confidence decay, read purity, canonical modifier selection, stale event rejection, restore/migration and invalid timestamps.
+- Targeted validation is configured through `.github/workflows/emotions-motivation-validation.yml`; record PASS only from Actions on the final branch HEAD. No Release ZIP or `main` update is claimed.
+
 ## [NK1][emotion-motivation] Close appraisal-to-drive and decision-outcome causal links (2026-10-30)
 
 - Add bounded confidence-gated appraisal modulators for personality hypotheses, previous mood, cognitive load and social relevance; preserve their normalized provenance per emotion episode.
