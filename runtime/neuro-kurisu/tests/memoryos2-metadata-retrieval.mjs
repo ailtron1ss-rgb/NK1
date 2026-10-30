@@ -63,6 +63,39 @@ assert.equal(restored.indexDiagnostics().pass, true,
   'metadata postings must rebuild consistently after restore');
 assert.equal(restored.previewRetrieve('mycelium', 3)[0]?.id, 'm-hidden',
   'metadata recall should survive snapshot/restore');
+// Canonical context edits must update metadata postings immediately, not only after restore.
+const contextUpdated = candidate.updateContext('m-hidden', {
+  topic: 'terrarium propagation schedule',
+  category: 'horticulture',
+});
+assert.equal(contextUpdated.topic, 'terrarium propagation schedule');
+assert.equal(candidate.indexDiagnostics().pass, true,
+  'updateContext must keep the metadata inverted index aligned with the canonical row');
+assert.equal(candidate.previewRetrieve('terrarium', 3)[0]?.id, 'm-hidden',
+  'new context topics must become searchable immediately');
+assert.equal(candidate.previewRetrieve('mycelium', 3).some(row => row.id === 'm-hidden'), false,
+  'replaced context topics must be removed from stale metadata postings');
+
+// The repeated-encode path also merges tags/context into an existing canonical row.
+candidate.encode(makeMemory('m-budget', 'A note about reviewing a purchase order next month.', {
+  tags: ['budget-refresh'],
+  context: { topic: 'renewal timeline tracking' },
+}));
+assert.equal(candidate.indexDiagnostics().pass, true,
+  'deduplicating encode must synchronize tags and context metadata postings');
+assert.equal(candidate.previewRetrieve('renewal', 3)[0]?.id, 'm-budget',
+  'metadata added through encode must be immediately retrievable');
+assert.equal(candidate.previewRetrieve('planning', 3).some(row => row.id === 'm-budget'), false,
+  'overwritten context values must not leave stale metadata terms');
+
+// Snapshot restore must rebuild the exact same metadata index from canonical rows.
+const postMutationRestore = new MemoryOS2({ embeddingProvider: null, metadataRecallEnabled: true });
+postMutationRestore.restore(candidate.snapshot());
+assert.equal(postMutationRestore.indexDiagnostics().pass, true,
+  'metadata index must remain valid after mutation followed by restore');
+assert.equal(postMutationRestore.previewRetrieve('terrarium', 3)[0]?.id, 'm-hidden');
+assert.equal(postMutationRestore.previewRetrieve('renewal', 3)[0]?.id, 'm-budget');
+
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   baselineTop1: baselineResult.items[0]?.id ?? null,
   metadataTop1: candidateResult.items[0]?.id ?? null,
