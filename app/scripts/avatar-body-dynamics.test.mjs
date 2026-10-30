@@ -27,6 +27,16 @@ test("time advances the breathing phase without introducing random state",()=>{
  assert.notEqual(a.breathPhase,b.breathPhase);
  assert.equal(deriveBodyDynamics({...base,elapsedSeconds:1}).breathPhase,a.breathPhase);
 });
+test("breathing phase remains continuous when affect changes cadence",()=>{
+ const phaseCycles=.37;
+ const calm=deriveBodyDynamics({...base,emotion:"calm",arousal:.1,elapsedSeconds:12,phaseCycles});
+ const alert=deriveBodyDynamics({...base,emotion:"anxiety",arousal:.9,elapsedSeconds:12,phaseCycles});
+ assert.equal(alert.breathPhase,calm.breathPhase);
+ assert.notEqual(alert.breathsPerMinute,calm.breathsPerMinute);
+ const advanced=(phaseCycles+alert.breathsPerMinute/60*.05)%1;
+ const next=deriveBodyDynamics({...base,emotion:"anxiety",arousal:.9,elapsedSeconds:12.05,phaseCycles:advanced});
+ assert.ok(next.breathPhase>alert.breathPhase);
+});
 test("malformed numeric inputs remain finite and inside safe bounds",()=>{
  const x=deriveBodyDynamics({...base,arousal:NaN,energy:Infinity,cognitiveLoad:-100,uncertainty:Infinity,elapsedSeconds:NaN});
  for(const value of Object.values(x))assert.ok(Number.isFinite(value));
@@ -37,6 +47,8 @@ test("imported rig receives breath and head/shoulder offsets only through recogn
  const {readFile}=await import("node:fs/promises");
  const stage=await readFile(new URL("../src/components/Avatar3DStage.tsx",import.meta.url),"utf8");
  assert.ok(stage.includes("deriveBodyDynamics"));
+ assert.ok(stage.includes("breathPhaseCycles"));
+ assert.ok(stage.includes("phaseCycles:rt.breathPhaseCycles"));
  assert.ok(stage.includes('n.includes("spine")||n.includes("chest")'));
  assert.ok(stage.includes("bodyMotion.breathPhase"));
  assert.ok(stage.includes("bodyMotion.shoulderLift"));
