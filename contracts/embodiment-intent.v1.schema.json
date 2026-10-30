@@ -5,63 +5,242 @@
   "description": "Single versioned state envelope for Live2D expression, gaze, body motion, and browser speech timeline. This protocol transports state; it does not certify acoustic or physical playback verification.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "protocolVersion", "stateVersion", "sentAtEpochMs", "speechEventId", "audioClockId", "speechPhase", "audioTimeMs", "clockSource", "priority", "cancellationToken", "expression", "expressionIntensity", "mouth", "gaze", "body", "voiceEmphasis"],
+  "required": [
+    "type",
+    "protocolVersion",
+    "stateVersion",
+    "sentAtEpochMs",
+    "speechEventId",
+    "audioClockId",
+    "speechPhase",
+    "audioTimeMs",
+    "clockSource",
+    "priority",
+    "cancellationToken",
+    "expression",
+    "expressionIntensity",
+    "mouth",
+    "gaze",
+    "body",
+    "voiceEmphasis"
+  ],
   "properties": {
-    "type": { "const": "kurisu_embodiment_intent" },
-    "protocolVersion": { "const": 1 },
-    "stateVersion": { "type": "integer", "minimum": 1 },
-    "sentAtEpochMs": { "type": "number", "minimum": 0 },
-    "speechEventId": { "type": ["string", "null"], "maxLength": 180 },
-    "audioClockId": { "type": ["string", "null"], "maxLength": 220 },
-    "speechPhase": { "enum": ["idle", "starting", "speaking", "ended", "cancelled", "unknown"] },
-    "audioTimeMs": { "type": "number", "minimum": 0 },
-    "clockSource": { "enum": ["speech-synthesis-elapsed-time-anchored-monotonic", "speech-synthesis-boundary-anchored-monotonic", "none"] },
-    "priority": { "type": "number", "minimum": 0, "maximum": 100 },
-    "cancellationToken": { "type": ["string", "null"], "maxLength": 220 },
-    "expression": { "type": "string", "maxLength": 32 },
-    "expressionIntensity": { "type": "number", "minimum": 0, "maximum": 1 },
+    "type": {
+      "const": "kurisu_embodiment_intent"
+    },
+    "protocolVersion": {
+      "const": 1
+    },
+    "stateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "sentAtEpochMs": {
+      "type": "number",
+      "minimum": 0
+    },
+    "speechEventId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 180
+    },
+    "audioClockId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 220
+    },
+    "speechPhase": {
+      "enum": [
+        "idle",
+        "starting",
+        "speaking",
+        "ended",
+        "cancelled",
+        "unknown"
+      ]
+    },
+    "audioTimeMs": {
+      "type": "number",
+      "minimum": 0
+    },
+    "clockSource": {
+      "enum": [
+        "speech-synthesis-elapsed-time-anchored-monotonic",
+        "speech-synthesis-boundary-anchored-monotonic",
+        "none"
+      ]
+    },
+    "priority": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "cancellationToken": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 220
+    },
+    "expression": {
+      "type": "string",
+      "maxLength": 32
+    },
+    "expressionIntensity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
     "mouth": {
-      "type": "object", "additionalProperties": false,
-      "required": ["open", "form", "viseme"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "open",
+        "form",
+        "viseme"
+      ],
       "properties": {
-        "open": { "type": "number", "minimum": 0, "maximum": 1 },
-        "form": { "type": "number", "minimum": -1, "maximum": 1 },
-        "viseme": { "type": "string", "pattern": "^[a-z]{1,16}$" }
+        "open": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "form": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "viseme": {
+          "type": "string",
+          "pattern": "^[a-z]{1,16}$"
+        }
       }
     },
     "gaze": {
-      "type": "object", "additionalProperties": false,
-      "required": ["x", "y", "driven"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "driven"
+      ],
       "properties": {
-        "x": { "type": "number", "minimum": -1, "maximum": 1 },
-        "y": { "type": "number", "minimum": -1, "maximum": 1 },
-        "driven": { "type": "boolean" }
+        "x": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "y": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "driven": {
+          "type": "boolean"
+        }
       }
     },
     "body": {
-      "type": "object", "additionalProperties": false,
-      "required": ["headTilt", "gesture", "motionGroup", "motionIndex", "motionToken"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headTilt",
+        "gesture",
+        "motionGroup",
+        "motionIndex",
+        "motionToken"
+      ],
       "properties": {
-        "headTilt": { "type": "number", "minimum": -0.15, "maximum": 0.15 },
-        "gesture": { "type": "boolean" },
-        "motionGroup": { "type": "string", "pattern": "^[a-zA-Z0-9_-]{1,32}$" },
-        "motionIndex": { "type": "integer", "minimum": 0, "maximum": 32 },
-        "motionToken": { "type": "integer", "minimum": 0 }
+        "headTilt": {
+          "type": "number",
+          "minimum": -0.15,
+          "maximum": 0.15
+        },
+        "gesture": {
+          "type": "boolean"
+        },
+        "motionGroup": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]{1,32}$"
+        },
+        "motionIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32
+        },
+        "motionToken": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gestureProfile": {
+          "type": "string",
+          "enum": [
+            "none",
+            "considering",
+            "presenting",
+            "examining",
+            "reassuring",
+            "emphatic"
+          ]
+        },
+        "gestureIntensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.8
+        }
       }
     },
-    "voiceEmphasis": { "type": "number", "minimum": 0, "maximum": 1 }
+    "voiceEmphasis": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "speechPhase": { "const": "speaking" } } },
+      "if": {
+        "properties": {
+          "speechPhase": {
+            "const": "speaking"
+          }
+        }
+      },
       "then": {
-        "properties": { "speechEventId": { "type": "string", "minLength": 1 }, "audioClockId": { "type": "string", "minLength": 1 } }
+        "properties": {
+          "speechEventId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "audioClockId": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       }
     },
     {
-      "if": { "properties": { "speechPhase": { "const": "cancelled" } } },
+      "if": {
+        "properties": {
+          "speechPhase": {
+            "const": "cancelled"
+          }
+        }
+      },
       "then": {
-        "properties": { "speechEventId": { "type": "string", "minLength": 1 }, "cancellationToken": { "type": "string", "pattern": "^cancel:.+" } }
+        "properties": {
+          "speechEventId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cancellationToken": {
+            "type": "string",
+            "pattern": "^cancel:.+"
+          }
+        }
       }
     }
   ]
