@@ -1,3 +1,7 @@
+# Unreleased
+
+- [NK1][Embodiment] Added renderer-neutral bounded joint motor controller, priority-aware goal interruption, snapshot recovery, planar two-bone IK, regression tests and Aspect 06 implementation plan. This is an initial execution substrate; full 3D dynamics, cognitive goal wiring and renderer adapters remain pending.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
