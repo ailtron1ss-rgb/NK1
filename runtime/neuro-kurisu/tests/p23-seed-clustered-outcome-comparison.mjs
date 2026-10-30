@@ -108,7 +108,7 @@ assert.equal(ledger.comparePairedByFamilyAndSeed('baseline', 'candidate', 'train
 // The same seed contributes to each family stratum. The gate must not
 // interpret those repeated seed-level counts as a disjoint partition.
 const seedClusteredGate = evaluateOutcomePromotion(bySeed, families, {
-  minPairedTasks: 4,
+  minIndependentSeeds: 4,
   minFamilies: 3,
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
@@ -120,7 +120,7 @@ assert.equal(seedClusteredGate.statisticalEvidence.rawPValue, 0.125);
 assert.ok(seedClusteredGate.reasons.includes('primary-sign-test-not-significant'),
   'four independent seed wins are not enough for a two-sided exact sign-test at alpha 0.05');
 const incorrectPartitionGate = evaluateOutcomePromotion(bySeed, families, {
-  minPairedTasks: 4,
+  minIndependentSeeds: 4,
   minFamilies: 3,
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
