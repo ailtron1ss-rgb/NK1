@@ -1,3 +1,86 @@
+## [NK1][аспект16] WorkPass631 — bounded native speech event fan-out (2026-10-30)
+
+- Ограничена очередь реентерабельных NativeSpeechEventChannel публикаций (1024 pending events); overflow отклоняется до изменения sequence/time state.
+- FIFO dispatch сохранён, устранён повторный Array.shift() и добавлен flood regression на 2000 вложенных публикаций.
+- Переполнение telemetry не влияет на TTS outcome и не считается подтверждением воспроизведения.
+
+## [NK1][аспект16] Deliver native speech provider telemetry to AvatarStage (2026-10-30)
+
+- Добавлен authenticated-by-existing-API-policy SSE endpoint /api/organism/voice/events поверх NativeSpeechHostRouter.
+- Server transport имеет ограничение активных подписчиков, bounded backpressure queue, heartbeat и обязательную очистку runtime-подписки при disconnect.
+- Добавлен browser EventSource adapter с проверкой versioned envelope, eventId, operationId, sequence, monotonic timestamp и playbackVerified=false.
+- AvatarStage показывает состояние Termux provider отдельно от browser TTS; process lifecycle не меняет speech phase, audio clock или viseme timeline.
+- Добавлены runtime/app regressions и CI gates для SSE transport, malformed/stale event rejection, backpressure, connection lifecycle и epistemic boundary.
+- Android playback, реальный audio clock и акустический lip-sync не заявляются: process spawn/exit не доказывают слышимое воспроизведение.
+
+## [NK1][аспект9] Add validated native speech host router seam (2026-10-30)
+
+- Добавлен `NativeSpeechHostRouter`: он принимает подписку из `EmbodimentRuntime`, проверяет версию/форму события, сохраняет eventId и operationId и пересылает типизированный envelope в host publisher.
+- Router отклоняет дубликаты, регрессирующие sequence/timestamp и события, которые пытаются заявить `playbackVerified=true`; ошибки host publisher изолированы от TTS.
+- Добавлен `test:workpass629:native-speech-host-router` на доставку, stale/duplicate filtering, publisher failure и unsubscribe.
+- Это transport seam для host Event Router, а не готовое подключение к browser/Live2D: реальный app transport, Android playback clock и акустическая lip-sync проверка остаются отдельными gates.
+
+## [NK1][аспект9] Expose native speech provider events through EmbodimentRuntime (2026-10-30)
+
+- Добавлен публичный метод `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)`: host-интеграции могут подписываться на события Termux provider без прямого импорта низкоуровневого Android bridge.
+- Метод возвращает unsubscribe-функцию; сохраняется исходная идентичность operation/event и граница `playbackVerified=false`.
+- Добавлен regression на доставку события через runtime facade и прекращение доставки после unsubscribe. Hosted CI для нового HEAD ожидается; реальное Android playback и UI transport не заявляются.
+
+## [NK1][аспект9] Защита монотонности native speech event clock (2026-10-30)
+
+- NativeSpeechEventChannel теперь сохраняет последнее время отдельно для каждого operation ID и зажимает регрессирующие clock samples до предыдущего значения.
+- Добавлен regression на последовательность clock samples 100 → 95 → 120; ожидаемые wire timestamps: 100 → 100 → 120.
+- Ограничение памяти сохранено: при eviction operation ID одновременно удаляются sequence и timestamp state.
+- Hosted CI для этого follow-up ещё ожидается; Android playback и host-to-UI transport не заявляются.
+
+## [NK1][аспект9] Preserve observer ordering under reentrant native events (2026-10-30)
+
+- Queue nested publications while dispatching so all subscribers observe the same total event order even if one observer synchronously publishes another event.
+- Add a regression proving reentrant publication cannot make later subscribers observe sequence 2 before sequence 1.
+- The new change is source- and test-committed; hosted CI for this follow-up is pending.
+
+## [NK1][аспект9] Use runtime-compatible monotonic clock for native speech events (2026-10-30)
+
+- The first hosted runtime typecheck identified that the minimal runtime declaration set does not include `node:perf_hooks`. Use the Node global `performance.now()` instead; it remains monotonic and is available in the pinned Node runtime without introducing a new shim/dependency.
+- The original native-event typecheck failure is corrected in source. The new HEAD must pass the rerun before this is considered validated.
+
+## [NK1][аспект9] Add native Termux speech provider event channel (2026-10-30)
+
+- Add a process-local, identity-bound event channel for Termux TTS command request, process spawn/exit/error and interrupt outcomes. Events carry per-operation sequence numbers and monotonic timestamps; observer failures are isolated from speech execution.
+- Keep provider-process telemetry separate from SpeechLifecycleEventV1: every native provider event explicitly carries `playbackVerified=false`. A successful process exit is still not evidence that Android audio reached the listener or finished playing.
+- Wire AndroidEmbodimentBridge to publish the process events and add deterministic regressions for operation isolation, ordering, monotonic time, unsubscribe behavior and the playback-verification boundary.
+- This is a native runtime observability seam, not yet a transport into the app/Live2D timeline. A host/UI adapter and real Android audio readback remain pending.
+
+## [NK1][аспект9] Fix negative-arousal prosody regression (2026-10-30)
+
+- Increase the canonical anxiety and anger/frustration de-escalation deltas so negative high-arousal delivery is measurably slower than the calm baseline even when the `respond` action initially selects a focused/warm tone.
+- The change fixes the assertion exposed by the hosted `app scripts regression suite`; the updated head must pass CI before this correction is considered validated.
+
+## [NK1][аспект9] Fix browser speech cleanup syntax (2026-10-30)
+
+- Correct the `try/catch` block in the AvatarStage speech-effect cleanup so the module parses and cancellation cleanup remains best-effort.
+- This is a source-level syntax correction; TypeScript/build/test execution is still pending.
+
+## [NK1][аспект9] Add versioned speech lifecycle protocol (2026-10-30)
+
+- Define SpeechLifecycleEventV1 with stable utterance/event IDs, provider identity, clock identity, monotonic timestamp, ordered sequence, lifecycle phase and optional provider boundary/error metadata.
+- Wire browser SpeechSynthesis queued/start/boundary/end/cancel/error callbacks into the protocol; reject stale callbacks by session identity and reject duplicate, out-of-order, cross-clock, regressing-character and post-terminal events.
+- Add deterministic contract regressions for valid lifecycle progression, malformed boundaries, cancellation terminality and stale boundary rejection.
+- This creates a shared protocol surface for a native adapter; native TTS is not yet wired to emit it, and no acoustic alignment or device playback validation is claimed.
+
+## [NK1][аспект9] Harden speech clock boundary handling (2026-10-30)
+
+- Extend the shared speech-timeline regression suite for duplicate provider boundaries, backward audio timestamps, malformed values, origin refinement, bounded anchor history and invalid monotonic-clock samples.
+- Verify that the newest calibration survives anchor-window trimming and that invalid clock input preserves or advances only from the monotonic high-water mark.
+- These are regression contracts for the existing browser speech clock; they do not claim acoustic/phoneme alignment or device playback validation.
+
+## [NK1][аспект9] Unify browser voice prosody with organism state (2026-10-30)
+
+- Replace fixed browser TTS settings and its duplicate affect mapper with an adapter to the canonical `VoiceEmbodiment.buildVoicePlan`, shared with the native Termux runtime; browser uses a neutral body baseline where device telemetry is unavailable.
+- Share language, breath mode, tone, pause budget, pitch, rate, volume and emphasis across delivery paths; build visemes from the exact selected speech rate and publish the same emphasis through the versioned embodiment intent.
+- Strengthen frustration/anger de-escalation in the canonical planner and add field-for-field browser/runtime parity tests plus bounded-parameter regressions.
+- This is a source-level integration; browser/device acoustic E2E, provider phoneme timing and refreshed Release ZIP remain pending.
+
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
 - Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
@@ -2802,12 +2885,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
-
-## [Unreleased] — 2026-10-30
-
-### Added
-- Added `docs/NK1_EXECUTION_PLAN_100_PERCENT_RU_2026-10-30.md`: refreshed source/release baseline, branch divergence and exact CI blockers, aspect-by-aspect readiness estimates, and staged completion criteria including selectable 2D/2.5D/3D embodiment.
-- Recorded the canonical delivery distinction: `workpass70-source` is the working source tree, `main` is the release workflow/report branch, and the latest verified Release ZIP remains the 2026-10-19 WorkPass70 Hotfix 1 asset.
-
-### Evidence boundary
-- The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.

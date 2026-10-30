@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import { neuroApiUrl } from "@/neuro-kurisu/api";
+import {
+  connectNativeSpeechProviderEvents,
+  describeNativeSpeechProviderStatus,
+  type NativeSpeechProviderConnection,
+  type NativeSpeechProviderEvent,
+} from "./avatar/nativeSpeechProviderEvents";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
+import { buildBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -20,6 +28,10 @@ import {
   type MouthPose,
   type SpeechPhase,
   type VisemeFrame,
+  createSpeechLifecycleEventV1,
+  acceptsSpeechLifecycleEventV1,
+  type SpeechLifecycleEventV1,
+  type SpeechLifecyclePhaseV1,
 } from "./avatar/embodimentTimeline";
 
 const EXPR: Record<EmotionLabel, string> = {
@@ -45,6 +57,9 @@ type BrowserSpeechSession = {
   anchorAudioPerformanceAtMs: number;
   anchorAudioElapsedMs: number;
   clockSource: "speech-synthesis-elapsed-time-anchored-monotonic" | "speech-synthesis-boundary-anchored-monotonic";
+  voiceEmphasis: number;
+  lifecycleSequence: number;
+  lastLifecycleEvent: SpeechLifecycleEventV1 | null;
 };
 
 function speechAudioClockNow(session: BrowserSpeechSession, nowMs: number): number {
@@ -58,6 +73,22 @@ function speechAudioClockNow(session: BrowserSpeechSession, nowMs: number): numb
 
 function speechTimelineNow(session: BrowserSpeechSession, nowMs: number): number {
   return sampleVisemeClock(session.boundaryAnchors, speechAudioClockNow(session, nowMs));
+}
+
+function recordSpeechLifecycle(session: BrowserSpeechSession, phase: SpeechLifecyclePhaseV1, nowMs: number, details: { charIndex?: number; errorCode?: string } = {}): void {
+  const event = createSpeechLifecycleEventV1({
+    eventId: `${session.speechEventId}:${session.lifecycleSequence + 1}`,
+    utteranceId: session.speechEventId,
+    sequence: session.lifecycleSequence + 1,
+    provider: "browser-speech-synthesis",
+    clockId: session.audioClockId,
+    monotonicTimeMs: Math.max(0, speechAudioClockNow(session, nowMs)),
+    phase,
+    ...details,
+  });
+  if (!acceptsSpeechLifecycleEventV1(session.lastLifecycleEvent, event)) return;
+  session.lifecycleSequence = event.sequence;
+  session.lastLifecycleEvent = event;
 }
 
 function sameMouthPose(a: MouthPose, b: MouthPose): boolean {
@@ -85,6 +116,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceStatus, setVoiceStatus] = useState<"off" | "ready" | "unsupported" | "speaking" | "unknown">(() => typeof window !== "undefined" && "speechSynthesis" in window ? "off" : "unsupported");
   const [mouthPose, setMouthPose] = useState<MouthPose>(CLOSED_MOUTH);
+  const [nativeSpeechProviderEvent, setNativeSpeechProviderEvent] = useState<NativeSpeechProviderEvent | null>(null);
+  const [nativeSpeechConnection, setNativeSpeechConnection] = useState<NativeSpeechProviderConnection>("connecting");
   const [mode, setMode] = useState<ViewMode>(() => {
     const saved = readAvatarPreference("kurisu-avatar-mode");
     return saved === "legacy" || saved === "original" || saved === "3d" ? saved : "live2d";
@@ -104,12 +137,19 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       activeSpeechSessionRef.current = null;
       lastSpeechSessionRef.current = active;
       speechPhaseRef.current = "cancelled";
+      recordSpeechLifecycle(active, "cancelled", performance.now());
     }
     try { window.speechSynthesis?.cancel(); } catch { /* browser may deny speech */ }
     utteranceRef.current = null;
     setMouthPose(CLOSED_MOUTH);
     setVoiceStatus(voiceEnabled ? "ready" : "off");
   };
+
+  useEffect(() => connectNativeSpeechProviderEvents({
+    url: neuroApiUrl("/api/organism/voice/events"),
+    onEvent: setNativeSpeechProviderEvent,
+    onConnection: setNativeSpeechConnection,
+  }), []);
 
   useEffect(() => {
     const onMsg = (ev: MessageEvent) => {
@@ -162,8 +202,19 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (activeSpeechSessionRef.current) stopSpeech();
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
-        const language = inferSpeechLanguage(text);
-        const rate = 0.96;
+        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
+        const prosody = buildBrowserVoiceProsody({
+          text,
+          emotion: utteranceEmotion,
+          action: snap.lastOption,
+          arousal: snap.emotion.arousal,
+          valence: snap.emotion.valence,
+          cognitiveLoad: snap.needs.cognitiveLoad,
+          uncertainty: snap.needs.uncertainty,
+          socialNeed: snap.needs.socialNeed,
+        });
+        const language = prosody.language || inferSpeechLanguage(text);
+        const rate = prosody.rate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
         const session: BrowserSpeechSession = {
@@ -176,7 +227,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           anchorAudioPerformanceAtMs: performance.now(),
           anchorAudioElapsedMs: 0,
           clockSource: "speech-synthesis-boundary-anchored-monotonic",
+          voiceEmphasis: prosody.emphasis01,
+          lifecycleSequence: 0,
+          lastLifecycleEvent: null,
         };
+        recordSpeechLifecycle(session, "queued", performance.now());
         activeSpeechSessionRef.current = session;
         lastSpeechSessionRef.current = session;
         speechPhaseRef.current = "starting";
@@ -185,8 +240,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
         utterance.rate = rate;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
-        utterance.pitch = utteranceEmotion === "joy" ? 1.03 : utteranceEmotion === "frustration" || utteranceEmotion === "anger" ? 0.92 : 1.0;
+        utterance.pitch = prosody.pitch;
+        utterance.volume = prosody.volume;
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;
@@ -199,6 +254,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           session.lastAudioElapsedMs = 0;
           session.clockSource = "speech-synthesis-boundary-anchored-monotonic";
           speechPhaseRef.current = "speaking";
+          recordSpeechLifecycle(session, "started", now);
           setVoiceStatus("speaking");
           setMouthPose(sampleVisemeTimeline(session.timeline, 0));
         };
@@ -222,6 +278,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           session.anchorAudioPerformanceAtMs = clockAnchor.anchorPerformanceAtMs;
           session.lastAudioElapsedMs = clockAnchor.highWaterMs;
           const boundaryAudioMs = session.lastAudioElapsedMs;
+          recordSpeechLifecycle(session, "boundary", now, { charIndex: rawCharIndex });
           const nextAnchors = appendVisemeClockAnchor(session.boundaryAnchors, {
             charIndex: rawCharIndex, audioTimeMs: boundaryAudioMs, timelineTimeMs: boundaryTimelineMs,
           });
@@ -235,6 +292,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
           speechPhaseRef.current = "ended";
+          recordSpeechLifecycle(session, "ended", performance.now());
           utteranceRef.current = null;
           setVoiceStatus("ready");
           setMouthPose(CLOSED_MOUTH);
@@ -245,6 +303,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
           speechPhaseRef.current = "unknown";
+          recordSpeechLifecycle(session, "error", performance.now(), { errorCode: String(event.error || "unknown").slice(0, 64) });
           utteranceRef.current = null;
           setVoiceStatus("unknown");
           setMouthPose(CLOSED_MOUTH);
@@ -258,6 +317,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
           speechPhaseRef.current = "unknown";
+          recordSpeechLifecycle(session, "error", performance.now(), { errorCode: "start-failed" });
           utteranceRef.current = null;
           setVoiceStatus("unknown");
           setMouthPose(CLOSED_MOUTH);
@@ -277,6 +337,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         activeSpeechSessionRef.current = null;
         lastSpeechSessionRef.current = active;
         speechPhaseRef.current = "cancelled";
+        recordSpeechLifecycle(active, "cancelled", performance.now());
         try { synth.cancel(); } catch { /* no-op */ }
         setMouthPose(CLOSED_MOUTH);
         setVoiceStatus(voiceEnabled ? "ready" : "off");
@@ -370,7 +431,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
-      voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
+      voiceEmphasis: activeUtterance ? (session?.voiceEmphasis ?? 0) : 0,
     };
     win.postMessage(intent, window.location.origin);
   }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
@@ -390,7 +451,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
-          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p></div>
+          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p><p className="text-[10px] text-muted">Termux provider: {nativeSpeechConnection === "connected" ? "подключён" : nativeSpeechConnection === "reconnecting" ? "переподключение" : nativeSpeechConnection === "closed" ? "отключён" : "подключение"}</p>{nativeSpeechProviderEvent ? <p className="max-w-[min(75vw,420px)] text-[10px] text-muted">{describeNativeSpeechProviderStatus(nativeSpeechProviderEvent)}</p> : null}</div>
           <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "live2d" : "live2d unavailable"}</span>
         </div>
       </>}

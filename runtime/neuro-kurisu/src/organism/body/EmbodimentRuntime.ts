@@ -4,6 +4,7 @@ import { buildVoicePlan, defaultVoiceRuntimeState, type VoiceRuntimeState, type 
 import { defaultBodyState, synthesizeBody, type OrganismBodyEvent, type OrganismBodyState, shouldEnterSleep } from './EmbodiedBody.ts';
 import type { OrganismState } from '../core/types.ts';
 import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
+import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './NativeSpeechEventChannel.ts';
 
 type OrganismNeedsLike = { energy:number; cognitiveLoad:number; uncertainty:number; socialNeed:number; novelty:number; identityCoherence:number; goalPressure:number; };
 export type SpeechGatewayResult = { ok:boolean; uncertain?:boolean; outcomeClass?:string; reason?:string };
@@ -43,6 +44,11 @@ export class EmbodimentRuntime {
   capabilitiesSnapshot(): TermuxCapabilities { return { ...this.capabilities }; }
   voiceSnapshot(): { state: VoiceRuntimeState; plan: VoicePlan | null } { return { state: structuredClone(this.voice), plan: structuredClone(this.lastVoicePlan) }; }
   sensorDiagnosticsSnapshot(): { diagnostics: AndroidTelemetryDiagnostics | null; sampleCount:number; sensorFailures:number } { return { diagnostics: structuredClone(this.lastDiagnostics), sampleCount:this.sampleCount, sensorFailures:this.sensorFailures }; }
+
+  /** Subscribe to native provider-process telemetry without importing the low-level Termux bridge. These events are not verified audio playback events. */
+  subscribeNativeSpeechEvents(listener:(event:NativeSpeechProviderEventV1)=>void):()=>void {
+    return nativeSpeechEventChannel.subscribe(listener);
+  }
 
   async sample(plan: AndroidSamplingPlan = {}): Promise<OrganismBodyState> {
     const force = Boolean(plan.force);
