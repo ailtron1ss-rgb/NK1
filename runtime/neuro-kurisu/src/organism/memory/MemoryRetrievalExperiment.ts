@@ -54,7 +54,7 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
       deltas: slice.deltas,
     };
   }
-  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices } });
+  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, taskCategoryStratification: report.taskCategoryStratification });
 }
 
 /**
@@ -104,6 +104,7 @@ export function runMemoryOS2RetrievalExperiment(
     mrrConfidence: run.confidence.mrr01,
     candidateHoldout: run.metrics.candidate,
     languageStratification: run.languageStratification,
+    taskCategoryStratification: run.taskCategoryStratification,
     singleRunPromotionStatus: run.promotion.status,
     singleRunPromotionReason: run.promotion.reason,
     mrrConfidenceNonInferioritySupported: run.promotion.mrrNonInferioritySupported,
@@ -144,6 +145,7 @@ export function runMemoryOS2RetrievalExperiment(
       mrrNonInferioritySupportedAcrossAllSeeds: allMrrIntervalsNonInferior,
       maximumMrrRegression01: maximumMrrRegression,
     },
+    taskCategoryStratification: runs[0]?.taskCategoryStratification ?? null,
     runs: perSeed,
     promotion: {
       allowed: false,
