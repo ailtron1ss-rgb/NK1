@@ -43,7 +43,18 @@ test("bakes an embedded GLTF clip into target-local tracks across differently or
     [0, 1],
     [0, 0, 0, 1, 0, Math.sin(Math.PI / 8), 0, Math.cos(Math.PI / 8)],
   );
-  const clip = new THREE.AnimationClip("source-turn", 1, [sourceTrack]);
+  const sourceHips = source.bones[0].node;
+  const hipsTrack = new THREE.VectorKeyframeTrack(
+    `${sourceHips.uuid}.position`,
+    [0, 1],
+    [0, 0.2, 0, 0, 0.4, 0],
+  );
+  const sourceRootTrack = new THREE.VectorKeyframeTrack(
+    `${source.root.uuid}.position`,
+    [0, 1],
+    [0, 0, 0, 1, 0, 0],
+  );
+  const clip = new THREE.AnimationClip("source-turn", 1, [sourceTrack, hipsTrack, sourceRootTrack]);
   const result = retargetThreeHumanoidClip(
     source.root, source.bones, sourceRest,
     target.root, target.bones, targetRest, clip,
@@ -52,6 +63,10 @@ test("bakes an embedded GLTF clip into target-local tracks across differently or
 
   assert.equal(result.sampledFrames, 11);
   assert.ok(result.transferredRoles.includes("head"));
+  assert.ok(Math.abs(source.root.position.x) < 1e-8, "source root transforms are restored after sampling");
+  const hipsPositionTrack = result.clip.tracks.find((track) => track.name === `${target.bones[0].node.uuid}.position`);
+  assert.ok(hipsPositionTrack, "hips displacement becomes a target-local position track");
+  assert.ok(hipsPositionTrack.values[3] < target.bones[0].node.position.x, "hips displacement is axis-calibrated into target space");
   assert.ok(result.clip.tracks.some((track) => track.name === `${target.bones[2].node.uuid}.quaternion`));
   const mixer = new THREE.AnimationMixer(target.root);
   const action = mixer.clipAction(result.clip).play();
