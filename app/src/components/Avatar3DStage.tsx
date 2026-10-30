@@ -55,7 +55,31 @@ function makeBody(scene:any){
 }
 function disposeTree(root:any){root?.traverse?.((node:any)=>{node.geometry?.dispose?.();for(const mat of(Array.isArray(node.material)?node.material:node.material?[node.material]:[])){for(const value of Object.values(mat)){if(value&&typeof value==="object"&&(value as any).isTexture)(value as any).dispose?.();}mat.dispose?.();}});}
 function bonesOf(root:any,gltf?:any,vrm?:any):Bone[]{const out:Bone[]=[],seen=new Set<any>(),normalizedRoles=new Set<string>(),roleMap=buildHumanoidRoleMap(gltf?.parser?.json?.extensions),associations=gltf?.parser?.associations;const add=(node:any,name:string)=>{if(!node?.rotation||seen.has(node))return;seen.add(node);out.push({node,name,x:node.rotation.x,y:node.rotation.y,z:node.rotation.z});};const normalized:[string,string][]=[["hips","hips"],["spine","spine"],["chest","chest"],["upperChest","upperchest"],["neck","neck"],["head","head"],["jaw","jaw"],["leftEye","lefteye"],["rightEye","righteye"],["leftShoulder","leftshoulder"],["rightShoulder","rightshoulder"],["leftUpperArm","leftupperarm"],["rightUpperArm","rightupperarm"],["leftLowerArm","leftlowerarm"],["rightLowerArm","rightlowerarm"],["leftHand","lefthand"],["rightHand","righthand"],["leftUpperLeg","leftupperleg"],["rightUpperLeg","rightupperleg"],["leftLowerLeg","leftlowerleg"],["rightLowerLeg","rightlowerleg"],["leftFoot","leftfoot"],["rightFoot","rightfoot"],["leftToes","lefttoes"],["rightToes","righttoes"],["leftThumbMetacarpal","leftthumbmetacarpal"],["leftThumbProximal","leftthumbproximal"],["leftThumbDistal","leftthumbdistal"],["leftIndexProximal","leftindexproximal"],["leftIndexIntermediate","leftindexintermediate"],["leftIndexDistal","leftindexdistal"],["leftMiddleProximal","leftmiddleproximal"],["leftMiddleIntermediate","leftmiddleintermediate"],["leftMiddleDistal","leftmiddledistal"],["leftRingProximal","leftringproximal"],["leftRingIntermediate","leftringintermediate"],["leftRingDistal","leftringdistal"],["leftLittleProximal","leftlittleproximal"],["leftLittleIntermediate","leftlittleintermediate"],["leftLittleDistal","leftlittledistal"],["rightThumbMetacarpal","rightthumbmetacarpal"],["rightThumbProximal","rightthumbproximal"],["rightThumbDistal","rightthumbdistal"],["rightIndexProximal","rightindexproximal"],["rightIndexIntermediate","rightindexintermediate"],["rightIndexDistal","rightindexdistal"],["rightMiddleProximal","rightmiddleproximal"],["rightMiddleIntermediate","rightmiddleintermediate"],["rightMiddleDistal","rightmiddledistal"],["rightRingProximal","rightringproximal"],["rightRingIntermediate","rightringintermediate"],["rightRingDistal","rightringdistal"],["rightLittleProximal","rightlittleproximal"],["rightLittleIntermediate","rightlittleintermediate"],["rightLittleDistal","rightlittledistal"]];for(const [boneName,role]of normalized){const node=vrm?.humanoid?.getNormalizedBoneNode?.(boneName);if(node){normalizedRoles.add(role);add(node,role);}}root.traverse((node:any)=>{if(node.isBone){const nodeIndex=associations?.get?.(node)?.nodes,mapped=Number.isSafeInteger(nodeIndex)?roleMap.get(nodeIndex):undefined,name=mapped??canonicalizeHumanoidBoneName(node.name);if(!normalizedRoles.has(name))add(node,name);}});return out;}
-function rebuildModelMotionClips(rt:Runtime){\n const embedded=rt.embeddedModelClips??[];const source=rt.motionSource;const retargeted:any[]=[];const failures:string[]=[];\n if(source&&rt.rigRoot&&rt.rigSnapshot){for(const clip of source.clips.slice(0,24)){try{const result=retargetThreeHumanoidClip(source.root,source.bones,source.snapshot,rt.rigRoot,rt.bones,rt.rigSnapshot,clip,{sampleRate:24,maxSamples:1800,maxRotationRadians:Math.PI*.92,maxRootTranslation:.85});result.clip.name=\x60retarget_\x24{String(clip.name||"motion").slice(0,96)}\x60;retargeted.push(result.clip);}catch(error){failures.push(\x60\x24{String(clip.name||"unnamed")}: \x24{error instanceof Error?error.message:"retarget failed"}\x60);}}}\n rt.modelClips=[...embedded,...retargeted];rt.clips=[...rt.modelClips,...rt.vrmaClips];return {retargeted:retargeted.length,failures};\n}\nfunction transitionClip(rt:Runtime,clip:any,timeScale:number,fadeSeconds=.22):void{
+function rebuildModelMotionClips(rt:Runtime){
+ const embedded=rt.embeddedModelClips??[];
+ const source=rt.motionSource;
+ const retargeted:any[]=[];
+ const failures:string[]=[];
+ if(source&&rt.rigRoot&&rt.rigSnapshot){
+  for(const clip of source.clips.slice(0,24)){
+   try{
+    const result=retargetThreeHumanoidClip(
+     source.root,source.bones,source.snapshot,
+     rt.rigRoot,rt.bones,rt.rigSnapshot,clip,
+     {sampleRate:24,maxSamples:1800,maxRotationRadians:Math.PI*.92,maxRootTranslation:.85},
+    );
+    result.clip.name=`retarget_${String(clip.name||"motion").slice(0,96)}`;
+    retargeted.push(result.clip);
+   }catch(error){
+    failures.push(`${String(clip.name||"unnamed")}: ${error instanceof Error?error.message:"retarget failed"}`);
+   }
+  }
+ }
+ rt.modelClips=[...embedded,...retargeted];
+ rt.clips=[...rt.modelClips,...rt.vrmaClips];
+ return {retargeted:retargeted.length,failures};
+}
+function transitionClip(rt:Runtime,clip:any,timeScale:number,fadeSeconds=.22):void{
  if(!rt.mixer)return;
  if(!clip){
   if(rt.activeAction){
