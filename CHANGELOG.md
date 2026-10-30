@@ -1,3 +1,9 @@
+## [NK1][WorkPass646] Cover exported quaternion rotation fidelity (2026-10-30)
+
+- Add a non-zero glTF quaternion to Euler XYZ round-trip regression and a negative rotation-drift assertion, so rotation comparison is tested beyond identity poses.
+- Correct GLB JSON padding trimming in the Blender exporter to strip actual JSON padding characters rather than literal escape letters.
+- Keep the exporter fail-closed for matrix transforms until the runtime schema has a tested matrix decomposition path.
+
 ## [NK1][WorkPass645] Reconcile 2.5D manifest against exported glTF transforms (2026-10-30)
 
 - Stop copying Blender-space object locations and Euler rotations into the runtime manifest before glTF axis conversion.
