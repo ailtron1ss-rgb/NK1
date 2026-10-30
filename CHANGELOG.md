@@ -1,3 +1,10 @@
+## [NK1][WorkPass635] Feed explicit autonomous motor frames into the 2.5D renderer (2026-10-30)
+
+- Add a fail-closed adapter from the PR #410 `MotorFrame` shape into the integrated Three.js depth-rig intent contract; renderer channels are connected only through explicit joint bindings, never guessed IDs.
+- Use the measured `angleRad` from each active moving/holding frame, not the future `targetAngleRad`, to prevent visual teleportation; preserve semantic fallback intent for idle/rejected/expired frames and unavailable/unbound joints.
+- Bound each mapped channel, validate frame/binding identity and reject duplicate channels/joints atomically; add five focused regressions and optional `Avatar3DStage` props for the frame and calibration bindings.
+- The current parent UI does not yet supply live MotorFrames; this establishes the renderer adapter boundary, not a claim of autonomous end-to-end actuation. No production layered art or Release ZIP change.
+
 ## 2026-10-30 — NK1 2.5D semantic face rig
 
 - Added renderer-independent facial intent mapping for blink, brows, smile/frown, emotion shapes and speech mouth forms.
