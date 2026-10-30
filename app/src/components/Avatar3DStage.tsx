@@ -154,12 +154,17 @@ export function Avatar3DStage(props:Props){
         else if(!protectedKeys.has(key))rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
       }
       if(rt.expressionTransitionRemaining>0){rt.expressionTransitionRemaining=Math.max(0,rt.expressionTransitionRemaining-dt);if(rt.expressionTransitionRemaining===0)rt.transitionExpressionKeys=[];}
-    }else if(rt.vrmMorphTargets.length){
-      applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights);
     }else{
+      if(rt.vrmMorphTargets.length)applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights);
+      // A VRM may expose only a subset of facial channels through its native
+      // expression binds. Let the generic GLB dictionary adapter fill only
+      // semantic channels that the native path actually owns; this avoids
+      // both missing channels and double-writing the same morph target.
+      const nativeSemantics=new Set(rt.vrmMorphTargets.flatMap((group:any)=>group.bindings.map((binding:any)=>binding.expression)));
+      const genericWeights=Object.fromEntries(Object.entries(expressionWeights).filter(([key])=>!nativeSemantics.has(key)));
       const speechSemantics=["aa","ih","ou","ee","oh"] as const;
-      const speechVisemes=p.speaking?speechSemantics.map((semantic)=>({semantic,weight:expressionWeights[semantic]??0})):[];
-      applyThreeFacialSemanticWeights(rt.facialMorphTargets,expressionWeights,speechVisemes);
+      const speechVisemes=p.speaking?speechSemantics.filter((semantic)=>!nativeSemantics.has(semantic)).map((semantic)=>({semantic,weight:genericWeights[semantic]??0})):[];
+      applyThreeFacialSemanticWeights(rt.facialMorphTargets,genericWeights,speechVisemes);
     }}
     if(rt.vrm?.lookAt){
       if(rt.activeLookAtClip)rt.vrm.lookAt.target=null;
