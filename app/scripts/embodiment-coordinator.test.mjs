@@ -22,7 +22,7 @@ function adapter(id, options = {}) {
     async verify(receipt) {
       calls.push("verify");
       if (options.verify) return options.verify(receipt);
-      return { verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+      return { adapterId: id, executionId: receipt.executionId, adapterId: "vrm", executionId: receipt.executionId, verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
         observedChannels: ["headYaw"], mismatches: [] };
     },
     async dispose() { calls.push("dispose"); },
@@ -45,7 +45,7 @@ test("commits only after destination apply receipt and independent verification"
 test("verification failure disposes destination and restores the source", async () => {
   const source = adapter("live");
   const target = adapter("vrm", { verify: async receipt => ({
-    verified: false, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    adapterId: "vrm", executionId: receipt.executionId, verified: false, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
     observedChannels: [], mismatches: ["headYaw"], reason: "pose-not-observed",
   }) });
   const coordinator = new EmbodimentSwitchCoordinator(source);
@@ -87,7 +87,7 @@ test("prevents overlapping switches while a destination is preparing", async () 
 test("does not commit when verification omits an accepted channel", async () => {
   const source = adapter("live");
   const target = adapter("vrm", { verify: async receipt => ({
-    verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    adapterId: "vrm", executionId: receipt.executionId, verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
     observedChannels: [], mismatches: [],
   }) });
   const coordinator = new EmbodimentSwitchCoordinator(source);
@@ -100,7 +100,7 @@ test("does not commit when verification omits an accepted channel", async () => 
 test("does not commit when verification predates the apply receipt", async () => {
   const source = adapter("live");
   const target = adapter("vrm", { verify: async receipt => ({
-    verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 199,
+    adapterId: "vrm", executionId: receipt.executionId, verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 199,
     observedChannels: ["headYaw"], mismatches: [],
   }) });
   const coordinator = new EmbodimentSwitchCoordinator(source);
@@ -141,10 +141,39 @@ test("rejects blank, duplicate and contradictory channel claims", async () => {
   }
 });
 
+
+test("rejects a stale execution readback even when the state revision and channels match", async () => {
+  const source = adapter("live");
+  const target = adapter("vrm", { verify: async receipt => ({
+    adapterId: "vrm", executionId: "previous-execution", verified: true,
+    stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    observedChannels: ["headYaw"], mismatches: [],
+  }) });
+  const coordinator = new EmbodimentSwitchCoordinator(source);
+  const result = await coordinator.switchTo(target, snapshot);
+  assert.equal(result.status, "rolled-back");
+  assert.equal(result.reason, "destination-verification-failed");
+  assert.equal(coordinator.activeAdapterId, "live");
+});
+
+test("rejects readback attributed to a different renderer adapter", async () => {
+  const source = adapter("live");
+  const target = adapter("vrm", { verify: async receipt => ({
+    adapterId: "other-renderer", executionId: receipt.executionId, verified: true,
+    stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    observedChannels: ["headYaw"], mismatches: [],
+  }) });
+  const coordinator = new EmbodimentSwitchCoordinator(source);
+  const result = await coordinator.switchTo(target, snapshot);
+  assert.equal(result.status, "rolled-back");
+  assert.equal(result.reason, "destination-verification-failed");
+  assert.equal(coordinator.activeAdapterId, "live");
+});
+
 test("rejects blank or duplicate observed channel claims", async () => {
   const source = adapter("live");
   const target = adapter("vrm", { verify: async receipt => ({
-    verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    adapterId: "vrm", executionId: receipt.executionId, verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
     observedChannels: ["headYaw", " "], mismatches: [],
   }) });
   const coordinator = new EmbodimentSwitchCoordinator(source);

@@ -13,6 +13,10 @@ export interface AdapterApplyReceipt {
 }
 
 export interface AdapterVerification {
+  /** Bind readback to the adapter that produced the matching apply receipt. */
+  adapterId: string;
+  /** Prevent a stale verification from another application of the same revision. */
+  executionId: string;
   verified: boolean;
   stateRevision: number;
   observedAtMonotonicMs: number;
@@ -65,7 +69,8 @@ const isValidVerification = (
   result: AdapterVerification,
   receipt: AdapterApplyReceipt,
 ): boolean => {
-  if (!result || result.stateRevision !== receipt.stateRevision
+  if (!result || result.adapterId !== receipt.adapterId || result.executionId !== receipt.executionId
+    || result.stateRevision !== receipt.stateRevision
     || !Number.isFinite(result.observedAtMonotonicMs)
     || result.observedAtMonotonicMs < receipt.appliedAtMonotonicMs
     || !isStringList(result.observedChannels)
