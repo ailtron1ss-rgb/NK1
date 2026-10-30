@@ -30,7 +30,8 @@
     "validate:original-2d-assets": "node scripts/validate-original-2d-assets.mjs",
     "test:original-2d-existing-assets": "node --test scripts/original-2d-existing-assets.test.mjs",
     "test:embodiment-switch": "node --experimental-strip-types --test scripts/embodiment-switch.test.mjs scripts/embodiment-coordinator.test.mjs scripts/live2d-intent-ack.test.mjs scripts/motor-frame-mapper.test.mjs",
-    "test:motor-frame-mapper": "node --experimental-strip-types --test scripts/motor-frame-mapper.test.mjs"
+    "test:motor-frame-mapper": "node --experimental-strip-types --test scripts/motor-frame-mapper.test.mjs",
+    "test:depth-rig-scene": "node --experimental-strip-types --test scripts/depth-rig-scene-adapter.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
