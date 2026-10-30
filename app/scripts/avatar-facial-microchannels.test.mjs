@@ -37,3 +37,17 @@ test("Live2D adapter only addresses facial parameters present in the shipped CDI
  const viewer=await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html",import.meta.url),"utf8");
  for(const id of ["ParamEyeLSmile","ParamEyeRSmile","ParamBrowLY","ParamBrowRY","ParamBrowLForm","ParamBrowRForm","ParamCheek","ParamMouthForm"])assert.ok(viewer.includes(id),id);
 });
+
+test("temporal micro-motor cadence is bounded and responds to arousal/context",()=>{
+ const calm=deriveFacialMicrochannels({...base,emotion:"calm",arousal:.1});
+ const alert=deriveFacialMicrochannels({...base,emotion:"curiosity",arousal:.9});
+ for(const profile of [calm,alert]){
+  assert.ok(profile.blinkIntervalMs>=4200&&profile.blinkIntervalMs<=10500);
+  assert.ok(profile.blinkDurationMs>=90&&profile.blinkDurationMs<=145);
+  assert.ok(profile.saccadeIntervalMs>=1100&&profile.saccadeIntervalMs<=4200);
+  assert.ok(profile.saccadeAmplitude>=.06&&profile.saccadeAmplitude<=.25);
+ }
+ assert.ok(alert.blinkIntervalMs<calm.blinkIntervalMs);
+ assert.ok(alert.saccadeIntervalMs<calm.saccadeIntervalMs);
+ assert.ok(alert.saccadeAmplitude>calm.saccadeAmplitude);
+});
