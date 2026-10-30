@@ -58,6 +58,17 @@ const repairable = {
   dormant: 'false',
 };
 
+const damagedTrust = {
+  ...structuredClone(seedRow),
+  id: 'damaged-trust-row',
+  content: 'The old cache policy for REF-229 was AMBER.',
+  source: 'device-observation',
+  confidence: Number.NaN,
+  epistemicStatus: 'fact',
+  validFromAt: now - 5_000,
+  validUntilAt: 'not-a-timestamp',
+};
+
 const malformed = [
   { id: 'invalid-content-object', content: { text: 'not a memory string' }, kind: 'semantic' },
   { id: 'invalid-kind', content: 'Content exists but the memory kind is unknown.', kind: 'not-a-memory-kind' },
@@ -67,9 +78,9 @@ const malformed = [
 ];
 
 const restored = new MemoryOS2({ embeddingProvider: null });
-restored.restore({ ...structuredClone(base), items: [repairable, ...malformed] });
+restored.restore({ ...structuredClone(base), items: [repairable, damagedTrust, ...malformed] });
 const rows = restored.snapshot().items;
-assert.equal(rows.length, 1, 'only the valid, repairable memory should remain');
+assert.equal(rows.length, 2, 'valid rows should be normalized and malformed identities rejected');
 const row = rows[0];
 
 assert.equal(row.id, 'normalized-row', 'IDs are trimmed and bounded');
@@ -91,6 +102,13 @@ assert.deepEqual(row.semanticVector, [], 'invalid derived vectors are discarded 
 assert.equal(Number.isFinite(row.createdAt), true);
 assert.equal(Number.isFinite(row.lastAccessAt), true);
 assert.equal(row.revisionHistory.length, 0, 'invalid revision history entries are dropped');
+const trustRow = rows.find(item => item.id === 'damaged-trust-row');
+assert(trustRow);
+assert.equal(trustRow.epistemicStatus, 'unknown',
+  'a fact with invalid confidence must be downgraded instead of remaining trusted');
+assert.equal(trustRow.confidence, .5);
+assert.equal(trustRow.validUntilAt, trustRow.validFromAt,
+  'malformed non-null expiry must fail closed rather than becoming an indefinite current fact');
 
 // Invalid expiry metadata must not make a historical row appear current.
 const expiring = {
@@ -112,8 +130,8 @@ assert.equal(
 );
 
 const diagnostics = restored.restoreDiagnostics();
-assert.equal(diagnostics.sourceRows, 6);
-assert.equal(diagnostics.acceptedRows, 1);
+assert.equal(diagnostics.sourceRows, 7);
+assert.equal(diagnostics.acceptedRows, 2);
 assert.equal(diagnostics.invalidRowsDropped, 5);
 const doctor = restored.doctor();
 assert.equal(doctor.pass, false, 'memory doctor must expose data loss during restore');
