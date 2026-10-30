@@ -1,0 +1,59 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+
+const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+test("pins the Pixiv VRMA loader/compiler package at the VRM runtime version", async () => {
+  const pkg = JSON.parse(await readFile(path.join(appRoot, "package.json"), "utf8"));
+  const lock = JSON.parse(await readFile(path.join(appRoot, "package-lock.json"), "utf8"));
+  assert.equal(pkg.dependencies["@pixiv/three-vrm-animation"], "3.5.5");
+  assert.equal(lock.packages[""].dependencies["@pixiv/three-vrm-animation"], "3.5.5");
+  assert.equal(lock.packages["node_modules/@pixiv/three-vrm-animation"].version, "3.5.5");
+  assert.equal(lock.packages["node_modules/@pixiv/three-vrm-animation"].license, "MIT");
+  assert.equal(lock.packages["node_modules/@pixiv/three-vrm-animation"].peerDependencies.three, ">=0.137");
+});
+
+test("the production GLTF loader registers both VRM and VRMA parsers", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /import \{ createVRMAnimationClip, VRMAnimationLoaderPlugin, VRMLookAtQuaternionProxy \} from "@pixiv\/three-vrm-animation"/);
+  assert.match(stage, /loader\.register\(\(parser:any\)=>new VRMLoaderPlugin\(parser\)\)/);
+  assert.match(stage, /loader\.register\(\(parser:any\)=>new VRMAnimationLoaderPlugin\(parser\)\)/);
+});
+
+test("VRMA sidecars are preflighted, converted against the active VRM, and bounded", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  const validation = stage.indexOf("inspectSelfContainedGlb(data,MAX_AVATAR_MODEL_BYTES)", stage.indexOf("const loadVrma"));
+  const parse = stage.indexOf("loader.parse(data", stage.indexOf("const loadVrma"));
+  assert.ok(validation >= 0 && parse > validation);
+  assert.match(stage, /Array\.isArray\(gltf\.userData\?\.vrmAnimations\)/);
+  assert.match(stage, /if\(animations\.length>20\)/);
+  assert.match(stage, /createVRMAnimationClip\(animation,rt\.vrm\)/);
+  assert.match(stage, /rt\.vrmaClips=clips/);
+  assert.match(stage, /rt\.vrmaDefaultClip=clips\[0\]\?\?null/);
+});
+
+test("the VRM mixer exists even when the character file contains no embedded animations", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /rt\.mixer=new THREE\.AnimationMixer\(root\)/);
+  assert.match(stage, /rt\.vrmaClips\[\]=\[\]/);
+  assert.match(stage, /rt\.clips=\[\.\.\.rt\.modelClips,\.\.\.rt\.vrmaClips\]/);
+});
+
+test("VRMA LookAt quaternion tracks have the official proxy node and animation selection prefers action-specific clips", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /new VRMLookAtQuaternionProxy\(vrm\.lookAt\)/);
+  assert.match(stage, /rt\.lookAtProxy\.name="lookAtQuaternionProxy"/);
+  assert.match(stage, /selectClip\(rt\.vrmaClips,p\.action\)\|\|selectClip\(rt\.modelClips,p\.action\)\|\|rt\.vrmaDefaultClip/);
+  assert.match(stage, /accept="\.vrma,model\/gltf-binary"/);
+  assert.match(stage, /onChange=\{onAnimationFile\}/);
+});
+
+test("replacing or resetting the VRM invalidates any in-flight VRMA load", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /animationToken\.current\+\+;const token=\+\+loadToken\.current/);
+  assert.match(stage, /const reset=async\(\)=>\{loadToken\.current\+\+;animationToken\.current\+\+/);
+  assert.match(stage, /token!==animationToken\.current\|\|runtime\.current!==rt/);
+});
