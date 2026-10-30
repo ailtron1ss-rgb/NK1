@@ -47,3 +47,19 @@ export function applySemanticMorphTargets(bindings:SemanticMorphBinding[],values
   binding.influences[binding.index]=Math.max(current,requested);
  }
 }
+
+export type SemanticMorphValues = Record<SemanticMorphChannel, number>;
+/** Smooth affective morphs without delaying viseme/blink response. */
+export function smoothSemanticMorphValues(previous:SemanticMorphValues,target:SemanticMorphValues,dtSeconds:number):SemanticMorphValues {
+ const dt=Math.max(0,Math.min(.1,Number.isFinite(dtSeconds)?dtSeconds:0));
+ const next={} as SemanticMorphValues;
+ for(const channel of ["joy","sadness","anger","mouthOpen","mouthOh","blink"] as const){
+  const from=Number.isFinite(previous[channel])?Math.max(0,Math.min(1,previous[channel])):0;
+  const to=Number.isFinite(target[channel])?Math.max(0,Math.min(1,target[channel])):0;
+  const fast=channel==="mouthOpen"||channel==="mouthOh"||channel==="blink";
+  const tau=to>from?(fast?.045:.11):(fast?.075:.28);
+  const alpha=dt===0?0:1-Math.exp(-dt/tau);
+  next[channel]=from+(to-from)*alpha;
+ }
+ return next;
+}
