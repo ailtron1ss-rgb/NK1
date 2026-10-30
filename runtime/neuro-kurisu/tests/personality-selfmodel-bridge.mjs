@@ -21,7 +21,7 @@ const verifiedEvent={
 const accepted=bridge.recordOutcome({
   event:verifiedEvent,action:'explore',reward01:0.9,goalAlignment01:0.85,
   predictionError01:0.1,identityGap01:0.05,relationshipId:'user',identityVector:[0.95,0.2,0.8,0.4,0.6,0.7,0.5,0.8],
-  evidenceReceiptId:'reb:10:11:outcome',learningScale01:1,evidence01:0.9,independent01:0.9,consequence01:0.9,
+  evidenceReceiptId:'reb:10:11:outcome',learningScale01:1,identityUpdateScale01:1,evidence01:0.9,independent01:0.9,consequence01:0.9,
 });
 assert.equal(accepted.newEvent,true);
 assert.equal(accepted.evidenceAccepted,true);
@@ -56,7 +56,7 @@ assert.deepEqual(unbound.personality.selfBeliefs,selfBeliefsBeforeUnbound,'unsup
 const mismatchedReceipt = bridge.recordOutcome({
   event:{tick:12,at:1200,action:'verify',outcome:0.9,evidenceStatus:'verified-independent',evidenceRef:'external-verification:reb:12:99:outcome',evidenceReceiptId:'reb:12:98:outcome'},
   evidenceReceiptId:'reb:12:98:outcome',action:'verify',reward01:0.9,goalAlignment01:0.9,
-  predictionError01:0.1,identityGap01:0.1,learningScale01:1,evidence01:0.95,independent01:0.95,consequence01:0.95,
+  predictionError01:0.1,identityGap01:0.1,learningScale01:1,identityUpdateScale01:1,evidence01:0.95,independent01:0.95,consequence01:0.95,
 });
 assert.equal(mismatchedReceipt.evidenceAccepted,false,'receipt ID must exactly match the autobiographical event reference');
 assert.equal(mismatchedReceipt.evidenceReason,'receipt-not-bound-to-event');
@@ -188,11 +188,11 @@ boundedRelationships.beforeDecision({
 assert.equal(Object.keys(boundedRelationships.snapshot().relationshipTrust).length,0,'decision preparation must not invent relationship trust');
 for (let i = 0; i < 40; i++) boundedRelationships.afterOutcome({
   tick: i + 2, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1,
-  action: 'respond', relationshipId: `relationship-${i}`, evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, evidenceReceiptId:`reb:${i+2}:1:outcome`, evidenceRef:`external-verification:reb:${i+2}:1:outcome`,
+  action: 'respond', relationshipId: `relationship-${i}`, evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, identityUpdateScale01:1, evidenceReceiptId:`reb:${i+2}:1:outcome`, evidenceRef:`external-verification:reb:${i+2}:1:outcome`,
 });
 boundedRelationships.afterOutcome({
   tick: 42, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1,
-  action: 'respond', relationshipId: '__proto__', evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, evidenceReceiptId:'reb:42:1:outcome', evidenceRef:'external-verification:reb:42:1:outcome',
+  action: 'respond', relationshipId: '__proto__', evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, identityUpdateScale01:1, evidenceReceiptId:'reb:42:1:outcome', evidenceRef:'external-verification:reb:42:1:outcome',
 });
 assert.ok(Object.keys(boundedRelationships.snapshot().relationshipTrust).length <= 32);
 assert.equal(Object.hasOwn(boundedRelationships.snapshot().relationshipTrust, '__proto__'), false);
@@ -203,12 +203,18 @@ assert.deepEqual(directP2702Bypass.snapshot().valueWeights,directP2702Before.val
 assert.deepEqual(directP2702Bypass.snapshot().selfBeliefs,directP2702Before.selfBeliefs,'direct callers cannot update self-beliefs without an exact receipt');
 assert.deepEqual(directP2702Bypass.snapshot().relationshipTrust,directP2702Before.relationshipTrust,'direct callers cannot update relationship trust without an exact receipt');
 assert.equal(directP2702Bypass.snapshot().autobiographicalStrength01,directP2702Before.autobiographicalStrength01,'unreceipted outcomes cannot increase autobiographical evidence strength');
+const lowIdentityScale = new P2702PersistentPersonalityDynamics();
+const lowIdentityBefore = lowIdentityScale.snapshot();
+lowIdentityScale.afterOutcome({ tick: 51, reward01:1, verified01:1, predictionError01:0, identityGap01:0, action:'verify', identityVector:[1,1,1,1,1,1,1,1], learningScale01:1, identityUpdateScale01:0.2, evidence01:1, independent01:1, consequence01:1, evidenceReceiptId:'reb:51:1:outcome', evidenceRef:'external-verification:reb:51:1:outcome' });
+assert.deepEqual(lowIdentityScale.snapshot().valueWeights,lowIdentityBefore.valueWeights,'identity-specific low confidence blocks stable value revision');
+assert.deepEqual(lowIdentityScale.snapshot().selfBeliefs,lowIdentityBefore.selfBeliefs,'identity-specific low confidence blocks self-belief updates');
+assert.equal(lowIdentityScale.snapshot().autobiographicalStrength01,lowIdentityBefore.autobiographicalStrength01,'identity-specific low confidence blocks autobiographical strength promotion');
 const relationshipRestore = new P2702PersistentPersonalityDynamics();
 relationshipRestore.restore({ relationshipTrust:Object.fromEntries([['Ａlice',0.9],['Alice',0.2],['bad'+String.fromCharCode(0)+'key',1],['__proto__',1],['constructor',1]]) });
 assert.equal(Object.keys(relationshipRestore.snapshot().relationshipTrust).length,1,'restore normalizes Unicode and drops duplicate/unsafe relationship IDs');
 assert.equal(relationshipRestore.snapshot().relationshipTrust.Alice,0.9);
 const dimensionSafePersonality = new P2702PersistentPersonalityDynamics();
-dimensionSafePersonality.afterOutcome({ tick: 1, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1, action: 'reflect', identityVector: [NaN, 0.99], evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, evidenceReceiptId:'reb:1:1:outcome', evidenceRef:'external-verification:reb:1:1:outcome' });
+dimensionSafePersonality.afterOutcome({ tick: 1, reward01: 0.9, verified01: 1, predictionError01: 0.1, identityGap01: 0.1, action: 'reflect', identityVector: [NaN, 0.99], evidence01: 0.9, independent01: 0.9, consequence01: 0.9, learningScale01: 1, identityUpdateScale01:1, evidenceReceiptId:'reb:1:1:outcome', evidenceRef:'external-verification:reb:1:1:outcome' });
 assert.equal(dimensionSafePersonality.snapshot().selfBeliefs[0], 0.72, 'invalid vector dimensions are skipped without shifting following coordinates');
 assert.ok(dimensionSafePersonality.snapshot().selfBeliefs[1] > 0.68);
 const p80 = new P80UnifiedSelfState();
