@@ -1,0 +1,444 @@
+{
+  "schemaVersion": 1,
+  "id": "nk1-original-2d-existing-assets-audit",
+  "status": "source-tree-inventory-only",
+  "observedSourceRef": "workpass70-source",
+  "observedSourceCommit": "ad564d1879028f00549be41ec5172a2f72e25897",
+  "generatedAt": "2026-10-30",
+  "purpose": "Separate existing static sprite references from newly authored Original 2D production masters.",
+  "sourceManifest": "app/public/sprites/manifest.json",
+  "sourceVisualAudit": "docs/AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md",
+  "totalAssets": 32,
+  "groups": {
+    "sheet_anime_office": {
+      "count": 8,
+      "assets": [
+        "arms_crossed",
+        "embarrassed",
+        "neutral_front",
+        "phone_look",
+        "shocked",
+        "thinking_chin",
+        "tired_rest",
+        "whiteboard"
+      ]
+    },
+    "sheet_cinematic": {
+      "count": 8,
+      "assets": [
+        "arms_close",
+        "drpepper_dusk",
+        "passionate_reach",
+        "sofa_phone",
+        "soft_smile",
+        "steeple_focus",
+        "wet_glance",
+        "whiteboard_write"
+      ]
+    },
+    "sheet_lab": {
+      "count": 8,
+      "assets": [
+        "lab_chin",
+        "lab_crossed",
+        "lab_drpepper",
+        "lab_explain",
+        "lab_profile",
+        "lab_shocked",
+        "lab_steeple",
+        "lab_tired"
+      ]
+    },
+    "sheet_trench_full": {
+      "count": 8,
+      "assets": [
+        "city_stand",
+        "clockwork",
+        "lab_think",
+        "phone_lean",
+        "rain_kneel",
+        "reach_out",
+        "street_walk",
+        "sunset_phone"
+      ]
+    }
+  },
+  "policy": {
+    "eligibleAsProductionLayeredMaster": false,
+    "eligibleAs2d5dLayerSource": false,
+    "allowedUse": [
+      "static pose reference",
+      "composition and costume reference",
+      "expression direction reference",
+      "fallback still frame where separately licensed"
+    ],
+    "prohibitedAssumptions": [
+      "not independently riggable",
+      "not evidence of separate garment layers",
+      "not evidence of turnarounds",
+      "not evidence of transparent occluded anatomy",
+      "not proof of author/license/redistribution rights"
+    ],
+    "promotionRequirements": [
+      "verify authorship and redistribution license",
+      "inspect actual pixels and transparency",
+      "record dimensions and SHA-256",
+      "confirm identity consistency and source provenance",
+      "create or obtain layered editable master before 2.5D handoff"
+    ]
+  },
+  "assets": [
+    {
+      "id": "arms_crossed",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/arms_crossed.png",
+      "bytes": 268317,
+      "gitBlobSha1": "6f1cc8b075327dcad51919a5d227120bd468fcf4",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "embarrassed",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/embarrassed.png",
+      "bytes": 243433,
+      "gitBlobSha1": "785cfafb9db647a4bf964d1323b488b7d665479a",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "neutral_front",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/neutral_front.png",
+      "bytes": 270572,
+      "gitBlobSha1": "cfb0299b54de52340f0af4f92b4435bd6a37a374",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "phone_look",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/phone_look.png",
+      "bytes": 240023,
+      "gitBlobSha1": "ec2b15c2c692dba83e541aab3946cbcc3c64840f",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "shocked",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/shocked.png",
+      "bytes": 283338,
+      "gitBlobSha1": "656d70f264149aa16836e3f24de6d71c0eac1984",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "thinking_chin",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/thinking_chin.png",
+      "bytes": 265310,
+      "gitBlobSha1": "0260c52532a5bbb5a52fc80c2bcc421d3d1de4e0",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "tired_rest",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/tired_rest.png",
+      "bytes": 258340,
+      "gitBlobSha1": "58b1627315aba8d001e6a143ebaefece1cad884f",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "whiteboard",
+      "sheet": "sheet_anime_office",
+      "path": "app/public/sprites/sheet_anime_office/whiteboard.png",
+      "bytes": 250029,
+      "gitBlobSha1": "a22e435e6a8ee60d4707645f61ded06290652963",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "arms_close",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/arms_close.png",
+      "bytes": 334415,
+      "gitBlobSha1": "5fbb050af1ebe4bccb3ed9a0a33eaf8f12a43495",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "drpepper_dusk",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/drpepper_dusk.png",
+      "bytes": 351973,
+      "gitBlobSha1": "fd27eb5514e45fe9a20a8d03c8a11f40e5c2c3aa",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "passionate_reach",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/passionate_reach.png",
+      "bytes": 294885,
+      "gitBlobSha1": "c26a2145307958d81d0e70e771d968a5c56f761a",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "sofa_phone",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/sofa_phone.png",
+      "bytes": 331390,
+      "gitBlobSha1": "7b0387681fefd603613b770d0e4d6ad13eda7fba",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "soft_smile",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/soft_smile.png",
+      "bytes": 351512,
+      "gitBlobSha1": "d3c6c6593fe535cf05b620a8d37ac91d8f6b50bb",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "steeple_focus",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/steeple_focus.png",
+      "bytes": 314978,
+      "gitBlobSha1": "517afc6c87cab9e2e9a119a403b2183521cdd5d0",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "wet_glance",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/wet_glance.png",
+      "bytes": 308955,
+      "gitBlobSha1": "870b6800e49c715cd59ea084d5f1fee9b5f05d1d",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "whiteboard_write",
+      "sheet": "sheet_cinematic",
+      "path": "app/public/sprites/sheet_cinematic/whiteboard_write.png",
+      "bytes": 291087,
+      "gitBlobSha1": "b62e1b1b34aba6a3b214f3a42065bd9d8af0cdf4",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_chin",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_chin.png",
+      "bytes": 284454,
+      "gitBlobSha1": "c76992d4d414a653b9a2c4d09bb7c1cb4ed1dba1",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_crossed",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_crossed.png",
+      "bytes": 279766,
+      "gitBlobSha1": "7ac73cd1bac58a75c97528051d701a677c30d9dc",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_drpepper",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_drpepper.png",
+      "bytes": 260459,
+      "gitBlobSha1": "742612c3c95eb59b65355005e605e1c0b9cd80f5",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_explain",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_explain.png",
+      "bytes": 265603,
+      "gitBlobSha1": "4c3e148b2d519d27756d8b3a66e0fd835965f20f",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_profile",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_profile.png",
+      "bytes": 265269,
+      "gitBlobSha1": "e3cc394825bb080a07f49483a24bab631ea87c44",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_shocked",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_shocked.png",
+      "bytes": 271482,
+      "gitBlobSha1": "26bc123b9ada51190c7e794f44bcc367513e5ea0",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_steeple",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_steeple.png",
+      "bytes": 295082,
+      "gitBlobSha1": "905ebd9fbc9fcc59f7ad7e4429e2f04fcf1440d5",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_tired",
+      "sheet": "sheet_lab",
+      "path": "app/public/sprites/sheet_lab/lab_tired.png",
+      "bytes": 286326,
+      "gitBlobSha1": "c482f73e32a618c901481d399ee7417c4bc73039",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "city_stand",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/city_stand.png",
+      "bytes": 397237,
+      "gitBlobSha1": "d8cab0ccc67183ed307c6f3ee2a84e9b9b87bc1d",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "clockwork",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/clockwork.png",
+      "bytes": 327764,
+      "gitBlobSha1": "2fee339a8380bb0403c05f67560756cb8dcdd8c3",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "lab_think",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/lab_think.png",
+      "bytes": 341270,
+      "gitBlobSha1": "9cdd822e9a150e6228333ad2ce25ce4df30d86cf",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "phone_lean",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/phone_lean.png",
+      "bytes": 318696,
+      "gitBlobSha1": "dc2508c6bd26e663eee7a484b0c1466fe72ededb",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "rain_kneel",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/rain_kneel.png",
+      "bytes": 313994,
+      "gitBlobSha1": "9be1d1a241cbff6ebe26319b237b29d93b09eff5",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "reach_out",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/reach_out.png",
+      "bytes": 343995,
+      "gitBlobSha1": "ae2a5d27d985417db5d7250b4c7901f1ca6ea002",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "street_walk",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/street_walk.png",
+      "bytes": 427834,
+      "gitBlobSha1": "cfa96d104d049c0ce070f9446cb70151f961e15b",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    },
+    {
+      "id": "sunset_phone",
+      "sheet": "sheet_trench_full",
+      "path": "app/public/sprites/sheet_trench_full/sunset_phone.png",
+      "bytes": 359332,
+      "gitBlobSha1": "e75bf14c0d3b627a98f463a0caaa25199f38c180",
+      "classification": "legacy-static-pose-reference",
+      "productionArtMaster": false,
+      "visualReview": "refer-to-AVATAR_RENDERING_VISUAL_AUDIT_2026-10-29.md#WorkPass622",
+      "licenseStatus": "not-revalidated-in-this-inventory"
+    }
+  ]
+}
