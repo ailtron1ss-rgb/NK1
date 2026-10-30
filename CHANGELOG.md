@@ -1,3 +1,8 @@
+## [NK1][аспект9] Fix negative-arousal prosody regression (2026-10-30)
+
+- Increase the canonical anxiety and anger/frustration de-escalation deltas so negative high-arousal delivery is measurably slower than the calm baseline even when the `respond` action initially selects a focused/warm tone.
+- The change fixes the assertion exposed by the hosted `app scripts regression suite`; the updated head must pass CI before this correction is considered validated.
+
 ## [NK1][аспект9] Fix browser speech cleanup syntax (2026-10-30)
 
 - Correct the `try/catch` block in the AvatarStage speech-effect cleanup so the module parses and cancellation cleanup remains best-effort.
