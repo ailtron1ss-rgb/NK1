@@ -35,3 +35,18 @@ test("existing sprite and Live2D files remain available",async()=>{
 
 
 test("procedural 3D avatar exposes real selectable lab-coat, casual and hoodie geometry",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/wardrobe:casual/);assert.match(stage,/wardrobe:hoodie/);assert.match(stage,/function applyProceduralOutfit/);assert.match(stage,/node\.visible=lab/);for(const label of ["Лабораторный халат","Повседневный","Худи"])assert.ok(stage.includes(label),"Missing outfit control: "+label);assert.match(stage,/aria-pressed=\{proceduralOutfit===/);});
+
+
+test("uploaded VRM stage exposes a rights-confirmed verified wardrobe pack application path",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/applyVerifiedVrmWardrobePack/);
+ assert.match(stage,/readWardrobeBundle/);
+ assert.match(stage,/nk1-wardrobe-pack/);
+ assert.match(stage,/avatarWardrobeBodyId/);
+ assert.match(stage,/targetRigVersion:WARDROBE_RIG_VERSION/);
+ assert.match(stage,/renderer:"vrm3d"/);
+ assert.match(stage,/wardrobeRightsConfirmed/);
+ assert.match(stage,/Подтверждаю, что имею право использовать все ресурсы/);
+ assert.match(stage,/Проверить и применить к VRM/);
+ assert.match(stage,/setWardrobePack\(null\)/);
+});
