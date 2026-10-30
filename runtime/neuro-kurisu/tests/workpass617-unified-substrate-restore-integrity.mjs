@@ -171,6 +171,32 @@ const detached = cycle.snapshot();
 detached.self.mode = 'mutated-outside';
 assert.equal(cycle.snapshot().self.mode, 'verify', 'snapshots must be detached from canonical substrate state');
 
+// Accessor-backed persisted fields must not execute, at the root or nested level.
+let rootGetterCalled = false;
+const getterRoot = { version: 1 };
+Object.defineProperty(getterRoot, 'cycles', { enumerable: true, get() { rootGetterCalled = true; return 900; } });
+const getterRootRestore = new UnifiedCognitiveSubstrate();
+getterRootRestore.restore(getterRoot);
+assert.equal(rootGetterCalled, false, 'root restore getter must not execute');
+assert.equal(getterRootRestore.snapshot().cycles, 0);
+
+let nestedGetterCalled = false;
+const getterSelf = { continuity01: 0.91 };
+Object.defineProperty(getterSelf, 'agency01', { enumerable: true, get() { nestedGetterCalled = true; return 0.99; } });
+const getterNestedRestore = new UnifiedCognitiveSubstrate();
+getterNestedRestore.restore({ version: 1, self: getterSelf });
+assert.equal(nestedGetterCalled, false, 'nested restore getter must not execute');
+assert.equal(getterNestedRestore.snapshot().self.continuity01, 0.91);
+assert.equal(getterNestedRestore.snapshot().self.agency01, defaultUnifiedCognitiveSubstrate().self.agency01);
+
+// Runtime input accessors are rejected as missing data instead of being evaluated.
+let inputGetterCalled = false;
+const accessorInput = input(3);
+Object.defineProperty(accessorInput, 'tick', { enumerable: true, get() { inputGetterCalled = true; return 3; } });
+assert.throws(() => cycle.integrate(accessorInput), /positive safe integer/);
+assert.equal(inputGetterCalled, false);
+assert.equal(cycle.snapshot().cycles, 2, 'rejected accessor-backed input cannot mutate the substrate');
+
 console.log('ASPECT01_UNIFIED_COGNITIVE_SUBSTRATE_INTEGRITY=PASS', JSON.stringify({
   restoreSanitization: true,
   versionGuard: true,
