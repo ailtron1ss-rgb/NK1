@@ -5,6 +5,7 @@ on:
     paths:
       - "app/src/components/avatar/wardrobe*.ts"
       - "app/src/components/avatar/vrmWardrobeAdapter.ts"
+      - "app/src/components/avatar/vrmWardrobePackLoader.ts"
       - "app/src/components/avatar/live2dWardrobeCapability.ts"
       - "app/scripts/wardrobe-*.test.mjs"
       - "app/scripts/live2d-wardrobe-capability.test.mjs"
