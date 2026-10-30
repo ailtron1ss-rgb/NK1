@@ -2888,3 +2888,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - NK1 Aspect 07: кэширование semantic morph bindings для импортированных VRM/GLB; baseline reset → authored AnimationMixer → affect/viseme overlay, чтобы сохранять authored clips и предотвращать залипание morph values.
 
 - NK1 Aspect 07: imported VRM/GLB semantic morphs now use bounded attack/release smoothing; viseme/blink channels respond faster than affective expression channels.
+
+
+## 2026-10-30 — VRM expression preset bridge
+- Added native VRM 1.0 `VRMC_vrm` and VRM 0.x `VRM` expression-preset resolution through GLTFLoader node/mesh associations, including weighted joy/sadness/anger/blink/viseme morph binds.
+- Kept generic GLB morph-name resolution as a fallback; unknown presets and malformed/out-of-range binds are ignored. Full VRM humanoid/look-at/spring-bone runtime and visual-model validation remain separate work.
