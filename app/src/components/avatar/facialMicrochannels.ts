@@ -26,7 +26,7 @@ export function deriveFacialMicrochannels(input:FacialMicrochannelsInput):Facial
     browRightForm:clamp(strain*.42-sadness*.18+control*.12,-.5,.5),
     cheek:clamp((input.emotion==="joy" ? .22 : input.emotion==="protective" ? .08 : 0)+Math.max(0,positive)*.12,0,.38),
     mouthTension:clamp(strain*.5+(0.5-d)*.12-Math.max(0,positive)*.1,0,.55),
-    blinkBias:clamp((input.emotion==="anxiety"?.16:input.emotion==="sadness"?.1:0)+(a-.5)*.08,-.08,.2),
+    blinkBias:clamp((input.emotion==="anxiety" ? .16 : input.emotion==="sadness" ? .1 : 0)+(a-.5)*.08,-.08,.2),
     // Deterministic context targets: alert/high-arousal states move more quickly.
     blinkIntervalMs:clamp(8800-a*1900-(alertness?650:0)+(input.emotion==="sadness" ? 550 : 0),4200,10500),
     blinkDurationMs:clamp(105+a*24+(input.emotion==="sadness" ? 12 : 0),90,145),
