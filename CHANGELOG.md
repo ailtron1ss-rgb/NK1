@@ -1,3 +1,8 @@
+## [NK1][WorkPass630] Preserve imported avatar orientation while enabling drag yaw (2026-10-30)
+
+- Parent imported VRM/GLB scene under a dedicated NK1AvatarMotionPivot and apply user drag yaw/sway to that wrapper, not to the model's normalized source scene.
+- Keep AnimationMixer bound to the original VRM scene and humanoid tracks; preserve VRM 0.x orientation transforms and add a regression test for the interaction.
+
 ## [NK1][WorkPass629] Speech-viseme priority and safe VRMA picker (2026-10-30)
 
 - Give active NK1 speech visemes (aa/ih/ou/ee/oh) priority over VRMA-authored vowel morph tracks while TTS is speaking; preserve the rest of the animation's emotion, body and LookAt channels and resume VRMA mouth tracks after speech.
