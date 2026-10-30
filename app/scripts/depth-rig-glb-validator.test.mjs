@@ -26,7 +26,11 @@ const document = (rig = manifest(), names = ["root", "head"]) => ({
   asset: { version: "2.0" },
   scene: 0,
   scenes: [{ nodes: [0], extras: { nk1DepthRigManifest: rig } }],
-  nodes: names.map((name, index) => ({ name, ...(index === 0 ? { children: [1] } : {}) })),
+  nodes: names.map((name, index) => ({
+    name,
+    ...(index === 0 ? { children: [1] } : {}),
+    ...(index === 1 ? { translation: [0, 1, 0] } : {}),
+  })),
 });
 
 test("reads GLB v2 JSON chunk and validates the exported scene extras contract", () => {
@@ -60,11 +64,21 @@ test("fails closed for malformed or truncated GLB containers", () => {
   assert.ok(validateDepthRigGlb(broken).errors.includes("glb-length-mismatch"));
 });
 
-test("rejects a manifest parent that differs from the actual exported glTF graph", () => {
+test("rejects manifest parent and local transforms that differ from exported glTF nodes", () => {
   const rig = manifest();
   rig.nodes[1].parentId = "not-the-exported-parent";
+  rig.nodes[1].position = [9, 9, 9];
   const result = validateDepthRigGlb(glb(document(rig)));
-  assert.ok(result.errors.includes("missing-parent:head"));
+  assert.ok(result.errors.includes("parent-mismatch:head"));
+  assert.ok(result.errors.includes("position-mismatch:head"));
+});
+
+test("rejects a manifest root when the exported glTF places it beneath another node", () => {
+  const json = document();
+  json.nodes.push({ name: "unexpected-parent", children: [0] });
+  json.nodes[0].children = [1];
+  const result = validateDepthRigGlb(glb(json));
+  assert.ok(result.errors.includes("parent-mismatch:root"));
 });
 
 test("Avatar3DStage consumes scene extras for both depth rig and artist face bindings", async () => {
@@ -75,9 +89,12 @@ test("Avatar3DStage consumes scene extras for both depth rig and artist face bin
   assert.ok(stage.includes("rt.faceBindings={}"));
 });
 
-test("Blender exporter writes the runtime metadata into the active glTF scene extras", async () => {
+test("Blender exporter reconciles runtime transforms and parents from the exported glTF", async () => {
   const exporter = await readFile(new URL("../../tools/blender/export_nk1_depth_rig.py", import.meta.url), "utf8");
+  assert.ok(exporter.includes("reconcile_manifest_with_gltf(manifest, document)"));
+  assert.ok(exporter.includes("quaternion.to_euler(\"XYZ\")"));
+  assert.ok(exporter.includes("parent outside the rig collection"));
   assert.ok(exporter.includes('extras["nk1DepthRigManifest"] = manifest'));
   assert.ok(exporter.includes('extras["nk1DepthRigFaceBindings"] = face_bindings'));
-  assert.ok(exporter.includes('export_extras=True'));
+  assert.ok(exporter.includes("export_extras=True"));
 });
