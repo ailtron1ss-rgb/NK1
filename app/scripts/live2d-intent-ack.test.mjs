@@ -37,6 +37,12 @@ test("unchanged expression and unchanged motion do not leave an ACK pending", ()
   assert.match(viewer, /ok==='not-requested'\?'not-requested'/);
 });
 
+test("failed motion dispatch releases only its own deduplication key for retry", () => {
+  assert.match(viewer, /const clearFailedMotion=\(\)=>\{if\(lastMotionKey===k\)lastMotionKey='';\}/);
+  assert.match(viewer, /if\(!started&&onNotStarted\)onNotStarted\(\)/);
+  assert.match(viewer, /if\(onNotStarted\)onNotStarted\(\)/);
+});
+
 test("readback is fail-closed when the Cubism getter is missing or values are non-finite", () => {
   assert.match(viewer, /typeof core\.getParameterValueById==='function'/);
   assert.match(viewer, /if\(Number\.isFinite\(value\)\)observed\[id\]=value;\s*else readable=false;/);
