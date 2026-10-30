@@ -1,3 +1,11 @@
+## [NK1][Aspect 03] Carry grounded world-perception and temporal identity into latest source (2026-10-30)
+
+- Preserve evidence provenance and epistemic uncertainty through the canonical OrganismCore → P41 → GroundedWorldState path, including explicit evidence kinds, source/track identity, calibrated coordinate-frame IDs and image-space metadata.
+- Keep repeated same-label entities distinct, retain modality-specific evidence, reject stale/conflicted/unframed claims, and do not promote camera boxes to 3D coordinates.
+- Restore local temporal track IDs after runtime restart, align ambiguity counters with rejected duplicate detections, and validate velocity prediction after a measured motion sample.
+- Detect camera image formats by signature and run focused MIME/spatial-truthfulness, grounded-identity and temporal-tracking regression suites.
+- Rebased on the latest source including P23 lifecycle and current master-plan changes. Exact-head CI is rerunning; Android capture, calibrated depth/SLAM and independent accuracy remain open gates.
+
 ## [NK1][Plan] Refresh completion master plan after P23, Original 2D and 2.5D integrations (2026-10-30)
 
 - Updated the canonical 100% execution plan to source HEAD d179446c48a2a99eae64cfa8681707a455d22b01.
