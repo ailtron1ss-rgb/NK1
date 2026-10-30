@@ -10596,7 +10596,20 @@ export class OrganismCore {
     p41PerceptionSummary() { return this.embodimentSubsystem.p41SemanticPerception.semanticSummary(); }
     p41NextPerception() { return this.embodimentSubsystem.p41SemanticPerception.nextPerception(); }
     p41FulfillPerception(id: string, success: boolean) { const ok = this.embodimentSubsystem.p41SemanticPerception.fulfill(id, success); this.persisted.facets.embodiment.p41SemanticPerception = this.embodimentSubsystem.p41SemanticPerception.snapshot(); return ok; }
-    p41ObserveModalityOutcome(input: Parameters<import('../cognition/P41SemanticPerception.ts').P41SemanticPerceptionEngine['observeModalityOutcome']>[0]) { const ok = this.embodimentSubsystem.p41SemanticPerception.observeModalityOutcome(input); if (ok) this.persisted.facets.embodiment.p41SemanticPerception = this.embodimentSubsystem.p41SemanticPerception.snapshot(); return ok; }
+    p41ObserveModalityOutcome(input: Parameters<import('../cognition/P41SemanticPerception.ts').P41SemanticPerceptionEngine['observeModalityOutcome']>[0]) {
+        // A caller-supplied source label is not a receipt. Require the exact
+        // independent outcome event to exist in the Core-owned evidence snapshot.
+        const receipt = this.persisted.system.runtimeEvidence?.recent?.find((event: any) => event?.id === input.evidenceId);
+        if (!receipt || receipt.kind !== 'outcome' || receipt.source !== input.evidenceSource) return false;
+        const payload = receipt.payload as Record<string, unknown>;
+        if (payload?.modality !== input.modality
+            || payload?.predictedConfidence01 !== input.predictedConfidence01
+            || payload?.correctness01 !== input.correctness01
+            || payload?.evidenceSource !== input.evidenceSource) return false;
+        const ok = this.embodimentSubsystem.p41SemanticPerception.observeModalityOutcome(input);
+        if (ok) this.persisted.facets.embodiment.p41SemanticPerception = this.embodimentSubsystem.p41SemanticPerception.snapshot();
+        return ok;
+    }
     p40SemanticSnapshot() { return this.embodimentSubsystem.p40SemanticIntelligence.snapshot(); }
     p40SemanticSummary() { return this.embodimentSubsystem.p40SemanticIntelligence.semanticSummary(); }
     p40ModelEcologySnapshot() { return this.organismSystems.self.p40ModelEcology.snapshot(); }
