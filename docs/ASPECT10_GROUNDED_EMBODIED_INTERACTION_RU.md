@@ -71,3 +71,12 @@ Expected: deterministic planner tests covering grounded look, reach, contact pol
 - `Avatar3DStage` теперь использует resolver при загрузке локального VRM/GLB и сообщает, какие из левой/правой цепей верхняя рука + предплечье удалось однозначно распознать.
 - Resolver поддерживает обе стороны и отказывается от неоднозначных/неполных пар. Это discovery-интеграция: существующие клипы и моторные смещения остаются прежними; рассчитанные IK-углы ещё не применяются к костям.
 - Добавлена проверка source contract для 3D-сцены; CI path filters включают stage и его тест.
+
+## Безопасная bind-pose основа для VRM IK
+
+- Добавлены captureVrmArmBindPose, computeVrmArmPose, applyVrmArmPose и restoreVrmArmBindPose.
+- IK-цель теперь вычисляется от сохранённого снимка bind pose, а не от текущих вращений костей. Это предотвращает накопление углового дрейфа при повторных вычислениях в animation loop.
+- Применение поддерживает ограниченный blend weight, проверку идентичности костей и конечности значений; исходная поза может быть восстановлена плавно или полностью.
+- Удалён alias LeftShoulder/RightShoulder как подмена upper-arm: одна только плечевая кость не доказывает корректную пару плечо–предплечье.
+- Добавлены регрессии на неизменность bind snapshot, отсутствие дрейфа, применение/восстановление, mismatch identity и invalid blend weight.
+- Важно: это готовый безопасный seam, но он ещё не вызывается из live Avatar3DStage. Калибровка осей конкретной модели, конфликт с animation mixer, 3D IK и collision-aware execution остаются отдельными gates.
