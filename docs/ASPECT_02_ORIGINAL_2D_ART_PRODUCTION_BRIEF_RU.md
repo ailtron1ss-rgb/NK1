@@ -138,3 +138,26 @@ Reuse principle: borrow file-format and pipeline ideas, not someone else's chara
 ## 10. Validation boundary for this pass
 
 The source-level regression verifies unique SVG paint-server references, design-contract structure, stable identity defaults and the separation between actual outfit assets and palette controls. It does not verify artistic quality, browser screenshots, production build, Android performance or Release ZIP publication.
+
+
+## 11. Future 2.5D handoff — rig-safe source requirements
+
+This section constrains the later 2.5D aspect; it does not claim that the current SVG or any legacy sprite is rig-ready.
+
+### 11.1 Coordinate and layer records
+Use one normalized master-canvas coordinate system (top-left origin, +X right, +Y down). Every moving group must have a stable kebab-case ID, parent ID, z-index, pivot, rest transform, bounds, occlusion notes, deformation notes and source-asset ID. Pivots must be measured from the approved master, not guessed from layer centers. Reject parent cycles and undocumented mirrored geometry.
+
+### 11.2 Hidden anatomy and overlap
+Paint complete anatomy underneath hair, sleeves, coat fronts, collars and accessories. Extend hidden shapes beyond their masks by a measured overlap margin. Separate front/back garment panels, body, upper/lower limbs, hands and held props. At extreme approved poses, no background-colored holes, exposed canvas, mask gaps or accidental garment intersections may appear.
+
+### 11.3 Depth and camera
+A layer draw order is not proof of physical depth. Record authored/measured depth separately; do not derive it from flat color, filename or z-order. Keep five-view landmarks and silhouette consistent. Parallax is allowed only where the source art contains the newly revealed surface; never reveal unpainted regions by moving a camera.
+
+### 11.4 Mesh and deformation
+Meshes are optional until the dedicated rigging phase. If supplied, record topology version, vertex bounds, pinned vertices, seam constraints, UV/alpha padding and maximum displacement. Review head turns, torso yaw/lean, shoulder/elbow/wrist motion, hip/knee motion, hair swing and prop grip. Reject tearing, self-intersection, texture-edge fringing and deformation outside approved bounds.
+
+### 11.5 Texture and platform budgets
+Keep the 4096×4096 master as a source ceiling, not a requirement to ship every layer at full size. Declare per-target atlas dimensions, padding, alpha, sRGB, compression and total memory budget before export. Verify mobile texture residency and graceful fallback independently; do not conflate source resolution with runtime GPU memory.
+
+### 11.6 Approval boundary
+The manifest may use the status approved-for-2.5d-rigging only after editable source, complete layer records, hidden anatomy, deformation contact sheets, five-view consistency, hash integrity, provenance and human visual sign-off are all present. The current 24-slot art manifest remains unchanged and all 24 production slots remain not-authored.
