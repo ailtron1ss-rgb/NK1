@@ -339,7 +339,7 @@ function collectMorphObjects(root: unknown): VrmMorphTargetObject[] {
 
   if (isMorphObject(root)) visit(root);
   else if (typeof root.traverse === "function") {
-    (root.traverse as (visitor: (object: unknown) => void)).call(root, visit);
+    (root.traverse as (visitor: (object: unknown) => void) => void).call(root, visit);
   }
   return result;
 }
