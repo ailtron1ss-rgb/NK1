@@ -317,6 +317,11 @@ export interface MemoryRestoreDiagnostics {
  invalidRowsDropped:number;
  truncatedRows:number;
  identityConflictsQuarantined:number;
+ contentHashMismatchesRepaired:number;
+ missingContentHashesRebuilt:number;
+ invalidVectorsDiscarded:number;
+ invalidExpiriesClosed:number;
+ factsDowngraded:number;
 }
 
 function stableMemoryJson(value:unknown):string {
@@ -331,7 +336,7 @@ function stableMemoryJson(value:unknown):string {
 
 export class MemoryOS2{
  private state=defaultMemoryOS2();
- private lastRestoreDiagnosticsData:MemoryRestoreDiagnostics={sourceRows:0,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:0,identityConflictsQuarantined:0};
+ private lastRestoreDiagnosticsData:MemoryRestoreDiagnostics={sourceRows:0,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:0,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -367,6 +372,9 @@ export class MemoryOS2{
  embeddingConfigured(){return Boolean(this.embeddingProvider); }
 
   restoreDiagnostics():MemoryRestoreDiagnostics{return {...this.lastRestoreDiagnosticsData};}
+  private incrementRestoreDiagnostic(counter:'contentHashMismatchesRepaired'|'missingContentHashesRebuilt'|'invalidVectorsDiscarded'|'invalidExpiriesClosed'|'factsDowngraded'){
+   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,[counter]:this.lastRestoreDiagnosticsData[counter]+1};
+  }
   private restoredIdentityRank(item:MemoryItem2,at:number):number[]{
    return [
     Number(this.validAt(item,at)),
@@ -414,6 +422,7 @@ export class MemoryOS2{
    const validUntilCandidate=validUntilProvided?finite(row.validUntilAt,Number.NaN):null;
    // A malformed expiry must never turn an expiring memory into a timeless fact.
    const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:validUntilCandidate;
+   if(validUntilProvided&&!Number.isFinite(validUntilCandidate))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
    const provenanceClasses=new Set(['device','external','user','agent','derived','simulation','unknown']);
    const explicitProvenance=provenanceClasses.has(String(row.provenanceClass))?row.provenanceClass as MemoryProvenanceClass:undefined;
    const sourceIsValid=typeof row.source==='string'&&Boolean(row.source.trim());
@@ -425,6 +434,7 @@ export class MemoryOS2{
    const confidenceIsValid=Number.isFinite(rawConfidence)&&rawConfidence>=0&&rawConfidence<=1;
    const epistemicStatus=statusIsValid&&sourceIsValid&&(row.epistemicStatus!=='fact'||confidenceIsValid)
     ?row.epistemicStatus as EpistemicStatus:'unknown';
+   if(row.epistemicStatus==='fact'&&(!sourceIsValid||!confidenceIsValid))this.incrementRestoreDiagnostic('factsDowngraded');
    const context:Record<string,string>={};
    if(row.context&&typeof row.context==='object'&&!Array.isArray(row.context)){
     for(const [key,value] of Object.entries(row.context).slice(0,24)){
@@ -432,6 +442,11 @@ export class MemoryOS2{
     }
    }
    const semanticVector=normalizeValidatedEmbeddingVector(row.semanticVector)??[];
+   if(Array.isArray(row.semanticVector)&&row.semanticVector.length>0&&semanticVector.length===0)this.incrementRestoreDiagnostic('invalidVectorsDiscarded');
+   const canonicalContentHash=memoContentHash(content);
+   const storedContentHash=typeof row.contentHash==='string'?row.contentHash.trim():'';
+   if(storedContentHash&&storedContentHash!==canonicalContentHash)this.incrementRestoreDiagnostic('contentHashMismatchesRepaired');
+   else if(!storedContentHash)this.incrementRestoreDiagnostic('missingContentHashesRebuilt');
    const evidenceSeed={
     ...row,id,content,source,createdAt,observedAt,
     provenanceClass,
@@ -447,7 +462,7 @@ export class MemoryOS2{
    const residencyTier=(row.residencyTier==='hot'||row.residencyTier==='warm'||row.residencyTier==='cold')
     ?row.residencyTier:(semanticVector.length?'warm':'cold');
    return {
-    id,content,contentHash:memoContentHash(content),
+    id,content,contentHash:canonicalContentHash,
     tags:boundedStrings(row.tags,24,120),
     context:Object.keys(context).length?context:undefined,
     kind:row.kind as MemoryItem2['kind'],
@@ -744,7 +759,7 @@ export class MemoryOS2{
    const normalized=this.normalizeRestoredMemoryRow(candidate,restoreNow);
    if(normalized)rawItems.push(normalized);else invalidRowsDropped++;
   }
-  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0};
+  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
     semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
@@ -1620,6 +1635,11 @@ export class MemoryOS2{
   if(restore.truncatedRows>0)add('restore-row-limit-truncated','error',null,String(restore.truncatedRows)+' snapshot rows exceeded the 1600-record restore limit.');
   if(restore.duplicateIdsResolved>0)add('restore-duplicate-ids-resolved','warning',null,String(restore.duplicateIdsResolved)+' duplicate-ID rows were resolved using temporal/revision authority.');
   if(restore.identityConflictsQuarantined>0)add('restore-identity-conflicts-quarantined','error',null,String(restore.identityConflictsQuarantined)+' tied conflicting memory identities were quarantined.');
+  if(restore.contentHashMismatchesRepaired>0)add('restore-content-hash-mismatch-repaired','error',null,String(restore.contentHashMismatchesRepaired)+' serialized content hashes differed from canonical content and were repaired during restore.');
+  if(restore.missingContentHashesRebuilt>0)add('restore-content-hash-missing-rebuilt','warning',null,String(restore.missingContentHashesRebuilt)+' legacy rows had no content hash; hashes were rebuilt from content.');
+  if(restore.invalidVectorsDiscarded>0)add('restore-invalid-vectors-discarded','warning',null,String(restore.invalidVectorsDiscarded)+' invalid derived embedding vectors were discarded and left for lazy rebuild.');
+  if(restore.invalidExpiriesClosed>0)add('restore-invalid-expiries-closed','error',null,String(restore.invalidExpiriesClosed)+' malformed expiry values were closed to an empty validity interval.');
+  if(restore.factsDowngraded>0)add('restore-facts-downgraded','error',null,String(restore.factsDowngraded)+' records marked fact were downgraded because source or confidence was invalid.');
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
   const ids=new Set(items.map(item=>item.id));
   let hashMismatch=0,invalidConfidence=0,invalidStatus=0,danglingRevision=0,danglingLinks=0,duplicateContent=0,futureEvidence=0,duplicateEvidenceKeys=0;
@@ -1668,7 +1688,7 @@ export class MemoryOS2{
   if(!index.pass)add('index-integrity-failure','error',null,'The canonical memory indexes disagree with the persisted memory list.');
   const errors=totalErrors;
   const warnings=totalWarnings;
-  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,restore,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1,restoreInvalidRows:restore.invalidRowsDropped,restoreTruncatedRows:restore.truncatedRows,restoreDuplicateIds:restore.duplicateIdsResolved,restoreIdentityConflicts:restore.identityConflictsQuarantined},indexes:index};
+  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,restore,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1,restoreInvalidRows:restore.invalidRowsDropped,restoreTruncatedRows:restore.truncatedRows,restoreDuplicateIds:restore.duplicateIdsResolved,restoreIdentityConflicts:restore.identityConflictsQuarantined,restoreContentHashMismatches:restore.contentHashMismatchesRepaired,restoreMissingContentHashes:restore.missingContentHashesRebuilt,restoreInvalidVectors:restore.invalidVectorsDiscarded,restoreInvalidExpiries:restore.invalidExpiriesClosed,restoreFactsDowngraded:restore.factsDowngraded},indexes:index};
  }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
