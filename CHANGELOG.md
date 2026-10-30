@@ -1,3 +1,10 @@
+## [NK1][WorkPass624] Enforce governed tool input contracts before execution (2026-10-30)
+
+- Add a dependency-free, deliberately strict schema subset for registered tool arguments, with bounded objects/arrays/strings, numeric ranges, enums, patterns and serialized-byte limits.
+- Validate arguments at the canonical ActionGateway boundary before approval consumption, idempotency receipt persistence or executor entry; return redacted path/code diagnostics only.
+- Clone and deeply freeze registered schemas, expose effective contracts in listTools(), and migrate Android listen plus device/world observation registrations to explicit no-argument contracts.
+- Add malformed-input, accessor/cycle, schema-mutation and keyed-side-effect regressions, then wire them into core CI. This is incremental enforcement, not full JSON Schema/MCP conformance.
+
 ## [NK1][восприятие] Harden world-observation integrity and semantic change detection (2026-10-29)
 
 - Reject malformed world-context coercions: null/blank numerics no longer become zero; malformed text, booleans, evidence kinds and source IDs no longer become facts.

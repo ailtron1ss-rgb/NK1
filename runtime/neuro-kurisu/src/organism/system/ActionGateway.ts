@@ -9,6 +9,7 @@ import {
 } from './OutcomeVerificationService.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import type { ExternalObservationChannel, ExternalObservationSourceClass } from './ExternalObserverFabric.ts';
+import { cloneFrozenToolInputContract, validateToolInputContract, type ToolInputContract } from './ToolInputContract.ts';
 
 export type ActionOutcomeClass =
   | 'unavailable'
@@ -161,6 +162,8 @@ export type ToolReceiptLookup =
 export interface ToolDefinition {
   id:string; capability:string; destructive:boolean; projectAllowed?:boolean;
   execute:(input:Record<string,unknown>, context?:ToolExecutionContext)=>Promise<Record<string,unknown>>;
+  /** Declarative input contract checked before approval, receipt admission and execution. */
+  inputContract?: ToolInputContract;
   /** This action is unsafe to invoke without a stable key and durable receipt ledger. */
   requiresIdempotencyKey?:boolean;
   /**
@@ -548,16 +551,23 @@ export class ActionGateway {
       if(!['filesystem','http','process','device','camera','audio','sensor','user','world','tool','unknown'].includes(source.channel)) throw new Error('invalid-tool-observation-channel');
     }
     if(this.tools.has(def.id)) throw new Error(`duplicate-tool-id:${def.id}`);
-    this.tools.set(def.id,def);
+    const registered = def.inputContract ? { ...def, inputContract: cloneFrozenToolInputContract(def.inputContract) } : def;
+    this.tools.set(def.id,registered);
   }
   listTools() {
     return [...this.tools.values()].map(t=>({
       id:t.id,capability:t.capability,destructive:t.destructive,projectAllowed:Boolean(t.projectAllowed),
+      hasInputContract:Boolean(t.inputContract),inputContract:t.inputContract?structuredClone(t.inputContract):undefined,
       permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),
     }));
   }
 
   async executeTool(id:string,input:Record<string,unknown>={},reason='tool-request',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
+    const registeredTool=this.tools.get(id);
+    if(registeredTool?.inputContract) {
+      const validation=validateToolInputContract(input,registeredTool.inputContract);
+      if(!validation.valid) return this.result(id,registeredTool.capability,'tool-input-invalid','gate-check-failed','exec-' + randomUUID(),{error:'tool-input-invalid',issues:validation.issues},'tool arguments failed the registered contract before approval, receipt admission or executor entry');
+    }
     const rawKey=options?.idempotencyKey;
     if(rawKey===undefined || rawKey===null || rawKey==='') {
       if(requiresDurableIdempotency(this.tools.get(id))) return this.result(id,this.tools.get(id)?.capability??'unknown','idempotency-key-required','idempotency-key-required',`exec-${randomUUID()}`,{error:'idempotency-key-required'},'this operation is classified as side-effecting or high-risk and requires a stable key plus durable receipt ledger');

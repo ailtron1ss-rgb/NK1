@@ -154,6 +154,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-llm-live-smoke.mjs
       - name: Local LLM backend selection regression
         run: node runtime/neuro-kurisu/tests/local-llm-selection-workpass74.mjs
+      - name: WorkPass624 governed tool input contracts
+        run: npm --prefix runtime/neuro-kurisu run test:tool-input-contracts-workpass624
       - name: Language invocation ordering regression
         run: node runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs
       - name: End-to-end local language HTTP regression
