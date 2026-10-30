@@ -115,3 +115,13 @@ tests/p78-autobiographical-provenance.mjs дополнен проверкой н
 - Добавлены регрессии на bounded relationship map, prototype key rejection и сохранение координат identity vector при пропущенной размерности.
 
 На последнем проверяемом этапе изменённые владельцы состояния по-прежнему остаются единственными: P78 — SelfSubsystemRuntime, P2702 — SelfSubsystemRuntime, SelfModel — MemorySubsystemRuntime. Обе ветви persistence projection теперь включают P2702. Это закрывает разрыв между runtime snapshot и durable projection, но ещё не доказывает правильность фактического outcome-finalization callsite.
+
+## Пятый проход: включение в фактический decision → action → feedback цикл
+
+- ОрганизмRuntime теперь передаёт в Core ID именно того outcome-event, который он только что опубликовал в RuntimeEvidenceBus. LearningProvenance расширен необязательным evidenceReceiptId; для simulation этот ID не передаётся.
+- OrganismCore очищает receipt ID, формируя нормализованный learning context, и на фактическом feedback path после P31–P34 вызывает OrganismSystemFabric.recordPersonalityOutcome. Bridge принимает событие P78, отсекает replay и только после этого обновляет P2702 и единственный SelfModel.
+- Высокий автобиографический verified-lane теперь требует одновременно: external source, наличие фактического RuntimeEvidenceBus outcome event ID, verified01 ≥ 0.85, independent01 ≥ 0.80, evidence01 ≥ 0.72, consequence01 ≥ 0.70 и identityUpdateScale01 ≥ 0.45. Всё остальное остаётся observed/unverified и не создаёт verified turning point/self-belief update.
+- В candidate scoring канонического OrganismCore один раз на decision подготавливается PersonalitySelfModelBridge; его ограниченный actionBias добавляется небольшим коэффициентом в spine-only и full scoring. Финальный выбор остаётся в прежнем candidate arbitration/selector, отдельный personality selector не создаётся.
+- Добавлен статический regression guard personality-selfmodel-runtime-wiring.mjs: он защищает связь RuntimeEvidenceBus → LearningProvenance → OrganismCore candidate scoring/feedback → Fabric bridge → persistence projection от случайного отключения.
+
+Это закрывает ранее не подтверждённый разрыв «мост доступен, но не вызывается из основного цикла»: сейчас вызов установлен прямо в общем OrganismCore.feedback path, а decision bias — до построения candidate scores. При этом receipt ID подтверждает происхождение события в runtime evidence bus и проходит сильные числовые пороги RealityLearningGate, но не является криптографической подписью физического результата; CEF ledger attestation и независимая проверка provider receipt остаются отдельным повышающим доверие этапом.
