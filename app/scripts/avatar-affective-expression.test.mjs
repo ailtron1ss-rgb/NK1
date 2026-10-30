@@ -50,3 +50,17 @@ test("same appraisal produces deterministic expression profile", () => {
   const input = { emotion: "protective", valence: 0.34, arousal: 0.78, dominance: 0.62 };
   assert.deepEqual(deriveAffectiveExpression(input), deriveAffectiveExpression(input));
 });
+
+test("continuous channels ease toward the next appraisal without overshoot", async () => {
+  const { smoothAffectiveExpression } = await import("../src/components/avatar/affectiveExpression.ts");
+  const previous = deriveAffectiveExpression({ emotion: "calm", valence: 0.5, arousal: 0.1, dominance: 0.8 });
+  const next = deriveAffectiveExpression({ emotion: "joy", valence: 0.9, arousal: 0.9, dominance: 0.4 });
+  const stepped = smoothAffectiveExpression(previous, next, 40);
+  assert.equal(stepped.expression, next.expression);
+  assert.ok(stepped.expressionIntensity > previous.expressionIntensity);
+  assert.ok(stepped.expressionIntensity < next.expressionIntensity);
+  assert.ok(stepped.gazeX > previous.gazeX && stepped.gazeX < next.gazeX);
+  const released = smoothAffectiveExpression(stepped, previous, 40);
+  assert.ok(released.expressionIntensity < stepped.expressionIntensity);
+  assert.ok(released.expressionIntensity > previous.expressionIntensity);
+});
