@@ -1812,6 +1812,6 @@
     "test:world-perception-runtime-wiring": "node --experimental-strip-types tests/world-perception-runtime-wiring.mjs",
     "test:world-perception-runtime-ingress": "node --experimental-strip-types tests/world-perception-runtime-ingress.mjs",
     "test:p41:perceptual-integrity-deep-pass": "node --experimental-strip-types tests/p41-perceptual-integrity-deep-pass.mjs",
-    "test:aspect10:interaction": "node --experimental-strip-types tests/aspect10-embodied-interaction.mjs"
+    "test:aspect10:interaction": "node --experimental-strip-types tests/aspect10-embodied-interaction.mjs && node --experimental-strip-types tests/aspect10-grounded-bridge.mjs"
   }
 }
