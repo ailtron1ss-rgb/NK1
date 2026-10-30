@@ -1,0 +1,56 @@
+name: NK1 Aspect 04 canonical 2.5D scene adapter
+
+on:
+  push:
+    branches:
+      - work/nk1-depth-rig-scene-runtime-*
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - app/src/components/avatar/depthRig.ts
+      - app/src/components/avatar/depthRigSceneAdapter.ts
+      - app/src/components/Avatar3DStage.tsx
+      - app/src/components/AvatarStage.tsx
+      - app/scripts/depth-rig-scene-adapter.test.mjs
+      - app/package.json
+      - contracts/depth-rig-scene-asset.v1.schema.json
+      - .github/workflows/nk1-aspect04-depth-rig-runtime.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-aspect04-depth-rig-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  depth-rig-scene-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify Node.js pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version mismatch" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Install locked app dependencies
+        working-directory: app
+        run: npm ci
+      - name: Run canonical 2.5D scene adapter regressions
+        working-directory: app
+        run: npm run test:depth-rig-scene
+      - name: Typecheck app integration
+        working-directory: app
+        run: npm run typecheck
