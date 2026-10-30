@@ -73,6 +73,42 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
     set('ParamMouthOpenY',clamp(lipCurrent,0,1));
     if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
+    // Small expression channels are composed after authored expressions/motion/physics.
+    // This gives NK1 continuous facial nuance without pretending every state has a bespoke clip.
+    const intensity=clamp(bodySignal.expressionIntensity,0,1);
+    const faceProfiles={
+      neutral:{brow:0,angle:0,eyeSmile:0,cheek:0},
+      happy:{brow:.12,angle:-.08,eyeSmile:.42,cheek:.18},
+      sad:{brow:-.34,angle:.22,eyeSmile:-.12,cheek:0},
+      angry:{brow:-.58,angle:.48,eyeSmile:-.18,cheek:0},
+      surprised:{brow:.62,angle:0,eyeSmile:0,cheek:0},
+      flustered:{brow:.18,angle:-.12,eyeSmile:.12,cheek:.58},
+      embarrassed:{brow:-.08,angle:.12,eyeSmile:.05,cheek:.72},
+      thinking:{brow:.24,angle:-.16,eyeSmile:-.04,cheek:0},
+      focused:{brow:-.12,angle:.1,eyeSmile:-.08,cheek:0},
+      smile:{brow:.1,angle:-.08,eyeSmile:.48,cheek:.16},
+      tender:{brow:.16,angle:-.08,eyeSmile:.24,cheek:.32},
+      sarcastic:{brow:.28,angle:.34,eyeSmile:.12,cheek:0},
+      smug:{brow:.3,angle:.28,eyeSmile:.22,cheek:.08},
+      looking_away:{brow:-.08,angle:-.12,eyeSmile:-.08,cheek:0},
+      tired:{brow:-.22,angle:.08,eyeSmile:-.2,cheek:0}
+    };
+    const face=faceProfiles[bodySignal.expression]||faceProfiles.neutral;
+    const facialGain=.25+intensity*.75;
+    set('ParamBrowLY',clamp(face.brow*facialGain,-1,1));
+    set('ParamBrowRY',clamp(face.brow*facialGain,-1,1));
+    set('ParamBrowLAngle',clamp(face.angle*facialGain,-1,1));
+    set('ParamBrowRAngle',clamp(face.angle*facialGain,-1,1));
+    set('ParamEyeLSmile',clamp(face.eyeSmile*facialGain,-1,1));
+    set('ParamEyeRSmile',clamp(face.eyeSmile*facialGain,-1,1));
+    set('ParamCheek',clamp(face.cheek*facialGain,0,1));
+    // Subtle torso follow-through and breathing are continuous channels, not motion clips.
+    const arousal=clamp(bodySignal.expressionIntensity,0,1);
+    const breathPhase=performance.now()/1900;
+    set('ParamBreath',clamp(.5+Math.sin(breathPhase)*(.035+arousal*.045),0,1));
+    addCoreOffset('ParamBodyAngleX',clamp(gazeX*.9,-.5,.5),-8,8);
+    addCoreOffset('ParamBodyAngleY',clamp(gazeY*.65,-.35,.35),-6,6);
+    addCoreOffset('ParamBodyAngleZ',clamp(bodySignal.headTilt,-.15,.15)*7,-5,5);
   }
   function applyExpression(expr){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
