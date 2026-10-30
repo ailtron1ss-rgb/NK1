@@ -70,3 +70,15 @@ test("external-resource GLB is rejected before the parser can run",async()=>{
   assert.equal(result.committed,false);assert.equal(parsed,false);
   assert.ok(result.errors.includes("coat-v1:glb:external-resource-uri-rejected"));
 });
+
+test("one switch cannot request two independently replacing garments for the same slot",async()=>{
+  const bytes=glb(),input=inputFor(bytes);
+  const second={...input.manifest.assets[0],id:"coat-v2",garmentId:"alternate-coat",path:"garments/coat-v2.glb"};
+  input.manifest.assets.push(second);
+  input.files.set(second.path,bytes);
+  input.request.expectedAssetIds.push(second.id);
+  let parsed=false;
+  const result=await applyVerifiedVrmWardrobePack({...input,parseGlb:async()=>{parsed=true;return {scene:garment()};}});
+  assert.equal(result.committed,false);assert.equal(parsed,false);
+  assert.ok(result.errors.includes("wardrobe:duplicate-or-unknown-slot-in-switch"));
+});
