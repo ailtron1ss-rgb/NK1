@@ -44,6 +44,24 @@ test("goal execution is bounded by joint velocity and respects anatomical limits
   assert.ok(final.joints["left.elbow"].angleRad <= 2.4);
 });
 
+test("joint trajectories obey acceleration and jerk bounds", () => {
+  const motor = new EmbodiedMotorController();
+  motor.configureSkeleton(skeleton());
+  motor.setGoal(goal(), 0);
+  motor.step(0);
+  const priorAcceleration = new Map(Object.entries(motor.snapshot().joints).map(([id, joint]) => [id, joint.accelerationRadPerSec2]));
+  for (let tick = 1; tick <= 3; tick++) {
+    const frame = motor.step(tick * 100);
+    for (const [id, joint] of Object.entries(frame.joints)) {
+      assert.ok(Math.abs(joint.velocityRadPerSec) <= (id === "root" ? 2 : id === "spine" ? 1 : 2) + 1e-9);
+      assert.ok(Math.abs(joint.accelerationRadPerSec2) <= 12 + 1e-9);
+      const prior = priorAcceleration.get(id) ?? 0;
+      assert.ok(Math.abs(joint.accelerationRadPerSec2 - prior) <= 8 + 1e-9);
+      priorAcceleration.set(id, joint.accelerationRadPerSec2);
+    }
+  }
+});
+
 test("new goal cannot inherit stale joint targets from a previous goal", () => {
   const motor = new EmbodiedMotorController();
   motor.configureSkeleton(skeleton());
