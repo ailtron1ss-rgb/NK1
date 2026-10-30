@@ -22,7 +22,7 @@ const CHANNELS: Record<string, { aliases: string[]; axis: "x" | "y" | "z" }> = {
   leftHipFlex: { aliases: ["leftupperleg", "leftupleg", "mixamorigleftupleg", "jbiplupperleg"], axis: "x" },
   leftKneeFlex: { aliases: ["leftlowerleg", "leftleg", "mixamorigleftleg", "jbipllowerleg"], axis: "x" },
   rightHipFlex: { aliases: ["rightupperleg", "rightupleg", "mixamorigrightupleg", "jbiprupperleg"], axis: "x" },
-  rightKneeFlex: { aliases: ["rightlowerleg", "rightleg", "mixamorigrightleg", "jbipr lowerleg".replace(/ /g, "")], axis: "x" },
+  rightKneeFlex: { aliases: ["rightlowerleg", "rightleg", "mixamorigrightleg", "jbiprlowerleg"], axis: "x" },
 };
 
 export interface VrmMotorApplyResult {
