@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { P78AutobiographicalSelfContinuity } from '../src/organism/developmental/P78AutobiographicalSelfContinuity.ts';
+import { P78AutobiographicalSelfContinuity, defaultP78 } from '../src/organism/developmental/P78AutobiographicalSelfContinuity.ts';
 
 const p = new P78AutobiographicalSelfContinuity();
 const empty = p.snapshot();
@@ -41,6 +41,12 @@ assert.equal(modeOnlyChange.samples,legacyModeFirst.samples+legacyModeEvents.len
 const restored = new P78AutobiographicalSelfContinuity();
 restored.restore(modeOnlyChange);
 assert.deepEqual(restored.snapshot(), modeOnlyChange, 'autobiographical evidence counters must survive restore');
+const legacyReceiptEvent={tick:60,at:6000,action:'verify',outcome:0.9,evidenceStatus:'verified-independent',evidenceRef:'external-verification:reb:60:1:outcome',evidenceReceiptId:'reb:60:1:outcome',verified01:.95,independent01:.9,evidence01:.9,consequence01:.9,identityUpdateScale01:.9,authorship:'self-selected',episodeId:'legacy-receipt-60'};
+const legacyReceiptKey=JSON.stringify([legacyReceiptEvent.tick,legacyReceiptEvent.at,legacyReceiptEvent.action,legacyReceiptEvent.outcome,'','',legacyReceiptEvent.evidenceStatus,legacyReceiptEvent.evidenceRef,legacyReceiptEvent.evidenceReceiptId,legacyReceiptEvent.authorship,legacyReceiptEvent.episodeId]);
+const legacyReceiptSnapshot={...defaultP78(),samples:1,verifiedOutcomeSamples:1,processedEventKeys:[legacyReceiptKey]};
+const migratedReceiptState=new P78AutobiographicalSelfContinuity();migratedReceiptState.restore(legacyReceiptSnapshot);
+const migratedReceiptReplay=migratedReceiptState.observe([legacyReceiptEvent]);
+assert.equal(migratedReceiptReplay.samples,1,'legacy serialized event keys migrate to immutable receipt identities before replay');
 const nonAdjacentReplay = restored.observe([verifiedEvents[0]]);
 assert.deepEqual(nonAdjacentReplay, modeOnlyChange, 'an older event replayed after newer events and a restart must remain idempotent');
 const changedReceiptReplay=restored.observe([{...verifiedEvents[0],outcome:0.99,verified01:1,evidence01:1}]);
