@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { CanonicalMemoryLifecycleAuthority, defaultCanonicalMemoryLifecycleState } from '../src/organism/memory/CanonicalMemoryLifecycleAuthority.ts';
-import { P70MemoryLifecycleGovernor } from '../src/organism/developmental/P70MemoryLifecycleGovernor.ts';
+import { P70MemoryLifecycleGovernor, defaultP70 } from '../src/organism/developmental/P70MemoryLifecycleGovernor.ts';
 import { MemoryConsolidationController } from '../src/organism/memory/MemoryConsolidationController.ts';
 
 let maintenanceCalls = 0;
@@ -8,6 +8,20 @@ const fabric = {
   maintain(input) { maintenanceCalls++; return { skipped: false, changed: 0, tick: input.tick }; },
   inspect() { return { available: true }; },
 };
+// P70 is the lifecycle budget authority and must apply the same restore discipline.
+const governor = new P70MemoryLifecycleGovernor();
+governor.restore({
+  version: 1, cycles: -1, maintenanceRuns: Number.MAX_SAFE_INTEGER + 1,
+  prunedRecords: '12', compactions: 2.5, meanHotLoad01: Number.NaN,
+  meanPressure01: 3, lastAction: 'injected', lastAt: -1, injectedOwner: true,
+});
+assert.deepEqual(governor.snapshot(), {
+  ...defaultP70(), meanPressure01: 1,
+});
+const validGovernorState = governor.snapshot();
+assert.throws(() => governor.restore({ version: 2 }), /Unsupported P70 memory lifecycle state version/);
+assert.deepEqual(governor.snapshot(), validGovernorState);
+
 const makeAuthority = () => new CanonicalMemoryLifecycleAuthority(
   fabric,
   new P70MemoryLifecycleGovernor(),
