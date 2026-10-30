@@ -38,9 +38,17 @@ const DEFAULTS: PromotionGateConfig = {
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
   requirePositiveConfidenceLowerBound: true,
-  familyPairCountMode: 'partition',
+  familyPairCountMode: 'seed-repeated',
   familyWiseAlpha: 0.05,
 };
+
+/** Resolve and validate a preregisterable immutable promotion policy. */
+export function normalizePromotionGateConfig(
+  config: Partial<PromotionGateConfig> = {},
+): PromotionGateConfig {
+  const cfg = normalizePromotionGateConfig(config);
+  return cfg;
+}
 
 type RecordValue = Record<string, unknown>;
 const isRecord = (value: unknown): value is RecordValue =>
