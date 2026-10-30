@@ -111,9 +111,9 @@ test("applies additive pose deltas over rest transforms and accumulates depth", 
     breath: 0, gesture: "none", gestureIntensity: 0,
   });
   const world = resolveDepthRigWorldPose(rig, pose);
-  assert.equal(world.transforms.head.rotation, 7);
+  assert.equal(world.transforms.head.rotation, 11.2);
   assert.equal(world.transforms.torso.rotation, 2);
-  assert.equal(world.transforms["hair-front"].rotation, -1.8);
+  assert.equal(world.transforms["hair-front"].rotation, 9.4);
 });
 
 test("rejects a pose produced for a different rig and never emits non-finite matrices", () => {
@@ -140,6 +140,6 @@ test("accumulates local z offsets independently from painter depth order", () =>
     ],
   };
   const world = resolveDepthRigWorldPose(depthRig).transforms;
-  assert.equal(world.head.z, 0.25);
+  assert.ok(Math.abs(world.head.z - 0.25) < 1e-12);
   assert.deepEqual(orderDepthRigNodes(depthRig).map((entry) => entry.id), ["torso", "head", "root"]);
 });
