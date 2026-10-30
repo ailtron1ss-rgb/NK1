@@ -1,3 +1,9 @@
+## [NK1][Aspect 02] Require verified rights provenance before accepting authored art (2026-10-30)
+
+- Close the promotion gap in the executable Original 2D validator: every authored/in-progress/review/approved/exported slot now requires a provenance record with creator, HTTPS source URL, explicit license identifier, permission evidence, affirmative redistribution clearance, verification timestamp and verifier.
+- Keep uncreated slots honest: `not-authored` entries must not carry files, hashes or provenance claims.
+- Extend manifest and validator regressions to guard the rights gate. The existing 24-slot inventory remains entirely `not-authored`; this change does not clear the legacy sprites' licenses, create artwork or update the Release ZIP.
+
 ## [NK1][Aspect 02] Test the layered-art handoff schema contract (2026-10-30)
 
 - Add a focused regression that loads the checked-in JSON Schema and asserts the required layer fields, depth/pivot metadata, explicit provenance fields, review-state vocabulary and optional mesh boundary.
