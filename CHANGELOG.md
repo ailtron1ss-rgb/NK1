@@ -1,3 +1,9 @@
+## [NK1][Aspect04] Bind motor joint targets to depth-rig nodes (2026-10-30)
+
+- Add explicit joint-to-node binding records and a renderer-neutral adapter for PR #410 MotorFrame targets.
+- Apply bounded radian-to-degree deltas only for active goals; idle/rejected/expired frames do not animate, unavailable joints are ignored, and malformed bindings fail closed.
+- Add focused tests for target mapping, clamp behavior and invalid binding rejection.
+
 ## [NK1][Aspect04] Bridge EmbodimentIntent v1 and harden float assertions (2026-10-30)
 
 - A second hosted run exposed two remaining strict-equality checks on composed decimal rotations; both are now tolerance-based. Runtime pose math remains unchanged.
