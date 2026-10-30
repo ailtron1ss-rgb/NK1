@@ -48,7 +48,7 @@ export function summarizeVrmLicenseMetadata(
   const metadata = isRecord(input) ? input : {};
   const modelName = safeText(metadata.name ?? metadata.title, 96) || safeText(fileName, 96) || "avatar";
   const authors = safeAuthors(metadata.authors ?? metadata.author);
-  const licenseUrl = safeText(metadata.licenseUrl ?? metadata.otherLicenseUrl ?? metadata.otherPermissionUrl, 256);
+  const licenseUrl = safeText(metadata.licenseUrl, 256) || safeText(metadata.otherLicenseUrl, 256) || safeText(metadata.otherPermissionUrl, 256);
   const licenseUrlPresent = /^https?:\/\//iu.test(licenseUrl);
   const creditNotation = metadata.creditNotation === "required"
     ? "required"
