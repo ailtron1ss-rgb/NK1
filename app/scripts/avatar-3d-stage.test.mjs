@@ -77,6 +77,8 @@ test("VRM wardrobe selection persists only against exact body/rig identity and r
  assert.match(stage,/loadStoredWardrobePack/);
  assert.match(stage,/rightsAttested:wardrobeRightsConfirmed/);
  assert.match(stage,/loadStoredWardrobePack\(bodyId,WARDROBE_RIG_VERSION\)/);
+ assert.match(stage,/isCurrent:\(\)=>loadToken\.current===token&&runtime\.current===rt&&rt\.loaded===root/);
+ assert.match(stage,/isCurrent:\(\)=>requestToken===loadToken\.current&&runtime\.current===rt&&rt\.loaded===targetRoot/);
  assert.match(stage,/stored\.status==="restored"/);
  assert.match(stage,/setWardrobeSelectedAssetIds\(restored\.selectedAssetIds\)/);
  assert.match(store,/indexedDB\.open/);
