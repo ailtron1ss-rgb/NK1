@@ -170,4 +170,23 @@ assert.equal(retryGovernor.snapshot().cycles, 1, 'successful retry must count on
 assert.equal(retryAuthority.snapshot().cycles, 1);
 assert.equal(retryMaintenanceCalls, 2);
 
+// P70 rejects malformed tick/time values before changing its counters.
+const invalidPlanGovernor = new P70MemoryLifecycleGovernor();
+const invalidPlanInput = { tick: 1, at: 100, traces: 1, events: 2, goals: 1, memories: 3, semanticItems: 4, workingSet01: 0.3, energy01: 0.8, pressure01: 0.2 };
+assert.throws(() => invalidPlanGovernor.plan({ ...invalidPlanInput, tick: 1.5 }), /tick must be a non-negative safe integer/);
+assert.throws(() => invalidPlanGovernor.plan({ ...invalidPlanInput, at: Number.NaN }), /timestamp must be finite and non-negative/);
+assert.equal(invalidPlanGovernor.snapshot().cycles, 0, 'invalid plan inputs must not mutate P70 state');
+const boundedBudget = invalidPlanGovernor.plan({
+  ...invalidPlanInput,
+  experienceHotCount: Number.NaN,
+  experienceWarmCount: Number.POSITIVE_INFINITY,
+  experienceColdCount: 1.5,
+});
+assert.ok(Object.values(boundedBudget.budgets).every(Number.isSafeInteger));
+assert.ok(Number.isFinite(boundedBudget.pressure01));
+const exhaustedGovernor = new P70MemoryLifecycleGovernor();
+exhaustedGovernor.restore({ version: 1, cycles: Number.MAX_SAFE_INTEGER });
+assert.throws(() => exhaustedGovernor.plan(invalidPlanInput), /cycle counter reached its safe integer limit/);
+assert.equal(exhaustedGovernor.snapshot().cycles, Number.MAX_SAFE_INTEGER);
+
 console.log('workpass618 canonical memory lifecycle integrity: ok');
