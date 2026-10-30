@@ -21,6 +21,10 @@ import {
   type MouthPose,
   type SpeechPhase,
   type VisemeFrame,
+  createSpeechLifecycleEventV1,
+  acceptsSpeechLifecycleEventV1,
+  type SpeechLifecycleEventV1,
+  type SpeechLifecyclePhaseV1,
 } from "./avatar/embodimentTimeline";
 
 const EXPR: Record<EmotionLabel, string> = {
@@ -47,6 +51,8 @@ type BrowserSpeechSession = {
   anchorAudioElapsedMs: number;
   clockSource: "speech-synthesis-elapsed-time-anchored-monotonic" | "speech-synthesis-boundary-anchored-monotonic";
   voiceEmphasis: number;
+  lifecycleSequence: number;
+  lastLifecycleEvent: SpeechLifecycleEventV1 | null;
 };
 
 function speechAudioClockNow(session: BrowserSpeechSession, nowMs: number): number {
