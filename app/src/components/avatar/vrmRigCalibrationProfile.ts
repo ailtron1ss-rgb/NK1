@@ -116,3 +116,104 @@ export function serializeVrmRigCalibrationProfileJson(
     right: { ...p.right },
   }, null, 2);
 }
+
+export interface VrmArmCalibrationMeasurement {
+  readonly shoulderAxis: "x" | "y" | "z";
+  readonly elbowAxis: "x" | "y" | "z";
+  readonly shoulderSign: 1 | -1;
+  readonly elbowSign: 1 | -1;
+  readonly bindShoulder: Readonly<{ x: number; y: number; z: number }>;
+  readonly bindElbow: Readonly<{ x: number; y: number; z: number }>;
+  readonly observedShoulder: Readonly<{ x: number; y: number; z: number }>;
+  readonly observedElbow: Readonly<{ x: number; y: number; z: number }>;
+  /** Known fixture angles applied during the measured reference pose, in radians. */
+  readonly referenceShoulderAngleRad: number;
+  readonly referenceElbowAngleRad: number;
+  /** Joint limits measured or verified for this exact model, in radians. */
+  readonly shoulderMinRad: number;
+  readonly shoulderMaxRad: number;
+  readonly elbowMinRad: number;
+  readonly elbowMaxRad: number;
+}
+
+export type VrmArmCalibrationMeasurementResult =
+  | { readonly accepted: true; readonly calibration: AxisCalibration }
+  | { readonly accepted: false; readonly reason: "invalid-measurement" | "insufficient-reference-motion" | "off-axis-motion" | "reference-outside-joint-limits" };
+
+/**
+ * Derive per-axis offsets from a bind pose and a known-angle reference fixture.
+ * The fixture angle must be independently known; this function does not infer it
+ * from an animation clip or pretend that arbitrary pose samples are ground truth.
+ */
+export function calibrateVrmArmFromMeasurement(
+  measurement: VrmArmCalibrationMeasurement,
+  offAxisToleranceRad = 0.12,
+): VrmArmCalibrationMeasurementResult {
+  const vectors = [measurement?.bindShoulder, measurement?.bindElbow, measurement?.observedShoulder, measurement?.observedElbow];
+  if (!measurement || !vectors.every((v) => v && [v.x, v.y, v.z].every(Number.isFinite))
+    || !axes.has(measurement.shoulderAxis) || !axes.has(measurement.elbowAxis)
+    || (measurement.shoulderSign !== 1 && measurement.shoulderSign !== -1)
+    || (measurement.elbowSign !== 1 && measurement.elbowSign !== -1)
+    || !finite([measurement.referenceShoulderAngleRad, measurement.referenceElbowAngleRad,
+      measurement.shoulderMinRad, measurement.shoulderMaxRad, measurement.elbowMinRad, measurement.elbowMaxRad, offAxisToleranceRad])
+    || offAxisToleranceRad < 0 || offAxisToleranceRad > 0.5
+    || measurement.shoulderMinRad > measurement.shoulderMaxRad || measurement.elbowMinRad > measurement.elbowMaxRad
+    || [measurement.shoulderMinRad, measurement.shoulderMaxRad, measurement.elbowMinRad, measurement.elbowMaxRad].some((n) => Math.abs(n) > Math.PI * 2)
+    || Math.abs(measurement.referenceShoulderAngleRad) > Math.PI * 2 || Math.abs(measurement.referenceElbowAngleRad) > Math.PI * 2) {
+    return { accepted: false, reason: "invalid-measurement" };
+  }
+  if (Math.abs(measurement.referenceShoulderAngleRad) < 0.1 || Math.abs(measurement.referenceElbowAngleRad) < 0.1) {
+    return { accepted: false, reason: "insufficient-reference-motion" };
+  }
+  const offAxis = (before: Readonly<{ x: number; y: number; z: number }>, after: Readonly<{ x: number; y: number; z: number }>, axis: "x" | "y" | "z") =>
+    (["x", "y", "z"] as const).filter((candidate) => candidate !== axis)
+      .some((candidate) => Math.abs(after[candidate] - before[candidate]) > offAxisToleranceRad);
+  if (offAxis(measurement.bindShoulder, measurement.observedShoulder, measurement.shoulderAxis)
+    || offAxis(measurement.bindElbow, measurement.observedElbow, measurement.elbowAxis)) {
+    return { accepted: false, reason: "off-axis-motion" };
+  }
+  const shoulderDelta = measurement.observedShoulder[measurement.shoulderAxis] - measurement.bindShoulder[measurement.shoulderAxis];
+  const elbowDelta = measurement.observedElbow[measurement.elbowAxis] - measurement.bindElbow[measurement.elbowAxis];
+  const shoulderOffsetRad = shoulderDelta - measurement.referenceShoulderAngleRad * measurement.shoulderSign;
+  const elbowOffsetRad = elbowDelta - measurement.referenceElbowAngleRad * measurement.elbowSign;
+  const shoulderMeasured = measurement.bindShoulder[measurement.shoulderAxis] + shoulderDelta;
+  const elbowMeasured = measurement.bindElbow[measurement.elbowAxis] + elbowDelta;
+  if (shoulderMeasured < measurement.shoulderMinRad || shoulderMeasured > measurement.shoulderMaxRad
+    || elbowMeasured < measurement.elbowMinRad || elbowMeasured > measurement.elbowMaxRad) {
+    return { accepted: false, reason: "reference-outside-joint-limits" };
+  }
+  const calibration: AxisCalibration = Object.freeze({
+    shoulderAxis: measurement.shoulderAxis, elbowAxis: measurement.elbowAxis,
+    shoulderSign: measurement.shoulderSign, elbowSign: measurement.elbowSign,
+    shoulderOffsetRad, elbowOffsetRad,
+    shoulderMinRad: measurement.shoulderMinRad, shoulderMaxRad: measurement.shoulderMaxRad,
+    elbowMinRad: measurement.elbowMinRad, elbowMaxRad: measurement.elbowMaxRad,
+  });
+  if (!validArmCalibration({ ...calibration, shoulderBoneName: "measured", elbowBoneName: "measured" })) {
+    return { accepted: false, reason: "invalid-measurement" };
+  }
+  return { accepted: true, calibration };
+}
+
+/** Build a profile only from explicit left/right measured fixture captures and the exact loaded rig. */
+export function createMeasuredVrmRigCalibrationProfile(
+  context: VrmRigCalibrationContext,
+  measurements: Readonly<{ left: VrmArmCalibrationMeasurement; right: VrmArmCalibrationMeasurement }>,
+): VrmRigCalibrationResult {
+  if (!context?.left || !context?.right || !context.modelFingerprint || !context.coordinateFrameId) {
+    return { accepted: false, reason: "invalid-profile" };
+  }
+  const left = calibrateVrmArmFromMeasurement(measurements.left);
+  const right = calibrateVrmArmFromMeasurement(measurements.right);
+  if (!left.accepted || !right.accepted) return { accepted: false, reason: "invalid-calibration" };
+  const profile = {
+    schemaVersion: 1 as const,
+    modelFingerprint: context.modelFingerprint,
+    coordinateFrameId: context.coordinateFrameId,
+    calibrationMethod: "manual-measured" as const,
+    left: { ...left.calibration, shoulderBoneName: context.left.shoulder.name ?? "", elbowBoneName: context.left.elbow.name ?? "" },
+    right: { ...right.calibration, shoulderBoneName: context.right.shoulder.name ?? "", elbowBoneName: context.right.elbow.name ?? "" },
+  };
+  return validateVrmRigCalibrationProfile(profile, context);
+}
+
