@@ -8727,6 +8727,8 @@ export class OrganismCore {
                     evidenceStatus: hasStrongExternalReceipt ? 'verified-independent' : learning.source === 'simulation' ? 'observed' : 'unverified',
                     evidenceRef: hasStrongExternalReceipt ? `external-verification:${learning.evidenceReceiptId}` : undefined,
                     evidenceReceiptId: hasStrongExternalReceipt ? learning.evidenceReceiptId : undefined,
+                    verified01: learning.verified01, independent01: learning.independent01, evidence01: learning.evidence01,
+                    consequence01: learning.consequence01, identityUpdateScale01: learning.identityUpdateScale01,
                     authorship: trace.userRequestedAction ? 'user-directed' : 'self-selected',
                     episodeId: String(causalEpisodeId ?? trace.id).slice(0, 80),
                 },
