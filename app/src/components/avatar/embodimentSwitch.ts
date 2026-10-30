@@ -86,7 +86,8 @@ export function planEmbodimentSwitch(
   state: SemanticBodyState,
 ): SwitchPlan {
   if (!validateSemanticBodyState(state)) throw new TypeError("invalid-semantic-body-state");
-  if (capabilities.mode !== from && from === capabilities.mode) throw new TypeError("invalid-renderer-mode");
+  if (!capabilities.rendererId.trim() || !Array.isArray(capabilities.channels) || !Array.isArray(capabilities.expressions)) throw new TypeError("invalid-renderer-capabilities");
+  if (new Set(capabilities.channels).size !== capabilities.channels.length) throw new TypeError("duplicate-renderer-channel");
   const supported = new Set(capabilities.channels);
   const supportedPose: Partial<Record<BodyChannel, number>> = {};
   const unsupportedChannels: BodyChannel[] = [];
