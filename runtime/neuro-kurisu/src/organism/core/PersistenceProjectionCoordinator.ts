@@ -184,7 +184,6 @@ export class PersistenceProjectionCoordinator {
       }
       if(materialize.has('identity')) {
       target.facets.advanced.p78AutobiographicalSelfContinuity=this.snapshotOnce('snap:selfSubsystem.p78AutobiographicalSelfContinuity', ctx.selfSubsystem.p78AutobiographicalSelfContinuity);
-    target.facets.advanced.p2702PersistentPersonality=this.snapshotOnce('snap:selfSubsystem.p2702PersistentPersonality', ctx.selfSubsystem.p2702PersistentPersonality);
       target.facets.advanced.p2702PersistentPersonality=this.snapshotOnce('snap:selfSubsystem.p2702PersistentPersonality', ctx.selfSubsystem.p2702PersistentPersonality);
       }
       if(materialize.has('identity')) {
@@ -316,6 +315,7 @@ export class PersistenceProjectionCoordinator {
     target.facets.advanced.p76IdentityLifeOS=this.snapshotOnce('snap:selfSubsystem.p76IdentityLifeOS', ctx.selfSubsystem.p76IdentityLifeOS);
     target.facets.advanced.p77RealityExperimentOS=this.snapshotOnce('snap:p77RealityExperimentOS', ctx.p77RealityExperimentOS);
     target.facets.advanced.p78AutobiographicalSelfContinuity=this.snapshotOnce('snap:selfSubsystem.p78AutobiographicalSelfContinuity', ctx.selfSubsystem.p78AutobiographicalSelfContinuity);
+    target.facets.advanced.p2702PersistentPersonality=this.snapshotOnce('snap:selfSubsystem.p2702PersistentPersonality', ctx.selfSubsystem.p2702PersistentPersonality);
     target.facets.advanced.p79EmbodiedSituationModel=this.snapshotOnce('snap:worldSubsystem.p79EmbodiedSituationModel', ctx.worldSubsystem.p79EmbodiedSituationModel);
     target.facets.advanced.p80UnifiedSelfState=this.snapshotOnce('snap:selfSubsystem.p80UnifiedSelfState', ctx.selfSubsystem.p80UnifiedSelfState);
     target.facets.advanced.p81PredictiveAttention=this.snapshotOnce('snap:p81PredictiveAttention', ctx.p81PredictiveAttention);
