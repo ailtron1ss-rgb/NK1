@@ -29,6 +29,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
       - name: Install pinned runtime toolchain
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts
       - name: Typecheck runtime
