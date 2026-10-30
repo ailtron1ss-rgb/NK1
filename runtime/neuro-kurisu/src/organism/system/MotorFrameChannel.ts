@@ -8,7 +8,7 @@
  * It intentionally stores one frame (not a queue): slow consumers observe the
  * newest pose and cannot create unbounded animation backlog.
  */
-import type { MotorFrame } from "./EmbodiedMotorController";
+import type { MotorFrame } from "./EmbodiedMotorController.js";
 
 export interface MotorFrameChannelOptions {
   maxJoints?: number;
