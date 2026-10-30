@@ -111,6 +111,9 @@ export async function verifyWardrobeAssetBytes(
   if (!asset || !Number.isSafeInteger(asset.bytes) || asset.bytes <= 0 || !SHA256.test(asset.sha256 ?? "")) {
     return { valid: false, reason: "invalid-input", actualBytes: 0 };
   }
+  if (!(input instanceof ArrayBuffer) && !(input instanceof Uint8Array)) {
+    return { valid: false, reason: "invalid-input", actualBytes: 0 };
+  }
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   if (bytes.byteLength !== asset.bytes) {
     return { valid: false, reason: "size-mismatch", actualBytes: bytes.byteLength };
@@ -118,7 +121,12 @@ export async function verifyWardrobeAssetBytes(
   if (!cryptoProvider?.subtle) {
     return { valid: false, reason: "crypto-unavailable", actualBytes: bytes.byteLength };
   }
-  const digest = await cryptoProvider.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer);
+  let digest: ArrayBuffer;
+  try {
+    digest = await cryptoProvider.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer);
+  } catch {
+    return { valid: false, reason: "crypto-unavailable", actualBytes: bytes.byteLength };
+  }
   const actualSha256 = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
   if (actualSha256.toLowerCase() !== asset.sha256.toLowerCase()) {
     return { valid: false, reason: "hash-mismatch", actualBytes: bytes.byteLength, actualSha256 };
