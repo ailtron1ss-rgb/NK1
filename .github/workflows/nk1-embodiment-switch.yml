@@ -5,6 +5,8 @@ on:
     branches: [workpass70-source]
     paths:
       - "app/src/components/avatar/embodimentSwitch.ts"
+      - "app/src/components/avatar/motorFrameMapper.ts"
+      - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
       - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/live2d-intent-ack.test.mjs"
