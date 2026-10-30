@@ -6112,6 +6112,21 @@ export class OrganismCore {
         const causalDevelopmentSnapshotNow = this.developmentalNeural.causalDevelopmentLoop.snapshot();
         const b2508DiagnosticsNow = this.developmentalNeural.b2508AdaptiveNeuralComputeGovernor.diagnostics();
         const b284IdentityDiagnosticsNow = this.developmentalNeural.neuralAutobiographicalIdentityB284.diagnostics();
+        // P2702 + SelfModel provide bounded character/agency priors to the existing
+        // canonical candidate scorer. This frame is prepared once per decision; it does not select.
+        const personalityContinuityNow = this.selfSubsystem.identityContinuity.snapshot();
+        const personalitySelfVectorNow = [
+            p80SelfNow.continuity01, p80SelfNow.coherence01, p80SelfNow.agency01, p80SelfNow.realityAlignment01,
+            personalityContinuityNow.stability, personalityContinuityNow.goalContinuity,
+            personalityContinuityNow.memoryContinuity, personalityContinuityNow.authorshipContinuity,
+        ];
+        const personalityDecisionFrame = this.organismSystems.preparePersonalityDecision({
+            tick: state.tick, novelty01: state.needs.novelty, uncertainty01: state.needs.uncertainty,
+            goalPressure01: state.needs.goalPressure,
+            identityGap01: clamp(Math.max(1 - p80SelfNow.continuity01, personalityContinuityNow.drift)),
+            actionUtilities: b365Frame.forecastUtilities as Record<ActionKind, number>,
+            identityVector: personalitySelfVectorNow, relationshipId: observation.text ? 'user' : undefined,
+        });
         const buildSpineOnlyCandidate = (action: ActionKind): IntentCandidate => {
             const goal = this.goalForAction(action, active, n);
             const relief = needRelief(action, n);
@@ -6137,7 +6152,7 @@ export class OrganismCore {
                     ? clamp(.5 + energyPressure * .22 + n.cognitiveLoad * .18)
                     : clamp(.5 - energyPressure * .08 - thermalPressure * .04);
             const lifeBias = this.developmentalNeural.b1701DecisionCache ? (this.developmentalNeural.b1701DecisionCache.actionBias[action] ?? 0) * .12 + (this.developmentalNeural.b1701DecisionCache.predictiveBias[action] ?? 0) * .08 : 0;
-            const score = clamp(baseUtility * .46 + prediction.utility * .30 + b299Signal * .18 + homeostasis * .06 + initiativeBonus + lifeBias);
+            const score = clamp(baseUtility * .46 + prediction.utility * .30 + b299Signal * .18 + homeostasis * .06 + initiativeBonus + lifeBias + (personalityDecisionFrame.actionBias[action] ?? 0) * .28);
             return {
                 id: randomUUID(), goalId: goal?.id, action, score, predictedUtility: score,
                 worldPredictionId: (prediction as any).predictionId,
@@ -6348,6 +6363,7 @@ export class OrganismCore {
                 const b287RelationshipBias = this.developmentalNeural.relationshipValueDevelopmentB287.actionBias(action, b287RelationId);
                 const b287GoalBias = active?.title ? this.developmentalNeural.relationshipValueDevelopmentB287.goalBias(active.title, b287RelationId) : 0;
                 const rawUtility = baseUtility * 0.49 + prediction.utility * 0.26
+                     + (personalityDecisionFrame.actionBias[action] ?? 0) * 0.28
                     + aiBonus + projectContribution + predictionDebtBias + cognitivePressureBias + previousWorkspaceMatch + metaReflectionBonus
                     + identityBias * 0.08 + socialBias + developmentalSocialBias + memoryInfluence
                     + initiativeBonus - socialUncertaintyPenalty + bodyRestBonus + networkBonus
@@ -8478,6 +8494,7 @@ export class OrganismCore {
             independent01: clamp(outcome.learning?.independent01 ?? inferredLearningDefaults.independent01),
             consequence01: clamp(outcome.learning?.consequence01 ?? inferredLearningDefaults.consequence01),
             neuralUpdateScale01: clamp(outcome.learning?.neuralUpdateScale01 ?? inferredLearningDefaults.neuralUpdateScale01),
+            evidenceReceiptId: typeof outcome.learning?.evidenceReceiptId === 'string' && /^[A-Za-z0-9._:-]{1,180}$/.test(outcome.learning.evidenceReceiptId) ? outcome.learning.evidenceReceiptId : undefined,
         };
         const rawReward01 = clamp((outcome.reward ?? success + 0.5) / 1.5);
         const gatedReward01 = clamp(outcome.learning?.reward01 ?? (0.5 + (rawReward01 - 0.5) * learning.learningScale01));
@@ -8690,6 +8707,34 @@ export class OrganismCore {
             this.persisted.facets.consciousness.p33 = this.selfSubsystem.p33Personhood.snapshot();
             this.selfSubsystem.p34Personhood.integrateOutcome({ action: trace.selected.action, success01: gatedSuccess01, reward01: gatedReward01, momentId: this.persisted.facets.consciousness.p31.presentMomentId, predictedAction: trace.selected.action, evidenceWeight01: learning.evidence01, identityUpdateScale01: learning.identityUpdateScale01 });
             this.persisted.facets.consciousness.p34 = this.selfSubsystem.p34Personhood.snapshot();
+            // Close personality learning on the real feedback path, after RealityLearningGate.
+            // A RuntimeEvidenceBus receipt is supplied only for externally grounded outcomes.
+            const identityContinuityAfterOutcome = this.selfSubsystem.identityContinuity.snapshot();
+            const identityVectorAfterOutcome = [
+                p80FeedbackState.continuity01, p80FeedbackState.coherence01, p80FeedbackState.agency01, p80FeedbackState.realityAlignment01,
+                identityContinuityAfterOutcome.stability, identityContinuityAfterOutcome.goalContinuity,
+                identityContinuityAfterOutcome.memoryContinuity, identityContinuityAfterOutcome.authorshipContinuity,
+            ];
+            const hasStrongExternalReceipt = learning.source === 'external' && Boolean(learning.evidenceReceiptId)
+                && learning.verified01 >= .85 && learning.independent01 >= .80
+                && learning.evidence01 >= .72 && learning.consequence01 >= .70
+                && learning.identityUpdateScale01 >= .45;
+            const personalityOutcome = this.organismSystems.recordPersonalityOutcome({
+                event: {
+                    tick: state.tick, at: state.at, action: trace.selected.action, outcome: gatedSuccess01,
+                    text: `action=${trace.selected.action};success=${gatedSuccess01.toFixed(3)};predictionError=${gatedSurprise01.toFixed(3)};source=${learning.source}`,
+                    mode: p80FeedbackState.currentMode,
+                    evidenceStatus: hasStrongExternalReceipt ? 'verified-independent' : learning.source === 'simulation' ? 'observed' : 'unverified',
+                    evidenceRef: hasStrongExternalReceipt ? `external-verification:${learning.evidenceReceiptId}` : undefined,
+                    authorship: trace.userRequestedAction ? 'user-directed' : 'self-selected',
+                    episodeId: String(causalEpisodeId ?? trace.id).slice(0, 80),
+                },
+                action: trace.selected.action, reward01: gatedReward01, goalAlignment01: gatedSuccess01,
+                predictionError01: gatedSurprise01, identityGap01: clamp(Math.max(1 - p80FeedbackState.continuity01, identityContinuityAfterOutcome.drift)),
+                relationshipId: trace.selected.action === 'respond' ? 'user' : undefined, identityVector: identityVectorAfterOutcome,
+            });
+            (this.persisted.facets.advanced as any).p78AutobiographicalSelfContinuity = personalityOutcome.p78;
+            (this.persisted.facets.advanced as any).p2702PersistentPersonality = personalityOutcome.personality;
         }
         const socialActualNeed = trace?.selected?.action === 'respond' ? 'dialogue' : trace?.selected?.action === 'verify' ? 'information' : trace?.selected?.action === 'explore' ? 'assistance' : 'dialogue';
         const socialError = this.config.enableSocialDevelopment ? this.cognitiveRuntime.socialDevelopment.feedback('user', socialActualNeed, gatedSuccess01 >= 0.62 ? 0.45 : 0.02, this.cognitiveRuntime.lastSocialPredictionTicketId ?? undefined) : 0;
