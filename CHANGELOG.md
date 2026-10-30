@@ -1,3 +1,10 @@
+## [NK1][Aspect 02] Inventory existing static sprite references without promoting them to production art (2026-10-30)
+
+- Add a source-tree inventory for all 32 existing public sprite PNGs, retaining their manifest IDs, sheet grouping, byte sizes and Git blob SHA-1 identifiers at the observed `workpass70-source` commit.
+- Explicitly classify these files as legacy static-pose references, not Original 2D layered masters or 2.5D source layers; preserve the separate visual-audit reference and mark licensing as not revalidated.
+- Add a regression test proving the inventory exactly covers the 32 sprite-manifest entries and cannot silently claim production-art eligibility; expose it as `npm run test:original-2d-existing-assets`.
+- This is a provenance/indexing pass, not a pixel re-review, rights clearance, artwork creation or Release ZIP update.
+
 ## [NK1][Aspect 02] Reject malformed asset entries before inventory checks (2026-10-30)
 
 - Fail closed when a manifest contains null, primitive or structurally incomplete asset entries, or when contract groups/status vocabulary contain non-string values. This prevents malformed JSON structures from reaching inventory filters and property access as uncaught runtime exceptions.
