@@ -27,10 +27,19 @@ test("uncreated artwork is represented honestly and approved assets require prov
   const allowed = new Set(manifest.statusVocabulary);
   for (const asset of manifest.assets) {
     assert.ok(allowed.has(asset.status), `unknown status for ${asset.id}`);
-    if (["review", "approved", "exported"].includes(asset.status)) {
+    if (asset.status !== "not-authored") {
       assert.match(asset.sha256 ?? "", /^[a-f0-9]{64}$/i, `${asset.id} needs a SHA-256`);
       assert.ok(asset.sourceFile, `${asset.id} needs an editable source`);
       assert.ok(asset.previewFile, `${asset.id} needs a preview export`);
+      const provenance = asset.provenance;
+      assert.ok(provenance && typeof provenance === "object", `${asset.id} needs a provenance record`);
+      assert.ok(provenance.creator?.trim(), `${asset.id} needs a named creator`);
+      assert.match(provenance.sourceUrl ?? "", /^https:\/\//i, `${asset.id} needs an HTTPS source URL`);
+      assert.ok(provenance.licenseId?.trim(), `${asset.id} needs an explicit license`);
+      assert.ok(provenance.permissionEvidence?.trim(), `${asset.id} needs permission evidence`);
+      assert.equal(provenance.redistributionAllowed, true, `${asset.id} needs explicit redistribution clearance`);
+      assert.ok(!Number.isNaN(Date.parse(provenance.verifiedAt)), `${asset.id} needs a provenance verification timestamp`);
+      assert.ok(provenance.verifiedBy?.trim(), `${asset.id} needs a verifier`);
     }
     if (asset.status === "not-authored") {
       assert.equal(asset.sourceFile, null);
