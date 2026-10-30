@@ -125,3 +125,32 @@ export function resolveVrmExpressionMorphTargets(root:any,parser:any):SemanticMo
  }
  return bindings;
 }
+
+
+/**
+ * Resolve standardized VRM humanoid roles to actual Bone objects. VRM 1.0 stores
+ * node references in a map; VRM 0.x stores a bone/node array. This lets NK1 drive
+ * canonical head/spine/arm roles even when an author's bone names are arbitrary.
+ */
+export function resolveVrmHumanoidBoneRoles(parser:any):Map<any,string>{
+ const associations=parser?.associations,extensions=parser?.json?.extensions;
+ if(!(associations instanceof Map)||!extensions)return new Map();
+ const objectsByNode=new Map<number,any>();
+ for(const [object,association] of associations.entries()){
+  const nodeIndex=finiteIndex(association?.nodes);
+  if(nodeIndex!==null&&object?.isBone)objectsByNode.set(nodeIndex,object);
+ }
+ const roles=new Map<any,string>();
+ const vrmcBones=extensions.VRMC_vrm?.humanoid?.humanBones;
+ if(vrmcBones&&typeof vrmcBones==="object")for(const [role,definition] of Object.entries(vrmcBones as Record<string,{node?:unknown}>)){
+  const nodeIndex=finiteIndex(definition?.node),bone=nodeIndex===null?null:objectsByNode.get(nodeIndex);
+  if(bone)roles.set(bone,String(role).toLowerCase().replace(/[^a-z0-9]/g,""));
+ }
+ const legacyBones=extensions.VRM?.humanoid?.humanBones;
+ if(Array.isArray(legacyBones))for(const definition of legacyBones as Array<{bone?:unknown;node?:unknown}>){
+  const role=String(definition.bone??"").toLowerCase().replace(/[^a-z0-9]/g,"");
+  const nodeIndex=finiteIndex(definition.node),bone=nodeIndex===null?null:objectsByNode.get(nodeIndex);
+  if(role&&bone&&!roles.has(bone))roles.set(bone,role);
+ }
+ return roles;
+}
