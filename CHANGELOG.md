@@ -1,3 +1,11 @@
+## [WorkPass638] Cross-format facial semantics and speech viseme priority — 2026-10-30
+
+- Added renderer-independent facial semantic resolution across VRM 0.x names, VRM 1.0-style expression names, and common GLB morph-target aliases.
+- Added deterministic target binding, malformed-index rejection, bounded expression weights, and semantic-to-morph-index conversion.
+- Added composition semantics in which active speech visemes override mouth-shape expression weights without suppressing independent eye and facial channels.
+- Added regression coverage for alias resolution, duplicate selection, invalid indices, speech priority, and weight clamping.
+- This pass establishes the mapping seam; production renderer application across all model formats and real-asset facial E2E remain pending. Existing Pixiv VRMA expression tracks are unchanged.
+
 ## [WorkPass637] Embedded GLTF humanoid clip retarget baking — 2026-10-30
 
 - Added a bounded Three.js source-clip sampler that bakes semantic humanoid quaternion tracks and height-scaled hips displacement onto a distinct target rig using shared-frame rest-axis calibration.
