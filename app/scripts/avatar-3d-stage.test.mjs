@@ -55,3 +55,19 @@ test("existing sprite and Live2D files remain available",async()=>{
  for(const cell of manifest.cells){const file=path.resolve(root,"public",cell.file);assert.ok(file.startsWith(path.join(root,"public")+path.sep));assert.ok((await stat(file)).size>20000,"Missing sprite: "+cell.file);}
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
+
+test("separate GLTF motion source is baked onto the active rig without reprocessing Pixiv VRMA",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/Motion source GLB/);
+ assert.match(stage,/loadMotionSource=useCallback/);
+ assert.match(stage,/captureHumanoidRigSnapshot\(root,bones,rt\.scene\)/);
+ assert.match(stage,/rebuildModelMotionClips\(rt\)/);
+ assert.match(stage,/retargetThreeHumanoidClip\(source\.root,source\.bones,source\.snapshot,rt\.rigRoot,rt\.bones,rt\.rigSnapshot,clip/);
+ const vrmaStart=stage.indexOf("const loadVrma=useCallback");
+ const vrmaEnd=stage.indexOf("useEffect(()=>{",vrmaStart);
+ assert.ok(vrmaStart>=0&&vrmaEnd>vrmaStart);
+ assert.match(stage.slice(vrmaStart,vrmaEnd),/createVRMAnimationClip\(animation,rt\.vrm\)/);
+ assert.doesNotMatch(stage.slice(vrmaStart,vrmaEnd),/retargetThreeHumanoidClip/);
+ assert.match(stage,/motionSourceToken\.current\+\+/);
+ assert.match(stage,/rt\.motionSource\.pivot/);
+});
