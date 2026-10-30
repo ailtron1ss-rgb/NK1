@@ -52,7 +52,7 @@ NK1 считается завершённым не тогда, когда в р�
 | Voice/prosody branch | 21/21 PASS | Сильный кандидат; после интеграции повторить exact-SHA проверки |
 | Original 2D art branch | 7/7 PASS | Контракт/asset inventory проходят; это ещё не готовый финальный рисунок |
 | Depth-rig branch | 6/6 PASS | Контракт рига проходит; полноценного художественного 2.5D тела нет |
-| Affective-expression branch | 5/7 PASS, 2 FAIL | App typecheck: `Avatar3DStage.tsx(78,226): TS1005 ':' expected` |
+| Affective-expression branch | На исходном HEAD было 5/7; после фикса 7/7 PASS на code SHA 496b214... | Исправлены TS1005 и расчёт скорости клипа; browser/Android E2E остаются отдельными воротами |
 | Tool-governance branch | 20/21 PASS | `tool-input-contracts-workpass624.mjs:29`: bounded regex quantifier test fails |
 | Embodied-world-interaction branch | 18/22 PASS | 4 job failures из-за npm install/typecompiler command setup; нужно исправить workflow и повторить |
 | Release-reliability branch | 3/3 PASS | Только её собственные проверки; не закрывает human license review и device E2E |
@@ -73,6 +73,43 @@ NK1 считается завершённым не тогда, когда в р�
 6. 2.5D depth-rig code и часть artwork pipeline развиваются в отдельных расходящихся ветках; авторские слои и полноценная модель ещё не поставлены.
 7. 3D stage присутствует, но production-ready лицензированная Kurisu VRM-модель и полноценная VRM runtime-совместимость не подтверждены.
 
+### 2.4 Дополнительная сверка после обновления плана — 2026-10-30
+
+- Текущий HEAD ветки workpass70-source на момент этой актуализации: 3b64e60ba845a57dd2325dfc28f97ebe57c42717.
+- Между исходным audit SHA ad564d1879028f00549be41ec5172a2f72e25897 и 3b64e60... обнаружены три документационных коммита; diff затронул CHANGELOG.md и плановый документ, runtime/app source files не менялись. Поэтому первоначальные тестовые результаты кода на ad564... остаются применимыми к неизменённому runtime-коду, но все candidate PR теперь отстают от source на три коммита и требуют rebase или синхронизации перед merge.
+- Повторно подтверждено наличие 488 веток. Полный список не является backlog на слияние: исторические и расходящиеся ветки должны закрываться выборочно.
+- Сравнение ниже выполнено относительно текущего source HEAD 3b64e60...; ahead/behind — граф коммитов, не оценка готовности функций.
+
+| Кандидат | Ahead / behind | Свидетельство и следующее действие |
+|---|---:|---|
+| PR #422 cognitive core | +35 / −3 | 11 файлов; выборочно сверить ownership/restore и прогнать точный HEAD |
+| PR #423 world-perception grounding | +99 / −3 | 17 файлов; P41 уже есть в source, интегрировать только новые grounded-evidence изменения |
+| PR #424 tool governance | +10 / −3 | 9 файлов; 20/21 checks на проверенном HEAD, осталось исправить bounded-regex test |
+| PR #420 holdout integrity | Отдельный PR | Проверить как P0-зависимость перед promotion навыков |
+| PR #401 learning | +92 / −3 | 21/21 checks на candidate HEAD; rebase и полный повтор на новом source обязательны |
+| PR #399 personality/SelfModel | +130 / −55 | Diverged; rebase/cherry-pick по функциональным единицам, не whole-branch merge |
+| PR #400 emotion/motivation | +39 / −55 | Diverged; восстановить причинную цепь на актуальном core и повторить проверки |
+| PR #407 Original 2D art | +51 / −3 | 7/7 на проверенном HEAD; сверить с текущим AvatarStage перед интеграцией |
+| PR #406 Live2D expressive control | +92 / −3 | Все 6 workflow прошли на code SHA 603d170...; tip 86affca... добавляет только CHANGELOG. PR после движения base требует rebase; browser/Android visual tests не подтверждены |
+| PR #411 affective expression | +147 / −3 | Все 7 workflow прошли на code SHA 496b214...; tip 78a7b21... добавляет только CHANGELOG. PR требует rebase; browser/Android visual tests не подтверждены |
+| PR #408 canonical 2.5D depth rig | +111 / −3 | 34 focused tests, Blender export, GLB validator, app typecheck и core regression прошли на HEAD a0d4619...; это runtime foundation/blockout, не готовая Kurisu artwork |
+| PR #409 alternate depth-rig foundation | +45 / −3 | Использовать только как источник выборочного переноса; параллельную схему depth-rig не выпускать |
+| PR #415 renderer switching | +65 / −3 | 15 focused handoff/ACK tests и app typecheck прошли на HEAD 732a0cb...; actual cross-renderer visual completion receipts и Android E2E остаются pending |
+| PR #405 motor foundation | +34 / −3 | Совместить только с единственным motor owner PR #410 |
+| PR #410 autonomous motor control | +85 / −3 | 29 файлов; требуется проверить exact-head CI, runtime MotorFrame ownership, calibrated skeleton и реальное исполнение |
+| PR #412 modular wardrobe | +156 / −3 | 24 файла; проверить совместимость с canonical #408 и будущими VRM assets; не считать production wardrobe без реальных packs |
+| PR #413 unified voice/prosody | +78 / −3 | 21/21 checks на candidate HEAD; rebase, затем Android/Termux audio E2E и phoneme/viseme latency tests |
+| PR #414 embodied interaction | +94 / −3 | 18/22 checks на исходном candidate; четыре workflow/setup failures нужно исправить. Реальная manipulation не реализована одним planner |
+| PR #426 duplicate planning PR | +4 / −3 | Не интегрировать как второй мастер-план; этот канонический документ уже содержит аспектный execution plan |
+
+### 2.5 Исправления CI в этом рабочем проходе
+
+1. PR #406: исправлено обращение к .head.rotation.z на b.head.rotation.z в app/src/components/Avatar3DStage.tsx. Кодовый коммит: 603d17029d6502e9bc25e4dfcf88adaabb5cc4f7. После исправления шесть workflow завершились success: Hexis lineage, WorkPass108, WorkPass110, planner cadence, WorkPass79 и NeuroCore core regression. Последующий коммит 86affca... добавил только CHANGELOG; повторный typecheck на объединённой после rebase ветке обязателен.
+2. PR #411: исправлен тернарный выбор скорости клипа: явные awake/asleep ветви вместо повреждённого выражения. Кодовый коммит: 496b2144ef9fec70c30045ea5952bbc8e471324d. Семь workflow завершились success: affective-expression, NeuroCore core, WorkPass79, WorkPass108, WorkPass110, planner cadence и Hexis lineage. Последующий коммит 78a7b21... добавил только CHANGELOG; повторный typecheck после rebase обязателен.
+3. Оба PR после обновления source показывают diverged history и mergeable=false. Исправления не разрешают автоматически нажать merge; сначала синхронизировать последние три source-коммита, разрешить конфликты и повторить точные checks.
+4. Архитектурное решение PR #415: PR #408 — единственный canonical 2.5D runtime; PR #409 — migration/reference source. PR #410 — единственный joint-space motor substrate; PR #405 не должен создавать второй motor owner. PR #415 владеет только renderer handoff orchestration и не может синтезировать фиктивное исполнение.
+5. Ограничения не изменились: 2.5D art assets, production VRM asset, реальный browser/Android visual E2E, физический interaction adapter и human license review остаются незакрытыми.
+
 ## 3. Оценка готовности по аспектам
 
 Проценты ниже — инженерная оценка готовности **канонического проекта к целевой способности**, а не подсчёт файлов, строк или коммитов. Код, находящийся только в отдельной ветке, не засчитывается как интегрированная возможность. PASS unit/contract CI не заменяет field/device E2E.
@@ -85,7 +122,7 @@ NK1 считается завершённым не тогда, когда в р�
 | 04 | Обучение и саморазвитие | **55%** | Большая кандидатная ветка; не интегрирована целиком | Выборочная интеграция 92-коммитной ветки и повторные проверки на новом HEAD |
 | 05 | Личность, SelfModel и UserModel | **55%** | Частично TESTED | UserModel ветка отдельно; длительная оценка последовательности личности |
 | 06 | Внутренняя мотивация и автономная инициатива | **60%** | TESTED по внутренним сценариям | Реальная фоновая инициатива, quiet-hours, отмена, отсутствие спама |
-| 07 | Эмоциональная динамика и выразительность | **45%** | Эмоциональная appraisal-основа есть; renderer expression branch не проходит typecheck | Исправить TS, сглаживание, связать эмоции со всеми телами и голосом |
+| 07 | Эмоциональная динамика и выразительность | **45%** | Appraisal-основа интегрирована; отдельный renderer candidate прошёл 7/7 CI после TS-фикса | Rebase/integration, сглаживание на всех renderer, browser/Android E2E |
 | 08 | Инструменты, действия и безопасность | **60%** | ActionGateway есть; расширение контрактов требует исправления | Закрыть regex regression, output contracts, внешние последствия и rollback |
 | 09 | Голос, streaming и просодия | **60%** | Хорошо покрытая отдельная ветка | Выборочно интегрировать, затем Android/Termux E2E и audio-mouth latency |
 | 10 | Пространственное/телесное взаимодействие с миром | **25%** | Кандидатная ветка | Исправить workflow setup, подключить реальные sensors/adapters и независимые postconditions |
@@ -117,8 +154,8 @@ NK1 считается завершённым не тогда, когда в р�
 | World interaction `aspect10-embodied-world-interaction-2026-10-30` | `a094667...` | +94 / 0 | 18/22 PASS | Сначала npm/TypeScript workflow setup, затем spatial policy/adapters; физическое действие не включать без независимой evidence |
 | Release reliability `aspect12-release-reliability-2026-10-30` | `f959f24...` | +72 / 0 | 3/3 PASS | Использовать как кандидата на release hardening; человеческое approval не подменять CI |
 | Original 2D art `work/aspect-02-original-2d-art-system-2026-10-30` | `1eed2bb...` | +51 / 0 | 7/7 PASS | Лучший безопасный следующий кандидат: manifest/schema/asset audit/validator; синхронизировать с current AvatarStage |
-| Affective expression `work/aspect-07-affective-expression-2026-10-30` | `a75ed09...` | +145 / 0 | 5/7 PASS | Заблокировано TS syntax error; исправить Avatar3DStage и повторить все affected app checks |
-| Depth rig `work/nk1-aspect04-depth-rig-2026-10-30` | `f309f4e...` | +45 / 0 | 6/6 PASS | Интегрировать как контракт/validator после совместимости с artwork pipeline; пока не называть готовым телом |
+| Affective expression `work/aspect-07-affective-expression-2026-10-30` | `78a7b21...` | +147 / −3 | 7/7 PASS на code SHA `496b214...`; changelog-only tip `78a7b21...` | Исправлена ошибка TS; rebase на новый source и browser/Android E2E всё ещё обязательны |
+| Depth rig `work/nk1-aspect04-depth-rig-2026-10-30` | `f309f4e...` | +45 / −3 | 6/6 PASS на историческом HEAD | Legacy/reference candidate; единственным canonical 2.5D runtime определён PR #408 |
 | Artwork pipeline `work/nk1-aspect11-artwork-pipeline-2026-10-30` | `d0aff1d...` | +114 / 0 | По итоговым веткам проверять заново | Diverged от depth-rig; сравнить manifest/renderer/Three adapter, не объединять параллельно |
 | User model `work/nk1-aspect05-user-model-grounding-2026-10-30` | `2737685...` | +8 / 0 | Exact HEAD checks нужны | Интегрировать после определения единственного владельца UserModel |
 | Voice/prosody `work/nk1-aspect9-unified-voice-prosody-2026-10-30` | `c55e5d5...` | +78 / 0 | 21/21 PASS | Сильный кандидат; синхронизировать transport/timeline и проверить реальный Android |
