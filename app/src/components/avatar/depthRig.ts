@@ -22,9 +22,9 @@ export function validateDepthRig(manifest:DepthRigManifest):DepthRigValidation {
   if(map.has(n.id))errors.push("duplicate-node:"+n.id); map.set(n.id,n);
   if(!ROLES.has(n.role))errors.push("invalid-role:"+n.id);
   if(n.parentId!==null&&typeof n.parentId!=="string")errors.push("invalid-parent:"+n.id);
-  if(!tuple(n.position,3)||n.position.some(v=>Math.abs(v)>MAX_POSITION))errors.push("invalid-position:"+n.id);
-  if(!tuple(n.pivot,2)||n.pivot.some(v=>Math.abs(v)>1))errors.push("invalid-pivot:"+n.id);
-  if(!tuple(n.rotation,3)||n.rotation.some(v=>Math.abs(v)>Math.PI*4))errors.push("invalid-rotation:"+n.id);
+  if(!tuple(n.position,3)||n.position.some((v:number)=>Math.abs(v)>MAX_POSITION))errors.push("invalid-position:"+n.id);
+  if(!tuple(n.pivot,2)||n.pivot.some((v:number)=>Math.abs(v)>1))errors.push("invalid-pivot:"+n.id);
+  if(!tuple(n.rotation,3)||n.rotation.some((v:number)=>Math.abs(v)>Math.PI*4))errors.push("invalid-rotation:"+n.id);
   if(!Number.isFinite(n.depth)||n.depth < -1||n.depth>1)errors.push("invalid-depth:"+n.id);
   if(!Number.isFinite(n.parallax)||n.parallax<0||n.parallax>2)errors.push("invalid-parallax:"+n.id);
   if(n.visible!==undefined&&typeof n.visible!=="boolean")errors.push("invalid-visibility:"+n.id);
