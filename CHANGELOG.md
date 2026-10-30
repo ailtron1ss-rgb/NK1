@@ -1,3 +1,8 @@
+## [NK1][Embodiment] Make decimal conditional expressions unambiguous (2026-10-30)
+
+- Normalized decimal-valued ternary branches in Avatar3DStage.tsx so TypeScript cannot tokenize them as optional chaining.
+- Preserved the existing numeric values and behavior; this is a syntax-only repair for the shared 3D body controller.
+
 ## [NK1][Avatar] Fix Live2D expressive-control 3D syntax regression (2026-10-30)
 
 - Исправлена потерянная ссылка на объект: b.head.rotation.z вместо некорректного .head.rotation.z.
