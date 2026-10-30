@@ -11,6 +11,8 @@ on:
       - "app/scripts/live2d-wardrobe-capability.test.mjs"
       - "app/scripts/vrm-wardrobe-adapter.test.mjs"
       - "app/scripts/vrm-wardrobe-pack-loader.test.mjs"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/src/components/Avatar3DStage.tsx"
       - "app/package.json"
       - "app/package-lock.json"
       - "CHANGELOG.md"
