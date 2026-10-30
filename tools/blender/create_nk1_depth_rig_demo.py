@@ -94,8 +94,8 @@ def build():
     make_ellipsoid("nk1_coat_tail", "coat-tail", torso, collection, (0, -0.57, 0.08), (0.39, 0.22, 0.07), -0.1, 0.18, coat)
     for side, sign in (("left", -1), ("right", 1)):
         upper = make_ellipsoid(f"nk1_{side}_upper_arm", f"{side}-upper-arm", torso, collection, (sign * 0.53, 0.18, 0), (0.14, 0.39, 0.14), 0.02, 0.1, coat)
-        make_ellipsoid(f"nk1_{side}_forearm", f"{side}-forearm", upper, collection, (0, -0.48, 0.01), (0.115, 0.34, 0.12), 0.04, 0.12, coat)
-        make_ellipsoid(f"nk1_{side}_hand", f"{side}-hand", upper, collection, (0, -0.88, 0.02), (0.12, 0.14, 0.1), 0.08, 0.16, skin)
+        forearm = make_ellipsoid(f"nk1_{side}_forearm", f"{side}-forearm", upper, collection, (0, -0.48, 0.01), (0.115, 0.34, 0.12), 0.04, 0.12, coat)
+        make_ellipsoid(f"nk1_{side}_hand", f"{side}-hand", forearm, collection, (0, -0.4, 0.01), (0.12, 0.14, 0.1), 0.08, 0.16, skin)
     bpy.context.scene.render.engine = "BLENDER_EEVEE_NEXT"
     bpy.context.scene.render.resolution_x = 640
     bpy.context.scene.render.resolution_y = 640
