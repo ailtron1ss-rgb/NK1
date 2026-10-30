@@ -74,3 +74,13 @@ test("ignores duplicate semantic roles and duplicate node references determinist
   assert.equal(snapshot.roleToNode.size, 3);
   assert.equal(snapshot.roleToNode.has("hipsDuplicate"), false);
 });
+
+test("rig-local height is invariant to world yaw and scales with the avatar root", () => {
+  const unscaled = makeRig({ rootRotation: Math.PI / 2 });
+  const scaled = makeRig({ rootRotation: Math.PI / 2 });
+  scaled.root.scale.setScalar(2);
+  const unscaledSnapshot = captureHumanoidRigSnapshot(unscaled.root, unscaled.bones, unscaled.frame);
+  const scaledSnapshot = captureHumanoidRigSnapshot(scaled.root, scaled.bones, scaled.frame);
+  assert.ok(Math.abs(scaledSnapshot.height - unscaledSnapshot.height * 2) < 1e-8);
+  assert.ok(Math.abs(scaledSnapshot.boneLength.get("hips") - unscaledSnapshot.boneLength.get("hips") * 2) < 1e-8);
+});
