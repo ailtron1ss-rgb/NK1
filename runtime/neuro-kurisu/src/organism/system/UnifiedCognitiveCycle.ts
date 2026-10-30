@@ -28,14 +28,16 @@ export interface UnifiedCognitiveCycleResult {
   missingStages:UnifiedCycleStage[];
 }
 
-const REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
-const ALL_STAGES=new Set<UnifiedCycleStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update']);
+const LEGACY_REQUIRED:UnifiedCycleStage[]=['observation','prediction','action','outcome','learning','self-update'];
+const EXTENDED_REQUIRED:UnifiedCycleStage[]=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'];
+const EXTENDED_MARKERS:UnifiedCycleStage[]=['appraisal','attention','memory','goal','plan'];
+const ALL_STAGES=new Set<UnifiedCycleStage>(EXTENDED_REQUIRED);
 const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
 const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
 const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
 const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 
-export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...REQUIRED]});
+export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...LEGACY_REQUIRED]});
 
 export class UnifiedCognitiveCycle {
   private state=defaultUnifiedCognitiveCycle();
@@ -54,12 +56,12 @@ export class UnifiedCognitiveCycle {
     // silently drop cycles from both outcome buckets.
     const incompleteCycles=cycles-completeCycles;
     const hasMissingArray=Array.isArray(source.lastMissingStages);
-    const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...REQUIRED];
+    const rawMissing=hasMissingArray?source.lastMissingStages as unknown[]:[...LEGACY_REQUIRED];
     const malformedMissing=rawMissing.some((stage)=>typeof stage!=='string'||!ALL_STAGES.has(stage as UnifiedCycleStage));
     const filteredMissing=[...new Set(rawMissing.filter((stage):stage is UnifiedCycleStage=>typeof stage==='string'&&ALL_STAGES.has(stage as UnifiedCycleStage)))];
-    const normalizedMissing=malformedMissing?[...REQUIRED]:filteredMissing;
+    const normalizedMissing=malformedMissing?[...LEGACY_REQUIRED]:filteredMissing;
     const lastTick=typeof source.lastTick==='number'&&Number.isSafeInteger(source.lastTick)&&source.lastTick>=-1?source.lastTick:-1;
-    const missing=cycles===0&&normalizedMissing.length===0?[...REQUIRED]:normalizedMissing;
+    const missing=cycles===0&&normalizedMissing.length===0?[...LEGACY_REQUIRED]:normalizedMissing;
     this.state={
       version:1,
       cycles,
@@ -91,16 +93,21 @@ export class UnifiedCognitiveCycle {
       const id=Object.hasOwn(input.stageIds,stage)?input.stageIds[stage]:undefined;
       if(validStageId(id))validIds[stage]=id;
     }
-    // Distinct required stages must refer to distinct events. Reusing one ID
-    // across observation/action/outcome must not manufacture a complete cycle.
+    // Preserve six-stage legacy callers, but once a caller advertises any
+    // extended phase it must provide the complete eleven-stage spine. This
+    // prevents a partially upgraded runtime from claiming a complete cycle.
+    const requiresExtendedSpine=EXTENDED_MARKERS.some(stage=>Object.hasOwn(input.stageIds,stage));
+    const requiredStages=requiresExtendedSpine?EXTENDED_REQUIRED:LEGACY_REQUIRED;
+    // Every required phase must identify a distinct event, including the five
+    // extended phases. Reusing an event across two phases is missing evidence.
     const idCounts=new Map<string,number>();
-    for(const stage of REQUIRED) {
+    for(const stage of requiredStages) {
       const id=validIds[stage];
       if(id!==undefined)idCounts.set(id,(idCounts.get(id)??0)+1);
     }
-    const present=REQUIRED.filter(stage=>validIds[stage]!==undefined&&idCounts.get(validIds[stage]!)===1);
-    const missing=REQUIRED.filter(stage=>validIds[stage]===undefined||idCounts.get(validIds[stage]!)!==1);
-    const coverage=present.length/REQUIRED.length;
+    const present=requiredStages.filter(stage=>validIds[stage]!==undefined&&idCounts.get(validIds[stage]!)===1);
+    const missing=requiredStages.filter(stage=>validIds[stage]===undefined||idCounts.get(validIds[stage]!)!==1);
+    const coverage=present.length/requiredStages.length;
     const causal=input.parentIntegrity01;
     const complete=missing.length===0&&causal>=0.5;
     const cycles=this.state.cycles+1;
