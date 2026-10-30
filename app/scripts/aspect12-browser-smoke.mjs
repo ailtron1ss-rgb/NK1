@@ -12,6 +12,20 @@ const reportPath = path.resolve(repoRoot, process.env.ASPECT12_REPORT_PATH || "a
 const sourceSha = process.env.GITHUB_SHA || process.env.SOURCE_SHA || "local-unbound";
 const startupTimeoutMs = Number(process.env.ASPECT12_STARTUP_TIMEOUT_MS || 90000);
 
+export function collectBrowserFailures(viewports) {
+  const failures = [];
+  for (const sample of viewports) {
+    if (sample.httpStatus !== 200) failures.push(`${sample.viewport}: HTTP ${sample.httpStatus}`);
+    if (!sample.title) failures.push(`${sample.viewport}: missing document title`);
+    if (sample.bodyTextLength < 20) failures.push(`${sample.viewport}: rendered body is unexpectedly empty`);
+    if (sample.horizontalOverflow) failures.push(`${sample.viewport}: horizontal overflow`);
+    if (sample.consoleErrors.length) failures.push(`${sample.viewport}: ${sample.consoleErrors.length} console error(s)`);
+    if (sample.pageErrors.length) failures.push(`${sample.viewport}: ${sample.pageErrors.length} uncaught page error(s)`);
+    if (sample.failedRequests.length) failures.push(`${sample.viewport}: ${sample.failedRequests.length} failed request(s)`);
+  }
+  return failures;
+}
+
 export function summarizeBrowserSample(sample) {
   const entries = Array.isArray(sample?.samples) ? sample.samples : [];
   const sorted = entries.filter(Number.isFinite).sort((a, b) => a - b);
@@ -172,14 +186,7 @@ async function main() {
       await inspectViewport(browser, "desktop", { width: 1365, height: 900 }),
       await inspectViewport(browser, "mobile", { width: 390, height: 844 }),
     ];
-    const failures = [];
-    for (const sample of viewports) {
-      if (sample.httpStatus !== 200) failures.push(`${sample.viewport}: HTTP ${sample.httpStatus}`);
-      if (!sample.title) failures.push(`${sample.viewport}: missing document title`);
-      if (sample.bodyTextLength < 20) failures.push(`${sample.viewport}: rendered body is unexpectedly empty`);
-      if (sample.horizontalOverflow) failures.push(`${sample.viewport}: horizontal overflow`);
-      if (sample.pageErrors.length) failures.push(`${sample.viewport}: ${sample.pageErrors.length} uncaught page error(s)`);
-    }
+    const failures = collectBrowserFailures(viewports);
     report = {
       schemaVersion: 1, aspect: 12, sourceSha, generatedAt: new Date().toISOString(),
       baseUrl, startup, status: failures.length ? "FAIL" : "PASS",
