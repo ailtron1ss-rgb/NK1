@@ -63,8 +63,13 @@ export function inverseQuaternion(value: Quat): Quat {
 }
 
 function clampQuaternionDelta(deltaValue: Quat, maxRadians: number): Quat {
-  const delta = normalizeQuaternion(deltaValue);
-  const w = clamp(Math.abs(delta[3]), 0, 1);
+  const normalized = normalizeQuaternion(deltaValue);
+  // q and -q encode the same rotation; choose the shortest-arc hemisphere
+  // before computing the axis/angle so the cap cannot reverse its direction.
+  const delta: Quat = normalized[3] < 0
+    ? [-normalized[0], -normalized[1], -normalized[2], -normalized[3]]
+    : normalized;
+  const w = clamp(delta[3], 0, 1);
   const angle = 2 * Math.acos(w);
   const limit = clamp(maxRadians, 0, Math.PI);
   if (angle <= limit || angle < 1e-8) return delta;
