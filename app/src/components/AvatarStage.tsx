@@ -122,26 +122,25 @@ export function AvatarStage({ snap, thinking = false, motorFrame, motorBindings 
       return;
     }
     let active = true;
-    let inFlight = false;
-    const pollMotorFrame = async () => {
-      if (!active || inFlight) return;
-      inFlight = true;
+    const stream = neuroApi.motorFrameStream();
+    const onMotorFrame = (event: Event) => {
+      if (!(event instanceof MessageEvent) || typeof event.data !== "string") return;
       try {
-        const response = await neuroApi.motorFrame();
+        const response: unknown = JSON.parse(event.data);
         if (active) setPolledMotorFrame(readMotorFrameResponse(response));
       } catch {
-        // The renderer keeps its existing semantic fallback while the runtime
-        // endpoint is unavailable or the motor skeleton is not yet calibrated.
+        // Malformed events never enter the renderer; semantic motion remains available.
         if (active) setPolledMotorFrame(null);
-      } finally {
-        inFlight = false;
       }
     };
-    void pollMotorFrame();
-    const timer = window.setInterval(() => void pollMotorFrame(), 1000);
+    stream.addEventListener("motor-frame", onMotorFrame);
+    stream.onerror = () => {
+      // EventSource reconnects automatically. Until it does, do not keep a stale pose.
+      if (active) setPolledMotorFrame(null);
+    };
     return () => {
       active = false;
-      window.clearInterval(timer);
+      stream.close();
     };
   }, [mode]);
 
