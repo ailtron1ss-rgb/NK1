@@ -108,3 +108,29 @@
 Родительский `AvatarStage` теперь принимает `live2d_intent_ack` только от текущего iframe и только при совпадении `stateVersion` с последним отправленным intent. Проверяются `appliedRevision`, `complete === false`, а также явные статусы expression/motion «not independently verified». На экране отображается только диагностический счётчик наблюдённых параметров или факт принятия без readback.
 
 Это подтверждение транспортной корреляции и ограниченного readback, не полноценное доказательство исполнения семантического состояния: ACK не содержит независимой проверки expression/motion, не подтверждает GPU-presented frame и не преобразуется в `AdapterApplyReceipt`. Устаревшие ACK, чужой origin/source и некорректные версии отбрасываются.
+
+
+## Зафиксированное решение по каноническому 2.5D rig (2026-10-30)
+
+Проведено сравнение актуальных PR #408, #409, #410 и #405 по фактическим diff, а не только по описаниям.
+
+- **Каноническая реализация 2.5D — PR #408 (DepthRigManifest, Three.js adapter).** В нём есть runtime-путь в Avatar3DStage, проверка фактической parent hierarchy импортированной GLB/VRM-сцены до мутаций, fail-closed transform application, face morph/viseme resolver, secondary motion, capability gate и явный перевод измеренных суставных значений из MotorFrame #410.
+- **PR #409 не должен становиться вторым runtime или второй схемой.** Его полезные свойства — нормализованные pivots/rest transforms, семантический affine composition, renderer-neutral layer contract и явная joint-to-node calibration — следует переносить в #408 как требования/миграционные тесты. До переноса PR #409 остаётся Draft-источником, не production-путём.
+- **PR #410 — единственный канонический joint-space motor substrate.** Не переносить из PR #405 второй arbiter/controller; его renderer-specific mapping должен быть адаптирован к MotorFrame #410.
+- **PR #415 — orchestration contract**, а не новый владелец позы или моторики. Его SemanticBodyState/adapter lifecycle должны потреблять canonical organism snapshot и измеренный MotorFrame, а не создавать конкурирующие моторные цели.
+- **PR #408 пока остаётся Draft:** технический blockout не является авторским Kurisu artwork; layered production asset, реальные browser/device round-trip и проверка готового визуального результата остаются отдельными release gates.
+
+### Целевая цепочка данных
+
+OrganismCore → EmbodimentIntentV1 / MotorGoal → MotorFrame (#410) → renderer adapter (#408) → observed renderer state
+
+Эмоции, речь, взгляд и личность остаются в каноническом состоянии организма. Renderer адаптирует и отображает команды, но не становится источником когнитивного состояния. При переключении renderer coordinator переносит immutable snapshot и текущий подтверждённый MotorFrame; неподдерживаемые каналы явно деградируют, а не синтезируются.
+
+### Запреты на архитектурное расхождение
+
+1. Не объединять #408 и #409 путём параллельного импорта двух DepthRigManifest типов.
+2. Не использовать targetAngleRad как фактически достигнутую позу; renderer получает измеренный angleRad.
+3. Не объявлять успешным handoff на основании postMessage, принятой команды или частичного Live2D ACK.
+4. Не сливать #405 как независимый controller; извлечь полезные alias/mapping части в #410/#408.
+5. Не называть blockout-модель готовым персонажем и не обновлять Release ZIP до проверки production assets и E2E.
+
