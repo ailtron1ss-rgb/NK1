@@ -98,6 +98,7 @@ function isCandidate(value: unknown): value is VersionedSkillCandidate {
   if (payloadFingerprint(value.payload) !== value.payloadFingerprint) return false;
   const expectedId = createHash('sha256').update(JSON.stringify([
     value.skillId, value.version, value.proposalId, value.payloadFingerprint,
+    value.revisionProvenance ? payloadFingerprint(value.revisionProvenance) : null,
   ])).digest('hex');
   if (value.candidateId !== expectedId) return false;
   if (value.approval !== undefined && !isApproval(value.approval)) return false;
@@ -124,9 +125,11 @@ function isSnapshot(value: unknown): value is VersionedSkillStoreSnapshot {
  */
 export class AtomicFileSkillStorePersistence implements SkillStorePersistence {
   private readonly lockPath: string;
+  private readonly filePath: string;
 
-  constructor(private readonly filePath: string) {
+  constructor(filePath: string) {
     if (!filePath?.trim()) throw new Error('skill store file path must be non-empty');
+    this.filePath = filePath;
     this.lockPath = filePath + '.lock';
   }
 

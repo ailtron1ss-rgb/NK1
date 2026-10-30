@@ -21,7 +21,7 @@
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json';
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
-  let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
+  let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='',lastAppliedExpression='';
   const EXPR_MAP={
     neutral:'Stanby Smile',happy:'Stanby Smile',sad:'Stanby Sad',angry:'Stanby Angry',
     surprised:'Stanby Surprised',flustered:'Blush 1',embarrassed:'Blush 2',thinking:'Stanby Scared',
@@ -44,7 +44,11 @@
     setCore('ParamMouthForm',(intensity-.5)*.8);
     if(bodySignal.motionGroup){const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}`;if(k!==lastMotionKey){try{model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0));lastMotionKey=k}catch{}}}
   }
-  function applyExpression(expr){try{model?.expression(EXPR_MAP[expr]||EXPR_MAP.neutral)}catch{}}
+  function applyExpression(expr){
+    const expressionName = EXPR_MAP[expr] || EXPR_MAP.neutral;
+    if(expressionName===lastAppliedExpression)return;
+    try { model?.expression(expressionName); lastAppliedExpression = expressionName; } catch {}
+  }
   function chooseProfile(){
     const requested=new URLSearchParams(location.search).get('profile');
     if(['mobile','balanced','quality'].includes(requested||'')) return requested;

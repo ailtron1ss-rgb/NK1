@@ -176,8 +176,6 @@ export class CausalExperienceStream {
       // Snapshot aggregates are untrusted input. Keep only bounded scalar shapes;
       // behavioral aggregates are recomputed from eligible records below.
       observations:safeCounter(r.observations),
-      // Recompute trusted outcome totals from grounded records; persisted scalar
-      // aggregates can include historical external claims and are not evidence.
       outcomes:records.filter(isGroundedRuntimeOutcome).length,
       consolidated:records.filter(record=>isGroundedRuntimeOutcome(record)&&record.consolidated).length,
       records,
@@ -188,7 +186,7 @@ export class CausalExperienceStream {
         learningOpportunity01:clamp01(acc.learningOpportunity01*.9+(
           record.causalStrength01*.58+record.surprise01*.18+record.predictionError01*.14+record.novelty01*.10
         )*.1),
-      }),{...d.rolling}),
+      }),{surprise01:0,predictionError01:0,causalStrength01:0,learningOpportunity01:0}),
       lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
       recordedTraceIds:normalizedRecordedIds,
       behavioralImpact01:0,

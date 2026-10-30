@@ -78,7 +78,7 @@ try {
   };
   const payloadFingerprint = createHash('sha256').update(canonical(skill)).digest('hex');
   const expectedCandidateId = createHash('sha256')
-    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint]))
+    .update(JSON.stringify([skill.id, 1, proposal.proposalId, payloadFingerprint, null]))
     .digest('hex');
   const runtimeVersion = 'nk1-e2e-runtime-145';
   const stateFile = path.join(root, 'organism.json');

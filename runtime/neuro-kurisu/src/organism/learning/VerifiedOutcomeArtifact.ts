@@ -146,6 +146,9 @@ export function ingestSignedOutcomeArtifact(
     if (!exactMatch) {
       return { accepted: false, artifactFingerprint: fingerprint, rejection: 'conflicting-existing-outcome' };
     }
+    if (authenticatedEvidence.get(ledger)?.has(outcome.evidenceRef)) {
+      return { accepted: false, artifactFingerprint: fingerprint, rejection: 'duplicate-attempt' };
+    }
   } else {
     const result = ledger.record(outcome);
     if (!result.accepted) {
