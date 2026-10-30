@@ -1,0 +1,96 @@
+name: NK1 affective expression validation
+
+on:
+  push:
+    paths:
+      - "app/src/components/avatar/affectiveExpression.ts"
+      - "app/src/components/avatar/affectiveBodyLanguage.ts"
+      - "app/src/components/avatar/affectiveArmPosture.ts"
+      - "app/scripts/avatar-affective-arm-posture.test.mjs"
+      - "app/scripts/avatar-affective-body-language.test.mjs"
+      - "app/scripts/avatar-affective-body-language-wiring.test.mjs"
+      - "app/src/components/avatar/speechProsody.ts"
+      - "app/scripts/avatar-speech-prosody.test.mjs"
+      - "app/src/components/avatar/facialMicrochannels.ts"
+      - "app/scripts/avatar-facial-microchannels.test.mjs"
+      - "runtime/neuro-kurisu/public/live2d/viewer.html"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/bodyDynamics.ts"
+      - "app/scripts/avatar-body-dynamics.test.mjs"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/semanticMorphTargets.ts"
+      - "app/scripts/avatar-semantic-morph-targets.test.mjs"
+      - "app/src/components/avatar/semanticMorphTargets.ts"
+      - "app/scripts/avatar-semantic-morph-targets.test.mjs"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/scripts/avatar-original-facial-wiring.test.mjs"
+      - "app/scripts/avatar-affective-expression.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/avatar-affective-expression.yml"
+  pull_request:
+    paths:
+      - "app/src/components/avatar/affectiveExpression.ts"
+      - "app/src/components/avatar/affectiveArmPosture.ts"
+      - "app/scripts/avatar-affective-arm-posture.test.mjs"
+      - "app/src/components/avatar/speechProsody.ts"
+      - "app/scripts/avatar-speech-prosody.test.mjs"
+      - "app/src/components/avatar/facialMicrochannels.ts"
+      - "app/scripts/avatar-facial-microchannels.test.mjs"
+      - "runtime/neuro-kurisu/public/live2d/viewer.html"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/bodyDynamics.ts"
+      - "app/scripts/avatar-body-dynamics.test.mjs"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/semanticMorphTargets.ts"
+      - "app/scripts/avatar-semantic-morph-targets.test.mjs"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/scripts/avatar-original-facial-wiring.test.mjs"
+      - "app/scripts/avatar-affective-expression.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/avatar-affective-expression.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-affective-expression-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  affective-expression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Run affective expression regression tests
+        working-directory: app
+        run: node --experimental-strip-types --test scripts/avatar-affective-expression.test.mjs
+      - name: Run speech prosody regression tests
+        working-directory: app
+        run: npm run test:avatar-speech-prosody
+      - name: Run facial microchannel regression tests
+        working-directory: app
+        run: npm run test:avatar-facial-microchannels
+      - name: Run body dynamics regression tests
+        working-directory: app
+        run: npm run test:avatar-body-dynamics
+      - name: Run imported VRM/GLB semantic morph regression tests
+        working-directory: app
+        run: npm run test:avatar-semantic-morph-targets
+      - name: Run continuous affective arm-posture regression tests
+        working-directory: app
+        run: npm run test:avatar-affective-arm-posture
+      - name: Run shared affective body-language regression tests
+        working-directory: app
+        run: npm run test:avatar-affective-body-language
+      - name: Run Original 2D facial wiring regression tests
+        working-directory: app
+        run: npm run test:avatar-original-facial-wiring
+      - name: Typecheck app
+        working-directory: app
+        run: npm ci && npm run typecheck

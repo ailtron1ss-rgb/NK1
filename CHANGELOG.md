@@ -1,3 +1,53 @@
+## [NK1][аспект14] Remove emotion-to-fixed-pose overrides in 3D arm posture (2026-10-30)
+
+- Add deriveAffectiveArmPosture, a pure renderer-neutral modulator that accepts the motor planner's existing left/right arm targets and continuously adjusts openness, tension, gesture amplitude, stillness and dominance.
+- Remove hard-coded anger/frustration fixed arm angles and protective fixed arm offset from the procedural/imported 3D stage.
+- Keep semantic gesture selection with the action/motor planner; affect now changes movement quality rather than choosing a scripted pose.
+- Add deterministic range, monotonic modulation, guardedness, stillness and malformed-input regression coverage; include it in the focused CI workflow.
+- Browser visual calibration, actual VRM rig checks and Android E2E remain pending.
+
+## [NK1][аспект14] Shared affective body language across renderers (2026-10-30)
+
+- Add deterministic, bounded renderer-neutral cues for posture, shoulder tension, arm openness, gesture amplitude, tempo, stillness, stability and gaze.
+- Wire one body-language profile from AvatarStage into Original 2D, Live2D and procedural/imported 3D.
+- Add a versioned Live2D body-language message and map only the authored torso/head channels supported by the existing Cubism rig.
+- Keep gesture selection in the motor planner; affective amplitude modulates an existing action without launching a scripted gesture.
+- Add deterministic, range, smoothing and renderer-wiring regressions; repair two previously failing CI paths caused by escaped newlines in semantic morph application.
+- Visual calibration and real browser/Android E2E remain explicit release gates.
+
+## [NK1][аспект7] Add deterministic 3D blink and saccade micro-motion (2026-10-30)
+
+- Add a pure renderer-neutral micro-motion adapter for bounded blink closure and deterministic saccade pulses.
+- Drive procedural 3D eye geometry from the shared affective blink/saccade cadence; attenuate saccades while speaking.
+- Add regressions for pulse determinism, bounds, speech attenuation and renderer wiring. Imported VRM expression mapping remains pending.
+
+## [NK1][аспект7] Preserve continuous breathing phase across affect changes (2026-10-30)
+
+- Integrate breathing phase from the actual frame delta and current breaths-per-minute instead of recomputing phase from total runtime multiplied by the latest cadence.
+- Prevent visible phase jumps when emotion, arousal, energy or sleep state changes breathing cadence.
+- Keep the pure body-dynamics adapter deterministic with an optional accumulated phase input; retain elapsed-time fallback for existing callers.
+- Add regression coverage for phase continuity and the 3D runtime accumulator. Visual model calibration remains pending.
+
+## [NK1][аспект7] Share affective facial microchannels with Original 2D (2026-10-30)
+
+- Feed the same canonical facial microchannel snapshot to NK1 Original 2D, Live2D and procedural/imported 3D; keep appraisal ownership in AvatarStage and avoid a renderer-specific emotion engine.
+- Apply bounded eye-smile, asymmetric brow offsets and cheek intensity in the authored SVG face; speaking visemes remain authoritative for mouth articulation.
+- Add a focused source-contract regression and include it in the aspect-07 validation workflow. SVG visual calibration remains pending.
+
+## [NK1][аспект7] Add affect-conditioned temporal facial microdynamics (2026-10-30)
+
+- Extend the shared facial profile with bounded blink interval/duration and saccade interval/amplitude targets derived deterministically from arousal and emotion.
+- Apply validated temporal targets in the Live2D viewer with bounded local cadence variation; attenuate gaze saccades while speaking and retain compatibility defaults for older senders.
+- Add regression coverage for numeric bounds and expected arousal/context response. Device-level visual calibration remains pending.
+
+## [NK1][аспект7] Add bounded affect-to-expression embodiment adapter (2026-10-30)
+
+- Add a pure affective-expression adapter mapping canonical emotion, valence, arousal and dominance into bounded expression intensity, gaze offsets, head tilt, gesture readiness and voice emphasis.
+- Wire the adapter into Live2D AvatarStage while retaining the existing motor-intent selector as the owner of semantic action/motion choice and preserving EmbodimentIntentV1 compatibility.
+- Add regression tests for all canonical emotion labels, malformed/extreme input bounds, arousal response, body-cue variation and deterministic output.
+- Add asymmetric attack/release smoothing for continuous expressive channels; semantic expression keys remain immediate so salient reactions are not delayed.
+- Add a targeted GitHub Actions workflow and Russian implementation note. CI and visual runtime validation are pending on the exact branch HEAD; no Release ZIP or main update is claimed.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -1515,7 +1565,13 @@
 - Added regression assertions for exact seed pairing, baseline parity, train/holdout isolation, missing baseline cells and cell-level intervals. This remains evidence-pipeline code; the fixture does not measure live learner performance.
 - Research adaptation: AgentMemoryBench separates online, replay, transfer and repair modes; SkillLearnBench separates skill quality, trajectory quality and verified task outcome; retention-bench emphasizes process resets and distinguishing stored records from integrated learning. NK1 now exposes more granular outcome evidence, but still needs a real runner, independent tasks, and process-reset experiments. No upstream code/data copied in this pass.
 
-## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)\n\n- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.\n- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.\n- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.\n\n## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
+## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)
+
+- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.
+- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.
+- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.
+
+## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
 
 - Added a reusable sequential-task metric module reporting final average score, peak-to-final forgetting, backward transfer, and forward transfer relative to an explicit reference policy.
 - Enforces a square task-by-stage score matrix, unique task identities, finite [0,1] scores and explicit handling of missing pre-training baselines; unavailable forward-transfer values remain null rather than being fabricated.
@@ -2794,3 +2850,69 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+### [NK1][аспект7] Facial microchannels
+
+- Добавлен детерминированный renderer-neutral facial microchannel adapter: eye-smile, brow asymmetry/form, cheek, mouth tension и blink bias.
+- Подключена передача отдельным versioned message к Live2D viewer; строгий `EmbodimentIntentV1` оставлен без изменений.
+- Viewer использует ID параметров, подтверждённые `Kurisu.cdi3.json`, и заменяет случайные тайминги моргания/саккад детерминированным jitter.
+- Добавлен regression test и CI path/step.
+- Визуальная калибровка и Android/browser E2E пока не заявляются.
+
+### [NK1][аспект7] Shared 3D facial intent
+
+- Подключён общий `FacialMicrochannels` к процедурному Three.js avatar: глаза, брови, щёки и напряжение рта получают те же сигналы, что и Live2D.
+- Импортированные VRM/GLB morph targets по-прежнему используют только распознаваемые имена; полноценная VRM expression mapping и spring-bone runtime не заявляются.
+
+### [NK1][аспект7] Affect-linked body microdynamics (2026-10-30)
+
+- Добавлен чистый `deriveBodyDynamics()`: ограниченная частота дыхания и фаза вдоха/выдоха выводятся из arousal, energy, cognitive load, uncertainty, awake и эмоционального контекста.
+- Процедурный Three.js body rig получает малые непрерывные offsets корпуса, плеч, головы, рук и переноса веса. Это выразительная микромоторика; выбор действий и клипов остаётся за существующим motor intent.
+- Добавлены детерминированные regression tests на все восемь эмоций, безопасные границы, влияние возбуждения/сна и временную фазу; тест включён в affective-expression workflow.
+- Визуальная естественность, произвольный VRM bone mapping и browser/Android E2E не заявляются до проверки на реальном рендерере. `main` и Release ZIP не изменялись.
+
+
+### [NK1][аспект7] Extend body microdynamics to recognized imported skeleton bones (2026-10-30)
+
+- Расширено применение body dynamics к импортированным VRM/GLB: только распознанные spine/chest/head/neck/shoulder/upper-arm кости получают малые дыхательные и постуральные offsets.
+- Неизвестные имена костей и неподтверждённые morph target IDs остаются нетронутыми; интеграция остаётся best-effort и требует визуальной проверки конкретной модели.
+- Добавлена source-contract regression на наличие этих семантических связей.
+
+
+### [NK1][аспект7] Emotion-linked speech prosody (2026-10-30)
+
+- Добавлен чистый `speechProsody.ts`: каноническая эмоция, valence, arousal, dominance и affect emphasis преобразуются в ограниченные rate/pitch/volume и provider-neutral pauseScale.
+- Browser SpeechSynthesis теперь получает единый профиль prosody на всю реплику; тот же rate используется при построении viseme timeline, чтобы расчёт движения рта не расходился с выбранной скоростью речи.
+- Добавлены тесты всех восьми эмоций, диапазонов, детерминизма, fallback для неизвестной эмоции и направленного влияния arousal/emphasis. Регрессия включена в aspect-07 workflow.
+- Ограничение: Web Speech не предоставляет надёжного per-phoneme/per-frame управления интонацией; параметры применяются к utterance целиком. `pauseScale` пока является контрактом для будущего chunked/streaming TTS, а не реализованной паузой браузерного синтезатора. Визуальная/акустическая проверка на Android и конкретных голосах ещё нужна.
+
+### [NK1][аспект7] Harden speech emotion profile lookup (2026-10-30)
+
+- Заменён небезопасный для неизвестных labels оператор `in` на `Object.hasOwn` при выборе профиля эмоции.
+- Унаследованные ключи `constructor`, `toString`, `__proto__` теперь корректно откатываются к `calm`, не попадая в прототип объекта таблицы профилей.
+- Добавлены регрессионные тесты для prototype-property names и проверки конечности выходных параметров.
+- CI для этого изменения ожидается; визуальная/акустическая калибровка и Android E2E остаются отдельными задачами.
+
+
+### [NK1][аспект7] Semantic facial morph mapping for imported VRM/GLB (2026-10-30)
+
+- Добавлен renderer-neutral resolver для распознаваемых joy/sadness/anger/mouth-open/mouth-O/blink morph targets, включая распространённые EyeBlink и VRoid Fcl_MTH_A / Fcl_MTH_O.
+- Импортированный 3D-аватар теперь получает blink pulse и viseme values из общего временного snapshot; неизвестные morph channels остаются нетронутыми.
+- Добавлены regression tests, npm script и расширение aspect-07 CI workflow.
+- Это best-effort mapping по именам, не полноценный VRM ExpressionManager; конкретный VRM/GLB и конкуренция с анимационными клипами требуют отдельной визуальной проверки.
+
+
+- NK1 Aspect 07: кэширование semantic morph bindings для импортированных VRM/GLB; baseline reset → authored AnimationMixer → affect/viseme overlay, чтобы сохранять authored clips и предотвращать залипание morph values.
+
+- NK1 Aspect 07: imported VRM/GLB semantic morphs now use bounded attack/release smoothing; viseme/blink channels respond faster than affective expression channels.
+
+
+## 2026-10-30 — VRM expression preset bridge
+- Added native VRM 1.0 `VRMC_vrm` and VRM 0.x `VRM` expression-preset resolution through GLTFLoader node/mesh associations, including weighted joy/sadness/anger/blink/viseme morph binds.
+- Kept generic GLB morph-name resolution as a fallback; unknown presets and malformed/out-of-range binds are ignored. Full VRM humanoid/look-at/spring-bone runtime and visual-model validation remain separate work.
+
+
+### [NK1][аспект7] Native VRM humanoid role mapping (2026-10-30)
+- Resolve VRM 1.0 `VRMC_vrm.humanoid.humanBones` and VRM 0.x `VRM.humanoid.humanBones` to actual Three.js Bone objects through GLTFLoader node associations.
+- Prefer canonical VRM roles (head, neck, spine/chest, left/right upper arm) over artist-specific bone names in the existing bounded motor adapter; retain name-based fallback for non-VRM GLB.
+- Add regressions for arbitrary bone labels, both VRM metadata generations and invalid node references. Look-at and spring-bone simulation remain pending.

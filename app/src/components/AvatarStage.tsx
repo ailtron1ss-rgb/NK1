@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import type { OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
+import { deriveAffectiveExpression, smoothAffectiveExpression } from "./avatar/affectiveExpression";
+import { deriveFacialMicrochannels } from "./avatar/facialMicrochannels";
+import { deriveAffectiveBodyLanguage, smoothAffectiveBodyLanguage } from "./avatar/affectiveBodyLanguage";
+import { deriveSpeechProsody, type SpeechProsodyEmotion } from "./avatar/speechProsody";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -22,10 +26,6 @@ import {
   type VisemeFrame,
 } from "./avatar/embodimentTimeline";
 
-const EXPR: Record<EmotionLabel, string> = {
-  curiosity: "thinking", calm: "neutral", joy: "happy", anxiety: "sad",
-  frustration: "angry", sadness: "sad", anger: "angry", protective: "focused",
-};
 type ViewMode = "live2d" | "legacy" | "original" | "3d";
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -72,6 +72,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const speechSequenceRef = useRef(0);
   const intentStateVersionRef = useRef(0);
+  const affectiveProfileRef = useRef<{ profile: ReturnType<typeof deriveAffectiveExpression>; at: number } | null>(null);
+  const bodyLanguageProfileRef = useRef<{ profile: ReturnType<typeof deriveAffectiveBodyLanguage>; at: number } | null>(null);
   const motionIntentKeyRef = useRef("");
   const motionIntentTokenRef = useRef(0);
   const activeSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
@@ -95,6 +97,34 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
   };
   const originalGaze = originalGazeByAction[snap.lastOption] ?? originalGazeByAction.wait;
+  const facialProfile = deriveFacialMicrochannels({
+    emotion: snap.emotion.label,
+    valence: snap.emotion.valence,
+    arousal: snap.emotion.arousal,
+    dominance: snap.emotion.dominance,
+    expressionIntensity: deriveAffectiveExpression({
+      emotion: snap.emotion.label,
+      valence: snap.emotion.valence,
+      arousal: snap.emotion.arousal,
+      dominance: snap.emotion.dominance,
+    }).expressionIntensity,
+  });
+  const bodyLanguageProfile = deriveAffectiveBodyLanguage({
+    emotion: snap.emotion.label,
+    valence: snap.emotion.valence,
+    arousal: snap.emotion.arousal,
+    dominance: snap.emotion.dominance,
+    energy: snap.needs.energy,
+    cognitiveLoad: snap.needs.cognitiveLoad,
+    uncertainty: snap.needs.uncertainty,
+    socialNeed: snap.needs.socialNeed,
+    guardedness: snap.identity.traits.guardedness ?? 0.5,
+    composure: snap.identity.traits.composure ?? 0.5,
+    action: snap.lastOption,
+    speaking: voiceStatus === "speaking",
+    thinking,
+    awake: snap.awake,
+  });
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
 
   const stopSpeech = () => {
@@ -163,7 +193,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
         const language = inferSpeechLanguage(text);
-        const rate = 0.96;
+        const utteranceEmotion = (lastTurn.emotion ?? snap.emotion.label) as SpeechProsodyEmotion;
+        const speechAffect = deriveAffectiveExpression({
+          emotion: snap.emotion.label,
+          valence: snap.emotion.valence,
+          arousal: snap.emotion.arousal,
+          dominance: snap.emotion.dominance,
+        });
+        const prosody = deriveSpeechProsody({
+          emotion: utteranceEmotion,
+          valence: snap.emotion.valence,
+          arousal: snap.emotion.arousal,
+          dominance: snap.emotion.dominance,
+          emphasis: speechAffect.voiceEmphasis,
+        });
+        const rate = prosody.rate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
         const session: BrowserSpeechSession = {
@@ -184,9 +228,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         setVoiceStatus("ready");
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
-        utterance.rate = rate;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
-        utterance.pitch = utteranceEmotion === "joy" ? 1.03 : utteranceEmotion === "frustration" || utteranceEmotion === "anger" ? 0.92 : 1.0;
+        utterance.rate = prosody.rate;
+        utterance.pitch = prosody.pitch;
+        utterance.volume = prosody.volume;
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;
@@ -310,13 +354,26 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   useEffect(() => {
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
-    const expression = EXPR[snap.emotion.label] ?? "neutral";
+    const rawAffective = deriveAffectiveExpression({
+      emotion: snap.emotion.label,
+      valence: snap.emotion.valence,
+      arousal: snap.emotion.arousal,
+      dominance: snap.emotion.dominance,
+    });
+    const affectiveAt = performance.now();
+    const previousAffective = affectiveProfileRef.current;
+    const affective = smoothAffectiveExpression(
+      previousAffective?.profile ?? null,
+      rawAffective,
+      previousAffective ? affectiveAt - previousAffective.at : 0,
+    );
+    affectiveProfileRef.current = { profile: affective, at: affectiveAt };
+    const expression = affective.expression;
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
       respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
     };
     const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
-    const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
     const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
@@ -360,20 +417,33 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       priority: speechPhaseRef.current === "cancelled" ? 100 : activeUtterance ? 70 : thinking ? 45 : 30,
       cancellationToken: session ? `cancel:${session.speechEventId}` : null,
       expression,
-      expressionIntensity: snap.emotion.arousal,
+      expressionIntensity: affective.expressionIntensity,
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      gaze: {
+        x: Math.max(-0.4, Math.min(0.4, gaze.x + affective.gazeX)),
+        y: Math.max(-0.25, Math.min(0.25, gaze.y + affective.gazeY)),
+        driven: true,
+      },
       body: {
-        headTilt: motorPlan.headTilt,
-        gesture: bodyGestureActive,
+        headTilt: Math.max(-0.15, Math.min(0.15, motorPlan.headTilt + affective.headTilt)),
+        gesture: bodyGestureActive || affective.gestureDrive >= 0.42,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
-      voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
+      voiceEmphasis: activeUtterance ? Math.max(affective.voiceEmphasis, Math.min(0.85, snap.emotion.arousal + 0.15)) : 0,
     };
     win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+    // Separate additive face channel keeps the strict EmbodimentIntentV1 envelope stable.
+    win.postMessage({ type: "kurisu_face_microchannels", stateVersion: intent.stateVersion, ...deriveFacialMicrochannels({ emotion: snap.emotion.label, valence: snap.emotion.valence, arousal: snap.emotion.arousal, dominance: snap.emotion.dominance, expressionIntensity: affective.expressionIntensity }) }, window.location.origin);
+    win.postMessage({ type: "kurisu_body_language", protocolVersion: 1, stateVersion: intent.stateVersion, ...(() => {
+      const now = performance.now();
+      const previous = bodyLanguageProfileRef.current;
+      const smoothed = smoothAffectiveBodyLanguage(previous?.profile ?? null, bodyLanguageProfile, previous ? now - previous.at : 16);
+      bodyLanguageProfileRef.current = { profile: smoothed, at: now };
+      return smoothed;
+    })() }, window.location.origin);
+  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey, snap.needs, snap.identity.traits.guardedness, snap.identity.traits.composure]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
@@ -385,7 +455,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
-      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
+      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} facial={facialProfile} bodyLanguage={bodyLanguageProfile} /> : mode === "3d" ? <Avatar3DStage facial={facialProfile} bodyLanguage={bodyLanguageProfile} emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}

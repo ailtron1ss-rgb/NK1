@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
+import type { FacialMicrochannels } from "./avatar/facialMicrochannels";
+import type { AffectiveBodyLanguage } from "./avatar/affectiveBodyLanguage";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -92,6 +94,8 @@ export interface KurisuOriginalStageProps {
   speaking: boolean;
   mouthPose: MouthPose;
   thinking: boolean;
+  facial: FacialMicrochannels;
+  bodyLanguage: AffectiveBodyLanguage;
 }
 
 /**
@@ -100,7 +104,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking, facial, bodyLanguage }: KurisuOriginalStageProps) {
   const [outfit, setOutfit] = useState<Outfit>(() => stored("kurisu-original-outfit", OUTFITS, "lab"));
   const [eyeTone, setEyeTone] = useState<EyeTone>(() => stored("kurisu-original-eyes", EYES, "violet"));
   const [hairTone, setHairTone] = useState<HairTone>(() => stored("kurisu-original-hair", HAIR, "copper"));
@@ -121,6 +125,8 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const pupilOffsetX = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeX) ? gazeX : 0)) * 15;
   const pupilOffsetY = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeY) ? gazeY : 0)) * 10;
   const browLift = EMOTION_BROW[emotion];
+  const leftBrowLift = browLift - facial.browLeftY * 7;
+  const rightBrowLift = browLift - facial.browRightY * 7;
   const moodLabel: Record<EmotionLabel, string> = {
     curiosity: "интерес", calm: "спокойствие", joy: "радость", anxiety: "тревога",
     frustration: "раздражение", sadness: "грусть", anger: "злость", protective: "забота",
@@ -181,7 +187,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         <path className="nk-scanner" d="M20 80H400" stroke={accent.color} strokeOpacity=".42" strokeWidth="1"/>
         <ellipse cx="210" cy="505" rx="78" ry="9" fill={accent.color} opacity=".12" filter="url(#nk-glow)"/>
         <g className="nk-float">
-          <g style={{ transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
+          <g style={{ transform: `rotate(${(poseOverride === "auto" ? pose.body : 0) + bodyLanguage.torsoLean * 57.2958}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
           {/* Rear hair silhouette and long, independently swinging locks. */}
           <g className="nk-hair">
             <path d="M150 79 Q145 38 192 29 Q246 24 273 67 Q289 104 272 180 L292 311 Q265 348 249 317 L241 205 L179 208 L170 321 Q147 348 131 308 L143 173 Q130 122 150 79Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="2"/>
@@ -246,27 +252,27 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M248 280 L259 280 L256 287 L247 287Z" fill={accent.color}/>
           </g>
           {/* Face and separate features. */}
-          <g style={{ transform: `rotate(${pose.head}deg)`, transformOrigin: "210px 134px", transition: "transform 450ms ease" }}>
+          <g style={{ transform: `rotate(${pose.head + bodyLanguage.headTiltBias * 57.2958}deg)`, transformOrigin: "210px 134px", transition: "transform 450ms ease" }}>
             <path d="M151 79 Q151 42 193 40 Q235 35 263 69 Q272 96 257 145 Q247 177 211 185 Q178 177 163 147 Q148 120 151 79Z" fill="url(#nk-skin)" stroke="#9f6267" strokeWidth="2"/>
             <path d="M151 85 Q153 47 192 39 Q236 33 263 69 L267 96 Q241 68 216 66 Q187 66 155 101Z" fill="url(#nk-hair)"/>
             <path d="M157 72 Q168 48 195 44 Q222 40 245 60 Q216 51 201 59 Q178 65 157 88Z" fill="#ee9d6c" opacity=".65"/>
             {/* Eye line, lids and iris are separately parameterizable shapes. */}
             <g transform="translate(179 118)">
-              <g className="nk-eye nk-eye-left"><path d={emotion === "anger" || emotion === "frustration" ? "M-14 -2 Q0 -13 15 -1 Q2 10 -14 -2Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
+              <g className="nk-eye nk-eye-left"><path transform={`scale(1 ${Math.max(0.82, Math.min(1.04, 1 - facial.eyeSmile * 0.16))})`} d={emotion === "anger" || emotion === "frustration" ? "M-14 -2 Q0 -13 15 -1 Q2 10 -14 -2Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
               <g transform={`translate(${pupilOffsetX} ${pupilOffsetY})`}> <ellipse cx="1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="3" cy="-4" r="2.5" fill="#fff"/> </g></g>
-              <path d={`M-16 -1 Q0 ${-11-browLift} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
+              <path d={`M-16 -1 Q0 ${-11-leftBrowLift} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
             </g>
             <g transform="translate(241 118)">
-              <g className="nk-eye nk-eye-right"><path d={emotion === "anger" || emotion === "frustration" ? "M-15 -1 Q0 -13 14 -2 Q3 11 -15 -1Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
+              <g className="nk-eye nk-eye-right"><path transform={`scale(1 ${Math.max(0.82, Math.min(1.04, 1 - facial.eyeSmile * 0.16))})`} d={emotion === "anger" || emotion === "frustration" ? "M-15 -1 Q0 -13 14 -2 Q3 11 -15 -1Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
               <g transform={`translate(${pupilOffsetX} ${pupilOffsetY})`}> <ellipse cx="-1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="-1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="1" cy="-4" r="2.5" fill="#fff"/> </g></g>
-              <path d={`M-16 -1 Q0 ${-11+browLift*.25} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
+              <path d={`M-16 -1 Q0 ${-11+rightBrowLift*.25} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
             </g>
             <path d="M210 127 L206 143 L212 145" fill="none" stroke="#bb7b7c" strokeWidth="1.6" strokeLinecap="round"/>
             {speaking ? <g>
               <ellipse cx="210" cy="160" rx={5 + Math.abs(mouthPose.form) * 4} ry={mouthHeight} fill="#5d2038" stroke="#8b4559" strokeWidth="1.2"/>
               <ellipse cx="210" cy={160 + mouthHeight * .45} rx="5" ry={Math.max(1, mouthHeight*.28)} fill="#e97d95" opacity=".92"/>
             </g> : <path d={EMOTION_MOUTH[emotion]} fill="none" stroke="#914657" strokeWidth="2.1" strokeLinecap="round"/>}
-            {(emotion === "joy" || emotion === "anxiety" || emotion === "protective") ? <g fill="#ec8998" opacity=".32"><ellipse cx="170" cy="143" rx="10" ry="4"/><ellipse cx="250" cy="143" rx="10" ry="4"/></g> : null}
+            <g fill="#ec8998" opacity={Math.max(0, Math.min(0.42, facial.cheek))}><ellipse cx="170" cy="143" rx="10" ry="4"/><ellipse cx="250" cy="143" rx="10" ry="4"/></g>
             {effectivePose === "thinking" ? <g>
               <path d="M236 179 Q230 173 234 166 L245 156 Q251 153 256 158 L252 170 L246 184Z" fill="url(#nk-skin)" stroke="#b77e7b" strokeWidth="1.4"/>
               <path d="M238 170 L248 162 M241 176 L250 169" fill="none" stroke="#c58c86" strokeWidth="1.4" strokeLinecap="round"/>
