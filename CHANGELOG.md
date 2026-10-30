@@ -1,3 +1,11 @@
+## [NK1][Aspect 11] Add gaze-driven 2.5D depth preview to Original SVG body — 2026-10-30
+
+- Add four independently transformed SVG depth layers: rear hair, torso, head and front fringe. Differential bounded offsets derive from the organism gaze signal, preserving vector artwork and existing expression/viseme behavior.
+- Keep the 2D-authored SVG editable; no bitmap segmentation, fake anatomical rig or claim of production 2.5D depth geometry.
+- Add deterministic finite/clamped viewBox-space transform mapping, 320ms layer transitions and `prefers-reduced-motion` suppression.
+- Add depth/parallax regression coverage to the avatar hardening suite.
+- Production PSD/occlusion masks, articulated joints, rendered browser/device E2E and real cross-renderer handoff remain separate gates.
+
 ## [NK1][Aspect 13/09] Harden local VRM/GLB import and affect-aware speech — 2026-10-30
 
 - Preflight user-supplied binary VRM/GLB before invoking GLTFLoader: GLB 2.0 container/chunk integrity, self-contained buffer/image URIs, hierarchy, bufferView bounds, image signatures/dimensions and bounded scene/accessor/animation complexity.
