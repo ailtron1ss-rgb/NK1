@@ -164,7 +164,7 @@ export function advanceJointPose(
   for (const [joint, requested] of Object.entries(target)) {
     const limit = limits[joint];
     if (!limit || !Number.isFinite(requested)) continue;
-    const from = clamp(finite(current[joint], 0), limit.min, limit.max);
+    const from = clamp(finite(current[joint] ?? 0, 0), limit.min, limit.max);
     const to = clamp(requested, limit.min, limit.max);
     const maxStep = Math.max(0, finite(limit.maxSpeed)) * dt;
     next[joint] = from + clamp(to - from, -maxStep, maxStep);
