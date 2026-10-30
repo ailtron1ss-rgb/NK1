@@ -5,7 +5,7 @@
 - Добавлены строгая монотонность tick и защита от переполнения счётчика циклов; отклонённый tick не меняет состояние.
 - Добавлен `workpass617-unified-substrate-restore-integrity.mjs`, зарегистрирован npm-скрипт и CI-шаг WorkPass287-288.
 - `UnifiedCognitiveCycle` сохраняет legacy-шестистадийную совместимость, но требует все 11 уникальных фаз, когда runtime передаёт расширенную фазовую схему; добавлены частично/полностью расширенные и duplicate-ID регрессии.
-- `CanonicalMemoryLifecycleAuthority` теперь восстанавливает состояние через allow-list, фильтрует plan/consolidation decisions, отклоняет неподдерживаемые версии и принимает только строго возрастающие tick в обоих maintenance-входах; добавлен WorkPass618 тест и CI gate.
+- `CanonicalMemoryLifecycleAuthority` теперь восстанавливает состояние через allow-list, фильтрует plan/consolidation decisions и отклоняет неподдерживаемые версии; `run()` требует возрастающий tick, а повторный `maintainCanonical()` на том же tick становится идемпотентным no-op (устаревший tick отклоняется). Добавлен WorkPass618 тест и CI gate.
 - `P70MemoryLifecycleGovernor.restore()` также переведён на allow-list с безопасными счётчиками, метриками, enum-проверкой действия и fail-closed версией; его регрессии включены в WorkPass618. Нечисловые и non-finite метрики возвращаются к доменным значениям по умолчанию, а не к нулю.
 - Это hardening существующей bounded-проекции, а не новый владелец когнитивного состояния. Проверка считается пройденной только после успешного CI на точном HEAD.
 
