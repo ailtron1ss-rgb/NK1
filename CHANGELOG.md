@@ -3071,3 +3071,15 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][learning-integrity] Restore independent holdout boundaries and safe benchmark snapshots (2026-10-30)
+
+- Missing sample phase is ordinary `learning`; sample order and runtime telemetry never invent an independent `holdout` split. Compound-skill outcomes and project-research outcomes remain learning observations.
+- Count only distinct explicitly labelled context keys. Canonicalize deterministically with NFKC and locale-independent lowercase; reject empty and overlength keys instead of truncating distinct contexts into collisions.
+- Use a bounded 4096-entry context registry, recompute accepted holdout count from the registry on restore, reject malformed/accessor-backed persisted fields without invoking getters, and fail closed on contamination, registry saturation or malformed evidence counters.
+- Keep recent observation history bounded while deriving novelty from durable registry membership, so replay outside the recent-128 window cannot inflate novelty.
+- Add adversarial regressions for root/nested getters, legacy snapshots, contaminated split reuse, Unicode duplicates, long-key collisions, replay after history eviction, forged counters and registry overflow.
+- Add a real OrganismCore integration assertion proving runtime project actions cannot label themselves independent holdout. The summary explicitly distinguishes a unique-context minimum from independent evaluator proof.
+- Add a focused GitHub Actions workflow for runtime typecheck, split integrity, real Core integration, external skill evidence, holdout provenance, learning input integrity and transfer/firewall regressions.
+- No production recall uplift, skill transfer uplift or statistically validated learning improvement is claimed.
+

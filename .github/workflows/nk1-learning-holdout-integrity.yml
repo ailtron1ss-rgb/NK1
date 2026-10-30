@@ -1,0 +1,60 @@
+name: NK1 learning holdout integrity
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/SkillAcquisitionBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/skill-acquisition-split-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-47-integration.mjs"
+      - ".github/workflows/nk1-learning-holdout-integrity.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/SkillAcquisitionBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/skill-acquisition-split-integrity.mjs"
+      - "runtime/neuro-kurisu/tests/big-pass-47-integration.mjs"
+      - ".github/workflows/nk1-learning-holdout-integrity.yml"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-learning-holdout-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  verify-learning-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install runtime dependencies without lifecycle scripts
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Holdout split and snapshot hardening
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/skill-acquisition-split-integrity.mjs
+      - name: OrganismCore learning-lane integration
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-47-integration.mjs
+      - name: External skill evidence boundary
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-47-external-skill.mjs
+      - name: Independent holdout provenance and learning-input integrity
+        run: |
+          set -euo pipefail
+          cd runtime/neuro-kurisu
+          node --experimental-strip-types tests/p26-holdout-provenance.mjs
+          node --experimental-strip-types tests/p26-learning-input-integrity.mjs
+          node --experimental-strip-types tests/learning-evidence-transfer.mjs
+          node --experimental-strip-types tests/workpass59-nonexecution-learning-firewall.mjs
