@@ -30,7 +30,8 @@
     "test:browser-voice-prosody": "node --experimental-strip-types --test scripts/avatar-browser-voice-prosody.test.mjs",
     "test:avatar-humanoid-bones": "node --experimental-strip-types --test scripts/avatar-humanoid-bone-map.test.mjs",
     "test:avatar-vrm-expressions": "node --experimental-strip-types --test scripts/avatar-vrm-expression-map.test.mjs",
-    "test:avatar-pixiv-vrm-runtime": "node --experimental-strip-types --test scripts/avatar-pixiv-vrm-runtime.test.mjs"
+    "test:avatar-pixiv-vrm-runtime": "node --experimental-strip-types --test scripts/avatar-pixiv-vrm-runtime.test.mjs",
+    "test:avatar-vrm-license-metadata": "node --experimental-strip-types --test scripts/avatar-vrm-license-metadata.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
