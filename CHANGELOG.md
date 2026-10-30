@@ -1,3 +1,11 @@
+## [NK1][WorkPass Memory] Keep metadata recall indexes coherent (2026-10-30)
+
+- Synchronize the metadata inverted index whenever `MemoryOS2.updateContext()` changes curated context fields.
+- Synchronize the same index when duplicate `encode()` calls merge tags and context into an existing canonical memory.
+- Remove stale postings and empty posting buckets while adding new terms without rebuilding the full corpus index.
+- Extend metadata retrieval regressions for context replacement, tag/context merge, immediate retrieval and snapshot/restore consistency.
+- Include the metadata mutation regression in the canonical memory acceptance gate.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
