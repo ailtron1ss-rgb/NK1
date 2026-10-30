@@ -22,6 +22,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/LearningFitnessJournal.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningLifecycleJournal.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningJournalBootstrap.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts"
+      - "runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P36HostEvaluatorBootstrap.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36VerifiedOutcomeLedgerEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
@@ -136,6 +138,9 @@ jobs:
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
+      - name: Validate research-grade matched holdout experiment plan (five paired seeds)
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning-experiment-plan
       - name: Run P23 independent learning, promotion governance, lifecycle recovery and P36 evidence suite
         working-directory: runtime/neuro-kurisu
         run: npm run test:p23:learning
