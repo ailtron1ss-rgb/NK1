@@ -1,3 +1,13 @@
+## [NK1][WorkPass627] VRMA sidecar motion library with persistence and blend (2026-10-30)
+
+- Add @pixiv/three-vrm-animation 3.5.5 (MIT) and register VRMAnimationLoaderPlugin alongside VRMLoaderPlugin.
+- Add local .vrma sidecar import with the same bounded self-contained GLB preflight, 90 MiB size limit, and a maximum of 20 animations per file; compile each VRMAnimation against the active VRM via createVRMAnimationClip.
+- Maintain separate embedded model clips and VRMA clips, prefer action-specific VRMA clip names, and keep a first-clip fallback. Create an AnimationMixer for every loaded VRM, including models without embedded animations.
+- Add VRMLookAtQuaternionProxy for VRMA LookAt tracks; preserve VRMA expression tracks while NK1 continues driving expression channels not owned by the current clip.
+- Replace hard stop/restart motion changes with fade-out/fade-in transitions; invalidate stale animation loads when a model is replaced or reset.
+- Upgrade the avatar IndexedDB schema from v1 to v2 with a separate active-animation store; persist and automatically restore VRMA sidecars after the model is loaded; reset clears both model and animation records.
+- Add VRMA regression suite and CI gate. Real-asset browser/device visual validation, Android GPU/FPS/soak, VRMA motion library licensing, phoneme-level voice sync, original 2.5D rig and Release ZIP refresh remain open.
+
 ## [NK1][WorkPass626] Surface VRM author and license metadata (2026-10-30)
 
 - Read VRM 1.0 author arrays and legacy 0.x author/license fields from the official runtime metadata.
