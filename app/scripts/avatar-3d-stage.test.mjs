@@ -71,3 +71,13 @@ test("separate GLTF motion source is baked onto the active rig without reprocess
  assert.match(stage,/motionSourceToken\.current\+\+/);
  assert.match(stage,/rt\.motionSource\.pivot/);
 });
+
+test("generic GLB facial morphs are wired into the live renderer with speech priority",async()=>{
+ const stage=await readFile(stagePath,"utf8"),runtime=await readFile(path.join(root,"src/components/avatar/threeFacialSemanticRuntime.ts"),"utf8");
+ assert.match(stage,/bindThreeFacialMorphTargets\(root\)/);
+ assert.match(stage,/applyThreeFacialSemanticWeights\(rt\.facialMorphTargets,expressionWeights,speechVisemes\)/);
+ assert.match(stage,/facialMorphTargets:any\[\]/);
+ assert.match(stage,/rt\.facialMorphTargets=\[\]/);
+ assert.match(runtime,/composeFacialWeights\(expressions,speechVisemes\)/);
+ assert.match(runtime,/morphTargetInfluences\[binding\.morphIndex\]=weights\.get\(binding\.semantic\)\?\?0/);
+});
