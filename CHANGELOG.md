@@ -1,5 +1,7 @@
 # Unreleased
 
+- [NK1][Embodiment] Added bounded six-dimensional damped-least-squares 3D pose IK: solve end-effector position and quaternion orientation together, report separate residuals, respect joint limits and terminate explicitly when the chain stalls at a limit/singularity. Added four focused wrist-pose regressions and included the suite in the dedicated Node 24 CI gate. Renderer/device integration, contact dynamics and physical pose observation remain pending.
+
 - [NK1][Embodiment] Added renderer-neutral 3D skeletal kinematics with quaternion forward transforms and bounded damped-least-squares position IK for contiguous multi-joint chains, alongside the bounded joint motor controller, priority-aware goal interruption, snapshot recovery, planar two-bone IK, acceleration/jerk-limited joint trajectories and basal-ganglia/cerebellar motor-goal arbitration. Hardened motor learning to accept only the exact process-local `OutcomeVerificationService` external-postcondition receipt bound to tool, full input, execution and decision; caller-supplied verification booleans and serialized receipt copies are rejected, with goal/evidence replay protection. Added focused regressions for acceleration/jerk limits and trusted receipt provenance, plus focused 3D FK/IK regressions and a dedicated CI step, plus the Aspect 06 plan. Full 3D dynamics, autonomous goal genesis, real renderer/device postcondition production and Live2D/2.5D/VRM adapters remain pending.
 
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
