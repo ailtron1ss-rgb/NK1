@@ -55,7 +55,7 @@ export function resolveDepthRigPose(manifest:DepthRigManifest,raw:DepthRigIntent
  const i:Intent={gazeX:clamp(raw.gazeX??0,-1,1),gazeY:clamp(raw.gazeY??0,-1,1),headYaw:clamp(raw.headYaw??0,-.65,.65),headPitch:clamp(raw.headPitch??0,-.45,.45),headRoll:clamp(raw.headRoll??0,-.35,.35),torsoYaw:clamp(raw.torsoYaw??0,-.3,.3),torsoPitch:clamp(raw.torsoPitch??0,-.25,.25),torsoRoll:clamp(raw.torsoRoll??0,-.2,.2),leftArm:clamp(raw.leftArm??0,-1.8,1.8),leftForearm:clamp(raw.leftForearm??0,-2.2,2.2),rightArm:clamp(raw.rightArm??0,-1.8,1.8),rightForearm:clamp(raw.rightForearm??0,-2.2,2.2),breath:clamp(raw.breath??0,0,1),arousal:clamp(raw.arousal??0,0,1)};
  const cx=clamp(camera.x??0,-1,1),cy=clamp(camera.y??0,-1,1),map=new Map(manifest.nodes.map(n=>[n.id,n]));
  return v.order.map(id=>{const n=map.get(id)!,d=roleRotation(n.role,i),breath=n.role==="torso"?1+i.breath*.012:1,gx=n.role==="eyes"?i.gazeX*.08:0,gy=n.role==="eyes"?i.gazeY*.06:0;
-  return {id,position:[n.position[0]+cx*n.depth*n.parallax*.06,n.position[1]+cy*n.depth*n.parallax*.04,n.position[2]],rotation:[n.rotation[0]+d[0]+gy,n.rotation[1]+d[1]+gx,n.rotation[2]+d[2]],scale:[1,breath,1],visible:n.visible!==false,renderOrder:Math.round((n.depth+1)*1000)};
+  return {id,position:[n.position[0]+cx*n.depth*n.parallax*.06,n.position[1]+cy*n.depth*n.parallax*.04,n.position[2]] as [number,number,number],rotation:[n.rotation[0]+d[0]+gy,n.rotation[1]+d[1]+gx,n.rotation[2]+d[2]] as [number,number,number],scale:[1,breath,1] as [number,number,number],visible:n.visible!==false,renderOrder:Math.round((n.depth+1)*1000)};
  });
 }
 export interface SecondaryMotionState{position:number;velocity:number}
