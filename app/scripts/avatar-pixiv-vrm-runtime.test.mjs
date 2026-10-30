@@ -32,6 +32,7 @@ test("the runtime drives native expression manager, VRM LookAt, spring bones and
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /expressionManager\.setValue\(key,expressionWeights\[key\]\?\?0\)/);
   assert.match(stage, /rt\.vrm\.lookAt\.target=rt\.lookAtTarget/);
+  assert.match(stage, /getNormalizedBoneNode/);
   assert.match(stage, /rt\.vrm\?\.update\(dt\)/);
   assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
   assert.match(stage, /key\.startsWith\("look"\)/);
