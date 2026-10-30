@@ -4,7 +4,7 @@ import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeL
 // Identity fields deliberately contain separators: pair grouping must be tuple-safe,
 // not dependent on ad-hoc concatenation.
 const tasks = [
-  { taskId: 'family\u0000alpha', family: 'memory', split: 'holdout', prompt: 'alpha' },
+  { taskId: 'family:alpha', family: 'memory', split: 'holdout', prompt: 'alpha' },
   { taskId: 'family', family: 'reasoning', split: 'holdout', prompt: 'beta' },
 ].map(task => ({
   taskId: task.taskId,

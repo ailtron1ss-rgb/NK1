@@ -1,4 +1,6 @@
 import { actionCost } from './ActionCostPolicy.ts';
+import type { LearningFitnessJournalSink } from '../learning/LearningFitnessJournal.ts';
+import type { LearningLifecycleJournalSink } from '../learning/LearningLifecycleJournal.ts';
 import { sha256Stable } from './StableSerialization.ts';
 import { memoRuntimeContext } from '../developmental/MemoRuntimeContext.ts';
 import { randomUUID, createHash } from 'node:crypto';
@@ -1515,6 +1517,10 @@ export class OrganismCore {
         this.cognitiveRuntime.adaptivePolicy.restore(this.persisted.facets.learning.adaptivePolicy);
         this.cognitiveRuntime.canonicalTemporalCredit.restore(this.persisted.system.canonicalTemporalCredit);
         this.developmentalNeural.p23Learning.restore(this.persisted.facets.learning.p23);
+        const learningLifecycleRecovery = this.developmentalNeural.p23Learning.reconcileLearningLifecycleOutcomes();
+        if (learningLifecycleRecovery.configured && !learningLifecycleRecovery.available) {
+            throw new Error('p23-learning-lifecycle-reconciliation-failed');
+        }
         this.developmentalNeural.p25ScientificDevelopment.restore(this.persisted.facets.advanced.p25);
         this.organismSystems.self.p54LongHorizonEvidence.restore((this.persisted.facets.advanced as any).p54LongHorizonEvidence);
         this.organismSystems.self.p55DevelopmentalForkUniverse.restore((this.persisted.facets.advanced as any).p55DevelopmentalForkUniverse);
@@ -9485,7 +9491,7 @@ export class OrganismCore {
             this.persisted.facets.embodiment.p41TemporalPerception = this.embodimentSubsystem.p41TemporalPerception.snapshot();
             (this.persisted.facets.embodiment as any).p37 = this.embodimentSubsystem.p37EmbodiedSensorium.snapshot();
             this.worldSubsystem.p24WorldIdentity.identityObserve({ action: trace.selected.action, goal: selectedGoalTitle, summary: `outcome=${gatedSuccess01.toFixed(2)}`, confidence01: clamp(1 - gatedSurprise01) });
-            this.developmentalNeural.p23Learning.recordExperience(trace, state, { success: gatedSuccess01, reward: gatedReward01, surprise: gatedSurprise01 }, this.cognitiveRuntime.adaptivePolicy);
+            this.developmentalNeural.p23Learning.recordExperience(trace, state, { success: gatedSuccess01, reward: gatedReward01, surprise: gatedSurprise01, notes: outcome.notes }, this.cognitiveRuntime.adaptivePolicy);
             if (!outcome.worldTransition) {
                 const p27Before = this.cognitiveRuntime.lastP27Latent ?? this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({ sensorState: trace.stateBefore }));
                 const p27After = this.worldSubsystem.p27NeuralWorld.fuse(this.worldSubsystem.p27NeuralWorld.encode({ sensorState: state, world: this.cognitiveRuntime.lastGroundedWorldContext ?? undefined }));
@@ -11191,6 +11197,14 @@ export class OrganismCore {
     runTrustedSkillShadowLearningProcess(input: Omit<TrustedShadowLearningRunInput, 'core'>) {
         return executeTrustedShadowLearningProcess({ ...input, core: { registerTrustedSkillShadowRun: context => { this.registerTrustedSkillShadowRun(context); } } });
     }
+    /** Attach the single durable P23 journal pair to the organism's actual in-process learner. */
+    configureP23LearningJournals(sinks: {
+        fitness: LearningFitnessJournalSink;
+        lifecycle: LearningLifecycleJournalSink;
+    }): void {
+        this.developmentalNeural.p23Learning.configureLearningFitnessJournalIfAbsent(sinks.fitness);
+        this.developmentalNeural.p23Learning.configureLearningLifecycleJournalIfAbsent(sinks.lifecycle);
+    }
     /** Read-only durable candidate lifecycle state for trusted in-process runtime components. */
     verifiedSkillCandidateSnapshot() {
         return this.developmentalNeural.p23Learning.verifiedSkillCandidateSnapshot();
@@ -11610,7 +11624,7 @@ export class OrganismCore {
             }
             if (!stepVerified)
                 allVerified = false;
-            if (!stepWasReplay) this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: step.toolId, contextKey: `compound:${skill.id}:step:${step.id}`, outcome01: stepVerified ? 1 : .5, phase: 'holdout' });
+            if (!stepWasReplay) this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: step.toolId, contextKey: `compound:${skill.id}:step:${step.id}`, outcome01: stepVerified ? 1 : .5, phase: 'learning' });
         }
         if (!allOk)
             allVerified = false;
@@ -12378,7 +12392,7 @@ export class OrganismCore {
         // configured semantic assessment is unknown/refuted/mixed. Otherwise the
         // learning signal could reward the exact single-source shortcut blocked above.
         const semanticLearningEligible = !modelAssisted || nliSupportConfirmed;
-        this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: 'organism.project.research', contextKey: `external:${session.results[0]?.sourceKey || result.independenceKey}`, outcome01: claimConflict || !semanticLearningEligible ? 0 : effectiveEvidence, phase: 'holdout' });
+        this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: 'organism.project.research', contextKey: `external:${session.results[0]?.sourceKey || result.independenceKey}`, outcome01: claimConflict || !semanticLearningEligible ? 0 : effectiveEvidence, phase: 'learning' });
         this.persisted.system.externalEvidenceTrust = this.evidenceResearchSubsystem.externalEvidenceTrust.snapshot();
         this.persisted.system.evidenceFirewall = this.evidenceResearchSubsystem.evidenceFirewall.snapshot();
         this.persisted.system.projectResearchSession = this.evidenceResearchSubsystem.projectResearchSession.snapshot();

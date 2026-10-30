@@ -99,8 +99,8 @@ assert.throws(()=>buildContinualOutcomeMatrix(sparse,[{stageId:'x',method:'check
 const uneven = new VerifiedOutcomeLedger(manifest);
 for (const seed of [11,22]) {
   for (const taskId of ['a','b']) {
-    uneven.record({taskId,taskVersion:'1',method:'x',seed,attempt:1,passed:true,authority:'independent-verifier',verifierId:'v1',evidenceRef:'verifier://x',observedAt:1000+seed});
-    if (!(taskId==='b' && seed===22)) uneven.record({taskId,taskVersion:'1',method:'y',seed,attempt:1,passed:false,authority:'independent-verifier',verifierId:'v1',evidenceRef:'verifier://y',observedAt:1000+seed});
+    uneven.record({taskId,taskVersion:'1',method:'x',seed,attempt:1,passed:true,authority:'independent-verifier',verifierId:'v1',evidenceRef:`verifier://x/${taskId}/${seed}`,observedAt:1000+seed});
+    if (!(taskId==='b' && seed===22)) uneven.record({taskId,taskVersion:'1',method:'y',seed,attempt:1,passed:false,authority:'independent-verifier',verifierId:'v1',evidenceRef:`verifier://y/${taskId}/${seed}`,observedAt:1000+seed});
   }
 }
 assert.throws(()=>buildContinualOutcomeMatrix(uneven,[{stageId:'one',method:'x'},{stageId:'two',method:'y'}]),/exact same seed set/);
