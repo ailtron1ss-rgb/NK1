@@ -117,7 +117,14 @@ export function Avatar3DStage(props:Props){
     },{applyVrmOverrides:!(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length>0)});
     if(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length){
       const protectedKeys=new Set(rt.expressionTransitionRemaining>0?[...rt.activeExpressionKeys,...rt.transitionExpressionKeys]:rt.activeExpressionKeys);
-      for(const key of rt.vrmExpressionKeys)if(!protectedKeys.has(key))rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
+      const speechVisemeKeys=p.speaking?new Set(["aa","ih","ou","ee","oh"]):null;
+      for(const key of rt.vrmExpressionKeys){
+        // Speech articulation is time-critical: while NK1 is speaking, its
+        // grapheme-timeline visemes own the vowel presets even if a VRMA clip
+        // also contains mouth tracks. Emotion/other facial tracks remain intact.
+        if(speechVisemeKeys?.has(key))rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
+        else if(!protectedKeys.has(key))rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
+      }
       if(rt.expressionTransitionRemaining>0){rt.expressionTransitionRemaining=Math.max(0,rt.expressionTransitionRemaining-dt);if(rt.expressionTransitionRemaining===0)rt.transitionExpressionKeys=[];}
     }else if(rt.vrmMorphTargets.length){
       applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights);
