@@ -1,3 +1,8 @@
+## [NK1][Aspect04] Harden renderer world-matrix propagation (2026-10-30)
+
+- Explicitly mark each bound Three.js-compatible layer target as `matrixWorldNeedsUpdate` after writing its canonical local matrix, so an already-rendered object cannot retain a stale world transform.
+- Add a regression assertion for the world-matrix invalidation signal.
+
 ## [NK1][Aspect04] Add renderer-facing depth-rig adapter (2026-10-30)
 
 - Add a renderer-neutral adapter that writes canonical hierarchical affine matrices and explicit painter order into renderer-owned layer objects; it is structurally compatible with Three.js Object3D without importing or duplicating the scene graph.
