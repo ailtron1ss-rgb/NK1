@@ -245,3 +245,14 @@ WorkPass290 добавляет временную непрерывность moo
 - `runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts`
 - `runtime/neuro-kurisu/tests/workpass289-affective-motivation-causality.mjs`
 - `CHANGELOG.md`
+
+## 11. WorkPass292 — смешанный аффект в IntrinsicMotivationEngine
+
+- Добавлен совместимый optional-вход `affectiveComponents`; старый одиночный `affect` продолжает работать как fallback.
+- Компоненты ограничиваются четырьмя, нормализуются по суммарной интенсивности и проходят bounded numeric normalization.
+- Каждый компонент вносит собственный вклад в exploration/regulation/engagement/connection. Например, любопытство вместе с тревогой одновременно сохраняет исследовательский импульс и потребность в проверке/регуляции.
+- Существующий `IntrinsicAffectiveInfluence` сохраняет распределение компонентов для provenance и checkpoint restore.
+- Добавлен регрессионный сценарий curiosity + anxiety + frustration, который проверяет одновременное наличие exploration и regulation.
+
+**Ограничение:** runtime-передача из `OrganismCore` пока требует отдельной проверки и завершения: чтение большого `OrganismCore.ts` через текущий GitHub file endpoint вернуло пустое содержимое, поэтому нельзя достоверно утверждать, что live cycle уже передаёт `mixedAffect` в новый `affectiveComponents` вход. Legacy single-label путь остаётся совместимым.
+
