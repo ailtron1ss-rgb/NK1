@@ -102,6 +102,17 @@ test("two-bone IK solves reachable targets and safely clamps unreachable targets
 
 
 import { MotorGoalArbiter } from "../src/organism/system/MotorGoalArbiter.ts";
+import { OutcomeVerificationService } from "../src/organism/system/OutcomeVerificationService.ts";
+
+const trustedEvidence = async (observationId = "sensor.motor.outcome.001") => {
+  const service = new OutcomeVerificationService();
+  const binding = { toolId: "avatar.pose.apply", input: { pose: "explain-open-gesture" }, executionId: "exec-12345678", decisionId: "decision-motor-001" };
+  const receipt = await service.verify({ ...binding, result: { accepted: true } }, async () => ({
+    verified: true, basis: "external-postcondition", confidence01: .92, externalObservation: true,
+    observationId, expectedPostcondition: "avatar pose applied", observedPostcondition: "avatar pose applied",
+  }));
+  return { receipt, binding };
+};
 
 test("motor subgoal arbitration reuses basal-ganglia and cerebellar controllers", () => {
   const motor = new EmbodiedMotorController();
@@ -124,41 +135,55 @@ test("motor subgoal arbitration reuses basal-ganglia and cerebellar controllers"
   assert.equal(arbiter.diagnostics().cerebellar.predictions, 2);
 });
 
-test("motor learning only credits unique independently verified outcomes", () => {
+test("motor learning rejects caller booleans and credits only an exact trusted external receipt", async () => {
   const motor = new EmbodiedMotorController();
   motor.configureSkeleton(skeleton());
   const arbiter = new MotorGoalArbiter(motor);
-  arbiter.propose([{ id: "candidate.explain", goal: goal(), corticalValue01: .9, predictedUtility01: .9, confidence01: .9, effort01: .2 }], {
+  const motorGoal = goal({ verificationToolId: "avatar.pose.apply" });
+  arbiter.propose([{ id: "candidate.explain", goal: motorGoal, corticalValue01: .9, predictedUtility01: .9, confidence01: .9, effort01: .2 }], {
     tick: 1, nowMs: 10, dopamine01: .8, predictionError01: .2, uncertainty01: .1,
     novelty01: .2, energy01: .9, thermal01: .1, cognitiveCapacity01: .9,
     conflict01: .05, goalPressure01: .9,
   });
-  const evidence = { evidenceId: "sensor.motor.outcome.001", action: "explain", predictedUtility01: .7, actualUtility01: .9, surprise01: .2, dopamine01: .8, tick: 2, verified: true, independent: true, goalId: "goal.explain.01" };
-  assert.deepEqual(arbiter.recordVerifiedOutcome({ ...evidence, verified: false }), { accepted: false, reason: "independent-verification-required" });
-  assert.deepEqual(arbiter.recordVerifiedOutcome(evidence), { accepted: true, reason: "independently-verified-motor-outcome-credited" });
-  assert.deepEqual(arbiter.recordVerifiedOutcome(evidence), { accepted: false, reason: "duplicate-evidence-credit" });
+  const legacy = { evidenceId: "sensor.motor.fake.001", action: "explain", predictedUtility01: .7, actualUtility01: .9, surprise01: .2, dopamine01: .8, tick: 2, verified: true, independent: true, goalId: "goal.explain.01" };
+  assert.deepEqual(arbiter.recordVerifiedOutcome(legacy), { accepted: false, reason: "trusted-external-postcondition-receipt-required" });
+  const { receipt, binding } = await trustedEvidence();
+  assert.deepEqual(arbiter.recordTrustedOutcome({ goalId: "goal.explain.01", receipt: { ...receipt }, binding, tick: 2, dopamine01: .8 }), {
+    accepted: false, reason: "trusted-external-postcondition-receipt-required",
+  });
+  assert.deepEqual(arbiter.recordTrustedOutcome({ goalId: "goal.explain.01", receipt, binding: { ...binding, toolId: "wrong.tool" }, tick: 2, dopamine01: .8 }), {
+    accepted: false, reason: "trusted-external-postcondition-receipt-required",
+  });
+  assert.deepEqual(arbiter.recordTrustedOutcome({ goalId: "goal.explain.01", receipt, binding, tick: 2, dopamine01: .8 }), {
+    accepted: true, reason: "trusted-external-postcondition-credited",
+  });
+  assert.deepEqual(arbiter.recordTrustedOutcome({ goalId: "goal.explain.01", receipt, binding, tick: 2, dopamine01: .8 }), {
+    accepted: false, reason: "duplicate-evidence-credit",
+  });
   const diagnostics = arbiter.diagnostics();
   assert.equal(diagnostics.creditedEvidenceCount, 1);
   assert.equal(diagnostics.cerebellar.outcomeUpdates, 1);
   assert.equal(diagnostics.basalGanglia.outcomeUpdates, 1);
 });
 
-test("arbiter snapshot preserves evidence deduplication across restart", () => {
+test("arbiter snapshot preserves evidence deduplication across restart", async () => {
   const motor = new EmbodiedMotorController();
   motor.configureSkeleton(skeleton());
   const arbiter = new MotorGoalArbiter(motor);
-  arbiter.propose([{ id: "candidate.explain", goal: goal(), corticalValue01: .9, predictedUtility01: .9, confidence01: .9, effort01: .2 }], {
+  arbiter.propose([{ id: "candidate.explain", goal: goal({ verificationToolId: "avatar.pose.apply" }), corticalValue01: .9, predictedUtility01: .9, confidence01: .9, effort01: .2 }], {
     tick: 1, nowMs: 10, dopamine01: .8, predictionError01: .2, uncertainty01: .1,
     novelty01: .2, energy01: .9, thermal01: .1, cognitiveCapacity01: .9,
     conflict01: .05, goalPressure01: .9,
   });
-  const evidence = { evidenceId: "sensor.motor.outcome.002", action: "explain", predictedUtility01: .6, actualUtility01: .8, surprise01: .1, dopamine01: .7, tick: 3, verified: true, independent: true, goalId: "goal.explain.01" };
-  assert.equal(arbiter.recordVerifiedOutcome(evidence).accepted, true);
+  const { receipt, binding } = await trustedEvidence("sensor.motor.outcome.002");
+  assert.equal(arbiter.recordTrustedOutcome({ goalId: "goal.explain.01", receipt, binding, tick: 3, dopamine01: .7 }).accepted, true);
   const restoredMotor = new EmbodiedMotorController();
   restoredMotor.configureSkeleton(skeleton());
   const restored = new MotorGoalArbiter(restoredMotor);
   restored.restore(arbiter.snapshot());
-  assert.deepEqual(restored.recordVerifiedOutcome(evidence), { accepted: false, reason: "duplicate-evidence-credit" });
+  assert.deepEqual(restored.recordTrustedOutcome({ goalId: "goal.explain.01", receipt, binding, tick: 3, dopamine01: .7 }), {
+    accepted: false, reason: "duplicate-evidence-credit",
+  });
   assert.equal(restored.diagnostics().cerebellar.outcomeUpdates, 1);
 });
 
@@ -189,14 +214,13 @@ test("motor arbiter rejects invalid monotonic context without mutating the contr
 });
 
 
-test("verified outcomes cannot train a motor action that was never executed", () => {
+test("trusted receipt cannot train a motor goal that was never executed", async () => {
   const motor = new EmbodiedMotorController();
   motor.configureSkeleton(skeleton());
   const arbiter = new MotorGoalArbiter(motor);
-  const result = arbiter.recordVerifiedOutcome({
-    evidenceId: "sensor.motor.outcome.003", action: "explain", predictedUtility01: .5,
-    actualUtility01: .9, surprise01: .2, dopamine01: .8, tick: 4,
-    verified: true, independent: true, goalId: "goal.never-executed",
+  const { receipt, binding } = await trustedEvidence("sensor.motor.outcome.003");
+  const result = arbiter.recordTrustedOutcome({
+    goalId: "goal.never-executed", receipt, binding, tick: 4, dopamine01: .8,
   });
   assert.deepEqual(result, { accepted: false, reason: "no-matching-executed-goal" });
   assert.equal(arbiter.diagnostics().cerebellar.outcomeUpdates, 0);
