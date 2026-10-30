@@ -76,7 +76,15 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
   const taskCategorySignature = { enabled: report.taskCategoryStratification?.enabled,
     annotationsComplete: report.taskCategoryStratification?.annotationsComplete,
     categories: report.taskCategoryStratification?.categories, slices: taskCategorySlices };
-  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, taskCategoryStratification: taskCategorySignature });
+  const conversationIntegritySignature = {
+    annotationUsed: report.datasetIntegrity.conversationAnnotationUsed,
+    annotationComplete: report.datasetIntegrity.conversationAnnotationComplete,
+    trainGroups: report.datasetIntegrity.uniqueTrainConversationGroups,
+    holdoutGroups: report.datasetIntegrity.uniqueHoldoutConversationGroups,
+    crossSplitLeakage: report.datasetIntegrity.crossSplitConversationLeakageCount,
+    multiSessionComplete: report.datasetIntegrity.multiSessionConversationAnnotationComplete,
+  };
+  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, taskCategoryStratification: taskCategorySignature, conversationIntegrity: conversationIntegritySignature });
 }
 
 /**
@@ -127,6 +135,13 @@ export function runMemoryOS2RetrievalExperiment(
     candidateHoldout: run.metrics.candidate,
     languageStratification: run.languageStratification,
     taskCategoryStratification: run.taskCategoryStratification,
+    conversationGrouping: {
+      samplingUnit: run.confidence.samplingUnit,
+      independentHoldoutGroups: run.confidence.independentHoldoutGroups,
+      trainGroups: run.datasetIntegrity.uniqueTrainConversationGroups,
+      conversationAnnotationsComplete: run.datasetIntegrity.conversationAnnotationComplete,
+      crossSplitLeakageCount: run.datasetIntegrity.crossSplitConversationLeakageCount,
+    },
     singleRunPromotionStatus: run.promotion.status,
     singleRunPromotionReason: run.promotion.reason,
     mrrConfidenceNonInferioritySupported: run.promotion.mrrNonInferioritySupported,
