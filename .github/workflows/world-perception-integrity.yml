@@ -10,6 +10,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
+      - "runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts"
+      - "runtime/neuro-kurisu/src/organism/body/PerceptualEvidenceCompiler.ts"
+      - "runtime/neuro-kurisu/tests/world-perception-grounded-identity-provenance.mjs"
       - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
       - "runtime/neuro-kurisu/src/organism/core/types.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
@@ -86,6 +89,9 @@ jobs:
       - name: Run P41 independent-evidence truthfulness regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p41:truthfulness
+      - name: Verify grounded object identity and evidence provenance
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/world-perception-grounded-identity-provenance.mjs
       - name: Type-check canonical runtime
         if: always()
         working-directory: runtime/neuro-kurisu
