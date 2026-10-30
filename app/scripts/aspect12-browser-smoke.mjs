@@ -67,7 +67,7 @@ async function inspectViewport(browser, name, viewport) {
       firstContentfulPaintMs: paints.find(x => x.name === "first-contentful-paint")?.startTime ?? null,
       resourceCount: resources.length,
       transferSizeBytes: resources.reduce((sum, item) => sum + (item.transferSize || 0), 0),
-      jsResourceCount: resources.filter(item => /\.m?js(?:\?|$)/i.test(item.name)).length,,
+      jsResourceCount: resources.filter(item => /\.m?js(?:\?|$)/i.test(item.name)).length,
       // Capture likely layout offenders so a failing viewport check is actionable.
       overflowCandidates: [...document.querySelectorAll("body *")]
         .map((element) => {
