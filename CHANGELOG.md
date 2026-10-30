@@ -1,3 +1,8 @@
+## [NK1][Aspect 01 — Live2D] Bind cancellation tokens to speech event identity (2026-10-30)
+
+- Tightened app and runtime protocol validation so a cancelled speech envelope must carry exactly `cancel:${speechEventId}`, preventing a cancellation marker for one utterance from being replayed against another.
+- Added app/runtime regression coverage; the viewer already enforced the same exact identity relation.
+
 ## [NK1][Aspect 01 — Live2D] Route explanations to an authored hand-motion clip (2026-10-30)
 
 - Inspected the registered Cubism motion assets and confirmed `Special[1]` contains shoulder, arm and hand parameter curves.
