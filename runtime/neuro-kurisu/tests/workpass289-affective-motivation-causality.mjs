@@ -171,6 +171,8 @@ const core = new OrganismCore(new MemoryStateStore(), {
   checkpointMaxDirtyCycles: 1,
 });
 await core.init();
+let decisionEmotionIdForReport = '';
+let creditedReceiptsForReport = 0;
 try {
   await core.observe({
     text: '',
@@ -191,6 +193,7 @@ try {
   const decisionSnapshot = core.emotionAppraisalSnapshot();
   const decisionEmotion = decisionSnapshot.history?.[0];
   assert.ok(decisionEmotion, 'the live OrganismCore cycle must create a decision appraisal');
+  decisionEmotionIdForReport = decisionEmotion.id;
   const beforeFeedback = core.snapshot();
   const intrinsic = beforeFeedback.facets?.consciousness?.intrinsic;
   assert.ok(intrinsic?.affectiveInfluence,
@@ -205,6 +208,7 @@ try {
   const afterFeedback = core.emotionAppraisalSnapshot();
   const receipts = Object.entries(afterFeedback.outcomeReceipts ?? {});
   const linkedReceipts = receipts.filter(([, receipt]) => receipt.emotionId === decisionEmotion.id);
+  creditedReceiptsForReport = linkedReceipts.length;
   assert.equal(linkedReceipts.length, 1,
     'the feedback outcome must credit the pre-action emotion episode exactly once');
   assert.ok(linkedReceipts[0][0].startsWith('affect:'),
@@ -240,8 +244,8 @@ console.log(JSON.stringify({
     anxiousHomeostatic: anxiousDrive.homeostatic,
   },
   runtime: {
-    decisionEmotionId: decisionEmotion.id,
-    creditedReceipts: linkedReceipts.length,
+    decisionEmotionId: decisionEmotionIdForReport,
+    creditedReceipts: creditedReceiptsForReport,
     affectiveDriveLinked: true,
   },
 }, null, 2));
