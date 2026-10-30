@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/tests/p41-perceptual-integrity-deep-pass.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
       - "runtime/neuro-kurisu/src/organism/core/types.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
@@ -17,6 +22,11 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/PerceptionEngine.ts"
+      - "runtime/neuro-kurisu/tests/p41-perceptual-integrity-deep-pass.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/body/VisionSemanticBackend.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/PerceptualEpistemicGraph.ts"
+      - "runtime/neuro-kurisu/src/organism/cognition/P41SemanticPerception.ts"
       - "runtime/neuro-kurisu/src/organism/core/WorldContextNormalizer.ts"
       - "runtime/neuro-kurisu/src/organism/core/types.ts"
       - "runtime/neuro-kurisu/tests/*perception*.mjs"
@@ -61,6 +71,15 @@ jobs:
       - name: Exercise event flow in a real OrganismRuntime step
         working-directory: runtime/neuro-kurisu
         run: npm run test:world-perception-runtime-ingress
+      - name: Run canonical P41 semantic perception regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p41:semantic-perception
+      - name: Run P41 instance tracking, calibration, and epistemic integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p41:perceptual-integrity-deep-pass
+      - name: Run P41 independent-evidence truthfulness regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p41:truthfulness
       - name: Type-check canonical runtime
         if: always()
         working-directory: runtime/neuro-kurisu
