@@ -3,7 +3,7 @@ import test from "node:test";
 import { attachVerifiedVrmGarment, inspectVrmGarmentRig } from "../src/components/avatar/vrmWardrobeAdapter.ts";
 
 class Bone {
-  constructor(name) { this.name=name; this.children=[]; this.constructorName="Bone"; }
+  constructor(name) { this.name=name; this.children=[]; this.isBone=true; }
 }
 class Skeleton {
   constructor(bones, boneInverses=bones.map((bone)=>({bone:bone.name}))) { this.bones=bones; this.boneInverses=boneInverses; }
@@ -19,7 +19,7 @@ class Group {
   traverse(fn) { fn(this); for(const child of this.children) child.traverse?child.traverse(fn):fn(child); }
   clone() { const copy=new Group(this.name); copy.userData={...this.userData}; for(const child of this.children)copy.add(child.clone?child.clone():{...child}); return copy; }
 }
-function avatar() { const root=new Group("avatar"); const hips=new Bone("Hips"); const spine=new Bone("Spine"); const arm=new Bone("LeftUpperArm"); root.add(hips);root.add(spine);root.add(arm);return root; }
+function avatar() { const root=new Group("avatar"); const hips=new Bone("Hips"); const spine=new Bone("Spine"); const arm=new Bone("LeftUpperArm"); root.add(hips);root.add(spine);root.add(arm);root.add(new SkinnedMesh("body-mesh",[hips,spine,arm]));return root; }
 function garment(names=["Hips","Spine","LeftUpperArm"]) { const root=new Group("coat");root.add(new SkinnedMesh("coat-mesh",names.map((name)=>new Bone(name))));return root; }
 const plan={status:"ready",expectedAssetIds:["coat-v1"]};
 
