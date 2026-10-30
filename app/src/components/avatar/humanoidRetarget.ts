@@ -1,9 +1,10 @@
 /**
  * Deterministic, data-only humanoid motion retargeting primitives.
  *
- * This module operates on normalized local-space transforms; it deliberately
- * does not own THREE objects, animation mixers, IK, or contact simulation.
- * Matching local rest frames is a prerequisite for applying its rotation deltas.
+ * This module operates on local-space transforms; it deliberately does not
+ * own THREE objects, animation mixers, IK, or contact simulation. If world-rest
+ * orientations are supplied, it calibrates source-local axes into target-local
+ * axes before transferring motion. Without them, local axes are assumed equal.
  */
 export type HumanoidRole = string;
 export type Vec3 = readonly [number, number, number];
@@ -12,6 +13,8 @@ export type Quat = readonly [number, number, number, number];
 export interface HumanoidRigProfileInput {
   roleToNode: ReadonlyMap<HumanoidRole, number>;
   restLocalRotation: ReadonlyMap<HumanoidRole, Quat>;
+  /** World-space rest orientation in a shared coordinate frame, after matrix-world update. */
+  restWorldRotation?: ReadonlyMap<HumanoidRole, Quat>;
   boneLength?: ReadonlyMap<HumanoidRole, number>;
   height: number;
 }
@@ -25,6 +28,10 @@ export interface HumanoidRetargetProfile {
   targetNodeByRole: ReadonlyMap<HumanoidRole, number>;
   sourceRestLocalRotation: ReadonlyMap<HumanoidRole, Quat>;
   targetRestLocalRotation: ReadonlyMap<HumanoidRole, Quat>;
+  /** Maps source-local vectors into target-local axes for each calibrated role. */
+  sourceToTargetAxisBasis: ReadonlyMap<HumanoidRole, Quat>;
+  /** Roles using the equal-local-axes fallback because world rest data was absent. */
+  uncalibratedAxisRoles: readonly HumanoidRole[];
 }
 
 export interface RetargetOptions {
@@ -32,6 +39,8 @@ export interface RetargetOptions {
   maxRotationRadians?: number;
   /** Maximum root translation magnitude after height scaling. Defaults to 1. */
   maxRootTranslation?: number;
+  /** Reject roles without world-rest axis calibration instead of assuming equal local axes. */
+  requireAxisCalibration?: boolean;
 }
 
 const finite = (value: number, fallback = 0): number =>
@@ -64,13 +73,11 @@ export function inverseQuaternion(value: Quat): Quat {
 
 function clampQuaternionDelta(deltaValue: Quat, maxRadians: number): Quat {
   const normalized = normalizeQuaternion(deltaValue);
-  // q and -q encode the same rotation; choose the shortest-arc hemisphere
-  // before computing the axis/angle so the cap cannot reverse its direction.
+  // q and -q encode the same rotation; choose the shortest-arc hemisphere.
   const delta: Quat = normalized[3] < 0
     ? [-normalized[0], -normalized[1], -normalized[2], -normalized[3]]
     : normalized;
-  const w = clamp(delta[3], 0, 1);
-  const angle = 2 * Math.acos(w);
+  const angle = 2 * Math.acos(clamp(delta[3], 0, 1));
   const limit = clamp(maxRadians, 0, Math.PI);
   if (angle <= limit || angle < 1e-8) return delta;
   const sinHalf = Math.sqrt(Math.max(0, 1 - delta[3] * delta[3]));
@@ -80,8 +87,8 @@ function clampQuaternionDelta(deltaValue: Quat, maxRadians: number): Quat {
 }
 
 /**
- * Build an immutable-by-convention source/target mapping. Only roles with a
- * source node, target node, and both rest rotations are eligible for transfer.
+ * Build a source/target mapping. Axis basis is inverse(targetWorldRest) *
+ * sourceWorldRest: it maps a source-local vector into target-local coordinates.
  */
 export function buildHumanoidRetargetProfile(
   source: HumanoidRigProfileInput,
@@ -91,10 +98,12 @@ export function buildHumanoidRetargetProfile(
   const targetRoles = new Set(target.roleToNode.keys());
   const sharedRoles: string[] = [];
   const missingTargetRoles: string[] = [];
+  const uncalibratedAxisRoles: string[] = [];
   const sourceNodeByRole = new Map<string, number>();
   const targetNodeByRole = new Map<string, number>();
   const sourceRestLocalRotation = new Map<string, Quat>();
   const targetRestLocalRotation = new Map<string, Quat>();
+  const sourceToTargetAxisBasis = new Map<string, Quat>();
   const boneLengthScale = new Map<string, number>();
 
   for (const role of sourceRoles) {
@@ -115,6 +124,19 @@ export function buildHumanoidRetargetProfile(
     targetNodeByRole.set(role, targetNode as number);
     sourceRestLocalRotation.set(role, normalizeQuaternion(sourceRest));
     targetRestLocalRotation.set(role, normalizeQuaternion(targetRest));
+
+    const sourceWorld = source.restWorldRotation?.get(role);
+    const targetWorld = target.restWorldRotation?.get(role);
+    if (sourceWorld && targetWorld) {
+      // World rest frames must describe both rigs in the same external basis.
+      sourceToTargetAxisBasis.set(
+        role,
+        multiplyQuaternion(inverseQuaternion(targetWorld), sourceWorld),
+      );
+    } else {
+      uncalibratedAxisRoles.push(role);
+    }
+
     const sourceLength = finite(source.boneLength?.get(role) ?? 0);
     const targetLength = finite(target.boneLength?.get(role) ?? 0);
     if (sourceLength > 1e-5 && targetLength > 1e-5) {
@@ -137,13 +159,15 @@ export function buildHumanoidRetargetProfile(
     targetNodeByRole,
     sourceRestLocalRotation,
     targetRestLocalRotation,
+    sourceToTargetAxisBasis,
+    uncalibratedAxisRoles: uncalibratedAxisRoles.sort(),
   };
 }
 
 /**
- * Transfer source local rotations as rest-relative deltas. This assumes the
- * source and target semantic bone local axes are compatible; rigs with
- * different axis conventions need an explicit basis-calibration stage.
+ * Transfer source local rotations as rest-relative deltas. When axis calibration
+ * exists, conjugate the source delta into target-local coordinates. Strict mode
+ * skips roles without calibration rather than silently assuming matching axes.
  */
 export function retargetLocalRotations(
   profile: HumanoidRetargetProfile,
@@ -157,8 +181,13 @@ export function retargetLocalRotations(
     const targetRest = profile.targetRestLocalRotation.get(role);
     const sourcePose = sourcePoseLocalRotation.get(role);
     if (!sourceRest || !targetRest || !sourcePose) continue;
-    const delta = multiplyQuaternion(inverseQuaternion(sourceRest), sourcePose);
-    result.set(role, multiplyQuaternion(targetRest, clampQuaternionDelta(delta, maxRadians)));
+    const basis = profile.sourceToTargetAxisBasis.get(role);
+    if (!basis && options.requireAxisCalibration) continue;
+    const sourceDelta = multiplyQuaternion(inverseQuaternion(sourceRest), sourcePose);
+    const targetDelta = basis
+      ? multiplyQuaternion(multiplyQuaternion(basis, sourceDelta), inverseQuaternion(basis))
+      : sourceDelta;
+    result.set(role, multiplyQuaternion(targetRest, clampQuaternionDelta(targetDelta, maxRadians)));
   }
   return result;
 }
