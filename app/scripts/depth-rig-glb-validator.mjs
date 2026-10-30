@@ -18,7 +18,7 @@ export function readGlbJson(input) {
     const end = start + length;
     if (end > buffer.length) throw new Error("truncated-glb-chunk");
     if (type === JSON_CHUNK) {
-      return JSON.parse(buffer.toString("utf8", start, end).replace(/[\\u0000\\u0020]+$/g, ""));
+      return JSON.parse(buffer.toString("utf8", start, end).trimEnd());
     }
     offset = end;
   }
@@ -45,6 +45,14 @@ export function validateDepthRigGlb(input) {
   const names = new Set((gltf.nodes ?? []).map((node) => node?.name).filter((name) => typeof name === "string"));
   const ids = new Set();
   const parents = new Map();
+  const gltfParents = new Map();
+  for (const [parentIndex, gltfNode] of (gltf.nodes ?? []).entries()) {
+    for (const childIndex of gltfNode?.children ?? []) {
+      const childName = gltf.nodes?.[childIndex]?.name;
+      const parentName = gltfNode?.name;
+      if (typeof childName === "string" && typeof parentName === "string") gltfParents.set(childName, parentName);
+    }
+  }
   for (const node of manifest.nodes) {
     if (!node || typeof node.id !== "string" || !/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(node.id)) {
       errors.push("invalid-node-id");
@@ -54,7 +62,10 @@ export function validateDepthRigGlb(input) {
     ids.add(node.id);
     if (!names.has(node.id)) errors.push("missing-glb-node:" + node.id);
     if (node.parentId !== null && typeof node.parentId !== "string") errors.push("invalid-parent:" + node.id);
-    if (typeof node.parentId === "string") parents.set(node.id, node.parentId);
+    if (typeof node.parentId === "string") {
+      parents.set(node.id, node.parentId);
+      if (gltfParents.get(node.id) !== node.parentId) errors.push("parent-mismatch:" + node.id);
+    }
     if (!Array.isArray(node.position) || node.position.length !== 3 || !node.position.every(Number.isFinite)) errors.push("invalid-position:" + node.id);
     if (!Array.isArray(node.pivot) || node.pivot.length !== 2 || !node.pivot.every(Number.isFinite)) errors.push("invalid-pivot:" + node.id);
     if (!Array.isArray(node.rotation) || node.rotation.length !== 3 || !node.rotation.every(Number.isFinite)) errors.push("invalid-rotation:" + node.id);
