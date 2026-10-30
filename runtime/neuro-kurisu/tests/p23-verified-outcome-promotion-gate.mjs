@@ -51,7 +51,8 @@ const families = [family('memory'), family('transfer'), family('tool-use')];
 const good = evaluateOutcomePromotion(summary(), families);
 assert.equal(good.eligible, true, JSON.stringify(good));
 assert.deepEqual(good.reasons, []);
-assert.equal(good.pairedTasks, 30);
+assert.equal(good.independentSeeds, 30);
+assert.equal(good.pairedTasks, good.independentSeeds, 'legacy field remains an exact alias for one release cycle');
 assert.equal(good.familyCount, 3);
 assert.equal(good.worstFamilyGain, 0.1);
 assert.equal(good.statisticalEvidence.unit, 'seed');
@@ -59,7 +60,7 @@ assert.equal(good.statisticalEvidence.significant, true);
 
 const lowN = evaluateOutcomePromotion(summary({ pairedN: 12 }), families);
 assert.equal(lowN.eligible, false);
-assert.ok(lowN.reasons.includes('insufficient-paired-tasks'));
+assert.ok(lowN.reasons.includes('insufficient-independent-seeds'));
 
 const weakGain = evaluateOutcomePromotion(summary({ absoluteGain: 0.01 }), families);
 assert.ok(weakGain.reasons.includes('aggregate-gain-below-threshold'));
