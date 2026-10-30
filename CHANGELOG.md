@@ -1,8 +1,9 @@
 ## [WorkPass637] Embedded GLTF humanoid clip retarget baking — 2026-10-30
 
-- Added a Three.js source-clip sampler that bakes semantic humanoid quaternion tracks and bounded, height-scaled hips displacement onto a distinct target rig using shared-frame rest-axis calibration.
-- Added regression coverage for different source/target orientations and proportions, strict calibration failure, and invalid clip duration; registered `test:avatar-three-humanoid-retarget`.
-- This is a reusable baking adapter, not yet a complete source-model import UI or runtime motion-source lifecycle. It deliberately excludes Pixiv-compiled VRMA clips to prevent double retargeting; expressions, IK/contact, spring bones, and Android/browser E2E remain pending.
+- Added a bounded Three.js source-clip sampler that bakes semantic humanoid quaternion tracks and height-scaled hips displacement onto a distinct target rig using shared-frame rest-axis calibration.
+- Added a separate local VRM/GLB motion-source import to the 3D stage. Its hidden source rig is retained only for rebaking when the target model changes; baked clips join the existing action selector and source resources are disposed on replacement/reset/unmount.
+- Added regression coverage for cross-rig sampling, runtime wiring, strict calibration failure, invalid clip duration, and isolation from Pixiv-compiled VRMA. Registered `test:avatar-three-humanoid-retarget`.
+- This pass does not transfer expressions/visemes, non-hips root motion, IK/contact, or spring bones; Android/browser visual E2E and live asset validation remain pending. VRMA continues through `createVRMAnimationClip(animation, activeVrm)` and must not be retargeted again.
 ## [WorkPass636] Three.js humanoid rig snapshots — 2026-10-30
 
 - Added a Three.js runtime adapter that captures semantic humanoid rest-local and shared-frame rest-world rotations, bone lengths, node indices, and rig height after updating world matrices.
