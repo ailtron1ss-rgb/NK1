@@ -1,3 +1,9 @@
+## [NK1][аспект16] WorkPass631 — bounded native speech event fan-out (2026-10-30)
+
+- Ограничена очередь реентерабельных NativeSpeechEventChannel публикаций (1024 pending events); overflow отклоняется до изменения sequence/time state.
+- FIFO dispatch сохранён, устранён повторный Array.shift() и добавлен flood regression на 2000 вложенных публикаций.
+- Переполнение telemetry не влияет на TTS outcome и не считается подтверждением воспроизведения.
+
 ## [NK1][аспект16] Deliver native speech provider telemetry to AvatarStage (2026-10-30)
 
 - Добавлен authenticated-by-existing-API-policy SSE endpoint /api/organism/voice/events поверх NativeSpeechHostRouter.
