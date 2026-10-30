@@ -164,7 +164,7 @@ export class TemporalObjectTracker {
 
   /** Rebuild local tracks from the persisted canonical P41 snapshot after process restart. */
   restoreFromPerception(
-    entities:readonly Array<{
+    entities:ReadonlyArray<{
       label:string;
       kind?:string;
       trackId?:string;
