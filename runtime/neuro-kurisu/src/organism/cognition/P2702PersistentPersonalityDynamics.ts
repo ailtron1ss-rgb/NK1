@@ -98,8 +98,9 @@ export class P2702PersistentPersonalityDynamics{
   const autonomy=this.state.invariantValues[this.state.invariantNames.indexOf('intellectualIndependence')]??.92;
   const adaptive=(name:string)=>this.state.adaptiveValues[this.state.adaptiveNames.indexOf(name)]??.5;
   const value=(name:string)=>this.state.valueWeights[this.state.valueNames.indexOf(name)]??.5;
-  const relationshipKey=typeof args.relationshipId==='string'?args.relationshipId.trim().normalize('NFKC'):'';
-  const relationshipTrust=relationshipKey?this.state.relationshipTrust[relationshipKey]??.5:.5;
+  const rawRelationshipKey=typeof args.relationshipId==='string'?args.relationshipId.trim().normalize('NFKC'):'';
+  const relationshipKey=rawRelationshipKey.length<=80&&!['__proto__','prototype','constructor'].includes(rawRelationshipKey)&&![...rawRelationshipKey].some(char=>{const code=char.charCodeAt(0);return code<=31||(code>=127&&code<=159);})?rawRelationshipKey:'';
+  const relationshipTrust=relationshipKey&&Object.prototype.hasOwnProperty.call(this.state.relationshipTrust,relationshipKey)?this.state.relationshipTrust[relationshipKey]??.5:.5;
   const responsibility=this.state.invariantValues[this.state.invariantNames.indexOf('responsibility')]??.90;
   const privacy=value('privacy'),loyalty=value('loyalty'),relationshipValue=value('relationship');
   const skepticism=this.state.invariantValues[this.state.invariantNames.indexOf('skepticism')]??.86;
