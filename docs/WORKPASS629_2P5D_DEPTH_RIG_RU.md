@@ -20,7 +20,7 @@
 - parent-first обход и обнаружение циклических иерархий;
 - независимое управление головой, глазами, корпусом и руками;
 - дыхание, глубинный параллакс и render-order;
-- ограниченный damped-spring step для вторичной динамики волос/ткани;\n- сохранение artist-authored pivot в результирующих трансформациях;\n- Three.js adapter, который сопоставляет manifest IDs с Object3D.name, применяет локальные transforms/visibility/renderOrder и компенсирует pivot;\n- атомарный отказ при отсутствующих или неоднозначных именах узлов (сцена не меняется частично).
+- ограниченный damped-spring step для вторичной динамики волос/ткани;\n- сохранение artist-authored pivot в результирующих трансформациях;\n- runtime-интеграция spring follow-through для hair-front/back и coat-front/tail с отдельным состоянием на каждый узел и dt clamp;\n- Three.js adapter, который сопоставляет manifest IDs с Object3D.name, применяет локальные transforms/visibility/renderOrder и компенсирует pivot;\n- атомарный отказ при отсутствующих или неоднозначных именах узлов (сцена не меняется частично).
 
 Файл app/src/components/avatar/depthRigThreeAdapter.ts:\n- применяет вычисленные трансформации к импортированной Three.js Object3D-иерархии;\n- не требует хардкодить геометрию в React-компоненте;\n- использует имена узлов как контракт Blender/GLB export pipeline.\n\nФайл app/scripts/depth-rig.test.mjs:
 - проверка валидной иерархии;
@@ -44,7 +44,7 @@
 
 1. Изготовить PSD/слоистый master с дорисованными скрытыми областями.
 2. Создать Blender scene и экспортёр GLB с именованными узлами, pivots, alpha masks и depth.
-3. Подключить manifest `root.userData.nk1DepthRigManifest` к существующему Avatar3DStage: GLB без manifest остаётся обычной 3D-моделью; GLB с manifest проходит валидацию и получает semantic pose каждый кадр. Отдельный пользовательский переключатель 2.5D/Live2D/3D и художественный asset ещё не готовы.
+3. Подключить manifest `root.userData.nk1DepthRigManifest` к существующему Avatar3DStage: GLB без manifest остаётся обычной 3D-моделью; GLB с manifest проходит валидацию и получает semantic pose каждый кадр. Пользовательский переключатель 2.5D добавлен и доступен только после загрузки модели с успешно проверенным manifest; обычные GLB/VRM остаются в режиме 3D. Художественный asset по-прежнему не включён.
 4. Подключить общий EmbodimentIntent через capability-aware adapter.
 5. Добавить shape layers лица, веки, mouth shapes, ограничения деформации и вторичную физику.
 6. Добавить реальные outfit meshes/layers и attach points.
@@ -55,3 +55,12 @@
 Из app/: node --experimental-strip-types --test scripts/depth-rig.test.mjs
 
 Это первый кодовый фундамент, не конечное тело. Typecheck/build/CI должны проверяться на точном HEAD PR. Отсутствие художественных ресурсов остаётся явным release blocker.
+
+## Дополнение WorkPass — runtime secondary motion и selector
+
+- `stepDepthRigSecondaryMotion(...)` добавляет пружинное запаздывание только семантическим слоям волос и одежды. Цели выводятся из head/torso intent; состояние пружины хранится отдельно по ID узла и очищается при смене модели.
+- Интеграция выполняется в существующем animation frame после расчёта базовой semantic pose. Используется уже ограниченный frame delta (не более 50 мс), а параметры жёсткости, демпфирования, смещения и скорости ограничены отдельно для волос и ткани.
+- В `AvatarStage` появился отдельный пункт `2.5D`. Он заблокирован, пока не загружена модель с валидным `nk1DepthRigManifest`; после сброса или замены на обычную GLB/VRM режим 2.5D автоматически снимается. Обычный режим 3D не изменён.
+- Важно: селектор не создаёт художественную 2.5D модель и не помечает произвольный GLB как 2.5D. Он только открывает capability уже импортированного проверенного depth rig.
+
+Проверка на exact HEAD выполняется GitHub Actions после коммитов; до завершения CI локальный build/Android visual E2E не заявляются как пройденные.
