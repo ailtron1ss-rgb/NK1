@@ -1,3 +1,10 @@
+## [NK1][WorkPass638] Canonicalize the 2.5D depth-rig integration path (2026-10-30)
+
+- Select PR #408 `DepthRigManifest` as the single current runtime schema because it is the schema wired into `Avatar3DStage` and the Three.js scene adapter; keep PR #409's normalized affine contract as a source of migration requirements, not a competing runtime.
+- Record explicit boundaries for PR #410 MotorFrame ownership, real runtime-to-stage frame provenance, renderer readback, Live2D partial acknowledgements, production layered artwork and cross-renderer verification.
+- Specify a staged migration path for normalized pivots, rest-pose calibration, depth/occlusion metadata and semantic gestures without guessing units or joint names.
+- No schema was silently merged, no renderer behavior was claimed as end-to-end, and the canonical Release ZIP was not changed.
+
 ## [NK1][WorkPass637] Install app dependencies in the focused depth-rig gate (2026-10-30)
 
 - The first focused workflow run passed the depth-rig core and face tests but could not resolve the Three.js package used by the renderer adapter fixture because the job intentionally started without app dependencies.
