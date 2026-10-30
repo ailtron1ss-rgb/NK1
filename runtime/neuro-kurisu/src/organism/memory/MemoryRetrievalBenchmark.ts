@@ -2,7 +2,13 @@ import { createHash } from 'node:crypto';
 import { MemoryOS2, type MemoryOSState2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
 
 export type MemoryRetrievalLanguage = 'en' | 'ru' | 'other';
-export type MemoryRetrievalTaskCategory = 'single-hop' | 'multi-hop' | 'multi-session' | 'temporal' | 'knowledge-update' | 'contradiction' | 'preference' | 'procedural' | 'open-domain' | 'abstention' | 'static-state' | 'dynamic-state' | 'workflow-knowledge' | 'environment-gotcha' | 'premise-awareness' | 'other';
+export const MEMORY_RETRIEVAL_TASK_CATEGORIES = [
+  'single-hop', 'multi-hop', 'multi-session', 'temporal', 'knowledge-update',
+  'contradiction', 'preference', 'procedural', 'open-domain', 'abstention',
+  'static-state', 'dynamic-state', 'workflow-knowledge', 'environment-gotcha',
+  'premise-awareness', 'other',
+] as const;
+export type MemoryRetrievalTaskCategory = typeof MEMORY_RETRIEVAL_TASK_CATEGORIES[number];
 
 export interface MemoryRetrievalBenchmarkExample {
   id: string;
@@ -368,7 +374,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const truncatedFieldRows=limited.filter(row=>Boolean(row&&((typeof row.id==='string'&&row.id.length>120)||(typeof row.query==='string'&&row.query.length>500)||(typeof row.conversationId==='string'&&row.conversationId.length>160)||(Array.isArray(row.relevantIds)&&(row.relevantIds.length>24||row.relevantIds.some(id=>typeof id==='string'&&id.length>160)))))).length;
   const malformedConversationAnnotationCount=limited.filter(row=>row&&row.conversationId!==undefined&&(typeof row.conversationId!=='string'||!row.conversationId.trim())).length;
   const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
-    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.language===undefined||row.language==='en'||row.language==='ru'||row.language==='other')&&(row.category===undefined||['single-hop','multi-hop','multi-session','temporal','knowledge-update','contradiction','preference','procedural','open-domain','abstention','static-state','dynamic-state','workflow-knowledge','environment-gotcha','premise-awareness','other'].includes(row.category))&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.conversationId===undefined||(typeof row.conversationId==='string'&&Boolean(row.conversationId.trim())&&row.conversationId.length<=160))&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
+    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.language===undefined||row.language==='en'||row.language==='ru'||row.language==='other')&&(row.category===undefined||MEMORY_RETRIEVAL_TASK_CATEGORIES.includes(row.category))&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.conversationId===undefined||(typeof row.conversationId==='string'&&Boolean(row.conversationId.trim())&&row.conversationId.length<=160))&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
     if(!valid)droppedExamples++;
     return valid;
   }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),...(row.language===undefined?{}:{language:row.language}),...(row.category===undefined?{}:{category:row.category}),...(row.conversationId===undefined?{}:{conversationId:row.conversationId.trim()}),relevantIds:row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)),split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
