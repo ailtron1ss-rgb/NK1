@@ -132,6 +132,8 @@ test("expression and motion routing remain within the registered model inventory
     const groups = extractObjectKeys(viewer, "MOTION_COUNTS");
     assert.deepEqual(Object.fromEntries(groups.map((group) => [group, motionCounts[group]])), motionCounts,
       "viewer " + index + " motion groups must exactly match the shipped model");
+    assert.match(viewer, /!Object\\.hasOwn\\(MOTION_COUNTS,group\\)/);
+    assert.match(viewer, /index>=MOTION_COUNTS\\[group\\]/);
     const profiles = extractObjectKeys(viewer, "FACE_PROFILES");
     assert.ok(profiles.includes("neutral") && profiles.includes("tired"), "face profiles must include baseline and fatigue states");
   }
