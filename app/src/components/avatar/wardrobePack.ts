@@ -31,6 +31,40 @@ export interface WardrobePackValidation {
   totalBytes: number;
 }
 
+/** Select one default garment per renderer slot; later variants remain available for manual replacement. */
+export function defaultWardrobeAssetSelection(
+  manifest: WardrobePackManifest,
+  renderer: WardrobeRenderer,
+): string[] {
+  if (!manifest || !Array.isArray(manifest.assets)) return [];
+  const occupied = new Set<string>();
+  const selected: string[] = [];
+  for (const asset of manifest.assets) {
+    if (asset.renderer !== renderer || occupied.has(asset.slot)) continue;
+    occupied.add(asset.slot);
+    selected.push(asset.id);
+  }
+  return selected;
+}
+
+/** Choosing a garment replaces only the previous item in that slot. */
+export function updateWardrobeAssetSelection(
+  manifest: WardrobePackManifest,
+  renderer: WardrobeRenderer,
+  selectedAssetIds: readonly string[],
+  assetId: string,
+  selected: boolean,
+): string[] {
+  const asset = manifest?.assets?.find((candidate) => candidate.id === assetId && candidate.renderer === renderer);
+  if (!asset) return [...selectedAssetIds];
+  if (!selected) return selectedAssetIds.filter((id) => id !== assetId);
+  const preserved = selectedAssetIds.filter((id) => {
+    const current = manifest.assets.find((candidate) => candidate.id === id);
+    return current && current.slot !== asset.slot;
+  });
+  return [...preserved, assetId];
+}
+
 const ID = /^[a-z0-9][a-z0-9._-]{1,79}$/u;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/u;
 const SHA256 = /^[a-f0-9]{64}$/iu;
