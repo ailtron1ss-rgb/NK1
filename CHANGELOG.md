@@ -2886,3 +2886,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 
 - NK1 Aspect 07: кэширование semantic morph bindings для импортированных VRM/GLB; baseline reset → authored AnimationMixer → affect/viseme overlay, чтобы сохранять authored clips и предотвращать залипание morph values.
+
+- NK1 Aspect 07: imported VRM/GLB semantic morphs now use bounded attack/release smoothing; viseme/blink channels respond faster than affective expression channels.
