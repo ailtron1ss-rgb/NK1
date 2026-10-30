@@ -26,7 +26,7 @@ const visionBackend={
       confidence01:.93,
       objects:[{
         label:'chair',kind:'object',confidence01:.96,
-        bbox:{x:captureCount===1?.10:.12,y:.20,width:.20,height:.35},
+        bbox:{x:captureCount===1 ? .10 : .12,y:.20,width:.20,height:.35},
         bboxConfidence01:.92,
       }],
       relations:[],events:[],backend:this.id,latencyMs:1,evidenceKind:'model-output',
