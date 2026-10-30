@@ -9,7 +9,7 @@ import {
 } from './OutcomeVerificationService.ts';
 import { sha256Stable, stableJson } from '../core/StableSerialization.ts';
 import type { ExternalObservationChannel, ExternalObservationSourceClass } from './ExternalObserverFabric.ts';
-import { cloneFrozenToolInputContract, validateToolInputContract, type ToolInputContract } from './ToolInputContract.ts';
+import { cloneFrozenToolInputContract, cloneFrozenToolOutputContract, validateToolInputContract, validateToolOutputContract, type ToolInputContract, type ToolOutputContract } from './ToolInputContract.ts';
 
 export type ActionOutcomeClass =
   | 'unavailable'
@@ -164,6 +164,8 @@ export interface ToolDefinition {
   execute:(input:Record<string,unknown>, context?:ToolExecutionContext)=>Promise<Record<string,unknown>>;
   /** Declarative input contract checked before approval, receipt admission and execution. */
   inputContract?: ToolInputContract;
+  /** Optional output contract; invalid output is recorded as executed-but-unverified. */
+  outputContract?: ToolOutputContract;
   /** This action is unsafe to invoke without a stable key and durable receipt ledger. */
   requiresIdempotencyKey?:boolean;
   /**
@@ -551,13 +553,18 @@ export class ActionGateway {
       if(!['filesystem','http','process','device','camera','audio','sensor','user','world','tool','unknown'].includes(source.channel)) throw new Error('invalid-tool-observation-channel');
     }
     if(this.tools.has(def.id)) throw new Error(`duplicate-tool-id:${def.id}`);
-    const registered = def.inputContract ? { ...def, inputContract: cloneFrozenToolInputContract(def.inputContract) } : def;
+    const registered = (def.inputContract || def.outputContract) ? {
+      ...def,
+      ...(def.inputContract ? { inputContract: cloneFrozenToolInputContract(def.inputContract) } : {}),
+      ...(def.outputContract ? { outputContract: cloneFrozenToolOutputContract(def.outputContract) } : {}),
+    } : def;
     this.tools.set(def.id,registered);
   }
   listTools() {
-    return [...this.tools.values()].map(t=>({
+    return [...this.tools.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(t=>({
       id:t.id,capability:t.capability,destructive:t.destructive,projectAllowed:Boolean(t.projectAllowed),
-      hasInputContract:Boolean(t.inputContract),inputContract:t.inputContract?structuredClone(t.inputContract):undefined,
+      hasInputContract:Boolean(t.inputContract),inputSchema:t.inputContract?structuredClone(t.inputContract):undefined,
+      hasOutputContract:Boolean(t.outputContract),outputSchema:t.outputContract?structuredClone(t.outputContract):undefined,
       permissionClass:t.permissionClass??inferPermissionClass(t.id,t.capability)??'none',requiresApproval:Boolean(t.permissionClass??inferPermissionClass(t.id,t.capability)),hasAvailabilityGate:Boolean(t.availability),hasCompetenceGate:Boolean(t.competence),hasOutcomeVerifier:Boolean(t.verify),hasReceiptReconciliation:Boolean(t.reconcile),requiresIdempotencyKey:requiresDurableIdempotency(t),
     }));
   }
@@ -967,6 +974,15 @@ export class ActionGateway {
 
     try {
       const result=await tool.execute(input,{executionId,idempotencyKey:context.idempotencyKey,decisionId:context.decisionId,autonomous:context.autonomous===true});
+      if(tool.outputContract) {
+        const validation=validateToolOutputContract(result,tool.outputContract);
+        if(!validation.valid) {
+          const invalidOutput={error:'tool-output-invalid',issues:validation.issues};
+          const outputVerification:OutcomeVerification={verified:false,basis:'none',confidence01:0,externalObservation:false,notes:'tool executor was entered but its result failed the registered output contract; the external effect must remain unverified and may require read-only reconciliation'};
+          const outputAudit=this.auditTool(id,false,'tool-output-invalid',false,tool.capability,invalidOutput,'none',outputVerification,executionId,'executed-unverified',competenceConfidence01);
+          return {ok:false,verified:false,executionId,tool:id,capability:tool.capability,result:invalidOutput,audit:outputAudit,verification:outputVerification,outcomeClass:'executed-unverified',competenceConfidence01};
+        }
+      }
       // A negative adapter response is not evidence that a remote side effect did
       // not happen: some providers apply the operation and then return an error/lost
       // ACK. For durable keyed mutators, require explicit `effectStatus: not-applied`

@@ -1,3 +1,9 @@
+## [NK1][WorkPass625] Validate tool outputs and stabilize catalog descriptors (2026-10-30)
+
+- Add optional output contracts and validate returned data after executor entry; invalid outputs become executed-unverified and keyed operations retain replay-safe receipts instead of being falsely labelled as not executed.
+- Expose inputSchema/outputSchema descriptors with deterministic tool ordering; reject Proxy-backed input/schema data before reflective traps, and validate schema arrays as dense data-only arrays.
+- Extend WorkPass624 regression to cover invalid outputs, replay without duplicate side effects, catalog stability and Proxy rejection.
+
 ## [NK1][WorkPass624] Enforce governed tool input contracts before execution (2026-10-30)
 
 - Add a dependency-free, deliberately strict schema subset for registered tool arguments, with bounded objects/arrays/strings, numeric ranges, enums, patterns and serialized-byte limits.

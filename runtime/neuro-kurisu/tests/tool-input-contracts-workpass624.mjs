@@ -17,6 +17,8 @@ const gateway = new ActionGateway();
 let calls = 0;
 gateway.registerTool({ id: "catalog.search", capability: "catalog.read", destructive: false, inputContract: contract, execute: async input => { calls++; return { ok: true, query: String(input.query) }; } });
 assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.hasInputContract, true);
+assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.inputSchema?.type, "object");
+assert.deepEqual(gateway.listTools().map(x => x.id), [...gateway.listTools().map(x => x.id)].sort());
 assert.equal((await gateway.executeTool("catalog.search", { query: "nk1 architecture", limit: 3, filters: { kinds: ["memory", "tool"] } })).ok, true);
 assert.equal(calls, 1);
 
@@ -43,6 +45,10 @@ const accessor = { query: "NK1" };
 Object.defineProperty(accessor, "limit", { enumerable: true, get() { getterCalls++; return 3; } });
 assert.equal((await gateway.executeTool("catalog.search", accessor)).result.error, "tool-input-invalid");
 assert.equal(getterCalls, 0);
+let proxyTraps = 0;
+const hostileProxy = new Proxy({ query: "nk1" }, { getPrototypeOf() { proxyTraps++; throw new Error("proxy-trap-must-not-run"); } });
+assert.equal((await gateway.executeTool("catalog.search", hostileProxy)).result.error, "tool-input-invalid");
+assert.equal(proxyTraps, 0, "Proxy values must be rejected before invoking traps");
 const cycle = { query: "NK1" }; cycle.filters = cycle;
 assert.equal((await gateway.executeTool("catalog.search", cycle)).result.error, "tool-input-invalid");
 assert.equal(calls, 1);
@@ -77,6 +83,33 @@ assert.equal(success.ok, true);
 assert.equal(mutations, 1);
 assert.ok(ledgerWrites >= 2);
 
+const outputGateway = new ActionGateway();
+let outputLedgerWrites = 0, outputExecutions = 0;
+outputGateway.setExecutionLedgerPersister(async () => { outputLedgerWrites++; });
+outputGateway.registerTool({
+  id: "catalog.output-check",
+  capability: "catalog.write",
+  destructive: false,
+  requiresIdempotencyKey: true,
+  inputContract: { type: "object", properties: { key: { type: "string", minLength: 3, maxLength: 24 } }, required: ["key"], additionalProperties: false },
+  outputContract: { type: "object", properties: { ok: { type: "boolean" }, receipt: { type: "string", minLength: 4 } }, required: ["ok", "receipt"], additionalProperties: false },
+  execute: async () => { outputExecutions++; return { ok: true, receipt: 42 }; },
+});
+const invalidOutput = await outputGateway.executeTool("catalog.output-check", { key: "abc" }, "output-contract-test", { idempotencyKey: "workpass625-output-1" });
+assert.equal(invalidOutput.outcomeClass, "executed-unverified");
+assert.equal(invalidOutput.result.error, "tool-output-invalid");
+assert.equal(invalidOutput.verified, false);
+assert.equal(outputExecutions, 1, "output validation must run after executor entry");
+const outputReplay = await outputGateway.executeTool("catalog.output-check", { key: "abc" }, "output-contract-test", { idempotencyKey: "workpass625-output-1" });
+assert.equal(outputReplay.idempotentReplay, true);
+assert.equal(outputExecutions, 1, "output-invalid keyed effects must replay, never execute twice");
+assert.ok(outputLedgerWrites >= 2);
+
+let schemaProxyTraps = 0;
+const badSchemaProxy = new Proxy({ type: "object" }, { getPrototypeOf() { schemaProxyTraps++; throw new Error("schema-proxy-trap-must-not-run"); } });
+assert.throws(() => mutator.registerTool({ id: "catalog.proxy-schema", capability: "catalog.read", destructive: false, inputContract: badSchemaProxy, execute: async () => ({ ok: true }) }), /invalid-tool-input-contract/);
+assert.equal(schemaProxyTraps, 0);
+
 assert.throws(() => mutator.registerTool({
   id: "catalog.bad-array", capability: "catalog.read", destructive: false,
   inputContract: { type: "object", properties: { items: { type: "array" } } },
@@ -84,4 +117,4 @@ assert.throws(() => mutator.registerTool({
 }), /array-items-required/);
 
 console.log("TOOL_INPUT_CONTRACTS_WORKPASS624_PASS");
-console.log(JSON.stringify({ rejectedInputCases: bad.length + 4, validCalls: calls + mutations, ledgerWrites }, null, 2));
+console.log(JSON.stringify({ rejectedInputCases: bad.length + 6, validCalls: calls + mutations, outputExecutions, ledgerWrites, outputLedgerWrites }, null, 2));

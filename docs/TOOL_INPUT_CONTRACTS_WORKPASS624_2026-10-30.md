@@ -39,3 +39,12 @@ Output schemas, provider-specific timeouts, concurrency/rate budgets and catalog
 - OWASP LLM Prompt Injection Prevention Cheat Sheet: https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html
 
 The references motivate the design. NK1's implementation is a limited native adaptation, not standards certification.
+
+
+## WorkPass625 — validate tool outputs and stabilize the tool catalog
+
+- Tool definitions can now declare an output contract alongside the input contract.
+- Output validation runs only after executor entry. An invalid result is reported as executed-but-unverified, never as a pre-execution rejection; keyed operations retain their durable receipt and replay without re-running the external effect.
+- listTools returns standard-shaped inputSchema/outputSchema fields and emits a deterministic ID-sorted catalog.
+- The validator uses Node's native Proxy detection before reflection so hostile Proxy traps are rejected rather than invoked during contract/input inspection. Schema enum/required arrays are checked as dense data arrays.
+- Regressions cover malformed output after executor entry, keyed replay without duplicate execution, deterministic catalog order, and proxy trap non-execution.

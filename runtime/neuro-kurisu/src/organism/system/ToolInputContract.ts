@@ -1,3 +1,5 @@
+import { isProxy } from "node:util/types";
+
 export type ToolInputType = "object" | "array" | "string" | "number" | "integer" | "boolean" | "null";
 export type ToolInputScalar = string | number | boolean | null;
 
@@ -33,6 +35,7 @@ const DEFAULT_BYTES = 65_536, MAX_BYTES = 2_097_152;
 
 function plain(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  if (isProxy(value)) return false;
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
@@ -46,6 +49,26 @@ function dataEntries(value: unknown, path: string): Array<[string, unknown]> {
     result.push([key, d.value]);
   }
   return result;
+}
+function safeArrayValues(value: unknown, path: string, max: number): unknown[] {
+  if (!Array.isArray(value) || isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype || value.length > max) {
+    throw new Error("invalid-tool-input-contract:" + path + ":invalid-array");
+  }
+  const values: unknown[] = [];
+  for (const key of Reflect.ownKeys(value)) {
+    if (key === "length") continue;
+    if (typeof key !== "string" || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length) {
+      throw new Error("invalid-tool-input-contract:" + path + ":array-extra-property");
+    }
+  }
+  for (let i = 0; i < value.length; i++) {
+    const d = Object.getOwnPropertyDescriptor(value, String(i));
+    if (!d || !("value" in d) || d.get || d.set || !d.enumerable) {
+      throw new Error("invalid-tool-input-contract:" + path + ":unsafe-array-item");
+    }
+    values.push(d.value);
+  }
+  return values;
 }
 function intBound(value: unknown, path: string, min: number, max: number): void {
   if (!Number.isSafeInteger(value) || Number(value) < min || Number(value) > max) throw new Error("invalid-tool-input-contract:" + path + ":invalid-bound");
@@ -82,8 +105,9 @@ function assertNode(raw: unknown, depth: number, path: string, root: boolean): a
   if (n.description !== undefined && (typeof n.description !== "string" || n.description.length > 512)) throw new Error("invalid-tool-input-contract:" + path + ":invalid-description");
 
   if (n.enum !== undefined) {
-    if (!Array.isArray(n.enum) || n.enum.length === 0 || n.enum.length > 64) throw new Error("invalid-tool-input-contract:" + path + ":invalid-enum");
-    for (const v of n.enum) if (!matches(v, type as ToolInputType) || !(v === null || ["string", "number", "boolean"].includes(typeof v))) throw new Error("invalid-tool-input-contract:" + path + ":enum-type-mismatch");
+    const enumValues = safeArrayValues(n.enum, path + ".enum", 64);
+    if (enumValues.length === 0) throw new Error("invalid-tool-input-contract:" + path + ":invalid-enum");
+    for (const v of enumValues) if (!matches(v, type as ToolInputType) || !(v === null || ["string", "number", "boolean"].includes(typeof v))) throw new Error("invalid-tool-input-contract:" + path + ":enum-type-mismatch");
   }
   if (type === "string") {
     if (n.minLength !== undefined) intBound(n.minLength, path + ".minLength", 0, 16_384);
@@ -116,9 +140,9 @@ function assertNode(raw: unknown, depth: number, path: string, root: boolean): a
       assertNode(child, depth + 1, path + ".properties." + key, false);
     }
     if (n.required !== undefined) {
-      if (!Array.isArray(n.required) || n.required.length > MAX_SCHEMA_KEYS) throw new Error("invalid-tool-input-contract:" + path + ":invalid-required");
+      const requiredValues = safeArrayValues(n.required, path + ".required", MAX_SCHEMA_KEYS);
       const seen = new Set<string>();
-      for (const key of n.required) {
+      for (const key of requiredValues) {
         if (typeof key !== "string" || !names.has(key) || seen.has(key)) throw new Error("invalid-tool-input-contract:" + path + ":invalid-required-property");
         seen.add(key);
       }
@@ -257,4 +281,14 @@ export function validateToolInputContract(input: unknown, contract: ToolInputCon
     if (serializedBytes > (contract.maxSerializedBytes ?? DEFAULT_BYTES)) return { valid: false, issues: [{ path: "$", code: "payload-too-large" }], serializedBytes };
     return { valid: true, issues: [], serializedBytes };
   } catch { return { valid: false, issues: [{ path: "$", code: "input-not-inspectable" }] }; }
+}
+
+
+/** Output payloads share the same bounded JSON-object contract subset. */
+export type ToolOutputContract = ToolInputContract;
+export function cloneFrozenToolOutputContract(contract: ToolOutputContract): ToolOutputContract {
+  return cloneFrozenToolInputContract(contract);
+}
+export function validateToolOutputContract(output: unknown, contract: ToolOutputContract): ToolInputContractResult {
+  return validateToolInputContract(output, contract);
 }
