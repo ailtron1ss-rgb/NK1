@@ -156,3 +156,29 @@ test("arbiter snapshot preserves evidence deduplication across restart", () => {
   assert.deepEqual(restored.recordVerifiedOutcome(evidence), { accepted: false, reason: "duplicate-evidence-credit" });
   assert.equal(restored.diagnostics().cerebellar.outcomeUpdates, 1);
 });
+
+
+test("completed motor goal releases priority arbitration for the next intention", () => {
+  const motor = new EmbodiedMotorController();
+  motor.configureSkeleton(skeleton());
+  motor.setGoal(goal({ targetJointAnglesRad: { spine: .05 } }), 0);
+  motor.step(0);
+  motor.step(100);
+  const next = goal({ id: "goal.listen.04", action: "listen", priority: 5, targetJointAnglesRad: { spine: -.1 } });
+  assert.deepEqual(motor.setGoal(next, 100), { accepted: true, reason: "goal-accepted" });
+});
+
+test("motor arbiter rejects invalid monotonic context without mutating the controller", () => {
+  const motor = new EmbodiedMotorController();
+  motor.configureSkeleton(skeleton());
+  const arbiter = new MotorGoalArbiter(motor);
+  const before = motor.snapshot();
+  const result = arbiter.propose([{ id: "candidate.explain", goal: goal(), corticalValue01: .9, predictedUtility01: .9, confidence01: .9, effort01: .2 }], {
+    tick: -1, nowMs: NaN, dopamine01: .8, predictionError01: .2, uncertainty01: .1,
+    novelty01: .2, energy01: .9, thermal01: .1, cognitiveCapacity01: .9,
+    conflict01: .05, goalPressure01: .9,
+  });
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "invalid-motor-arbitration-context");
+  assert.deepEqual(motor.snapshot(), before);
+});
