@@ -24,7 +24,7 @@
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   // Low-pass facial channels prevent abrupt expression jumps while keeping intent responsive.
   const faceState={brow:0,angle:0,eyeSmile:0,cheek:0};
-  let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,semanticEyeX=0,semanticEyeY=0,blinkSequence=0,saccadeSequence=0,lastMotionKey='';
+  let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,semanticEyeX=0,semanticEyeY=0,blinkSequence=0,saccadeSequence=0,lastMotionKey='',motionRequestSequence=0;
   const EXPR_MAP={
     neutral:'Stanby Smile',happy:'Stanby Smile',sad:'Stanby Sad',angry:'Stanby Angry',
     surprised:'Stanby Surprised',flustered:'Blush 1',embarrassed:'Blush 2',thinking:'Stanby Scared',
@@ -51,13 +51,25 @@
       const token=Number.isSafeInteger(bodySignal.motionToken)&&bodySignal.motionToken>=0?bodySignal.motionToken:0;
       const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}:${token}`;
       if(k!==lastMotionKey){
+        lastMotionKey=k;
+        const request=++motionRequestSequence;
+        const group=String(bodySignal.motionGroup),index=Number(bodySignal.motionIndex||0);
+        const priority=bodySignal.speechPhase==='cancelled'?MOTION_PRIORITY_FORCE:MOTION_PRIORITY_NORMAL;
         try{
-          const priority=bodySignal.speechPhase==='cancelled'?MOTION_PRIORITY_FORCE:MOTION_PRIORITY_NORMAL;
-          Promise.resolve(model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0),priority))
-            .then(ok=>{if(ok===false)send('live2d_motion_unavailable',{group:String(bodySignal.motionGroup),index:Number(bodySignal.motionIndex||0)})})
-            .catch(err=>send('live2d_motion_error',{error:String(err?.message||err).slice(0,180)}));
-          lastMotionKey=k;
-        }catch{}
+          Promise.resolve(model.motion(group,index,priority))
+            .then(ok=>{
+              if(request!==motionRequestSequence)return;
+              if(ok===false){if(lastMotionKey===k)lastMotionKey='';send('live2d_motion_unavailable',{group,index});}
+            })
+            .catch(err=>{
+              if(request!==motionRequestSequence)return;
+              if(lastMotionKey===k)lastMotionKey='';
+              send('live2d_motion_error',{error:String(err?.message||err).slice(0,180)});
+            });
+        }catch(err){
+          if(request===motionRequestSequence&&lastMotionKey===k)lastMotionKey='';
+          if(request===motionRequestSequence)send('live2d_motion_error',{error:String(err?.message||err).slice(0,180)});
+        }
       }
     }
   }
