@@ -26,7 +26,7 @@
 
 Добавлены необязательные явные метки задач:
 
-`single-hop`, `multi-hop`, `multi-session`, `temporal`, `knowledge-update`, `contradiction`, `preference`, `procedural`, `open-domain`, `abstention`, `other`.
+`single-hop`, `multi-hop`, `multi-session`, `temporal`, `knowledge-update`, `contradiction`, `preference`, `procedural`, `open-domain`, `abstention`, `static-state`, `dynamic-state`, `workflow-knowledge`, `environment-gotcha`, `premise-awareness`, `other`. Новые пять категорий адаптированы из LongMemEval-V2 и позволяют проверять память об интерфейсе/окружении, изменениях состояния, workflow, локальных ошибках и ложных предпосылках.
 
 Отчёт теперь рассчитывает по каждой категории отдельные:
 - количество holdout вопросов, answerable и unanswerable;
@@ -71,11 +71,11 @@
 
 Адаптировать временную модель связей: событие, сущность, период истинности, происхождение и историческая цепочка. В NK1 использовать существующие `validFromAt/validUntilAt`, revision/supersession, evidence lineage и causal/temporal links; не разворачивать второй граф-хранилище, пока не доказан конкретный пробел.
 
-### LongMemEval / LoCoMo / BEAM — измерять способности по раздельным категориям
+### LongMemEval / LoCoMo / BEAM / LongMemEval-V2 — измерять способности по раздельным категориям
 
 LongMemEval специально выделяет information extraction, multi-session reasoning, temporal reasoning, knowledge updates и abstention. LoCoMo включает single-hop, multi-hop, temporal и long-horizon dialogue задачи. BEAM добавляет large-context stress, event ordering, contradiction resolution и раздельный учёт стоимости.
 
-Поэтому один общий Recall@k больше не должен быть единственным индикатором. Срезы по типам задач нужны, чтобы улучшение простых фактов не скрывало деградацию temporal reasoning или knowledge update.
+LongMemEval-V2 добавляет статическое состояние среды, динамическое отслеживание, workflow knowledge, environment gotchas и premise awareness; его официальный репозиторий описывает 451 вопрос, 1 870 траекторий и крупные haystacks вплоть до 115M токенов. Для NK1 эти пять типов добавлены как benchmark labels, не как новые runtime memory kinds. Датасетная карточка указывает Apache-2.0; перед переносом данных всё равно фиксировать конкретную версию, checksums и атрибуцию. Поэтому один общий Recall@k больше не должен быть единственным индикатором. Срезы по типам задач нужны, чтобы улучшение простых фактов не скрывало деградацию temporal reasoning или knowledge update.
 
 ## 4. Контракты и владение
 
@@ -148,6 +148,8 @@ LongMemEval специально выделяет information extraction, multi-
 - Mem0 paper: https://journals.sagepub.com/doi/10.3233/FAIA251160
 - Letta stateful agents: https://docs.letta.com/concepts/stateful-agents
 - Zep / Graphiti temporal knowledge graph paper: https://arxiv.org/abs/2501.13956
+- LongMemEval-V2: https://github.com/xiaowu0162/LongMemEval-V2
+- LongMemEval-V2 dataset card: https://huggingface.co/datasets/xiaowu0162/longmemeval-v2
 
 **Правило интерпретации:** scores из разных benchmark implementations нельзя сравнивать напрямую без совпадения датасета, модели, retrieval budget, token budget, judge, split и evaluation protocol.
 
@@ -173,3 +175,10 @@ LongMemEval специально выделяет information extraction, multi-
 Документ контракта и формата: [MEMORY_RECALL_CLUSTERED_EVALUATION_RU_2026-10-30.md](MEMORY_RECALL_CLUSTERED_EVALUATION_RU_2026-10-30.md).
 
 На дату этого обновления latest-head CI ещё выполняется; PASS предыдущего SHA не засчитывается за новый exact HEAD. Независимый production RU/EN uplift по-прежнему не заявляется.
+
+
+## 10. Расширение agentic memory taxonomy по LongMemEval-V2
+
+Добавлены task labels `static-state`, `dynamic-state`, `workflow-knowledge`, `environment-gotcha` и `premise-awareness`, а CLI validator и regression tests проверяют передачу таких labels до evaluator. Эти категории дополняют conversational/temporal/multi-session taxonomy и позволяют оценивать память NK1 об изменяемых цифровых средах, локальных правилах и повторяющихся ошибках.
+
+Новые labels остаются метаданными набора оценки. Они не создают параллельные runtime memory kinds и не меняют каноническое владение MemoryOS2. Для будущей внешней проверки можно собрать LongMemEval-V2 small-tier adapter, но не включать 115M-token scale или benchmark data в mobile runtime / Release ZIP.
