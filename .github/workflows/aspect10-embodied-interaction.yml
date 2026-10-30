@@ -49,6 +49,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Run grounded interaction safety contract
         run: npm --prefix runtime/neuro-kurisu run test:aspect10:interaction
       - name: Run renderer-independent humanoid arm IK tests
