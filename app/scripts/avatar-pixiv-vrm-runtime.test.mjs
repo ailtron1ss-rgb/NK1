@@ -36,6 +36,8 @@ test("the runtime drives native expression manager, VRM LookAt, spring bones and
   assert.match(stage, /getNormalizedBoneNode/);
   assert.match(stage, /rt\.vrm\?\.update\(dt\)/);
   assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
+  assert.match(stage, /if\(gltf\.userData\?\.vrm\)VRMUtils\.deepDispose\(gltf\.userData\.vrm\.scene\);else disposeTree\(gltf\.scene\);return;/);
+  assert.match(stage, /if\(rt\.vrm\)\{VRMUtils\.deepDispose\(rt\.vrm\.scene\);disposeTree\(rt\.body\.root\);\}else disposeTree\(scene\)/);
   assert.match(stage, /key\.startsWith\("look"\)/);
 });
 
