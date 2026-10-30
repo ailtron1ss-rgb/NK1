@@ -519,6 +519,29 @@ async function route(req, res) {
                 voice: runtime.embodiment.voiceSnapshot(),
             });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const diagnostics = runtime.motor.diagnostics();
+            return json(res, 200, {
+                ok: true,
+                configured: diagnostics.configured,
+                frame: runtime.motor.latestFrame(),
+                diagnostics: {
+                    controllerTick: diagnostics.controllerTick,
+                    activeGoalId: diagnostics.activeGoalId,
+                    channel: {
+                        published: diagnostics.channel.published,
+                        rejected: diagnostics.channel.rejected,
+                        listenerErrors: diagnostics.channel.listenerErrors,
+                        hasLatest: diagnostics.channel.hasLatest,
+                        lastTick: diagnostics.channel.lastTick,
+                        lastAtMs: diagnostics.channel.lastAtMs,
+                    },
+                },
+                readOnly: true,
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/ui-snapshot') {
             const snapshot = runtime.core.snapshot();
             const state = snapshot.state;
