@@ -106,7 +106,7 @@ function assertSafePattern(pattern: string, path: string): void {
       continue;
     }
     if (character === "{") {
-      const quantifier = /^\\{[0-9]+(?:,[0-9]*)?\\}/.exec(pattern.slice(i));
+      const quantifier = /^\{[0-9]+(?:,[0-9]*)?\}/.exec(pattern.slice(i));
       if (!quantifier) throw new Error("invalid-tool-input-contract:" + path + ":unsupported-pattern-construct");
       repeatOperators += 1;
       if (repeatOperators > 1) throw new Error("invalid-tool-input-contract:" + path + ":multiple-pattern-repetitions");
