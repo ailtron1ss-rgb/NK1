@@ -15,7 +15,7 @@ Deliver real, independently selectable clothing and accessories for one NK1 iden
 
 ## Current state
 
-**Conservative aspect estimate: 56/100.** This is an engineering estimate for the wardrobe aspect, not a whole-project score. It is not a device-verified or release-complete claim.
+**Conservative aspect estimate: 58/100.** This is an engineering estimate for the wardrobe aspect, not a whole-project score. It is not a device-verified or release-complete claim.
 
 | Subsystem | Current status | Readiness |
 |---|---|---:|
@@ -32,7 +32,7 @@ Deliver real, independently selectable clothing and accessories for one NK1 iden
 | Actual production-ready garments | No verified rights-cleared pack | 0% |
 | Live2D interchangeable garments | No verified Cubism drawable/part switch | 0% |
 | 2.5D layered garments | No production source layers/masks/weights | 0% |
-| Persistent selected wardrobe and pack restore | Not implemented | 0% |
+| Persistent outfit and pack restore | IndexedDB implementation keyed by exact body/rig; hash re-verification on restore. Real browser/device E2E remains open | 75% |
 | Desktop/Android visual E2E | Not yet verified | 0% |
 
 ## What was added in the current code pass
@@ -54,7 +54,7 @@ Deliver real, independently selectable clothing and accessories for one NK1 iden
 - `Live2DWardrobeAdapter`: only after Cubism drawable/part mapping is inspected and verified.
 - `Depth2DWardrobeAdapter`: layer/mask/pivot/deformation contract.
 - `VrmWardrobeAdapter`: skinned-mesh bone remapping, bind-pose gate and safe attachment.
-- `WardrobePreferenceStore`: future versioned persistent selection; must not store unverifiable asset URLs or bypass byte/license checks.
+- `wardrobePackStore.ts`: versioned IndexedDB store keyed by exact body/rig identity; stores only locally imported verified bundle bytes and selected renderer asset IDs, then re-verifies on restore.
 
 ## Mandatory asset rules
 
@@ -130,3 +130,15 @@ A metadata-only catalog, procedural preview or passing unit suite alone cannot s
 - [PR #412 — modular wardrobe](https://github.com/ailtron1ss-rgb/NK1/pull/412)
 - [Working branch](https://github.com/ailtron1ss-rgb/NK1/tree/work/nk1-wardrobe-modular-clothing-pass-2026-10-30)
 - [Existing detailed implementation log](ASPECT08_MODULAR_WARDROBE_PLAN_RU.md)
+
+
+## Additional integration pass — persistence and stale task cancellation (2026-10-30)
+
+- Added versioned IndexedDB storage in `wardrobePackStore.ts`, keyed by the exact base-body fingerprint and rig contract.
+- Store is bounded to 128 MiB per pack, requires a prior explicit user rights self-attestation, and writes only a pack whose manifest and all payload bytes have passed SHA-256 verification.
+- Restore checks stored schema, key, target body/rig, renderer scope, unique garment slots and all stored hashes before any VRM attachment. A saved outfit is not silently applied to a different model.
+- After successful renderer commit, Avatar3DStage persists selected asset IDs and verified bundle bytes. When the same body is loaded again, it attempts a safe re-verified restore.
+- Added a cancellation predicate to the asynchronous GLB loader. If the avatar is changed/reset while assets are parsing, prepared resources are disposed and no stale wardrobe is attached.
+- Regression coverage added for body-specific keys, safe stored slot selection, cancellation before parsing and cancellation after parsing.
+
+Boundary: this is implementation-level IndexedDB and cancellation wiring. Real browser quota/restart tests, Android validation, actual garment GLBs, and Live2D/2.5D adapters still need to pass before the aspect can be called complete.
