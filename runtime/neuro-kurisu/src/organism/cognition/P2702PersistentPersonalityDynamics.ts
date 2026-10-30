@@ -98,16 +98,39 @@ export class P2702PersistentPersonalityDynamics{
  afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string}){
   const reward=clamp(args.reward01),verified=clamp(args.verified01),error=clamp(args.predictionError01);
   const signal=clamp(reward*.55+verified*.25+(1-error)*.20);const eta=this.state.plasticity01*(.55+Math.abs(reward-.5));
-  const actionIndex=ACTIONS.indexOf(args.action);const ai=actionIndex<0?0:actionIndex%this.state.adaptiveValues.length;
-  this.state.adaptiveValues[ai]=clamp((this.state.adaptiveValues[ai]??.5)+(signal-.5)*eta);
+  // Action semantics map to named traits, never to unrelated array positions.
+  // A successful response must not train sarcasm merely because both enumerations
+  // happen to have an item at index zero.
+  const traitTargets:Partial<Record<ActionKind,Array<{name:string;weight:number}>>> = {
+   respond:[{name:'warmth',weight:.62},{name:'directness',weight:.38}],
+   explore:[{name:'playfulness',weight:1}],
+   verify:[{name:'composure',weight:.58},{name:'guardedness',weight:.42}],
+   rest:[{name:'composure',weight:1}],
+   reflect:[{name:'guardedness',weight:1}],
+   wait:[{name:'composure',weight:.72},{name:'guardedness',weight:.28}],
+   defer:[{name:'composure',weight:.55},{name:'directness',weight:.45}],
+  };
+  for(const target of traitTargets[args.action]??[]){
+   const index=this.state.adaptiveNames.indexOf(target.name);
+   if(index<0||index>=this.state.adaptiveValues.length)continue;
+   this.state.adaptiveValues[index]=clamp((this.state.adaptiveValues[index]??.5)+(signal-.5)*eta*target.weight);
+  }
   const valueEta=eta*.22;for(let i=0;i<this.state.valueWeights.length;i++)this.state.valueWeights[i]=clamp(this.state.valueWeights[i]!+(signal-.5)*valueEta*(i<2?.35:1));
   if(args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[args.relationshipId]=clamp(prior*.94+trustSignal*.06);}
   const uncertaintyShift=clamp(error*.35+(1-verified)*.3);
   for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
-  const drift=this.state.adaptiveValues.reduce((s,x)=>s+(x-(this.state.adaptiveValues.reduce((a,b)=>a+b,0)/Math.max(1,this.state.adaptiveValues.length)))**2,0)/Math.max(1,this.state.adaptiveValues.length);
-  this.state.drift01=clamp(Math.sqrt(drift)*1.7);this.state.contradiction01=clamp(this.state.contradiction01*.92+Math.abs(.5-reward)*.08);
-  this.state.autobiographicalStrength01=clamp(this.state.autobiographicalStrength01*.995+.005*(.5+verified*.5));
-  this.state.stability01=clamp(this.state.stability01*.97+(1-this.state.drift01)*.03);this.state.coherence01=clamp(this.state.coherence01*.94+(signal*(1-this.state.contradiction01))*.06);
+  // Identity beliefs learn more slowly than habits and only from the verified lane.
+  const observedIdentity=Array.isArray(args.identityVector)?args.identityVector.slice(0,this.state.selfBeliefs.length):[];
+  if(verified>=.9&&observedIdentity.length){
+   for(let i=0;i<observedIdentity.length;i++){
+    const observed=clamp(observedIdentity[i]!);
+    const prior=this.state.selfBeliefs[i]??.5;
+    const uncertainty=this.state.selfUncertainty[i]??.5;
+    const beliefRate=Math.min(.045,eta*(.25+uncertainty*.5));
+    this.state.selfBeliefs[i]=clamp(prior+(observed-prior)*beliefRate);
+    this.state.selfUncertainty[i]=clamp(uncertainty*.985+Math.abs(observed-prior)*.015,.03,.97);
+   }
+  }
   this.state.learningUpdates++;
  }
  metrics(){return deep(this.state);}
