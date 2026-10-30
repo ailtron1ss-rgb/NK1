@@ -2828,3 +2828,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Процедурный Three.js body rig получает малые непрерывные offsets корпуса, плеч, головы, рук и переноса веса. Это выразительная микромоторика; выбор действий и клипов остаётся за существующим motor intent.
 - Добавлены детерминированные regression tests на все восемь эмоций, безопасные границы, влияние возбуждения/сна и временную фазу; тест включён в affective-expression workflow.
 - Визуальная естественность, произвольный VRM bone mapping и browser/Android E2E не заявляются до проверки на реальном рендерере. `main` и Release ZIP не изменялись.
+
+
+### [NK1][аспект7] Extend body microdynamics to recognized imported skeleton bones (2026-10-30)
+
+- Расширено применение body dynamics к импортированным VRM/GLB: только распознанные spine/chest/head/neck/shoulder/upper-arm кости получают малые дыхательные и постуральные offsets.
+- Неизвестные имена костей и неподтверждённые morph target IDs остаются нетронутыми; интеграция остаётся best-effort и требует визуальной проверки конкретной модели.
+- Добавлена source-contract regression на наличие этих семантических связей.
