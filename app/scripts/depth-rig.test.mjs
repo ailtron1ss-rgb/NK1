@@ -114,7 +114,7 @@ test("applies additive pose deltas over rest transforms and accumulates depth", 
   const world = resolveDepthRigWorldPose(rig, pose);
   assert.equal(world.transforms.head.rotation, 11.2);
   assert.equal(world.transforms.torso.rotation, 2);
-  assert.equal(world.transforms["hair-front"].rotation, 9.4);
+  assert.ok(Math.abs(world.transforms["hair-front"].rotation - 9.4) < 1e-12);
 });
 
 test("rejects a pose produced for a different rig and never emits non-finite matrices", () => {
@@ -153,7 +153,7 @@ test("adapts the canonical EmbodimentIntent v1 body without introducing another 
   });
   assert.equal(pose.rigId, rig.id);
   assert.equal(pose.deltas.head.x, 0.0072);
-  assert.equal(pose.deltas.head.y, -0.0024);
+  assert.ok(Math.abs(pose.deltas.head.y + 0.0024) < 1e-12);
   assert.equal(pose.deltas.head.rotation, 3.5);
   assert.equal(pose.deltas["arm-left"].rotation, -24);
 });
