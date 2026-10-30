@@ -136,6 +136,11 @@ assert.equal(Object.keys(prepared.actionBias).length, 7);
 assert.ok(Object.values(prepared.actionBias).every(x=>Number.isFinite(x)&&Math.abs(x)<=0.1));
 assert.ok(prepared.personality.traitVector.every(Number.isFinite));
 assert.ok(Object.values(prepared.selfModelActionBias).every(Number.isFinite));
+const personalityDiagnostics=personality.diagnostics();
+assert.equal(Object.keys(personalityDiagnostics.tensions).length,5,'the five canonical value tensions are named and measurable');
+assert.equal(Object.keys(personalityDiagnostics.selfBeliefs).length,8,'self-belief diagnostics expose all named axes');
+assert.ok(Number.isFinite(personalityDiagnostics.drift01));
+assert.ok(personalityDiagnostics.autobiographicalStrength01>0.1,'verified autobiographical evidence increases longitudinal self-history strength');
 
 const decisionInput = { tick: 20, novelty01: 0.8, uncertainty01: 0.8, goalPressure01: 0.3, identityGap01: 0.2, actionUtilities: { respond: 0.5, explore: 0.5, verify: 0.5, rest: 0.5, reflect: 0.5, wait: 0.5, defer: 0.5 } };
 const trustedPersonality = new P2702PersistentPersonalityDynamics();
