@@ -22,6 +22,8 @@ export interface AvatarMotorIntentPlan {
   motionGroup: AvatarMotionGroup;
   motionIndex: 0 | 1;
   headTilt: number;
+  gazeX: number;
+  gazeY: number;
   gesture: boolean;
   reason: string;
 }
@@ -102,11 +104,23 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
     intent === "inspect" ? -0.008 :
     intent === "comfort" ? 0.018 : 0;
   const headTilt = clamp(EMOTION_TILT[emotion] + actionTilt, -0.15, 0.15);
+  // Gaze is a semantic motor channel: each intent has a stable attention target.
+  // Small valence/arousal offsets add affect without letting emotion override the task.
+  const gazeTargets: Record<AvatarMotorAction, { x: number; y: number }> = {
+    rest: { x: -0.06, y: 0.075 }, listen: { x: -0.035, y: -0.005 },
+    reflect: { x: -0.19, y: -0.14 }, inspect: { x: 0.24, y: 0.04 },
+    explain: { x: 0.14, y: -0.035 }, comfort: { x: -0.08, y: 0.065 },
+    respond: { x: 0.01, y: 0.01 },
+  };
+  const gazeTarget = gazeTargets[intent];
+  const gazeX = clamp(gazeTarget.x + (valence - 0.5) * 0.12, -0.4, 0.4);
+  const gazeY = clamp(gazeTarget.y - arousal * 0.025, -0.4, 0.4);
+
   const gesture =
     intent === "inspect" || intent === "explain" ||
     (intent === "reflect" && arousal >= 0.28) ||
     (intent === "comfort" && arousal >= 0.2) ||
     (intent === "respond" && arousal >= 0.45);
 
-  return { action: intent, motionGroup, motionIndex, headTilt, gesture, reason };
+  return { action: intent, motionGroup, motionIndex, headTilt, gazeX, gazeY, gesture, reason };
 }
