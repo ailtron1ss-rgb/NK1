@@ -34,3 +34,9 @@ The focused source PR reported successful checks for depth-rig runtime, targeted
 ## Provenance
 
 This pass preserves the upstream feature branches. It does not merge stale branches wholesale; only reviewed paths are transplanted.
+
+## Cross-renderer body switching foundation added
+
+A separate follow-up commit ports the versioned body-state snapshot, capability-aware handoff planner, transactional coordinator, MotorFrame mapper and Live2D partial-ACK channel from PR #415. The existing DepthRig-enabled `AvatarStage.tsx` is preserved and receives only the reviewed ACK-handler additions; it is not replaced by the older PR file. The new coordinator tests and focused workflow are included.
+
+This is the software handoff foundation, not proof of a finished cross-renderer visual round-trip. Concrete production adapters, presented-frame confirmation, and desktop/Android visual E2E remain release gates.

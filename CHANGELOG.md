@@ -1,3 +1,10 @@
+## [NK1][Aspect 11] Port cross-renderer body handoff foundation (2026-10-30)
+
+- Port the versioned semantic body snapshot, capability-aware handoff planning, shared-channel blending and transactional adapter coordinator (prepare → apply → verify → commit) from PR #415.
+- Add focused coordinator, switching, MotorFrame mapper and Live2D ACK regressions; preserve the existing DepthRig-enabled AvatarStage and merge only the upstream ACK handling into it.
+- Bind Live2D partial ACKs to the latest same-origin state revision. The ACK explicitly remains incomplete and never qualifies as a visual renderer receipt.
+- The source PR's latest contract check passed; this combined branch still requires exact-head CI. Concrete production renderer adapters, presented-frame verification and real visual round-trip remain open.
+
 ## [NK1][executor] Restore project-executor snapshot round-trip identity (2026-10-30)
 
 - Restore the missing `lastOutcomeId` key in the canonical default executor snapshot so fresh and restored snapshots preserve identical own-key shape.
