@@ -14,6 +14,13 @@ on:
       - 'runtime/neuro-kurisu/package-lock.json'
       - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/RealityEvidenceLedger.ts'
+      - 'runtime/neuro-kurisu/tests/nk1-cognitive-unified-ownership-regression.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass287-cognitive-architecture-contract.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass319-cycle-order.mjs'
       - '.nvmrc'
   pull_request:
     paths:
@@ -28,6 +35,13 @@ on:
       - 'runtime/neuro-kurisu/package-lock.json'
       - 'runtime/neuro-kurisu/tsconfig.clean.json'
       - 'runtime/neuro-kurisu/src/node-shims.d.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/persistence/StateMigrations.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/RealityEvidenceLedger.ts'
+      - 'runtime/neuro-kurisu/tests/nk1-cognitive-unified-ownership-regression.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass287-cognitive-architecture-contract.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass319-cycle-order.mjs'
       - '.nvmrc'
 
 permissions:
@@ -56,3 +70,12 @@ jobs:
       - name: Check motivation-to-goal integration
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/big-pass-272-endogenous-goal-genesis.mjs
+      - name: Check canonical evidence ownership, migration and restart recovery
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:nk1:cognitive-unified-ownership
+      - name: Check cognitive cycle ordering and canonical evidence persistence
+        working-directory: runtime/neuro-kurisu
+        run: node tests/workpass319-cycle-order.mjs
+      - name: Check architecture contract independent of working directory
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/workpass287-cognitive-architecture-contract.mjs

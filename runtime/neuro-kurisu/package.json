@@ -1781,6 +1781,7 @@
     "test:p321:expanded-cognitive-phase-spine": "node --experimental-strip-types tests/workpass321-expanded-cognitive-phase-spine.mjs",
     "test:p322:cognitive-resource-restore": "node --experimental-strip-types tests/cognitive-resource-economy-workpass322.mjs",
     "test:p323:cognitive-loop-persistence-scope": "node tests/workpass323-cognitive-loop-persistence-separation.mjs",
+    "test:nk1:cognitive-unified-ownership": "node --experimental-strip-types tests/nk1-cognitive-unified-ownership-regression.mjs",
     "test:p324:interrupt-episodes": "node --experimental-strip-types tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
     "test:p325:core-eleven-phase-spine": "node tests/workpass325-core-eleven-phase-causal-loop.mjs",
     "test:cognitive-cycle-boundary-runtime-wiring": "node tests/cognitive-cycle-boundary-runtime-wiring.mjs",

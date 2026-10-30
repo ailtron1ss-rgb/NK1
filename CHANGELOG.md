@@ -15,6 +15,17 @@
 - Emit sensor changes across successive cycles, make resource-pressure notifications transition-based, and detect same-cardinality world fact/object/event updates.
 - Add five focused integrity tests, including a real OrganismRuntime ingress smoke, `npm run test:world-perception` and a dedicated GitHub Actions gate; real device validation remains a separate gate.
 
+## [NK1][Cognitive] Unified ownership and restart-safety pass (2026-10-29)
+
+- Removed the duplicate runtime reality-evidence ledger; the embodied loop now records through the canonical Core-owned ledger, and snapshots merge by immutable evidence ID rather than replacing evidence from another writer.
+- Hardened reality-evidence ingestion, restore and merge: malformed ticks/timestamps/classes/claims/confidence are rejected at write time; malformed persisted rows and duplicate IDs are excluded; canonical projections retain a single cumulative history.
+- Preserved runtime-namespaced event-fabric, resource-economy and unified-cycle snapshots in the explicit state-migration whitelist.
+- Made same-tick duplicate feedback a bounded diagnostic no-op, restoring the close guard from verifier history so repeated callbacks cannot abort learning/consolidation after restart.
+- Connected the existing unified cognitive substrate's bounded action bias to governed candidate scoring.
+- Made the architecture contract independent of the caller's working directory and added a focused ownership/restart regression covering merge, corrupt restore input, migration, restart and scoring-path wiring.
+- Added dedicated CI steps for ownership, cycle-order and architecture-contract checks.
+- Evidence boundary: implementation and CI wiring are committed on the candidate branch; hosted CI execution and target-device end-to-end behavior must still be verified on the resulting commit.
+
 ## [NK1][WorkPass622] Correct semantic sprite routing after visual PNG review (2026-10-29)
 
 - Visually inspect the 32 manifest sprites and correct expression/action candidate maps for actual depicted poses instead of trusting misleading legacy filenames.
