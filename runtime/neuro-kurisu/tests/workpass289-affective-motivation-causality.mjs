@@ -155,6 +155,23 @@ assert.ok(curiousDrive.novelty > anxiousDrive.novelty,
 assert.ok(anxiousDrive.homeostatic > curiousDrive.homeostatic,
   'anxiety and interoceptive pressure should increase restorative/homeostatic drive');
 assert.equal(anxiousDrive.affectiveInfluence.emotionId, 'emo-anxious');
+const mixedDrive = motivation.update({
+  ...motivationInput,
+  affect: { emotionId: 'emo-mixed', label: 'curiosity', valence01: .48, arousal01: .82, dominance01: .42, confidence01: .95 },
+  affectiveComponents: [
+    { label: 'curiosity', intensity01: .52, confidence01: .94 },
+    { label: 'anxiety', intensity01: .38, confidence01: .91 },
+    { label: 'frustration', intensity01: .10, confidence01: .76 },
+  ],
+});
+assert.ok(mixedDrive.affectiveInfluence.exploration01 > 0,
+  'mixed curiosity must retain an exploration drive contribution');
+assert.ok(mixedDrive.affectiveInfluence.regulation01 > 0,
+  'simultaneous anxiety/frustration must retain regulation contributions');
+assert.equal(mixedDrive.affectiveInfluence.components.length, 3,
+  'intrinsic motivation must preserve the complete bounded mixed-affect provenance');
+assert.ok(mixedDrive.affectiveInfluence.components[0].intensity01 > mixedDrive.affectiveInfluence.components[1].intensity01,
+  'mixed affect components must be normalized and retain relative intensity ordering');
 for (const key of ['epistemic', 'novelty', 'competence', 'coherence', 'social', 'homeostatic', 'overall']) {
   assert.ok(Number.isFinite(anxiousDrive[key]) && anxiousDrive[key] >= 0 && anxiousDrive[key] <= 1,
     `affective motivation ${key} must remain finite and bounded`);
