@@ -1,3 +1,9 @@
+
+### Local-model skill revision: holdout-blind optimizer boundary
+
+- Production P23 passes only the explicit `holdoutPolicy` flags to the local-model revision generator; it does not provide holdout scores, deltas, task identities or regression direction to the optimizer.
+- Updated generator and P23 integration fixtures to the current contract, and added negative assertions that legacy directional holdout feedback without the policy gate is rejected.
+- P26 Learning Validation now runs both local-model generator and integration regressions when either test changes.
 # NK1 — интеграция обучения и саморазвития (30.10.2026)
 
 **Ветка интеграции:** `aspect03-learning-self-development-2026-10-30`  
