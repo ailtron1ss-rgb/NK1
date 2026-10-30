@@ -98,6 +98,63 @@ assert.equal(experiment.runs.length, 3);
 assert.equal(new Set(experiment.runs.map(row => row.recallDelta01)).size, 1, 'retrieval point estimate should be seed invariant');
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [1, 1, 2] }), /at-least-3-distinct-bootstrap-seeds/);
 
+
+// Conversation-aware evaluation: correlated questions from one dialogue must be
+// resampled together. A large number of questions from two dialogues is still only
+// two independent holdout clusters.
+const groupedExamples = examples.map((row, index) => ({
+  ...row,
+  conversationId: row.split === 'train'
+    ? `train-conversation-${Math.floor(index / 2)}`
+    : `holdout-conversation-${Math.floor((index - 4) / 4)}`,
+}));
+const groupedReport = runMemoryOS2RetrievalBenchmark(snapshot, groupedExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(groupedExamples) },
+});
+assert.equal(groupedReport.confidence.method, 'paired-conversation-cluster-bootstrap-percentile-interval');
+assert.equal(groupedReport.confidence.samplingUnit, 'conversation');
+assert.equal(groupedReport.datasetIntegrity.conversationAnnotationUsed, true);
+assert.equal(groupedReport.datasetIntegrity.conversationAnnotationComplete, true);
+assert.equal(groupedReport.datasetIntegrity.uniqueTrainConversationGroups, 2);
+assert.equal(groupedReport.datasetIntegrity.uniqueHoldoutConversationGroups, 2);
+assert.equal(groupedReport.confidence.recallAtK01.independentClusters, 2);
+assert.equal(groupedReport.confidence.mrr01.independentClusters, 2);
+assert.equal(groupedReport.promotion.gates.sufficientIndependentHoldoutGroups, false,
+  'many questions from too few independent conversations must not satisfy the sample-size gate');
+assert.equal(groupedReport.promotion.allowed, false);
+
+// A source conversation may never contribute to both train and holdout, even when
+// the individual query strings differ.
+const leakedConversationExamples = structuredClone(groupedExamples);
+leakedConversationExamples[0].conversationId = leakedConversationExamples[4].conversationId;
+const leakedConversationReport = runMemoryOS2RetrievalBenchmark(snapshot, leakedConversationExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(leakedConversationExamples) },
+});
+assert.equal(leakedConversationReport.datasetIntegrity.crossSplitConversationLeakageCount, 1);
+assert.equal(leakedConversationReport.datasetIntegrity.validForPromotion, false);
+assert.equal(leakedConversationReport.promotion.gates.datasetIntegrity, false);
+assert.equal(leakedConversationReport.promotion.allowed, false);
+
+// The multi-session slice must be tied to source conversations; absent IDs cannot
+// silently fall back to question-level confidence intervals.
+const ungroupedMultiSessionExamples = examples.map(row => ({ ...row, category: 'multi-session' }));
+const ungroupedMultiSessionReport = runMemoryOS2RetrievalBenchmark(snapshot, ungroupedMultiSessionExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(ungroupedMultiSessionExamples) },
+});
+assert.equal(ungroupedMultiSessionReport.datasetIntegrity.missingMultiSessionConversationIdCount, ungroupedMultiSessionExamples.length);
+assert.equal(ungroupedMultiSessionReport.datasetIntegrity.multiSessionConversationAnnotationComplete, false);
+assert.equal(ungroupedMultiSessionReport.datasetIntegrity.validForPromotion, false);
+
+// Optional conversation metadata participates in the canonical content fingerprint.
+assert.notEqual(
+  fingerprintMemoryRetrievalDataset(groupedExamples),
+  fingerprintMemoryRetrievalDataset(examples),
+  'conversation grouping must be covered by provenance and immutable dataset fingerprints',
+);
+
 // Language-stratified regression: explicit labels must keep RU/EN quality separate.
 const bilingualExamples = [
   ...Array.from({ length: 2 }, (_, i) => ({ id: `en-train-${i}`, query: `training project fern status ${i}`, relevantIds: [`m${i}`], split: 'train', language: 'en' })),
@@ -301,12 +358,26 @@ try {
   assert.equal((await readdir(temp)).includes('invalid-language-report.json'), false, 'invalid language labels must fail before report publication');
   const validLanguageLabelsPath = path.join(temp, 'valid-language.jsonl');
   const validLanguageReportPath = path.join(temp, 'valid-language-report.json');
-  await writeFile(validLanguageLabelsPath, JSON.stringify({ id: 'valid-language-001', query: 'project fern memory', relevantIds: ['m0'], split: 'holdout', language: 'ru' }) + String.fromCharCode(10));
+  await writeFile(validLanguageLabelsPath, JSON.stringify({ id: 'valid-language-001', query: 'project fern memory', relevantIds: ['m0'], split: 'holdout', language: 'ru', category: 'multi-session', conversationId: 'cli-session-001' }) + String.fromCharCode(10));
   const validLanguageCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', validLanguageLabelsPath, '--provenance', provenancePath, '--out', validLanguageReportPath, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(validLanguageCli.status, 0, 'CLI rejected a valid explicit language label: ' + validLanguageCli.stderr + validLanguageCli.stdout);
   const validLanguageReport = JSON.parse(await readFile(validLanguageReportPath, 'utf8'));
   assert.equal(validLanguageReport.runs.every(row => row.languageStratification.enabled), true, 'CLI must preserve accepted language annotations into each benchmark run');
   assert.equal(validLanguageReport.runs.every(row => Object.hasOwn(row.languageStratification.slices, 'ru')), true);
+  assert.equal(validLanguageReport.runs.every(row => row.datasetIntegrity.conversationAnnotationUsed), true,
+    'CLI must retain anonymized source conversation IDs in the benchmark input');
+  assert.equal(validLanguageReport.runs.every(row => row.datasetIntegrity.missingMultiSessionConversationIdCount === 0), true,
+    'CLI must preserve conversation IDs needed by multi-session integrity checks');
+  assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.categories.includes('multi-session')), true,
+    'CLI must preserve task category annotations as well as language annotations');
+  const invalidConversationLabelsPath = path.join(temp, 'invalid-conversation.jsonl');
+  const invalidConversationReportPath = path.join(temp, 'invalid-conversation-report.json');
+  await writeFile(invalidConversationLabelsPath, JSON.stringify({ id: 'invalid-conversation-001', query: 'missing group', relevantIds: ['m0'], split: 'holdout', conversationId: '   ' }) + String.fromCharCode(10));
+  const invalidConversationCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidConversationLabelsPath, '--provenance', provenancePath, '--out', invalidConversationReportPath], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(invalidConversationCli.status, 2);
+  assert.match(invalidConversationCli.stderr, /labels-invalid-conversationId-line:1/);
+  assert.equal((await readdir(temp)).includes('invalid-conversation-report.json'), false,
+    'invalid conversation IDs must fail before publishing a benchmark report');
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
