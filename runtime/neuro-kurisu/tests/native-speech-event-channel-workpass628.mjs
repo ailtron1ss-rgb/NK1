@@ -66,6 +66,29 @@ test('reentrant observers preserve a single delivery order for every subscriber'
 });
 
 
+test('reentrant publication queue is bounded and rejects overflow without sequence mutation', () => {
+  const channel = createNativeSpeechEventChannel(() => 7);
+  const delivered = [];
+  let overflowAccepted = 0;
+  let overflowRejected = 0;
+  let flooded = false;
+  channel.subscribe(event => {
+    delivered.push(event);
+    if (flooded) return;
+    flooded = true;
+    for (let index = 0; index < 2000; index += 1) {
+      const result = channel.publish('speech-overflow', { phase: 'process-spawned' });
+      if (result) overflowAccepted += 1;
+      else overflowRejected += 1;
+    }
+  });
+  channel.publish('speech-root', { phase: 'command-requested' });
+  assert.equal(overflowAccepted, 1024);
+  assert.equal(overflowRejected, 976);
+  assert.equal(delivered.length, 1025);
+  assert.deepEqual(delivered.slice(1).map(event => event.sequence), Array.from({ length: 1024 }, (_, index) => index + 1));
+});
+
 test('native event timestamps never regress within one operation when the clock sample moves backwards', () => {
   const samples = [100, 95, 120];
   const channel = createNativeSpeechEventChannel(() => samples.shift());
