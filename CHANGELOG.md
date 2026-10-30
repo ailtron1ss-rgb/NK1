@@ -1,3 +1,9 @@
+## [NK1][Aspect04] Add renderer-facing depth-rig adapter (2026-10-30)
+
+- Add a renderer-neutral adapter that writes canonical hierarchical affine matrices and explicit painter order into renderer-owned layer objects; it is structurally compatible with Three.js Object3D without importing or duplicating the scene graph.
+- Apply optional authored local pivot offsets, reject duplicate/unknown bindings and non-finite matrices, and report missing layer bindings rather than silently inventing artwork.
+- Add focused regression tests for matrix emission, pivot translation, render order and fail-closed binding validation.
+
 ## [NK1][WorkPass634] Align Aspect 04 workflow with repository CI policy (2026-10-30)
 
 - Upgrade the dedicated depth-rig workflow from checkout/setup-node v4 to approved v7 actions and pin Node through the root `.nvmrc` (Node 24), resolving the CI reliability audit failures found on PR #409.
