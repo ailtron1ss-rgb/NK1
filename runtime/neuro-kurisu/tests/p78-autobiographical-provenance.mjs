@@ -30,8 +30,13 @@ assert.ok(grounded.chapters >= 1, 'corroborated, provenance-bound episodes may f
 const afterDuplicate = p.observe(verifiedEvents);
 assert.deepEqual(afterDuplicate, grounded, 'replaying the same observation window must be idempotent');
 
-const modeOnlyChange = p.observe(verifiedEvents.map(e => ({ ...e, mode: 'reflective' })));
-assert.equal(modeOnlyChange.samples, grounded.samples + verifiedEvents.length, 'mode changes must produce a distinct observation key');
+const legacyModeEvents=[
+  {tick:6,at:600,action:'wait',text:'legacy mode episode',mode:'neutral'},
+  {tick:7,at:700,action:'reflect',text:'legacy mode episode',mode:'neutral'},
+];
+const legacyModeFirst=p.observe(legacyModeEvents);
+const modeOnlyChange=p.observe(legacyModeEvents.map(e=>({...e,mode:'reflective'})));
+assert.equal(modeOnlyChange.samples,legacyModeFirst.samples+legacyModeEvents.length,'mode changes without a receipt remain distinct observations');
 
 const restored = new P78AutobiographicalSelfContinuity();
 restored.restore(modeOnlyChange);
