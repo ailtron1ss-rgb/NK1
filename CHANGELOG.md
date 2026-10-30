@@ -1,3 +1,11 @@
+## 2026-10-30 — NK1 2.5D depth-rig runtime follow-through
+
+- Added semantic spring follow-through for hair-front/back and coat-front/tail, with per-node state, bounded displacement/velocity and frame-delta clamping.
+- Wired the secondary motion into the imported GLB/VRM animation loop without affecting ordinary 3D models.
+- Added a capability-gated 2.5D avatar selector; it becomes available only after a depth-rig manifest and imported node mapping validate, and falls back to 3D when that capability is removed.
+- Added regression coverage for semantic-only spring motion and preserved tuple typing for Three.js transforms.
+- Validation: previous depth-rig foundation HEAD passed both core and WorkPass79 CI; latest follow-through HEAD is awaiting fresh CI.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
