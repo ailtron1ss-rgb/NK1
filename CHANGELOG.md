@@ -1,3 +1,9 @@
+## [NK1][Perception] Count same-frame duplicate detections as ambiguous (2026-10-30)
+
+- The tracker already rejected overlapping same-label detections as ambiguous and withheld local IDs, but did not include those records in the ambiguous metric.
+- Initialize the frame ambiguity counter from the exact rejected duplicate set so object statuses and aggregate telemetry agree.
+- Retain the regression that verifies duplicate boxes create no tracks and produce two ambiguous records.
+
 ## [NK1][Perception] Restore local temporal tracks from canonical source IDs (2026-10-30)
 
 - Accept both the default tracker source prefix and the legacy embedded source-marker form when rebuilding local tracks from P41 snapshots.
