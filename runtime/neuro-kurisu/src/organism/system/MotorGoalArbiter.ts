@@ -208,11 +208,11 @@ export class MotorGoalArbiter {
     if (!/^[a-z0-9][a-z0-9._:-]{2,127}$/i.test(outcome.evidenceId)) {
       return { accepted: false, reason: "invalid-evidence-id" };
     }
-    if (typeof outcome.goalId !== "string" || !this.pendingGoalIds.has(outcome.goalId)) {
-      return { accepted: false, reason: "no-matching-executed-goal" };
-    }
     if (this.creditedEvidenceIds.has(outcome.evidenceId)) {
       return { accepted: false, reason: "duplicate-evidence-credit" };
+    }
+    if (typeof outcome.goalId !== "string" || !this.pendingGoalIds.has(outcome.goalId)) {
+      return { accepted: false, reason: "no-matching-executed-goal" };
     }
     if (![outcome.predictedUtility01, outcome.actualUtility01, outcome.surprise01, outcome.dopamine01].every(Number.isFinite)
       || !Number.isSafeInteger(outcome.tick) || outcome.tick < 0 || !String(outcome.action ?? "").trim()) {
