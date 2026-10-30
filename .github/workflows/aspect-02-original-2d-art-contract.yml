@@ -1,0 +1,47 @@
+name: Aspect 02 original 2D asset contract
+
+on:
+  push:
+    branches:
+      - work/aspect-02-original-2d-art-system-*
+  pull_request:
+    branches:
+      - workpass70-source
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-aspect-02-original-2d-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate-original-2d-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          package-manager-cache: false
+      - name: Verify Node.js repository pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version mismatch: expected $expected, got $actual" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Validate original 2D asset contract and authored-file integrity
+        working-directory: app
+        run: npm run validate:original-2d-assets
+      - name: Test legacy sprite inventory, pixel review and non-promotion policy
+        working-directory: app
+        run: npm run test:original-2d-existing-assets
+      - name: Test original 2D SVG instance isolation and state contract
+        working-directory: app
+        run: node --test scripts/original-2d-art-contract.test.mjs scripts/original-2d-asset-manifest.test.mjs
