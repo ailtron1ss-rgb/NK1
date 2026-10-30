@@ -9,6 +9,7 @@ on:
       - "app/scripts/wardrobe-*.test.mjs"
       - "app/scripts/live2d-wardrobe-capability.test.mjs"
       - "app/scripts/vrm-wardrobe-adapter.test.mjs"
+      - "app/scripts/vrm-wardrobe-pack-loader.test.mjs"
       - "app/package.json"
       - "app/package-lock.json"
       - "CHANGELOG.md"
