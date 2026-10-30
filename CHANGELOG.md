@@ -1,3 +1,10 @@
+## [NK1][аспект9] Add validated native speech host router seam (2026-10-30)
+
+- Добавлен `NativeSpeechHostRouter`: он принимает подписку из `EmbodimentRuntime`, проверяет версию/форму события, сохраняет eventId и operationId и пересылает типизированный envelope в host publisher.
+- Router отклоняет дубликаты, регрессирующие sequence/timestamp и события, которые пытаются заявить `playbackVerified=true`; ошибки host publisher изолированы от TTS.
+- Добавлен `test:workpass629:native-speech-host-router` на доставку, stale/duplicate filtering, publisher failure и unsubscribe.
+- Это transport seam для host Event Router, а не готовое подключение к browser/Live2D: реальный app transport, Android playback clock и акустическая lip-sync проверка остаются отдельными gates.
+
 ## [NK1][аспект9] Expose native speech provider events through EmbodimentRuntime (2026-10-30)
 
 - Добавлен публичный метод `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)`: host-интеграции могут подписываться на события Termux provider без прямого импорта низкоуровневого Android bridge.
