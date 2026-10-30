@@ -6,7 +6,7 @@ import { orderDepthRigNodes, resolveDepthRigWorldPose, validateDepthRig, type De
  * without creating a second scene graph or importing a renderer into the rig.
  */
 export interface DepthRigLayerTarget {
-  matrix: { set(...elements: number[]): unknown };
+  matrix: { set(n11: number, n12: number, n13: number, n14: number, n21: number, n22: number, n23: number, n24: number, n31: number, n32: number, n33: number, n34: number, n41: number, n42: number, n43: number, n44: number): unknown };
   matrixAutoUpdate: boolean;
   renderOrder: number;
   visible: boolean;
