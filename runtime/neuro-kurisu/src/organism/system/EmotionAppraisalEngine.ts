@@ -63,6 +63,19 @@ export interface EmotionOutcomeCalibration {
   meanBenefit01:number;
 }
 
+export interface AffectiveMoodState {
+  version:1;
+  /** Slow affective baseline, distinct from the latest time-bound emotion episode. */
+  valence01:number;
+  arousal01:number;
+  confidence01:number;
+  /** Timestamp through which decay has been evaluated. */
+  lastUpdatedAt:number;
+  lastEpisodeId:string|null;
+  acceptedEpisodes:number;
+  staleEpisodes:number;
+}
+
 export interface EmotionAppraisalState {
   version:2; episodes:number; lastTick:number; lastAt:number; lastLabel:EmotionLabel;
   meanArousal01:number; meanValence01:number; meanStress01:number; meanAttentionCapture01:number;
@@ -74,6 +87,8 @@ export interface EmotionAppraisalState {
   contextualOutcomes:Record<string,EmotionOutcomeCalibration>;
   /** Bounded idempotency ledger; identical outcome IDs cannot update learning twice. */
   outcomeReceipts:Record<string,EmotionOutcomeReceipt>;
+  /** Persistent, time-decaying mood; older snapshots migrate from the latest episode. */
+  mood:AffectiveMoodState;
 }
 
 
@@ -155,7 +170,29 @@ const emptyInteroception=():InteroceptiveAffectState=>({
   lastObserved:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
   predicted:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
 });
-const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{},contextualOutcomes:{},outcomeReceipts:{}});
+const emptyMood=():AffectiveMoodState=>({version:1,valence01:.5,arousal01:.22,confidence01:0,lastUpdatedAt:0,lastEpisodeId:null,acceptedEpisodes:0,staleEpisodes:0});
+const normalizeMood=(raw:unknown,history:EmotionEpisode[]):AffectiveMoodState=>{
+  if(isRecord(raw)&&raw.version===1&&unitFieldsAreValid(raw,['valence01','arousal01','confidence01'])&&
+     typeof raw.lastUpdatedAt==='number'&&Number.isFinite(raw.lastUpdatedAt)&&raw.lastUpdatedAt>=0&&
+     (raw.lastEpisodeId===null||safeKey(raw.lastEpisodeId,256))&&
+     typeof raw.acceptedEpisodes==='number'&&Number.isSafeInteger(raw.acceptedEpisodes)&&raw.acceptedEpisodes>=0&&
+     typeof raw.staleEpisodes==='number'&&Number.isSafeInteger(raw.staleEpisodes)&&raw.staleEpisodes>=0){
+    return {version:1,valence01:raw.valence01 as number,arousal01:raw.arousal01 as number,confidence01:raw.confidence01 as number,
+      lastUpdatedAt:raw.lastUpdatedAt,lastEpisodeId:typeof raw.lastEpisodeId==='string'?raw.lastEpisodeId:null,
+      acceptedEpisodes:raw.acceptedEpisodes,staleEpisodes:raw.staleEpisodes};
+  }
+  // Backward-compatible migration: older snapshots only retained emotion episodes.
+  const latest=history[0];
+  if(latest)return {version:1,valence01:latest.valence01,arousal01:latest.arousal01,confidence01:c(latest.confidence01*.42),
+    lastUpdatedAt:latest.at,lastEpisodeId:latest.id,acceptedEpisodes:1,staleEpisodes:0};
+  return emptyMood();
+};
+const MOOD_NEUTRAL_VALENCE=.5, MOOD_RESTING_AROUSAL=.22;
+const MOOD_VALENCE_HALF_LIFE_MS=45*60*1000;
+const MOOD_AROUSAL_HALF_LIFE_MS=18*60*1000;
+const MOOD_CONFIDENCE_HALF_LIFE_MS=30*60*1000;
+const moodDecay=(value:number,baseline:number,elapsedMs:number,halfLifeMs:number)=>baseline+(value-baseline)*Math.pow(.5,elapsedMs/halfLifeMs);
+const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{},contextualOutcomes:{},outcomeReceipts:{},mood:emptyMood()});
 
 export class EmotionAppraisalEngine {
   private state=empty();
@@ -216,6 +253,7 @@ export class EmotionAppraisalEngine {
       meanStress01:safeUnit(r.meanStress01,d.meanStress01),
       meanAttentionCapture01:safeUnit(r.meanAttentionCapture01,d.meanAttentionCapture01),
       history,feelings,
+      mood:normalizeMood(r.mood,history),
       interoception:{
         cycles:safeCounter(rawInteroception.cycles,dI.cycles),
         meanMismatch01:safeUnit(rawInteroception.meanMismatch01,dI.meanMismatch01),
@@ -243,6 +281,37 @@ export class EmotionAppraisalEngine {
     };
   }
   snapshot(){return structuredClone(this.state);}
+
+  /** Read the slow mood baseline at an explicit time without mutating persisted state. */
+  moodSnapshot(at:number=Date.now()):AffectiveMoodState{
+    if(typeof at!=='number'||!Number.isFinite(at)||at<0)throw new RangeError('emotion-mood-timestamp-invalid');
+    const mood=this.state.mood??emptyMood();
+    if(at<=mood.lastUpdatedAt)return structuredClone(mood);
+    const elapsedMs=Math.min(at-mood.lastUpdatedAt,365*24*60*60*1000);
+    return {
+      ...mood,
+      valence01:c(moodDecay(mood.valence01,MOOD_NEUTRAL_VALENCE,elapsedMs,MOOD_VALENCE_HALF_LIFE_MS)),
+      arousal01:c(moodDecay(mood.arousal01,MOOD_RESTING_AROUSAL,elapsedMs,MOOD_AROUSAL_HALF_LIFE_MS)),
+      confidence01:c(mood.confidence01*Math.pow(.5,elapsedMs/MOOD_CONFIDENCE_HALF_LIFE_MS)),
+      lastUpdatedAt:at,
+    };
+  }
+
+  private moodAfterEpisode(episode:EmotionEpisode):AffectiveMoodState{
+    const stored=this.state.mood??emptyMood();
+    if(episode.at<stored.lastUpdatedAt){
+      // Late/replayed observations may be retained as episodes, but cannot rewind mood.
+      return {...stored,staleEpisodes:stored.staleEpisodes+1};
+    }
+    const previous=this.moodSnapshot(episode.at);
+    const intensity=c(Math.abs(episode.valence01-.5)*1.2+episode.arousal01*.4);
+    const impact=c((.10+.26*intensity)*episode.confidence01);
+    const valence01=c(previous.valence01+(episode.valence01-previous.valence01)*impact);
+    const arousal01=c(previous.arousal01+(episode.arousal01-previous.arousal01)*impact);
+    const confidence01=c(1-(1-previous.confidence01)*(1-episode.confidence01*impact));
+    return {version:1,valence01,arousal01,confidence01,lastUpdatedAt:episode.at,lastEpisodeId:episode.id,
+      acceptedEpisodes:previous.acceptedEpisodes+1,staleEpisodes:previous.staleEpisodes};
+  }
 
   observeInteroception(input:{energy01:number;thermal01:number;capacity01:number;load01:number;homeostaticPressure01?:number}):InteroceptiveAffectState{
     input=snapshotEmotionInput(input,'emotion-interoception-input-must-be-plain-data') as unknown as typeof input;
@@ -331,7 +400,15 @@ export class EmotionAppraisalEngine {
     ];
     if(appraisalFields.some(value=>value!==undefined&&!unitInterval(value))||
        (input.external!==undefined&&typeof input.external!=='boolean')) throw new RangeError('emotion-appraisal-values-invalid');
-    const m=normalizeInfluences(input.modulators);
+    const provided=normalizeInfluences(input.modulators);
+    const appraisalAt=Number(input.at??Date.now());
+    const persistentMood=this.moodSnapshot(appraisalAt);
+    // Once a temporal mood baseline exists it is canonical; do not double-count
+    // the latest episode again through the legacy one-episode mood modifier.
+    const mood=persistentMood.confidence01>0
+      ?{valence01:persistentMood.valence01,arousal01:persistentMood.arousal01,confidence01:persistentMood.confidence01}
+      :provided.mood;
+    const m:NormalizedEmotionAppraisalInfluences={...provided,mood};
     const pGain=m.personality.confidence01, moodGain=m.mood.confidence01, cognitiveGain=m.cognitive.confidence01, socialGain=m.social.confidence01;
     const baseUncertainty=input.uncertainty01??.35;
     const a={
@@ -357,8 +434,9 @@ export class EmotionAppraisalEngine {
     else if(valence<.34 && dominance>.65){label='anger';actionTendency='protect';}
     const attentionCapture=c(arousal*.55+a.relevance01*.25+a.selfRelevance01*.20);
     const n=this.state.episodes+1;
-    const episode:EmotionEpisode={id:`emo:${input.tick}:${Number(input.at??Date.now())}:${n}`,tick:input.tick,at:Number(input.at??Date.now()),label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state',modulators:m};
-    this.state={...this.state,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
+    const episode:EmotionEpisode={id:`emo:${input.tick}:${appraisalAt}:${n}`,tick:input.tick,at:appraisalAt,label,actionTendency,valence01:valence,arousal01:arousal,dominance01:dominance,appraisal:a,interoceptiveDelta:{stress01:stress,energy01:c(-stress*.12+((input.success01??.5)-.5)*.08+0.06),load01:c(arousal*.24),attentionCapture01:attentionCapture},regulationPressure01:this.state.interoception.regulationPressure01,memorySalienceMultiplier01:c(.8+attentionCapture*.7),confidence01:c(.45+a.relevance01*.35+a.controllability01*.20),cause:input.external?'external-experience':'internal-state',modulators:m};
+    const moodState=this.moodAfterEpisode(episode);
+    this.state={...this.state,mood:moodState,episodes:n,lastTick:episode.tick,lastAt:episode.at,lastLabel:episode.label,meanArousal01:c(this.state.meanArousal01*(n-1)/n+episode.arousal01/n),meanValence01:c(this.state.meanValence01*(n-1)/n+episode.valence01/n),meanStress01:c(this.state.meanStress01*(n-1)/n+stress/n),meanAttentionCapture01:c(this.state.meanAttentionCapture01*(n-1)/n+attentionCapture/n),history:[episode,...this.state.history].slice(0,128)};
     return structuredClone(episode);
   }
 
@@ -409,7 +487,7 @@ export class EmotionAppraisalEngine {
     return Math.max(-.09,Math.min(.09,(matchBias+regulationBias+learned)*appraisalReliability*attentionGain));
   }
 
-  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length,processedOutcomeReceipts:Object.keys(this.state.outcomeReceipts).length};}
+  summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,mood:this.moodSnapshot(this.state.lastAt),meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes),contextualOutcomeContexts:Object.keys(this.state.contextualOutcomes).length,processedOutcomeReceipts:Object.keys(this.state.outcomeReceipts).length};}
 
 }
 export const defaultEmotionAppraisalState=()=>empty();
