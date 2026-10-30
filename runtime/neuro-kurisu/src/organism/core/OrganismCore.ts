@@ -11598,7 +11598,7 @@ export class OrganismCore {
             }
             if (!stepVerified)
                 allVerified = false;
-            if (!stepWasReplay) this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: step.toolId, contextKey: `compound:${skill.id}:step:${step.id}`, outcome01: stepVerified ? 1 : .5, phase: 'holdout' });
+            if (!stepWasReplay) this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: step.toolId, contextKey: `compound:${skill.id}:step:${step.id}`, outcome01: stepVerified ? 1 : .5, phase: 'learning' });
         }
         if (!allOk)
             allVerified = false;
@@ -12366,7 +12366,7 @@ export class OrganismCore {
         // configured semantic assessment is unknown/refuted/mixed. Otherwise the
         // learning signal could reward the exact single-source shortcut blocked above.
         const semanticLearningEligible = !modelAssisted || nliSupportConfirmed;
-        this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: 'organism.project.research', contextKey: `external:${session.results[0]?.sourceKey || result.independenceKey}`, outcome01: claimConflict || !semanticLearningEligible ? 0 : effectiveEvidence, phase: 'holdout' });
+        this.evidenceResearchSubsystem.skillAcquisitionBenchmark.observe({ action: 'organism.project.research', contextKey: `external:${session.results[0]?.sourceKey || result.independenceKey}`, outcome01: claimConflict || !semanticLearningEligible ? 0 : effectiveEvidence, phase: 'learning' });
         this.persisted.system.externalEvidenceTrust = this.evidenceResearchSubsystem.externalEvidenceTrust.snapshot();
         this.persisted.system.evidenceFirewall = this.evidenceResearchSubsystem.evidenceFirewall.snapshot();
         this.persisted.system.projectResearchSession = this.evidenceResearchSubsystem.projectResearchSession.snapshot();
