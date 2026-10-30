@@ -83,7 +83,7 @@ export function getGarment(id: string): GarmentDef | undefined { return garmentB
 
 /** Reject absolute paths, traversal, query strings and remote URLs in wardrobe packs. */
 export function isSafeWardrobeAssetPath(path: string): boolean {
-  if (!path || path.length > 240 || path.startsWith("/") || path.includes(":") || path.includes("\\") || /[?#\u0000-\u001f]/u.test(path)) return false;
+  if (typeof path !== "string" || !path || path.length > 240 || path.startsWith("/") || path.includes(":") || path.includes("\\") || /[?#\u0000-\u001f]/u.test(path)) return false;
   const parts = path.split("/");
   return parts.every((part) => part.length > 0 && part !== "." && part !== "..") &&
     /\.(?:png|webp|jpg|jpeg|json|vrm|glb|gltf)$/iu.test(path);
@@ -148,4 +148,77 @@ export function resolveOutfitAssets(outfitId: OutfitId, renderer: WardrobeRender
     const asset = garment?.assets[renderer];
     return garment && asset && asset.path && asset.state === "verified" ? [{garment,asset}] : [];
   });
+}
+
+export interface WardrobeSelectionResolution {
+  valid: boolean;
+  ready: boolean;
+  errors: string[];
+  garments: GarmentDef[];
+  assets: Array<{ garment: GarmentDef; asset: WardrobeAssetRef }>;
+  missingGarmentIds: string[];
+}
+
+/**
+ * Resolve a genuinely modular selection (one item per slot) without pretending
+ * that catalog metadata is drawable art. A selection may be structurally valid
+ * while not renderable because one or more rights-cleared assets are missing.
+ */
+export function resolveWardrobeSelection(
+  garmentIds: readonly string[],
+  renderer: WardrobeRenderer,
+): WardrobeSelectionResolution {
+  const errors: string[] = [];
+  if (!Array.isArray(garmentIds) || garmentIds.length === 0) {
+    return { valid: false, ready: false, errors: ["selection:empty"], garments: [], assets: [], missingGarmentIds: [] };
+  }
+  if (!["live2d", "depth2d", "vrm3d"].includes(renderer)) {
+    return { valid: false, ready: false, errors: ["selection:invalid-renderer"], garments: [], assets: [], missingGarmentIds: [] };
+  }
+  const seenIds = new Set<string>();
+  const seenSlots = new Set<WardrobeSlot>();
+  const garments: GarmentDef[] = [];
+  const assets: Array<{ garment: GarmentDef; asset: WardrobeAssetRef }> = [];
+  const missingGarmentIds: string[] = [];
+  for (const rawId of garmentIds) {
+    if (typeof rawId !== "string" || !rawId.trim()) {
+      errors.push("selection:invalid-garment-id");
+      continue;
+    }
+    if (seenIds.has(rawId)) {
+      errors.push(`selection:duplicate-garment:${rawId}`);
+      continue;
+    }
+    seenIds.add(rawId);
+    const garment = garmentById.get(rawId);
+    if (!garment) {
+      errors.push(`selection:unknown-garment:${rawId}`);
+      continue;
+    }
+    if (seenSlots.has(garment.slot)) errors.push(`selection:duplicate-slot:${garment.slot}`);
+    seenSlots.add(garment.slot);
+    garments.push(garment);
+  }
+  for (const garment of garments) {
+    for (const required of garment.requires ?? []) {
+      if (!seenIds.has(required)) errors.push(`selection:missing-dependency:${garment.id}:${required}`);
+    }
+    for (const excluded of garment.excludes ?? []) {
+      if (seenIds.has(excluded)) errors.push(`selection:conflicting-garments:${garment.id}:${excluded}`);
+    }
+    const asset = garment.assets[renderer];
+    if (!asset || asset.renderer !== renderer || asset.state !== "verified" || !asset.path || !isSafeWardrobeAssetPath(asset.path)) {
+      missingGarmentIds.push(garment.id);
+    } else {
+      assets.push({ garment, asset });
+    }
+  }
+  return {
+    valid: errors.length === 0,
+    ready: errors.length === 0 && missingGarmentIds.length === 0,
+    errors,
+    garments,
+    assets,
+    missingGarmentIds,
+  };
 }
