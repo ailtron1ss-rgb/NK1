@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
+import { MEMORY_RETRIEVAL_TASK_CATEGORIES } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 
 const MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024;
 const MAX_LABEL_BYTES = 4 * 1024 * 1024;
@@ -16,7 +17,10 @@ function usage() {
     '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>]',
     '',
     'The label file is JSONL; optional explicit language labels are "en", "ru", or "other".',
+    'Optional task categories: single-hop, multi-hop, multi-session, temporal, knowledge-update, contradiction, preference, procedural, open-domain, abstention, static-state, dynamic-state, workflow-knowledge, environment-gotcha, premise-awareness, other.',
     'A tagged benchmark requires all rows tagged and both en and ru for promotion; per-language holdout gates run separately.',
+    'For multi-session tasks, provide an anonymized conversationId on every row; train/holdout must be split by conversation.',
+    'Bootstrap confidence intervals resample whole conversationId clusters (or individual query IDs when ungrouped).',
     'For an explicitly unanswerable query, use "answerable":false with an empty relevantIds array; omitted answerable defaults to true.',
     'The snapshot must be the exported MemoryOSState2 object. The provenance file must contain datasetId, datasetVersion, sourceRef and labelingProtocol.',
     'This runs offline on a clone; it does not alter live memory or automatically promote a candidate.',
@@ -83,6 +87,8 @@ function parseLabels(text) {
     if (typeof row.query !== 'string' || !row.query.trim() || row.query.length > 500) throw new Error(`labels-invalid-query-line:${index + 1}`);
     if (row.answerable !== undefined && typeof row.answerable !== 'boolean') throw new Error(`labels-invalid-answerable-line:${index + 1}`);
     if (row.language !== undefined && !['en', 'ru', 'other'].includes(row.language)) throw new Error(`labels-invalid-language-line:${index + 1}`);
+    if (row.category !== undefined && !MEMORY_RETRIEVAL_TASK_CATEGORIES.includes(row.category)) throw new Error(`labels-invalid-category-line:${index + 1}`);
+    if (row.conversationId !== undefined && (typeof row.conversationId !== 'string' || !row.conversationId.trim() || row.conversationId.length > 160)) throw new Error(`labels-invalid-conversationId-line:${index + 1}`);
     const answerable = row.answerable !== false;
     if (!Array.isArray(row.relevantIds) || row.relevantIds.length > 24 ||
         (answerable ? row.relevantIds.length < 1 : row.relevantIds.length !== 0) ||
@@ -90,7 +96,7 @@ function parseLabels(text) {
       throw new Error(`labels-invalid-relevantIds-line:${index + 1}`);
     }
     if (row.split !== 'train' && row.split !== 'holdout') throw new Error(`labels-invalid-split-line:${index + 1}`);
-    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split, answerable, ...(row.language === undefined ? {} : { language: row.language }) });
+    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split, answerable, ...(row.language === undefined ? {} : { language: row.language }), ...(row.category === undefined ? {} : { category: row.category }), ...(row.conversationId === undefined ? {} : { conversationId: row.conversationId.trim() }) });
     if (rows.length > MAX_EXAMPLES) throw new Error(`labels-exceed-limit:${MAX_EXAMPLES}`);
   }
   if (!rows.length) throw new Error('labels-empty');

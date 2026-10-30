@@ -20,13 +20,19 @@ for (let i = 0; i < 16; i++) memory.encode({
 });
 const snapshot = memory.snapshot();
 const examples = [];
-for (let i = 0; i < 4; i++) examples.push({ id: `train-${i}`, query: `training query fern status ${i}`, relevantIds: [`m${i}`], split: 'train' });
-for (let i = 0; i < 8; i++) examples.push({ id: `holdout-${i}`, query: `heldout query fern routing ${i}`, relevantIds: [`m${i}`], split: 'holdout' });
+for (let i = 0; i < 4; i++) examples.push({ id: `train-${i}`, query: `training query fern status ${i}`, relevantIds: [`m${i}`], split: 'train', category: i % 2 === 0 ? 'single-hop' : 'temporal' });
+for (let i = 0; i < 8; i++) examples.push({ id: `holdout-${i}`, query: `heldout query fern routing ${i}`, relevantIds: [`m${i}`], split: 'holdout', category: i % 2 === 0 ? 'single-hop' : 'temporal' });
 const provenance = { datasetId: 'controlled-fixture', datasetVersion: '1.0', sourceRef: 'test-fixture-only', labelingProtocol: 'Hand-authored test labels; not production evidence.', licenseId: 'LicenseRef-NK1-TestFixture' };
 const options = { now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance, seeds: [13, 29, 53] };
 const before = structuredClone(snapshot);
 const experiment = runMemoryOS2RetrievalExperiment(snapshot, examples, options);
 assert.equal(experiment.schemaVersion, 1);
+assert.equal(experiment.taskCategoryStratification.enabled, true);
+assert.equal(experiment.taskCategoryStratification.annotationsComplete, true);
+assert.equal(experiment.taskCategoryStratification.autoPromotionInfluence, false);
+assert.equal(experiment.taskCategoryStratification.slices['single-hop'].holdoutQueries, 4);
+assert.equal(experiment.taskCategoryStratification.slices.temporal.holdoutQueries, 4);
+assert.match(experiment.taskCategoryStratification.slices.temporal.interpretation, /diagnostic-only/);
 assert.equal(experiment.seedCount, 3);
 assert.equal(experiment.seeds.join(','), '13,29,53');
 assert.equal(experiment.corpusFingerprint.length, 64);
@@ -49,6 +55,18 @@ assert.equal(duplicateLabelReport.datasetIntegrity.duplicateRelevantLabelCount, 
 assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false);
 assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
 assert.equal(duplicateLabelReport.promotion.allowed, false);
+
+const incompleteTaskExamples = structuredClone(examples);
+delete incompleteTaskExamples[0].category;
+const incompleteTaskFingerprint = fingerprintMemoryRetrievalDataset(incompleteTaskExamples);
+const incompleteTaskReport = runMemoryOS2RetrievalBenchmark(snapshot, incompleteTaskExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: incompleteTaskFingerprint },
+});
+assert.equal(incompleteTaskReport.taskCategoryStratification.annotationsComplete, false,
+  'partial task labels must be exposed instead of producing misleading category slices');
+assert.equal(incompleteTaskReport.datasetIntegrity.validForPromotion, false,
+  'partial task labels invalidate promotion evidence when task stratification is used');
 
 // Malformed labels must be counted before the normalizer filters them. The clean
 // fingerprint intentionally matches the sanitized result, so provenance alone cannot
@@ -79,6 +97,101 @@ assert.deepEqual(snapshot, before, 'experiment must not mutate supplied snapshot
 assert.equal(experiment.runs.length, 3);
 assert.equal(new Set(experiment.runs.map(row => row.recallDelta01)).size, 1, 'retrieval point estimate should be seed invariant');
 assert.throws(() => runMemoryOS2RetrievalExperiment(snapshot, examples, { ...options, seeds: [1, 1, 2] }), /at-least-3-distinct-bootstrap-seeds/);
+
+
+// Conversation-aware evaluation: correlated questions from one dialogue must be
+// resampled together. A large number of questions from two dialogues is still only
+// two independent holdout clusters.
+const groupedExamples = examples.map((row, index) => ({
+  ...row,
+  conversationId: row.split === 'train'
+    ? `train-conversation-${Math.floor(index / 2)}`
+    : `holdout-conversation-${Math.floor((index - 4) / 4)}`,
+}));
+const groupedReport = runMemoryOS2RetrievalBenchmark(snapshot, groupedExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(groupedExamples) },
+});
+assert.equal(groupedReport.confidence.method, 'paired-conversation-cluster-bootstrap-percentile-interval');
+assert.equal(groupedReport.confidence.samplingUnit, 'conversation');
+assert.equal(groupedReport.datasetIntegrity.conversationAnnotationUsed, true);
+assert.equal(groupedReport.datasetIntegrity.conversationAnnotationComplete, true);
+assert.equal(groupedReport.datasetIntegrity.uniqueTrainConversationGroups, 2);
+assert.equal(groupedReport.datasetIntegrity.uniqueHoldoutConversationGroups, 2);
+assert.deepEqual(groupedReport.datasetIntegrity.answerableHoldoutClusterSizes, {
+  clusters: 2, queries: 8, min: 4, median: 4, max: 4, mean: 4, largestClusterShare01: 0.5, maxToMedianRatio: 1,
+});
+assert.equal(groupedReport.confidence.recallAtK01.independentClusters, 2);
+assert.equal(groupedReport.confidence.mrr01.independentClusters, 2);
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.independentClusters, 2);
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.evaluations, 2);
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.method, 'leave-one-conversation-out-sensitivity');
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.interpretation.includes('not a confidence interval'), true);
+assert.equal(groupedReport.promotion.gates.sufficientIndependentHoldoutGroups, false,
+  'many questions from too few independent conversations must not satisfy the sample-size gate');
+assert.equal(groupedReport.promotion.allowed, false);
+
+// A source conversation may never contribute to both train and holdout, even when
+// the individual query strings differ.
+const leakedConversationExamples = structuredClone(groupedExamples);
+leakedConversationExamples[0].conversationId = leakedConversationExamples[4].conversationId;
+const leakedConversationReport = runMemoryOS2RetrievalBenchmark(snapshot, leakedConversationExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(leakedConversationExamples) },
+});
+assert.equal(leakedConversationReport.datasetIntegrity.crossSplitConversationLeakageCount, 1);
+assert.equal(leakedConversationReport.datasetIntegrity.validForPromotion, false);
+assert.equal(leakedConversationReport.promotion.gates.datasetIntegrity, false);
+assert.equal(leakedConversationReport.promotion.allowed, false);
+
+// Agentic environment memory abilities from LongMemEval-V2 remain explicit
+// benchmark slices (not new runtime memory record kinds).
+const agenticEnvironmentCategories = [
+  'static-state', 'dynamic-state', 'workflow-knowledge', 'environment-gotcha', 'premise-awareness',
+];
+const agenticEnvironmentExamples = groupedExamples.map((row, index) => ({
+  ...row,
+  category: agenticEnvironmentCategories[index % agenticEnvironmentCategories.length],
+}));
+const agenticEnvironmentReport = runMemoryOS2RetrievalBenchmark(snapshot, agenticEnvironmentExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(agenticEnvironmentExamples) },
+});
+assert.deepEqual(agenticEnvironmentReport.taskCategoryStratification.categories, [...agenticEnvironmentCategories].sort());
+for (const category of agenticEnvironmentCategories) {
+  assert.equal(Object.hasOwn(agenticEnvironmentReport.taskCategoryStratification.slices, category), true,
+    `agentic memory category ${category} must produce a diagnostic slice`);
+  assert.equal(typeof agenticEnvironmentReport.taskCategoryStratification.slices[category].independentAnswerableConversations, 'number');
+}
+
+// Multi-session task slices expose their own independent dialogue counts and
+// cluster-size profile instead of borrowing aggregate dataset counts.
+const multiSessionGroupedExamples = groupedExamples.map(row => ({ ...row, category: 'multi-session' }));
+const multiSessionGroupedReport = runMemoryOS2RetrievalBenchmark(snapshot, multiSessionGroupedExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(multiSessionGroupedExamples) },
+});
+assert.equal(multiSessionGroupedReport.taskCategoryStratification.slices['multi-session'].independentAnswerableConversations, 2);
+assert.equal(multiSessionGroupedReport.taskCategoryStratification.slices['multi-session'].answerableClusterSizes.maxClusterSize, 4);
+assert.equal(multiSessionGroupedReport.taskCategoryStratification.slices['multi-session'].answerableClusterSizes.largestClusterShare01, 0.5);
+
+// The multi-session slice must be tied to source conversations; absent IDs cannot
+// silently fall back to question-level confidence intervals.
+const ungroupedMultiSessionExamples = examples.map(row => ({ ...row, category: 'multi-session' }));
+const ungroupedMultiSessionReport = runMemoryOS2RetrievalBenchmark(snapshot, ungroupedMultiSessionExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(ungroupedMultiSessionExamples) },
+});
+assert.equal(ungroupedMultiSessionReport.datasetIntegrity.missingMultiSessionConversationIdCount, ungroupedMultiSessionExamples.length);
+assert.equal(ungroupedMultiSessionReport.datasetIntegrity.multiSessionConversationAnnotationComplete, false);
+assert.equal(ungroupedMultiSessionReport.datasetIntegrity.validForPromotion, false);
+
+// Optional conversation metadata participates in the canonical content fingerprint.
+assert.notEqual(
+  fingerprintMemoryRetrievalDataset(groupedExamples),
+  fingerprintMemoryRetrievalDataset(examples),
+  'conversation grouping must be covered by provenance and immutable dataset fingerprints',
+);
 
 // Language-stratified regression: explicit labels must keep RU/EN quality separate.
 const bilingualExamples = [
@@ -283,12 +396,35 @@ try {
   assert.equal((await readdir(temp)).includes('invalid-language-report.json'), false, 'invalid language labels must fail before report publication');
   const validLanguageLabelsPath = path.join(temp, 'valid-language.jsonl');
   const validLanguageReportPath = path.join(temp, 'valid-language-report.json');
-  await writeFile(validLanguageLabelsPath, JSON.stringify({ id: 'valid-language-001', query: 'project fern memory', relevantIds: ['m0'], split: 'holdout', language: 'ru' }) + String.fromCharCode(10));
+  await writeFile(validLanguageLabelsPath, [
+    { id: 'valid-language-001', query: 'project fern memory', relevantIds: ['m0'], split: 'holdout', language: 'ru', category: 'multi-session', conversationId: 'cli-session-001' },
+    { id: 'valid-language-002', query: 'known environment failure mode', relevantIds: ['m1'], split: 'holdout', language: 'ru', category: 'environment-gotcha', conversationId: 'cli-session-001' },
+  ].map(row => JSON.stringify(row)).join(String.fromCharCode(10)) + String.fromCharCode(10));
   const validLanguageCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', validLanguageLabelsPath, '--provenance', provenancePath, '--out', validLanguageReportPath, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(validLanguageCli.status, 0, 'CLI rejected a valid explicit language label: ' + validLanguageCli.stderr + validLanguageCli.stdout);
   const validLanguageReport = JSON.parse(await readFile(validLanguageReportPath, 'utf8'));
   assert.equal(validLanguageReport.runs.every(row => row.languageStratification.enabled), true, 'CLI must preserve accepted language annotations into each benchmark run');
   assert.equal(validLanguageReport.runs.every(row => Object.hasOwn(row.languageStratification.slices, 'ru')), true);
+  assert.equal(validLanguageReport.runs.every(row => row.datasetIntegrity.conversationAnnotationUsed), true,
+    'CLI must retain anonymized source conversation IDs in the benchmark input');
+  assert.equal(validLanguageReport.runs.every(row => row.clusterSensitivity.recallAtK01.method === 'leave-one-conversation-out-sensitivity'), true,
+    'multi-seed CLI reports must preserve leave-one-conversation-out diagnostics');
+  assert.equal(validLanguageReport.runs.every(row => row.datasetIntegrity.missingMultiSessionConversationIdCount === 0), true,
+    'CLI must preserve conversation IDs needed by multi-session integrity checks');
+  assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.categories.includes('multi-session')), true,
+    'CLI must preserve task category annotations as well as language annotations');
+  assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.categories.includes('environment-gotcha')), true,
+    'CLI must accept and preserve the LongMemEval-V2 agentic environment category');
+  assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.slices['multi-session'].independentAnswerableConversations === 1), true,
+    'task-category diagnostics must preserve conversation grouping');
+  const invalidConversationLabelsPath = path.join(temp, 'invalid-conversation.jsonl');
+  const invalidConversationReportPath = path.join(temp, 'invalid-conversation-report.json');
+  await writeFile(invalidConversationLabelsPath, JSON.stringify({ id: 'invalid-conversation-001', query: 'missing group', relevantIds: ['m0'], split: 'holdout', conversationId: '   ' }) + String.fromCharCode(10));
+  const invalidConversationCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', invalidConversationLabelsPath, '--provenance', provenancePath, '--out', invalidConversationReportPath], { cwd: root, encoding: 'utf8', timeout: 120000 });
+  assert.equal(invalidConversationCli.status, 2);
+  assert.match(invalidConversationCli.stderr, /labels-invalid-conversationId-line:1/);
+  assert.equal((await readdir(temp)).includes('invalid-conversation-report.json'), false,
+    'invalid conversation IDs must fail before publishing a benchmark report');
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
