@@ -21,7 +21,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   const status=document.getElementById('status');
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
-  let lastIntentStateVersion=0;
+  let lastIntentStateVersion=0,pendingIntentReadback=null;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
   const EXPR_MAP={
@@ -34,22 +34,66 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   function loadScript(src){return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('не удалось загрузить '+src));document.head.appendChild(s)})}
   function send(type,extra={}){try{parent&&parent.postMessage({type,...extra},window.location.origin)}catch{}}
   function setCore(id,value){try{const core=model?.internalModel?.coreModel;if(core?.setParameterValueById)core.setParameterValueById(id,value)}catch{}}
-  function applyEmbodiment(d){
+  function maybeEmitIntentAck(pending){
+    if(!pending||pending!==pendingIntentReadback||pending.emitted||!pending.readback)return;
+    if(pending.expressionStatus==='pending'||pending.motionStatus==='pending')return;
+    pending.emitted=true;
+    const readback=pending.readback;
+    send('live2d_intent_ack',{
+      stateVersion:pending.stateVersion,
+      status:readback.status,
+      appliedRevision:pending.stateVersion,
+      observedParameters:readback.observedParameters,
+      requestedChannels:['headPose','gaze','mouth'],
+      expression:pending.expression,
+      expressionStatus:pending.expressionStatus,
+      motionStatus:pending.motionStatus,
+      complete:false,
+      visualCompletionVerified:false,
+      reason:readback.reason,
+    });
+  }
+  function settleIntentAction(pending,channel,status){
+    if(!pending||pending!==pendingIntentReadback||pending.stateVersion!==lastIntentStateVersion)return;
+    pending[`${channel}Status`]=status;
+    maybeEmitIntentAck(pending);
+  }
+  function actionStatus(promise,pending,channel,onNotStarted=null){
+    Promise.resolve(promise).then(ok=>{
+      const started=ok===true;
+      if(!started&&onNotStarted)onNotStarted();
+      settleIntentAction(pending,channel,ok==='not-requested'?'not-requested':started?'started':'unavailable');
+    }).catch(()=>{
+      if(onNotStarted)onNotStarted();
+      settleIntentAction(pending,channel,'error');
+    });
+  }
+  function applyEmbodiment(d,pending=null){
     bodySignal=d||{};
     const mouth=clamp(bodySignal.mouthOpen,0,1);
     // Mouth aperture follows the supplied viseme exactly; voice emphasis is a separate channel.
     lipTarget=bodySignal.speaking?mouth:0.015;
     lipFormTarget=bodySignal.speaking?clamp(bodySignal.mouthForm,-1,1):0;
-    if(bodySignal.expression)applyExpression(bodySignal.expression);
+    if(bodySignal.expression){
+      if(pending)pending.expressionStatus='pending';
+      const result=applyExpression(bodySignal.expression,pending?.stateVersion??null);
+      if(pending)actionStatus(result,pending,'expression');
+    }
     if(bodySignal.motionGroup){
       const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}:${Number(bodySignal.motionToken||0)}`;
       if(k!==lastMotionKey){
-        try{
-          Promise.resolve(model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0)))
-            .then(ok=>{if(ok===false)send('live2d_motion_unavailable',{group:String(bodySignal.motionGroup),index:Number(bodySignal.motionIndex||0)})})
-            .catch(err=>send('live2d_motion_error',{error:String(err?.message||err).slice(0,180)}));
+        if(pending)pending.motionStatus='pending';
+        if(!model||typeof model.motion!=='function'){
+          if(pending)settleIntentAction(pending,'motion','unavailable');
+        }else{
           lastMotionKey=k;
-        }catch{}
+          let result;
+          try{result=model.motion(String(bodySignal.motionGroup),Number(bodySignal.motionIndex||0))}
+          catch{result=Promise.reject(new Error('motion-call-failed'))}
+          const clearFailedMotion=()=>{if(lastMotionKey===k)lastMotionKey=''};
+          if(pending)actionStatus(result,pending,'motion',clearFailedMotion);
+          else Promise.resolve(result).then(ok=>{if(ok!==true)clearFailedMotion()}).catch(clearFailedMotion);
+        }
       }
     }
   }
@@ -58,6 +102,28 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       const core=model?.internalModel?.coreModel;
       if(core&&typeof core.addParameterValueById==='function')core.addParameterValueById(id,clamp(offset,min,max),1);
     }catch{}
+  }
+  function flushIntentParameterReadback(core){
+    const pending=pendingIntentReadback;
+    if(!pending||!core)return;
+    const ids=['ParamAngleX','ParamAngleY','ParamAngleZ','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'];
+    const observed={};
+    let readable=typeof core.getParameterValueById==='function';
+    if(readable){
+      for(const id of ids){
+        try{
+          const value=core.getParameterValueById(id);
+          if(Number.isFinite(value))observed[id]=value;
+          else readable=false;
+        }catch{readable=false}
+      }
+    }
+    pending.readback={
+      status:readable?'parameters-observed':'accepted-unverified',
+      observedParameters:observed,
+      reason:readable?null:'core-parameter-readback-unavailable',
+    };
+    maybeEmitIntentAck(pending);
   }
   function applyModelParameterOverrides(){
     const core=model?.internalModel?.coreModel;
@@ -73,11 +139,20 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
     set('ParamMouthOpenY',clamp(lipCurrent,0,1));
     if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
+    // Read back only after setters ran in the model-update hook. This confirms these
+    // parameter values, not expression/motion completion or a presented GPU frame.
+    flushIntentParameterReadback(core);
   }
-  function applyExpression(expr){
+  function applyExpression(expr,revision=null){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
-    if(!model||expressionName===lastAppliedExpression)return;
-    try{model.expression(expressionName);lastAppliedExpression=expressionName}catch{}
+    if(!model||typeof model.expression!=='function')return Promise.resolve(false);
+    if(expressionName===lastAppliedExpression)return Promise.resolve('not-requested');
+    let result;
+    try{result=model.expression(expressionName)}catch(error){return Promise.reject(error)}
+    return Promise.resolve(result).then(ok=>{
+      if(ok===true&&(revision===null||revision===lastIntentStateVersion))lastAppliedExpression=expressionName;
+      return ok;
+    });
   }
   function chooseProfile(){
     const requested=new URLSearchParams(location.search).get('profile');
@@ -140,8 +215,15 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       const normalized=normalizeEmbodimentIntentV1(d);
       if(!normalized||!model||normalized.stateVersion<=lastIntentStateVersion)return;
       lastIntentStateVersion=normalized.stateVersion;
-      applyEmbodiment(normalized);
-      applyExpression(normalized.expression);
+      pendingIntentReadback={
+        stateVersion:normalized.stateVersion,
+        expression:normalized.expression,
+        expressionStatus:'not-requested',
+        motionStatus:'not-requested',
+        readback:null,
+        emitted:false,
+      };
+      applyEmbodiment(normalized,pendingIntentReadback);
     }
     else if(d.type==='kurisu_embodiment')applyEmbodiment(d);
     else if(d.type==='kurisu_expression')applyExpression(String(d.expression||'neutral'));

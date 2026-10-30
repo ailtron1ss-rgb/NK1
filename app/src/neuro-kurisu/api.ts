@@ -178,6 +178,8 @@ function memoryInspectorSearch(options: MemoryInspectorOptions = {}): string {
 
 export const neuroApi = {
   uiSnapshot: () => request<BackendUiSnapshot>("/api/organism/ui-snapshot"),
+  motorFrame: () => request<Record<string, unknown>>("/api/organism/motor-frame"),
+  motorFrameStream: () => new EventSource(`${API_BASE}/api/organism/motor-frame/stream`),
   statusLite: () => request<{ ok: boolean; version: string; tick: number; lastAction: string; autonomyScore: number; predictionError: number; identityContinuity01: number; memoryCount: number; body: Record<string, number | boolean>; language: { calls: number; backend: string; degraded: boolean; lastFailure?: string }; voice: { state?: { speaking: boolean; listening: boolean } } }>("/api/organism/status-lite"),
   sensorium: () => request<Record<string, unknown>>("/api/organism/sensorium/status"),
   chat: (message: string, deliberate = true, speak = false, approvalId?: string) => request<ChatBackendResponse>("/api/organism/chat", {
