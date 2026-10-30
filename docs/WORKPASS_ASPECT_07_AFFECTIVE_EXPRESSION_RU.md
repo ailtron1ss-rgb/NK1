@@ -170,3 +170,9 @@ NK1 Original теперь получает тот же `FacialMicrochannels` sna
 ### Дополнение — attack/release для импортированных morph expressions
 
 Добавлен smoothSemanticMorphValues: эмоции joy/sadness/anger используют более плавную атаку и длинный release, а viseme mouthOpen/mouthOh и blink реагируют быстрее, чтобы не размывать артикуляцию. Сглаживание использует фактический frame delta, ограничено по dt и не выходит за диапазон 0..1. Тест проверяет детерминированность при нулевом dt, скорость речевых каналов и относительное время release.
+
+
+### Нативные VRM expression presets (2026-10-30)
+- Добавлен мост для VRM 1.0 `VRMC_vrm.expressions.preset` и VRM 0.x `VRM.blendShapeMaster.blendShapeGroups`: привязки разрешаются по индексам node/mesh из GLTFLoader associations, а не по угаданным именам.
+- Поддержаны взвешенные каналы joy/happy, sadness/sorrow, anger, blink, aa и oh/ou; legacy-веса 0–100 нормализуются. Неизвестные пресеты и некорректные индексы игнорируются.
+- Общий порядок кадра сохранён: baseline → authored AnimationMixer → сглаженный NK1 semantic/VRM overlay. Это не заменяет полноценные VRM humanoid, look-at и spring-bone runtime.
