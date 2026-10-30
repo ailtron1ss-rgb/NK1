@@ -7,6 +7,7 @@
 - Production PSD/occlusion masks, articulated joints, rendered browser/device E2E and real cross-renderer handoff remain separate gates.
 
 
+
 ## [NK1][Aspect 13/09] Harden local VRM/GLB import and affect-aware speech — 2026-10-30
 
 - Preflight user-supplied binary VRM/GLB before invoking GLTFLoader: GLB 2.0 container/chunk integrity, self-contained buffer/image URIs, hierarchy, bufferView bounds, image signatures/dimensions and bounded scene/accessor/animation complexity.
@@ -15,16 +16,6 @@
 - Derive bounded browser TTS pitch/rate/volume from the canonical emotion appraisal, action and personality traits. Use the same rate for synthesis and the approximate viseme timeline; regulate high negative arousal rather than amplifying it.
 - Add validator, import-lifecycle and prosody regressions plus a dedicated Node 24 workflow for tests, app typecheck and build.
 - Evidence boundary: source and regression coverage are committed here; hosted exact-HEAD CI and browser/Android visual/audio E2E must pass before promotion. This does not grant model redistribution rights, implement a complete VRM runtime, or update the canonical Release ZIP.
-
-
-## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
-
-- Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
-- Track identical object instances separately using stable provider IDs or geometry in an explicitly shared coordinate frame; preserve primary IDs and cross-modal aliases, estimate smoothed velocity, and do not correlate across unknown frames. Bind scene-graph relations to exact P41 entity IDs when track identity is unambiguous; abstain on equidistant spatial tracking candidates. Require a Core-owned external outcome receipt before applying empirical calibration.
-- Measure current cross-modal evidence coverage using per-modality observation timestamps and a bounded freshness window; separate action-outcome alignment from semantic corroboration. Retry IDs are generation-scoped and epistemic claim replay is idempotent.
-- Separate reported model quality, service success and empirically verified accuracy; calibrate only from human/independent evidence IDs with replay protection.
-- Distinguish same-modality persistence, independent cross-modal corroboration and explicit claim supersession; expire stale active-perception requests and reject time-rewound P41 samples.
-- Add deep P41 and Core integration regressions (including verifier receipt validation), document research inspirations and retain backward compatibility for existing persisted P41 snapshots. Physical device and independent labelled-dataset validation remain separate gates.
 
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 

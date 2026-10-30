@@ -41,6 +41,7 @@ test("the original SVG renderer uses independent depth layers driven by organism
   const stage = await readFile(path.join(appRoot, "src/components/KurisuOriginalStage.tsx"), "utf8");
   const parent = await readFile(path.join(appRoot, "src/components/AvatarStage.tsx"), "utf8");
   assert.match(stage, /deriveAvatar25DDepthOffsets\(gazeX, gazeY, motion === "soft" \? 0\.72 : 1\)/);
+  assert.match(parent, /NK1 Original · 2\.5D/);
   for (const layer of ["rear-hair", "torso", "head", "front-fringe"]) {
     assert.match(stage, new RegExp(`data-depth-layer="${layer}"`));
   }

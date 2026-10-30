@@ -199,6 +199,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
           <path d="M240 464 Q255 468 267 458 L282 483 Q274 496 247 493 L239 482Z" fill="#101a26" stroke="#627582" strokeWidth="2"/>
           <path d="M160 480 L190 482 L185 489 L163 489Z M247 480 L274 475 L276 484 L252 489Z" fill={accent.color} opacity=".8"/>
           {/* Torso and coat silhouette changes by outfit; all are separately authored shapes. */}
+          <g className="nk-depth-layer nk-depth-torso" data-depth-layer="torso" transform={svgTranslate(depth.torso)}>
           {isLab ? <g>
             <path d="M163 186 Q184 174 208 179 Q238 175 260 188 L278 361 L250 391 L221 369 L209 321 L197 369 L165 392 L137 363Z" fill="url(#nk-coat)" stroke={coatShadow} strokeWidth="2"/>
             <path d="M163 192 L181 204 L177 345 L161 371 L145 359Z" fill="#fff" opacity=".56"/>
@@ -212,7 +213,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M174 194 L188 203 L182 338 L166 354 L151 342Z" fill="#d5b3a0" opacity=".55"/>
             <path d="M246 194 L231 205 L237 337 L252 353 L267 341Z" fill={coatShadow} opacity=".46"/>
           </g>}
-          <g className="nk-depth-layer nk-depth-torso" data-depth-layer="torso" transform={svgTranslate(depth.torso)}><g className="nk-breath">
+          <g className="nk-breath">
             {/* Pose presets change the limb silhouettes; Auto follows organism action/emotion. */}
             {effectivePose === "crossed" ? <g>
               <path d="M164 196 Q148 194 149 216 L177 252 Q198 269 218 253 L209 234 Q198 246 185 234 L174 210Z" fill={coat} stroke={coatShadow} strokeWidth="2"/>
