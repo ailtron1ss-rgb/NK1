@@ -2833,3 +2833,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Extended the humanoid rig resolver to independently detect left and right upper-arm/lower-arm chains with ambiguity rejection.
 - Integrated discovery into local VRM/GLB loading in `Avatar3DStage`; the stage reports which arm chains are recognized and explicitly does not claim IK execution.
 - Added a stage source-contract regression and included the stage/test paths in the focused workflow filters.
+
+## 2026-10-30 — Aspect 10: bind-pose-safe VRM IK application seam
+
+- Added immutable per-arm bind-pose capture and absolute IK target calculation so repeated animation-frame updates cannot accumulate Euler rotation drift.
+- Added bounded pose blending, rig-identity checks and explicit bind-pose restoration helpers.
+- Removed shoulder-joint aliases that could falsely satisfy the upper-arm resolver without a valid upper-arm/forearm chain.
+- Added deterministic regressions for snapshot immutability, drift prevention, blending, restoration and invalid rig/weight rejection.
+- Live Avatar3DStage actuation remains disabled pending per-model calibration and animation-mixer coordination.
