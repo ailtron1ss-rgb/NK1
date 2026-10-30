@@ -1,3 +1,10 @@
+## [WorkPass642] — Исправление whitespace-sensitive regression test
+
+- Исправлен статический тест композиции facial semantic weights: теперь он допускает форматирование с пробелами и переносами строк, сохраняя проверку порядка и аргументов.
+- Production runtime не менялся: причина сбоя Actions была в слишком строгом текстовом ожидании, а не в ошибке composeFacialWeights.
+- Предыдущий run #225 остановился на этом тесте; новый Actions run для commit WorkPass642 должен подтвердить исправление.
+- Реальные browser/device E2E VRM/GLB остаются pending.
+
 ## [WorkPass641] — Complete partial VRM ExpressionManager facial coverage
 
 - Preserve native VRM ExpressionManager ownership for every preset/custom semantic the loaded model actually exposes.
