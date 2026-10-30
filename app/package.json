@@ -27,7 +27,8 @@
     "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs",
     "test:avatar-affective-expression": "node --experimental-strip-types --test scripts/avatar-affective-expression.test.mjs",
     "test:avatar-facial-microchannels": "node --experimental-strip-types --test scripts/avatar-facial-microchannels.test.mjs",
-    "test:avatar-body-dynamics": "node --experimental-strip-types --test scripts/avatar-body-dynamics.test.mjs"
+    "test:avatar-body-dynamics": "node --experimental-strip-types --test scripts/avatar-body-dynamics.test.mjs",
+    "test:avatar-speech-prosody": "node --experimental-strip-types --test scripts/avatar-speech-prosody.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
