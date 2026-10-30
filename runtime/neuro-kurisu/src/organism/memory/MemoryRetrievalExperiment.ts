@@ -142,6 +142,7 @@ export function runMemoryOS2RetrievalExperiment(
       conversationAnnotationsComplete: run.datasetIntegrity.conversationAnnotationComplete,
       crossSplitLeakageCount: run.datasetIntegrity.crossSplitConversationLeakageCount,
     },
+    datasetIntegrity: run.datasetIntegrity,
     singleRunPromotionStatus: run.promotion.status,
     singleRunPromotionReason: run.promotion.reason,
     mrrConfidenceNonInferioritySupported: run.promotion.mrrNonInferioritySupported,
