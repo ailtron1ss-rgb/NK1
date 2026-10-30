@@ -63,7 +63,6 @@ export class OrganismMotorRuntime {
         this.lastContinuousLoopError = error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240);
       }
     }, intervalMs);
-    this.continuousTimer.unref?.();
   }
 
   stopContinuous(): void {
