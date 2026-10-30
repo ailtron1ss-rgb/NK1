@@ -1,3 +1,9 @@
+## [NK1][Perception] Restore local temporal tracks from canonical source IDs (2026-10-30)
+
+- Accept both the default tracker source prefix and the legacy embedded source-marker form when rebuilding local tracks from P41 snapshots.
+- Preserve strict camera namespace, local-track ID, box validity, confidence, and freshness checks; this does not turn provider IDs into local IDs.
+- The existing restart regression exercises two same-label objects whose temporal identities must survive a runtime restore.
+
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
 - Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
