@@ -34,6 +34,7 @@ test("AvatarStage accepts only the latest same-origin partial ACK and never upgr
   const avatarUrl = new URL("../src/components/AvatarStage.tsx", import.meta.url);
   const avatar = await readFile(avatarUrl, "utf8");
   assert.match(avatar, /ev\.origin !== window\.location\.origin \|\| ev\.source !== frame\.current\?\.contentWindow/);
+  assert.match(avatar, /typeof version !== "number" \|\| !Number\.isSafeInteger\(version\)/);
   assert.match(avatar, /version !== latestIntentStateVersionRef\.current/);
   assert.match(avatar, /ev\.data\.appliedRevision !== version \|\| ev\.data\.complete !== false/);
   assert.match(avatar, /expressionStatus !== "not-independently-verified" \|\| ev\.data\.motionStatus !== "not-independently-verified"/);
