@@ -112,3 +112,33 @@ export function deriveAffectiveExpression(
     voiceEmphasis,
   };
 }
+
+
+/**
+ * Smooths continuous presentation channels without delaying the semantic
+ * expression switch. Rising signals use a quicker attack than release so
+ * salient reactions feel responsive while returning to baseline feels calm.
+ * Call once per new organism snapshot, not once per render frame.
+ */
+export function smoothAffectiveExpression(
+  previous: AffectiveExpressionProfile | null,
+  next: AffectiveExpressionProfile,
+  deltaMs: number,
+): AffectiveExpressionProfile {
+  if (!previous || !Number.isFinite(deltaMs) || deltaMs <= 0) return { ...next };
+  const dt = clamp(deltaMs, 0, 1000);
+  const blend = (from: number, to: number, attackMs: number, releaseMs = attackMs): number => {
+    const tau = Math.abs(to) > Math.abs(from) ? attackMs : releaseMs;
+    const alpha = 1 - Math.exp(-dt / Math.max(1, tau));
+    return from + (to - from) * alpha;
+  };
+  return {
+    expression: next.expression,
+    expressionIntensity: clamp(blend(previous.expressionIntensity, next.expressionIntensity, 72, 165), 0.12, 0.92),
+    gazeX: clamp(blend(previous.gazeX, next.gazeX, 95, 145), -0.4, 0.4),
+    gazeY: clamp(blend(previous.gazeY, next.gazeY, 95, 145), -0.25, 0.25),
+    headTilt: clamp(blend(previous.headTilt, next.headTilt, 110, 170), -0.15, 0.15),
+    gestureDrive: clamp(blend(previous.gestureDrive, next.gestureDrive, 65, 190), 0, 1),
+    voiceEmphasis: clamp(blend(previous.voiceEmphasis, next.voiceEmphasis, 55, 140), 0, 0.85),
+  };
+}
