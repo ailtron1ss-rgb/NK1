@@ -50,7 +50,7 @@ assert.equal(nonFiniteCounters.snapshot().samples, 0);
 assert.equal(nonFiniteCounters.snapshot().verifiedOutcomeSamples, 0);
 assert.equal(nonFiniteCounters.snapshot().unverifiedOutcomeSamples, 0);
 assert.equal(nonFiniteCounters.snapshot().authorshipEvidenceSamples, 0);
-assert.equal(nonFiniteCounters.snapshot().lastObservationKey.length, 0);
+assert.equal(nonFiniteCounters.snapshot().lastObservationKey.length, 4096, 'observation key is bounded at the configured maximum');
 assert.equal(nonFiniteCounters.snapshot().recentSummary.length, 512);
 
 const normalized = new P78AutobiographicalSelfContinuity();
