@@ -11,14 +11,20 @@ export interface P80State {
   lastTick:number; lastAction:string; lastReason:string;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const P80_MODES:P80Mode[]=['respond','explore','verify','reflect','rest','wait','defer'];
+const cleanText=(value:unknown,max:number)=>typeof value==='string'?value.normalize('NFKC').replace(/[\\u0000-\\u001f\\u007f-\\u009f]/g,' ').replace(/\\s+/g,' ').trim().slice(0,max):'';
+const safeCount=(value:unknown)=>{const n=Number(value);return Number.isSafeInteger(n)&&n>=0?Math.min(1_000_000,n):0;};
 export const defaultP80=():P80State=>({version:1,cycles:0,continuity01:.9,coherence01:.8,agency01:.5,realityAlignment01:.5,currentMode:'wait',recentModes:[],recentActions:[],modeStreak:0,noveltyPressure01:.2,lastTick:0,lastAction:'wait',lastReason:''});
 export class P80UnifiedSelfState {
   private state=defaultP80();
-  restore(raw:Partial<P80State>|undefined){if(!raw)return;const d=defaultP80();this.state={...d,...raw,recentModes:Array.isArray(raw.recentModes)?raw.recentModes.slice(-32) as P80Mode[]:[],recentActions:Array.isArray(raw.recentActions)?raw.recentActions.slice(-32):[]};}
+  restore(raw:Partial<P80State>|undefined){if(!raw)return;const d=defaultP80(),r:any=raw;this.state={version:1,cycles:safeCount(r.cycles),continuity01:clamp(Number(r.continuity01??d.continuity01)),coherence01:clamp(Number(r.coherence01??d.coherence01)),agency01:clamp(Number(r.agency01??d.agency01)),realityAlignment01:clamp(Number(r.realityAlignment01??d.realityAlignment01)),currentMode:P80_MODES.includes(r.currentMode)?r.currentMode:d.currentMode,recentModes:Array.isArray(r.recentModes)?r.recentModes.filter((x:unknown):x is P80Mode=>P80_MODES.includes(x as P80Mode)).slice(-32):[],recentActions:Array.isArray(r.recentActions)?r.recentActions.map((x:unknown)=>cleanText(x,48)).filter(Boolean).slice(-32):[],modeStreak:safeCount(r.modeStreak),noveltyPressure01:clamp(Number(r.noveltyPressure01??d.noveltyPressure01)),lastTick:safeCount(r.lastTick),lastAction:cleanText(r.lastAction,48)||d.lastAction,lastReason:cleanText(r.lastReason,240)};}
   snapshot(){return JSON.parse(JSON.stringify(this.state)) as P80State;}
   summary(){return{version:1,cycles:this.state.cycles,continuity01:this.state.continuity01,coherence01:this.state.coherence01,agency01:this.state.agency01,realityAlignment01:this.state.realityAlignment01,currentMode:this.state.currentMode,noveltyPressure01:this.state.noveltyPressure01,lastTick:this.state.lastTick,lastAction:this.state.lastAction};}
   update(i:P80Input){
-    const modeStreak=i.mode===this.state.currentMode?this.state.modeStreak+1:1;
+    const mode=P80_MODES.includes(mode)?i.mode:'wait';
+    const action=cleanText(action,48)||'wait';
+    const tick=safeCount(i.tick);
+    const modeStreak=mode===this.state.currentMode?Math.min(1_000_000,this.state.modeStreak+1):1;
     const diversity = new Set([...this.state.recentModes.slice(-8),i.mode]).size/Math.max(1,Math.min(8,this.state.recentModes.length+1));
     const monotony=clamp(1-diversity);
     const noveltyPressure=clamp(monotony*.55+i.novelty01*.25+i.uncertainty01*.2);
@@ -26,7 +32,7 @@ export class P80UnifiedSelfState {
     const coherence=clamp(i.workspace01*.2+i.grounding01*.16+i.causal01*.16+(1-i.uncertainty01)*.16+i.cognitiveCapacity01*.14+i.memoryContinuity01*.1+i.realityGap01*.08);
     const agency=clamp(i.externalInput?.55:.72 + (i.actionScore01-.5)*.18 - i.uncertainty01*.08);
     const realityAlignment=clamp(1-i.realityGap01);
-    this.state.cycles++; this.state.lastTick=i.tick; this.state.lastAction=i.action; this.state.currentMode=i.mode; this.state.modeStreak=modeStreak;
+    this.state.cycles=Math.min(1_000_000,this.state.cycles+1); this.state.lastTick=i.tick; this.state.lastAction=i.action; this.state.currentMode=i.mode; this.state.modeStreak=modeStreak;
     this.state.recentModes=[...this.state.recentModes,i.mode].slice(-32); this.state.recentActions=[...this.state.recentActions,i.action].slice(-32);
     this.state.continuity01=clamp(this.state.continuity01*.94+continuity*.06);
     this.state.coherence01=clamp(this.state.coherence01*.9+coherence*.1);
