@@ -1,4 +1,4 @@
-import { validateSemanticBodyState, type SemanticBodyState } from "./embodimentSwitch";
+import { validateSemanticBodyState, type SemanticBodyState } from "./embodimentSwitch.ts";
 
 export type EmbodimentSwitchPhase =
   | "idle" | "preparing" | "applying" | "verifying" | "rolling-back" | "committed" | "failed";
