@@ -98,7 +98,7 @@ const ACTION_TENDENCIES:readonly EmotionActionTendency[]=['explore','engage','ve
 type RegulationBand='low'|'medium'|'high';
 const regulationBand=(value:number):RegulationBand=>value<.34?'low':value<.67?'medium':'high';
 const contextOutcomeKey=(action:string,label:EmotionLabel,pressure01:number)=>JSON.stringify([action,label,regulationBand(pressure01)]);
-const safeKey=(value:unknown,max=256):value is string=>typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value)&&!['__proto__','prototype','constructor','toString','hasOwnProperty'].includes(value);
+const safeKey=(value:unknown,max=256):value is string=>typeof value==='string'&&value.length>0&&value.length<=max&&value.trim()===value&&!Array.from(value).some(ch=>{const code=ch.charCodeAt(0);return code<32||(code>=127&&code<=159);})&&!['__proto__','prototype','constructor','toString','hasOwnProperty'].includes(value);
 function normalizeInfluences(value:unknown):NormalizedEmotionAppraisalInfluences {
   if(value===undefined||value===null) return {
     personality:{curiosity01:.5,caution01:.5,care01:.5,persistence01:.5,confidence01:0},
