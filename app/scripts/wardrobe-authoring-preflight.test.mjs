@@ -17,10 +17,19 @@ async function fixture(t, bytes, mime="image/png") {
   const root=await mkdtemp(path.join(os.tmpdir(),"nk1-wardrobe-preflight-"));
   t.after(()=>rm(root,{recursive:true,force:true}));
   await mkdir(path.join(root,"assets"));
-  await writeFile(path.join(root,"assets","item.bin"),bytes);
-  const manifest={schemaVersion:1,packId:"kurisu-lab-pack",version:"1.0.0",creator:"NK1 test fixture",source:"https://example.invalid/source",licenseId:"CC0-1.0",attribution:"Test-only synthetic fixture",targetBodyId:"nk1-vrm-test-body",targetRigVersion:"nk1-test-rig-v1",assets:[{id:"item-v1",garmentId:"coat-lab",slot:"outerwear",renderer:"vrm3d",path:"assets/item.bin",sha256:createHash("sha256").update(bytes).digest("hex"),bytes:bytes.length,mime}]};
+  const extensionByMime = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "model/gltf-binary": "glb",
+    "model/gltf+json": "gltf",
+  };
+  const assetRelativePath = `assets/item.${extensionByMime[mime] ?? "bin"}`;
+  const assetPath = path.join(root, assetRelativePath);
+  await writeFile(assetPath,bytes);
+  const manifest={schemaVersion:1,packId:"kurisu-lab-pack",version:"1.0.0",creator:"NK1 test fixture",source:"https://example.invalid/source",licenseId:"CC0-1.0",attribution:"Test-only synthetic fixture",targetBodyId:"nk1-vrm-test-body",targetRigVersion:"nk1-test-rig-v1",assets:[{id:"item-v1",garmentId:"coat-lab",slot:"outerwear",renderer:"vrm3d",path:assetRelativePath,sha256:createHash("sha256").update(bytes).digest("hex"),bytes:bytes.length,mime}]};
   const manifestPath=path.join(root,"manifest.json");await writeFile(manifestPath,JSON.stringify(manifest));
-  return {root,manifestPath,manifest};
+  return {root,manifestPath,manifest,assetPath};
 }
 const png=Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]);
 
@@ -32,7 +41,7 @@ test("authoring preflight accepts exact asset bytes, SHA-256 and MIME signature"
 
 test("authoring preflight rejects payload tampering even when the manifest remains unchanged",async t=>{
  const f=await fixture(t,png);
- await writeFile(path.join(f.root,"assets","item.bin"),Buffer.concat([png,Buffer.from([1])]));
+ await writeFile(f.assetPath,Buffer.concat([png,Buffer.from([1])]));
  const result=await preflightWardrobePack({manifestPath:f.manifestPath,assetsRoot:f.root});
  assert.equal(result.valid,false);assert.ok(result.errors.includes("asset:item-v1:byte-length-mismatch"));assert.ok(result.errors.includes("asset:item-v1:sha256-mismatch"));
 });
