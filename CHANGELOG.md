@@ -1,3 +1,13 @@
+## [NK1][Aspect 15] Harden modular wardrobe selection and multi-slot VRM commits (2026-10-30)
+
+- Exclude wardrobe-tagged scene subtrees from base VRM rig discovery and body identity so attached clothing cannot alter the target body's fingerprint or pollute later garment remapping.
+- Support verified multi-slot VRM packs, rollback-safe replacement, and commit-only disposal of replaced geometry/material/texture resources.
+- Add independent per-asset selection in the uploaded VRM stage; unselected slots remain unchanged.
+- Add `resolveWardrobeSelection` for slot composition, duplicate/unknown item checks, dependency/exclusion rules and renderer-specific asset readiness.
+- Reject malformed non-string asset paths and invalid byte payloads without throwing.
+- Add regressions for stable body identity, multiple garments in distinct slots, replaced-root cleanup, per-slot UI selection and malformed input handling.
+- Evidence boundary: prior wardrobe workflow checkpoint was 45/45; this commit series still requires CI on the new HEAD. Real garment packs, persistent selection, Live2D/2.5D application, visual/device E2E and Release ZIP refresh remain pending.
+
 ## [NK1][Aspect 08] Harden wardrobe bundle ingestion before base64 decoding (2026-10-30)
 
 - Validate the manifest before allocating decoded payload buffers.
