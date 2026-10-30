@@ -45,9 +45,13 @@ const runtime=new OrganismRuntime({
 try{
   await runtime.init();
   let receipt=0;
+  const idempotencyKeys=new Set();
   // Exercise the real public runtime capture method and real evidence decoder;
   // only the platform ActionGateway/device receipt is controlled in this test.
-  runtime.core.executeTool=async (_tool,_input,_origin,_options)=>{
+  runtime.core.executeTool=async (_tool,_input,_origin,options)=>{
+    assert.ok(options?.idempotencyKey,'physical camera capture must carry a durable idempotency key');
+    assert.equal(idempotencyKeys.has(options.idempotencyKey),false,'capture idempotency keys must be unique per requested frame');
+    idempotencyKeys.add(options.idempotencyKey);
     receipt++;
     return {
       tool:'organism.device.capture',
@@ -61,7 +65,7 @@ try{
     };
   };
 
-  const first=await runtime.captureCamera(0,true);
+  const first=await runtime.captureCamera(0,true,{idempotencyKey:'runtime-camera-test-1'});
   assert.equal(first.ok,true);
   assert.equal(first.semanticVision,true);
   assert.equal(first.tracking.acceptedFrame,true);
@@ -72,7 +76,7 @@ try{
 
   // The bytes/hash are deliberately identical. A new capture receipt is still a
   // new frame and must associate the second detection to the prior track.
-  const second=await runtime.captureCamera(0,true);
+  const second=await runtime.captureCamera(0,true,{idempotencyKey:'runtime-camera-test-2'});
   assert.equal(second.ok,true);
   assert.equal(second.evidence.sha256,first.evidence.sha256);
   assert.notEqual(second.executionId,first.executionId);
