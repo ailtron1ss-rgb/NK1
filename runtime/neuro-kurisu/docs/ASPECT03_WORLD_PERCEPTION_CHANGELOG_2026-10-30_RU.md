@@ -39,8 +39,10 @@
 
 ## Текущий статус
 
-- Изменения записаны в отдельной рабочей ветке.
-- Новые regression tests добавлены в dedicated world-perception workflow.
-- Окончательная валидация ожидает GitHub Actions на PR head.
-- Локальные тесты в текущем контейнере не были запущены: прямой GitHub clone недоступен из-за DNS; нельзя выдавать их за пройденные.
-- Android/Termux camera soak и независимая разметка остаются отдельными acceptance gates.
+- Изменения записаны в отдельной рабочей ветке и Draft PR #423; base — `workpass70-source`.
+- Specialized `world-perception-integrity` workflow завершился SUCCESS на HEAD `1ebc8ed0daf6840ae13fbcfa6006ac50da61a1c2`.
+- Подтверждены runtime ingress, все P41 regression checks, object identity/provenance, camera MIME/spatial truthfulness, calibrated spatial-frame round-trip и runtime typecheck.
+- На том же HEAD прошли `cognitive-contracts`, `source-lineage-contract`, `verified-promotion`, `metrics`, `verified-experience-lanes`, `correlated-postcondition` и `local-language-resilience`.
+- Большой `targeted-and-regression` job на момент обновления ещё выполняется; его финальный результат не приписывается этому проходу.
+- Локальный запуск тестов в контейнере не заявляется: прямой GitHub clone недоступен из-за DNS; проверяемые результаты получены через GitHub Actions.
+- Android/Termux camera soak, object tracker и независимая разметка остаются отдельными acceptance gates.
