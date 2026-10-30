@@ -1,4 +1,17 @@
-## [NK1][аспект7] Share affective facial microchannels with Original 2D (2026-10-30)\n\n- Feed the same canonical facial microchannel snapshot to NK1 Original 2D, Live2D and procedural/imported 3D; keep appraisal ownership in AvatarStage and avoid a renderer-specific emotion engine.\n- Apply bounded eye-smile, asymmetric brow offsets and cheek intensity in the authored SVG face; speaking visemes remain authoritative for mouth articulation.\n- Add a focused source-contract regression and include it in the aspect-07 validation workflow. SVG visual calibration remains pending.\n\n## [NK1][аспект7] Add affect-conditioned temporal facial microdynamics (2026-10-30)
+## [NK1][аспект7] Preserve continuous breathing phase across affect changes (2026-10-30)
+
+- Integrate breathing phase from the actual frame delta and current breaths-per-minute instead of recomputing phase from total runtime multiplied by the latest cadence.
+- Prevent visible phase jumps when emotion, arousal, energy or sleep state changes breathing cadence.
+- Keep the pure body-dynamics adapter deterministic with an optional accumulated phase input; retain elapsed-time fallback for existing callers.
+- Add regression coverage for phase continuity and the 3D runtime accumulator. Visual model calibration remains pending.
+
+## [NK1][аспект7] Share affective facial microchannels with Original 2D (2026-10-30)
+
+- Feed the same canonical facial microchannel snapshot to NK1 Original 2D, Live2D and procedural/imported 3D; keep appraisal ownership in AvatarStage and avoid a renderer-specific emotion engine.
+- Apply bounded eye-smile, asymmetric brow offsets and cheek intensity in the authored SVG face; speaking visemes remain authoritative for mouth articulation.
+- Add a focused source-contract regression and include it in the aspect-07 validation workflow. SVG visual calibration remains pending.
+
+## [NK1][аспект7] Add affect-conditioned temporal facial microdynamics (2026-10-30)
 
 - Extend the shared facial profile with bounded blink interval/duration and saccade interval/amplitude targets derived deterministically from arousal and emotion.
 - Apply validated temporal targets in the Live2D viewer with bounded local cadence variation; attenuate gaze saccades while speaking and retain compatibility defaults for older senders.
@@ -1529,7 +1542,13 @@
 - Added regression assertions for exact seed pairing, baseline parity, train/holdout isolation, missing baseline cells and cell-level intervals. This remains evidence-pipeline code; the fixture does not measure live learner performance.
 - Research adaptation: AgentMemoryBench separates online, replay, transfer and repair modes; SkillLearnBench separates skill quality, trajectory quality and verified task outcome; retention-bench emphasizes process resets and distinguishing stored records from integrated learning. NK1 now exposes more granular outcome evidence, but still needs a real runner, independent tasks, and process-reset experiments. No upstream code/data copied in this pass.
 
-## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)\n\n- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.\n- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.\n- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.\n\n## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
+## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)
+
+- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.
+- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.
+- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.
+
+## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
 
 - Added a reusable sequential-task metric module reporting final average score, peak-to-final forgetting, backward transfer, and forward transfer relative to an explicit reference policy.
 - Enforces a square task-by-stage score matrix, unique task identities, finite [0,1] scores and explicit handling of missing pre-training baselines; unavailable forward-transfer values remain null rather than being fabricated.
