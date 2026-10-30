@@ -21,7 +21,7 @@ test("texture atlas and coat physics do not falsely imply modular clothing", () 
   const result = inspectLive2DWardrobeCapability(model, display, {
     "Arm Change.exp3.json": { Parameters: [{ Id: "HandChange", Value: 1 }] },
   });
-  assert.equal(result.status, "no-switch-contract");
+  assert.equal(result.status, "limited-controls");
   assert.equal(result.canSwitchGarments, false);
   assert.equal(result.textureCount, 1);
   assert.equal(result.motionGroupCount, 2);
