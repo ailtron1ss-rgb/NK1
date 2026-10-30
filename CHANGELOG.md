@@ -1,3 +1,35 @@
+## [NK1][CI] Correct normalized import-recovery assertion — 2026-10-30
+
+- Fix the final whitespace-normalized import-recovery assertion so the localized diagnostic is compared in the same normalized form as the source text.
+- Runtime import/recovery behavior is unchanged; the preceding exact-head run had 26/27 avatar hardening checks passing and identified this one remaining assertion-only failure.
+
+## [NK1][CI] Align avatar integrity regression contracts with the renderer — 2026-10-30
+
+- Replace whitespace-sensitive source assertions with normalized structural checks for failed-import recovery, mixer disposal ordering and shared speech/viseme rate.
+- Update the Original renderer integration regression to describe its new truthful 2.5D depth/parallax preview rather than the previous 2D-only label.
+- No runtime behavior is weakened: validation order, preservation of the loaded model and pre-disposal mixer cleanup remain explicitly asserted.
+
+
+## [NK1][Aspect 11] Add gaze-driven 2.5D depth preview to Original SVG body — 2026-10-30
+
+- Add four independently transformed SVG depth layers: rear hair, torso, head and front fringe. Differential bounded offsets derive from the organism gaze signal, preserving vector artwork and existing expression/viseme behavior.
+- Keep the 2D-authored SVG editable; no bitmap segmentation, fake anatomical rig or claim of production 2.5D depth geometry.
+- Add deterministic finite/clamped viewBox-space transform mapping, 320ms layer transitions and `prefers-reduced-motion` suppression.
+- Add depth/parallax regression coverage to the avatar hardening suite.
+- Production PSD/occlusion masks, articulated joints, rendered browser/device E2E and real cross-renderer handoff remain separate gates.
+
+
+
+
+## [NK1][Aspect 13/09] Harden local VRM/GLB import and affect-aware speech — 2026-10-30
+
+- Preflight user-supplied binary VRM/GLB before invoking GLTFLoader: GLB 2.0 container/chunk integrity, self-contained buffer/image URIs, hierarchy, bufferView bounds, image signatures/dimensions and bounded scene/accessor/animation complexity.
+- Preserve the last successfully loaded model when a new file is rejected or fails parsing; never replace the working body before preflight and parser success.
+- Stop AnimationMixer actions and uncache the prior rig root before model replacement, reset or stage unmount disposes resources.
+- Derive bounded browser TTS pitch/rate/volume from the canonical emotion appraisal, action and personality traits. Use the same rate for synthesis and the approximate viseme timeline; regulate high negative arousal rather than amplifying it.
+- Add validator, import-lifecycle and prosody regressions plus a dedicated Node 24 workflow for tests, app typecheck and build.
+- Evidence boundary: source and regression coverage are committed here; hosted exact-HEAD CI and browser/Android visual/audio E2E must pass before promotion. This does not grant model redistribution rights, implement a complete VRM runtime, or update the canonical Release ZIP.
+
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
 - Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...

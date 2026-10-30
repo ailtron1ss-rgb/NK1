@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
+import { deriveBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -163,7 +164,16 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
         const language = inferSpeechLanguage(text);
-        const rate = 0.96;
+        const prosody = deriveBrowserVoiceProsody({
+          emotion: lastTurn.emotion ?? snap.emotion.label,
+          valence: snap.emotion.valence,
+          arousal: snap.emotion.arousal,
+          dominance: snap.emotion.dominance,
+          action: snap.lastOption,
+          traits: snap.identity.traits,
+        });
+        // One bounded rate controls both SpeechSynthesis and the approximate viseme clock.
+        const rate = prosody.rate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
         const session: BrowserSpeechSession = {
@@ -184,9 +194,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         setVoiceStatus("ready");
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
-        utterance.rate = rate;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
-        utterance.pitch = utteranceEmotion === "joy" ? 1.03 : utteranceEmotion === "frustration" || utteranceEmotion === "anger" ? 0.92 : 1.0;
+        utterance.rate = prosody.rate;
+        utterance.pitch = prosody.pitch;
+        utterance.volume = prosody.volume;
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;
@@ -380,7 +390,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       <div className="absolute left-3 top-3 z-30 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1 rounded-md border border-border bg-black/60 p-1 backdrop-blur">
         <button type="button" onClick={() => setMode("live2d")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "live2d" ? "bg-accent text-accent-fg" : "text-white/70")}>Live2D</button>
         <button type="button" onClick={() => setMode("legacy")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "legacy" ? "bg-accent text-accent-fg" : "text-white/70")}>Legacy</button>
-        <button type="button" onClick={() => setMode("original")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "original" ? "bg-accent text-accent-fg" : "text-white/70")}>NK1 Original</button>
+        <button type="button" onClick={() => setMode("original")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "original" ? "bg-accent text-accent-fg" : "text-white/70")}>NK1 Original · 2.5D</button>
         <button type="button" onClick={() => setMode("3d")} className={cn("rounded px-2 py-1 text-[10px] font-mono", mode === "3d" ? "bg-accent text-accent-fg" : "text-white/70")}>3D</button>
         <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
