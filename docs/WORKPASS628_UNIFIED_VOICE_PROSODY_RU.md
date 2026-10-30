@@ -94,3 +94,11 @@ The contract is provider-neutral and names a native TTS provider, but the native
 ### Порядок при reentrant-подписчиках
 
 Дополнительно закрыт edge case: observer мог синхронно вызвать `publish()` во время доставки текущего события, из-за чего следующий подписчик мог увидеть вложенное событие раньше исходного. Канал теперь ставит вложенные публикации в FIFO-очередь; все подписчики получают одинаковый total order. Добавлен отдельный regression. CI-проверка этого follow-up ещё ожидается.
+
+
+### Монотонность timestamp при регрессирующем источнике часов
+
+- В NativeSpeechEventChannel добавлен per-operation last timestamp: новый timestamp равен max(clock sample, предыдущий timestamp этой операции). Это защищает event contract от тестового clock reset, некорректного injected clock и любых локальных регрессий измерителя.
+- При bounded eviction удаляются и sequence, и timestamp state одного operation ID, поэтому диагностическая память остаётся ограниченной.
+- Добавлен regression для clock samples 100 → 95 → 120 с ожидаемыми event timestamps 100 → 100 → 120.
+- На текущем HEAD `92f2c6d1e57f61eb4f6110ec808d2f264e203308` новый hosted CI run пока не появился. Последняя проверенная Core Regression на предыдущем HEAD прошла; этот follow-up не объявляется CI-валидированным до нового запуска.
