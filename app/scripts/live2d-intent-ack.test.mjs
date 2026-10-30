@@ -22,7 +22,8 @@ test("Live2D ACK is revision-bound and waits for Cubism readback plus requested 
 });
 
 test("partial ACK distinguishes command start from unavailable or failed action and never claims visual completion", () => {
-  assert.match(viewer, /ok===true\?'started':'unavailable'/);
+  assert.match(viewer, /const started=ok===true/);
+  assert.match(viewer, /started\?'started':'unavailable'/);
   assert.match(viewer, /settleIntentAction\(pending,channel,'error'\)/);
   assert.match(viewer, /expressionStatus:pending\.expressionStatus/);
   assert.match(viewer, /motionStatus:pending\.motionStatus/);
