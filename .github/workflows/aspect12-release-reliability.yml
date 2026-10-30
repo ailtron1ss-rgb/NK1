@@ -17,7 +17,7 @@ on:
       - "SUPER_VERSION.json"
       - ".nvmrc"
   pull_request:
-    branches: [main, rebuild, workpass70-source]
+    branches: [main, rebuild, workpass70-source, work/nk1-autonomous-motor-control-2026-10-30]
     paths:
       - "tools/aspect12-release-readiness.mjs"
       - "tools/aspect12-release-readiness.test.mjs"
