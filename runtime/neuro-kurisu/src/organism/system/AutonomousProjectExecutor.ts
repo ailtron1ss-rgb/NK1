@@ -362,14 +362,38 @@ export class AutonomousProjectExecutor {
     return structuredClone(active);
   }
 
+  /**
+   * A pending operation may already have crossed the ActionGateway side-effect
+   * boundary. Only a never-submitted prepared intent or a receipt whose projection
+   * has been durably applied may be cleared by the caller.
+   */
   clearStepOperation(operationKey: string): boolean {
-    if (!this.state.activeOperation || this.state.activeOperation.operationKey !== operationKey) return false;
+    const active = this.state.activeOperation;
+    if (!active || active.operationKey !== operationKey) return false;
+    if (active.stage !== 'prepared' && active.stage !== 'receipt-recorded') return false;
     this.state.activeOperation = undefined;
     this.state.lastAt = Date.now();
     return true;
   }
 
+  hasUnresolvedStepOperation(): boolean {
+    const stage = this.state.activeOperation?.stage;
+    return Boolean(stage && stage !== 'prepared');
+  }
+
   ensure(project: { id: string; origin: string }) {
+    const active = this.state.activeOperation;
+    if (active && active.stage !== 'prepared') {
+      // Never reset the executor while a side effect or its result projection
+      // still needs reconciliation, even if the current project has changed.
+      if (this.state.projectId !== project.id) return this.snapshot();
+      if (this.state.steps.length) return this.snapshot();
+      this.state.steps = makeSteps(project.origin);
+      this.state.planRevision = Math.max(1, this.state.planRevision);
+      this.state.startedAt = this.state.startedAt || Date.now();
+      this.state.lastAt = Date.now();
+      return this.snapshot();
+    }
     if (this.state.projectId === project.id && this.state.steps.length) {
       return this.snapshot();
     }
