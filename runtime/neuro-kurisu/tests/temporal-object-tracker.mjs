@@ -76,6 +76,22 @@ assert.deepEqual(groundedChairs.map(object=>object.bbox2D).sort((a,b)=>a.x-b.x),
   {x:.72,y:.11,width:.18,height:.3},
 ]);
 
+// Simulate process restart: restore local temporal identities from the persisted
+// canonical P41 snapshot, then continue tracking on a third camera frame.
+const restartedTracker=new TemporalObjectTracker({sessionId:'new-process'});
+const restoreResult=restartedTracker.restoreFromPerception(secondSemantic.entities,1_600);
+assert.equal(restoreResult.restored,2);
+const third=restartedTracker.update({
+  cameraId:0,at:2_000,frameId:'receipt-3',
+  objects:[
+    {label:'chair',kind:'object',confidence01:.92,bbox:box(.74,.12),bboxConfidence01:.9},
+    {label:'chair',kind:'object',confidence01:.91,bbox:box(.12,.12),bboxConfidence01:.9},
+  ],
+});
+assert.equal(third.metrics.associatedTrackCount,2);
+assert.equal(third.objects[0].trackId,second.objects[0].trackId);
+assert.equal(third.objects[1].trackId,second.objects[1].trackId);
+
 // A single prior track cannot be assigned to two competing current detections.
 const ambiguousTracker=new TemporalObjectTracker({sessionId:'ambiguity',maxTrackGapMs:2_000});
 const seed=ambiguousTracker.update({cameraId:0,at:1_000,objects:[{label:'cup',bbox:box(.35,.3),confidence01:.9,bboxConfidence01:.9}]});
