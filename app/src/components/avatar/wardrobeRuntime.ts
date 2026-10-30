@@ -76,7 +76,9 @@ export function isWardrobeRendererAcknowledgementComplete(
   acknowledgement: { requestId: string; success: boolean; loadedAssetIds: string[] },
 ): boolean {
   if (plan.status !== "ready" || !acknowledgement.success || acknowledgement.requestId !== plan.requestId) return false;
-  const loaded = new Set(acknowledgement.loadedAssetIds ?? []);
+  const loadedAssetIds = acknowledgement.loadedAssetIds ?? [];
+  if (loadedAssetIds.length !== plan.expectedAssetIds.length) return false;
+  const loaded = new Set(loadedAssetIds);
   return loaded.size === plan.expectedAssetIds.length &&
     plan.expectedAssetIds.every((id) => loaded.has(id));
 }
