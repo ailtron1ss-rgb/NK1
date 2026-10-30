@@ -202,6 +202,7 @@ directP2702Bypass.afterOutcome({ tick: 50, reward01: 1, verified01: 1, predictio
 assert.deepEqual(directP2702Bypass.snapshot().valueWeights,directP2702Before.valueWeights,'direct callers cannot update stable values without an exact receipt');
 assert.deepEqual(directP2702Bypass.snapshot().selfBeliefs,directP2702Before.selfBeliefs,'direct callers cannot update self-beliefs without an exact receipt');
 assert.deepEqual(directP2702Bypass.snapshot().relationshipTrust,directP2702Before.relationshipTrust,'direct callers cannot update relationship trust without an exact receipt');
+assert.equal(directP2702Bypass.snapshot().autobiographicalStrength01,directP2702Before.autobiographicalStrength01,'unreceipted outcomes cannot increase autobiographical evidence strength');
 const relationshipRestore = new P2702PersistentPersonalityDynamics();
 relationshipRestore.restore({ relationshipTrust:Object.fromEntries([['Ａlice',0.9],['Alice',0.2],['bad'+String.fromCharCode(0)+'key',1],['__proto__',1],['constructor',1]]) });
 assert.equal(Object.keys(relationshipRestore.snapshot().relationshipTrust).length,1,'restore normalizes Unicode and drops duplicate/unsafe relationship IDs');
