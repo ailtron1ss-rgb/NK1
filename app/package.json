@@ -31,7 +31,8 @@
     "test:avatar-humanoid-bones": "node --experimental-strip-types --test scripts/avatar-humanoid-bone-map.test.mjs",
     "test:avatar-vrm-expressions": "node --experimental-strip-types --test scripts/avatar-vrm-expression-map.test.mjs",
     "test:avatar-pixiv-vrm-runtime": "node --experimental-strip-types --test scripts/avatar-pixiv-vrm-runtime.test.mjs",
-    "test:avatar-vrm-license-metadata": "node --experimental-strip-types --test scripts/avatar-vrm-license-metadata.test.mjs"
+    "test:avatar-vrm-license-metadata": "node --experimental-strip-types --test scripts/avatar-vrm-license-metadata.test.mjs",
+    "test:avatar-vrma-animation": "node --experimental-strip-types --test scripts/avatar-vrma-animation.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
