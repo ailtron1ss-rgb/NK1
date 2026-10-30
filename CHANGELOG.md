@@ -1,3 +1,10 @@
+## [NK1][аспект9] Защита монотонности native speech event clock (2026-10-30)
+
+- NativeSpeechEventChannel теперь сохраняет последнее время отдельно для каждого operation ID и зажимает регрессирующие clock samples до предыдущего значения.
+- Добавлен regression на последовательность clock samples 100 → 95 → 120; ожидаемые wire timestamps: 100 → 100 → 120.
+- Ограничение памяти сохранено: при eviction operation ID одновременно удаляются sequence и timestamp state.
+- Hosted CI для этого follow-up ещё ожидается; Android playback и host-to-UI transport не заявляются.
+
 ## [NK1][аспект9] Preserve observer ordering under reentrant native events (2026-10-30)
 
 - Queue nested publications while dispatching so all subscribers observe the same total event order even if one observer synchronously publishes another event.
