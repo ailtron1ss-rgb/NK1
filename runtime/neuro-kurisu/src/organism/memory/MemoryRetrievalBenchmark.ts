@@ -214,6 +214,40 @@ function pairedBootstrapInterval(baseline:QueryOutcome[],candidate:QueryOutcome[
   return {samples,independentClusters:clusterRows.length,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
 }
 
+function clusterLeaveOneOutSensitivity(baseline:QueryOutcome[],candidate:QueryOutcome[],metric:'recallAtK01'|'mrr01',clusterIds:string[]){
+  const n=Math.min(baseline.length,candidate.length,clusterIds.length);
+  const groups=new Map<string,number[]>();
+  for(let i=0;i<n;i++){const key=clusterIds[i]||`query:${i}`;const rows=groups.get(key)??[];rows.push(i);groups.set(key,rows);}
+  const clusterRows=[...groups.values()];
+  const deltaFor=(excluded?:ReadonlySet<number>)=>{
+    let delta=0,count=0;
+    for(let i=0;i<n;i++){if(excluded?.has(i))continue;delta+=candidate[i]![metric]-baseline[i]![metric];count++;}
+    return count?delta/count:0;
+  };
+  const fullDelta=deltaFor();
+  const leaveOneOut:number[]=[];
+  if(clusterRows.length>1){
+    for(const group of clusterRows)leaveOneOut.push(deltaFor(new Set(group)));
+  }
+  const min=leaveOneOut.length?Math.min(...leaveOneOut):fullDelta;
+  const max=leaveOneOut.length?Math.max(...leaveOneOut):fullDelta;
+  const sign=(value:number)=>value>1e-12?1:value< -1e-12?-1:0;
+  const fullSign=sign(fullDelta);
+  const signFlipCount=fullSign===0?0:leaveOneOut.filter(value=>sign(value)!==fullSign).length;
+  return {
+    method:'leave-one-conversation-out-sensitivity' as const,
+    independentClusters:clusterRows.length,
+    evaluations:leaveOneOut.length,
+    fullDelta01:Number(fullDelta.toFixed(4)),
+    minLeaveOneOutDelta01:Number(min.toFixed(4)),
+    maxLeaveOneOutDelta01:Number(max.toFixed(4)),
+    maxAbsoluteShift01:Number(leaveOneOut.length?Math.max(...leaveOneOut.map(value=>Math.abs(value-fullDelta))).toFixed(4):'0'),
+    signFlipCount,
+    signSensitive:signFlipCount>0,
+    interpretation:'diagnostic-only; delete-one-cluster sensitivity is not a confidence interval',
+  };
+}
+
 function pairedBootstrapValuesInterval(baseline:number[],candidate:number[],clusterIds:string[],samples:number,seed:number){
   const n=Math.min(baseline.length,candidate.length,clusterIds.length);
   if(!n)return {samples:0,independentClusters:0,lowerBound01:0,medianDelta01:0,upperBound01:0};
@@ -406,6 +440,11 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     recallAtK01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'recallAtK01',candidateEval.outcomeClusterIds,bootstrapSamples,seed),
     mrr01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'mrr01',candidateEval.outcomeClusterIds,bootstrapSamples,seed^0x9e3779b9),
     unsupportedRetrievalRate01:pairedBootstrapValuesInterval(baselineEval.unsupportedRetrievalOutcomes,candidateEval.unsupportedRetrievalOutcomes,candidateEval.unsupportedClusterIds,bootstrapSamples,seed^0x85ebca6b),
+    clusterSensitivity:{
+      recallAtK01:clusterLeaveOneOutSensitivity(baselineEval.outcomes,candidateEval.outcomes,'recallAtK01',candidateEval.outcomeClusterIds),
+      mrr01:clusterLeaveOneOutSensitivity(baselineEval.outcomes,candidateEval.outcomes,'mrr01',candidateEval.outcomeClusterIds),
+      interpretation:'diagnostic-only; influence analysis cannot replace independent holdout evidence',
+    },
   };
   const evaluateLanguageSlice=(language:MemoryRetrievalLanguage)=>{
     const languageTrain=train.filter(row=>row.language===language);
@@ -423,6 +462,11 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
       recallAtK01:pairedBootstrapInterval(languageBaseline.outcomes,languageCandidate.outcomes,'recallAtK01',languageCandidate.outcomeClusterIds,bootstrapSamples,languageSeed),
       mrr01:pairedBootstrapInterval(languageBaseline.outcomes,languageCandidate.outcomes,'mrr01',languageCandidate.outcomeClusterIds,bootstrapSamples,languageSeed^0x9e3779b9),
       unsupportedRetrievalRate01:pairedBootstrapValuesInterval(languageBaseline.unsupportedRetrievalOutcomes,languageCandidate.unsupportedRetrievalOutcomes,languageCandidate.unsupportedClusterIds,bootstrapSamples,languageSeed^0x85ebca6b),
+      clusterSensitivity:{
+        recallAtK01:clusterLeaveOneOutSensitivity(languageBaseline.outcomes,languageCandidate.outcomes,'recallAtK01',languageCandidate.outcomeClusterIds),
+        mrr01:clusterLeaveOneOutSensitivity(languageBaseline.outcomes,languageCandidate.outcomes,'mrr01',languageCandidate.outcomeClusterIds),
+        interpretation:'diagnostic-only; influence analysis cannot replace independent holdout evidence',
+      },
     };
     const languageRecallDelta=languageCandidate.metrics.recallAtK01-languageBaseline.metrics.recallAtK01;
     const languageMrrDelta=languageCandidate.metrics.mrr01-languageBaseline.metrics.mrr01;
