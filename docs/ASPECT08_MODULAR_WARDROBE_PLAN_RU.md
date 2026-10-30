@@ -148,3 +148,17 @@ The focused regression suite includes the published SHA-256 test vector for `abc
 ## Runtime activation boundary — 2026-10-30
 
 Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that accepts a manifest, byte map and switch request. It verifies the whole payload, ensures each requested ID belongs to the selected renderer and has passed byte verification, then checks body/rig compatibility before returning a ready plan. A helper rejects stale, failed, partial and duplicate renderer acknowledgements. This is an integration contract only: it does not yet fetch files, verify legal rights, persist state, or apply meshes/textures in Live2D/depth-2D/VRM.
+
+
+## Пятый инженерный проход — VRM skinned-garment adapter (2026-10-30)
+
+Добавлен `vrmWardrobeAdapter.ts` для следующего конкретного этапа после проверки байтов пакета:
+- анализирует фактические Bone-иерархии одежды и загруженного аватара, нормализует имена костей и fail-closed отклоняет отсутствующие/неоднозначные кости;
+- требует target bind-pose inverse matrices из скелета тела, не подменяет их inverse matrices исходного garment;
+- переносит skinned garment на кости аватара через новый Skeleton, сохраняя bind matrix меша;
+- разрешает attachment только при `ready` switch plan и наличии точного asset ID в `expectedAssetIds`;
+- сначала клонирует и переназначает весь garment, затем добавляет его в сцену и только после успешного attach скрывает прежний предмет того же slot. Ошибка подготовки не меняет активный образ.
+
+Добавлен `vrm-wardrobe-adapter.test.mjs`: нормализованные имена костей, отсутствующая и дублирующаяся кость, статический/non-skinned ресурс, запрет asset ID вне switch plan, успешное remap и замена слота. Набор включён в `npm run test:wardrobe`.
+
+**Граница:** adapter написан, но пока не подключён к `Avatar3DStage` загрузчику VRM/GLB и не имеет настоящего garment pack для проверки. Требуются loader/UI для выбора pack и asset ID, rights/provenance gate, реальные skinned garment meshes с корректным rig/rest pose, материалы/occlusion, визуальные тесты на нескольких позах и Android/desktop E2E. Никакой фактический outfit-switch на загруженной пользовательской модели пока не заявляется.
