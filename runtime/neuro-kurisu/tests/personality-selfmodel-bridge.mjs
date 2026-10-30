@@ -27,9 +27,10 @@ assert.equal(accepted.evidenceReason,'accepted');
 assert.equal(accepted.selfModelUpdate?.identityUpdateAccepted,true);
 assert.equal(accepted.selfModel.lastIdentityGate?.accepted,true);
 assert.equal(accepted.personality.learningUpdates,1);
-assert.ok(accepted.personality.adaptiveValues[1] > 0.63, 'respond outcomes train warmth by trait name');
-assert.ok(accepted.personality.adaptiveValues[4] > 0.86, 'respond outcomes train directness by trait name');
-assert.equal(accepted.personality.adaptiveValues[0], 0.68, 'respond outcomes must not accidentally train sarcasm by array index');
+assert.ok(accepted.personality.adaptiveValues[5] > 0.46, 'explore outcomes train playfulness by trait name');
+assert.equal(accepted.personality.adaptiveValues[1], 0.63, 'explore outcomes must not train warmth by unrelated index');
+assert.equal(accepted.personality.adaptiveValues[0], 0.68, 'explore outcomes must not accidentally train sarcasm by array index');
+assert.equal(accepted.personality.adaptiveValues[4], 0.86, 'explore outcomes must not accidentally train directness by array index');
 assert.ok(accepted.personality.selfBeliefs[0] > 0.72, 'verified identity evidence slowly updates self-beliefs');
 assert.ok(accepted.personality.selfBeliefs[1] < 0.68, 'self-belief vectors are updated dimension by dimension');
 
