@@ -5,6 +5,8 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/system/EmbodiedMotorController.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MotorFrameChannel.ts"
+      - "runtime/neuro-kurisu/tests/motor-frame-channel.mjs"
       - "runtime/neuro-kurisu/src/organism/system/SkeletalKinematics3D.ts"
       - "runtime/neuro-kurisu/src/organism/system/SkeletalPoseIK3D.ts"
       - "runtime/neuro-kurisu/src/organism/system/SkeletalMultiEffectorIK3D.ts"
