@@ -1,3 +1,13 @@
+## [NK1][Aspect 15] Persist body-bound wardrobe and cancel stale applications (2026-10-30)
+
+- Add a versioned IndexedDB store for verified outfit packs, keyed by the exact avatar body fingerprint and rig contract version.
+- Save selected VRM asset IDs and pack bytes only after user rights self-attestation, manifest validation, complete payload verification and renderer commit; cap stored pack size at 128 MiB.
+- Re-verify schema, body/rig identity, slot selection and every SHA-256 digest before restoring an outfit to the same avatar.
+- Restore previously selected VRM wardrobe on exact body re-load; a different body/rig fails closed.
+- Add an `isCurrent` guard to asynchronous GLB wardrobe application so model replacement/reset cancels stale requests before scene mutation and disposes prepared resources.
+- Add persistence selection and stale-load cancellation regressions.
+- Evidence boundary: the 52/52 wardrobe workflow pass predates this persistence/cancellation series; current HEAD checks must pass before these new changes are called CI-verified. Browser quota/restart, Android E2E and production garment assets remain pending.
+
 ## [NK1][Aspect 15] Harden modular wardrobe selection and multi-slot VRM commits (2026-10-30)
 
 - Exclude wardrobe-tagged scene subtrees from base VRM rig discovery and body identity so attached clothing cannot alter the target body's fingerprint or pollute later garment remapping.
