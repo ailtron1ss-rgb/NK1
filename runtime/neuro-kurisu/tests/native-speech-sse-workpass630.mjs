@@ -126,6 +126,26 @@ test('bounded backpressure closes rather than accumulating an unbounded event qu
   stream.close();
 });
 
+test('heartbeat backpressure queues provider events until drain', () => {
+  const source = createRuntimeSource();
+  const response = createResponse([true, false]);
+  let heartbeatCallback = null;
+  startNativeSpeechSseStream(createRequest(), response, source, {
+    setIntervalFn: (callback) => { heartbeatCallback = callback; return 1; },
+    clearIntervalFn: noopClearInterval,
+  });
+
+  assert.equal(typeof heartbeatCallback, 'function');
+  heartbeatCallback();
+  source.publish(providerEvent());
+  assert.doesNotMatch(response.frames.join(''), /native-speech-1/);
+
+  response.emit('drain');
+  assert.match(response.frames.join(''), /native-speech-1/);
+  response.emit('close');
+  assert.equal(source.listenerCount(), 0);
+});
+
 test('enforces a per-process active stream limit', () => {
   const source = createRuntimeSource();
   const responses = [];
