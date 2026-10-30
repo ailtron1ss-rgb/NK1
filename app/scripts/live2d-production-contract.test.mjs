@@ -38,7 +38,7 @@ function extractWrittenParameterIds(viewer) {
 function extractObjectKeys(viewer, declaration) {
   const match = viewer.match(new RegExp("const " + declaration + "=Object\\.freeze\\((\\{[\\s\\S]*?\\})\\);"));
   assert.ok(match, declaration + " must be declared");
-  return [...match[1].matchAll(/^\s*([a-zA-Z_][a-zA-Z0-9_]*):/gm)].map((item) => item[1]);
+  return [...match[1].matchAll(/^    ([a-zA-Z_][a-zA-Z0-9_]*):/gm)].map((item) => item[1]);
 }
 
 test("app and runtime Live2D animation primitives stay byte-identical", async () => {
@@ -143,7 +143,7 @@ test("viewer state sampling uses the shared frame-rate-independent animation hel
     assert.match(viewer, /smoothToward\(lipCurrent,lipTarget,deltaSeconds,/);
     assert.match(viewer, /smoothToward\(lipFormCurrent,lipFormTarget,deltaSeconds,/);
     assert.match(viewer, /smoothToward\(eyeX,targetEyeX,deltaSeconds,/);
-    assert.match(viewer, /smoothToward\(faceState\.eyeOpen,face\.eyeOpen,faceDeltaSeconds,/);
+    assert.match(viewer, /smoothToward\(faceState\.eyeOpen\?\?1,face\.eyeOpen,faceDeltaSeconds,/);
     assert.match(viewer, /blinkStartedAt=now/);
   }
 });
