@@ -177,6 +177,8 @@ export interface LearningProvenance {
   worldModelUpdateScale01: number;
   memoryPromotionScale01: number;
   identityUpdateScale01: number;
+  /** Immutable RuntimeEvidenceBus outcome event ID; present only when the runtime published the corresponding receipt. */
+  evidenceReceiptId?: string;
   /** Exact gated outcome signals when the runtime has already resolved provenance. */
   reward01?: number;
   success01?: number;
