@@ -84,3 +84,25 @@ tests/p78-autobiographical-provenance.mjs дополнен проверкой н
 Реализована композиционная интеграция владельцев и persistence path, но пока не заявляется, что основной OrganismCore уже вызывает bridge на каждом фактическом цикле. Ветка предоставляет явные методы через OrganismSystemFabric; следующий этап — найти точный outcome-finalization callsite, связать его с фактическим CEF/causal receipt, а preparePersonalityDecision — с уже существующим этапом формирования candidate scores, не создавая второго selector.
 
 Реальные CEF receipts всё ещё не проверяются cryptographically/against canonical ledger на уровне bridge; namespace allow-list — временная дополнительная защита, а не доказательство подписи. До promotion обязательны typecheck, целевые тесты на точном SHA, restart/contradiction E2E и подтверждение фактического вызова из runtime cycle.
+
+## Третий проход: семантическое обучение личности и защита восстановления
+
+- Исправлена ошибка индексного связывания: раньше исход действия мог изменять черту по совпадающему индексу массива, например respond попадал в sarcasm. Теперь P2702 связывает действие с именованными адаптивными чертами: respond → warmth/directness; explore → playfulness; verify → composure/guardedness; rest → composure; reflect → guardedness; wait → composure/guardedness; defer → composure/directness. Инварианты (например, scientificRigor и truthfulness) этим путём не переписываются.
+- P2702 теперь медленно калибрует вектор self-beliefs только на verified lane и только при наличии компактного identityVector; оценки неопределённости сохраняются отдельно. В beforeDecision сравнивается весь доступный вектор, а не только нулевая координата.
+- PersonalitySelfModelBridge возвращает объединённый ограниченный actionBias из P2702 и SelfModel (диапазон [-0.10, 0.10]); решение по-прежнему принимает существующий канонический селектор.
+- CognitiveSubsystemRegistry проксирует preparePersonalityDecision и recordPersonalityOutcome, когда построен поверх OrganismSystemFabric. Это делает bridge доступным через уже существующую поверхность реестра, но не доказывает, что основной цикл уже вызывает его автоматически.
+- SelfModel.learnGoalOutcome защищён от NaN/Infinity в reward и goal alignment.
+- P78 restore теперь сбрасывает невалидные/небезопасные счётчики, ограничивает narrative summary и observation key, нормализует сохранённые главы и сохраняет bounded replay ledger.
+
+### Дополнительные регрессии
+
+- Проверяется, что respond обучает warmth/directness, а не sarcasm по совпадению индекса.
+- Проверяется, что только независимое подтверждение с разрешённым namespace меняет self-beliefs; неподдержанный namespace не двигает autobiographical belief vector.
+- Проверяются конечность результатов при NaN/Infinity и безопасное восстановление P78 snapshots.
+- Проверяются объединённые actionBias и их ограниченный диапазон.
+
+### Текущие границы доказанности
+
+- Реальный callsite основного outcome-finalization в OrganismCore остаётся не подтверждённым: большой файл не удалось прочитать через используемый GitHub API-путь. Поэтому bridge API доступен через SystemFabric и CognitiveSubsystemRegistry, но автоматическое участие каждого runtime tick ещё не заявлено.
+- Разрешённые namespace-предикаты в bridge являются временным issuer allow-list, а не подписью CEF/receipt. Для полноценного доказательства нужна передача immutable receipt ID и проверка по реальному RuntimeEvidenceBus / RealityLearningGate / ExternalPostconditionVerifier на callsite.
+- GitHub Actions должны завершиться на последнем HEAD; промежуточные запуски во время последовательных коммитов отменялись, один промежуточный WorkPass79 запуск упал на unrelated шаге client-disconnect/local-inference. Его нельзя считать результатом проверки последнего HEAD.
