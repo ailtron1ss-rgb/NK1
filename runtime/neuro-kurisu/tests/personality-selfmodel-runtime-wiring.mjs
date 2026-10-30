@@ -38,6 +38,8 @@ assert.match(bridge,/input\.event\.evidenceReceiptId===receiptId/,'the bridge re
 assert.match(selfModel,/receiptBound/,'SelfModel independently protects its high-level identity gate');
 assert.match(selfModel,/evidenceReceiptId/,'SelfModel requires the immutable evidence receipt ID');
 assert.match(personality,/strongIndependentOutcome/,'stable values and relationship trust require strong independent evidence');
+assert.match(personality,/receiptBound&&verified>=.9/,'P2702 independently requires an exact tick-bound receipt');
+assert.match(personality,/args\.evidenceRef===`external-verification:\\${receiptId}`/,'P2702 binds the exact receipt ID to its evidence reference');
 assert.match(personality,/tensionTargets/,'named character tensions are updated in the decision loop');
 assert.match(personality,/autobiographicalStrength01/,'longitudinal autobiographical strength is updated from verified outcomes');
 
