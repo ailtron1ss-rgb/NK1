@@ -45,3 +45,21 @@ test('native process events are explicitly not playback lifecycle evidence', () 
   assert.equal(spawned.phase, 'process-spawned');
   assert.equal(exited.phase, 'process-exited');
 });
+
+test('reentrant observers preserve a single delivery order for every subscriber', () => {
+  const channel = createNativeSpeechEventChannel(() => 7);
+  const first = [];
+  const second = [];
+  let nested = false;
+  channel.subscribe(event => {
+    first.push(event.sequence);
+    if (!nested) {
+      nested = true;
+      channel.publish(event.operationId, { phase: 'process-spawned' });
+    }
+  });
+  channel.subscribe(event => second.push(event.sequence));
+  channel.publish('speech-F', { phase: 'command-requested' });
+  assert.deepEqual(first, [1, 2]);
+  assert.deepEqual(second, [1, 2]);
+});
