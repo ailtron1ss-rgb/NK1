@@ -2774,3 +2774,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## 2026-10-30 — Learning and self-development integration
+
+- Integrated paired-seed confidence intervals, task-balanced robust learning metrics, and strict per-task/per-family validation and holdout regression gates into the canonical P23 reflective-learning path.
+- Added privacy-filtered hash-chained fitness and activation-lifecycle journals; P23 promotion decisions now record the exact policy/evaluation fingerprints and activation transitions.
+- Added a default runtime bootstrap for durable journals while preserving explicit host-provided sinks; added file-backed retry cooldown restoration for compound-repair skill revisions.
+- Routed bounded outcome notes from the canonical OrganismCore feedback path into P23 failure diagnosis and reflection classification.
+- Added Hexis-inspired reviewed correction memory and P36 host-owned signed-outcome evaluator modules.
+- Added targeted regression coverage for trust boundaries, family/seed gates, journal tampering/idempotency, activation reconciliation, restart-persistent retry backoff, and evaluator provenance.
+- Validation status at commit time: integration code and CI wiring staged on `aspect03-learning-self-development-2026-10-30`; local runtime tests and exact-head CI remain pending. No production promotion or Release ZIP update is claimed.
