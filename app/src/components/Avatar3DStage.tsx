@@ -124,9 +124,9 @@ export function Avatar3DStage(props:Props){
     }else{
       rt.loaded.traverse((node:any)=>{if(!node.isMesh||!node.morphTargetDictionary||!node.morphTargetInfluences)return;for(const [key,index]of Object.entries(node.morphTargetDictionary)){const k=String(key).toLowerCase().replace(/[^a-z0-9]/g,"");let value:number|null=null;if(/happy|joy|smile/.test(k))value=p.emotion==="joy"?.75:p.emotion==="protective"?.22:p.emotion==="calm"?warmth*.16:0;else if(/sad|sorrow|cry/.test(k))value=p.emotion==="sadness"||p.emotion==="anxiety"?.62:0;else if(/angry|anger|frown/.test(k))value=p.emotion==="anger"||p.emotion==="frustration"?.7:0;else if(/mouthopen|jawopen|visemeaa|phonemeaa/.test(k))value=p.speaking?clamp(p.mouthPose.open,0,1):0;else if(/visemeoh|phonemeoh/.test(k))value=p.speaking&&p.mouthPose.form<-.25?clamp(p.mouthPose.open,0,1):0;else if(/blink|eyeclose/.test(k))value=Math.sin(t*.83)>.994&&p.awake?.92:0;if(value!==null)node.morphTargetInfluences[Number(index)]=value;}});
     }}
-    if(rt.vrm?.lookAt?.target&&!rt.activeLookAtClip){
-      rt.lookAtTarget.position.set(clamp(p.gazeX,-1,1)*0.65,1.7-clamp(p.gazeY,-1,1)*0.45,-5);
-      rt.vrm.lookAt.target=rt.lookAtTarget;
+    if(rt.vrm?.lookAt){
+      if(rt.activeLookAtClip)rt.vrm.lookAt.target=null;
+      else{rt.lookAtTarget.position.set(clamp(p.gazeX,-1,1)*0.65,1.7-clamp(p.gazeY,-1,1)*0.45,-5);rt.vrm.lookAt.target=rt.lookAtTarget;}
     }
     rt.vrm?.update(dt);
     renderer.render(scene,camera);
