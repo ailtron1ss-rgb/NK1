@@ -110,3 +110,10 @@ node scripts/depth-rig-glb-validator.mjs ../build/kurisu-depth-rig.glb
 ```
 
 Текущий helper автоматизирует техническую упаковку и проверку, но не генерирует художественную геометрию: слоистая модель, дорисованные скрытые участки, skinning/weights, occlusion masks и калибровка pivot остаются задачей создания самого Blender-проекта. Blender binary/реальная сцена в CI пока не предоставлены, поэтому фактический экспорт художественного GLB ещё не заявляется как проверенный.
+
+
+### Дополнение — runtime-потребление face bindings
+
+- `Avatar3DStage` теперь читает `nk1DepthRigFaceBindings` из extras той же glTF scene, что и manifest, и передаёт bindings в `applyDepthRigFaceMorphs(...)` на каждом кадре.
+- Метаданные рассматриваются как недоверенные: неизвестные/повреждённые каналы и alias-значения безопасно отбрасываются существующим resolver; отсутствие bindings сохраняет стандартный alias lookup.
+- При сбросе модели bindings очищаются вместе с depth-rig и secondary-motion state, чтобы не переносить настройки одного GLB на другой.
