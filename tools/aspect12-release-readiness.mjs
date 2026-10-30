@@ -99,17 +99,17 @@ export async function buildReadinessReport(root = defaultRoot) {
 
   const files = await walk(root);
   const declaredLicensePaths = new Set((licenseReview?.repositoryLicenseFiles ?? [])
-    .map(record => typeof record?.path === "string" ? record.path.replaceAll("\\\\", "/") : null)
+    .map(record => typeof record?.path === "string" ? record.path : null)
     .filter(Boolean));
   const uncoveredLicenseFiles = files
-    .filter(file => /(?:^|\\/)(?:LICENSE|NOTICE)(?:\\.[^/]*)?$/i.test(file.relative))
+    .filter(file => /^(?:LICENSE|NOTICE)(?:\\.[^/]*)?$/i.test(path.posix.basename(file.relative)))
     .map(file => file.relative)
     .filter(file => !declaredLicensePaths.has(file));
+  for (const file of uncoveredLicenseFiles) pendingReviews.push({ path: file, status: "license-file-missing-review-record" });
   add(checks, "release:license-inventory-coverage", uncoveredLicenseFiles.length === 0,
     uncoveredLicenseFiles.length
       ? `${uncoveredLicenseFiles.length} LICENSE/NOTICE file(s) lack review-manifest records: ${uncoveredLicenseFiles.join("; ")}`
       : "all repository LICENSE/NOTICE files are represented in the review manifest", "advisory");
-
   const hygieneIssues = [];
   for (const file of files) {
     const rel = file.relative;
