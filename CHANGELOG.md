@@ -1,3 +1,9 @@
+## [NK1][Aspect 11] Resolve canonical 2.5D and motor ownership across renderer PRs (2026-10-30)
+
+- Compare the actual implementation diffs of PR #408, #409, #410 and #405; designate #408 DepthRigManifest/Three.js runtime as the sole 2.5D implementation path, #410 as the sole joint-space motor substrate, and #415 as renderer handoff orchestration only.
+- Record migration-only value from #409 (normalized pivots/rest transforms/affine layer contract) without creating a competing runtime schema; prohibit a second controller from #405.
+- Document the canonical OrganismCore → EmbodimentIntent/MotorGoal → measured MotorFrame → renderer adapter data path and preserve honest Draft/release gates.
+
 ## [NK1][Aspect 11] Add renderer-neutral body switching contract (2026-10-30)
 
 - Connect the Live2D partial parameter acknowledgement to `AvatarStage`: accept only same-origin messages from the active iframe, correlate the exact latest intent revision, validate the partial/unverified status boundary, and expose bounded diagnostic telemetry. This does not create an adapter receipt or permit a cross-renderer commit.
