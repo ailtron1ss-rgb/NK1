@@ -1,7 +1,7 @@
 # NK1 — исполнительный мастер-план до 100% готовности
 **Дата сверки:** 30 октября 2026  
 **Рабочая исходная линия:** `workpass70-source`  
-**Проверенный HEAD исходников:** `ad564d1879028f00549be41ec5172a2f72e25897`  
+**Проверенный HEAD исходников после большого прохода:** `d179446c48a2a99eae64cfa8681707a455d22b01`  
 **HEAD ветки поставки:** `main` — `c51bdd9920c317baa13ad86a04851b125a8f440b`  
 **Каноническая поставка:** GitHub Release ZIP; не считать обновлённым до фактической публикации нового asset.
 
@@ -30,7 +30,7 @@ NK1 считается завершённым не тогда, когда в р�
 
 | Область | Фактическое состояние на дату сверки |
 |---|---|
-| Кодовая база | `workpass70-source` @ `ad564d1879028f00549be41ec5172a2f72e25897` |
+| Кодовая база | `workpass70-source` @ `d179446c48a2a99eae64cfa8681707a455d22b01` |
 | Ветка Release / workflows | `main` @ `c51bdd9920c317baa13ad86a04851b125a8f440b` |
 | Размер исходного дерева | 10 622 tracked/tree entries в рекурсивном Git tree |
 | Ветки | 488 веток в пяти страницах GitHub API; многие исторические/экспериментальные |
@@ -48,10 +48,10 @@ NK1 считается завершённым не тогда, когда в р�
 |---|---|---|
 | Source exact HEAD | world-perception, source-lineage, targeted/regression, cognitive-contracts — PASS | Основные текущие source gates проходят |
 | Source package-and-publish | FAIL на provenance/release-license gate | Выпуск запрещён до реальной проверки прав распространения |
-| Learning/self-development branch | 21/21 check-run PASS | Сильный кандидат на выборочную интеграцию; это не означает, что он уже в source |
+| P23 learning/self-development | PR #430 merged; 23 unique exact-HEAD Actions PASS before merge | Journals, P23 lifecycle, candidate evaluation and holdout integrity are integrated; independent recall uplift remains unmeasured |
 | Voice/prosody branch | 21/21 PASS | Сильный кандидат; после интеграции повторить exact-SHA проверки |
-| Original 2D art branch | 7/7 PASS | Контракт/asset inventory проходят; это ещё не готовый финальный рисунок |
-| Depth-rig branch | 6/6 PASS | Контракт рига проходит; полноценного художественного 2.5D тела нет |
+| Original 2D art | PR #407 merged; 7/7 candidate checks PASS before merge | Asset manifest, character-art contract and validators are integrated; final authored art and device visual QA remain open |
+| 2.5D depth-rig foundation | PR #409 merged; 6/6 candidate checks PASS before merge | Basic depth-rig manifest/pose foundation is integrated; production layered Kurisu art, GLB/IK and visual E2E remain open |
 | Affective-expression branch | На исходном HEAD было 5/7; после фикса 7/7 PASS на code SHA 496b214... | Исправлены TS1005 и расчёт скорости клипа; browser/Android E2E остаются отдельными воротами |
 | Tool-governance branch | 20/21 PASS | `tool-input-contracts-workpass624.mjs:29`: bounded regex quantifier test fails |
 | Embodied-world-interaction branch | 18/22 PASS | 4 job failures из-за npm install/typecompiler command setup; нужно исправить workflow и повторить |
@@ -86,14 +86,14 @@ NK1 считается завершённым не тогда, когда в р�
 | PR #423 world-perception grounding | +99 / −3 | 17 файлов; P41 уже есть в source, интегрировать только новые grounded-evidence изменения |
 | PR #424 tool governance | +10 / −3 | 9 файлов; 20/21 checks на проверенном HEAD, осталось исправить bounded-regex test |
 | PR #420 holdout integrity | Отдельный PR | Проверить как P0-зависимость перед promotion навыков |
-| PR #401 learning | +92 / −3 | 21/21 checks на candidate HEAD; rebase и полный повтор на новом source обязательны |
+| PR #401 learning | Selectively integrated via #430 | Older candidate PR closed as superseded; unique P23 changes integrated while preserving the latest P41 source |
 | PR #399 personality/SelfModel | +130 / −55 | Diverged; rebase/cherry-pick по функциональным единицам, не whole-branch merge |
 | PR #400 emotion/motivation | +39 / −55 | Diverged; восстановить причинную цепь на актуальном core и повторить проверки |
-| PR #407 Original 2D art | +51 / −3 | 7/7 на проверенном HEAD; сверить с текущим AvatarStage перед интеграцией |
+| PR #407 Original 2D art | Merged at source commit `66cc332...` | Asset manifest/schema/validator and inventory audit are live in source; production character artwork remains pending |
 | PR #406 Live2D expressive control | +92 / −3 | Все 6 workflow прошли на code SHA 603d170...; tip 86affca... добавляет только CHANGELOG. PR после движения base требует rebase; browser/Android visual tests не подтверждены |
 | PR #411 affective expression | +147 / −3 | Все 7 workflow прошли на code SHA 496b214...; tip 78a7b21... добавляет только CHANGELOG. PR требует rebase; browser/Android visual tests не подтверждены |
-| PR #408 canonical 2.5D depth rig | +111 / −3 | 34 focused tests, Blender export, GLB validator, app typecheck и core regression прошли на HEAD a0d4619...; это runtime foundation/blockout, не готовая Kurisu artwork |
-| PR #409 alternate depth-rig foundation | +45 / −3 | Использовать только как источник выборочного переноса; параллельную схему depth-rig не выпускать |
+| PR #408 richer 2.5D depth rig | `a0d4619...` | Candidate superseded by current-source port #431 | 34 focused tests passed on its candidate SHA; exact-head validation is required on the current source port |
+| PR #409 depth-rig foundation | Merged at source commit `1ba834b...` | Basic depth-rig manifest/pose adapter is in source; it is still only a foundation, not a rendered production body |
 | PR #415 renderer switching | +65 / −3 | 15 focused handoff/ACK tests и app typecheck прошли на HEAD 732a0cb...; actual cross-renderer visual completion receipts и Android E2E остаются pending |
 | PR #405 motor foundation | +34 / −3 | Совместить только с единственным motor owner PR #410 |
 | PR #410 autonomous motor control | +85 / −3 | 29 файлов; требуется проверить exact-head CI, runtime MotorFrame ownership, calibrated skeleton и реальное исполнение |
@@ -107,8 +107,56 @@ NK1 считается завершённым не тогда, когда в р�
 1. PR #406: исправлено обращение к .head.rotation.z на b.head.rotation.z в app/src/components/Avatar3DStage.tsx. Кодовый коммит: 603d17029d6502e9bc25e4dfcf88adaabb5cc4f7. После исправления шесть workflow завершились success: Hexis lineage, WorkPass108, WorkPass110, planner cadence, WorkPass79 и NeuroCore core regression. Последующий коммит 86affca... добавил только CHANGELOG; повторный typecheck на объединённой после rebase ветке обязателен.
 2. PR #411: исправлен тернарный выбор скорости клипа: явные awake/asleep ветви вместо повреждённого выражения. Кодовый коммит: 496b2144ef9fec70c30045ea5952bbc8e471324d. Семь workflow завершились success: affective-expression, NeuroCore core, WorkPass79, WorkPass108, WorkPass110, planner cadence и Hexis lineage. Последующий коммит 78a7b21... добавил только CHANGELOG; повторный typecheck после rebase обязателен.
 3. Оба PR после обновления source показывают diverged history и mergeable=false. Исправления не разрешают автоматически нажать merge; сначала синхронизировать последние три source-коммита, разрешить конфликты и повторить точные checks.
-4. Архитектурное решение PR #415: PR #408 — единственный canonical 2.5D runtime; PR #409 — migration/reference source. PR #410 — единственный joint-space motor substrate; PR #405 не должен создавать второй motor owner. PR #415 владеет только renderer handoff orchestration и не может синтезировать фиктивное исполнение.
+4. Архитектурное состояние обновлено после слияния PR #409: current source содержит базовый DepthRig manifest/adapter; richer #408 port находится в PR #431. PR #410 остаётся единственным joint-space motor substrate; PR #405 не должен создавать второго владельца моторики. PR #415 владеет только renderer handoff orchestration и не может синтезировать фиктивное исполнение.
 5. Ограничения не изменились: 2.5D art assets, production VRM asset, реальный browser/Android visual E2E, физический interaction adapter и human license review остаются незакрытыми.
+
+### 2.6 Итог большого интеграционного прохода — 2026-10-30
+
+**Каноническая исходная линия после прохода:** \`workpass70-source\` @ \`d179446c48a2a99eae64cfa8681707a455d22b01\`. Ветка \`main\` осталась на \`c51bdd9920c317baa13ad86a04851b125a8f440b\`; main/release workflows не менялись вручную.
+
+#### Интегрировано в source
+
+1. **PR #407 — Original 2D asset contract**, merge base commit \`66cc332778d64bf2a594049efdfd285e4ac3e384\`. Добавлены manifest/schema, character-art contract, аудит существующих ресурсов и validator. Это завершает контракт ресурсов, но не создаёт новый production artwork.
+2. **PR #409 — базовый 2.5D depth-rig**, merge base commit \`1ba834b57672d95c1675e8cf339778ca61622de7\`. Добавлены versioned rig manifest, bounded pose foundation/adapter и проверки. Это программный фундамент, не готовое 2.5D тело Курису. Более богатый путь #408 переносится на current source через PR #431; его exact-head CI ещё обязателен.
+3. **PR #430 — P23 learning + holdout integrity**, merge commit \`d179446c48a2a99eae64cfa8681707a455d22b01\`. В source добавлены:
+   - durable P23 fitness/lifecycle journals и bootstrap;
+   - lifecycle reconciliation при restore и fail-closed поведение при недоступном configured journal;
+   - file-backed retry/backoff для compound repair;
+   - independent candidate evaluator, paired-seed confidence, robust metrics, evidence/provenance и P36 verified-outcome evaluators;
+   - защита candidate staging от пустого/missing candidate ID;
+   - runtime action/research telemetry остаётся в фазе learning и не может самостоятельно назначить себя независимым holdout;
+   - fail-closed holdout registry/snapshot validation, unique-context floor, contamination/saturation и соответствующие regression tests.
+4. Native-speech transport и тесты из ранее влитого PR #413 восстановлены и сохранены при интеграции; PR #407 Original 2D и PR #409 depth-rig изменения также присутствуют в итоговой source базе.
+
+#### Точное CI-доказательство
+
+- На PR #430 code HEAD \`c255e326fada86d90886a89c54d9bc64203ff7df\` завершились **23 уникальных workflow PASS**; один дублирующий workflow run был отменён после повторного push и не считается ошибкой.
+- Среди точных успешных проверок: NeuroCore core regression, WorkPass79/105/108/110, P26 Learning, learning transfer/forgetting, memory retrieval label integrity, semantic retrieval/embedding integrity, P41 world-perception, Hexis lineage, Mem0 adapter safety, Original 2D asset contract и cognitive contracts.
+- После merge на source SHA \`d179446c...\` WorkPass287-288, Hexis lineage, world perception и NeuroCore core regression завершились success.
+- Это доказывает автоматическую регрессионную целостность на конкретных SHA, но не доказывает независимый learning uplift, \`recallDelta > 0\`, длительный device soak или визуальное равенство renderer.
+
+#### Очистка дублирующих кандидатов
+
+- PR #401 закрыт как superseded: P23 изменения выборочно интегрированы через #430; более старые P41 snapshots не перезаписывали актуальный source.
+- PR #427 закрыт как duplicate: \`SkillAcquisitionBenchmark.ts\`, \`big-pass-47-integration.mjs\` и \`skill-acquisition-split-integrity.mjs\` совпадали с интегрированными версиями #430.
+- PR #420 был закрыт без merge; #430 содержит эквивалентную current-source holdout implementation.
+- Исторические/расходящиеся ветки не сливались пачкой.
+
+#### Post-merge Release gate — FAIL CLOSED
+
+После push на \`d179446c...\` workflow \`Publish validated WorkPass70 source release\` завершился отказом на шаге \`Run source provenance and release-license gates\`, не на сборке приложения. В логе явно перечислены отсутствующие human review records/решения по \`app/.grok/skills/generate2dsprite/LICENSE\`, \`video2dsprite/LICENSE\`, legacy Hexis/Will archives, \`runtime/neuro-kurisu/LICENSE\` и vendor LICENSE-файлам CleanRL, Avalanche, OpenAI Baselines и SkillLearnBench. Gate требует status=approved, явного license expression, redistribution approval, reviewerType=human, именованного reviewer, даты и evidenceRef. Статусы не изменялись и не обходились.
+
+**Release ZIP не обновлён.** Последняя подтверждённая поставка остаётся \`workpass70-hotfix1-2026-10-19\`; main остаётся отдельной release/workflow линией. Следующий release шаг — реальные human license reviews на точных hashes, затем повтор provenance/license gate, clean production build, packaging smoke и проверка SHA256 загруженного asset.
+
+#### Следующие integration candidates
+
+| Кандидат | Состояние | Следующий шаг |
+|---|---|---|
+| PR #431 — current-source 2.5D port | Open, not merged; base stale | Rebase на \`d179446c...\`, проверить exact-head app typecheck, Blender export, GLB validator и focused tests; production art остаётся отдельным gate |
+| PR #432 — 2.5D + motor + handoff big pass | Draft, not merged; base stale | Не переносить до file-level diff/rebase; проверить single MotorFrame owner, runtime wiring, body switch transaction и independent pose receipts |
+| PR #422 — cognitive core hardening | Open candidate | Rebase на current source и интегрировать только отсутствующие ownership/restore fixes |
+| PR #423 — perception grounding | Open candidate | Сравнить с включённым P41; cherry-pick only new identity/evidence/calibration improvements |
+| PR #414 — embodied interaction | Open candidate | Исправить workflow setup, затем интегрировать spatial policy/adapters; физическое действие требует независимого postcondition |
 
 ## 3. Оценка готовности по аспектам
 
@@ -119,14 +167,14 @@ NK1 считается завершённым не тогда, когда в р�
 | 01 | Единое когнитивное ядро и runtime | **75%** | MEASURED на уровне контрактов/перезапуска | Длительный soak, нагрузка, единый ownership всех событий |
 | 02 | Восприятие и модель мира | **65%** | INTEGRATED | Живые источники, temporal grounding, независимая проверка фактов |
 | 03 | Долговременная память и непрерывность | **65%** | INTEGRATED | `recallDelta > 0` на независимом holdout, false-memory rate |
-| 04 | Обучение и саморазвитие | **55%** | Большая кандидатная ветка; не интегрирована целиком | Выборочная интеграция 92-коммитной ветки и повторные проверки на новом HEAD |
+| 04 | Обучение и саморазвитие | **60%** | P23 lifecycle/journals, independent evaluator plumbing, paired-seed metrics and holdout integrity are integrated | Independent RU/EN recall uplift, real skill transfer and long-horizon field evidence remain open |
 | 05 | Личность, SelfModel и UserModel | **55%** | Частично TESTED | UserModel ветка отдельно; длительная оценка последовательности личности |
 | 06 | Внутренняя мотивация и автономная инициатива | **60%** | TESTED по внутренним сценариям | Реальная фоновая инициатива, quiet-hours, отмена, отсутствие спама |
 | 07 | Эмоциональная динамика и выразительность | **45%** | Appraisal-основа интегрирована; отдельный renderer candidate прошёл 7/7 CI после TS-фикса | Rebase/integration, сглаживание на всех renderer, browser/Android E2E |
 | 08 | Инструменты, действия и безопасность | **60%** | ActionGateway есть; расширение контрактов требует исправления | Закрыть regex regression, output contracts, внешние последствия и rollback |
 | 09 | Голос, streaming и просодия | **60%** | Хорошо покрытая отдельная ветка | Выборочно интегрировать, затем Android/Termux E2E и audio-mouth latency |
 | 10 | Пространственное/телесное взаимодействие с миром | **25%** | Кандидатная ветка | Исправить workflow setup, подключить реальные sensors/adapters и независимые postconditions |
-| 11 | Визуальное тело и переключение 2D/2.5D/3D | **35% суммарно** | 2D работает как несколько режимов; 2.5D/3D незавершены | Единый renderer registry, настоящий 2.5D asset, полноценный VRM pipeline |
+| 11 | Визуальное тело и переключение 2D/2.5D/3D | **40% суммарно** | Original 2D asset contract and basic 2.5D depth-rig foundation integrated; Live2D/VRM and cross-renderer completion remain incomplete | Production artwork, full BodyRendererRegistry handoff, rigged 2.5D/3D assets and device E2E |
 | 12 | Сборка, качество, безопасность, поставка | **30%** | Release-gates существуют, текущая поставка устарела | License review, exact-SHA build/E2E/soak, новый проверенный ZIP |
 
 ### Разбивка аспекта 11 — тело
@@ -134,9 +182,9 @@ NK1 считается завершённым не тогда, когда в р�
 | Режим | Оценка текущей готовности | Что реально есть | Что отсутствует |
 |---|---:|---|---|
 | Live2D | **65–70%** | Cubism model, texture profiles, physics, 8 expressions, 5 motion clips, viseme integration | Больше authored motions, browser/device E2E, подтверждение стабильной синхронизации |
-| Original 2D SVG | **55–60%** | Selectable SVG concept, базовые позы/палитры/варианты одежды | Production art master, полный expression atlas, полноценные независимые одежды/руки/пропсы |
+| Original 2D SVG | **60–65%** | Selectable SVG plus merged asset manifest, character-art contract, asset validator and inventory audit | Production art master, full expression atlas, independent garments/arms/props and browser/mobile visual E2E |
 | Legacy PNG sprites | **60–65%** | 32 still assets, deterministic routing/fade/quality improvements | Это реакции/карточки, а не анимируемое тело; исправить и удерживать семантику manifest |
-| 2.5D depth rig | **10–15% в канонической ветке** | В candidate branches — manifest/validator/pose mapper, Three adapter и Blender scripts | Нет завершённого PSD/layer pack, hidden-area art, calibrated pivots, полноценной сцены/GLB, visual E2E |
+| 2.5D depth rig | **20–25%** | Merged depth-rig manifest, bounded pose foundation and adapter with focused checks | No production layered PSD/Krita art, hidden-area paint, calibrated production pivots, authored GLB/IK, wardrobe assets or visual E2E |
 | 3D | **25–30%** | Three.js stage, процедурное тело, локальный импорт GLB/VRM, базовая передача состояния | Нет подтверждённого production VRM avatar; полный retargeting, expressions, spring bones, calibration, device E2E |
 
 **Не складывать эти оценки в один средний процент.** Пользователь должен иметь выбор всех подтверждённых режимов, но каждый режим показывается как доступный только при наличии реального renderer и валидного capability manifest.
