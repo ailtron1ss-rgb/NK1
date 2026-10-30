@@ -135,7 +135,7 @@ export function startNativeSpeechSseStream(request, response, runtimeSource, opt
 
     heartbeat = setIntervalFn(() => {
       if (closed || blocked || !isResponseWritable(response)) return;
-      writeFrame(': heartbeat\n\n');
+      blocked = !writeFrame(': heartbeat\n\n');
     }, heartbeatMs);
     heartbeat?.unref?.();
     return { ok: true, close: endStream };
