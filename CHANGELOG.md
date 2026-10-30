@@ -1,3 +1,13 @@
+## [NK1][Aspect 10] Evidence-gated grounded interaction hardening (2026-10-30)
+
+- Fix metric arm reach, unique plan IDs and the exclusive plan-expiry boundary.
+- Bind plans and postconditions to the exact target, canonical world entity, coordinate frame and grounded-world revision.
+- Require trusted verification for short-lived contact/manipulation authorization; `safeToTouch` alone no longer authorizes contact.
+- Require fresh independent target-bound evidence and a trusted postcondition verifier before completion; simulator outcomes are classified as simulated, not real-world success.
+- Harden world joining against whitespace/Unicode mismatch, stale snapshots, malformed entities and ambiguous same-label objects.
+- Reject malformed execution statuses, affordances, hand selections and invalid body reach.
+- Add 53 deterministic assertions across planner and camera-to-world grounding (40 + 13). Physical camera/renderer actuation and hardware-backed contact verification remain pending.
+
 ## [NK1][Aspect 10] Fingerprint exact uploaded avatar model bytes (2026-10-30)
 
 - Add browser Web Crypto SHA-256 content addressing for the exact VRM/GLB byte stream, without mutating the source buffer.

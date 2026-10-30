@@ -116,3 +116,24 @@ Expected: deterministic planner tests covering grounded look, reach, contact pol
 - Добавлены отдельный npm test script и focused CI gate для создания сессии, неизменяемости снимков, provenance, точного совпадения rig identity, отказа при отсутствии эталонной позы и успешной финализации.
 
 Ограничение: это API capture-session, не интерактивный wizard. Визуальное ручное управление костями, блокировка animation mixer во время съёма, SHA-256 fingerprint реального файла и UI импорта/экспорта остаются следующими шагами. Не применять IK к живому VRM только на основании созданной сессии.
+
+
+## [NK1][Aspect 10] Evidence-gated interaction hardening — 2026-10-30
+
+### Changes in this pass
+- Correct the arm-reach unit contract: `reachM` is metres and is no longer clamped to a normalized 0..1 interval. Invalid or implausible values are rejected.
+- Bind an interaction plan to the camera-track ID, canonical world-entity ID, coordinate frame and world revision.
+- Give each plan a monotonic sequence and finite execution lifetime. Repeated plans created in the same millisecond cannot share an ID; the expiry boundary is exclusive.
+- Fix Unicode/case/whitespace normalization. The bridge validates world-snapshot freshness/confidence, rejects ambiguous same-label entities instead of selecting the newest row, validates entity identity/presence, and allowlists affordances.
+- Require a verifier-backed, short-lived, provenance-bearing safety authorization for touch/grasp/release/press. A detector's `safeToTouch` boolean is only a legacy hint and cannot authorize contact alone.
+- Require independent postcondition evidence bound to the exact plan, target, world entity and coordinate frame. Evidence must be fresh, sufficiently confident, provenance-bearing and accepted by an injected trusted verifier. Grounded plans require a non-regressing world revision.
+- Reject unknown adapter/postcondition status values and malformed hands, affordances, hand availability and world entities.
+- Simulator interactions are limited to look/inspect and are returned as `simulated`, never as proof of a real-world action.
+
+### Validation
+- `node --experimental-strip-types tests/aspect10-embodied-interaction.mjs`: 40 assertions pass.
+- `node --experimental-strip-types tests/aspect10-grounded-bridge.mjs`: 13 assertions pass.
+- The existing focused workflow already invokes `npm --prefix runtime/neuro-kurisu run test:aspect10:interaction`; no package-script change is needed.
+
+### Explicit remaining boundary
+This pass hardens grounded planning, safety authorization and the evidence gate. It does **not** add a physical camera pipeline, move a live VRM/2.5D rig, prove hand contact, or manipulate real objects. These still require calibrated sensor/renderer adapters, independently measured rig geometry and hardware-backed verification. Simulation remains separate from physical evidence.
