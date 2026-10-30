@@ -4,6 +4,7 @@ on:
     paths:
       - "app/src/components/avatar/depthRig.ts"
       - "app/src/components/avatar/embodimentIntentAdapter.ts"
+      - "app/src/components/avatar/depthRigRendererAdapter.ts"
       - "app/scripts/depth-rig.test.mjs"
       - ".github/workflows/nk1-aspect04-depth-rig.yml"
   push:
