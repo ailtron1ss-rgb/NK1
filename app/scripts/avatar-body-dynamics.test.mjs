@@ -32,3 +32,13 @@ test("malformed numeric inputs remain finite and inside safe bounds",()=>{
  for(const value of Object.values(x))assert.ok(Number.isFinite(value));
  assert.ok(x.breathsPerMinute>=6&&x.breathsPerMinute<=19);
 });
+
+test("imported rig receives breath and head/shoulder offsets only through recognized bone names", async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const stage=await readFile(new URL("../src/components/Avatar3DStage.tsx",import.meta.url),"utf8");
+ assert.ok(stage.includes("deriveBodyDynamics"));
+ assert.ok(stage.includes('n.includes("spine")||n.includes("chest")'));
+ assert.ok(stage.includes("bodyMotion.breathPhase"));
+ assert.ok(stage.includes("bodyMotion.shoulderLift"));
+ assert.ok(stage.includes("bodyMotion.headSway"));
+});
