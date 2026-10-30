@@ -77,3 +77,10 @@ test("fails closed instead of rendering malformed artist data", () => {
     breath: 0, gesture: "none", gestureIntensity: 0,
   }), /Invalid depth rig/);
 });
+
+test("rejects malformed node objects and missing rest transforms without throwing", () => {
+  const invalid = { ...rig, nodes: [null, { ...node("broken", "head", null, 1), rest: undefined }] };
+  const diagnostics = validateDepthRig(invalid);
+  assert.ok(diagnostics.some((entry) => entry.code === "invalid-id"));
+  assert.ok(diagnostics.some((entry) => entry.code === "invalid-number"));
+});
