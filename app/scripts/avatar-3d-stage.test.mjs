@@ -32,3 +32,6 @@ test("existing sprite and Live2D files remain available",async()=>{
  for(const cell of manifest.cells){const file=path.resolve(root,"public",cell.file);assert.ok(file.startsWith(path.join(root,"public")+path.sep));assert.ok((await stat(file)).size>20000,"Missing sprite: "+cell.file);}
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
+
+
+test("procedural 3D avatar exposes real selectable lab-coat, casual and hoodie geometry",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/wardrobe:casual/);assert.match(stage,/wardrobe:hoodie/);assert.match(stage,/function applyProceduralOutfit/);assert.match(stage,/node\.visible=lab/);for(const label of ["Лабораторный халат","Повседневный","Худи"])assert.ok(stage.includes(label),"Missing outfit control: "+label);assert.match(stage,/aria-pressed=\{proceduralOutfit===/);});
