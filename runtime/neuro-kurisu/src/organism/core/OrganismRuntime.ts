@@ -42,7 +42,7 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
-import { configureDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
+import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
 import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
@@ -245,6 +245,8 @@ export class OrganismRuntime {
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
     this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    const learningJournals = createDefaultLearningJournals(config.stateFile);
+    this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
       : null;
@@ -283,7 +285,7 @@ export class OrganismRuntime {
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
           )
         : config.compoundRepairRevision.provideInputs;
-      configureDefaultLearningJournals(config.compoundRepairRevision.engine, config.stateFile);
+      configureLearningJournals(config.compoundRepairRevision.engine, learningJournals);
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
         this,
         config.compoundRepairRevision.engine,
