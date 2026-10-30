@@ -58,6 +58,24 @@ test("explanatory language produces an inspectable body-level gesture intention"
   assert.ok(plan.gazeX > 0, "explanation should direct attention toward the explanatory target");
 });
 
+test("gesture profiles distinguish cognition, presentation, inspection and reassurance", () => {
+  const base = { emotion: "calm", valence: 0.5, arousal: 0.7, thinking: false, speaking: true, hasFreshTurn: true, awake: true };
+  const explain = planAvatarMotorIntent({ ...base, action: "respond", turnText: "Смотри, объясню результат." });
+  const inspect = planAvatarMotorIntent({ ...base, action: "explore", speaking: false, hasFreshTurn: false, turnText: "" });
+  const reflect = planAvatarMotorIntent({ ...base, action: "reflect", speaking: false, hasFreshTurn: false, turnText: "" });
+  const comfort = planAvatarMotorIntent({ ...base, emotion: "sadness", valence: 0.2, action: "respond", turnText: "Я рядом, понимаю тебя." });
+  assert.equal(explain.gestureProfile, "presenting");
+  assert.equal(inspect.gestureProfile, "examining");
+  assert.equal(reflect.gestureProfile, "considering");
+  assert.equal(comfort.gestureProfile, "reassuring");
+  for (const plan of [explain, inspect, reflect, comfort]) {
+    assert.ok(plan.gestureIntensity > 0 && plan.gestureIntensity <= 0.8);
+  }
+  const rest = planAvatarMotorIntent({ ...base, awake: false, speaking: false, hasFreshTurn: false, turnText: "" });
+  assert.equal(rest.gestureProfile, "none");
+  assert.equal(rest.gestureIntensity, 0);
+});
+
 test("semantic gaze follows the selected motor goal and remains deterministic", () => {
   const base = { emotion: "calm", valence: 0.5, arousal: 0.3, thinking: false, speaking: false, hasFreshTurn: false, turnText: "", awake: true };
   const inspect = planAvatarMotorIntent({ ...base, action: "explore" });
