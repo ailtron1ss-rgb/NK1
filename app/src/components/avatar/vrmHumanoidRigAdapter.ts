@@ -5,7 +5,7 @@ export interface HumanoidBoneLike{name?:string;rotation:MutableEulerLike}
 export interface VrmArmBoneMap{shoulder:HumanoidBoneLike;elbow:HumanoidBoneLike}
 export interface AxisCalibration{shoulderAxis:RotationAxis;elbowAxis:RotationAxis;shoulderSign:1|-1;elbowSign:1|-1;shoulderOffsetRad:number;elbowOffsetRad:number;shoulderMinRad:number;shoulderMaxRad:number;elbowMinRad:number;elbowMaxRad:number}
 export interface VrmArmPose{shoulder:MutableEulerLike;elbow:MutableEulerLike;shoulderBoneName:string;elbowBoneName:string}
-export interface VrmArmBindPose{shoulder:MutableEulerLike;elbow:MutableEulerLike;shoulderBoneName:string;elbowBoneName:string}
+export interface VrmArmBindPose{readonly shoulder:Readonly<MutableEulerLike>;readonly elbow:Readonly<MutableEulerLike>;readonly shoulderBoneName:string;readonly elbowBoneName:string}
 export type ArmSide="left"|"right";
 const normalize=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]/g,"");
 const aliases:Record<ArmSide,{shoulder:string[];elbow:string[]}>={
@@ -29,7 +29,7 @@ const validCalibration=(c:AxisCalibration)=>[c.shoulderOffsetRad,c.elbowOffsetRa
 /** Capture this once after the model is loaded and before any animation/IK writes. */
 export function captureVrmArmBindPose(map:VrmArmBoneMap):VrmArmBindPose|null{
  if(!map?.shoulder?.rotation||!map?.elbow?.rotation||!finiteRotation(map.shoulder.rotation)||!finiteRotation(map.elbow.rotation))return null;
- return{shoulder:cloneRotation(map.shoulder.rotation),elbow:cloneRotation(map.elbow.rotation),shoulderBoneName:map.shoulder.name??"unnamed-shoulder",elbowBoneName:map.elbow.name??"unnamed-elbow"};
+ return Object.freeze({shoulder:Object.freeze(cloneRotation(map.shoulder.rotation)),elbow:Object.freeze(cloneRotation(map.elbow.rotation)),shoulderBoneName:map.shoulder.name??"unnamed-shoulder",elbowBoneName:map.elbow.name??"unnamed-elbow"});
 }
 /** Compute an absolute target from the captured bind pose, never from a moving frame's current Euler values. */
 export function computeVrmArmPose(map:VrmArmBoneMap,solution:PlanarArmKinematicsResult,calibration:AxisCalibration,bindPose:VrmArmBindPose):VrmArmPose|null{
