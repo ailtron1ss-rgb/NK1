@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createNativeSpeechEventChannel } from '../src/organism/body/NativeSpeechEventChannel.ts';
+import { createNativeSpeechEventChannel, nativeSpeechEventChannel } from '../src/organism/body/NativeSpeechEventChannel.ts';
+import { EmbodimentRuntime } from '../src/organism/body/EmbodimentRuntime.ts';
 
 test('native provider events preserve per-operation identity and monotonic sequence', () => {
   let now = 10;
@@ -72,4 +73,18 @@ test('native event timestamps never regress within one operation when the clock 
   const second = channel.publish('speech-clock', { phase: 'process-spawned' });
   const third = channel.publish('speech-clock', { phase: 'process-exited', exitCode: 0 });
   assert.deepEqual([first.monotonicTimeMs, second.monotonicTimeMs, third.monotonicTimeMs], [100, 100, 120]);
+});
+
+
+test('EmbodimentRuntime exposes native provider telemetry with unsubscribe semantics', () => {
+  const runtime = new EmbodimentRuntime();
+  const seen = [];
+  const unsubscribe = runtime.subscribeNativeSpeechEvents(event => seen.push(event));
+  const published = nativeSpeechEventChannel.publish('runtime-bridge-test', { phase: 'command-requested' });
+  unsubscribe();
+  nativeSpeechEventChannel.publish('runtime-bridge-test', { phase: 'process-spawned' });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].eventId, published.eventId);
+  assert.equal(seen[0].operationId, 'runtime-bridge-test');
+  assert.equal(seen[0].playbackVerified, false);
 });
