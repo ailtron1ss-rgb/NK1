@@ -107,3 +107,12 @@ The contract is provider-neutral and names a native TTS provider, but the native
 ## Runtime subscription seam для native TTS (30.10.2026)
 
 Добавлен `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)` — стабильная точка подписки для host-слоя. UI/host может получать process telemetry, не импортируя `AndroidEmbodimentBridge` или singleton-канал напрямую. Возвращаемая функция снимает подписку. События сохраняют operation ID и `playbackVerified=false`: это не playback start/end и не основание запускать/останавливать lip-sync как будто аудио подтверждено. Добавлен тест доставки и unsubscribe. Следующий слой — транспорт в app host/Event Router с защитой от устаревших operation ID.
+
+
+## Host router seam для native provider telemetry (WorkPass629)
+
+Добавлен `connectNativeSpeechHostRouter(runtime, publish)` в `NativeSpeechHostRouter.ts`. Он подключается к публичному `EmbodimentRuntime.subscribeNativeSpeechEvents`, валидирует protocol/version/provider/phase и обязательное `playbackVerified=false`, сохраняет event identity и монотонный порядок на operation ID, отбрасывает дубликаты и регрессирующие события и пересылает host envelope через внедрённый publisher. Ошибки publisher не должны влиять на физическое выполнение TTS; unsubscribe идемпотентен и очищает локальные таблицы.
+
+Новый тест `test:workpass629:native-speech-host-router` покрывает доставку, envelope identity, дубликаты, sequence/time regressions, запрет ложного `playbackVerified=true`, исключения publisher и отключение подписки.
+
+**Граница реализации:** это типизированный host transport seam, а не доказательство фактического подключения к app WebSocket/iframe или Live2D viewer. Для полноценной сквозной интеграции host publisher должен быть подключён к конкретному app Event Router и потребителю; UI должен продолжать трактовать события только как provider-process telemetry. Ни `process-spawned`, ни `process-exited` не разрешают запускать/останавливать lip-sync. Для этого нужен независимый playback/audio clock.
