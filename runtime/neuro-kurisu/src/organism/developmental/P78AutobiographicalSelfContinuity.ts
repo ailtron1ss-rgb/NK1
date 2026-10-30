@@ -91,7 +91,17 @@ export class P78AutobiographicalSelfContinuity{
       unverifiedOutcomeSamples:counter(raw.unverifiedOutcomeSamples),
       authorshipEvidenceSamples:counter(raw.authorshipEvidenceSamples),
       processedEventKeys:Array.isArray(raw.processedEventKeys)
-        ? [...new Set(raw.processedEventKeys.filter((x):x is string=>typeof x==='string'&&x.length>0&&x.length<=2048))].slice(-512)
+        ? [...new Set(raw.processedEventKeys.filter((x):x is string=>typeof x==='string'&&x.length>0&&x.length<=2048).map(key=>{
+            try{
+              const legacy=JSON.parse(key);
+              if(Array.isArray(legacy)&&legacy[6]==='verified-independent'&&
+                 typeof legacy[7]==='string'&&legacy[7].startsWith('external-verification:')&&
+                 typeof legacy[8]==='string'&&/^reb:\\d+:\\d+:outcome$/.test(legacy[8])){
+                return JSON.stringify(['receipt',legacy[8]]);
+              }
+            }catch{}
+            return key;
+          }))].slice(-512)
         : []
     };
     for(const key of ['continuity01','narrativeCoherence01','selfAuthorship01'] as const){
