@@ -180,6 +180,29 @@ const reconcileResult = await legacyGateway.reconcileToolExecution("fixture.lega
 assert.equal(reconcileResult.result.error, "reconciliation-input-invalid");
 assert.equal(proxyTraps, 0);
 
+// Governance coverage is observable without silently changing legacy registration behavior.
+legacyGateway.registerTool({
+  id: "fixture.code.modify",
+  capability: "code.modify",
+  destructive: true,
+  execute: async () => ({ ok: true }),
+});
+const governance = legacyGateway.toolGovernanceReport();
+assert.equal(governance.version, 1);
+assert.ok(governance.totals.registered >= 2);
+const mutatingTool = governance.tools.find(row => row.id === "fixture.code.modify");
+assert.ok(mutatingTool);
+assert.equal(mutatingTool.riskTier, "critical");
+assert.equal(mutatingTool.required.inputContract, true);
+assert.equal(mutatingTool.required.outputContract, true);
+assert.equal(mutatingTool.required.independentVerifier, true);
+assert.equal(mutatingTool.present.inputContract, false);
+assert.ok(mutatingTool.gaps.includes("inputContract"));
+assert.ok(mutatingTool.gaps.includes("outputContract"));
+assert.ok(mutatingTool.gaps.includes("independentVerifier"));
+assert.ok(governance.totals.withGaps >= 1);
+
 console.log("TOOL_INPUT_CONTRACTS_WORKPASS624_PASS");
 console.log("TOOL_INPUT_BOUNDARY_HARDENING_WORKPASS632_PASS");
+console.log("TOOL_GOVERNANCE_COVERAGE_WORKPASS633_PASS");
 console.log(JSON.stringify({ rejectedInputCases: bad.length + 6, validCalls: calls + mutations, outputExecutions, ledgerWrites, outputLedgerWrites }, null, 2));
