@@ -14,6 +14,44 @@ const baseAppraisal = {
 
 const baselineEngine = new EmotionAppraisalEngine();
 const baseline = baselineEngine.appraise(baseAppraisal);
+
+assert.ok(Array.isArray(baseline.mixedAffect) && baseline.mixedAffect.length >= 2,
+  'one appraisal must preserve multiple concurrent affective components');
+assert.ok(Math.abs(baseline.mixedAffect.reduce((sum, item) => sum + item.intensity01, 0) - 1) < .002,
+  'mixed affect intensities must form a normalized distribution');
+assert.ok(baseline.mixedAffect.every(item => item.confidence01 >= 0 && item.confidence01 <= 1),
+  'each affective component must expose bounded confidence');
+assert.ok(Array.isArray(baseline.actionTendencies) && baseline.actionTendencies.length >= 1,
+  'mixed affect must project into weighted action tendencies');
+assert.ok(Math.abs(baseline.actionTendencies.reduce((sum, item) => sum + item.weight01, 0) - 1) < .002,
+  'weighted action tendencies must preserve total influence');
+
+const competingAffectEngine = new EmotionAppraisalEngine();
+const competingAffect = competingAffectEngine.appraise({
+  tick: 2, at: 2002, goalPressure01: .82, goalCongruence01: .28,
+  controllability01: .31, novelty01: .94, selfRelevance01: .8,
+  socialMeaning01: .24, uncertainty01: .82, predictionError01: .86,
+  homeostaticPressure01: .18, energy01: .7, success01: .24,
+});
+const competingLabels = new Set(competingAffect.mixedAffect.map(item => item.label));
+assert.ok(competingLabels.has('curiosity') && competingLabels.has('anxiety'),
+  'high novelty and uncertainty with low controllability must retain curiosity and anxiety together');
+assert.ok(competingLabels.size >= 3,
+  'conflicting appraisal evidence must retain at least three concurrent components');
+const mixedRestore = new EmotionAppraisalEngine();
+mixedRestore.restore(competingAffectEngine.snapshot());
+assert.deepEqual(mixedRestore.snapshot().history[0].mixedAffect, competingAffect.mixedAffect,
+  'mixed affect distribution must survive checkpoint restore');
+assert.deepEqual(mixedRestore.snapshot().history[0].actionTendencies, competingAffect.actionTendencies,
+  'weighted action tendencies must survive checkpoint restore');
+
+const malformedMixed = competingAffectEngine.snapshot();
+malformedMixed.history[0].mixedAffect = [{ label: 'curiosity', intensity01: .2, confidence01: .8, evidence01: .7 }];
+const malformedMixedRestore = new EmotionAppraisalEngine();
+malformedMixedRestore.restore(malformedMixed);
+assert.equal(malformedMixedRestore.snapshot().history.length, 0,
+  'invalid non-normalized mixed-affect snapshots must be rejected instead of trusted');
+
 const modulatedEngine = new EmotionAppraisalEngine();
 const modulated = modulatedEngine.appraise({
   ...baseAppraisal,
