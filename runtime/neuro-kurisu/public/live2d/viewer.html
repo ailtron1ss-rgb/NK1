@@ -25,6 +25,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
   let faceSignal={eyeSmile:0,browLeftY:0,browRightY:0,browLeftForm:0,browRightForm:0,cheek:0,mouthTension:0,blinkBias:0,blinkIntervalMs:8800,blinkDurationMs:105,saccadeIntervalMs:3100,saccadeAmplitude:.095},lastFaceStateVersion=0,microCycle=0;
+  let bodyLanguageSignal={torsoLean:0,torsoRoll:0,weightShift:0,shoulderTension:0,armOpenness:.5,gestureAmplitude:0,movementTempo:1,stillness:0,postureStability:.5,headTiltBias:0,gazeEngagement:.5},lastBodyStateVersion=0;
   function microJitter(){const x=Math.sin(++microCycle*12.9898)*43758.5453;return x-Math.floor(x)}
   const EXPR_MAP={
     neutral:'Stanby Smile',happy:'Stanby Smile',sad:'Stanby Sad',angry:'Stanby Angry',
@@ -66,7 +67,11 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     if(!core)return;
     addCoreOffset('ParamAngleX',clamp(bodySignal.gazeX,-.4,.4)*7,-30,30);
     addCoreOffset('ParamAngleY',clamp(bodySignal.gazeY,-.4,.4)*5,-30,30);
-    addCoreOffset('ParamAngleZ',clamp(bodySignal.headTilt,-.15,.15)*35,-30,30);
+    addCoreOffset('ParamAngleZ',clamp(bodySignal.headTilt+bodyLanguageSignal.headTiltBias,-.23,.23)*35,-30,30);
+    // The authored Cubism rig exposes torso angles; free limb/finger goals are not claimed here.
+    addCoreOffset('ParamBodyAngleY',clamp(bodyLanguageSignal.torsoLean,-.08,.08)*48,-8,8);
+    addCoreOffset('ParamBodyAngleX',clamp(bodyLanguageSignal.weightShift,-.025,.025)*55,-4,4);
+    addCoreOffset('ParamBodyAngleZ',clamp(bodyLanguageSignal.torsoRoll,-.05,.05)*55,-4,4);
     const set=(key,value)=>{try{core.setParameterValueById(key,value,1)}catch{}};
     const gazeX=bodySignal.gazeDriven?clamp(bodySignal.gazeX,-.4,.4):0;
     const gazeY=bodySignal.gazeDriven?clamp(bodySignal.gazeY,-.4,.4):0;
@@ -88,6 +93,13 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     const defaults={blinkIntervalMs:8800,blinkDurationMs:105,saccadeIntervalMs:3100,saccadeAmplitude:.095};
     const next={};for(const [key,range] of Object.entries(ranges)){const raw=d[key]===undefined?defaults[key]:d[key];const value=Number(raw);if(!Number.isFinite(value)||value<range[0]||value>range[1])return;next[key]=value;}
     faceSignal=next;
+  }
+  function applyBodyLanguage(d){
+    if(!d||typeof d!=='object'||d.protocolVersion!==1||!Number.isSafeInteger(d.stateVersion)||d.stateVersion<=lastBodyStateVersion)return;
+    const ranges={torsoLean:[-.08,.08],torsoRoll:[-.05,.05],weightShift:[-.025,.025],shoulderTension:[0,1],armOpenness:[0,1],gestureAmplitude:[0,1],movementTempo:[.55,1.4],stillness:[0,1],postureStability:[0,1],headTiltBias:[-.08,.08],gazeEngagement:[0,1]};
+    const next={};
+    for(const [key,range] of Object.entries(ranges)){const value=Number(d[key]);if(!Number.isFinite(value)||value<range[0]||value>range[1])return;next[key]=value;}
+    lastBodyStateVersion=d.stateVersion;bodyLanguageSignal=next;
   }
   function applyExpression(expr){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
@@ -127,7 +139,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
        app.ticker.add(() => {
          if(!model)return;
          const now=performance.now();
-         const active=Boolean(bodySignal.speaking||bodySignal.expressionIntensity>.5||bodySignal.gesture);
+         const active=Boolean(bodySignal.speaking||bodySignal.expressionIntensity>.5||bodySignal.gesture||Math.abs(bodyLanguageSignal.torsoLean)>.003||Math.abs(bodyLanguageSignal.torsoRoll)>.003||bodyLanguageSignal.gestureAmplitude>.2);
          const every=1000/(active?30:14);
          if(now-(model.__nkLastFrame||0)<every)return;model.__nkLastFrame=now;
          lipCurrent+=(lipTarget-lipCurrent)*.30;
@@ -135,7 +147,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
          eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
          if(now>=nextBlink){blinkT=1;blinkUntil=now+faceSignal.blinkDurationMs;const cadence=faceSignal.blinkIntervalMs*(.9+microJitter()*.2);nextBlink=now+cadence+faceSignal.blinkBias*900}
          if(blinkT>0){blinkT*=.72;if(now>blinkUntil)blinkT=Math.max(0,blinkT-.12)}
-         if(now>=nextSaccade){const amp=faceSignal.saccadeAmplitude*(bodySignal.speaking?.58:1);targetEyeX=(microJitter()-.5)*amp;targetEyeY=(microJitter()-.5)*amp*.52;nextSaccade=now+faceSignal.saccadeIntervalMs*(.88+microJitter()*.24)}
+         if(now>=nextSaccade){const amp=faceSignal.saccadeAmplitude*(bodySignal.speaking?.58:1)*(.65+bodyLanguageSignal.gazeEngagement*.35)*(1-bodyLanguageSignal.stillness*.2);targetEyeX=(microJitter()-.5)*amp;targetEyeY=(microJitter()-.5)*amp*.52;nextSaccade=now+faceSignal.saccadeIntervalMs*(.88+microJitter()*.24)}
        });
     }catch(err){status.textContent='fallback';send('live2d_error',{error:String(err?.message||err)})}
   }
@@ -160,6 +172,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     }
     else if(d.type==='kurisu_embodiment')applyEmbodiment(d);
     else if(d.type==='kurisu_face_microchannels'&&Number.isSafeInteger(d.stateVersion)&&d.stateVersion>lastFaceStateVersion){lastFaceStateVersion=d.stateVersion;applyFaceMicrochannels(d)}
+    else if(d.type==='kurisu_body_language')applyBodyLanguage(d);
     else if(d.type==='kurisu_expression')applyExpression(String(d.expression||'neutral'));
     else if(d.type==='kurisu_gaze'){setCore('ParamAngleX',clamp(d.x,-1,1)*30);setCore('ParamAngleY',clamp(d.y,-1,1)*20);setCore('ParamEyeBallX',clamp(d.x,-1,1));setCore('ParamEyeBallY',clamp(d.y,-1,1))}
     else if(d.type==='tap'&&model){try{model.motion(d.zone==='head'?'TapHead':'TapBody')}catch{try{model.motion('Idle')}catch{}}}
