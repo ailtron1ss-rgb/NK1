@@ -154,7 +154,7 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 
 Добавлен `vrmWardrobeAdapter.ts` для следующего конкретного этапа после проверки байтов пакета:
 - анализирует фактические Bone-иерархии одежды и загруженного аватара, нормализует имена костей и fail-closed отклоняет отсутствующие/неоднозначные кости;
-- требует target bind-pose inverse matrices из скелета тела, не подменяет их inverse matrices исходного garment;
+- сравнивает garment inverse bind matrices с target bind pose тела (допуск 1e-4), отклоняет несовпадающие rest poses и использует inverse matrices аватара при remap;
 - переносит skinned garment на кости аватара через новый Skeleton, сохраняя bind matrix меша;
 - разрешает attachment только при `ready` switch plan и наличии точного asset ID в `expectedAssetIds`;
 - сначала клонирует и переназначает весь garment, затем добавляет его в сцену и только после успешного attach скрывает прежний предмет того же slot. Ошибка подготовки не меняет активный образ.
