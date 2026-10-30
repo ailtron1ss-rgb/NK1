@@ -99,10 +99,10 @@ export class P78AutobiographicalSelfContinuity{
     const recent=candidates.filter(e=>{const key=eventKey(e);if(seen.has(key))return false;seen.add(key);return true;});
     if(!recent.length)return this.snapshot();
     this.state.processedEventKeys=[...this.state.processedEventKeys,...recent.map(eventKey)].slice(-512);
-    const observationKey=recent.map(e=>[
+    const observationKey=JSON.stringify(recent.map(e=>[
       e.tick,e.at,boundedText(e.action,48),e.outcome??'',boundedText(e.text,120),boundedText(e.mode,32),
       e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),boundedText(e.evidenceReceiptId,180),e.authorship??'unknown',boundedText(e.episodeId,80)
-    ].join('|')).join('\\u001f').slice(-4096);
+    ])).slice(-4096);
     if(observationKey===this.state.lastObservationKey)return this.snapshot();
     this.state.lastObservationKey=observationKey;
     this.state.samples+=recent.length;
