@@ -103,9 +103,9 @@ export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null
 
   if(emotionLabel==='joy'){ pitch+=.012; rate+=.012; emphasis+=.035; reason.push('affect-joy'); }
   else if(emotionLabel==='curiosity'){ pitch+=.006; emphasis+=.035; reason.push('affect-curiosity'); }
-  else if(emotionLabel==='anxiety'){ rate-=.025; pauseMs+=25; emphasis-=.025; reason.push('affect-anxiety-deescalation'); }
+  else if(emotionLabel==='anxiety'){ rate-=.06; pauseMs+=35; emphasis-=.04; reason.push('affect-anxiety-deescalation'); }
   else if(emotionLabel==='sadness'){ pitch-=.018; rate-=.028; pauseMs+=20; reason.push('affect-sadness'); }
-  else if(emotionLabel==='frustration'||emotionLabel==='anger'){ pitch-=.012; rate-=.025; pauseMs+=25; emphasis-=.08; reason.push('affect-regulation'); }
+  else if(emotionLabel==='frustration'||emotionLabel==='anger'){ pitch-=.012; rate-=.07; pauseMs+=35; emphasis-=.08; reason.push('affect-regulation'); }
   else if(emotionLabel==='protective'){ rate-=.012; reason.push('affect-protective'); }
   if(valence>=.68){ pitch+=.006; emphasis+=.015; reason.push('positive-valence'); }
   else if(valence<=.32){ rate-=.012; pauseMs+=10; reason.push('negative-valence'); }
