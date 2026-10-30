@@ -189,9 +189,15 @@ export class TemporalObjectTracker {
       const trackId=clean(entity.trackId,240);
       const cameraPrefix=cameraId>=0?`vision:${cameraId}:`:'';
       const namespacedSource=cameraPrefix&&trackId.startsWith(cameraPrefix)?trackId.slice(cameraPrefix.length):'';
+      const trackerPrefix='nk1-temporal-box-tracker:';
       const trackerMarker=':nk1-temporal-box-tracker:';
       const trackerMarkerAt=namespacedSource.lastIndexOf(trackerMarker);
-      const localId=trackerMarkerAt>=0?namespacedSource.slice(trackerMarkerAt+trackerMarker.length):'';
+      // With no upstream sourceId, P41 prefixes the tracker source directly
+      // after the camera namespace; legacy/source-qualified IDs retain the
+      // embedded marker form. Accept both canonical serialized shapes.
+      const localId=namespacedSource.startsWith(trackerPrefix)
+        ?namespacedSource.slice(trackerPrefix.length)
+        :trackerMarkerAt>=0?namespacedSource.slice(trackerMarkerAt+trackerMarker.length):'';
       const box=entity.imageBox;
       if(cameraId<0||!localId.startsWith('local:')||!box||!isValidNormalizedBoundingBox(box)
         ||!Number.isFinite(imageAt)||imageAt>at||at-imageAt>this.config.maxTrackAgeMs
