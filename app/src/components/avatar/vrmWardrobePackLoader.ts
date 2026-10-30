@@ -14,6 +14,8 @@ type GlbParser = (bytes: ArrayBuffer) => Promise<ParsedScene>;
 export interface VrmWardrobePackApplyInput extends VerifiedWardrobeSwitchInput {
   avatarRoot: AvatarRoot;
   parseGlb?: GlbParser;
+  /** Abort stale UI/model requests before any scene mutation. */
+  isCurrent?: () => boolean;
 }
 export interface VrmWardrobePackApplyResult {
   committed: boolean;
@@ -112,8 +114,22 @@ export async function applyVerifiedVrmWardrobePack(input: VrmWardrobePackApplyIn
   const parse = input.parseGlb ?? defaultParseGlb;
   const prepared: Array<{ asset: WardrobePackAsset; scene: AvatarRoot }> = [];
   const errors: string[] = [];
+  const requestIsCurrent = () => {
+    try { return input.isCurrent?.() !== false; }
+    catch { return false; }
+  };
+  const disposePreparedScenes = () => {
+    for (const item of prepared) disposeWardrobeTree(item.scene);
+  };
+  if (!requestIsCurrent()) {
+    return { committed: false, preparation, loadedAssetIds: [], errors: ["wardrobe:request-stale"] };
+  }
 
   for (const assetId of preparation.plan.expectedAssetIds) {
+    if (!requestIsCurrent()) {
+      errors.push("wardrobe:request-stale");
+      break;
+    }
     const asset = assets.get(assetId);
     if (!asset || asset.renderer !== "vrm3d" || asset.mime !== "model/gltf-binary" || !asset.path.toLowerCase().endsWith(".glb")) {
       errors.push(`wardrobe:unsupported-vrm-asset:${assetId}`);
@@ -132,21 +148,38 @@ export async function applyVerifiedVrmWardrobePack(input: VrmWardrobePackApplyIn
     try {
       const gltf = await parse(asArrayBuffer(bytes));
       if (!gltf.scene) throw new Error("glb:scene-missing");
+      if (!requestIsCurrent()) {
+        disposeWardrobeTree(gltf.scene);
+        errors.push("wardrobe:request-stale");
+        break;
+      }
       const rig = inspectVrmGarmentRig(gltf.scene, input.avatarRoot);
-      if (!rig.compatible) throw new Error(rig.errors.join(","));
+      if (!rig.compatible) {
+        disposeWardrobeTree(gltf.scene);
+        throw new Error(rig.errors.join(","));
+      }
       prepared.push({ asset, scene: gltf.scene });
     } catch (error) {
       errors.push(`${assetId}:${error instanceof Error ? error.message : "glb:parse-failed"}`);
       break;
     }
   }
-  if (errors.length || prepared.length !== preparation.plan.expectedAssetIds.length) {
-    return { committed: false, preparation, loadedAssetIds: [], errors: errors.length ? errors : ["wardrobe:incomplete-preparation"] };
+  if (errors.length || prepared.length !== preparation.plan.expectedAssetIds.length || !requestIsCurrent()) {
+    disposePreparedScenes();
+    return { committed: false, preparation, loadedAssetIds: [], errors: errors.length ? errors : [requestIsCurrent() ? "wardrobe:incomplete-preparation" : "wardrobe:request-stale"] };
   }
 
   const previous = collectSlotNodes(input.avatarRoot);
   const added: AvatarRoot[] = [];
+  if (!requestIsCurrent()) {
+    disposePreparedScenes();
+    return { committed: false, preparation, loadedAssetIds: [], errors: ["wardrobe:request-stale"] };
+  }
   for (const { asset, scene } of prepared) {
+    if (!requestIsCurrent()) {
+      errors.push("wardrobe:request-stale");
+      break;
+    }
     const result = attachVerifiedVrmGarment({
       garmentRoot: scene,
       avatarRoot: input.avatarRoot,
@@ -179,7 +212,7 @@ export async function applyVerifiedVrmWardrobePack(input: VrmWardrobePackApplyIn
     success: true,
     loadedAssetIds,
   });
-  if (!acknowledged) {
+  if (!acknowledged || !requestIsCurrent()) {
     for (const node of added) {
       (input.avatarRoot as any).remove?.(node);
       disposeWardrobeTree(node);
@@ -188,7 +221,7 @@ export async function applyVerifiedVrmWardrobePack(input: VrmWardrobePackApplyIn
       snapshot.node.visible = snapshot.visible;
       snapshot.node.userData = { ...snapshot.userData };
     }
-    return { committed: false, preparation, loadedAssetIds: [], errors: ["wardrobe:renderer-acknowledgement-rejected"] };
+    return { committed: false, preparation, loadedAssetIds: [], errors: [requestIsCurrent() ? "wardrobe:renderer-acknowledgement-rejected" : "wardrobe:request-stale"] };
   }
 
   // Commit cleanup only after the complete new set is attached and acknowledged.
