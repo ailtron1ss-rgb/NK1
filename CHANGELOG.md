@@ -1,3 +1,4 @@
+- Add a research-grade learning experiment acceptance gate: independent holdout only, at least five paired seeds, and complete task-family coverage; keep smaller plans available for smoke/validation but prevent them from being presented as strong learning evidence.
 - Update local-model revision regressions to the explicit holdout-blind policy contract; assert that numeric holdout direction is not sent to the optimizer and reject legacy feedback without the policy gate.
 ## [NK1][обучение] Fail-closed P23 staging and holdout integrity (2026-10-30)
 
