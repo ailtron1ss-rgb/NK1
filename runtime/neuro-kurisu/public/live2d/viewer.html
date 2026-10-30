@@ -24,7 +24,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   let lastIntentStateVersion=0;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
-  let faceSignal={eyeSmile:0,browLeftY:0,browRightY:0,browLeftForm:0,browRightForm:0,cheek:0,mouthTension:0,blinkBias:0},lastFaceStateVersion=0,microCycle=0;
+  let faceSignal={eyeSmile:0,browLeftY:0,browRightY:0,browLeftForm:0,browRightForm:0,cheek:0,mouthTension:0,blinkBias:0,blinkIntervalMs:8800,blinkDurationMs:105,saccadeIntervalMs:3100,saccadeAmplitude:.095},lastFaceStateVersion=0,microCycle=0;
   function microJitter(){const x=Math.sin(++microCycle*12.9898)*43758.5453;return x-Math.floor(x)}
   const EXPR_MAP={
     neutral:'Stanby Smile',happy:'Stanby Smile',sad:'Stanby Sad',angry:'Stanby Angry',
@@ -84,7 +84,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   }
   function applyFaceMicrochannels(d){
     if(!d||typeof d!=='object')return;
-    const ranges={eyeSmile:[0,.8],browLeftY:[-.45,.45],browRightY:[-.45,.45],browLeftForm:[-.5,.5],browRightForm:[-.5,.5],cheek:[0,.38],mouthTension:[0,.55],blinkBias:[-.08,.2]};
+    const ranges={eyeSmile:[0,.8],browLeftY:[-.45,.45],browRightY:[-.45,.45],browLeftForm:[-.5,.5],browRightForm:[-.5,.5],cheek:[0,.38],mouthTension:[0,.55],blinkBias:[-.08,.2],blinkIntervalMs:[4200,10500],blinkDurationMs:[90,145],saccadeIntervalMs:[1100,4200],saccadeAmplitude:[.06,.25]};
     const next={};for(const [key,range] of Object.entries(ranges)){const value=Number(d[key]);if(!Number.isFinite(value)||value<range[0]||value>range[1])return;next[key]=value;}
     faceSignal=next;
   }
@@ -132,9 +132,9 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
          lipCurrent+=(lipTarget-lipCurrent)*.30;
          lipFormCurrent+=(lipFormTarget-lipFormCurrent)*.30;
          eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
-         if(now>=nextBlink){blinkT=1;blinkUntil=now+115;nextBlink=now+6500+microJitter()*7500+faceSignal.blinkBias*1200}
+         if(now>=nextBlink){blinkT=1;blinkUntil=now+faceSignal.blinkDurationMs;const cadence=faceSignal.blinkIntervalMs*(.9+microJitter()*.2);nextBlink=now+cadence+faceSignal.blinkBias*900}
          if(blinkT>0){blinkT*=.72;if(now>blinkUntil)blinkT=Math.max(0,blinkT-.12)}
-         if(now>=nextSaccade){const amp=bodySignal.speaking?.12:.24;targetEyeX=(microJitter()-.5)*amp;targetEyeY=(microJitter()-.5)*amp*.52;nextSaccade=now+1200+microJitter()*3200}
+         if(now>=nextSaccade){const amp=faceSignal.saccadeAmplitude*(bodySignal.speaking?.58:1);targetEyeX=(microJitter()-.5)*amp;targetEyeY=(microJitter()-.5)*amp*.52;nextSaccade=now+faceSignal.saccadeIntervalMs*(.88+microJitter()*.24)}
        });
     }catch(err){status.textContent='fallback';send('live2d_error',{error:String(err?.message||err)})}
   }
