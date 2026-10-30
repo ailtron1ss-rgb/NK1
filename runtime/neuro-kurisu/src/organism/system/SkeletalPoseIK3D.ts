@@ -120,10 +120,14 @@ export function solveSkeletalPoseIK3D(input:SkeletalPoseIK3DInput):SkeletalPoseI
       return sum+(r===c?damping*damping:0);
     }));
     const y=solve6(normal,task);if(!y)break;
+    let maxAppliedDelta=0;
     for(let i=0;i<chain.length;i++){
       const id=chain[i],j=map.get(id)!,delta=columns[i].reduce((sum,v,k)=>sum+v*y[k],0);
-      pose[id]=Math.max(j.minAngleRad,Math.min(j.maxAngleRad,pose[id]+Math.max(-maxStep,Math.min(maxStep,delta))));
+      const next=Math.max(j.minAngleRad,Math.min(j.maxAngleRad,pose[id]+Math.max(-maxStep,Math.min(maxStep,delta))));
+      maxAppliedDelta=Math.max(maxAppliedDelta,Math.abs(next-pose[id]));
+      pose[id]=next;
     }
+    if(maxAppliedDelta<1e-9) break;
     fk=forwardKinematics3D(joints,pose,endId,input.endEffectorOffset);
     pe=norm3(sub3(targetPosition,fk.endEffector));oe=orientationError(targetQ,fk.joints[endId].rotation).angle;
   }
