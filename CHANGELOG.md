@@ -1,3 +1,10 @@
+## [NK1][WorkPass643] Enforce imported 2.5D hierarchy provenance (2026-10-30)
+
+- Extend the Three.js adapter with an optional expected-parent contract and compare manifest parent IDs against actual Object3D parent names before applying any transform.
+- Pass the validated manifest graph during initial GLB/VRM load; the manifest root remains allowed beneath the loader/container wrapper, while child-parent relations must match exactly.
+- Add an atomic-failure regression proving mismatched hierarchy is rejected without partially mutating the scene.
+- This closes a gap left by name-only validation: a model cannot pass 2.5D capability detection solely because node labels match when its actual layer graph is wrong.
+
 ## [NK1][WorkPass642] Verify Blender exporter syntax and stage metadata handoff (2026-10-30)
 
 - Add focused source-contract regressions proving that Blender's scene extras are consumed by Avatar3DStage for both the depth manifest and custom face morph bindings, and that bindings are cleared on model reset.
