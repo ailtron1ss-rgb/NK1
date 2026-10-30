@@ -165,3 +165,8 @@ NK1 Original теперь получает тот же `FacialMicrochannels` sna
 Импортированные GLB/VRM morph targets теперь разрешаются один раз при загрузке модели и сохраняются как компактный список binding-ов; покадровый полный обход графа сцены удалён. Перед обновлением AnimationMixer значения распознанных каналов возвращаются к исходному baseline модели, затем authored clip обновляет свои треки, и только после этого affect/viseme слой применяет ограниченный semantic floor. Это позволяет не перетирать более сильную анимацию модели и одновременно не оставлять эмоциональные morph значения «залипшими» после смены состояния.
 
 Добавлен unit test композиции каналов с authored animation values. Это всё ещё generic GLTF morph bridge, а не VRM ExpressionManager: официальные VRM preset expressions, look-at constraints и VRM humanoid runtime не декодируются без отдельного VRM loader plugin. Неизвестные morph targets остаются нетронутыми.
+
+
+### Дополнение — attack/release для импортированных morph expressions
+
+Добавлен smoothSemanticMorphValues: эмоции joy/sadness/anger используют более плавную атаку и длинный release, а viseme mouthOpen/mouthOh и blink реагируют быстрее, чтобы не размывать артикуляцию. Сглаживание использует фактический frame delta, ограничено по dt и не выходит за диапазон 0..1. Тест проверяет детерминированность при нулевом dt, скорость речевых каналов и относительное время release.
