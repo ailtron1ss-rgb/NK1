@@ -1,5 +1,3 @@
-import { performance } from 'node:perf_hooks';
-
 export type NativeSpeechProviderPhaseV1 =
   | 'command-requested'
   | 'process-spawned'
@@ -43,7 +41,7 @@ export interface NativeSpeechEventChannel {
  * In particular, process spawn/exit never proves that Android audio started or ended.
  */
 export function createNativeSpeechEventChannel(
-  now: () => number = () => performance.now(),
+  now: () => number = () => globalThis.performance.now(),
 ): NativeSpeechEventChannel {
   const listeners = new Set<(event: NativeSpeechProviderEventV1) => void>();
   const sequences = new Map<string, number>();
