@@ -1,3 +1,11 @@
+## [NK1][WorkPass645] Reconcile 2.5D manifest against exported glTF transforms (2026-10-30)
+
+- Stop copying Blender-space object locations and Euler rotations into the runtime manifest before glTF axis conversion.
+- After export, resolve each rig node by a unique exported glTF name and derive local translation, quaternion-to-XYZ rotation and parent ID from the actual glTF node graph.
+- Fail closed when a rig parent is outside the declared collection, an exported node is ambiguous, a node uses a matrix transform the current runtime schema cannot represent, or the exported hierarchy contains a non-rig parent.
+- Extend the dependency-free GLB validator to compare manifest TRS and parent provenance against the actual glTF node graph, including root-parent mismatches.
+- Add regressions for local translation mismatch and hidden root reparenting. This improves export fidelity but does not replace authored Kurisu artwork, Blender authoring calibration or browser/device E2E.
+
 ## [NK1][WorkPass644] Make the headless Blender blockout version-compatible (2026-10-30)
 
 - Remove an unused render-engine assignment from the deterministic geometry-only demo scene. Blender's headless glTF export does not render frames, and the assignment selected `BLENDER_EEVEE_NEXT`, which is absent from the Ubuntu Blender 4.0.2 package used by CI.
