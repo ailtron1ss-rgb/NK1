@@ -189,7 +189,7 @@
     "test:avatar-motor-intent": "npm --prefix app run test:avatar-motor-intent",
     "test:embodied-motor-controller": "npm --prefix runtime/neuro-kurisu run test:embodied-motor-controller",
     "audit:aspect12": "node tools/aspect12-release-readiness.mjs",
-    "test:aspect12": "node --test tools/aspect12-release-readiness.test.mjs",
+    "test:aspect12": "node --test tools/aspect12-release-readiness.test.mjs app/scripts/aspect12-browser-smoke.test.mjs",
     "audit:aspect12:release": "node tools/aspect12-release-readiness.mjs --require-release-ready"
   },
   "version": "35.0.0-super-workpass70",
