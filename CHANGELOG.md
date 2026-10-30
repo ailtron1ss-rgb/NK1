@@ -2883,3 +2883,6 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Импортированный 3D-аватар теперь получает blink pulse и viseme values из общего временного snapshot; неизвестные morph channels остаются нетронутыми.
 - Добавлены regression tests, npm script и расширение aspect-07 CI workflow.
 - Это best-effort mapping по именам, не полноценный VRM ExpressionManager; конкретный VRM/GLB и конкуренция с анимационными клипами требуют отдельной визуальной проверки.
+
+
+- NK1 Aspect 07: кэширование semantic morph bindings для импортированных VRM/GLB; baseline reset → authored AnimationMixer → affect/viseme overlay, чтобы сохранять authored clips и предотвращать залипание morph values.
