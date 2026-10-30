@@ -15,6 +15,7 @@ export interface DepthRigApplyResult {
 export function applyDepthRigTransforms(
   root: any,
   transforms: readonly DepthRigTransform[],
+  expectedParents?: readonly { id: string; parentId: string | null }[],
 ): DepthRigApplyResult {
   const byName = new Map<string, any>();
   const duplicates = new Set<string>();
@@ -31,6 +32,13 @@ export function applyDepthRigTransforms(
     if (seen.has(transform.id)) errors.push(`duplicate-transform:${transform.id}`);
     seen.add(transform.id);
     if (!byName.has(transform.id)) errors.push(`missing-scene-node:${transform.id}`);
+  }
+  if (expectedParents) {
+    for (const expected of expectedParents) {
+      if (!expected.parentId) continue; // the manifest root may sit under the importer/container wrapper
+      const node = byName.get(expected.id);
+      if (node && node.parent?.name !== expected.parentId) errors.push("parent-mismatch:" + expected.id);
+    }
   }
   if (errors.length) return { ok: false, applied: 0, errors };
 
