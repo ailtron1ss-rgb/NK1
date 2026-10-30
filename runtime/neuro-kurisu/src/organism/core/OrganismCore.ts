@@ -2717,6 +2717,32 @@ export class OrganismCore {
         const report = this.knownEntityDossierSnapshot({ limit: 128, handle, evidenceLimit: 32 });
         return projectKnownEntityPromptContext(report, handle, maxFacts);
     }
+    /** UserModel is a separate, evidence-backed partner profile; it is never a second self/personality owner. */
+    userModelPromptContext() {
+        return this.organismSystems.memory.userModel.promptContext();
+    }
+    userModelSnapshot() {
+        return this.organismSystems.memory.userModel.snapshot();
+    }
+    userModelDiagnostics() {
+        return this.organismSystems.memory.userModel.diagnostics();
+    }
+    /** Only explicit safe claims are promoted by the engine; repeated behavior remains pending review. */
+    recordUserModelMessage(text: string, eventId: string, at = Date.now()) {
+        return this.organismSystems.memory.userModel.observeExplicitMessage(text, eventId, at);
+    }
+    confirmUserModelClaim(claimId: string, at = Date.now()) {
+        return this.organismSystems.memory.userModel.approveClaim(claimId, at);
+    }
+    rejectUserModelClaim(claimId: string, at = Date.now()) {
+        return this.organismSystems.memory.userModel.rejectClaim(claimId, at);
+    }
+    correctUserModelClaim(claimId: string, value: string, eventId: string, at = Date.now()) {
+        return this.organismSystems.memory.userModel.correctClaim({ claimId, value, eventId, at });
+    }
+    forgetUserModelClaim(claimId: string, at = Date.now()) {
+        return this.organismSystems.memory.userModel.forgetClaim(claimId, at);
+    }
     /**
      * Evidence-gated language projection of the existing B270 trait learner.
      * Deterministic action biases remain owned by B270; this is its verbal counterpart,
