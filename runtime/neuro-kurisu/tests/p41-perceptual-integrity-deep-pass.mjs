@@ -168,6 +168,23 @@ function semanticVision(objects, at, extra = {}) {
   assert.equal(engine.nextPerception(audio.expiresAt + 1), null);
   assert.equal(engine.fulfill(audio.id, true, audio.expiresAt + 2), false);
   assert.equal(engine.snapshot().pending.find(item => item.id === audio.id)?.status, 'expired');
+
+  engine.ingest({ at: audio.expiresAt + 10, audio: { semantic: false } });
+  const renewed = engine.nextPerception(audio.expiresAt + 11);
+  assert.ok(renewed);
+  assert.notEqual(renewed.id, audio.id, 'a later retry must receive a new generation ID');
+  assert.equal(engine.fulfill(renewed.id, true, audio.expiresAt + 12), true, 'the renewed request must not resolve against the expired predecessor');
+}
+
+// Backdated samples cannot rewind a scene/identity history after a newer snapshot exists.
+{
+  const engine = new P41SemanticPerceptionEngine();
+  engine.ingest(semanticVision([{ label: 'door', trackId: 'door-current', sourceId: 'detector' }], 90_000));
+  const before = engine.snapshot();
+  const after = engine.ingest(semanticVision([{ label: 'window', trackId: 'window-old', sourceId: 'detector' }], 89_000));
+  assert.equal(after.tick, before.tick, 'out-of-order perception input must not advance the semantic timeline');
+  assert.equal(after.entities.some(entity => entity.label === 'window'), false);
+  assert.equal(after.snapshots[0].at, before.snapshots[0].at);
 }
 
 // Legacy checkpoints restore without NaN/undefined calibration fields or loss of known observations.
@@ -200,6 +217,9 @@ function semanticVision(objects, at, extra = {}) {
 {
   const graph = new PerceptualEpistemicGraph();
   const first = graph.add({ at: 1, modality: 'vision', claim: 'door is open', source: 'model-output', confidence01: 0.6 });
+  const replay = graph.add({ at: 1, modality: 'vision', claim: 'door is open', source: 'model-output', confidence01: 0.6 });
+  assert.equal(replay.id, first.id);
+  assert.equal(graph.snapshot().claims.length, 1, 'an identical receipt replay must be idempotent');
   graph.add({ at: 2, modality: 'vision', claim: 'door is open', source: 'model-output', confidence01: 0.7 });
   assert.equal(graph.snapshot().corroboratedPairs, 0, 'repeated same-modality claims are not independent corroboration');
   graph.add({ at: 3, modality: 'world', claim: 'door is open', source: 'observed', confidence01: 0.9 });
