@@ -89,6 +89,15 @@ export class MotorGoalArbiter {
   constructor(controller: EmbodiedMotorController) { this.controller = controller; }
 
   propose(candidates: readonly MotorGoalCandidate[], context: MotorArbitrationContext): MotorArbitrationResult {
+    if (!context || !Number.isSafeInteger(context.tick) || context.tick < 0 || !Number.isFinite(context.nowMs) || context.nowMs < 0) {
+      const invalid: MotorArbitrationResult = {
+        version: 1, tick: 0, selectedCandidateId: null, selectedAction: null,
+        selectedGate01: 0, selectionMargin01: 0, accepted: false,
+        reason: "invalid-motor-arbitration-context", motorFrame: null, ranked: [],
+      };
+      this.lastResult = invalid;
+      return invalid;
+    }
     const safe = (candidates ?? []).filter((candidate) =>
       candidate && typeof candidate.id === "string" && candidate.id.length > 0 &&
       candidate.goal && validateMotorGoal(candidate.goal).ok &&
@@ -197,6 +206,10 @@ export class MotorGoalArbiter {
       return { accepted: false, reason: "invalid-outcome" };
     }
     this.creditedEvidenceIds.add(outcome.evidenceId);
+    if (this.creditedEvidenceIds.size > 2048) {
+      const oldest = this.creditedEvidenceIds.values().next().value;
+      if (oldest) this.creditedEvidenceIds.delete(oldest);
+    }
     this.cerebellar.recordOutcome(outcome.action, outcome.predictedUtility01, outcome.actualUtility01, outcome.surprise01, outcome.tick);
     this.basalGanglia.recordOutcome(outcome.action, outcome.actualUtility01, outcome.surprise01, outcome.tick, outcome.dopamine01);
     return { accepted: true, reason: "independently-verified-motor-outcome-credited" };
