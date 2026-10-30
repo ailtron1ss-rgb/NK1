@@ -65,8 +65,9 @@ export function inspectLive2DWardrobeCapability(
   limitations.push("Cubism drawable/part IDs are not exposed by model3 JSON; inspect the moc3 model before authoring a part-switch adapter");
   limitations.push("existing expressions and physics are not proof of independent clothing layers");
   const canSwitchGarments = false;
+  const hasExpressionBoundControl = uniqueExpressionControls.some((id) => wardrobeControlIds.includes(id));
   return {
-    status: !valid ? "invalid-manifest" : wardrobeControlIds.length ? "candidate-control" : uniqueExpressionControls.length ? "limited-controls" : "no-switch-contract",
+    status: !valid ? "invalid-manifest" : hasExpressionBoundControl ? "limited-controls" : wardrobeControlIds.length ? "candidate-control" : uniqueExpressionControls.length ? "limited-controls" : "no-switch-contract",
     canSwitchGarments,
     textureCount: textures,
     motionGroupCount: motions,
