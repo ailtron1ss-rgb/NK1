@@ -17,8 +17,12 @@ export interface AvatarMotorIntentInput {
   awake: boolean;
 }
 
+export type AvatarGestureProfile = "none" | "considering" | "presenting" | "examining" | "reassuring" | "emphatic";
+
 export interface AvatarMotorIntentPlan {
   action: AvatarMotorAction;
+  gestureProfile: AvatarGestureProfile;
+  gestureIntensity: number;
   motionGroup: AvatarMotionGroup;
   motionIndex: 0 | 1;
   headTilt: number;
@@ -121,6 +125,16 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
     (intent === "reflect" && arousal >= 0.28) ||
     (intent === "comfort" && arousal >= 0.2) ||
     (intent === "respond" && arousal >= 0.45);
+  // A semantic gesture profile enriches the existing authored motion selection.
+  // It deliberately stays inside the current rig's supported channels: no fake arm IK.
+  const gestureProfile: AvatarGestureProfile = !gesture ? "none" :
+    intent === "reflect" ? "considering" :
+    intent === "explain" ? "presenting" :
+    intent === "inspect" ? "examining" :
+    intent === "comfort" ? "reassuring" : "emphatic";
+  const gestureBase = intent === "explain" || intent === "inspect" ? 0.38 :
+    intent === "reflect" ? 0.22 : intent === "comfort" ? 0.2 : 0.16;
+  const gestureIntensity = gesture ? clamp(gestureBase + arousal * 0.32, 0, 0.8) : 0;
 
-  return { action: intent, motionGroup, motionIndex, headTilt, gazeX, gazeY, gesture, reason };
+  return { action: intent, motionGroup, motionIndex, headTilt, gazeX, gazeY, gesture, gestureProfile, gestureIntensity, reason };
 }
