@@ -1,0 +1,33 @@
+name: NK1 embodied motor controller
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/EmbodiedMotorController.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MotorGoalArbiter.ts"
+      - "runtime/neuro-kurisu/src/organism/system/BasalGangliaSelectionCircuit.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CerebellarPredictiveController.ts"
+      - "runtime/neuro-kurisu/tests/embodied-motor-controller.mjs"
+      - ".github/workflows/nk1-embodied-motor-controller.yml"
+  push:
+    branches: [work/nk1-autonomous-motor-control-2026-10-30]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-embodied-motor-controller-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  motor-controller:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run motor-control regression suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/embodied-motor-controller.mjs
