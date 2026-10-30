@@ -152,7 +152,7 @@ export class CanonicalMemoryLifecycleAuthority {
 
   run(input:CanonicalMemoryLifecycleInput){
     const tick=this.assertNextTick(input.tick);
-    if(this.state.cycles>=Number.MAX_SAFE_INTEGER||this.state.maintenanceRuns>=Number.MAX_SAFE_INTEGER){
+    if(this.state.cycles>=Number.MAX_SAFE_INTEGER){
       throw new RangeError('Canonical memory lifecycle counter reached its safe integer limit');
     }
     const pressure=clamp01(input.pressure01);
@@ -177,7 +177,7 @@ export class CanonicalMemoryLifecycleAuthority {
       this.state.lastConsolidation=[];
       this.state.meanPressure01=clamp01(this.state.meanPressure01*.97+pressure*.03);
       this.state.meanMemoryLoad01=clamp01(this.state.meanMemoryLoad01*.97+memoryLoad*.03);
-      this.state.maintenanceRuns+=maintenance.skipped?0:1;
+      this.state.maintenanceRuns=maintenance.skipped?this.state.maintenanceRuns:Math.min(Number.MAX_SAFE_INTEGER,this.state.maintenanceRuns+1);
       return {plan,maintenance,consolidation:[]};
     }catch(error){
       this.governor.restore(governorBefore);
@@ -189,7 +189,7 @@ export class CanonicalMemoryLifecycleAuthority {
     const decisions=input.candidates.length
       ? this.consolidator.rank(input.candidates,{batchSize:input.batchSize??4,pressure01:clamp01(input.pressure01??0.5),awake01:clamp01(input.awake01??1)})
       : [];
-    this.state.consolidationRuns+=input.candidates.length?1:0;
+    if(input.candidates.length)this.state.consolidationRuns=Math.min(Number.MAX_SAFE_INTEGER,this.state.consolidationRuns+1);
     this.state.lastConsolidation=decisions;
     return decisions;
   }
@@ -201,7 +201,7 @@ export class CanonicalMemoryLifecycleAuthority {
     // consolidation-path request is an idempotent no-op, including after restore.
     if(tick===this.state.lastTick)return {skipped:true,changed:0};
     const result=this.fabric.maintain({...input,tick});
-    this.state.maintenanceRuns+=result.skipped?0:1;
+    this.state.maintenanceRuns=result.skipped?this.state.maintenanceRuns:Math.min(Number.MAX_SAFE_INTEGER,this.state.maintenanceRuns+1);
     this.state.lastTick=tick;
     this.state.meanPressure01=clamp01(this.state.meanPressure01*.97+clamp01(input.pressure01??0)*.03);
     return result;
