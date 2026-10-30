@@ -44,4 +44,18 @@ corrupted.restore({ ...modeOnlyChange, verifiedOutcomeSamples: -50, selfAuthorsh
 assert.equal(corrupted.snapshot().verifiedOutcomeSamples, 0);
 assert.equal(corrupted.snapshot().selfAuthorship01, 1);
 
+const normalized = new P78AutobiographicalSelfContinuity();
+const normalizedFirst = normalized.observe([
+  { tick: 40, at: 4000, action: 'reflect', text: 'alpha\t beta' }
+]);
+const normalizedReplay = normalized.observe([
+  { tick: 40, at: 4000, action: 'reflect', text: 'alpha beta' }
+]);
+assert.deepEqual(normalizedReplay, normalizedFirst, 'whitespace normalization must make equivalent event keys idempotent');
+
+const malformedEvidence = new P78AutobiographicalSelfContinuity().observe([
+  { tick: 41, at: 4100, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'world-transition:bad receipt' }
+]);
+assert.equal(malformedEvidence.verifiedOutcomeSamples, 0, 'evidence references containing whitespace are not bound receipts');
+assert.equal(malformedEvidence.unverifiedOutcomeSamples, 1);
 console.log('P78_AUTOBIOGRAPHICAL_PROVENANCE=PASS');
