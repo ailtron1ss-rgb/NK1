@@ -15,6 +15,60 @@ const complete=cycle.evaluate({tick:1,stageIds:stages,parentIntegrity01:0.9});
 assert.equal(complete.complete,true);
 assert.equal(complete.stageCoverage01,1);
 assert.deepEqual(complete.missingStages,[]);
+
+// Six-stage callers remain supported for older integrations.
+const partialExtended = new UnifiedCognitiveCycle();
+const partialExtendedResult = partialExtended.evaluate({
+  tick: 1,
+  stageIds: { ...stages, appraisal: 'app-1', attention: 'attention-1' },
+  parentIntegrity01: 1,
+});
+assert.equal(partialExtendedResult.complete, false, 'advertising extended phases requires all eleven phases');
+assert.equal(partialExtendedResult.stageCoverage01, 8 / 11);
+assert.deepEqual(partialExtendedResult.missingStages, ['memory', 'goal', 'plan']);
+
+// A complete extended caller must supply eleven distinct event identities.
+const fullExtended = new UnifiedCognitiveCycle();
+const fullExtendedIds = {
+  observation: 'obs-ext',
+  prediction: 'pred-ext',
+  appraisal: 'app-ext',
+  attention: 'attention-ext',
+  memory: 'memory-ext',
+  goal: 'goal-ext',
+  plan: 'plan-ext',
+  action: 'action-ext',
+  outcome: 'outcome-ext',
+  learning: 'learning-ext',
+  'self-update': 'self-ext',
+};
+const fullExtendedResult = fullExtended.evaluate({ tick: 1, stageIds: fullExtendedIds, parentIntegrity01: 1 });
+assert.equal(fullExtendedResult.complete, true);
+assert.equal(fullExtendedResult.stageCoverage01, 1);
+assert.deepEqual(fullExtendedResult.missingStages, []);
+
+// Even an explicitly present but undefined extended phase opts into the strict spine.
+const explicitlyExtended = new UnifiedCognitiveCycle();
+const explicitlyExtendedResult = explicitlyExtended.evaluate({
+  tick: 1,
+  stageIds: { ...stages, appraisal: undefined },
+  parentIntegrity01: 1,
+});
+assert.equal(explicitlyExtendedResult.complete, false);
+assert.ok(explicitlyExtendedResult.missingStages.includes('appraisal'));
+assert.ok(explicitlyExtendedResult.missingStages.includes('plan'));
+
+// Reusing an event identity across extended phases cannot manufacture completeness.
+const duplicateExtended = new UnifiedCognitiveCycle();
+const duplicateExtendedResult = duplicateExtended.evaluate({
+  tick: 1,
+  stageIds: { ...fullExtendedIds, goal: fullExtendedIds.memory },
+  parentIntegrity01: 1,
+});
+assert.equal(duplicateExtendedResult.complete, false);
+assert.ok(duplicateExtendedResult.missingStages.includes('memory'));
+assert.ok(duplicateExtendedResult.missingStages.includes('goal'));
+
 const duplicateIds=cycle.evaluate({tick:2,stageIds:{...stages,prediction:stages.observation},parentIntegrity01:1});
 assert.equal(duplicateIds.complete,false);
 assert.ok(duplicateIds.missingStages.includes('observation'));
@@ -73,7 +127,6 @@ assert.equal(reconciled.brokenLineages,2);
 assert.equal(reconciled.completeCycles+reconciled.incompleteCycles,reconciled.cycles);
 assert.equal(reconciled.lastComplete,true,'aggregate counter reconciliation must not rewrite the independently valid latest-cycle completion flag');
 
-
 const undercountRestore=new UnifiedCognitiveCycle();
 undercountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:99,lastTick:8,lastComplete:false,lastMissingStages:['action']});
 const undercounted=undercountRestore.snapshot();
@@ -86,10 +139,34 @@ emptyRestore.restore({cycles:0,lastTick:-1,lastComplete:true,lastMissingStages:[
 assert.equal(emptyRestore.snapshot().lastComplete,false);
 assert.deepEqual(emptyRestore.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update']);
 
+const inheritedRestore = new UnifiedCognitiveCycle();
+inheritedRestore.restore(Object.assign(Object.create({
+  cycles: 9,
+  completeCycles: 9,
+  lastTick: 22,
+  lastComplete: true,
+  meanStageCoverage01: 1,
+  lastMissingStages: [],
+}), { version: 1 }));
+assert.equal(inheritedRestore.snapshot().cycles, 0);
+assert.equal(inheritedRestore.snapshot().completeCycles, 0);
+assert.equal(inheritedRestore.snapshot().lastTick, -1);
+assert.equal(inheritedRestore.snapshot().lastComplete, false);
+assert.deepEqual(inheritedRestore.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update'],
+  'inherited persisted fields must not be trusted by restore');
+
+const inheritedMissing = new Array(1);
+const inheritedArrayPrototype = Object.create(Array.prototype, { 0: { value: 'action', enumerable: true } });
+Object.setPrototypeOf(inheritedMissing, inheritedArrayPrototype);
+const inheritedArrayRestore = new UnifiedCognitiveCycle();
+inheritedArrayRestore.restore({ cycles: 1, completeCycles: 1, lastTick: 1, lastComplete: true, lastMissingStages: inheritedMissing });
+assert.equal(inheritedArrayRestore.snapshot().lastComplete, false);
+assert.deepEqual(inheritedArrayRestore.snapshot().lastMissingStages,['observation','prediction','action','outcome','learning','self-update'],
+  'inherited array indexes must not satisfy missing-stage state');
+
 const leaked=cycle.snapshot();
 leaked.lastMissingStages.push('goal');
 assert.equal(cycle.snapshot().lastMissingStages.includes('goal'),false);
-
 
 const missingCountRestore=new UnifiedCognitiveCycle();
 missingCountRestore.restore({cycles:10,completeCycles:3,incompleteCycles:1,brokenLineages:9,lastTick:9,lastComplete:false,lastMissingStages:['action']});
@@ -123,5 +200,32 @@ assert.ok(inheritedResult.missingStages.includes('observation'));
 const saturated=new UnifiedCognitiveCycle();
 saturated.restore({cycles:Number.MAX_SAFE_INTEGER,completeCycles:Number.MAX_SAFE_INTEGER,incompleteCycles:0,brokenLineages:0,lastTick:0,lastComplete:true,lastMissingStages:[]});
 assert.throws(()=>saturated.evaluate({tick:1,stageIds:stages,parentIntegrity01:1}),/safe integer limit/);
+
+// Accessor-backed cycle snapshots and inputs are treated as missing data.
+let restoreGetterCalled = false;
+const getterSnapshot = { version: 1 };
+Object.defineProperty(getterSnapshot, 'cycles', { enumerable: true, get() { restoreGetterCalled = true; return 20; } });
+const accessorRestore = new UnifiedCognitiveCycle();
+accessorRestore.restore(getterSnapshot);
+assert.equal(restoreGetterCalled, false);
+assert.equal(accessorRestore.snapshot().cycles, 0);
+
+let stageGetterCalled = false;
+const getterStageIds = { prediction: 'pred-accessor', action: 'act-accessor', outcome: 'out-accessor', learning: 'learn-accessor', 'self-update': 'self-accessor' };
+Object.defineProperty(getterStageIds, 'observation', { enumerable: true, get() { stageGetterCalled = true; return 'obs-accessor'; } });
+const accessorInputCycle = new UnifiedCognitiveCycle();
+const accessorInputResult = accessorInputCycle.evaluate({ tick: 1, stageIds: getterStageIds, parentIntegrity01: 1 });
+assert.equal(stageGetterCalled, false);
+assert.equal(accessorInputResult.complete, false);
+assert.ok(accessorInputResult.missingStages.includes('observation'));
+
+let missingArrayGetterCalled = false;
+const maliciousMissing = new Array(1);
+Object.defineProperty(maliciousMissing, '0', { enumerable: true, get() { missingArrayGetterCalled = true; return 'action'; } });
+const accessorArrayRestore = new UnifiedCognitiveCycle();
+accessorArrayRestore.restore({ version: 1, cycles: 1, completeCycles: 1, lastTick: 1, lastComplete: true, lastMissingStages: maliciousMissing });
+assert.equal(missingArrayGetterCalled, false);
+assert.equal(accessorArrayRestore.snapshot().lastComplete, false);
+assert.deepEqual(accessorArrayRestore.snapshot().lastMissingStages, ['observation','prediction','action','outcome','learning','self-update']);
 
 console.log('WorkPass287 unified cognitive-cycle contract: PASS');
