@@ -1,3 +1,9 @@
+## [NK1][Aspect 06] Add bounded MotorFrame transport channel (2026-10-30)
+
+- Add a renderer-neutral, single-slot MotorFrame channel with strict frame validation, monotonic tick/time checks, defensive snapshots, bounded subscriptions, optional explicit replay, and listener exception isolation.
+- Keep only the latest frame so slow avatar renderers cannot accumulate an unbounded pose backlog.
+- Add focused regressions and a dedicated Node 24 CI step. This validates transport semantics only; it does not claim live avatar/VRM execution or visual postcondition readback.
+
 ## Unreleased
 
 - Add bounded multi-effector 3D position IK: solve up to six end-effector targets together with a shared task-space DLS Jacobian, coordinated shared joints, per-target residuals, and explicit limit/singularity outcomes.
