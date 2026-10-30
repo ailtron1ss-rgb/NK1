@@ -43,7 +43,7 @@ test("uploaded VRM stage exposes a rights-confirmed verified wardrobe pack appli
  assert.match(stage,/readWardrobeBundle/);
  assert.match(stage,/nk1-wardrobe-pack/);
  assert.match(stage,/avatarWardrobeBodyId/);
- assert.match(stage,/globalThis\.crypto\?\.subtle\.digest\("SHA-256"/);
+ assert.match(stage,/globalThis\.crypto\.subtle\.digest\("SHA-256"/);
  assert.match(stage,/normalized|toLowerCase/);
  assert.match(stage,/targetRigVersion:WARDROBE_RIG_VERSION/);
  assert.match(stage,/renderer:"vrm3d"/);
