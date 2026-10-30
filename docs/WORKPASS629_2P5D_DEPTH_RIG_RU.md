@@ -119,3 +119,9 @@ node scripts/depth-rig-glb-validator.mjs ../build/kurisu-depth-rig.glb
 - При сбросе модели bindings очищаются вместе с depth-rig и secondary-motion state, чтобы не переносить настройки одного GLB на другой.
 
 - Focused CI дополнительно компилирует Python exporter через `python -m py_compile`; это проверяет синтаксис без Blender runtime. Сам экспорт Blender-сцены остаётся внешним asset-build шагом.
+
+### Дополнение — fail-closed проверка фактической иерархии импортированной сцены
+
+- Three.js adapter принимает ожидаемые `id → parentId` связи из manifest и сверяет их с реальными `Object3D.parent.name` до первой мутации.
+- Корневой узел manifest может находиться под импортёрным/container wrapper; для дочерних узлов parent должен совпадать строго.
+- Несовпадение возвращает `parent-mismatch:<id>` атомарно, не применяя ни одну трансформацию. Это защищает от GLB, в котором имена слоёв совпали, но Blender hierarchy была экспортирована иначе.
