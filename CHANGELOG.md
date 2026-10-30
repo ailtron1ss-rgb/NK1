@@ -1,3 +1,10 @@
+## [NK1][Aspect 06] Port renderer-neutral motor control substrate (2026-10-30)
+
+- Add the canonical joint-space motor controller, goal arbiter, versioned rig profiles, motor-frame channel, kinematics and multi-effector/pose IK, plus OrganismRuntime/server integration and focused regression suites from PR #410.
+- Preserve one motor-goal authority and a renderer-neutral MotorFrame contract so Live2D, DepthRig and VRM adapters can consume the same semantic movement intent.
+- Source PR #410 exact-head checks passed on f8c8c1d69249; integrated branch CI is still required. This is a software/controller integration, not proof of physical arm movement or object contact.
+- Model-specific calibration, renderer-applied pose readback, hardware-backed postconditions and Android visual validation remain open.
+
 ## [NK1][Aspect 04] Port validated 2.5D DepthRig foundation onto current source (2026-10-30)
 
 - Selectively port the versioned DepthRig manifest, strict parent-graph/transform validation, Three.js adapter, face/morph/viseme bindings, Blender exporter and deterministic mannequin fixture from PR #408 onto source checkpoint 258cd9e703dc.
