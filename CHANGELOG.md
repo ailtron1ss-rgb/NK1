@@ -1,3 +1,11 @@
+## [NK1][learning-integrity] Harden holdout snapshot restore and context identity (2026-10-30)
+
+- Replaced spread-based restoration of skill-acquisition state with descriptor-only reads of own data properties; accessors are not evaluated, malformed snapshots are bounded, and compromised evidence state disables holdout eligibility.
+- Recompute accepted holdout count from the unique canonical context registry rather than trusting persisted counters. Normalize keys deterministically with NFKC plus locale-independent lowercase; reject empty and overlength keys instead of truncating distinct contexts into collisions.
+- Make novelty accounting use the durable registry rather than the lossy recent-128 window; saturate counters and fail closed when the 4096-context registry overflows.
+- Extend regressions for root/nested getters, valid round-trip, malformed counters, normalized duplicates, overlength collisions, recent-window replay and registry saturation.
+- Eligibility from this subsystem is only a unique-context minimum; independent evaluator evidence is still required. No retrieval or learning uplift is claimed.
+
 ## [NK1][learning-integrity] Restore skill-acquisition holdout integrity after baseline regression (2026-10-30)
 
 - Restore the learning/holdout split contract in `SkillAcquisitionBenchmark` that the WorkPass70 baseline import had reverted: holdout evidence counts only distinct, independently labelled context keys; eligibility requires at least three accepted holdout contexts; empty and prototype-named keys are rejected; derived `gain01` stays at zero until evidence is eligible and clears on contamination or registry saturation; legacy snapshots recompute the accepted count from the unique phase registry.
