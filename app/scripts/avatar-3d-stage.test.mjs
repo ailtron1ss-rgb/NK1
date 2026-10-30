@@ -53,7 +53,7 @@ test("uploaded VRM stage exposes a rights-confirmed verified wardrobe pack appli
  assert.match(stage,/renderer:"vrm3d"/);
  assert.match(stage,/wardrobeRightsConfirmed/);
  assert.match(stage,/Подтверждаю, что имею право использовать все ресурсы/);
- assert.match(stage,/Проверить и применить к VRM/);
+ assert.match(stage,/Применить выбранные элементы к VRM/);
  assert.match(stage,/setWardrobePack\(null\)/);
 });
 
