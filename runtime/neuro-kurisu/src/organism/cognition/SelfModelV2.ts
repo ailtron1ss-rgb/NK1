@@ -74,7 +74,7 @@ export class SelfModelEngine {
     return Math.max(-0.06, Math.min(0.06, selfConsistency*0.045 + (predictedMatch-.5)*0.028 + agency + identity));
   }
 
-  learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string;evidenceReceiptId?:string}}){
+  learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string;evidenceReceiptId?:string;evidence01?:number;independent01?:number;consequence01?:number;identityUpdateScale01?:number}}){
     const unit=(value:number,fallback=.5)=>Math.max(0,Math.min(1,Number.isFinite(value)?value:fallback));
     const alignment=unit(input.goalAlignment01);
     const reward=unit(input.reward01);
@@ -96,8 +96,13 @@ export class SelfModelEngine {
       allowedSource&&receipt&&Number(receipt[1])===input.tick&&
       evidenceRef===`external-verification:${evidenceReceiptId}`
     );
-    const gateAccepted=Boolean(evidence?.verified&&evidence.independent&&receiptBound);
-    const gateReason=gateAccepted?'verified-independent-outcome-bound':!evidence?'missing-provenance':!evidence.verified?'outcome-unverified':!evidence.independent?'outcome-not-independent':!allowedSource?'untrusted-evidence-source':!receiptBound?'receipt-not-bound-to-outcome-event':'missing-evidence-reference';
+    const evidence01=unit(evidence?.evidence01??0,0);
+    const independent01=unit(evidence?.independent01??0,0);
+    const consequence01=unit(evidence?.consequence01??0,0);
+    const identityUpdateScale01=unit(evidence?.identityUpdateScale01??0,0);
+    const qualityGate=evidence01>=.72&&independent01>=.80&&consequence01>=.70&&identityUpdateScale01>=.45;
+    const gateAccepted=Boolean(evidence?.verified&&evidence.independent&&receiptBound&&qualityGate);
+    const gateReason=gateAccepted?'verified-independent-outcome-bound':!evidence?'missing-provenance':!evidence.verified?'outcome-unverified':!evidence.independent?'outcome-not-independent':!allowedSource?'untrusted-evidence-source':!receiptBound?'receipt-not-bound-to-outcome-event':!qualityGate?'insufficient-identity-evidence':'missing-evidence-reference';
     if(gateAccepted){
       this.model.agencyBelief=Math.max(0,Math.min(1,this.model.agencyBelief*.985 + (alignment-.5)*.024 + (reward-.5)*.012));
       this.model.identityCoherence=Math.max(0,Math.min(1,this.model.identityCoherence*.99 + (alignment-.5)*.016));
