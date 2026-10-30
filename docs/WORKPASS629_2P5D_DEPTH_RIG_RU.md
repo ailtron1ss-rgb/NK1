@@ -86,3 +86,27 @@ The resolver is a runtime contract, not a claim that the repository already cont
 - Custom artist bindings are validated defensively; malformed values are ignored. Overlapping aliases were removed so generic mouth-open channels cannot overwrite dedicated viseme morphs.
 - Tests cover asymmetric eyelids/brows, gaze bounds, viseme selection, blend convergence, partial morph sets, ambiguous aliases and malformed binding metadata.
 - The production art asset, calibration and Android/desktop visual E2E remain outstanding.
+
+
+## WorkPass — Blender → GLB production export contract
+
+Добавлен исполняемый helper `tools/blender/export_nk1_depth_rig.py` для Blender:
+
+- Сборка manifest v1 из коллекции `NK1_RIG`; каждый объект должен иметь custom property `nk1_role`, а его имя становится стабильным ID узла.
+- Родительские связи, локальные position/rotation, artist-authored pivot, depth/parallax и render visibility переносятся в manifest. Ограничения соответствуют runtime-контракту: 1–128 узлов, безопасные ID, depth [-1, 1], parallax [0, 2], pivot [-1, 1].
+- Экспортёр вызывает штатный glTF 2.0 GLB exporter Blender с `export_extras=True`, затем записывает `nk1DepthRigManifest` и необязательный `nk1DepthRigFaceBindings` непосредственно в extras активной glTF scene. Это сохраняет согласованность с `gltf.scene.userData`, откуда метаданные читает `Avatar3DStage`.
+- После экспорта проверяется, что каждый ID manifest присутствует среди имён glTF nodes. Неполный экспорт завершается ошибкой, а не выпускает молча некорректную модель.
+- CLI-проверка `app/scripts/depth-rig-glb-validator.mjs` читает GLB v2 JSON chunk и проверяет manifest, узлы, родительские связи, диапазоны и циклы.
+- Добавлены тесты синтетического GLB: успешный импортный контракт, отсутствующий узел, дубли/циклы/отсутствующие родители, несовпадение реального glTF parent graph и повреждённый контейнер.
+- Focused CI теперь запускает четыре набора тестов и следит за Blender exporter/GLB validator файлами.
+
+Команда:
+
+```bash
+blender --background character.blend --python tools/blender/export_nk1_depth_rig.py -- \
+  --output build/kurisu-depth-rig.glb --collection NK1_RIG
+cd app
+node scripts/depth-rig-glb-validator.mjs ../build/kurisu-depth-rig.glb
+```
+
+Текущий helper автоматизирует техническую упаковку и проверку, но не генерирует художественную геометрию: слоистая модель, дорисованные скрытые участки, skinning/weights, occlusion masks и калибровка pivot остаются задачей создания самого Blender-проекта. Blender binary/реальная сцена в CI пока не предоставлены, поэтому фактический экспорт художественного GLB ещё не заявляется как проверенный.
