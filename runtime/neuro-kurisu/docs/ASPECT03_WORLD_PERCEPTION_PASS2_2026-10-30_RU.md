@@ -107,6 +107,27 @@ Legacy snapshots остаются восстанавливаемыми: новы
 
 VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `coordinateFrameId` и координаты для настоящего tracker/calibrated backend. Gemini не получает право выдумывать их.
 
+### 3.7. Сохранение калиброванной геометрии
+
+Файлы:
+- `src/organism/core/types.ts`
+- `src/organism/core/WorldContextNormalizer.ts`
+- `src/organism/core/OrganismCore.ts`
+- `src/organism/cognition/P41SemanticPerception.ts`
+- `src/organism/world/GroundedWorldState.ts`
+
+Добавлено:
+- WorldContext objects принимают `x/y/z` и `coordinateFrameId`;
+- нормализатор сохраняет геометрию только при полном конечном трёхмерном tuple и непустом frame ID;
+- неполные, image-relative или безframe coordinates остаются неизвестными;
+- отрицательные и произвольные пространственные значения не clamp'ятся в [0,1];
+- Core передаёт позицию и frame в P41;
+- P41 допускает пространственную ассоциацию только внутри одинакового frame ID;
+- GroundedWorldState сохраняет позицию/frame при консолидации и выдаёт их дальше в WorldContext;
+- смена frame ID не смешивает старую скорость с новой системой координат.
+
+Это не добавляет калибровку камеры и не преобразует координаты изображения в world-space. Источник обязан передать откалиброванный frame ID самостоятельно.
+
 ## 4. Регрессионные тесты
 
 Новый тест:
@@ -118,7 +139,9 @@ VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `c
 - сцена, событие и объект не повышаются до observed;
 - same-cycle unresolved world data не понижает vision result;
 - unknown value/visibility/collection не превращаются в ложные утверждения;
-- устаревшее observed evidence не считается текущим и сохраняется как historical.
+- устаревшее observed evidence не считается текущим и сохраняется как historical;
+- calibrated x/y/z передаются между Core, P41 и GroundedWorldState только вместе с coordinateFrameId;
+- неполная или unframed геометрия остаётся unknown.
 
 Новый тест:
 - `tests/gemini-vision-mime-integrity.mjs`
