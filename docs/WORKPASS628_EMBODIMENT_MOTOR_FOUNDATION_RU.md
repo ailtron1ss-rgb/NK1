@@ -73,3 +73,12 @@ The correction is committed on the same PR branch. A fresh exact-head workflow r
 - Added a regression fixture for bilateral VRM `J_Bip_*` upper/lower arm and leg bones, plus spine. The fixture asserts that the adapter reports the canonical shoulder, elbow, hip, knee and spine channels, while still reporting `supportsIk: false`.
 - Fixed two strict TypeScript issues reported by the app typecheck: the action/affect proposal array now has the explicit `MotorProposal[]` contract, and optional proposal weights are defaulted before numeric validation.
 - The adapter test suite was mirrored and executed locally under Node 22 (`node --experimental-strip-types --test`): 4 tests passed. This local run is useful regression evidence but does not replace the exact-head GitHub workflow.
+
+
+## WorkPass 633 — единый моторный контур для процедурного 3D и VRM/GLB
+
+- Перенесено построение когнитивных и аффективных motor proposals в общий `applyOrganismMotor(...)`; он выполняет приоритетное разрешение, ограничение суставов, speed limiting и capability filtering.
+- Один и тот же motor loop теперь исполняется как на импортированном VRM/GLB (после обновления AnimationMixer), так и на встроенном процедурном теле (после базовых процедурных движений). Это устраняет прежний разрыв, когда общий моторный слой работал только при загруженной модели.
+- `headIntent`, `leftArm` и `rightArm` процедурного тела сопоставлены с каноническими каналами головы и плеч через тот же adapter. Добавлен тест на обнаружение каналов и аддитивное применение offsets.
+- Границы честности: встроенные руки и ноги остаются частично жёсткой геометрией; локти, кисти, пальцы, стопы, баланс и фактическое IK ещё не исполняются. Capability filtering продолжает явно сообщать неподдерживаемые каналы.
+- Проверка точного HEAD CI/typecheck и browser runtime ещё ожидается; Release ZIP не изменён.
