@@ -1,3 +1,128 @@
+## [NK1][Aspect04] Harden renderer world-matrix propagation (2026-10-30)
+
+- Explicitly mark each bound Three.js-compatible layer target as `matrixWorldNeedsUpdate` after writing its canonical local matrix, so an already-rendered object cannot retain a stale world transform.
+- Add a regression assertion for the world-matrix invalidation signal.
+
+## [NK1][Aspect04] Add renderer-facing depth-rig adapter (2026-10-30)
+
+- Add a renderer-neutral adapter that writes canonical hierarchical affine matrices and explicit painter order into renderer-owned layer objects; it is structurally compatible with Three.js Object3D without importing or duplicating the scene graph.
+- Apply optional authored local pivot offsets, reject duplicate/unknown bindings and non-finite matrices, and report missing layer bindings rather than silently inventing artwork.
+- Add focused regression tests for matrix emission, pivot translation, render order and fail-closed binding validation.
+
+## [NK1][WorkPass634] Align Aspect 04 workflow with repository CI policy (2026-10-30)
+
+- Upgrade the dedicated depth-rig workflow from checkout/setup-node v4 to approved v7 actions and pin Node through the root `.nvmrc` (Node 24), resolving the CI reliability audit failures found on PR #409.
+- Add `embodimentIntentAdapter.ts` to the push path filter so changes to the explicit PR #410 motor-frame adapter trigger the focused depth-rig gate.
+
+## [NK1][Aspect04] Bind motor joint targets to depth-rig nodes (2026-10-30)
+
+- Add explicit joint-to-node binding records and a renderer-neutral adapter for PR #410 MotorFrame targets.
+- Apply bounded radian-to-degree deltas only for active goals; idle/rejected/expired frames do not animate, unavailable joints are ignored, and malformed bindings fail closed.
+- Add focused tests for target mapping, clamp behavior and invalid binding rejection.
+
+## [NK1][Aspect04] Bridge EmbodimentIntent v1 and harden float assertions (2026-10-30)
+
+- A second hosted run exposed two remaining strict-equality checks on composed decimal rotations; both are now tolerance-based. Runtime pose math remains unchanged.
+
+- Add a narrow adapter from the existing v1 embodiment envelope to the 2.5D depth rig; preserve the current semantic owner and map bounded gaze/head tilt/motion groups to rig pose hints.
+- Add adapter validation tests and include its path in the dedicated CI workflow.
+- Correct world-space test expectations to include inherited parent rotations and use tolerance for accumulated floating-point depth.
+
+- Correct world-space expectations to include inherited torso/neck rotations; compare accumulated depth with a floating-point tolerance.
+- CI log identified both mismatches; no runtime transform change was required.
+
+## [NK1][Aspect04] Establish layered 2.5D depth-rig contract (2026-10-30)
+
+- Add a versioned rig model for depth-ordered artwork layers, parent hierarchy, normalized pivots and rest transforms.
+- Validate root cardinality, unique IDs, parent references, cycles, finite transforms and pivot bounds; malformed inputs fail closed.
+- Map bounded semantic body intent into additive head, neck, torso, hair, garment and basic arm-gesture deltas without creating a second emotion/intent owner.
+- Add focused regression tests and a dedicated GitHub Actions gate.
+- Add the Aspect 04 production plan for layered master artwork, hidden-area paint, occlusion, face rig, IK, secondary motion, modular garments and release acceptance.
+- Honest boundary: this is a code contract/pose foundation, not a rendered 2.5D model. Production art, GLB, IK execution, garment physics and desktop/Android visual E2E remain pending.
+
+## [NK1][аспект16] WorkPass631 — bounded native speech event fan-out (2026-10-30)
+
+- Ограничена очередь реентерабельных NativeSpeechEventChannel публикаций (1024 pending events); overflow отклоняется до изменения sequence/time state.
+- FIFO dispatch сохранён, устранён повторный Array.shift() и добавлен flood regression на 2000 вложенных публикаций.
+- Переполнение telemetry не влияет на TTS outcome и не считается подтверждением воспроизведения.
+
+## [NK1][аспект16] Deliver native speech provider telemetry to AvatarStage (2026-10-30)
+
+- Добавлен authenticated-by-existing-API-policy SSE endpoint /api/organism/voice/events поверх NativeSpeechHostRouter.
+- Server transport имеет ограничение активных подписчиков, bounded backpressure queue, heartbeat и обязательную очистку runtime-подписки при disconnect.
+- Добавлен browser EventSource adapter с проверкой versioned envelope, eventId, operationId, sequence, monotonic timestamp и playbackVerified=false.
+- AvatarStage показывает состояние Termux provider отдельно от browser TTS; process lifecycle не меняет speech phase, audio clock или viseme timeline.
+- Добавлены runtime/app regressions и CI gates для SSE transport, malformed/stale event rejection, backpressure, connection lifecycle и epistemic boundary.
+- Android playback, реальный audio clock и акустический lip-sync не заявляются: process spawn/exit не доказывают слышимое воспроизведение.
+
+## [NK1][аспект9] Add validated native speech host router seam (2026-10-30)
+
+- Добавлен `NativeSpeechHostRouter`: он принимает подписку из `EmbodimentRuntime`, проверяет версию/форму события, сохраняет eventId и operationId и пересылает типизированный envelope в host publisher.
+- Router отклоняет дубликаты, регрессирующие sequence/timestamp и события, которые пытаются заявить `playbackVerified=true`; ошибки host publisher изолированы от TTS.
+- Добавлен `test:workpass629:native-speech-host-router` на доставку, stale/duplicate filtering, publisher failure и unsubscribe.
+- Это transport seam для host Event Router, а не готовое подключение к browser/Live2D: реальный app transport, Android playback clock и акустическая lip-sync проверка остаются отдельными gates.
+
+## [NK1][аспект9] Expose native speech provider events through EmbodimentRuntime (2026-10-30)
+
+- Добавлен публичный метод `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)`: host-интеграции могут подписываться на события Termux provider без прямого импорта низкоуровневого Android bridge.
+- Метод возвращает unsubscribe-функцию; сохраняется исходная идентичность operation/event и граница `playbackVerified=false`.
+- Добавлен regression на доставку события через runtime facade и прекращение доставки после unsubscribe. Hosted CI для нового HEAD ожидается; реальное Android playback и UI transport не заявляются.
+
+## [NK1][аспект9] Защита монотонности native speech event clock (2026-10-30)
+
+- NativeSpeechEventChannel теперь сохраняет последнее время отдельно для каждого operation ID и зажимает регрессирующие clock samples до предыдущего значения.
+- Добавлен regression на последовательность clock samples 100 → 95 → 120; ожидаемые wire timestamps: 100 → 100 → 120.
+- Ограничение памяти сохранено: при eviction operation ID одновременно удаляются sequence и timestamp state.
+- Hosted CI для этого follow-up ещё ожидается; Android playback и host-to-UI transport не заявляются.
+
+## [NK1][аспект9] Preserve observer ordering under reentrant native events (2026-10-30)
+
+- Queue nested publications while dispatching so all subscribers observe the same total event order even if one observer synchronously publishes another event.
+- Add a regression proving reentrant publication cannot make later subscribers observe sequence 2 before sequence 1.
+- The new change is source- and test-committed; hosted CI for this follow-up is pending.
+
+## [NK1][аспект9] Use runtime-compatible monotonic clock for native speech events (2026-10-30)
+
+- The first hosted runtime typecheck identified that the minimal runtime declaration set does not include `node:perf_hooks`. Use the Node global `performance.now()` instead; it remains monotonic and is available in the pinned Node runtime without introducing a new shim/dependency.
+- The original native-event typecheck failure is corrected in source. The new HEAD must pass the rerun before this is considered validated.
+
+## [NK1][аспект9] Add native Termux speech provider event channel (2026-10-30)
+
+- Add a process-local, identity-bound event channel for Termux TTS command request, process spawn/exit/error and interrupt outcomes. Events carry per-operation sequence numbers and monotonic timestamps; observer failures are isolated from speech execution.
+- Keep provider-process telemetry separate from SpeechLifecycleEventV1: every native provider event explicitly carries `playbackVerified=false`. A successful process exit is still not evidence that Android audio reached the listener or finished playing.
+- Wire AndroidEmbodimentBridge to publish the process events and add deterministic regressions for operation isolation, ordering, monotonic time, unsubscribe behavior and the playback-verification boundary.
+- This is a native runtime observability seam, not yet a transport into the app/Live2D timeline. A host/UI adapter and real Android audio readback remain pending.
+
+## [NK1][аспект9] Fix negative-arousal prosody regression (2026-10-30)
+
+- Increase the canonical anxiety and anger/frustration de-escalation deltas so negative high-arousal delivery is measurably slower than the calm baseline even when the `respond` action initially selects a focused/warm tone.
+- The change fixes the assertion exposed by the hosted `app scripts regression suite`; the updated head must pass CI before this correction is considered validated.
+
+## [NK1][аспект9] Fix browser speech cleanup syntax (2026-10-30)
+
+- Correct the `try/catch` block in the AvatarStage speech-effect cleanup so the module parses and cancellation cleanup remains best-effort.
+- This is a source-level syntax correction; TypeScript/build/test execution is still pending.
+
+## [NK1][аспект9] Add versioned speech lifecycle protocol (2026-10-30)
+
+- Define SpeechLifecycleEventV1 with stable utterance/event IDs, provider identity, clock identity, monotonic timestamp, ordered sequence, lifecycle phase and optional provider boundary/error metadata.
+- Wire browser SpeechSynthesis queued/start/boundary/end/cancel/error callbacks into the protocol; reject stale callbacks by session identity and reject duplicate, out-of-order, cross-clock, regressing-character and post-terminal events.
+- Add deterministic contract regressions for valid lifecycle progression, malformed boundaries, cancellation terminality and stale boundary rejection.
+- This creates a shared protocol surface for a native adapter; native TTS is not yet wired to emit it, and no acoustic alignment or device playback validation is claimed.
+
+## [NK1][аспект9] Harden speech clock boundary handling (2026-10-30)
+
+- Extend the shared speech-timeline regression suite for duplicate provider boundaries, backward audio timestamps, malformed values, origin refinement, bounded anchor history and invalid monotonic-clock samples.
+- Verify that the newest calibration survives anchor-window trimming and that invalid clock input preserves or advances only from the monotonic high-water mark.
+- These are regression contracts for the existing browser speech clock; they do not claim acoustic/phoneme alignment or device playback validation.
+
+## [NK1][аспект9] Unify browser voice prosody with organism state (2026-10-30)
+
+- Replace fixed browser TTS settings and its duplicate affect mapper with an adapter to the canonical `VoiceEmbodiment.buildVoicePlan`, shared with the native Termux runtime; browser uses a neutral body baseline where device telemetry is unavailable.
+- Share language, breath mode, tone, pause budget, pitch, rate, volume and emphasis across delivery paths; build visemes from the exact selected speech rate and publish the same emphasis through the versioned embodiment intent.
+- Strengthen frustration/anger de-escalation in the canonical planner and add field-for-field browser/runtime parity tests plus bounded-parameter regressions.
+- This is a source-level integration; browser/device acoustic E2E, provider phoneme timing and refreshed Release ZIP remain pending.
+
 ## [NK1][Aspect 02] Require verified rights provenance before accepting authored art (2026-10-30)
 
 - Close the promotion gap in the executable Original 2D validator: every authored/in-progress/review/approved/exported slot now requires a provenance record with creator, HTTPS source URL, explicit license identifier, permission evidence, affirmative redistribution clearance, verification timestamp and verifier.
@@ -2946,3 +3071,15 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][learning-integrity] Restore independent holdout boundaries and safe benchmark snapshots (2026-10-30)
+
+- Missing sample phase is ordinary `learning`; sample order and runtime telemetry never invent an independent `holdout` split. Compound-skill outcomes and project-research outcomes remain learning observations.
+- Count only distinct explicitly labelled context keys. Canonicalize deterministically with NFKC and locale-independent lowercase; reject empty and overlength keys instead of truncating distinct contexts into collisions.
+- Use a bounded 4096-entry context registry, recompute accepted holdout count from the registry on restore, reject malformed/accessor-backed persisted fields without invoking getters, and fail closed on contamination, registry saturation or malformed evidence counters.
+- Keep recent observation history bounded while deriving novelty from durable registry membership, so replay outside the recent-128 window cannot inflate novelty.
+- Add adversarial regressions for root/nested getters, legacy snapshots, contaminated split reuse, Unicode duplicates, long-key collisions, replay after history eviction, forged counters and registry overflow.
+- Add a real OrganismCore integration assertion proving runtime project actions cannot label themselves independent holdout. The summary explicitly distinguishes a unique-context minimum from independent evaluator proof.
+- Add a focused GitHub Actions workflow for runtime typecheck, split integrity, real Core integration, external skill evidence, holdout provenance, learning input integrity and transfer/firewall regressions.
+- No production recall uplift, skill transfer uplift or statistically validated learning improvement is claimed.
+
