@@ -59,12 +59,33 @@ assert.equal(groundedChairs.length, 2, 'GroundedWorldState must not collapse rep
 assert.equal(new Set(groundedChairs.map(entity => entity.trackId)).size, 2);
 const outputChairs = world.objects.filter(object => object.label === 'chair');
 assert.equal(outputChairs.length, 2);
+assert.equal(grounded.snapshot().events.find(event => event.label === 'person-entered-room')?.evidenceKind, 'model-output');
+assert.ok(world.facts.includes('model-output-event:person-entered-room'));
 for (const chair of outputChairs) {
   assert.equal(chair.valueKnown, false, 'semantic confidence must not become a numeric world value');
   assert.equal(chair.visibilityKnown, false, 'non-visual world evidence must not prove camera visibility');
   assert.equal(chair.collectionKnown, false, 'unknown collection state must not become a negative fact');
   assert.equal(chair.evidenceKind, 'model-output', 'evidence provenance must not be upgraded during grounding');
 }
+
+// Old observed evidence may remain in the bounded history, but it cannot raise
+// current grounded confidence or be presented as a fresh current-world fact.
+const stale = new GroundedWorldState();
+const staleAt = at + 6_001;
+const staleEvidence = {
+  version: 1,
+  at,
+  updates: 1,
+  scene: 'laboratory',
+  evidence: [{ id: 'stale-observed-receipt', at, modality: 'sensor', claim: 'old:door-open', confidence01: 1, uncertainty01: 0, kind: 'observed', parents: [] }],
+  metrics: {},
+  activeQuery: null,
+  lastHash: 'stale',
+};
+const staleWorld = stale.integrate({ at: staleAt, perception: state, evidence: staleEvidence });
+assert.ok(!stale.snapshot().provenanceIds.includes('stale-observed-receipt'));
+assert.ok(staleWorld.facts.includes('historical-observed-evidence:old:door-open'));
+assert.ok(!staleWorld.facts.includes('observed-evidence:old:door-open'));
 
 // Missing provenance is fail-closed; explicit independent evidence remains representable.
 const unknownEngine = new P41SemanticPerceptionEngine();
@@ -86,7 +107,7 @@ assert.equal(unknownEvent.events.find(event => event.label === 'door-opened')?.e
 const observedEngine = new P41SemanticPerceptionEngine();
 const observed = observedEngine.ingest({
   at: 3_000,
-  world: { scene: 'office', evidenceKind: 'observed', objects: [{ label: 'door', trackId: 'door-1', sourceId: 'sensor', evidenceKind: 'observed' }] },
+  world: { scene: 'office', evidenceKind: 'observed', objects: [{ label: 'door', trackId: 'door-1', sourceId: 'sensor', evidenceKind: 'observed' }], events: ['door-opened'] },
 });
 assert.equal(observed.entities.find(entity => entity.label === 'door')?.modalityEvidenceKinds?.world, 'observed');
 assert.equal(observed.sceneEvidenceKind, 'observed');
