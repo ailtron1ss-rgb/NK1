@@ -8,6 +8,7 @@ on:
       - "tools/aspect12-release-readiness.test.mjs"
       - "app/scripts/aspect12-browser-smoke.mjs"
       - "app/scripts/aspect12-browser-smoke.test.mjs"
+      - "app/scripts/aspect12-research-status-fixture.mjs"
       - "CHANGELOG.md"
       - "docs/ASPECT12_RELEASE_RELIABILITY_PLAN_RU.md"
       - ".github/workflows/aspect12-release-reliability.yml"
@@ -107,6 +108,47 @@ jobs:
         run: npm --prefix app run build:dev
       - name: Install Chromium for browser E2E smoke
         run: npx --prefix app playwright install --with-deps chromium
+      - name: Start real NK1 runtime for browser smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/nk1-aspect12-state"
+          PORT=3310 HOST=127.0.0.1 STATE_DIR="$RUNNER_TEMP/nk1-aspect12-state" \
+            node --experimental-strip-types runtime/neuro-kurisu/src/server/server.mjs \
+            > "$RUNNER_TEMP/nk1-runtime.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/nk1-runtime.pid"
+          for attempt in $(seq 1 180); do
+            if ! kill -0 "$(cat "$RUNNER_TEMP/nk1-runtime.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/nk1-runtime.log"
+              exit 1
+            fi
+            if curl --silent --show-error --fail http://127.0.0.1:3310/health > "$RUNNER_TEMP/nk1-health.json"; then
+              if node -e 'const h=require(process.argv[1]); process.exit(h.ok && h.ready ? 0 : 1)' "$RUNNER_TEMP/nk1-health.json"; then
+                echo "NK1 runtime ready on 3310"
+                exit 0
+              fi
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/nk1-runtime.log"
+          echo "NK1 runtime did not become ready" >&2
+          exit 1
+      - name: Start isolated Research Bridge status fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT=8765 HOST=127.0.0.1 node app/scripts/aspect12-research-status-fixture.mjs \
+            > "$RUNNER_TEMP/nk1-research-fixture.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/nk1-research-fixture.pid"
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail http://127.0.0.1:8765/api/research/status >/dev/null; then
+              echo "Research status fixture ready on 8765 (no probes enabled)"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/nk1-research-fixture.log"
+          exit 1
       - name: Desktop/mobile browser smoke and performance capture
         run: node app/scripts/aspect12-browser-smoke.mjs
       - name: Upload browser smoke report
@@ -117,6 +159,17 @@ jobs:
           path: artifacts/aspect12-browser-smoke.json
           if-no-files-found: ignore
           retention-days: 30
+      - name: Stop browser smoke services
+        if: always()
+        shell: bash
+        run: |
+          for pid_file in "$RUNNER_TEMP/nk1-research-fixture.pid" "$RUNNER_TEMP/nk1-runtime.pid"; do
+            if [ -f "$pid_file" ]; then
+              kill "$(cat "$pid_file")" 2>/dev/null || true
+            fi
+          done
+          if [ -f "$RUNNER_TEMP/nk1-runtime.log" ]; then cat "$RUNNER_TEMP/nk1-runtime.log"; fi
+          if [ -f "$RUNNER_TEMP/nk1-research-fixture.log" ]; then cat "$RUNNER_TEMP/nk1-research-fixture.log"; fi
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Runtime organism smoke
