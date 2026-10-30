@@ -1,3 +1,9 @@
+## [NK1][Aspect 10] Derive VRM arm calibration from measured reference poses (2026-10-30)
+
+- Add a deterministic per-arm calibration derivation from captured bind/reference Euler poses and independently known fixture angles.
+- Reject weak reference motion, off-axis contamination, non-finite values, unsafe joint ranges and reference poses outside declared limits.
+- Build a bilateral profile bound to the exact loaded model, coordinate frame and resolved bone names; keep live IK disabled until measurement provenance and runtime actuation are independently validated.
+
 ## [NK1][Aspect 10] Add model-bound VRM calibration JSON import/export (2026-10-30)
 
 - Add bounded JSON parsing with safe malformed-input handling and mandatory validation against the currently loaded model fingerprint, coordinate frame and exact bilateral bone identities.
