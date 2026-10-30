@@ -223,6 +223,7 @@ function proceduralWeight(
 export function deriveVrmExpressionWeights(
   definitions: readonly VrmExpressionDefinition[],
   input: VrmExpressionInput,
+  options: { applyVrmOverrides?: boolean } = {},
 ): Record<string, number> {
   const definitionMap = new Map<string, VrmExpressionDefinition>(definitions.map((definition) => [definition.key, definition] as const));
   const emotion = String(input.emotion ?? "calm").toLowerCase();
@@ -287,26 +288,28 @@ export function deriveVrmExpressionWeights(
   // attenuates them linearly by the sum of overriding facial-expression weights.
   const facialKeys = ["happy", "angry", "sad", "relaxed", "surprised"];
   const factors = { mouth: 1, blink: 1, lookAt: 1 };
-  const blocked = { mouth: false, blink: false, lookAt: false };
-  const blend = { mouth: 0, blink: 0, lookAt: 0 };
+  if (options.applyVrmOverrides !== false) {
+    const blocked = { mouth: false, blink: false, lookAt: false };
+    const blend = { mouth: 0, blink: 0, lookAt: 0 };
 
-  for (const key of facialKeys) {
-    const weight = values[key] ?? 0;
-    if (weight <= 0) continue;
-    const definition = definitionMap.get(key);
-    if (!definition) continue;
-    for (const [channel, rule] of [
-      ["mouth", definition.overrideMouth],
-      ["blink", definition.overrideBlink],
-      ["lookAt", definition.overrideLookAt],
-    ] as const) {
-      if (rule === "block") blocked[channel] = true;
-      else if (rule === "blend") blend[channel] += weight;
+    for (const key of facialKeys) {
+      const weight = values[key] ?? 0;
+      if (weight <= 0) continue;
+      const definition = definitionMap.get(key);
+      if (!definition) continue;
+      for (const [channel, rule] of [
+        ["mouth", definition.overrideMouth],
+        ["blink", definition.overrideBlink],
+        ["lookAt", definition.overrideLookAt],
+      ] as const) {
+        if (rule === "block") blocked[channel] = true;
+        else if (rule === "blend") blend[channel] += weight;
+      }
     }
-  }
 
-  for (const channel of ["mouth", "blink", "lookAt"] as const) {
-    factors[channel] = blocked[channel] ? 0 : 1 - clamp(blend[channel]);
+    for (const channel of ["mouth", "blink", "lookAt"] as const) {
+      factors[channel] = blocked[channel] ? 0 : 1 - clamp(blend[channel]);
+    }
   }
 
   const proceduralGroups = {
