@@ -91,9 +91,13 @@ assert.deepEqual(authority.snapshot(), beforeDuplicate);
 authority.maintainCanonical({ tick: 6, pressure01: 0.25 });
 assert.equal(authority.snapshot().lastTick, 6);
 assert.equal(maintenanceCalls, 2);
-const beforeStale = authority.snapshot();
-assert.throws(() => authority.maintainCanonical({ tick: 6 }), /strictly increasing/);
-assert.deepEqual(authority.snapshot(), beforeStale);
+const beforeDuplicateMaintenance = authority.snapshot();
+const duplicateMaintenance = authority.maintainCanonical({ tick: 6 });
+assert.deepEqual(duplicateMaintenance, { skipped: true, changed: 0 });
+assert.deepEqual(authority.snapshot(), beforeDuplicateMaintenance);
+assert.equal(maintenanceCalls, 2);
+assert.throws(() => authority.maintainCanonical({ tick: 5 }), /must not decrease/);
+assert.deepEqual(authority.snapshot(), beforeDuplicateMaintenance);
 assert.equal(maintenanceCalls, 2);
 
 console.log('workpass618 canonical memory lifecycle integrity: ok');
