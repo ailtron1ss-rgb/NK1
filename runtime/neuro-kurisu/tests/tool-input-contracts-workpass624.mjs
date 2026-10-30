@@ -20,14 +20,15 @@ assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.hasInputC
 assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.inputSchema?.type, "object");
 assert.deepEqual(gateway.listTools().map(x => x.id), [...gateway.listTools().map(x => x.id)].sort());
 gateway.registerTool({
-  id: "catalog.short-code",
+  // Keep this ID read-only: "code" in a tool name intentionally triggers ActionGateway code-operation policy.
+  id: "catalog.short-tag",
   capability: "catalog.read",
   destructive: false,
   inputContract: { type: "object", properties: { code: { type: "string", pattern: "^[a-z0-9]{2,5}$" } }, required: ["code"], additionalProperties: false },
   execute: async input => ({ ok: true, code: input.code }),
 });
-assert.equal((await gateway.executeTool("catalog.short-code", { code: "nk1" })).ok, true, "bounded quantifiers remain supported in safe patterns");
-assert.equal((await gateway.executeTool("catalog.short-code", { code: "nk1!" })).ok, false, "values outside the bounded alphanumeric pattern are rejected");
+assert.equal((await gateway.executeTool("catalog.short-tag", { code: "nk1" })).ok, true, "bounded quantifiers remain supported in safe patterns");
+assert.equal((await gateway.executeTool("catalog.short-tag", { code: "nk1!" })).ok, false, "values outside the bounded alphanumeric pattern are rejected");
 assert.equal((await gateway.executeTool("catalog.search", { query: "nk1 architecture", limit: 3, filters: { kinds: ["memory", "tool"] } })).ok, true);
 assert.equal(calls, 1);
 
