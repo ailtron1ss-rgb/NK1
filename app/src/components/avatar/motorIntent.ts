@@ -96,11 +96,13 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
   const motionGroup: AvatarMotionGroup =
     intent === "rest" || intent === "listen" ? "Idle" :
     intent === "reflect" ? "TapHead" :
-    intent === "inspect" || intent === "explain" || intent === "comfort" ? "TapBody" : "Special";
+    intent === "inspect" || intent === "comfort" ? "TapBody" : "Special";
 
+  // The shipped Special[1] clip contains authored shoulder, arm and hand curves.
+  // Route explicit explanations through it instead of the face/torso-only TapBody clip.
   // The bundled model has exactly two Special motions; other groups have one each.
   const motionIndex: 0 | 1 = motionGroup === "Special" &&
-    (emotion === "joy" || valence >= 0.68 || /(?:\b(?:great|excellent|excited|happy)\b|отлично|прекрасно|здорово|ура)/iu.test(text))
+    (intent === "explain" || emotion === "joy" || valence >= 0.68 || /(?:\b(?:great|excellent|excited|happy)\b|отлично|прекрасно|здорово|ура)/iu.test(text))
       ? 1 : 0;
 
   const actionTilt =
