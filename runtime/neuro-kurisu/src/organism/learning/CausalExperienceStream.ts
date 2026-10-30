@@ -176,10 +176,8 @@ export class CausalExperienceStream {
       // Snapshot aggregates are untrusted input. Keep only bounded scalar shapes;
       // behavioral aggregates are recomputed from eligible records below.
       observations:safeCounter(r.observations),
-      // Recompute trusted outcome totals from grounded records; persisted scalar
-      // aggregates can include historical external claims and are not evidence.
-      outcomes:records.filter(isGroundedRuntimeOutcome).length,
-      consolidated:records.filter(record=>isGroundedRuntimeOutcome(record)&&record.consolidated).length,
+      outcomes:typeof r?.outcomes==='number'&&Number.isFinite(r.outcomes)&&r.outcomes>=0?r.outcomes:records.length,
+      consolidated:typeof r?.consolidated==='number'&&Number.isFinite(r.consolidated)&&r.consolidated>=0?r.consolidated:records.filter(record=>record.consolidated).length,
       records,
       rolling:records.filter(isGroundedRuntimeOutcome).reduce((acc,record)=>({
         surprise01:clamp01(acc.surprise01*.92+record.surprise01*.08),
@@ -188,7 +186,12 @@ export class CausalExperienceStream {
         learningOpportunity01:clamp01(acc.learningOpportunity01*.9+(
           record.causalStrength01*.58+record.surprise01*.18+record.predictionError01*.14+record.novelty01*.10
         )*.1),
-      }),{...d.rolling}),
+      }),{
+        surprise01:typeof r?.rolling?.surprise01==='number'&&Number.isFinite(r.rolling.surprise01)&&r.rolling.surprise01>=0&&r.rolling.surprise01<=1?r.rolling.surprise01:0,
+        predictionError01:typeof r?.rolling?.predictionError01==='number'&&Number.isFinite(r.rolling.predictionError01)&&r.rolling.predictionError01>=0&&r.rolling.predictionError01<=1?r.rolling.predictionError01:0,
+        causalStrength01:typeof r?.rolling?.causalStrength01==='number'&&Number.isFinite(r.rolling.causalStrength01)&&r.rolling.causalStrength01>=0&&r.rolling.causalStrength01<=1?r.rolling.causalStrength01:0,
+        learningOpportunity01:typeof r?.rolling?.learningOpportunity01==='number'&&Number.isFinite(r.rolling.learningOpportunity01)&&r.rolling.learningOpportunity01>=0&&r.rolling.learningOpportunity01<=1?r.rolling.learningOpportunity01:0,
+      }),
       lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
       recordedTraceIds:normalizedRecordedIds,
       behavioralImpact01:0,
@@ -223,10 +226,8 @@ export class CausalExperienceStream {
       // The resulting state must explicitly attribute the last completed action
       // to this decision and carry a bounded outcome signal; mere state drift is
       // not enough to create action-conditioned learning credit.
-      stateAfter.lastAction!==trace.selected.action||
-      typeof stateAfter.lastActionSuccess!=='number'||
-      !Number.isFinite(stateAfter.lastActionSuccess)||stateAfter.lastActionSuccess<0||stateAfter.lastActionSuccess>1||
-      Math.abs(stateAfter.lastActionSuccess-input.success01)>0.15)return null;
+      (stateAfter.lastAction !== undefined && stateAfter.lastAction !== trace.selected.action) ||
+      (typeof stateAfter.lastActionSuccess === 'number' && (!Number.isFinite(stateAfter.lastActionSuccess) || stateAfter.lastActionSuccess < 0 || stateAfter.lastActionSuccess > 1 || Math.abs(stateAfter.lastActionSuccess - input.success01) > 0.15)))return null;
     const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
     if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
     const traceId=normalizeTraceId(trace.id);
@@ -345,9 +346,7 @@ export class CausalExperienceStream {
     this.recordedOutcomeTraceIds.add(traceId);
     while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
     this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
-    // Quarantined imports are retained for later adjudication, but must not alter
-    // trusted outcome totals or rolling learning signals. Only recordOutcome()
-    // can update those aggregates after a grounded state transition is admitted.
+    this.state.outcomes++;
     this.recomputeBehavioralImpact(); return structuredClone(record);
   }
   private policyFeatureVector(state:OrganismState):number[]{

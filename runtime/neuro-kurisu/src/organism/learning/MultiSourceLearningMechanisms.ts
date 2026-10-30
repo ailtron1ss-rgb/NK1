@@ -7,7 +7,8 @@
  * These are small TypeScript reimplementations, not copied upstream runtimes.
  * Scores are heuristics until verified task-stream experiments demonstrate uplift.
  */
-import type { LearningExperience, ReplaySelectionOptions } from './P23LearningEngine.ts';
+import type { ReplaySelectionOptions } from './ReplaySelectionPolicy.ts';
+import type { LearningExperience } from './P23LearningEngine.ts';
 export interface ReplayPriority { id:string; priority01:number; recency01:number; surprise01:number; predictionError01:number; novelty01:number; forgettingRisk01:number; reasons:string[] }
 export interface LearningHealth { predictionError01:number; recentPredictionError01:number; replayTdError01:number; evidenceDebt01:number; memoryPressure01:number; energy01:number }
 export interface CurriculumTask { id:string; uncertainty01:number; readiness01:number; transfer01:number; novelty01:number; verificationCost01:number; repairValue01:number; blocked?:boolean }
