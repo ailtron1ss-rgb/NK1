@@ -32,15 +32,17 @@ assert.equal(accepted.personality.adaptiveValues[0], 0.68, 'respond outcomes mus
 assert.ok(accepted.personality.selfBeliefs[0] > 0.72, 'verified identity evidence slowly updates self-beliefs');
 assert.ok(accepted.personality.selfBeliefs[1] < 0.68, 'self-belief vectors are updated dimension by dimension');
 
+const selfBeliefsBeforeUnbound=[...personality.snapshot().selfBeliefs];
 const unbound=bridge.recordOutcome({
   event:{tick:11,at:1100,action:'respond',outcome:0.8,evidenceStatus:'verified-independent',evidenceRef:'local-cache:maybe'},
-  action:'respond',reward01:0.8,goalAlignment01:0.8,predictionError01:0.2,identityGap01:0.1,
+  action:'respond',reward01:0.8,goalAlignment01:0.8,predictionError01:0.2,identityGap01:0.1,identityVector:[0,0,0,0,0,0,0,0],
 });
 assert.equal(unbound.newEvent,true);
 assert.equal(unbound.evidenceAccepted,false,'P78 syntax alone must not bypass the CEF receipt namespace gate');
 assert.equal(unbound.selfModelUpdate?.identityUpdateAccepted,false);
 assert.equal(unbound.selfModel.lastIdentityGate?.reason,'untrusted-evidence-source');
 assert.equal(unbound.personality.learningUpdates,2);
+assert.deepEqual(unbound.personality.selfBeliefs,selfBeliefsBeforeUnbound,'unsupported receipt namespaces cannot update autobiographical self-beliefs');
 
 // A non-adjacent replay must not become a second experience or update either downstream learner.
 const beforeReplay={samples:p78.snapshot().samples,updates:personality.snapshot().learningUpdates,accepted:selfModel.snapshot().identityGateAcceptedCount,rejected:selfModel.snapshot().identityGateRejectedCount};
