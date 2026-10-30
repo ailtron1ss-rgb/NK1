@@ -22,6 +22,7 @@
     "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "test:avatar-3d-stage": "node --experimental-strip-types --test scripts/avatar-3d-stage.test.mjs",
     "test:scripts": "node --experimental-strip-types --test 'scripts/**/*.test.mjs'",
     "assets:sync": "node scripts/sync-canonical-public-assets.mjs",
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
