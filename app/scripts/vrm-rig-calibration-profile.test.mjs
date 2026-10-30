@@ -11,3 +11,11 @@ test("accepts and deeply freezes an exact bilateral model calibration",()=>{cons
 test("rejects profiles from a different model or coordinate frame",()=>{assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,modelFingerprint:"sha256:other"}),{accepted:false,reason:"model-fingerprint-mismatch"});assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,coordinateFrameId:"camera"}),{accepted:false,reason:"coordinate-frame-mismatch"});});
 test("rejects missing, ambiguous-by-identity and mismatched arm rigs",()=>{assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,left:null}),{accepted:false,reason:"left-rig-mismatch"});assert.deepEqual(validateVrmRigCalibrationProfile(profile,{...context,right:{...context.right,elbow:bone("RightForearmOther")}}),{accepted:false,reason:"right-rig-mismatch"});});
 test("rejects unknown schema, malformed values and invalid joint ranges",()=>{assert.deepEqual(validateVrmRigCalibrationProfile({...profile,schemaVersion:2},context),{accepted:false,reason:"unsupported-schema"});assert.deepEqual(validateVrmRigCalibrationProfile({...profile,left:{...profile.left,shoulderSign:0}},context),{accepted:false,reason:"invalid-profile"});assert.deepEqual(validateVrmRigCalibrationProfile({...profile,right:{...profile.right,elbowMinRad:3,elbowMaxRad:1}},context),{accepted:false,reason:"invalid-profile"});});
+
+test("classifies structurally valid but physically invalid calibration separately",()=>{
+  assert.deepEqual(validateVrmRigCalibrationProfile({...profile,left:{...profile.left,shoulderMinRad:2,shoulderMaxRad:1}},context),{accepted:false,reason:"invalid-calibration"});
+  assert.deepEqual(validateVrmRigCalibrationProfile({...profile,right:{...profile.right,elbowOffsetRad:Math.PI*3}},context),{accepted:false,reason:"invalid-calibration"});
+});
+test("rejects blank bone identities as malformed profile data",()=>{
+  assert.deepEqual(validateVrmRigCalibrationProfile({...profile,left:{...profile.left,shoulderBoneName:"  "}},context),{accepted:false,reason:"invalid-profile"});
+});
