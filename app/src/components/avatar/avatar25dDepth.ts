@@ -27,14 +27,19 @@ export function deriveAvatar25DDepthOffsets(
   const vertical = clamp(gazeY / 0.4, -1, 1);
   const scale = clamp(motionScale, 0, 1.5);
 
+  const cleanZero = (value: number): number => value === 0 ? 0 : value;
   return {
-    rearHair: { x: -horizontal * 1.45 * scale, y: -vertical * 0.58 * scale },
-    torso: { x: horizontal * 0.42 * scale, y: vertical * 0.2 * scale },
-    head: { x: horizontal * 2.8 * scale, y: vertical * 1.45 * scale },
-    frontFringe: { x: horizontal * 0.8 * scale, y: vertical * 0.42 * scale },
+    rearHair: { x: cleanZero(-horizontal * 1.45 * scale), y: cleanZero(-vertical * 0.58 * scale) },
+    torso: { x: cleanZero(horizontal * 0.42 * scale), y: cleanZero(vertical * 0.2 * scale) },
+    head: { x: cleanZero(horizontal * 2.8 * scale), y: cleanZero(vertical * 1.45 * scale) },
+    frontFringe: { x: cleanZero(horizontal * 0.8 * scale), y: cleanZero(vertical * 0.42 * scale) },
   };
 }
 
+function finiteRounded(value: number): number {
+  return Number.isFinite(value) ? Number(value.toFixed(3)) : 0;
+}
+
 export function svgTranslate(offset: DepthOffset): string {
-  return `translate(${Number(offset.x.toFixed(3))} ${Number(offset.y.toFixed(3))})`;
+  return `translate(${finiteRounded(offset.x)} ${finiteRounded(offset.y)})`;
 }
