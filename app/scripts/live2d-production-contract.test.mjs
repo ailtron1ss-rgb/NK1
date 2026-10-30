@@ -23,7 +23,7 @@ async function assertContainedFile(root, relativePath, label) {
   assert.equal(typeof relativePath, "string", label + " must be a path");
   const target = resolve(root, relativePath);
   const pathFromRoot = relative(root, target);
-  assert.ok(pathFromRoot && pathFromRoot !== ".." && !pathFromRoot.startsWith(".." + sep) && !target.startsWith(sep), label + " escapes the canonical asset root");
+  assert.ok(pathFromRoot && pathFromRoot !== ".." && !pathFromRoot.startsWith(".." + sep), label + " escapes the canonical asset root");
   await access(target, constants.R_OK);
   return target;
 }
