@@ -1,3 +1,9 @@
+## [NK1][Aspect 11] Reject malformed renderer channel evidence (2026-10-30)
+
+- Require accepted, rejected and independently observed channel lists to contain only non-blank unique identifiers.
+- Reject contradictory apply receipts that claim the same channel as both accepted and rejected; malformed claims cannot pass the handoff verification gate.
+- Add regression coverage for whitespace-only IDs, duplicate channel claims, contradictory receipts and malformed observation lists.
+
 ## [NK1][Aspect 11] Map measured motor frames into calibrated semantic pose (2026-10-30)
 
 - Add a renderer-neutral motor-frame mapper that consumes current measured joint angles (`angleRad`), never commanded target angles, and requires an explicit versioned rig calibration profile.
