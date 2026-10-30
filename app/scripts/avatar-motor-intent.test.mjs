@@ -98,6 +98,8 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /ParamCheek/);
   assert.match(viewer, /ParamBreath/);
   assert.match(viewer, /ParamBodyAngleX/);
+  assert.match(viewer, /faceState\.brow\+=/);
+  assert.match(viewer, /const blend=\.18/);
 });
 
 test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
