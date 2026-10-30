@@ -38,6 +38,7 @@ try {
       'candidate-v1': hash('candidate-config'),
       'reset-1': hash('reset-config'),
     },
+    sourceCommitSha: 'c7f82935b0cc0d06e640180dea9e687d601c19d4',
     primaryMetric: 'task-pass-rate',
     registeredAt: 1_800_000_000_000,
   };
