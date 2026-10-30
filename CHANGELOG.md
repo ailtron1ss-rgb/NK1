@@ -1,3 +1,9 @@
+## [NK1][Aspect 01 — Live2D] Guard asynchronous Cubism motion transitions (2026-10-30)
+
+- Add monotonic request sequencing to both app and runtime viewers so stale promise completions cannot overwrite newer motion state or emit obsolete errors.
+- Clear the active deduplication key after a current request fails or returns `false`, allowing a later intent to retry; handle synchronous exceptions consistently.
+- Add regression assertions for both viewer paths. Actual browser/Android transition latency remains unmeasured.
+
 ## [NK1][Aspect 01 — Live2D] Force-preempt Cubism motion on speech cancellation (2026-10-30)
 
 - Verified the pinned `pixi-live2d-display@0.4.0` API and use its `MotionPriority.FORCE` value (3) when a validated cancelled speech intent selects `Idle[0]`; ordinary intents retain NORMAL priority (2).
