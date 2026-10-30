@@ -527,10 +527,10 @@ export class AutonomousProjectExecutor {
     const suppliedOperationKey = typeof input.idempotencyKey === 'string' ? input.idempotencyKey.trim() : '';
     const suppliedDecisionId = typeof input.decisionId === 'string' ? input.decisionId.trim() : '';
     if (!projectId || projectId.length > 180 || stepId.length > 120 || !toolId || toolId.length > 180 ||
-        /[\\u0000-\\u001f\\u007f]/.test(projectId) || /[\\u0000-\\u001f\\u007f]/.test(stepId) ||
-        /[\\u0000-\\u001f\\u007f]/.test(toolId) || !/^[a-f0-9]{64}$/.test(requestFingerprint) ||
-        (suppliedOperationKey && (suppliedOperationKey.length > 160 || /[\\u0000-\\u001f\\u007f]/.test(suppliedOperationKey))) ||
-        (suppliedDecisionId && (suppliedDecisionId.length > 180 || /[\\u0000-\\u001f\\u007f]/.test(suppliedDecisionId)))) {
+        /[\u0000-\u001f\u007f]/.test(projectId) || /[\u0000-\u001f\u007f]/.test(stepId) ||
+        /[\u0000-\u001f\u007f]/.test(toolId) || !/^[a-f0-9]{64}$/.test(requestFingerprint) ||
+        (suppliedOperationKey && (suppliedOperationKey.length > 160 || /[\u0000-\u001f\u007f]/.test(suppliedOperationKey))) ||
+        (suppliedDecisionId && (suppliedDecisionId.length > 180 || /[\u0000-\u001f\u007f]/.test(suppliedDecisionId)))) {
       throw new Error('project-step-checkpoint-invalid-identity');
     }
     const active = this.state.activeOperation;
