@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Expose read-only MotorFrame HTTP bridge (2026-10-30)
+
+- Add `GET /api/organism/motor-frame` as a bounded read-only snapshot of the organism-owned canonical MotorFrame channel and diagnostics.
+- Return an explicit unconfigured/null frame until a calibrated skeleton exists; never synthesize a pose or accept client-authored motor frames.
+- Extend server smoke coverage for the fail-closed unconfigured contract and include the server gate in the dedicated motor workflow.
+- This closes the backend read boundary only. Skeleton configuration, live frame production, browser delivery and renderer readback remain separate gates.
+
 ## [NK1][Embodiment] Connect organism runtime to canonical MotorFrame channel (2026-10-30)
 
 - Add an organism-owned motor runtime composition around the single canonical EmbodiedMotorController and bounded MotorFrameChannel.
