@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { planAvatarMotorIntent } from "../src/components/avatar/motorIntent.ts";
+import { isEmbodimentIntentV1 as isAppEmbodimentIntentV1 } from "../src/components/avatar/embodimentTimeline.ts";
 import { isEmbodimentIntentV1, normalizeEmbodimentIntentV1 } from "../../runtime/neuro-kurisu/public/live2d/embodiment-intent.mjs";
 
 const baseIntent = (overrides = {}) => ({
@@ -133,6 +134,16 @@ test("optional semantic gesture fields remain bounded and legacy v1 envelopes st
   assert.equal(normalizeEmbodimentIntentV1(legacy).gestureIntensity, 0);
   assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureIntensity: 0.81 } })), false);
   assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureProfile: "invented" } })), false);
+});
+
+test("app EmbodimentIntentV1 validates optional semantic gesture fields and legacy payloads", () => {
+  const legacy = baseIntent();
+  delete legacy.body.gestureProfile;
+  delete legacy.body.gestureIntensity;
+  assert.equal(isAppEmbodimentIntentV1(legacy), true);
+  assert.equal(isAppEmbodimentIntentV1(baseIntent()), true);
+  assert.equal(isAppEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureProfile: "invented" } })), false);
+  assert.equal(isAppEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureIntensity: 0.81 } })), false);
 });
 
 test("invalid motion, extra protocol fields, and out-of-range data fail closed", () => {
