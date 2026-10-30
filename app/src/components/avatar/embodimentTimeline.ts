@@ -333,5 +333,7 @@ export function acceptsSpeechLifecycleEventV1(
   if (["ended", "cancelled", "error"].includes(previous.phase)) return false;
   if (next.phase === "queued" || next.phase === "started" && previous.phase !== "queued"
     || next.phase === "boundary" && !["started", "boundary"].includes(previous.phase)) return false;
+  if (next.phase === "boundary" && previous.phase === "boundary"
+    && Number(next.charIndex) < Number(previous.charIndex)) return false;
   return true;
 }
