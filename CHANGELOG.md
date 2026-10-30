@@ -1,3 +1,10 @@
+## [NK1][WorkPass644] Safely detach VRM animation mixers before rig disposal — 2026-10-30
+
+- Fixed model replacement, reset and stage-unmount ordering: stop all mixer actions and uncache the previous rig before disposing VRM/GLTF scene resources. This prevents the mixer from retaining animation bindings to disposed nodes.
+- Kept the official VRM update after AnimationMixer evaluation and documented that `vrm.update(delta)` advances the runtime-managed ExpressionManager, LookAt, node constraints and SpringBone simulation using the final animated pose.
+- Added a focused lifecycle regression for mixer detachment, disposal order, SpringBone update ordering and unmount cleanup.
+- This confirms source-level wiring only. Real VRM 0.x/1.0 SpringBone asset playback, browser/Android physics stability, GPU cost and CI on the exact head remain pending. No Release ZIP update.
+
 ## [NK1][WorkPass643] Make VRMA facial-expression ownership deterministic (2026-10-30)
 
 - Extracted VRMA expression-channel ownership into a pure helper with explicit fade-in, clip-switch, fade-out, and release semantics.
