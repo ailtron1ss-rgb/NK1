@@ -814,6 +814,24 @@ export class MemoryOS2{
   for(const [key,value] of Object.entries(item.context??{}).slice(0,32))if(allowedContextKeys.test(key)&&typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
   return this.tokensFor(parts.join(' '));
  }
+ /** Keep curated metadata postings synchronized with canonical row mutations. */
+ private syncMetadataIndex(item:MemoryItem2,previousTokens:Set<string>):void{
+  const nextTokens=this.metadataTokens(item);
+  for(const token of previousTokens){
+   if(nextTokens.has(token))continue;
+   const posting=this.metadataTokenIndex.get(token);
+   if(posting){
+    posting.delete(item.id);
+    if(posting.size===0)this.metadataTokenIndex.delete(token);
+   }
+  }
+  for(const token of nextTokens){
+   if(previousTokens.has(token))continue;
+   let posting=this.metadataTokenIndex.get(token);
+   if(!posting){posting=new Set<string>();this.metadataTokenIndex.set(token,posting);}
+   posting.add(item.id);
+  }
+ }
  private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
  private provenanceClassFor(source:string,explicit?:MemoryProvenanceClass):MemoryProvenanceClass{if(explicit&&['device','external','user','agent','derived','simulation','unknown'].includes(explicit))return explicit;const s=String(source).toLowerCase();if(s.includes('device')||s.includes('android'))return 'device';if(s.includes('external')||s.includes('api')||s.includes('os'))return 'external';if(s.includes('user'))return 'user';if(s.includes('simulation')||s.includes('synthetic'))return 'simulation';if(s.includes('agent')||s.includes('model')||s.includes('llm'))return 'agent';if(s.includes('derived'))return 'derived';return 'unknown';}
@@ -933,6 +951,7 @@ export class MemoryOS2{
    const existing=indexedCandidates.filter(m=>this.validAt(m,now)&&m.epistemicStatus!=='quarantined'&&!m.dormant).sort((a,b)=>this.preferIndexRecord(a,b,now)?-1:this.preferIndexRecord(b,a,now)?1:0)[0];
    if(existing){
     const priorBytes=estimateMemoryBytes(existing);
+    const previousMetadataTokens=this.metadataTokens(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
     existing.lastAccessAt=now;
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
@@ -947,6 +966,7 @@ export class MemoryOS2{
     existing.contentHash=existing.contentHash||memoContentHash(existing.content);
     existing.tags=mergeMemoTags(existing.tags,input.tags);
     existing.context=mergeMemoContext(existing.context,input.context);
+    this.syncMetadataIndex(existing,previousMetadataTokens);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
     this.state.reconsolidations++;
     this.exactIndex.set(`${existing.kind}|${existing.source}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
