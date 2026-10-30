@@ -68,6 +68,22 @@ function speechTimelineNow(session: BrowserSpeechSession, nowMs: number): number
   return sampleVisemeClock(session.boundaryAnchors, speechAudioClockNow(session, nowMs));
 }
 
+function recordSpeechLifecycle(session: BrowserSpeechSession, phase: SpeechLifecyclePhaseV1, nowMs: number, details: { charIndex?: number; errorCode?: string } = {}): void {
+  const event = createSpeechLifecycleEventV1({
+    eventId: `${session.speechEventId}:${session.lifecycleSequence + 1}`,
+    utteranceId: session.speechEventId,
+    sequence: session.lifecycleSequence + 1,
+    provider: "browser-speech-synthesis",
+    clockId: session.audioClockId,
+    monotonicTimeMs: Math.max(0, speechAudioClockNow(session, nowMs)),
+    phase,
+    ...details,
+  });
+  if (!acceptsSpeechLifecycleEventV1(session.lastLifecycleEvent, event)) return;
+  session.lifecycleSequence = event.sequence;
+  session.lastLifecycleEvent = event;
+}
+
 function sameMouthPose(a: MouthPose, b: MouthPose): boolean {
   return a.viseme === b.viseme && Math.abs(a.open - b.open) < 0.015 && Math.abs(a.form - b.form) < 0.02;
 }
@@ -112,6 +128,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       activeSpeechSessionRef.current = null;
       lastSpeechSessionRef.current = active;
       speechPhaseRef.current = "cancelled";
+      recordSpeechLifecycle(active, "cancelled", performance.now());
     }
     try { window.speechSynthesis?.cancel(); } catch { /* browser may deny speech */ }
     utteranceRef.current = null;
@@ -196,7 +213,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           anchorAudioElapsedMs: 0,
           clockSource: "speech-synthesis-boundary-anchored-monotonic",
           voiceEmphasis: prosody.emphasis01,
+          lifecycleSequence: 0,
+          lastLifecycleEvent: null,
         };
+        recordSpeechLifecycle(session, "queued", performance.now());
         activeSpeechSessionRef.current = session;
         lastSpeechSessionRef.current = session;
         speechPhaseRef.current = "starting";
@@ -219,6 +239,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           session.lastAudioElapsedMs = 0;
           session.clockSource = "speech-synthesis-boundary-anchored-monotonic";
           speechPhaseRef.current = "speaking";
+          recordSpeechLifecycle(session, "started", now);
           setVoiceStatus("speaking");
           setMouthPose(sampleVisemeTimeline(session.timeline, 0));
         };
@@ -242,6 +263,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           session.anchorAudioPerformanceAtMs = clockAnchor.anchorPerformanceAtMs;
           session.lastAudioElapsedMs = clockAnchor.highWaterMs;
           const boundaryAudioMs = session.lastAudioElapsedMs;
+          recordSpeechLifecycle(session, "boundary", now, { charIndex: rawCharIndex });
           const nextAnchors = appendVisemeClockAnchor(session.boundaryAnchors, {
             charIndex: rawCharIndex, audioTimeMs: boundaryAudioMs, timelineTimeMs: boundaryTimelineMs,
           });
@@ -255,6 +277,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
           speechPhaseRef.current = "ended";
+          recordSpeechLifecycle(session, "ended", performance.now());
           utteranceRef.current = null;
           setVoiceStatus("ready");
           setMouthPose(CLOSED_MOUTH);
@@ -265,6 +288,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
           speechPhaseRef.current = "unknown";
+          recordSpeechLifecycle(session, "error", performance.now(), { errorCode: String(event.error || "unknown").slice(0, 64) });
           utteranceRef.current = null;
           setVoiceStatus("unknown");
           setMouthPose(CLOSED_MOUTH);
@@ -297,7 +321,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         activeSpeechSessionRef.current = null;
         lastSpeechSessionRef.current = active;
         speechPhaseRef.current = "cancelled";
-        try { synth.cancel(); } catch { /* no-op */ }
+        recordSpeechLifecycle(active, "cancelled", performance.now());
+        try { synth.cancel(); catch { /* no-op */ }
         setMouthPose(CLOSED_MOUTH);
         setVoiceStatus(voiceEnabled ? "ready" : "off");
       }
