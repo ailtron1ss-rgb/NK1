@@ -44,7 +44,11 @@ export function computeVrmArmPose(map:VrmArmBoneMap,solution:PlanarArmKinematics
 export function applyVrmArmPose(map:VrmArmBoneMap,pose:VrmArmPose,weight=1):boolean{
  if(!map?.shoulder?.rotation||!map?.elbow?.rotation||!pose||map.shoulder.name!==pose.shoulderBoneName||map.elbow.name!==pose.elbowBoneName||!finiteRotation(pose.shoulder)||!finiteRotation(pose.elbow)||!finiteRotation(map.shoulder.rotation)||!finiteRotation(map.elbow.rotation)||!Number.isFinite(weight))return false;
  const alpha=clamp(weight,0,1);
- for(const axis of ["x","y","z"] as const){map.shoulder.rotation[axis]+=(pose.shoulder[axis]-map.shoulder.rotation[axis])*alpha;map.elbow.rotation[axis]+=(pose.elbow[axis]-map.elbow.rotation[axis])*alpha;}
+ if(alpha===0)return true;
+ for(const axis of ["x","y","z"] as const){
+  map.shoulder.rotation[axis]=alpha===1?pose.shoulder[axis]:map.shoulder.rotation[axis]+(pose.shoulder[axis]-map.shoulder.rotation[axis])*alpha;
+  map.elbow.rotation[axis]=alpha===1?pose.elbow[axis]:map.elbow.rotation[axis]+(pose.elbow[axis]-map.elbow.rotation[axis])*alpha;
+ }
  return true;
 }
 /** Restore the captured bind pose, optionally blended for a graceful IK disable. */
