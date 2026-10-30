@@ -125,6 +125,6 @@ test("wardrobe byte verification checks actual SHA-256 and exact byte length", a
   const wrongSize = await verifyWardrobeAssetBytes({ ...asset, bytes: 4 }, bytes);
   assert.equal(wrongSize.valid, false);
   assert.equal(wrongSize.reason, "size-mismatch");
-  const noCrypto = await verifyWardrobeAssetBytes(asset, bytes, undefined);
+  const noCrypto = await verifyWardrobeAssetBytes(asset, bytes, { subtle: undefined });
   assert.equal(noCrypto.reason, "crypto-unavailable");
 });
