@@ -1,3 +1,9 @@
+## [NK1][Aspect 01 — Live2D] Semantic upper-body gesture composition (2026-10-30)
+
+- Forward bounded gesture profile/intensity through the existing EmbodimentIntentV1 envelope with backward-compatible optional fields.
+- Apply subtle profile-driven offsets to confirmed ParamBodyAngleX/Y channels in app and runtime viewers.
+- Extend contract validation and regression coverage; unknown profiles and out-of-range intensity fail closed.
+
 ## [NK1][Aspect 01 — Live2D] Semantic gesture profiles (2026-10-30)
 
 - Distinguish considering, presenting, examining, reassuring and emphatic gesture intent with bounded intensity.
