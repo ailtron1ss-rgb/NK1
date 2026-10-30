@@ -7,6 +7,7 @@ import { KurisuOriginalStage } from "./KurisuOriginalStage";
 import { Avatar3DStage } from "./Avatar3DStage";
 import type { DepthRigMotorBinding, DepthRigMotorFrameV1 } from "./avatar/depthRig";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
+import { neuroApi } from "@/neuro-kurisu/api";
 import {
   appendVisemeClockAnchor,
   buildVisemeTimeline,
@@ -61,6 +62,28 @@ function speechTimelineNow(session: BrowserSpeechSession, nowMs: number): number
   return sampleVisemeClock(session.boundaryAnchors, speechAudioClockNow(session, nowMs));
 }
 
+function readMotorFrameResponse(raw: unknown): DepthRigMotorFrameV1 | null {
+  if (!isRecord(raw) || raw.ok !== true || raw.configured !== true || !isRecord(raw.frame)) return null;
+  const frame = raw.frame;
+  if (frame.version !== 1 || !["idle", "moving", "holding", "rejected", "expired"].includes(String(frame.phase)) ||
+      !(frame.goalId === null || (typeof frame.goalId === "string" && frame.goalId.trim().length > 0)) ||
+      !isRecord(frame.joints) || Object.keys(frame.joints).length > 128) return null;
+  const joints: DepthRigMotorFrameV1["joints"] = {};
+  for (const [id, value] of Object.entries(frame.joints)) {
+    if (!/^[a-z][a-z0-9._-]{0,63}$/i.test(id) || !isRecord(value) || value.id !== id ||
+        typeof value.available !== "boolean" ||
+        ![value.angleRad, value.targetAngleRad, value.velocityRadPerSec].every((n) => typeof n === "number" && Number.isFinite(n))) return null;
+    joints[id] = {
+      id,
+      angleRad: Number(value.angleRad),
+      targetAngleRad: Number(value.targetAngleRad),
+      velocityRadPerSec: Number(value.velocityRadPerSec),
+      available: value.available,
+    };
+  }
+  return { version: 1, goalId: frame.goalId as string | null, phase: frame.phase as DepthRigMotorFrameV1["phase"], joints };
+}
+
 function sameMouthPose(a: MouthPose, b: MouthPose): boolean {
   return a.viseme === b.viseme && Math.abs(a.open - b.open) < 0.015 && Math.abs(a.form - b.form) < 0.02;
 }
@@ -80,6 +103,8 @@ export function AvatarStage({ snap, thinking = false, motorFrame, motorBindings 
   const speechPhaseRef = useRef<SpeechPhase>("idle");
   const [live, setLive] = useState(false);
   const [depthRigAvailable, setDepthRigAvailable] = useState(false);
+  const [polledMotorFrame, setPolledMotorFrame] = useState<DepthRigMotorFrameV1 | null>(null);
+  const effectiveMotorFrame = motorFrame !== undefined ? motorFrame : polledMotorFrame;
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
   // Native speech is opt-in. Opening the app never starts speaking historical chat.
   const [voiceEnabled, setVoiceEnabled] = useState(() => readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
@@ -91,6 +116,35 @@ export function AvatarStage({ snap, thinking = false, motorFrame, motorBindings 
     const saved = readAvatarPreference("kurisu-avatar-mode");
     return saved === "legacy" || saved === "original" || saved === "3d" || saved === "2.5d" ? saved : "live2d";
   });
+  useEffect(() => {
+    if (mode !== "3d" && mode !== "2.5d") {
+      setPolledMotorFrame(null);
+      return;
+    }
+    let active = true;
+    let inFlight = false;
+    const pollMotorFrame = async () => {
+      if (!active || inFlight) return;
+      inFlight = true;
+      try {
+        const response = await neuroApi.motorFrame();
+        if (active) setPolledMotorFrame(readMotorFrameResponse(response));
+      } catch {
+        // The renderer keeps its existing semantic fallback while the runtime
+        // endpoint is unavailable or the motor skeleton is not yet calibrated.
+        if (active) setPolledMotorFrame(null);
+      } finally {
+        inFlight = false;
+      }
+    };
+    void pollMotorFrame();
+    const timer = window.setInterval(() => void pollMotorFrame(), 1000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [mode]);
+
   const onDepthRigAvailability = (available:boolean) => {
     setDepthRigAvailable(available);
     if (!available) setMode((current) => current === "2.5d" ? "3d" : current);
@@ -392,7 +446,7 @@ export function AvatarStage({ snap, thinking = false, motorFrame, motorBindings 
         <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
-      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : mode === "3d" || mode === "2.5d" ? <Avatar3DStage onDepthRigAvailability={onDepthRigAvailability} motorFrame={motorFrame} motorBindings={motorBindings} emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
+      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : mode === "3d" || mode === "2.5d" ? <Avatar3DStage onDepthRigAvailability={onDepthRigAvailability} motorFrame={effectiveMotorFrame} motorBindings={motorBindings} emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
