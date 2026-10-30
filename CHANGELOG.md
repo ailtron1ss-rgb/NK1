@@ -81,6 +81,14 @@
 - Strengthen frustration/anger de-escalation in the canonical planner and add field-for-field browser/runtime parity tests plus bounded-parameter regressions.
 - This is a source-level integration; browser/device acoustic E2E, provider phoneme timing and refreshed Release ZIP remain pending.
 
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -2877,9 +2885,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
-
-## [NK1][аспект9] Подтверждение CI-исправления de-escalation голоса (2026-10-30)
-
-- После усиления affect-aware замедления речи на HEAD `94ea1495df92b24151b16a8d9967bfb103c8c8cd` успешно завершились все шесть связанных hosted GitHub Actions workflow, включая `NeuroCore core regression validation` (run `41026176662`).
-- Ранее падавший regression для тревоги/высокого отрицательного arousal прошёл в повторном CI. Подтверждение ограничено этими workflow; Android/Termux playback, браузерный E2E, полный app build и акустическая синхронизация не заявляются.
-- Зафиксирована граница следующего шага: native TTS gateway пока не передаёт промежуточные provider events в avatar timeline; process exit не трактуется как подтверждение окончания воспроизведения.
