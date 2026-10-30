@@ -75,6 +75,51 @@ function safeArrayValues(value: unknown, path: string, max: number): unknown[] {
 function intBound(value: unknown, path: string, min: number, max: number): void {
   if (!Number.isSafeInteger(value) || Number(value) < min || Number(value) > max) throw new Error("invalid-tool-input-contract:" + path + ":invalid-bound");
 }
+function assertSafePattern(pattern: string, path: string): void {
+  if (pattern.length > 256) throw new Error("invalid-tool-input-contract:" + path + ":invalid-pattern");
+  let inClass = false;
+  let escaped = false;
+  let repeatOperators = 0;
+  for (let i = 0; i < pattern.length; i += 1) {
+    const character = pattern[i];
+    if (escaped) {
+      // Backreferences and Unicode property escapes introduce features that this
+      // bounded regular-expression subset deliberately does not accept.
+      if (!inClass && (/[1-9]/.test(character) || character === "k" || character === "p" || character === "P")) {
+        throw new Error("invalid-tool-input-contract:" + path + ":unsupported-pattern-escape");
+      }
+      escaped = false;
+      continue;
+    }
+    if (character === "\\") { escaped = true; continue; }
+    if (inClass) {
+      if (character === "]") inClass = false;
+      continue;
+    }
+    if (character === "[") { inClass = true; continue; }
+    if (character === "(" || character === ")" || character === "|") {
+      throw new Error("invalid-tool-input-contract:" + path + ":unsupported-pattern-construct");
+    }
+    if (character === "*" || character === "+" || character === "?") {
+      repeatOperators += 1;
+      if (repeatOperators > 1) throw new Error("invalid-tool-input-contract:" + path + ":multiple-pattern-repetitions");
+      continue;
+    }
+    if (character === "{") {
+      const quantifier = /^\\{[0-9]+(?:,[0-9]*)?\\}/.exec(pattern.slice(i));
+      if (!quantifier) throw new Error("invalid-tool-input-contract:" + path + ":unsupported-pattern-construct");
+      repeatOperators += 1;
+      if (repeatOperators > 1) throw new Error("invalid-tool-input-contract:" + path + ":multiple-pattern-repetitions");
+      i += quantifier[0].length - 1;
+      continue;
+    }
+    if (character === "}") throw new Error("invalid-tool-input-contract:" + path + ":unsupported-pattern-construct");
+  }
+  if (escaped || inClass) throw new Error("invalid-tool-input-contract:" + path + ":invalid-pattern");
+  try { new RegExp(pattern, "u"); }
+  catch { throw new Error("invalid-tool-input-contract:" + path + ":invalid-pattern"); }
+}
+
 function finiteBound(value: unknown, path: string): void {
   if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("invalid-tool-input-contract:" + path + ":invalid-number-bound");
 }
@@ -116,8 +161,8 @@ function assertNode(raw: unknown, depth: number, path: string, root: boolean): a
     if (n.maxLength !== undefined) intBound(n.maxLength, path + ".maxLength", 0, 16_384);
     if (n.minLength !== undefined && n.maxLength !== undefined && Number(n.minLength) > Number(n.maxLength)) throw new Error("invalid-tool-input-contract:" + path + ":length-range-inverted");
     if (n.pattern !== undefined) {
-      if (typeof n.pattern !== "string" || n.pattern.length > 256) throw new Error("invalid-tool-input-contract:" + path + ":invalid-pattern");
-      try { new RegExp(n.pattern, "u"); } catch { throw new Error("invalid-tool-input-contract:" + path + ":invalid-pattern"); }
+      if (typeof n.pattern !== "string") throw new Error("invalid-tool-input-contract:" + path + ":invalid-pattern");
+      assertSafePattern(n.pattern, path + ".pattern");
     }
   }
   if (type === "number" || type === "integer") {

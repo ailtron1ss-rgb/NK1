@@ -68,3 +68,10 @@ The references motivate the design. NK1's implementation is a limited native ada
 
 - The runtime compiler uses the repository-local Node shim; extend its existing node:util declaration with the runtime-provided types.isProxy function.
 - This preserves runtime Proxy detection and makes the declaration match the supported Node built-in API without installing a dependency.
+
+
+## WorkPass629 — bound regular-expression complexity in tool schemas
+
+- Pattern constraints now accept a small linear-time-oriented subset: no groups, alternation, backreferences, Unicode property escapes, or multiple repetition operators.
+- This keeps common anchored character-class patterns available while rejecting nested/repeated regex constructs that can cause disproportionate CPU use on attacker-controlled arguments.
+- A regression confirms a nested quantified pattern is rejected at registration rather than evaluated at invocation time.

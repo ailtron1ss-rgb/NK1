@@ -1,3 +1,8 @@
+## [NK1][WorkPass629] Bound tool schema regex complexity (2026-10-30)
+
+- Restrict schema patterns to a conservative single-repetition subset; reject groups, alternatives, backreferences, Unicode property escapes and multiple repeat operators before a tool can be registered.
+- Add a nested-quantifier registration regression to prevent regex-complexity attacks against tool argument validation.
+
 ## [NK1][WorkPass628] Complete the Node util.types declaration
 
 - Extend runtime/node-shims.d.ts with the types.isProxy signature already provided by Node's node:util module. This fixes the exact pinned TypeScript shim surface; no dependency or runtime fallback is added.

@@ -63,6 +63,11 @@ assert.throws(() => gateway.registerTool({
   inputContract: { type: "object", properties: { value: { type: "string", pattern: "[" } }, required: ["value"] },
   execute: async () => ({ ok: true }),
 }), /invalid-tool-input-contract/);
+assert.throws(() => gateway.registerTool({
+  id: "catalog.catastrophic-pattern", capability: "catalog.read", destructive: false,
+  inputContract: { type: "object", properties: { value: { type: "string", pattern: "^(a+)+$" } }, required: ["value"] },
+  execute: async () => ({ ok: true }),
+}), /multiple-pattern-repetitions|unsupported-pattern-construct/);
 
 const mutator = new ActionGateway();
 let ledgerWrites = 0, mutations = 0;
