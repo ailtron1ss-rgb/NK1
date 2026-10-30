@@ -319,6 +319,13 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      const restoredTemporalTracks=this.temporalObjectTracker.restoreFromPerception(
+        this.core.p41PerceptionSnapshot().entities,
+        Date.now(),
+      );
+      if(restoredTemporalTracks.restored>0){
+        await this.journal.write('info','runtime.perception.tracks-restored',restoredTemporalTracks);
+      }
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
