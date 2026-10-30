@@ -44,6 +44,7 @@ const input = {
   baselineMethod: 'baseline-v1',
   baselineFingerprint,
   candidateFingerprints,
+  sourceCommitSha: 'c7f82935b0cc0d06e640180dea9e687d601c19d4',
   primaryMetric: 'task-pass-rate',
   promotionPolicy: policy,
   registeredAt: 1_800_000_000_000,
@@ -52,6 +53,7 @@ const registry = new ExperimentCampaignRegistry();
 const registration = registry.register(input);
 assert.equal(registration.split, 'holdout');
 assert.equal(registration.planFingerprint, plan.planFingerprint);
+assert.equal(registration.sourceCommitSha, input.sourceCommitSha);
 assert.equal(registration.candidates.length, 2);
 assert.equal(registry.register(input).registrationFingerprint, registration.registrationFingerprint,
   'exact preregistration retry is idempotent');
@@ -132,6 +134,7 @@ for (const run of plan.runs) {
     artifactId: `artifact-${run.runId}`,
     runId: run.runId,
     manifestFingerprint: plan.manifestFingerprint,
+    sourceCommitSha: input.sourceCommitSha,
     taskId: run.taskId,
     taskVersion: run.taskVersion,
     method: run.method,
