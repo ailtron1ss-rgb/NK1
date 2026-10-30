@@ -43,6 +43,10 @@ export interface PairedMethodSummary {
   absoluteGain: number;
   discordantCandidateWins: number;
   discordantBaselineWins: number;
+  /** Identifies the actual independent unit represented by pairedN. */
+  statisticalUnit?: 'paired-cell' | 'seed';
+  /** Exact two-sided sign-test p-value over the discordant independent units. */
+  signTestPValue?: number;
   approximate95CI: [number, number] | null;
   /** Present only for seed-clustered comparisons; resamples independent seed aggregates. */
   bootstrap95CI?: [number, number] | null;
@@ -52,6 +56,39 @@ export interface PairedMethodSummary {
  * Deterministic percentile bootstrap over independent seed-level aggregates.
  * This is a sensitivity interval, not a cure for too few independent seeds.
  */
+/**
+ * Exact two-sided paired sign test. Ties are excluded; the null probability
+ * of a positive sign among discordant independent units is 1/2.
+ *
+ * For confirmatory NK1 inference, callers must supply seed-level win/loss
+ * counts. A task-cell sign test is still reported for diagnostics but is not
+ * accepted by the promotion gate as an independent-sample test.
+ */
+export function pairedSignTestPValue(wins: number, losses: number): number {
+  if (!Number.isSafeInteger(wins) || wins < 0 || !Number.isSafeInteger(losses) || losses < 0 ||
+      !Number.isSafeInteger(wins + losses)) {
+    throw new Error('paired sign-test counts must be non-negative safe integers');
+  }
+  const n = wins + losses;
+  if (n === 0) return 1;
+  const tail = Math.min(wins, losses);
+  const logTwo = Math.log(2);
+  let logChoose = 0;
+  let maxLog = Number.NEGATIVE_INFINITY;
+  const logTerms: number[] = [];
+  for (let k = 0; k <= tail; k++) {
+    if (k > 0) logChoose += Math.log(n - k + 1) - Math.log(k);
+    const term = logChoose - n * logTwo;
+    logTerms.push(term);
+    if (term > maxLog) maxLog = term;
+  }
+  const scaledSum = logTerms.reduce((sum, term) => sum + Math.exp(term - maxLog), 0);
+  const lowerTail = Math.exp(maxLog) * scaledSum;
+  // Avoid reporting a mathematically non-zero exact p-value as zero solely
+  // because IEEE-754 cannot represent a more extreme tail probability.
+  return Math.min(1, Math.max(Number.MIN_VALUE, 2 * lowerTail));
+}
+
 function bootstrapMean95CI(values: number[], identity: string, replicates = 4000): [number, number] | null {
   if (values.length < 2) return null;
   const digest = createHash('sha256').update(identity + '\u0000' + values.map(value => value.toFixed(12)).join(',')).digest();
@@ -264,10 +301,14 @@ export class VerifiedOutcomeLedger {
       const margin = t * Math.sqrt(variance / n);
       approximate95CI = [Math.max(-1, absoluteGain - margin), Math.min(1, absoluteGain + margin)];
     }
+    const discordantCandidateWins = differences.filter(value => value > 0).length;
+    const discordantBaselineWins = differences.filter(value => value < 0).length;
     return {
       baseline, candidate, pairedN: n, baselinePassRate, candidatePassRate, absoluteGain,
-      discordantCandidateWins: differences.filter(value => value > 0).length,
-      discordantBaselineWins: differences.filter(value => value < 0).length,
+      discordantCandidateWins,
+      discordantBaselineWins,
+      statisticalUnit: 'seed' as const,
+      signTestPValue: pairedSignTestPValue(discordantCandidateWins, discordantBaselineWins),
       approximate95CI,
       bootstrap95CI,
     };
@@ -297,13 +338,17 @@ export class VerifiedOutcomeLedger {
     const gain = n ? (c - b) / n : 0;
     const variance = n > 1 ? differences.reduce((sum, x) => sum + (x - gain) ** 2, 0) / (n - 1) : 0;
     const se = n > 1 ? Math.sqrt(variance / n) : 0;
+    const discordantCandidateWins = pairs.filter(p => p.get(candidate)!.passed && !p.get(baseline)!.passed).length;
+    const discordantBaselineWins = pairs.filter(p => !p.get(candidate)!.passed && p.get(baseline)!.passed).length;
     return {
       baseline, candidate, pairedN: n,
       baselinePassRate: n ? b / n : 0,
       candidatePassRate: n ? c / n : 0,
       absoluteGain: gain,
-      discordantCandidateWins: pairs.filter(p => p.get(candidate)!.passed && !p.get(baseline)!.passed).length,
-      discordantBaselineWins: pairs.filter(p => !p.get(candidate)!.passed && p.get(baseline)!.passed).length,
+      discordantCandidateWins,
+      discordantBaselineWins,
+      statisticalUnit: 'paired-cell' as const,
+      signTestPValue: pairedSignTestPValue(discordantCandidateWins, discordantBaselineWins),
       approximate95CI: n > 1 ? [Math.max(-1, gain - 1.96 * se), Math.min(1, gain + 1.96 * se)] : null,
     };
   }
