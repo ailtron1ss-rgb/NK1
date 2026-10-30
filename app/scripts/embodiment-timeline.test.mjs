@@ -314,3 +314,16 @@ test("speech lifecycle terminal states are mutually exclusive", () => {
   assert.equal(acceptsSpeechLifecycleEventV1(started, cancelled), true);
   assert.equal(acceptsSpeechLifecycleEventV1(cancelled, lateEnd), false);
 });
+
+
+test("speech lifecycle rejects character-boundary regressions", () => {
+  const base = { utteranceId: "utt-3", provider: "browser-speech-synthesis", clockId: "clock-3" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:2", sequence: 2, monotonicTimeMs: 5, phase: "started" });
+  const boundary = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:3", sequence: 3, monotonicTimeMs: 80, phase: "boundary", charIndex: 12 });
+  const stale = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:4", sequence: 4, monotonicTimeMs: 90, phase: "boundary", charIndex: 7 });
+  assert.equal(acceptsSpeechLifecycleEventV1(null, queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(queued, started), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, boundary), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(boundary, stale), false);
+});
