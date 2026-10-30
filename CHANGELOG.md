@@ -1,3 +1,10 @@
+## [NK1][аспект9] Unify browser voice prosody with organism state (2026-10-30)
+
+- Replace fixed browser TTS rate/pitch settings with a bounded prosody plan derived from the utterance emotion, organism action, arousal, valence, cognitive load, uncertainty and social need.
+- Build the viseme timeline from the exact speech rate applied to the utterance, and publish the same prosodic emphasis through the versioned embodiment intent.
+- Keep negative high-arousal delivery regulated rather than escalating hostility; add regression tests for language inference, safe parameter bounds and affect/cognitive modulation.
+- This is a source-level integration; browser/device acoustic E2E, provider phoneme timing and refreshed Release ZIP remain pending.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
