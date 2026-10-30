@@ -44,6 +44,20 @@ export interface VrmGarmentAttachmentResult {
 const normalizeBoneName = (name: string): string =>
   name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+function bindPoseMatches(source: unknown, target: unknown): boolean {
+  const sourceElements = (source as { elements?: unknown })?.elements;
+  const targetElements = (target as { elements?: unknown })?.elements;
+  if (Array.isArray(sourceElements) && Array.isArray(targetElements)) {
+    return sourceElements.length === targetElements.length &&
+      sourceElements.every((value, index) =>
+        typeof value === "number" && typeof targetElements[index] === "number" &&
+        Math.abs(value - (targetElements[index] as number)) <= 1e-4);
+  }
+  const sourceBone = (source as { bone?: unknown })?.bone;
+  const targetBone = (target as { bone?: unknown })?.bone;
+  return typeof sourceBone === "string" && sourceBone === targetBone;
+}
+
 function visit(root: ObjectNode, callback: (node: ObjectNode) => void): void {
   if (typeof root.traverse === "function") root.traverse(callback);
   else {
@@ -106,8 +120,12 @@ export function inspectVrmGarmentRig(
         continue;
       }
       const targetBone = avatarBones.get(name);
+      const targetInverse = targetInverses.get(name);
+      const sourceIndex = sourceBones.indexOf(sourceBone);
+      const sourceInverse = mesh.skeleton.boneInverses[sourceIndex];
       if (!targetBone) errors.push(`missing-avatar-bone:${name}`);
-      else if (!targetInverses.has(name)) errors.push(`missing-avatar-bind-inverse:${name}`);
+      else if (targetInverse === undefined || sourceInverse === undefined) errors.push(`missing-bind-inverse:${name}`);
+      else if (!bindPoseMatches(sourceInverse, targetInverse)) errors.push(`bind-pose-mismatch:${name}`);
       else mappings.set(name, targetBone);
     }
   }
