@@ -100,6 +100,20 @@ function semanticVision(objects, at, extra = {}) {
   assert.equal(otherFrame.entities.filter(entity => entity.label === 'cup').length, 3, 'coordinates from an unrelated frame must not merge tracks');
 }
 
+// Equidistant spatial candidates are ambiguous and must not be resolved by sort order.
+{
+  const engine = new P41SemanticPerceptionEngine();
+  const first = engine.ingest(semanticVision([
+    { label: 'bottle', coordinateFrameId: 'map-C', x: -0.1, y: 0, z: 0 },
+    { label: 'bottle', coordinateFrameId: 'map-C', x: 0.1, y: 0, z: 0 },
+  ], 25_000));
+  assert.equal(first.entities.filter(entity => entity.label === 'bottle').length, 2);
+  const next = engine.ingest(semanticVision([
+    { label: 'bottle', coordinateFrameId: 'map-C', x: 0, y: 0, z: 0 },
+  ], 25_500));
+  assert.equal(next.entities.filter(entity => entity.label === 'bottle').length, 3, 'an equidistant detection must not be attached to an arbitrary existing track');
+}
+
 // Cross-modal aliasing is conservative: one candidate can be associated, two candidates are ambiguous.
 {
   const engine = new P41SemanticPerceptionEngine();
