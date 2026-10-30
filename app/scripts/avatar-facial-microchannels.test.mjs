@@ -36,6 +36,9 @@ test("Live2D adapter only addresses facial parameters present in the shipped CDI
  for(const id of ["ParamEyeLSmile","ParamEyeRSmile","ParamBrowLY","ParamBrowRY","ParamBrowLForm","ParamBrowRForm","ParamCheek","ParamMouthForm"])assert.ok(ids.has(id),id);
  const viewer=await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html",import.meta.url),"utf8");
  for(const id of ["ParamEyeLSmile","ParamEyeRSmile","ParamBrowLY","ParamBrowRY","ParamBrowLForm","ParamBrowRForm","ParamCheek","ParamMouthForm"])assert.ok(viewer.includes(id),id);
+ assert.ok(viewer.includes("blinkIntervalMs:[4200,10500]"));
+ assert.ok(viewer.includes("const defaults={blinkIntervalMs:8800"));
+ assert.ok(viewer.includes("faceSignal.saccadeAmplitude*(bodySignal.speaking?.58:1)"));
 });
 
 test("temporal micro-motor cadence is bounded and responds to arousal/context",()=>{
