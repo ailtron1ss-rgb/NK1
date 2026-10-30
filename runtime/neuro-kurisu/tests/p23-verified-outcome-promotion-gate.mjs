@@ -115,7 +115,11 @@ const inconsistentP = evaluateOutcomePromotion(summary({ signTestPValue: 0.00001
 assert.equal(inconsistentP.eligible, false);
 assert.ok(inconsistentP.reasons.includes('inconsistent-aggregate-sign-test-p-value'));
 
-const nonFiniteCount = evaluateOutcomePromotion(summary({ pairedN: Number.NaN }), families);
+const nonFiniteCount = evaluateOutcomePromotion(summary({
+  pairedN: Number.NaN,
+  discordantCandidateWins: 18,
+  discordantBaselineWins: 7,
+}), families);
 assert.equal(nonFiniteCount.eligible, false);
 assert.ok(nonFiniteCount.reasons.includes('invalid-aggregate-paired-count'));
 
