@@ -69,3 +69,14 @@ Live2D intent теперь собирается из двух совместим
 4. Подключить общий семантический профиль к Original 2D и 3D/VRM без копирования эмоционального appraisal.
 5. Добавить сценарии конфликтующих эмоций, низкой уверенности и регуляции возбуждения.
 6. Проверить визуально новые комбинации на всех режимах.
+
+
+## Дополнение — facial microchannels (2026-10-30)
+
+В следующем code-pass добавлен renderer-neutral адаптер `facialMicrochannels.ts`. Он переводит уже рассчитанный appraisal (emotion, valence, arousal, dominance, expressionIntensity) в независимые каналы: eye-smile, подъём/напряжение бровей, cheek/blush, tension рта и bias частоты моргания.
+
+**Проверенные параметры рига:** `Kurisu.cdi3.json` содержит `ParamEyeLSmile`, `ParamEyeRSmile`, `ParamBrowLY/R Y`, `ParamBrowL/RForm`, `ParamCheek`, `ParamMouthForm`, `ParamEyeLOpen/ROpen`, `ParamEyeBallX/Y`. Viewer применяет только эти идентификаторы; значения ограничены консервативными диапазонами. Канал tension не вмешивается в mouth form во время речи, чтобы не ломать viseme timeline.
+
+Каналы передаются отдельным сообщением `kurisu_face_microchannels`, поэтому строгий контракт `EmbodimentIntentV1` не расширяется и старые отправители остаются совместимыми. Viewer отклоняет некорректные/устаревшие версии face snapshot. Микродвижения взгляда и моргания используют локальную детерминированную последовательность вместо `Math.random()`.
+
+**Ограничения:** диапазоны взяты как нормализованные control targets, но не подтверждены визуальной калибровкой конкретной модели на устройстве. Параметры cheeks/brows/eye-smile могут взаимодействовать с expression clips; требуется browser visual E2E и Android smoke. 2.5D/VRM renderer-neutral consumption ещё не завершено.
