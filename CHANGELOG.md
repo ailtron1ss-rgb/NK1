@@ -2794,3 +2794,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Aspect 03] Align invalid-box test with preserved object semantics (2026-10-30)
+
+- Correct the Gemini vision regression: an out-of-frame bounding box is rejected, but the semantic object observation remains present without a `bbox` field.
+- Assert both object identity and omission of invalid geometry; preserve the rule that image-relative x/y/z are never promoted to world coordinates.
+- This fixes a contradictory test expectation without weakening runtime validation.
