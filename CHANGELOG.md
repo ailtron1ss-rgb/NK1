@@ -1,7 +1,7 @@
 ## [NK1][Aspect 08] Inspect actual Live2D garment-switch capabilities (2026-10-30)
 
 - Inventory the canonical Kurisu Cubism model metadata and add a conservative capability inspector for model3/CDI/expression JSON.
-- Distinguish static texture atlases and clothing-related physics from true independent garment switching; expression-only controls remain limited and do not authorize a garment-switch claim.
+- Distinguish static texture atlases and clothing-related physics from true independent garment switching; expression-only controls remain limited; even an explicit wardrobe-named parameter is only a candidate until its moc3 drawable/part mapping is verified.
 - Add focused regressions for no-switch, expression-only and explicit wardrobe parameter cases; include them in `npm run test:wardrobe`.
 - No model binary parsing, drawable/part inspection, actual garment assets or renderer switching is claimed; the moc3 drawable/part inspection remains a separate required gate.
 
