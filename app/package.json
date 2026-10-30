@@ -26,7 +26,8 @@
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
     "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs",
     "test:planar-arm-ik": "node --experimental-strip-types --test scripts/planar-arm-ik.test.mjs",
-    "test:vrm-humanoid-rig": "node --experimental-strip-types --test scripts/vrm-humanoid-rig-adapter.test.mjs"
+    "test:vrm-humanoid-rig": "node --experimental-strip-types --test scripts/vrm-humanoid-rig-adapter.test.mjs",
+    "test:vrm-rig-calibration-profile": "node --experimental-strip-types --test scripts/vrm-rig-calibration-profile.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
