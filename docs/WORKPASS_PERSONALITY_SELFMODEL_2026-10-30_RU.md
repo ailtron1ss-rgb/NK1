@@ -12,7 +12,7 @@ Updated `src/organism/developmental/P78AutobiographicalSelfContinuity.ts` so the
 
 - Added optional provenance fields to events: `evidenceStatus`, `evidenceRef`, `authorship`, `episodeId`.
 - Legacy event payloads remain accepted, but are conservatively classified as unverified/unknown.
-- Only `verified-independent` events with a syntactically bound evidence reference contribute to verified-outcome continuity and turning-point creation.
+- Only `verified-independent` events whose `evidenceReceiptId` is an exact RuntimeEvidenceBus `outcome` ID, whose tick matches the event, and whose `evidenceRef` equals `external-verification:${evidenceReceiptId}` contribute to verified continuity and turning-point creation.
 - Self-authorship changes only when an explicit authorship classification is supplied; `self-initiated` and `self-selected` are distinguished from user-directed/system/unknown episodes.
 - Added counters for verified outcomes, unverified outcomes and episodes with known authorship.
 - Expanded the idempotency key to include mode, evidence status/reference, authorship and episode ID. This closes the prior case where a mode-only change was invisible to deduplication.
@@ -44,8 +44,8 @@ These commands are documented as required checks; they have **not** been execute
 
 ## Not yet claimed
 
-- Runtime producers have not yet been migrated to supply the new provenance fields.
-- P78 has not yet been proven wired to the canonical MemoryOS2 / CEF evidence lineage.
+- Initial checkpoint only: the first P78 producers had not yet been migrated. The later runtime pass now forwards the exact RuntimeEvidenceBus outcome ID from `OrganismRuntime` through `LearningProvenance` and `OrganismCore` into P78; a complete inventory of every legacy/non-Core producer remains pending.
+- P78 is now bound to the exact RuntimeEvidenceBus outcome event ID. Independent attestation against the canonical CEF ledger/provider receipt remains pending; exact event-ID equality is not a cryptographic signature.
 - No real-model, browser, Android or long-horizon identity test has been run.
 - No Release ZIP has been rebuilt or updated.
 
@@ -70,8 +70,8 @@ These commands are documented as required checks; they have **not** been execute
 ### Сквозной provenance gate и защита от replay
 
 - В P78 добавлен ограниченный журнал processedEventKeys (до 512 ключей), сохраняемый в snapshot. Он блокирует повтор старого события даже после промежуточных эпизодов и восстановления runtime.
-- P78 и bridge признают verified lane только для issuer namespaces world-transition: и external-verification:, а также требуют синтаксически ограниченный evidenceRef без пробелов; legacy и неизвестные issuer остаются unverified. Это allow-list и проверка формы, не криптографическая аутентификация receipt.
-- Причина отказа не теряется: синтаксически оформленный, но неподдержанный issuer доходит до SelfModel как неподтверждённый доверенный источник и отклоняется его allow-list.
+- P78 verified lane теперь принимает только пару `evidenceReceiptId=reb:<tick>:<sequence>:outcome` и `evidenceRef=external-verification:<тот же ID>`, с совпадающим tick и явным `verified-independent`. Legacy, simulation, неизвестные issuer, чужой tick и несовпадающие ID остаются unverified. Это проверка идентичности runtime-события, но не криптографическая аттестация CEF/provider.
+- P78, bridge, SelfModel и P2702 независимо проверяют точную привязку receipt ID/tick/reference перед повышением автобиографических убеждений, стабильных ценностей, доверия и autobiographicalStrength. Поведенческие привычки получают только ограниченное evidence-weighted обучение без такого receipt.
 - Исправлена нормализация управляющих символов/пробелов и строгая проверка evidence reference на пробельные символы.
 
 ### Тестовый охват
@@ -81,9 +81,9 @@ tests/p78-autobiographical-provenance.mjs дополнен проверкой н
 
 ## Степень готовности и оставшиеся блокеры
 
-Реализована композиционная интеграция владельцев и persistence path, но пока не заявляется, что основной OrganismCore уже вызывает bridge на каждом фактическом цикле. Ветка предоставляет явные методы через OrganismSystemFabric; следующий этап — найти точный outcome-finalization callsite, связать его с фактическим CEF/causal receipt, а preparePersonalityDecision — с уже существующим этапом формирования candidate scores, не создавая второго selector.
+Историческая отметка первого integration pass; она superseded пятым проходом ниже. Текущий bridge подключён к candidate-scoring и общему `OrganismCore.feedback` path. Остающийся пробел — проверка immutable receipt против канонического CEF/provider ledger, а не отсутствие Core callsite.
 
-Реальные CEF receipts всё ещё не проверяются cryptographically/against canonical ledger на уровне bridge; namespace allow-list — временная дополнительная защита, а не доказательство подписи. До promotion обязательны typecheck, целевые тесты на точном SHA, restart/contradiction E2E и подтверждение фактического вызова из runtime cycle.
+RuntimeEvidenceBus ID проверяется на точное совпадение между runtime, P78, bridge, P2702 и SelfModel, но не подписывается и не сверяется с каноническим CEF/provider receipt ledger. До promotion остаются обязательными typecheck и целевые тесты exact HEAD, restart/contradiction E2E и CI на синхронизированной базе.
 
 ## Третий проход: семантическое обучение личности и защита восстановления
 
@@ -103,8 +103,8 @@ tests/p78-autobiographical-provenance.mjs дополнен проверкой н
 
 ### Текущие границы доказанности
 
-- Реальный callsite основного outcome-finalization в OrganismCore остаётся не подтверждённым: большой файл не удалось прочитать через используемый GitHub API-путь. Поэтому bridge API доступен через SystemFabric и CognitiveSubsystemRegistry, но автоматическое участие каждого runtime tick ещё не заявлено.
-- Разрешённые namespace-предикаты в bridge являются временным issuer allow-list, а не подписью CEF/receipt. Для полноценного доказательства нужна передача immutable receipt ID и проверка по реальному RuntimeEvidenceBus / RealityLearningGate / ExternalPostconditionVerifier на callsite.
+- Историческая отметка раннего этапа; superseded пятым проходом: decision-time и feedback-time вызовы bridge размещены в `OrganismCore`.
+- Exact RuntimeEvidenceBus outcome ID теперь передаётся по runtime → Core → P78/bridge/P2702/SelfModel. Следующее усиление — проверка ID и provider evidence по каноническому CEF/OutcomeCognitionFabric revision ledger; текущее совпадение ID не заменяет подпись/attestation.
 - GitHub Actions должны завершиться на последнем HEAD; промежуточные запуски во время последовательных коммитов отменялись, один промежуточный WorkPass79 запуск упал на unrelated шаге client-disconnect/local-inference. Его нельзя считать результатом проверки последнего HEAD.
 
 ## Четвёртый проход: жизненный цикл отношений и полная долговечность P2702
@@ -136,3 +136,31 @@ tests/p78-autobiographical-provenance.mjs дополнен проверкой н
 ### Реальный runtime callsite
 
 В OrganismCore установлен decision-time вызов personality bridge перед построением candidate scoring; небольшая ограниченная добавка actionBias входит и в spine-only score, и в полный rawUtility. На feedback-time вызов recordPersonalityOutcome расположен в ветке реального выбранного действия после P31–P34 и получает именно тот evidence event ID, который OrganismRuntime передал из RuntimeEvidenceBus.
+
+## Седьмой проход: независимые receipt gates, динамика ценностей и измеримая личность
+
+### Точное происхождение эпизода
+
+- P78 verified ingress требует event-owned `evidenceReceiptId` вида `reb:<tick>:<sequence>:outcome`, совпадения tick и точного `evidenceRef=external-verification:<тот же ID>`. Receipt ID включён в replay/event signature; observation batch сериализуется структурно через JSON, без неоднозначных текстовых разделителей.
+- `PersonalitySelfModelBridge` повторно сверяет caller receipt с event-owned receipt ID, форматом, kind и tick. SelfModel выполняет собственную независимую проверку для identity/agency write gate.
+- P2702 `afterOutcome` получил внутренний receipt gate: stable values, relationship trust, self-beliefs и autobiographicalStrength меняются только при точной receipt/reference/tick паре и одновременно сильных показателях verified/evidence/independence/consequence. Прямой вызов P2702 с искусственными `verified=1` и `evidence=1` без receipt не повышает эти высокоуровневые состояния.
+- Поведенческие привычки остаются обучаемыми по ослабленному evidence-weighted сигналу; это позволяет использовать симуляцию и неполную обратную связь для ограниченного обучения, но не превращать её в доказательство собственной идентичности или доверия к человеку.
+
+### Семантические ценности и напряжения характера
+
+- P2702 восстанавливает инварианты, адаптивные черты и ценности по canonical semantic names из кода, а не по snapshot array position. Relationship trust при restore нормализуется NFKC, фильтруется по control characters/reserved prototype keys и ограничивается 32 идентификаторами.
+- Пять напряжений из KurisuCanonProfile стали живыми состояниями: truth ↔ relationship comfort; autonomy ↔ cooperation; skepticism ↔ curiosity; composure ↔ vulnerability; science ↔ privacy. Они влияют на небольшие action priors для verify/reflect/respond, не создавая отдельного selector.
+- P2702 action priors теперь учитывают значения truth/science/curiosity, earned relationship trust, privacy и loyalty. Это ограниченное влияние на существующую оценку кандидатов, не самостоятельный выбор действия.
+- Измеряемый `drift01` рассчитывается по отклонению адаптивных черт/ценностей от canonical initialization prior; `autobiographicalStrength01` растёт только от подтверждённых независимых эпизодов.
+- `diagnostics()` выдаёт именованные invariants, traits, values, tensions, relationshipTrust, selfBeliefs/selfUncertainty, stability, drift и autobiographicalStrength.
+
+### Усиленные регрессии и сохранение
+
+- Тесты проверяют обход P2702 напрямую без receipt, несовпадающий event/caller receipt, wrong tick, unknown issuer, восстановление canonical trait mapping, NFKC-дубликаты и опасные relationship keys, доказательную изоляцию stable values/trust/self-beliefs, value-sensitive/relationship-sensitive action bias и named tension/self-belief diagnostics.
+- PersistenceProjectionCoordinator содержит по одной записи P2702 в identity materialization и hot sync. Дублирующая запись, появлявшаяся во время предыдущей правки, удалена.
+- CI продолжает запускать `npm run test:personality`; новый exact HEAD пока не имеет подтверждённого Actions результата. Поэтому тесты не объявляются прошедшими.
+
+### Ограничения после этого прохода
+
+- RuntimeEvidenceBus event ID детерминирован и проверяется на точное равенство; он не подписан. Нужна независимая проверка против canonical CEF/OutcomeCognitionFabric/provider revision ledger, включая late receipt, supersession и conflicting provider evidence.
+- Нужны exact HEAD typecheck + `test:personality`, restart/contradiction E2E и paired-seed self-prediction calibration holdout. Текущая ветка по-прежнему diverged от актуальной базы; merge/rebase и Release ZIP refresh не выполнялись.
