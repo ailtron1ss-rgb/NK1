@@ -1,3 +1,10 @@
+## [NK1][WorkPass633] Add risk-weighted tool governance coverage reporting (2026-10-30)
+
+- Add a read-only ActionGateway governance report for the registered tool catalog.
+- Classify registered tools by risk tier and report required/present gates for input/output contracts, approvals, durable receipts, independent verifiers and provider reconciliation.
+- Surface migration gaps without silently changing legacy tool behavior or granting capabilities.
+- Add regression coverage proving a destructive code tool is reported as critical and exposes missing contract/verifier gates.
+
 ## [NK1][WorkPass632] Enforce inert bounded JSON at every ActionGateway ingress (2026-10-30)
 
 - Apply a shared bounded JSON envelope even to legacy tools that have not yet declared a per-tool input contract; explicit tool schemas remain stricter.
