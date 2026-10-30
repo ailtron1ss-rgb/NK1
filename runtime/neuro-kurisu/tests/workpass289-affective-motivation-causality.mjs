@@ -161,6 +161,83 @@ assert.throws(() => invalidGoalCore.step({
 assert.deepEqual(invalidGoalCore.snapshot(), invalidGoalBefore,
   'malformed intrinsic drive profiles must not mutate endogenous goal state');
 
+// Persistent mood is slower than an emotion episode, time-decaying and restart-safe.
+const moodEngine = new EmotionAppraisalEngine();
+const moodOriginAt = 2_000_000;
+const moodOrigin = moodEngine.appraise({
+  tick: 40, at: moodOriginAt, goalPressure01: .9, goalCongruence01: .95,
+  controllability01: .9, novelty01: .8, socialMeaning01: .25,
+  uncertainty01: .8, predictionError01: .6, homeostaticPressure01: .12,
+  energy01: .86, success01: .99, external: true,
+});
+const moodAtOrigin = moodEngine.moodSnapshot(moodOriginAt);
+assert.ok(moodAtOrigin.valence01 > .5, 'a confident positive appraisal must shift the slow mood baseline');
+assert.ok(moodAtOrigin.arousal01 > .22, 'a high-arousal episode must shift the mood arousal baseline');
+assert.ok(moodAtOrigin.confidence01 > 0, 'mood confidence must be grounded in accepted episode evidence');
+
+// Read projections must be pure; elapsed wall-clock time relaxes mood toward a neutral baseline.
+const moodStateBeforeRead = moodEngine.snapshot().mood;
+const moodAfter45m = moodEngine.moodSnapshot(moodOriginAt + 45 * 60 * 1000);
+assert.deepEqual(moodEngine.snapshot().mood, moodStateBeforeRead,
+  'moodSnapshot must not mutate the persisted engine state');
+assert.ok(Math.abs(moodAfter45m.valence01 - .5) < Math.abs(moodAtOrigin.valence01 - .5),
+  'valence mood must decay toward neutral rather than persist indefinitely');
+assert.ok(Math.abs(moodAfter45m.arousal01 - .22) < Math.abs(moodAtOrigin.arousal01 - .22),
+  'arousal mood must decay toward its resting baseline');
+assert.ok(moodAfter45m.confidence01 < moodAtOrigin.confidence01,
+  'mood confidence must decay as the supporting evidence becomes stale');
+
+// A persistent mood estimate is canonical once established; a caller cannot double-count
+// the last episode by passing it again as a fresh high-confidence mood modifier.
+const moodFollowupAt = moodOriginAt + 5 * 60 * 1000;
+const expectedFollowupMood = moodEngine.moodSnapshot(moodFollowupAt);
+const moodFollowup = moodEngine.appraise({
+  tick: 41, at: moodFollowupAt, goalPressure01: .3, goalCongruence01: .5,
+  controllability01: .8, novelty01: .2, socialMeaning01: .1,
+  uncertainty01: .2, predictionError01: .1, homeostaticPressure01: .1,
+  energy01: .8, success01: .5,
+  modulators: { mood: { valence01: .02, arousal01: .98, confidence01: 1 } },
+});
+assert.equal(moodFollowup.modulators?.mood.valence01, expectedFollowupMood.valence01,
+  'the engine must use its time-decayed canonical mood instead of double-counting the prior episode');
+assert.equal(moodFollowup.modulators?.mood.arousal01, expectedFollowupMood.arousal01);
+
+// Out-of-order observations remain in episode history but cannot rewind the slow mood clock.
+const moodBeforeStale = moodEngine.snapshot().mood;
+moodEngine.appraise({
+  tick: 42, at: moodFollowupAt - 60_000, goalPressure01: .3, goalCongruence01: .05,
+  controllability01: .2, novelty01: .1, socialMeaning01: .1,
+  uncertainty01: .9, predictionError01: .8, homeostaticPressure01: .7,
+  energy01: .2, success01: .05, external: true,
+});
+const moodAfterStale = moodEngine.snapshot().mood;
+assert.equal(moodAfterStale.lastUpdatedAt, moodBeforeStale.lastUpdatedAt,
+  'an out-of-order appraisal must not rewind mood time');
+assert.equal(moodAfterStale.valence01, moodBeforeStale.valence01,
+  'an out-of-order appraisal must not overwrite newer mood evidence');
+assert.equal(moodAfterStale.staleEpisodes, moodBeforeStale.staleEpisodes + 1,
+  'out-of-order observations must be counted for diagnostics');
+
+// Mood survives checkpoint restore; old snapshots without a mood field migrate from history.
+const moodCheckpoint = moodEngine.snapshot();
+const moodRestored = new EmotionAppraisalEngine();
+moodRestored.restore(moodCheckpoint);
+assert.deepEqual(moodRestored.snapshot().mood, moodCheckpoint.mood,
+  'persistent mood must survive checkpoint restore exactly');
+const legacyMoodCheckpoint = { ...moodCheckpoint };
+delete legacyMoodCheckpoint.mood;
+const moodMigrated = new EmotionAppraisalEngine();
+moodMigrated.restore(legacyMoodCheckpoint);
+assert.equal(moodMigrated.snapshot().mood.lastEpisodeId, moodCheckpoint.history[0]?.id,
+  'legacy snapshots must initialize mood from their latest valid emotion episode');
+assert.ok(Number.isFinite(moodMigrated.moodSnapshot(moodFollowupAt).valence01),
+  'migrated mood must remain finite and bounded');
+
+// Invalid mood query times are rejected without mutating state.
+const moodBeforeInvalidRead = moodEngine.snapshot();
+assert.throws(() => moodEngine.moodSnapshot(Number.NaN), /emotion-mood-timestamp-invalid/);
+assert.deepEqual(moodEngine.snapshot(), moodBeforeInvalidRead);
+
 // Verify the actual OrganismCore path: appraisal → motivation → action trace →
 // outcome receipt. The post-outcome feeling must not steal credit from the
 // pre-action episode that influenced the decision.
