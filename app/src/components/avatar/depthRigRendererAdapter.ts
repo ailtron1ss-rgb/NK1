@@ -1,4 +1,4 @@
-import { orderDepthRigNodes, resolveDepthRigWorldPose, validateDepthRig, type DepthRigDefinition, type DepthRigPose } from "./depthRig";
+import { orderDepthRigNodes, resolveDepthRigWorldPose, validateDepthRig, type DepthRigDefinition, type DepthRigPose } from "./depthRig.ts";
 
 /**
  * Minimal renderer contract. A Three.js Object3D is compatible with this
