@@ -145,9 +145,11 @@ export function resolveDepthRigIntentFromMotorFrame(
  if(frame.version!==1||!phases.includes(frame.phase)||!(frame.goalId===null||(typeof frame.goalId==="string"&&frame.goalId.trim().length>0))
   ||!frame.joints||typeof frame.joints!=="object"||Array.isArray(frame.joints))return result("rejected","invalid-motor-frame-envelope");
  if(frame.goalId===null||!(frame.phase==="moving"||frame.phase==="holding"))return result("inactive","motor-frame-has-no-active-goal");
- if(!Array.isArray(bindings)||bindings.length>32)return result("rejected","invalid-motor-binding-list");
+ const rawBindings:unknown=bindings;
+ if(!Array.isArray(rawBindings)||rawBindings.length>32)return result("rejected","invalid-motor-binding-list");
+ const safeBindings=rawBindings as readonly DepthRigMotorBinding[];
  const seenJoints=new Set<string>(),seenChannels=new Set<DepthRigMotorChannel>(),next:DepthRigIntent={...fallback},appliedChannels:string[]=[];
- for(const binding of bindings){
+ for(const binding of safeBindings){
   if(!binding||typeof binding.jointId!=="string"||!/^[a-z][a-z0-9._-]{0,63}$/i.test(binding.jointId)
    ||!Object.hasOwn(MOTOR_CHANNEL_LIMITS,binding.channel)||seenJoints.has(binding.jointId)||seenChannels.has(binding.channel))
    return result("rejected","invalid-or-duplicate-motor-binding");
