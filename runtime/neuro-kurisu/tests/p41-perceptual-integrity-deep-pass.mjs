@@ -46,6 +46,39 @@ function semanticVision(objects, at, extra = {}) {
   }
 }
 
+// Scene relations bind to exact object tracks; ambiguous label-only endpoints stay unresolved.
+{
+  const engine = new P41SemanticPerceptionEngine();
+  const exact = engine.ingest(semanticVision([
+    { label: 'chair', trackId: 'chair-A', sourceId: 'detector' },
+    { label: 'chair', trackId: 'chair-B', sourceId: 'detector' },
+    { label: 'table', trackId: 'table-A', sourceId: 'detector' },
+  ], 15_000, {
+    relations: [{
+      from: 'chair', relation: 'next-to', to: 'table',
+      fromTrackId: 'chair-A', fromSourceId: 'detector',
+      toTrackId: 'table-A', toSourceId: 'detector',
+      confidence01: 0.95,
+    }],
+  }));
+  const chairA = exact.entities.find(entity => entity.trackId === 'vision:0:detector:chair-A');
+  const tableA = exact.entities.find(entity => entity.trackId === 'vision:0:detector:table-A');
+  const relation = exact.relations.find(item => item.relation === 'next-to');
+  assert.ok(chairA && tableA && relation);
+  assert.equal(relation.fromEntityId, chairA.id);
+  assert.equal(relation.toEntityId, tableA.id);
+
+  const ambiguous = engine.ingest(semanticVision([
+    { label: 'chair', trackId: 'chair-C', sourceId: 'detector' },
+  ], 16_000, {
+    relations: [{ from: 'chair', relation: 'behind', to: 'table', confidence01: 0.7 }],
+  }));
+  const ambiguousRelation = ambiguous.relations.find(item => item.relation === 'behind');
+  assert.ok(ambiguousRelation);
+  assert.equal(ambiguousRelation.fromEntityId, undefined, 'two chairs with the same label cannot be arbitrarily selected');
+  assert.ok(ambiguousRelation.toEntityId, 'a unique endpoint can still be resolved independently');
+}
+
 // Geometry-only tracking is enabled only when both observations declare the same coordinate frame.
 {
   const engine = new P41SemanticPerceptionEngine();
