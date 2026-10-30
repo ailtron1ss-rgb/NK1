@@ -2824,3 +2824,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][аспект9] Подтверждение CI-исправления de-escalation голоса (2026-10-30)
+
+- После усиления affect-aware замедления речи на HEAD `94ea1495df92b24151b16a8d9967bfb103c8c8cd` успешно завершились все шесть связанных hosted GitHub Actions workflow, включая `NeuroCore core regression validation` (run `41026176662`).
+- Ранее падавший regression для тревоги/высокого отрицательного arousal прошёл в повторном CI. Подтверждение ограничено этими workflow; Android/Termux playback, браузерный E2E, полный app build и акустическая синхронизация не заявляются.
+- Зафиксирована граница следующего шага: native TTS gateway пока не передаёт промежуточные provider events в avatar timeline; process exit не трактуется как подтверждение окончания воспроизведения.
