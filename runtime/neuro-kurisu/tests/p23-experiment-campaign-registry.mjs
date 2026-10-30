@@ -57,6 +57,18 @@ assert.equal(registry.register(input).registrationFingerprint, registration.regi
   'exact preregistration retry is idempotent');
 assert.throws(() => registry.register({
   ...input,
+  campaignId: 'nk1-memory-eval-2026-invalid',
+  primaryMetric: 'latency-p95',
+}), /invalid experiment campaign registration/,
+  'a preregistered metric must be implemented by the current ledger evaluator');
+assert.throws(() => registry.register({
+  ...input,
+  campaignId: 'nk1-memory-eval-2026-invalid2',
+  candidateFingerprints: { ...candidateFingerprints, 'candidate-a': 123 },
+}), /candidate fingerprints must cover/,
+  'candidate fingerprints must be actual SHA-256 strings, not coerced values');
+assert.throws(() => registry.register({
+  ...input,
   candidateFingerprints: { ...candidateFingerprints, 'candidate-a': hash('tampered candidate config') },
 }), /different registration/);
 assert.throws(() => registry.register({ ...input, campaignId: 'nk1-memory-eval-2026-02' }),
