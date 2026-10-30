@@ -6,8 +6,8 @@ import {
   type HumanoidRole,
   type HumanoidRetargetProfile,
   type HumanoidRigProfileInput,
-} from "./humanoidRetarget";
-import type { HumanoidBoneNode } from "./threeHumanoidRigSnapshot";
+} from "./humanoidRetarget.ts";
+import type { HumanoidBoneNode } from "./threeHumanoidRigSnapshot.ts";
 
 export interface ThreeHumanoidRetargetOptions {
   sampleRate?: number;
