@@ -120,3 +120,35 @@ test("rejects empty or malformed apply channel claims", async () => {
   assert.equal(result.status, "rolled-back");
   assert.equal(result.reason, "invalid-apply-receipt");
 });
+
+test("rejects blank, duplicate and contradictory channel claims", async () => {
+  const cases = [
+    { acceptedChannels: [" "], rejectedChannels: [] },
+    { acceptedChannels: ["headYaw", "headYaw"], rejectedChannels: [] },
+    { acceptedChannels: ["headYaw"], rejectedChannels: ["headYaw"] },
+  ];
+  for (const channels of cases) {
+    const source = adapter("live");
+    const target = adapter("vrm", { apply: async state => ({
+      adapterId: "vrm", stateRevision: state.revision, appliedAtMonotonicMs: 200,
+      ...channels, executionId: "malformed-channel-claim",
+    }) });
+    const coordinator = new EmbodimentSwitchCoordinator(source);
+    const result = await coordinator.switchTo(target, snapshot);
+    assert.equal(result.status, "rolled-back");
+    assert.equal(result.reason, "invalid-apply-receipt");
+    assert.equal(coordinator.activeAdapterId, "live");
+  }
+});
+
+test("rejects blank or duplicate observed channel claims", async () => {
+  const source = adapter("live");
+  const target = adapter("vrm", { verify: async receipt => ({
+    verified: true, stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    observedChannels: ["headYaw", " "], mismatches: [],
+  }) });
+  const coordinator = new EmbodimentSwitchCoordinator(source);
+  const result = await coordinator.switchTo(target, snapshot);
+  assert.equal(result.status, "rolled-back");
+  assert.equal(coordinator.activeAdapterId, "live");
+});
