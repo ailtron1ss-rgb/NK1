@@ -49,7 +49,7 @@ test("blends expression transitions without overshoot and clamps elapsed time", 
 });
 
 test("applies only available optional morphs and reports missing channels", () => {
-  const node = { morphTargetDictionary: { Blink: 0, viseme_aa: 1, Happy: 2 }, morphTargetInfluences: [0, 0, 0] };
+  const node = { morphTargetDictionary: { Blink: 0, MouthOpen: 1, Happy: 2 }, morphTargetInfluences: [0, 0, 0] };
   const root = { traverse(callback) { callback(node); } };
   const values = resolveDepthRigFacePose({ emotion: "joy", speaking: true, mouthOpen: .6 });
   const result = applyDepthRigFaceMorphs(root, values);
