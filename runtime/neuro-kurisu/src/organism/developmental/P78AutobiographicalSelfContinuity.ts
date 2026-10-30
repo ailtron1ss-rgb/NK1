@@ -33,6 +33,8 @@ export interface P78State {
   verifiedOutcomeSamples:number;
   unverifiedOutcomeSamples:number;
   authorshipEvidenceSamples:number;
+  /** Bounded event-level replay ledger; survives restart to prevent non-adjacent duplicates. */
+  processedEventKeys:string[];
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const boundedText=(value:unknown,max=180)=>String(value??'').replace(/[\\u0000-\\u001f\\u007f]/g,' ').replace(/\\s+/g,' ').trim().slice(0,max);
@@ -41,7 +43,7 @@ const isAuthored=(event:P78Event)=>event.authorship==='self-initiated'||event.au
 export const defaultP78=():P78State=>({
   version:2,chapters:0,samples:0,continuity01:.5,narrativeCoherence01:.5,selfAuthorship01:.5,
   turningPoints:0,recentSummary:'История ещё не содержит подтверждённых автобиографических наблюдений.',
-  chaptersData:[],lastObservationKey:'',verifiedOutcomeSamples:0,unverifiedOutcomeSamples:0,authorshipEvidenceSamples:0
+  chaptersData:[],lastObservationKey:'',verifiedOutcomeSamples:0,unverifiedOutcomeSamples:0,authorshipEvidenceSamples:0,processedEventKeys:[]
 });
 export class P78AutobiographicalSelfContinuity{
   private state=JSON.parse(JSON.stringify(defaultP78())) as P78State;
@@ -56,7 +58,10 @@ export class P78AutobiographicalSelfContinuity{
       lastObservationKey:String(raw.lastObservationKey??''),
       verifiedOutcomeSamples:Math.max(0,Math.floor(Number(raw.verifiedOutcomeSamples)||0)),
       unverifiedOutcomeSamples:Math.max(0,Math.floor(Number(raw.unverifiedOutcomeSamples)||0)),
-      authorshipEvidenceSamples:Math.max(0,Math.floor(Number(raw.authorshipEvidenceSamples)||0))
+      authorshipEvidenceSamples:Math.max(0,Math.floor(Number(raw.authorshipEvidenceSamples)||0)),
+      processedEventKeys:Array.isArray(raw.processedEventKeys)
+        ? [...new Set(raw.processedEventKeys.filter((x):x is string=>typeof x==='string'&&x.length>0&&x.length<=2048))].slice(-512)
+        : []
     };
     for(const key of ['continuity01','narrativeCoherence01','selfAuthorship01'] as const){
       this.state[key]=clamp(Number(this.state[key]));
@@ -64,8 +69,15 @@ export class P78AutobiographicalSelfContinuity{
   }
   snapshot(){return JSON.parse(JSON.stringify(this.state)) as P78State;}
   observe(events:P78Event[]){
-    const recent=events.slice(-16).filter(e=>e&&Number.isFinite(e.tick)&&Number.isFinite(e.at)&&typeof e.action==='string');
+    const candidates=events.slice(-16).filter(e=>e&&Number.isFinite(e.tick)&&Number.isFinite(e.at)&&typeof e.action==='string');
+    const eventKey=(e:P78Event)=>JSON.stringify([
+      e.tick,e.at,boundedText(e.action,48),e.outcome??'',boundedText(e.text,120),boundedText(e.mode,32),
+      e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),e.authorship??'unknown',boundedText(e.episodeId,80)
+    ]);
+    const seen=new Set(this.state.processedEventKeys);
+    const recent=candidates.filter(e=>{const key=eventKey(e);if(seen.has(key))return false;seen.add(key);return true;});
     if(!recent.length)return this.snapshot();
+    this.state.processedEventKeys=[...this.state.processedEventKeys,...recent.map(eventKey)].slice(-512);
     const observationKey=recent.map(e=>[
       e.tick,e.at,boundedText(e.action,48),e.outcome??'',boundedText(e.text,120),boundedText(e.mode,32),
       e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),e.authorship??'unknown',boundedText(e.episodeId,80)
