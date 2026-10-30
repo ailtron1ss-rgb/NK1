@@ -1,0 +1,211 @@
+import assert from 'node:assert/strict';
+import { EmotionAppraisalEngine } from '../src/organism/system/EmotionAppraisalEngine.ts';
+import { IntrinsicMotivationEngine } from '../src/organism/cognition/IntrinsicMotivationEngine.ts';
+import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+
+const baseAppraisal = {
+  tick: 1, at: 1001, goalPressure01: .42, goalCongruence01: .64,
+  controllability01: .72, novelty01: .52, selfRelevance01: .63,
+  socialMeaning01: .34, uncertainty01: .31, predictionError01: .18,
+  homeostaticPressure01: .22, energy01: .76, success01: .68,
+};
+
+const baselineEngine = new EmotionAppraisalEngine();
+const baseline = baselineEngine.appraise(baseAppraisal);
+const modulatedEngine = new EmotionAppraisalEngine();
+const modulated = modulatedEngine.appraise({
+  ...baseAppraisal,
+  modulators: {
+    personality: { curiosity01: .95, caution01: .72, care01: .82, persistence01: .88, confidence01: .95 },
+    mood: { valence01: .78, arousal01: .68, confidence01: .8 },
+    cognitive: { load01: .25, confidence01: .9 },
+    social: { relevance01: .8, normConflict01: .15, confidence01: .7 },
+  },
+});
+assert.ok(modulated.appraisal.novelty01 > baseline.appraisal.novelty01,
+  'high-confidence curiosity trait should modestly increase novelty appraisal');
+assert.ok(modulated.appraisal.socialMeaning01 > baseline.appraisal.socialMeaning01,
+  'care/social relevance should influence social appraisal');
+assert.ok(modulated.arousal01 > baseline.arousal01,
+  'mood arousal should modulate appraisal without replacing its base signals');
+assert.equal(modulated.modulators?.personality.confidence01, .95,
+  'the appraisal must preserve its normalized influence provenance');
+
+const noConfidenceEngine = new EmotionAppraisalEngine();
+const noConfidence = noConfidenceEngine.appraise({
+  ...baseAppraisal,
+  modulators: {
+    personality: { curiosity01: 1, caution01: 1, care01: 1, persistence01: 1, confidence01: 0 },
+    mood: { valence01: 1, arousal01: 1, confidence01: 0 },
+    cognitive: { load01: 1, confidence01: 0 },
+    social: { relevance01: 1, normConflict01: 1, confidence01: 0 },
+  },
+});
+assert.equal(noConfidence.appraisal.novelty01, baseline.appraisal.novelty01,
+  'untrusted personality signals must not steer appraisal');
+assert.equal(noConfidence.arousal01, baseline.arousal01,
+  'untrusted mood signals must not steer appraisal');
+const beforeInvalidModulator = noConfidenceEngine.snapshot();
+assert.throws(() => noConfidenceEngine.appraise({
+  ...baseAppraisal, tick: 2,
+  modulators: { personality: { curiosity01: 1.4, confidence01: 1 } },
+}), /emotion-appraisal-modulators-personality-invalid/);
+assert.deepEqual(noConfidenceEngine.snapshot(), beforeInvalidModulator,
+  'invalid modulators must not mutate appraisal state');
+
+// A decision episode receives exactly one durable outcome credit. The same receipt
+// can be replayed after a retry/restart, but it cannot be rebound or pay twice.
+const receiptEngine = new EmotionAppraisalEngine();
+const decision = receiptEngine.appraise({
+  tick: 10, at: 10_010, novelty01: .8, uncertainty01: .55,
+  predictionError01: .2, goalPressure01: .5, homeostaticPressure01: .2,
+  success01: .7, controllability01: .7,
+});
+const firstCredit = receiptEngine.recordOutcome({
+  emotionId: decision.id, outcomeId: 'receipt:tick-10:decision-1',
+  action: 'explore', success01: .9, surprise01: .1, regulationCost01: .2,
+});
+assert.equal(firstCredit.attempts, 1);
+const afterFirstCredit = receiptEngine.snapshot();
+const replayCredit = receiptEngine.recordOutcome({
+  emotionId: decision.id, outcomeId: 'receipt:tick-10:decision-1',
+  action: 'explore', success01: .9, surprise01: .1, regulationCost01: .2,
+});
+assert.deepEqual(replayCredit, firstCredit);
+assert.deepEqual(receiptEngine.snapshot(), afterFirstCredit,
+  'a duplicate receipt must not increment global or contextual outcome calibration');
+assert.throws(() => receiptEngine.recordOutcome({
+  emotionId: decision.id, outcomeId: 'receipt:tick-10:decision-1',
+  action: 'explore', success01: .1, surprise01: .9, regulationCost01: .9,
+}), /emotion-outcome-replay-conflict/);
+assert.deepEqual(receiptEngine.snapshot(), afterFirstCredit,
+  'a conflicting duplicate receipt must not mutate the calibration');
+assert.throws(() => receiptEngine.recordOutcome({
+  emotionId: decision.id, outcomeId: 'receipt:tick-10:decision-2',
+  action: 'explore', success01: .9, surprise01: .1, regulationCost01: .2,
+}), /emotion-outcome-episode-already-credited/);
+const receiptRestored = new EmotionAppraisalEngine();
+receiptRestored.restore(afterFirstCredit);
+assert.deepEqual(receiptRestored.snapshot(), afterFirstCredit,
+  'outcome idempotency receipts must survive state restore');
+receiptRestored.recordOutcome({
+  emotionId: decision.id, outcomeId: 'receipt:tick-10:decision-1',
+  action: 'explore', success01: .9, surprise01: .1, regulationCost01: .2,
+});
+assert.deepEqual(receiptRestored.snapshot(), afterFirstCredit,
+  'a receipt replay after restart must remain a no-op');
+
+// Affective state now changes internal drive values, not just diagnostic labels.
+const motivationInput = {
+  uncertainty: .4, predictionError: .3, novelty: .4, goalPressure: .4,
+  socialNeed: .25, energy: .6, lastSuccess: .5, worldEvidenceQuality: .7,
+  homeostaticPressure01: .7,
+};
+const motivation = new IntrinsicMotivationEngine();
+const curiousDrive = motivation.update({
+  ...motivationInput,
+  affect: { emotionId: 'emo-curious', label: 'curiosity', valence01: .62, arousal01: .7, dominance01: .5, confidence01: 1 },
+});
+const anxiousDrive = motivation.update({
+  ...motivationInput,
+  affect: { emotionId: 'emo-anxious', label: 'anxiety', valence01: .25, arousal01: .85, dominance01: .2, confidence01: 1 },
+});
+assert.ok(curiousDrive.novelty > anxiousDrive.novelty,
+  'curiosity should open exploration while anxiety shifts drive toward regulation');
+assert.ok(anxiousDrive.homeostatic > curiousDrive.homeostatic,
+  'anxiety and interoceptive pressure should increase restorative/homeostatic drive');
+assert.equal(anxiousDrive.affectiveInfluence.emotionId, 'emo-anxious');
+for (const key of ['epistemic', 'novelty', 'competence', 'coherence', 'social', 'homeostatic', 'overall']) {
+  assert.ok(Number.isFinite(anxiousDrive[key]) && anxiousDrive[key] >= 0 && anxiousDrive[key] <= 1,
+    `affective motivation ${key} must remain finite and bounded`);
+}
+const motivationRestore = new IntrinsicMotivationEngine();
+motivationRestore.restore(anxiousDrive);
+assert.deepEqual(motivationRestore.snapshot(), anxiousDrive,
+  'affective influence diagnostics must survive intrinsic-drive restore');
+
+// Verify the actual OrganismCore path: appraisal → motivation → action trace →
+// outcome receipt. The post-outcome feeling must not steal credit from the
+// pre-action episode that influenced the decision.
+const core = new OrganismCore(new MemoryStateStore(), {
+  enableLanguage: false,
+  performanceProfile: 'mobile',
+  checkpointMinIntervalMs: 0,
+  checkpointMaxDirtyCycles: 1,
+});
+await core.init();
+try {
+  await core.observe({
+    text: '',
+    novelty: .76,
+    surprise: .35,
+    success: .62,
+    embodiment: {
+      bodyEnergy01: .72, cognitiveCapacity01: .84, thermalStrain01: .18,
+      sensoryFreshness01: .94, awake: true, battery01: .78,
+      cpuLoad01: .18, ramPressure01: .18,
+    },
+    worldContext: {
+      location: 'lab', facts: ['stable battery', 'sensor calibration'],
+      objects: ['sensor', 'power system'], events: ['calibration completed'],
+      energy: .72, attention: .84, uncertainty: .35,
+    },
+  }, 'operational');
+  const decisionSnapshot = core.emotionAppraisalSnapshot();
+  const decisionEmotion = decisionSnapshot.history?.[0];
+  assert.ok(decisionEmotion, 'the live OrganismCore cycle must create a decision appraisal');
+  const beforeFeedback = core.snapshot();
+  const intrinsic = beforeFeedback.facets?.consciousness?.intrinsic;
+  assert.ok(intrinsic?.affectiveInfluence,
+    'live intrinsic motivation must expose its affective influence');
+  assert.equal(intrinsic.affectiveInfluence.emotionId, decisionEmotion.id,
+    'intrinsic drives must consume the exact canonical appraisal from this cycle');
+  assert.equal(intrinsic.affectiveInfluence.label, decisionEmotion.label);
+
+  await core.feedback({
+    success: .86, reward: .62, surprise: .14, evidenceSource: 'internal',
+  });
+  const afterFeedback = core.emotionAppraisalSnapshot();
+  const receipts = Object.entries(afterFeedback.outcomeReceipts ?? {});
+  const linkedReceipts = receipts.filter(([, receipt]) => receipt.emotionId === decisionEmotion.id);
+  assert.equal(linkedReceipts.length, 1,
+    'the feedback outcome must credit the pre-action emotion episode exactly once');
+  assert.ok(linkedReceipts[0][0].startsWith('affect:'),
+    'the runtime must use a stable trace-derived idempotency key');
+  assert.ok(afterFeedback.history.some(item => item.id === decisionEmotion.id),
+    'the decision appraisal must remain available after the post-outcome appraisal');
+  assert.notEqual(afterFeedback.history[0]?.id, decisionEmotion.id,
+    'post-outcome appraisal must be a separate episode, not overwrite decision-time context');
+  const persistedCore = core.snapshot();
+  assert.ok(persistedCore.facets?.consciousness?.intrinsic?.affectiveInfluence?.emotionId === decisionEmotion.id,
+    'the decision-time affect-to-drive provenance must survive the public core snapshot');
+} finally {
+  core.stop?.();
+}
+
+console.log(JSON.stringify({
+  status: 'PASS',
+  pass: 'workpass289-affective-motivation-causality',
+  appraisal: {
+    baselineNovelty: baseline.appraisal.novelty01,
+    modulatedNovelty: modulated.appraisal.novelty01,
+    baselineArousal: baseline.arousal01,
+    modulatedArousal: modulated.arousal01,
+  },
+  receipts: {
+    idempotentReplay: true,
+    conflictingReplayRejected: true,
+    episodeDoubleCreditRejected: true,
+  },
+  drives: {
+    curiousNovelty: curiousDrive.novelty,
+    anxiousNovelty: anxiousDrive.novelty,
+    anxiousHomeostatic: anxiousDrive.homeostatic,
+  },
+  runtime: {
+    decisionEmotionId: decisionEmotion.id,
+    creditedReceipts: linkedReceipts.length,
+    affectiveDriveLinked: true,
+  },
+}, null, 2));
