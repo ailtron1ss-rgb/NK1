@@ -31,7 +31,7 @@ The runtime keeps model clips and VRMA clips separately:
 - vrmaDefaultClip: fallback if no semantic action alias matches;
 - clips: combined inspection/selection list.
 
-Action-based selection prefers a VRMA clip whose name maps to the organism action (respond, explore, verify, reflect, rest, wait), then an embedded model clip, then the imported VRMA default. Naming the file or its animation entries with these action words gives deterministic selection. The VRMA can be reused with another VRM because the official clip compiler resolves normalized avatar bones at import time.
+Action-based selection prefers a VRMA clip whose name maps to the organism action (respond, explore, verify, reflect, rest, wait), then an embedded model clip, then the imported VRMA default. Naming the file or its animation entries with these action words gives deterministic selection. The VRMA can be reused with another VRM because the official clip compiler resolves normalized avatar bones at import time. The selector deliberately does not use an idle clip as an early fallback for a sidecar source: an unrelated VRMA idle must never mask a matching embedded model action. Idle fallback is considered only after exact action matches in both sources and the explicit sidecar default.
 
 A dedicated AnimationMixer now exists for every successfully loaded VRM, including characters with zero embedded animations. This fixes the previous silent failure mode where a sidecar clip could be parsed but there was no mixer to play it.
 
