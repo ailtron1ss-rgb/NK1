@@ -176,3 +176,7 @@ NK1 Original теперь получает тот же `FacialMicrochannels` sna
 - Добавлен мост для VRM 1.0 `VRMC_vrm.expressions.preset` и VRM 0.x `VRM.blendShapeMaster.blendShapeGroups`: привязки разрешаются по индексам node/mesh из GLTFLoader associations, а не по угаданным именам.
 - Поддержаны взвешенные каналы joy/happy, sadness/sorrow, anger, blink, aa и oh/ou; legacy-веса 0–100 нормализуются. Неизвестные пресеты и некорректные индексы игнорируются.
 - Общий порядок кадра сохранён: baseline → authored AnimationMixer → сглаженный NK1 semantic/VRM overlay. Это не заменяет полноценные VRM humanoid, look-at и spring-bone runtime.
+
+
+### VRM humanoid roles
+Для VRM 1.0 и VRM 0.x добавлено разрешение стандартных humanoid role → node index → Three.js Bone через GLTFLoader associations. Приоритет отдан официальной роли `head`/`neck`/`spine`/`leftUpperArm`/`rightUpperArm`, поэтому моторный адаптер больше не зависит только от авторских имён костей. Для обычного GLB сохраняется прежний best-effort name fallback. Look-at и spring-bone симуляция не заявляются как реализованные.
