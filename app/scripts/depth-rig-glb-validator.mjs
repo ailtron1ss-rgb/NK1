@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 const GLB_MAGIC = 0x46546c67;
 const JSON_CHUNK = 0x4e4f534a;
+const TRANSFORM_EPSILON = 1e-5;
 
 export function readGlbJson(input) {
   const buffer = Buffer.isBuffer(input) ? input : Buffer.from(input);
@@ -25,6 +26,35 @@ export function readGlbJson(input) {
   throw new Error("missing-glb-json-chunk");
 }
 
+function nearArray(actual, expected, epsilon = TRANSFORM_EPSILON) {
+  return Array.isArray(actual) && actual.length === expected.length
+    && actual.every((value, index) => Number.isFinite(value) && Math.abs(value - expected[index]) <= epsilon);
+}
+
+function quaternionFromEulerXYZ(euler) {
+  const [x, y, z] = euler.map((value) => value / 2);
+  const c1 = Math.cos(x), c2 = Math.cos(y), c3 = Math.cos(z);
+  const s1 = Math.sin(x), s2 = Math.sin(y), s3 = Math.sin(z);
+  return [
+    s1 * c2 * c3 + c1 * s2 * s3,
+    c1 * s2 * c3 - s1 * c2 * s3,
+    c1 * c2 * s3 + s1 * s2 * c3,
+    c1 * c2 * c3 - s1 * s2 * s3,
+  ];
+}
+
+function sameQuaternion(actual, expected, epsilon = TRANSFORM_EPSILON) {
+  if (!Array.isArray(actual) || actual.length !== 4 || !actual.every(Number.isFinite)) return false;
+  const normalized = (value) => {
+    const length = Math.hypot(...value);
+    return length > 1e-8 ? value.map((part) => part / length) : null;
+  };
+  const a = normalized(actual), b = normalized(expected);
+  if (!a || !b) return false;
+  return a.every((value, index) => Math.abs(value - b[index]) <= epsilon)
+    || a.every((value, index) => Math.abs(value + b[index]) <= epsilon);
+}
+
 export function validateDepthRigGlb(input) {
   const errors = [];
   let gltf;
@@ -42,15 +72,19 @@ export function validateDepthRigGlb(input) {
     return { ok: false, errors: [...new Set(errors)] };
   }
 
-  const names = new Set((gltf.nodes ?? []).map((node) => node?.name).filter((name) => typeof name === "string"));
+  const nodes = gltf.nodes ?? [];
+  const names = new Set(nodes.map((node) => node?.name).filter((name) => typeof name === "string"));
   const ids = new Set();
   const parents = new Map();
   const gltfParents = new Map();
-  for (const [parentIndex, gltfNode] of (gltf.nodes ?? []).entries()) {
+  for (const [parentIndex, gltfNode] of nodes.entries()) {
     for (const childIndex of gltfNode?.children ?? []) {
-      const childName = gltf.nodes?.[childIndex]?.name;
+      const childName = nodes[childIndex]?.name;
       const parentName = gltfNode?.name;
-      if (typeof childName === "string" && typeof parentName === "string") gltfParents.set(childName, parentName);
+      if (typeof childName === "string" && typeof parentName === "string") {
+        if (gltfParents.has(childName)) errors.push("multiple-gltf-parents:" + childName);
+        gltfParents.set(childName, parentName);
+      }
     }
   }
   for (const node of manifest.nodes) {
@@ -61,16 +95,26 @@ export function validateDepthRigGlb(input) {
     if (ids.has(node.id)) errors.push("duplicate-node:" + node.id);
     ids.add(node.id);
     if (!names.has(node.id)) errors.push("missing-glb-node:" + node.id);
-    if (node.parentId !== null && typeof node.parentId !== "string") errors.push("invalid-parent:" + node.id);
-    if (typeof node.parentId === "string") {
-      parents.set(node.id, node.parentId);
-      if (gltfParents.get(node.id) !== node.parentId) errors.push("parent-mismatch:" + node.id);
-    }
+    const actualParent = gltfParents.get(node.id) ?? null;
+    if ((node.parentId ?? null) !== actualParent) errors.push("parent-mismatch:" + node.id);
+    if (node.parentId !== null && node.parentId !== undefined && typeof node.parentId !== "string") errors.push("invalid-parent:" + node.id);
+    if (typeof node.parentId === "string") parents.set(node.id, node.parentId);
     if (!Array.isArray(node.position) || node.position.length !== 3 || !node.position.every(Number.isFinite)) errors.push("invalid-position:" + node.id);
     if (!Array.isArray(node.pivot) || node.pivot.length !== 2 || !node.pivot.every(Number.isFinite)) errors.push("invalid-pivot:" + node.id);
     if (!Array.isArray(node.rotation) || node.rotation.length !== 3 || !node.rotation.every(Number.isFinite)) errors.push("invalid-rotation:" + node.id);
     if (!Number.isFinite(node.depth) || node.depth < -1 || node.depth > 1) errors.push("invalid-depth:" + node.id);
     if (!Number.isFinite(node.parallax) || node.parallax < 0 || node.parallax > 2) errors.push("invalid-parallax:" + node.id);
+
+    const gltfNode = nodes.find((entry) => entry?.name === node.id);
+    if (gltfNode) {
+      if (gltfNode.matrix) errors.push("matrix-transform-not-supported:" + node.id);
+      else {
+        const translation = gltfNode.translation ?? [0, 0, 0];
+        const rotation = gltfNode.rotation ?? [0, 0, 0, 1];
+        if (!nearArray(node.position, translation)) errors.push("position-mismatch:" + node.id);
+        if (!Array.isArray(node.rotation) || !sameQuaternion(rotation, quaternionFromEulerXYZ(node.rotation))) errors.push("rotation-mismatch:" + node.id);
+      }
+    }
   }
   for (const [id, parentId] of parents) {
     if (!ids.has(parentId)) errors.push("missing-parent:" + id);
