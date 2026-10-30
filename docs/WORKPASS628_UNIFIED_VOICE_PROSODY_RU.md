@@ -68,3 +68,20 @@ The contract is provider-neutral and names a native TTS provider, but the native
 - На HEAD `94ea1495df92b24151b16a8d9967bfb103c8c8cd` получены шесть завершённых успешных GitHub Actions workflow, включая `NeuroCore core regression validation` (run `41026176662`).
 - Таким образом, ранее упавший тест отрицательного высоко-arousal аффекта прошёл в новом запуске CI вместе с пятью другими связанными workflow. Это подтверждает соответствующие hosted regression gates на данном HEAD, но не заменяет локальный полный app build, браузерный E2E, Android/Termux audio capture или акустическое измерение lip-sync.
 - Native event sink остаётся следующим архитектурным шагом: текущий gateway передаёт executor-у только execution identity/idempotency metadata и возвращает финальный результат. Промежуточные callback-события нельзя протащить через durable JSON receipt как обычные данные; для них нужен отдельный process-local event channel с жёсткой привязкой к execution/utterance ID и фильтрацией поздних событий.
+
+
+## Native Termux provider event channel — implementation
+
+Добавлен `NativeSpeechEventChannel` как process-local канал наблюдаемости провайдера. `AndroidEmbodimentBridge` публикует события с привязкой к operation ID:
+
+- `command-requested` — NK1 передал команду в Termux bridge;
+- `process-spawned` — Node подтвердил создание процесса;
+- `process-exited` — процесс завершился, с exit code/signal и причиной;
+- `process-error` — ошибка создания/работы процесса;
+- `interrupt-requested` и `interrupt-unconfirmed` — запрос остановки процесса и отсутствие подтверждения playback state.
+
+Каждое событие имеет собственный event ID, sequence внутри operation ID и monotonic timestamp. Подписчики изолированы: исключение наблюдателя не меняет результат TTS. Канал ограничивает память таблицы последовательностей 256 operation ID.
+
+**Критически важно:** это не события воспроизведения и не `SpeechLifecycleEventV1`. Поле `playbackVerified` всегда равно `false`; `process-spawned` не означает, что Android TTS начал выдавать звук, а `process-exited` не означает, что звук закончился. Канал пока локален процессу runtime и ещё не доставляется в браузерный/Live2D viewer. Для полной синхронизации следующий шаг — явный host-to-UI transport с сохранением operation/utterance identity, а затем независимый playback/audio clock source; нельзя подменять их process events.
+
+Добавлен тестовый набор `test:workpass628:native-speech-events` для порядка и изоляции operation ID, монотонного времени, безопасных подписчиков/unsubscribe и запрета трактовать process events как playback evidence. Hosted CI для новых коммитов ещё не подтверждён.
