@@ -20,6 +20,8 @@ export * from './memory/MultiTimescaleMemory.ts';
 export * from './memory/AutobiographicalMemory.ts';
 export * from './body/EmbodiedBody.ts';
 export * from './body/EmbodimentRuntime.ts';
+export * from './body/OrganismMotorRuntime.ts';
+export * from './system/MotorRigProfile.ts';
 export * from './body/AndroidEmbodimentBridge.ts';
 export * from './language/LanguageOrgan.ts';
 export * from './language/KurisuCanonProfile.ts';

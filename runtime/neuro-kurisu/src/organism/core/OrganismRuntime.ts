@@ -11,6 +11,7 @@ import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvok
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
+import { OrganismMotorRuntime } from '../body/OrganismMotorRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
@@ -145,6 +146,8 @@ export class OrganismRuntime {
   readonly consolidation = new OfflineConsolidation();
   readonly counterfactuals = new CounterfactualEngine(this.environment);
   readonly embodiment = new EmbodimentRuntime();
+  /** Single owner of canonical renderer-neutral MotorFrame execution. */
+  readonly motor = new OrganismMotorRuntime();
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
@@ -376,6 +379,30 @@ export class OrganismRuntime {
     });
   }
 
+  /** Configure the one canonical motor skeleton from a calibrated avatar profile. */
+  configureMotorSkeleton(definitions: readonly import('../system/EmbodiedMotorController.ts').JointDefinition[]): void {
+    this.motor.configureSkeleton(definitions);
+    this.motor.startContinuous(50);
+  }
+
+  /** Submit a goal only after the upstream cognitive/action/ethical gate has approved it. */
+  submitApprovedMotorGoal(
+    goal: import('../system/EmbodiedMotorController.ts').MotorGoal,
+    monotonicNowMs = performance.now(),
+  ): { accepted: boolean; reason: string } {
+    return this.motor.submitApprovedGoal(goal, monotonicNowMs);
+  }
+
+  /** Renderer adapters subscribe to the bounded latest-value MotorFrame channel. */
+  subscribeMotorFrames(
+    listener: (frame: import('../system/EmbodiedMotorController.ts').MotorFrame) => void,
+    replayLatest = true,
+  ): () => void {
+    return this.motor.subscribe(listener, replayLatest);
+  }
+
+  motorFrameSnapshot() { return this.motor.latestFrame(); }
+
   /** B368: explicit endogenous cycle with no external command. */
   async autonomousStep(options: { deliberate?: boolean } = { deliberate: false }): Promise<RuntimeStep> {
     return this.step(undefined, { deliberate: false, ...options });
@@ -411,6 +438,8 @@ export class OrganismRuntime {
         const previousTick = this.core.operationalStatusSnapshot().tick;
         const previousProcessed = this.continuousCognitiveFabric.diagnostics().processed;
         const result = await this.stepInternal(externalText, options);
+        // Motor progression is owned by the independent bounded motor clock, not by
+        // the slower cognitive-cycle cadence. Cognitive decisions never synthesize goals.
         const fabric = this.continuousCognitiveFabric.diagnostics();
         this.runtimeClosure.step({
           at: Date.now(),
@@ -1524,6 +1553,7 @@ export class OrganismRuntime {
     // stores to persist the final in-memory cycle.  On mobile this is especially
     // dangerous because checkpoint cadence is deliberately throttled.
     this.stopping = true;
+    this.motor.stopContinuous();
     this.clockScheduler.stop();
     await this.clockScheduler.drain();
     await this.trustedShadowLearningScheduler?.drain();

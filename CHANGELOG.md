@@ -1,3 +1,59 @@
+## [NK1][Aspect 13] Add renderer-neutral motor-rig profiles (2026-10-30)
+
+- Add a versioned body calibration profile for Live2D, layered 2.5D and VRM3D with 62 stable canonical joint roles, explicit units, renderer bindings, per-joint limits and topology validation.
+- Add X/Y/Z component binding for spatial nodes/bones; Live2D channels are explicitly approximate Cubism parameters, never advertised as free skeletal joints.
+- Compile profiles into the existing EmbodiedMotorController and FK/IK joint schemas; project MotorFrames into renderer command batches with fail-closed calibration and capability checks.
+- Bind the active production profile to OrganismMotorRuntime and expose the selected renderer/profile in diagnostics. No renderer application is claimed until an adapter returns measured readback evidence.
+- Add profile validation and runtime integration regressions to the motor-controller workflow.
+
+## [NK1][Embodiment] Stream MotorFrames to renderers with bounded backpressure (2026-10-30)
+
+- Add `GET /api/organism/motor-frame/stream` as a read-only server-sent event stream backed by the canonical MotorFrameChannel subscription.
+- Send only server-produced frames; replay the latest snapshot on connection, include a compact configured/has-frame status event, and send bounded keep-alive comments.
+- Coalesce writes while the response is backpressured so a slow renderer retains only the latest pending frame instead of building an unbounded output queue.
+- Dispose the channel subscription and heartbeat on response close/abort. Keep the ordinary JSON snapshot endpoint for diagnostics and non-stream clients.
+- Add a server smoke test for the stream content type and fail-closed unconfigured status. This does not claim a calibrated production skeleton or actual renderer pose application.
+
+## [NK1][Embodiment] Decouple motor integration from cognitive cadence (2026-10-30)
+
+- Add an explicitly started, bounded 20 Hz monotonic motor loop to the organism-owned motor composition; the loop advances the one canonical controller and publishes its latest frame independently of slow cognitive cycles.
+- Start the loop only after a calibrated skeleton is explicitly configured, stop it on reconfiguration and runtime shutdown, and expose bounded loop diagnostics.
+- Preserve the goal-authority boundary: continuous stepping does not synthesize goals; only already-approved upstream MotorGoals can move joints.
+- Add timer regression coverage for independent ticks, clean stop and zero loop errors; extend the HTTP diagnostics smoke contract.
+- This enables continuous progression of an approved goal but does not claim autonomous goal genesis, production Kurisu calibration, or renderer/device readback.
+
+## [NK1][Embodiment] Expose read-only MotorFrame HTTP bridge (2026-10-30)
+
+- Add `GET /api/organism/motor-frame` as a bounded read-only snapshot of the organism-owned canonical MotorFrame channel and diagnostics.
+- Return an explicit unconfigured/null frame until a calibrated skeleton exists; never synthesize a pose or accept client-authored motor frames.
+- Extend server smoke coverage for the fail-closed unconfigured contract and include the server gate in the dedicated motor workflow.
+- This closes the backend read boundary only. Skeleton configuration, live frame production, browser delivery and renderer readback remain separate gates.
+
+## [NK1][Embodiment] Connect organism runtime to canonical MotorFrame channel (2026-10-30)
+
+- Add an organism-owned motor runtime composition around the single canonical EmbodiedMotorController and bounded MotorFrameChannel.
+- Expose explicit skeleton configuration, approved-goal submission, frame subscription and latest-frame snapshot through OrganismRuntime.
+- Advance configured motor state on an independent bounded 20 Hz monotonic loop; stop it at the runtime durability/shutdown boundary and publish no frames until a calibrated skeleton is configured.
+- Preserve the safety boundary: no goals are synthesized from emotion, gaze, speech, UI state or simulated world actions. The upstream action/ethical gate must supply an already-approved MotorGoal.
+- Add focused regression coverage for unconfigured fail-closed behavior, idle/no-fabricated-goal semantics, approved-goal movement, defensive frame snapshots and monotonic-clock enforcement.
+- Renderer/device readback, calibrated Kurisu skeleton profiles and endogenous cognitive motor-goal generation remain pending.
+
+## [NK1][Aspect 06] Add bounded MotorFrame transport channel (2026-10-30)
+
+- Add a renderer-neutral, single-slot MotorFrame channel with strict frame validation, monotonic tick/time checks, defensive snapshots, bounded subscriptions, optional explicit replay, and listener exception isolation.
+- Keep only the latest frame so slow avatar renderers cannot accumulate an unbounded pose backlog.
+- Add focused regressions and a dedicated Node 24 CI step. This validates transport semantics only; it does not claim live avatar/VRM execution or visual postcondition readback.
+
+## Unreleased
+
+- Add bounded multi-effector 3D position IK: solve up to six end-effector targets together with a shared task-space DLS Jacobian, coordinated shared joints, per-target residuals, and explicit limit/singularity outcomes.
+
+# Unreleased
+
+- [NK1][Embodiment] Added bounded six-dimensional damped-least-squares 3D pose IK: solve end-effector position and quaternion orientation together, report separate residuals, respect joint limits and terminate explicitly when the chain stalls at a limit/singularity. Added four focused wrist-pose regressions and included the suite in the dedicated Node 24 CI gate. Renderer/device integration, contact dynamics and physical pose observation remain pending.
+
+- [NK1][Embodiment] Added renderer-neutral 3D skeletal kinematics with quaternion forward transforms and bounded damped-least-squares position IK for contiguous multi-joint chains, alongside the bounded joint motor controller, priority-aware goal interruption, snapshot recovery, planar two-bone IK, acceleration/jerk-limited joint trajectories and basal-ganglia/cerebellar motor-goal arbitration. Hardened motor learning to accept only the exact process-local `OutcomeVerificationService` external-postcondition receipt bound to tool, full input, execution and decision; caller-supplied verification booleans and serialized receipt copies are rejected, with goal/evidence replay protection. Added focused regressions for acceleration/jerk limits and trusted receipt provenance, plus focused 3D FK/IK regressions and a dedicated CI step, plus the Aspect 06 plan. Full 3D dynamics, autonomous goal genesis, real renderer/device postcondition production and Live2D/2.5D/VRM adapters remain pending.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
