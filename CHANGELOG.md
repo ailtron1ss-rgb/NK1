@@ -1,3 +1,10 @@
+## [WorkPass636] Three.js humanoid rig snapshots — 2026-10-30
+
+- Added a Three.js runtime adapter that captures semantic humanoid rest-local and shared-frame rest-world rotations, bone lengths, node indices, and rig height after updating world matrices.
+- Added deterministic regression coverage for frame-relative axis capture, rig dimensions, and duplicate semantic roles; registered `test:avatar-three-humanoid-snapshot`.
+- This is a rig-snapshot integration seam, not a completed cross-rig animation player. Embedded GLTF source-clip sampling, target track generation, IK/contact, and real browser/Android E2E remain pending.
+- Pixiv-compiled VRMA clips remain on the existing `createVRMAnimationClip(animation, activeVrm)` path and must not receive a second custom retarget pass.
+
 ## [NK1][WorkPass635] Calibrate humanoid retargeting across local-axis conventions (2026-10-30)
 
 - Extend the data-only humanoid retarget profile with optional source/target world-rest orientations expressed in one shared coordinate frame.
