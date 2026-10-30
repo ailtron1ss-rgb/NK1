@@ -91,6 +91,41 @@ export function validateWardrobePackManifest(manifest: WardrobePackManifest): Wa
   return { valid: errors.length === 0, errors, totalBytes };
 }
 
+export interface WardrobeAssetByteVerification {
+  valid: boolean;
+  reason: "verified" | "size-mismatch" | "hash-mismatch" | "crypto-unavailable" | "invalid-input";
+  actualBytes: number;
+  actualSha256?: string;
+}
+
+/**
+ * Verify downloaded/local bytes against the manifest declaration.
+ * Web Crypto keeps this usable in browsers and supported Node runtimes.
+ * License/provenance review remains a separate activation gate.
+ */
+export async function verifyWardrobeAssetBytes(
+  asset: Pick<WardrobePackAsset, "bytes" | "sha256">,
+  input: ArrayBuffer | Uint8Array,
+  cryptoProvider: Pick<Crypto, "subtle"> | undefined = globalThis.crypto,
+): Promise<WardrobeAssetByteVerification> {
+  if (!asset || !Number.isSafeInteger(asset.bytes) || asset.bytes <= 0 || !SHA256.test(asset.sha256 ?? "")) {
+    return { valid: false, reason: "invalid-input", actualBytes: 0 };
+  }
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  if (bytes.byteLength !== asset.bytes) {
+    return { valid: false, reason: "size-mismatch", actualBytes: bytes.byteLength };
+  }
+  if (!cryptoProvider?.subtle) {
+    return { valid: false, reason: "crypto-unavailable", actualBytes: bytes.byteLength };
+  }
+  const digest = await cryptoProvider.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer);
+  const actualSha256 = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+  if (actualSha256.toLowerCase() !== asset.sha256.toLowerCase()) {
+    return { valid: false, reason: "hash-mismatch", actualBytes: bytes.byteLength, actualSha256 };
+  }
+  return { valid: true, reason: "verified", actualBytes: bytes.byteLength, actualSha256 };
+}
+
 export interface WardrobeSwitchRequest {
   requestId: string;
   fromOutfitId: string;
