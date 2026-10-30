@@ -1,3 +1,15 @@
+## [NK1][Embodiment] Integrate canonical motor runtime, 3D IK and bounded MotorFrame transport (2026-10-30)
+
+- Added one organism-owned renderer-neutral motor controller, validated skeleton topology, joint limits and bounded angle/velocity/acceleration/jerk integration.
+- Added priority-aware approved motor-goal arbitration, exact verified-outcome receipt binding, safe interruption/cancel and defensive snapshot restoration.
+- Added canonical MotorFrameChannel with monotonic tick/time validation, bounded latest-value publication, replay and listener isolation.
+- Added a versioned renderer motor-rig profile with stable semantic joint roles, calibration/capability validation and explicit mapping into Live2D/2.5D/VRM renderer command channels.
+- Added quaternion 3D forward kinematics, damped-least-squares position IK, combined position/orientation pose IK and shared multi-effector IK with explicit non-convergence.
+- Wired OrganismRuntime as the sole motor owner. Only already-approved upstream motor goals may move joints; no goal is synthesized from emotion, speech, UI or ambient state.
+- Added a bounded 20 Hz motor loop, runtime shutdown cleanup and read-only JSON/SSE MotorFrame endpoints with bounded backpressure and fail-closed unconfigured state.
+- Added focused motor/IK/rig-profile/runtime/server regressions, a dedicated Node 24 workflow and Russian engineering notes.
+- This is the canonical controller substrate, not proof of a production-calibrated Kurisu skeleton or rendered body movement. Live2D/2.5D/VRM adapter application, measured pose readback, autonomous motor-goal genesis, device E2E and 24–72h soak remain open gates.
+
 ## [NK1][Security] Add governed tool input/output contracts (2026-10-30)
 
 - Add a bounded JSON-schema-inspired contract validator at the canonical ActionGateway, with validation before approval consumption and executor entry.

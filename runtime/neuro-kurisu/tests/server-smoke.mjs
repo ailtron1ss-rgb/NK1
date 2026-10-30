@@ -69,6 +69,22 @@ try {
     throw new Error(`server did not become healthy within ${readiness.elapsedMs}ms after ${readiness.attempts} probes (${exit}; lastProbe=${readiness.lastError || 'none'}): ${output.slice(-500)}`);
   }
   const root=await (await fetch(`http://127.0.0.1:${port}/`)).text(); if(!root.includes('Neuro‑Kurisu') && root.includes('Unified Organism')) throw new Error('UI release marker mismatch');
+  const motorFrameResponse=await fetch(`http://127.0.0.1:${port}/api/organism/motor-frame`);
+  const motorFrame=await motorFrameResponse.json();
+  if(!motorFrameResponse.ok || motorFrame.ok!==true || motorFrame.configured!==false || motorFrame.frame!==null || motorFrame.readOnly!==true || motorFrame.diagnostics?.channel?.hasLatest!==false || motorFrame.diagnostics?.continuousLoopRunning!==false) throw new Error(`motor frame endpoint must fail closed before calibrated skeleton setup: status=${motorFrameResponse.status} body=${JSON.stringify(motorFrame)}`);
+  const motorStreamResponse=await rawFetch(`http://127.0.0.1:${port}/api/organism/motor-frame/stream`,{signal:AbortSignal.timeout(4000)});
+  if(!motorStreamResponse.ok || !String(motorStreamResponse.headers.get('content-type')||'').includes('text/event-stream')) throw new Error('motor frame stream must open as server-sent events');
+  const motorStreamReader=motorStreamResponse.body.getReader();
+  const motorStreamDecoder=new TextDecoder();
+  let motorStreamText='';
+  while(!motorStreamText.includes('motor-frame-status')) {
+    const chunk=await motorStreamReader.read();
+    if(chunk.done) break;
+    motorStreamText+=motorStreamDecoder.decode(chunk.value,{stream:true});
+  }
+  if(!motorStreamText.includes('"configured":false') || !motorStreamText.includes('"hasFrame":false')) throw new Error(`motor frame stream must report unconfigured state: ${motorStreamText.slice(0,800)}`);
+  await motorStreamReader.cancel().catch(()=>{});
+
   const memoryInspectorStartedAt=Date.now();
   const memoryInspectorResponse=await fetch(`http://127.0.0.1:${port}/api/organism/memory-inspector?q=workpass26-temporal-inspector&limit=0`);
   const memoryInspector=await memoryInspectorResponse.json();
