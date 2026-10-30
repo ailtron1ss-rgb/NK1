@@ -1,3 +1,9 @@
+## 2026-10-30 — Aspect 12 license inventory coverage
+
+- Extended the release-readiness audit to compare repository LICENSE/NOTICE files against contracts/RELEASE_LICENSE_REVIEW.json by exact relative path.
+- Untracked vendored license evidence is now surfaced as an advisory release-review gap instead of remaining invisible to the pending-record counter.
+- Added regression coverage for both missing and complete inventory paths. This check does not infer license expressions, compatibility, or redistribution approval.
+
 # Unreleased
 
 - [NK1][Aspect 12] Make the browser CI environment explicit: boot the real OrganismRuntime on its configured proxy port with isolated temporary state, require `/health` readiness, and provide only a clearly labelled read-only Research Bridge status fixture (no research probes). Always stop smoke services and retain longer React hydration diagnostics.
