@@ -2811,3 +2811,20 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ### Evidence boundary
 - The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
+
+## [NK1][Aspect 8] Governed tool execution and safety boundary (2026-10-30)
+
+- Add a dependency-free, bounded JSON-schema-inspired input contract subset; reject unsupported schema keywords instead of silently accepting them.
+- Validate tool arguments at the canonical ActionGateway boundary before approval consumption, durable receipt admission or executor entry; clone and deeply freeze registered contracts.
+- Add output contracts; invalid executor output is recorded as executed-but-unverified, and keyed side effects remain replay-safe.
+- Expose stable input/output schema descriptors in the tool catalog; migrate Android listen, device telemetry and simulator world observation to explicit contracts.
+- Bound schema regex complexity and reject unsupported repeated constructs; align Proxy detection with the repository Node type surface.
+- Apply a shared inert JSON envelope to legacy tools without explicit schemas. Reject accessors, Proxies, cycles, exotic prototypes, non-JSON values, excessive nesting/property counts and payloads above 64 KiB before execution, approval preview or receipt reconciliation.
+- Add a read-only risk-weighted governance report for registered tools, exposing contract, approval, durable receipt, verifier and reconciliation coverage gaps without silently changing legacy tool permissions.
+- Add focused regressions and wire the tool-contract suite into core CI. Exact-head CI and runtime typecheck remain pending until GitHub reports checks for this branch head.
+
+
+## [NK1][Aspect 08] Correct alphanumeric bounded-pattern fixture (2026-10-30)
+
+- Preserve safe bounded quantifier support and update the short-code fixture to match its intended `nk1` value: the accepted character class now explicitly includes digits.
+- Keep negative coverage for nested and multiple repetitions; do not broaden the validator's repetition policy.
