@@ -202,8 +202,8 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /ParamBreath/);
   assert.match(viewer, /ParamBodyAngleX/);
   assert.match(viewer, /gestureDirection\*gestureDrive\*\.12/);
-  assert.match(viewer, /faceState\.brow\+=/);
-  assert.match(viewer, /const blend=\.18/);
+  assert.match(viewer, /faceState\.brow=smoothToward\(faceState\.brow,face\.brow\*facialGain/);
+  assert.doesNotMatch(viewer, /const blend=\.18/);
 });
 
 test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
@@ -236,7 +236,7 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /ParamCheek/);
   assert.match(viewer, /ParamBreath/);
   assert.match(viewer, /ParamBodyAngleX/);
-  assert.match(viewer, /semanticEyeX\+=/);
+  assert.match(viewer, /semanticEyeX=smoothToward\(semanticEyeX,clamp\(bodySignal\.gazeX/);
   assert.match(viewer, /deterministicUnit/);
   assert.doesNotMatch(viewer, /Math\.random\(\)/);
 });
@@ -248,8 +248,8 @@ test("both Live2D viewer entry points smooth semantic gaze and avoid nondetermin
     readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8"),
   ]);
   for (const viewer of viewers) {
-    assert.match(viewer, /semanticEyeX\+=\(clamp\(bodySignal\.gazeX/);
-    assert.match(viewer, /semanticEyeY\+=\(clamp\(bodySignal\.gazeY/);
+    assert.match(viewer, /smoothToward\(semanticEyeX,clamp\(bodySignal\.gazeX/);
+    assert.match(viewer, /smoothToward\(semanticEyeY,clamp\(bodySignal\.gazeY/);
     assert.match(viewer, /lastIntentStateVersion\*17/);
     assert.match(viewer, /lastIntentStateVersion\*31/);
     assert.doesNotMatch(viewer, /Math\.random\(\)/);
