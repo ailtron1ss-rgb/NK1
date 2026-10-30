@@ -102,12 +102,26 @@ assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,taskFamily:'relat
 assert.equal(measureP36VerifiedOutcomeLedger({...unscoredQuery,treatmentMethod:'other-candidate'},config),null,
   'the caller cannot select a different treatment method after the host evaluator was configured');
 
-// The runtime-facing tuple carries claimed scores, but the registered evaluator
-// recomputes them from authenticated ledger rows on both execute and verify.
+// The hypothesis identity is part of the verifier-bound tuple. Create the
+// organism hypothesis first; never verify a placeholder ID and later relabel the receipt.
+const p36=new P36AutonomousSelfDevelopmentEngine();
+const state={
+  version:39,tick:12,at:Date.now(),
+  needs:{energy:.72,cognitiveLoad:.3,uncertainty:.75,socialNeed:.2,novelty:.55,identityCoherence:.82,goalPressure:.4},
+  predictionError:.62,attentionBudget:.82,lastAction:'reflect',lastActionSuccess:.55,
+  autonomyScore:.7,selfPredictionError:.58,predictedNextAction:'reflect',lastPredictionConfidence:.5,worldContextVersion:1,
+};
+p36.beginCycle();
+const hypothesis=p36.propose(state,{worldError01:.7,selfError01:.6,perception01:.4,resourceRisk01:.2});
+assert.ok(hypothesis);
+assert.notEqual(hypothesis.id,unscoredQuery.hypothesisId,'the test must bind evidence to the actual organism hypothesis');
+const hypothesisQuery={...unscoredQuery,hypothesisId:hypothesis.id};
+const hypothesisMeasurement=measureP36VerifiedOutcomeLedger(hypothesisQuery,config);
+assert.ok(hypothesisMeasurement,'the host evaluator must score the exact hypothesis-bound query');
 const evidenceInput=developmentEvidenceVerificationInput({
-  ...unscoredQuery,
-  control01:measurement.control01,
-  treatment01:measurement.treatment01,
+  ...hypothesisQuery,
+  control01:hypothesisMeasurement.control01,
+  treatment01:hypothesisMeasurement.treatment01,
 });
 assert.equal(evidenceInput.manifestFingerprint,manifestFingerprint);
 const evaluator=createP36VerifiedOutcomeLedgerEvaluator(config);
@@ -156,16 +170,6 @@ const restoredConfig={...config,ledger:restored};
 assert.equal(measureP36VerifiedOutcomeLedger(evidenceInput,restoredConfig),null,
   'plain persisted rows must not pass the signed-evidence gate without re-ingestion');
 
-const p36=new P36AutonomousSelfDevelopmentEngine();
-const state={
-  version:39,tick:12,at:Date.now(),
-  needs:{energy:.72,cognitiveLoad:.3,uncertainty:.75,socialNeed:.2,novelty:.55,identityCoherence:.82,goalPressure:.4},
-  predictionError:.62,attentionBudget:.82,lastAction:'reflect',lastActionSuccess:.55,
-  autonomyScore:.7,selfPredictionError:.58,predictedNextAction:'reflect',lastPredictionConfidence:.5,worldContextVersion:1,
-};
-p36.beginCycle();
-const hypothesis=p36.propose(state,{worldError01:.7,selfError01:.6,perception01:.4,resourceRisk01:.2});
-assert.ok(hypothesis);
 const recorded=p36.recordExternalEvidence({
   ...evidenceInput,
   // Bind external evidence to the hypothesis actually issued by this engine cycle.
