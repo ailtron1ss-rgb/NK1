@@ -70,7 +70,11 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
   const taskCategorySlices = Object.fromEntries(Object.entries(report.taskCategoryStratification?.slices ?? {}).map(([category, rawSlice]) => {
     const slice = rawSlice as any;
     return [category, { holdoutQueries: slice.holdoutQueries, answerableHoldoutQueries: slice.answerableHoldoutQueries,
-      unanswerableHoldoutQueries: slice.unanswerableHoldoutQueries, baseline: stableMetrics(slice.baseline),
+      unanswerableHoldoutQueries: slice.unanswerableHoldoutQueries,
+      independentAnswerableConversations: slice.independentAnswerableConversations,
+      independentUnanswerableConversations: slice.independentUnanswerableConversations,
+      answerableClusterSizes: slice.answerableClusterSizes, unanswerableClusterSizes: slice.unanswerableClusterSizes,
+      baseline: stableMetrics(slice.baseline),
       candidate: stableMetrics(slice.candidate), deltas: slice.deltas }];
   }));
   const taskCategorySignature = { enabled: report.taskCategoryStratification?.enabled,
