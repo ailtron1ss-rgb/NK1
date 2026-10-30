@@ -83,7 +83,7 @@ export class PersonalitySelfModelBridge {
     const receiptMatch=/^reb:(\d+):(\d+):outcome$/.exec(receiptId);
     const receiptBound=Boolean(
       receiptMatch && Number(receiptMatch[1])===input.event.tick &&
-      source==='external-verification' &&
+      input.event.evidenceReceiptId===receiptId && source==='external-verification' &&
       evidenceRef===`external-verification:${receiptId}`
     );
     const p78Verified=Boolean(
