@@ -125,7 +125,6 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const browLift = EMOTION_BROW[emotion];
   const leftBrowLift = browLift - facial.browLeftY * 7;
   const rightBrowLift = browLift - facial.browRightY * 7;
-  const eyeScale = Math.max(0.82, Math.min(1.04, 1 - facial.eyeSmile * 0.16));
   const moodLabel: Record<EmotionLabel, string> = {
     curiosity: "интерес", calm: "спокойствие", joy: "радость", anxiety: "тревога",
     frustration: "раздражение", sadness: "грусть", anger: "злость", protective: "забота",
