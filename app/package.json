@@ -32,6 +32,7 @@
     "test:avatar-vrm-expressions": "node --experimental-strip-types --test scripts/avatar-vrm-expression-map.test.mjs",
     "test:avatar-pixiv-vrm-runtime": "node --experimental-strip-types --test scripts/avatar-pixiv-vrm-runtime.test.mjs",
     "test:avatar-vrm-license-metadata": "node --experimental-strip-types --test scripts/avatar-vrm-license-metadata.test.mjs",
+    "test:avatar-vrm-model-capabilities": "node --experimental-strip-types --test scripts/avatar-vrm-model-capabilities.test.mjs",
     "test:avatar-vrma-animation": "node --experimental-strip-types --test scripts/avatar-vrma-animation.test.mjs",
     "test:avatar-motion-clip-selector": "node --experimental-strip-types --test scripts/avatar-motion-clip-selector.test.mjs",
     "test:avatar-25d-depth": "node --experimental-strip-types --test scripts/avatar-25d-depth.test.mjs"
