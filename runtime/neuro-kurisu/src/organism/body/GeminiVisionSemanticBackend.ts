@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { VisionSemanticBackend, VisionSemanticInput, VisionSemanticResult } from './VisionSemanticBackend.ts';
+import { isValidNormalizedBoundingBox } from './TemporalObjectTracker.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 
@@ -24,7 +25,7 @@ export function detectGeminiImageMimeType(bytes:Uint8Array):'image/jpeg'|'image/
 
 function bytesToBase64(bytes:Uint8Array){ const chunk=0x8000; let out=''; for(let i=0;i<bytes.length;i+=chunk){ out+=String.fromCharCode(...bytes.subarray(i,Math.min(bytes.length,i+chunk))); } return btoa(out); }
 
-const DEFAULT_PROMPT=`You are the visual perception backend of an embodied cognitive organism. Return ONLY JSON with this shape:\n{"sceneLabel":"...","confidence01":0.0,"objects":[{"label":"...","kind":"person|object|place|event|concept|body|unknown","confidence01":0.0}],"relations":[{"from":"...","relation":"...","to":"...","confidence01":0.0}],"events":[{"label":"...","confidence01":0.0}]}\nOnly report content supported by the image. Do not invent object identities, persistent track IDs, 3D coordinates, distances, depth, camera-space transforms, hidden causes, identities, emotions, intentions, or facts that are not directly visible. If location in 3D is required, leave it unknown unless a calibrated spatial source supplies a coordinate frame.`;
+const DEFAULT_PROMPT=`You are the visual perception backend of an embodied cognitive organism. Return ONLY JSON with this shape:\\n{\"sceneLabel\":\"...\",\"confidence01\":0.0,\"objects\":[{\"label\":\"...\",\"kind\":\"person|object|place|event|concept|body|unknown\",\"confidence01\":0.0,\"bbox\":{\"x\":0.0,\"y\":0.0,\"width\":0.0,\"height\":0.0},\"bboxConfidence01\":0.0}],\"relations\":[{\"from\":\"...\",\"relation\":\"...\",\"to\":\"...\",\"confidence01\":0.0}],\"events\":[{\"label\":\"...\",\"confidence01\":0.0}]}\\nThe bbox is OPTIONAL and must tightly enclose a clearly visible object using normalized image coordinates in [0,1], origin at top-left. Return bboxConfidence01 only when a defensible box is visible. Omit bbox entirely when the object is occluded, tiny, ambiguous, or cannot be localized reliably. Do not invent persistent identities or track IDs. Only report content supported by the image. Do not invent 3D coordinates, distances, depth, camera-space transforms, hidden causes, identities, emotions, intentions, or facts that are not directly visible. If location in 3D is required, leave it unknown unless a calibrated spatial source supplies a coordinate frame.`;
 
 function extractText(body:GeminiResponse){ return body.candidates?.flatMap(c=>c.content?.parts??[]).map(p=>p.text??'').join('')?.trim() ?? ''; }
 function parsePayload(text:string):any{
@@ -57,7 +58,16 @@ export class GeminiVisionSemanticBackend implements VisionSemanticBackend {
       if(!response.ok) throw new Error(`gemini-vision-http-${response.status}`);
       const body=await response.json() as GeminiResponse; const text=extractText(body); if(!text) throw new Error('gemini-vision-empty');
       const p=parsePayload(text);
-      const objects=Array.isArray(p.objects)?p.objects.slice(0,48).map((o:any)=>({label:String(o.label??'unknown').slice(0,120),kind:normalizeKind(o.kind) as any,confidence01:clamp(Number(o.confidence01??.5))})):[];
+      const objects=Array.isArray(p.objects)?p.objects.slice(0,48).map((o:any)=>{
+        const bbox=isValidNormalizedBoundingBox(o?.bbox)?{x:Number(o.bbox.x),y:Number(o.bbox.y),width:Number(o.bbox.width),height:Number(o.bbox.height)}:undefined;
+        const bboxConfidence01=bbox?clamp(Number(o.bboxConfidence01??o.confidence01??0)):undefined;
+        return {
+          label:String(o.label??'unknown').slice(0,120),
+          kind:normalizeKind(o.kind) as any,
+          confidence01:clamp(Number(o.confidence01??.5)),
+          ...(bbox?{bbox,bboxConfidence01}:{ }),
+        };
+      }):[];
       const relations=Array.isArray(p.relations)?p.relations.slice(0,64).map((r:any)=>({from:String(r.from??'').slice(0,120),relation:String(r.relation??'related').slice(0,80),to:String(r.to??'').slice(0,120),confidence01:clamp(Number(r.confidence01??.5))})).filter((r:any)=>r.from&&r.to):[];
       const events=Array.isArray(p.events)?p.events.slice(0,24).map((e:any)=>({label:String(e.label??'').slice(0,120),confidence01:clamp(Number(e.confidence01??.45))})).filter((e:any)=>e.label):[];
       return {
