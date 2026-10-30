@@ -1,7 +1,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import {resolveDepthRigPose,stepSecondaryMotion,validateDepthRig} from "../src/components/avatar/depthRig.ts";
+import {resolveDepthRigPose,stepDepthRigSecondaryMotion,stepSecondaryMotion,validateDepthRig} from "../src/components/avatar/depthRig.ts";
 const rig={version:1,id:"kurisu-2p5d-test",units:"scene",nodes:[
 {id:"root",parentId:null,role:"root",position:[0,0,0],pivot:[0,0],rotation:[0,0,0],depth:0,parallax:0},
 {id:"torso",parentId:"root",role:"torso",position:[0,-.2,.1],pivot:[0,0],rotation:[0,0,0],depth:.1,parallax:.5},
@@ -16,3 +16,15 @@ test("resolves independent head, torso, gaze, arms, breath and depth parallax",(
 test("clamps extreme intent and camera values",()=>{const p=resolveDepthRigPose(rig,{headYaw:100,headPitch:-100,gazeX:50,leftArm:100,breath:100},{x:90,y:-90});const h=p.find(x=>x.id==="head"),e=p.find(x=>x.id==="eyes");assert.ok(Math.abs(h.rotation[1])<=.65);assert.ok(Math.abs(h.rotation[0])<=.45);assert.ok(Math.abs(e.rotation[1])<=.197);assert.ok(p.every(x=>x.position.every(Number.isFinite)&&x.rotation.every(Number.isFinite)))});
 test("secondary motion remains finite and bounded with irregular frame deltas",()=>{let s={position:0,velocity:0};for(let n=0;n<2000;n++){s=stepSecondaryMotion(s,n<400?.18:-.16,n%7===0?.2:1/60);assert.ok(Number.isFinite(s.position)&&Number.isFinite(s.velocity));assert.ok(Math.abs(s.position)<=.22);assert.ok(Math.abs(s.velocity)<=2.5)}});
 test("secondary motion converges toward target",()=>{let s={position:0,velocity:0};for(let n=0;n<600;n++)s=stepSecondaryMotion(s,.12,1/60);assert.ok(Math.abs(s.position-.12)<.015);assert.ok(Math.abs(s.velocity)<.04)});
+
+test("secondary motion adds inertial follow-through only to hair and coat semantic layers",()=>{
+ const states=new Map();const intent={headYaw:.5,headPitch:-.2,torsoYaw:.2};
+ const base=resolveDepthRigPose(rig,intent);let pose=stepDepthRigSecondaryMotion(rig,base,intent,states,1/60);
+ const get=(items,id)=>items.find(x=>x.id===id);
+ assert.notEqual(get(pose,"hair-front").rotation[2],get(base,"hair-front").rotation[2]);
+ assert.notEqual(get(pose,"coat-tail").rotation[2],get(base,"coat-tail").rotation[2]);
+ assert.equal(get(pose,"head").rotation[2],get(base,"head").rotation[2]);
+ assert.equal(get(pose,"eyes").rotation[2],get(base,"eyes").rotation[2]);
+ for(let n=0;n<600;n++)pose=stepDepthRigSecondaryMotion(rig,base,intent,states,1/60);
+ for(const id of ["hair-front","coat-tail"]){const state=states.get(id);assert.ok(Number.isFinite(state.position)&&Number.isFinite(state.velocity));assert.ok(Math.abs(state.position)<=.16);}
+});
