@@ -112,6 +112,15 @@ export class EmbodiedMotorController {
       next.set(d.id, d);
     }
     for (const d of next.values()) if (d.parentId && !next.has(d.parentId)) throw new Error(`missing-joint-parent:${d.id}`);
+    for (const d of next.values()) {
+      const seen = new Set<string>([d.id]);
+      let parent = d.parentId;
+      while (parent) {
+        if (seen.has(parent)) throw new Error(`joint-parent-cycle:${d.id}`);
+        seen.add(parent);
+        parent = next.get(parent)?.parentId ?? null;
+      }
+    }
     const joints: Record<string, JointState> = {};
     for (const d of next.values()) {
       const prior = this.state.joints[d.id];
@@ -138,6 +147,7 @@ export class EmbodiedMotorController {
     if (current && current.id !== goal.id && goal.priority < current.priority) {
       return { accepted: false, reason: "lower-priority-than-active-goal" };
     }
+    for (const joint of Object.values(this.state.joints)) joint.targetAngleRad = joint.angleRad;
     for (const [id, target] of Object.entries(goal.targetJointAnglesRad)) {
       const definition = this.definitions.get(id)!;
       this.state.joints[id].targetAngleRad = clamp(target, definition.minAngleRad, definition.maxAngleRad);
