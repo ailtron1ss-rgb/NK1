@@ -4327,6 +4327,14 @@ export class OrganismCore {
         };
         const emotionEpisode = this.cognitiveRuntime.emotionAppraisal.appraise({ tick: state.tick + 1, at: Date.now(), goalPressure01: n.goalPressure, goalCongruence01: state.lastActionSuccess ?? .5, controllability01: 1 - n.uncertainty, novelty01: n.novelty, selfRelevance01: n.identityCoherence, socialMeaning01: n.socialNeed, uncertainty01: n.uncertainty, predictionError01: state.predictionError, homeostaticPressure01: p66Homeostasis.pressure01, energy01: n.energy, success01: state.lastActionSuccess ?? .5, external: hasExternalSignal, modulators: appraisalModulators });
         const feelingEpisode = this.cognitiveRuntime.emotionAppraisal.inferFeeling(emotionEpisode, { energy01: n.energy, cognitiveLoad01: n.cognitiveLoad, uncertainty01: n.uncertainty, selfFocus01: n.identityCoherence });
+        const worldEvidenceQuality = this.worldSubsystem.world.beliefAvailable() ? clamp(0.45 + Math.min(0.45, this.worldSubsystem.world.transitionCount() / 80)) : 0.2;
+        const intrinsicDriveConfidence01 = clamp((1 - n.uncertainty) * 0.45 + worldEvidenceQuality * 0.25 + emotionEpisode.confidence01 * 0.30);
+        const intrinsicState = this.cognitiveRuntime.intrinsicMotivation.update({
+            uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goalPressure: n.goalPressure,
+            socialNeed: n.socialNeed, energy: n.energy, lastSuccess: state.lastActionSuccess, worldEvidenceQuality,
+            affect: { emotionId: emotionEpisode.id, label: emotionEpisode.label, valence01: emotionEpisode.valence01, arousal01: emotionEpisode.arousal01, dominance01: emotionEpisode.dominance01, confidence01: emotionEpisode.confidence01 },
+            homeostaticPressure01: p66Homeostasis.pressure01,
+        });
         this.organismSystems.memory.causalLifeGraph.recordCycle({ tick: state.tick + 1, at: Date.now(), experience: { id: `obs:${state.tick + 1}`, label: String(observation.text ?? 'sensory-experience').slice(0, 120), confidence01: hasExternalSignal ? .8 : .5, external01: hasExternalSignal ? 1 : 0 }, emotion: { id: emotionEpisode.id, label: emotionEpisode.label, confidence01: emotionEpisode.confidence01, external01: hasExternalSignal ? 1 : 0 } }, { snapshot: false });
         this.persisted.system.emotionAppraisal = this.cognitiveRuntime.emotionAppraisal.snapshot();
         this.persisted.facets.advanced.p66InteroceptiveHomeostasis = this.p66InteroceptiveHomeostasis.snapshot();
@@ -5149,6 +5157,9 @@ export class OrganismCore {
             autobiographicalContinuity01: b271NeuralAuto.autobiographicalContinuity01,
             identityContinuity01: p80Now.continuity01,
             intrinsicReward01: b270PostAutonomousState.intrinsicReward01,
+            intrinsicDrive01: intrinsicState.overall,
+            intrinsicDriveConfidence01,
+            intrinsicDrives: { epistemic: intrinsicState.epistemic, novelty: intrinsicState.novelty, competence: intrinsicState.competence, coherence: intrinsicState.coherence, social: intrinsicState.social, homeostatic: intrinsicState.homeostatic, confidence01: intrinsicDriveConfidence01 },
             lastAction: state.lastAction === 'none' ? null : state.lastAction,
             lastReward01: clamp(state.lastActionSuccess ?? .5),
         });
@@ -5294,14 +5305,7 @@ export class OrganismCore {
         const broadcast = this.config.enableCognitiveNetwork ? this.cognitiveRuntime.cognitiveNetwork.stimulate(networkSignals, state.tick, state.attentionBudget * neuromod.attentionGain01) : null;
         // Cognitive network is projected by PersistenceProjectionCoordinator at checkpoint boundaries.
         // Keeping the hot-path copy only in the live bus avoids cloning the 64-entry broadcast history each cycle.
-        const worldEvidenceQuality = this.worldSubsystem.world.beliefAvailable() ? clamp(0.45 + Math.min(0.45, this.worldSubsystem.world.transitionCount() / 80)) : 0.2;
-        const intrinsicState = this.cognitiveRuntime.intrinsicMotivation.update({
-            uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goalPressure: n.goalPressure,
-            socialNeed: n.socialNeed, energy: n.energy, lastSuccess: state.lastActionSuccess, worldEvidenceQuality,
-            affect: { emotionId: emotionEpisode.id, label: emotionEpisode.label, valence01: emotionEpisode.valence01, arousal01: emotionEpisode.arousal01, dominance01: emotionEpisode.dominance01, confidence01: emotionEpisode.confidence01 },
-            homeostaticPressure01: p66Homeostasis.pressure01,
-        });
-        this.persisted.facets.consciousness.intrinsic = intrinsicState;
+         this.persisted.facets.consciousness.intrinsic = intrinsicState;
         if (this.config.enableContradictions && state.predictionError > 0.62) {
             const c = this.cognitiveRuntime.contradictions.register('Наблюдаемый исход существенно расходится с текущим прогнозом', [String(activeGoalPressureFallback(this.persisted.goals) || 'goal-model'), 'world-transition'], state.predictionError);
             this.cognitiveRuntime.cognitiveField.addPressure('contradiction', c.claim, c.confidence, [c.id], 0.03);
