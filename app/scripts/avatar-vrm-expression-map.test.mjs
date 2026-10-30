@@ -173,6 +173,23 @@ test("override blend attenuates procedural weights proportionally and respects b
   assert.equal(calm.relaxed, 0);
 });
 
+test("native Pixiv manager path leaves VRM overrides to the official manager exactly once", () => {
+  const definitions = [
+    { key: "happy", isBinary: false, overrideMouth: "blend", overrideBlink: "none", overrideLookAt: "none", binds: [] },
+    { key: "aa", isBinary: false, overrideMouth: "none", overrideBlink: "none", overrideLookAt: "none", binds: [] },
+  ];
+  const input = {
+    emotion: "joy",
+    speaking: true,
+    awake: true,
+    mouthPose: { open: 1, form: 0.1, viseme: "open" },
+  };
+  const customGlbFallback = deriveVrmExpressionWeights(definitions, input);
+  const nativeVrmManager = deriveVrmExpressionWeights(definitions, input, { applyVrmOverrides: false });
+  assert.ok(customGlbFallback.aa > 0 && customGlbFallback.aa < 1);
+  assert.equal(nativeVrmManager.aa, 1);
+});
+
 test("binds modern node expressions to all mesh primitives under a node group", () => {
   const primitiveA = { morphTargetInfluences: [0, 0, 0] };
   const primitiveB = { morphTargetInfluences: [0, 0, 0] };
