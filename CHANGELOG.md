@@ -1,3 +1,10 @@
+## [NK1][WorkPass632] Enforce inert bounded JSON at every ActionGateway ingress (2026-10-30)
+
+- Apply a shared bounded JSON envelope even to legacy tools that have not yet declared a per-tool input contract; explicit tool schemas remain stricter.
+- Reject accessors, Proxy objects, cycles, exotic/non-JSON values, excessive nesting/property counts and oversized payloads before hashing, approval, receipt admission, provider reconciliation or executor entry.
+- Validate approval requests before generating previews so getters cannot execute during approval UI preparation.
+- Add regressions for legacy tool execution, approval preview and receipt reconciliation. No tool is automatically granted additional authority; this hardens argument integrity only.
+
 ## [NK1][WorkPass631] Cover safe bounded regular-expression patterns
 
 - Add a positive bounded-quantifier pattern case and a separate regression for multiple repetition operators, so the conservative regex subset is exercised in both allowed and rejected forms.
