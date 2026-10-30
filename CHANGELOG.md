@@ -59,6 +59,14 @@
 - Add focused regressions for instance-scoped SVG references, identity defaults, art-contract boundaries and state-driven component wiring.
 - This pass improves the Original 2D foundation and art-production contract; it does not claim that layered production artwork, a finished expression atlas, independent garment assets or a 2.5D rig have been authored.
 
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -2855,17 +2863,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
-
-## [NK1][Aspect 02] Reconcile seven previously unmatched sprite semantics (2026-10-30)
-
-- Retrieved the exact seven PNGs from `workpass70-source` through GitHub's Base64 Contents API and visually inspected the decoded images: `embarrassed`, `phone_look`, `thinking_chin`, `soft_smile`, `city_stand`, `phone_lean`, and `street_walk`.
-- Corrected the inventory with observed content, semantic roles, recommended reference uses, verified Git blob SHA-1 values and decoded byte sizes. In particular, the misleading filenames are not treated as ground truth (for example, `embarrassed` is a guarded crossed-arms portrait and `thinking_chin` is a reclining hand-supported rest pose).
-- Added a dated pixel-review record and strengthened the regression to distinguish 25 prior-audit descriptions from seven directly reviewed images; the unresolved visual-review queue is now 0/32.
-- This is semantic visual review only. Authorship, redistribution rights, source prompts, layered masters, production art and 2.5D suitability remain unverified; no Release ZIP was changed.
-
-
-## [NK1][Aspect 02] Add dedicated original 2D asset CI gates (2026-10-30)
-
-- Added `.github/workflows/aspect-02-original-2d-art-contract.yml` so the art-contract validator, legacy sprite inventory/pixel-review regression, and SVG/manifest contract tests run on the Aspect 02 work branch and pull requests targeting `workpass70-source`.
-- The workflow verifies the repository-pinned Node.js version and runs dependency-free Node checks directly; it does not require an install step.
-- The first workflow dispatch from the implementation commit was observed queued; its result must be checked on the latest branch head before treating these gates as validated.
