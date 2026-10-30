@@ -150,7 +150,9 @@ VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `c
 - перекрывающиеся дубли в одном кадре не создают две фиктивные сущности;
 - отдельные camera namespaces, max-gap, max-age, stale timestamp и duplicate receipt guards;
 - одинаковый SHA изображения не используется как frame ID: неподвижная сцена всё равно даёт новый capture, а идемпотентный повтор одного receipt не удваивает tracking update;
-- runtime возвращает tracking metrics вместе с semantic result.
+- runtime возвращает tracking metrics вместе с semantic result;
+- при старте процесса локальные активные tracks восстанавливаются из канонического persisted P41 snapshot по camera ID, track ID, imageBox и imageBoxAt;
+- velocity после рестарта безопасно инициализируется нулём, затем заново оценивается по двум свежим кадрам; синтетическая скорость не восстанавливается из одной рамки.
 
 Gemini может вернуть приблизительный normalized 2D bbox только когда объект ясно локализован; при недостаточной уверенности bbox опускается. Уверенность существования объекта не заменяет отдельную уверенность локализации. Эти bbox остаются model-output, не становятся observed и не создают 3D-координат.
 
