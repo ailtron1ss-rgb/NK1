@@ -23,7 +23,7 @@ test("pins the official MIT Pixiv VRM runtime against the repository Three.js ve
 test("the production loader registers VRMLoaderPlugin and uses normalized VRM scene orientation", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /import \{ VRMLoaderPlugin, VRMUtils \} from "@pixiv\/three-vrm"/);
-  assert.match(stage, /loader\.register\(\(parser\)=>new VRMLoaderPlugin\(parser\)\)/);
+  assert.match(stage, /loader\.register\(\(parser:any\)=>new VRMLoaderPlugin\(parser\)\)/);
   assert.match(stage, /gltf\.userData\?\.vrm\?\?null/);
   assert.match(stage, /if\(vrm\)VRMUtils\.rotateVRM0\(vrm\)/);
   assert.match(stage, /const root=vrm\?\.scene\?\?gltf\.scene/);
