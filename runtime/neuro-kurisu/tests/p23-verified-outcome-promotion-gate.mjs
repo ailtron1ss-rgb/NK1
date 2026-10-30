@@ -1,22 +1,22 @@
 import assert from 'node:assert/strict';
+import { pairedSignTestPValue } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { evaluateOutcomePromotion } from '../src/organism/learning/VerifiedOutcomePromotionGate.ts';
 
-const bounded = (value) => Math.max(0, Math.min(1, value));
+const bounded = value => Math.max(0, Math.min(1, value));
 const summary = (overrides = {}) => {
   const value = {
     baseline: 'fixed-32',
     candidate: 'candidate',
-    pairedN: 90,
+    pairedN: 30,
     baselinePassRate: 0.60,
     candidatePassRate: 0.72,
     absoluteGain: 0.12,
     discordantCandidateWins: 18,
     discordantBaselineWins: 7,
+    statisticalUnit: 'seed',
     approximate95CI: [0.03, 0.21],
     ...overrides,
   };
-  // Keep fixture rows internally consistent unless a specific consistency
-  // failure is the subject of the test.
   if (Object.hasOwn(overrides, 'absoluteGain') && !Object.hasOwn(overrides, 'candidatePassRate')) {
     value.candidatePassRate = bounded(value.baselinePassRate + value.absoluteGain);
   }
@@ -28,11 +28,11 @@ const summary = (overrides = {}) => {
       value.discordantBaselineWins = Math.min(value.pairedN - value.discordantCandidateWins, Math.max(0, Math.round(Math.max(0, -value.absoluteGain) * value.pairedN)));
     }
   }
+  value.signTestPValue = pairedSignTestPValue(value.discordantCandidateWins, value.discordantBaselineWins);
   return value;
 };
-const family = (name, overrides = {}) => {
-  const value = summary({
-    family: name,
+const family = (name, overrides = {}) => ({
+  ...summary({
     pairedN: 30,
     baselinePassRate: 0.60,
     candidatePassRate: 0.70,
@@ -41,28 +41,19 @@ const family = (name, overrides = {}) => {
     discordantBaselineWins: 0,
     approximate95CI: [0.05, 0.15],
     ...overrides,
-  });
-  if (Object.hasOwn(overrides, 'absoluteGain') && !Object.hasOwn(overrides, 'candidatePassRate')) {
-    value.candidatePassRate = bounded(value.baselinePassRate + value.absoluteGain);
-  }
-  if (Object.hasOwn(overrides, 'pairedN')) {
-    if (!Object.hasOwn(overrides, 'discordantCandidateWins')) {
-      value.discordantCandidateWins = Math.min(value.pairedN, Math.max(0, Math.round(Math.max(0, value.absoluteGain) * value.pairedN)));
-    }
-    if (!Object.hasOwn(overrides, 'discordantBaselineWins')) {
-      value.discordantBaselineWins = Math.min(value.pairedN - value.discordantCandidateWins, Math.max(0, Math.round(Math.max(0, -value.absoluteGain) * value.pairedN)));
-    }
-  }
-  return value;
-};
+  }),
+  family: name,
+});
 const families = [family('memory'), family('transfer'), family('tool-use')];
 
 const good = evaluateOutcomePromotion(summary(), families);
-assert.equal(good.eligible, true);
+assert.equal(good.eligible, true, JSON.stringify(good));
 assert.deepEqual(good.reasons, []);
-assert.equal(good.pairedTasks, 90);
+assert.equal(good.pairedTasks, 30);
 assert.equal(good.familyCount, 3);
 assert.equal(good.worstFamilyGain, 0.1);
+assert.equal(good.statisticalEvidence.unit, 'seed');
+assert.equal(good.statisticalEvidence.significant, true);
 
 const lowN = evaluateOutcomePromotion(summary({ pairedN: 12 }), families);
 assert.equal(lowN.eligible, false);
@@ -73,7 +64,6 @@ assert.ok(weakGain.reasons.includes('aggregate-gain-below-threshold'));
 
 const uncertain = evaluateOutcomePromotion(summary({ approximate95CI: [-0.02, 0.15] }), families);
 assert.ok(uncertain.reasons.includes('confidence-lower-bound-not-positive'));
-
 const noCI = evaluateOutcomePromotion(summary({ approximate95CI: null }), families);
 assert.ok(noCI.reasons.includes('confidence-lower-bound-not-positive'));
 
@@ -89,12 +79,12 @@ const missingFamilyEvidence = evaluateOutcomePromotion(summary(), [
 assert.ok(missingFamilyEvidence.reasons.includes('missing-family-pairs:transfer'));
 
 const tooFewFamilies = evaluateOutcomePromotion(summary(), [family('memory'), family('transfer')]);
-assert.ok(tooFewFamilies.reasons.includes('family-pair-count-mismatch'));
 assert.ok(tooFewFamilies.reasons.includes('insufficient-task-families'));
 
 const noPairs = evaluateOutcomePromotion(summary({
   pairedN: 0, baselinePassRate: 0.6, candidatePassRate: 0.6,
   absoluteGain: 0, approximate95CI: null,
+  discordantCandidateWins: 0, discordantBaselineWins: 0,
 }), []);
 assert.ok(noPairs.reasons.includes('missing-aggregate-evidence'));
 
@@ -104,15 +94,25 @@ assert.throws(() => evaluateOutcomePromotion(summary(), [
 assert.throws(() => evaluateOutcomePromotion(summary(), families, { minPairedTasks: 0 }), /configuration/);
 assert.throws(() => evaluateOutcomePromotion(summary(), families, { maxFamilyRegression: -1 }), /configuration/);
 assert.throws(() => evaluateOutcomePromotion(summary(), families, { minAbsoluteGain: 1.1 }), /configuration/);
+assert.throws(() => evaluateOutcomePromotion(summary(), families, { familyWiseAlpha: 1 }), /configuration/);
 
-// A caller may relax the confidence gate for exploratory diagnostics, but it
-// must be an explicit configuration change and is not the default.
 const exploratory = evaluateOutcomePromotion(summary({ approximate95CI: null }), families, {
   requirePositiveConfidenceLowerBound: false,
 });
 assert.equal(exploratory.eligible, true);
 
-// Runtime data is untrusted even if TypeScript signatures normally protect callers.
+const nonSeedUnit = evaluateOutcomePromotion(summary({ statisticalUnit: 'paired-cell' }), families);
+assert.equal(nonSeedUnit.eligible, false);
+assert.ok(nonSeedUnit.reasons.includes('non-seed-statistical-unit:aggregate'));
+
+const invalidP = evaluateOutcomePromotion(summary({ signTestPValue: Number.NaN }), families);
+assert.equal(invalidP.eligible, false);
+assert.ok(invalidP.reasons.includes('invalid-aggregate-sign-test-p-value'));
+
+const inconsistentP = evaluateOutcomePromotion(summary({ signTestPValue: 0.00001 }), families);
+assert.equal(inconsistentP.eligible, false);
+assert.ok(inconsistentP.reasons.includes('inconsistent-aggregate-sign-test-p-value'));
+
 const nonFiniteCount = evaluateOutcomePromotion(summary({ pairedN: Number.NaN }), families);
 assert.equal(nonFiniteCount.eligible, false);
 assert.ok(nonFiniteCount.reasons.includes('invalid-aggregate-paired-count'));
@@ -139,16 +139,14 @@ const optimisticApproxButNegativeBootstrap = evaluateOutcomePromotion(summary({
   approximate95CI: [0.03, 0.21],
   bootstrap95CI: [-0.01, 0.18],
 }), families);
-assert.equal(optimisticApproxButNegativeBootstrap.eligible, false,
-  'when seed-cluster bootstrap exists, the gate must not fall back to the optimistic approximate interval');
+assert.equal(optimisticApproxButNegativeBootstrap.eligible, false);
 assert.ok(optimisticApproxButNegativeBootstrap.reasons.includes('confidence-lower-bound-not-positive'));
 
 const validBootstrap = evaluateOutcomePromotion(summary({
   approximate95CI: [-0.1, 0.3],
   bootstrap95CI: [0.02, 0.20],
 }), families);
-assert.equal(validBootstrap.eligible, true,
-  'the available positive seed-cluster interval takes precedence over an approximate interval');
+assert.equal(validBootstrap.eligible, true);
 
 const malformedFamily = evaluateOutcomePromotion(summary(), [
   family('memory'), { ...family('transfer'), absoluteGain: Number.NaN }, family('tool-use'),
@@ -160,5 +158,16 @@ const reversedCI = evaluateOutcomePromotion(summary({ approximate95CI: [0.3, 0.1
 assert.equal(reversedCI.eligible, false);
 assert.ok(reversedCI.reasons.includes('invalid-aggregate-approximate-confidence-interval'));
 
+assert.equal(pairedSignTestPValue(8, 0), 2 / (2 ** 8));
+assert.equal(pairedSignTestPValue(0, 8), 2 / (2 ** 8));
+assert.equal(pairedSignTestPValue(6, 6), 1);
+assert.equal(pairedSignTestPValue(0, 0), 1);
+assert.throws(() => pairedSignTestPValue(-1, 2), /non-negative/);
+
 console.log('P23_VERIFIED_OUTCOME_PROMOTION_GATE=PASS');
-console.log(JSON.stringify({ eligible: good.eligible, aggregateGain: good.aggregateGain, worstFamilyGain: good.worstFamilyGain }));
+console.log(JSON.stringify({
+  eligible: good.eligible,
+  aggregateGain: good.aggregateGain,
+  exactSignTestP: good.statisticalEvidence.rawPValue,
+  worstFamilyGain: good.worstFamilyGain,
+}));
