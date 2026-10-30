@@ -44,6 +44,19 @@ export function wardrobeStorageKey(bodyId: string, rigVersion: string): string {
   return `${bodyId}::${rigVersion}`;
 }
 
+export function validateWardrobeStorageIdentity(
+  bodyId: string,
+  rigVersion: string,
+  manifest: WardrobePackManifest,
+): string[] {
+  const errors: string[] = [];
+  if (!bodyId || bodyId.length > 160) errors.push("wardrobe:invalid-body-id");
+  if (!rigVersion || rigVersion.length > 100) errors.push("wardrobe:invalid-rig-version");
+  if (!manifest || manifest.targetBodyId !== bodyId) errors.push("wardrobe:storage-body-mismatch");
+  if (!manifest || manifest.targetRigVersion !== rigVersion) errors.push("wardrobe:storage-rig-mismatch");
+  return errors;
+}
+
 /** Selected items must be real, unique VRM assets with at most one item per slot. */
 export function validateStoredWardrobeSelection(
   manifest: WardrobePackManifest,
@@ -139,8 +152,8 @@ export async function saveStoredWardrobePack(input: {
 }): Promise<{ saved: true; storageKey: string; totalBytes: number }> {
   const key = wardrobeStorageKey(input.bodyId, input.rigVersion);
   if (!input.rightsAttested) throw new Error("wardrobe:rights-self-attestation-required");
-  if (input.manifest.targetBodyId !== input.bodyId) throw new Error("wardrobe:storage-body-mismatch");
-  if (input.manifest.targetRigVersion !== input.rigVersion) throw new Error("wardrobe:storage-rig-mismatch");
+  const identityErrors = validateWardrobeStorageIdentity(input.bodyId, input.rigVersion, input.manifest);
+  if (identityErrors.length) throw new Error(identityErrors.join(","));
   const manifestCheck = validateWardrobePackManifest(input.manifest);
   if (!manifestCheck.valid) throw new Error(`wardrobe:manifest-invalid:${manifestCheck.errors.slice(0, 5).join(",")}`);
   if (manifestCheck.totalBytes > MAX_STORED_WARDROBE_BYTES) throw new Error("wardrobe:storage-pack-size-limit");
@@ -192,9 +205,8 @@ export async function loadStoredWardrobePack(
   if (record.bodyId !== bodyId || record.rigVersion !== rigVersion) {
     return { status: "incompatible", reason: "wardrobe:stored-body-or-rig-mismatch" };
   }
-  if (record.manifest?.targetBodyId !== bodyId || record.manifest?.targetRigVersion !== rigVersion) {
-    return { status: "incompatible", reason: "wardrobe:stored-manifest-target-mismatch" };
-  }
+  const identityErrors = validateWardrobeStorageIdentity(bodyId, rigVersion, record.manifest);
+  if (identityErrors.length) return { status: "incompatible", reason: identityErrors.join(",") };
   if (!Number.isFinite(record.rightsAttestedAt) || record.rightsAttestedAt <= 0 || !Number.isFinite(record.savedAt) || record.savedAt <= 0) {
     return { status: "invalid", reason: "wardrobe:stored-attestation-or-time-invalid" };
   }
