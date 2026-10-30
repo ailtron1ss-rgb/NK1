@@ -3,7 +3,6 @@ import {
   verifyWardrobePackPayload,
   type WardrobePackManifest,
 } from "./wardrobePack.ts";
-import type { WardrobeRenderer } from "./wardrobeSystem.ts";
 
 export const MAX_STORED_WARDROBE_BYTES = 128 * 1024 * 1024;
 const DATABASE = "nk1-wardrobe-pack-store";
