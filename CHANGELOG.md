@@ -2811,3 +2811,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Tightened contact/manipulation: simulated and world-model targets cannot authorize physical contact; live camera grounding is required.
 - Added bridge regression tests and included them in the focused Aspect 10 CI command.
 - Still pending: actual camera calibration/transform, IK/renderer adapters, collision-aware trajectory execution and hardware-backed postconditions.
+
+
+## 2026-10-30 — Aspect 10 planar humanoid IK foundation
+
+- Added a renderer-independent two-link planar arm IK solver for shoulder/elbow targets in a calibrated avatar-root plane.
+- Added confidence, coordinate-frame, segment-length and joint-limit guards; unreachable targets are conservatively clamped and the result is explicitly a plan, not executed motion.
+- Added seven deterministic IK regression tests and a focused CI step.
+- VRM/GLB bone mapping, 3D IK, collision-aware trajectories and execution remain pending.
