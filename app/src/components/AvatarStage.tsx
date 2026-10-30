@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import type { OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { deriveAffectiveExpression } from "./avatar/affectiveExpression";
 import { cn } from "@/lib/utils";
