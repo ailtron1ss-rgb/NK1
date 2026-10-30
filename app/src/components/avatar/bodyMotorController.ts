@@ -136,7 +136,7 @@ export function resolveMotorProposals(
       return [{
         source: String(proposal.source || "unknown").slice(0, 96),
         priority: clamp(proposal.priority, 0, 100),
-        weight: clamp(finite(proposal.weight, 1), 0, 1),
+        weight: clamp(finite(proposal.weight ?? 1, 1), 0, 1),
         value: clamp(value, limit.min, limit.max),
       }];
     }).filter((candidate) => candidate.weight > 0);
