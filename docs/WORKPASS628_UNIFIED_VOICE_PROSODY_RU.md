@@ -45,3 +45,8 @@ The focused timeline suite now also covers provider-boundary duplicate suppressi
 The browser speech adapter now records each utterance through SpeechLifecycleEventV1: queued, started, provider character boundary, ended, cancelled or error. Each event carries an utterance ID, event ID, provider, clock ID, monotonic timestamp and strictly increasing per-utterance sequence. The contract rejects duplicate/out-of-order sequence numbers, clock/provider changes, regressing character boundaries and any event after a terminal phase. Browser callbacks also retain the existing active-session identity guard, so late callbacks from a superseded utterance cannot mutate the current session.
 
 The contract is provider-neutral and names a native TTS provider, but the native adapter has not yet been wired to emit these events. The browser boundary remains a provider-reported text offset, not a phoneme timestamp. No Android/Termux playback or acoustic sync validation is claimed.
+
+## Дополнительная корректировка
+
+- При проверке полного lifecycle cleanup обнаружен синтаксически некорректный `try/catch` в cleanup-функции speech-effect. Исправлен на корректную конструкцию `try { synth.cancel(); } catch { ... }`, чтобы best-effort cancellation не блокировала разбор модуля.
+- Исправление внесено в исходник и CHANGELOG. Оно не считается подтверждением успешного TypeScript/build/test: эти проверки всё ещё необходимо выполнить в окружении проекта.
