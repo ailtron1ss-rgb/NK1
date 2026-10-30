@@ -13,6 +13,7 @@ import {
   type MotorGoal,
   type MotorFrame,
   type MotorControllerSnapshot,
+  validateMotorGoal,
 } from "./EmbodiedMotorController.ts";
 
 export interface MotorGoalCandidate {
@@ -89,7 +90,7 @@ export class MotorGoalArbiter {
   propose(candidates: readonly MotorGoalCandidate[], context: MotorArbitrationContext): MotorArbitrationResult {
     const safe = (candidates ?? []).filter((candidate) =>
       candidate && typeof candidate.id === "string" && candidate.id.length > 0 &&
-      candidate.goal && candidate.goal.action === candidate.goal.action &&
+      candidate.goal && validateMotorGoal(candidate.goal).ok &&
       [candidate.corticalValue01, candidate.predictedUtility01, candidate.confidence01, candidate.effort01]
         .every(Number.isFinite),
     ).slice(0, 16);
