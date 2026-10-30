@@ -4,7 +4,7 @@ import type { MouthPose } from "./avatar/embodimentTimeline";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 import { createVRMAnimationClip, VRMAnimationLoaderPlugin, VRMLookAtQuaternionProxy } from "@pixiv/three-vrm-animation";
-import { clearStoredAvatarAnimation, clearStoredAvatarModel, loadStoredAvatarAnimation, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarAnimation, saveAvatarModel } from "./avatar/avatarModelStore";
+import { clearStoredAvatarAnimation, clearStoredAvatarModel, loadStoredAvatarAnimation, loadStoredAvatarModel, MAX_AVATAR_ANIMATION_BYTES, MAX_AVATAR_MODEL_BYTES, saveAvatarAnimation, saveAvatarModel } from "./avatar/avatarModelStore";
 import { inspectSelfContainedGlb } from "./avatar/avatarModelValidation";
 import { buildHumanoidRoleMap, canonicalizeHumanoidBoneName } from "./avatar/humanoidBoneMap";
 import { summarizeVrmLicenseMetadata } from "./avatar/vrmLicenseMetadata";
@@ -111,7 +111,7 @@ export function Avatar3DStage(props:Props){
   const rt=runtime.current;
   const fail=(reason:string)=>setMessage(`VRMA: ${reason}`);
   if(!rt?.vrm||!rt.mixer){fail("сначала загрузите VRM-персонажа.");return;}
-  if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){fail("файл пуст или превышает 90 МиБ.");return;}
+  if(!blob.size||blob.size>MAX_AVATAR_ANIMATION_BYTES){fail("файл пуст или превышает 90 МиБ.");return;}
   const token=++animationToken.current;
   setMessage("Проверка и загрузка VRMA-анимации…");
   try{
