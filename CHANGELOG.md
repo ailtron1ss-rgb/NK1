@@ -1,3 +1,10 @@
+## [NK1][Aspect 11] Add renderer-neutral body switching contract (2026-10-30)
+
+- Add a versioned semantic body snapshot that preserves emotion, gaze, speech clock, motor intent, supported pose channels and wardrobe identity across renderer changes.
+- Add capability-aware handoff planning for Live2D, depth-2D and VRM3D; unsupported joints/features are reported explicitly rather than claimed as executed.
+- Add shared-channel pose blending and monotonic transition progress, plus focused regression tests.
+- Document transactional prepare/commit/rollback, adapter lifecycle, rig capability manifests, cross-renderer E2E and release gates. This is the first contract foundation; React renderer lifecycle integration and real 2D/2.5D/3D round-trip validation remain pending.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
