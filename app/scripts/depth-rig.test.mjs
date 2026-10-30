@@ -217,6 +217,7 @@ test("writes composed affine matrices and painter order into renderer-owned laye
   assert.deepEqual(result.renderedNodeIds, ["root", "head"]);
   assert.deepEqual(result.missingNodeIds, ["arm-left", "torso", "neck", "hair-front"]);
   assert.equal(root.matrixAutoUpdate, false);
+  assert.equal(root.matrixWorldNeedsUpdate, true);
   assert.equal(root.renderOrder, 0);
   assert.equal(root.visible, true);
   assert.equal(head.renderOrder, 4);
