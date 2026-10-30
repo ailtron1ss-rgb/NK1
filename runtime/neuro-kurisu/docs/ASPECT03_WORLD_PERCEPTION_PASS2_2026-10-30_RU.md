@@ -232,4 +232,4 @@ Workflow:
 - проходит независимую holdout и device evaluation;
 - интегрирован в рабочий Release ZIP.
 
-Статус этого прохода: код реализован в отдельной ветке; локальный запуск невозможен в текущем контейнере из-за отсутствия DNS/GitHub access. Окончательный статус определяется GitHub Actions и последующим device E2E, а не самим фактом записи изменений.
+Статус этого прохода: код реализован в отдельной ветке и оформлен в Draft PR #423. Specialized `world-perception-integrity` workflow завершился SUCCESS на кодовом HEAD `1ebc8ed0daf6840ae13fbcfa6006ac50da61a1c2`, включая все новые regression tests и runtime typecheck. Общие PR checks `cognitive-contracts`, `source-lineage-contract`, `verified-promotion`, `metrics`, `verified-experience-lanes`, `correlated-postcondition` и `local-language-resilience` также завершились SUCCESS на том же кодовом HEAD; большой `targeted-and-regression` job ещё выполняется. Локальный запуск в контейнере не заявляется из-за недоступного DNS/GitHub clone. Android/Termux camera soak, реальный tracker, calibration и независимая holdout оценка остаются обязательными до 100%.
