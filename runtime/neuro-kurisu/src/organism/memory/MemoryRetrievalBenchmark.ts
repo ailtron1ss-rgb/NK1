@@ -268,8 +268,24 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   const crossSplitConversationLeakageCount=[...groupSplits.values()].filter(splits=>splits.size>1).length;
   const uniqueTrainConversationGroups=new Set(rawExamples.filter(row=>row.split==='train').map(groupKey)).size;
   const uniqueHoldoutConversationGroups=new Set(rawExamples.filter(row=>row.split==='holdout').map(groupKey)).size;
-  const uniqueAnswerableHoldoutConversationGroups=new Set(rawExamples.filter(row=>row.split==='holdout'&&row.answerable!==false).map(groupKey)).size;
-  const uniqueUnanswerableHoldoutConversationGroups=new Set(rawExamples.filter(row=>row.split==='holdout'&&row.answerable===false).map(groupKey)).size;
+  const answerableHoldoutGroupCounts=new Map<string,number>();
+  const unanswerableHoldoutGroupCounts=new Map<string,number>();
+  for(const row of rawExamples){
+    if(row.split!=='holdout')continue;
+    const target=row.answerable===false?unanswerableHoldoutGroupCounts:answerableHoldoutGroupCounts;
+    const key=groupKey(row);target.set(key,(target.get(key)??0)+1);
+  }
+  const uniqueAnswerableHoldoutConversationGroups=answerableHoldoutGroupCounts.size;
+  const uniqueUnanswerableHoldoutConversationGroups=unanswerableHoldoutGroupCounts.size;
+  const summarizeClusterSizes=(counts:Map<string,number>)=>{
+    const sizes=[...counts.values()].sort((a,b)=>a-b);
+    const n=sizes.length,median=n?(n%2?sizes[(n-1)/2]!:((sizes[n/2-1]!+sizes[n/2]!)/2)):0;
+    const total=sizes.reduce((sum,value)=>sum+value,0);
+    const maximum=n?sizes[n-1]!:0;
+    return {clusters:n,queries:total,min:n?sizes[0]!:0,median:Number(median.toFixed(2)),max:maximum,mean:Number((total/Math.max(1,n)).toFixed(2)),largestClusterShare01:Number((maximum/Math.max(1,total)).toFixed(4)),maxToMedianRatio:Number((maximum/Math.max(1,median)).toFixed(2))};
+  };
+  const answerableHoldoutClusterSizes=summarizeClusterSizes(answerableHoldoutGroupCounts);
+  const unanswerableHoldoutClusterSizes=summarizeClusterSizes(unanswerableHoldoutGroupCounts);
   const multiSessionRows=rawExamples.filter(row=>row.category==='multi-session');
   const missingMultiSessionConversationIdCount=multiSessionRows.filter(row=>typeof row.conversationId!=='string'||!row.conversationId.trim()).length;
   const multiSessionConversationAnnotationComplete=missingMultiSessionConversationIdCount===0;
@@ -280,7 +296,7 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   const unknownRelevantMemoryIdCount=unknownRelevantIds.size;
   const duplicateQueryGroupCount=repeatedQueryKeys.length;
   const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&malformedConversationAnnotationCount===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&malformedRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0&&conversationAnnotationComplete&&crossSplitConversationLeakageCount===0&&multiSessionConversationAnnotationComplete&&languageAnnotationComplete;
-  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,malformedRelevantLabelCount,malformedConversationAnnotationCount,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,uniqueTrainConversationGroups,uniqueHoldoutConversationGroups,uniqueAnswerableHoldoutConversationGroups,uniqueUnanswerableHoldoutConversationGroups,conversationAnnotationUsed,conversationAnnotationComplete,crossSplitConversationLeakageCount,multiSessionRows:multiSessionRows.length,missingMultiSessionConversationIdCount,multiSessionConversationAnnotationComplete,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,languageAnnotationUsed,languageAnnotationComplete,validForPromotion};
+  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,malformedRelevantLabelCount,malformedConversationAnnotationCount,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,uniqueTrainConversationGroups,uniqueHoldoutConversationGroups,uniqueAnswerableHoldoutConversationGroups,uniqueUnanswerableHoldoutConversationGroups,answerableHoldoutClusterSizes,unanswerableHoldoutClusterSizes,conversationAnnotationUsed,conversationAnnotationComplete,crossSplitConversationLeakageCount,multiSessionRows:multiSessionRows.length,missingMultiSessionConversationIdCount,multiSessionConversationAnnotationComplete,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,languageAnnotationUsed,languageAnnotationComplete,validForPromotion};
 }
 
 /**
