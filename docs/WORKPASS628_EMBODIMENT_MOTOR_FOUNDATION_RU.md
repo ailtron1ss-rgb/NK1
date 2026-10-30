@@ -66,3 +66,10 @@ The first exact-branch validation run exposed two test failures in `vrm-motor-ad
 The runtime order was inspected: `Avatar3DStage` restores the loaded bones' baseline rotations, updates the GLTF mixer, and only then applies the motor pose. This establishes a per-frame base pose and prevents accumulated offsets.
 
 The correction is committed on the same PR branch. A fresh exact-head workflow result is required before marking this pass validated. The test does not establish IK execution on a real VRM model.
+
+
+## WorkPass 631–632 — expanded rig coverage and strict typing
+
+- Added a regression fixture for bilateral VRM `J_Bip_*` upper/lower arm and leg bones, plus spine. The fixture asserts that the adapter reports the canonical shoulder, elbow, hip, knee and spine channels, while still reporting `supportsIk: false`.
+- Fixed two strict TypeScript issues reported by the app typecheck: the action/affect proposal array now has the explicit `MotorProposal[]` contract, and optional proposal weights are defaulted before numeric validation.
+- The adapter test suite was mirrored and executed locally under Node 22 (`node --experimental-strip-types --test`): 4 tests passed. This local run is useful regression evidence but does not replace the exact-head GitHub workflow.
