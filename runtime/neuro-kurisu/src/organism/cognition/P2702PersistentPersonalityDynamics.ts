@@ -99,8 +99,12 @@ export class P2702PersistentPersonalityDynamics{
   bias.wait=clamp(args.uncertainty01*.012*(1-responsibility*.5));
   bias.defer=clamp(args.uncertainty01*.016*(1-adaptive('directness')));
   for(const a of ACTIONS)this.state.actionPreference[a]=clamp((args.actionUtilities[a]??.5)-.5);
-  const observedIdentity=Array.isArray(args.identityVector)?args.identityVector.slice(0,this.state.selfBeliefs.length).filter(Number.isFinite):[];
-  const selfErr=observedIdentity.length?clamp(observedIdentity.reduce((sum,value,index)=>sum+Math.abs(clamp(value)-(this.state.selfBeliefs[index]??.5)),0)/observedIdentity.length*.8):clamp(args.identityGap01);
+  const observedIdentity=Array.isArray(args.identityVector)?args.identityVector.slice(0,this.state.selfBeliefs.length):[];
+  let identityError=0,identitySamples=0;
+  for(let i=0;i<observedIdentity.length;i++)if(Number.isFinite(observedIdentity[i])){
+   identityError+=Math.abs(clamp(observedIdentity[i]!)-(this.state.selfBeliefs[i]??.5));identitySamples++;
+  }
+  const selfErr=identitySamples?clamp(identityError/identitySamples*.8):clamp(args.identityGap01);
   this.state.contradiction01=clamp(this.state.contradiction01*.94+(selfErr*.55+tension*.45)*.06);
   this.state.identityContinuity01=clamp(this.state.identityContinuity01*.97+(1-selfErr)*.03);
   this.state.coherence01=clamp(this.state.coherence01*.95+(1-this.state.contradiction01)*.05);
@@ -136,6 +140,7 @@ export class P2702PersistentPersonalityDynamics{
   const observedIdentity=Array.isArray(args.identityVector)?args.identityVector.slice(0,this.state.selfBeliefs.length):[];
   if(verified>=.9&&observedIdentity.length){
    for(let i=0;i<observedIdentity.length;i++){
+    if(!Number.isFinite(observedIdentity[i]))continue;
     const observed=clamp(observedIdentity[i]!);
     const prior=this.state.selfBeliefs[i]??.5;
     const uncertainty=this.state.selfUncertainty[i]??.5;
