@@ -40,3 +40,19 @@ test("reports unsupported channels and never writes non-finite rotations", () =>
   assert.deepEqual(result.unsupported, ["headYaw", "leftKneeFlex"]);
   assert.equal(result.executionStatus, "unsupported");
 });
+
+test("discovers bilateral VRM J_Bip arm and leg channels without claiming IK", () => {
+  const adapter = createVrmMotorAdapter(rig(
+    node("J_Bip_L_UpperArm"), node("J_Bip_R_UpperArm"),
+    node("J_Bip_L_LowerArm"), node("J_Bip_R_LowerArm"),
+    node("J_Bip_L_UpperLeg"), node("J_Bip_R_UpperLeg"),
+    node("J_Bip_L_LowerLeg"), node("J_Bip_R_LowerLeg"),
+    node("J_Bip_C_Spine"), node("J_Bip_C_Chest"),
+  ));
+  for (const channel of [
+    "leftShoulderPitch", "leftShoulderRoll", "rightShoulderPitch", "rightShoulderRoll",
+    "leftElbowFlex", "rightElbowFlex", "leftHipFlex", "rightHipFlex",
+    "leftKneeFlex", "rightKneeFlex", "spinePitch",
+  ]) assert.ok(adapter.capabilities.joints.includes(channel), `missing ${channel}`);
+  assert.equal(adapter.capabilities.supportsIk, false);
+});
