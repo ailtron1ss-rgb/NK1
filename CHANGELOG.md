@@ -1,3 +1,11 @@
+## [NK1][аспект06] Add concurrent mixed-affect appraisal and weighted action tendencies (2026-10-30)
+
+- Preserve up to four simultaneous affective components from continuous appraisal evidence instead of reducing the internal affect state to one mutually exclusive label.
+- Each component records normalized relative intensity, confidence and evidence; weighted action tendencies are aggregated from the full mixture while the legacy primary label/action remain available for compatibility.
+- Validate normalized distributions and bounded values during snapshot restore; keep old snapshots valid when the optional fields are absent.
+- Add regression coverage for mixed curiosity/anxiety/frustration under conflicting signals, normalized weights, action projection, restore and malformed snapshot rejection.
+- Pending GitHub Actions validation; this remains an unmerged work branch and does not update `workpass70-source`, `main`, or the Release ZIP.
+
 ## [NK1][аспект06] Add persistent time-decaying mood with stale-event protection (2026-10-30)
 
 - Add one canonical persisted `AffectiveMoodState` beside time-bound emotion episodes; mood valence, arousal and confidence decay independently toward documented baselines using explicit half-life parameters.
