@@ -1,6 +1,6 @@
 import type { GroundedWorldStateSnapshot, GroundedEntity } from '../world/GroundedWorldState.ts';
 import type { InteractionSafetyAuthorization, InteractionTarget, SpatialPoint } from './EmbodiedInteractionController.ts';
-const normalize=(value:string)=>String(value??'').normalize('NFKC').trim().toLowerCase().replace(/\\s+/g,' ').slice(0,120);
+const normalize=(value:string)=>String(value??'').normalize('NFKC').trim().toLowerCase().replace(/\s+/g,' ').slice(0,120);
 const clamp=(value:number)=>Math.max(0,Math.min(1,Number.isFinite(value)?value:0));
 export interface CalibratedObjectDetection {id:string;label:string;position:SpatialPoint;frameId:string;confidence01:number;visible:boolean;observedAt:number;source:'camera';safeToTouch?:boolean;safetyAuthorization?:InteractionSafetyAuthorization;affordances?:InteractionTarget['affordances'];radiusM?:number;}
 export type GroundedTargetResult={accepted:true;target:InteractionTarget;entity:GroundedEntity}|{accepted:false;reason:string};

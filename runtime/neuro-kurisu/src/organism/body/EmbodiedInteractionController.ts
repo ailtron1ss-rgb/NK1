@@ -61,7 +61,7 @@ const defaults:InteractionPolicy={allowContact:false,allowManipulation:false,max
 const interactionKinds=new Set<InteractionKind>(['look','inspect','reach','touch','grasp','release','press']);
 const contactKinds=new Set<InteractionKind>(['touch','grasp','release','press']);
 const manipulationKinds=new Set<InteractionKind>(['grasp','release','press']);
-const hazardLabel=/(?:\\bweapon\\b|\\bknife\\b|\\bblade\\b|\\bfire\\b|\\bflame\\b|\\bchemical\\b|\\bpoison\\b|\\bhot\\b|\\belectric\\b|unknown\\s+(?:device|liquid|substance)|оруж|нож|лезв|огн|плам|хими|яд|горяч|электр|неизвестн\\w*\\s+(?:предмет|жидкост|веществ))/i;
+const hazardLabel=/(?:\bweapon\b|\bknife\b|\bblade\b|\bfire\b|\bflame\b|\bchemical\b|\bpoison\b|\bhot\b|\belectric\b|unknown\s+(?:device|liquid|substance)|оруж|нож|лезв|огн|плам|хими|яд|горяч|электр|неизвестн\w*\s+(?:предмет|жидкост|веществ))/i;
 const idFor=(target:string,kind:string,at:number,sequence:number)=>`interaction-${target}-${kind}-${Math.trunc(at)}-${sequence}`;
 function blocked(reason:string,phase:InteractionPhase='blocked'):InteractionAssessment{return {accepted:false,phase,reason};}
 function unitApproach(from:SpatialPoint,to:SpatialPoint,offset:number):SpatialPoint {
@@ -104,7 +104,7 @@ export class EmbodiedInteractionController {
     if(!body.awake||clamp01(body.energy01)<.12)return blocked('body-unavailable-or-low-energy');
     if(!target.visible&&target.source!=='user')return blocked('target-not-visibly-grounded');
     if(confidence<this.policy.minLookConfidence01)return blocked('target-confidence-below-look-threshold','uncertain');
-    const label=target.label.normalize('NFKC').replace(/\\s+/g,' ').trim();
+    const label=target.label.normalize('NFKC').replace(/\s+/g,' ').trim();
     const isPhysical=kind==='reach'||contactKinds.has(kind);
     if(isPhysical&&hazardLabel.test(label))return blocked('hazardous-or-unknown-object-contact-denied');
     const from=kind==='look'||kind==='inspect'?body.head:(input.hand==='left'?body.leftHand:body.rightHand);
@@ -175,4 +175,4 @@ export class EmbodiedInteractionController {
     this.active={...plan,phase:'completed'};
     return {accepted:true,phase:'completed',reason:'fresh-independent-target-bound-postcondition-verified',realityClass:'device-observation'};
   }
-}}
+}
