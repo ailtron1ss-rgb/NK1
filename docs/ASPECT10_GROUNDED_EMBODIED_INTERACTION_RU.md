@@ -57,3 +57,11 @@ Expected: deterministic planner tests covering grounded look, reach, contact pol
 ## Следующий слой: независимая кинематика руки
 
 Добавлен renderer-independent `planarArmIK.ts`: двухзвенная плоская IK-модель (плечо + предплечье), ограничение углов суставов, контроль длины сегментов, confidence gate, единый calibrated avatar-root frame и безопасное ограничение недостижимых целей. Модуль только рассчитывает углы — он не запускает анимацию и не подтверждает контакт. Для интеграции с VRM/GLB нужно сопоставить его углы с реальными humanoid bones, учесть bind pose, оси скелета, ограничения модели и коллизии.
+
+
+## Calibrated VRM humanoid rig mapping foundation
+
+- Added `vrmHumanoidRigAdapter.ts` to resolve a unique left upper-arm/lower-arm pair from common humanoid bone names and convert planar IK angles into bind-pose-relative Euler targets.
+- The adapter requires explicit per-rig axis, sign, offset and joint-limit calibration. It refuses missing/ambiguous bones, invalid calibration and non-finite bind poses; it does not assume a universal VRM bone axis.
+- Added deterministic adapter tests and a dedicated CI step.
+- This is a mapping/pose-calculation seam only: `Avatar3DStage` does not yet apply these targets to a live rig. Right-arm mapping, calibrated model profiles, 3D IK, collision checks and execution/postcondition wiring remain pending.
