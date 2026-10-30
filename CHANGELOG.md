@@ -1,3 +1,10 @@
+## [NK1][Aspect 09] Shared semantic gesture motor for 3D embodiment (2026-10-30)
+
+- Added `resolveAvatarGestureArmTargets(...)`: converts the cognitive gesture profiles (`considering`, `presenting`, `examining`, `reassuring`, `emphatic`) into bounded, asymmetric shoulder targets with affect and awake-state modulation.
+- Wired `Avatar3DStage` to the same `planAvatarMotorIntent(...)` used by the Live2D path. Both procedural body arms and recognized upper-arm/shoulder bones in imported GLB/VRM rigs now consume the shared gesture plan; the previous independent action-only arm table was removed.
+- Added tests for bounded outputs, asymmetric presenting posture, anger/protective/sadness modulation, asleep neutralization, and 3D stage integration.
+- Scope remains deliberately honest: this is a shared high-level motor policy and shoulder adapter, not full-body IK, finger articulation, collision avoidance, or garment physics. Those require a humanoid rig with elbow/wrist joints and a dedicated retarget/IK layer.
+
 ## [NK1][Aspect 09 — Live2D] Strict motion routing and verified regression pass (2026-10-30)
 
 - Both app and runtime viewers now reject an unknown motion group, a non-integer index, or an index outside the actual registered Cubism clip count before requesting playback. This also protects the legacy compatibility message path, not only the strict EmbodimentIntentV1 path.
