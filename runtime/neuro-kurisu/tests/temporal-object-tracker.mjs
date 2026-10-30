@@ -172,11 +172,16 @@ const motionTracker=new TemporalObjectTracker({sessionId:'motion'});
 const motionSeed=motionTracker.update({cameraId:0,at:1_000,objects:[
   {label:'person',bbox:box(.1,.2),confidence01:.95,bboxConfidence01:.94},
 ]});
-const motionNext=motionTracker.update({cameraId:0,at:2_000,objects:[
-  {label:'person',bbox:box(.29,.2),confidence01:.95,bboxConfidence01:.94},
+const motionPrimer=motionTracker.update({cameraId:0,at:1_500,objects:[
+  {label:'person',bbox:box(.22,.2),confidence01:.95,bboxConfidence01:.94},
+]});
+assert.equal(motionPrimer.metrics.associatedTrackCount,1);
+const motionNext=motionTracker.update({cameraId:0,at:2_500,objects:[
+  {label:'person',bbox:box(.4,.2),confidence01:.95,bboxConfidence01:.94},
 ]});
 assert.equal(motionNext.metrics.associatedTrackCount,1);
-assert.equal(motionNext.objects[0].trackId,motionSeed.objects[0].trackId);
+assert.equal(motionNext.objects[0].trackId,motionPrimer.objects[0].trackId);
+assert.equal(motionPrimer.objects[0].trackId,motionSeed.objects[0].trackId);
 
 // Provider-owned IDs are preserved even when no 2D box is available.
 const detectorTracker=new TemporalObjectTracker({sessionId:'detector-source'});
