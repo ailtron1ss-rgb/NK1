@@ -78,3 +78,14 @@ The references motivate the design. NK1's implementation is a limited native ada
 
 
 WorkPass631 also keeps simple bounded quantifiers available (`^[a-z]{2,5}$`) while testing rejection of two independent repetition operators in one pattern.
+
+
+## WorkPass632 — shared inert-input boundary
+
+Per-tool schemas remain opt-in for compatibility, but absence of a schema no longer means arbitrary JavaScript objects are accepted. Every ActionGateway ingress now uses either the registered contract or a shared bounded JSON envelope. The envelope inspects property descriptors and rejects accessors and Proxy objects before reflection can trigger hostile traps; it also rejects cycles, exotic prototypes, non-JSON values, excessive nesting/property counts and payloads above 64 KiB.
+
+The same check runs before approval preview/fingerprinting and before provider receipt reconciliation. This closes a boundary gap where a legacy tool or approval preview could otherwise receive an accessor-bearing object before the executor's per-tool contract was consulted.
+
+This is not an authorization grant and does not replace per-tool schemas, human approval, durable idempotency, provider reconciliation, or independent postcondition verification. Legacy tools should continue migrating to explicit input/output contracts.
+
+Validation added to `tests/tool-input-contracts-workpass624.mjs`: getter non-execution, Proxy trap non-execution, cyclic and oversized payload rejection, unsafe approval-preview rejection, and reconciliation ingress rejection.
