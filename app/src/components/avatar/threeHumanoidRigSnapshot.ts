@@ -45,7 +45,7 @@ export function captureHumanoidRigSnapshot(
     restLocalRotation.set(name, [local.x, local.y, local.z, local.w]);
     restWorldRotation.set(name, [world.x, world.y, world.z, world.w]);
 
-    const child = node.children.find((candidate) => candidate instanceof THREE.Bone);
+    const child = node.children.find((candidate: any) => candidate instanceof THREE.Bone);
     if (child) {
       const parentPosition = node.getWorldPosition(new THREE.Vector3());
       const childPosition = child.getWorldPosition(new THREE.Vector3());
@@ -59,7 +59,7 @@ export function captureHumanoidRigSnapshot(
   const inverseRootWorld = root.matrixWorld.clone().invert();
   const localBounds = new THREE.Box3();
   const nodeToRoot = new THREE.Matrix4();
-  root.traverse((candidate) => {
+  root.traverse((candidate: any) => {
     const geometry = (candidate as any).geometry;
     if (!(candidate as any).isMesh || !geometry) return;
     if (!geometry.boundingBox) geometry.computeBoundingBox();
