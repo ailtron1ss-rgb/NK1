@@ -23,6 +23,8 @@ on:
       - "runtime/neuro-kurisu/package-lock.json"
   pull_request:
     paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/tests/workpass289-affective-motivation-causality.mjs"
       - "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts"
       - "runtime/neuro-kurisu/src/organism/core/PlainDataSnapshot.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/P66InteroceptiveHomeostasis.ts"
