@@ -91,7 +91,7 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 - VRM/3D pack loader and application API: 80% for the isolated loader/rig-preflight/rollback contract; UI and Avatar3DStage integration remain pending.
 - Actual interchangeable garment assets: 0% verified.
 - Live2D/2.5D renderer application: 0% integrated; Live2D capability inspection is present but no garment switch contract is confirmed.
-- Whole Aspect 08: 45% (conservative; real licensed assets, stage UI/state integration, other renderers, visual E2E and device validation remain substantial).
+- Whole Aspect 08: 48% (conservative; procedural 3D outfit selection is now integrated into Avatar3DStage, while licensed garment packs for uploaded VRM models, persistence, Live2D/2.5D, visual E2E and device validation remain substantial).
 
 ## Next work
 
@@ -192,3 +192,10 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 В `Avatar3DStage.tsx` добавлены три реальные процедурные вариации одежды: лабораторный халат, повседневный верх и худи. Они представлены отдельной геометрией Three.js и переключаются через видимость garment-групп; элементы халата/галстука/рукавов скрываются согласованно, а выбранный вариант применяется к живому процедурному телу. Добавлены видимые элементы управления и регрессионная проверка, что переключение связано с геометрией, а не только с подписью.
 
 **Граница:** переключение работает для встроенного процедурного концепта. Произвольная загруженная VRM-модель не получает эти комплекты автоматически: для неё по-прежнему нужны реальные совместимые skinned GLB, манифест и вызов `applyVerifiedVrmWardrobePack`. Выбор пока не сохраняется между сессиями; Live2D/2.5D не подключены.
+
+
+## CI checkpoint after Avatar3DStage integration — 2026-10-30
+
+- Dedicated `NK1 modular wardrobe validation` workflow run #23 on HEAD `8d17aa4f94c12351982f83e7e2004ef2933219a1` completed successfully: 44 tests passed, 0 failed.
+- New coverage checks that the live procedural 3D stage exposes lab-coat, casual and hoodie choices backed by separate Three.js geometry groups and actual visibility switching.
+- Hexis source lineage, cognitive planner cadence and WorkPass108 paired-evidence workflows also completed successfully on this HEAD. Core regression, WorkPass79 and WorkPass110 were still running at the last status check; do not treat them as passed until completed.
