@@ -136,7 +136,11 @@ const normalizeEpisode=(value:unknown):EmotionEpisode|null=>{
   if(!unitFieldsAreValid(value.appraisal,['relevance01','goalCongruence01','controllability01','novelty01','selfRelevance01','socialMeaning01','uncertainty01'])||
      !unitFieldsAreValid(value.interoceptiveDelta,['stress01','energy01','load01','attentionCapture01'])||
      !unitFieldsAreValid(value,['valence01','arousal01','dominance01','memorySalienceMultiplier01','confidence01']))return null;
-  return structuredClone(value) as unknown as EmotionEpisode;
+  const normalized=structuredClone(value) as unknown as EmotionEpisode;
+  if(value.modulators!==undefined){
+    try{normalized.modulators=normalizeInfluences(value.modulators);}catch{return null;}
+  }
+  return normalized;
 };
 const normalizeFeeling=(value:unknown):FeelingEpisode|null=>{
   if(!isRecord(value)||typeof value.id!=='string'||value.id.length===0||value.id.length>256||
