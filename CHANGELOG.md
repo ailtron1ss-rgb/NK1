@@ -1,3 +1,12 @@
+## [NK1][WorkPass639] Add Blender-to-GLB 2.5D export and asset validation (2026-10-30)
+
+- Add a Blender Python exporter that builds the runtime v1 depth-rig manifest from a named rig collection, preserving node IDs, parent links, local transforms, artist pivots, depth/parallax and visibility.
+- Inject `nk1DepthRigManifest` and optional `nk1DepthRigFaceBindings` into the active glTF scene extras so Three.js GLTFLoader exposes the exact metadata location consumed by Avatar3DStage.
+- Validate exported GLB node names before writing the metadata and fail closed on missing/invalid rig controls.
+- Add a dependency-free GLB v2 validator and synthetic-container regressions for node presence, hierarchy mismatches, duplicate IDs, cycles, missing parents and truncated files.
+- Extend the focused 2.5D CI gate to run the new GLB validator tests and watch exporter/validator paths.
+- This is an executable export/validation pipeline, not a production Kurisu asset. No Blender scene, artwork, visual E2E or canonical Release ZIP update is claimed.
+
 ## [NK1][WorkPass639] Pass revisioned motor frames through the avatar stage boundary (2026-10-30)
 
 - Expose optional typed PR #410-compatible `MotorFrame` and explicit depth-rig motor bindings on the parent `AvatarStage`, then forward them unchanged to `Avatar3DStage`.
