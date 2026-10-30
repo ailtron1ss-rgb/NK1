@@ -119,7 +119,7 @@ test("strict protocol accepts the app's envelope and normalizes speech/body fiel
   const value = baseIntent();
   assert.equal(isEmbodimentIntentV1(value), true);
   assert.deepEqual(normalizeEmbodimentIntentV1(value), {
-    stateVersion: 1, expression: "happy", expressionIntensity: 0.8, speaking: true,
+    stateVersion: 1, speechPhase: "speaking", expression: "happy", expressionIntensity: 0.8, speaking: true,
     mouthOpen: 0.65, mouthForm: 0.2, gazeX: 0.2, gazeY: -0.1, gazeDriven: true,
     headTilt: -0.04, gesture: true, gestureProfile: "presenting", gestureIntensity: 0.5, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
   });
@@ -167,6 +167,22 @@ test("speech cancellation resets the avatar to idle and clears expressive gestur
   assert.match(stage, /gestureProfile: speechCancelled \? "none" : motorPlan\.gestureProfile/);
   assert.match(stage, /gestureIntensity: speechCancelled \? 0 : motorPlan\.gestureIntensity/);
   assert.match(stage, /gesture: bodyGestureActive/);
+});
+
+
+test("speech cancellation force-preempts the active Cubism clip in both viewer runtimes", async () => {
+  const viewers = await Promise.all([
+    readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8"),
+    readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8"),
+  ]);
+  for (const viewer of viewers) {
+    assert.match(viewer, /MOTION_PRIORITY_FORCE=3/);
+    assert.match(viewer, /speechPhase==='cancelled'\?MOTION_PRIORITY_FORCE:MOTION_PRIORITY_NORMAL/);
+    assert.match(viewer, /model\.motion\(String\(bodySignal\.motionGroup\),Number\(bodySignal\.motionIndex\|\|0\),priority\)/);
+  }
+  const cancelled = normalizeEmbodimentIntentV1(baseIntent({ speechPhase: "cancelled", cancellationToken: "cancel:speech-1" }));
+  assert.equal(cancelled.speechPhase, "cancelled");
+  assert.equal(cancelled.speaking, false);
 });
 
 test("the production viewer listens to the protocol emitted by AvatarStage and uses token-aware motion identity", async () => {
