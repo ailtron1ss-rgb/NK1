@@ -125,3 +125,14 @@ tests/p78-autobiographical-provenance.mjs дополнен проверкой н
 - Добавлен статический regression guard personality-selfmodel-runtime-wiring.mjs: он защищает связь RuntimeEvidenceBus → LearningProvenance → OrganismCore candidate scoring/feedback → Fabric bridge → persistence projection от случайного отключения.
 
 Это закрывает ранее не подтверждённый разрыв «мост доступен, но не вызывается из основного цикла»: сейчас вызов установлен прямо в общем OrganismCore.feedback path, а decision bias — до построения candidate scores. При этом receipt ID подтверждает происхождение события в runtime evidence bus и проходит сильные числовые пороги RealityLearningGate, но не является криптографической подписью физического результата; CEF ledger attestation и независимая проверка provider receipt остаются отдельным повышающим доверие этапом.
+
+## Шестой проход: явные размерности self-beliefs и стойкость unified self-state
+
+- P2702 получил схему имён восьми self-belief осей: continuity, coherence, agency, reality-grounding, stability, goal-continuity, memory-continuity, authorship-continuity. Теперь compact identity vector в мосте документированно соответствует координатам, а не является безымянным массивом.
+- P80UnifiedSelfState получил полноценную санитизацию restore: допустимые режимы и действия, конечные bounded metrics/counters, ограниченные историю действий и текстовое основание, безопасный fallback на старые/повреждённые snapshots.
+- P80 update нормализует вход tick/action/mode и все основные скаляры, ограничивает счётчики, не допускает неизвестные режимы/действия в текущую историю. Исправлен знак reality-gap в coherence: рост разрыва с реальностью не должен искусственно повышать внутреннюю согласованность.
+- Добавлен регрессионный тест на corrupted P80 snapshot и некорректный runtime input.
+
+### Реальный runtime callsite
+
+В OrganismCore установлен decision-time вызов personality bridge перед построением candidate scoring; небольшая ограниченная добавка actionBias входит и в spine-only score, и в полный rawUtility. На feedback-time вызов recordPersonalityOutcome расположен в ветке реального выбранного действия после P31–P34 и получает именно тот evidence event ID, который OrganismRuntime передал из RuntimeEvidenceBus.
