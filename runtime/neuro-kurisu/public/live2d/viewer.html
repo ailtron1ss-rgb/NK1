@@ -50,6 +50,12 @@ import { smoothToward, sampleBlink } from './temporal-smoothing.mjs';
     looking_away:{brow:-.08,angle:-.12,eyeSmile:-.08,cheek:0,eyeOpen:.94},
     tired:{brow:-.22,angle:.08,eyeSmile:-.2,cheek:0,eyeOpen:.82}
   });
+  const MOTION_COUNTS=Object.freeze({
+    Idle:1,
+    TapHead:1,
+    TapBody:1,
+    Special:2
+  });
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,Number.isFinite(Number(n))?Number(n):0));
   // pixi-live2d-display@0.4.0: MotionPriority.NORMAL=2, FORCE=3.
   const MOTION_PRIORITY_NORMAL=2,MOTION_PRIORITY_FORCE=3;
@@ -66,7 +72,12 @@ import { smoothToward, sampleBlink } from './temporal-smoothing.mjs';
     lipFormTarget=bodySignal.speaking?clamp(bodySignal.mouthForm,-1,1):0;
     if(bodySignal.expression)applyExpression(bodySignal.expression);
     if(bodySignal.motionGroup){
-      const k=`${String(bodySignal.motionGroup)}:${Number(bodySignal.motionIndex||0)}:${Number(bodySignal.motionToken||0)}`;
+      const group=String(bodySignal.motionGroup),index=Number(bodySignal.motionIndex||0);
+      if(!Object.hasOwn(MOTION_COUNTS,group)||!Number.isInteger(index)||index<0||index>=MOTION_COUNTS[group]){
+        send('live2d_motion_unavailable',{group,index});
+        return;
+      }
+      const k=`${group}:${index}:${Number(bodySignal.motionToken||0)}`;
       if(k!==lastMotionKey){
         lastMotionKey=k;
         const request=++motionRequestSequence;
