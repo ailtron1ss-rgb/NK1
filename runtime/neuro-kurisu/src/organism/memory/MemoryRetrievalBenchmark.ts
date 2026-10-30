@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { MemoryOS2, type MemoryOSState2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
 
 export type MemoryRetrievalLanguage = 'en' | 'ru' | 'other';
-export type MemoryRetrievalTaskCategory = 'single-hop' | 'multi-hop' | 'multi-session' | 'temporal' | 'knowledge-update' | 'contradiction' | 'preference' | 'procedural' | 'open-domain' | 'abstention' | 'other';
+export type MemoryRetrievalTaskCategory = 'single-hop' | 'multi-hop' | 'multi-session' | 'temporal' | 'knowledge-update' | 'contradiction' | 'preference' | 'procedural' | 'open-domain' | 'abstention' | 'static-state' | 'dynamic-state' | 'workflow-knowledge' | 'environment-gotcha' | 'premise-awareness' | 'other';
 
 export interface MemoryRetrievalBenchmarkExample {
   id: string;
