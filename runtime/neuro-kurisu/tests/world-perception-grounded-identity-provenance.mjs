@@ -135,6 +135,62 @@ assert.equal(normalized.objects[0].visibilityKnown, false);
 assert.equal(normalized.objects[0].collectionKnown, false);
 assert.equal(normalized.objects[0].evidenceKind, 'model-output');
 
+// Spatial coordinates are forwarded only as a complete tuple bound to a
+// declared coordinate frame. A 2D image point is not a 3D world position.
+const spatialNormalized = normalizeWorldContext({
+  tick: 2, location: 'lab', energy: .8, attention: .7, uncertainty: .2, facts: [], events: [],
+  objects: [
+    { id: 'tracked-crate', label: 'crate', location: 'lab', value: 0, valueKnown: false, visible: true, visibilityKnown: true, collected: false, collectionKnown: true, confidence01: .9, evidenceKind: 'observed', sourceId: 'depth-camera', x: -1.25, y: 0.75, z: 2.5, coordinateFrameId: 'depth-camera:world-v1' },
+    { id: 'pixel-chair', label: 'chair', location: 'lab', value: 0, valueKnown: false, visible: true, visibilityKnown: true, collected: false, collectionKnown: true, confidence01: .8, evidenceKind: 'model-output', x: .2, y: .4 },
+    { id: 'partial-crate', label: 'crate', location: 'lab', value: 0, valueKnown: false, visible: true, visibilityKnown: true, collected: false, collectionKnown: true, confidence01: .8, evidenceKind: 'observed', x: 1, y: 2, z: 3 },
+  ],
+});
+assert.ok(spatialNormalized);
+assert.deepEqual(
+  { x: spatialNormalized.objects[0].x, y: spatialNormalized.objects[0].y, z: spatialNormalized.objects[0].z, frame: spatialNormalized.objects[0].coordinateFrameId },
+  { x: -1.25, y: .75, z: 2.5, frame: 'depth-camera:world-v1' },
+  'finite coordinates and the explicit frame must be preserved without unit-range clamping',
+);
+assert.equal('x' in spatialNormalized.objects[1], false, 'image-relative coordinates without a calibrated frame stay unknown');
+assert.equal('coordinateFrameId' in spatialNormalized.objects[2], false, 'a frame without a complete source coordinate tuple is not manufactured');
+
+// P41 and GroundedWorldState must preserve the same calibrated position/frame pair.
+const spatialEngine = new P41SemanticPerceptionEngine();
+const spatialPerception = spatialEngine.ingest({
+  at: 5_000,
+  world: {
+    scene: 'laboratory',
+    evidenceKind: 'observed',
+    objects: [{
+      label: 'crate', trackId: 'tracked-crate', sourceId: 'depth-camera',
+      confidence01: .9, evidenceKind: 'observed',
+      x: -1.25, y: .75, z: 2.5, coordinateFrameId: 'depth-camera:world-v1',
+    }],
+  },
+});
+const spatialEntity = spatialPerception.entities.find(entity => entity.label === 'crate');
+assert.deepEqual(spatialEntity?.position, { x: -1.25, y: .75, z: 2.5 });
+assert.equal(spatialEntity?.positionFrameId, 'depth-camera:world-v1');
+const spatialGrounding = new GroundedWorldState();
+const spatialWorld = spatialGrounding.integrate({
+  at: 5_000,
+  base: {
+    tick: 2, location: 'laboratory', energy: .8, attention: .7, uncertainty: .2,
+    facts: [], events: [],
+    objects: [{
+      id: 'tracked-crate', label: 'crate', location: 'laboratory',
+      value: 0, valueKnown: false, visible: true, visibilityKnown: true,
+      collected: false, collectionKnown: false, confidence01: .9, evidenceKind: 'unresolved', sourceId: 'depth-camera',
+      x: -1.25, y: .75, z: 2.5, coordinateFrameId: 'depth-camera:world-v1',
+    }],
+  },
+  perception: spatialPerception,
+});
+const spatialOutput = spatialWorld.objects.find(object => object.label === 'crate');
+assert.deepEqual({ x: spatialOutput?.x, y: spatialOutput?.y, z: spatialOutput?.z, frame: spatialOutput?.coordinateFrameId },
+  { x: -1.25, y: .75, z: 2.5, frame: 'depth-camera:world-v1' });
+
+// Keep the base truthfulness results above as one focused regression summary.
 console.log(JSON.stringify({
   ok: true,
   p41SameLabelTracks: chairs.length,
