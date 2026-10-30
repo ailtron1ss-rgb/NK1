@@ -2835,3 +2835,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Расширено применение body dynamics к импортированным VRM/GLB: только распознанные spine/chest/head/neck/shoulder/upper-arm кости получают малые дыхательные и постуральные offsets.
 - Неизвестные имена костей и неподтверждённые morph target IDs остаются нетронутыми; интеграция остаётся best-effort и требует визуальной проверки конкретной модели.
 - Добавлена source-contract regression на наличие этих семантических связей.
+
+
+### [NK1][аспект7] Emotion-linked speech prosody (2026-10-30)
+
+- Добавлен чистый `speechProsody.ts`: каноническая эмоция, valence, arousal, dominance и affect emphasis преобразуются в ограниченные rate/pitch/volume и provider-neutral pauseScale.
+- Browser SpeechSynthesis теперь получает единый профиль prosody на всю реплику; тот же rate используется при построении viseme timeline, чтобы расчёт движения рта не расходился с выбранной скоростью речи.
+- Добавлены тесты всех восьми эмоций, диапазонов, детерминизма, fallback для неизвестной эмоции и направленного влияния arousal/emphasis. Регрессия включена в aspect-07 workflow.
+- Ограничение: Web Speech не предоставляет надёжного per-phoneme/per-frame управления интонацией; параметры применяются к utterance целиком. `pauseScale` пока является контрактом для будущего chunked/streaming TTS, а не реализованной паузой браузерного синтезатора. Визуальная/акустическая проверка на Android и конкретных голосах ещё нужна.
