@@ -69,6 +69,9 @@ try {
     throw new Error(`server did not become healthy within ${readiness.elapsedMs}ms after ${readiness.attempts} probes (${exit}; lastProbe=${readiness.lastError || 'none'}): ${output.slice(-500)}`);
   }
   const root=await (await fetch(`http://127.0.0.1:${port}/`)).text(); if(!root.includes('Neuro‑Kurisu') && root.includes('Unified Organism')) throw new Error('UI release marker mismatch');
+  const motorFrameResponse=await fetch(`http://127.0.0.1:${port}/api/organism/motor-frame`);
+  const motorFrame=await motorFrameResponse.json();
+  if(!motorFrameResponse.ok || motorFrame.ok!==true || motorFrame.configured!==false || motorFrame.frame!==null || motorFrame.readOnly!==true || motorFrame.diagnostics?.channel?.hasLatest!==false) throw new Error(`motor frame endpoint must fail closed before calibrated skeleton setup: status=${motorFrameResponse.status} body=${JSON.stringify(motorFrame)}`);
   const memoryInspectorStartedAt=Date.now();
   const memoryInspectorResponse=await fetch(`http://127.0.0.1:${port}/api/organism/memory-inspector?q=workpass26-temporal-inspector&limit=0`);
   const memoryInspector=await memoryInspectorResponse.json();
