@@ -56,6 +56,18 @@ assert.equal(duplicateLabelReport.datasetIntegrity.validForPromotion, false);
 assert.equal(duplicateLabelReport.promotion.gates.datasetIntegrity, false);
 assert.equal(duplicateLabelReport.promotion.allowed, false);
 
+const incompleteTaskExamples = structuredClone(examples);
+delete incompleteTaskExamples[0].category;
+const incompleteTaskFingerprint = fingerprintMemoryRetrievalDataset(incompleteTaskExamples);
+const incompleteTaskReport = runMemoryOS2RetrievalBenchmark(snapshot, incompleteTaskExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: incompleteTaskFingerprint },
+});
+assert.equal(incompleteTaskReport.taskCategoryStratification.annotationsComplete, false,
+  'partial task labels must be exposed instead of producing misleading category slices');
+assert.equal(incompleteTaskReport.datasetIntegrity.validForPromotion, false,
+  'partial task labels invalidate promotion evidence when task stratification is used');
+
 // Malformed labels must be counted before the normalizer filters them. The clean
 // fingerprint intentionally matches the sanitized result, so provenance alone cannot
 // hide malformed source input.
