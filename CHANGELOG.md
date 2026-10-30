@@ -2794,3 +2794,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## 2026-10-30 — Aspect 10: grounded embodied world interaction
+
+- Added a renderer-independent interaction planner for look, inspect, reach, touch, grasp, release and press intents.
+- Added freshness, confidence, visibility, spatial reach, hand availability, affordance and deny-by-default contact/manipulation gates.
+- Required a capability adapter and independently verified postcondition; unknown execution remains uncertain rather than being reported as success.
+- Added focused deterministic regression tests and a dedicated GitHub Actions workflow.
+- Physical object manipulation, camera calibration, IK adapters and real-device verification remain explicitly pending.
