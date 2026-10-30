@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, validateWardrobePackManifest, verifyWardrobeAssetBytes, verifyWardrobePackPayload } from "../src/components/avatar/wardrobePack.ts";
+import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, defaultWardrobeAssetSelection, updateWardrobeAssetSelection, validateWardrobePackManifest, verifyWardrobeAssetBytes, verifyWardrobePackPayload } from "../src/components/avatar/wardrobePack.ts";
 
 const validManifest = () => ({
   schemaVersion: 1,
@@ -153,4 +153,23 @@ test("malformed non-binary payloads are rejected without throwing",async()=>{
  const result=await verifyWardrobeAssetBytes({bytes:3,sha256:"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},null);
  assert.equal(result.valid,false);
  assert.equal(result.reason,"invalid-input");
+});
+
+
+test("default wardrobe selection chooses at most one asset per renderer slot",()=>{
+ const value=validManifest();
+ value.assets.push({...value.assets[0],id:"lab-coat-alt",path:"garments/lab-coat-alt.glb",sha256:"b".repeat(64)});
+ value.assets.push({...value.assets[0],id:"coat-depth",path:"garments/coat-depth.webp",renderer:"depth2d",mime:"image/webp",sha256:"c".repeat(64)});
+ assert.deepEqual(defaultWardrobeAssetSelection(value,"vrm3d"),["lab-coat-vrm"]);
+ assert.deepEqual(defaultWardrobeAssetSelection(value,"depth2d"),["coat-depth"]);
+});
+test("selecting a garment replaces only its own slot and preserves other slots",()=>{
+ const value=validManifest();
+ value.assets.push({...value.assets[0],id:"lab-coat-alt",path:"garments/lab-coat-alt.glb",sha256:"b".repeat(64)});
+ const next=updateWardrobeAssetSelection(value,"vrm3d",["lab-coat-vrm"],"lab-coat-alt",true);
+ assert.deepEqual(next,["lab-coat-alt"]);
+ const other=value.assets[0];
+ value.assets.push({...other,id:"shoes-vrm",garmentId:"shoes",slot:"footwear",path:"garments/shoes.glb",sha256:"c".repeat(64)});
+ assert.deepEqual(updateWardrobeAssetSelection(value,"vrm3d",["lab-coat-vrm","shoes-vrm"],"lab-coat-alt",true),["shoes-vrm","lab-coat-alt"]);
+ assert.deepEqual(updateWardrobeAssetSelection(value,"vrm3d",["lab-coat-alt","shoes-vrm"],"lab-coat-alt",false),["shoes-vrm"]);
 });
