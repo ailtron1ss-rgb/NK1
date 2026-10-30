@@ -67,4 +67,9 @@ const malformedEvidence = new P78AutobiographicalSelfContinuity().observe([
 ]);
 assert.equal(malformedEvidence.verifiedOutcomeSamples, 0, 'evidence references containing whitespace are not bound receipts');
 assert.equal(malformedEvidence.unverifiedOutcomeSamples, 1);
+const unknownIssuer = new P78AutobiographicalSelfContinuity().observe([
+  { tick: 42, at: 4200, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'local-cache:receipt-42' }
+]);
+assert.equal(unknownIssuer.verifiedOutcomeSamples, 0, 'unknown issuer namespaces cannot enter autobiographical verified history');
+assert.equal(unknownIssuer.unverifiedOutcomeSamples, 1);
 console.log('P78_AUTOBIOGRAPHICAL_PROVENANCE=PASS');
