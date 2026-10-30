@@ -2811,3 +2811,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ### Evidence boundary
 - The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
+
+## [NK1][Aspect 03] Align invalid-box test with preserved object semantics (2026-10-30)
+
+- Correct the Gemini vision regression: an out-of-frame bounding box is rejected, but the semantic object observation remains present without a `bbox` field.
+- Assert both object identity and omission of invalid geometry; preserve the rule that image-relative x/y/z are never promoted to world coordinates.
+- This fixes a contradictory test expectation without weakening runtime validation.
