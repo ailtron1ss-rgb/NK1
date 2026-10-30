@@ -5,7 +5,10 @@ import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const norm=(x:string)=>String(x??'').trim().toLowerCase().slice(0,120);
 // Match P41 cleanTrackId: identity tokens retain case and only normalize Unicode/whitespace.
-const cleanIdentity=(value:unknown)=>typeof value==='string'?value.normalize('NFKC').replace(/[\\r\\n\\t]+/g,' ').trim().slice(0,120):'';
+const cleanIdentity=(value:unknown)=>{
+  if(typeof value!=='string')return '';
+  return value.normalize('NFKC').replace(/[\r\n\t]+/g,' ').trim().slice(0,120);
+};
 const stableHash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
 
 export interface GroundedEntity {
@@ -154,7 +157,9 @@ export class GroundedWorldState {
       old.trackAliases=[...new Set([...(old.trackAliases??[]),...(incoming.trackAliases??[]),...(incoming.trackId&&old.trackId!==incoming.trackId?[incoming.trackId]:[])])].filter(Boolean).slice(-16);
       old.sourceIds=[...new Set([...(old.sourceIds??[]),...(incoming.sourceIds??[])])].slice(-16);
       old.modalityEvidenceKinds={...(old.modalityEvidenceKinds??{}),...(incoming.modalityEvidenceKinds??{})};
-      old.observationCount=Math.max(1,old.observationCount)+Math.max(1,incoming.observationCount);
+      old.observationCount=incoming.lastSeenAt>previousLastSeenAt
+        ?Math.max(old.observationCount+1,incoming.observationCount)
+        :Math.max(old.observationCount,incoming.observationCount);
       if(incoming.lastSeenAt>=previousLastSeenAt){
         old.presenceStatus=incoming.presenceStatus;
         old.visibilityKnown=incoming.visibilityKnown??old.visibilityKnown;
@@ -280,11 +285,12 @@ export class GroundedWorldState {
       p.scene.confidence01*.15+
       p.metrics.evidenceTraceability01*.15
     ):.25;
-    const observedRatio=e?.evidence.length?clamp(e.evidence.filter(x=>x.kind==='observed').length/e.evidence.length):0;
+    const freshEvidence=(e?.evidence??[]).filter(x=>Number.isFinite(x.at)&&x.at<=at&&at-x.at<=5_000);
+    const observedRatio=freshEvidence.length?clamp(freshEvidence.filter(x=>x.kind==='observed').length/freshEvidence.length):0;
     const confidence=clamp(semanticConfidence*.72+observedRatio*.28);
     const uncertainty=clamp(1-confidence);
     const location=norm(base?.location||p?.scene.label||this.state.location||'unknown');
-    const provenance=[`grounded:${at}`,...(e?.evidence??[]).slice(0,16).map(x=>x.id)];
+    const provenance=[`grounded:${at}`,...freshEvidence.slice(0,16).map(x=>x.id)];
     const digest=`${location}|${uncertainty.toFixed(3)}|${entities.slice(0,24).map(x=>`${x.id}:${x.kind}:${x.label}:${x.confidence01.toFixed(2)}`).join('|')}|${relations.slice(0,16).map(x=>x.id).join('|')}|${eventList.slice(0,8).map(x=>x.id).join('|')}`;
     this.state={version:1,revision:this.state.revision+1,lastAt:at,location,uncertainty01:uncertainty,confidence01:confidence,entities,relations,events:eventList,facts,provenanceIds:[...new Set(provenance)].slice(0,128),lastHash:stableHash(digest)};
     return {
