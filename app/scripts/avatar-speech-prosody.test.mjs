@@ -46,3 +46,12 @@ test("unknown emotion falls back to the calm register", () => {
   const calm = deriveSpeechProsody({ emotion: "calm", valence: 0.5, arousal: 0.5, dominance: 0.5 });
   assert.deepEqual(safe, calm);
 });
+
+test("prototype property names cannot select inherited emotion profiles", () => {
+  const calm = deriveSpeechProsody({ emotion: "calm", valence: 0.5, arousal: 0.5, dominance: 0.5 });
+  for (const emotion of ["constructor", "toString", "__proto__"]) {
+    const safe = deriveSpeechProsody({ emotion, valence: 0.5, arousal: 0.5, dominance: 0.5 });
+    assert.deepEqual(safe, calm, emotion);
+    for (const value of Object.values(safe)) assert.ok(Number.isFinite(value), emotion);
+  }
+});
