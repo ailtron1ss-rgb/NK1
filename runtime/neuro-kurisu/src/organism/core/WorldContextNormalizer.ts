@@ -66,20 +66,58 @@ export function normalizeWorldContext(
       const confidence = isFiniteNumeric(candidate?.confidence01)
         ? clamp01(candidate?.confidence01, 0)
         : undefined;
+      // A producer may explicitly state that a placeholder value is unknown.
+      // Do not turn its numeric storage sentinel (for example 0) into a fact.
+      const valueKnown = candidate?.valueKnown === false ? false : isFiniteNumeric(candidate?.value);
+      const visibilityKnown = candidate?.visibilityKnown === false ? false : typeof candidate?.visible === 'boolean';
+      const collectionKnown = candidate?.collectionKnown === false ? false : typeof candidate?.collected === 'boolean';
+      // World-space position is meaningful only when all axes and an explicit
+      // coordinate frame are present. Partial/image-relative coordinates stay unknown.
+      const coordinateFrameId = safeString(candidate?.coordinateFrameId, '', 120);
+      const spatialPositionKnown = Boolean(coordinateFrameId)
+        && isFiniteNumeric(candidate?.x)
+        && isFiniteNumeric(candidate?.y)
+        && isFiniteNumeric(candidate?.z);
+      const rawBox=candidate?.bbox2D&&typeof candidate.bbox2D==='object'
+        ?candidate.bbox2D as Record<string,unknown>:undefined;
+      const bboxCameraId=isFiniteNumeric(candidate?.bboxCameraId)?Math.floor(Number(candidate?.bboxCameraId)):-1;
+      const bboxAt=isFiniteNumeric(candidate?.bboxAt)?Number(candidate?.bboxAt):-1;
+      const bboxConfidence01=isFiniteNumeric(candidate?.bboxConfidence01)?clamp01(candidate?.bboxConfidence01,0):0;
+      const bbox2DKnown=Boolean(rawBox&&bboxCameraId>=0&&bboxAt>=0&&bboxConfidence01>0
+        &&[rawBox.x,rawBox.y,rawBox.width,rawBox.height].every(v=>isFiniteNumeric(v))
+        &&Number(rawBox.x)>=0&&Number(rawBox.y)>=0
+        &&Number(rawBox.width)>0&&Number(rawBox.height)>0
+        &&Number(rawBox.x)+Number(rawBox.width)<=1.000001
+        &&Number(rawBox.y)+Number(rawBox.height)<=1.000001);
 
       return {
         id,
         label,
         location: objectLocation,
-        value: clamp01(candidate?.value, 0),
-        valueKnown: isFiniteNumeric(candidate?.value),
+        value: valueKnown ? clamp01(candidate?.value, 0) : 0,
+        valueKnown,
         visible: candidate?.visible === true,
-        visibilityKnown: typeof candidate?.visible === 'boolean',
+        visibilityKnown,
         collected: candidate?.collected === true,
-        collectionKnown: typeof candidate?.collected === 'boolean',
+        collectionKnown,
         ...(confidence !== undefined ? { confidence01: confidence } : {}),
         ...(evidenceKind ? { evidenceKind } : {}),
         ...(sourceId ? { sourceId } : {}),
+        ...(spatialPositionKnown ? {
+          x: Number(candidate?.x),
+          y: Number(candidate?.y),
+          z: Number(candidate?.z),
+          coordinateFrameId,
+        } : {}),
+        ...(bbox2DKnown?{
+          bbox2D:{
+            x:Number(rawBox!.x),y:Number(rawBox!.y),
+            width:Number(rawBox!.width),height:Number(rawBox!.height),
+          },
+          bboxCameraId,
+          bboxAt,
+          bboxConfidence01,
+        }:{}),
       };
     })
     : [];
