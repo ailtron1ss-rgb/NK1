@@ -62,7 +62,7 @@ export function isEmbodimentIntentV1(value) {
 
   if (value.speechPhase === "speaking" && (!value.speechEventId || !value.audioClockId)) return false;
   if (value.speechPhase === "cancelled" &&
-      (!value.speechEventId || typeof value.cancellationToken !== "string" || !value.cancellationToken.startsWith("cancel:"))) return false;
+      (!value.speechEventId || value.cancellationToken !== `cancel:${value.speechEventId}`)) return false;
   return true;
 }
 
