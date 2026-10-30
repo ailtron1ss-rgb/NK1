@@ -19,6 +19,14 @@ gateway.registerTool({ id: "catalog.search", capability: "catalog.read", destruc
 assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.hasInputContract, true);
 assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.inputSchema?.type, "object");
 assert.deepEqual(gateway.listTools().map(x => x.id), [...gateway.listTools().map(x => x.id)].sort());
+gateway.registerTool({
+  id: "catalog.short-code",
+  capability: "catalog.read",
+  destructive: false,
+  inputContract: { type: "object", properties: { code: { type: "string", pattern: "^[a-z]{2,5}$" } }, required: ["code"], additionalProperties: false },
+  execute: async input => ({ ok: true, code: input.code }),
+});
+assert.equal((await gateway.executeTool("catalog.short-code", { code: "nk1" })).ok, true, "bounded quantifiers remain supported in safe patterns");
 assert.equal((await gateway.executeTool("catalog.search", { query: "nk1 architecture", limit: 3, filters: { kinds: ["memory", "tool"] } })).ok, true);
 assert.equal(calls, 1);
 
@@ -68,6 +76,11 @@ assert.throws(() => gateway.registerTool({
   inputContract: { type: "object", properties: { value: { type: "string", pattern: "^(a+)+$" } }, required: ["value"] },
   execute: async () => ({ ok: true }),
 }), /multiple-pattern-repetitions|unsupported-pattern-construct/);
+assert.throws(() => gateway.registerTool({
+  id: "catalog.two-repeats", capability: "catalog.read", destructive: false,
+  inputContract: { type: "object", properties: { value: { type: "string", pattern: "^[a-z]+[0-9]+$" } }, required: ["value"] },
+  execute: async () => ({ ok: true }),
+}), /multiple-pattern-repetitions/);
 
 const mutator = new ActionGateway();
 let ledgerWrites = 0, mutations = 0;

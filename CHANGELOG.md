@@ -1,3 +1,7 @@
+## [NK1][WorkPass631] Cover safe bounded regular-expression patterns
+
+- Add a positive bounded-quantifier pattern case and a separate regression for multiple repetition operators, so the conservative regex subset is exercised in both allowed and rejected forms.
+
 ## [NK1][WorkPass629] Bound tool schema regex complexity (2026-10-30)
 
 - Restrict schema patterns to a conservative single-repetition subset; reject groups, alternatives, backreferences, Unicode property escapes and multiple repeat operators before a tool can be registered.

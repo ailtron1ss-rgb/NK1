@@ -75,3 +75,6 @@ The references motivate the design. NK1's implementation is a limited native ada
 - Pattern constraints now accept a small linear-time-oriented subset: no groups, alternation, backreferences, Unicode property escapes, or multiple repetition operators.
 - This keeps common anchored character-class patterns available while rejecting nested/repeated regex constructs that can cause disproportionate CPU use on attacker-controlled arguments.
 - A regression confirms a nested quantified pattern is rejected at registration rather than evaluated at invocation time.
+
+
+WorkPass631 also keeps simple bounded quantifiers available (`^[a-z]{2,5}$`) while testing rejection of two independent repetition operators in one pattern.
