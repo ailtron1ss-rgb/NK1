@@ -92,8 +92,10 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - name: Install app dependencies reproducibly
         run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
-      - name: App script regressions
-        run: npm --prefix app run test:scripts
+      - name: Install runtime dependencies reproducibly
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: App script and UI regressions
+        run: npm --prefix app test
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App production-like development build
