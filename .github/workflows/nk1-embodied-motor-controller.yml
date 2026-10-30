@@ -29,5 +29,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Install pinned runtime toolchain
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts
+      - name: Typecheck runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Run motor-control regression suite
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/embodied-motor-controller.mjs
