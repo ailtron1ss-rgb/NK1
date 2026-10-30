@@ -1,6 +1,7 @@
 import { createCognitiveSubsystemPorts, type CognitiveSubsystemPorts, type CognitiveSubsystemName } from './CognitiveSubsystemPorts.ts';
 import { SubsystemFlightRecorder } from './SubsystemFlightRecorder.ts';
 import { OrganismSystemFabric } from './OrganismSystemFabric.ts';
+import type { PersonalityOutcomeRecord } from '../cognition/PersonalitySelfModelBridge.ts';
 export interface CognitiveSubsystemHealth { name:CognitiveSubsystemName; available:boolean; probeMs:number; apiCount:number; checkedAt:number; ownership:'physical'|'mixed'|'adapter'; error?:string; }
 
 /** Physical registry boundary for Stage-2/3 extraction.
@@ -61,13 +62,25 @@ function createPortsFromFabric(fabric:OrganismSystemFabric): CognitiveSubsystemP
 
 export class CognitiveSubsystemRegistry {
   private readonly ports:CognitiveSubsystemPorts;
+  private readonly organismSystems:OrganismSystemFabric|null;
   private lastHealthAt=0;
   private lastHealth:CognitiveSubsystemHealth[]=[];
   private readonly flightRecorder=new SubsystemFlightRecorder(16);
   constructor(source:Parameters<typeof createCognitiveSubsystemPorts>[0] | OrganismSystemFabric){
-    this.ports=source instanceof OrganismSystemFabric ? createPortsFromFabric(source) : createCognitiveSubsystemPorts(source);
+    this.organismSystems=source instanceof OrganismSystemFabric ? source : null;
+    this.ports=this.organismSystems ? createPortsFromFabric(this.organismSystems) : createCognitiveSubsystemPorts(source as Parameters<typeof createCognitiveSubsystemPorts>[0]);
   }
   get(name:CognitiveSubsystemName){ return this.ports[name]; }
+  /** Forward the composed personality signal through the canonical physical-system fabric. */
+  preparePersonalityDecision(input:Parameters<OrganismSystemFabric['preparePersonalityDecision']>[0]) {
+    if(!this.organismSystems) throw new Error('Personality bridge requires an OrganismSystemFabric-backed registry');
+    return this.organismSystems.preparePersonalityDecision(input);
+  }
+  /** Persisted self/personality learning remains in its physical owners; registry adds no shadow state. */
+  recordPersonalityOutcome(input:PersonalityOutcomeRecord) {
+    if(!this.organismSystems) throw new Error('Personality bridge requires an OrganismSystemFabric-backed registry');
+    return this.organismSystems.recordPersonalityOutcome(input);
+  }
   all(){ return this.ports; }
   health():CognitiveSubsystemHealth[]{
     const now=Date.now();
