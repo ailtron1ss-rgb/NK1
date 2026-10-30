@@ -200,3 +200,15 @@
 - Browser/Android E2E, долгий soak и финальный Release ZIP.
 
 WorkPass290 добавляет временную непрерывность mood, но не объявляет аспект 06 полностью завершённым и не делает утверждений о субъективном/феноменальном переживании.
+## 9. Итоговая проверка и состояние интеграции (30 октября 2026)
+
+- Финальный HEAD проверенного WorkPass: `9b1c022c3cb9b4296bb484ab709a6ac9745494da`.
+- GitHub Actions: [run 41082184381](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41082184381) — `success` на точном финальном HEAD.
+- Runtime TypeScript semantic check: `TYPECHECK=PASS mode=tsc compiler=PATH`.
+- Все шесть целевых сценариев завершились успешно: WorkPass172, WorkPass288, WorkPass272, WorkPass333, WorkPass39 и WorkPass289, включая новые WorkPass290 mood-regression assertions внутри WorkPass289.
+- Изменения сохранены в PR #400: `https://github.com/ailtron1ss-rgb/NK1/pull/400`.
+- PR остаётся Draft и не merge-ready: последняя проверка GitHub показывает `mergeable_state=dirty`; ветка опережает актуальный `workpass70-source` на 29 коммитов и отстаёт на 52.
+- Не выполнять слияние вслепую. Сначала требуется трёхсторонняя синхронизация PR с текущей рабочей базой, разрешение конфликтов в `OrganismCore.ts`, emotion engine, motivation engine и snapshot/test files, затем повторить весь целевой workflow на новом HEAD.
+- `workpass70-source`, `main` и GitHub Release ZIP данным проходом не изменялись.
+
+Успешный CI подтверждает поведение специализированного runtime-среза на PR HEAD, но не означает, что эти изменения уже интегрированы в актуальную source-ветку или опубликованы пользователю.
