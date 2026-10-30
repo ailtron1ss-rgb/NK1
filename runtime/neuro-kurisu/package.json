@@ -1813,6 +1813,7 @@
     "test:world-perception-runtime-ingress": "node --experimental-strip-types tests/world-perception-runtime-ingress.mjs",
     "test:p41:perceptual-integrity-deep-pass": "node --experimental-strip-types tests/p41-perceptual-integrity-deep-pass.mjs",
     "test:embodied-motor-controller": "node --experimental-strip-types tests/embodied-motor-controller.mjs",
-    "test:skeletal-kinematics-3d": "node --experimental-strip-types tests/skeletal-kinematics-3d.mjs"
+    "test:skeletal-kinematics-3d": "node --experimental-strip-types tests/skeletal-kinematics-3d.mjs",
+    "test:skeletal-multi-effector-ik-3d": "node --experimental-strip-types tests/skeletal-multi-effector-ik-3d.mjs"
   }
 }
