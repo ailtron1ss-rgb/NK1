@@ -20,7 +20,7 @@ import * as THREE from "three";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
-type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; vrm:any; vrmExpressionKeys:string[]; lookAtTarget:any; lookAtProxy:any; mixer:any; clips:any[]; modelClips:any[]; vrmaClips:any[]; vrmaDefaultClip:any; activeAction:any; clipName:string; bones:Bone[]; vrmExpressionDefinitions:VrmExpressionDefinition[]; vrmMorphTargets:VrmMorphTargetGroup[]; yaw:number; dragX:number|null; mood:any; last:number };
+type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; vrm:any; vrmExpressionKeys:string[]; lookAtTarget:any; lookAtProxy:any; mixer:any; clips:any[]; modelClips:any[]; vrmaClips:any[]; vrmaDefaultClip:any; activeAction:any; vrmaExpressionKeysByClip:Record<string,string[]>; vrmaLookAtClipNames:string[]; activeExpressionKeys:string[]; transitionExpressionKeys:string[]; expressionTransitionRemaining:number; activeLookAtClip:boolean; clipName:string; bones:Bone[]; vrmExpressionDefinitions:VrmExpressionDefinition[]; vrmMorphTargets:VrmMorphTargetGroup[]; yaw:number; dragX:number|null; mood:any; last:number };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
 const material=(color:number,roughness=0.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 function ellipsoid(parent:any,mat:any,pos:[number,number,number],scale:[number,number,number],name:string){
@@ -54,12 +54,24 @@ function bonesOf(root:any,gltf?:any,vrm?:any):Bone[]{const out:Bone[]=[],seen=ne
 function transitionClip(rt:Runtime,clip:any,timeScale:number,fadeSeconds=.22):void{
  if(!rt.mixer)return;
  if(!clip){
-  if(rt.activeAction){rt.activeAction.fadeOut(fadeSeconds);rt.activeAction=null;rt.clipName="";}
+  if(rt.activeAction){
+   rt.transitionExpressionKeys=[...rt.activeExpressionKeys];
+   rt.expressionTransitionRemaining=fadeSeconds;
+   rt.activeExpressionKeys=[];
+   rt.activeLookAtClip=false;
+   rt.activeAction.fadeOut(fadeSeconds);rt.activeAction=null;rt.clipName="";
+  }
   return;
  }
  if(rt.activeAction&&rt.clipName===clip.name)return;
  const next=rt.mixer.clipAction(clip);
  if(rt.activeAction&&rt.activeAction!==next)rt.activeAction.fadeOut(fadeSeconds);
+ const previousKeys=rt.activeExpressionKeys??[];
+ const nextKeys=rt.vrmaExpressionKeysByClip[String(clip.name??"")]??[];
+ rt.transitionExpressionKeys=Array.from(new Set([...previousKeys,...nextKeys]));
+ rt.expressionTransitionRemaining=fadeSeconds;
+ rt.activeExpressionKeys=nextKeys;
+ rt.activeLookAtClip=rt.vrmaLookAtClipNames.includes(String(clip.name??""));
  next.reset();next.enabled=true;next.setEffectiveTimeScale(clamp(timeScale,.1,2));
  next.setEffectiveWeight(1);next.fadeIn(fadeSeconds).play();
  rt.activeAction=next;rt.clipName=String(clip.name??"");
@@ -77,7 +89,7 @@ export function Avatar3DStage(props:Props){
   try{const data=await blob.arrayBuffer();if(token!==loadToken.current)return;inspectSelfContainedGlb(data,MAX_AVATAR_MODEL_BYTES);const loader=new GLTFLoader();loader.register((parser:any)=>new VRMLoaderPlugin(parser));loader.register((parser:any)=>new VRMAnimationLoaderPlugin(parser));loader.parse(data,"",(gltf:any)=>{
    if(token!==loadToken.current||runtime.current!==rt){if(gltf.userData?.vrm)VRMUtils.deepDispose(gltf.userData.vrm.scene);else disposeTree(gltf.scene);return;}
    try{const vrm=gltf.userData?.vrm??null;if(vrm)VRMUtils.rotateVRM0(vrm);const root=vrm?.scene??gltf.scene;if(!root)throw new Error("В файле нет glTF-сцены.");const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
-    if(rt.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.loaded=root;rt.vrm=vrm;rt.lookAtProxy=vrm?.lookAt?new VRMLookAtQuaternionProxy(vrm.lookAt):null;if(rt.lookAtProxy){rt.lookAtProxy.name="lookAtQuaternionProxy";root.add(rt.lookAtProxy);}rt.scene.add(root);rt.body.root.visible=false;rt.bones=bonesOf(root,gltf,vrm);rt.modelClips=Array.isArray(gltf.animations)?gltf.animations:[];rt.vrmaClips=[];rt.vrmaDefaultClip=null;rt.clips=[...rt.modelClips];rt.mixer=new THREE.AnimationMixer(root);rt.activeAction=null;rt.clipName="";rt.vrmExpressionDefinitions=buildVrmExpressionMap(gltf.parser?.json?.extensions);rt.vrmMorphTargets=bindVrmExpressionTargets(rt.vrmExpressionDefinitions,gltf.parser?.associations?.entries?.()??[]);const expressionManager=vrm?.expressionManager;rt.vrmExpressionKeys=expressionManager?["happy","angry","sad","relaxed","surprised","aa","ih","ou","ee","oh","blink","blinkLeft","blinkRight","lookUp","lookDown","lookLeft","lookRight"].filter((key)=>!(vrm?.lookAt&&key.startsWith("look"))&&expressionManager.getValue(key)!==null):[];setModelName(name);setState("loaded");setMessage(rt.vrmMorphTargets.length?"VRM-мимика подключена: эмоции, viseme, blink и взгляд используют авторские morphTargetBinds.":rt.bones.length?"Модель загружена; NK1 управляет взглядом, эмоцией, речью и распознанными костями.":"Геометрия загружена; скелет не найден, поэтому движения тела ограничены.");
+    if(rt.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.loaded=root;rt.vrm=vrm;rt.lookAtProxy=vrm?.lookAt?new VRMLookAtQuaternionProxy(vrm.lookAt):null;if(rt.lookAtProxy){rt.lookAtProxy.name="lookAtQuaternionProxy";root.add(rt.lookAtProxy);}rt.scene.add(root);rt.body.root.visible=false;rt.bones=bonesOf(root,gltf,vrm);rt.modelClips=Array.isArray(gltf.animations)?gltf.animations:[];rt.vrmaClips=[];rt.vrmaDefaultClip=null;rt.vrmaExpressionKeysByClip={};rt.vrmaLookAtClipNames=[];rt.activeExpressionKeys=[];rt.transitionExpressionKeys=[];rt.expressionTransitionRemaining=0;rt.activeLookAtClip=false;rt.clips=[...rt.modelClips];rt.mixer=new THREE.AnimationMixer(root);rt.activeAction=null;rt.clipName="";rt.vrmExpressionDefinitions=buildVrmExpressionMap(gltf.parser?.json?.extensions);rt.vrmMorphTargets=bindVrmExpressionTargets(rt.vrmExpressionDefinitions,gltf.parser?.associations?.entries?.()??[]);const expressionManager=vrm?.expressionManager;rt.vrmExpressionKeys=expressionManager?["happy","angry","sad","relaxed","surprised","aa","ih","ou","ee","oh","blink","blinkLeft","blinkRight","lookUp","lookDown","lookLeft","lookRight"].filter((key)=>!(vrm?.lookAt&&key.startsWith("look"))&&expressionManager.getValue(key)!==null):[];setModelName(name);setState("loaded");setMessage(rt.vrmMorphTargets.length?"VRM-мимика подключена: эмоции, viseme, blink и взгляд используют авторские morphTargetBinds.":rt.bones.length?"Модель загружена; NK1 управляет взглядом, эмоцией, речью и распознанными костями.":"Геометрия загружена; скелет не найден, поэтому движения тела ограничены.");
     const licenseNotice=summarizeVrmLicenseMetadata(vrm?.meta,name).summary;
     if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage(`${licenseNotice} Модель сохранена локально в браузере; файл не отправляется на сервер.`)).catch(()=>setStorageMessage(`${licenseNotice} Модель загружена, но браузер не разрешил сохранить её между сессиями.`));else setStorageMessage(`${licenseNotice} Восстановлена локальная модель из хранилища браузера.`);
    }catch(e){if(gltf.userData?.vrm)VRMUtils.deepDispose(gltf.userData.vrm.scene);else disposeTree(gltf.scene);failLoad(e instanceof Error?e.message:"Не удалось подготовить модель.");}
@@ -90,7 +102,7 @@ export function Avatar3DStage(props:Props){
    renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:"low-power"});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(Math.max(el.clientWidth,1),Math.max(el.clientHeight,1),false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;renderer.shadowMap.enabled=false;renderer.domElement.style.cssText="display:block;width:100%;height:100%;touch-action:none;cursor:grab";renderer.domElement.setAttribute("aria-label","3D-модель Курису, потяните для поворота");el.appendChild(renderer.domElement);
    const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(31,Math.max(el.clientWidth,1)/Math.max(el.clientHeight,1),.1,100);camera.position.set(0,1.78,6.65);camera.lookAt(0,1.69,0);
    scene.add(new THREE.HemisphereLight(0xd8e9ff,0x352432,2.15));const key=new THREE.DirectionalLight(0xffe2d0,3);key.position.set(-3.5,5.5,4.5);scene.add(key);const fill=new THREE.DirectionalLight(0x82d8f4,1.25);fill.position.set(4,3,2.5);scene.add(fill);const rim=new THREE.DirectionalLight(0xbca3ff,1.15);rim.position.set(.5,3,-4);scene.add(rim);const mood=new THREE.PointLight(0x76c8e6,.58,7.5);mood.position.set(0,2.2,1.2);scene.add(mood);
-   const body=makeBody(scene);const lookAtTarget=new THREE.Group();camera.add(lookAtTarget);lookAtTarget.position.set(0,1.7,-5);const rt:Runtime={scene,camera,renderer,body,loaded:null,vrm:null,vrmExpressionKeys:[],lookAtTarget,lookAtProxy:null,mixer:null,clips:[],modelClips:[],vrmaClips:[],vrmaDefaultClip:null,activeAction:null,clipName:"",bones:[],vrmExpressionDefinitions:[],vrmMorphTargets:[],yaw:0,dragX:null,mood,last:performance.now()};runtime.current=rt;
+   const body=makeBody(scene);const lookAtTarget=new THREE.Group();camera.add(lookAtTarget);lookAtTarget.position.set(0,1.7,-5);const rt:Runtime={scene,camera,renderer,body,loaded:null,vrm:null,vrmExpressionKeys:[],lookAtTarget,lookAtProxy:null,mixer:null,clips:[],modelClips:[],vrmaClips:[],vrmaDefaultClip:null,activeAction:null,vrmaExpressionKeysByClip:{},vrmaLookAtClipNames:[],activeExpressionKeys:[],transitionExpressionKeys:[],expressionTransitionRemaining:0,activeLookAtClip:false,clipName:"",bones:[],vrmExpressionDefinitions:[],vrmMorphTargets:[],yaw:0,dragX:null,mood,last:performance.now()};runtime.current=rt;
    const resize=()=>{if(disposed)return;const w=Math.max(el.clientWidth,1),h=Math.max(el.clientHeight,1);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(w,h,false);};observer=typeof ResizeObserver!=="undefined"?new ResizeObserver(resize):null;observer?.observe(el);window.addEventListener("resize",resize);
    const down=(e:PointerEvent)=>{rt.dragX=e.clientX;renderer.domElement.style.cursor="grabbing";try{renderer.domElement.setPointerCapture(e.pointerId);}catch{}};const move=(e:PointerEvent)=>{if(rt.dragX===null)return;rt.yaw+=(e.clientX-rt.dragX)*.008;rt.dragX=e.clientX;};const up=()=>{rt.dragX=null;renderer.domElement.style.cursor="grab";};renderer.domElement.addEventListener("pointerdown",down);renderer.domElement.addEventListener("pointermove",move);renderer.domElement.addEventListener("pointerup",up);renderer.domElement.addEventListener("pointercancel",up);
    const animate=(now:number)=>{if(disposed||runtime.current!==rt)return;raf=requestAnimationFrame(animate);const dt=Math.min(.05,Math.max(0,(now-rt.last)/1000));rt.last=now;const t=now/1000,p=latest.current,b=rt.body,active=p.awake?1:.22,energy=clamp(p.energy,0,1),load=clamp(p.cognitiveLoad,0,1),uncertainty=clamp(p.uncertainty,0,1),social=clamp(p.socialNeed,0,1),novelty=clamp(p.novelty,0,1),curiosity=clamp(p.curiosity,0,1),goal=clamp(p.goalPressure,0,1),error=clamp(p.predictionError,0,1),dominance=clamp(p.dominance,0,1),valence=clamp(p.valence,0,1),warmth=clamp(p.traits.warmth??.5,0,1),sarcasm=clamp(p.traits.sarcasm??.5,0,1),guarded=clamp(p.traits.guardedness??.5,0,1),composure=clamp(p.traits.composure??.5,0,1);b.root.position.y=Math.sin(t*(p.awake?1.5+.5*energy:.45))*(.004+.018*energy);b.root.rotation.y=rt.yaw+Math.sin(t*.29)*(.006+.014*uncertainty);b.root.rotation.x=(p.action==="explore"?-.016:p.action==="verify"||p.action==="reflect"?-.026:p.action==="rest"?.035:0)+(goal-.35)*.045+load*.022-dominance*.018+(1-energy)*.035;b.head.rotation.x=-clamp(p.gazeY,-1,1)*.1+(p.thinking?-.035:0)-load*.045+(1-energy)*.05;b.head.rotation.y=clamp(p.gazeX,-1,1)*(.2-social*.075)+Math.sin(t*.6)*(.014*active+uncertainty*.025+novelty*.012+curiosity*.012);b.head.rotation.z=(p.emotion==="sadness"?.055:p.emotion==="anxiety"?-.035:p.emotion==="anger"||p.emotion==="frustration"?-.04:p.emotion==="curiosity"?.035:Math.sin(t*.75)*.009*active)+(0.5-valence)*.055+(0.5-composure)*.018;
@@ -104,13 +116,15 @@ export function Avatar3DStage(props:Props){
      blink:p.awake&&Math.sin(t*.83)>.994?.92:0,
     },{applyVrmOverrides:!(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length>0)});
     if(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length){
-      for(const key of rt.vrmExpressionKeys)rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
+      const protectedKeys=new Set(rt.expressionTransitionRemaining>0?[...rt.activeExpressionKeys,...rt.transitionExpressionKeys]:rt.activeExpressionKeys);
+      for(const key of rt.vrmExpressionKeys)if(!protectedKeys.has(key))rt.vrm.expressionManager.setValue(key,expressionWeights[key]??0);
+      if(rt.expressionTransitionRemaining>0){rt.expressionTransitionRemaining=Math.max(0,rt.expressionTransitionRemaining-dt);if(rt.expressionTransitionRemaining===0)rt.transitionExpressionKeys=[];}
     }else if(rt.vrmMorphTargets.length){
       applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights);
     }else{
       rt.loaded.traverse((node:any)=>{if(!node.isMesh||!node.morphTargetDictionary||!node.morphTargetInfluences)return;for(const [key,index]of Object.entries(node.morphTargetDictionary)){const k=String(key).toLowerCase().replace(/[^a-z0-9]/g,"");let value:number|null=null;if(/happy|joy|smile/.test(k))value=p.emotion==="joy"?.75:p.emotion==="protective"?.22:p.emotion==="calm"?warmth*.16:0;else if(/sad|sorrow|cry/.test(k))value=p.emotion==="sadness"||p.emotion==="anxiety"?.62:0;else if(/angry|anger|frown/.test(k))value=p.emotion==="anger"||p.emotion==="frustration"?.7:0;else if(/mouthopen|jawopen|visemeaa|phonemeaa/.test(k))value=p.speaking?clamp(p.mouthPose.open,0,1):0;else if(/visemeoh|phonemeoh/.test(k))value=p.speaking&&p.mouthPose.form<-.25?clamp(p.mouthPose.open,0,1):0;else if(/blink|eyeclose/.test(k))value=Math.sin(t*.83)>.994&&p.awake?.92:0;if(value!==null)node.morphTargetInfluences[Number(index)]=value;}});
     }}
-    if(rt.vrm?.lookAt?.target){
+    if(rt.vrm?.lookAt?.target&&!rt.activeLookAtClip){
       rt.lookAtTarget.position.set(clamp(p.gazeX,-1,1)*0.65,1.7-clamp(p.gazeY,-1,1)*0.45,-5);
       rt.vrm.lookAt.target=rt.lookAtTarget;
     }
@@ -140,14 +154,22 @@ export function Avatar3DStage(props:Props){
      if(!animations.length)throw new Error("в файле не найдено расширение VRMC_vrm_animation.");
      if(animations.length>20)throw new Error("файл содержит больше 20 анимаций.");
      const fileBase=name.replace(/\.vrma$/iu,"").slice(0,96)||"vrma";
+     const expressionKeysByClip:Record<string,string[]>={};
+     const lookAtClipNames:string[]=[];
      const clips=animations.map((animation:any,index:number)=>{
       const clip=createVRMAnimationClip(animation,rt.vrm);
       const sourceName=typeof animation?.name==="string"?animation.name:"";
       clip.name=`${fileBase}_${sourceName.trim().slice(0,72)||`clip${index+1}`}`.slice(0,120);
+      expressionKeysByClip[clip.name]=[
+       ...Array.from(animation?.expressionTracks?.preset?.keys?.()??[],(key:any)=>String(key)),
+       ...Array.from(animation?.expressionTracks?.custom?.keys?.()??[],(key:any)=>String(key)),
+      ];
+      if(animation?.lookAtTrack)lookAtClipNames.push(clip.name);
       return clip;
      });
      rt.mixer?.stopAllAction();
-     rt.activeAction=null;rt.clipName="";
+     rt.activeAction=null;rt.clipName="";rt.activeExpressionKeys=[];rt.transitionExpressionKeys=[];rt.expressionTransitionRemaining=0;rt.activeLookAtClip=false;
+     rt.vrmaExpressionKeysByClip=expressionKeysByClip;rt.vrmaLookAtClipNames=lookAtClipNames;
      rt.vrmaClips=clips;
      rt.vrmaDefaultClip=clips[0]??null;
      disposeTree(gltf.scene);
@@ -171,7 +193,7 @@ export function Avatar3DStage(props:Props){
  useEffect(()=>{if(!ready)return;let cancelled=false;void loadStoredAvatarModel().then((saved)=>{if(!cancelled&&saved)void loadModel(saved.blob,saved.name,false);}).catch(()=>{if(!cancelled)setStorageMessage("IndexedDB недоступна; процедурное тело остаётся рабочим.");});return()=>{cancelled=true;};},[ready,loadModel]);
  const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){const hasModel=Boolean(runtime.current?.loaded);setState(hasModel?"loaded":"error");setMessage(`Поддерживаются бинарные модели .vrm и .glb.${hasModel?" Предыдущая модель остаётся активной.":" Процедурное тело остаётся активным."}`);return;}void loadModel(file,file.name,true);};
  const onAnimationFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(file)void loadVrma(file,file.name,true);};
- const reset=async()=>{loadToken.current++;animationToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.modelClips=[];rt.vrmaClips=[];rt.vrmaDefaultClip=null;rt.activeAction=null;rt.clipName="";rt.bones=[];rt.vrm=null;rt.lookAtProxy=null;rt.vrmExpressionKeys=[];rt.vrmExpressionDefinitions=[];rt.vrmMorphTargets=[];rt.body.root.visible=true;}setModelName("");setState(rt?"procedural":"webgl-unavailable");setMessage("");try{await Promise.all([clearStoredAvatarModel(),clearStoredAvatarAnimation()]);setStorageMessage("Используется процедурное 3D-тело; VRM и VRMA удалены из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
+ const reset=async()=>{loadToken.current++;animationToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.modelClips=[];rt.vrmaClips=[];rt.vrmaDefaultClip=null;rt.activeAction=null;rt.vrmaExpressionKeysByClip={};rt.vrmaLookAtClipNames=[];rt.activeExpressionKeys=[];rt.transitionExpressionKeys=[];rt.expressionTransitionRemaining=0;rt.activeLookAtClip=false;rt.clipName="";rt.bones=[];rt.vrm=null;rt.lookAtProxy=null;rt.vrmExpressionKeys=[];rt.vrmExpressionDefinitions=[];rt.vrmMorphTargets=[];rt.body.root.visible=true;}setModelName("");setState(rt?"procedural":"webgl-unavailable");setMessage("");try{await Promise.all([clearStoredAvatarModel(),clearStoredAvatarAnimation()]);setStorageMessage("Используется процедурное 3D-тело; VRM и VRMA удалены из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
   <div ref={host} className="absolute inset-0"/>
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p></div></div>:null}
