@@ -150,3 +150,26 @@ LongMemEval специально выделяет information extraction, multi-
 - Zep / Graphiti temporal knowledge graph paper: https://arxiv.org/abs/2501.13956
 
 **Правило интерпретации:** scores из разных benchmark implementations нельзя сравнивать напрямую без совпадения датасета, модели, retrieval budget, token budget, judge, split и evaluation protocol.
+
+
+## 9. Дополнительный проход: статистическая независимость длинных диалогов
+
+После проверки первого acceptance расширения выявлено, что bootstrap по отдельным вопросам ошибочно считает вопросы одного исходного диалога независимыми единицами. Это особенно опасно для multi-session reasoning: один разговор с большим количеством связанных вопросов может визуально увеличить объём holdout без появления новых независимых источников.
+
+Добавлено:
+- протокол v2 `memoryos2-benchmark-v2-conversation-clustered-bootstrap`;
+- стабильное анонимизированное поле `conversationId` в dataset fingerprint;
+- кластерный paired bootstrap: целые исходные разговоры пересэмплируются совместно для baseline и candidate;
+- обязательный group ID для task category `multi-session`;
+- проверка, что один разговор не появляется и в train, и в holdout;
+- минимальный gate по числу независимых отвечаемых разговоров (не только по числу вопросов), отдельно для EN/RU slices;
+- диагностические агрегаты по размеру кластеров и доле крупнейшего диалога;
+- leave-one-conversation-out sensitivity с диапазоном дельты и sign-flip count; результат явно маркируется как influence diagnostic, а не confidence interval;
+- CLI JSONL теперь сохраняет `category` и `conversationId`, а не теряет эти аннотации на пути в evaluator;
+- тесты на leakage, недостаток независимых разговоров, multi-session без grouping, cluster size summary, leave-one-out sensitivity и CLI parsing.
+
+Статистическая оговорка: hard floor в 8 отвечаемых независимых разговоров — только защитный минимум. Он не означает достаточной мощности. Для production evaluation NK1 рекомендует собирать 20–30+ разговоров на язык и значительно больше при высокой неоднородности; это операционная цель проекта. Малое число кластеров нельзя исправить увеличением числа bootstrap-итераций.
+
+Документ контракта и формата: [MEMORY_RECALL_CLUSTERED_EVALUATION_RU_2026-10-30.md](MEMORY_RECALL_CLUSTERED_EVALUATION_RU_2026-10-30.md).
+
+На дату этого обновления latest-head CI ещё выполняется; PASS предыдущего SHA не засчитывается за новый exact HEAD. Независимый production RU/EN uplift по-прежнему не заявляется.
