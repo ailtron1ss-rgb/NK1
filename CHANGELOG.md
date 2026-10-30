@@ -1,3 +1,10 @@
+## [NK1][2.5D] Integrate validated depth-rig renderer on current source (2026-10-30)
+
+- Port the canonical DepthRig manifest, semantic pose resolver, Three.js atomic transform adapter, face morph mapper, GLB validator, Blender demo/export tools and focused regressions from PR #408 onto the current `workpass70-source` base.
+- Add an explicit `2.5D` selector mode backed by the same Three.js stage, but enable it only after an imported GLB provides a valid `nk1DepthRigManifest`; ordinary 3D, SVG and Legacy modes are not relabeled as 2.5D.
+- Validate node identity/parentage before applying imported transforms, read back the applied local transforms, and restore the prior pose if a postcondition fails. Face channels and secondary motion remain capability-bound.
+- The client does not start a MotorFrame EventSource until the server endpoint and producer are independently verified; this pass uses the bounded semantic intent fallback. Production layered Kurisu artwork, licensed asset provenance, real browser/device round-trip and Release ZIP refresh remain open gates.
+
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
 - Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
