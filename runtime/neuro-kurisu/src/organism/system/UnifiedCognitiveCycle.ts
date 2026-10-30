@@ -36,10 +36,43 @@ const clamp01=(x:number)=>Math.max(0,Math.min(1,x));
 const safeCounter=(value:unknown):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
 const safeMetric=(value:unknown):number=>typeof value==='number'&&Number.isFinite(value)?clamp01(value):0;
 const validStageId=(value:unknown):value is string=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim().length>0&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
-const ownRecord=(value:unknown):Record<string,unknown> =>
-  value!==null&&typeof value==='object'&&!Array.isArray(value)
-    ? Object.fromEntries(Object.entries(value))
-    : {};
+const ownRecord=(value:unknown):Record<string,unknown> => {
+  if(value===null||typeof value!=='object'||Array.isArray(value))return Object.create(null) as Record<string,unknown>;
+  const result=Object.create(null) as Record<string,unknown>;
+  let keys:string[];
+  try{keys=Object.keys(value);}catch{return result;}
+  for(const key of keys.slice(0,32)){
+    try{
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value'))continue;
+      Object.defineProperty(result,key,{value:descriptor.value,enumerable:true,writable:true,configurable:true});
+    }catch{/* restore uses conservative defaults for malformed snapshot fields */}
+  }
+  return result;
+};
+const ownArrayValues=(value:unknown,max:number):{values:unknown[];valid:boolean}=>{
+  if(!Array.isArray(value))return {values:[],valid:false};
+  try{
+    const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+    if(!lengthDescriptor||!Object.hasOwn(lengthDescriptor,'value')||typeof lengthDescriptor.value!=='number'||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0)return {values:[],valid:false};
+    const length=lengthDescriptor.value;
+    const values:unknown[]=[];
+    let valid=length<=max;
+    for(let i=0;i<Math.min(length,max);i++){
+      const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+      if(!descriptor||!Object.hasOwn(descriptor,'value')){valid=false;continue;}
+      values.push(descriptor.value);
+    }
+    return {values,valid};
+  }catch{return {values:[],valid:false};}
+};
+const ownValue=(record:unknown,key:string):unknown=>{
+  if(record===null||typeof record!=='object')return undefined;
+  try{
+    const descriptor=Object.getOwnPropertyDescriptor(record,key);
+    return descriptor&&Object.hasOwn(descriptor,'value')?descriptor.value:undefined;
+  }catch{return undefined;}
+};
 
 export const defaultUnifiedCognitiveCycle=():UnifiedCognitiveCycleState=>({version:1,cycles:0,completeCycles:0,incompleteCycles:0,brokenLineages:0,meanStageCoverage01:0,meanCausalContinuity01:0,lastTick:-1,lastComplete:false,lastMissingStages:[...LEGACY_REQUIRED]});
 
