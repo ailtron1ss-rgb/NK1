@@ -61,7 +61,7 @@ async function inspectViewport(browser, name, viewport) {
   const pageErrors = [];
   const failedRequests = [];
   page.on("console", message => { if (message.type() === "error") consoleErrors.push(message.text().slice(0, 500)); });
-  page.on("pageerror", error => pageErrors.push(String(error).slice(0, 500)));
+  page.on("pageerror", error => pageErrors.push(String(error).slice(0, 2000)));
   page.on("requestfailed", request => failedRequests.push({ url: request.url().slice(0, 300), error: request.failure()?.errorText ?? "unknown" }));
   const started = Date.now();
   const response = await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
