@@ -1,3 +1,12 @@
+## [WorkPass639] — GLB facial semantic runtime
+
+- Added a Three.js runtime adapter that binds recognized facial morph channels independently per mesh.
+- Connected semantic expressions, blink, gaze and speech visemes to generic GLB morph targets in Avatar3DStage.
+- Preserved native VRM ExpressionManager and VRM morphTargetBinds as higher-priority paths; preserved Pixiv VRMA and VRM LookAt behavior.
+- Added regression tests for multi-mesh binding, malformed indices, speech priority, custom-channel preservation, frame reset and disposal safety.
+- Added Russian implementation notes at docs/WORKPASS639_GLB_FACIAL_SEMANTIC_RUNTIME_RU.md.
+- Validation: regression tests added; final-head CI still pending.
+
 ## [WorkPass638] Cross-format facial semantics and speech viseme priority — 2026-10-30
 
 - Added renderer-independent facial semantic resolution across VRM 0.x names, VRM 1.0-style expression names, and common GLB morph-target aliases.
