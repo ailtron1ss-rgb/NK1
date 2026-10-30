@@ -17,6 +17,8 @@ export interface JointDefinition {
   minAngleRad: number;
   maxAngleRad: number;
   maxSpeedRadPerSec: number;
+  maxAccelerationRadPerSec2?: number;
+  maxJerkRadPerSec3?: number;
 }
 
 export interface JointState {
@@ -24,6 +26,7 @@ export interface JointState {
   angleRad: number;
   targetAngleRad: number;
   velocityRadPerSec: number;
+  accelerationRadPerSec2: number;
   available: boolean;
 }
 
@@ -90,7 +93,7 @@ export function validateMotorGoal(goal: MotorGoal): { ok: boolean; reason: strin
 
 export function createJointState(definition: JointDefinition): JointState {
   const rest = clamp(finite(definition.restAngleRad), definition.minAngleRad, definition.maxAngleRad);
-  return { id: definition.id, angleRad: rest, targetAngleRad: rest, velocityRadPerSec: 0, available: true };
+  return { id: definition.id, angleRad: rest, targetAngleRad: rest, velocityRadPerSec: 0, accelerationRadPerSec2: 0, available: true };
 }
 
 export class EmbodiedMotorController {
@@ -107,8 +110,11 @@ export class EmbodiedMotorController {
     for (const raw of definitions) {
       const d = { ...raw };
       if (!/^[a-z][a-z0-9._-]{0,63}$/i.test(d.id) || next.has(d.id)) throw new Error("invalid-or-duplicate-joint-id");
-      if (![d.minAngleRad, d.maxAngleRad, d.maxSpeedRadPerSec].every(Number.isFinite)
-        || d.minAngleRad > d.maxAngleRad || d.maxSpeedRadPerSec <= 0 || d.maxSpeedRadPerSec > 20) {
+      const maxAcceleration = d.maxAccelerationRadPerSec2 ?? 12;
+      const maxJerk = d.maxJerkRadPerSec3 ?? 80;
+      if (![d.minAngleRad, d.maxAngleRad, d.maxSpeedRadPerSec, maxAcceleration, maxJerk].every(Number.isFinite)
+        || d.minAngleRad > d.maxAngleRad || d.maxSpeedRadPerSec <= 0 || d.maxSpeedRadPerSec > 20
+        || maxAcceleration <= 0 || maxAcceleration > 200 || maxJerk <= 0 || maxJerk > 2000) {
         throw new Error(`invalid-joint-limits:${d.id}`);
       }
       if (d.parentId && d.parentId === d.id) throw new Error("joint-cannot-parent-itself");
@@ -129,7 +135,7 @@ export class EmbodiedMotorController {
       const prior = this.state.joints[d.id];
       const rest = clamp(finite(d.restAngleRad), d.minAngleRad, d.maxAngleRad);
       const angle = clamp(prior?.angleRad ?? rest, d.minAngleRad, d.maxAngleRad);
-      joints[d.id] = { id: d.id, angleRad: angle, targetAngleRad: angle, velocityRadPerSec: 0, available: true };
+      joints[d.id] = { id: d.id, angleRad: angle, targetAngleRad: angle, velocityRadPerSec: 0, accelerationRadPerSec2: 0, available: true };
     }
     this.definitions = next;
     this.state = { ...this.state, joints, activeGoal: null, lastFrame: null };
@@ -199,16 +205,53 @@ export class EmbodiedMotorController {
       if (distance <= 0.002) {
         joint.angleRad = target;
         joint.velocityRadPerSec = 0;
+        joint.accelerationRadPerSec2 = 0;
         reached.push(id);
         continue;
       }
-      const maxStep = definition.maxSpeedRadPerSec * dt;
-      if (maxStep <= 0) { joint.velocityRadPerSec = 0; continue; }
-      const applied = Math.sign(delta) * Math.min(distance, maxStep);
-      const next = clamp(joint.angleRad + applied, definition.minAngleRad, definition.maxAngleRad);
-      joint.velocityRadPerSec = dt > 0 ? (next - joint.angleRad) / dt : 0;
-      joint.angleRad = next;
-      if (Math.abs(target - next) <= 0.002) reached.push(id);
+      if (dt <= 0) continue;
+      const maxAcceleration = definition.maxAccelerationRadPerSec2 ?? 12;
+      const maxJerk = definition.maxJerkRadPerSec3 ?? 80;
+      const direction = Math.sign(delta);
+      // Braking envelope: do not request a speed from which the joint cannot
+      // stop before the target, even when the current goal changes mid-flight.
+      const stoppingSpeed = Math.sqrt(2 * maxAcceleration * distance);
+      const desiredVelocity = direction * Math.min(definition.maxSpeedRadPerSec, stoppingSpeed);
+      const desiredAcceleration = clamp(
+        (desiredVelocity - joint.velocityRadPerSec) / dt,
+        -maxAcceleration,
+        maxAcceleration,
+      );
+      const maxAccelerationDelta = maxJerk * dt;
+      const nextAcceleration = clamp(
+        desiredAcceleration,
+        joint.accelerationRadPerSec2 - maxAccelerationDelta,
+        joint.accelerationRadPerSec2 + maxAccelerationDelta,
+      );
+      const nextVelocity = clamp(
+        joint.velocityRadPerSec + nextAcceleration * dt,
+        -definition.maxSpeedRadPerSec,
+        definition.maxSpeedRadPerSec,
+      );
+      const proposedAngle = joint.angleRad + nextVelocity * dt;
+      const boundedAngle = clamp(proposedAngle, definition.minAngleRad, definition.maxAngleRad);
+      const overshootsTarget = Math.sign(target - proposedAngle) !== direction;
+      const hitsJointLimit = boundedAngle !== proposedAngle;
+      if (overshootsTarget || hitsJointLimit) {
+        joint.angleRad = overshootsTarget ? target : boundedAngle;
+        joint.velocityRadPerSec = 0;
+        joint.accelerationRadPerSec2 = 0;
+      } else {
+        joint.angleRad = boundedAngle;
+        joint.velocityRadPerSec = nextVelocity;
+        joint.accelerationRadPerSec2 = nextAcceleration;
+      }
+      if (Math.abs(target - joint.angleRad) <= 0.002) {
+        joint.angleRad = target;
+        joint.velocityRadPerSec = 0;
+        joint.accelerationRadPerSec2 = 0;
+        reached.push(id);
+      }
     }
     const completion = this.completion01();
     const moving = Object.values(this.state.joints).some((j) => Math.abs(j.targetAngleRad - j.angleRad) > 0.002);
@@ -235,7 +278,12 @@ export class EmbodiedMotorController {
       const rest = clamp(finite(definition.restAngleRad), definition.minAngleRad, definition.maxAngleRad);
       const angle = clamp(finite(prior?.angleRad, rest), definition.minAngleRad, definition.maxAngleRad);
       const target = clamp(finite(prior?.targetAngleRad, angle), definition.minAngleRad, definition.maxAngleRad);
-      joints[id] = { id, angleRad: angle, targetAngleRad: target, velocityRadPerSec: clamp(finite(prior?.velocityRadPerSec), -definition.maxSpeedRadPerSec, definition.maxSpeedRadPerSec), available: true };
+      joints[id] = {
+        id, angleRad: angle, targetAngleRad: target,
+        velocityRadPerSec: clamp(finite(prior?.velocityRadPerSec), -definition.maxSpeedRadPerSec, definition.maxSpeedRadPerSec),
+        accelerationRadPerSec2: clamp(finite(prior?.accelerationRadPerSec2), -(definition.maxAccelerationRadPerSec2 ?? 12), definition.maxAccelerationRadPerSec2 ?? 12),
+        available: true,
+      };
     }
     const active = raw?.activeGoal && validateMotorGoal(raw.activeGoal).ok ? clone(raw.activeGoal) : null;
     this.state = {
