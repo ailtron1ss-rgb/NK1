@@ -1,3 +1,11 @@
+## [NK1][WorkPass631] Editable SVG 2.5D depth-layer parallax (2026-10-30)
+
+- Add a pure gaze-to-depth offset adapter for four existing editable SVG groups: rear hair, torso, head and front fringe.
+- Wire the 2.5D-like parallax into KurisuOriginalStage; layer offsets use SVG viewBox coordinates and the organism's existing gazeX/gazeY signal rather than creating a second gaze engine.
+- Respect prefers-reduced-motion by disabling layer transforms/transitions and retain the original SVG art, pose, palette, expression and speech mouth path.
+- Add unit/integration regression tests and a dedicated CI gate.
+- This is a depth/parallax preview over the current SVG structure, not a PSD/Cubism/Spine rig: independent alpha layers, occlusion masks, mesh deformation, spring physics and multi-view head rotation remain open art-authoring tasks.
+
 ## [NK1][WorkPass630] Preserve imported avatar orientation while enabling drag yaw (2026-10-30)
 
 - Parent imported VRM/GLB scene under a dedicated NK1AvatarMotionPivot and apply user drag yaw/sway to that wrapper, not to the model's normalized source scene.
