@@ -24,7 +24,10 @@
     "test:scripts": "node --experimental-strip-types --test 'scripts/**/*.test.mjs'",
     "assets:sync": "node scripts/sync-canonical-public-assets.mjs",
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
-    "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs"
+    "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs",
+    "test:wardrobe": "node --experimental-strip-types --test scripts/wardrobe-system.test.mjs scripts/wardrobe-pack.test.mjs scripts/live2d-wardrobe-capability.test.mjs scripts/wardrobe-runtime.test.mjs scripts/vrm-wardrobe-adapter.test.mjs scripts/vrm-wardrobe-pack-loader.test.mjs scripts/avatar-3d-stage.test.mjs scripts/wardrobe-store.test.mjs scripts/wardrobe-authoring-preflight.test.mjs",
+    "test:wardrobe:authoring": "node --experimental-strip-types --test scripts/wardrobe-authoring-preflight.test.mjs",
+    "wardrobe:preflight": "node scripts/wardrobe-authoring-preflight.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
