@@ -106,3 +106,12 @@ tests/p78-autobiographical-provenance.mjs дополнен проверкой н
 - Реальный callsite основного outcome-finalization в OrganismCore остаётся не подтверждённым: большой файл не удалось прочитать через используемый GitHub API-путь. Поэтому bridge API доступен через SystemFabric и CognitiveSubsystemRegistry, но автоматическое участие каждого runtime tick ещё не заявлено.
 - Разрешённые namespace-предикаты в bridge являются временным issuer allow-list, а не подписью CEF/receipt. Для полноценного доказательства нужна передача immutable receipt ID и проверка по реальному RuntimeEvidenceBus / RealityLearningGate / ExternalPostconditionVerifier на callsite.
 - GitHub Actions должны завершиться на последнем HEAD; промежуточные запуски во время последовательных коммитов отменялись, один промежуточный WorkPass79 запуск упал на unrelated шаге client-disconnect/local-inference. Его нельзя считать результатом проверки последнего HEAD.
+
+## Четвёртый проход: жизненный цикл отношений и полная долговечность P2702
+
+- P2702 теперь сохраняется не только при полной identity materialization, но и в hot persistence projection рядом с P78. Это закрывает путь, при котором быстрое сохранение могло обновить автобиографию, но оставить адаптивные черты на более старом snapshot.
+- Обновление relationship trust ограничено 32 ключами, идентификаторы нормализуются NFKC и ограничиваются по длине/control characters; зарезервированные prototype-ключи отклоняются.
+- Identity vector теперь сравнивается по всем валидным координатам без сдвига индексов при пропущенном/NaN измерении. В обновлении self-beliefs некорректная координата пропускается, а не превращается в нейтральное наблюдение.
+- Добавлены регрессии на bounded relationship map, prototype key rejection и сохранение координат identity vector при пропущенной размерности.
+
+На последнем проверяемом этапе изменённые владельцы состояния по-прежнему остаются единственными: P78 — SelfSubsystemRuntime, P2702 — SelfSubsystemRuntime, SelfModel — MemorySubsystemRuntime. Обе ветви persistence projection теперь включают P2702. Это закрывает разрыв между runtime snapshot и durable projection, но ещё не доказывает правильность фактического outcome-finalization callsite.
