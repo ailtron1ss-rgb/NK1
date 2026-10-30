@@ -1,3 +1,14 @@
+## [NK1][Aspect 8] Governed tool execution and safety boundary (2026-10-30)
+
+- Add a dependency-free, bounded JSON-schema-inspired input contract subset; reject unsupported schema keywords instead of silently accepting them.
+- Validate tool arguments at the canonical ActionGateway boundary before approval consumption, durable receipt admission or executor entry; clone and deeply freeze registered contracts.
+- Add output contracts; invalid executor output is recorded as executed-but-unverified, and keyed side effects remain replay-safe.
+- Expose stable input/output schema descriptors in the tool catalog; migrate Android listen, device telemetry and simulator world observation to explicit contracts.
+- Bound schema regex complexity and reject unsupported repeated constructs; align Proxy detection with the repository Node type surface.
+- Apply a shared inert JSON envelope to legacy tools without explicit schemas. Reject accessors, Proxies, cycles, exotic prototypes, non-JSON values, excessive nesting/property counts and payloads above 64 KiB before execution, approval preview or receipt reconciliation.
+- Add a read-only risk-weighted governance report for registered tools, exposing contract, approval, durable receipt, verifier and reconciliation coverage gaps without silently changing legacy tool permissions.
+- Add focused regressions and wire the tool-contract suite into core CI. Exact-head CI and runtime typecheck remain pending until GitHub reports checks for this branch head.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
