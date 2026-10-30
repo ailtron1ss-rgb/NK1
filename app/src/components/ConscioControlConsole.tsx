@@ -88,7 +88,7 @@ export function ConscioControlConsole() {
   const pendingMessages = (data?.messages ?? []).filter((m: any) => m.status === "queued" || m.status === "quarantined");
   const recentClaims = (data?.claims ?? []).slice(-6).reverse();
 
-  return <section className="mt-4 rounded-xl border border-border bg-surface p-4">
+  return <section className="mt-4 min-w-0 w-full max-w-full rounded-xl border border-border bg-surface p-4">
     <div className="flex items-start justify-between gap-3">
       <div>
         <p className="text-xs uppercase tracking-widest text-subtle">Conscio 4.8.2 adaptation</p>
@@ -99,7 +99,7 @@ export function ConscioControlConsole() {
     </div>
     {status ? <div className="mt-3 rounded-md border border-border bg-bg px-3 py-2 text-xs text-muted">{status}</div> : null}
 
-    <div className="mt-4 grid gap-3 xl:grid-cols-2">
+    <div className="mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <Panel title="Hybrid retrieval" icon={<Search className="size-4" />}>
         <div className="flex gap-2">
           <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void doSearch(); }} placeholder="memory, document, exact phrase…" className="h-10 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 text-sm text-fg" />
