@@ -115,14 +115,14 @@ export function resolveDepthRigPoseFromMotorFrame(
       throw new Error("Invalid or duplicate depth-rig joint binding.");
     }
     seenNodes.add(binding.nodeId);
-    const joint = frame.joints[binding.jointId];
-    if (!joint || joint.id !== binding.jointId || joint.available !== true || !Number.isFinite(joint.targetAngleRad)) continue;
     const rest = binding.restAngleRad ?? 0;
     const degreesPerRadian = binding.degreesPerRadian ?? (180 / Math.PI);
     const maxAbs = binding.maxAbsDegrees ?? 45;
     if (![rest, degreesPerRadian, maxAbs].every(Number.isFinite) || degreesPerRadian === 0 || maxAbs <= 0 || maxAbs > 90) {
       throw new Error("Invalid depth-rig joint calibration.");
     }
+    const joint = frame.joints[binding.jointId];
+    if (!joint || joint.id !== binding.jointId || joint.available !== true || !Number.isFinite(joint.targetAngleRad)) continue;
     const delta = clamp((joint.targetAngleRad - rest) * degreesPerRadian, -maxAbs, maxAbs);
     deltas[binding.nodeId] = { rotation: delta };
   }
