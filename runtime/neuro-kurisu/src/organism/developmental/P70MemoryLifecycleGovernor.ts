@@ -13,7 +13,7 @@ export class P70MemoryLifecycleGovernor {
    const d=defaultP70();
    if(raw?.version!==undefined&&raw.version!==1)throw new Error('Unsupported P70 memory lifecycle state version');
    const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
-   const metric=(value:unknown,fallback:number)=>clamp(typeof value==='number'?value:fallback);
+   const metric=(value:unknown,fallback:number)=>clamp(typeof value==='number'&&Number.isFinite(value)?value:fallback);
    const action=raw?.lastAction;
    this.state={
      version:1,
