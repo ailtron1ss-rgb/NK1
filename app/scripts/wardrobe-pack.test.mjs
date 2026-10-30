@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, validateWardrobePackManifest } from "../src/components/avatar/wardrobePack.ts";
+import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, validateWardrobePackManifest, verifyWardrobeAssetBytes } from "../src/components/avatar/wardrobePack.ts";
 
 const validManifest = () => ({
   schemaVersion: 1,
@@ -110,4 +110,21 @@ test("failed, partial or stale renderer acknowledgement preserves previous outfi
   });
   assert.equal(stale.reason, "stale-acknowledgement");
   assert.equal(stale.activeOutfitId, "casual");
+});
+
+test("wardrobe byte verification checks actual SHA-256 and exact byte length", async () => {
+  const bytes = new TextEncoder().encode("abc");
+  const asset = { bytes: 3, sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" };
+  const valid = await verifyWardrobeAssetBytes(asset, bytes);
+  assert.equal(valid.valid, true);
+  assert.equal(valid.reason, "verified");
+  assert.equal(valid.actualSha256, asset.sha256);
+  const wrongHash = await verifyWardrobeAssetBytes({ ...asset, sha256: "0".repeat(64) }, bytes);
+  assert.equal(wrongHash.valid, false);
+  assert.equal(wrongHash.reason, "hash-mismatch");
+  const wrongSize = await verifyWardrobeAssetBytes({ ...asset, bytes: 4 }, bytes);
+  assert.equal(wrongSize.valid, false);
+  assert.equal(wrongSize.reason, "size-mismatch");
+  const noCrypto = await verifyWardrobeAssetBytes(asset, bytes, undefined);
+  assert.equal(noCrypto.reason, "crypto-unavailable");
 });
