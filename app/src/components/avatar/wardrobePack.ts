@@ -31,6 +31,43 @@ export interface WardrobePackValidation {
   totalBytes: number;
 }
 
+/** Reject unknown, cross-renderer, duplicate and same-slot selections before renderer mutation. */
+export function validateWardrobeAssetSelection(
+  manifest: WardrobePackManifest,
+  renderer: WardrobeRenderer,
+  selectedAssetIds: readonly string[],
+): string[] {
+  const errors: string[] = [];
+  if (!manifest || !Array.isArray(manifest.assets)) return ["wardrobe:selection-invalid-manifest"];
+  if (!Array.isArray(selectedAssetIds)) return ["wardrobe:selection-invalid-list"];
+  const byId = new Map(manifest.assets.map((asset) => [asset.id, asset]));
+  const ids = new Set<string>();
+  const slots = new Set<string>();
+  for (const id of selectedAssetIds) {
+    if (typeof id !== "string" || !id) {
+      errors.push("wardrobe:selection-invalid-id");
+      continue;
+    }
+    if (ids.has(id)) {
+      errors.push(`wardrobe:selection-duplicate-id:${id}`);
+      continue;
+    }
+    ids.add(id);
+    const asset = byId.get(id);
+    if (!asset) {
+      errors.push(`wardrobe:selection-unknown-asset:${id}`);
+      continue;
+    }
+    if (asset.renderer !== renderer) {
+      errors.push(`wardrobe:selection-wrong-renderer:${id}`);
+      continue;
+    }
+    if (slots.has(asset.slot)) errors.push(`wardrobe:selection-duplicate-slot:${asset.slot}`);
+    slots.add(asset.slot);
+  }
+  return [...new Set(errors)];
+}
+
 /** Select one default garment per renderer slot; later variants remain available for manual replacement. */
 export function defaultWardrobeAssetSelection(
   manifest: WardrobePackManifest,
@@ -38,9 +75,12 @@ export function defaultWardrobeAssetSelection(
 ): string[] {
   if (!manifest || !Array.isArray(manifest.assets)) return [];
   const occupied = new Set<string>();
+  const seenIds = new Set<string>();
   const selected: string[] = [];
   for (const asset of manifest.assets) {
-    if (asset.renderer !== renderer || occupied.has(asset.slot)) continue;
+    if (!asset || asset.renderer !== renderer || !ID.test(asset.id ?? "") || !SLOTS.includes(asset.slot)) continue;
+    if (seenIds.has(asset.id) || occupied.has(asset.slot)) continue;
+    seenIds.add(asset.id);
     occupied.add(asset.slot);
     selected.push(asset.id);
   }
@@ -57,10 +97,14 @@ export function updateWardrobeAssetSelection(
 ): string[] {
   const asset = manifest?.assets?.find((candidate) => candidate.id === assetId && candidate.renderer === renderer);
   if (!asset) return [...selectedAssetIds];
-  if (!selected) return selectedAssetIds.filter((id) => id !== assetId);
-  const preserved = selectedAssetIds.filter((id) => {
-    const current = manifest.assets.find((candidate) => candidate.id === id);
-    return current && current.slot !== asset.slot;
+  const current = [...new Set(selectedAssetIds)].filter((id) => {
+    const candidate = manifest.assets.find((entry) => entry.id === id);
+    return candidate && candidate.renderer === renderer && candidate.id !== assetId;
+  });
+  if (!selected) return current;
+  const preserved = current.filter((id) => {
+    const candidate = manifest.assets.find((entry) => entry.id === id);
+    return candidate && candidate.slot !== asset.slot;
   });
   return [...preserved, assetId];
 }
