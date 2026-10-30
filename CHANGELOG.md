@@ -1,3 +1,12 @@
+## [NK1][обучение] Fail-closed P23 staging and holdout integrity (2026-10-30)
+
+- Reject a background P23 result that claims `candidate-staged` without a non-empty stable candidate ID; do not increment staged metrics, emit a runtime anomaly, and journal the outcome as an error.
+- Add a regression proving malformed staged outcomes cannot be reported as successful.
+- Restore learning-split integrity: implicit runtime observations default to `learning`; only distinct explicitly assigned holdout contexts count; contamination or registry saturation disables derived gain; legacy snapshots recompute accepted independent contexts.
+- Reclassify compound-skill execution and external project-research telemetry as learning observations rather than independent holdout evidence.
+- Wire split-integrity, WorkPass47 integration and autonomous P23 scheduler regressions into GitHub Actions.
+- No learning uplift, production promotion or Release ZIP update is claimed; these remain gated on independent evaluation and exact-head validation.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
