@@ -144,7 +144,7 @@ export class TemporalObjectTracker {
     frameId?:string;
     objects:readonly TemporalDetection[];
   }):{objects:TemporalTrackedDetection[];metrics:TemporalObjectTrackerMetrics}{
-    const cameraId=Number.isFinite(input.cameraId)?Math.max(0,Math.floor(input.cameraId)):0;
+    const cameraId=Number.isFinite(input.cameraId)&&input.cameraId>=0?Math.floor(input.cameraId):-1;
     const at=input.at;
     const objects=Array.isArray(input.objects)?input.objects:[];
     const current=this.cameras.get(cameraId);
@@ -158,7 +158,7 @@ export class TemporalObjectTracker {
         untrackedCount:objects.length,activeTrackCount:current?.tracks.length??0,
       },
     });
-    if(!Number.isFinite(at)||at<0||!Array.isArray(input.objects))return rejected('invalid-frame');
+    if(cameraId<0||!Number.isFinite(at)||at<0||!Array.isArray(input.objects))return rejected('invalid-frame');
     if(current&&at<current.lastFrameAt)return rejected('stale-frame');
     const frameId=clean(input.frameId,160)||undefined;
     if(current&&frameId&&frameId===current.lastFrameId)return rejected('duplicate-frame');
