@@ -1,3 +1,4 @@
+import { snapshotPlainData } from './LearningTrustBoundary.ts';
 import type { LocalChatCompletionRequest, LocalChatCompletionResponse } from '../integration/local/OpenAICompatibleLocalChatProvider.ts';
 
 export interface ReflectiveRevisionRequest {
@@ -7,7 +8,8 @@ export interface ReflectiveRevisionRequest {
   optimizerInstruction: string;
   validationEvidence: unknown[];
   targets: Array<{ dimension: string; priority01: number; affectedTaskIds: string[]; evidenceCount: number; evidenceIds: string[]; directive: string }>;
-  holdoutGeneralization: { gap01: number; requiresFreshIndependentEvaluation: true };
+  /** Policy assertion only; numeric or directional holdout feedback is forbidden here. */
+  holdoutPolicy: { resultsWithheld: true; requiresFreshIndependentEvaluation: true };
 }
 
 export interface SkillRevisionChatProvider {
@@ -18,6 +20,33 @@ export interface SkillRevisionChatProvider {
 const MAX_SOURCE_JSON_CHARS = 48_000;
 const MAX_VALIDATION_JSON_CHARS = 32_000;
 const MAX_GENERATED_CHARS = 64_000;
+
+/** Read a host-owned method capability without invoking an accessor getter. */
+function bindProviderMethod(target: unknown, key: 'configured'|'generate'): (...args:any[])=>any {
+  if(target===null||(typeof target!=='object'&&typeof target!=='function')) {
+    throw new Error('p23-revision-local-provider-capability-invalid');
+  }
+  let cursor: object|null=target as object;
+  const seen=new Set<object>();
+  try {
+    for(let depth=0;cursor&&depth<32;depth++) {
+      if(seen.has(cursor))break;
+      seen.add(cursor);
+      const descriptor=Object.getOwnPropertyDescriptor(cursor,key);
+      if(descriptor) {
+        if(!('value' in descriptor)||typeof descriptor.value!=='function') {
+          throw new Error('p23-revision-local-provider-capability-invalid');
+        }
+        return descriptor.value.bind(target);
+      }
+      cursor=Object.getPrototypeOf(cursor) as object|null;
+    }
+  } catch(error) {
+    if(error instanceof Error&&error.message==='p23-revision-local-provider-capability-invalid')throw error;
+    throw new Error('p23-revision-local-provider-capability-invalid');
+  }
+  throw new Error('p23-revision-local-provider-capability-invalid');
+}
 
 function boundedJson(value: unknown, maxChars: number, label: string): string {
   let encoded: string;
@@ -67,10 +96,22 @@ function assertSourceSchemaPreserved(source: unknown, candidate: unknown): unkno
  */
 export async function generateLocalSkillRevision(
   provider: SkillRevisionChatProvider,
-  request: ReflectiveRevisionRequest,
+  rawRequest: ReflectiveRevisionRequest,
 ): Promise<unknown> {
-  if (!provider || !provider.configured()) throw new Error('p23-revision-local-model-not-configured');
-  if (!request || !Array.isArray(request.targets) || request.targets.length === 0) {
+  if(!provider)throw new Error('p23-revision-local-model-not-configured');
+  const configured=bindProviderMethod(provider,'configured');
+  const generate=bindProviderMethod(provider,'generate');
+  if (!configured()) throw new Error('p23-revision-local-model-not-configured');
+  let request: ReflectiveRevisionRequest;
+  try {
+    request=snapshotPlainData(rawRequest) as ReflectiveRevisionRequest;
+  } catch {
+    throw new Error('p23-revision-request-data-boundary-rejected');
+  }
+  if (!request || typeof request!=='object' || Array.isArray(request)) {
+    throw new Error('p23-revision-request-data-boundary-rejected');
+  }
+  if (!Array.isArray(request.targets) || request.targets.length === 0) {
     throw new Error('p23-revision-evidence-backed-targets-required');
   }
   if (typeof request.datasetFingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(request.datasetFingerprint)) {
@@ -79,15 +120,17 @@ export async function generateLocalSkillRevision(
   const sourcePayload = boundedJson(request.sourcePayload, MAX_SOURCE_JSON_CHARS, 'source-payload');
   const validationEvidence = boundedJson(request.validationEvidence, MAX_VALIDATION_JSON_CHARS, 'validation-evidence');
   const targetJson = boundedJson(request.targets, 12_000, 'targets');
-  const gap = Number(request.holdoutGeneralization?.gap01);
-  if (!Number.isFinite(gap) || gap < -1 || gap > 1) throw new Error('p23-revision-holdout-signal-invalid');
-  const response = await provider.generate({
+  if (request.holdoutPolicy?.resultsWithheld !== true ||
+      request.holdoutPolicy?.requiresFreshIndependentEvaluation !== true) {
+    throw new Error('p23-revision-holdout-results-must-remain-withheld');
+  }
+  const rawResponse = await generate({
     system: [
       'You are a constrained skill-revision generator inside a verified learning pipeline.',
       'Return ONLY one valid JSON value representing the revised skill payload; no markdown, prose, or claims of test success.',
       'Preserve the source payload schema and unrelated fields. Make the smallest change supported by the provided validation evidence and targets.',
       'Never invent evidence, tests, capabilities, or outcomes. Never weaken safety constraints.',
-      'Holdout examples, identifiers, and per-case outcomes are intentionally withheld. Do not request or infer them.',
+      'All holdout results, including aggregate scores and regression direction, are withheld from optimization. Do not request or infer them.',
       'This output is an untrusted candidate and will undergo independent evaluation before it can be activated.',
       'Bind all generated revision work to the supplied verified dataset fingerprint; never claim this fingerprint proves candidate quality.',
     ].join(' '),
@@ -97,8 +140,8 @@ export async function generateLocalSkillRevision(
       'REVISION_INSTRUCTION:', String(request.optimizerInstruction ?? '').slice(0, 24_000),
       'VALIDATION_EVIDENCE_JSON:', validationEvidence,
       'EVIDENCE_BACKED_TARGETS_JSON:', targetJson,
-      'AGGREGATE_HOLDOUT_SIGNAL_JSON:', JSON.stringify({
-        gap01: Number(gap.toFixed(6)),
+      'HOLDOUT_RESULTS_WITHHELD:', JSON.stringify({
+        resultsWithheld: true,
         requiresFreshIndependentEvaluation: true,
       }),
       'Return the revised payload as JSON only.',
@@ -106,5 +149,14 @@ export async function generateLocalSkillRevision(
     maxTokens: 4096,
     temperature: 0.2,
   });
+  let response: LocalChatCompletionResponse;
+  try {
+    response=snapshotPlainData(rawResponse) as LocalChatCompletionResponse;
+  } catch {
+    throw new Error('p23-revision-generator-response-data-boundary-rejected');
+  }
+  if(!response||typeof response!=='object'||typeof response.text!=='string') {
+    throw new Error('p23-revision-generator-response-data-boundary-rejected');
+  }
   return assertSourceSchemaPreserved(request.sourcePayload, parseGeneratedPayload(response.text));
 }

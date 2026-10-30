@@ -4,6 +4,40 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23LearningEngine.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ContinualOutcomeMatrix.ts"
+      - "runtime/neuro-kurisu/tests/p23-verified-outcome-ledger.mjs"
+      - "runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs"
+      - "runtime/neuro-kurisu/tests/p23-paired-outcome-identity.mjs"
+      - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/PairedSeedConfidence.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningRobustMetrics.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningFitnessJournal.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningLifecycleJournal.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningJournalBootstrap.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P36HostEvaluatorBootstrap.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/P36VerifiedOutcomeLedgerEvaluator.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/hexis-correction-memory.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-attempt-diagnosis.mjs"
+      - "runtime/neuro-kurisu/tests/p23-reflection-reason-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/tests/workpass383-p23-revision-generator-boundary.mjs"
+      - "runtime/neuro-kurisu/tests/workpass402-production-promotion-family-gate.mjs"
+      - "runtime/neuro-kurisu/tests/workpass404-paired-seed-confidence.mjs"
+      - "runtime/neuro-kurisu/tests/workpass405-learning-fitness-journal.mjs"
+      - "runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs"
+      - "runtime/neuro-kurisu/tests/workpass407-learning-lifecycle-journal.mjs"
+      - "runtime/neuro-kurisu/tests/workpass408-lifecycle-store-reconciliation.mjs"
+      - "runtime/neuro-kurisu/tests/workpass419-p23-retry-backoff-store.mjs"
+      - "runtime/neuro-kurisu/tests/workpass421-learning-journal-bootstrap.mjs"
+      - "runtime/neuro-kurisu/src/organism/learning/P36AutonomousSelfDevelopment.ts"
+      - "runtime/neuro-kurisu/tests/p36-*.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/SkillLearnBenchAdapter.ts"
       - "runtime/neuro-kurisu/tests/p29-hermes-reflective-candidate-gate.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts"
@@ -32,7 +66,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -93,3 +127,6 @@ jobs:
       - name: Run existing P26 learning regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p26:true-learning
+      - name: Run P23 independent learning, promotion governance, lifecycle recovery and P36 evidence suite
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:learning
