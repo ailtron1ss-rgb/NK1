@@ -165,7 +165,7 @@ export class TemporalObjectTracker {
 
     const state=current??{lastFrameAt:at,tracks:[]};
     state.tracks=state.tracks.filter(track=>at>=track.lastSeenAt&&at-track.lastSeenAt<=this.config.maxTrackAgeMs);
-    const outputs:TemporalTrackedDetection[]=objects.map(object=>({...object,trackingStatus:'untracked'}));
+    const outputs:TemporalTrackedDetection[]=objects.map(object=>({...object,trackingStatus:clean(object.trackId)?'provider':'untracked'}));
     const usableBox=(object:TemporalDetection)=>isValidNormalizedBoundingBox(object.bbox)
       &&clamp(object.bboxConfidence01??object.confidence01??0)>=this.config.minimumBoxConfidence01
       &&Boolean(clean(object.label));
@@ -197,7 +197,25 @@ export class TemporalObjectTracker {
       else state.tracks.push(track);
     }
 
-    const localDetectionIndices=boxIndices.filter(index=>!clean(objects[index].trackId));
+    // Duplicate overlapping detections in one frame are not independent tracks.
+    // Keep both records visible to callers, but refuse to fabricate two identities.
+    const duplicateLocalDetections=new Set<number>();
+    for(let i=0;i<boxIndices.length;i++){
+      const leftIndex=boxIndices[i];
+      if(clean(objects[leftIndex].trackId))continue;
+      for(let j=i+1;j<boxIndices.length;j++){
+        const rightIndex=boxIndices[j];
+        if(clean(objects[rightIndex].trackId))continue;
+        const left=objects[leftIndex],right=objects[rightIndex];
+        if(clean(left.label).toLocaleLowerCase()!==clean(right.label).toLocaleLowerCase())continue;
+        if(kindOf(left.kind)!==kindOf(right.kind))continue;
+        if(intersectionOverUnion(left.bbox!,right.bbox!)>=.92){
+          duplicateLocalDetections.add(leftIndex);duplicateLocalDetections.add(rightIndex);
+        }
+      }
+    }
+    for(const index of duplicateLocalDetections)outputs[index].trackingStatus='ambiguous';
+    const localDetectionIndices=boxIndices.filter(index=>!clean(objects[index].trackId)&&!duplicateLocalDetections.has(index));
     const localTracks=state.tracks.filter(track=>!track.providerOwned&&at>=track.lastSeenAt&&at-track.lastSeenAt<=this.config.maxTrackGapMs);
     const edges:MatchEdge[]=[];
     for(const detectionIndex of localDetectionIndices){
