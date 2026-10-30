@@ -1,7 +1,7 @@
 ## [NK1][Aspect 02] Add semantic truth labels to the legacy sprite reference inventory (2026-10-30)
 
-- Transcribe the prior WorkPass622 pixel-audit descriptions into per-sprite semantic metadata for 27 exact manifest-ID matches, including corrected pose/action roles where filenames are misleading.
-- Leave five unmatched legacy IDs explicitly pending fresh visual review; never infer expression or pose from a filename. Record that this pass did not re-open or re-verify the PNG pixels.
+- Transcribe the prior WorkPass622 pixel-audit descriptions into per-sprite semantic metadata for 25 exact manifest-ID matches, including corrected pose/action roles where filenames are misleading.
+- Leave seven unmatched legacy IDs explicitly pending fresh visual review; never infer expression or pose from a filename. Record that this pass did not re-open or re-verify the PNG pixels.
 - Extend the inventory regression to enforce exact 27/5 coverage, source attribution, honest review status and the absence of inferred labels for unmatched sprites.
 - Preserve all 32 source PNGs as static references only; no production art, licensing clearance, 2.5D layers or Release ZIP update is claimed.
 
