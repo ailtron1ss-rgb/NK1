@@ -96,10 +96,10 @@ export interface KurisuOriginalStageProps {
 }
 
 /**
- * Independently authored, editable NK1 2D concept avatar.
- * This is a stylized SVG preview, not a Live2D .moc3 model; it uses the same
- * organism state and audio-timed mouth signal, and is intended to be the art
- * direction + switchable UI while a production PSD/Cubism rig is authored.
+ * Independently authored, editable NK1 2.5D depth/parallax SVG preview.
+ * This is not a Live2D .moc3 or production Cubism rig; it uses distinct
+ * vector depth layers driven by organism gaze and the existing audio-timed
+ * mouth signal while original layered PSD/occlusion-mask artwork is authored.
  */
 export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
   const [outfit, setOutfit] = useState<Outfit>(() => stored("kurisu-original-outfit", OUTFITS, "lab"));
@@ -179,7 +179,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         <circle cx="210" cy="270" r="152" fill="none" stroke={accent.color} strokeOpacity=".10" strokeDasharray="3 8"/>
         <g opacity=".48" fill={accent.color} fontFamily="monospace" fontSize="8">
           <text x="22" y="45">NK1 / EMBODIMENT</text><text x="22" y="57">AFFECTIVE RIG v1</text>
-          <text x="310" y="45">MODE 2D</text><text x="310" y="57">STATE: {emotion.toUpperCase()}</text>
+          <text x="310" y="45">MODE 2.5D</text><text x="310" y="57">STATE: {emotion.toUpperCase()}</text>
           <text x="22" y="510">POSE / {action.toUpperCase()}</text><text x="310" y="510">AROUSAL {(Math.max(0, Math.min(1, arousal)) * 100).toFixed(0)}%</text>
         </g>
         <path className="nk-scanner" d="M20 80H400" stroke={accent.color} strokeOpacity=".42" strokeWidth="1"/>
@@ -298,7 +298,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
 
       <div className="absolute left-3 bottom-3 z-20 max-w-[65%]">
         <p className="font-display text-lg tracking-tight text-slate-100">Kurisu <span style={{ color: accent.color }}>// NK1</span></p>
-        <p className="text-[10px] uppercase tracking-[.18em] text-cyan-100/60">Original 2D concept · {moodLabel[emotion]}{thinking ? " · анализ" : speaking ? " · речь" : ""}</p>
+        <p className="text-[10px] uppercase tracking-[.18em] text-cyan-100/60">2.5D depth preview · {moodLabel[emotion]}{thinking ? " · анализ" : speaking ? " · речь" : ""}</p>
       </div>
       <button type="button" onClick={() => setSettingsOpen((open) => !open)} aria-expanded={settingsOpen} className="absolute right-3 top-[5.5rem] z-30 rounded-md border border-white/15 bg-black/60 px-2.5 py-1.5 text-[10px] font-mono text-white/85 backdrop-blur hover:border-cyan-200/50 md:top-3">
         {settingsOpen ? "Скрыть настройки" : "Настроить образ"}
