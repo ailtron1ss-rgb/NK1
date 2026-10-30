@@ -18,9 +18,22 @@ const isRecord = (value:unknown): value is UnknownRecord =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 function recordOrEmpty(value:unknown): UnknownRecord {
-  // Only own enumerable fields are eligible for restoration. Persisted JSON cannot
-  // legitimately rely on prototype inheritance; this also closes polluted-object paths.
-  return isRecord(value) ? Object.fromEntries(Object.entries(value)) : {};
+  // Only own enumerable data properties are eligible for restoration. Never invoke
+  // getters while rebuilding a persisted projection.
+  if (!isRecord(value)) return Object.create(null) as UnknownRecord;
+  const result = Object.create(null) as UnknownRecord;
+  let keys: string[];
+  try { keys = Object.keys(value); } catch { return result; }
+  for (const key of keys.slice(0, 64)) {
+    try {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')) continue;
+      Object.defineProperty(result, key, { value: descriptor.value, enumerable: true, writable: true, configurable: true });
+    } catch {
+      // Invalid/proxy-backed persisted entries are omitted; callers use domain defaults.
+    }
+  }
+  return result;
 }
 
 /** Persisted counters are untrusted: never coerce strings, fractions or infinities. */
