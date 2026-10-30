@@ -15,7 +15,7 @@ export type Live2DDisplayInfo = { Parameters?: Array<{ Id?: string; Name?: strin
 export type Live2DExpressionFile = { Parameters?: Array<{ Id?: string; Value?: number; Blend?: string }> };
 
 export type Live2DWardrobeCapability = {
-  status: "switchable" | "limited-controls" | "no-switch-contract" | "invalid-manifest";
+  status: "candidate-control" | "limited-controls" | "no-switch-contract" | "invalid-manifest";
   canSwitchGarments: boolean;
   textureCount: number;
   motionGroupCount: number;
@@ -64,9 +64,9 @@ export function inspectLive2DWardrobeCapability(
   }
   limitations.push("Cubism drawable/part IDs are not exposed by model3 JSON; inspect the moc3 model before authoring a part-switch adapter");
   limitations.push("existing expressions and physics are not proof of independent clothing layers");
-  const canSwitchGarments = valid && wardrobeControlIds.length > 0;
+  const canSwitchGarments = false;
   return {
-    status: !valid ? "invalid-manifest" : canSwitchGarments ? "switchable" : uniqueExpressionControls.length ? "limited-controls" : "no-switch-contract",
+    status: !valid ? "invalid-manifest" : wardrobeControlIds.length ? "candidate-control" : uniqueExpressionControls.length ? "limited-controls" : "no-switch-contract",
     canSwitchGarments,
     textureCount: textures,
     motionGroupCount: motions,
