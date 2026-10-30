@@ -1,12 +1,12 @@
 
-export type DepthRigRole = "root"|"head"|"face"|"eyes"|"hair-front"|"hair-back"|"torso"|"left-upper-arm"|"left-forearm"|"left-hand"|"right-upper-arm"|"right-forearm"|"right-hand"|"coat-front"|"coat-tail"|"accessory"|"custom";
+export type DepthRigRole = "root"|"head"|"neck"|"face"|"eyes"|"hair-front"|"hair-back"|"torso"|"left-upper-arm"|"left-forearm"|"left-hand"|"right-upper-arm"|"right-forearm"|"right-hand"|"coat-front"|"coat-tail"|"skirt-front"|"skirt-back"|"left-thigh"|"left-shin"|"left-foot"|"right-thigh"|"right-shin"|"right-foot"|"accessory"|"custom";
 export interface DepthRigNode { id:string; parentId:string|null; role:DepthRigRole; position:readonly [number,number,number]; pivot:readonly [number,number]; rotation:readonly [number,number,number]; depth:number; parallax:number; visible?:boolean }
 export interface DepthRigManifest { version:1; id:string; units:"scene"; nodes:readonly DepthRigNode[] }
-export interface DepthRigIntent { gazeX?:number; gazeY?:number; headYaw?:number; headPitch?:number; headRoll?:number; torsoYaw?:number; torsoPitch?:number; torsoRoll?:number; leftArm?:number; leftForearm?:number; rightArm?:number; rightForearm?:number; breath?:number; arousal?:number }
+export interface DepthRigIntent { gazeX?:number; gazeY?:number; headYaw?:number; headPitch?:number; headRoll?:number; neckYaw?:number; neckPitch?:number; torsoYaw?:number; torsoPitch?:number; torsoRoll?:number; leftArm?:number; leftForearm?:number; rightArm?:number; rightForearm?:number; leftThigh?:number; leftShin?:number; leftFoot?:number; rightThigh?:number; rightShin?:number; rightFoot?:number; breath?:number; arousal?:number }
 export interface DepthRigTransform { id:string; pivot:[number,number]; position:[number,number,number]; rotation:[number,number,number]; scale:[number,number,number]; visible:boolean; renderOrder:number }
 export interface DepthRigValidation { ok:boolean; errors:string[]; order:string[] }
 const MAX_NODES=128, MAX_POSITION=20;
-const ROLES=new Set<DepthRigRole>(["root","head","face","eyes","hair-front","hair-back","torso","left-upper-arm","left-forearm","left-hand","right-upper-arm","right-forearm","right-hand","coat-front","coat-tail","accessory","custom"]);
+const ROLES=new Set<DepthRigRole>(["root","head","neck","face","eyes","hair-front","hair-back","torso","left-upper-arm","left-forearm","left-hand","right-upper-arm","right-forearm","right-hand","coat-front","coat-tail","skirt-front","skirt-back","left-thigh","left-shin","left-foot","right-thigh","right-shin","right-foot","accessory","custom"]);
 const clamp=(v:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,Number.isFinite(v)?v:0));
 const tuple=(v:unknown,n:number):v is number[]=>Array.isArray(v)&&v.length===n&&v.every((item: number) => Number.isFinite(item));
 
@@ -29,7 +29,7 @@ export function validateDepthRig(manifest:DepthRigManifest):DepthRigValidation {
   if(!Number.isFinite(n.parallax)||n.parallax<0||n.parallax>2)errors.push("invalid-parallax:"+n.id);
   if(n.visible!==undefined&&typeof n.visible!=="boolean")errors.push("invalid-visibility:"+n.id);
  }
- for(const n of map.values()){if(n.parentId&&!map.has(n.parentId))errors.push("missing-parent:"+n.id);if(n.parentId===n.id)errors.push("self-parent:"+n.id)}
+ const rootCount=[...map.values()].filter(n=>n.parentId===null).length;\n if(rootCount!==1)errors.push("root-count:"+rootCount);\n for(const n of map.values()){if(n.parentId&&!map.has(n.parentId))errors.push("missing-parent:"+n.id);if(n.parentId===n.id)errors.push("self-parent:"+n.id)}
  const order:string[]=[], visiting=new Set<string>(), visited=new Set<string>();
  const visit=(id:string)=>{if(visited.has(id))return;if(visiting.has(id)){errors.push("parent-cycle:"+id);return}visiting.add(id);const p=map.get(id)?.parentId;if(p&&map.has(p))visit(p);visiting.delete(id);visited.add(id);order.push(id)};
  for(const id of map.keys())visit(id);
@@ -52,7 +52,7 @@ function roleRotation(role:DepthRigRole,i:Intent):[number,number,number]{
 /** Convert semantic body intent into bounded layer transforms; artist-authored pivots stay authoritative. */
 export function resolveDepthRigPose(manifest:DepthRigManifest,raw:DepthRigIntent={},camera:{x?:number;y?:number}={}):DepthRigTransform[]{
  const v=validateDepthRig(manifest);if(!v.ok)throw new Error("Invalid depth rig: "+v.errors.join(","));
- const i:Intent={gazeX:clamp(raw.gazeX??0,-1,1),gazeY:clamp(raw.gazeY??0,-1,1),headYaw:clamp(raw.headYaw??0,-.65,.65),headPitch:clamp(raw.headPitch??0,-.45,.45),headRoll:clamp(raw.headRoll??0,-.35,.35),torsoYaw:clamp(raw.torsoYaw??0,-.3,.3),torsoPitch:clamp(raw.torsoPitch??0,-.25,.25),torsoRoll:clamp(raw.torsoRoll??0,-.2,.2),leftArm:clamp(raw.leftArm??0,-1.8,1.8),leftForearm:clamp(raw.leftForearm??0,-2.2,2.2),rightArm:clamp(raw.rightArm??0,-1.8,1.8),rightForearm:clamp(raw.rightForearm??0,-2.2,2.2),breath:clamp(raw.breath??0,0,1),arousal:clamp(raw.arousal??0,0,1)};
+ const i:Intent={gazeX:clamp(raw.gazeX??0,-1,1),gazeY:clamp(raw.gazeY??0,-1,1),headYaw:clamp(raw.headYaw??0,-.65,.65),headPitch:clamp(raw.headPitch??0,-.45,.45),headRoll:clamp(raw.headRoll??0,-.35,.35),neckYaw:clamp(raw.neckYaw??0,-.3,.3),neckPitch:clamp(raw.neckPitch??0,-.25,.25),torsoYaw:clamp(raw.torsoYaw??0,-.3,.3),torsoPitch:clamp(raw.torsoPitch??0,-.25,.25),torsoRoll:clamp(raw.torsoRoll??0,-.2,.2),leftArm:clamp(raw.leftArm??0,-1.8,1.8),leftForearm:clamp(raw.leftForearm??0,-2.2,2.2),rightArm:clamp(raw.rightArm??0,-1.8,1.8),rightForearm:clamp(raw.rightForearm??0,-2.2,2.2),leftThigh:clamp(raw.leftThigh??0,-1.2,1.2),leftShin:clamp(raw.leftShin??0,-1.8,1.8),leftFoot:clamp(raw.leftFoot??0,-.7,.7),rightThigh:clamp(raw.rightThigh??0,-1.2,1.2),rightShin:clamp(raw.rightShin??0,-1.8,1.8),rightFoot:clamp(raw.rightFoot??0,-.7,.7),breath:clamp(raw.breath??0,0,1),arousal:clamp(raw.arousal??0,0,1)};
  const cx=clamp(camera.x??0,-1,1),cy=clamp(camera.y??0,-1,1),map=new Map(manifest.nodes.map(n=>[n.id,n]));
  return v.order.map(id=>{const n=map.get(id)!,d=roleRotation(n.role,i),breath=n.role==="torso"?1+i.breath*.012:1,gx=n.role==="eyes"?i.gazeX*.08:0,gy=n.role==="eyes"?i.gazeY*.06:0;
   return {id,pivot:[n.pivot[0],n.pivot[1]],position:[n.position[0]+cx*n.depth*n.parallax*.06,n.position[1]+cy*n.depth*n.parallax*.04,n.position[2]] as [number,number,number],rotation:[n.rotation[0]+d[0]+gy,n.rotation[1]+d[1]+gx,n.rotation[2]+d[2]] as [number,number,number],scale:[1,breath,1] as [number,number,number],visible:n.visible!==false,renderOrder:Math.round((n.depth+1)*1000)};
@@ -114,7 +114,7 @@ export interface DepthRigMotorFrameV1 {
  phase:"idle"|"moving"|"holding"|"rejected"|"expired";
  joints:Record<string,DepthRigMotorJointFrameV1>;
 }
-export type DepthRigMotorChannel = "headYaw"|"headPitch"|"headRoll"|"torsoYaw"|"torsoPitch"|"torsoRoll"|"leftArm"|"leftForearm"|"rightArm"|"rightForearm";
+export type DepthRigMotorChannel = "headYaw"|"headPitch"|"headRoll"|"neckYaw"|"neckPitch"|"torsoYaw"|"torsoPitch"|"torsoRoll"|"leftArm"|"leftForearm"|"rightArm"|"rightForearm"|"leftThigh"|"leftShin"|"leftFoot"|"rightThigh"|"rightShin"|"rightFoot";
 export interface DepthRigMotorBinding { jointId:string; channel:DepthRigMotorChannel; gain?:number }
 export interface DepthRigMotorIntentResult {
  intent:DepthRigIntent;
