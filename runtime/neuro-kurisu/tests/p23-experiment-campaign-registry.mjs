@@ -29,7 +29,7 @@ const candidateFingerprints = {
   'candidate-b-1': hash('candidate B model config v1'),
 };
 const policy = {
-  minPairedTasks: 12,
+  minIndependentSeeds: 12,
   minFamilies: 3,
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
