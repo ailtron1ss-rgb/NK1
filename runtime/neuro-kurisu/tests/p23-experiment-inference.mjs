@@ -43,7 +43,7 @@ const comparisons = [
   { method: 'candidate-b', aggregate: makeSummary('candidate-b', 18, 7, 0.12), families: makeFamilies('candidate-b') },
 ];
 const portfolio = evaluateOutcomePromotionPortfolio(comparisons, {
-  minPairedTasks: 30,
+  minIndependentSeeds: 30,
   minFamilies: 3,
   minAbsoluteGain: 0.02,
   maxFamilyRegression: 0.05,
@@ -66,7 +66,7 @@ const sameWeak = evaluateOutcomePromotionPortfolio([
   { method: 'candidate-x', aggregate: makeSummary('candidate-x', 10, 10, 0.12), families: makeFamilies('candidate-x') },
   { method: 'candidate-y', aggregate: makeSummary('candidate-y', 10, 10, 0.12), families: makeFamilies('candidate-y') },
 ], {
-  minPairedTasks: 30, minFamilies: 3, minAbsoluteGain: 0.02, maxFamilyRegression: 0.05,
+  minIndependentSeeds: 30, minFamilies: 3, minAbsoluteGain: 0.02, maxFamilyRegression: 0.05,
   requirePositiveConfidenceLowerBound: true, familyPairCountMode: 'seed-repeated', familyWiseAlpha: 0.05,
 });
 assert.ok(sameWeak.results.every(row => !row.eligible));
