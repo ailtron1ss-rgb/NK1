@@ -45,6 +45,8 @@ jobs:
       - name: Install app dependencies without lifecycle scripts
         working-directory: app
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile Blender exporter Python syntax
+        run: python -m py_compile tools/blender/export_nk1_depth_rig.py
       - name: Validate depth-rig contracts, face channels, Three.js adapter and exported GLB
         working-directory: app
         run: node --experimental-strip-types --test scripts/depth-rig.test.mjs scripts/depth-rig-face.test.mjs scripts/depth-rig-three-adapter.test.mjs scripts/depth-rig-glb-validator.test.mjs
