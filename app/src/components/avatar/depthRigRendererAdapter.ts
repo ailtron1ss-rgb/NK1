@@ -8,6 +8,7 @@ import { orderDepthRigNodes, resolveDepthRigWorldPose, validateDepthRig, type De
 export interface DepthRigLayerTarget {
   matrix: { set(n11: number, n12: number, n13: number, n14: number, n21: number, n22: number, n23: number, n24: number, n31: number, n32: number, n33: number, n34: number, n41: number, n42: number, n43: number, n44: number): unknown };
   matrixAutoUpdate: boolean;
+  matrixWorldNeedsUpdate: boolean;
   renderOrder: number;
   visible: boolean;
 }
@@ -72,6 +73,7 @@ export function applyDepthRigWorldPoseToLayers(
     const tx = transform.tx - transform.a * pivot.x - transform.c * pivot.y;
     const ty = transform.ty - transform.b * pivot.x - transform.d * pivot.y;
     binding.target.matrixAutoUpdate = false;
+    binding.target.matrixWorldNeedsUpdate = true;
     binding.target.renderOrder = node.depthOrder;
     binding.target.visible = true;
     binding.target.matrix.set(
