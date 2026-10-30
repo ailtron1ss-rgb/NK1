@@ -152,6 +152,19 @@ const normalizeEpisode=(value:unknown):EmotionEpisode|null=>{
      !unitFieldsAreValid(value.interoceptiveDelta,['stress01','energy01','load01','attentionCapture01'])||
      !unitFieldsAreValid(value,['valence01','arousal01','dominance01','memorySalienceMultiplier01','confidence01']))return null;
   const normalized=structuredClone(value) as unknown as EmotionEpisode;
+  if(value.mixedAffect!==undefined){
+    if(!Array.isArray(value.mixedAffect)||value.mixedAffect.length>8)return null;
+    const seen=new Set<string>();let total=0;
+    for(const item of value.mixedAffect){
+      if(!isRecord(item)||!EMOTION_LABELS.includes(item.label as EmotionLabel)||!unitFieldsAreValid(item,['intensity01','confidence01','evidence01'])||seen.has(String(item.label)))return null;
+      seen.add(String(item.label));total+=item.intensity01 as number;
+    }
+    if(value.mixedAffect.length>0&&Math.abs(total-1)>.002)return null;
+  }
+  if(value.actionTendencies!==undefined){
+    if(!Array.isArray(value.actionTendencies)||value.actionTendencies.length>8)return null;
+    for(const item of value.actionTendencies)if(!isRecord(item)||!ACTION_TENDENCIES.includes(item.tendency as EmotionActionTendency)||!unitFieldsAreValid(item,['weight01']))return null;
+  }
   if(value.modulators!==undefined){
     try{normalized.modulators=normalizeInfluences(value.modulators);}catch{return null;}
   }
