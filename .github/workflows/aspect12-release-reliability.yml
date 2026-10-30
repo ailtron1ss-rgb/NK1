@@ -1,0 +1,141 @@
+name: NK1 Aspect 12 release reliability
+
+on:
+  push:
+    branches: [aspect12-release-reliability-2026-10-30]
+    paths:
+      - "tools/aspect12-release-readiness.mjs"
+      - "tools/aspect12-release-readiness.test.mjs"
+      - "docs/ASPECT12_RELEASE_RELIABILITY_PLAN_RU.md"
+      - ".github/workflows/aspect12-release-reliability.yml"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "contracts/RELEASE_LICENSE_REVIEW.json"
+      - "SUPER_VERSION.json"
+      - ".nvmrc"
+  pull_request:
+    branches: [main, rebuild, workpass70-source]
+    paths:
+      - "tools/aspect12-release-readiness.mjs"
+      - "tools/aspect12-release-readiness.test.mjs"
+      - "docs/ASPECT12_RELEASE_RELIABILITY_PLAN_RU.md"
+      - ".github/workflows/aspect12-release-reliability.yml"
+      - "package.json"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "contracts/RELEASE_LICENSE_REVIEW.json"
+      - "SUPER_VERSION.json"
+      - ".nvmrc"
+  workflow_dispatch:
+    inputs:
+      require_release_ready:
+        description: "Fail unless all human license reviews are explicitly approved"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-aspect12-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  structural-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Assert exact Node runtime pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node mismatch: expected $expected, got $actual" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Run Aspect 12 readiness audit
+        run: node tools/aspect12-release-readiness.mjs
+      - name: Test Aspect 12 readiness contract
+        run: node --test tools/aspect12-release-readiness.test.mjs
+      - name: Run existing CI configuration audit
+        run: npm run audit:ci-reliability
+      - name: Run existing release metadata contract
+        run: npm run test:release-metadata-contract
+
+  app-runtime-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install app dependencies reproducibly
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: App script regressions
+        run: npm --prefix app run test:scripts
+      - name: App typecheck
+        run: npm --prefix app run typecheck
+      - name: App production-like development build
+        run: npm --prefix app run build:dev
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Runtime organism smoke
+        run: npm --prefix runtime/neuro-kurisu run test:smoke
+      - name: Avatar and speech regressions
+        run: npm --prefix app run test:embodiment-timeline && npm --prefix app run test:avatar-motor-intent
+
+  release-clearance:
+    if: always()
+    needs: [structural-and-contract, app-runtime-validation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Report exact-SHA release clearance
+        id: report
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/aspect12-release-readiness.mjs > aspect12-readiness.json
+          node -e 'const r=require("./aspect12-readiness.json"); console.log("source SHA:", process.env.GITHUB_SHA); console.log("status:",r.status); console.log("release clearance:",r.releaseClearance); console.log("pending human reviews:",r.summary.pendingLicenseReviews);'
+          if [ "${{ inputs.require_release_ready }}" = "true" ]; then
+            node tools/aspect12-release-readiness.mjs --require-release-ready
+          fi
+          if [ "${{ needs.structural-and-contract.result }}" != "success" ] || [ "${{ needs.app-runtime-validation.result }}" != "success" ]; then
+            echo "Validation jobs did not both succeed." >&2
+            exit 1
+          fi
+      - name: Upload readiness report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nk1-aspect12-readiness-${{ github.sha }}
+          path: aspect12-readiness.json
+          if-no-files-found: ignore
+          retention-days: 30
