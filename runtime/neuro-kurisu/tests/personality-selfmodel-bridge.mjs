@@ -15,6 +15,7 @@ const verifiedEvent={
   evidenceStatus:'verified-independent',
   evidenceRef:'external-verification:reb:10:11:outcome',
   evidenceReceiptId:'reb:10:11:outcome',
+  verified01:.95,independent01:.9,evidence01:.9,consequence01:.9,identityUpdateScale01:.9,
   authorship:'self-initiated',
   episodeId:'episode-10',
 };
@@ -54,7 +55,7 @@ assert.deepEqual(unbound.personality.valueWeights,valuesBeforeUnbound,'unbound o
 assert.equal(unbound.personality.learningUpdates,2);
 assert.deepEqual(unbound.personality.selfBeliefs,selfBeliefsBeforeUnbound,'unsupported receipt namespaces cannot update autobiographical self-beliefs');
 const mismatchedReceipt = bridge.recordOutcome({
-  event:{tick:12,at:1200,action:'verify',outcome:0.9,evidenceStatus:'verified-independent',evidenceRef:'external-verification:reb:12:99:outcome',evidenceReceiptId:'reb:12:98:outcome'},
+  event:{tick:12,at:1200,action:'verify',outcome:0.9,evidenceStatus:'verified-independent',evidenceRef:'external-verification:reb:12:99:outcome',evidenceReceiptId:'reb:12:98:outcome',verified01:.95,independent01:.9,evidence01:.9,consequence01:.9,identityUpdateScale01:.9},
   evidenceReceiptId:'reb:12:98:outcome',action:'verify',reward01:0.9,goalAlignment01:0.9,
   predictionError01:0.1,identityGap01:0.1,learningScale01:1,identityUpdateScale01:1,evidence01:0.95,independent01:0.95,consequence01:0.95,
 });
@@ -162,16 +163,19 @@ assert.ok(strongVerificationBias > weakVerificationBias,'truth/science value wei
 const forgedReceiptModel = new SelfModelEngine();
 const forgedReceiptResult = forgedReceiptModel.learnGoalOutcome({
   action:'verify',goalAlignment01:0.9,reward01:0.9,tick:13,
-  evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:reb:13:1:outcome',evidenceReceiptId:'reb:13:2:outcome'},
+  evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:reb:13:1:outcome',evidenceReceiptId:'reb:13:2:outcome',evidence01:.9,independent01:.9,consequence01:.9,identityUpdateScale01:.9},
 });
 assert.equal(forgedReceiptResult.identityUpdateAccepted,false,'SelfModel rejects mismatched receipt IDs even when called outside the bridge');
 assert.equal(forgedReceiptResult.identityUpdateReason,'receipt-not-bound-to-outcome-event');
 const directValidReceiptModel = new SelfModelEngine();
 const directValidReceipt = directValidReceiptModel.learnGoalOutcome({
   action:'verify',goalAlignment01:0.9,reward01:0.9,tick:13,
-  evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:reb:13:3:outcome',evidenceReceiptId:'reb:13:3:outcome'},
+  evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:reb:13:3:outcome',evidenceReceiptId:'reb:13:3:outcome',evidence01:.9,independent01:.9,consequence01:.9,identityUpdateScale01:.9},
 });
 assert.equal(directValidReceipt.identityUpdateAccepted,true,'a tick-bound exact receipt is required and sufficient at the SelfModel gate');
+const lowQualitySelfModel=new SelfModelEngine();
+const lowQualitySelfResult=lowQualitySelfModel.learnGoalOutcome({action:'verify',goalAlignment01:.9,reward01:.9,tick:13,evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:reb:13:4:outcome',evidenceReceiptId:'reb:13:4:outcome',evidence01:.9,independent01:.9,consequence01:.9,identityUpdateScale01:.2}});
+assert.equal(lowQualitySelfResult.identityUpdateAccepted,false,'SelfModel requires the identity-specific confidence floor even for a valid receipt');
 
 const poisonedOutcomeModel = new SelfModelEngine();
 const poisonedOutcome = poisonedOutcomeModel.learnGoalOutcome({
