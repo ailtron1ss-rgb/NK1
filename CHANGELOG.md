@@ -1,3 +1,9 @@
+## [NK1][2.5D] Repair exported-GLB validator regression fixtures (2026-10-30)
+
+- Fix a missing local GLB document in the parent/TRS mismatch test, which caused a ReferenceError before exercising the validator.
+- Make the quaternion drift test mutate the actual exported GLB node rotation while keeping the manifest reference at identity; the prior fixture accidentally removed the exported quaternion and therefore did not test drift.
+- Re-run the focused depth-rig workflow on the exact follow-up HEAD before claiming validation.
+
 ## [NK1][WorkPass646] Cover exported quaternion rotation fidelity (2026-10-30)
 
 - Add a non-zero glTF quaternion to Euler XYZ round-trip regression and a negative rotation-drift assertion, so rotation comparison is tested beyond identity poses.
