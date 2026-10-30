@@ -63,7 +63,7 @@ const EMOTION_BIAS: Record<AffectiveExpressionLabel, {
 export function deriveAffectiveExpression(
   input: AffectiveExpressionInput,
 ): AffectiveExpressionProfile {
-  const emotion = input.emotion in EXPRESSION ? input.emotion : "calm";
+  const emotion = Object.hasOwn(EXPRESSION, input.emotion) ? input.emotion : "calm";
   const valence = clamp(input.valence, 0, 1);
   const arousal = clamp(input.arousal, 0, 1);
   const dominance = clamp(input.dominance, 0, 1);

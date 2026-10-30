@@ -43,7 +43,9 @@ export function applySemanticMorphTargets(bindings:SemanticMorphBinding[],values
  for(const binding of bindings){
   const current=binding.influences[binding.index];
   if(!Number.isFinite(current))continue;
-  const channelValue=Number.isFinite(values[binding.channel])?Math.max(0,Math.min(1,values[binding.channel])):0;\n  const weight=Number.isFinite(binding.weight)?Math.max(0,Math.min(1,binding.weight!)):1;\n  const requested=channelValue*weight;
+  const channelValue=Number.isFinite(values[binding.channel])?Math.max(0,Math.min(1,values[binding.channel])):0;
+  const weight=Number.isFinite(binding.weight)?Math.max(0,Math.min(1,binding.weight!)):1;
+  const requested=channelValue*weight;
   binding.influences[binding.index]=Math.max(current,requested);
  }
 }

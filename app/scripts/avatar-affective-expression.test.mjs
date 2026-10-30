@@ -64,3 +64,9 @@ test("continuous channels ease toward the next appraisal without overshoot", asy
   assert.ok(released.expressionIntensity < stepped.expressionIntensity);
   assert.ok(released.expressionIntensity > previous.expressionIntensity);
 });
+
+test("prototype property names fall back to canonical calm profile", () => {
+ const calm=deriveAffectiveExpression({emotion:"calm",valence:.5,arousal:.4,dominance:.5});
+ for(const emotion of ["constructor","toString","__proto__"])
+  assert.deepEqual(deriveAffectiveExpression({emotion,valence:.5,arousal:.4,dominance:.5}),calm);
+});
