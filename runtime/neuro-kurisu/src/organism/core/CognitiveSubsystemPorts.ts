@@ -14,6 +14,7 @@ export interface WorldSubsystemPort {
 }
 export interface MemorySubsystemPort {
   snapshot:()=>unknown;
+  userModel:()=>unknown;
   epistemic:()=>unknown;
   prediction:()=>unknown;
   predictionDebt:()=>unknown;
