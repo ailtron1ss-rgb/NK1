@@ -70,7 +70,7 @@ These commands are documented as required checks; they have **not** been execute
 ### Сквозной provenance gate и защита от replay
 
 - В P78 добавлен ограниченный журнал processedEventKeys (до 512 ключей), сохраняемый в snapshot. Он блокирует повтор старого события даже после промежуточных эпизодов и восстановления runtime.
-- P78 синтаксически отделяет подтверждённое событие от legacy/unverified данных; bridge дополнительно разрешает для high-level SelfModel update только issuer namespaces world-transition: и external-verification:.
+- P78 и bridge признают verified lane только для issuer namespaces world-transition: и external-verification:, а также требуют синтаксически ограниченный evidenceRef без пробелов; legacy и неизвестные issuer остаются unverified. Это allow-list и проверка формы, не криптографическая аутентификация receipt.
 - Причина отказа не теряется: синтаксически оформленный, но неподдержанный issuer доходит до SelfModel как неподтверждённый доверенный источник и отклоняется его allow-list.
 - Исправлена нормализация управляющих символов/пробелов и строгая проверка evidence reference на пробельные символы.
 
