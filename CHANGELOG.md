@@ -1,3 +1,9 @@
+## [NK1][Aspect 10] Distinguish malformed VRM profiles from unsafe calibration values (2026-10-30)
+
+- Split profile-shape/bone-identity validation from numerical calibration validation so the declared `invalid-calibration` result is reachable and meaningful.
+- Reject blank bone names and calibration offsets/joint bounds outside ±2π radians; retain exact model, coordinate-frame and bilateral bone identity binding.
+- Add regressions for reversed joint ranges, implausible offsets and malformed bone identity. This tightens the profile import boundary; it does not enable live IK or certify measured model calibration.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
