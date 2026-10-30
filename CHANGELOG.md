@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Add focused 3D stage validation and syntax regression (2026-10-30)
+
+- Registered a dedicated 3D stage test command covering body wiring, local model storage, resource disposal, renderer limits and shipped visual assets.
+- Added a regression guard against ambiguous decimal ternary tokens in Avatar3DStage.tsx.
+- Added an exact-path GitHub Actions workflow running app typecheck, 3D stage and motor-intent contracts, Live2D production contract, and development bundle build.
+
 ## [NK1][Embodiment] Make decimal conditional expressions unambiguous (2026-10-30)
 
 - Normalized decimal-valued ternary branches in Avatar3DStage.tsx so TypeScript cannot tokenize them as optional chaining.
