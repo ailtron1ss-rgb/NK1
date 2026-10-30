@@ -26,7 +26,7 @@
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
     "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs",
     "test:avatar-model-validation": "node --experimental-strip-types --test scripts/avatar-model-validation.test.mjs",
-    "test:avatar-3d-stage": "node --test scripts/avatar-3d-stage.test.mjs",
+    "test:avatar-3d-stage": "node --experimental-strip-types --test scripts/avatar-3d-stage.test.mjs scripts/avatar-vrma-expression-ownership.test.mjs",
     "test:browser-voice-prosody": "node --experimental-strip-types --test scripts/avatar-browser-voice-prosody.test.mjs",
     "test:avatar-humanoid-bones": "node --experimental-strip-types --test scripts/avatar-humanoid-bone-map.test.mjs",
     "test:avatar-vrm-expressions": "node --experimental-strip-types --test scripts/avatar-vrm-expression-map.test.mjs",
