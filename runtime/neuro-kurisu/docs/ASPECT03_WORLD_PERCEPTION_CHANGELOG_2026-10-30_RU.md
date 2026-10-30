@@ -43,6 +43,9 @@
 | Capture receipt identity | Использовать execution ID, а не image hash, как уникальный capture frame |
 | Duplicate detection guard | Не создавать две сущности из почти идентичных box в одном кадре |
 | Tracker regression suite | Проверять ID continuity, порядок detections, камеры, expiry, stale frames и provider IDs |
+| Two-stage confidence gate | Слабые рамки только продолжают треки, сильные могут создавать новые |
+| Bounded motion prediction | Предсказывать смещение bbox из сглаженной скорости между кадрами |
+| P41 integration regression | Проверять сохранение двух одинаковых объектов и IDs в каноническом P41
 
 ## Текущий статус
 
