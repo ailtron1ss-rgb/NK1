@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
+import { deriveAvatar25DDepthOffsets, svgTranslate } from "./avatar/avatar25dDepth";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -120,6 +121,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const mouthHeight = speaking ? Math.max(2, Math.min(14, mouthPose.open * 18)) : 2.5;
   const pupilOffsetX = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeX) ? gazeX : 0)) * 15;
   const pupilOffsetY = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeY) ? gazeY : 0)) * 10;
+  const depth = deriveAvatar25DDepthOffsets(gazeX, gazeY, motion === "soft" ? 0.72 : 1);
   const browLift = EMOTION_BROW[emotion];
   const moodLabel: Record<EmotionLabel, string> = {
     curiosity: "интерес", calm: "спокойствие", joy: "радость", anxiety: "тревога",
@@ -158,6 +160,8 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         .nk-hair { animation: nk-hair 6.2s ease-in-out infinite; transform-origin: 210px 110px; }
         .nk-breath { animation: nk-breath ${pose.breathMs}s ease-in-out infinite; transform-origin: 210px 240px; }
         .nk-scanner { animation: nk-scanner 8s linear infinite; }
+        .nk-depth-layer { transition: transform 320ms cubic-bezier(.2,.7,.2,1); transform-box: view-box; }
+        @media (prefers-reduced-motion: reduce) { .nk-depth-layer { transform: none !important; transition: none !important; } }
         @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner,.nk-eye { animation: none !important; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(38,113,133,.35),transparent_47%),linear-gradient(180deg,#0a1b25,#050b12)]" />
@@ -183,11 +187,11 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         <g className="nk-float">
           <g style={{ transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
           {/* Rear hair silhouette and long, independently swinging locks. */}
-          <g className="nk-hair">
+          <g className="nk-depth-layer nk-depth-rear-hair" data-depth-layer="rear-hair" transform={svgTranslate(depth.rearHair)}><g className="nk-hair">
             <path d="M150 79 Q145 38 192 29 Q246 24 273 67 Q289 104 272 180 L292 311 Q265 348 249 317 L241 205 L179 208 L170 321 Q147 348 131 308 L143 173 Q130 122 150 79Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="2"/>
             <path d="M159 83 Q156 43 197 36 Q229 33 251 61 Q235 48 220 47 Q178 44 164 101Z" fill="#e58c61" opacity=".48"/>
             <path d="M151 113 Q160 170 149 244 L140 302 M264 116 Q254 184 272 283" fill="none" stroke="#ef9b70" strokeOpacity=".55" strokeWidth="3" strokeLinecap="round"/>
-          </g>
+          </g></g>
           {/* Legs, tights and boots. */}
           <path d="M171 355 L205 360 L201 448 Q197 466 188 475 L167 475 Q167 461 176 446 L166 392Z" fill="#262833" stroke="#12161c" strokeWidth="2"/>
           <path d="M215 360 L248 354 L250 411 Q251 441 266 460 L264 475 L242 475 Q226 455 225 430Z" fill="#262833" stroke="#12161c" strokeWidth="2"/>
@@ -208,7 +212,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M174 194 L188 203 L182 338 L166 354 L151 342Z" fill="#d5b3a0" opacity=".55"/>
             <path d="M246 194 L231 205 L237 337 L252 353 L267 341Z" fill={coatShadow} opacity=".46"/>
           </g>}
-          <g className="nk-breath">
+          <g className="nk-depth-layer nk-depth-torso" data-depth-layer="torso" transform={svgTranslate(depth.torso)}><g className="nk-breath">
             {/* Pose presets change the limb silhouettes; Auto follows organism action/emotion. */}
             {effectivePose === "crossed" ? <g>
               <path d="M164 196 Q148 194 149 216 L177 252 Q198 269 218 253 L209 234 Q198 246 185 234 L174 210Z" fill={coat} stroke={coatShadow} strokeWidth="2"/>
@@ -244,8 +248,9 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             {!isNight ? <path d="M189 356 L231 356 L244 385 Q210 400 176 385Z" fill="#20232d" stroke="#10131b" strokeWidth="2"/> : null}
             {/* One small NK1 accent keeps the editable concept distinct without duplicating the hair ornament. */}
             <path d="M248 280 L259 280 L256 287 L247 287Z" fill={accent.color}/>
-          </g>
+          </g></g>
           {/* Face and separate features. */}
+          <g className="nk-depth-layer nk-depth-head" data-depth-layer="head" transform={svgTranslate(depth.head)}>
           <g style={{ transform: `rotate(${pose.head}deg)`, transformOrigin: "210px 134px", transition: "transform 450ms ease" }}>
             <path d="M151 79 Q151 42 193 40 Q235 35 263 69 Q272 96 257 145 Q247 177 211 185 Q178 177 163 147 Q148 120 151 79Z" fill="url(#nk-skin)" stroke="#9f6267" strokeWidth="2"/>
             <path d="M151 85 Q153 47 192 39 Q236 33 263 69 L267 96 Q241 68 216 66 Q187 66 155 101Z" fill="url(#nk-hair)"/>
@@ -272,13 +277,16 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
               <path d="M238 170 L248 162 M241 176 L250 169" fill="none" stroke="#c58c86" strokeWidth="1.4" strokeLinecap="round"/>
             </g> : null}
             {/* Loose front fringe with asymmetry to reinforce the NK1 silhouette. */}
+            <g className="nk-depth-layer nk-depth-front-fringe" data-depth-layer="front-fringe" transform={svgTranslate(depth.frontFringe)}>
             <path d="M153 92 Q151 48 187 39 Q224 32 255 58 L268 89 L248 77 L240 104 L226 82 L207 111 L195 76 L177 107 L171 88Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="1.5"/>
             <path d="M160 70 Q177 46 195 44 M208 43 Q231 44 249 64" fill="none" stroke="#f0a06f" strokeOpacity=".58" strokeWidth="2.5" strokeLinecap="round"/>
+            </g>
             {/* Slim red hair clip is closer to Kurisu's recognizable silhouette than a neon diamond. */}
             <g transform="rotate(-24 260 68)">
               <rect x="250" y="64" width="20" height="5" rx="1.5" fill="#b52e43" stroke="#f4c0c7" strokeWidth="1"/>
               <path d="M253 66.5H267" stroke="#fff0f1" strokeWidth="1" strokeLinecap="round"/>
             </g>
+          </g>
           </g>
         </g>
         </g>
