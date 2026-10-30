@@ -1,3 +1,10 @@
+## [NK1][WorkPass641] Consume artist face bindings from GLB scene extras (2026-10-30)
+
+- Read optional `nk1DepthRigFaceBindings` from the same glTF scene extras as the canonical depth-rig manifest and pass the mapping to the face morph resolver.
+- Keep asset metadata fail-safe through the existing channel/alias validation; absent bindings retain default morph-name discovery.
+- Clear face bindings when a model is reset so one model's custom morph mapping cannot leak into another model's lifecycle.
+- The exporter-to-runtime metadata path is now connected for both body rig and face morph aliases; no authored model or Blender execution is claimed.
+
 ## [NK1][WorkPass639] Add Blender-to-GLB 2.5D export and asset validation (2026-10-30)
 
 - Add a Blender Python exporter that builds the runtime v1 depth-rig manifest from a named rig collection, preserving node IDs, parent links, local transforms, artist pivots, depth/parallax and visibility.
