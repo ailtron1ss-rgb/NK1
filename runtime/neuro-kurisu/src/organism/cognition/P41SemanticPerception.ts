@@ -56,6 +56,9 @@ export interface P41PerceptualRelation {
   from:string;
   relation:string;
   to:string;
+  /** Object identity is bound only when the endpoint resolves unambiguously. */
+  fromEntityId?:string;
+  toEntityId?:string;
   confidence01:number;
   modality:P41Modality;
   evidenceKind:P41EvidenceKind;
@@ -168,7 +171,7 @@ export interface P41SemanticInput {
     sceneLabel?:string;
     confidence01?:number;
     objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number}>;
-    relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;
+    relations?:Array<{from:string;relation:string;to:string;confidence01?:number;fromTrackId?:string;toTrackId?:string;fromSourceId?:string;toSourceId?:string}>;
     events?:Array<{label:string;confidence01?:number}>;
     latencyMs?:number;
     semantic:boolean;
@@ -267,7 +270,11 @@ export class P41SemanticPerceptionEngine {
       if(e)targets.push(e.id);
     }
     for(const e of (v.events??[]).slice(0,16)) this.upsertEvent(String(e.label),clamp(e.confidence01??.45),'vision',at,'model-output');
-    for(const r of (v.relations??[]).slice(0,32)) this.upsertRelation(r.from,r.relation,r.to,clamp(r.confidence01??.5),'vision',at,'model-output');
+    for(const r of (v.relations??[]).slice(0,32)){
+      const fromTrackId=cleanTrackId(r.fromTrackId)?'vision:'+cameraId+':'+(cleanTrackId(r.fromSourceId)||'backend')+':'+cleanTrackId(r.fromTrackId):undefined;
+      const toTrackId=cleanTrackId(r.toTrackId)?'vision:'+cameraId+':'+(cleanTrackId(r.toSourceId)||'backend')+':'+cleanTrackId(r.toTrackId):undefined;
+      this.upsertRelation(r.from,r.relation,r.to,clamp(r.confidence01??.5),'vision',at,'model-output',fromTrackId,toTrackId);
+    }
     if(targets.length)this.epistemic.add({at,modality:'vision',claim:`objects:${targets.length}`,source:'model-output',confidence01:Number(v.confidence01??.5),targetIds:targets});
     this.recordModality('vision',Number(v.confidence01??.45),Number(v.latencyMs??750));
   }
@@ -369,11 +376,39 @@ export class P41SemanticPerceptionEngine {
     return e;
   }
 
-  private upsertRelation(from:string,relation:string,to:string,confidence01:number,modality:P41Modality,at:number,evidenceKind:P41EvidenceKind){
-    const id=stableId('rel',`${from}:${relation}:${to}`);
-    const existing=this.state.relations.find(x=>x.id===id);
-    if(existing){existing.confidence01=clamp(existing.confidence01*.8+confidence01*.2);existing.at=at;existing.evidenceKind=evidenceKind;}
-    else this.state.relations.unshift({id,from,relation,to,confidence01:clamp(confidence01),modality,evidenceKind,at});
+  private upsertRelation(from:string,relation:string,to:string,confidence01:number,modality:P41Modality,at:number,evidenceKind:P41EvidenceKind,fromTrackId?:string,toTrackId?:string){
+    const resolveEndpoint=(label:string,trackId?:string):string|undefined=>{
+      const track=cleanTrackId(trackId);
+      if(track){
+        const exact=this.state.entities.find(entity=>entity.trackId===track||entity.trackAliases?.includes(track));
+        if(exact)return exact.id;
+      }
+      const key=normalizePerceptualLabel(label);
+      const matches=this.state.entities.filter(entity=>entity.label===key);
+      return matches.length===1?matches[0].id:undefined;
+    };
+    const fromEntityId=resolveEndpoint(from,fromTrackId);
+    const toEntityId=resolveEndpoint(to,toTrackId);
+    const fromKey=normalizePerceptualLabel(from)||String(from).slice(0,180);
+    const relationKey=normalizePerceptualLabel(relation)||String(relation).slice(0,120);
+    const toKey=normalizePerceptualLabel(to)||String(to).slice(0,180);
+    const identityKey=`${fromEntityId??'label:'+fromKey}:${relationKey}:${toEntityId??'label:'+toKey}`;
+    const id=stableId('rel',identityKey);
+    const legacyId=stableId('rel',`${from}:${relation}:${to}`);
+    const existing=this.state.relations.find(x=>x.id===id||x.id===legacyId);
+    if(existing){
+      existing.id=id;
+      existing.fromEntityId=fromEntityId??existing.fromEntityId;
+      existing.toEntityId=toEntityId??existing.toEntityId;
+      existing.confidence01=clamp(existing.confidence01*.8+confidence01*.2);
+      existing.at=at;
+      existing.evidenceKind=evidenceKind;
+    }else this.state.relations.unshift({
+      id,from,relation,to,
+      ...(fromEntityId?{fromEntityId}:{}),
+      ...(toEntityId?{toEntityId}:{}),
+      confidence01:clamp(confidence01),modality,evidenceKind,at
+    });
     this.state.relations=this.state.relations.slice(0,384);
   }
 
