@@ -7,6 +7,9 @@ on:
       - "app/src/components/avatar/facialMicrochannels.ts"
       - "app/scripts/avatar-facial-microchannels.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
+      - "app/src/components/avatar/facialMicrochannels.ts"
+      - "app/scripts/avatar-facial-microchannels.test.mjs"
+      - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/scripts/avatar-affective-expression.test.mjs"
       - "app/package.json"
@@ -14,6 +17,9 @@ on:
   pull_request:
     paths:
       - "app/src/components/avatar/affectiveExpression.ts"
+      - "app/src/components/avatar/facialMicrochannels.ts"
+      - "app/scripts/avatar-facial-microchannels.test.mjs"
+      - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/scripts/avatar-affective-expression.test.mjs"
       - "app/package.json"
