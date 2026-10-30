@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { orderDepthRigNodes, resolveDepthRigPose, resolveDepthRigWorldPose, validateDepthRig } from "../src/components/avatar/depthRig.ts";
-import { resolveDepthRigPoseFromEmbodimentIntent } from "../src/components/avatar/embodimentIntentAdapter.ts";
+import { resolveDepthRigPoseFromEmbodimentIntent, resolveDepthRigPoseFromMotorFrame } from "../src/components/avatar/embodimentIntentAdapter.ts";
 
 const transform = { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1 };
 const node = (id, role, parentId, depthOrder) => ({
@@ -164,4 +164,33 @@ test("rejects malformed EmbodimentIntent v1 adapter payloads", () => {
     gaze: { x: 0, y: 0, driven: true },
     body: { headTilt: 0, gesture: false, motionGroup: "Idle", motionIndex: 0 },
   }), /Invalid EmbodimentIntent/);
+});
+
+test("maps active motor joint targets through explicit bounded rig bindings", () => {
+  const pose = resolveDepthRigPoseFromMotorFrame(rig, {
+    version: 1, goalId: "goal.explain.01", phase: "moving",
+    joints: {
+      headYaw: { id: "headYaw", angleRad: 0.1, targetAngleRad: 0.5, velocityRadPerSec: 0.2, available: true },
+      leftShoulder: { id: "leftShoulder", angleRad: 0, targetAngleRad: 2, velocityRadPerSec: 0, available: true },
+    },
+  }, [
+    { nodeId: "head", jointId: "headYaw", restAngleRad: 0.1 },
+    { nodeId: "arm-left", jointId: "leftShoulder", maxAbsDegrees: 30 },
+  ]);
+  assert.ok(Math.abs(pose.deltas.head.rotation - (0.4 * 180 / Math.PI)) < 1e-12);
+  assert.equal(pose.deltas["arm-left"].rotation, 30);
+});
+
+test("idle motor frames do not animate and duplicate or unsafe bindings fail closed", () => {
+  const idle = resolveDepthRigPoseFromMotorFrame(rig, {
+    version: 1, goalId: null, phase: "idle", joints: {},
+  }, [{ nodeId: "head", jointId: "head" }]);
+  assert.deepEqual(idle.deltas, {});
+  const frame = { version: 1, goalId: "g", phase: "moving", joints: {} };
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, [
+    { nodeId: "head", jointId: "a" }, { nodeId: "head", jointId: "b" },
+  ]), /binding/);
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, frame, [
+    { nodeId: "head", jointId: "a", maxAbsDegrees: 100 },
+  ]), /calibration/);
 });
