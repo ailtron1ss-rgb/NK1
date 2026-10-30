@@ -65,3 +65,21 @@ test("future 2.5D handoff defines rig-safe anatomy, pivots, depth and deformatio
   assert.ok(handoff.acceptanceGates.includes("no-visible-seams-holes-or-texture-edge-fringing"));
   assert.match(handoff.promotionPolicy, /visual sign-off and provenance/);
 });
+
+
+test("layered-art handoff schema requires provenance, explicit depth, pivots and review evidence", async () => {
+  const schemaPath = join(appRoot, "public/kurisu-original/layered-art-manifest.schema.json");
+  const schema = JSON.parse(await readFile(schemaPath, "utf8"));
+  assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
+  assert.equal(schema.properties.characterContract.const, contract.id);
+  for (const field of ["schemaVersion", "characterContract", "assetId", "canvas", "coordinateSystem", "layers", "provenance", "review"]) {
+    assert.ok(schema.required.includes(field));
+  }
+  const layer = schema.$defs.layer;
+  for (const field of ["id", "parentId", "zIndex", "depthPlane", "pivot", "restTransform", "bounds", "occlusion", "deformation", "sourceAssetId"]) {
+    assert.ok(layer.required.includes(field));
+  }
+  assert.deepEqual(schema.properties.provenance.required, ["author", "sourceFile", "sourceUrl", "license", "licenseUrl", "redistributionAllowed"]);
+  assert.deepEqual(schema.properties.review.properties.status.enum, ["draft", "needs-revision", "approved"]);
+  assert.equal(layer.properties.deformation.properties.mesh.type.includes("null"), true);
+});
