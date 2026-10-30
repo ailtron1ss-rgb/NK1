@@ -7,9 +7,9 @@ type ChannelBinding = { node: NodeLike; axis: "x" | "y" | "z" };
 const normalize = (value: unknown): string => String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const CHANNELS: Record<string, { aliases: string[]; axis: "x" | "y" | "z" }> = {
-  headYaw: { aliases: ["head", "mixamorighead", "jbipchead"], axis: "y" },
-  headPitch: { aliases: ["head", "mixamorighead"], axis: "x" },
-  headRoll: { aliases: ["head", "mixamorighead"], axis: "z" },
+  headYaw: { aliases: ["head", "headintent", "mixamorighead", "jbipchead"], axis: "y" },
+  headPitch: { aliases: ["head", "headintent", "mixamorighead"], axis: "x" },
+  headRoll: { aliases: ["head", "headintent", "mixamorighead"], axis: "z" },
   neckYaw: { aliases: ["neck", "mixamorigneck", "jbipcneck"], axis: "y" },
   neckPitch: { aliases: ["neck", "mixamorigneck", "jbipcneck"], axis: "x" },
   spinePitch: { aliases: ["spine", "chest", "upperchest", "mixamorigspine", "jbipcspine", "jbipcchest", "jbipcupperchest"], axis: "x" },
