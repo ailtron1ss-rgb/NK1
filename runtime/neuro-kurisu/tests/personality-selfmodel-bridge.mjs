@@ -80,6 +80,7 @@ hardenedPersonality.restore({
 });
 const safePersonality=hardenedPersonality.snapshot();
 assert.equal(safePersonality.experienceCount,0);
+assert.deepEqual(safePersonality.selfBeliefNames,['continuity','coherence','agency','reality-grounding','stability','goal-continuity','memory-continuity','authorship-continuity']);
 assert.equal(safePersonality.learningUpdates,0);
 assert.equal(safePersonality.adaptiveValues.length,2);
 assert.ok(safePersonality.adaptiveValues.every(x=>x>=0&&x<=1));
