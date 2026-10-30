@@ -5,7 +5,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
 import * as THREE from "three";
 import { applyVerifiedVrmWardrobePack } from "./avatar/vrmWardrobePackLoader";
-import type { WardrobePackManifest } from "./avatar/wardrobePack";
+import { validateWardrobePackManifest, type WardrobePackManifest } from "./avatar/wardrobePack";
 
 type LoadedWardrobePack = { name: string; manifest: WardrobePackManifest; files: Map<string, Uint8Array> };
 const WARDROBE_RIG_VERSION = "nk1-three-skeleton-name-map-v1";
@@ -23,13 +23,21 @@ async function readWardrobeBundle(file: File): Promise<LoadedWardrobePack> {
  if (file.size <= 0 || file.size > 180 * 1024 * 1024) throw new Error("JSON-пакет должен быть непустым и не больше 180 МиБ.");
  const value = JSON.parse(await file.text()) as { format?: string; version?: number; manifest?: WardrobePackManifest; files?: Record<string, string> };
  if (value.format !== "nk1-wardrobe-pack" || value.version !== 1 || !value.manifest || !value.files || typeof value.files !== "object" || Array.isArray(value.files)) throw new Error("Неверный формат. Ожидается NK1 wardrobe JSON bundle v1.");
+ const manifestCheck = validateWardrobePackManifest(value.manifest);
+ if (!manifestCheck.valid) throw new Error(`Некорректный manifest: ${manifestCheck.errors.slice(0, 8).join(", ")}`);
+ const declared = new Map(value.manifest.assets.map((asset) => [asset.path, asset]));
  const files = new Map<string, Uint8Array>();
  for (const [path, encoded] of Object.entries(value.files)) {
-  if (typeof encoded !== "string" || encoded.length > 172 * 1024 * 1024 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(encoded)) throw new Error(`Некорректный base64 payload: ${path}`);
+  const asset = declared.get(path);
+  if (!asset) throw new Error(`Файл не объявлен в manifest: ${path}`);
+  const expectedBase64Length = Math.ceil(asset.bytes / 3) * 4;
+  if (typeof encoded !== "string" || encoded.length !== expectedBase64Length || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(encoded)) throw new Error(`Некорректный base64 payload или размер: ${path}`);
   const binary = atob(encoded); const bytes = new Uint8Array(binary.length);
+  if (bytes.byteLength !== asset.bytes) throw new Error(`Размер payload не совпадает с manifest: ${path}`);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   files.set(path, bytes);
  }
+ if (files.size !== value.manifest.assets.length) throw new Error("В bundle отсутствуют файлы, объявленные в manifest.");
  return { name: file.name, manifest: value.manifest, files };
 }
 
