@@ -51,6 +51,20 @@ test("VRMA LookAt quaternion tracks have the official proxy node and animation s
   assert.match(stage, /onChange=\{onAnimationFile\}/);
 });
 
+test("VRMA sidecars persist separately and restore after the VRM model is loaded", async () => {
+  const store = await readFile(path.join(appRoot, "src/components/avatar/avatarModelStore.ts"), "utf8");
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(store, /const VERSION = 2/);
+  assert.match(store, /const ANIMATION_STORE = "active-animation"/);
+  assert.match(store, /export function loadStoredAvatarAnimation/);
+  assert.match(store, /export function saveAvatarAnimation/);
+  assert.match(store, /export function clearStoredAvatarAnimation/);
+  assert.match(stage, /saveAvatarAnimation\(blob,name\)/);
+  assert.match(stage, /loadStoredAvatarAnimation\(\)/);
+  assert.match(stage, /loadVrma\(saved\.blob,saved\.name,false\)/);
+  assert.match(stage, /clearStoredAvatarAnimation\(\)/);
+});
+
 test("replacing or resetting the VRM invalidates any in-flight VRMA load", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /animationToken\.current\+\+;const token=\+\+loadToken\.current/);
