@@ -3,8 +3,8 @@ import test from "node:test";
 import { resolveSemanticMorphTargets, semanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
 
 test("semantic resolver recognizes common VRM/GLB face morph labels",()=>{
- const targets=resolveSemanticMorphTargets({Joy:0,EyeBlinkLeft:1,eye_close_right:2,viseme_aa:3,viseme_O:4,Fcl_MTH_Sad:5,Fcl_EYE_Angry:6,UnknownRigChannel:7,negative:-1});
- assert.deepEqual(targets.map(x=>[x.index,x.channel]),[[0,"joy"],[1,"blink"],[2,"blink"],[3,"mouthOpen"],[4,"mouthOh"],[5,"sadness"],[6,"anger"]]);
+ const targets=resolveSemanticMorphTargets({Joy:0,EyeBlinkLeft:1,eye_close_right:2,viseme_aa:3,viseme_O:4,Fcl_MTH_Sad:5,Fcl_EYE_Angry:6,UnknownRigChannel:7,Fcl_MTH_A:8,Fcl_MTH_O:9,negative:-1});
+ assert.deepEqual(targets.map(x=>[x.index,x.channel]),[[0,"joy"],[1,"blink"],[2,"blink"],[3,"mouthOpen"],[4,"mouthOh"],[5,"sadness"],[6,"anger"],[8,"mouthOpen"],[9,"mouthOh"]]);
 });
 test("resolver leaves unknown morphs untouched and is deterministic",()=>{
  const dictionary={mystery:0,Joy:1,Smile:2,EyeBlinkLeft:3};
