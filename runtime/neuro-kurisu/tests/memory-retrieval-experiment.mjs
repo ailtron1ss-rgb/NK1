@@ -123,6 +123,10 @@ assert.deepEqual(groupedReport.datasetIntegrity.answerableHoldoutClusterSizes, {
 });
 assert.equal(groupedReport.confidence.recallAtK01.independentClusters, 2);
 assert.equal(groupedReport.confidence.mrr01.independentClusters, 2);
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.independentClusters, 2);
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.evaluations, 2);
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.method, 'leave-one-conversation-out-sensitivity');
+assert.equal(groupedReport.confidence.clusterSensitivity.recallAtK01.interpretation.includes('not a confidence interval'), true);
 assert.equal(groupedReport.promotion.gates.sufficientIndependentHoldoutGroups, false,
   'many questions from too few independent conversations must not satisfy the sample-size gate');
 assert.equal(groupedReport.promotion.allowed, false);
@@ -369,6 +373,8 @@ try {
   assert.equal(validLanguageReport.runs.every(row => Object.hasOwn(row.languageStratification.slices, 'ru')), true);
   assert.equal(validLanguageReport.runs.every(row => row.datasetIntegrity.conversationAnnotationUsed), true,
     'CLI must retain anonymized source conversation IDs in the benchmark input');
+  assert.equal(validLanguageReport.runs.every(row => row.clusterSensitivity.recallAtK01.method === 'leave-one-conversation-out-sensitivity'), true,
+    'multi-seed CLI reports must preserve leave-one-conversation-out diagnostics');
   assert.equal(validLanguageReport.runs.every(row => row.datasetIntegrity.missingMultiSessionConversationIdCount === 0), true,
     'CLI must preserve conversation IDs needed by multi-session integrity checks');
   assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.categories.includes('multi-session')), true,
