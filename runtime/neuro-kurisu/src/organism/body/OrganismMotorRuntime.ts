@@ -17,11 +17,19 @@ import {
   MotorFrameChannel,
   type MotorFrameChannelDiagnostics,
 } from '../system/MotorFrameChannel.ts';
+import {
+  compileMotorJointDefinitions,
+  mapMotorFrameToRendererCommands,
+  type MotorRigProfileV1,
+  type RendererMotorCommandBatch,
+} from '../system/MotorRigProfile.ts';
 
 export interface OrganismMotorRuntimeDiagnostics {
   configured: boolean;
   controllerTick: number;
   activeGoalId: string | null;
+  activeRigProfileId: string | null;
+  activeRenderer: MotorRigProfileV1['renderer'] | null;
   channel: MotorFrameChannelDiagnostics;
   continuousLoopRunning: boolean;
   continuousLoopErrors: number;
@@ -32,6 +40,7 @@ export class OrganismMotorRuntime {
   private readonly controller = new EmbodiedMotorController();
   private readonly frames = new MotorFrameChannel();
   private configured = false;
+  private activeRigProfile: MotorRigProfileV1 | null = null;
   private continuousTimer: ReturnType<typeof setInterval> | null = null;
   private continuousLoopErrors = 0;
   private lastContinuousLoopError: string | null = null;
@@ -40,6 +49,20 @@ export class OrganismMotorRuntime {
     this.stopContinuous();
     this.controller.configureSkeleton(definitions);
     this.configured = true;
+    this.activeRigProfile = null;
+  }
+
+  /** Configure the one canonical controller from a production-calibrated renderer profile. */
+  configureRigProfile(profile: MotorRigProfileV1): void {
+    const definitions = compileMotorJointDefinitions(profile);
+    this.configureSkeleton(definitions);
+    this.activeRigProfile = structuredClone(profile);
+  }
+
+  /** Project a controller-produced frame; this does not claim renderer application. */
+  rendererCommandsForFrame(frame: MotorFrame): { ok: boolean; reason: string; batch: RendererMotorCommandBatch | null } {
+    if (!this.activeRigProfile) return { ok: false, reason: 'motor-rig-profile-not-configured', batch: null };
+    return mapMotorFrameToRendererCommands(this.activeRigProfile, frame);
   }
 
   /**
@@ -116,6 +139,8 @@ export class OrganismMotorRuntime {
       configured: this.configured,
       controllerTick: snapshot.tick,
       activeGoalId: snapshot.activeGoal?.id ?? null,
+      activeRigProfileId: this.activeRigProfile?.profileId ?? null,
+      activeRenderer: this.activeRigProfile?.renderer ?? null,
       channel: this.frames.diagnostics(),
       continuousLoopRunning: this.continuousTimer !== null,
       continuousLoopErrors: this.continuousLoopErrors,

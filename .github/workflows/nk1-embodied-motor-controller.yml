@@ -11,6 +11,9 @@ on:
       - "runtime/neuro-kurisu/src/organism/index.ts"
       - "runtime/neuro-kurisu/tests/organism-motor-runtime.mjs"
       - "runtime/neuro-kurisu/src/organism/system/EmbodiedMotorController.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MotorRigProfile.ts"
+      - "runtime/neuro-kurisu/tests/motor-rig-profile.mjs"
+      - "runtime/neuro-kurisu/tests/organism-motor-rig-profile.mjs"
       - "runtime/neuro-kurisu/src/organism/system/MotorFrameChannel.ts"
       - "runtime/neuro-kurisu/tests/motor-frame-channel.mjs"
       - "runtime/neuro-kurisu/src/organism/system/SkeletalKinematics3D.ts"
@@ -50,6 +53,10 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts
       - name: Typecheck runtime
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run canonical motor-rig profile regressions
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/motor-rig-profile.mjs
+      - name: Run organism motor-rig profile integration regressions
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/organism-motor-rig-profile.mjs
       - name: Run motor-control regression suite
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/embodied-motor-controller.mjs
       - name: Run 3D skeletal kinematics regression suite

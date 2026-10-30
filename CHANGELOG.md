@@ -1,3 +1,11 @@
+## [NK1][Aspect 13] Add renderer-neutral motor-rig profiles (2026-10-30)
+
+- Add a versioned body calibration profile for Live2D, layered 2.5D and VRM3D with 62 stable canonical joint roles, explicit units, renderer bindings, per-joint limits and topology validation.
+- Add X/Y/Z component binding for spatial nodes/bones; Live2D channels are explicitly approximate Cubism parameters, never advertised as free skeletal joints.
+- Compile profiles into the existing EmbodiedMotorController and FK/IK joint schemas; project MotorFrames into renderer command batches with fail-closed calibration and capability checks.
+- Bind the active production profile to OrganismMotorRuntime and expose the selected renderer/profile in diagnostics. No renderer application is claimed until an adapter returns measured readback evidence.
+- Add profile validation and runtime integration regressions to the motor-controller workflow.
+
 ## [NK1][Embodiment] Stream MotorFrames to renderers with bounded backpressure (2026-10-30)
 
 - Add `GET /api/organism/motor-frame/stream` as a read-only server-sent event stream backed by the canonical MotorFrameChannel subscription.
