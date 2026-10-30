@@ -2803,6 +2803,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
 
+## [NK1][fix] Restore project-executor snapshot round-trip identity (2026-10-30)
+
+- Make the default schema-v7 executor state explicitly own `lastOutcomeId: undefined`, matching the normalized state produced by `restore()` and preserving exact snapshot key identity across restart.
+- Extend the subsystem-runtime regression to compare the sorted own-key sets before and after restore, assert the undefined outcome identifier, and keep the schema-v7 contract explicit.
+- Align executor idempotency and persistence regressions with schema v7; target the active step's declared `preferredTool` rather than a retired hard-coded tool ID.
+- Scope is a focused persistence-contract repair. No learning uplift, end-to-end autonomy, or Release ZIP refresh is claimed.
+
 ## [Unreleased] — 2026-10-30
 
 ### Added
