@@ -5,10 +5,20 @@
  * The governor returns retention budgets; it does not silently delete meaning.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
-const ownRecord=(value:unknown):Record<string,unknown> =>
-  value!==null&&typeof value==='object'&&!Array.isArray(value)
-    ? Object.fromEntries(Object.entries(value))
-    : {};
+const ownRecord=(value:unknown):Record<string,unknown> => {
+  if(value===null||typeof value!=='object'||Array.isArray(value))return Object.create(null) as Record<string,unknown>;
+  const result=Object.create(null) as Record<string,unknown>;
+  let keys:string[];
+  try{keys=Object.keys(value);}catch{return result;}
+  for(const key of keys.slice(0,32)){
+    try{
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!descriptor.enumerable||!Object.hasOwn(descriptor,'value'))continue;
+      Object.defineProperty(result,key,{value:descriptor.value,enumerable:true,writable:true,configurable:true});
+    }catch{/* malformed persisted entry: use the governor's domain default */}
+  }
+  return result;
+};
 export interface P70State {version:1;cycles:number;maintenanceRuns:number;prunedRecords:number;compactions:number;meanHotLoad01:number;meanPressure01:number;lastAction:'idle'|'trim'|'compact'|'protect';lastAt:number;}
 export const defaultP70=():P70State=>({version:1,cycles:0,maintenanceRuns:0,prunedRecords:0,compactions:0,meanHotLoad01:.18,meanPressure01:.18,lastAction:'idle',lastAt:0});
 export class P70MemoryLifecycleGovernor {
