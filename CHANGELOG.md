@@ -2827,3 +2827,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+### Aspect 11 — Live2D SDK observability boundary
+
+- Documented the pinned pixi-live2d-display 0.4.0 motion API: `model.motion()` resolves on successful start; `MotionManager.isFinished()`/`playing` are manager-wide, not per-motion completion evidence.
+- Confirmed the documented `MotionManagerEvents` do not expose a public per-motion completion event. Kept `started` and `visualCompletionVerified: false` semantics; no unsupported completion event was invented.
+- Next gate: adapter-owned token-correlated completion instrumentation plus rendered-frame evidence before any full apply receipt.
