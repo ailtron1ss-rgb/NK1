@@ -52,3 +52,5 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/skeletal-pose-ik-3d.mjs
       - name: Run coordinated multi-effector IK regression suite
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/skeletal-multi-effector-ik-3d.mjs
+      - name: Run MotorFrame transport regression suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/motor-frame-channel.mjs
