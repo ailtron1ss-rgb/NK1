@@ -111,3 +111,32 @@ Unit tests и metadata-only pack сами по себе не означают 10
 - [PR #412](https://github.com/ailtron1ss-rgb/NK1/pull/412)
 - [Рабочая ветка](https://github.com/ailtron1ss-rgb/NK1/tree/work/nk1-wardrobe-modular-clothing-pass-2026-10-30)
 - [Исторический подробный план Aspect 08](ASPECT08_MODULAR_WARDROBE_PLAN_RU.md)
+
+
+## Additional production-authoring pass — 2026-10-30
+
+- Added `app/scripts/wardrobe-authoring-preflight.mjs`: local fail-closed validation of manifest, safe paths, file presence, exact byte length, SHA-256, MIME signatures and GLB v2 chunk structure.
+- The GLB gate rejects external buffer/image URIs and malformed/truncated chunk layouts before assets are handed to the runtime.
+- Added focused regression tests for exact payload acceptance, tampering, MIME mismatch, traversal, valid self-contained GLB and external GLB resources.
+- Added `npm run wardrobe:preflight` and `npm run test:wardrobe:authoring`.
+- Added `ASPECT15_GARMENT_AUTHORING_PIPELINE_RU.md` with a reproducible Blender-to-GLB process, frozen target-rig identity, weight/bind-pose requirements, pose acceptance suite, 2.5D hidden-underdraw requirements and truthful Live2D capability rules.
+
+### Updated progress estimate
+
+- Aspect 15 engineering estimate: **61/100** (previous repository estimate: 59/100).
+- Software foundation and authoring reproducibility improved; this is not a production asset or device-readiness increase.
+- Actual production garment art remains **0% verified**.
+- Actual Live2D and 2.5D independent garment switching remains **0% verified**.
+- New authoring-preflight test suite is added but has not yet been run on the current branch HEAD.
+- No browser/device visual E2E, legal rights review or refreshed canonical Release ZIP is claimed.
+
+### New acceptance sequence
+
+1. Run focused wardrobe and authoring-preflight suites on the current branch HEAD.
+2. Run app typecheck and production build.
+3. Freeze the canonical target VRM and publish its exact body/rig fingerprint.
+4. Author and export first lab-coat GLB plus one alternative top; pass preflight and actual pose review.
+5. Add browser visual tests for slot replacement, rollback and repeated resource cleanup.
+6. Add real IndexedDB quota/restart and Android restore E2E.
+7. Author 2.5D layered garment assets and inspect the Cubism source before claiming Live2D garment capability.
+8. Complete independent rights review, then refresh the canonical Release ZIP from the verified source SHA.
