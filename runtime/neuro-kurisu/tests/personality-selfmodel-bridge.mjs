@@ -203,7 +203,7 @@ assert.deepEqual(directP2702Bypass.snapshot().valueWeights,directP2702Before.val
 assert.deepEqual(directP2702Bypass.snapshot().selfBeliefs,directP2702Before.selfBeliefs,'direct callers cannot update self-beliefs without an exact receipt');
 assert.deepEqual(directP2702Bypass.snapshot().relationshipTrust,directP2702Before.relationshipTrust,'direct callers cannot update relationship trust without an exact receipt');
 const relationshipRestore = new P2702PersistentPersonalityDynamics();
-relationshipRestore.restore({ relationshipTrust:{ 'Ａlice':0.9, 'Alice':0.2, 'bad\\u0000key':1, '__proto__':1, 'constructor':1 } });
+relationshipRestore.restore({ relationshipTrust:Object.fromEntries([['Ａlice',0.9],['Alice',0.2],['bad'+String.fromCharCode(0)+'key',1],['__proto__',1],['constructor',1]]) });
 assert.equal(Object.keys(relationshipRestore.snapshot().relationshipTrust).length,1,'restore normalizes Unicode and drops duplicate/unsafe relationship IDs');
 assert.equal(relationshipRestore.snapshot().relationshipTrust.Alice,0.9);
 const dimensionSafePersonality = new P2702PersistentPersonalityDynamics();
