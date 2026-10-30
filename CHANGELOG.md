@@ -1,3 +1,9 @@
+## [NK1][Aspect 11] Fail closed on partial renderer verification (2026-10-30)
+
+- Require a non-empty, unique accepted-channel set in every adapter apply receipt; reject malformed channel claims before verification.
+- Require independent verification to observe every accepted channel for the same state revision, with a monotonic observation timestamp no earlier than the apply receipt. A positive verified flag with incomplete/stale observations cannot commit.
+- Apply the same strict verification contract to source rollback, and add regression cases for missing channel observations, time-order violations and empty apply receipts.
+
 ## [NK1][Aspect 11] Correlate Live2D expression and motion dispatch acknowledgements (2026-10-30)
 
 - Wait for Cubism parameter readback and all requested expression/motion SDK promises before emitting one revision-bound partial ACK.
