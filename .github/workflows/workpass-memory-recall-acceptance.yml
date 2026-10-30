@@ -8,6 +8,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/memory/**"
       - "runtime/neuro-kurisu/src/organism/integration/mem0/**"
       - "runtime/neuro-kurisu/tests/memory-*.mjs"
+      - "runtime/neuro-kurisu/tests/memoryos2-*.mjs"
       - "runtime/neuro-kurisu/tests/*holdout*.mjs"
       - "runtime/neuro-kurisu/tests/integration/hexis-canonical-evidence-bridge.mjs"
       - "runtime/neuro-kurisu/tests/mem0-*.mjs"
