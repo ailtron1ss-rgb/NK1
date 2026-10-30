@@ -5,7 +5,7 @@ import {
   type DepthRigDefinition,
   type DepthRigPose,
   type DepthRigTransform,
-} from "./depthRig";
+} from "./depthRig.ts";
 
 export const NK1_DEPTH_RIG_ASSET_USER_DATA_KEY = "nk1DepthRigAssetV1";
 export const NK1_DEPTH_RIG_SCENE_ADAPTER_ID = "nk1-depth-rig-scene-v1";
