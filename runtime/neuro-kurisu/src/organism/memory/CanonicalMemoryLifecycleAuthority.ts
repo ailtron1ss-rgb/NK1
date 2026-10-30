@@ -3,6 +3,38 @@ import type { MemoryFabric } from './MemoryFabric.ts';
 import type { MemoryConsolidationController, ConsolidationCandidate, ConsolidationDecision } from './MemoryConsolidationController.ts';
 
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const safeCounter=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+const safeTick=(value:unknown):number|null=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;
+const safeLabel=(value:unknown,max=128):string|undefined=>typeof value==='string'&&value.trim().length>0&&value.length<=max&&!/[\u0000-\u001f\u007f]/.test(value)?value.trim():undefined;
+
+/** Copy only own enumerable data fields from untrusted persisted records. */
+const ownRecord=(value:unknown):Record<string,unknown> =>
+  value!==null&&typeof value==='object'&&!Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value))
+    : {};
+
+const safePlan=(raw:unknown):CanonicalMemoryLifecycleState['lastPlan']=>{
+  const row=ownRecord(raw);
+  const b=ownRecord(row.budgets);
+  const keys=['traces','events','goals','memories','semanticItems'] as const;
+  if(keys.some(key=>!Object.hasOwn(b,key)||safeCounter(b[key],-1)<0))return undefined;
+  const action=row.action;
+  if(action!=='idle'&&action!=='trim'&&action!=='compact')return undefined;
+  return {budgets:{traces:safeCounter(b.traces),events:safeCounter(b.events),goals:safeCounter(b.goals),memories:safeCounter(b.memories),semanticItems:safeCounter(b.semanticItems)},action,pressure01:clamp01(typeof row.pressure01==='number'?row.pressure01:0),hotLoad01:clamp01(typeof row.hotLoad01==='number'?row.hotLoad01:0)};
+};
+const safeDecisions=(raw:unknown):ConsolidationDecision[]=>{
+  if(!Array.isArray(raw))return [];
+  const routes=new Set(['hippocampal','cortical','procedural','defer']);
+  const values:unknown[]=[];
+  for(let i=0;i<Math.min(raw.length,32);i++)if(Object.hasOwn(raw,i))values.push(raw[i]);
+  return values.flatMap(value=>{
+    const row=ownRecord(value),id=safeLabel(row.id,128),reason=safeLabel(row.reason,240);
+    if(!id||!reason||!routes.has(String(row.route)))return [];
+    const numbers=['priority01','plasticity01','retention01','overconsolidationRisk01','reinforcement01'] as const;
+    if(numbers.some(key=>typeof row[key]!=='number'||!Number.isFinite(row[key])))return [];
+    return [{id,route:row.route as ConsolidationDecision['route'],reason,priority01:clamp01(row.priority01 as number),plasticity01:clamp01(row.plasticity01 as number),retention01:clamp01(row.retention01 as number),overconsolidationRisk01:clamp01(row.overconsolidationRisk01 as number),reinforcement01:clamp01(row.reinforcement01 as number)}];
+  });
+};
 
 export interface CanonicalMemoryLifecycleInput {
   tick:number;
@@ -69,22 +101,37 @@ export class CanonicalMemoryLifecycleAuthority {
 
   restore(raw?:Partial<CanonicalMemoryLifecycleState>|null){
     const d=defaultCanonicalMemoryLifecycleState();
+    const source=ownRecord(raw);
+    if(source.version!==undefined&&source.version!==1)throw new Error('Unsupported canonical memory lifecycle state version');
+    const lastPlan=safePlan(source.lastPlan);
     this.state={
-      ...d,
-      ...(raw??{}),
-      lastConsolidation:Array.isArray(raw?.lastConsolidation)?raw!.lastConsolidation.slice(0,32):[],
-      lastPlan:raw?.lastPlan,
+      version:1,
+      cycles:safeCounter(source.cycles),
+      maintenanceRuns:safeCounter(source.maintenanceRuns),
+      consolidationRuns:safeCounter(source.consolidationRuns),
+      lastTick:source.lastTick===-1?-1:(safeTick(source.lastTick)??-1),
+      ...(lastPlan?{lastPlan}:{}),
+      lastConsolidation:safeDecisions(source.lastConsolidation),
+      meanPressure01:clamp01(typeof source.meanPressure01==='number'&&Number.isFinite(source.meanPressure01)?source.meanPressure01:d.meanPressure01),
+      meanMemoryLoad01:clamp01(typeof source.meanMemoryLoad01==='number'&&Number.isFinite(source.meanMemoryLoad01)?source.meanMemoryLoad01:d.meanMemoryLoad01),
     };
   }
 
   snapshot(){return structuredClone(this.state);}
 
+  private assertNextTick(value:unknown):number {
+    const tick=safeTick(value);
+    if(tick===null||tick<=this.state.lastTick)throw new Error('Canonical memory lifecycle tick must be a strictly increasing non-negative safe integer');
+    return tick;
+  }
+
   run(input:CanonicalMemoryLifecycleInput){
+    const tick=this.assertNextTick(input.tick);
     const pressure=clamp01(input.pressure01);
     const memoryLoad=clamp01(input.workingSet01);
     const plan=this.governor.plan(input);
     const maintenance=this.fabric.maintain({
-      tick:input.tick,
+      tick,
       pressure01:pressure,
       maxItems:plan.budgets.memories,
       hotBudget:plan.budgets.memories>=520?64:48,
@@ -93,7 +140,7 @@ export class CanonicalMemoryLifecycleAuthority {
       identityTension01:input.identityTension01??0,
     });
     this.state.cycles++;
-    this.state.lastTick=input.tick;
+    this.state.lastTick=tick;
     this.state.lastPlan=plan;
     this.state.lastConsolidation=[];
     this.state.meanPressure01=clamp01(this.state.meanPressure01*.97+pressure*.03);
@@ -112,9 +159,14 @@ export class CanonicalMemoryLifecycleAuthority {
   }
 
   maintainCanonical(input:{tick:number;pressure01?:number;maxItems?:number;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number}){
-    const result=this.fabric.maintain(input);
+    const tick=safeTick(input.tick);
+    if(tick===null||tick<this.state.lastTick)throw new Error('Canonical memory lifecycle tick must not decrease and must be a non-negative safe integer');
+    // run() already performs canonical maintenance for this tick. A second
+    // consolidation-path request is an idempotent no-op, including after restore.
+    if(tick===this.state.lastTick)return {skipped:true,changed:0};
+    const result=this.fabric.maintain({...input,tick});
     this.state.maintenanceRuns+=result.skipped?0:1;
-    this.state.lastTick=input.tick;
+    this.state.lastTick=tick;
     this.state.meanPressure01=clamp01(this.state.meanPressure01*.97+clamp01(input.pressure01??0)*.03);
     return result;
   }
