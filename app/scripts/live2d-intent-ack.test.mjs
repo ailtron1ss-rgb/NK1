@@ -13,7 +13,7 @@ test("Live2D ACK is version-bound and emitted after Cubism parameter setters", (
   const applyHook = viewer.indexOf("flushIntentParameterReadback(core);");
   assert.ok(intentHandler >= 0, "intent revision must be retained");
   assert.ok(readback >= 0 && emit > readback, "ACK must be emitted by the readback routine");
-  assert.ok(updateHook >= 0 && applyHook > updateHook, "readback must be invoked from the Cubism model-update hook");
+  assert.ok(applyHook > readback && updateHook > applyHook, "readback routine must be registered through the Cubism model-update hook");
 });
 
 test("partial ACK never claims complete expression, motion or rendered-frame execution", () => {
