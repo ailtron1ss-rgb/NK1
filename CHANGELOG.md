@@ -1,3 +1,10 @@
+## [WorkPass640] — Partial VRM facial-map fallback
+
+- Changed the no-ExpressionManager path to compose native VRM morph binds with the generic GLB semantic adapter instead of treating any non-empty native map as complete coverage.
+- Native-owned semantic channels are identified from successfully bound morph targets; generic fallback fills only unbound channels, including speech visemes, avoiding duplicate writes while retaining native priority.
+- Added a Stage regression test for partial native-map arbitration.
+- Validation: implementation and static regression added; GitHub Actions on the current branch head still needs confirmation. Real model/browser E2E remains pending.
+
 ## [WorkPass639] — GLB facial semantic runtime
 
 - Added a Three.js runtime adapter that binds recognized facial morph channels independently per mesh.
