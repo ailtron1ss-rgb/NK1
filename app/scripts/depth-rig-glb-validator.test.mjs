@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import { readGlbJson, validateDepthRigGlb } from "./depth-rig-glb-validator.mjs";
 
 const manifest = (nodes = [
@@ -64,4 +65,19 @@ test("rejects a manifest parent that differs from the actual exported glTF graph
   rig.nodes[1].parentId = "not-the-exported-parent";
   const result = validateDepthRigGlb(glb(document(rig)));
   assert.ok(result.errors.includes("missing-parent:head"));
+});
+
+test("Avatar3DStage consumes scene extras for both depth rig and artist face bindings", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.ok(stage.includes("sceneRoot.userData?.nk1DepthRigManifest"));
+  assert.ok(stage.includes("sceneRoot.userData?.nk1DepthRigFaceBindings"));
+  assert.ok(stage.includes("applyDepthRigFaceMorphs(rt.loaded,faceValues,rt.faceBindings)"));
+  assert.ok(stage.includes("rt.faceBindings={}"));
+});
+
+test("Blender exporter writes the runtime metadata into the active glTF scene extras", async () => {
+  const exporter = await readFile(new URL("../../tools/blender/export_nk1_depth_rig.py", import.meta.url), "utf8");
+  assert.ok(exporter.includes('extras["nk1DepthRigManifest"] = manifest'));
+  assert.ok(exporter.includes('extras["nk1DepthRigFaceBindings"] = face_bindings'));
+  assert.ok(exporter.includes('export_extras=True'));
 });
