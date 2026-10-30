@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { MemoryOS2, type MemoryOSState2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
 
 export type MemoryRetrievalLanguage = 'en' | 'ru' | 'other';
+export type MemoryRetrievalTaskCategory = 'single-hop' | 'multi-hop' | 'multi-session' | 'temporal' | 'knowledge-update' | 'contradiction' | 'preference' | 'procedural' | 'open-domain' | 'abstention' | 'other';
 
 export interface MemoryRetrievalBenchmarkExample {
   id: string;
@@ -10,6 +11,8 @@ export interface MemoryRetrievalBenchmarkExample {
   split: 'train' | 'holdout';
   /** Explicit dataset annotation; never inferred from candidate retrieval output. */
   language?: MemoryRetrievalLanguage;
+  /** Optional task slice for diagnostics; never inferred from model output or used as auto-promotion evidence. */
+  category?: MemoryRetrievalTaskCategory;
   /** False marks an intentionally unanswerable query; it must have no relevant labels. */
   answerable?: boolean;
 }
@@ -102,7 +105,7 @@ const queryNearDuplicate=(left:string,right:string)=>{
   let intersection=0;for(const shingle of sa)if(sb.has(shingle))intersection++;
   return intersection/(sa.size+sb.size-intersection)>=.88;
 };
-const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),...(x.language===undefined?{}:{language:x.language}),relevantIds:[...x.relevantIds].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
+const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),...(x.language===undefined?{}:{language:x.language}),...(x.category===undefined?{}:{category:x.category}),relevantIds:[...x.relevantIds].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
 const stableFingerprint=(rows:MemoryRetrievalBenchmarkExample[])=>createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
 
 /** Stable canonical fingerprint shared by dataset provenance writers and the retrieval promotion gate. */
@@ -287,10 +290,10 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   // Bounded copies remain diagnostic-only if the source labels/text would be clipped.
   const truncatedFieldRows=limited.filter(row=>Boolean(row&&((typeof row.id==='string'&&row.id.length>120)||(typeof row.query==='string'&&row.query.length>500)||(Array.isArray(row.relevantIds)&&(row.relevantIds.length>24||row.relevantIds.some(id=>typeof id==='string'&&id.length>160)))))).length;
   const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
-    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.language===undefined||row.language==='en'||row.language==='ru'||row.language==='other')&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
+    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.language===undefined||row.language==='en'||row.language==='ru'||row.language==='other')&&(row.category===undefined||['single-hop','multi-hop','multi-session','temporal','knowledge-update','contradiction','preference','procedural','open-domain','abstention','other'].includes(row.category))&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
     if(!valid)droppedExamples++;
     return valid;
-  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),...(row.language===undefined?{}:{language:row.language}),relevantIds:row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)),split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
+  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),...(row.language===undefined?{}:{language:row.language}),...(row.category===undefined?{}:{category:row.category}),relevantIds:row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)),split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
   const sourceItems=Array.isArray(snapshot?.items)?snapshot.items:[];
   const boundedSourceItems=sourceItems.slice(0,1600);
   const malformedCorpusRows=boundedSourceItems.filter(m=>!m||typeof m.id!=='string'||!m.id.trim()||typeof m.content!=='string').length;
@@ -443,6 +446,41 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     eligibleForPromotion:languageStratifiedQualityEligible,
     reason:languageStratificationReason,
   };
+  const taskCategoryAnnotationsUsed=examples.some(row=>row.category!==undefined);
+  const taskCategoryAnnotationsComplete=!taskCategoryAnnotationsUsed||examples.every(row=>row.category!==undefined);
+  const taskCategories=[...new Set(examples.filter(row=>row.category!==undefined).map(row=>row.category!))].sort();
+  if(taskCategoryAnnotationsUsed&&!taskCategoryAnnotationsComplete)dataIntegrity.validForPromotion=false;
+  const taskCategorySlices:Partial<Record<MemoryRetrievalTaskCategory,unknown>>={};
+  if(taskCategoryAnnotationsUsed&&taskCategoryAnnotationsComplete){
+    for(const category of taskCategories){
+      const slice=holdout.filter(row=>row.category===category);
+      if(!slice.length)continue;
+      const categoryBaseline=evaluate(slice,baseline,k,now);
+      const categoryCandidate=evaluate(slice,candidate,k,now);
+      taskCategorySlices[category]={
+        category,holdoutQueries:slice.length,
+        answerableHoldoutQueries:slice.filter(row=>row.answerable!==false).length,
+        unanswerableHoldoutQueries:slice.filter(row=>row.answerable===false).length,
+        baseline:categoryBaseline.metrics,
+        candidate:categoryCandidate.metrics,
+        deltas:{
+          recallAtK01:Number((categoryCandidate.metrics.recallAtK01-categoryBaseline.metrics.recallAtK01).toFixed(4)),
+          mrr01:Number((categoryCandidate.metrics.mrr01-categoryBaseline.metrics.mrr01).toFixed(4)),
+          unsupportedRetrievalRate01:Number((categoryCandidate.metrics.unsupportedRetrievalRate01-categoryBaseline.metrics.unsupportedRetrievalRate01).toFixed(4)),
+        },
+        interpretation:'diagnostic-only; no per-category sample-size or confidence promotion gate is applied',
+      };
+    }
+  }
+  const taskCategoryStratification={
+    enabled:taskCategoryAnnotationsUsed,
+    annotationsComplete:taskCategoryAnnotationsUsed&&taskCategoryAnnotationsComplete,
+    holdoutOnly:true,
+    categories:taskCategories,
+    slices:taskCategorySlices,
+    autoPromotionInfluence:false,
+    reason:!taskCategoryAnnotationsUsed?'task-category-annotations-not-provided':!taskCategoryAnnotationsComplete?'task-category-annotations-incomplete':'diagnostic-task-category-slices-ready',
+  };
   const labelledHoldoutQueries=holdout.filter(x=>x.answerable!==false).length;
   const unanswerableHoldoutQueries=holdout.filter(x=>x.answerable===false).length;
   const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
@@ -492,6 +530,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
     deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
     languageStratification,
+    taskCategoryStratification,
     promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumUnanswerableHoldoutQueries:minUnanswerableHoldout,minimumLanguageTrainQueries:minLanguageTrainQueries,minimumLanguageAnswerableHoldoutQueries:minLanguageAnswerableHoldoutQueries,minimumLanguageUnanswerableHoldoutQueries:minLanguageUnanswerableHoldoutQueries,requiredLanguages:['en','ru'],minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
     guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,minimumLanguageStratifiedQualityRequired:true,bothEnglishAndRussianRequiredForPromotion:true,perLanguageConfidenceBoundsRequired:true,languageLabelsMustBeExplicit:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,candidateModeExplicit:true,candidateModeAutoPromoted:false,bootstrapSeed:seed},
   };
