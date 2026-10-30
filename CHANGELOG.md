@@ -2946,3 +2946,46 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Perception] Exercise motion prediction after a measured velocity sample (2026-10-30)
+
+- The motion-tracking regression now establishes velocity with two accepted observations before testing a larger subsequent displacement.
+- This verifies the implemented constant-velocity predictor without expecting a direction estimate from a single seed frame.
+- Identity continuity remains asserted across the seed, measured-motion primer and predicted follow-up.
+
+
+## [NK1][Perception] Count same-frame duplicate detections as ambiguous (2026-10-30)
+
+- The tracker already rejected overlapping same-label detections as ambiguous and withheld local IDs, but did not include those records in the ambiguous metric.
+- Initialize the frame ambiguity counter from the exact rejected duplicate set so object statuses and aggregate telemetry agree.
+- Retain the regression that verifies duplicate boxes create no tracks and produce two ambiguous records.
+
+
+## [NK1][Perception] Restore local temporal tracks from canonical source IDs (2026-10-30)
+
+- Accept both the default tracker source prefix and the legacy embedded source-marker form when rebuilding local tracks from P41 snapshots.
+- Preserve strict camera namespace, local-track ID, box validity, confidence, and freshness checks; this does not turn provider IDs into local IDs.
+- The existing restart regression exercises two same-label objects whose temporal identities must survive a runtime restore.
+
+
+## [Unreleased] — 2026-10-30
+
+### Added
+- Added `docs/NK1_EXECUTION_PLAN_100_PERCENT_RU_2026-10-30.md`: refreshed source/release baseline, branch divergence and exact CI blockers, aspect-by-aspect readiness estimates, and staged completion criteria including selectable 2D/2.5D/3D embodiment.
+- Recorded the canonical delivery distinction: `workpass70-source` is the working source tree, `main` is the release workflow/report branch, and the latest verified Release ZIP remains the 2026-10-19 WorkPass70 Hotfix 1 asset.
+
+### Evidence boundary
+- The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
+
+
+## [NK1][Aspect 03] Align invalid-box test with preserved object semantics (2026-10-30)
+
+- Correct the Gemini vision regression: an out-of-frame bounding box is rejected, but the semantic object observation remains present without a `bbox` field.
+- Assert both object identity and omission of invalid geometry; preserve the rule that image-relative x/y/z are never promoted to world coordinates.
+- This fixes a contradictory test expectation without weakening runtime validation.
+
+
+## [NK1][Aspect 03] Harden backward-compatible local track restoration (2026-10-30)
+
+- Accept a direct legacy `local:` track ID as well as the current P41 source-qualified form, while still rejecting non-local provider IDs.
+- Retain the restart regression for two same-label objects and their identity continuity; remove temporary console diagnostics from the test after the failure investigation.
