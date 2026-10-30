@@ -46,7 +46,7 @@ const hasBoundEvidence=(event:P78Event)=>{
   const receipt=/^reb:(\d+):(\d+):outcome$/i.exec(receiptId);
   return Boolean(
     receipt&&Number(receipt[1])===event.tick&&
-    String(event.evidenceRef??'').trim()===\`external-verification:\${receiptId}\`
+    String(event.evidenceRef??'').trim()===`external-verification:${receiptId}`
   );
 };
 const isAuthored=(event:P78Event)=>event.authorship==='self-initiated'||event.authorship==='self-selected';
