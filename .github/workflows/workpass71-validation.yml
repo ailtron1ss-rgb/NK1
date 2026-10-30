@@ -104,6 +104,8 @@ jobs:
         run: npm --prefix app run test:embodiment-timeline
       - name: Validate renderer-independent body motor foundation
         run: node --experimental-strip-types --test app/scripts/body-motor-controller.test.mjs
+      - name: Validate VRM humanoid motor adapter
+        run: node --experimental-strip-types --test app/scripts/vrm-motor-adapter.test.mjs
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
       - name: App typecheck
