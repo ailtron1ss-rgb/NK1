@@ -17,9 +17,9 @@ assert.equal(legacy.chapters, 0, 'unverified outcomes must not create autobiogra
 assert.equal(legacy.selfAuthorship01, 0.5, 'unknown authorship must not inflate self-authorship');
 
 const verifiedEvents = [
-  { tick: 3, at: 300, action: 'explore', outcome: 0.1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:3:31:outcome', evidenceReceiptId: 'reb:3:31:outcome', authorship: 'self-initiated', episodeId: 'episode-3' },
-  { tick: 4, at: 400, action: 'verify', outcome: 0.9, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:4:32:outcome', evidenceReceiptId: 'reb:4:32:outcome', authorship: 'self-selected', episodeId: 'episode-4' },
-  { tick: 5, at: 500, action: 'reflect', outcome: 0.5, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:5:33:outcome', evidenceReceiptId: 'reb:5:33:outcome', authorship: 'user-directed', episodeId: 'episode-5' }
+  { tick: 3, at: 300, action: 'explore', outcome: 0.1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:3:31:outcome', evidenceReceiptId: 'reb:3:31:outcome', verified01:.95, independent01:.9, evidence01:.9, consequence01:.9, identityUpdateScale01:.9, authorship: 'self-initiated', episodeId: 'episode-3' },
+  { tick: 4, at: 400, action: 'verify', outcome: 0.9, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:4:32:outcome', evidenceReceiptId: 'reb:4:32:outcome', verified01:.95, independent01:.9, evidence01:.9, consequence01:.9, identityUpdateScale01:.9, authorship: 'self-selected', episodeId: 'episode-4' },
+  { tick: 5, at: 500, action: 'reflect', outcome: 0.5, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:5:33:outcome', evidenceReceiptId: 'reb:5:33:outcome', verified01:.95, independent01:.9, evidence01:.9, consequence01:.9, identityUpdateScale01:.9, authorship: 'user-directed', episodeId: 'episode-5' }
 ];
 const grounded = p.observe(verifiedEvents);
 assert.equal(grounded.verifiedOutcomeSamples, 3);
@@ -38,6 +38,8 @@ restored.restore(modeOnlyChange);
 assert.deepEqual(restored.snapshot(), modeOnlyChange, 'autobiographical evidence counters must survive restore');
 const nonAdjacentReplay = restored.observe([verifiedEvents[0]]);
 assert.deepEqual(nonAdjacentReplay, modeOnlyChange, 'an older event replayed after newer events and a restart must remain idempotent');
+const changedReceiptReplay=restored.observe([{...verifiedEvents[0],outcome:0.99,verified01:1,evidence01:1}]);
+assert.deepEqual(changedReceiptReplay,modeOnlyChange,'reusing one immutable RuntimeEvidenceBus ID with changed payload cannot create a second autobiographical episode');
 
 const corrupted = new P78AutobiographicalSelfContinuity();
 corrupted.restore({ ...modeOnlyChange, verifiedOutcomeSamples: -50, selfAuthorship01: 4 });
@@ -67,18 +69,21 @@ const malformedEvidence = new P78AutobiographicalSelfContinuity().observe([
 ]);
 assert.equal(malformedEvidence.verifiedOutcomeSamples, 0, 'evidence references containing whitespace are not bound receipts');
 assert.equal(malformedEvidence.unverifiedOutcomeSamples, 1);
+const lowQualityReceipt=new P78AutobiographicalSelfContinuity().observe([{tick:45,at:4500,action:'verify',outcome:1,evidenceStatus:'verified-independent',evidenceRef:'external-verification:reb:45:55:outcome',evidenceReceiptId:'reb:45:55:outcome',verified01:.95,independent01:.95,evidence01:.95,consequence01:.95,identityUpdateScale01:.2}]);
+assert.equal(lowQualityReceipt.verifiedOutcomeSamples,0,'P78 requires the identity-specific confidence floor as well as a matching receipt');
+assert.equal(lowQualityReceipt.unverifiedOutcomeSamples,1);
 const unknownIssuer = new P78AutobiographicalSelfContinuity().observe([
   { tick: 42, at: 4200, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'local-cache:receipt-42' }
 ]);
 assert.equal(unknownIssuer.verifiedOutcomeSamples, 0, 'unknown issuer namespaces cannot enter autobiographical verified history');
 assert.equal(unknownIssuer.unverifiedOutcomeSamples, 1);
 const wrongTickReceipt = new P78AutobiographicalSelfContinuity().observe([
-  { tick: 43, at: 4300, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:42:45:outcome', evidenceReceiptId: 'reb:42:45:outcome' }
+  { tick: 43, at: 4300, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:42:45:outcome', evidenceReceiptId: 'reb:42:45:outcome', verified01:.95, independent01:.9, evidence01:.9, consequence01:.9, identityUpdateScale01:.9 }
 ]);
 assert.equal(wrongTickReceipt.verifiedOutcomeSamples, 0, 'receipt tick must match the autobiographical event tick');
 assert.equal(wrongTickReceipt.unverifiedOutcomeSamples, 1);
 const mismatchedReceiptId = new P78AutobiographicalSelfContinuity().observe([
-  { tick: 44, at: 4400, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:44:46:outcome', evidenceReceiptId: 'reb:44:47:outcome' }
+  { tick: 44, at: 4400, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:44:46:outcome', evidenceReceiptId: 'reb:44:47:outcome', verified01:.95, independent01:.9, evidence01:.9, consequence01:.9, identityUpdateScale01:.9 }
 ]);
 assert.equal(mismatchedReceiptId.verifiedOutcomeSamples, 0, 'P78 requires event.evidenceReceiptId to equal evidenceRef exactly');
 assert.equal(mismatchedReceiptId.unverifiedOutcomeSamples, 1);
