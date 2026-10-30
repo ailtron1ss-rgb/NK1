@@ -63,7 +63,7 @@ const normalizedReplay = normalized.observe([
 assert.deepEqual(normalizedReplay, normalizedFirst, 'whitespace normalization must make equivalent event keys idempotent');
 
 const malformedEvidence = new P78AutobiographicalSelfContinuity().observe([
-  { tick: 41, at: 4100, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'external-verification:reb:41:44:outcome' }
+  { tick: 41, at: 4100, action: 'verify', outcome: 1, evidenceStatus: 'verified-independent', evidenceRef: 'world-transition:bad receipt' }
 ]);
 assert.equal(malformedEvidence.verifiedOutcomeSamples, 0, 'evidence references containing whitespace are not bound receipts');
 assert.equal(malformedEvidence.unverifiedOutcomeSamples, 1);
