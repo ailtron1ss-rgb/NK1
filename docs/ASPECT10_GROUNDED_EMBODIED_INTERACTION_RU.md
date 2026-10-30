@@ -145,3 +145,15 @@ This pass hardens grounded planning, safety authorization and the evidence gate.
 - Add `.nvmrc` to workflow path filters so runtime changes re-run the focused contract.
 - Make optional world-revision evidence explicitly type-narrow before numeric comparison; this keeps runtime validation and strict TypeScript checks consistent.
 - Confirm the focused workflow on the corrected branch head. Broader PR failures in app dependency installation and unrelated integrity gates remain separate and are not represented as Aspect 10 failures.
+
+
+## [NK1][Aspect 10] Deny-by-default authorization for arm reach — 2026-10-30
+
+- Treat `reach` as physical movement, not as a harmless look/inspect plan.
+- Add independent `allowReach` policy, disabled by default.
+- Require live camera grounding, a target-specific short-lived authorization bound to the exact action/frame/world entity, and a trusted authorization verifier.
+- Require an explicit grounded `reach` affordance and contact-level confidence threshold before a reach plan is emitted.
+- Keep contact/manipulation permissions separate: authorizing a reach does not authorize touching, grasping, releasing or pressing.
+- Add seven regressions for default denial, source gating, authorization binding, expiry, affordance and trusted verifier behavior.
+
+This is a planning safety gate only. It does not execute a hand trajectory or prove collision-free movement; those still require a calibrated renderer/device adapter and independent postcondition.

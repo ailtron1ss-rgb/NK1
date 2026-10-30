@@ -31,7 +31,7 @@ export interface InteractionSafetyAuthorization {
 export type InteractionSafetyAuthorizationVerifier=(authorization:InteractionSafetyAuthorization)=>boolean;
 export type InteractionPostconditionEvidenceVerifier=(evidence:InteractionPostconditionEvidence,plan:InteractionPlan)=>boolean;
 export interface InteractionPolicy {
-  allowContact:boolean; allowManipulation:boolean; maxObservationAgeMs:number; planTtlMs:number;
+  allowReach:boolean; allowContact:boolean; allowManipulation:boolean; maxObservationAgeMs:number; planTtlMs:number;
   minLookConfidence01:number; minContactConfidence01:number; minManipulationConfidence01:number;
   minPostconditionConfidence01:number; maxTargetDistanceM:number;
 }
@@ -57,7 +57,7 @@ const finitePoint=(p:SpatialPoint)=>Boolean(p&&Number.isFinite(p.x)&&Number.isFi
 const distance=(a:SpatialPoint,b:SpatialPoint)=>Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
 const safeId=(s:string)=>/^[a-z0-9][a-z0-9._:-]{0,95}$/i.test(s);
 const bounded=(value:number|undefined,fallback:number,min:number,max:number)=>Number.isFinite(value)?Math.max(min,Math.min(max,Number(value))):fallback;
-const defaults:InteractionPolicy={allowContact:false,allowManipulation:false,maxObservationAgeMs:2500,planTtlMs:15000,minLookConfidence01:.35,minContactConfidence01:.78,minManipulationConfidence01:.9,minPostconditionConfidence01:.82,maxTargetDistanceM:2.2};
+const defaults:InteractionPolicy={allowReach:false,allowContact:false,allowManipulation:false,maxObservationAgeMs:2500,planTtlMs:15000,minLookConfidence01:.35,minContactConfidence01:.78,minManipulationConfidence01:.9,minPostconditionConfidence01:.82,maxTargetDistanceM:2.2};
 const interactionKinds=new Set<InteractionKind>(['look','inspect','reach','touch','grasp','release','press']);
 const contactKinds=new Set<InteractionKind>(['touch','grasp','release','press']);
 const manipulationKinds=new Set<InteractionKind>(['grasp','release','press']);
@@ -77,7 +77,7 @@ export class EmbodiedInteractionController {
   constructor(policy:Partial<InteractionPolicy>={},verifySafetyAuthorization?:InteractionSafetyAuthorizationVerifier,verifyPostconditionEvidence?:InteractionPostconditionEvidenceVerifier) {
     this.verifySafetyAuthorization=typeof verifySafetyAuthorization==='function'?verifySafetyAuthorization:null;
     this.verifyPostconditionEvidence=typeof verifyPostconditionEvidence==='function'?verifyPostconditionEvidence:null;
-    this.policy={allowContact:policy.allowContact===true,allowManipulation:policy.allowManipulation===true,maxObservationAgeMs:bounded(policy.maxObservationAgeMs,defaults.maxObservationAgeMs,0,60_000),planTtlMs:bounded(policy.planTtlMs,defaults.planTtlMs,1_000,120_000),minLookConfidence01:bounded(policy.minLookConfidence01,defaults.minLookConfidence01,0,1),minContactConfidence01:bounded(policy.minContactConfidence01,defaults.minContactConfidence01,0,1),minManipulationConfidence01:bounded(policy.minManipulationConfidence01,defaults.minManipulationConfidence01,0,1),minPostconditionConfidence01:bounded(policy.minPostconditionConfidence01,defaults.minPostconditionConfidence01,0,1),maxTargetDistanceM:bounded(policy.maxTargetDistanceM,defaults.maxTargetDistanceM,.1,10)};
+    this.policy={allowReach:policy.allowReach===true,allowContact:policy.allowContact===true,allowManipulation:policy.allowManipulation===true,maxObservationAgeMs:bounded(policy.maxObservationAgeMs,defaults.maxObservationAgeMs,0,60_000),planTtlMs:bounded(policy.planTtlMs,defaults.planTtlMs,1_000,120_000),minLookConfidence01:bounded(policy.minLookConfidence01,defaults.minLookConfidence01,0,1),minContactConfidence01:bounded(policy.minContactConfidence01,defaults.minContactConfidence01,0,1),minManipulationConfidence01:bounded(policy.minManipulationConfidence01,defaults.minManipulationConfidence01,0,1),minPostconditionConfidence01:bounded(policy.minPostconditionConfidence01,defaults.minPostconditionConfidence01,0,1),maxTargetDistanceM:bounded(policy.maxTargetDistanceM,defaults.maxTargetDistanceM,.1,10)};
   }
   snapshot():InteractionPlan|null{return this.active?structuredClone(this.active):null;}
   clear():void{this.active=null;}
@@ -110,9 +110,10 @@ export class EmbodiedInteractionController {
     const from=kind==='look'||kind==='inspect'?body.head:(input.hand==='left'?body.leftHand:body.rightHand);
     const d=distance(from,target.position);
     if(d>this.policy.maxTargetDistanceM)return blocked('target-outside-interaction-workspace');
-    if(contactKinds.has(kind)){
-      if(target.source!=='camera')return blocked('contact-requires-live-camera-grounding');
-      if(!this.policy.allowContact)return blocked('contact-policy-disabled');
+    if(kind==='reach'||contactKinds.has(kind)){
+      if(target.source!=='camera')return blocked('physical-motion-requires-live-camera-grounding');
+      if(kind==='reach'&&!this.policy.allowReach)return blocked('reach-policy-disabled');
+      if(contactKinds.has(kind)&&!this.policy.allowContact)return blocked('contact-policy-disabled');
       const authorization=target.safetyAuthorization;
       if(!authorization)return blocked('explicit-interaction-safety-authorization-required');
       if(authorization.decision!=='allow'||authorization.targetId!==target.id||authorization.worldEntityId!==target.worldEntityId||authorization.frameId!==target.frameId||authorization.kind!==kind)return blocked('interaction-safety-authorization-binding-mismatch');
@@ -120,7 +121,8 @@ export class EmbodiedInteractionController {
       if(!safeId(authorization.provenanceId)||!['explicit-user','trusted-safety-classifier'].includes(authorization.issuer))return blocked('interaction-safety-authorization-provenance-invalid');
       let authorized=false;try{authorized=this.verifySafetyAuthorization?.(structuredClone(authorization))===true;}catch{authorized=false;}
       if(!authorized)return blocked('trusted-safety-authorization-verifier-unavailable-or-rejected');
-      if(confidence<this.policy.minContactConfidence01)return blocked('insufficient-grounding-for-contact','uncertain');
+      if(confidence<this.policy.minContactConfidence01)return blocked(kind==='reach'?'insufficient-grounding-for-reach':'insufficient-grounding-for-contact','uncertain');
+      if(kind==='reach'&&target.affordances?.includes('reach')!==true)return blocked('target-reach-affordance-not-grounded');
     }
     if(manipulationKinds.has(kind)){
       if(!this.policy.allowManipulation||confidence<this.policy.minManipulationConfidence01)return blocked('manipulation-policy-or-confidence-gate');

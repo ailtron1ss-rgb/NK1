@@ -1,3 +1,10 @@
+## [NK1][Aspect 10] Require explicit authorization for physical reach (2026-10-30)
+
+- Add a separate deny-by-default reach permission; reaching is treated as physical movement, not passive inspection.
+- Require live camera grounding, exact target/frame/action-bound short-lived safety authorization, verified provenance and explicit target reach affordance.
+- Keep reach permission separate from contact and manipulation permissions.
+- Add seven focused regressions. No renderer/device arm actuation is claimed.
+
 ## [NK1][Aspect 10] Align focused CI with Node 24 and strict evidence typing (2026-10-30)
 
 - Migrate the focused Aspect 10 workflow to the repository's Node 24 pin and supported Actions v7 tags; watch `.nvmrc` changes.
