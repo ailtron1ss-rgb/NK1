@@ -199,16 +199,20 @@ export class VerifiedOutcomeLedger {
       return { rejection: { code: code ?? 'invalid-outcome', taskId: safeTaskId, method: safeMethod, detail: detail || 'outcome is malformed' } };
     }
     const key = this.key(trustedOutcome);
-    if (seenEvidenceRefs.has(trustedOutcome.evidenceRef)) {
-      return { rejection: {
-        code: 'duplicate-evidence-ref', taskId: safeTaskId, method: safeMethod,
-        detail: 'one evidence receipt cannot attest multiple ledger outcomes',
-      } };
-    }
+    // Preserve the canonical rejection precedence: a repeated attempt is the
+    // primary identity conflict; evidence-reference reuse is checked for a
+    // distinct attempt only. This keeps the legacy ledger contract stable while
+    // still preventing one receipt from attesting multiple outcomes.
     if (seenKeys.has(key)) {
       return { rejection: {
         code: 'duplicate-attempt', taskId: safeTaskId, method: safeMethod,
         detail: 'this task/method/seed/attempt already has an outcome',
+      } };
+    }
+    if (seenEvidenceRefs.has(trustedOutcome.evidenceRef)) {
+      return { rejection: {
+        code: 'duplicate-evidence-ref', taskId: safeTaskId, method: safeMethod,
+        detail: 'one evidence receipt cannot attest multiple ledger outcomes',
       } };
     }
     const accepted: VerifiedTaskOutcome = {
