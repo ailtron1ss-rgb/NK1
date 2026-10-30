@@ -214,6 +214,39 @@ export function validateLearningExperimentPlan(
 
 
 /**
+ * Stricter acceptance gate for claims about durable learning improvement.
+ * The ordinary planner remains useful for smoke/validation experiments with
+ * fewer seeds; this gate is mandatory before interpreting a holdout experiment
+ * as research-grade evidence. It validates schedule coverage only, not outcomes.
+ */
+export function validateResearchGradeLearningExperimentPlan(
+  plan: LearningExperimentPlan,
+  manifest: TaskManifestEntry[],
+): { valid: true; runCount: number; seedCount: number; familyCount: number; minimumSeeds: 5 } {
+  const validated = validateLearningExperimentPlan(plan, manifest);
+  if (plan.split !== 'holdout') {
+    throw new Error('research-grade learning evidence requires an independent holdout split');
+  }
+  if (plan.seedIds.length < 5) {
+    throw new Error('research-grade learning evidence requires at least five paired seeds');
+  }
+  const families = new Set(manifest
+    .filter(task => task.split === 'holdout')
+    .map(task => task.family));
+  if (families.size === 0 || [...families].some(family =>
+    !plan.runs.some(run => run.family === family))) {
+    throw new Error('research-grade learning plan has incomplete task-family coverage');
+  }
+  return {
+    valid: true,
+    runCount: validated.runCount,
+    seedCount: plan.seedIds.length,
+    familyCount: families.size,
+    minimumSeeds: 5,
+  };
+}
+
+/**
  * Records one actual result only if it corresponds to a scheduled run. This
  * binds the outcome to the plan's exact task/version/method/seed/verifier and
  * rejects duplicate planned cells. It cannot authenticate external evidence;

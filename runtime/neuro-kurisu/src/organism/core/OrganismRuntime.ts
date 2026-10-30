@@ -40,7 +40,8 @@ import type { ActionGatewayExecutionOptions, ToolExecution } from '../system/Act
 import { P23TrustedShadowLearningScheduler, type TrustedShadowLearningScheduleConfig } from '../learning/P23TrustedShadowLearningScheduler.ts';
 import { ProceduralSkillLibrary, type SkillLibraryState } from '../learning/ProceduralSkillLibrary.ts';
 import type { P23LearningEngine } from '../learning/P23LearningEngine.ts';
-import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
+import { configureLearningJournals, createDefaultLearningJournals } from '../learning/LearningJournalBootstrap.ts';
+import { P23CompoundRepairRevisionCoordinator, type CompoundRepairRetryBackoffSnapshot, type CompoundRepairRevisionInputProvider } from '../learning/P23CompoundRepairRevisionCoordinator.ts';
 import { withIndependentCandidateEvaluation } from '../learning/P23IndependentEvaluationProvider.ts';
 import type { IndependentCandidateEvaluationConfig } from '../learning/IndependentSkillCandidateEvaluator.ts';
 import { createHostOwnedIndependentEvaluationConfigFactory, type HostOwnedIndependentEvaluationFactoryOptions } from '../learning/HostOwnedIndependentEvaluationServices.ts';
@@ -240,6 +241,8 @@ export class OrganismRuntime {
     this.phonePolicy.worldCheckpointMaxDirtyCycles = Math.max(1, Number(this.phonePolicy.worldCheckpointMaxDirtyCycles));
     this.stopping = false;
     this.core = new OrganismCore(config.stateStore ?? new FileStateStore<PersistedOrganism>(config.stateFile), { ...config, cycleResultMode:'operational' });
+    const learningJournals = createDefaultLearningJournals(config.stateFile);
+    this.core.configureP23LearningJournals(learningJournals);
     this.trustedShadowLearningScheduler = config.trustedShadowLearning?.enabled === true
       ? new P23TrustedShadowLearningScheduler(this.core, config.trustedShadowLearning)
       : null;
@@ -278,8 +281,12 @@ export class OrganismRuntime {
             config.compoundRepairRevision.independentEvaluationConfigForRepair,
           )
         : config.compoundRepairRevision.provideInputs;
+      configureLearningJournals(config.compoundRepairRevision.engine, learningJournals);
       this.compoundRepairRevisionCoordinator = new P23CompoundRepairRevisionCoordinator(
-        this, config.compoundRepairRevision.engine, provideInputs,
+        this,
+        config.compoundRepairRevision.engine,
+        provideInputs,
+        new FileStateStore<CompoundRepairRetryBackoffSnapshot>(`${config.stateFile}.p23-retry-backoff.json`),
       );
     } else {
       this.compoundRepairRevisionCoordinator = null;
@@ -317,6 +324,7 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
@@ -1664,19 +1672,27 @@ export class OrganismRuntime {
         // Candidate staging is not activation: shadow evidence + explicit approval
         // and rollback remain required in the versioned-skill lifecycle.
         const result = await this.reviseCompoundSkillsFromObservedRepairs(skillId);
-        this.compoundRepairRevisionMetrics.lastStatus = result.status;
-        if (result.status === 'candidate-staged') {
+        const stagedCandidateId = typeof result.candidateId === 'string' && result.candidateId.trim().length > 0
+          ? result.candidateId
+          : null;
+        const reportedStatus = result.status === 'candidate-staged' && stagedCandidateId === null ? 'error' : result.status;
+        this.compoundRepairRevisionMetrics.lastStatus = reportedStatus;
+        if (result.status === 'candidate-staged' && stagedCandidateId !== null) {
           this.compoundRepairRevisionMetrics.staged++;
-          this.compoundRepairRevisionMetrics.lastCandidateId = result.candidateId;
+          this.compoundRepairRevisionMetrics.lastCandidateId = stagedCandidateId;
+        } else if (result.status === 'candidate-staged') {
+          this.compoundRepairRevisionMetrics.failures++;
+          this.compoundRepairRevisionMetrics.lastFailureCategory = 'candidate-staged-without-candidate-id';
+          this.core.markRuntimeAnomaly('p23-compound-repair-revision:candidate-staged-without-candidate-id');
         } else if (result.status === 'already-staged-for-evidence') {
           this.compoundRepairRevisionMetrics.deduplicated++;
         } else if (result.status === 'retry-backoff-active') {
           this.compoundRepairRevisionMetrics.backoffSkipped++;
         }
-        await this.journal.write(result.status === 'candidate-staged' ? 'info' : 'warn',
+        await this.journal.write(reportedStatus === 'candidate-staged' ? 'info' : 'warn',
           'runtime.p23.compound-repair-revision.background',
-          { skillId, status: result.status, repairEvidenceCount: result.repairEvidenceCount,
-            ...(result.status === 'candidate-staged' ? { candidateId: result.candidateId } : {}),
+          { skillId, status: reportedStatus, repairEvidenceCount: result.repairEvidenceCount,
+            ...(stagedCandidateId !== null ? { candidateId: stagedCandidateId } : {}),
             ...(result.status === 'retry-backoff-active' ? { retryInMs: result.retryInMs, attempts: result.attempts } : {}) },
         ).catch(() => {});
       },

@@ -1,3 +1,11 @@
+## [NK1][Learning] Integrate P23 self-development journals and holdout integrity (2026-10-30)
+
+- Added durable P23 fitness/lifecycle journals, lifecycle reconciliation on restore, and file-backed compound-repair retry/backoff recovery.
+- Integrated independent candidate evaluation, paired-seed confidence, robust metrics, provenance journals, diagnosis/curriculum and P36 verified-outcome evaluators into the canonical runtime.
+- Runtime-generated skill execution and project-research telemetry remains learning data and cannot self-label itself as independent holdout.
+- Restored fail-closed unique-context holdout accounting, safe snapshot restoration, contamination and registry-saturation checks. Independent evaluator evidence remains separately required.
+- Added dedicated holdout integrity regressions to WorkPass71 CI. These structural checks do not claim independent learning uplift or production promotion.
+
 ## [NK1][Aspect04] Harden renderer world-matrix propagation (2026-10-30)
 
 - Explicitly mark each bound Three.js-compatible layer target as `matrixWorldNeedsUpdate` after writing its canonical local matrix, so an already-rendered object cannot retain a stale world transform.

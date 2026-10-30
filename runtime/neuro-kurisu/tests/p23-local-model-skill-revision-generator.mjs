@@ -15,7 +15,7 @@ const request = {
   optimizerInstruction: 'Improve only the evidenced trajectory gap.',
   validationEvidence: [{ taskId: 'validation-task-1', trialId: 'validation-trial-1', pass: false }],
   targets: [{ dimension: 'trajectory', priority01: 0.8, affectedTaskIds: ['validation-task-1'], evidenceCount: 1, evidenceIds: ['validation-trial-1'], directive: 'Improve order.' }],
-  holdoutGeneralization: { gap01: -0.1, requiresFreshIndependentEvaluation: true },
+  holdoutPolicy: { resultsWithheld: true, requiresFreshIndependentEvaluation: true },
 };
 const result = await generateLocalSkillRevision(provider, request);
 assert.deepEqual(result, { name: 'revised-skill', steps: ['safe-step', 'improved-step'] });
@@ -23,7 +23,10 @@ assert.equal(calls.length, 1);
 assert.ok(calls[0].user.includes('validation-task-1'));
 assert.ok(calls[0].user.includes('VERIFIED_DATASET_FINGERPRINT:'));
 assert.ok(calls[0].user.includes('a'.repeat(64)));
-assert.ok(calls[0].user.includes('"gap01":-0.1'));
+assert.ok(calls[0].user.includes('HOLDOUT_RESULTS_WITHHELD:'));
+assert.ok(calls[0].user.includes('"resultsWithheld":true'));
+assert.ok(!calls[0].user.includes('gap01'), 'holdout scores and regression direction must never enter optimizer context');
+assert.ok(!calls[0].user.includes('holdoutGeneralization'), 'legacy holdout feedback must not enter optimizer context');
 assert.ok(!calls[0].user.includes('holdout-task-secret'), 'holdout case identifiers must not be supplied');
 assert.equal(calls[0].temperature, 0.2);
 assert.equal(calls[0].maxTokens, 4096);
@@ -43,6 +46,20 @@ await assert.rejects(
 await assert.rejects(
   () => generateLocalSkillRevision(provider, { ...request, datasetFingerprint: 'not-a-digest' }),
   /p23-revision-verified-dataset-fingerprint-required/,
+);
+await assert.rejects(
+  () => generateLocalSkillRevision(provider, { ...request, holdoutPolicy: undefined }),
+  /p23-revision-holdout-results-must-remain-withheld/,
+  'missing explicit holdout-withheld policy must fail closed',
+);
+await assert.rejects(
+  () => generateLocalSkillRevision(provider, {
+    ...request,
+    holdoutPolicy: undefined,
+    holdoutGeneralization: { gap01: -0.1, requiresFreshIndependentEvaluation: true },
+  }),
+  /p23-revision-holdout-results-must-remain-withheld/,
+  'legacy directional holdout feedback must not substitute for the policy-only contract',
 );
 await assert.rejects(
   () => generateLocalSkillRevision({

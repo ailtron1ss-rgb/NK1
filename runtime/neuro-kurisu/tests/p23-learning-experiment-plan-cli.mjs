@@ -27,6 +27,25 @@ try {
   assert.equal(plan.counts.runs, 8);
   assert.deepEqual(plan.seedIds, [1, 2]);
   assert.equal(plan.split, 'holdout');
+
+  const research = spawnSync(process.execPath, [
+    '--experimental-strip-types', cli,
+    '--manifest', manifestPath, '--out', outputPath,
+    '--seeds', '1,2,3,4,5', '--reset-every', '1,3', '--research-grade',
+  ], { encoding: 'utf8' });
+  assert.equal(research.status, 0, research.stderr);
+  assert.match(research.stdout, /"researchGrade":true/);
+  const researchPlan = JSON.parse(await readFile(outputPath, 'utf8'));
+  assert.equal(researchPlan.counts.runs, 20);
+
+  const underpowered = spawnSync(process.execPath, [
+    '--experimental-strip-types', cli,
+    '--manifest', manifestPath, '--out', outputPath,
+    '--seeds', '1,2,3', '--research-grade',
+  ], { encoding: 'utf8' });
+  assert.notEqual(underpowered.status, 0);
+  assert.match(underpowered.stderr, /at least five paired seeds/);
+
   const bad = spawnSync(process.execPath, [
     '--experimental-strip-types', cli,
     '--manifest', manifestPath, '--out', outputPath, '--seeds', '1,1',

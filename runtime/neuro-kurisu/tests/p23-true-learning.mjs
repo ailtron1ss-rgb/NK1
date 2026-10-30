@@ -127,6 +127,18 @@ const invalidEvidenceLearning = new P23LearningEngine();
 const invalidEvidenceTrace = makeTrace(450, 'verify', .9, { uncertainty:.72 });
 invalidEvidenceLearning.recordExperience(invalidEvidenceTrace, invalidEvidenceTrace.stateBefore, {success:NaN,reward:.9,surprise:.1}, new AdaptivePolicyEngine());
 assert.equal(invalidEvidenceLearning.snapshot().experiences.length, 0, 'invalid outcome labels must not enter the learning dataset');
+const outOfRangeEvidenceLearning = new P23LearningEngine();
+outOfRangeEvidenceLearning.recordExperience(invalidEvidenceTrace, invalidEvidenceTrace.stateBefore,
+  { success:1.2, reward:.9, surprise:.1 }, new AdaptivePolicyEngine());
+assert.equal(outOfRangeEvidenceLearning.snapshot().experiences.length, 0,
+  'out-of-range feedback must be rejected rather than clamped into false positive evidence');
+const invalidPredictionLearning = new P23LearningEngine();
+const invalidPredictionTrace = makeTrace(451, 'verify', .9, { uncertainty:.72 });
+invalidPredictionTrace.selected.predictedUtility = Number.NaN;
+invalidPredictionLearning.recordExperience(invalidPredictionTrace, invalidPredictionTrace.stateBefore,
+  { success:.9, reward:.9, surprise:.1 }, new AdaptivePolicyEngine());
+assert.equal(invalidPredictionLearning.snapshot().experiences.length, 0,
+  'non-finite predictions must not create misleading calibration evidence');
 
 // Large consolidation queues are bounded and stratified rather than dominated
 // by repeated examples from one easy context.
@@ -184,5 +196,53 @@ assert.ok(goalSelectedTicks.filter(tick => tick >= 948).length > 0,
   'goal-aware historical selection must not consume the guaranteed recent quota');
 assert.ok(goalSelectedTicks.filter(tick => tick >= 948).length >= goalSelectedTicks.length / 4,
   'the recent window must retain a substantial share of the goal-aware replay batch');
+
+// Replay joins incoming trace handles to the exact persisted outcome identity before selection.
+const replayIntegrityLearning = new P23LearningEngine();
+const replayIntegrityPolicy = new AdaptivePolicyEngine();
+const replayIntegrityTrace = makeTrace(1200, 'verify', .2, { uncertainty:.72 });
+replayIntegrityLearning.recordExperience(replayIntegrityTrace, replayIntegrityTrace.stateBefore,
+  { success:.2, reward:.2, surprise:.45 }, replayIntegrityPolicy);
+const persistedReplayExperience = replayIntegrityLearning.snapshot().experiences[0];
+assert.equal(persistedReplayExperience.replayFeatures01.length, 16,
+  'new experiences must persist the bounded replay feature vector beside outcome evidence');
+assert.equal(persistedReplayExperience.goalPressure01, replayIntegrityTrace.stateBefore.needs.goalPressure);
+const mismatchedReplayAction = structuredClone(replayIntegrityTrace);
+mismatchedReplayAction.selected.action = 'respond';
+assert.equal(replayIntegrityLearning.replayPending([mismatchedReplayAction], replayIntegrityPolicy), 0,
+  'a same-ID trace with a different selected action must not enter the replay batch');
+const staleReplayTick = structuredClone(replayIntegrityTrace);
+staleReplayTick.tick += 1;
+assert.equal(replayIntegrityLearning.replayPending([staleReplayTick], replayIntegrityPolicy), 0,
+  'a stale trace tick must not be joined to a persisted experience');
+assert.equal(replayIntegrityLearning.snapshot().replayUpdates.length, 0,
+  'rejected trace joins must not mutate replay state');
+const roundTripState = replayIntegrityLearning.snapshot();
+const restoredReplayLearning = new P23LearningEngine();
+restoredReplayLearning.restore(roundTripState);
+assert.deepEqual(restoredReplayLearning.snapshot().experiences[0].replayFeatures01,
+  persistedReplayExperience.replayFeatures01,
+  'schema-v1 restore must preserve the stored replay feature snapshot');
+assert.equal(restoredReplayLearning.replayPending([replayIntegrityTrace], new AdaptivePolicyEngine()), 1,
+  'restored snapshot-bearing experiences must remain replayable');
+const legacyReplayState = structuredClone(roundTripState);
+delete legacyReplayState.experiences[0].goalPressure01;
+delete legacyReplayState.experiences[0].causalStrength01;
+delete legacyReplayState.experiences[0].replayFeatures01;
+const legacyReplayLearning = new P23LearningEngine();
+legacyReplayLearning.restore(legacyReplayState);
+assert.equal(legacyReplayLearning.snapshot().experiences.length, 1,
+  'older schema-v1 experience rows without replay snapshots must still restore');
+assert.equal(legacyReplayLearning.replayPending([replayIntegrityTrace], new AdaptivePolicyEngine()), 1,
+  'older schema-v1 experience rows must retain the checked matching-trace fallback');
+const sparseSnapshotState = structuredClone(roundTripState);
+sparseSnapshotState.experiences[0].replayFeatures01 = new Array(16).fill(.5);
+delete sparseSnapshotState.experiences[0].replayFeatures01[7];
+const sparseSnapshotLearning = new P23LearningEngine();
+sparseSnapshotLearning.restore(sparseSnapshotState);
+assert.equal(sparseSnapshotLearning.snapshot().experiences.length, 0,
+  'a sparse replay feature vector must be quarantined instead of bypassing validation');
+assert.equal(replayIntegrityLearning.replayPending([replayIntegrityTrace], replayIntegrityPolicy), 1,
+  'the original trace identity remains eligible after mismatched inputs are rejected');
 
 console.log(`P23_TRUE_LEARNING=PASS replay=${firstReplay} promoted=${learning.topSkills().length} checksumFailures=${learning.snapshot().metrics.checksumFailures}`);
