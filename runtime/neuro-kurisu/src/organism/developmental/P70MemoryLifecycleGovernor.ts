@@ -44,17 +44,35 @@ export class P70MemoryLifecycleGovernor {
  }
  snapshot(){return structuredClone(this.state);}
  plan(input:{tick:number;at:number;traces:number;events:number;goals:number;memories:number;semanticItems:number;workingSet01:number;energy01:number;pressure01:number;experienceHotCount?:number;experienceWarmCount?:number;experienceColdCount?:number;identityTension01?:number}){
-   const pressure=clamp(input.pressure01); const hot=clamp(input.workingSet01); const stressed=input.energy01<.28||pressure>.74;
-   const hotCount=Math.max(0,Math.min(96,Math.floor(input.experienceHotCount??0)));
-   const warmCount=Math.max(0,Math.min(320,Math.floor(input.experienceWarmCount??0)));
-   const coldCount=Math.max(0,Math.min(1024,Math.floor(input.experienceColdCount??0)));
+   if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('P70 plan tick must be a non-negative safe integer');
+   if(typeof input.at!=='number'||!Number.isFinite(input.at)||input.at<0)throw new RangeError('P70 plan timestamp must be finite and non-negative');
+   if(this.state.cycles>=Number.MAX_SAFE_INTEGER)throw new RangeError('P70 memory lifecycle cycle counter reached its safe integer limit');
+   const pressure=clamp(input.pressure01);
+   const hot=clamp(input.workingSet01);
+   const energy=clamp(input.energy01);
+   const stressed=energy<.28||pressure>.74;
+   const boundedCount=(value:unknown,max:number)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(max,value):0;
+   const hotCount=boundedCount(input.experienceHotCount,96);
+   const warmCount=boundedCount(input.experienceWarmCount,320);
+   const coldCount=boundedCount(input.experienceColdCount,1024);
    const identityTension=clamp(input.identityTension01??0);
    const memoryBudget=stressed ? Math.max(320,Math.min(460,280+hotCount*4+identityTension*40)) : Math.min(640,440+hotCount*3+Math.min(80,warmCount*.4));
    const semanticBudget=stressed ? Math.max(900,Math.min(1200,860+hotCount*2+identityTension*35)) : Math.min(1500,1320+Math.min(100,coldCount*.1));
    const budgets={traces:stressed?160:260,events:stressed?256:512,goals:12,memories:Math.floor(memoryBudget),semanticItems:Math.floor(semanticBudget)};
-   const action: P70State['lastAction']=stressed?'trim':(input.tick%96===0?'compact':'idle');
-   this.state.cycles++;this.state.lastAt=input.at;this.state.lastAction=action;this.state.meanHotLoad01=clamp(this.state.meanHotLoad01*.97+hot*.03);this.state.meanPressure01=clamp(this.state.meanPressure01*.97+pressure*.03);if(action!=='idle')this.state.maintenanceRuns++;if(action==='compact')this.state.compactions++;
+   const action:P70State['lastAction']=stressed?'trim':(input.tick%96===0?'compact':'idle');
+   if(action!=='idle'&&this.state.maintenanceRuns>=Number.MAX_SAFE_INTEGER)throw new RangeError('P70 maintenance counter reached its safe integer limit');
+   if(action==='compact'&&this.state.compactions>=Number.MAX_SAFE_INTEGER)throw new RangeError('P70 compaction counter reached its safe integer limit');
+   this.state.cycles++;
+   this.state.lastAt=input.at;
+   this.state.lastAction=action;
+   this.state.meanHotLoad01=clamp(this.state.meanHotLoad01*.97+hot*.03);
+   this.state.meanPressure01=clamp(this.state.meanPressure01*.97+pressure*.03);
+   if(action!=='idle')this.state.maintenanceRuns++;
+   if(action==='compact')this.state.compactions++;
    return {budgets,action,pressure01:pressure,hotLoad01:hot};
  }
- recordPrune(count:number){this.state.prunedRecords+=Math.max(0,count);}
+ recordPrune(count:number){
+   if(!Number.isSafeInteger(count)||count<=0)return;
+   this.state.prunedRecords=Math.min(Number.MAX_SAFE_INTEGER,this.state.prunedRecords+count);
+ }
 }
