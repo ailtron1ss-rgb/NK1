@@ -53,6 +53,7 @@
 | Runtime tracker restore | Rehydrate camera-local tracks from persisted canonical P41 image boxes |
 | Restart regression | Verify P41 + GroundedWorldState snapshots survive JSON round-trip and tracking continues with same IDs |
 | Snapshot fail-closed restore | Revalidate camera-bound boxes after restore and drop damaged/future/unbound geometry |
+| Runtime capture E2E | Exercise actual capture path from ActionGateway receipt through image decode, vision backend, tracker and P41 |
 
 ## Текущий статус
 
