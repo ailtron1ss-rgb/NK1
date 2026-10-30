@@ -144,6 +144,26 @@ assert.equal(leakedConversationReport.datasetIntegrity.validForPromotion, false)
 assert.equal(leakedConversationReport.promotion.gates.datasetIntegrity, false);
 assert.equal(leakedConversationReport.promotion.allowed, false);
 
+// Agentic environment memory abilities from LongMemEval-V2 remain explicit
+// benchmark slices (not new runtime memory record kinds).
+const agenticEnvironmentCategories = [
+  'static-state', 'dynamic-state', 'workflow-knowledge', 'environment-gotcha', 'premise-awareness',
+];
+const agenticEnvironmentExamples = groupedExamples.map((row, index) => ({
+  ...row,
+  category: agenticEnvironmentCategories[index % agenticEnvironmentCategories.length],
+}));
+const agenticEnvironmentReport = runMemoryOS2RetrievalBenchmark(snapshot, agenticEnvironmentExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(agenticEnvironmentExamples) },
+});
+assert.deepEqual(agenticEnvironmentReport.taskCategoryStratification.categories, [...agenticEnvironmentCategories].sort());
+for (const category of agenticEnvironmentCategories) {
+  assert.equal(Object.hasOwn(agenticEnvironmentReport.taskCategoryStratification.slices, category), true,
+    `agentic memory category ${category} must produce a diagnostic slice`);
+  assert.equal(typeof agenticEnvironmentReport.taskCategoryStratification.slices[category].independentAnswerableConversations, 'number');
+}
+
 // Multi-session task slices expose their own independent dialogue counts and
 // cluster-size profile instead of borrowing aggregate dataset counts.
 const multiSessionGroupedExamples = groupedExamples.map(row => ({ ...row, category: 'multi-session' }));
