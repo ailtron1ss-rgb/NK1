@@ -23,6 +23,8 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
   let lastIntentStateVersion=0;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
+  // Low-pass facial channels prevent abrupt expression jumps while keeping intent responsive.
+  const faceState={brow:0,angle:0,eyeSmile:0,cheek:0};
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
   const EXPR_MAP={
     neutral:'Stanby Smile',happy:'Stanby Smile',sad:'Stanby Sad',angry:'Stanby Angry',
@@ -95,13 +97,18 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     };
     const face=faceProfiles[bodySignal.expression]||faceProfiles.neutral;
     const facialGain=.25+intensity*.75;
-    set('ParamBrowLY',clamp(face.brow*facialGain,-1,1));
-    set('ParamBrowRY',clamp(face.brow*facialGain,-1,1));
-    set('ParamBrowLAngle',clamp(face.angle*facialGain,-1,1));
-    set('ParamBrowRAngle',clamp(face.angle*facialGain,-1,1));
-    set('ParamEyeLSmile',clamp(face.eyeSmile*facialGain,-1,1));
-    set('ParamEyeRSmile',clamp(face.eyeSmile*facialGain,-1,1));
-    set('ParamCheek',clamp(face.cheek*facialGain,0,1));
+    const blend=.18;
+    faceState.brow+=(face.brow*facialGain-faceState.brow)*blend;
+    faceState.angle+=(face.angle*facialGain-faceState.angle)*blend;
+    faceState.eyeSmile+=(face.eyeSmile*facialGain-faceState.eyeSmile)*blend;
+    faceState.cheek+=(face.cheek*facialGain-faceState.cheek)*blend;
+    set('ParamBrowLY',clamp(faceState.brow,-1,1));
+    set('ParamBrowRY',clamp(faceState.brow,-1,1));
+    set('ParamBrowLAngle',clamp(faceState.angle,-1,1));
+    set('ParamBrowRAngle',clamp(faceState.angle,-1,1));
+    set('ParamEyeLSmile',clamp(faceState.eyeSmile,-1,1));
+    set('ParamEyeRSmile',clamp(faceState.eyeSmile,-1,1));
+    set('ParamCheek',clamp(faceState.cheek,0,1));
     // Subtle torso follow-through and breathing are continuous channels, not motion clips.
     const arousal=clamp(bodySignal.expressionIntensity,0,1);
     const breathPhase=performance.now()/1900;
