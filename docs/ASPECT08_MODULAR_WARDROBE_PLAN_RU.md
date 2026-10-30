@@ -66,6 +66,22 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 - Added focused regression tests for catalog integrity, safe paths, user override, autonomous opt-in and asset resolution.
 - Important boundary: the catalog deliberately marks every new garment asset as missing. It does not pretend that metadata equals drawable clothing. Next pass must author/acquire rights-cleared source assets and wire renderer-specific application.
 
+## Второй инженерный проход — pack integrity и безопасное переключение
+
+- Добавлен `wardrobePack.ts`: схема пакета с версией, автором, HTTPS-источником, идентификатором лицензии, атрибуцией, целевой моделью тела и версией рига.
+- Для каждого ресурса обязательны уникальные ID/пути, слот, рендерер, SHA-256, размер и MIME; ограничены число файлов, размер одного ресурса и суммарный размер пакета. MIME должен соответствовать расширению файла.
+- Валидатор не загружает и не исполняет содержимое. Он проверяет декларации; фактические байты обязан отдельно проверить загрузчик по SHA-256 перед передачей рендереру.
+- Добавлен двухфазный протокол переключения: сначала проверка совместимости body/rig и подготовка плана; затем commit только после подтверждения точного request ID и полного набора загруженных ресурсов.
+- Ошибка, частичная загрузка или устаревшее подтверждение не меняют текущий outfit; предыдущий образ остаётся активным.
+- Тесты покрывают отсутствие лицензии/атрибуции, HTTP-источник, traversal, повторные пути, неверный хэш, несоответствие MIME, повреждённые элементы, размер, несовпадение тела/рига, частичное и устаревшее подтверждение.
+- `npm run test:wardrobe` теперь включает оба набора регрессий.
+
+### Точная граница готовности второго прохода
+
+- **Реализовано:** доменная модель, рекомендация, декларативный pack gate, протокол commit/rollback и регрессионные сценарии.
+- **Не реализовано:** чтение/хэширование реальных файлов, установка пакетов, долговременное хранение выбора, UI гардероба, подключение к Live2D/Cubism, depth-2D и VRM renderer, физика ткани и визуальные E2E.
+- **Не подтверждено:** выполнение новых тестов и typecheck на последнем HEAD через GitHub Actions; пустой ответ commit-scoped workflow lookup не считается успешным CI.
+
 ## Progress
 
 - Wardrobe domain/data contract: 80% for the first implementation slice.
