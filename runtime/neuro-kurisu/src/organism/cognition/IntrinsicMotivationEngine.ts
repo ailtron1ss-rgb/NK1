@@ -181,12 +181,13 @@ export class IntrinsicMotivationEngine {
 
   proposeGoal():{title:string;reason:string;source:'intrinsic'|'homeostatic';importance:number;urgency:number;confidence:number}|null{
     const d=this.state;
+    const affectSuffix=d.affectiveInfluence.label==='none'?'':`${affectSuffix}`;
     if(d.overall<.52)return null;
-    if(d.dominant==='epistemic')return {title:'Получить наблюдение, которое сильнее всего уменьшит неопределённость',reason:`intrinsic-epistemic=${d.epistemic.toFixed(2)};affect=${d.affectiveInfluence.label}`,source:'intrinsic',importance:d.epistemic,urgency:d.epistemic*.9,confidence:.62};
-    if(d.dominant==='novelty')return {title:'Исследовать новое состояние среды и проверить границы известного',reason:`intrinsic-novelty=${d.novelty.toFixed(2)};affect=${d.affectiveInfluence.label}`,source:'intrinsic',importance:d.novelty,urgency:d.novelty*.78,confidence:.58};
-    if(d.dominant==='competence')return {title:'Улучшить точность собственного прогноза через практический эксперимент',reason:`intrinsic-competence=${d.competence.toFixed(2)};affect=${d.affectiveInfluence.label}`,source:'intrinsic',importance:d.competence,urgency:d.competence*.7,confidence:.55};
-    if(d.dominant==='coherence')return {title:'Согласовать модель мира, себя и недавний опыт',reason:`intrinsic-coherence=${d.coherence.toFixed(2)};affect=${d.affectiveInfluence.label}`,source:'intrinsic',importance:d.coherence,urgency:d.coherence*.72,confidence:.6};
-    if(d.dominant==='social')return {title:'Улучшить понимание текущего социального сигнала через наблюдение и диалог',reason:`intrinsic-social=${d.social.toFixed(2)};affect=${d.affectiveInfluence.label}`,source:'intrinsic',importance:d.social,urgency:d.social*.74,confidence:.54};
-    return {title:'Восстановить внутренний ресурс до устойчивого уровня',reason:`homeostatic=${d.homeostatic.toFixed(2)};affect=${d.affectiveInfluence.label}`,source:'homeostatic',importance:d.homeostatic,urgency:d.homeostatic,confidence:.72};
+    if(d.dominant==='epistemic')return {title:'Получить наблюдение, которое сильнее всего уменьшит неопределённость',reason:`intrinsic-epistemic=${d.epistemic.toFixed(2)}${affectSuffix}`,source:'intrinsic',importance:d.epistemic,urgency:d.epistemic*.9,confidence:.62};
+    if(d.dominant==='novelty')return {title:'Исследовать новое состояние среды и проверить границы известного',reason:`intrinsic-novelty=${d.novelty.toFixed(2)}${affectSuffix}`,source:'intrinsic',importance:d.novelty,urgency:d.novelty*.78,confidence:.58};
+    if(d.dominant==='competence')return {title:'Улучшить точность собственного прогноза через практический эксперимент',reason:`intrinsic-competence=${d.competence.toFixed(2)}${affectSuffix}`,source:'intrinsic',importance:d.competence,urgency:d.competence*.7,confidence:.55};
+    if(d.dominant==='coherence')return {title:'Согласовать модель мира, себя и недавний опыт',reason:`intrinsic-coherence=${d.coherence.toFixed(2)}${affectSuffix}`,source:'intrinsic',importance:d.coherence,urgency:d.coherence*.72,confidence:.6};
+    if(d.dominant==='social')return {title:'Улучшить понимание текущего социального сигнала через наблюдение и диалог',reason:`intrinsic-social=${d.social.toFixed(2)}${affectSuffix}`,source:'intrinsic',importance:d.social,urgency:d.social*.74,confidence:.54};
+    return {title:'Восстановить внутренний ресурс до устойчивого уровня',reason:`homeostatic=${d.homeostatic.toFixed(2)}${affectSuffix}`,source:'homeostatic',importance:d.homeostatic,urgency:d.homeostatic,confidence:.72};
   }
 }
