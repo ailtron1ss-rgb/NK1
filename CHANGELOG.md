@@ -1,3 +1,12 @@
+## [NK1][аспект16] Deliver native speech provider telemetry to AvatarStage (2026-10-30)
+
+- Добавлен authenticated-by-existing-API-policy SSE endpoint /api/organism/voice/events поверх NativeSpeechHostRouter.
+- Server transport имеет ограничение активных подписчиков, bounded backpressure queue, heartbeat и обязательную очистку runtime-подписки при disconnect.
+- Добавлен browser EventSource adapter с проверкой versioned envelope, eventId, operationId, sequence, monotonic timestamp и playbackVerified=false.
+- AvatarStage показывает состояние Termux provider отдельно от browser TTS; process lifecycle не меняет speech phase, audio clock или viseme timeline.
+- Добавлены runtime/app regressions и CI gates для SSE transport, malformed/stale event rejection, backpressure, connection lifecycle и epistemic boundary.
+- Android playback, реальный audio clock и акустический lip-sync не заявляются: process spawn/exit не доказывают слышимое воспроизведение.
+
 ## [NK1][аспект9] Add validated native speech host router seam (2026-10-30)
 
 - Добавлен `NativeSpeechHostRouter`: он принимает подписку из `EmbodimentRuntime`, проверяет версию/форму события, сохраняет eventId и operationId и пересылает типизированный envelope в host publisher.
