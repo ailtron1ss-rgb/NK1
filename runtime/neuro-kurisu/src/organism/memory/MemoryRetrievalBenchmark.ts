@@ -268,6 +268,8 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   const crossSplitConversationLeakageCount=[...groupSplits.values()].filter(splits=>splits.size>1).length;
   const uniqueTrainConversationGroups=new Set(rawExamples.filter(row=>row.split==='train').map(groupKey)).size;
   const uniqueHoldoutConversationGroups=new Set(rawExamples.filter(row=>row.split==='holdout').map(groupKey)).size;
+  const uniqueAnswerableHoldoutConversationGroups=new Set(rawExamples.filter(row=>row.split==='holdout'&&row.answerable!==false).map(groupKey)).size;
+  const uniqueUnanswerableHoldoutConversationGroups=new Set(rawExamples.filter(row=>row.split==='holdout'&&row.answerable===false).map(groupKey)).size;
   const multiSessionRows=rawExamples.filter(row=>row.category==='multi-session');
   const missingMultiSessionConversationIdCount=multiSessionRows.filter(row=>typeof row.conversationId!=='string'||!row.conversationId.trim()).length;
   const multiSessionConversationAnnotationComplete=missingMultiSessionConversationIdCount===0;
@@ -278,7 +280,7 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   const unknownRelevantMemoryIdCount=unknownRelevantIds.size;
   const duplicateQueryGroupCount=repeatedQueryKeys.length;
   const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&malformedConversationAnnotationCount===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&malformedRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0&&conversationAnnotationComplete&&crossSplitConversationLeakageCount===0&&multiSessionConversationAnnotationComplete&&languageAnnotationComplete;
-  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,malformedRelevantLabelCount,malformedConversationAnnotationCount,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,uniqueTrainConversationGroups,uniqueHoldoutConversationGroups,conversationAnnotationUsed,conversationAnnotationComplete,crossSplitConversationLeakageCount,multiSessionRows:multiSessionRows.length,missingMultiSessionConversationIdCount,multiSessionConversationAnnotationComplete,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,languageAnnotationUsed,languageAnnotationComplete,validForPromotion};
+  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,malformedRelevantLabelCount,malformedConversationAnnotationCount,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,uniqueTrainConversationGroups,uniqueHoldoutConversationGroups,uniqueAnswerableHoldoutConversationGroups,uniqueUnanswerableHoldoutConversationGroups,conversationAnnotationUsed,conversationAnnotationComplete,crossSplitConversationLeakageCount,multiSessionRows:multiSessionRows.length,missingMultiSessionConversationIdCount,multiSessionConversationAnnotationComplete,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,languageAnnotationUsed,languageAnnotationComplete,validForPromotion};
 }
 
 /**
@@ -383,7 +385,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const confidence={
     method:'paired-conversation-cluster-bootstrap-percentile-interval' as const,
     samplingUnit:dataIntegrity.conversationAnnotationUsed?'conversation':'query',
-    independentHoldoutGroups:dataIntegrity.uniqueHoldoutConversationGroups,
+    independentHoldoutGroups:dataIntegrity.uniqueAnswerableHoldoutConversationGroups,
     seed,
     recallAtK01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'recallAtK01',candidateEval.outcomeClusterIds,bootstrapSamples,seed),
     mrr01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'mrr01',candidateEval.outcomeClusterIds,bootstrapSamples,seed^0x9e3779b9),
@@ -515,7 +517,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const labelledHoldoutQueries=holdout.filter(x=>x.answerable!==false).length;
   const unanswerableHoldoutQueries=holdout.filter(x=>x.answerable===false).length;
   const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
-  const enoughIndependentHoldoutGroups=dataIntegrity.uniqueHoldoutConversationGroups>=minIndependentHoldoutGroups;
+  const enoughIndependentHoldoutGroups=confidence.recallAtK01.independentClusters>=minIndependentHoldoutGroups;
   const enoughUnanswerableEvidence=unanswerableHoldoutQueries>=minUnanswerableHoldout;
   const baselineMetrics=baselineEval.metrics;const candidateMetrics=candidateEval.metrics;
   const recallDelta=candidateMetrics.recallAtK01-baselineMetrics.recallAtK01;
