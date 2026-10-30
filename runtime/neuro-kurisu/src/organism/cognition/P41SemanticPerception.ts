@@ -420,9 +420,9 @@ export class P41SemanticPerceptionEngine {
     for(const e of this.state.entities){const age=Math.max(0,at-e.lastSeenAt);e.present01=clamp(e.present01*Math.exp(-Math.min(age,300000)/180000));}
     const active=this.state.entities.filter(e=>e.present01>.25).slice(0,32);
     // Confidence priors from unrelated modalities do not prove agreement.
-    // Track the fraction of active entities independently corroborated by at
-    // least two modalities; retain crossModalAgreement as an outcome-calibrated
-    // metric until explicit contradictory evidence is available.
+    // crossModalAgreement01 is retained for old saved-state/API compatibility;
+    // fresh independent overlap is measured by crossModalEvidenceCoverage01,
+    // while action success/surprise is measured by outcomeAlignment01.
     const corroborated=active.filter(e=>Object.values(e.modalityLastSeenAt??{}).filter(seenAt=>typeof seenAt==='number'&&Number.isFinite(seenAt)&&at>=seenAt&&at-seenAt<=MAX_CROSS_MODAL_ASSOCIATION_MS).length>=2).length;
     const coverage=active.length?corroborated/active.length:0;
     this.state.metrics.crossModalEvidenceCoverage01=clamp(this.state.metrics.crossModalEvidenceCoverage01*.9+coverage*.1);
