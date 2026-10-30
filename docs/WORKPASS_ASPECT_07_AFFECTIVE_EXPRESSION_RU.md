@@ -180,3 +180,16 @@ NK1 Original теперь получает тот же `FacialMicrochannels` sna
 
 ### VRM humanoid roles
 Для VRM 1.0 и VRM 0.x добавлено разрешение стандартных humanoid role → node index → Three.js Bone через GLTFLoader associations. Приоритет отдан официальной роли `head`/`neck`/`spine`/`leftUpperArm`/`rightUpperArm`, поэтому моторный адаптер больше не зависит только от авторских имён костей. Для обычного GLB сохраняется прежний best-effort name fallback. Look-at и spring-bone симуляция не заявляются как реализованные.
+
+
+## Аспект №14 — единый язык тела: интеграция рендеров
+
+Добавлен общий renderer-neutral профиль из 11 непрерывных каналов. AvatarStage получает его из текущего appraisal, потребностей, черт guardedness/composure, действия и речевой активности. Один профиль поступает в Original 2D, Live2D и procedural/imported 3D.
+
+Live2D получает отдельное сообщение `kurisu_body_language` (protocol v1, монотонный stateVersion, проверка диапазонов). Используются реальные параметры модели `ParamBodyAngleX/Y/Z` и дополнительный head tilt. Свободная артикуляция рук/пальцев в текущем Live2D-риге не заявляется.
+
+3D непрерывно модулирует корпус, плечи, раскрытие рук и темп существующего клипа. Original SVG меняет только поддерживаемый наклон корпуса/головы. Эмоциональная амплитуда не запускает жест; семантический жест выбирает только моторный планировщик.
+
+Исправлена причина падения двух CI workflow: буквальные escaped newline в `semanticMorphTargets.ts` не позволяли Node 24 разобрать модуль. Добавлена проверка prototype-key emotion fallback.
+
+**Проверки:** добавлен отдельный тестовый набор для всех восьми эмоций, bounded канала, влияния возбуждения/усталости/закрытости/сна, сглаживания и renderer wiring. Реальный visual calibration, браузерный E2E и Android E2E ещё требуют исполнения.

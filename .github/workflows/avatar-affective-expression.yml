@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - "app/src/components/avatar/affectiveExpression.ts"
+      - "app/src/components/avatar/affectiveBodyLanguage.ts"
+      - "app/scripts/avatar-affective-body-language.test.mjs"
+      - "app/scripts/avatar-affective-body-language-wiring.test.mjs"
       - "app/src/components/avatar/speechProsody.ts"
       - "app/scripts/avatar-speech-prosody.test.mjs"
       - "app/src/components/avatar/facialMicrochannels.ts"
@@ -75,6 +78,9 @@ jobs:
       - name: Run imported VRM/GLB semantic morph regression tests
         working-directory: app
         run: npm run test:avatar-semantic-morph-targets
+      - name: Run shared affective body-language regression tests
+        working-directory: app
+        run: npm run test:avatar-affective-body-language
       - name: Run Original 2D facial wiring regression tests
         working-directory: app
         run: npm run test:avatar-original-facial-wiring

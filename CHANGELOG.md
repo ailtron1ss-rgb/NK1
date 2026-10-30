@@ -1,3 +1,12 @@
+## [NK1][аспект14] Shared affective body language across renderers (2026-10-30)
+
+- Add deterministic, bounded renderer-neutral cues for posture, shoulder tension, arm openness, gesture amplitude, tempo, stillness, stability and gaze.
+- Wire one body-language profile from AvatarStage into Original 2D, Live2D and procedural/imported 3D.
+- Add a versioned Live2D body-language message and map only the authored torso/head channels supported by the existing Cubism rig.
+- Keep gesture selection in the motor planner; affective amplitude modulates an existing action without launching a scripted gesture.
+- Add deterministic, range, smoothing and renderer-wiring regressions; repair two previously failing CI paths caused by escaped newlines in semantic morph application.
+- Visual calibration and real browser/Android E2E remain explicit release gates.
+
 ## [NK1][аспект7] Add deterministic 3D blink and saccade micro-motion (2026-10-30)
 
 - Add a pure renderer-neutral micro-motion adapter for bounded blink closure and deterministic saccade pulses.
