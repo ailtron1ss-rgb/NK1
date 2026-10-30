@@ -37,7 +37,8 @@ const BASE: Record<SpeechProsodyEmotion, { rate: number; pitch: number; volume: 
  * identity. pauseScale is provider-neutral metadata for chunked speech adapters.
  */
 export function deriveSpeechProsody(input: SpeechProsodyInput): SpeechProsodyProfile {
-  const emotion = input.emotion in BASE ? input.emotion : "calm";
+  // Own-key lookup rejects inherited keys such as "constructor" and "__proto__".
+  const emotion = Object.hasOwn(BASE, input.emotion) ? input.emotion : "calm";
   const base = BASE[emotion];
   const valence = clamp(input.valence, 0, 1);
   const arousal = clamp(input.arousal, 0, 1);
