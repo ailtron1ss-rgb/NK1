@@ -119,4 +119,55 @@ assert.throws(() => authority.maintainCanonical({ tick: 5 }), /must not decrease
 assert.deepEqual(authority.snapshot(), beforeDuplicateMaintenance);
 assert.equal(maintenanceCalls, 2);
 
+// Root and nested accessors in persisted state must never execute.
+let rootGetterCalled = false;
+const getterRoot = { version: 1 };
+Object.defineProperty(getterRoot, 'cycles', { enumerable: true, get() { rootGetterCalled = true; return 77; } });
+const getterGovernor = new P70MemoryLifecycleGovernor();
+getterGovernor.restore(getterRoot);
+assert.equal(rootGetterCalled, false);
+assert.equal(getterGovernor.snapshot().cycles, 0);
+
+let nestedGetterCalled = false;
+const getterBudgets = { traces: 1, events: 2, goals: 1, memories: 3, semanticItems: 4 };
+Object.defineProperty(getterBudgets, 'memories', { enumerable: true, get() { nestedGetterCalled = true; return 999; } });
+const accessorPlanAuthority = makeAuthority();
+accessorPlanAuthority.restore({ version: 1, lastPlan: { action: 'trim', budgets: getterBudgets } });
+assert.equal(nestedGetterCalled, false);
+assert.equal(accessorPlanAuthority.snapshot().lastPlan, undefined);
+
+// Accessor-backed array indexes are rejected without evaluating getters.
+let decisionGetterCalled = false;
+const decisions = new Array(1);
+Object.defineProperty(decisions, '0', { enumerable: true, get() { decisionGetterCalled = true; return { id: 'forged' }; } });
+accessorPlanAuthority.restore({ version: 1, lastConsolidation: decisions });
+assert.equal(decisionGetterCalled, false);
+assert.deepEqual(accessorPlanAuthority.snapshot().lastConsolidation, []);
+
+// If canonical fabric maintenance fails after the governor has planned, roll back
+// governor counters so retrying the same tick is safe and does not double-count.
+let shouldFail = true;
+let retryMaintenanceCalls = 0;
+const retryFabric = {
+  maintain(input) {
+    retryMaintenanceCalls++;
+    if (shouldFail) throw new Error('simulated-fabric-maintenance-failure');
+    return { skipped: false, changed: 1, tick: input.tick };
+  },
+  inspect() { return { available: true }; },
+};
+const retryGovernor = new P70MemoryLifecycleGovernor();
+const retryAuthority = new CanonicalMemoryLifecycleAuthority(retryFabric, retryGovernor, new MemoryConsolidationController());
+const retryInput = { tick: 1, at: 100, traces: 1, events: 2, goals: 1, memories: 3, semanticItems: 4, workingSet01: 0.3, energy01: 0.8, pressure01: 0.2 };
+const governorBeforeFailure = retryGovernor.snapshot();
+assert.throws(() => retryAuthority.run(retryInput), /simulated-fabric-maintenance-failure/);
+assert.deepEqual(retryGovernor.snapshot(), governorBeforeFailure, 'governor state must rollback when fabric maintenance fails');
+assert.equal(retryAuthority.snapshot().cycles, 0);
+shouldFail = false;
+const retryResult = retryAuthority.run(retryInput);
+assert.equal(retryResult.maintenance.changed, 1);
+assert.equal(retryGovernor.snapshot().cycles, 1, 'successful retry must count one plan, not two');
+assert.equal(retryAuthority.snapshot().cycles, 1);
+assert.equal(retryMaintenanceCalls, 2);
+
 console.log('workpass618 canonical memory lifecycle integrity: ok');
