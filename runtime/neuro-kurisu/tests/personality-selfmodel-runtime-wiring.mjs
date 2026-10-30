@@ -34,6 +34,11 @@ assert.match(core,/personalityOutcome\.p78/,'the resulting autobiographical stat
 assert.match(registry,/recordPersonalityOutcome\(/,'the bridge is available through the physical-system registry');
 assert.match(p78,/event\.evidenceReceiptId/,'P78 authenticates the receipt carried inside the event itself');
 assert.match(p78,/Number\(receipt\[1\]\)===event\.tick/,'P78 binds the receipt tick to the autobiographical event tick');
+assert.match(p78,/event\.verified01!>=\.85/,'P78 applies the verification quality floor at ingress');
+assert.match(p78,/event\.independent01!>=\.80/,'P78 applies the independence quality floor at ingress');
+assert.match(p78,/event\.identityUpdateScale01!>=\.45/,'P78 applies the identity-specific quality floor at ingress');
+assert.match(selfModel,/identityUpdateScale01>=\.45/,'SelfModel independently enforces the identity-specific confidence floor');
+assert.ok(core.includes('identityUpdateScale01: learning.identityUpdateScale01,'),'Core attaches the identity-specific score to the P78 event');
 assert.match(bridge,/input\.event\.evidenceReceiptId===receiptId/,'the bridge rejects mismatched event and caller receipt IDs');
 assert.match(selfModel,/receiptBound/,'SelfModel independently protects its high-level identity gate');
 assert.match(selfModel,/evidenceReceiptId/,'SelfModel requires the immutable evidence receipt ID');
