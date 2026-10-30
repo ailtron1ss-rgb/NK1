@@ -67,7 +67,27 @@ async function inspectViewport(browser, name, viewport) {
       firstContentfulPaintMs: paints.find(x => x.name === "first-contentful-paint")?.startTime ?? null,
       resourceCount: resources.length,
       transferSizeBytes: resources.reduce((sum, item) => sum + (item.transferSize || 0), 0),
-      jsResourceCount: resources.filter(item => /\.m?js(?:\?|$)/i.test(item.name)).length,
+      jsResourceCount: resources.filter(item => /\.m?js(?:\?|$)/i.test(item.name)).length,,
+      // Capture likely layout offenders so a failing viewport check is actionable.
+      overflowCandidates: [...document.querySelectorAll("body *")]
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            tag: element.tagName.toLowerCase(),
+            id: element.id || null,
+            className: typeof element.className === "string" ? element.className.slice(0, 160) : null,
+            left: Math.round(rect.left * 10) / 10,
+            right: Math.round(rect.right * 10) / 10,
+            width: Math.round(rect.width * 10) / 10,
+            position: style.position,
+            overflowX: style.overflowX,
+            text: (element.innerText || "").trim().replace(/\\s+/g, " ").slice(0, 100),
+          };
+        })
+        .filter((item) => item.width > 0 && (item.right > window.innerWidth + 1 || item.left < -1))
+        .sort((a, b) => b.right - a.right)
+        .slice(0, 12),
     };
   });
   const result = {
