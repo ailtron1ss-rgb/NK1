@@ -5,10 +5,34 @@
  * The governor returns retention budgets; it does not silently delete meaning.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const ownRecord=(value:unknown):Record<string,unknown> =>
+  value!==null&&typeof value==='object'&&!Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value))
+    : {};
 export interface P70State {version:1;cycles:number;maintenanceRuns:number;prunedRecords:number;compactions:number;meanHotLoad01:number;meanPressure01:number;lastAction:'idle'|'trim'|'compact'|'protect';lastAt:number;}
 export const defaultP70=():P70State=>({version:1,cycles:0,maintenanceRuns:0,prunedRecords:0,compactions:0,meanHotLoad01:.18,meanPressure01:.18,lastAction:'idle',lastAt:0});
 export class P70MemoryLifecycleGovernor {
- private state=defaultP70(); restore(raw?:Partial<P70State>|null){this.state={...defaultP70(),...(raw??{})};} snapshot(){return structuredClone(this.state);}
+ private state=defaultP70();
+ restore(raw?:Partial<P70State>|null){
+   const d=defaultP70();
+   const source=ownRecord(raw);
+   if(source.version!==undefined&&source.version!==1)throw new Error('Unsupported P70 memory lifecycle state version');
+   const count=(value:unknown)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;
+   const metric=(value:unknown,fallback:number)=>clamp(typeof value==='number'&&Number.isFinite(value)?value:fallback);
+   const action=source.lastAction;
+   this.state={
+     version:1,
+     cycles:count(source.cycles),
+     maintenanceRuns:count(source.maintenanceRuns),
+     prunedRecords:count(source.prunedRecords),
+     compactions:count(source.compactions),
+     meanHotLoad01:metric(source.meanHotLoad01,d.meanHotLoad01),
+     meanPressure01:metric(source.meanPressure01,d.meanPressure01),
+     lastAction:action==='idle'||action==='trim'||action==='compact'||action==='protect'?action:'idle',
+     lastAt:typeof source.lastAt==='number'&&Number.isFinite(source.lastAt)&&source.lastAt>=0?source.lastAt:0,
+   };
+ }
+ snapshot(){return structuredClone(this.state);}
  plan(input:{tick:number;at:number;traces:number;events:number;goals:number;memories:number;semanticItems:number;workingSet01:number;energy01:number;pressure01:number;experienceHotCount?:number;experienceWarmCount?:number;experienceColdCount?:number;identityTension01?:number}){
    const pressure=clamp(input.pressure01); const hot=clamp(input.workingSet01); const stressed=input.energy01<.28||pressure>.74;
    const hotCount=Math.max(0,Math.min(96,Math.floor(input.experienceHotCount??0)));
