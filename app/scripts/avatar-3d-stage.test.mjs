@@ -78,7 +78,7 @@ test("generic GLB facial morphs are wired into the live renderer with speech pri
  assert.match(stage,/applyThreeFacialSemanticWeights\(rt\.facialMorphTargets,genericWeights,(?:speechVisemes|genericSpeechVisemes)\)/);
  assert.match(stage,/facialMorphTargets:any\[\]/);
  assert.match(stage,/rt\.facialMorphTargets=\[\]/);
- assert.match(runtime,/composeFacialWeights\\(\\s*expressions,\\s*speechVisemes\\s*\\)/);
+ assert.match(runtime,/composeFacialWeights\(\s*expressions,\s*speechVisemes\s*\)/);
  assert.match(runtime,/morphTargetInfluences\[binding\.morphIndex\]=weights\.get\(binding\.semantic\)\?\?0/);
 });
 
