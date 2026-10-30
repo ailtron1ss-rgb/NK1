@@ -110,6 +110,7 @@ assert.equal(strictGroundedRestore.snapshot().entities.find(entity=>entity.label
 const restartedTracker=new TemporalObjectTracker({sessionId:'new-process'});
 const restoreResult=restartedTracker.restoreFromPerception(restoredP41.entities,1_600);
 assert.equal(restoreResult.restored,2);
+assert.ok(restartedTracker.snapshot(0)[0].tracks.every(track=>track.firstSeenAt===1_000));
 const third=restartedTracker.update({
   cameraId:0,at:2_000,frameId:'receipt-3',
   objects:[
