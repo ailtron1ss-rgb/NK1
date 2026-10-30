@@ -68,7 +68,7 @@ test("rejects manifest parent and local transforms that differ from exported glT
   const rig = manifest();
   rig.nodes[1].parentId = "not-the-exported-parent";
   rig.nodes[1].position = [9, 9, 9];
-  const result = validateDepthRigGlb(glb(document(rig)));
+  const result = validateDepthRigGlb(glb(json));
   assert.ok(result.errors.includes("parent-mismatch:head"));
   assert.ok(result.errors.includes("position-mismatch:head"));
 });
@@ -88,7 +88,7 @@ test("accepts quaternion-to-Euler XYZ round trips and rejects exported rotation 
   json.nodes[1].rotation = [0, 0, Math.sin(angle / 2), Math.cos(angle / 2)];
   const rig = manifest();
   rig.nodes[1].rotation = [0, 0, angle];
-  assert.deepEqual(validateDepthRigGlb(glb(document(rig))), { ok: true, errors: [] });
+  assert.deepEqual(validateDepthRigGlb(glb(json)), { ok: true, errors: [] });
   rig.nodes[1].rotation = [0, 0, 0];
   const result = validateDepthRigGlb(glb(document(rig)));
   assert.ok(result.errors.includes("rotation-mismatch:head"));
