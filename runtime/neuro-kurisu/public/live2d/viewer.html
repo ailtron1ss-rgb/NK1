@@ -85,7 +85,8 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   function applyFaceMicrochannels(d){
     if(!d||typeof d!=='object')return;
     const ranges={eyeSmile:[0,.8],browLeftY:[-.45,.45],browRightY:[-.45,.45],browLeftForm:[-.5,.5],browRightForm:[-.5,.5],cheek:[0,.38],mouthTension:[0,.55],blinkBias:[-.08,.2],blinkIntervalMs:[4200,10500],blinkDurationMs:[90,145],saccadeIntervalMs:[1100,4200],saccadeAmplitude:[.06,.25]};
-    const next={};for(const [key,range] of Object.entries(ranges)){const value=Number(d[key]);if(!Number.isFinite(value)||value<range[0]||value>range[1])return;next[key]=value;}
+    const defaults={blinkIntervalMs:8800,blinkDurationMs:105,saccadeIntervalMs:3100,saccadeAmplitude:.095};
+    const next={};for(const [key,range] of Object.entries(ranges)){const raw=d[key]===undefined?defaults[key]:d[key];const value=Number(raw);if(!Number.isFinite(value)||value<range[0]||value>range[1])return;next[key]=value;}
     faceSignal=next;
   }
   function applyExpression(expr){
