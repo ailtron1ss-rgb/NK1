@@ -163,9 +163,6 @@ export class P23CompoundRepairRevisionCoordinator {
   private readonly inFlightEvidenceDigestBySkill = new Map<string, string>();
   private readonly stagedEvidenceDigestsBySkill = new Map<string, Set<string>>();
   private readonly retryBackoffBySkill = new Map<string, RevisionFailureBackoff>();
-  private readonly runtime: OrganismRuntime;
-  private readonly engine: P23LearningEngine;
-  private readonly provideInputs: CompoundRepairRevisionInputProvider;
   private retryBackoffPersistenceFailure: string | null = null;
 
   constructor(
