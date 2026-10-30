@@ -1,3 +1,8 @@
+## [NK1][WorkPass637] Install app dependencies in the focused depth-rig gate (2026-10-30)
+
+- The first focused workflow run passed the depth-rig core and face tests but could not resolve the Three.js package used by the renderer adapter fixture because the job intentionally started without app dependencies.
+- Add a lifecycle-script-disabled `npm ci` step before the Three.js adapter suite; retain the pinned Node 24 and Actions v7 contract.
+
 ## [NK1][WorkPass637] Add focused 2.5D depth-rig CI gate (2026-10-30)
 
 - Add a Node 24 / approved Actions v7 workflow for the integrated depth-rig core, face resolver and Three.js transform adapter suites (23 focused test cases across three files).
