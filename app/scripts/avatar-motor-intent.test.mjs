@@ -93,6 +93,11 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /lastIntentStateVersion/);
   assert.match(viewer, /motionToken||0/);
   assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
+  assert.match(viewer, /ParamBrowLY/);
+  assert.match(viewer, /ParamEyeLSmile/);
+  assert.match(viewer, /ParamCheek/);
+  assert.match(viewer, /ParamBreath/);
+  assert.match(viewer, /ParamBodyAngleX/);
 });
 
 test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
