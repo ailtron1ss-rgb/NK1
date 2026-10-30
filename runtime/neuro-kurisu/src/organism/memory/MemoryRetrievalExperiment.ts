@@ -83,6 +83,10 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
     holdoutGroups: report.datasetIntegrity.uniqueHoldoutConversationGroups,
     crossSplitLeakage: report.datasetIntegrity.crossSplitConversationLeakageCount,
     multiSessionComplete: report.datasetIntegrity.multiSessionConversationAnnotationComplete,
+    answerableHoldoutClusterSizes: report.datasetIntegrity.answerableHoldoutClusterSizes,
+    unanswerableHoldoutClusterSizes: report.datasetIntegrity.unanswerableHoldoutClusterSizes,
+    recallClusterSensitivity: report.confidence.clusterSensitivity?.recallAtK01,
+    mrrClusterSensitivity: report.confidence.clusterSensitivity?.mrr01,
   };
   return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, taskCategoryStratification: taskCategorySignature, conversationIntegrity: conversationIntegritySignature });
 }
@@ -141,7 +145,10 @@ export function runMemoryOS2RetrievalExperiment(
       trainGroups: run.datasetIntegrity.uniqueTrainConversationGroups,
       conversationAnnotationsComplete: run.datasetIntegrity.conversationAnnotationComplete,
       crossSplitLeakageCount: run.datasetIntegrity.crossSplitConversationLeakageCount,
+      answerableHoldoutClusterSizes: run.datasetIntegrity.answerableHoldoutClusterSizes,
+      unanswerableHoldoutClusterSizes: run.datasetIntegrity.unanswerableHoldoutClusterSizes,
     },
+    clusterSensitivity: run.confidence.clusterSensitivity,
     datasetIntegrity: run.datasetIntegrity,
     singleRunPromotionStatus: run.promotion.status,
     singleRunPromotionReason: run.promotion.reason,
