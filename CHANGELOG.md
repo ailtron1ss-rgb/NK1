@@ -1,3 +1,9 @@
+## [NK1][CI] Align avatar integrity regression contracts with the renderer — 2026-10-30
+
+- Replace whitespace-sensitive source assertions with normalized structural checks for failed-import recovery, mixer disposal ordering and shared speech/viseme rate.
+- Update the Original renderer integration regression to describe its new truthful 2.5D depth/parallax preview rather than the previous 2D-only label.
+- No runtime behavior is weakened: validation order, preservation of the loaded model and pre-disposal mixer cleanup remain explicitly asserted.
+
 ## [NK1][Aspect 11] Add gaze-driven 2.5D depth preview to Original SVG body — 2026-10-30
 
 - Add four independently transformed SVG depth layers: rear hair, torso, head and front fringe. Differential bounded offsets derive from the organism gaze signal, preserving vector artwork and existing expression/viseme behavior.
