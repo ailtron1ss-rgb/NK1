@@ -1,3 +1,10 @@
+## [NK1][Aspect 08] Harden wardrobe bundle ingestion before base64 decoding (2026-10-30)
+
+- Validate the manifest before allocating decoded payload buffers.
+- Reject undeclared paths, missing manifest assets, invalid base64 and encoded lengths inconsistent with each declared byte size.
+- Verify decoded byte length before handing the bundle to the cryptographic loader; SHA-256 verification remains mandatory there.
+- Extend Avatar3DStage source-contract regression coverage for these fail-closed import rules.
+
 ## [NK1][Aspect 08] Strengthen uploaded VRM target identity with SHA-256 (2026-10-30)
 
 - Replace the 32-bit non-cryptographic skeleton-name fingerprint with a SHA-256 digest over normalized bone ancestry descriptors and the rig contract version.
