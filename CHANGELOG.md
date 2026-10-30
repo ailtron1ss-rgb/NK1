@@ -2841,3 +2841,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Removed shoulder-joint aliases that could falsely satisfy the upper-arm resolver without a valid upper-arm/forearm chain.
 - Added deterministic regressions for snapshot immutability, drift prevention, blending, restoration and invalid rig/weight rejection.
 - Live Avatar3DStage actuation remains disabled pending per-model calibration and animation-mixer coordination.
+
+
+## 2026-10-30 — Aspect 10: per-model VRM calibration profile contract
+
+- Added a versioned bilateral calibration profile bound to a model fingerprint, coordinate-frame ID, provenance and exact resolved bone identities.
+- Reject mismatched model/frame/rig, missing arm chains, unsupported schema and invalid axis/sign/joint-limit values; accepted profiles are frozen before use.
+- Added deterministic regression coverage. No guessed calibration defaults or live IK activation were introduced.
