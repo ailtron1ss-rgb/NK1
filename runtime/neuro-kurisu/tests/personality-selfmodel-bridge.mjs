@@ -40,7 +40,7 @@ const unbound=bridge.recordOutcome({
 assert.equal(unbound.newEvent,true);
 assert.equal(unbound.evidenceAccepted,false,'P78 syntax alone must not bypass the CEF receipt namespace gate');
 assert.equal(unbound.selfModelUpdate?.identityUpdateAccepted,false);
-assert.equal(unbound.selfModel.lastIdentityGate?.reason,'untrusted-evidence-source');
+assert.equal(unbound.selfModel.lastIdentityGate?.reason,'outcome-unverified');
 assert.equal(unbound.personality.learningUpdates,2);
 assert.deepEqual(unbound.personality.selfBeliefs,selfBeliefsBeforeUnbound,'unsupported receipt namespaces cannot update autobiographical self-beliefs');
 
