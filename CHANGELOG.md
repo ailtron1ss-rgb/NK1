@@ -1,3 +1,13 @@
+## [NK1][WorkPass625] Integrate official Pixiv VRM runtime (2026-10-30)
+
+- Pin @pixiv/three-vrm 3.5.5 (MIT) with verified npm registry integrity metadata and compatibility with Three.js 0.180.0.
+- Register VRMLoaderPlugin for uploaded local assets; use gltf.userData.vrm.scene when a VRM instance is produced, apply rotateVRM0 for legacy orientation, and retain the existing plain GLB path.
+- Drive native VRM ExpressionManager from the existing organism affect/viseme values; delegate native overrideMouth/overrideBlink/overrideLookAt behavior once instead of applying the custom blend twice.
+- Drive normalized humanoid nodes through getNormalizedBoneNode before VRM.update; feed gaze into VRMLookAt.target.
+- Call VRM.update(delta) so humanoid synchronization, LookAt, expressions, node constraints, spring bones and supported MToon material updates run in the official runtime; use VRMUtils.deepDispose when a VRM model is removed.
+- Keep the WorkPass624 precompiled morph-target adapter for plain GLB fallback, and add a dedicated regression suite for package-lock, loader/runtime wiring and fallback.
+- Real-asset visual evidence, Android GPU/FPS/soak, VRMA animation playback, 2.5D authoring, audio/phoneme E2E, and final Release ZIP remain open gates.
+
 ## [NK1][WorkPass624] Native VRM facial expressions mapped to organism affect and speech (2026-10-30)
 
 - Compile native VRM 1.0 `VRMC_vrm.expressions` preset/custom maps and legacy VRM 0.x `blendShapeMaster.blendShapeGroups` rather than guessing every morph target by its display name.
