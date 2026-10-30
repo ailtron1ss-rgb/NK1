@@ -72,6 +72,35 @@ const duplicate=ambiguousTracker.update({cameraId:0,at:1_200,objects:[
 assert.equal(duplicate.metrics.newTrackCount,0);
 assert.equal(duplicate.metrics.ambiguousCount,2);
 
+// ByteTrack-style two-stage behavior: a medium-confidence box may continue
+// an existing track but cannot create a new identity on its own.
+const twoStage=new TemporalObjectTracker({sessionId:'two-stage'});
+const strongSeed=twoStage.update({cameraId:0,at:1_000,objects:[
+  {label:'person',bbox:box(.2,.2),confidence01:.95,bboxConfidence01:.94},
+]});
+const weakContinuation=twoStage.update({cameraId:0,at:1_500,objects:[
+  {label:'person',bbox:box(.21,.2),confidence01:.65,bboxConfidence01:.58},
+]});
+assert.equal(weakContinuation.metrics.associatedTrackCount,1);
+assert.equal(weakContinuation.objects[0].trackId,strongSeed.objects[0].trackId);
+const weakNew=twoStage.update({cameraId:1,at:1_500,objects:[
+  {label:'person',bbox:box(.21,.2),confidence01:.65,bboxConfidence01:.58},
+]});
+assert.equal(weakNew.metrics.newTrackCount,0);
+assert.equal(weakNew.objects[0].trackingStatus,'untracked');
+
+// A bounded constant-velocity prediction helps retain identity across a larger
+// inter-frame displacement without introducing a Kalman/3D-world claim.
+const motionTracker=new TemporalObjectTracker({sessionId:'motion'});
+const motionSeed=motionTracker.update({cameraId:0,at:1_000,objects:[
+  {label:'person',bbox:box(.1,.2),confidence01:.95,bboxConfidence01:.94},
+]});
+const motionNext=motionTracker.update({cameraId:0,at:2_000,objects:[
+  {label:'person',bbox:box(.29,.2),confidence01:.95,bboxConfidence01:.94},
+]});
+assert.equal(motionNext.metrics.associatedTrackCount,1);
+assert.equal(motionNext.objects[0].trackId,motionSeed.objects[0].trackId);
+
 // Provider-owned IDs are preserved even when no 2D box is available.
 const provider=tracker.update({cameraId:1,at:1_000,objects:[
   {label:'person',trackId:'vendor-17',sourceId:'detector-A',confidence01:.95},
