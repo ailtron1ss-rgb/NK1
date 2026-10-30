@@ -115,13 +115,27 @@ CLI сохраняет `category` и `conversationId` из JSONL в benchmark. �
 
 Проверка типа остаётся отдельной от теста алгоритма. Целевой проход: `npm run typecheck`, `npm run test:memory-retrieval-experiment`, затем полный `npm run test:memory-acceptance` и integration closure.
 
-## 7. Исследовательская основа
+## 7. Дополнительная таксономия памяти агента по LongMemEval-V2
+
+Для агента, который действует в интерфейсах и средах, одного деления на conversational tasks недостаточно. LongMemEval-V2 (2026) отдельно измеряет статическое состояние среды, динамические изменения, знание процедур, повторяющиеся environment gotchas и осознание ложных предпосылок конкретной среды. В NK1 эти способности представлены явными task labels:
+
+- `static-state`: устойчивые свойства среды, layout, affordances и адреса элементов;
+- `dynamic-state`: состояние, меняющееся после действий, переходы и текущая фаза;
+- `workflow-knowledge`: повторяемая процедура и последовательность действий;
+- `environment-gotcha`: известный локальный сбой, ограничение или ловушка;
+- `premise-awareness`: контекстная предпосылка, действующая в одном окружении, но неверная в другом.
+
+Они дополняют, а не заменяют `temporal`, `multi-session`, `procedural` и `causal`. Это метки benchmark, а не новые runtime-типы памяти: сама система по-прежнему хранит события, факты, процедуры и lineage в каноническом MemoryOS2. Так мы можем проверять перенос опыта — что NK1 запомнил о среде, что изменилось, какие шаги работают и какие предпосылки нельзя переносить между средами.
+
+Официальный LongMemEval-V2 repository описывает 451 вручную подготовленный вопрос и 1 870 траекторий, web и enterprise домены, пять способностей памяти и haystacks до 115M токенов; dataset card указывает Apache-2.0. Для NK1 разумно начать с bounded small-tier harness и собственного RU/EN holdout; средний/крупный масштаб нельзя бездумно включать в мобильный runtime. Сам benchmark data не копировать в runtime или Release ZIP.
+
+## 8. Исследовательская основа
 
 - LongMemEval выделяет multi-session reasoning, temporal reasoning, knowledge updates и abstention как самостоятельные способности памяти.
 - LoCoMo использует очень длинные диалоги (в среднем около 588 ходов, 27 сессий и 16.6K токенов на разговор), что показывает, почему многократные вопросы из одного разговора нельзя бездумно считать независимыми.
 - Руководство MacKinnon, Nielsen и Webb по cluster-robust inference подчёркивает роль числа кластеров и неоднородности размеров групп; при малом числе кластеров стандартные приближения могут давать ненадёжный результат, поэтому bootstrap и отчёт о размере кластеров важны.
 
-## 8. Ограничения текущей реализации
+## 9. Ограничения текущей реализации
 
 - Cluster bootstrap и delete-one analysis — инструментальные улучшения оценки, но не замена специализированной процедуре wild cluster bootstrap для регрессионных моделей. NK1 оценивает парные метрики retrieval на фиксированных размеченных вопросах.
 - Hard floor в 8 групп — защитная нижняя граница, а не endorsement качества.
@@ -136,3 +150,5 @@ CLI сохраняет `category` и `conversationId` из JSONL в benchmark. �
 - [MacKinnon, Nielsen & Webb — Cluster-robust inference: A guide to empirical practice (2023)](https://doi.org/10.1016/j.jeconom.2022.04.001)
 - [MacKinnon, Nielsen & Webb — Fast and reliable jackknife and bootstrap methods for cluster-robust inference (2023)](https://doi.org/10.1002/jae.2969)
 - [Cameron, Gelbach & Miller — Bootstrap-Based Improvements for Inference with Clustered Errors](https://www.nber.org/papers/t0344)
+- [LongMemEval-V2 official repository](https://github.com/xiaowu0162/LongMemEval-V2)
+- [LongMemEval-V2 dataset card (Apache-2.0)](https://huggingface.co/datasets/xiaowu0162/longmemeval-v2)
