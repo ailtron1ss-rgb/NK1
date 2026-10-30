@@ -15,6 +15,11 @@ This workpass improves the existing Cubism avatar only. It does not claim to cre
 
 ## Changes in this pass
 
+6. Made speech cancellation preempt the currently playing Cubism motion instead of relying on the Idle clip's default priority:
+   - Verified against the exact pinned `pixi-live2d-display@0.4.0` source: `model.motion(group, index, priority)` accepts a priority argument; `MotionPriority.FORCE` is enum value 3 and forces playback regardless of current priority.
+   - The runtime normalizer now preserves `speechPhase`; both viewer entry points select FORCE only for a validated cancelled phase and NORMAL for ordinary motion intents.
+   - The Cubism 4 motion manager stops its previous queue when the forced motion starts. This is source/API-grounded, but exact on-device interruption latency still requires browser/Android validation.
+
 1. Added continuous facial parameter composition to both the app-served and runtime Live2D viewers:
    - brow vertical position and angle;
    - left/right eye-smile;
