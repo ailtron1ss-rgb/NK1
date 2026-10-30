@@ -7,22 +7,22 @@ type ChannelBinding = { node: NodeLike; axis: "x" | "y" | "z" };
 const normalize = (value: unknown): string => String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const CHANNELS: Record<string, { aliases: string[]; axis: "x" | "y" | "z" }> = {
-  headYaw: { aliases: ["head", "mixamorighead"], axis: "y" },
+  headYaw: { aliases: ["head", "mixamorighead", "jbipchead"], axis: "y" },
   headPitch: { aliases: ["head", "mixamorighead"], axis: "x" },
   headRoll: { aliases: ["head", "mixamorighead"], axis: "z" },
-  neckYaw: { aliases: ["neck", "mixamorigneck"], axis: "y" },
+  neckYaw: { aliases: ["neck", "mixamorigneck", "jbipcneck"], axis: "y" },
   neckPitch: { aliases: ["neck", "mixamorigneck"], axis: "x" },
-  spinePitch: { aliases: ["spine", "chest", "upperchest", "mixamor igspine".replace(/ /g, "")], axis: "x" },
-  leftShoulderPitch: { aliases: ["leftupperarm", "leftarm", "leftshoulder", "mixamorigleftarm"], axis: "x" },
+  spinePitch: { aliases: ["spine", "chest", "upperchest", "mixamorigspine", "jbipcspine", "jbipcchest", "jbipcupperchest"], axis: "x" },
+  leftShoulderPitch: { aliases: ["leftupperarm", "leftarm", "leftshoulder", "mixamorigleftarm", "jbiplupperarm"], axis: "x" },
   leftShoulderRoll: { aliases: ["leftupperarm", "leftarm", "leftshoulder", "mixamorigleftarm"], axis: "z" },
-  leftElbowFlex: { aliases: ["leftlowerarm", "leftforearm", "mixamorigleftforearm"], axis: "x" },
-  rightShoulderPitch: { aliases: ["rightupperarm", "rightarm", "rightshoulder", "mixamorigrightarm"], axis: "x" },
+  leftElbowFlex: { aliases: ["leftlowerarm", "leftforearm", "mixamorigleftforearm", "jbipllowerarm"], axis: "x" },
+  rightShoulderPitch: { aliases: ["rightupperarm", "rightarm", "rightshoulder", "mixamorigrightarm", "jbiprupperarm"], axis: "x" },
   rightShoulderRoll: { aliases: ["rightupperarm", "rightarm", "rightshoulder", "mixamorigrightarm"], axis: "z" },
-  rightElbowFlex: { aliases: ["rightlowerarm", "rightforearm", "mixamorigrightforearm"], axis: "x" },
-  leftHipFlex: { aliases: ["leftupperleg", "leftupleg", "mixamorigleftupleg"], axis: "x" },
-  leftKneeFlex: { aliases: ["leftlowerleg", "leftleg", "mixamorigleftleg"], axis: "x" },
-  rightHipFlex: { aliases: ["rightupperleg", "rightupleg", "mixamorigrightupleg"], axis: "x" },
-  rightKneeFlex: { aliases: ["rightlowerleg", "rightleg", "mixamorigrightleg"], axis: "x" },
+  rightElbowFlex: { aliases: ["rightlowerarm", "rightforearm", "mixamorigrightforearm", "jbiprlowerarm"], axis: "x" },
+  leftHipFlex: { aliases: ["leftupperleg", "leftupleg", "mixamorigleftupleg", "jbiplupperleg"], axis: "x" },
+  leftKneeFlex: { aliases: ["leftlowerleg", "leftleg", "mixamorigleftleg", "jbipllowerleg"], axis: "x" },
+  rightHipFlex: { aliases: ["rightupperleg", "rightupleg", "mixamorigrightupleg", "jbiprupperleg"], axis: "x" },
+  rightKneeFlex: { aliases: ["rightlowerleg", "rightleg", "mixamorigrightleg", "jbiprlowerleg"], axis: "x" },
 };
 
 export interface VrmMotorApplyResult {
