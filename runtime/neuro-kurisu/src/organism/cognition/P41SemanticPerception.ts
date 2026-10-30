@@ -32,6 +32,8 @@ export interface P41PerceptualEntity {
   kind:P41EntityKind;
   /** Stable sensor/vendor track key. Absent for legacy singletons or untracked concepts. */
   trackId?:string;
+  /** IDs from other modalities that were safely associated with this same object track. */
+  trackAliases?:string[];
   confidence01:number;
   salience01:number;
   present01:number;
@@ -296,7 +298,17 @@ export class P41SemanticPerceptionEngine {
   private upsertEntity(label:string,kind:P41EntityKind,confidence01:number,salience01:number,modality:P41Modality,at:number,pos:{x:number;y:number;z:number}|null,evidenceKind:P41EvidenceKind,suppliedTrackId?:string){
     const key=normalizePerceptualLabel(label); if(!key) return null;
     const explicitTrackId=cleanTrackId(suppliedTrackId);
-    let e=explicitTrackId?this.state.entities.find(x=>x.trackId===explicitTrackId):undefined;
+    let e=explicitTrackId?this.state.entities.find(x=>x.trackId===explicitTrackId||x.trackAliases?.includes(explicitTrackId)):undefined;
+    // Cross-modal association is allowed only when there is exactly one recent
+    // same-label candidate that has not already been observed by this modality.
+    // Ambiguous repeated objects remain separate instead of being force-merged.
+    if(!e&&explicitTrackId){
+      const crossModal=this.state.entities.filter(x=>x.label===key&&x.kind===kind&&!x.modalities.includes(modality)&&at>=x.lastSeenAt&&at-x.lastSeenAt<=5_000);
+      if(crossModal.length===1){
+        e=crossModal[0];
+        e.trackAliases=[...new Set([...(e.trackAliases??[]),explicitTrackId])].slice(-12);
+      }
+    }
     // Spatial nearest-neighbour association is only used when observations share
     // a coordinate frame. A same-frame detection cannot consume a track twice.
     if(!e&&pos){
@@ -313,7 +325,7 @@ export class P41SemanticPerceptionEngine {
     const trackId=explicitTrackId??(pos?'auto-track-'+(++this.state.nextTrackSequence):undefined);
     if(!e){
       const id=stableId('entity',kind+':'+key+':'+(trackId??'singleton'));
-      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],position:pos,velocity:null};
+      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],position:pos,velocity:null,trackAliases:[]};
       this.state.entities.unshift(e);
     }else{
       const previousAt=e.lastSeenAt;
