@@ -50,6 +50,15 @@ test("wardrobe pack rejects unsafe paths, duplicate paths and oversized assets",
   assert.equal(result.valid, false);
   assert.ok(result.errors.includes("asset:unsafe-path:second"));
   assert.ok(result.errors.includes("asset:invalid-size:second"));
+  const duplicatePath = validManifest();
+  duplicatePath.assets.push({ ...duplicatePath.assets[0], id: "second-asset" });
+  assert.ok(validateWardrobePackManifest(duplicatePath).errors.includes("asset:duplicate-path:garments/lab-coat.glb"));
+  const wrongMime = validManifest();
+  wrongMime.assets[0].mime = "image/png";
+  assert.ok(validateWardrobePackManifest(wrongMime).errors.includes("asset:mime-extension-mismatch:lab-coat-vrm"));
+  const malformed = validManifest();
+  malformed.assets[0] = null;
+  assert.ok(validateWardrobePackManifest(malformed).errors.includes("asset:not-object"));
 });
 
 const request = (overrides = {}) => ({
