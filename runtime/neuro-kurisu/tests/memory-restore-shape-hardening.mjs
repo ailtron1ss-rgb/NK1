@@ -92,10 +92,33 @@ assert.equal(Number.isFinite(row.createdAt), true);
 assert.equal(Number.isFinite(row.lastAccessAt), true);
 assert.equal(row.revisionHistory.length, 0, 'invalid revision history entries are dropped');
 
+// Invalid expiry metadata must not make a historical row appear current.
+const expiring = {
+  ...structuredClone(seedRow),
+  id: 'invalid-expiry-row',
+  content: 'The old cache setting for REF-228 was AMBER.',
+  validUntilAt: 'not-a-timestamp',
+  validFromAt: now - 5_000,
+};
+const expiryMemory = new MemoryOS2({ embeddingProvider: null });
+expiryMemory.restore({ ...structuredClone(base), items: [expiring] });
+const expiredRow = expiryMemory.snapshot().items[0];
+assert.equal(expiredRow.validUntilAt, expiredRow.validFromAt,
+  'a corrupt expiry must fail closed as an empty validity interval');
+assert.equal(
+  expiryMemory.retrieve('What was the old cache setting for REF-228?', 4, 0, 0, { temporalMode: 'current' }).length,
+  0,
+  'a row with malformed expiry must not become current',
+);
+
 const diagnostics = restored.restoreDiagnostics();
 assert.equal(diagnostics.sourceRows, 6);
 assert.equal(diagnostics.acceptedRows, 1);
 assert.equal(diagnostics.invalidRowsDropped, 5);
+const doctor = restored.doctor();
+assert.equal(doctor.pass, false, 'memory doctor must expose data loss during restore');
+assert.ok(doctor.issues.some(issue => issue.code === 'restore-invalid-rows-dropped'));
+assert.equal(doctor.restore.invalidRowsDropped, 5);
 
 const recalled = restored.retrieve(
   'What is the durable cache status for REF-228?',
