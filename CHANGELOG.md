@@ -5,6 +5,7 @@
 - Require confirmatory campaign primary metric `task-pass-rate`, the only endpoint actually computed by the current signed outcome ledger. Reject unsupported metric labels and non-string candidate fingerprints; revalidate metric and promotion-policy semantics on registry restore.
 - Bind each confirmatory campaign to one exact 40-hex `sourceCommitSha`; signed verifier artifacts must repeat that SHA as well as the per-method configuration fingerprint. A trusted signature from a different source revision cannot be mixed into the campaign.
 - Explicitly document the trust boundary: this is a verifier-signed source-revision claim, not SLSA/in-toto build provenance. Builder identity, workflow attestation, and artifact digest verification remain future release-assurance work.
+- Reconcile the protocol overview with the final seed-level contract: 30 independent paired seeds, exact sign-test significance, and non-summed `seed-repeated` family strata.
 - Extend adversarial tests for extreme sample counts, p-value consistency, alias conflicts, explicit independent-seed output, metric spoofing and fingerprint type coercion.
 - CI previously exposed a floating-point exact-equality assertion (`0.007812500000000002` vs `0.0078125`); replace it with a tight numeric tolerance without weakening the statistical calculation.
 - No production learner was promoted and no real-world learning uplift is claimed. Exact-head GitHub Actions must pass before this pass is considered validated.
