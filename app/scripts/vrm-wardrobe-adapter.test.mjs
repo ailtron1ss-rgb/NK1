@@ -34,6 +34,11 @@ test("missing or ambiguous target bones fail closed",()=>{
  const duplicate=inspectVrmGarmentRig(garment(),target);
  assert.equal(duplicate.compatible,false);assert.ok(duplicate.errors.includes("avatar-duplicate-bone:hips"));
 });
+test("different garment bind pose is rejected before touching the avatar",()=>{
+ const source=garment();source.children[0].skeleton.boneInverses[1]={bone:"different-rest-pose"};
+ const result=inspectVrmGarmentRig(source,avatar());
+ assert.equal(result.compatible,false);assert.ok(result.errors.includes("bind-pose-mismatch:spine"));
+});
 test("non-skinned artwork cannot be applied as a deforming VRM garment",()=>{
  const result=inspectVrmGarmentRig(new Group("flat-image"),avatar());
  assert.equal(result.compatible,false);assert.ok(result.errors.includes("garment-has-no-skinned-meshes"));
