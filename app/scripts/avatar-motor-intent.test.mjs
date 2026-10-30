@@ -20,7 +20,7 @@ const baseIntent = (overrides = {}) => ({
   expressionIntensity: 0.8,
   mouth: { open: 0.65, form: 0.2, viseme: "a" },
   gaze: { x: 0.2, y: -0.1, driven: true },
-  body: { headTilt: -0.04, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4 },
+  body: { headTilt: -0.04, gesture: true, gestureProfile: "presenting", gestureIntensity: 0.5, motionGroup: "Special", motionIndex: 1, motionToken: 4 },
   voiceEmphasis: 0.5,
   ...overrides,
 });
@@ -109,8 +109,19 @@ test("strict protocol accepts the app's envelope and normalizes speech/body fiel
   assert.deepEqual(normalizeEmbodimentIntentV1(value), {
     stateVersion: 1, expression: "happy", expressionIntensity: 0.8, speaking: true,
     mouthOpen: 0.65, mouthForm: 0.2, gazeX: 0.2, gazeY: -0.1, gazeDriven: true,
-    headTilt: -0.04, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
+    headTilt: -0.04, gesture: true, gestureProfile: "presenting", gestureIntensity: 0.5, motionGroup: "Special", motionIndex: 1, motionToken: 4, voiceEmphasis: 0.5,
   });
+});
+
+test("optional semantic gesture fields remain bounded and legacy v1 envelopes still normalize", () => {
+  const legacy = baseIntent();
+  delete legacy.body.gestureProfile;
+  delete legacy.body.gestureIntensity;
+  assert.equal(isEmbodimentIntentV1(legacy), true);
+  assert.equal(normalizeEmbodimentIntentV1(legacy).gestureProfile, "none");
+  assert.equal(normalizeEmbodimentIntentV1(legacy).gestureIntensity, 0);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureIntensity: 0.81 } })), false);
+  assert.equal(isEmbodimentIntentV1(baseIntent({ body: { ...baseIntent().body, gestureProfile: "invented" } })), false);
 });
 
 test("invalid motion, extra protocol fields, and out-of-range data fail closed", () => {
@@ -133,6 +144,7 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.match(viewer, /ParamCheek/);
   assert.match(viewer, /ParamBreath/);
   assert.match(viewer, /ParamBodyAngleX/);
+  assert.match(viewer, /gestureDirection\\*gestureDrive\\*\\.12/);
   assert.match(viewer, /faceState\.brow\+=/);
   assert.match(viewer, /const blend=\.18/);
 });
