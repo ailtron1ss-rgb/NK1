@@ -1833,7 +1833,7 @@
     "test:p23:verified-outcome-ledger": "node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs",
     "test:aspect01:unified-substrate-integrity": "node --experimental-strip-types tests/workpass617-unified-substrate-restore-integrity.mjs",
     "test:aspect01:canonical-memory-lifecycle-integrity": "node --experimental-strip-types tests/workpass618-canonical-memory-lifecycle-integrity.mjs",
-    "test:aspect01:unified-cycle-integrity": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs"
+    "test:aspect01:unified-cycle-integrity": "node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs",
     "test:tool-input-contracts-workpass624": "node --experimental-strip-types tests/tool-input-contracts-workpass624.mjs"
   }
 }
