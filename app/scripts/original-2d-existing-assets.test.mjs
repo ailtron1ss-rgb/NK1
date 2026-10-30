@@ -48,12 +48,12 @@ test("existing sprite audit exactly inventories the legacy manifest without prom
   }
 
   assert.deepEqual(inventory.semanticAuditSummary, {
-    matchedPriorAuditIds: 27,
-    requiresFreshVisualReview: 5,
+    matchedPriorAuditIds: 25,
+    requiresFreshVisualReview: 7,
     policy: "Descriptions are transcribed from the prior WorkPass622 visual audit, not a new pixel inspection in this pass. Unmatched IDs remain deliberately unclassified.",
   });
-  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "matched-prior-pixel-audit").length, 27);
-  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "requires-fresh-visual-review").length, 5);
+  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "matched-prior-pixel-audit").length, 25);
+  assert.equal(inventory.assets.filter((asset) => asset.semanticAudit.status === "requires-fresh-visual-review").length, 7);
 
   const counts = Object.fromEntries(
     Object.entries(inventory.groups).map(([sheet, group]) => [sheet, group.count]),
