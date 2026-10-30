@@ -9,6 +9,8 @@ on:
       - 'runtime/neuro-kurisu/src/organism/body/GroundedInteractionBridge.ts'
       - 'app/src/components/avatar/planarArmIK.ts'
       - 'app/scripts/planar-arm-ik.test.mjs'
+      - 'app/src/components/avatar/vrmHumanoidRigAdapter.ts'
+      - 'app/scripts/vrm-humanoid-rig-adapter.test.mjs'
       - '.github/workflows/aspect10-embodied-interaction.yml'
   push:
     branches: [aspect10-embodied-world-interaction-2026-10-30]
@@ -32,3 +34,5 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:aspect10:interaction
       - name: Run renderer-independent humanoid arm IK tests
         run: npm --prefix app run test:planar-arm-ik
+      - name: Run calibrated VRM humanoid rig adapter tests
+        run: npm --prefix app run test:vrm-humanoid-rig
