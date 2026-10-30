@@ -52,10 +52,41 @@ export function captureHumanoidRigSnapshot(
     }
   });
 
-  const bounds = new THREE.Box3().setFromObject(root);
-  const size = new THREE.Vector3();
-  bounds.getSize(size);
-  const height = Number.isFinite(size.y) && size.y > 1e-5 ? size.y : 1;
+  // Measure height in the rig root's local up-axis, not world AABB Y.
+  // A rotated avatar must not appear artificially shorter to the retarget scaler.
+  const inverseRootWorld = root.matrixWorld.clone().invert();
+  const localBounds = new THREE.Box3();
+  const nodeToRoot = new THREE.Matrix4();
+  root.traverse((candidate) => {
+    const geometry = (candidate as THREE.Mesh).geometry;
+    if (!(candidate as THREE.Mesh).isMesh || !geometry) return;
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    if (!geometry.boundingBox) return;
+    nodeToRoot.copy(inverseRootWorld).multiply(candidate.matrixWorld);
+    const box = geometry.boundingBox;
+    for (let mask = 0; mask < 8; mask += 1) {
+      const corner = new THREE.Vector3(
+        mask & 1 ? box.max.x : box.min.x,
+        mask & 2 ? box.max.y : box.min.y,
+        mask & 4 ? box.max.z : box.min.z,
+      );
+      localBounds.expandByPoint(corner.applyMatrix4(nodeToRoot));
+    }
+  });
+  let minBoneY = 0;
+  let maxBoneY = 0;
+  const worldPosition = new THREE.Vector3();
+  for (const { node } of bones) {
+    if (!node) continue;
+    node.getWorldPosition(worldPosition);
+    root.worldToLocal(worldPosition);
+    minBoneY = Math.min(minBoneY, worldPosition.y);
+    maxBoneY = Math.max(maxBoneY, worldPosition.y);
+  }
+  const minY = Math.min(minBoneY, localBounds.isEmpty() ? 0 : localBounds.min.y);
+  const maxY = Math.max(maxBoneY, localBounds.isEmpty() ? 0 : localBounds.max.y);
+  const measuredHeight = maxY - minY;
+  const height = Number.isFinite(measuredHeight) && measuredHeight > 1e-5 ? measuredHeight : 1;
 
   return {
     roleToNode,
