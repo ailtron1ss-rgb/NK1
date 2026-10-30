@@ -27,6 +27,8 @@ on:
       - 'app/scripts/planar-arm-ik.test.mjs'
       - 'app/src/components/avatar/vrmHumanoidRigAdapter.ts'
       - 'app/scripts/vrm-humanoid-rig-adapter.test.mjs'
+      - 'app/src/components/avatar/vrmRigCalibrationProfile.ts'
+      - 'app/scripts/vrm-rig-calibration-profile.test.mjs'
       - 'app/src/components/Avatar3DStage.tsx'
       - 'app/scripts/avatar-3d-stage.test.mjs'
       - '.github/workflows/aspect10-embodied-interaction.yml'
