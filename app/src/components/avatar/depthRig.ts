@@ -95,6 +95,6 @@ export function stepDepthRigSecondaryMotion(
   }else return transform;
   const state=stepSecondaryMotion(states.get(transform.id)??{position:0,velocity:0},target,deltaSeconds,options);
   states.set(transform.id,state);
-  return {...transform,rotation:[transform.rotation[0],transform.rotation[1],transform.rotation[2]+state.position]};
+  return {...transform,rotation:[transform.rotation[0],transform.rotation[1],transform.rotation[2]+state.position] as [number,number,number]};
  });
 }
