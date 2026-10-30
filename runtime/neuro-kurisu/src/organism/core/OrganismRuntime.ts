@@ -30,6 +30,7 @@ import { cameraEvidenceFromResult, inspectCameraFile, type CameraEvidence } from
 import { EmbodiedActionExecutor, type EmbodiedActionResult } from '../body/EmbodiedActionExecutor.ts';
 import { EmbodiedRecoveryController } from '../body/EmbodiedRecoveryController.ts';
 import type { VisionSemanticBackend } from '../body/VisionSemanticBackend.ts';
+import { TemporalObjectTracker } from '../body/TemporalObjectTracker.ts';
 import { RealityGroundingController, type RealityGroundingMode } from '../system/RealityGroundingController.ts';
 import { NeuralCausalTraceLedger } from '../system/NeuralCausalTraceLedger.ts';
 import { RealityLearningGate } from '../system/RealityLearningGate.ts';
@@ -149,6 +150,7 @@ export class OrganismRuntime {
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
+  private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
   private stepsSinceConsolidation = 0;
@@ -324,6 +326,13 @@ export class OrganismRuntime {
       if (this.initialized) return;
       await this.journal.write('info', 'runtime.init.begin');
       await this.core.init();
+      const restoredTemporalTracks=this.temporalObjectTracker.restoreFromPerception(
+        this.core.p41PerceptionSnapshot().entities,
+        Date.now(),
+      );
+      if(restoredTemporalTracks.restored>0){
+        await this.journal.write('info','runtime.perception.tracks-restored',restoredTemporalTracks);
+      }
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
@@ -1381,6 +1390,7 @@ export class OrganismRuntime {
     }
     const state = this.core.recordCameraEvidence(evidence);
     let semantic = null as Awaited<ReturnType<VisionSemanticBackend['analyze']>> | null;
+    let trackingMetrics: ReturnType<TemporalObjectTracker['update']>['metrics'] | null = null;
     if (this.config.visionBackend) this.core.setSemanticVisionAvailability(true);
     if (this.config.visionBackend && evidence.path) {
       const started = Date.now();
@@ -1391,6 +1401,14 @@ export class OrganismRuntime {
         });
         semantic = { ...semantic, latencyMs: Math.max(0, Date.now()-started) };
         if (semantic.semantic) {
+          const trackedFrame=this.temporalObjectTracker.update({
+            cameraId:normalizedCameraId,
+            at:evidence.at,
+            frameId:toolExecution.executionId, // execution identity, not image hash: identical static frames are still new captures.
+            objects:semantic.objects??[],
+          });
+          trackingMetrics=trackedFrame.metrics;
+          semantic={...semantic,objects:trackedFrame.objects};
           this.core.recordSemanticVisionFrame();
           this.core.p41PerceptionIngest({ vision: { cameraId: normalizedCameraId, sceneLabel: semantic.sceneLabel, confidence01: semantic.confidence01, objects: semantic.objects, relations: semantic.relations, events: semantic.events, latencyMs: semantic.latencyMs, semantic: true }, at: evidence.at });
           const pendingVision=this.core.p41NextPerception();
@@ -1410,7 +1428,7 @@ export class OrganismRuntime {
       ...successResult, ok: true, verified: toolExecution.verified, executionId: toolExecution.executionId,
       providerReceiptId: toolExecution.providerReceiptId ?? (typeof result.providerReceiptId === 'string' ? result.providerReceiptId : undefined),
       evidence, cameraEvidence: this.core.cameraEvidenceSnapshot(), semanticVision: semantic?.semantic === true,
-      semanticBackend: semantic?.backend ?? null, semanticResult: semantic,
+      semanticBackend: semantic?.backend ?? null, semanticResult: semantic, tracking: trackingMetrics,
     };
   }
 
