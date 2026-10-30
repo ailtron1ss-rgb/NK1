@@ -1,0 +1,59 @@
+name: NK1 3D embodiment surface validation
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/**"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/avatar-motor-intent.test.mjs"
+      - "app/scripts/live2d-production-contract.test.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/nk1-3d-embodiment-validation.yml"
+  push:
+    branches: [work/nk1-live2d-expressive-control-2026-10-30]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/**"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/avatar-motor-intent.test.mjs"
+      - "app/scripts/live2d-production-contract.test.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/nk1-3d-embodiment-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-3d-embodiment-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: App TypeScript check
+        run: npm --prefix app run typecheck
+      - name: 3D stage contract
+        run: npm --prefix app run test:avatar-3d-stage
+      - name: Avatar motor intent
+        run: npm --prefix app run test:avatar-motor-intent
+      - name: Live2D production contract
+        run: npm --prefix app run test:live2d-production-contract
+      - name: Development bundle build
+        run: npm --prefix app run build:dev
