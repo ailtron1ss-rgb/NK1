@@ -16,6 +16,8 @@ on:
       - 'app/src/components/avatar/vrmRigCalibrationSession.ts'
       - 'app/scripts/vrm-rig-calibration-session.test.mjs'
       - 'app/src/components/Avatar3DStage.tsx'
+      - 'app/src/components/avatar/avatarModelFingerprint.ts'
+      - 'app/scripts/avatar-model-fingerprint.test.mjs'
       - 'app/scripts/avatar-3d-stage.test.mjs'
       - '.github/workflows/aspect10-embodied-interaction.yml'
   push:
@@ -56,3 +58,5 @@ jobs:
         run: npm --prefix app run test:vrm-rig-calibration-profile
       - name: Run provenance-aware VRM calibration session tests
         run: npm --prefix app run test:vrm-rig-calibration-session
+      - name: Run exact avatar model fingerprint tests
+        run: npm --prefix app run test:avatar-model-fingerprint
