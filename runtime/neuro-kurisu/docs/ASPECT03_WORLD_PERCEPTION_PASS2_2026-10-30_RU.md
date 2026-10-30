@@ -135,6 +135,7 @@ VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `c
 - `src/organism/body/VisionSemanticBackend.ts`
 - `src/organism/body/GeminiVisionSemanticBackend.ts`
 - `src/organism/core/OrganismRuntime.ts`
+- `tests/world-perception-camera-runtime-tracking.mjs`
 
 Добавлено:
 - отдельный runtime tracker с состоянием на каждую камеру;
@@ -151,6 +152,8 @@ VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `c
 - отдельные camera namespaces, max-gap, max-age, stale timestamp и duplicate receipt guards;
 - одинаковый SHA изображения не используется как frame ID: неподвижная сцена всё равно даёт новый capture, а идемпотентный повтор одного receipt не удваивает tracking update;
 - runtime возвращает tracking metrics вместе с semantic result;
+- добавлен интеграционный тест публичного `OrganismRuntime.captureCamera()`: ActionGateway receipt подменяется, но реальный runtime capture path, image decoder, vision backend, tracker и P41 выполняются;
+- тест подтверждает, что одинаковый content SHA двух независимых capture receipt не блокирует второй кадр и не ломает ассоциацию track ID;
 - при старте процесса локальные активные tracks восстанавливаются из канонического persisted P41 snapshot по camera ID, track ID, imageBox и imageBoxAt;
 - velocity после рестарта безопасно инициализируется нулём, затем заново оценивается по двум свежим кадрам; синтетическая скорость не восстанавливается из одной рамки.
 - восстановленные P41/GroundedWorldState image boxes повторно валидируются; повреждённые координаты, будущие timestamps и отсутствующие camera bindings отбрасываются.
