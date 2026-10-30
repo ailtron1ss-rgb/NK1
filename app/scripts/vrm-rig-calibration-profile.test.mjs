@@ -33,3 +33,31 @@ test("imports JSON only after exact loaded-rig validation and round-trips determ
   assert.deepEqual(parseVrmRigCalibrationProfileJson(" ".repeat(32_769),context),{accepted:false,reason:"invalid-profile"});
   assert.equal(serializeVrmRigCalibrationProfileJson(profile,{...context,modelFingerprint:"sha256:other"}),null);
 });
+
+
+import { calibrateVrmArmFromMeasurement, createMeasuredVrmRigCalibrationProfile } from "../src/components/avatar/vrmRigCalibrationProfile.ts";
+
+const measuredArm = (offset = 0) => ({
+  shoulderAxis:"z", elbowAxis:"x", shoulderSign:1, elbowSign:-1,
+  bindShoulder:{x:0,y:0,z:0.1}, bindElbow:{x:0.2,y:0,z:0},
+  observedShoulder:{x:0,y:0,z:0.1+0.5+offset}, observedElbow:{x:0.2-0.7+offset,y:0,z:0},
+  referenceShoulderAngleRad:0.5, referenceElbowAngleRad:0.7,
+  shoulderMinRad:-1.2, shoulderMaxRad:1.2, elbowMinRad:-0.1, elbowMaxRad:2.4,
+});
+
+test("derives offsets from known-angle reference poses and creates an exact model-bound profile",()=>{
+  const measured=calibrateVrmArmFromMeasurement(measuredArm(0.03));
+  assert.equal(measured.accepted,true);
+  if(measured.accepted){assert.ok(Math.abs(measured.calibration.shoulderOffsetRad-0.03)<1e-9);assert.ok(Math.abs(measured.calibration.elbowOffsetRad-0.03)<1e-9);}
+  const result=createMeasuredVrmRigCalibrationProfile(context,{left:measuredArm(0.03),right:measuredArm(-0.02)});
+  assert.equal(result.accepted,true);
+  if(result.accepted){assert.equal(result.profile.calibrationMethod,"manual-measured");assert.equal(result.profile.left.shoulderBoneName,"LeftUpperArm");assert.equal(result.profile.right.elbowBoneName,"RightLowerArm");}
+});
+
+test("refuses weak fixture motion, off-axis movement, unsafe limits and invalid measurements",()=>{
+  assert.deepEqual(calibrateVrmArmFromMeasurement({...measuredArm(),referenceShoulderAngleRad:0.01}),{accepted:false,reason:"insufficient-reference-motion"});
+  assert.deepEqual(calibrateVrmArmFromMeasurement({...measuredArm(),observedShoulder:{x:0.3,y:0,z:0.6}}),{accepted:false,reason:"off-axis-motion"});
+  assert.deepEqual(calibrateVrmArmFromMeasurement({...measuredArm(),shoulderMinRad:2,shoulderMaxRad:1}),{accepted:false,reason:"invalid-measurement"});
+  assert.deepEqual(calibrateVrmArmFromMeasurement({...measuredArm(),observedElbow:{x:Number.NaN,y:0,z:0}}),{accepted:false,reason:"invalid-measurement"});
+  assert.deepEqual(calibrateVrmArmFromMeasurement({...measuredArm(),elbowMinRad:0.5,elbowMaxRad:0.6}),{accepted:false,reason:"reference-outside-joint-limits"});
+});
