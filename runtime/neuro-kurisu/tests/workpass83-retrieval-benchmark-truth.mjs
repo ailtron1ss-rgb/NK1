@@ -84,7 +84,7 @@ assert.ok(Number.isFinite(report.metrics.baseline.recallAtK01));
 assert.ok(Number.isFinite(report.metrics.candidate.mrr01));
 assert.equal(report.promotion.status, report.promotion.allowed ? 'candidate-eligible-for-separate-review' : 'not-promoted',
   'promotion status must faithfully reflect all gates; this fixture is not independent scientific evidence');
-assert.equal(report.schemaVersion, 6, 'metric shape changes must advance the report schema');
+assert.equal(report.schemaVersion, 8, 'metric and conversation-cluster shape changes must advance the report schema');
 assert.equal(report.confidence.unsupportedRetrievalRate01.samples, 200,
   'unsupported retrieval must be evaluated with the configured paired bootstrap');
 assert.ok(Number.isFinite(report.confidence.unsupportedRetrievalRate01.upperBound01),
