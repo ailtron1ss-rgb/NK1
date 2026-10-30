@@ -9,6 +9,7 @@ on:
       - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/live2d-intent-ack.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
+      - "app/src/components/AvatarStage.tsx"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
