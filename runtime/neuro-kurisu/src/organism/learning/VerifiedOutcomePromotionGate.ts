@@ -46,7 +46,16 @@ const DEFAULTS: PromotionGateConfig = {
 export function normalizePromotionGateConfig(
   config: Partial<PromotionGateConfig> = {},
 ): PromotionGateConfig {
-  const cfg = normalizePromotionGateConfig(config);
+  const cfg = { ...DEFAULTS, ...config };
+  if (!Number.isSafeInteger(cfg.minPairedTasks) || cfg.minPairedTasks < 1 ||
+      !Number.isSafeInteger(cfg.minFamilies) || cfg.minFamilies < 1 ||
+      !Number.isFinite(cfg.minAbsoluteGain) || cfg.minAbsoluteGain < 0 || cfg.minAbsoluteGain > 1 ||
+      !Number.isFinite(cfg.maxFamilyRegression) || cfg.maxFamilyRegression < 0 || cfg.maxFamilyRegression > 1 ||
+      typeof cfg.requirePositiveConfidenceLowerBound !== 'boolean' ||
+      !['partition', 'seed-repeated'].includes(cfg.familyPairCountMode) ||
+      !Number.isFinite(cfg.familyWiseAlpha) || cfg.familyWiseAlpha <= 0 || cfg.familyWiseAlpha >= 1) {
+    throw new Error('invalid promotion gate configuration');
+  }
   return cfg;
 }
 
