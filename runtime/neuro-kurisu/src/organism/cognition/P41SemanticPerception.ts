@@ -185,7 +185,7 @@ export interface P41SemanticInput {
   };
   audio?:{events?:Array<{label:string;confidence01?:number}>;relations?:Array<{from:string;relation:string;to:string;confidence01?:number}>;latencyMs?:number;semantic:boolean};
   sensor?:{location?:string;orientationDeg?:number;energy01?:number;thermal01?:number;capacity01?:number;motion01?:number;freshness01?:number};
-  world?:{scene?:string;evidenceKind?:P41EvidenceKind;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;evidenceKind?:P41EvidenceKind}>;events?:string[]};
+  world?:{scene?:string;evidenceKind?:P41EvidenceKind;objects?:Array<{label:string;kind?:P41EntityKind;confidence01?:number;trackId?:string;sourceId?:string;coordinateFrameId?:string;x?:number;y?:number;z?:number;evidenceKind?:P41EvidenceKind}>;events?:string[]};
   at?:number;
 }
 
@@ -316,7 +316,9 @@ export class P41SemanticPerceptionEngine {
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
       const evidenceKind=o.evidenceKind??sceneEvidenceKind;
-      this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,null,evidenceKind,namespacedTrackId);
+      const coordinateFrameId=cleanTrackId(o.coordinateFrameId);
+      const position=coordinateFrameId?finitePosition(o.x,o.y,o.z):null;
+      this.upsertEntity(String(o.label),o.kind??'object',clamp(o.confidence01??.35),.52,'world',at,position,evidenceKind,namespacedTrackId,position?coordinateFrameId:undefined);
     }
     for(const e of (w.events??[]).slice(0,16)) this.upsertEvent(String(e),.6,'world',at,sceneEvidenceKind);
     this.recordModality('world',.7,0);
