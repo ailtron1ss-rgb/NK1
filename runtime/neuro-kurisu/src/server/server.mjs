@@ -590,8 +590,9 @@ async function route(req, res) {
             res.on('drain', onDrain);
             res.on('close', cleanup);
             req.on('aborted', cleanup);
-            publish(runtime.motor.latestFrame());
-            unsubscribe = runtime.motor.subscribe(publish, false);
+            const initialDiagnostics = runtime.motor.diagnostics();
+            write(`event: motor-frame-status\ndata: ${JSON.stringify({ configured: initialDiagnostics.configured, hasFrame: initialDiagnostics.channel.hasLatest })}\n\n`);
+            unsubscribe = runtime.motor.subscribe(publish, true);
             return;
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame') {
