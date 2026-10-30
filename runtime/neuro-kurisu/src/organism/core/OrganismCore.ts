@@ -8732,6 +8732,7 @@ export class OrganismCore {
                 },
                 evidenceReceiptId: hasStrongExternalReceipt ? learning.evidenceReceiptId : undefined,
                 learningScale01: learning.learningScale01,
+                identityUpdateScale01: learning.identityUpdateScale01,
                 evidence01: learning.evidence01,
                 independent01: learning.independent01,
                 consequence01: learning.consequence01,
