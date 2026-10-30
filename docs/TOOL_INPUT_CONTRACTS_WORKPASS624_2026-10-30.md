@@ -62,3 +62,9 @@ The references motivate the design. NK1's implementation is a limited native ada
 
 - Replace the deep node:util/types type import with the documented node:util namespace export types.isProxy.
 - Runtime behavior remains the same; this is a TypeScript declaration-surface compatibility fix for the repository's pinned @types/node.
+
+
+## WorkPass628 — declare the Node util.types API in the runtime shim
+
+- The runtime compiler uses the repository-local Node shim; extend its existing node:util declaration with the runtime-provided types.isProxy function.
+- This preserves runtime Proxy detection and makes the declaration match the supported Node built-in API without installing a dependency.

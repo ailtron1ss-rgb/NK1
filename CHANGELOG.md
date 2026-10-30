@@ -1,3 +1,7 @@
+## [NK1][WorkPass628] Complete the Node util.types declaration
+
+- Extend runtime/node-shims.d.ts with the types.isProxy signature already provided by Node's node:util module. This fixes the exact pinned TypeScript shim surface; no dependency or runtime fallback is added.
+
 ## [NK1][WorkPass627] Use the supported Node util type surface
 
 - Import types.isProxy from node:util instead of the deep node:util/types path, which is available at runtime but absent from the repository's pinned Node declarations.
