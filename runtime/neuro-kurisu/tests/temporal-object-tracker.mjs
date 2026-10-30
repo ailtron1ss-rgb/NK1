@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { TemporalObjectTracker, isValidNormalizedBoundingBox } from '../src/organism/body/TemporalObjectTracker.ts';
 import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
+import { PerceptualEvidenceCompiler } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
+import { GroundedWorldState } from '../src/organism/world/GroundedWorldState.ts';
 
 const box=(x,y,width=.18,height=.3)=>({x,y,width,height});
 assert.equal(isValidNormalizedBoundingBox(box(.1,.1)), true);
@@ -50,7 +52,19 @@ const p41Chairs=secondSemantic.entities.filter(entity=>entity.label==='chair'&&e
 assert.equal(p41Chairs.length,2);
 assert.equal(new Set(p41Chairs.map(entity=>entity.trackId)).size,2);
 assert.ok(p41Chairs.every(entity=>entity.modalities.includes('vision')));
+assert.ok(p41Chairs.every(entity=>entity.imageBox&&entity.imageBoxCameraId===0&&entity.imageBoxAt===1_500));
 assert.ok(firstSemantic.entities.some(entity=>entity.label==='chair'));
+const evidenceCompiler=new PerceptualEvidenceCompiler();
+const evidenceState=evidenceCompiler.compile({at:1_500,semantic:secondSemantic});
+const groundedWorld=new GroundedWorldState();
+const worldSnapshot=groundedWorld.integrate({at:1_500,perception:secondSemantic,evidence:evidenceState});
+const groundedChairs=worldSnapshot.objects.filter(object=>object.label==='chair');
+assert.equal(groundedChairs.length,2);
+assert.ok(groundedChairs.every(object=>object.bbox2D&&object.bboxCameraId===0&&object.bboxAt===1_500));
+assert.deepEqual(groundedChairs.map(object=>object.bbox2D).sort((a,b)=>a.x-b.x),[
+  {x:.1,y:.11,width:.18,height:.3},
+  {x:.72,y:.11,width:.18,height:.3},
+]);
 
 // A single prior track cannot be assigned to two competing current detections.
 const ambiguousTracker=new TemporalObjectTracker({sessionId:'ambiguity',maxTrackGapMs:2_000});
