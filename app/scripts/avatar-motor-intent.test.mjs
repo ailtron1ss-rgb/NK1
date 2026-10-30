@@ -53,9 +53,20 @@ test("explanatory language produces an inspectable body-level gesture intention"
     speaking: true, hasFreshTurn: true, turnText: "Смотри, я объясню, что показывают данные.", awake: true,
   });
   assert.equal(plan.action, "explain");
-  assert.equal(plan.motionGroup, "TapBody");
+  assert.equal(plan.motionGroup, "Special");
+  assert.equal(plan.motionIndex, 1, "explanations should select the shipped upper-limb gesture clip");
   assert.equal(plan.gesture, true);
   assert.ok(plan.gazeX > 0, "explanation should direct attention toward the explanatory target");
+});
+
+test("the explanatory motion selection points to a shipped clip with authored arm and hand curves", async () => {
+  const motionPath = new URL("../../runtime/neuro-kurisu/public/live2d/Kurisu/motions/xhiyori_m03.motion3.json", import.meta.url);
+  const motion = JSON.parse(await readFile(motionPath, "utf8"));
+  const ids = new Set(motion.Curves.filter((curve) => curve.Target === "Parameter").map((curve) => curve.Id));
+  for (const id of ["ParamArmLA", "ParamArmRA", "ParamHandL", "ParamHandR"]) assert.ok(ids.has(id), `missing authored gesture curve: ${id}`);
+  const plan = planAvatarMotorIntent({ emotion: "calm", valence: 0.5, arousal: 0.7, action: "respond", thinking: false, speaking: true, hasFreshTurn: true, turnText: "Смотри, объясню результат.", awake: true });
+  assert.equal(plan.motionGroup, "Special");
+  assert.equal(plan.motionIndex, 1);
 });
 
 test("gesture profiles distinguish cognition, presentation, inspection and reassurance", () => {
