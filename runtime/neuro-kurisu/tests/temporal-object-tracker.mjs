@@ -53,7 +53,17 @@ assert.equal(p41Chairs.length,2);
 assert.equal(new Set(p41Chairs.map(entity=>entity.trackId)).size,2);
 assert.ok(p41Chairs.every(entity=>entity.modalities.includes('vision')));
 assert.ok(p41Chairs.every(entity=>entity.imageBox&&entity.imageBoxCameraId===0&&entity.imageBoxAt===1_500));
+assert.ok(p41Chairs.every(entity=>entity.position===null),'image-space boxes must not be promoted into world coordinates');
 assert.ok(firstSemantic.entities.some(entity=>entity.label==='chair'));
+const invalidBoxConfidenceEngine=new P41SemanticPerceptionEngine();
+const invalidBoxConfidence=invalidBoxConfidenceEngine.ingest({
+  at:1_600,
+  vision:{cameraId:0,semantic:true,objects:[{
+    label:'table',confidence01:.99,
+    bbox:{x:.1,y:.1,width:.3,height:.4},bboxConfidence01:4,
+  }]},
+});
+assert.equal(invalidBoxConfidence.entities.find(entity=>entity.label==='table')?.imageBox,undefined);
 const evidenceCompiler=new PerceptualEvidenceCompiler();
 const evidenceState=evidenceCompiler.compile({at:1_500,semantic:secondSemantic});
 const groundedWorld=new GroundedWorldState();
