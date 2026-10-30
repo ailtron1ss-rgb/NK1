@@ -64,6 +64,14 @@ export interface PairedMethodSummary {
  * counts. A task-cell sign test is still reported for diagnostics but is not
  * accepted by the promotion gate as an independent-sample test.
  */
+export const MAX_EXACT_SIGN_TEST_DISCORDANT = 1_000_000;
+
+/**
+ * Exact two-sided paired sign test. Ties are excluded. The algorithm is
+ * O(min(wins, losses)) time and O(1) extra memory. A hard pair limit prevents
+ * adversarial input from turning validation into an unbounded CPU operation;
+ * confirmatory summaries beyond this exact-computation budget fail closed.
+ */
 export function pairedSignTestPValue(wins: number, losses: number): number {
   if (!Number.isSafeInteger(wins) || wins < 0 || !Number.isSafeInteger(losses) || losses < 0 ||
       !Number.isSafeInteger(wins + losses)) {
@@ -71,21 +79,25 @@ export function pairedSignTestPValue(wins: number, losses: number): number {
   }
   const n = wins + losses;
   if (n === 0) return 1;
+  if (n > MAX_EXACT_SIGN_TEST_DISCORDANT) {
+    throw new Error(`paired sign-test exceeds exact computation limit of ${MAX_EXACT_SIGN_TEST_DISCORDANT}`);
+  }
   const tail = Math.min(wins, losses);
   const logTwo = Math.log(2);
   let logChoose = 0;
-  let maxLog = Number.NEGATIVE_INFINITY;
-  const logTerms: number[] = [];
-  for (let k = 0; k <= tail; k++) {
-    if (k > 0) logChoose += Math.log(n - k + 1) - Math.log(k);
-    const term = logChoose - n * logTwo;
-    logTerms.push(term);
-    if (term > maxLog) maxLog = term;
+  for (let k = 1; k <= tail; k++) {
+    logChoose += Math.log(n - k + 1) - Math.log(k);
   }
-  const scaledSum = logTerms.reduce((sum, term) => sum + Math.exp(term - maxLog), 0);
-  const lowerTail = Math.exp(maxLog) * scaledSum;
-  // Avoid reporting a mathematically non-zero exact p-value as zero solely
-  // because IEEE-754 cannot represent a more extreme tail probability.
+
+  // P(X=tail) is the largest binomial mass in the lower tail. Sum backwards
+  // by recurrence to avoid allocating an array proportional to the sample.
+  const logTailMass = logChoose - n * logTwo;
+  let mass = Math.exp(logTailMass);
+  let lowerTail = mass;
+  for (let k = tail; k > 0; k--) {
+    mass *= k / (n - k + 1);
+    lowerTail += mass;
+  }
   return Math.min(1, Math.max(Number.MIN_VALUE, 2 * lowerTail));
 }
 
