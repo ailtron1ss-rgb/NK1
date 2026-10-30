@@ -1,3 +1,11 @@
+## [NK1][Aspect 08] Add licensed wardrobe pack gate and renderer-acknowledged switching (2026-10-30)
+
+- Add a versioned wardrobe pack manifest contract requiring source, license, attribution, target body/rig identity, unique asset IDs/paths, SHA-256 declarations, supported MIME types and bounded asset sizes.
+- Add a two-phase outfit-switch protocol: validate compatibility and plan first; change the active outfit only after the selected renderer acknowledges every expected asset for the exact request. Stale, partial or failed acknowledgements preserve the previous outfit.
+- Add regression tests for missing license/provenance, unsafe paths, invalid hashes, size limits, body/rig mismatch, stale acknowledgements, partial loads and successful commit.
+- Boundary: manifest validation checks declarations; the asset loader must still hash actual bytes. This pass defines the integration contract and does not claim a renderer, persistent wardrobe UI, actual garment pack or visual E2E.
+- Extend `npm run test:wardrobe` to run both domain and pack/switch protocol suites.
+
 ## [NK1][Aspect 08] Add modular wardrobe domain and guarded outfit recommendation (2026-10-30)
 
 - Replace the legacy-only outfit-label concept with a renderer-independent wardrobe domain: typed garment slots, six outfit families, garment dependencies/exclusions and per-renderer asset states for Live2D, depth-2D and VRM/3D.
