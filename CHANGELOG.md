@@ -1,3 +1,11 @@
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
+
 ## [NK1][Aspect04] Harden renderer world-matrix propagation (2026-10-30)
 
 - Explicitly mark each bound Three.js-compatible layer target as `matrixWorldNeedsUpdate` after writing its canonical local matrix, so an already-rendered object cannot retain a stale world transform.
