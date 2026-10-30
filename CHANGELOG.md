@@ -2811,3 +2811,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 ## 2026-10-30 — Aspect 12 mobile grid containment
 - Added `min-w-0` to the Integration Console's responsive grid columns and panel surfaces, and to Hexis panel/stat cards, so long content cannot impose an oversized min-content width on their parent grids.
 - Fix targets the measured 392px/346px grid tracks inside a 332px mobile content area; validation remains pending in the exact-SHA browser smoke.
+
+- Aspect 12 follow-up: bounded the Conscio federation console and its two-column layout with `min-w-0` / `minmax(0,1fr)` after the 390px Chromium report isolated residual intrinsic grid expansion there; browser revalidation is pending.
