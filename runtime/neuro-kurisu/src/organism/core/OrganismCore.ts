@@ -1513,6 +1513,10 @@ export class OrganismCore {
         this.cognitiveRuntime.adaptivePolicy.restore(this.persisted.facets.learning.adaptivePolicy);
         this.cognitiveRuntime.canonicalTemporalCredit.restore(this.persisted.system.canonicalTemporalCredit);
         this.developmentalNeural.p23Learning.restore(this.persisted.facets.learning.p23);
+        const learningLifecycleRecovery = this.developmentalNeural.p23Learning.reconcileLearningLifecycleOutcomes();
+        if (learningLifecycleRecovery.configured && !learningLifecycleRecovery.available) {
+            throw new Error('p23-learning-lifecycle-reconciliation-failed');
+        }
         this.developmentalNeural.p25ScientificDevelopment.restore(this.persisted.facets.advanced.p25);
         this.organismSystems.self.p54LongHorizonEvidence.restore((this.persisted.facets.advanced as any).p54LongHorizonEvidence);
         this.organismSystems.self.p55DevelopmentalForkUniverse.restore((this.persisted.facets.advanced as any).p55DevelopmentalForkUniverse);
