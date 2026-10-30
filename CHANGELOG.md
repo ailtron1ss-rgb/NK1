@@ -1,3 +1,11 @@
+## [WorkPass641] — Complete partial VRM ExpressionManager facial coverage
+
+- Preserve native VRM ExpressionManager ownership for every preset/custom semantic the loaded model actually exposes.
+- Route only missing facial semantics through the generic per-mesh GLB morph adapter, including vowel visemes when the VRM does not expose those presets; native expression channels are not double-written.
+- Keep VRMA-owned native expression tracks and the existing transition arbitration intact; speech visemes continue to override only their corresponding mouth channels.
+- Add a regression assertion for partial ExpressionManager coverage and native-before-generic arbitration.
+- Validation: source and static regression committed; Actions execution and real VRM/GLB browser/device E2E are not yet confirmed.
+
 ## [WorkPass640] — Partial VRM facial-map fallback
 
 - Changed the no-ExpressionManager path to compose native VRM morph binds with the generic GLB semantic adapter instead of treating any non-empty native map as complete coverage.
