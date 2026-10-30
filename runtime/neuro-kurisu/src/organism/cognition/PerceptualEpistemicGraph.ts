@@ -13,6 +13,8 @@ export class PerceptualEpistemicGraph {
     const claim=input.claim.trim().slice(0,360); if(!claim)return null;
     const confidence01=clamp(input.confidence01);
     const c:EvidenceClaim={id:idFor(input.modality,claim,input.at),at:input.at,modality:input.modality,claim,source:input.source,confidence01,targetIds:(input.targetIds??[]).slice(0,16),supersedes:input.supersedes};
+    const replayed=this.state.claims.find(x=>x.id===c.id);
+    if(replayed)return structuredClone(replayed);
     const superseded=input.supersedes
       ? this.state.claims.find(x=>x.id===input.supersedes&&x.id!==c.id)
       : undefined;
