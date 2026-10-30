@@ -380,11 +380,105 @@ export class MemoryOS2{
   private restoredIdentityFingerprint(item:MemoryItem2):string{
    return stableMemoryJson({
     id:item.id,content:item.content,kind:item.kind,source:item.source,epistemicStatus:item.epistemicStatus,
+    context:item.context??{},tags:[...(item.tags??[])].sort(),entities:[...(item.entities??[])].sort(),
+    semanticLinks:[...(item.semanticLinks??[])].sort(),temporalLinks:[...(item.temporalLinks??[])].sort(),
+    causalLinks:[...(item.causalLinks??[])].sort(),contradictionLinks:[...(item.contradictionLinks??[])].sort(),
     validFromAt:item.validFromAt,validUntilAt:item.validUntilAt,observedAt:item.observedAt,
     supersedesId:item.supersedesId,supersededById:item.supersededById,
     revisionGroupId:item.revisionGroupId,revisionSequence:item.revisionSequence,
     evidenceLineageKeys:[...(item.evidenceLineageKeys??[])].sort(),
    });
+  }
+  /**
+   * Treat persisted snapshots as untrusted serialized input. Keep compatible legacy
+   * rows by repairing bounded optional fields, but reject rows that cannot represent
+   * a memory (identity, text or kind). Derived vectors are validated and re-created
+   * lazily; stored hashes are never trusted over the actual content.
+   */
+  private normalizeRestoredMemoryRow(candidate:unknown,now:number):MemoryItem2|null{
+   if(!candidate||typeof candidate!=='object'||Array.isArray(candidate))return null;
+   const row=candidate as Record<string,any>;
+   const id=typeof row.id==='string'?row.id.trim():'';
+   const content=typeof row.content==='string'?row.content.trim():'';
+   const kinds=new Set(['sensory','working','episodic','semantic','autobiographical','procedural','social','identity','dream']);
+   if(!id||id.length>160||!content||content.length>32768||!kinds.has(String(row.kind)))return null;
+   const finite=(value:unknown,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?n:fallback;};
+   const boundedStrings=(value:unknown,maxItems:number,maxChars:number)=>{
+    if(!Array.isArray(value))return [];
+    return [...new Set(value.filter((item):item is string=>typeof item==='string').map(item=>item.trim().slice(0,maxChars)).filter(Boolean))].slice(0,maxItems);
+   };
+   const createdAt=finite(row.createdAt,finite(row.observedAt,now));
+   const observedAt=finite(row.observedAt,createdAt);
+   const validFromAt=finite(row.validFromAt,createdAt);
+   const validUntilAt=row.validUntilAt==null?null:finite(row.validUntilAt,Number.NaN);
+   const provenanceClasses=new Set(['device','external','user','agent','derived','simulation','unknown']);
+   const explicitProvenance=provenanceClasses.has(String(row.provenanceClass))?row.provenanceClass as MemoryProvenanceClass:undefined;
+   const source=typeof row.source==='string'&&row.source.trim()?row.source.trim().slice(0,240):'unknown';
+   const provenanceClass=this.provenanceClassFor(source,explicitProvenance);
+   const statusValues=new Set(['fact','belief','hypothesis','unknown','quarantined']);
+   const epistemicStatus=statusValues.has(String(row.epistemicStatus))?row.epistemicStatus as EpistemicStatus:'unknown';
+   const context:Record<string,string>={};
+   if(row.context&&typeof row.context==='object'&&!Array.isArray(row.context)){
+    for(const [key,value] of Object.entries(row.context).slice(0,24)){
+     if(typeof key==='string'&&typeof value==='string'&&key.trim())context[key.trim().slice(0,96)]=value.slice(0,1000);
+    }
+   }
+   const semanticVector=normalizeValidatedEmbeddingVector(row.semanticVector)??[];
+   const evidenceSeed={
+    ...row,id,content,source,createdAt,observedAt,
+    provenanceClass,
+    sourceAuthority01:clamp(finite(row.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),
+    evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+    independenceKey:typeof row.independenceKey==='string'?row.independenceKey.trim().slice(0,96):undefined,
+   };
+   const evidenceSources=this.normalizeEvidenceSources(evidenceSeed);
+   const evidenceLineageKeys=[...new Set([
+    ...boundedStrings(row.evidenceLineageKeys,32,160),
+    ...evidenceSources.map(item=>this.evidenceKey(item)),
+   ])].slice(-32);
+   const residencyTier=(row.residencyTier==='hot'||row.residencyTier==='warm'||row.residencyTier==='cold')
+    ?row.residencyTier:(semanticVector.length?'warm':'cold');
+   return {
+    id,content,contentHash:memoContentHash(content),
+    tags:boundedStrings(row.tags,24,120),
+    context:Object.keys(context).length?context:undefined,
+    kind:row.kind as MemoryItem2['kind'],
+    createdAt,
+    lastAccessAt:finite(row.lastAccessAt,createdAt),
+    salience:clamp(finite(row.salience,.5)),
+    emotionalWeight:clamp(finite(row.emotionalWeight,0)),
+    identityRelevance:clamp(finite(row.identityRelevance,0)),
+    goalRelevance:clamp(finite(row.goalRelevance,0)),
+    socialRelevance:clamp(finite(row.socialRelevance,0)),
+    predictionError:clamp(finite(row.predictionError,0)),
+    temperature01:clamp(finite(row.temperature01,0)),
+    confidence:clamp(finite(row.confidence,.5)),
+    epistemicStatus,
+    source,
+    entities:boundedStrings(row.entities,24,160).length?boundedStrings(row.entities,24,160):extractEntities(content),
+    semanticLinks:boundedStrings(row.semanticLinks,24,160),
+    temporalLinks:boundedStrings(row.temporalLinks,24,160),
+    causalLinks:boundedStrings(row.causalLinks,24,160),
+    contradictionLinks:boundedStrings(row.contradictionLinks,24,160),
+    revisionHistory:normalizeRevisionHistory(row.revisionHistory),
+    validFromAt,
+    validUntilAt:Number.isFinite(validUntilAt)?validUntilAt:null,
+    observedAt,
+    supersedesId:typeof row.supersedesId==='string'?row.supersedesId.slice(0,160):null,
+    supersededById:typeof row.supersededById==='string'?row.supersededById.slice(0,160):null,
+    revisionGroupId:typeof row.revisionGroupId==='string'&&row.revisionGroupId.trim()?row.revisionGroupId.trim().slice(0,160):id,
+    revisionSequence:Math.max(1,Math.min(1_000_000,Math.floor(finite(row.revisionSequence,1)))),
+    provenanceClass,
+    sourceAuthority01:clamp(finite(row.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),
+    independenceKey:evidenceSeed.independenceKey,
+    evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+    evidenceSources,
+    evidenceLineageKeys,
+    dormant:row.dormant===true,
+    retrievalCount:Math.max(0,Math.min(2_147_483_647,Math.floor(finite(row.retrievalCount,0)))),
+    semanticVector,
+    residencyTier,
+   };
   }
   private dedupeRestoredItems(rows:MemoryItem2[]):MemoryItem2[]{
    const groups=new Map<string,MemoryItem2[]>();
@@ -635,12 +729,14 @@ export class MemoryOS2{
  restore(s:MemoryOSState2|undefined){
   const sourceItems=Array.isArray(s?.items)?s!.items:[];
   const boundedItems=sourceItems.slice(0,1600);
-  const rawItems:any[]=[];
+  const restoreNow=Date.now();
+  const rawItems:MemoryItem2[]=[];
+  let invalidRowsDropped=0;
   for(const candidate of boundedItems){
-   if(!candidate||typeof candidate!=='object'||Array.isArray(candidate)||typeof candidate.id!=='string'||!candidate.id.trim())continue;
-   const id=candidate.id.trim();rawItems.push(id===candidate.id?candidate:{...candidate,id});
+   const normalized=this.normalizeRestoredMemoryRow(candidate,restoreNow);
+   if(normalized)rawItems.push(normalized);else invalidRowsDropped++;
   }
-  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:boundedItems.length-rawItems.length,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0};
+  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0};
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
     semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
@@ -663,37 +759,7 @@ export class MemoryOS2{
    budgetMisses:Math.max(0,Math.floor(Number((s as any)?.budgetMisses??0))),
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
-   items:this.dedupeRestoredItems(rawItems.map((m:any)=>({
-    ...m,
-    // P2697: cold residency is allowed to remain truly cold across restore.
-    // Re-materialize vectors lazily only for candidates that actually reach
-    // semantic scoring; this avoids rebuilding up to 1600 vectors on startup.
-    semanticVector:Array.isArray(m?.semanticVector)&&m.semanticVector.length?m.semanticVector:[],
-    entities:Array.isArray(m?.entities)?m.entities:extractEntities(String(m?.content??'')),
-    contentHash:String(m?.contentHash||memoContentHash(String(m?.content??''))),
-    tags:Array.isArray(m?.tags)?[...new Set(m.tags.map((x:any)=>String(x)).filter(Boolean))].slice(0,24):[],
-    context:m?.context&&typeof m.context==='object'?Object.fromEntries(Object.entries(m.context).filter(([k,v])=>typeof k==='string'&&typeof v==='string').slice(0,24)):undefined,
-    semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
-    temporalLinks:Array.isArray(m?.temporalLinks)?m.temporalLinks:[],
-    causalLinks:Array.isArray(m?.causalLinks)?m.causalLinks:[],
-    contradictionLinks:Array.isArray(m?.contradictionLinks)?m.contradictionLinks:[],
-    validFromAt:Number.isFinite(Number(m?.validFromAt))?Number(m.validFromAt):Number(m?.createdAt??Date.now()),
-    validUntilAt:m?.validUntilAt==null?null:(Number.isFinite(Number(m.validUntilAt))?Number(m.validUntilAt):null),
-    observedAt:Number.isFinite(Number(m?.observedAt))?Number(m.observedAt):Number(m?.createdAt??Date.now()),
-    supersedesId:m?.supersedesId==null?null:String(m.supersedesId),
-    supersededById:m?.supersededById==null?null:String(m.supersededById),
-    revisionHistory:normalizeRevisionHistory(m?.revisionHistory),
-    revisionGroupId:m?.revisionGroupId?String(m.revisionGroupId):String(m?.id??m?.contentHash??'revision'),
-    revisionSequence:Math.max(1,Math.floor(Number(m?.revisionSequence??1))),
-    provenanceClass:(['device','external','user','agent','derived','simulation','unknown'].includes(m?.provenanceClass)?m.provenanceClass:'unknown') as MemoryProvenanceClass,
-    sourceAuthority01:clamp(Number(m?.sourceAuthority01??.5)),
-    independenceKey:m?.independenceKey==null?undefined:String(m.independenceKey).slice(0,96),
-    evidenceFreshnessAt:Number.isFinite(Number(m?.evidenceFreshnessAt))?Number(m.evidenceFreshnessAt):Number(m?.observedAt??m?.createdAt??Date.now()),
-    evidenceSources:this.normalizeEvidenceSources(m),
-    evidenceLineageKeys:[...new Set([...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])].slice(-32),
-    temperature01:clamp(Number(m?.temperature01??0)),
-    residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
-  }))) };
+   items:this.dedupeRestoredItems(rawItems) };
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
