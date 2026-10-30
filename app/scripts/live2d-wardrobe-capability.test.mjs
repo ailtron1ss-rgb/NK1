@@ -35,12 +35,12 @@ test("expression-only outfit controls remain limited and do not claim garment sw
   assert.deepEqual(result.expressionControlIds, ["ParamOutfitVariant"]);
 });
 
-test("explicit outfit parameter is recognized as a candidate switch contract", () => {
+test("explicit outfit parameter is only a candidate until moc3 drawable mapping is verified", () => {
   const result = inspectLive2DWardrobeCapability(model, {
     Parameters: [...display.Parameters, { Id: "ParamOutfitVariant", Name: "Outfit variant" }],
   });
-  assert.equal(result.status, "switchable");
-  assert.equal(result.canSwitchGarments, true);
+  assert.equal(result.status, "candidate-control");
+  assert.equal(result.canSwitchGarments, false);
   assert.deepEqual(result.wardrobeControlIds, ["ParamOutfitVariant"]);
 });
 
