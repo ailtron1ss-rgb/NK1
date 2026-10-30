@@ -112,3 +112,10 @@ This pass only adds a pure TypeScript contract and Node tests; the commands abov
 ## CI correction
 
 The first exact-head run failed in two assertions, not in the transform implementation: expected world rotations omitted inherited parent rotations, and accumulated floating-point depth was compared with strict equality. Both assertions were corrected to match the documented hierarchy semantics and use a numeric tolerance. The corrected workflow run [41017134702](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41017134702) passed all 13 focused tests on code/test commit `0ad1552931e244af39cb0cd01b09cd9ed26afdad`. The current PR head is a later CHANGELOG-only commit (`ca0002b261046374e6a3c7ef340ec39f58616b9a`), so the tested source and test inputs are identical; full app typecheck/build and visual E2E remain unverified.
+
+
+## Motor-controller binding adapter
+
+- Added `resolveDepthRigPoseFromMotorFrame(...)` with explicit `DepthRigJointBinding` records. Motor joint IDs are never guessed from node names; each binding specifies node ID, joint ID, rest angle and optional scale/safety envelope.
+- Active motor goals can drive bound rig rotations through bounded radians-to-degrees conversion. Idle/rejected/expired frames produce no pose deltas; unavailable joints are ignored; duplicate or unsafe bindings fail closed.
+- This is the intended narrow seam for PR #410's renderer-neutral `MotorFrame` output. It is not yet wired into a live 2.5D renderer, and the actual skeleton-to-art binding profile still needs authoring.
