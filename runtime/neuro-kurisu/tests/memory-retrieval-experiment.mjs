@@ -144,6 +144,17 @@ assert.equal(leakedConversationReport.datasetIntegrity.validForPromotion, false)
 assert.equal(leakedConversationReport.promotion.gates.datasetIntegrity, false);
 assert.equal(leakedConversationReport.promotion.allowed, false);
 
+// Multi-session task slices expose their own independent dialogue counts and
+// cluster-size profile instead of borrowing aggregate dataset counts.
+const multiSessionGroupedExamples = groupedExamples.map(row => ({ ...row, category: 'multi-session' }));
+const multiSessionGroupedReport = runMemoryOS2RetrievalBenchmark(snapshot, multiSessionGroupedExamples, {
+  ...options,
+  datasetProvenance: { ...provenance, contentSha256: fingerprintMemoryRetrievalDataset(multiSessionGroupedExamples) },
+});
+assert.equal(multiSessionGroupedReport.taskCategoryStratification.slices['multi-session'].independentAnswerableConversations, 2);
+assert.equal(multiSessionGroupedReport.taskCategoryStratification.slices['multi-session'].answerableClusterSizes.maxClusterSize, 4);
+assert.equal(multiSessionGroupedReport.taskCategoryStratification.slices['multi-session'].answerableClusterSizes.largestClusterShare01, 0.5);
+
 // The multi-session slice must be tied to source conversations; absent IDs cannot
 // silently fall back to question-level confidence intervals.
 const ungroupedMultiSessionExamples = examples.map(row => ({ ...row, category: 'multi-session' }));
