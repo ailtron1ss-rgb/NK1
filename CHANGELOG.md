@@ -1,3 +1,11 @@
+## [NK1][Aspect 08] Add modular wardrobe domain and guarded outfit recommendation (2026-10-30)
+
+- Replace the legacy-only outfit-label concept with a renderer-independent wardrobe domain: typed garment slots, six outfit families, garment dependencies/exclusions and per-renderer asset states for Live2D, depth-2D and VRM/3D.
+- Add safe relative asset-path validation and resolve only explicitly verified assets; missing art is not represented as an available garment.
+- Add context-aware outfit recommendations based on sleep/rest, intent, energy and thermal comfort. User-pinned choices take precedence; autonomous recommendations require explicit opt-in and remain separate from applying a renderer change.
+- Add focused regression coverage for catalog integrity, asset path traversal/remote URL rejection, user override, opt-in and verified-only asset resolution; expose `npm run test:wardrobe`.
+- Evidence boundary: metadata/control foundation is implemented; no new garment meshes, textures, licensed wardrobe pack, renderer-specific clothing switch or visual E2E is claimed. All newly defined garment assets remain explicitly marked missing pending authored/rights-cleared assets.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
