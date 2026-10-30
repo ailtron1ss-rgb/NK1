@@ -129,7 +129,7 @@ The focused regression suite includes the published SHA-256 test vector for `abc
 Добавлен `live2dWardrobeCapability.ts` — консервативный анализатор model3/CDI/expression metadata. Он:
 - не принимает texture atlas или physics-параметры за сменную одежду;
 - сверяет expression-параметры с CDI;
-- различает отсутствие контракта, expression-only ограниченные controls и явный параметр wardrobe;
+- различает отсутствие контракта, expression-only ограниченные controls и candidate wardrobe-параметр; даже такой параметр не включает одежду без подтверждённой привязки к drawable/part в moc3;
 - возвращает ограничения, которые должен обработать будущий renderer adapter.
 
 Добавлен `live2d-wardrobe-capability.test.mjs` с тестами отсутствия контракта, expression-only ограничения, явного outfit-параметра и повреждённого manifest. `npm run test:wardrobe` теперь включает этот набор.
