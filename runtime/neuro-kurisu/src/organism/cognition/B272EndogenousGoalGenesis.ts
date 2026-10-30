@@ -306,7 +306,8 @@ const learned=this.learnedGoalValue(v,input.tick);
     if(input.intrinsicDrive01!==undefined&&!isUnit(input.intrinsicDrive01))throw new RangeError('B272 intrinsicDrive01 must be in [0,1]');
     if(input.intrinsicDriveConfidence01!==undefined&&!isUnit(input.intrinsicDriveConfidence01))throw new RangeError('B272 intrinsicDriveConfidence01 must be in [0,1]');
     if(input.intrinsicDrives!==undefined){
-      if(!isRecord(input.intrinsicDrives)||!['epistemic','novelty','competence','coherence','social','homeostatic','confidence01'].every(key=>isUnit((input.intrinsicDrives as Record<string,unknown>)[key])))
+      const profile=input.intrinsicDrives;
+      if(![profile.epistemic,profile.novelty,profile.competence,profile.coherence,profile.social,profile.homeostatic,profile.confidence01].every(isUnit))
         throw new RangeError('B272 intrinsicDrives profile must contain bounded finite channels');
     }
     if(input.lastAction!==null&&!isAction(input.lastAction))throw new RangeError('B272 lastAction is invalid');
