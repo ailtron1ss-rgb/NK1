@@ -11,6 +11,8 @@ import { evaluateOutcomePromotionPortfolio, type PortfolioPromotionResult } from
 import { VerifiedOutcomeLedger, type TaskManifestEntry, type VerifiedTaskOutcome } from './VerifiedOutcomeLedger.ts';
 import { validateLearningExperimentPlan, type LearningExperimentPlan } from './LearningExperimentPlan.ts';
 
+export type ExperimentCampaignPrimaryMetric = 'task-pass-rate';
+
 export interface ExperimentCampaignCandidate { method: string; fingerprint: string; }
 export interface ExperimentCampaignRegistration {
   schemaVersion: 1;
@@ -22,7 +24,7 @@ export interface ExperimentCampaignRegistration {
   baselineMethod: string;
   baselineFingerprint: string;
   candidates: ExperimentCampaignCandidate[];
-  primaryMetric: string;
+  primaryMetric: ExperimentCampaignPrimaryMetric;
   promotionPolicy: PromotionGateConfig;
   registeredAt: number;
   registrationFingerprint: string;
@@ -102,7 +104,7 @@ export class ExperimentCampaignRegistry {
         typeof input.campaignId !== 'string' ||
         !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/.test(input.campaignId) ||
         !nonEmpty(input.baselineMethod) || !isSha256(input.baselineFingerprint) ||
-        !nonEmpty(input.primaryMetric) || !Number.isSafeInteger(input.registeredAt) ||
+        input.primaryMetric !== 'task-pass-rate' || !Number.isSafeInteger(input.registeredAt) ||
         input.registeredAt <= 0 || !input.plan || !Array.isArray(input.manifest) ||
         !isRecord(input.candidateFingerprints)) {
       throw new Error('invalid experiment campaign registration');
@@ -120,7 +122,10 @@ export class ExperimentCampaignRegistry {
     const plannedMethods = [...new Set(input.plan.arms.map(arm => arm.method))].sort();
     if (!plannedMethods.includes(input.baselineMethod)) throw new Error('baseline method is absent from the registered plan');
     const candidates = Object.entries(input.candidateFingerprints)
-      .map(([method, fingerprint]) => ({ method, fingerprint: String(fingerprint).toLowerCase() }))
+      .map(([method, fingerprint]) => ({
+        method,
+        fingerprint: typeof fingerprint === 'string' ? fingerprint.toLowerCase() : '',
+      }))
       .sort((a, b) => a.method.localeCompare(b.method));
     const expectedCandidates = plannedMethods.filter(method => method !== input.baselineMethod);
     if (candidates.length !== expectedCandidates.length ||
@@ -144,7 +149,7 @@ export class ExperimentCampaignRegistry {
       baselineMethod: input.baselineMethod,
       baselineFingerprint: input.baselineFingerprint.toLowerCase(),
       candidates,
-      primaryMetric: input.primaryMetric.normalize('NFKC').trim(),
+      primaryMetric: input.primaryMetric,
       promotionPolicy,
       registeredAt: input.registeredAt,
     };
