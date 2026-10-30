@@ -2893,3 +2893,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 ## 2026-10-30 — VRM expression preset bridge
 - Added native VRM 1.0 `VRMC_vrm` and VRM 0.x `VRM` expression-preset resolution through GLTFLoader node/mesh associations, including weighted joy/sadness/anger/blink/viseme morph binds.
 - Kept generic GLB morph-name resolution as a fallback; unknown presets and malformed/out-of-range binds are ignored. Full VRM humanoid/look-at/spring-bone runtime and visual-model validation remain separate work.
+
+
+### [NK1][аспект7] Native VRM humanoid role mapping (2026-10-30)
+- Resolve VRM 1.0 `VRMC_vrm.humanoid.humanBones` and VRM 0.x `VRM.humanoid.humanBones` to actual Three.js Bone objects through GLTFLoader node associations.
+- Prefer canonical VRM roles (head, neck, spine/chest, left/right upper arm) over artist-specific bone names in the existing bounded motor adapter; retain name-based fallback for non-VRM GLB.
+- Add regressions for arbitrary bone labels, both VRM metadata generations and invalid node references. Look-at and spring-bone simulation remain pending.
