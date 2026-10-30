@@ -2848,3 +2848,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Garment attachment is gated by a ready wardrobe switch plan containing the exact asset ID. The adapter prepares/remaps a cloned garment before touching the live avatar; a successful attach tags the garment slot and only then hides the previous garment in that slot.
 - Added focused tests for normalized bone mapping, missing/duplicate bones, non-skinned assets, switch-plan authorization, successful skeleton remapping, bind-pose mismatch and slot replacement. Wired the suite into `npm run test:wardrobe` and added `.github/workflows/nk1-wardrobe-validation.yml` to run it on relevant PR changes.
 - This is a renderer adapter contract, not a finished wardrobe UI or a claim that licensed garment assets are already present. The existing VRM upload flow does not yet load wardrobe packs or invoke this adapter; real-model visual E2E and CI execution remain pending.
+
+
+## [NK1][Aspect 08] Fix wardrobe CI failures from first exact-head run (2026-10-30)
+
+- Align the dedicated wardrobe workflow with the repository `.nvmrc` Node pin instead of hard-coding Node 22.12.
+- Correct Live2D capability classification so a wardrobe parameter already bound through an expression is reported as limited, not an independent candidate switch.
+- Compare VRM fallback bind-pose bone identities using the same normalized naming rule as skeleton mapping.
+- Reject renderer acknowledgements whose raw loaded-asset list contains duplicates, even when set de-duplication would otherwise make the expected IDs appear complete.
+- Changes are driven by three concrete failures in the first wardrobe CI run; rerun the workflow on the new head before claiming validation.
