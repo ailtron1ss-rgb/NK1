@@ -111,6 +111,10 @@ export function retargetThreeHumanoidClip(
       }
       if (sourceHips && targetHips && sourceHipsPosition && targetHipsPosition) {
         const delta = sourceHips.position.clone().sub(sourceHipsPosition);
+        const hipsBasis = profile.sourceToTargetAxisBasis.get("hips");
+        if (hipsBasis) {
+          delta.applyQuaternion(new THREE.Quaternion(...hipsBasis));
+        }
         const scaled = retargetRootTranslation(
           [delta.x, delta.y, delta.z],
           profile,
