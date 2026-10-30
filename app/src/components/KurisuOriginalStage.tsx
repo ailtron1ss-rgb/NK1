@@ -257,12 +257,12 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M157 72 Q168 48 195 44 Q222 40 245 60 Q216 51 201 59 Q178 65 157 88Z" fill="#ee9d6c" opacity=".65"/>
             {/* Eye line, lids and iris are separately parameterizable shapes. */}
             <g transform="translate(179 118)">
-              <g className="nk-eye nk-eye-left"><path d={emotion === "anger" || emotion === "frustration" ? "M-14 -2 Q0 -13 15 -1 Q2 10 -14 -2Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
+              <g className="nk-eye nk-eye-left"><path transform={`scale(1 ${Math.max(0.82, Math.min(1.04, 1 - facial.eyeSmile * 0.16))})`} d={emotion === "anger" || emotion === "frustration" ? "M-14 -2 Q0 -13 15 -1 Q2 10 -14 -2Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
               <g transform={`translate(${pupilOffsetX} ${pupilOffsetY})`}> <ellipse cx="1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="3" cy="-4" r="2.5" fill="#fff"/> </g></g>
               <path d={`M-16 -1 Q0 ${-11-leftBrowLift} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
             </g>
             <g transform="translate(241 118)">
-              <g className="nk-eye nk-eye-right"><path d={emotion === "anger" || emotion === "frustration" ? "M-15 -1 Q0 -13 14 -2 Q3 11 -15 -1Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
+              <g className="nk-eye nk-eye-right"><path transform={`scale(1 ${Math.max(0.82, Math.min(1.04, 1 - facial.eyeSmile * 0.16))})`} d={emotion === "anger" || emotion === "frustration" ? "M-15 -1 Q0 -13 14 -2 Q3 11 -15 -1Z" : "M-15 0 Q0 -14 15 0 Q2 12 -15 0Z"} fill="#fff9f1" stroke="#67424b" strokeWidth="1.6"/>
               <g transform={`translate(${pupilOffsetX} ${pupilOffsetY})`}> <ellipse cx="-1" cy="0" rx="6.5" ry="9" fill="url(#nk-iris)"/><ellipse cx="-1" cy="1" rx="3.5" ry="6.5" fill="#2a354b"/><circle cx="1" cy="-4" r="2.5" fill="#fff"/> </g></g>
               <path d={`M-16 -1 Q0 ${-11+rightBrowLift*.25} 16 -1`} fill="none" stroke={hair.shade} strokeWidth="3" strokeLinecap="round"/>
             </g>
