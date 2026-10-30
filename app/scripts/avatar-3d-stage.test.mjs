@@ -62,6 +62,8 @@ test("VRM wardrobe UI supports independent slot selection and keeps body identit
  const stage=await readFile(stagePath,"utf8"),adapter=await readFile(path.join(root,"src/components/avatar/vrmWardrobeAdapter.ts"),"utf8");
  assert.match(stage,/collectVrmAvatarRigIdentityDescriptors/);
  assert.match(stage,/wardrobeSelectedAssetIds/);
+ assert.match(stage,/defaultWardrobeAssetSelection\(pack\.manifest,"vrm3d"\)/);
+ assert.match(stage,/updateWardrobeAssetSelection\(wardrobePack\.manifest,"vrm3d",current,asset\.id,checked\)/);
  assert.match(stage,/Выберите элементы, которые нужно заменить/);
  assert.match(stage,/expectedAssetIds=\[\.\.\.new Set\(wardrobeSelectedAssetIds\)\]/);
  assert.match(stage,/checked=event\.currentTarget\.checked/);
