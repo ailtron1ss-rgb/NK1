@@ -1,5 +1,8 @@
 ## [NK1][Aspect 02] Establish Original 2D art identity and production contract (2026-10-30)
 
+- Add a 24-slot machine-readable asset inventory for the master character, six turnarounds, ten expressions, three independent outfits and four accessory slots; all entries explicitly remain `not-authored` until real source artwork and verified exports exist.
+- Add manifest regression gates for contract coverage, unique IDs, safe relative paths, honest status transitions and SHA-256/source/preview provenance before review or approval.
+
 - Add a machine-readable Original 2D character art contract that pins the current SVG concept identity, palette, composition guides, required views/expressions/outfits, layer order and production handoff requirements.
 - Add a Russian production brief defining the visual identity lock, turnaround/expression/outfit/prop sheets, stable layer naming, pivot metadata, export/provenance requirements and acceptance gates.
 - Scope SVG paint-server IDs with React `useId`, preventing gradients, pattern and filter references from colliding when multiple Original 2D previews are mounted in the same document.
