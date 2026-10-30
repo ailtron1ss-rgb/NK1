@@ -31,7 +31,7 @@ test("VRMA sidecars are preflighted, converted against the active VRM, and bound
   assert.match(stage, /Array\.isArray\(gltf\.userData\?\.vrmAnimations\)/);
   assert.match(stage, /if\(animations\.length>20\)/);
   assert.match(stage, /createVRMAnimationClip\(animation,rt\.vrm\)/);
-  assert.match(stage, /rt\.vrmaClips=clips/);
+  assert.match(stage, /rt\\.vrmaClips=\\[\\]/);
   assert.match(stage, /rt\.vrmaDefaultClip=clips\[0\]\?\?null/);
 });
 
