@@ -24,6 +24,8 @@ on:
     paths:
       - "tools/aspect12-release-readiness.mjs"
       - "tools/aspect12-release-readiness.test.mjs"
+      - "app/scripts/aspect12-browser-smoke.mjs"
+      - "app/scripts/aspect12-browser-smoke.test.mjs"
       - "docs/ASPECT12_RELEASE_RELIABILITY_PLAN_RU.md"
       - ".github/workflows/aspect12-release-reliability.yml"
       - "package.json"
