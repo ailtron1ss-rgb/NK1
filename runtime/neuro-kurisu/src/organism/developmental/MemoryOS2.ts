@@ -818,7 +818,6 @@ export class MemoryOS2{
  private syncMetadataIndex(item:MemoryItem2,previousTokens:Set<string>):void{
   const nextTokens=this.metadataTokens(item);
   for(const token of previousTokens){
-   if(nextTokens.has(token))continue;
    const posting=this.metadataTokenIndex.get(token);
    if(posting){
     posting.delete(item.id);
@@ -826,7 +825,6 @@ export class MemoryOS2{
    }
   }
   for(const token of nextTokens){
-   if(previousTokens.has(token))continue;
    let posting=this.metadataTokenIndex.get(token);
    if(!posting){posting=new Set<string>();this.metadataTokenIndex.set(token,posting);}
    posting.add(item.id);
@@ -965,6 +963,7 @@ export class MemoryOS2{
     existing.source=existing.source||input.source;
     existing.contentHash=existing.contentHash||memoContentHash(existing.content);
     existing.tags=mergeMemoTags(existing.tags,input.tags);
+    existing.entities=[...new Set([...(existing.entities??[]),...(input.entities??[]),...extractEntities(existing.content)].map(value=>String(value).trim()).filter(Boolean))].slice(0,24);
     existing.context=mergeMemoContext(existing.context,input.context);
     this.syncMetadataIndex(existing,previousMetadataTokens);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
