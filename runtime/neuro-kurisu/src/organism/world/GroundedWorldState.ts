@@ -39,7 +39,7 @@ export interface GroundedEntity {
   observationCount:number;
 }
 export interface GroundedRelation { id:string; from:string; relation:string; to:string; fromEntityId?:string; toEntityId?:string; confidence01:number; at:number; }
-export interface GroundedEvent { id:string; label:string; confidence01:number; lastAt:number; persistence01:number; }
+export interface GroundedEvent { id:string; label:string; confidence01:number; lastAt:number; persistence01:number; evidenceKind?:'observed'|'model-output'|'derived'|'conflict'|'unresolved'; modalityEvidenceKinds?:Partial<Record<string,'observed'|'model-output'|'derived'|'conflict'|'unresolved'>>; }
 export interface GroundedWorldStateSnapshot {
   version:1;
   revision:number;
@@ -257,7 +257,7 @@ export class GroundedWorldState {
       const kind=normalizeEvidence(x.kind);
       return `${kind}-evidence:${x.claim}`;
     });
-    const baseFacts=[...(base?.facts??[]).slice(-96),...relationFacts,...evidenceFacts];
+    const baseFacts=[...(base?.facts??[]).slice(-96),...relationFacts,...evidenceFacts,...eventFacts];
     const facts=[...new Set(baseFacts.map(norm).filter(Boolean))].slice(-192);
 
     for(const entity of rows){
@@ -273,10 +273,25 @@ export class GroundedWorldState {
     const relations=[...rel.values()].sort((a,b)=>b.confidence01-a.confidence01||b.at-a.at).slice(0,256);
     const eventRows=new Map(this.state.events.map(x=>[x.id,{...x}]));
     for(const x of (p?.events??[]).slice(0,64)){
+      const modalityEvidenceKinds={...(x.modalityEvidenceKinds??{})};
+      const allEventKinds=Object.values(modalityEvidenceKinds).map(normalizeEvidence);
+      const evidenceKind: 'observed'|'model-output'|'derived'|'conflict'|'unresolved'=allEventKinds.includes('conflict')?'conflict':allEventKinds.includes('observed')?'observed':allEventKinds.includes('model-output')?'model-output':allEventKinds.includes('derived')?'derived':normalizeEvidence(x.evidenceKind);
       const old=eventRows.get(x.id);
-      eventRows.set(x.id,old?{...old,label:norm(x.label),confidence01:clamp(old.confidence01*.75+x.confidence01*.25),lastAt:x.lastAt,persistence01:clamp(old.persistence01*.85+.15)}:{id:x.id,label:norm(x.label),confidence01:clamp(x.confidence01),lastAt:x.lastAt,persistence01:clamp(x.persistence01)});
+      eventRows.set(x.id,old?{
+        ...old,label:norm(x.label),
+        confidence01:clamp(old.confidence01*.75+x.confidence01*.25),
+        lastAt:Math.max(old.lastAt,x.lastAt),
+        persistence01:clamp(old.persistence01*.85+.15),
+        evidenceKind,
+        modalityEvidenceKinds:{...(old.modalityEvidenceKinds??{}),...modalityEvidenceKinds},
+      }:{
+        id:x.id,label:norm(x.label),confidence01:clamp(x.confidence01),
+        lastAt:x.lastAt,persistence01:clamp(x.persistence01),
+        evidenceKind,modalityEvidenceKinds,
+      });
     }
     const eventList=[...eventRows.values()].sort((a,b)=>b.lastAt-a.lastAt).slice(0,96);
+    const eventFacts=eventList.slice(0,64).map(x=>`${normalizeEvidence(x.evidenceKind)}-event:${x.label}`);
     const semanticConfidence=p?clamp(
       p.metrics.grounding01*.25+
       p.metrics.crossModalEvidenceCoverage01*.20+
