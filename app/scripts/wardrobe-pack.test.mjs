@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, validateWardrobePackManifest, verifyWardrobeAssetBytes } from "../src/components/avatar/wardrobePack.ts";
+import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, validateWardrobePackManifest, verifyWardrobeAssetBytes, verifyWardrobePackPayload } from "../src/components/avatar/wardrobePack.ts";
 
 const validManifest = () => ({
   schemaVersion: 1,
@@ -127,4 +127,23 @@ test("wardrobe byte verification checks actual SHA-256 and exact byte length", a
   assert.equal(wrongSize.reason, "size-mismatch");
   const noCrypto = await verifyWardrobeAssetBytes(asset, bytes, { subtle: undefined });
   assert.equal(noCrypto.reason, "crypto-unavailable");
+});
+
+test("whole-pack verification requires every declared file and rejects extras", async () => {
+  const manifest = validManifest();
+  const bytes = new TextEncoder().encode("abc");
+  manifest.assets[0].bytes = 3;
+  manifest.assets[0].sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+  const verified = await verifyWardrobePackPayload(manifest, new Map([[manifest.assets[0].path, bytes]]));
+  assert.equal(verified.valid, true);
+  assert.deepEqual(verified.verifiedAssetIds, ["lab-coat-vrm"]);
+  const missing = await verifyWardrobePackPayload(manifest, new Map());
+  assert.equal(missing.valid, false);
+  assert.equal(missing.reason, "missing-file");
+  const extra = await verifyWardrobePackPayload(manifest, new Map([
+    [manifest.assets[0].path, bytes],
+    ["unexpected/asset.png", bytes],
+  ]));
+  assert.equal(extra.valid, false);
+  assert.equal(extra.reason, "unexpected-file");
 });
