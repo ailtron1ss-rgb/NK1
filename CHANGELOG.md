@@ -1,6 +1,6 @@
 # Unreleased
 
-- [NK1][Embodiment] Added renderer-neutral bounded joint motor controller, priority-aware goal interruption, snapshot recovery, planar two-bone IK, basal-ganglia/cerebellar motor-goal arbitration, independently verified outcome credit with restart-safe deduplication, regression tests and Aspect 06 implementation plan. This is an initial execution substrate; full 3D dynamics, cognitive goal wiring and renderer adapters remain pending.
+- [NK1][Embodiment] Added renderer-neutral bounded joint motor controller, priority-aware goal interruption, snapshot recovery, planar two-bone IK and basal-ganglia/cerebellar motor-goal arbitration. Hardened motor learning to accept only the exact process-local `OutcomeVerificationService` external-postcondition receipt bound to tool, full input, execution and decision; caller-supplied verification booleans and serialized receipt copies are rejected, with goal/evidence replay protection. Added focused regressions and Aspect 06 plan. Full 3D dynamics, autonomous goal genesis, real renderer/device postcondition production and Live2D/2.5D/VRM adapters remain pending.
 
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
