@@ -2946,3 +2946,14 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][executor] Restore snapshot identity and protect project-step side effects (2026-10-30)
+
+- Align the executor's default snapshot own-key shape with restore output by explicitly initializing `lastOutcomeId`; update stale version assertions to schema v7 and point failure simulation at the current plan step's `preferredTool`.
+- Rebuild restored executor state only from own data properties. Accessors are not evaluated; step arrays, outcome IDs, counters, optional tool inputs and active checkpoint fields are bounded and validated.
+- Keep the active side-effect checkpoint authoritative if a stale or malformed snapshot tries to erase, replace, or regress it. If checkpoint identity and a restored project plan disagree, retain the checkpoint and discard only the incompatible plan cursor.
+- Refuse to clear pending, waiting-approval or reconciliation-required operations. Clear only a pre-Gateway `prepared` intent or a `receipt-recorded` operation after its progress projection is applied.
+- Prevent `ensure()` and routine empty-project resets from replacing a project while its side effect or result projection is unresolved. After an explicit receipt reconciliation and clear, a new project can be initialized.
+- Reject overlong/control-character operation identities instead of silently truncating distinct projects, steps, tools, idempotency keys or decisions; refuse sequence overflow.
+- Add regressions for accessor-backed restores, stale snapshots, pending/reconciliation clear denial, project switch preservation, reconciled release, identity limits and sequence exhaustion.
+- Wire checkpoint, provider reconciliation, receipt replay, persistence and subsystem round-trip checks into the central WorkPass71 validation workflow.
