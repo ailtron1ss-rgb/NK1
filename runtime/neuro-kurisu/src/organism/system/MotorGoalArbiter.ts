@@ -240,13 +240,6 @@ export class MotorGoalArbiter {
     if (!input || typeof input.goalId !== "string" || !input.goalId.trim()) {
       return { accepted: false, reason: "invalid-motor-outcome-goal-id" };
     }
-    const pending = this.pendingGoalMetadata.get(input.goalId);
-    if (!pending || !this.pendingGoalIds.has(input.goalId)) {
-      return { accepted: false, reason: "no-matching-executed-goal" };
-    }
-    if (!pending.verificationToolId || input.binding?.toolId !== pending.verificationToolId) {
-      return { accepted: false, reason: "motor-goal-verification-tool-mismatch" };
-    }
     if (!isTrustedDecisionLinkedExternalPostcondition(input.receipt, input.binding)) {
       return { accepted: false, reason: "trusted-external-postcondition-receipt-required" };
     }
@@ -256,6 +249,13 @@ export class MotorGoalArbiter {
     }
     if (this.creditedEvidenceIds.has(evidenceId)) {
       return { accepted: false, reason: "duplicate-evidence-credit" };
+    }
+    const pending = this.pendingGoalMetadata.get(input.goalId);
+    if (!pending || !this.pendingGoalIds.has(input.goalId)) {
+      return { accepted: false, reason: "no-matching-executed-goal" };
+    }
+    if (!pending.verificationToolId || input.binding?.toolId !== pending.verificationToolId) {
+      return { accepted: false, reason: "motor-goal-verification-tool-mismatch" };
     }
     if (input.receipt.confidence01 < 0.6) {
       return { accepted: false, reason: "trusted-receipt-confidence-below-learning-threshold" };
