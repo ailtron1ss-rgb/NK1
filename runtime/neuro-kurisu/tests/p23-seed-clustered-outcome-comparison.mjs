@@ -115,7 +115,10 @@ const seedClusteredGate = evaluateOutcomePromotion(bySeed, families, {
   requirePositiveConfidenceLowerBound: true,
   familyPairCountMode: 'seed-repeated',
 });
-assert.equal(seedClusteredGate.eligible, true, JSON.stringify(seedClusteredGate));
+assert.equal(seedClusteredGate.eligible, false, JSON.stringify(seedClusteredGate));
+assert.equal(seedClusteredGate.statisticalEvidence.rawPValue, 0.125);
+assert.ok(seedClusteredGate.reasons.includes('primary-sign-test-not-significant'),
+  'four independent seed wins are not enough for a two-sided exact sign-test at alpha 0.05');
 const incorrectPartitionGate = evaluateOutcomePromotion(bySeed, families, {
   minPairedTasks: 4,
   minFamilies: 3,
