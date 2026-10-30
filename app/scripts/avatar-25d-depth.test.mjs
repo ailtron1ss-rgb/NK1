@@ -56,6 +56,8 @@ test("the original SVG renderer uses independent depth layers driven by organism
 test("the 2.5D stage remains an editable SVG concept, not a hidden bitmap replacement", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/KurisuOriginalStage.tsx"), "utf8");
   assert.match(stage, /<svg viewBox="0 0 420 560"/);
+  assert.match(stage, /MODE 2\.5D/);
+  assert.match(stage, /2\.5D depth preview/);
   assert.match(stage, /<path d="M150 79/);
   assert.match(stage, /<g className="nk-depth-layer nk-depth-head"/);
   assert.doesNotMatch(stage, /<img[^>]+kurisu-original/i);
