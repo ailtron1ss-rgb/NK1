@@ -96,7 +96,7 @@ export class P78AutobiographicalSelfContinuity{
               const legacy=JSON.parse(key);
               if(Array.isArray(legacy)&&legacy[6]==='verified-independent'&&
                  typeof legacy[7]==='string'&&legacy[7].startsWith('external-verification:')&&
-                 typeof legacy[8]==='string'&&/^reb:\\d+:\\d+:outcome$/.test(legacy[8])){
+                 typeof legacy[8]==='string'&&/^reb:(\d+):(\d+):outcome$/.test(legacy[8])){
                 return JSON.stringify(['receipt',legacy[8]]);
               }
             }catch{}
