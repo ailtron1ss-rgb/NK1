@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict';
+import { P78AutobiographicalSelfContinuity } from '../src/organism/developmental/P78AutobiographicalSelfContinuity.ts';
+import { P2702PersistentPersonalityDynamics } from '../src/organism/cognition/P2702PersistentPersonalityDynamics.ts';
+import { SelfModelEngine } from '../src/organism/cognition/SelfModelV2.ts';
+import { PersonalitySelfModelBridge } from '../src/organism/cognition/PersonalitySelfModelBridge.ts';
+
+const p78=new P78AutobiographicalSelfContinuity();
+const personality=new P2702PersistentPersonalityDynamics();
+const selfModel=new SelfModelEngine();
+const bridge=new PersonalitySelfModelBridge(p78,personality,selfModel);
+
+const verifiedEvent={
+  tick:10,at:1000,action:'explore',outcome:0.9,
+  evidenceStatus:'verified-independent',
+  evidenceRef:'world-transition:receipt-10',
+  authorship:'self-initiated',
+  episodeId:'episode-10',
+};
+const accepted=bridge.recordOutcome({
+  event:verifiedEvent,action:'explore',reward01:0.9,goalAlignment01:0.85,
+  predictionError01:0.1,identityGap01:0.05,relationshipId:'user',
+});
+assert.equal(accepted.newEvent,true);
+assert.equal(accepted.evidenceAccepted,true);
+assert.equal(accepted.evidenceReason,'accepted');
+assert.equal(accepted.selfModelUpdate?.identityUpdateAccepted,true);
+assert.equal(accepted.selfModel.lastIdentityGate?.accepted,true);
+assert.equal(accepted.personality.learningUpdates,1);
+
+const unbound=bridge.recordOutcome({
+  event:{tick:11,at:1100,action:'respond',outcome:0.8,evidenceStatus:'verified-independent',evidenceRef:'local-cache:maybe'},
+  action:'respond',reward01:0.8,goalAlignment01:0.8,predictionError01:0.2,identityGap01:0.1,
+});
+assert.equal(unbound.newEvent,true);
+assert.equal(unbound.evidenceAccepted,false,'P78 syntax alone must not bypass the CEF receipt namespace gate');
+assert.equal(unbound.selfModelUpdate?.identityUpdateAccepted,false);
+assert.equal(unbound.selfModel.lastIdentityGate?.reason,'untrusted-evidence-source');
+assert.equal(unbound.personality.learningUpdates,2);
+
+// A non-adjacent replay must not become a second experience or update either downstream learner.
+const beforeReplay={samples:p78.snapshot().samples,updates:personality.snapshot().learningUpdates,accepted:selfModel.snapshot().identityGateAcceptedCount,rejected:selfModel.snapshot().identityGateRejectedCount};
+const replay=bridge.recordOutcome({
+  event:verifiedEvent,action:'explore',reward01:0.9,goalAlignment01:0.85,
+  predictionError01:0.1,identityGap01:0.05,relationshipId:'user',
+});
+assert.equal(replay.newEvent,false);
+assert.equal(replay.evidenceReason,'duplicate-event');
+assert.deepEqual({
+  samples:p78.snapshot().samples,
+  updates:personality.snapshot().learningUpdates,
+  accepted:selfModel.snapshot().identityGateAcceptedCount,
+  rejected:selfModel.snapshot().identityGateRejectedCount,
+},beforeReplay);
+
+// The replay fence survives persistence and a fresh bridge instance.
+const restoredP78=new P78AutobiographicalSelfContinuity(); restoredP78.restore(p78.snapshot());
+const restoredPersonality=new P2702PersistentPersonalityDynamics(); restoredPersonality.restore(personality.snapshot());
+const restoredSelfModel=new SelfModelEngine(); restoredSelfModel.restore(selfModel.snapshot());
+const restoredBridge=new PersonalitySelfModelBridge(restoredP78,restoredPersonality,restoredSelfModel);
+const afterRestart=restoredBridge.recordOutcome({
+  event:verifiedEvent,action:'explore',reward01:0.9,goalAlignment01:0.85,
+  predictionError01:0.1,identityGap01:0.05,relationshipId:'user',
+});
+assert.equal(afterRestart.newEvent,false);
+assert.equal(restoredPersonality.snapshot().learningUpdates,2);
+
+// Corrupted persisted state is bounded and action-keyed.
+const hardenedPersonality=new P2702PersistentPersonalityDynamics();
+hardenedPersonality.restore({
+  experienceCount:-9,learningUpdates:Infinity,adaptiveNames:['curiosity','directness'],
+  adaptiveValues:[NaN,9,-4],relationshipTrust:{'friend':2,'bad':NaN},
+  actionPreference:{explore:4,respond:-4,unknown:9},stability01:8,
+});
+const safePersonality=hardenedPersonality.snapshot();
+assert.equal(safePersonality.experienceCount,0);
+assert.equal(safePersonality.learningUpdates,0);
+assert.equal(safePersonality.adaptiveValues.length,2);
+assert.ok(safePersonality.adaptiveValues.every(x=>x>=0&&x<=1));
+assert.equal(safePersonality.actionPreference.explore,1);
+assert.equal(safePersonality.actionPreference.respond,-1);
+assert.equal('unknown' in safePersonality.actionPreference,false);
+assert.equal(safePersonality.stability01,1);
+
+const hardenedSelfModel=new SelfModelEngine();
+hardenedSelfModel.restore({
+  confidence:9,actionAccuracy:NaN,recentErrors:[NaN,3,-2],
+  selfConsistentAction11:{explore:9,unknown:7},
+  recoveryCount:-2,identityGateAcceptedCount:-4,
+});
+const safeSelf=hardenedSelfModel.snapshot();
+assert.equal(safeSelf.confidence,1);
+assert.equal(safeSelf.actionAccuracy,0.5);
+assert.deepEqual(safeSelf.recentErrors,[0.5,1,0]);
+assert.equal(safeSelf.selfConsistentAction11.explore,1);
+assert.equal('unknown' in safeSelf.selfConsistentAction11,false);
+assert.equal(safeSelf.recoveryCount,0);
+assert.equal(safeSelf.identityGateAcceptedCount,0);
+
+console.log('PERSONALITY_SELFMODEL_BRIDGE=PASS');
