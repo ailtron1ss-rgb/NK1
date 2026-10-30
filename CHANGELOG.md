@@ -1,3 +1,9 @@
+## [NK1][аспект9] Expose native speech provider events through EmbodimentRuntime (2026-10-30)
+
+- Добавлен публичный метод `EmbodimentRuntime.subscribeNativeSpeechEvents(listener)`: host-интеграции могут подписываться на события Termux provider без прямого импорта низкоуровневого Android bridge.
+- Метод возвращает unsubscribe-функцию; сохраняется исходная идентичность operation/event и граница `playbackVerified=false`.
+- Добавлен regression на доставку события через runtime facade и прекращение доставки после unsubscribe. Hosted CI для нового HEAD ожидается; реальное Android playback и UI transport не заявляются.
+
 ## [NK1][аспект9] Защита монотонности native speech event clock (2026-10-30)
 
 - NativeSpeechEventChannel теперь сохраняет последнее время отдельно для каждого operation ID и зажимает регрессирующие clock samples до предыдущего значения.
