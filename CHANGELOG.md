@@ -1,3 +1,9 @@
+## 2026-10-30 — NK1 2.5D semantic face rig
+
+- Added renderer-independent facial intent mapping for blink, brows, smile/frown, emotion shapes and speech mouth forms.
+- Wired the resolver into the imported avatar morph-target pipeline; optional morph channels are capability-based, missing channels are non-fatal, and ambiguous normalized names are skipped.
+- Added tests for bounded expression mapping, partial rigs, custom artist aliases and ambiguous morph names.
+
 ## 2026-10-30 — NK1 2.5D depth-rig runtime follow-through
 
 - Added semantic spring follow-through for hair-front/back and coat-front/tail, with per-node state, bounded displacement/velocity and frame-delta clamping.
