@@ -36,6 +36,13 @@
 
 Это безопасный контрактный фундамент. Он пока не подменяет подключение к React renderer lifecycle и не объявляет реальные движения выполненными.
 
+## Промежуточный протокол подтверждения Live2D
+
+
+- Live2D viewer now emits a revision-bound `live2d_intent_ack` after the Cubism `beforeModelUpdate` hook, and reads back six core parameters when `getParameterValueById` is available. The message explicitly reports `parameters-observed` or `accepted-unverified`, lists the observed values, and sets `complete: false`. Expression and motion are marked not independently verified; this is not a full adapter receipt, not proof of a presented GPU frame, and cannot yet authorize coordinator commit.
+
+**Ограничение:** подтверждение относится только к наблюдаемым параметрам Cubism после вызова setters в `beforeModelUpdate`. Оно не подтверждает завершение expression/motion, физическую отрисовку кадра или полное применение семантического intent. Пока `complete: false`, адаптер обязан считать это диагностическим частичным ACK и не создавать `AdapterApplyReceipt` для транзакционного commit.
+
 ## План интеграции
 
 ### P0 — единый контракт и владение
