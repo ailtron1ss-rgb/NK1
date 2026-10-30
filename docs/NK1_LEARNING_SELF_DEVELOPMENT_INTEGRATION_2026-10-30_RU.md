@@ -59,17 +59,18 @@
 
 ### 2.5 Runtime bootstrap и восстановление после restart
 
-Добавлен `LearningJournalBootstrap.ts` и подключён `OrganismRuntime`.
+Добавлен `LearningJournalBootstrap.ts`, подключён `OrganismRuntime` и открыт узкий метод wiring на `OrganismCore`.
 
-Когда runtime получает явно сконфигурированный `compoundRepairRevision.engine`, он:
+На каждом старте runtime:
 
-1. подключает default fitness journal рядом с state file;
-2. подключает lifecycle journal рядом с state file;
-3. сохраняет ранее переданные host sinks — default wiring не перезаписывает их;
-4. передаёт coordinator отдельный `FileStateStore` для retry backoff;
-5. восстанавливает retry state во время `init()`, до начала дальнейшей фоновой работы.
+1. создаёт единственную пару JSONL sinks рядом с canonical state file;
+2. подключает эту пару к реальному `P23LearningEngine` внутри `OrganismCore` — именно он получает опыт от каждого когнитивного цикла;
+3. при наличии `compoundRepairRevision.engine` подключает те же sinks и к revision coordinator, не создавая второе независимое хранилище;
+4. сохраняет явно переданные host sinks — default wiring не перезаписывает их;
+5. восстанавливает retry state из отдельного `FileStateStore` до запуска фоновых revision-задач;
+6. после восстановления P23 snapshot сверяет незавершённые activation intents с авторитетным `VersionedSkillCandidateStore`; нарушение целостности lifecycle journal блокирует запуск вместо молчаливого игнорирования.
 
-Пути журналов: `<state>.learning-fitness.jsonl` и `<state>.learning-lifecycle.jsonl`. Retry state: `<state>.p23-retry-backoff.json`. Это отдельные файлы; они не переиспользуют файл основного состояния организма.
+Пути журналов: `<state>.learning-fitness.jsonl` и `<state>.learning-lifecycle.jsonl`. Retry state: `<state>.p23-retry-backoff.json`. Это отдельные файлы; они не переиспользуют файл основного состояния организма. Оба P23 surface используют общие sinks и согласованную последовательность append-only записей.
 
 ### 2.6 Долговечный cooldown повторных ревизий
 
