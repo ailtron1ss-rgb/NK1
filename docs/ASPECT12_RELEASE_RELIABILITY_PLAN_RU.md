@@ -128,13 +128,13 @@
 
 `tools/aspect12-release-readiness.mjs` — fail-closed структурный аудит manifests, lockfiles, source hygiene и human license clearance. По умолчанию он формирует отчёт и явно показывает блокеры. С флагом `--require-release-ready` pending review становится ошибкой. Скрипт не пытается выдавать структурный проход за browser/device/release proof.
 
-`tools/aspect12-release-readiness.test.mjs` — регрессии на lock drift, pending licenses, secret-shaped files и границы доказательств.
+`tools/aspect12-release-readiness.test.mjs` — регрессии на lock drift, pending licenses, secret-shaped files и границы доказательств.\n\n`app/scripts/aspect12-browser-smoke.mjs` — реальный Chromium smoke для desktop (1365×900) и mobile viewport (390×844): проверяет HTTP-ответ, непустой рендер, uncaught page errors и горизонтальное переполнение; сохраняет DOMContentLoaded, FCP, navigation wall time и transfer-size в JSON с exact source SHA. Это базовый browser smoke, не полная проверка диалога, аватара, голоса или физического Android.\n\n`app/scripts/aspect12-browser-smoke.test.mjs` — unit-регрессии для агрегирования p50/p95 и обработки отсутствующих метрик.
 
 ## Критерии 100%
 
 - [ ] Exact-SHA CI зелёный для всех обязательных workflow.
 - [ ] Production build и migration проходят на изолированной staging DB.
-- [ ] Browser E2E проходят на desktop и mobile viewport.
+- [ ] Базовый Chromium smoke проходит на desktop и mobile viewport (добавлен; exact-HEAD результат ожидается).\n- [ ] Полный browser E2E диалога, авторизации, Live2D/2.5D/3D, речи и переключения тела проходит на desktop и mobile viewport.
 - [ ] Live2D, 2.5D и 3D проверены на реальном runtime.
 - [ ] Android physical-device smoke и аудио-синхронизация подтверждены.
 - [ ] 60-минутный и 4–8-часовой soak завершены без критической деградации.
