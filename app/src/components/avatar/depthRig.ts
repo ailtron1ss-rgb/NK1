@@ -65,3 +65,36 @@ export function stepSecondaryMotion(state:SecondaryMotionState,target:number,del
  const p=clamp(state.position,-limit,limit),v=clamp(state.velocity,-speed,speed),force=(clamp(target,-limit,limit)-p)*k-v*d;
  const velocity=clamp(v+force*dt,-speed,speed);return {position:clamp(p+velocity*dt,-limit,limit),velocity};
 }
+
+export type DepthRigSecondaryMotionMap = Map<string, SecondaryMotionState>;
+/**
+ * Add bounded inertial follow-through to hair and coat layers.
+ * State is owned by the renderer and keyed by manifest node ID; body layers
+ * remain untouched. The spring target follows semantic head/torso intent.
+ */
+export function stepDepthRigSecondaryMotion(
+ manifest:DepthRigManifest,
+ transforms:readonly DepthRigTransform[],
+ intent:DepthRigIntent,
+ states:DepthRigSecondaryMotionMap,
+ deltaSeconds:number,
+):DepthRigTransform[]{
+ const roles=new Map(manifest.nodes.map(node=>[node.id,node.role]));
+ const headYaw=clamp(intent.headYaw??0,-.65,.65),headPitch=clamp(intent.headPitch??0,-.45,.45);
+ const headRoll=clamp(intent.headRoll??0,-.35,.35),torsoYaw=clamp(intent.torsoYaw??0,-.3,.3);
+ const torsoRoll=clamp(intent.torsoRoll??0,-.2,.2);
+ return transforms.map(transform=>{
+  const role=roles.get(transform.id);
+  let target:number,options:{stiffness:number;damping:number;maxOffset:number;maxVelocity:number};
+  if(role==="hair-front"||role==="hair-back"){
+   target=-headYaw*(role==="hair-front"?.075:.11)+headPitch*(role==="hair-front"?.045:.065)-headRoll*.035;
+   options={stiffness:48,damping:10,maxOffset:.16,maxVelocity:1.8};
+  }else if(role==="coat-front"||role==="coat-tail"){
+   target=-torsoYaw*(role==="coat-tail"?.12:.055)+torsoRoll*.08;
+   options={stiffness:34,damping:9,maxOffset:.12,maxVelocity:1.4};
+  }else return transform;
+  const state=stepSecondaryMotion(states.get(transform.id)??{position:0,velocity:0},target,deltaSeconds,options);
+  states.set(transform.id,state);
+  return {...transform,rotation:[transform.rotation[0],transform.rotation[1],transform.rotation[2]+state.position]};
+ });
+}
