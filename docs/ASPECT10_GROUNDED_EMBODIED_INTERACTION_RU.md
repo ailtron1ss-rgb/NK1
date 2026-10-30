@@ -52,3 +52,8 @@ Expected: deterministic planner tests covering grounded look, reach, contact pol
 3. Implement collision-aware hand trajectories and contact sensors/visual postconditions.
 4. Add persistent interaction episodes and causal learning from verified outcomes.
 5. Validate on desktop and Android; do not claim physical manipulation until hardware-backed tests exist.
+
+
+## Следующий слой: независимая кинематика руки
+
+Добавлен renderer-independent `planarArmIK.ts`: двухзвенная плоская IK-модель (плечо + предплечье), ограничение углов суставов, контроль длины сегментов, confidence gate, единый calibrated avatar-root frame и безопасное ограничение недостижимых целей. Модуль только рассчитывает углы — он не запускает анимацию и не подтверждает контакт. Для интеграции с VRM/GLB нужно сопоставить его углы с реальными humanoid bones, учесть bind pose, оси скелета, ограничения модели и коллизии.
