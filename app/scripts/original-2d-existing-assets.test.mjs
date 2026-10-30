@@ -19,7 +19,7 @@ test("existing sprite audit exactly inventories the legacy manifest without prom
   assert.equal(inventory.policy.eligibleAsProductionLayeredMaster, false);
   assert.equal(inventory.policy.eligibleAs2d5dLayerSource, false);
 
-  const byPath = new Map(inventory.assets.map((asset) => [asset.path.replace(/^app\\/public\\//, ""), asset]));
+  const byPath = new Map(inventory.assets.map((asset) => [asset.path.split("/").slice(2).join("/"), asset]));
   assert.equal(byPath.size, inventory.assets.length);
   for (const cell of manifest.cells) {
     const asset = byPath.get(cell.file);
@@ -31,7 +31,7 @@ test("existing sprite audit exactly inventories the legacy manifest without prom
     assert.equal(asset.licenseStatus, "not-revalidated-in-this-inventory");
     assert.match(asset.gitBlobSha1, /^[a-f0-9]{40}$/);
     assert.ok(Number.isInteger(asset.bytes) && asset.bytes > 20_000);
-    assert.match(asset.path, /^app\\/public\\/sprites\\/[^/]+\\/[^/]+\\.png$/);
+    assert.ok(asset.path.startsWith("app/public/sprites/") && asset.path.endsWith(".png"));
   }
 
   const counts = Object.fromEntries(
