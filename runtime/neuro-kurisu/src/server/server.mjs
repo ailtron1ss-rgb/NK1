@@ -530,6 +530,9 @@ async function route(req, res) {
                 diagnostics: {
                     controllerTick: diagnostics.controllerTick,
                     activeGoalId: diagnostics.activeGoalId,
+                    continuousLoopRunning: diagnostics.continuousLoopRunning,
+                    continuousLoopErrors: diagnostics.continuousLoopErrors,
+                    lastContinuousLoopError: diagnostics.lastContinuousLoopError,
                     channel: {
                         published: diagnostics.channel.published,
                         rejected: diagnostics.channel.rejected,
