@@ -29,7 +29,7 @@ test("imported avatar stage applies the shared facial timeline through semantic 
  const stage=await readFile(new URL("../src/components/Avatar3DStage.tsx",import.meta.url),"utf8");
  assert.ok(stage.includes("resolveSemanticMorphTargets"));
  assert.ok(stage.includes("semanticMorphValues"));
- assert.ok(stage.includes("blink: p.awake?facialMotion.blinkClosure*.92:0"));
+ assert.ok(stage.includes("blink:p.awake?facialMotion.blinkClosure*.92:0"));
  assert.ok(stage.includes("mouthOpen:p.mouthPose.open"));
  assert.ok(stage.includes("node.morphTargetInfluences[target.index]=morphValues[target.channel]"));
 });
