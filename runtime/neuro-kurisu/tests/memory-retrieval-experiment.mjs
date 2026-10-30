@@ -376,7 +376,10 @@ try {
   assert.equal((await readdir(temp)).includes('invalid-language-report.json'), false, 'invalid language labels must fail before report publication');
   const validLanguageLabelsPath = path.join(temp, 'valid-language.jsonl');
   const validLanguageReportPath = path.join(temp, 'valid-language-report.json');
-  await writeFile(validLanguageLabelsPath, JSON.stringify({ id: 'valid-language-001', query: 'project fern memory', relevantIds: ['m0'], split: 'holdout', language: 'ru', category: 'multi-session', conversationId: 'cli-session-001' }) + String.fromCharCode(10));
+  await writeFile(validLanguageLabelsPath, [
+    { id: 'valid-language-001', query: 'project fern memory', relevantIds: ['m0'], split: 'holdout', language: 'ru', category: 'multi-session', conversationId: 'cli-session-001' },
+    { id: 'valid-language-002', query: 'known environment failure mode', relevantIds: ['m1'], split: 'holdout', language: 'ru', category: 'environment-gotcha', conversationId: 'cli-session-001' },
+  ].map(row => JSON.stringify(row)).join(String.fromCharCode(10)) + String.fromCharCode(10));
   const validLanguageCli = spawnSync(process.execPath, ['--experimental-strip-types', path.join(root, 'scripts/run-memory-retrieval-experiment.mjs'), '--snapshot', snapshotPath, '--labels', validLanguageLabelsPath, '--provenance', provenancePath, '--out', validLanguageReportPath, '--seeds', '13,29,53'], { cwd: root, encoding: 'utf8', timeout: 120000 });
   assert.equal(validLanguageCli.status, 0, 'CLI rejected a valid explicit language label: ' + validLanguageCli.stderr + validLanguageCli.stdout);
   const validLanguageReport = JSON.parse(await readFile(validLanguageReportPath, 'utf8'));
@@ -390,6 +393,10 @@ try {
     'CLI must preserve conversation IDs needed by multi-session integrity checks');
   assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.categories.includes('multi-session')), true,
     'CLI must preserve task category annotations as well as language annotations');
+  assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.categories.includes('environment-gotcha')), true,
+    'CLI must accept and preserve the LongMemEval-V2 agentic environment category');
+  assert.equal(validLanguageReport.runs.every(row => row.taskCategoryStratification.slices['multi-session'].independentAnswerableConversations === 1), true,
+    'task-category diagnostics must preserve conversation grouping');
   const invalidConversationLabelsPath = path.join(temp, 'invalid-conversation.jsonl');
   const invalidConversationReportPath = path.join(temp, 'invalid-conversation-report.json');
   await writeFile(invalidConversationLabelsPath, JSON.stringify({ id: 'invalid-conversation-001', query: 'missing group', relevantIds: ['m0'], split: 'holdout', conversationId: '   ' }) + String.fromCharCode(10));
