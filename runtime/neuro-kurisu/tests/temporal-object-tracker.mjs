@@ -132,6 +132,11 @@ const provider=tracker.update({cameraId:1,at:1_000,objects:[
 assert.equal(provider.objects[0].trackId,'vendor-17');
 assert.equal(provider.objects[0].sourceId,'detector-A');
 assert.equal(provider.objects[0].trackingStatus,'provider');
+const providerTextId=tracker.update({cameraId:6,at:1_000,objects:[
+  {label:'printer',trackId:'north-terminal-track-17',sourceId:'front-camera',confidence01:.95},
+]});
+assert.equal(providerTextId.objects[0].trackId,'north-terminal-track-17');
+assert.equal(providerTextId.objects[0].sourceId,'front-camera','sanitization must not remove ordinary r/n/t characters');
 
 // Object confidence alone is not localization confidence.
 const noBoxConfidence=tracker.update({cameraId:5,at:1_000,objects:[
