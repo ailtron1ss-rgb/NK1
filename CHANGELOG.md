@@ -1,4 +1,4 @@
-## [NK1][Aspect 08] Inspect actual Live2D garment-switch capabilities (2026-10-30)
+## [NK1][Aspect 08] Connect verified wardrobe packs to the switch runtime (2026-10-30)\n\n- Add a runtime preparation boundary that verifies manifest structure and every payload byte before a renderer switch plan can become ready.\n- Bind requested asset IDs to the selected renderer's manifest entries; reject unverified IDs, cross-renderer IDs, tampered payloads and body/rig mismatches.\n- Keep renderer acknowledgement as a separate final commit gate; no filesystem/network loader, actual clothing art or renderer implementation is claimed.\n\n## [NK1][Aspect 08] Inspect actual Live2D garment-switch capabilities (2026-10-30)
 
 - Inventory the canonical Kurisu Cubism model metadata and add a conservative capability inspector for model3/CDI/expression JSON.
 - Distinguish static texture atlases and clothing-related physics from true independent garment switching; expression-only controls remain limited; even an explicit wardrobe-named parameter is only a candidate until its moc3 drawable/part mapping is verified.
