@@ -12,8 +12,8 @@ export function resolveSemanticMorphTargets(dictionary:Record<string,number>):Se
   const name=normalize(key);
   let channel:SemanticMorphChannel|null=null;
   if(/(?:blink|eyeblink|eyeclose)(?:left|right|l|r)?$/.test(name))channel="blink";
-  else if(/(?:viseme|phoneme)(?:oh|ou)$/.test(name)||/(?:mouth|jaw)openoh$/.test(name))channel="mouthOh";
-  else if(/(?:viseme|phoneme)(?:aa|a)$/.test(name)||/(?:mouth|jaw)open$/.test(name))channel="mouthOpen";
+  else if(/(?:viseme|phoneme)(?:oh|ou)$/.test(name)||/(?:mouth|jaw)openoh$/.test(name)||/fclmtho$/.test(name))channel="mouthOh";
+  else if(/(?:viseme|phoneme)(?:aa|a)$/.test(name)||/(?:mouth|jaw)open$/.test(name)||/fclmtha$/.test(name))channel="mouthOpen";
   else if(/(?:happy|joy|smile|fun)$/.test(name))channel="joy";
   else if(/(?:sad|sorrow|cry)$/.test(name))channel="sadness";
   else if(/(?:angry|anger|frown)$/.test(name))channel="anger";
