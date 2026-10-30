@@ -78,3 +78,56 @@ test("the active 3D stage uses the canonicalized bone roles", async () => {
   assert.match(stage, /n\.includes\("leftupperarm"\)/);
   assert.match(stage, /n\.includes\("rightupperarm"\)/);
 });
+
+
+test("canonicalizes full-body VRM and common DCC aliases", () => {
+  const cases = [
+    ["J_Bip_C_Hips", "hips"], ["J_Bip_C_Spine", "spine"],
+    ["J_Bip_C_Head", "head"], ["J_Bip_L_Shoulder", "leftshoulder"],
+    ["J_Bip_L_Hand", "lefthand"], ["J_Bip_R_Hand", "righthand"],
+    ["mixamorig:LeftUpLeg", "leftupperleg"],
+    ["mixamorig:RightLeg", "rightlowerleg"],
+    ["mixamorig:LeftFoot", "leftfoot"],
+    ["mixamorig:RightToeBase", "righttoes"],
+    ["thumb_proximal.L", "leftthumbproximal"],
+    ["index_intermediate.R", "rightindexintermediate"],
+    ["J_Bip_L_Index3", "leftindexdistal"],
+  ];
+  for (const [source, expected] of cases) {
+    assert.equal(canonicalizeHumanoidBoneName(source), expected, source);
+  }
+});
+
+test("maps the complete VRM 1.0 body, feet and finger roles by node index", () => {
+  const roles = buildHumanoidRoleMap({
+    VRMC_vrm: { humanoid: { humanBones: {
+      hips: { node: 0 }, spine: { node: 1 }, chest: { node: 2 },
+      leftUpperLeg: { node: 10 }, rightFoot: { node: 21 },
+      leftHand: { node: 30 }, leftIndexIntermediate: { node: 33 },
+      rightLittleDistal: { node: 48 }, leftToes: { node: 50 },
+    } } },
+  });
+  assert.equal(roles.get(0), "hips");
+  assert.equal(roles.get(2), "chest");
+  assert.equal(roles.get(10), "leftupperleg");
+  assert.equal(roles.get(21), "rightfoot");
+  assert.equal(roles.get(30), "lefthand");
+  assert.equal(roles.get(33), "leftindexintermediate");
+  assert.equal(roles.get(48), "rightlittledistal");
+  assert.equal(roles.get(50), "lefttoes");
+});
+
+test("maps legacy VRM 0.x finger chains and rejects unknown role names", () => {
+  const roles = buildHumanoidRoleMap({
+    VRM: { humanoid: { humanBones: [
+      { bone: "leftThumbProximal", node: 4 },
+      { bone: "rightMiddleIntermediate", node: 8 },
+      { bone: "leftLittleDistal", node: 12 },
+      { bone: "customAccessory", node: 16 },
+    ] } },
+  });
+  assert.equal(roles.get(4), "leftthumbproximal");
+  assert.equal(roles.get(8), "rightmiddleintermediate");
+  assert.equal(roles.get(12), "leftlittledistal");
+  assert.equal(roles.has(16), false);
+});
