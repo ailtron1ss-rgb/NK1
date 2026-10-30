@@ -1,3 +1,11 @@
+## [NK1][Plan] Refresh completion master plan after P23, Original 2D and 2.5D integrations (2026-10-30)
+
+- Updated the canonical 100% execution plan to source HEAD d179446c48a2a99eae64cfa8681707a455d22b01.
+- Recorded PR #407 Original 2D asset-contract merge, PR #409 basic 2.5D depth-rig foundation merge, and PR #430 P23 lifecycle/holdout-integrity merge with exact-head CI evidence.
+- Marked PR #401 and #427 closed as superseded/duplicate; clarified that P23/holdout structural CI does not prove independent recall uplift.
+- Captured the post-merge release-license gate failure and exact human-review requirements. No license approval was fabricated and no Release ZIP was published.
+
+
 ## [NK1][Learning] Integrate P23 self-development journals and holdout integrity (2026-10-30)
 
 - Added durable P23 fitness/lifecycle journals, lifecycle reconciliation on restore, and file-backed compound-repair retry/backoff recovery.
