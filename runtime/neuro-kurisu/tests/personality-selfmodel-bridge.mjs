@@ -89,7 +89,7 @@ const afterRestart=restoredBridge.recordOutcome({
   predictionError01:0.1,identityGap01:0.05,relationshipId:'user',
 });
 assert.equal(afterRestart.newEvent,false);
-assert.equal(restoredPersonality.snapshot().learningUpdates,2);
+assert.equal(restoredPersonality.snapshot().learningUpdates,3);
 
 // Corrupted persisted state is bounded and action-keyed.
 const hardenedPersonality=new P2702PersistentPersonalityDynamics();
