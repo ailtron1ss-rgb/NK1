@@ -15,7 +15,7 @@ on:
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/avatar/bodyDynamics.ts"
       - "app/scripts/avatar-body-dynamics.test.mjs"
-      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/Avatar3DStage.tsx"\n      - "app/src/components/KurisuOriginalStage.tsx"\n      - "app/scripts/avatar-original-facial-wiring.test.mjs"
       - "app/scripts/avatar-affective-expression.test.mjs"
       - "app/package.json"
       - ".github/workflows/avatar-affective-expression.yml"
