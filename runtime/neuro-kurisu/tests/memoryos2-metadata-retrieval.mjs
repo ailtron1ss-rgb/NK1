@@ -79,12 +79,15 @@ assert.equal(candidate.previewRetrieve('mycelium', 3).some(row => row.id === 'm-
 // The repeated-encode path also merges tags/context into an existing canonical row.
 candidate.encode(makeMemory('m-budget', 'A note about reviewing a purchase order next month.', {
   tags: ['budget-refresh'],
+  entities: ['RenewalDesk'],
   context: { topic: 'renewal timeline tracking' },
 }));
 assert.equal(candidate.indexDiagnostics().pass, true,
   'deduplicating encode must synchronize tags and context metadata postings');
 assert.equal(candidate.previewRetrieve('renewal', 3)[0]?.id, 'm-budget',
   'metadata added through encode must be immediately retrievable');
+assert.equal(candidate.previewRetrieve('RenewalDesk', 3)[0]?.id, 'm-budget',
+  'entities added through deduplicating encode must be immediately retrievable');
 assert.equal(candidate.previewRetrieve('planning', 3).some(row => row.id === 'm-budget'), false,
   'overwritten context values must not leave stale metadata terms');
 
