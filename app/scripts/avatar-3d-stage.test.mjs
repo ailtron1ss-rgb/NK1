@@ -69,3 +69,19 @@ test("VRM wardrobe UI supports independent slot selection and keeps body identit
  assert.match(adapter,/nk1WardrobeSlot !== undefined/);
  assert.match(adapter,/collectVrmAvatarRigIdentityDescriptors/);
 });
+
+
+test("VRM wardrobe selection persists only against exact body/rig identity and restores after hash verification",async()=>{
+ const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/wardrobePackStore.ts"),"utf8");
+ assert.match(stage,/saveStoredWardrobePack/);
+ assert.match(stage,/loadStoredWardrobePack/);
+ assert.match(stage,/rightsAttested:wardrobeRightsConfirmed/);
+ assert.match(stage,/loadStoredWardrobePack\(bodyId,WARDROBE_RIG_VERSION\)/);
+ assert.match(stage,/stored\.status==="restored"/);
+ assert.match(stage,/setWardrobeSelectedAssetIds\(restored\.selectedAssetIds\)/);
+ assert.match(store,/indexedDB\.open/);
+ assert.match(store,/verifyWardrobePackPayload/);
+ assert.match(store,/record\.bodyId !== bodyId \|\| record\.rigVersion !== rigVersion/);
+ assert.match(store,/rightsAttestedAt/);
+ assert.match(store,/MAX_STORED_WARDROBE_BYTES/);
+});
