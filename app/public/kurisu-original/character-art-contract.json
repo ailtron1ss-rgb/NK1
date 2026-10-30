@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "id": "nk1-kurisu-original-2d",
+  "title": "NK1 Original 2D — character art contract",
+  "status": "concept-art-contract",
+  "format": "svg-preview",
+  "viewBox": [0, 0, 420, 560],
+  "identity": {
+    "hair": "long copper/auburn hair with a restrained warm highlight range",
+    "hairAccessory": "slim red hair clip on the character's left fringe",
+    "eyes": "large violet default iris with ice-blue and teal optional palettes",
+    "silhouette": "slim anime-inspired young adult scientist; recognizable head-to-body proportion and long hair silhouette",
+    "expressionPrinciple": "subtle, intelligent, slightly tsundere-capable; avoid permanently exaggerated cute expressions"
+  },
+  "palette": {
+    "hair": {"main": "#a94732", "shadow": "#54272c", "highlight": "#c86645"},
+    "skin": {"light": "#ffe1cf", "shadow": "#dca59c"},
+    "eyes": {"default": "#b5a4ff", "alternate": ["#8bdcff", "#5be5ce"]},
+    "signatureRed": "#b52e43",
+    "labCoat": {"base": "#f1f4f5", "shadow": "#bdcbd0"},
+    "nightOutfit": {"base": "#1c3442", "shadow": "#10232f"}
+  },
+  "composition": {
+    "fullBodySafeArea": [0.12, 0.045, 0.76, 0.86],
+    "headCenter": [0.5, 0.24],
+    "shoulderLine": 0.34,
+    "waistLine": 0.64,
+    "feetBaseline": 0.89,
+    "minimumClearance": 0.04,
+    "notes": "Normalized coordinates are art-direction guides, not a replacement for measured production rig landmarks."
+  },
+  "requiredViews": ["front-neutral", "front-three-quarter-left", "front-three-quarter-right", "profile-left", "profile-right", "back"],
+  "requiredExpressions": ["neutral", "curiosity", "thinking", "joy", "embarrassment", "anxiety", "sadness", "frustration", "anger", "protective"],
+  "requiredOutfits": ["laboratory", "casual", "nightwear"],
+  "requiredAccessorySlots": ["hair-clip", "ear-accessories", "neck-accessory", "handheld-prop"],
+  "layerOrderBackToFront": [
+    "background",
+    "hair-back",
+    "body-base",
+    "legs",
+    "torso-base",
+    "outfit-back",
+    "left-upper-arm",
+    "right-upper-arm",
+    "neck",
+    "face-base",
+    "eyes-and-brows",
+    "nose-and-mouth",
+    "front-hair",
+    "hair-clip",
+    "outfit-front",
+    "hands-and-props",
+    "highlight-and-fx"
+  ],
+  "productionAssetRequirements": {
+    "masterCanvas": [4096, 4096],
+    "workingFormat": ["PSD", "KRA", "SVG"],
+    "deliveryFormat": ["layered-PNG", "SVG-preview", "manifest.json"],
+    "alpha": true,
+    "colorSpace": "sRGB",
+    "noFlattenedOnlyDelivery": true,
+    "allHiddenOccludedAreasForPoseChanges": true,
+    "sourceAndExportHashesRequired": true
+  },
+  "explicitNonGoals": [
+    "This contract does not claim that the current SVG is a production layered illustration.",
+    "This contract does not claim 2.5D depth, skeletal joints, inverse kinematics, or free full-body motion.",
+    "Color variants do not count as independent outfits or interchangeable garment assets."
+  ]
+}
