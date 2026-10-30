@@ -178,3 +178,24 @@ Workflow `.github/workflows/p26-learning-validation.yml` расширен: до�
 После этого `workpass70-source` продвинулся до `a78847ee5597d659691bcd8fd10d8b9dd74c43f9`. Интеграционная ветка была синхронизирована merge-коммитом с двумя родителями: актуальным source и предыдущим PR HEAD. Поэтому перечисленные результаты являются доказательствами предыдущего HEAD, а не автоматическим PASS нового синхронизированного HEAD.
 
 **Оставшийся quality gate:** exact-head P26 Learning Validation и связанные PR checks должны завершиться успешно после синхронизации; затем — физический runtime/device soak и оценка независимого holdout. До этого PR остаётся открытым, `main` и Release ZIP не меняются.
+
+
+## 8. Дополнение — Aspect 04: holdout integrity и fail-closed staging (30.10.2026)
+
+### Исправленные границы доверия
+
+- Фоновый P23 revision больше не считает ответ `candidate-staged` успешным без непустого стабильного `candidateId`. Такой ответ увеличивает счётчик ошибок, создаёт runtime anomaly и попадает в журнал как `error`; staged-счётчик не меняется.
+- Добавлен runtime regression на malformed staged response.
+- `SkillAcquisitionBenchmark` трактует отсутствие явной фазы как `learning`, а не выводит holdout из порядка поступления событий.
+- Holdout учитывает только новые уникальные context keys; повторные события не увеличивают размер независимой выборки. Переиспользование контекста между фазами помечается как contamination и обнуляет производный gain.
+- После восстановления состояние accepted holdout пересчитывается из реестра уникальных контекстов, а не принимается из legacy-счётчика.
+- Операционные сигналы выполнения compound skills и внешнего project research относятся к learning, а не к holdout.
+
+### Проверки и ограничения
+
+- P23 scheduler regression включён в отдельный P26 learning validation workflow.
+- Skill acquisition split integrity и WorkPass47 integration wired в WorkPass71 core validation.
+- Это исправляет достоверность split и отчётности, но **не доказывает улучшение обучения**.
+- Production promotion по-прежнему требует независимого host verifier, подписанных outcome artifacts, точной идентичности task manifest / payload / seed, paired validation и holdout, явного approval и доступного rollback.
+- До принятия PR необходимо выполнить exact-head CI; после него — matched RU/EN evaluation минимум на пяти парных seeds, тесты transfer/forgetting/drift, restart/kill recovery и длинный runtime soak.
+- Release ZIP не обновлялся.
