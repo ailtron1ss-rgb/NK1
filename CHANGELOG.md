@@ -113,3 +113,9 @@
 - Replace wall-clock sprite pose cycling with deterministic action-aware selection and pass organism action/thinking state into Legacy.
 - Remove the misleading torso ring drawn over still sprites, improve SVG Original's default palette/hair clip, and make Auto pose reflect basic action/emotion context while preserving manual overrides.
 - Add regression assertions for active-viewer timing, sprite determinism, model/media references, texture profiles, motion coverage, sprite manifest integrity and SHA-locked canonical assets.
+
+## [NK1][Aspect 10] Restore locked Radix Popover dependency range (2026-10-30)
+
+- Align `app/package.json` with the committed app lockfile range for `@radix-ui/react-popover` (`^1.1.15`).
+- Keep the lockfile authoritative and avoid introducing an unreviewed component-library upgrade; the change addresses the npm `EUSAGE` mismatch observed in the exact-branch clean-install workflow.
+- Re-run clean `npm ci --prefix app` and the affected runtime regressions on the updated head before promoting this branch.
