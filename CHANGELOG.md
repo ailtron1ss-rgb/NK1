@@ -1,3 +1,9 @@
+## [NK1][Security] Add governed tool input/output contracts (2026-10-30)
+
+- Add a bounded JSON-schema-inspired contract validator at the canonical ActionGateway, with validation before approval consumption and executor entry.
+- Add output validation and apply contracts to Android listen, device telemetry and simulator world observation; preserve P23 journal bootstrap and current native speech/holdout CI gates.
+- Add positive and negative bounded-pattern fixtures (`nk1` accepted, `nk1!` rejected). This is an opt-in contract subset, not a claim of full JSON Schema or MCP conformance.
+
 ## [NK1][Aspect 03] Carry grounded world-perception and temporal identity into latest source (2026-10-30)
 
 - Preserve evidence provenance and epistemic uncertainty through the canonical OrganismCore → P41 → GroundedWorldState path, including explicit evidence kinds, source/track identity, calibrated coordinate-frame IDs and image-space metadata.
