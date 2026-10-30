@@ -147,3 +147,10 @@ test("whole-pack verification requires every declared file and rejects extras", 
   assert.equal(extra.valid, false);
   assert.equal(extra.reason, "unexpected-file");
 });
+
+
+test("malformed non-binary payloads are rejected without throwing",async()=>{
+ const result=await verifyWardrobeAssetBytes({bytes:3,sha256:"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},null);
+ assert.equal(result.valid,false);
+ assert.equal(result.reason,"invalid-input");
+});
