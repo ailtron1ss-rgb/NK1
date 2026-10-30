@@ -19,8 +19,14 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/body/EmbodiedInteractionController.ts'
       - 'runtime/neuro-kurisu/tests/aspect10-embodied-interaction.mjs'
+      - 'runtime/neuro-kurisu/tests/aspect10-grounded-bridge.mjs'
+      - 'runtime/neuro-kurisu/src/organism/body/GroundedInteractionBridge.ts'
       - 'app/src/components/avatar/planarArmIK.ts'
       - 'app/scripts/planar-arm-ik.test.mjs'
+      - 'app/src/components/avatar/vrmHumanoidRigAdapter.ts'
+      - 'app/scripts/vrm-humanoid-rig-adapter.test.mjs'
+      - 'app/src/components/Avatar3DStage.tsx'
+      - 'app/scripts/avatar-3d-stage.test.mjs'
       - '.github/workflows/aspect10-embodied-interaction.yml'
 permissions:
   contents: read
