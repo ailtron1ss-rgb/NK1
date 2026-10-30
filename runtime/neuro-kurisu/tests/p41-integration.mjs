@@ -35,7 +35,7 @@ assert.ok(snapshot.facets.embodiment.p41NativePerception.imageFrames >= 1);
 assert.ok(snapshot.facets.embodiment.p41NativePerception.audioFrames >= 1);
 assert.ok(snapshot.facets.embodiment.p41SemanticPerception.snapshots.length >= 1);
 assert.ok(snapshot.facets.embodiment.p41SemanticPerception.entities.length >= 1);
-const terminalTracks = snapshot.facets.embodiment.p41SemanticPerception.entities.filter(entity => entity.label === 'terminal');
+const terminalTracks = snapshot.facets.embodiment.p41SemanticPerception.entities.filter(entity => entity.label === 'terminal' && entity.kind === 'object');
 assert.equal(terminalTracks.length, 1, 'vision and canonical world IDs must associate a single observed terminal');
 assert.ok(terminalTracks[0].modalities.includes('vision') && terminalTracks[0].modalities.includes('world'));
 assert.ok(terminalTracks[0].trackId?.includes('t1'), 'canonical world object identity must survive semantic fusion');
