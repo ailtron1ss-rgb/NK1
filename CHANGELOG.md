@@ -2938,3 +2938,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Compare VRM fallback bind-pose bone identities using the same normalized naming rule as skeleton mapping.
 - Reject renderer acknowledgements whose raw loaded-asset list contains duplicates, even when set de-duplication would otherwise make the expected IDs appear complete.
 - Changes are driven by three concrete failures in the first wardrobe CI run; rerun the workflow on the new head before claiming validation.
+
+## [NK1][Aspect 15] Make preflight fixtures honor declared asset extensions (2026-10-30)
+
+- Generate test asset paths from the declared MIME (`.png`, `.jpg`, `.webp`, `.glb`, `.gltf`) so fixtures pass the manifest's intentional MIME-extension contract before exercising byte/signature/GLB validation.
+- Keep tampering tests bound to the actual fixture path; the tests now reach the intended preflight checks instead of stopping early on a fixture-format error.
+- No production validation was relaxed: extension, signature, SHA-256, GLB self-containment and traversal checks remain enforced.
