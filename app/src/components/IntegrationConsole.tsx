@@ -107,7 +107,7 @@ export function IntegrationConsole() {
       </div> : null}
 
       <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_1fr]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <Panel title="Capability profiles" icon={<ShieldCheck className="size-4" />}>
             <div className="mb-2 flex flex-wrap gap-2"><Button variant="outline" size="sm" disabled={busy} onClick={()=>void action("Authorize outbound",()=>neuroApi.integrationCapabilityAuthorize("channel.outbound","telegram",outboundConfirmed))}>Authorize outbound</Button>
           </div>
@@ -145,7 +145,7 @@ export function IntegrationConsole() {
           </Panel>
         </div>
 
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <Panel title="Live integration state" icon={<Database className="size-4" />}>
             <div className="grid grid-cols-2 gap-2 text-xs"><Stat label="WILL schema" value={String((overview as any)?.will?.schemaVersion ?? "—")} /><Stat label="Record chain" value={(overview as any)?.will?.recordChain?.integrity?.ok ? "OK" : "—"} /><Stat label="Vector engine" value={String((overview as any)?.will?.vector?.engine ?? "—")} /><Stat label="PMA fingerprint" value={String((overview as any)?.will?.pma?.lastFingerprint ?? "—").slice(0,12)} /><Stat label="Search index" value={String((overview as any)?.lumina?.search?.indexedRecords ?? 0)} /><Stat label="Idempotency hits" value={String((overview as any)?.lumina?.idempotency?.hits ?? 0)} /></div>
             <pre className="mt-3 max-h-72 overflow-auto rounded-md border border-border bg-bg p-3 text-[10px] leading-relaxed text-muted">{overview ? fmt({will:(overview as any).will,lumina:(overview as any).lumina,voice:(overview as any).voice}) : "Loading…"}</pre>
@@ -173,5 +173,5 @@ export function IntegrationConsole() {
   );
 }
 
-function Panel({title,icon,children}:{title:string;icon:ReactNode;children:ReactNode}){return <section className="rounded-lg border border-border bg-bg p-3"><div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-subtle">{icon}{title}</div>{children}</section>}
+function Panel({title,icon,children}:{title:string;icon:ReactNode;children:ReactNode}){return <section className="min-w-0 rounded-lg border border-border bg-bg p-3"><div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-subtle">{icon}{title}</div>{children}</section>}
 function Stat({label,value}:{label:string;value:string}){return <div className="rounded-md border border-border bg-bg p-2"><p className="text-[10px] uppercase tracking-wider text-subtle">{label}</p><p className="mt-1 break-all font-mono text-sm text-fg">{value}</p></div>}
