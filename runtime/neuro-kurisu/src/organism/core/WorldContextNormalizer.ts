@@ -71,6 +71,13 @@ export function normalizeWorldContext(
       const valueKnown = candidate?.valueKnown === false ? false : isFiniteNumeric(candidate?.value);
       const visibilityKnown = candidate?.visibilityKnown === false ? false : typeof candidate?.visible === 'boolean';
       const collectionKnown = candidate?.collectionKnown === false ? false : typeof candidate?.collected === 'boolean';
+      // World-space position is meaningful only when all axes and an explicit
+      // coordinate frame are present. Partial/image-relative coordinates stay unknown.
+      const coordinateFrameId = safeString(candidate?.coordinateFrameId, '', 120);
+      const spatialPositionKnown = Boolean(coordinateFrameId)
+        && isFiniteNumeric(candidate?.x)
+        && isFiniteNumeric(candidate?.y)
+        && isFiniteNumeric(candidate?.z);
 
       return {
         id,
@@ -85,6 +92,12 @@ export function normalizeWorldContext(
         ...(confidence !== undefined ? { confidence01: confidence } : {}),
         ...(evidenceKind ? { evidenceKind } : {}),
         ...(sourceId ? { sourceId } : {}),
+        ...(spatialPositionKnown ? {
+          x: Number(candidate?.x),
+          y: Number(candidate?.y),
+          z: Number(candidate?.z),
+          coordinateFrameId,
+        } : {}),
       };
     })
     : [];
