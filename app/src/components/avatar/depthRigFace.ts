@@ -50,7 +50,7 @@ export function resolveDepthRigFacePose(intent: FaceIntent): FaceValues {
 }
 
 const ALIASES: Record<FaceChannel, readonly string[]> = {
-  blink: ["blink", "eyeclose", "eyesclosed"],
+  blink: ["blink", "eyeblink", "eyeclose", "eyesclosed"],
   browRaise: ["browraise", "eyebrowraise"],
   browFurrow: ["browfurrow", "browdown", "eyebrowdown"],
   smile: ["smile", "mouthsmile"],
