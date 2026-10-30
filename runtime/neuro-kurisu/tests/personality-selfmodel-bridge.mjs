@@ -131,6 +131,20 @@ assert.ok(Object.values(prepared.actionBias).every(x=>Number.isFinite(x)&&Math.a
 assert.ok(prepared.personality.traitVector.every(Number.isFinite));
 assert.ok(Object.values(prepared.selfModelActionBias).every(Number.isFinite));
 
+const forgedReceiptModel = new SelfModelEngine();
+const forgedReceiptResult = forgedReceiptModel.learnGoalOutcome({
+  action:'verify',goalAlignment01:0.9,reward01:0.9,tick:13,
+  evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:reb:13:1:outcome',evidenceReceiptId:'reb:13:2:outcome'},
+});
+assert.equal(forgedReceiptResult.identityUpdateAccepted,false,'SelfModel rejects mismatched receipt IDs even when called outside the bridge');
+assert.equal(forgedReceiptResult.identityUpdateReason,'receipt-not-bound-to-outcome-event');
+const directValidReceiptModel = new SelfModelEngine();
+const directValidReceipt = directValidReceiptModel.learnGoalOutcome({
+  action:'verify',goalAlignment01:0.9,reward01:0.9,tick:13,
+  evidence:{verified:true,independent:true,source:'external-verification',evidenceRef:'external-verification:reb:13:3:outcome',evidenceReceiptId:'reb:13:3:outcome'},
+});
+assert.equal(directValidReceipt.identityUpdateAccepted,true,'a tick-bound exact receipt is required and sufficient at the SelfModel gate');
+
 const poisonedOutcomeModel = new SelfModelEngine();
 const poisonedOutcome = poisonedOutcomeModel.learnGoalOutcome({
   action: 'verify', goalAlignment01: NaN, reward01: Infinity, tick: 13,
