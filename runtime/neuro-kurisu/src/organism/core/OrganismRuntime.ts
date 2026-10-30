@@ -382,6 +382,7 @@ export class OrganismRuntime {
   /** Configure the one canonical motor skeleton from a calibrated avatar profile. */
   configureMotorSkeleton(definitions: readonly import('../system/EmbodiedMotorController.ts').JointDefinition[]): void {
     this.motor.configureSkeleton(definitions);
+    this.motor.startContinuous(50);
   }
 
   /** Submit a goal only after the upstream cognitive/action/ethical gate has approved it. */
@@ -437,9 +438,8 @@ export class OrganismRuntime {
         const previousTick = this.core.operationalStatusSnapshot().tick;
         const previousProcessed = this.continuousCognitiveFabric.diagnostics().processed;
         const result = await this.stepInternal(externalText, options);
-        // Advance only an explicitly configured motor skeleton. No goal is inferred
-        // from emotion, gaze, speech, UI state, or the world simulator.
-        if (this.motor.diagnostics().configured) this.motor.advance(performance.now());
+        // Motor progression is owned by the independent bounded motor clock, not by
+        // the slower cognitive-cycle cadence. Cognitive decisions never synthesize goals.
         const fabric = this.continuousCognitiveFabric.diagnostics();
         this.runtimeClosure.step({
           at: Date.now(),
@@ -1553,6 +1553,7 @@ export class OrganismRuntime {
     // stores to persist the final in-memory cycle.  On mobile this is especially
     // dangerous because checkpoint cadence is deliberately throttled.
     this.stopping = true;
+    this.motor.stopContinuous();
     this.clockScheduler.stop();
     await this.clockScheduler.drain();
     await this.trustedShadowLearningScheduler?.drain();
