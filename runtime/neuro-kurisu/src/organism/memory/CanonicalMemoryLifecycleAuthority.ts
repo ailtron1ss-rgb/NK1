@@ -152,7 +152,11 @@ export class CanonicalMemoryLifecycleAuthority {
   }
 
   maintainCanonical(input:{tick:number;pressure01?:number;maxItems?:number;hotBudget?:number;warmBudget?:number;coldBudget?:number;identityTension01?:number}){
-    const tick=this.assertNextTick(input.tick);
+    const tick=safeTick(input.tick);
+    if(tick===null||tick<this.state.lastTick)throw new Error('Canonical memory lifecycle tick must not decrease and must be a non-negative safe integer');
+    // run() already performs canonical maintenance for this tick. A second
+    // consolidation-path request is an idempotent no-op, including after restore.
+    if(tick===this.state.lastTick)return {skipped:true,changed:0};
     const result=this.fabric.maintain({...input,tick});
     this.state.maintenanceRuns+=result.skipped?0:1;
     this.state.lastTick=tick;
