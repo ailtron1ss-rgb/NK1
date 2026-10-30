@@ -21,6 +21,7 @@ import {
  type VrmMorphTargetGroup,
 } from "./avatar/vrmExpressionMap";
 import { applyThreeFacialSemanticWeights, bindThreeFacialMorphTargets } from "./avatar/threeFacialSemanticRuntime";
+import { advanceVrmaExpressionOwnership, beginVrmaExpressionOwnershipTransition, getProtectedVrmaExpressionKeys, getVrmaSpeechVisemeKeys } from "./avatar/vrmaExpressionOwnership";
 import * as THREE from "three";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
@@ -84,9 +85,10 @@ function transitionClip(rt:Runtime,clip:any,timeScale:number,fadeSeconds=.22):vo
  if(!rt.mixer)return;
  if(!clip){
   if(rt.activeAction){
-   rt.transitionExpressionKeys=[...rt.activeExpressionKeys];
-   rt.expressionTransitionRemaining=fadeSeconds;
-   rt.activeExpressionKeys=[];
+   const ownership=beginVrmaExpressionOwnershipTransition(rt.activeExpressionKeys,[],fadeSeconds);
+   rt.activeExpressionKeys=ownership.activeExpressionKeys;
+   rt.transitionExpressionKeys=ownership.transitionExpressionKeys;
+   rt.expressionTransitionRemaining=ownership.expressionTransitionRemaining;
    rt.activeLookAtClip=false;
    rt.activeAction.fadeOut(fadeSeconds);rt.activeAction=null;rt.clipName="";
   }
@@ -95,11 +97,11 @@ function transitionClip(rt:Runtime,clip:any,timeScale:number,fadeSeconds=.22):vo
  if(rt.activeAction&&rt.clipName===clip.name)return;
  const next=rt.mixer.clipAction(clip);
  if(rt.activeAction&&rt.activeAction!==next)rt.activeAction.fadeOut(fadeSeconds);
- const previousKeys=rt.activeExpressionKeys??[];
  const nextKeys=rt.vrmaExpressionKeysByClip[String(clip.name??"")]??[];
- rt.transitionExpressionKeys=Array.from(new Set([...previousKeys,...nextKeys]));
- rt.expressionTransitionRemaining=fadeSeconds;
- rt.activeExpressionKeys=nextKeys;
+ const ownership=beginVrmaExpressionOwnershipTransition(rt.activeExpressionKeys,nextKeys,fadeSeconds);
+ rt.transitionExpressionKeys=ownership.transitionExpressionKeys;
+ rt.expressionTransitionRemaining=ownership.expressionTransitionRemaining;
+ rt.activeExpressionKeys=ownership.activeExpressionKeys;
  rt.activeLookAtClip=rt.vrmaLookAtClipNames.includes(String(clip.name??""));
  next.reset();next.enabled=true;next.setEffectiveTimeScale(clamp(timeScale,.1,2));
  next.setEffectiveWeight(1);next.fadeIn(fadeSeconds).play();
@@ -144,8 +146,12 @@ export function Avatar3DStage(props:Props){
      blink:p.awake&&Math.sin(t*.83)>.994?.92:0,
     },{applyVrmOverrides:!(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length>0)});
     if(rt.vrm?.expressionManager&&rt.vrmExpressionKeys.length){
-      const protectedKeys=new Set(rt.expressionTransitionRemaining>0?[...rt.activeExpressionKeys,...rt.transitionExpressionKeys]:rt.activeExpressionKeys);
-      const speechVisemeKeys=p.speaking?new Set(["aa","ih","ou","ee","oh"]):null;
+      const protectedKeys=getProtectedVrmaExpressionKeys({
+       activeExpressionKeys:rt.activeExpressionKeys,
+       transitionExpressionKeys:rt.transitionExpressionKeys,
+       expressionTransitionRemaining:rt.expressionTransitionRemaining,
+      });
+      const speechVisemeKeys=p.speaking?new Set(getVrmaSpeechVisemeKeys(rt.vrmExpressionKeys)):null;
       for(const key of rt.vrmExpressionKeys){
         // Speech articulation is time-critical: while NK1 is speaking, its
         // grapheme-timeline visemes own the vowel presets even if a VRMA clip
@@ -161,7 +167,15 @@ export function Avatar3DStage(props:Props){
       const speechSemantics=["aa","ih","ou","ee","oh"] as const;
       const genericSpeechVisemes=p.speaking?speechSemantics.filter((semantic)=>!managerOwnedSemantics.has(semantic)).map((semantic)=>({semantic,weight:genericWeights[semantic]??0})):[];
       applyThreeFacialSemanticWeights(rt.facialMorphTargets,genericWeights,genericSpeechVisemes);
-      if(rt.expressionTransitionRemaining>0){rt.expressionTransitionRemaining=Math.max(0,rt.expressionTransitionRemaining-dt);if(rt.expressionTransitionRemaining===0)rt.transitionExpressionKeys=[];}
+      if(rt.expressionTransitionRemaining>0){
+       const ownership=advanceVrmaExpressionOwnership({
+        activeExpressionKeys:rt.activeExpressionKeys,
+        transitionExpressionKeys:rt.transitionExpressionKeys,
+        expressionTransitionRemaining:rt.expressionTransitionRemaining,
+       },dt);
+       rt.expressionTransitionRemaining=ownership.expressionTransitionRemaining;
+       rt.transitionExpressionKeys=ownership.transitionExpressionKeys;
+      }
     }else{
       if(rt.vrmMorphTargets.length)applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights);
       // A VRM may expose only a subset of facial channels through its native
