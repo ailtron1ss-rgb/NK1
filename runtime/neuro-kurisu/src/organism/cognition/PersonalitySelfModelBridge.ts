@@ -111,6 +111,7 @@ export class PersonalitySelfModelBridge {
       evidence:{
         verified:evidenceAccepted,independent:evidenceAccepted,source,
         evidenceRef:evidenceAccepted?evidenceRef:undefined,
+        evidenceReceiptId:evidenceAccepted?receiptId:undefined,
       },
     });
     return {
