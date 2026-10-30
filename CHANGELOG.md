@@ -1,3 +1,11 @@
+## [NK1][аспект14] Remove emotion-to-fixed-pose overrides in 3D arm posture (2026-10-30)
+
+- Add deriveAffectiveArmPosture, a pure renderer-neutral modulator that accepts the motor planner's existing left/right arm targets and continuously adjusts openness, tension, gesture amplitude, stillness and dominance.
+- Remove hard-coded anger/frustration fixed arm angles and protective fixed arm offset from the procedural/imported 3D stage.
+- Keep semantic gesture selection with the action/motor planner; affect now changes movement quality rather than choosing a scripted pose.
+- Add deterministic range, monotonic modulation, guardedness, stillness and malformed-input regression coverage; include it in the focused CI workflow.
+- Browser visual calibration, actual VRM rig checks and Android E2E remain pending.
+
 ## [NK1][аспект14] Shared affective body language across renderers (2026-10-30)
 
 - Add deterministic, bounded renderer-neutral cues for posture, shoulder tension, arm openness, gesture amplitude, tempo, stillness, stability and gaze.
