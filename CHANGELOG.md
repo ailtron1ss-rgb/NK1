@@ -2830,3 +2830,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Aspect 02] Reconcile seven previously unmatched sprite semantics (2026-10-30)
+
+- Retrieved the exact seven PNGs from `workpass70-source` through GitHub's Base64 Contents API and visually inspected the decoded images: `embarrassed`, `phone_look`, `thinking_chin`, `soft_smile`, `city_stand`, `phone_lean`, and `street_walk`.
+- Corrected the inventory with observed content, semantic roles, recommended reference uses, verified Git blob SHA-1 values and decoded byte sizes. In particular, the misleading filenames are not treated as ground truth (for example, `embarrassed` is a guarded crossed-arms portrait and `thinking_chin` is a reclining hand-supported rest pose).
+- Added a dated pixel-review record and strengthened the regression to distinguish 25 prior-audit descriptions from seven directly reviewed images; the unresolved visual-review queue is now 0/32.
+- This is semantic visual review only. Authorship, redistribution rights, source prompts, layered masters, production art and 2.5D suitability remain unverified; no Release ZIP was changed.
