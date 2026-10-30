@@ -24,7 +24,7 @@ try {
   assert.equal(engine.learningLifecycleJournalDiagnostics().pendingActivationCount, 0);
 
   // The core learner and optional revision coordinator share the same durable sinks.
-  const sharedSinks = createDefaultLearningJournals(stateFile.replace(/\\.json$/i, '.shared.json'));
+  const sharedSinks = createDefaultLearningJournals(stateFile.replace(/\.json$/i, '.shared.json'));
   const coreLearner = new P23LearningEngine();
   const revisionLearner = new P23LearningEngine();
   configureLearningJournals(coreLearner, sharedSinks);
@@ -33,8 +33,8 @@ try {
   assert.equal(revisionLearner.learningFitnessJournalDiagnostics().available, true);
   assert.equal(coreLearner.learningLifecycleJournalDiagnostics().available, true);
   assert.equal(revisionLearner.learningLifecycleJournalDiagnostics().available, true);
-  assert.equal(sharedSinks.fitnessPath, stateFile.replace(/\\.json$/i, '.shared.learning-fitness.jsonl'));
-  assert.equal(sharedSinks.lifecyclePath, stateFile.replace(/\\.json$/i, '.shared.learning-lifecycle.jsonl'));
+  assert.equal(sharedSinks.fitnessPath, stateFile.replace(/\.json$/i, '.shared.learning-fitness.jsonl'));
+  assert.equal(sharedSinks.lifecyclePath, stateFile.replace(/\.json$/i, '.shared.learning-lifecycle.jsonl'));
 
   let hostFitnessWrites = 0;
   let hostLifecycleWrites = 0;
