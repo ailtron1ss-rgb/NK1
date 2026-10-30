@@ -2811,3 +2811,88 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ### Evidence boundary
 - The roadmap is a planning and status artifact; it does not claim that separate feature branches are merged, real-device/browser E2E is complete, memory uplift is measured, licenses are approved, or the Release ZIP has been refreshed.
+
+## [NK1][Aspect 10] Record remaining runtime and app-lock integration gates (2026-10-30)
+
+- Document the remaining gap between grounded planner contracts and actual OrganismRuntime camera-to-hand actuation; no physical execution is claimed.
+- Record the Aspect 10 focused CI coverage and the separately scoped app manifest/lockfile drift that still blocks full app dependency installation.
+- Release ZIP remains unchanged.
+
+
+## [NK1][Aspect 10] Require explicit authorization for physical reach (2026-10-30)
+
+- Add a separate deny-by-default reach permission; reaching is treated as physical movement, not passive inspection.
+- Require live camera grounding, exact target/frame/action-bound short-lived safety authorization, verified provenance and explicit target reach affordance.
+- Keep reach permission separate from contact and manipulation permissions.
+- Add seven focused regressions. No renderer/device arm actuation is claimed.
+
+
+## [NK1][Aspect 10] Align focused CI with Node 24 and strict evidence typing (2026-10-30)
+
+- Migrate the focused Aspect 10 workflow to the repository's Node 24 pin and supported Actions v7 tags; watch `.nvmrc` changes.
+- Explicitly narrow optional world-revision evidence before integer and monotonicity checks, eliminating a strict TypeScript error.
+- This does not alter the explicit hardware/renderer integration boundary.
+
+
+## [NK1][Aspect 10] Evidence-gated grounded interaction hardening (2026-10-30)
+
+- Fix metric arm reach, unique plan IDs and the exclusive plan-expiry boundary.
+- Bind plans and postconditions to the exact target, canonical world entity, coordinate frame and grounded-world revision.
+- Require trusted verification for short-lived contact/manipulation authorization; `safeToTouch` alone no longer authorizes contact.
+- Require fresh independent target-bound evidence and a trusted postcondition verifier before completion; simulator outcomes are classified as simulated, not real-world success.
+- Harden world joining against whitespace/Unicode mismatch, stale snapshots, malformed entities and ambiguous same-label objects.
+- Reject malformed execution statuses, affordances, hand selections and invalid body reach.
+- Add 53 deterministic assertions across planner and camera-to-world grounding (40 + 13). Physical camera/renderer actuation and hardware-backed contact verification remain pending.
+
+
+## [NK1][Aspect 10] Fingerprint exact uploaded avatar model bytes (2026-10-30)
+
+- Add browser Web Crypto SHA-256 content addressing for the exact VRM/GLB byte stream, without mutating the source buffer.
+- Integrate fingerprint calculation into local avatar loading and retain the fingerprint only when the current load token remains active; gracefully report unavailable hashing as an empty fingerprint rather than inventing an identity.
+- Add deterministic, distinct-input and immutability tests plus a focused CI step. This establishes model identity for future calibration; it does not yet create a coordinate-frame calibration or enable IK actuation.
+
+
+## [NK1][Aspect 10] Add provenance-aware VRM calibration capture sessions (2026-10-30)
+
+- Add immutable bilateral bind/reference capture sessions bound to the exact model fingerprint, coordinate frame and four resolved arm bones.
+- Record fixture identity, capture timestamp and bounded operator note in a separate JSON provenance sidecar.
+- Finalize profiles only after both arms pass the existing measured-angle, off-axis and joint-limit checks; revalidate against the currently loaded rig.
+- Add focused regression coverage and CI execution. This is a capture-session API, not yet a visual calibration wizard; no live IK actuation is enabled.
+
+
+## [NK1][Aspect 10] Derive VRM arm calibration from measured reference poses (2026-10-30)
+
+- Add a deterministic per-arm calibration derivation from captured bind/reference Euler poses and independently known fixture angles.
+- Reject weak reference motion, off-axis contamination, non-finite values, unsafe joint ranges and reference poses outside declared limits.
+- Build a bilateral profile bound to the exact loaded model, coordinate frame and resolved bone names; keep live IK disabled until measurement provenance and runtime actuation are independently validated.
+
+
+## [NK1][Aspect 10] Add model-bound VRM calibration JSON import/export (2026-10-30)
+
+- Add bounded JSON parsing with safe malformed-input handling and mandatory validation against the currently loaded model fingerprint, coordinate frame and exact bilateral bone identities.
+- Add deterministic JSON export that revalidates the profile and refuses export when it no longer matches the active rig.
+- Add round-trip, malformed JSON, size-limit and model-mismatch regressions. This is a programmatic import/export boundary, not a calibration wizard or proof that imported measurements are physically accurate.
+
+
+## [NK1][Aspect 10] Distinguish malformed VRM profiles from unsafe calibration values (2026-10-30)
+
+- Split profile-shape/bone-identity validation from numerical calibration validation so the declared `invalid-calibration` result is reachable and meaningful.
+- Reject blank bone names and calibration offsets/joint bounds outside ±2π radians; retain exact model, coordinate-frame and bilateral bone identity binding.
+- Add regressions for reversed joint ranges, implausible offsets and malformed bone identity. This tightens the profile import boundary; it does not enable live IK or certify measured model calibration.
+
+
+## [NK1][WorkPass619] Fix avatar render timing and visual-quality seams (2026-10-29)
+
+- Apply Live2D gaze/head/eye/viseme parameters at Cubism's `beforeModelUpdate` boundary, after authored motion and physics updates; earlier ticker writes could be overwritten during render.
+- Add small additive head/gaze offsets, constrain motion groups/indexes to actual shipped clips, and report unavailable clips instead of silently treating them as successful.
+- Enable capped DPR=2/auto-density in both Live2D viewer entry points and in the Legacy sprite canvas.
+- Replace wall-clock sprite pose cycling with deterministic action-aware selection and pass organism action/thinking state into Legacy.
+- Remove the misleading torso ring drawn over still sprites, improve SVG Original's default palette/hair clip, and make Auto pose reflect basic action/emotion context while preserving manual overrides.
+- Add regression assertions for active-viewer timing, sprite determinism, model/media references, texture profiles, motion coverage, sprite manifest integrity and SHA-locked canonical assets.
+
+
+## [NK1][Aspect 10] Restore locked Radix Popover dependency range (2026-10-30)
+
+- Align `app/package.json` with the committed app lockfile range for `@radix-ui/react-popover` (`^1.1.15`).
+- Keep the lockfile authoritative and avoid introducing an unreviewed component-library upgrade; the change addresses the npm `EUSAGE` mismatch observed in the exact-branch clean-install workflow.
+- Re-run clean `npm ci --prefix app` and the affected runtime regressions on the updated head before promoting this branch.
