@@ -70,10 +70,10 @@ export class P2702PersistentPersonalityDynamics{
    autobiographicalStrength01:clamp(Number(r.autobiographicalStrength01??d.autobiographicalStrength01)),
    lastReward01:clamp(Number(r.lastReward01??d.lastReward01))};
  }
-private updateRelationshipTrust(relationshipId:unknown,trustSignal:number,rate:number){
+ private updateRelationshipTrust(relationshipId:unknown,trustSignal:number,rate:number){
   if(typeof relationshipId!=='string')return;
   const key=relationshipId.trim().normalize('NFKC');
-  if(!key||key.length>80||[...key].some(char=>{const code=char.charCodeAt(0);return code<=31||(code>=127&&code<=159);}))return;
+  if(!key||key.length>80||['__proto__','prototype','constructor'].includes(key)||[...key].some(char=>{const code=char.charCodeAt(0);return code<=31||(code>=127&&code<=159);}))return;
   if(!Object.prototype.hasOwnProperty.call(this.state.relationshipTrust,key)&&Object.keys(this.state.relationshipTrust).length>=32){
     const oldest=Object.keys(this.state.relationshipTrust)[0];
     if(oldest)delete this.state.relationshipTrust[oldest];
