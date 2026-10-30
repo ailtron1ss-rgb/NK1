@@ -23,7 +23,7 @@ gateway.registerTool({
   id: "catalog.short-code",
   capability: "catalog.read",
   destructive: false,
-  inputContract: { type: "object", properties: { code: { type: "string", pattern: "^[a-z]{2,5}$" } }, required: ["code"], additionalProperties: false },
+  inputContract: { type: "object", properties: { code: { type: "string", pattern: "^[a-z0-9]{2,5}$" } }, required: ["code"], additionalProperties: false },
   execute: async input => ({ ok: true, code: input.code }),
 });
 assert.equal((await gateway.executeTool("catalog.short-code", { code: "nk1" })).ok, true, "bounded quantifiers remain supported in safe patterns");
