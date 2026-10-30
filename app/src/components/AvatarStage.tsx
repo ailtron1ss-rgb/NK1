@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
+import { deriveAffectiveExpression } from "./avatar/affectiveExpression";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -22,10 +23,6 @@ import {
   type VisemeFrame,
 } from "./avatar/embodimentTimeline";
 
-const EXPR: Record<EmotionLabel, string> = {
-  curiosity: "thinking", calm: "neutral", joy: "happy", anxiety: "sad",
-  frustration: "angry", sadness: "sad", anger: "angry", protective: "focused",
-};
 type ViewMode = "live2d" | "legacy" | "original" | "3d";
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -310,13 +307,18 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   useEffect(() => {
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
-    const expression = EXPR[snap.emotion.label] ?? "neutral";
+    const affective = deriveAffectiveExpression({
+      emotion: snap.emotion.label,
+      valence: snap.emotion.valence,
+      arousal: snap.emotion.arousal,
+      dominance: snap.emotion.dominance,
+    });
+    const expression = affective.expression;
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
       respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
     };
     const gaze = gazeByAction[snap.lastOption] ?? gazeByAction.wait;
-    const valenceOffset = (snap.emotion.valence - 0.5) * 0.16;
     const activeSession = activeSpeechSessionRef.current;
     const session = activeSession ?? lastSpeechSessionRef.current;
     const activeUtterance = Boolean(activeSession && speechPhaseRef.current === "speaking" && voiceStatus === "speaking");
@@ -360,17 +362,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       priority: speechPhaseRef.current === "cancelled" ? 100 : activeUtterance ? 70 : thinking ? 45 : 30,
       cancellationToken: session ? `cancel:${session.speechEventId}` : null,
       expression,
-      expressionIntensity: snap.emotion.arousal,
+      expressionIntensity: affective.expressionIntensity,
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      gaze: {
+        x: Math.max(-0.4, Math.min(0.4, gaze.x + affective.gazeX)),
+        y: Math.max(-0.25, Math.min(0.25, gaze.y + affective.gazeY)),
+        driven: true,
+      },
       body: {
-        headTilt: motorPlan.headTilt,
-        gesture: bodyGestureActive,
+        headTilt: Math.max(-0.15, Math.min(0.15, motorPlan.headTilt + affective.headTilt)),
+        gesture: bodyGestureActive || affective.gestureDrive >= 0.42,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
-      voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
+      voiceEmphasis: activeUtterance ? Math.max(affective.voiceEmphasis, Math.min(0.85, snap.emotion.arousal + 0.15)) : 0,
     };
     win.postMessage(intent, window.location.origin);
   }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
