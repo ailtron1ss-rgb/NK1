@@ -71,6 +71,8 @@ test("reads legacy VRM 0.x humanoid node roles and ignores invalid entries", () 
 test("the active 3D stage uses the canonicalized bone roles", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /canonicalizeHumanoidBoneName\(node\.name\)/);
+  assert.match(stage, /vrm\?\.humanoid\?\.getNormalizedBoneNode\?\.\(boneName\)/);
+  assert.match(stage, /bonesOf\(root,gltf,vrm\)/);
   assert.match(stage, /n\.includes\("leftupperarm"\)/);
   assert.match(stage, /n\.includes\("rightupperarm"\)/);
 });
