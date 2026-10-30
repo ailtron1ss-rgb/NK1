@@ -18,7 +18,9 @@ const isRecord = (value:unknown): value is UnknownRecord =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 function recordOrEmpty(value:unknown): UnknownRecord {
-  return isRecord(value) ? value : {};
+  // Only own enumerable fields are eligible for restoration. Persisted JSON cannot
+  // legitimately rely on prototype inheritance; this also closes polluted-object paths.
+  return isRecord(value) ? Object.fromEntries(Object.entries(value)) : {};
 }
 
 /** Persisted counters are untrusted: never coerce strings, fractions or infinities. */
