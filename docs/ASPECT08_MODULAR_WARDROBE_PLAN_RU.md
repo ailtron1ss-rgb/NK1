@@ -199,3 +199,15 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 - Dedicated `NK1 modular wardrobe validation` workflow run #23 on HEAD `8d17aa4f94c12351982f83e7e2004ef2933219a1` completed successfully: 44 tests passed, 0 failed.
 - New coverage checks that the live procedural 3D stage exposes lab-coat, casual and hoodie choices backed by separate Three.js geometry groups and actual visibility switching.
 - Hexis source lineage, cognitive planner cadence and WorkPass108 paired-evidence workflows also completed successfully on this HEAD. Core regression, WorkPass79 and WorkPass110 were still running at the last status check; do not treat them as passed until completed.
+
+
+## Восьмой инженерный проход — подключение wardrobe pack к загруженному VRM (2026-10-30)
+
+- Avatar3DStage теперь принимает локальный NK1 wardrobe JSON bundle v1 (format: nk1-wardrobe-pack, version: 1, manifest, files с base64 payload); ZIP-распаковка намеренно не имитируется и не заявляется.
+- Для активной загруженной модели вычисляется стабильный targetBodyId из отсортированного набора имён костей (FNV-1a fingerprint), а версия контракта рига фиксирована как nk1-three-skeleton-name-map-v1. UI показывает обе величины, чтобы автор пакета мог сформировать точный target.
+- Применение вызывает production applyVerifiedVrmWardrobePack: полный manifest/payload SHA-256 + size gate, проверка renderer/body/rig, self-contained GLB v2 validation, GLTFLoader parse, preflight костей/bind pose, slot attach и rollback при отказе.
+- Добавлено явное пользовательское подтверждение права использовать ресурсы. Это только self-attestation: приложение не выполняет юридическую проверку лицензии/происхождения и не превращает декларацию manifest в доказательство прав.
+- Пакет доступен только при загруженном VRM/GLB; при смене или сбросе аватара выбранный пакет и его активный ID сбрасываются. Сохранение гардероба между сессиями пока не реализовано.
+- Добавлена source-contract regression проверка UI/loader boundary. Реальные совместимые skinned garment GLB и визуальная проверка на целевой модели по-прежнему необходимы.
+
+**Граница:** теперь есть сквозной UI→bundle→integrity→rig preflight→VRM attachment путь. Фактическое применение возможно только при наличии корректно подготовленного пакета, target ID которого совпадает с отображаемым ID загруженного аватара; отсутствие совместимых костей или любой отказ оставляет старую одежду нетронутой.
