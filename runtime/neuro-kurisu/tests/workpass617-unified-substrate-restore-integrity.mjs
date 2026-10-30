@@ -114,6 +114,20 @@ assert.equal(Object.hasOwn(safe.world, 'injectedEntity'), false);
 assert.equal(Object.hasOwn(safe.provenance, 'injectedProof'), false);
 assert.ok(Number.isFinite(restored.actionBias('verify')));
 
+// Prototype-inherited properties are not persisted JSON fields and must be ignored.
+const inheritedRoot = Object.assign(Object.create({ cycles: 123, self: { agency01: 0.99 } }), { version: 1 });
+const inheritedRootRestore = new UnifiedCognitiveSubstrate();
+inheritedRootRestore.restore(inheritedRoot);
+assert.equal(inheritedRootRestore.snapshot().cycles, 0);
+assert.equal(inheritedRootRestore.snapshot().self.agency01, 0.5);
+
+const inheritedNestedSelf = Object.assign(Object.create({ agency01: 0.99, mode: 'prototype-mode' }), { continuity01: 0.82 });
+const inheritedNestedRestore = new UnifiedCognitiveSubstrate();
+inheritedNestedRestore.restore({ version: 1, self: inheritedNestedSelf });
+assert.equal(inheritedNestedRestore.snapshot().self.continuity01, 0.82);
+assert.equal(inheritedNestedRestore.snapshot().self.agency01, 0.5);
+assert.equal(inheritedNestedRestore.snapshot().self.mode, 'wait');
+
 // Unsupported state versions fail closed and do not partially overwrite a valid state.
 assert.throws(
   () => restored.restore({ version: 2 }),
