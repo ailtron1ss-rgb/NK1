@@ -1,3 +1,9 @@
+## [NK1][Aspect 08] Integrate selectable procedural outfits into Avatar3DStage (2026-10-30)
+
+- Add three actual procedural 3D clothing silhouettes to the stage: lab coat, casual top and hoodie. Outfit controls switch geometry visibility rather than merely changing a label; the selected variant is applied to the live procedural body and reset remains compatible with the existing model lifecycle.
+- Add stage regression coverage and include it in the dedicated wardrobe test command/workflow path filters.
+- Boundary: this improves the built-in procedural concept only. It does not retrofit clothing onto arbitrary uploaded VRM models or substitute for rights-cleared garment assets, pack ingestion, persistent selection, or renderer-specific visual E2E.
+
 ## [NK1][Aspect 08] Add verified VRM wardrobe pack application pipeline (2026-10-30)
 
 - Add a production GLTFLoader-backed orchestration API that accepts already-ingested pack bytes, verifies the complete manifest payload and renderer/body/rig contract, and only then parses requested VRM/3D garment assets.
