@@ -1,3 +1,12 @@
+## [NK1][Aspect04] Establish layered 2.5D depth-rig contract (2026-10-30)
+
+- Add a versioned rig model for depth-ordered artwork layers, parent hierarchy, normalized pivots and rest transforms.
+- Validate root cardinality, unique IDs, parent references, cycles, finite transforms and pivot bounds; malformed inputs fail closed.
+- Map bounded semantic body intent into additive head, neck, torso, hair, garment and basic arm-gesture deltas without creating a second emotion/intent owner.
+- Add focused regression tests and a dedicated GitHub Actions gate.
+- Add the Aspect 04 production plan for layered master artwork, hidden-area paint, occlusion, face rig, IK, secondary motion, modular garments and release acceptance.
+- Honest boundary: this is a code contract/pose foundation, not a rendered 2.5D model. Production art, GLB, IK execution, garment physics and desktop/Android visual E2E remain pending.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
