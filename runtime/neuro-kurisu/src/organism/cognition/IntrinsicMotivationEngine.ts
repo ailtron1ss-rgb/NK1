@@ -1,5 +1,7 @@
 export type IntrinsicEmotionLabel='curiosity'|'calm'|'joy'|'anxiety'|'frustration'|'sadness'|'anger'|'protective';
+export interface IntrinsicAffectComponent { label:IntrinsicEmotionLabel; intensity01:number; confidence01:number; }
 export interface IntrinsicAffectSignal {
+  components?:IntrinsicAffectComponent[];
   emotionId?:string;
   label:IntrinsicEmotionLabel;
   valence01:number;
@@ -15,6 +17,7 @@ export interface IntrinsicAffectiveInfluence {
   engagement01:number;
   connection01:number;
   confidence01:number;
+  components?:IntrinsicAffectComponent[];
 }
 export interface IntrinsicDriveState {
   epistemic:number;
@@ -51,6 +54,7 @@ const normalizeAffectiveInfluence=(raw:unknown):IntrinsicAffectiveInfluence=>{
     engagement01:finiteInput(r.engagement01),
     connection01:finiteInput(r.connection01),
     confidence01:finiteInput(r.confidence01),
+    components:Array.isArray(r.components)?r.components.filter((x:any)=>x&&isEmotion(x.label)).slice(0,4).map((x:any)=>({label:x.label,intensity01:finiteInput(x.intensity01),confidence01:finiteInput(x.confidence01)})):undefined,
   };
 };
 
@@ -97,6 +101,8 @@ export class IntrinsicMotivationEngine {
     worldEvidenceQuality:number;
     /** Canonical appraisal from EmotionAppraisalEngine; never infer emotion from user wording here. */
     affect?:IntrinsicAffectSignal;
+    /** Full mixed appraisal distribution; when present it supersedes the legacy single-label projection. */
+    affectiveComponents?:IntrinsicAffectComponent[];
     /** P66 regulation pressure: used as an allostatic need signal, not as a reward receipt. */
     homeostaticPressure01?:number;
   }):IntrinsicDriveState{
@@ -113,47 +119,32 @@ export class IntrinsicMotivationEngine {
       ?null
       :finiteInput(input.homeostaticPressure01);
 
-    const affect=input.affect&&isEmotion(input.affect.label)
-      ?{
-        emotionId:safeId(input.affect.emotionId),
-        label:input.affect.label,
-        valence01:finiteInput(input.affect.valence01,.5),
-        arousal01:finiteInput(input.affect.arousal01),
-        dominance01:finiteInput(input.affect.dominance01,.5),
-        confidence01:finiteInput(input.affect.confidence01),
-      }
-      :null;
-    const confidence=affect?.confidence01??0;
-    const arousal=affect?.arousal01??.5;
+    const rawComponents=Array.isArray(input.affectiveComponents)?input.affectiveComponents:input.affect?.components;
+    const components=(rawComponents??(input.affect&&isEmotion(input.affect.label)?[{label:input.affect.label,intensity01:1,confidence01:input.affect.confidence01}]:[]))
+      .filter(item=>item&&isEmotion(item.label)).slice(0,4)
+      .map(item=>({label:item.label,intensity01:finiteInput(item.intensity01),confidence01:finiteInput(item.confidence01)}));
+    const componentTotal=components.reduce((sum,item)=>sum+item.intensity01,0);
+    const normalizedComponents=componentTotal>0?components.map(item=>({...item,intensity01:item.intensity01/componentTotal})):[];
+    const primary=normalizedComponents[0];
+    const affect=input.affect&&isEmotion(input.affect.label)?{
+      emotionId:safeId(input.affect.emotionId),label:primary?.label??input.affect.label,
+      valence01:finiteInput(input.affect.valence01,.5),arousal01:finiteInput(input.affect.arousal01,.5),
+      dominance01:finiteInput(input.affect.dominance01,.5),
+      confidence01:primary?Math.max(...normalizedComponents.map(x=>x.confidence01)):finiteInput(input.affect.confidence01),
+    }:null;
+    const confidence=affect?.confidence01??0,arousal=affect?.arousal01??.5;
     let exploration01=0,regulation01=0,engagement01=0,connection01=0;
-    if(affect){
-      switch(affect.label){
-        case 'curiosity':
-          exploration01=confidence*(.035+.065*arousal);
-          break;
-        case 'anxiety':
-          regulation01=confidence*(.045+.075*arousal);
-          break;
-        case 'frustration':
-          regulation01=confidence*(.035+.055*arousal);
-          exploration01=confidence*.012;
-          break;
-        case 'protective':
-          regulation01=confidence*(.06+.08*arousal);
-          break;
-        case 'anger':
-          regulation01=confidence*(.035+.045*arousal);
-          break;
-        case 'sadness':
-          connection01=confidence*.055;
-          break;
-        case 'joy':
-          engagement01=confidence*(.035+.035*affect.valence01);
-          connection01=confidence*.025;
-          break;
-        case 'calm':
-          engagement01=confidence*.035;
-          break;
+    for(const component of normalizedComponents){
+      const weight=component.intensity01*component.confidence01;
+      switch(component.label){
+        case 'curiosity': exploration01+=weight*(.035+.065*arousal);break;
+        case 'anxiety': regulation01+=weight*(.045+.075*arousal);break;
+        case 'frustration': regulation01+=weight*(.035+.055*arousal);exploration01+=weight*.012;break;
+        case 'protective': regulation01+=weight*(.06+.08*arousal);break;
+        case 'anger': regulation01+=weight*(.035+.045*arousal);break;
+        case 'sadness': connection01+=weight*.055;break;
+        case 'joy': engagement01+=weight*(.035+.035*(affect?.valence01??.5));connection01+=weight*.025;break;
+        case 'calm': engagement01+=weight*.035;break;
       }
     }
     const affectiveInfluence:IntrinsicAffectiveInfluence={
@@ -164,6 +155,7 @@ export class IntrinsicMotivationEngine {
       engagement01:clamp(engagement01),
       connection01:clamp(connection01),
       confidence01:clamp(confidence),
+      components:normalizedComponents,
     };
 
     const epistemic=clamp(uncertainty*.62+predictionError*.38+exploration01*.30+regulation01*.20);
