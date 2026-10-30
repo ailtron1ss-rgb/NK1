@@ -68,20 +68,26 @@ const CHANNELS = new Set<BodyChannel>([
 ]);
 const EXPRESSIONS = new Set<ExpressionChannel>(["neutral", "joy", "sadness", "anger", "anxiety", "curiosity", "protective", "surprise"]);
 
+const isBoundedNonBlankString = (value: unknown, maxLength: number): value is string =>
+  typeof value === "string" && value.trim().length > 0 && value.length <= maxLength;
+
+const isNullableIdentifier = (value: unknown, maxLength: number): value is string | null =>
+  value === null || isBoundedNonBlankString(value, maxLength);
+
 export function validateSemanticBodyState(value: SemanticBodyState): boolean {
   if (!value || value.schemaVersion !== 1 || !Number.isSafeInteger(value.revision) || value.revision < 0) return false;
   if (!Number.isFinite(value.capturedAtMonotonicMs) || value.capturedAtMonotonicMs < 0) return false;
   if (!EXPRESSIONS.has(value.emotion) || !Number.isFinite(value.emotionIntensity) || value.emotionIntensity < 0 || value.emotionIntensity > 1) return false;
-  if (typeof value.expression !== "string" || value.expression.length > 96) return false;
+  if (!isBoundedNonBlankString(value.expression, 96)) return false;
   if (!value.gaze || !Number.isFinite(value.gaze.x) || !Number.isFinite(value.gaze.y) || Math.abs(value.gaze.x) > 1 || Math.abs(value.gaze.y) > 1) return false;
-  if (value.gaze.targetId !== undefined && (typeof value.gaze.targetId !== "string" || !value.gaze.targetId.trim() || value.gaze.targetId.length > 128)) return false;
+  if (value.gaze.targetId !== undefined && !isBoundedNonBlankString(value.gaze.targetId, 128)) return false;
   if (!value.speech || !["idle", "starting", "speaking", "ended", "cancelled", "unknown"].includes(value.speech.phase)) return false;
-  if (value.speech.eventId !== null && (typeof value.speech.eventId !== "string" || value.speech.eventId.length > 128)) return false;
+  if (!isNullableIdentifier(value.speech.eventId, 128)) return false;
   if (!Number.isFinite(value.speech.audioTimeMs) || value.speech.audioTimeMs < 0 || !Number.isFinite(value.speech.mouthOpen) || value.speech.mouthOpen < 0 || value.speech.mouthOpen > 1 || !Number.isFinite(value.speech.mouthForm) || Math.abs(value.speech.mouthForm) > 1) return false;
   if (!value.pose || Object.entries(value.pose).some(([key, n]) => !CHANNELS.has(key as BodyChannel) || !Number.isFinite(n))) return false;
-  return typeof value.action === "string" && value.action.length <= 96
-    && (value.intentId === null || (typeof value.intentId === "string" && value.intentId.length <= 128))
-    && (value.wardrobeId === null || (typeof value.wardrobeId === "string" && value.wardrobeId.length <= 128));
+  return isBoundedNonBlankString(value.action, 96)
+    && isNullableIdentifier(value.intentId, 128)
+    && isNullableIdentifier(value.wardrobeId, 128);
 }
 
 /** Build a truthful handoff plan without mutating the canonical organism snapshot. */
