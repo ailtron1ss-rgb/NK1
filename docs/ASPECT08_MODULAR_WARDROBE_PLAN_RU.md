@@ -185,3 +185,10 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 - Последний завершённый wardrobe workflow на HEAD `e49bd6eba0c55b37a21571975a521bbfe5417a6e`: 37 tests passed, 0 failed, 0 skipped. Включены новые GLB loader, external URI rejection, rig preflight, successful apply и rollback cases.
 - Предыдущий core regression run поймал один TypeScript strict-mode дефект (implicit `any` у callback GLTFLoader); callback типизирован в последующем commit. Повторный core typecheck на обновлённом HEAD обязателен перед заявлением о полной CI-готовности.
 - Draft PR остаётся открытым; никаких claims о real garment assets, visual E2E или Release ZIP refresh нет.
+
+
+## Седьмой инженерный проход — выбор комплектов в реальной Avatar3DStage (2026-10-30)
+
+В `Avatar3DStage.tsx` добавлены три реальные процедурные вариации одежды: лабораторный халат, повседневный верх и худи. Они представлены отдельной геометрией Three.js и переключаются через видимость garment-групп; элементы халата/галстука/рукавов скрываются согласованно, а выбранный вариант применяется к живому процедурному телу. Добавлены видимые элементы управления и регрессионная проверка, что переключение связано с геометрией, а не только с подписью.
+
+**Граница:** переключение работает для встроенного процедурного концепта. Произвольная загруженная VRM-модель не получает эти комплекты автоматически: для неё по-прежнему нужны реальные совместимые skinned GLB, манифест и вызов `applyVerifiedVrmWardrobePack`. Выбор пока не сохраняется между сессиями; Live2D/2.5D не подключены.
