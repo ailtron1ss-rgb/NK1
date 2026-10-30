@@ -204,7 +204,7 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 ## Восьмой инженерный проход — подключение wardrobe pack к загруженному VRM (2026-10-30)
 
 - Avatar3DStage теперь принимает локальный NK1 wardrobe JSON bundle v1 (format: nk1-wardrobe-pack, version: 1, manifest, files с base64 payload); ZIP-распаковка намеренно не имитируется и не заявляется.
-- Для активной загруженной модели вычисляется стабильный targetBodyId из отсортированного набора имён костей (FNV-1a fingerprint), а версия контракта рига фиксирована как nk1-three-skeleton-name-map-v1. UI показывает обе величины, чтобы автор пакета мог сформировать точный target.
+- Для активной загруженной модели вычисляется стабильный targetBodyId из отсортированного набора имён костей (SHA-256 fingerprint), а версия контракта рига фиксирована как nk1-three-skeleton-name-map-v1. UI показывает обе величины, чтобы автор пакета мог сформировать точный target.
 - Применение вызывает production applyVerifiedVrmWardrobePack: полный manifest/payload SHA-256 + size gate, проверка renderer/body/rig, self-contained GLB v2 validation, GLTFLoader parse, preflight костей/bind pose, slot attach и rollback при отказе.
 - Добавлено явное пользовательское подтверждение права использовать ресурсы. Это только self-attestation: приложение не выполняет юридическую проверку лицензии/происхождения и не превращает декларацию manifest в доказательство прав.
 - Пакет доступен только при загруженном VRM/GLB; при смене или сбросе аватара выбранный пакет и его активный ID сбрасываются. Сохранение гардероба между сессиями пока не реализовано.
