@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add bounded multi-effector 3D position IK: solve up to six end-effector targets together with a shared task-space DLS Jacobian, coordinated shared joints, per-target residuals, and explicit limit/singularity outcomes.
+
 # Unreleased
 
 - [NK1][Embodiment] Added bounded six-dimensional damped-least-squares 3D pose IK: solve end-effector position and quaternion orientation together, report separate residuals, respect joint limits and terminate explicitly when the chain stalls at a limit/singularity. Added four focused wrist-pose regressions and included the suite in the dedicated Node 24 CI gate. Renderer/device integration, contact dynamics and physical pose observation remain pending.
