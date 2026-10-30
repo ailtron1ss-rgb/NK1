@@ -41,6 +41,10 @@ test("uploaded VRM stage exposes a rights-confirmed verified wardrobe pack appli
  const stage=await readFile(stagePath,"utf8");
  assert.match(stage,/applyVerifiedVrmWardrobePack/);
  assert.match(stage,/readWardrobeBundle/);
+ assert.match(stage,/validateWardrobePackManifest\(value\.manifest\)/);
+ assert.match(stage,/expectedBase64Length/);
+ assert.match(stage,/Файл не объявлен в manifest/);
+ assert.match(stage,/В bundle отсутствуют файлы/);
  assert.match(stage,/nk1-wardrobe-pack/);
  assert.match(stage,/avatarWardrobeBodyId/);
  assert.match(stage,/globalThis\.crypto\.subtle\.digest\("SHA-256"/);
