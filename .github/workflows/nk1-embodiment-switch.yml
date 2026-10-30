@@ -5,6 +5,8 @@ on:
     branches: [workpass70-source]
     paths:
       - "app/src/components/avatar/embodimentSwitch.ts"
+      - "app/src/components/avatar/embodimentCoordinator.ts"
+      - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
