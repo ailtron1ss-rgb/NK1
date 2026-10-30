@@ -9,7 +9,7 @@ e.observe({action:'verify',success01:.8,evidence01:.8,relevant:true,tick:1});
 const mid=e.snapshot();
 assert.equal(mid.cycles,1);
 assert.equal(mid.steps[0].attempts,1);
-e.observeToolResult({tick:2,tool:'organism.inspect',ok:false,error:'offline'});
+e.observeToolResult({tick:2,tool:e.currentStep().preferredTool,ok:false,error:'offline'});
 const failed=e.snapshot();
 assert.equal(failed.toolCalls,1);
 assert.ok(failed.steps.some(step=>Number(step.retryAfterTick ?? 0)>=2),'failed tool must schedule retry');

@@ -1,3 +1,10 @@
+## [NK1][executor] Restore project-executor snapshot round-trip identity and re-align stale executor regressions (2026-10-30)
+
+- Restore the snapshot round-trip contract in `AutonomousProjectExecutor`: the default state now declares `lastOutcomeId`, so a fresh `snapshot()` and a `restore()`d snapshot expose the same own-key set. Previously `restore()` materialized `lastOutcomeId` while the default state omitted it, so `snapshot()` diverged (`lastOutcomeId: undefined`) after a save/restore cycle. This unblocked the `big-pass-49` subsystem-runtime round-trip regression.
+- Re-align the `big-pass-49-subsystem-runtime` and `project-execution-idempotency` regressions with the intentional executor schema `version 7` (step operation checkpoints; legacy v6 snapshots migrate to v7), which they still asserted as `version 6`.
+- Fix `project-execution-persistence` so the simulated tool failure targets the current ready step's actual `preferredTool` instead of the retired `organism.inspect` id, so the assertion exercises the real retry-scheduling path.
+- No new behaviour is introduced; all changes are latent-defect and stale-regression fixes. Verification: `npm run typecheck`, `test:big-pass-49`, `test:project-idempotency`, `test:project-execution` and `test:workpass52:project-quality` all pass locally.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.

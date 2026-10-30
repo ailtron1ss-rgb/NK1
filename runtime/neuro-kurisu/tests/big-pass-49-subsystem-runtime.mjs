@@ -8,7 +8,7 @@ assert.ok(p);
 const before=agency.snapshot();
 const restored=new AgencySubsystemRuntime(); restored.restore(before);
 assert.equal(restored.selfProjects.snapshot().projects.length,1);
-assert.equal(restored.projectExecutor.snapshot().version,6); // WorkPass 20 qualified-attempt persistence
+assert.equal(restored.projectExecutor.snapshot().version,7); // WorkPass 20 qualified-attempt persistence (schema v7: step operation checkpoints)
 
 const research=new EvidenceResearchSubsystemRuntime();
 const at=Date.now();
