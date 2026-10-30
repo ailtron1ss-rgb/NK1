@@ -11,6 +11,8 @@ on:
       - "runtime/neuro-kurisu/tests/p23-continual-outcome-matrix.mjs"
       - "runtime/neuro-kurisu/tests/p23-paired-outcome-identity.mjs"
       - "runtime/neuro-kurisu/tests/p23-hermes-production-promotion-gate.mjs"
+      - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-generator.mjs"
+      - "runtime/neuro-kurisu/tests/p23-local-model-skill-revision-integration.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P23CompoundRepairRevisionCoordinator.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts"
@@ -101,6 +103,9 @@ jobs:
       - name: Run Hermes-inspired reflective candidate gate regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:p29:hermes-reflective-candidate-gate
+      - name: Verify holdout-blind local model skill revision
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:p23:local-model-skill-revision-generator && npm run test:p23:local-model-skill-revision-integration
       - name: Run continual experience replay regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p26-continual-replay-buffer.mjs
