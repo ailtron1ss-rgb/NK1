@@ -123,15 +123,16 @@ const safeCounter = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fallback;
 const safeFinite = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
-const safeArrayValues = (value: unknown, max: number): unknown[] => {
+const safeArrayValues = (value: unknown, max: number, fromEnd = true): unknown[] => {
   if (!Array.isArray(value)) return [];
   const lengthRead = ownData(value, 'length');
-  const length = lengthRead.valid && typeof lengthRead.value === 'number'
-    ? Math.max(0, Math.min(max, Math.floor(lengthRead.value)))
+  const rawLength = lengthRead.valid && typeof lengthRead.value === 'number' && Number.isSafeInteger(lengthRead.value)
+    ? Math.max(0, lengthRead.value)
     : 0;
-  const start = Math.max(0, (lengthRead.value as number ?? 0) - max);
+  const start = fromEnd ? Math.max(0, rawLength - max) : 0;
+  const end = Math.min(rawLength, start + max);
   const result: unknown[] = [];
-  for (let index = start; index < start + length; index += 1) {
+  for (let index = start; index < end; index += 1) {
     const item = ownData(value, String(index));
     if (item.valid && item.exists) result.push(item.value);
   }
@@ -145,7 +146,7 @@ const cloneSafeJson = (value: unknown, depth = 0): unknown | typeof INVALID_JSON
   }
   if (typeof value === 'number') return Number.isFinite(value) ? value : INVALID_JSON;
   if (Array.isArray(value)) {
-    const values = safeArrayValues(value, 128);
+    const values = safeArrayValues(value, 128, false);
     const lengthRead = ownData(value, 'length');
     if (!lengthRead.valid || typeof lengthRead.value !== 'number' || lengthRead.value > 128) return INVALID_JSON;
     const result: unknown[] = [];
@@ -326,7 +327,7 @@ export class AutonomousProjectExecutor {
     const stepsRead = read('steps');
     const steps: ProjectPlanStep[] = [];
     if (stepsRead.valid && Array.isArray(stepsRead.value)) {
-      for (const rawStep of safeArrayValues(stepsRead.value, 6)) {
+      for (const rawStep of safeArrayValues(stepsRead.value, 6, false)) {
         if (!isPlainRecord(rawStep)) continue;
         const stepRead = (key: string) => ownData(rawStep, key);
         const id = safeString(stepRead('id').value, 120);
@@ -371,7 +372,7 @@ export class AutonomousProjectExecutor {
         }
         const dependsOnRead = stepRead('dependsOn');
         if (dependsOnRead.valid && Array.isArray(dependsOnRead.value)) {
-          const dependencies = safeArrayValues(dependsOnRead.value, 6)
+          const dependencies = safeArrayValues(dependsOnRead.value, 6, false)
             .map((value) => safeString(value, 120))
             .filter((value): value is string => Boolean(value));
           if (dependencies.length) step.dependsOn = [...new Set(dependencies)];
