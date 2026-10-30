@@ -154,6 +154,8 @@ VisionSemanticBackend всё ещё допускает `trackId`, `sourceId`, `c
 
 Gemini может вернуть приблизительный normalized 2D bbox только когда объект ясно локализован; при недостаточной уверенности bbox опускается. Уверенность существования объекта не заменяет отдельную уверенность локализации. Эти bbox остаются model-output, не становятся observed и не создают 3D-координат.
 
+2D рамка хранится отдельно как `imageBox/bbox2D` с camera ID, timestamp и localization confidence. Она проходит через P41, GroundedWorldState и WorldContext без преобразования в `x/y/z`. Смена камеры не переиспользует старую frame-local рамку как глобальное положение объекта.
+
 Ограничения:
 - данный трекер не выполняет optical flow, Kalman filtering, appearance embeddings или re-identification после длительного исчезновения; его motion prediction — ограниченная постоянная скорость с экспоненциальным сглаживанием;
 - tracking надёжен только настолько, насколько backend даёт согласованные рамки; LLM bbox — это приближённая локализация, не ground truth;
@@ -175,6 +177,7 @@ Gemini может вернуть приблизительный normalized 2D bb
 - неполная или unframed геометрия остаётся unknown;
 - два последовательных кадра с одинаковыми объектами и валидными рамками сохраняют ID при перестановке detection order;
 - ambiguous matches, duplicate boxes, stale frame receipts и истёкшие треки не порождают ложных идентификаторов.
+- image-space boxes сохраняются с camera namespace через P41 и GroundedWorldState и отвергаются при выходе за границы кадра.
 
 Новый тест:
 - `tests/gemini-vision-mime-integrity.mjs`
