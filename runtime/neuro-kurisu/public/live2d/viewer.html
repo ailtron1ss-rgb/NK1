@@ -21,7 +21,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   const status=document.getElementById('status');
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
-  let lastIntentStateVersion=0;
+  let lastIntentStateVersion=0,pendingIntentReadback=null;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
   const EXPR_MAP={
@@ -59,6 +59,35 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       if(core&&typeof core.addParameterValueById==='function')core.addParameterValueById(id,clamp(offset,min,max),1);
     }catch{}
   }
+  function flushIntentParameterReadback(core){
+    const pending=pendingIntentReadback;
+    if(!pending||!core)return;
+    pendingIntentReadback=null;
+    const ids=['ParamAngleX','ParamAngleY','ParamAngleZ','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'];
+    const observed={};
+    let readable=typeof core.getParameterValueById==='function';
+    if(readable){
+      for(const id of ids){
+        try{
+          const value=core.getParameterValueById(id);
+          if(Number.isFinite(value))observed[id]=value;
+          else readable=false;
+        }catch{readable=false}
+      }
+    }
+    send('live2d_intent_ack',{
+      stateVersion:pending.stateVersion,
+      status:readable?'parameters-observed':'accepted-unverified',
+      appliedRevision:pending.stateVersion,
+      observedParameters:observed,
+      requestedChannels:['headPose','gaze','mouth'],
+      expression:pending.expression,
+      expressionStatus:'not-independently-verified',
+      motionStatus:'not-independently-verified',
+      complete:false,
+      reason:readable?null:'core-parameter-readback-unavailable',
+    });
+  }
   function applyModelParameterOverrides(){
     const core=model?.internalModel?.coreModel;
     if(!core)return;
@@ -73,6 +102,9 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
     set('ParamMouthOpenY',clamp(lipCurrent,0,1));
     if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
+    // Read back only after setters ran in the model-update hook. This confirms these
+    // parameter values, not expression/motion completion or a presented GPU frame.
+    flushIntentParameterReadback(core);
   }
   function applyExpression(expr){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
@@ -140,8 +172,8 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       const normalized=normalizeEmbodimentIntentV1(d);
       if(!normalized||!model||normalized.stateVersion<=lastIntentStateVersion)return;
       lastIntentStateVersion=normalized.stateVersion;
+      pendingIntentReadback={stateVersion:normalized.stateVersion,expression:normalized.expression};
       applyEmbodiment(normalized);
-      applyExpression(normalized.expression);
     }
     else if(d.type==='kurisu_embodiment')applyEmbodiment(d);
     else if(d.type==='kurisu_expression')applyExpression(String(d.expression||'neutral'));
