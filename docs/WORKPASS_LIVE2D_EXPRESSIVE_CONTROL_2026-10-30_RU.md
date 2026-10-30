@@ -149,3 +149,13 @@ This workpass improves the existing Cubism avatar only. It does not claim to cre
 - Temporal/expressive runtime reliability: улучшен на уровне кода; устройство ещё не проверено.
 - Aspect 09 overall: 70/100 по реализованной кодовой части, но ниже 100% из-за отсутствия визуальной/browser/Android приёмки и расширенной калибровки.
 - Release ZIP не обновлялся.
+
+
+## Финальная фиксация этого кодового прохода (2026-10-30)
+
+- Оба viewer отклоняют неизвестную motion group, дробный/отрицательный индекс и индекс за пределами числа клипов канонической модели ещё до вызова Cubism playback. Защита действует и для legacy compatibility message path.
+- Production contract test фиксирует эту защиту и совпадение motion inventory обеих точек входа с `Kurisu.model3.json`.
+- На HEAD `b8f2995bd086681b198529259a68bf75cf09909a` все шесть PR status checks завершились успешно. `targeted-and-regression` включает app script regression suite, app typecheck/build, runtime typecheck, Live2D regression, memory/persistence, speech gateway и cognitive runtime tests.
+- Кодовая оценка Aspect 09 после прохода: 72/100. Это оценка программной зрелости и автоматической проверяемости; полная визуальная и Android-приёмка не выполнена.
+- Не закрыто: browser visual E2E на реальном Cubism canvas, калибровка всех каналов на нескольких размерах экрана, Android low-memory profile, 15+ минутный device soak, измерение lip-sync/interrupt latency и акустические phoneme/viseme данные.
+- PR остаётся draft, Release ZIP не обновлялся.
