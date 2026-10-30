@@ -70,6 +70,36 @@ function visit(root: ObjectNode, callback: (node: ObjectNode) => void): void {
   }
 }
 
+/** Wardrobe roots carry their own skinned bones; they must never redefine the avatar's target rig. */
+function visitBaseAvatarRig(root: ObjectNode, callback: (node: ObjectNode) => void): void {
+  const walk = (node: ObjectNode, isRoot: boolean): void => {
+    if (!isRoot && (
+      node.userData?.nk1WardrobeSlot !== undefined ||
+      node.userData?.nk1WardrobeAssetId !== undefined
+    )) return;
+    callback(node);
+    for (const child of node.children ?? []) walk(child, false);
+  };
+  walk(root, true);
+}
+
+/** Stable base-body descriptors, intentionally excluding already attached wardrobe subtrees. */
+export function collectVrmAvatarRigIdentityDescriptors(root: ObjectNode): string[] {
+  const descriptors: string[] = [];
+  visitBaseAvatarRig(root, (node) => {
+    if (!node.isBone && node.constructor?.name !== "Bone") return;
+    const ancestry: string[] = [];
+    let current: any = node;
+    while (current && current !== root) {
+      const name = normalizeBoneName(String(current.name ?? ""));
+      if (name) ancestry.push(name);
+      current = current.parent;
+    }
+    if (ancestry.length) descriptors.push(ancestry.reverse().join("/"));
+  });
+  return descriptors.sort();
+}
+
 /**
  * Inspect a garment against the actual loaded avatar skeleton.
  * Matching is by normalized, unique bone names; partial rigs fail closed.
@@ -82,14 +112,14 @@ export function inspectVrmGarmentRig(
   const avatarBones = new Map<string, BoneLike>();
   const duplicateTargetBones = new Set<string>();
   const targetInverses = new Map<string, unknown>();
-  visit(avatarRoot, (node) => {
+  visitBaseAvatarRig(avatarRoot, (node) => {
     if (!node.isBone && node.constructor?.name !== "Bone") return;
     const name = normalizeBoneName(String(node.name ?? ""));
     if (!name) return;
     if (avatarBones.has(name)) duplicateTargetBones.add(name);
     else avatarBones.set(name, node as BoneLike);
   });
-  visit(avatarRoot, (node) => {
+  visitBaseAvatarRig(avatarRoot, (node) => {
     const skeleton = node.isSkinnedMesh ? node.skeleton as SkeletonLike | undefined : undefined;
     if (!skeleton) return;
     skeleton.bones.forEach((bone, index) => {
@@ -173,7 +203,7 @@ export function attachVerifiedVrmGarment(input: {
   const clone = garmentRoot.clone(true);
   const targetBones = new Map<string, BoneLike>();
   const targetInverses = new Map<string, unknown>();
-  visit(avatarRoot, (node) => {
+  visitBaseAvatarRig(avatarRoot, (node) => {
     const skeleton = node.isSkinnedMesh ? node.skeleton as SkeletonLike | undefined : undefined;
     if (skeleton) skeleton.bones.forEach((bone, index) => {
       const key = normalizeBoneName(String(bone.name ?? ""));
@@ -181,7 +211,7 @@ export function attachVerifiedVrmGarment(input: {
       if (key && inverse !== undefined && !targetInverses.has(key)) targetInverses.set(key, inverse);
     });
   });
-  visit(avatarRoot, (node) => {
+  visitBaseAvatarRig(avatarRoot, (node) => {
     if (node.isBone || node.constructor?.name === "Bone") {
       const key = normalizeBoneName(String(node.name ?? ""));
       if (key && !targetBones.has(key)) targetBones.set(key, node as BoneLike);
@@ -210,17 +240,24 @@ export function attachVerifiedVrmGarment(input: {
       mesh.bind(remapped, mesh.bindMatrix);
     }
     clone.userData = { ...(clone.userData ?? {}), nk1WardrobeSlot: slot, nk1WardrobeAssetId: assetId };
-    const previous: ObjectNode[] = [];
+    const previous: Array<{ node: ObjectNode; visible: boolean | undefined; userData: Record<string, unknown> }> = [];
     visit(avatarRoot, (node) => {
-      if (node !== clone && node.userData?.nk1WardrobeSlot === slot) previous.push(node);
+      if (node !== clone && node.userData?.nk1WardrobeSlot === slot) {
+        previous.push({ node, visible: node.visible, userData: { ...(node.userData ?? {}) } });
+      }
     });
     avatarRoot.add(clone);
     for (const old of previous) {
-      old.visible = false;
-      old.userData = { ...(old.userData ?? {}), nk1WardrobeReplaced: true };
+      old.node.visible = false;
+      old.node.userData = { ...(old.node.userData ?? {}), nk1WardrobeReplaced: true };
     }
     return { applied: true, garmentRoot: clone, replaced: previous.length, errors: [] };
   } catch (error) {
+    avatarRoot.remove?.(clone);
+    for (const snapshot of previous) {
+      snapshot.node.visible = snapshot.visible;
+      snapshot.node.userData = { ...snapshot.userData };
+    }
     return {
       applied: false,
       garmentRoot: null,
