@@ -5,16 +5,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
 import * as THREE from "three";
 import { applyVerifiedVrmWardrobePack } from "./avatar/vrmWardrobePackLoader";
+import { collectVrmAvatarRigIdentityDescriptors } from "./avatar/vrmWardrobeAdapter";
 import { validateWardrobePackManifest, type WardrobePackManifest } from "./avatar/wardrobePack";
 
 type LoadedWardrobePack = { name: string; manifest: WardrobePackManifest; files: Map<string, Uint8Array> };
 const WARDROBE_RIG_VERSION = "nk1-three-skeleton-name-map-v1";
 async function avatarWardrobeBodyId(root: any): Promise<string> {
- const descriptors: string[] = [];
- root?.traverse?.((node: any) => { if (node.isBone || node.constructor?.name === "Bone") { const ancestry: string[] = []; let current = node; while (current && current !== root) { ancestry.push(String(current.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")); current = current.parent; } descriptors.push(ancestry.reverse().join("/")); } });
+ const descriptors = collectVrmAvatarRigIdentityDescriptors(root);
  if (!descriptors.length) throw new Error("У загруженной модели нет костей; VRM-гардероб требует skinned avatar.");
  if (!globalThis.crypto?.subtle) throw new Error("Web Crypto недоступен: невозможно безопасно вычислить identity рига.");
- const source = `${WARDROBE_RIG_VERSION}|${descriptors.sort().join("|")}`;
+ const source = `${WARDROBE_RIG_VERSION}|${descriptors.join("|")}`;
  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
  const fingerprint = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("").slice(0, 32);
  return `nk1-vrm-${fingerprint}`;
