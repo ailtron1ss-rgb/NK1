@@ -78,6 +78,17 @@ export function normalizeWorldContext(
         && isFiniteNumeric(candidate?.x)
         && isFiniteNumeric(candidate?.y)
         && isFiniteNumeric(candidate?.z);
+      const rawBox=candidate?.bbox2D&&typeof candidate.bbox2D==='object'
+        ?candidate.bbox2D as Record<string,unknown>:undefined;
+      const bboxCameraId=isFiniteNumeric(candidate?.bboxCameraId)?Math.floor(Number(candidate?.bboxCameraId)):-1;
+      const bboxAt=isFiniteNumeric(candidate?.bboxAt)?Number(candidate?.bboxAt):-1;
+      const bboxConfidence01=isFiniteNumeric(candidate?.bboxConfidence01)?clamp01(candidate?.bboxConfidence01,0):0;
+      const bbox2DKnown=Boolean(rawBox&&bboxCameraId>=0&&bboxAt>=0&&bboxConfidence01>0
+        &&[rawBox.x,rawBox.y,rawBox.width,rawBox.height].every(v=>isFiniteNumeric(v))
+        &&Number(rawBox.x)>=0&&Number(rawBox.y)>=0
+        &&Number(rawBox.width)>0&&Number(rawBox.height)>0
+        &&Number(rawBox.x)+Number(rawBox.width)<=1.000001
+        &&Number(rawBox.y)+Number(rawBox.height)<=1.000001);
 
       return {
         id,
@@ -98,6 +109,15 @@ export function normalizeWorldContext(
           z: Number(candidate?.z),
           coordinateFrameId,
         } : {}),
+        ...(bbox2DKnown?{
+          bbox2D:{
+            x:Number(rawBox!.x),y:Number(rawBox!.y),
+            width:Number(rawBox!.width),height:Number(rawBox!.height),
+          },
+          bboxCameraId,
+          bboxAt,
+          bboxConfidence01,
+        }:{}),
       };
     })
     : [];
