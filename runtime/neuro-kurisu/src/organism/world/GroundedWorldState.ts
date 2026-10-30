@@ -187,6 +187,8 @@ export class GroundedWorldState {
       const trackId=objectId?('world:'+sourceId+':'+objectId):undefined;
       const evidenceKind=normalizeEvidence(o.evidenceKind);
       const visibleKnown=o.visibilityKnown===false?false:(o.visibilityKnown===true||typeof o.visible==='boolean');
+      const coordinateFrameId=cleanIdentity(o.coordinateFrameId);
+      const hasPosition=Boolean(coordinateFrameId)&&[o.x,o.y,o.z].every(value=>typeof value==='number'&&Number.isFinite(value));
       const incoming:GroundedEntity={
         id:objectId?('world-'+stableHash(sourceId+':'+objectId)):'world-'+stableHash(o.label+':'+at),
         label:norm(o.label)||'unknown',kind:'object',
@@ -197,6 +199,7 @@ export class GroundedWorldState {
         ...(trackId?{trackId}:{}),
         modalityEvidenceKinds:{world:evidenceKind},
         sourceIds:sourceId?[sourceId]:[],
+        ...(hasPosition?{position:{x:Number(o.x),y:Number(o.y),z:Number(o.z)},positionFrameId:coordinateFrameId}:{position:null}),
         value:Number.isFinite(o.value)?o.value:0,
         valueKnown:o.valueKnown===true,
         visibilityKnown:visibleKnown,
@@ -330,6 +333,9 @@ export class GroundedWorldState {
           confidence01:clamp(x.confidence01),
           evidenceKind:canonicalKind,
           sourceId:x.sourceIds?.[0]??x.id,
+          ...(x.position&&x.positionFrameId?{
+            x:x.position.x,y:x.position.y,z:x.position.z,coordinateFrameId:x.positionFrameId,
+          }:{ }),
         };
       }),
       events:eventList.slice(0,32).map(x=>x.label),
