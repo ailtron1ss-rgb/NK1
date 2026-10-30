@@ -133,10 +133,23 @@ const diagnostics = restored.restoreDiagnostics();
 assert.equal(diagnostics.sourceRows, 7);
 assert.equal(diagnostics.acceptedRows, 2);
 assert.equal(diagnostics.invalidRowsDropped, 5);
+assert.equal(diagnostics.contentHashMismatchesRepaired, 2,
+  'restore must record both stale serialized content hashes while repairing them');
+assert.equal(diagnostics.invalidVectorsDiscarded, 1,
+  'malformed derived vectors must be counted before lazy rebuild');
+assert.equal(diagnostics.invalidExpiriesClosed, 1,
+  'malformed expiry values must be counted as fail-closed repairs');
+assert.equal(diagnostics.factsDowngraded, 1,
+  'facts with invalid confidence must be counted as trust downgrades');
 const doctor = restored.doctor();
 assert.equal(doctor.pass, false, 'memory doctor must expose data loss during restore');
 assert.ok(doctor.issues.some(issue => issue.code === 'restore-invalid-rows-dropped'));
+assert.ok(doctor.issues.some(issue => issue.code === 'restore-content-hash-mismatch-repaired'));
+assert.ok(doctor.issues.some(issue => issue.code === 'restore-facts-downgraded'));
 assert.equal(doctor.restore.invalidRowsDropped, 5);
+assert.equal(doctor.counts.restoreContentHashMismatches, 2);
+assert.equal(doctor.counts.restoreInvalidVectors, 1);
+assert.equal(doctor.counts.restoreFactsDowngraded, 1);
 
 const recalled = restored.retrieve(
   'What is the durable cache status for REF-228?',
