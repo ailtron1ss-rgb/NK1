@@ -61,11 +61,12 @@ export class PersonalitySelfModelBridge {
       : evidenceRef.startsWith('external-verification:')
         ? 'external-verification'
         : 'internal';
-    const evidenceAccepted=Boolean(
+    const p78Verified=Boolean(
       p78.verifiedOutcomeSamples>before.verifiedOutcomeSamples &&
-      input.event.evidenceStatus==='verified-independent' &&
-      source!=='internal'
+      input.event.evidenceStatus==='verified-independent'
     );
+    // P78 checks provenance shape; this boundary additionally allow-lists trusted receipt issuers.
+    const evidenceAccepted=p78Verified&&source!=='internal';
     const evidenceReason:PersonalityOutcomeResult['evidenceReason']=evidenceAccepted
       ? 'accepted'
       : input.event.evidenceStatus!=='verified-independent' || !input.event.evidenceRef
@@ -80,8 +81,8 @@ export class PersonalitySelfModelBridge {
     const selfModelUpdate=this.selfModel.learnGoalOutcome({
       action:input.action,goalAlignment01:input.goalAlignment01,reward01:input.reward01,tick:input.event.tick,
       evidence:{
-        verified:evidenceAccepted,independent:evidenceAccepted,source,
-        evidenceRef:evidenceAccepted?evidenceRef:undefined,
+        verified:p78Verified,independent:p78Verified,source,
+        evidenceRef:p78Verified?evidenceRef:undefined,
       },
     });
     return {
