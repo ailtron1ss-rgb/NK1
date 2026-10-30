@@ -74,6 +74,11 @@ function canonicalRole(name: string): string | null {
   const stripped = side ? name.replace(/(?:left|right|[lr])$/, "") : name;
   if (side) {
     const part = stripped.replace(/^(?:mixamorig|jbip[lr]?)/, "");
+    const finger = part.match(/^(thumb|index|middle|ring|little)(metacarpal|proximal|intermediate|distal|[123])$/);
+    if (finger) {
+      const joint = finger[2] === "1" ? "proximal" : finger[2] === "2" ? "intermediate" : finger[2] === "3" ? "distal" : finger[2];
+      return side + finger[1] + joint;
+    }
     const suffixes: Record<string, string> = {
       shoulder: "shoulder", upperarm: "upperarm", arm: "upperarm",
       lowerarm: "lowerarm", forearm: "lowerarm", hand: "hand",
@@ -146,6 +151,11 @@ export function canonicalizeHumanoidBoneName(value: unknown): AvatarBoneRole | s
       hand: "hand", upperleg: "upperleg", lowerleg: "lowerleg",
       foot: "foot", toes: "toes",
     };
+    const finger = part.match(/^(thumb|index|middle|ring|little)(metacarpal|proximal|intermediate|distal|[123])$/);
+    if (finger) {
+      const joint = finger[2] === "1" ? "proximal" : finger[2] === "2" ? "intermediate" : finger[2] === "3" ? "distal" : finger[2];
+      return (side + finger[1] + joint) as AvatarBoneRole;
+    }
     const mapped = jBipAliases[part];
     if (mapped) return (side + mapped) as AvatarBoneRole;
   }
