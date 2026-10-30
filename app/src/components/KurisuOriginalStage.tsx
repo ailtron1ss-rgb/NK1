@@ -3,6 +3,7 @@ import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
 import type { FacialMicrochannels } from "./avatar/facialMicrochannels";
+import type { AffectiveBodyLanguage } from "./avatar/affectiveBodyLanguage";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -94,6 +95,7 @@ export interface KurisuOriginalStageProps {
   mouthPose: MouthPose;
   thinking: boolean;
   facial: FacialMicrochannels;
+  bodyLanguage: AffectiveBodyLanguage;
 }
 
 /**
@@ -102,7 +104,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking, facial }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking, facial, bodyLanguage }: KurisuOriginalStageProps) {
   const [outfit, setOutfit] = useState<Outfit>(() => stored("kurisu-original-outfit", OUTFITS, "lab"));
   const [eyeTone, setEyeTone] = useState<EyeTone>(() => stored("kurisu-original-eyes", EYES, "violet"));
   const [hairTone, setHairTone] = useState<HairTone>(() => stored("kurisu-original-hair", HAIR, "copper"));
@@ -185,7 +187,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         <path className="nk-scanner" d="M20 80H400" stroke={accent.color} strokeOpacity=".42" strokeWidth="1"/>
         <ellipse cx="210" cy="505" rx="78" ry="9" fill={accent.color} opacity=".12" filter="url(#nk-glow)"/>
         <g className="nk-float">
-          <g style={{ transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
+          <g style={{ transform: `rotate(${(poseOverride === "auto" ? pose.body : 0) + bodyLanguage.torsoLean * 57.2958}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
           {/* Rear hair silhouette and long, independently swinging locks. */}
           <g className="nk-hair">
             <path d="M150 79 Q145 38 192 29 Q246 24 273 67 Q289 104 272 180 L292 311 Q265 348 249 317 L241 205 L179 208 L170 321 Q147 348 131 308 L143 173 Q130 122 150 79Z" fill="url(#nk-hair)" stroke={hair.shade} strokeWidth="2"/>
@@ -250,7 +252,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M248 280 L259 280 L256 287 L247 287Z" fill={accent.color}/>
           </g>
           {/* Face and separate features. */}
-          <g style={{ transform: `rotate(${pose.head}deg)`, transformOrigin: "210px 134px", transition: "transform 450ms ease" }}>
+          <g style={{ transform: `rotate(${pose.head + bodyLanguage.headTiltBias * 57.2958}deg)`, transformOrigin: "210px 134px", transition: "transform 450ms ease" }}>
             <path d="M151 79 Q151 42 193 40 Q235 35 263 69 Q272 96 257 145 Q247 177 211 185 Q178 177 163 147 Q148 120 151 79Z" fill="url(#nk-skin)" stroke="#9f6267" strokeWidth="2"/>
             <path d="M151 85 Q153 47 192 39 Q236 33 263 69 L267 96 Q241 68 216 66 Q187 66 155 101Z" fill="url(#nk-hair)"/>
             <path d="M157 72 Q168 48 195 44 Q222 40 245 60 Q216 51 201 59 Q178 65 157 88Z" fill="#ee9d6c" opacity=".65"/>
