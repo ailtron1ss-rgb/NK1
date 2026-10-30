@@ -326,9 +326,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       turnText: lastTurn?.role === "kurisu" ? lastTurn.text : "",
       awake: snap.awake,
     });
-    const bodyGestureActive = motorPlan.gesture;
-    const motionGroup = motorPlan.motionGroup;
-    const motionIndex = motorPlan.motionIndex;
+    // A cancelled utterance is a hard embodiment boundary: return to the shipped idle
+    // clip and clear gesture offsets instead of replaying the interrupted response pose.
+    const speechCancelled = speechPhaseRef.current === "cancelled";
+    const bodyGestureActive = !speechCancelled && motorPlan.gesture;
+    const motionGroup = speechCancelled ? "Idle" : motorPlan.motionGroup;
+    const motionIndex = speechCancelled ? 0 : motorPlan.motionIndex;
     // Increment only when the semantic motor goal changes. Snapshot ticks and mouth frames
     // must not continually restart the same motion clip.
     const motionIdentity = freshTextTurn ? (session?.speechEventId ?? turnKey) : `state:${motorPlan.action}`;
@@ -359,13 +362,13 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       gaze: { x: motorPlan.gazeX, y: motorPlan.gazeY, driven: true },
       body: {
         // Profile-specific micro-tilt composes with the authored clip; the CDI3 rig has no arm IK.
-        headTilt: Math.max(-0.15, Math.min(0.15, motorPlan.headTilt + (
+        headTilt: speechCancelled ? 0 : Math.max(-0.15, Math.min(0.15, motorPlan.headTilt + (
           motorPlan.gestureProfile === "considering" || motorPlan.gestureProfile === "examining" ? -1 :
           motorPlan.gestureProfile === "none" ? 0 : 1
         ) * motorPlan.gestureIntensity * 0.018)),
         gesture: bodyGestureActive,
-        gestureProfile: motorPlan.gestureProfile,
-        gestureIntensity: motorPlan.gestureIntensity,
+        gestureProfile: speechCancelled ? "none" : motorPlan.gestureProfile,
+        gestureIntensity: speechCancelled ? 0 : motorPlan.gestureIntensity,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
