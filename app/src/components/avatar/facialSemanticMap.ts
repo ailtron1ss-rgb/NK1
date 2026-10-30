@@ -54,7 +54,7 @@ const ALIASES: Readonly<Record<FacialSemantic, readonly string[]>> = {
   ih: ["ih", "i", "vrcv_ih", "viseme_ih", "mouthih"],
   ou: ["ou", "u", "vrcv_ou", "viseme_ou", "mouthou"],
   ee: ["ee", "e", "vrcv_e", "viseme_ee", "viseme_e", "mouthee"],
-  oh: ["oh", "o", "vrcv_oh", "viseme_oh", "mouthoh"],
+  oh: ["oh", "o", "vrcv_oh", "viseme_oh", "viseme_o", "mouthoh"],
 };
 
 const VRM0_NAMES: Readonly<Record<string, FacialSemantic>> = {
