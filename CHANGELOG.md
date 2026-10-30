@@ -1,3 +1,10 @@
+## [NK1][2.5D] Replace MotorFrame polling with live event transport (2026-10-30)
+
+- Replace periodic HTTP polling with one EventSource connection while 3D/2.5D mode is active; close it on mode change/unmount and rely on EventSource reconnection after transient network failures.
+- Parse each event through the same strict response/joint validator before forwarding it to the renderer.
+- Avoid per-frame request overhead and avoid colliding with the backend's ordinary API rate limit while receiving the controller's bounded continuous stream.
+- The stream is read-only; semantic fallback remains active until a calibrated skeleton and explicit joint bindings exist.
+
 ## [NK1][2.5D] Verify renderer pose application and rollback on failure (2026-10-30)
 
 - Upgrade the Three.js depth-rig adapter from write-only transforms to a postcondition-checked application: resolve all nodes first, snapshot their prior local pose, apply transforms, update matrices, and read back position/rotation/scale/visibility/render order.
@@ -8,11 +15,11 @@
 
 ## [NK1][2.5D] Deliver canonical MotorFrames to the avatar stage (2026-10-30)
 
-- Add the app API client for the backend's read-only `GET /api/organism/motor-frame` snapshot.
-- When 3D or 2.5D mode is selected, poll the latest server-owned frame at a bounded 1 Hz cadence; stop polling when the user switches to another avatar mode.
+- Add the app API client for the backend's read-only `GET /api/organism/motor-frame` snapshot and server-sent event stream.
+- When 3D or 2.5D mode is selected, subscribe to the server-owned MotorFrame event stream; close the stream when the user switches to another avatar mode.
 - Validate the response envelope and every joint's identity, availability and numeric state before forwarding the measured angle data to the existing explicit-binding adapter.
 - Keep semantic animation as the fallback when the backend is unavailable, the skeleton is unconfigured, or no calibrated bindings are supplied. The UI cannot submit or fabricate motor frames.
-- Add the API file to the focused workflow and run the app TypeScript check there.
+- Use one reconnecting EventSource connection instead of high-frequency polling, avoiding per-frame HTTP request overhead and the API request-rate limit. Add the API file to the focused workflow and run the app TypeScript check there.
 - This is a transport bridge only: the server currently has no calibrated Kurisu skeleton profile or autonomous motor-goal source, and no production joint bindings or visual postcondition are claimed. This UI path depends on the read-only endpoint introduced by PR #410.
 
 ## [NK1][2.5D] Repair exported-GLB validator regression fixtures (2026-10-30)
