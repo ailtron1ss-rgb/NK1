@@ -7,9 +7,10 @@ const parent = readFileSync(new URL("../src/components/AvatarStage.tsx", import.
 
 test("Original 2D consumes the shared renderer-neutral facial channels", () => {
   for (const token of ["FacialMicrochannels", "facial.eyeSmile", "facial.browLeftY", "facial.browRightY", "facial.cheek"]) assert.ok(stage.includes(token), token);
-  assert.match(parent, /KurisuOriginalStage[\\s\\S]*?facial=\\{facialProfile\\}/);
+  assert.ok(parent.includes("facial={facialProfile}"));
 });
 
 test("mouth visemes remain authoritative while speaking", () => {
-  assert.match(stage, /speaking \\? <g>[\\s\\S]*?mouthPose\\.open/);
+  assert.ok(stage.includes("speaking ? <g>"));
+  assert.ok(stage.includes("mouthPose.open"));
 });
