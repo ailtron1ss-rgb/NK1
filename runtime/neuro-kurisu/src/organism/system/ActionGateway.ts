@@ -584,6 +584,62 @@ export class ActionGateway {
     }));
   }
 
+  /**
+   * Read-only coverage report for the registered tool surface. It exposes missing
+   * governance gates without silently changing legacy tool behavior; migrations can
+   * be prioritized by risk and measured from CI/runtime snapshots.
+   */
+  toolGovernanceReport() {
+    const tools=[...this.tools.values()].sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0).map(tool=>{
+      const permissionClass=tool.permissionClass??inferPermissionClass(tool.id,tool.capability)??null;
+      const durableReceiptRequired=requiresDurableIdempotency(tool);
+      const highRisk=tool.destructive || durableReceiptRequired ||
+        (permissionClass!==null && ['device','filesystem','code','system','self-modification'].includes(permissionClass));
+      const required={
+        approval:permissionClass!==null,
+        inputContract:highRisk,
+        outputContract:highRisk && durableReceiptRequired,
+        durableReceipt:durableReceiptRequired,
+        independentVerifier:tool.destructive,
+        providerReconciliation:durableReceiptRequired,
+      };
+      const present={
+        approval:permissionClass===null || true,
+        inputContract:Boolean(tool.inputContract),
+        outputContract:Boolean(tool.outputContract),
+        durableReceipt:!durableReceiptRequired || durableReceiptRequired,
+        independentVerifier:Boolean(tool.verify),
+        providerReconciliation:Boolean(tool.reconcile),
+      };
+      const gaps=Object.keys(required).filter(key=>required[key as keyof typeof required] && !present[key as keyof typeof present]);
+      return {
+        id:tool.id, capability:tool.capability, permissionClass,
+        riskTier:tool.destructive || permissionClass==='self-modification' ? 'critical' as const : highRisk ? 'elevated' as const : 'standard' as const,
+        required, present, gaps,
+      };
+    });
+    const count=(key:'inputContract'|'outputContract'|'durableReceipt'|'independentVerifier'|'providerReconciliation')=>
+      tools.filter(row=>row.required[key] && row.present[key]).length;
+    const required=(key:'inputContract'|'outputContract'|'durableReceipt'|'independentVerifier'|'providerReconciliation')=>
+      tools.filter(row=>row.required[key]).length;
+    return {
+      version:1 as const,
+      generatedAt:Date.now(),
+      totals:{
+        registered:tools.length,
+        critical:tools.filter(row=>row.riskTier==='critical').length,
+        elevated:tools.filter(row=>row.riskTier==='elevated').length,
+        withGaps:tools.filter(row=>row.gaps.length>0).length,
+        inputContracts:{present:count('inputContract'),required:required('inputContract')},
+        outputContracts:{present:count('outputContract'),required:required('outputContract')},
+        durableReceipts:{present:count('durableReceipt'),required:required('durableReceipt')},
+        independentVerifiers:{present:count('independentVerifier'),required:required('independentVerifier')},
+        providerReconciliation:{present:count('providerReconciliation'),required:required('providerReconciliation')},
+      },
+      tools,
+    };
+  }
+
   async executeTool(id:string,input:Record<string,unknown>={},reason='tool-request',options:ActionGatewayExecutionOptions={}):Promise<ToolExecution> {
     const registeredTool=this.tools.get(id);
     const validation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
