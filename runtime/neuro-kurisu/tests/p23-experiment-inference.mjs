@@ -54,12 +54,12 @@ const portfolio = evaluateOutcomePromotionPortfolio(comparisons, {
 assert.equal(portfolio.hypotheses, 2);
 assert.equal(portfolio.results[0].method, 'candidate-a');
 assert.equal(portfolio.results[0].eligible, false,
-  'the first of two equally weak hypotheses must be blocked by Holm correction');
+  'equal p-values are tied hypotheses and both retain the same conservative Holm-adjusted p-value');
 assert.equal(portfolio.results[0].adjustedPValue, 2 * comparisons[0].aggregate.signTestPValue);
 assert.ok(portfolio.results[0].reasons.includes('holm-adjusted-p-value-not-significant'));
-assert.equal(portfolio.results[1].eligible, true, JSON.stringify(portfolio.results[1]));
-assert.equal(portfolio.results[1].adjustedPValue, comparisons[1].aggregate.signTestPValue);
-assert.deepEqual(portfolio.eligibleMethods, ['candidate-b']);
+assert.equal(portfolio.results[1].eligible, false, JSON.stringify(portfolio.results[1]));
+assert.equal(portfolio.results[1].adjustedPValue, 2 * comparisons[1].aggregate.signTestPValue);
+assert.deepEqual(portfolio.eligibleMethods, []);
 assert.equal(portfolio.allEligible, false);
 
 const sameWeak = evaluateOutcomePromotionPortfolio([
