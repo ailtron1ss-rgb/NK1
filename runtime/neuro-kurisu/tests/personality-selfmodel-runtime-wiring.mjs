@@ -19,6 +19,7 @@ assert.match(core,/const personalityDecisionFrame\s*=\s*this\.organismSystems\.p
 assert.match(core,/personalityDecisionFrame\.actionBias\[action\]/,'personality bias reaches the existing candidate scores');
 assert.match(core,/const hasStrongExternalReceipt\s*=\s*learning\.source\s*===\s*'external'/,'autobiographical verification requires the external receipt path');
 assert.match(core,/evidenceReceiptId:\\s*hasStrongExternalReceipt\\s*\\?\\s*learning\\.evidenceReceiptId/,'the exact runtime outcome event ID is passed into the bridge');
+assert.match(core,/evidenceReceiptId:\\s*hasStrongExternalReceipt\\s*\\?\\s*learning\\.evidenceReceiptId[^\\n]*,/,'P78 receives the same immutable event ID that was checked by the runtime');
 assert.match(core,/learningScale01:\\s*learning\\.learningScale01/,'personality adaptation uses the shared evidence-weighted learning scale');
 assert.match(core,/independent01:\\s*learning\\.independent01/,'personality adaptation receives the independent evidence score');
 assert.match(core,/learning\.verified01\s*>=\s*\.85/,'autobiographical verification requires high verification');
