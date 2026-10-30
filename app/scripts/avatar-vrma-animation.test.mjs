@@ -81,6 +81,17 @@ test("separate IndexedDB object store persists and restores VRMA sidecars", asyn
   assert.match(stage, /clearStoredAvatarAnimation\(\)/);
 });
 
+test("VRMA-authored expression and LookAt tracks are not overwritten by static organism channels", async () => {
+  const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
+  assert.match(stage, /animation\?\.expressionTracks\?\.preset\?\.keys\?\.\(\)/);
+  assert.match(stage, /animation\?\.expressionTracks\?\.custom\?\.keys\?\.\(\)/);
+  assert.match(stage, /rt\.vrmaExpressionKeysByClip\[clip\.name\]=/);
+  assert.match(stage, /protectedKeys\.has\(key\)/);
+  assert.match(stage, /rt\.activeLookAtClip=rt\.vrmaLookAtClipNames\.includes/);
+  assert.match(stage, /if\(rt\.activeLookAtClip\)rt\.vrm\.lookAt\.target=null/);
+  assert.match(stage, /rt\.vrm\.lookAt\.target=rt\.lookAtTarget/);
+});
+
 test("motion clip changes cross-fade instead of calling stopAllAction for every state transition", async () => {
   const stage = await readFile(path.join(appRoot, "src/components/Avatar3DStage.tsx"), "utf8");
   assert.match(stage, /function transitionClip\(rt:Runtime,clip:any,timeScale:number,fadeSeconds=\.22\)/);
