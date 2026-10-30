@@ -91,6 +91,8 @@ test("reports repository LICENSE/NOTICE files missing from the human review inve
   const coverage = report.checks.find(x => x.id === "release:license-inventory-coverage");
   assert.equal(coverage.pass, false);
   assert.ok(coverage.detail.includes("research/vendor/Example/LICENSE"));
+  assert.equal(report.releaseClearance, "HUMAN_REVIEW_REQUIRED");
+  assert.ok(report.pendingReviews.some(item => item.path === "runtime/neuro-kurisu/research/vendor/Example/LICENSE"));
 });
 
 test("accepts complete repository LICENSE/NOTICE path coverage without inferring approval", async t => {
