@@ -5,6 +5,8 @@ on:
     branches: [workpass70-source]
     paths:
       - "runtime/neuro-kurisu/src/organism/body/OrganismMotorRuntime.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/server-smoke.mjs"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/organism/index.ts"
       - "runtime/neuro-kurisu/tests/organism-motor-runtime.mjs"
@@ -60,3 +62,5 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/motor-frame-channel.mjs
       - name: Run organism-owned motor runtime integration suite
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/organism-motor-runtime.mjs
+      - name: Run server MotorFrame HTTP smoke test
+        run: npm --prefix runtime/neuro-kurisu run test:server-smoke
