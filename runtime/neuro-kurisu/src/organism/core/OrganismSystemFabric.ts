@@ -11,6 +11,7 @@ import { LuminaAdaptationFabric } from '../integration/lumina/LuminaAdaptationFa
 import { HexisAdaptationFabric } from '../integration/hexis/HexisAdaptationFabric.ts';
 import { LettaGovernanceAdaptationFabric } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric } from '../integration/conscio/ConscioAdaptationFabric.ts';
+import { PersonalitySelfModelBridge, type PersonalityOutcomeRecord } from '../cognition/PersonalitySelfModelBridge.ts';
 import { buildCognitiveArchitectureSnapshot } from './CognitiveArchitectureMap.ts';
 
 export type OrganismSystemName = 'self'|'governance'|'memory'|'world'|'embodiment'|'agency'|'research';
@@ -51,6 +52,8 @@ export class OrganismSystemFabric {
   readonly lettaGovernanceAdaptation: LettaGovernanceAdaptationFabric;
   /** Conscio-derived retrieval, federated-skill, liaison, calibration and metabolic adapters. */
   readonly conscioAdaptation: ConscioAdaptationFabric;
+  /** Cross-owner adapter; SelfModel remains owned by memory, personality by self. */
+  readonly personalitySelfModelBridge: PersonalitySelfModelBridge;
   private readonly resolvedContracts: ResolvedOrganismSystemContract[];
 
   constructor(input: Partial<{
@@ -79,6 +82,11 @@ export class OrganismSystemFabric {
     this.hexisAdaptation=input.hexisAdaptation ?? new HexisAdaptationFabric();
     this.lettaGovernanceAdaptation=input.lettaGovernanceAdaptation ?? new LettaGovernanceAdaptationFabric();
     this.conscioAdaptation=input.conscioAdaptation ?? new ConscioAdaptationFabric();
+    this.personalitySelfModelBridge=new PersonalitySelfModelBridge(
+      this.self.p78AutobiographicalSelfContinuity,
+      this.self.p2702PersistentPersonality,
+      this.memory.selfModel,
+    );
     this.resolvedContracts = organismSystemContracts().map(contract => {
       const runtime = this[contract.name!];
       return { ...contract, systemName: runtime.systemName, dependencies:[...runtime.dependencies], capabilityNames:[...contract.capabilityNames], capabilities:[...contract.capabilityNames], snapshot:()=>runtime.snapshot(), health:()=>runtimeHealth(runtime) };
@@ -88,6 +96,16 @@ export class OrganismSystemFabric {
   names(): OrganismSystemName[] { return ['self','governance','memory','world','embodiment','agency','research']; }
 
   get(name: OrganismSystemName) { return this[name]; }
+
+  /** Read-only decision preparation: specialist biases are returned to the canonical selector, never selected here. */
+  preparePersonalityDecision(input:Parameters<PersonalitySelfModelBridge['prepareDecision']>[0]) {
+    return this.personalitySelfModelBridge.prepareDecision(input);
+  }
+
+  /** Route one realized event through P78 provenance before P2702 and the canonical SelfModel learn. */
+  recordPersonalityOutcome(input:PersonalityOutcomeRecord) {
+    return this.personalitySelfModelBridge.recordOutcome(input);
+  }
 
   snapshot(): OrganismSystemFabricSnapshot {
     return {

@@ -29,12 +29,38 @@ export function defaultSelfModel(): SelfModelV2 {
 export class SelfModelEngine {
   private model=defaultSelfModel();
   restore(m:SelfModelV2|undefined){
-    const restored={...defaultSelfModel(),...(m||{})};
-    restored.identityGateAcceptedCount=Number.isFinite(restored.identityGateAcceptedCount)?Math.max(0,Math.floor(restored.identityGateAcceptedCount)):0;
-    restored.identityGateRejectedCount=Number.isFinite(restored.identityGateRejectedCount)?Math.max(0,Math.floor(restored.identityGateRejectedCount)):0;
-    const gate=restored.lastIdentityGate as any;
-    restored.lastIdentityGate=gate&&typeof gate==='object'&&typeof gate.accepted==='boolean'&&typeof gate.reason==='string'&&Number.isFinite(gate.at)
-      ? {accepted:gate.accepted,reason:gate.reason.slice(0,96),at:Math.max(0,gate.at),evidenceRef:typeof gate.evidenceRef==='string'?gate.evidenceRef.slice(0,240):null}
+    const defaults=defaultSelfModel();
+    const source:any=m&&typeof m==='object'?m:{};
+    const finite=(value:unknown,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
+    const unit=(value:unknown,fallback:number)=>Math.max(0,Math.min(1,finite(value,fallback)));
+    const integer=(value:unknown)=>Math.max(0,Math.min(1_000_000,Math.floor(finite(value,0))));
+    const actions:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+    const restored:SelfModelV2={...defaults,...source};
+    restored.predictedAction=actions.includes(source.predictedAction)?source.predictedAction:'none';
+    restored.confidence=unit(source.confidence,defaults.confidence);
+    restored.actionAccuracy=unit(source.actionAccuracy,defaults.actionAccuracy);
+    restored.calibrationError=unit(source.calibrationError,defaults.calibrationError);
+    restored.identityCoherence=unit(source.identityCoherence,defaults.identityCoherence);
+    restored.agencyBelief=unit(source.agencyBelief,defaults.agencyBelief);
+    restored.recentErrors=Array.isArray(source.recentErrors)?source.recentErrors.slice(-64).map((x:unknown)=>unit(x,0.5)):[];
+    restored.preferredStrategies=Array.isArray(source.preferredStrategies)
+      ? [...new Set(source.preferredStrategies.filter((x:unknown)=>typeof x==='string'&&x.trim()).map((x:string)=>x.trim().slice(0,64)))].slice(0,8)
+      : [];
+    restored.updatedAt=Math.max(0,finite(source.updatedAt,defaults.updatedAt));
+    restored.recoveryCount=integer(source.recoveryCount);
+    restored.lastRecoveryAt=Math.max(0,finite(source.lastRecoveryAt,0));
+    restored.continuityShock01=unit(source.continuityShock01,0);
+    restored.postRecoveryIntegration01=unit(source.postRecoveryIntegration01,0);
+    restored.goalAlignment01=unit(source.goalAlignment01,defaults.goalAlignment01);
+    restored.goalAlignmentEMA01=unit(source.goalAlignmentEMA01,defaults.goalAlignmentEMA01);
+    restored.selfConsistentAction11=Object.fromEntries(actions.map(action=>[
+      action,Math.max(-1,Math.min(1,finite(source.selfConsistentAction11?.[action],0)))
+    ]));
+    restored.identityGateAcceptedCount=integer(source.identityGateAcceptedCount);
+    restored.identityGateRejectedCount=integer(source.identityGateRejectedCount);
+    const gate=source.lastIdentityGate;
+    restored.lastIdentityGate=gate&&typeof gate==='object'&&typeof gate.accepted==='boolean'&&typeof gate.reason==='string'&&Number.isFinite(Number(gate.at))
+      ? {accepted:gate.accepted,reason:gate.reason.slice(0,96),at:Math.max(0,finite(gate.at,0)),evidenceRef:typeof gate.evidenceRef==='string'?gate.evidenceRef.slice(0,240):null}
       : null;
     this.model=restored;
   }
@@ -49,8 +75,9 @@ export class SelfModelEngine {
   }
 
   learnGoalOutcome(input:{action:ActionKind;goalAlignment01:number;reward01:number;tick:number;evidence?:{verified:boolean;independent:boolean;source:'world-transition'|'external-verification'|'internal';evidenceRef?:string}}){
-    const alignment=Math.max(0,Math.min(1,input.goalAlignment01));
-    const reward=Math.max(0,Math.min(1,input.reward01));
+    const unit=(value:number,fallback=.5)=>Math.max(0,Math.min(1,Number.isFinite(value)?value:fallback));
+    const alignment=unit(input.goalAlignment01);
+    const reward=unit(input.reward01);
     const quality=0.5*alignment+0.5*reward;
     const lr=0.04 + 0.04*Math.abs(quality-.5);
     this.model.goalAlignmentEMA01=Math.max(0,Math.min(1,this.model.goalAlignmentEMA01*(1-lr)+quality*lr));
@@ -73,7 +100,7 @@ export class SelfModelEngine {
     } else {
       this.model.identityGateRejectedCount=(this.model.identityGateRejectedCount??0)+1;
     }
-    this.model.lastIdentityGate={accepted:gateAccepted,reason:gateReason,at:Number.isFinite(input.tick)?input.tick:0,evidenceRef:gateAccepted?evidenceRef:null};
+    this.model.lastIdentityGate={accepted:gateAccepted,reason:gateReason,at:Number.isFinite(input.tick)?Math.max(0,input.tick):0,evidenceRef:gateAccepted?evidenceRef:null};
     if (input.action) this.model.preferredStrategies=[input.action,...this.model.preferredStrategies.filter(x=>x!==input.action)].slice(0,8);
     this.model.updatedAt=Date.now();
     return {updated:true,action:input.action,quality01:quality,goalAlignment01:this.model.goalAlignment01,goalAlignmentEMA01:this.model.goalAlignmentEMA01,actionBias11:this.actionBias(input.action),agencyBelief:this.model.agencyBelief,identityCoherence:this.model.identityCoherence,identityUpdateAccepted:gateAccepted,identityUpdateReason:gateReason,identityGateAcceptedCount:this.model.identityGateAcceptedCount,identityGateRejectedCount:this.model.identityGateRejectedCount};

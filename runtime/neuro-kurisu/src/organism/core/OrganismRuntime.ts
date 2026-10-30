@@ -892,6 +892,7 @@ export class OrganismRuntime {
         worldModelUpdateScale01: learningGate.worldModelUpdateScale01,
         memoryPromotionScale01: learningGate.memoryPromotionScale01,
         identityUpdateScale01: learningGate.identityUpdateScale01,
+        evidenceReceiptId: grounded.source==='external' ? outcomeEvidence.id : undefined,
         reward01: learningGate.reward01,
         success01: learningGate.success01,
         surprise01: learningGate.surprise01,
