@@ -1,3 +1,9 @@
+## [NK1][WorkPass644] Make the headless Blender blockout version-compatible (2026-10-30)
+
+- Remove an unused render-engine assignment from the deterministic geometry-only demo scene. Blender's headless glTF export does not render frames, and the assignment selected `BLENDER_EEVEE_NEXT`, which is absent from the Ubuntu Blender 4.0.2 package used by CI.
+- Keep the scene generator independent of Blender's render-engine enum so the actual GLB export smoke test can reach the exporter on supported Blender 4.x distributions.
+- The next exact-HEAD CI run, including a real Blender export and GLB validation, is the acceptance gate; this source change alone is not reported as a pass.
+
 ## [NK1][WorkPass643] Enforce imported 2.5D hierarchy provenance (2026-10-30)
 
 - Extend the Three.js adapter with an optional expected-parent contract and compare manifest parent IDs against actual Object3D parent names before applying any transform.
