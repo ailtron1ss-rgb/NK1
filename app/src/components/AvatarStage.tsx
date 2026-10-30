@@ -72,6 +72,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
   const speechSequenceRef = useRef(0);
   const intentStateVersionRef = useRef(0);
+  const latestIntentStateVersionRef = useRef(0);
+  const [intentAck, setIntentAck] = useState<{ stateVersion: number; status: "parameters-observed" | "accepted-unverified"; observedCount: number } | null>(null);
   const motionIntentKeyRef = useRef("");
   const motionIntentTokenRef = useRef(0);
   const activeSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
@@ -122,9 +124,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         // Bump a nonce so the latest intent is replayed only after that viewer is ready.
         setViewerReadyRevision((revision) => revision + 1);
       }
+      if (ev.data.type === "live2d_intent_ack") {
+        const version = ev.data.stateVersion;
+        if (!Number.isSafeInteger(version) || version <= 0 || version !== latestIntentStateVersionRef.current) return;
+        if (ev.data.appliedRevision !== version || ev.data.complete !== false) return;
+        if (ev.data.status !== "parameters-observed" && ev.data.status !== "accepted-unverified") return;
+        if (ev.data.expressionStatus !== "not-independently-verified" || ev.data.motionStatus !== "not-independently-verified") return;
+        const observed = isRecord(ev.data.observedParameters) ? ev.data.observedParameters : {};
+        const observedCount = Object.values(observed).filter((value) => typeof value === "number" && Number.isFinite(value)).length;
+        // This is diagnostic telemetry only: a partial parameter ACK is not a renderer receipt.
+        setIntentAck({ stateVersion: version, status: ev.data.status, observedCount });
+      }
       if (ev.data.type === "live2d_error") {
         if (typeof ev.data.error !== "string" || ev.data.error.length > 512) return;
         setLive(false);
+        setIntentAck(null);
       }
     };
     window.addEventListener("message", onMsg);
@@ -372,6 +386,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       },
       voiceEmphasis: activeUtterance ? Math.min(1, snap.emotion.arousal + 0.15) : 0,
     };
+    latestIntentStateVersionRef.current = intent.stateVersion;
     win.postMessage(intent, window.location.origin);
   }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
 
@@ -390,7 +405,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
-          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p></div>
+          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p>{intentAck ? <p className="text-[9px] text-muted tabular-nums">intent #{intentAck.stateVersion} · {intentAck.status === "parameters-observed" ? `параметры: ${intentAck.observedCount}/6` : "принятие без readback"} · partial</p> : null}</div>
           <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "live2d" : "live2d unavailable"}</span>
         </div>
       </>}
