@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { TemporalObjectTracker, isValidNormalizedBoundingBox } from '../src/organism/body/TemporalObjectTracker.ts';
+import { P41SemanticPerceptionEngine } from '../src/organism/cognition/P41SemanticPerception.ts';
 
 const box=(x,y,width=.18,height=.3)=>({x,y,width,height});
 assert.equal(isValidNormalizedBoundingBox(box(.1,.1)), true);
@@ -33,6 +34,23 @@ const second=tracker.update({
 assert.equal(second.metrics.associatedTrackCount,2);
 assert.equal(second.objects[0].trackId,firstIds[1]);
 assert.equal(second.objects[1].trackId,firstIds[0]);
+
+// The camera tracker feeds the canonical P41 identity layer: separate same-label
+// objects remain separate semantic entities and retain their IDs across frames.
+const p41=new P41SemanticPerceptionEngine();
+const firstSemantic=p41.ingest({
+  at:1_000,
+  vision:{cameraId:0,semantic:true,sceneLabel:'laboratory',confidence01:.9,objects:first.objects},
+});
+const secondSemantic=p41.ingest({
+  at:1_500,
+  vision:{cameraId:0,semantic:true,sceneLabel:'laboratory',confidence01:.9,objects:second.objects},
+});
+const p41Chairs=secondSemantic.entities.filter(entity=>entity.label==='chair'&&entity.kind==='object');
+assert.equal(p41Chairs.length,2);
+assert.equal(new Set(p41Chairs.map(entity=>entity.trackId)).size,2);
+assert.ok(p41Chairs.every(entity=>entity.modalities.includes('vision')));
+assert.ok(firstSemantic.entities.some(entity=>entity.label==='chair'));
 
 // A single prior track cannot be assigned to two competing current detections.
 const ambiguousTracker=new TemporalObjectTracker({sessionId:'ambiguity',maxTrackGapMs:2_000});
