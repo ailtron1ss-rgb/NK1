@@ -89,12 +89,12 @@ function args(argv) {
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   try {
     const a=args(process.argv.slice(2));
-    if(a.help) { process.stdout.write("Usage: node scripts/wardrobe-authoring-preflight.mjs --manifest <manifest.json> --assets <asset-root> [--json]\\n"); }
+    if(a.help) { process.stdout.write("Usage: node scripts/wardrobe-authoring-preflight.mjs --manifest <manifest.json> --assets <asset-root> [--json]\n"); }
     else {
       if(!a.manifestPath||!a.assetsRoot) throw new Error("required:--manifest-and---assets");
       const r=await preflightWardrobePack(a);
-      process.stdout.write(a.json?JSON.stringify(r,null,2)+"\\n":[`NK1 wardrobe ${r.packId??"unknown"}@${r.version??"unknown"}`,`Assets: ${r.assetsChecked}; bytes: ${r.totalBytes}`,`Result: ${r.valid?"PASS":"FAIL"}`,...r.errors.map(e=>"- "+e)].join("\\n")+"\\n");
+      process.stdout.write(a.json?JSON.stringify(r,null,2)+"\n":[`NK1 wardrobe ${r.packId??"unknown"}@${r.version??"unknown"}`,`Assets: ${r.assetsChecked}; bytes: ${r.totalBytes}`,`Result: ${r.valid?"PASS":"FAIL"}`,...r.errors.map(e=>"- "+e)].join("\n")+"\n");
       if(!r.valid) process.exitCode=1;
     }
-  } catch(e) { process.stderr.write(e.message+"\\n"); process.exitCode=2; }
+  } catch(e) { process.stderr.write(e.message+"\n"); process.exitCode=2; }
 }
