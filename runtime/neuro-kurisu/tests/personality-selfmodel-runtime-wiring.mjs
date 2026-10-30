@@ -14,12 +14,13 @@ const [core,runtime,types,registry]=await Promise.all([
 
 assert.match(types,/evidenceReceiptId\?:\s*string/,'learning provenance carries an outcome receipt ID');
 assert.match(runtime,/evidenceReceiptId:\s*grounded\.source\s*===\s*'external'\s*\?\s*outcomeEvidence\.id\s*:\s*undefined/,'runtime forwards the exact published external outcome event ID');
-assert.ok(core.includes('evidenceReceiptId: hasStrongExternalReceipt ? learning.evidenceReceiptId : undefined,'),'the exact runtime outcome event ID is passed into the bridge');
+
 assert.match(core,/const personalityDecisionFrame\s*=\s*this\.organismSystems\.preparePersonalityDecision/,'the canonical candidate-scoring pass prepares personality signals');
 assert.match(core,/personalityDecisionFrame\.actionBias\[action\]/,'personality bias reaches the existing candidate scores');
 assert.match(core,/const hasStrongExternalReceipt\s*=\s*learning\.source\s*===\s*'external'/,'autobiographical verification requires the external receipt path');
 assert.ok(core.includes('evidenceReceiptId: hasStrongExternalReceipt ? learning.evidenceReceiptId : undefined,'),'the exact runtime outcome event ID is passed into the bridge');
-assert.ok(core.includes('evidenceReceiptId: hasStrongExternalReceipt ? learning.evidenceReceiptId : undefined,'),'P78 receives the exact receipt ID checked by the runtime');
+const exactReceiptForwarding='evidenceReceiptId: hasStrongExternalReceipt ? learning.evidenceReceiptId : undefined,';
+assert.equal(core.split(exactReceiptForwarding).length-1,2,'the same exact receipt ID is attached to P78 and passed to the bridge');
 assert.ok(core.includes('learningScale01: learning.learningScale01,'),'personality adaptation uses the shared evidence-weighted learning scale');
 assert.ok(core.includes('independent01: learning.independent01,'),'personality adaptation receives the independent evidence score');
 assert.match(core,/learning\.verified01\s*>=\s*\.85/,'autobiographical verification requires high verification');
