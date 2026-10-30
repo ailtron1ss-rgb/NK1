@@ -1,3 +1,10 @@
+## [NK1][Aspect 15] Enforce one-per-slot defaults and verify exact-head suite (2026-10-30)
+
+- Add default VRM wardrobe selection that selects at most one asset per slot even when a bundle contains alternative garments.
+- Selecting an alternative item replaces only the selected slot while preserving all other selected clothing and accessories.
+- Dedicated wardrobe validation on code HEAD `52ea82e3bf60f0524a32ad5bb2d5212b4d38b6dc`: **62 passed, 0 failed, 0 skipped** (run #41086075600).
+- Remaining non-code acceptance gates: real rights-cleared garment GLBs, production 2.5D/Live2D adapters, real browser IndexedDB quota/restart checks, Android/desktop visual E2E and Release ZIP refresh.
+
 ## [NK1][Aspect 15] Persist body-bound wardrobe and cancel stale applications (2026-10-30)
 
 - Add a versioned IndexedDB store for verified outfit packs, keyed by the exact avatar body fingerprint and rig contract version.
