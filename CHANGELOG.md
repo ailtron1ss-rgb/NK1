@@ -1,5 +1,7 @@
 # Unreleased
 
+- [NK1][Aspect 12] Harden the Chromium smoke gate: console errors and failed network requests now fail the viewport check instead of being recorded as non-blocking diagnostics; add regression tests for both failure and clean-render paths.
+
 - [NK1][Aspect 12] Add a fail-closed release-readiness auditor for project manifests, lockfile alignment, source hygiene and explicit human license clearance; add contract tests, a dedicated exact-SHA GitHub Actions workflow, and a Russian plan covering browser/device E2E, performance baselines, soak/recovery, SBOM/provenance and canonical Release ZIP verification. Structural pass is explicitly not release approval; current pending human license reviews remain blockers.
 - [NK1][Aspect 12] Add a real Chromium desktop/mobile viewport smoke that checks HTTP/render/uncaught errors/overflow and records navigation, DOMContentLoaded, FCP and resource transfer metrics with exact source SHA; wire it into the dedicated workflow and app test suite.
 - [NK1][Aspect 12] Fix CI browser-smoke startup by invoking the installed Vite CLI through Node (plain Node does not inherit npm's local-bin PATH); include browser-smoke source and regression paths in the pull-request workflow filter.
