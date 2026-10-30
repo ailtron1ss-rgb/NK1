@@ -25,6 +25,7 @@ import { OpenAICompatibleLocalChatProvider } from '../organism/integration/local
 import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
+import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -1318,6 +1319,9 @@ async function route(req, res) {
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/voice/status') {
             return json(res, 200, { ok: true, voice: runtime.embodiment.voiceSnapshot(), body: runtime.embodiment.snapshot(), multimodal: runtime.core.multimodalSnapshot() });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/voice/events') {
+            return startNativeSpeechSseStream(req, res, runtime.embodiment);
         }
         if (req.method === 'POST' && url.pathname === '/api/organism/voice/interrupt') {
             const input=await body(req);

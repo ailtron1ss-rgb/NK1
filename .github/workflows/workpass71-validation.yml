@@ -102,6 +102,8 @@ jobs:
         run: node tools/audit-runtime-test-coverage.mjs
       - name: Validate grapheme timeline
         run: npm --prefix app run test:embodiment-timeline
+      - name: Native speech provider event UI regression
+        run: npm --prefix app run test:native-speech-provider-events
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
       - name: App typecheck
@@ -166,6 +168,9 @@ jobs:
           node --experimental-strip-types tests/workpass71-continuum-timescale.mjs
           node --experimental-strip-types tests/workpass69-speech-interruption-gateway.mjs
           node --experimental-strip-types tests/termux-tts-concurrency-workpass69.mjs
+          npm run test:workpass628:native-speech-events
+          npm run test:workpass629:native-speech-host-router
+          npm run test:workpass630:native-speech-sse
           node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs
           node --experimental-strip-types tests/organism-smoke.mjs
           node --experimental-strip-types tests/memory-retrieval-experiment.mjs

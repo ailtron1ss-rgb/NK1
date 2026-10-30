@@ -14,6 +14,9 @@ import {
   sampleVisemeClock,
   sampleVisemeTimeline,
   timelineOffsetForCharIndex,
+  createSpeechLifecycleEventV1,
+  isSpeechLifecycleEventV1,
+  acceptsSpeechLifecycleEventV1,
 } from "../src/components/avatar/embodimentTimeline.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -145,6 +148,11 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.match(source, /stateVersion: \+\+intentStateVersionRef\.current/);
   assert.match(source, /activeSpeechSessionRef\.current !== session/);
   assert.match(source, /timelineOffsetForCharIndex/);
+  assert.match(source, /buildBrowserVoiceProsody/);
+  assert.match(source, /const rate = prosody.rate/);
+  assert.match(source, /utterance.pitch = prosody.pitch/);
+  assert.match(source, /utterance.volume = prosody.volume/);
+  assert.match(source, /voiceEmphasis: activeUtterance \? \(session\?\.voiceEmphasis \?\? 0\) : 0/);
   assert.doesNotMatch(source, /type: "kurisu_lipsync"|type: "kurisu_embodiment"|type: "kurisu_expression"/, "the app must not split one state over legacy control messages");
   assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
   assert.match(viewer, /intent\.stateVersion/);
@@ -226,4 +234,96 @@ test("actual Live2D viewer message handler accepts current state and rejects dup
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign origins are rejected");
   dispatch(message({ stateVersion: 4, audioTimeMs: 160 }), location.origin, {});
   assert.equal(fakeWindow.__w70AppliedCount, 3, "foreign message sources are rejected");
+});
+
+test("speech clock anchors reject duplicate, rewound and malformed provider boundaries", () => {
+  const initial = [{ charIndex: 0, audioTimeMs: 0, timelineTimeMs: 0 }];
+  const refined = appendVisemeClockAnchor(initial, { charIndex: 0, audioTimeMs: 12, timelineTimeMs: 18 });
+  assert.equal(refined.length, 1);
+  assert.equal(refined[0].audioTimeMs, 12, "the first provider boundary may refine the synthetic origin");
+  const advanced = appendVisemeClockAnchor(refined, { charIndex: 5, audioTimeMs: 180, timelineTimeMs: 210 });
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: 5, audioTimeMs: 190, timelineTimeMs: 220 }), advanced,
+    "duplicate character boundaries must not move an established anchor");
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: 6, audioTimeMs: 179, timelineTimeMs: 230 }), advanced,
+    "audio time must remain monotonic even when character offsets advance");
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: 6, audioTimeMs: Number.NaN, timelineTimeMs: 230 }), advanced);
+  assert.equal(appendVisemeClockAnchor(advanced, { charIndex: -1, audioTimeMs: 240, timelineTimeMs: 250 }), advanced);
+});
+
+test("speech clock anchor history is bounded without losing the newest calibration", () => {
+  let anchors = [{ charIndex: 0, audioTimeMs: 0, timelineTimeMs: 0 }];
+  for (let i = 1; i <= 24; i++) {
+    anchors = appendVisemeClockAnchor(anchors, {
+      charIndex: i * 3,
+      audioTimeMs: i * 100,
+      timelineTimeMs: i * 115,
+    });
+  }
+  assert.equal(anchors.length, 16);
+  assert.equal(anchors.at(-1).charIndex, 72);
+  assert.equal(anchors.at(-1).audioTimeMs, 2400);
+  assert.ok(sampleVisemeClock(anchors, 2500) > anchors.at(-1).timelineTimeMs);
+});
+
+test("invalid monotonic clock samples fail closed at the last known high-water mark", () => {
+  assert.equal(sampleMonotonicAudioClock(420, Number.NaN, 10, 900), 420);
+  assert.equal(sampleMonotonicAudioClock(420, 300, Number.NaN, 900), 420);
+  const anchored = reanchorMonotonicAudioClock(420, 300, 10, 900, Number.NaN);
+  assert.equal(anchored.highWaterMs, 1190);
+  assert.equal(anchored.anchorElapsedMs, 1190);
+  assert.equal(sampleMonotonicAudioClock(anchored.highWaterMs, anchored.anchorElapsedMs, anchored.anchorPerformanceAtMs, 950), 1240);
+});
+
+
+test("versioned speech lifecycle accepts a monotonic queued-start-boundary-end sequence", () => {
+  const base = { utteranceId: "utt-1", provider: "browser-speech-synthesis", clockId: "clock-1" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:2", sequence: 2, monotonicTimeMs: 12, phase: "started" });
+  const boundary = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:3", sequence: 3, monotonicTimeMs: 120, phase: "boundary", charIndex: 4 });
+  const ended = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:4", sequence: 4, monotonicTimeMs: 340, phase: "ended" });
+  assert.equal(isSpeechLifecycleEventV1(queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(null, queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(queued, started), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, boundary), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(boundary, ended), true);
+});
+
+test("speech lifecycle rejects duplicate, stale, cross-clock and post-terminal events", () => {
+  const base = { utteranceId: "utt-1", provider: "browser-speech-synthesis", clockId: "clock-1" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:2", sequence: 2, monotonicTimeMs: 10, phase: "started" });
+  const ended = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:3", sequence: 3, monotonicTimeMs: 100, phase: "ended" });
+  const duplicate = { ...started, eventId: "utt-1:2b" };
+  const stale = { ...started, eventId: "utt-1:3", sequence: 3, monotonicTimeMs: 9 };
+  const otherClock = { ...started, eventId: "utt-1:3", sequence: 3, clockId: "clock-2", monotonicTimeMs: 11 };
+  assert.equal(acceptsSpeechLifecycleEventV1(started, duplicate), false);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, stale), false);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, otherClock), false);
+  assert.equal(acceptsSpeechLifecycleEventV1(ended, { ...ended, sequence: 4, eventId: "utt-1:4", phase: "cancelled", monotonicTimeMs: 110 }), false);
+  assert.equal(isSpeechLifecycleEventV1({ ...started, phase: "boundary" }), false, "boundary events require a UTF-16 character index");
+});
+
+test("speech lifecycle terminal states are mutually exclusive", () => {
+  const base = { utteranceId: "utt-2", provider: "native-tts", clockId: "native-clock" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:2", sequence: 2, monotonicTimeMs: 2, phase: "started" });
+  const cancelled = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:3", sequence: 3, monotonicTimeMs: 20, phase: "cancelled" });
+  const lateEnd = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:4", sequence: 4, monotonicTimeMs: 30, phase: "ended" });
+  assert.equal(acceptsSpeechLifecycleEventV1(null, queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(queued, started), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, cancelled), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(cancelled, lateEnd), false);
+});
+
+
+test("speech lifecycle rejects character-boundary regressions", () => {
+  const base = { utteranceId: "utt-3", provider: "browser-speech-synthesis", clockId: "clock-3" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:2", sequence: 2, monotonicTimeMs: 5, phase: "started" });
+  const boundary = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:3", sequence: 3, monotonicTimeMs: 80, phase: "boundary", charIndex: 12 });
+  const stale = createSpeechLifecycleEventV1({ ...base, eventId: "utt-3:4", sequence: 4, monotonicTimeMs: 90, phase: "boundary", charIndex: 7 });
+  assert.equal(acceptsSpeechLifecycleEventV1(null, queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(queued, started), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, boundary), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(boundary, stale), false);
 });
