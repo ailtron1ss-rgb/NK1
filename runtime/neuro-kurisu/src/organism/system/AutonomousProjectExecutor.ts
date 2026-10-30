@@ -94,6 +94,83 @@ export interface ProjectExecutionState {
 const clamp = (n: number) =>
   Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 
+type OwnRead = { exists: boolean; valid: boolean; value?: unknown };
+const ownData = (record: unknown, key: string): OwnRead => {
+  if (!record || typeof record !== 'object') return { exists: false, valid: false };
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor) return { exists: false, valid: true };
+    if (!Object.hasOwn(descriptor, 'value')) return { exists: true, valid: false };
+    return { exists: true, valid: true, value: descriptor.value };
+  } catch {
+    return { exists: true, valid: false };
+  }
+};
+const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
+};
+const safeString = (value: unknown, max: number): string | undefined =>
+  typeof value === 'string' && value.length > 0 && value.length <= max && !/[\\u0000-\\u001f\\u007f]/.test(value)
+    ? value
+    : undefined;
+const safeCounter = (value: unknown, fallback = 0): number =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fallback;
+const safeFinite = (value: unknown, fallback = 0): number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+const safeArrayValues = (value: unknown, max: number): unknown[] => {
+  if (!Array.isArray(value)) return [];
+  const lengthRead = ownData(value, 'length');
+  const length = lengthRead.valid && typeof lengthRead.value === 'number'
+    ? Math.max(0, Math.min(max, Math.floor(lengthRead.value)))
+    : 0;
+  const start = Math.max(0, (lengthRead.value as number ?? 0) - max);
+  const result: unknown[] = [];
+  for (let index = start; index < start + length; index += 1) {
+    const item = ownData(value, String(index));
+    if (item.valid && item.exists) result.push(item.value);
+  }
+  return result;
+};
+const INVALID_JSON = Symbol('invalid-json-value');
+const cloneSafeJson = (value: unknown, depth = 0): unknown | typeof INVALID_JSON => {
+  if (depth > 6) return INVALID_JSON;
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+    return typeof value === 'string' && value.length > 4096 ? INVALID_JSON : value;
+  }
+  if (typeof value === 'number') return Number.isFinite(value) ? value : INVALID_JSON;
+  if (Array.isArray(value)) {
+    const values = safeArrayValues(value, 128);
+    const lengthRead = ownData(value, 'length');
+    if (!lengthRead.valid || typeof lengthRead.value !== 'number' || lengthRead.value > 128) return INVALID_JSON;
+    const result: unknown[] = [];
+    for (const item of values) {
+      const cloned = cloneSafeJson(item, depth + 1);
+      if (cloned === INVALID_JSON) return INVALID_JSON;
+      result.push(cloned);
+    }
+    return result;
+  }
+  if (!isPlainRecord(value)) return INVALID_JSON;
+  const result: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+  let keys: string[];
+  try { keys = Object.keys(value); } catch { return INVALID_JSON; }
+  if (keys.length > 128) return INVALID_JSON;
+  for (const key of keys) {
+    const field = ownData(value, key);
+    if (!field.valid) return INVALID_JSON;
+    const cloned = cloneSafeJson(field.value, depth + 1);
+    if (cloned === INVALID_JSON) return INVALID_JSON;
+    Object.defineProperty(result, key, { value: cloned, enumerable: true, writable: true, configurable: true });
+  }
+  return result;
+};
+
 export const defaultAutonomousProjectExecutor = (): ProjectExecutionState => ({
   version: 7,
   projectId: null,
@@ -228,56 +305,189 @@ export class AutonomousProjectExecutor {
 
   restore(raw?: Partial<ProjectExecutionState> | null) {
     const d = defaultAutonomousProjectExecutor();
-    this.state = {
-      ...d,
-      ...(raw ?? {}),
-      version: 7,
-      processedOutcomeIds: Array.isArray((raw as any)?.processedOutcomeIds) ? Array.from(new Set<string>((raw as any).processedOutcomeIds.map((id:any):string=>String(id??'').slice(0,180)).filter((id:string)=>Boolean(id)))).slice(-512) : [],
-      toolCalls: Math.max(0, Math.floor(Number((raw as any)?.toolCalls ?? 0))),
-      toolSuccesses: Math.max(0, Math.floor(Number((raw as any)?.toolSuccesses ?? 0))),
-      blockedCycles: Math.max(0, Math.floor(Number((raw as any)?.blockedCycles ?? 0))),
-      reopenedSteps: Math.max(0, Math.floor(Number((raw as any)?.reopenedSteps ?? 0))),
-      lastReopenAt: Math.max(0, Number((raw as any)?.lastReopenAt ?? 0)),
-      planRevision: Math.max(0, Math.floor(Number((raw as any)?.planRevision ?? 0))),
-      startedAt: Math.max(0, Number((raw as any)?.startedAt ?? 0)),
-      completedAt: Math.max(0, Number((raw as any)?.completedAt ?? 0)),
-      lastDecisionAt: Math.max(0, Number((raw as any)?.lastDecisionAt ?? 0)),
-      lastTick: Math.max(0, Math.floor(Number((raw as any)?.lastTick ?? 0))),
-      lastOutcomeId: typeof (raw as any)?.lastOutcomeId === 'string' ? String((raw as any).lastOutcomeId).slice(0,160) : undefined,
-      lastOutcomeVerified: Boolean((raw as any)?.lastOutcomeVerified),
-      failedAttempts: Math.max(0, Math.floor(Number((raw as any)?.failedAttempts ?? 0))),
-      steps: Array.isArray(raw?.steps) ? raw!.steps.slice(0, 6).map(step => ({ ...step, qualifyingAttempts: Math.max(0, Math.floor(Number(step.qualifyingAttempts ?? 0))), maxAttempts: Math.max(1, Math.min(8, Math.floor(Number(step.maxAttempts ?? 4)))), blocked: Boolean(step.blocked), failureAttempts: Math.max(0, Math.floor(Number(step.failureAttempts ?? 0))) })) : [],
-      operationSequence: Math.max(0, Math.floor(Number((raw as any)?.operationSequence ?? 0))),
-      activeOperation: undefined,
-    };
-    const op = (raw as any)?.activeOperation;
-    const validStages = new Set<ProjectStepCheckpointStage>(['prepared','pending','waiting-approval','receipt-recorded','reconciliation-required']);
-    if (op && typeof op === 'object' &&
-      typeof op.projectId === 'string' && op.projectId.length > 0 && op.projectId.length <= 180 &&
-      typeof op.stepId === 'string' && op.stepId.length > 0 && op.stepId.length <= 120 &&
-      typeof op.toolId === 'string' && op.toolId.length > 0 && op.toolId.length <= 180 &&
-      /^[a-f0-9]{64}$/i.test(String(op.requestFingerprint ?? '')) &&
-      typeof op.operationKey === 'string' && op.operationKey.length > 0 && op.operationKey.length <= 160 && !/[\u0000-\u001f\u007f]/.test(op.operationKey) &&
-      typeof op.decisionId === 'string' && op.decisionId.length > 0 && op.decisionId.length <= 180 &&
-      Number.isFinite(Number(op.sequence)) && Number(op.sequence) >= 1 &&
-      validStages.has(op.stage) && Number.isFinite(Number(op.startedAt)) && Number.isFinite(Number(op.updatedAt)) &&
-      (!this.state.projectId || op.projectId === this.state.projectId)) {
-      this.state.activeOperation = {
-        version: 1, projectId: op.projectId, stepId: op.stepId, toolId: op.toolId,
-        requestFingerprint: String(op.requestFingerprint).toLowerCase(),
-        operationKey: op.operationKey, decisionId: op.decisionId,
-        sequence: Math.max(1, Math.floor(Number(op.sequence))), stage: op.stage,
-        startedAt: Math.max(0, Number(op.startedAt)), updatedAt: Math.max(0, Number(op.updatedAt)),
-        ...(typeof op.executionId === 'string' && op.executionId.length <= 180 ? { executionId: op.executionId } : {}),
-        ...(typeof op.outcomeClass === 'string' && op.outcomeClass.length <= 100 ? { outcomeClass: op.outcomeClass } : {}),
-        ...(typeof op.approvalRequestId === 'string' && op.approvalRequestId.length <= 180 ? { approvalRequestId: op.approvalRequestId } : {}),
-      };
-      this.state.operationSequence = Math.max(this.state.operationSequence, this.state.activeOperation.sequence);
+    if (raw == null) {
+      // Do not let a routine "no active project" reset discard an operation that
+      // may already have crossed the external side-effect boundary.
+      if (this.hasUnresolvedStepOperation()) return;
+      this.state = d;
+      return;
     }
-    this.state.cursor = Math.max(0, Math.min(this.state.cursor, this.state.steps.length));
-    for (const step of this.state.steps) { step.qualifyingAttempts = Math.max(0, Math.floor(Number(step.qualifyingAttempts ?? 0))); step.maxAttempts = Math.max(1, Math.min(8, Math.floor(Number(step.maxAttempts ?? 4)))); step.blocked = Boolean(step.blocked); step.failureAttempts = Math.max(0, Math.floor(Number(step.failureAttempts ?? 0))); }
-    this.state.skillPromotionCandidate01 = clamp(this.state.skillPromotionCandidate01);
-    this.state.skillPromotions = Math.max(0, Math.floor(this.state.skillPromotions));
+    if (!isPlainRecord(raw)) {
+      if (this.hasUnresolvedStepOperation()) return;
+      this.state = d;
+      return;
+    }
+    const read = (key: string) => ownData(raw, key);
+    const projectRead = read('projectId');
+    const projectId = projectRead.valid
+      ? (projectRead.value === null ? null : safeString(projectRead.value, 180) ?? null)
+      : null;
+
+    const stepsRead = read('steps');
+    const steps: ProjectPlanStep[] = [];
+    if (stepsRead.valid && Array.isArray(stepsRead.value)) {
+      for (const rawStep of safeArrayValues(stepsRead.value, 6)) {
+        if (!isPlainRecord(rawStep)) continue;
+        const stepRead = (key: string) => ownData(rawStep, key);
+        const id = safeString(stepRead('id').value, 120);
+        const action = safeString(stepRead('action').value, 80);
+        const purpose = safeString(stepRead('purpose').value, 500);
+        const requiredEvidence = stepRead('requiredEvidence01').value;
+        const expectedProgress = stepRead('expectedProgress01').value;
+        const completed = stepRead('completed').value;
+        if (!id || !action || !purpose ||
+            typeof requiredEvidence !== 'number' || !Number.isFinite(requiredEvidence) ||
+            typeof expectedProgress !== 'number' || !Number.isFinite(expectedProgress) ||
+            typeof completed !== 'boolean') continue;
+        const attempts = safeCounter(stepRead('attempts').value);
+        const successes = Math.min(attempts, safeCounter(stepRead('successes').value));
+        const lastAt = safeFinite(stepRead('lastAt').value);
+        const step: ProjectPlanStep = {
+          id,
+          action: action as ActionKind,
+          purpose,
+          requiredEvidence01: clamp(requiredEvidence),
+          expectedProgress01: clamp(expectedProgress),
+          completed,
+          attempts,
+          successes,
+          lastAt,
+          qualifyingAttempts: Math.min(successes, safeCounter(stepRead('qualifyingAttempts').value)),
+          maxAttempts: Math.max(1, Math.min(8, safeCounter(stepRead('maxAttempts').value, 4))),
+          blocked: stepRead('blocked').value === true,
+          failureAttempts: safeCounter(stepRead('failureAttempts').value),
+        };
+        const preferredTool = safeString(stepRead('preferredTool').value, 180);
+        if (preferredTool) step.preferredTool = preferredTool;
+        const minAttempts = stepRead('minAttemptsBeforePromotion').value;
+        if (typeof minAttempts === 'number' && Number.isSafeInteger(minAttempts) && minAttempts > 0) step.minAttemptsBeforePromotion = Math.min(8, minAttempts);
+        const retryAfterTick = stepRead('retryAfterTick').value;
+        if (typeof retryAfterTick === 'number' && Number.isSafeInteger(retryAfterTick) && retryAfterTick >= 0) step.retryAfterTick = retryAfterTick;
+        const lastFailureReason = safeString(stepRead('lastFailureReason').value, 180);
+        if (lastFailureReason) step.lastFailureReason = lastFailureReason;
+        for (const key of ['requiresExternalResearch', 'requiresResearchPromotion', 'requiresPriorResearchPromotion'] as const) {
+          const flag = stepRead(key).value;
+          if (typeof flag === 'boolean') step[key] = flag;
+        }
+        const dependsOnRead = stepRead('dependsOn');
+        if (dependsOnRead.valid && Array.isArray(dependsOnRead.value)) {
+          const dependencies = safeArrayValues(dependsOnRead.value, 6)
+            .map((value) => safeString(value, 120))
+            .filter((value): value is string => Boolean(value));
+          if (dependencies.length) step.dependsOn = [...new Set(dependencies)];
+        }
+        const toolInputRead = stepRead('toolInput');
+        if (toolInputRead.valid && toolInputRead.value !== undefined) {
+          const toolInput = cloneSafeJson(toolInputRead.value);
+          if (toolInput !== INVALID_JSON && isPlainRecord(toolInput)) step.toolInput = toolInput;
+        }
+        steps.push(step);
+      }
+    }
+
+    const processedRead = read('processedOutcomeIds');
+    const processedOutcomeIds = processedRead.valid
+      ? [...new Set(safeArrayValues(processedRead.value, 2048)
+          .map((value) => safeString(value, 180))
+          .filter((value): value is string => Boolean(value)))].slice(-512)
+      : [];
+    const operationRead = read('activeOperation');
+    let activeOperation: ProjectStepExecutionCheckpoint | undefined;
+    if (operationRead.valid && isPlainRecord(operationRead.value)) {
+      const rawOperation = operationRead.value;
+      const field = (key: string) => ownData(rawOperation, key);
+      const opProjectId = safeString(field('projectId').value, 180);
+      const stepId = safeString(field('stepId').value, 120);
+      const toolId = safeString(field('toolId').value, 180);
+      const requestFingerprint = field('requestFingerprint').value;
+      const operationKey = safeString(field('operationKey').value, 160);
+      const decisionId = safeString(field('decisionId').value, 180);
+      const sequence = field('sequence').value;
+      const stage = field('stage').value;
+      const startedAt = field('startedAt').value;
+      const updatedAt = field('updatedAt').value;
+      const validStages = ['prepared', 'pending', 'waiting-approval', 'receipt-recorded', 'reconciliation-required'];
+      const identityValid = Boolean(
+        opProjectId && stepId && toolId && operationKey && decisionId &&
+        typeof requestFingerprint === 'string' && /^[a-f0-9]{64}$/i.test(requestFingerprint) &&
+        typeof sequence === 'number' && Number.isSafeInteger(sequence) && sequence >= 1 &&
+        typeof stage === 'string' && validStages.includes(stage) &&
+        typeof startedAt === 'number' && Number.isFinite(startedAt) && startedAt >= 0 &&
+        typeof updatedAt === 'number' && Number.isFinite(updatedAt) && updatedAt >= 0 &&
+        !/[\\u0000-\\u001f\\u007f]/.test(operationKey)
+      );
+      if (identityValid) {
+        activeOperation = {
+          version: 1,
+          projectId: opProjectId!,
+          stepId: stepId!,
+          toolId: toolId!,
+          requestFingerprint: requestFingerprint.toLowerCase(),
+          operationKey: operationKey!,
+          decisionId: decisionId!,
+          sequence,
+          stage: stage as ProjectStepCheckpointStage,
+          startedAt,
+          updatedAt,
+        };
+        for (const [key, limit] of [['executionId', 180], ['outcomeClass', 100], ['approvalRequestId', 180]] as const) {
+          const value = safeString(field(key).value, limit);
+          if (value) activeOperation[key] = value;
+        }
+      }
+    }
+
+    // If a checkpoint and the plan disagree about project identity, the checkpoint
+    // wins: keep the side-effect lock and discard only the incompatible plan cursor.
+    let canonicalProjectId = projectId;
+    let canonicalSteps = steps;
+    if (activeOperation && canonicalProjectId && activeOperation.projectId !== canonicalProjectId &&
+        activeOperation.stage !== 'prepared') {
+      canonicalProjectId = activeOperation.projectId;
+      canonicalSteps = [];
+    } else if (activeOperation && !canonicalProjectId) {
+      canonicalProjectId = activeOperation.projectId;
+    }
+    const completedFromSteps = canonicalSteps.filter((step) => step.completed).length;
+    const state: ProjectExecutionState = {
+      ...d,
+      version: 7,
+      projectId: canonicalProjectId,
+      steps: canonicalSteps,
+      cursor: Math.max(0, Math.min(safeCounter(read('cursor').value), canonicalSteps.length)),
+      cycles: safeCounter(read('cycles').value),
+      completedSteps: completedFromSteps,
+      validatedSteps: Math.min(completedFromSteps, safeCounter(read('validatedSteps').value)),
+      executionScore01: clamp(typeof read('executionScore01').value === 'number' ? read('executionScore01').value as number : d.executionScore01),
+      skillPromotionCandidate01: clamp(typeof read('skillPromotionCandidate01').value === 'number' ? read('skillPromotionCandidate01').value as number : 0),
+      skillPromotions: safeCounter(read('skillPromotions').value),
+      lastAt: safeFinite(read('lastAt').value),
+      toolCalls: safeCounter(read('toolCalls').value),
+      toolSuccesses: safeCounter(read('toolSuccesses').value),
+      blockedCycles: safeCounter(read('blockedCycles').value),
+      reopenedSteps: safeCounter(read('reopenedSteps').value),
+      lastReopenAt: safeFinite(read('lastReopenAt').value),
+      lastTool: safeString(read('lastTool').value, 96),
+      lastToolError: safeString(read('lastToolError').value, 180),
+      planRevision: safeCounter(read('planRevision').value),
+      startedAt: safeFinite(read('startedAt').value),
+      completedAt: safeFinite(read('completedAt').value),
+      lastDecisionAt: safeFinite(read('lastDecisionAt').value),
+      lastTick: safeCounter(read('lastTick').value),
+      lastOutcomeId: safeString(read('lastOutcomeId').value, 160),
+      lastOutcomeVerified: read('lastOutcomeVerified').value === true,
+      failedAttempts: safeCounter(read('failedAttempts').value),
+      processedOutcomeIds,
+      operationSequence: Math.max(safeCounter(read('operationSequence').value), activeOperation?.sequence ?? 0),
+      activeOperation,
+    };
+    // Protect an existing in-memory checkpoint from an accessor-backed/invalid
+    // attempted replacement. JSON snapshots are plain data, but public callers
+    // should not be able to make restore evaluate arbitrary properties.
+    if (!operationRead.valid && this.hasUnresolvedStepOperation()) return;
+    if (activeOperation === undefined && this.hasUnresolvedStepOperation() &&
+        (canonicalProjectId !== this.state.projectId || canonicalSteps.length === 0)) return;
+    this.state = state;
   }
 
   snapshot() {
