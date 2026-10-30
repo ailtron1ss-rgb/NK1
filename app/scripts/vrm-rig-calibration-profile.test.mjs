@@ -39,8 +39,8 @@ import { calibrateVrmArmFromMeasurement, createMeasuredVrmRigCalibrationProfile 
 
 const measuredArm = (offset = 0) => ({
   shoulderAxis:"z", elbowAxis:"x", shoulderSign:1, elbowSign:-1,
-  bindShoulder:{x:0,y:0,z:0.1}, bindElbow:{x:0.2,y:0,z:0},
-  observedShoulder:{x:0,y:0,z:0.1+0.5+offset}, observedElbow:{x:0.2-0.7+offset,y:0,z:0},
+  bindShoulder:{x:0,y:0,z:0.1}, bindElbow:{x:1.0,y:0,z:0},
+  observedShoulder:{x:0,y:0,z:0.1+0.5+offset}, observedElbow:{x:1.0-0.7+offset,y:0,z:0},
   referenceShoulderAngleRad:0.5, referenceElbowAngleRad:0.7,
   shoulderMinRad:-1.2, shoulderMaxRad:1.2, elbowMinRad:-0.1, elbowMaxRad:2.4,
 });
