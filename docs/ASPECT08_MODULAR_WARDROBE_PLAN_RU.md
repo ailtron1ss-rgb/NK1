@@ -253,7 +253,7 @@ The user-facing project taxonomy calls wardrobe work **Aspect 15**; the existing
 - 2.5D garment layers: 0% production assets and renderer application.
 - Persistent outfit/garment selection: IndexedDB store, exact body/rig key, saved selection and full SHA-256 re-verification on restore are implemented; real browser quota/restart/device E2E remains unverified.
 - Desktop/Android visual E2E: not verified.
-- Whole Aspect 15 estimate: 58% after persistence and stale-request cancellation code; the estimate is conservative and does not include any claim of production garment art or visual/device verification.
+- Whole Aspect 15 estimate: 59% after persistence, cancellation and per-slot selection code; the estimate is conservative and does not include any claim of production garment art or visual/device verification.
 
 ### Next work — remaining completion gates
 
@@ -279,3 +279,13 @@ No real garment art, licensing entitlement, Live2D switch, 2.5D renderer applica
 - The VRM pack loader accepts an `isCurrent` predicate. If the active model changes or resets during async GLB parsing, the stale wardrobe request is cancelled before scene mutation and prepared resources are disposed.
 - Added tests for body/rig-specific keys, slot-safe stored selections and stale-request cancellation/cleanup.
 - These are code-level persistence and cancellation paths. Real browser IndexedDB quota/restart tests, Android E2E and real garment GLBs remain unverified.
+
+
+## Per-slot choice, verified persistence and current CI closure — 2026-10-30
+
+- Added default selection policy: a loaded bundle chooses at most one VRM asset per slot. Alternative garments for a slot remain available, but cannot be layered on each other accidentally.
+- Added per-slot selection update policy: choosing a new coat replaces only the old outerwear item, preserving shoes, accessories and other slots.
+- The dedicated wardrobe workflow passed on HEAD `52ea82e3bf60f0524a32ad5bb2d5212b4d38b6dc`: **62 tests passed, 0 failed, 0 skipped** (run #41086075600).
+- The suite includes body/rig keyed persistence selection, slot defaults/replacement, stale-load cancellation before and after asynchronous GLB parsing, resource cleanup, multi-slot attachment and exact renderer/asset acknowledgement.
+- General NeuroCore regression was still in progress at the latest status observation; this aspect does not claim that unrelated workflow as passed.
+- Real browser IndexedDB quota/restart validation, Android E2E and production garment assets remain open.
