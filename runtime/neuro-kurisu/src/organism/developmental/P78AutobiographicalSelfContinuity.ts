@@ -16,6 +16,8 @@ export interface P78Event {
   mode?:string;
   evidenceStatus?:P78EvidenceStatus;
   evidenceRef?:string;
+  /** Exact immutable RuntimeEvidenceBus outcome event ID paired with evidenceRef. */
+  evidenceReceiptId?:string;
   authorship?:P78Authorship;
   episodeId?:string;
 }
@@ -40,8 +42,12 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const boundedText=(value:unknown,max=180)=>String(value??'').replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
 const hasBoundEvidence=(event:P78Event)=>{
   if(event.evidenceStatus!=='verified-independent')return false;
-  const receipt=/^external-verification:reb:(\d+):(\d+):outcome$/i.exec(String(event.evidenceRef??'').trim());
-  return Boolean(receipt&&Number(receipt[1])===event.tick);
+  const receiptId=String(event.evidenceReceiptId??'').trim();
+  const receipt=/^reb:(\d+):(\d+):outcome$/i.exec(receiptId);
+  return Boolean(
+    receipt&&Number(receipt[1])===event.tick&&
+    String(event.evidenceRef??'').trim()===\`external-verification:\${receiptId}\`
+  );
 };
 const isAuthored=(event:P78Event)=>event.authorship==='self-initiated'||event.authorship==='self-selected';
 export const defaultP78=():P78State=>({
@@ -87,7 +93,7 @@ export class P78AutobiographicalSelfContinuity{
     const candidates=events.slice(-16).filter(e=>e&&Number.isFinite(e.tick)&&Number.isFinite(e.at)&&typeof e.action==='string');
     const eventKey=(e:P78Event)=>JSON.stringify([
       e.tick,e.at,boundedText(e.action,48),e.outcome??'',boundedText(e.text,120),boundedText(e.mode,32),
-      e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),e.authorship??'unknown',boundedText(e.episodeId,80)
+      e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),boundedText(e.evidenceReceiptId,180),e.authorship??'unknown',boundedText(e.episodeId,80)
     ]);
     const seen=new Set(this.state.processedEventKeys);
     const recent=candidates.filter(e=>{const key=eventKey(e);if(seen.has(key))return false;seen.add(key);return true;});
