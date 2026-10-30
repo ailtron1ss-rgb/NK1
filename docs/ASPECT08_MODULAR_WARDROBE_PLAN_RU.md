@@ -104,3 +104,10 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 `verifyWardrobeAssetBytes` now checks the actual `ArrayBuffer` / `Uint8Array` received by a future loader against the manifest's declared byte count and SHA-256 digest using Web Crypto. It returns explicit outcomes for verified bytes, size mismatch, hash mismatch, invalid metadata and unavailable crypto. The check is deliberately independent from licensing: a matching digest establishes byte identity only, not rights or attribution.
 
 The focused regression suite includes the published SHA-256 test vector for `abc`, plus tampered-hash, incorrect-size and unavailable-provider cases. The runtime loader still needs to call this gate before renderer acknowledgement; no loader or actual clothing assets are claimed in this pass.
+
+## Третий инженерный проход — проверка полного payload пакета
+
+- Добавлен `verifyWardrobePackPayload`: пакет считается byte-verified только если каждый путь из манифеста присутствует, каждый файл проходит проверку размера и SHA-256, а незаявленные дополнительные файлы отсутствуют.
+- Результат возвращает список подтверждённых asset ID и точные причины отказа по путям; повреждённый, неполный или расширенный посторонними файлами пакет не проходит gate.
+- Добавлены тесты для корректного полного payload, отсутствующего файла и незаявленного лишнего файла.
+- Это ещё не файловый загрузчик и не установка пакета: интеграция должна передать реальные байты в этот gate, а лицензия/подпись/происхождение остаются отдельными проверками.
