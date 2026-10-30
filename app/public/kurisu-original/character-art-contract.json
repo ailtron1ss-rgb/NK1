@@ -4,7 +4,12 @@
   "title": "NK1 Original 2D — character art contract",
   "status": "concept-art-contract",
   "format": "svg-preview",
-  "viewBox": [0, 0, 420, 560],
+  "viewBox": [
+    0,
+    0,
+    420,
+    560
+  ],
   "identity": {
     "hair": "long copper/auburn hair with a restrained warm highlight range",
     "hairAccessory": "slim red hair clip on the character's left fringe",
@@ -13,26 +18,80 @@
     "expressionPrinciple": "subtle, intelligent, slightly tsundere-capable; avoid permanently exaggerated cute expressions"
   },
   "palette": {
-    "hair": {"main": "#a94732", "shadow": "#54272c", "highlight": "#c86645"},
-    "skin": {"light": "#ffe1cf", "shadow": "#dca59c"},
-    "eyes": {"default": "#b5a4ff", "alternate": ["#8bdcff", "#5be5ce"]},
+    "hair": {
+      "main": "#a94732",
+      "shadow": "#54272c",
+      "highlight": "#c86645"
+    },
+    "skin": {
+      "light": "#ffe1cf",
+      "shadow": "#dca59c"
+    },
+    "eyes": {
+      "default": "#b5a4ff",
+      "alternate": [
+        "#8bdcff",
+        "#5be5ce"
+      ]
+    },
     "signatureRed": "#b52e43",
-    "labCoat": {"base": "#f1f4f5", "shadow": "#bdcbd0"},
-    "nightOutfit": {"base": "#1c3442", "shadow": "#10232f"}
+    "labCoat": {
+      "base": "#f1f4f5",
+      "shadow": "#bdcbd0"
+    },
+    "nightOutfit": {
+      "base": "#1c3442",
+      "shadow": "#10232f"
+    }
   },
   "composition": {
-    "fullBodySafeArea": [0.12, 0.045, 0.76, 0.86],
-    "headCenter": [0.5, 0.24],
+    "fullBodySafeArea": [
+      0.12,
+      0.045,
+      0.76,
+      0.86
+    ],
+    "headCenter": [
+      0.5,
+      0.24
+    ],
     "shoulderLine": 0.34,
     "waistLine": 0.64,
     "feetBaseline": 0.89,
     "minimumClearance": 0.04,
     "notes": "Normalized coordinates are art-direction guides, not a replacement for measured production rig landmarks."
   },
-  "requiredViews": ["front-neutral", "front-three-quarter-left", "front-three-quarter-right", "profile-left", "profile-right", "back"],
-  "requiredExpressions": ["neutral", "curiosity", "thinking", "joy", "embarrassment", "anxiety", "sadness", "frustration", "anger", "protective"],
-  "requiredOutfits": ["laboratory", "casual", "nightwear"],
-  "requiredAccessorySlots": ["hair-clip", "ear-accessories", "neck-accessory", "handheld-prop"],
+  "requiredViews": [
+    "front-neutral",
+    "front-three-quarter-left",
+    "front-three-quarter-right",
+    "profile-left",
+    "profile-right",
+    "back"
+  ],
+  "requiredExpressions": [
+    "neutral",
+    "curiosity",
+    "thinking",
+    "joy",
+    "embarrassment",
+    "anxiety",
+    "sadness",
+    "frustration",
+    "anger",
+    "protective"
+  ],
+  "requiredOutfits": [
+    "laboratory",
+    "casual",
+    "nightwear"
+  ],
+  "requiredAccessorySlots": [
+    "hair-clip",
+    "ear-accessories",
+    "neck-accessory",
+    "handheld-prop"
+  ],
   "layerOrderBackToFront": [
     "background",
     "hair-back",
@@ -53,9 +112,20 @@
     "highlight-and-fx"
   ],
   "productionAssetRequirements": {
-    "masterCanvas": [4096, 4096],
-    "workingFormat": ["PSD", "KRA", "SVG"],
-    "deliveryFormat": ["layered-PNG", "SVG-preview", "manifest.json"],
+    "masterCanvas": [
+      4096,
+      4096
+    ],
+    "workingFormat": [
+      "PSD",
+      "KRA",
+      "SVG"
+    ],
+    "deliveryFormat": [
+      "layered-PNG",
+      "SVG-preview",
+      "manifest.json"
+    ],
     "alpha": true,
     "colorSpace": "sRGB",
     "noFlattenedOnlyDelivery": true,
@@ -66,5 +136,170 @@
     "This contract does not claim that the current SVG is a production layered illustration.",
     "This contract does not claim 2.5D depth, skeletal joints, inverse kinematics, or free full-body motion.",
     "Color variants do not count as independent outfits or interchangeable garment assets."
-  ]
+  ],
+  "future2_5dHandoff": {
+    "status": "requirements-only-not-rigged",
+    "purpose": "Prepare independently authored 2D artwork for a later layered 2.5D puppet/mesh rig without claiming that a rig or depth data already exists.",
+    "coordinateSystem": {
+      "origin": "top-left",
+      "units": "normalized-0-to-1",
+      "positiveX": "right",
+      "positiveY": "down",
+      "pivotPrecision": "at-least-4-decimal-places",
+      "canvasReference": "master-canvas"
+    },
+    "depthPlanes": [
+      {
+        "id": "far-background",
+        "order": 0,
+        "rule": "environment-only"
+      },
+      {
+        "id": "hair-back",
+        "order": 10,
+        "rule": "behind-neck-and-torso"
+      },
+      {
+        "id": "body-and-limbs",
+        "order": 20,
+        "rule": "complete-hidden-anatomy-under-clothing"
+      },
+      {
+        "id": "torso-and-garments",
+        "order": 30,
+        "rule": "independent-front-and-back-garment-pieces"
+      },
+      {
+        "id": "neck-and-ears",
+        "order": 40,
+        "rule": "overlap-aware"
+      },
+      {
+        "id": "face-and-features",
+        "order": 50,
+        "rule": "face-base-eyes-brows-nose-mouth-jaw-separable"
+      },
+      {
+        "id": "front-hair-and-accessories",
+        "order": 60,
+        "rule": "independent-locks-and-clip"
+      },
+      {
+        "id": "hands-and-held-props",
+        "order": 70,
+        "rule": "separate-grip-anchors-and-visibility"
+      },
+      {
+        "id": "foreground-effects",
+        "order": 80,
+        "rule": "optional-transparent-overlays"
+      }
+    ],
+    "requiredMovingGroups": [
+      "head",
+      "neck",
+      "torso",
+      "shoulder-left",
+      "upper-arm-left",
+      "forearm-left",
+      "hand-left",
+      "shoulder-right",
+      "upper-arm-right",
+      "forearm-right",
+      "hand-right",
+      "hip",
+      "thigh-left",
+      "shin-left",
+      "foot-left",
+      "thigh-right",
+      "shin-right",
+      "foot-right",
+      "hair-back",
+      "hair-front",
+      "eye-left",
+      "eye-right",
+      "jaw"
+    ],
+    "layerRecordRequiredFields": [
+      "id",
+      "parentId",
+      "zIndex",
+      "pivot",
+      "restTransform",
+      "bounds",
+      "occlusion",
+      "deformation",
+      "sourceAssetId"
+    ],
+    "pivotRules": {
+      "everyMovingGroupRequiresPivot": true,
+      "pivotMustBeInsideOrWithinDocumentedJointMargin": true,
+      "parentMustExistOrBeNull": true,
+      "parentCyclesForbidden": true,
+      "transformsMustDefineTranslationAndRotationBounds": true,
+      "mirroredPartsMustDeclareWhetherGeometryIsShared": true
+    },
+    "occlusionRules": {
+      "hiddenAnatomyMustExtendBeyondGarmentAndHairMasks": true,
+      "overlapBleedMustBeMeasuredAndDocumented": true,
+      "noTransparentHolesAtMaximumApprovedPose": true,
+      "frontAndBackGarmentPiecesMustBeSeparate": true,
+      "handsMustRemainSeparateFromProps": true,
+      "masksMustHaveStableLayerIds": true
+    },
+    "meshRules": {
+      "meshIsOptionalUntilRiggingPhase": true,
+      "ifPresent": "Each deformable layer declares mesh topology/version, vertex bounds, pinned vertices, seam constraints and maximum displacement.",
+      "noCrossSeamTearing": true,
+      "noSelfIntersectionAtApprovedPoseExtremes": true,
+      "preserveTextureUvAndAlphaEdges": true
+    },
+    "deformationTestPoses": [
+      "head-turn-left-and-right",
+      "head-tilt-and-return",
+      "shoulder-raise",
+      "elbow-flex-and-extend",
+      "wrist-rotate",
+      "torso-yaw-and-lean",
+      "hip-shift",
+      "knee-flex",
+      "hair-swing",
+      "hand-prop-grip"
+    ],
+    "cameraAndDepth": {
+      "referenceViews": [
+        "front",
+        "three-quarter-left",
+        "three-quarter-right",
+        "profile-left",
+        "profile-right"
+      ],
+      "depthMustBeExplicitlyAuthoredOrMeasured": true,
+      "doNotInferDepthFromFlatColorOrLayerOrderAlone": true,
+      "parallaxMustNotRevealUnpaintedRegions": true,
+      "perspectiveAndScaleMustRemainIdentityConsistent": true
+    },
+    "exportBudgets": {
+      "masterCanvas": [
+        4096,
+        4096
+      ],
+      "maximumTextureDimension": 4096,
+      "alphaRequired": true,
+      "colorSpace": "sRGB",
+      "textureAtlasPackingMustPreservePadding": true,
+      "sourceAndExportHashesRequired": true,
+      "fileSizeBudgetMustBeDeclaredPerTargetPlatform": true
+    },
+    "acceptanceGates": [
+      "all-moving-groups-have-valid-pivots-and-parent-links",
+      "all-occluded-anatomy-is-painted-beyond-maximum-mask-edges",
+      "all-required-deformation-poses-have-reviewed-contact-sheets",
+      "no-visible-seams-holes-or-texture-edge-fringing",
+      "five-view-silhouette-and-landmark-consistency-approved",
+      "layered-source-and-export-hashes-match-manifest",
+      "authorship-and-license-provenance-recorded-for-every-source"
+    ],
+    "promotionPolicy": "No asset is eligible for 2.5D rigging approval from this contract alone. Require authored source files, validated layer manifest, deformation review, visual sign-off and provenance."
+  }
 }
