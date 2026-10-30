@@ -102,6 +102,8 @@ jobs:
         run: node tools/audit-runtime-test-coverage.mjs
       - name: Validate grapheme timeline
         run: npm --prefix app run test:embodiment-timeline
+      - name: Validate renderer-independent body motor foundation
+        run: node --experimental-strip-types --test app/scripts/body-motor-controller.test.mjs
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
       - name: App typecheck
