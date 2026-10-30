@@ -1,3 +1,9 @@
+## [NK1][Aspect 11] Reject blank semantic handoff identifiers (2026-10-30)
+
+- Require non-blank bounded expression labels and action names; nullable speech-event, intent and wardrobe IDs must be either null or non-blank bounded strings.
+- Preserve null as the explicit absence value while rejecting empty/whitespace-only identifiers before renderer adapter lifecycle begins.
+- Add regression cases for empty and whitespace-only fields plus the valid all-null optional-ID case.
+
 ## [NK1][Aspect 11] Validate complete semantic body snapshot fields (2026-10-30)
 
 - Reject malformed expression labels, gaze target IDs, speech event IDs, intent IDs and wardrobe IDs at the renderer-neutral handoff boundary.
