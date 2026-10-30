@@ -1,3 +1,32 @@
+## [NK1][Aspect 11] Port cross-renderer body handoff foundation (2026-10-30)
+
+- Port the versioned semantic body snapshot, capability-aware handoff planning, shared-channel blending and transactional adapter coordinator (prepare → apply → verify → commit) from PR #415.
+- Add focused coordinator, switching, MotorFrame mapper and Live2D ACK regressions; preserve the existing DepthRig-enabled AvatarStage and merge only the upstream ACK handling into it.
+- Bind Live2D partial ACKs to the latest same-origin state revision. The ACK explicitly remains incomplete and never qualifies as a visual renderer receipt.
+- The source PR's latest contract check passed; this combined branch still requires exact-head CI. Concrete production renderer adapters, presented-frame verification and real visual round-trip remain open.
+
+## [NK1][executor] Restore project-executor snapshot round-trip identity (2026-10-30)
+
+- Restore the missing `lastOutcomeId` key in the canonical default executor snapshot so fresh and restored snapshots preserve identical own-key shape.
+- Align stale project-runtime/idempotency regressions with the intentional executor schema v7 and make the persistence failure fixture target the current ready step's preferred tool.
+- Source PR #421 exact-head CI passed all five checks. The combined integration branch still requires exact-head revalidation.
+- No new external action behavior is introduced; this is a state-identity and regression correction.
+
+## [NK1][Aspect 06] Port renderer-neutral motor control substrate (2026-10-30)
+
+- Add the canonical joint-space motor controller, goal arbiter, versioned rig profiles, motor-frame channel, kinematics and multi-effector/pose IK, plus OrganismRuntime/server integration and focused regression suites from PR #410.
+- Preserve one motor-goal authority and a renderer-neutral MotorFrame contract so Live2D, DepthRig and VRM adapters can consume the same semantic movement intent.
+- Source PR #410 exact-head checks passed on f8c8c1d69249; integrated branch CI is still required. This is a software/controller integration, not proof of physical arm movement or object contact.
+- Model-specific calibration, renderer-applied pose readback, hardware-backed postconditions and Android visual validation remain open.
+
+## [NK1][Aspect 04] Port validated 2.5D DepthRig foundation onto current source (2026-10-30)
+
+- Selectively port the versioned DepthRig manifest, strict parent-graph/transform validation, Three.js adapter, face/morph/viseme bindings, Blender exporter and deterministic mannequin fixture from PR #408 onto source checkpoint 258cd9e703dc.
+- Keep ordinary GLB/VRM behavior unchanged unless an asset carries a validated NK1 depth-rig manifest; malformed or ambiguous rig metadata fails closed before scene mutation.
+- Add focused depth-rig unit/integration tests and the dedicated CI workflow. The source feature branch's exact-head checks passed; this new integration commit still requires its own exact-head CI.
+- The mannequin is a technical fixture, not finished Kurisu artwork. Production layered art, independent visual review, browser/Android E2E and release inclusion remain open.
+- No canonical Release ZIP was modified.
+
 ## [NK1][Aspect 02] Require verified rights provenance before accepting authored art (2026-10-30)
 
 - Close the promotion gap in the executable Original 2D validator: every authored/in-progress/review/approved/exported slot now requires a provenance record with creator, HTTPS source URL, explicit license identifier, permission evidence, affirmative redistribution clearance, verification timestamp and verifier.
