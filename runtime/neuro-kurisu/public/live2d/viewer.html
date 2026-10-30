@@ -17,21 +17,39 @@
 <div id="status">загрузка…</div>
 <script type="module">
 import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
+import { smoothToward, sampleBlink } from './temporal-smoothing.mjs';
 (() => {
   const status=document.getElementById('status');
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
   let lastIntentStateVersion=0;
-  let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
+  let blinkT=0,blinkStartedAt=-Infinity,blinkDurationMs=180,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   // Low-pass facial channels prevent abrupt expression jumps while keeping intent responsive.
   const faceState={brow:0,angle:0,eyeSmile:0,cheek:0};
-  let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,semanticEyeX=0,semanticEyeY=0,blinkSequence=0,saccadeSequence=0,lastMotionKey='',motionRequestSequence=0;
+  let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,semanticEyeX=0,semanticEyeY=0,blinkSequence=0,saccadeSequence=0,lastMotionKey='',motionRequestSequence=0,lastFaceUpdateAt=performance.now(),lastTickAt=performance.now();
   const EXPR_MAP={
     neutral:'Stanby Smile',happy:'Stanby Smile',sad:'Stanby Sad',angry:'Stanby Angry',
     surprised:'Stanby Surprised',flustered:'Blush 1',embarrassed:'Blush 2',thinking:'Stanby Scared',
     focused:'Stanby Smile',smile:'Stanby Smile',tender:'Blush 1',sarcastic:'Stanby Smile',
     smug:'Stanby Smile',looking_away:'Stanby Scared',tired:'Stanby Scared'
   };
+  const FACE_PROFILES=Object.freeze({
+    neutral:{brow:0,angle:0,eyeSmile:0,cheek:0,eyeOpen:1},
+    happy:{brow:.12,angle:-.08,eyeSmile:.42,cheek:.18,eyeOpen:.94},
+    sad:{brow:-.34,angle:.22,eyeSmile:-.12,cheek:0,eyeOpen:.90},
+    angry:{brow:-.58,angle:.48,eyeSmile:-.18,cheek:0,eyeOpen:.88},
+    surprised:{brow:.62,angle:0,eyeSmile:0,cheek:0,eyeOpen:1},
+    flustered:{brow:.18,angle:-.12,eyeSmile:.12,cheek:.58,eyeOpen:.94},
+    embarrassed:{brow:-.08,angle:.12,eyeSmile:.05,cheek:.72,eyeOpen:.91},
+    thinking:{brow:.24,angle:-.16,eyeSmile:-.04,cheek:0,eyeOpen:.94},
+    focused:{brow:-.12,angle:.1,eyeSmile:-.08,cheek:0,eyeOpen:.90},
+    smile:{brow:.1,angle:-.08,eyeSmile:.48,cheek:.16,eyeOpen:.94},
+    tender:{brow:.16,angle:-.08,eyeSmile:.24,cheek:.32,eyeOpen:.92},
+    sarcastic:{brow:.28,angle:.34,eyeSmile:.12,cheek:0,eyeOpen:.94},
+    smug:{brow:.3,angle:.28,eyeSmile:.22,cheek:.08,eyeOpen:.94},
+    looking_away:{brow:-.08,angle:-.12,eyeSmile:-.08,cheek:0,eyeOpen:.94},
+    tired:{brow:-.22,angle:.08,eyeSmile:-.2,cheek:0,eyeOpen:.82}
+  });
   const clamp=(n,a,b)=>Math.max(a,Math.min(b,Number.isFinite(Number(n))?Number(n):0));
   // pixi-live2d-display@0.4.0: MotionPriority.NORMAL=2, FORCE=3.
   const MOTION_PRIORITY_NORMAL=2,MOTION_PRIORITY_FORCE=3;
@@ -89,36 +107,24 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     const gazeY=bodySignal.gazeDriven?clamp(semanticEyeY,-.4,.4):0;
     set('ParamEyeBallX',clamp(gazeX+eyeX*.35,-1,1));
     set('ParamEyeBallY',clamp(gazeY+eyeY*.35,-1,1));
-    set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
+    /* Eye openness is composed from the active face profile below. */
     set('ParamMouthOpenY',clamp(lipCurrent,0,1));
     if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
     // Small expression channels are composed after authored expressions/motion/physics.
     // This gives NK1 continuous facial nuance without pretending every state has a bespoke clip.
     const intensity=clamp(bodySignal.expressionIntensity,0,1);
-    const faceProfiles={
-      neutral:{brow:0,angle:0,eyeSmile:0,cheek:0},
-      happy:{brow:.12,angle:-.08,eyeSmile:.42,cheek:.18},
-      sad:{brow:-.34,angle:.22,eyeSmile:-.12,cheek:0},
-      angry:{brow:-.58,angle:.48,eyeSmile:-.18,cheek:0},
-      surprised:{brow:.62,angle:0,eyeSmile:0,cheek:0},
-      flustered:{brow:.18,angle:-.12,eyeSmile:.12,cheek:.58},
-      embarrassed:{brow:-.08,angle:.12,eyeSmile:.05,cheek:.72},
-      thinking:{brow:.24,angle:-.16,eyeSmile:-.04,cheek:0},
-      focused:{brow:-.12,angle:.1,eyeSmile:-.08,cheek:0},
-      smile:{brow:.1,angle:-.08,eyeSmile:.48,cheek:.16},
-      tender:{brow:.16,angle:-.08,eyeSmile:.24,cheek:.32},
-      sarcastic:{brow:.28,angle:.34,eyeSmile:.12,cheek:0},
-      smug:{brow:.3,angle:.28,eyeSmile:.22,cheek:.08},
-      looking_away:{brow:-.08,angle:-.12,eyeSmile:-.08,cheek:0},
-      tired:{brow:-.22,angle:.08,eyeSmile:-.2,cheek:0}
-    };
-    const face=faceProfiles[bodySignal.expression]||faceProfiles.neutral;
+    const face=FACE_PROFILES[bodySignal.expression]||FACE_PROFILES.neutral;
     const facialGain=.25+intensity*.75;
-    const blend=.18;
-    faceState.brow+=(face.brow*facialGain-faceState.brow)*blend;
-    faceState.angle+=(face.angle*facialGain-faceState.angle)*blend;
-    faceState.eyeSmile+=(face.eyeSmile*facialGain-faceState.eyeSmile)*blend;
-    faceState.cheek+=(face.cheek*facialGain-faceState.cheek)*blend;
+    const faceNow=performance.now();
+    const faceDeltaSeconds=clamp((faceNow-lastFaceUpdateAt)/1000,0,.1);
+    lastFaceUpdateAt=faceNow;
+    faceState.brow=smoothToward(faceState.brow,face.brow*facialGain,faceDeltaSeconds,.16);
+    faceState.angle=smoothToward(faceState.angle,face.angle*facialGain,faceDeltaSeconds,.16);
+    faceState.eyeSmile=smoothToward(faceState.eyeSmile,face.eyeSmile*facialGain,faceDeltaSeconds,.16);
+    faceState.cheek=smoothToward(faceState.cheek,face.cheek*facialGain,faceDeltaSeconds,.16);
+    faceState.eyeOpen=smoothToward(faceState.eyeOpen??1,face.eyeOpen,faceDeltaSeconds,.19);
+    set('ParamEyeLOpen',clamp(faceState.eyeOpen*(1-blinkT),0,1));
+    set('ParamEyeROpen',clamp(faceState.eyeOpen*(1-blinkT),0,1));
     set('ParamBrowLY',clamp(faceState.brow,-1,1));
     set('ParamBrowRY',clamp(faceState.brow,-1,1));
     set('ParamBrowLAngle',clamp(faceState.angle,-1,1));
@@ -179,13 +185,15 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
          const active=Boolean(bodySignal.speaking||bodySignal.expressionIntensity>.5||bodySignal.gesture);
          const every=1000/(active?30:14);
          if(now-(model.__nkLastFrame||0)<every)return;model.__nkLastFrame=now;
-         lipCurrent+=(lipTarget-lipCurrent)*.30;
-         lipFormCurrent+=(lipFormTarget-lipFormCurrent)*.30;
-         semanticEyeX+=(clamp(bodySignal.gazeX,-.4,.4)-semanticEyeX)*.14;
-         semanticEyeY+=(clamp(bodySignal.gazeY,-.4,.4)-semanticEyeY)*.14;
-         eyeX+=(targetEyeX-eyeX)*.08;eyeY+=(targetEyeY-eyeY)*.08;
-         if(now>=nextBlink){blinkT=1;blinkUntil=now+115;const seed=lastIntentStateVersion*17+(++blinkSequence);nextBlink=now+6500+deterministicUnit(seed)*7500}
-         if(blinkT>0){blinkT*=.72;if(now>blinkUntil)blinkT=Math.max(0,blinkT-.12)}
+         const deltaSeconds=clamp((now-lastTickAt)/1000,0,.1);lastTickAt=now;
+         lipCurrent=smoothToward(lipCurrent,lipTarget,deltaSeconds,.075);
+         lipFormCurrent=smoothToward(lipFormCurrent,lipFormTarget,deltaSeconds,.09);
+         semanticEyeX=smoothToward(semanticEyeX,clamp(bodySignal.gazeX,-.4,.4),deltaSeconds,.14);
+         semanticEyeY=smoothToward(semanticEyeY,clamp(bodySignal.gazeY,-.4,.4),deltaSeconds,.14);
+         eyeX=smoothToward(eyeX,targetEyeX,deltaSeconds,.055);
+         eyeY=smoothToward(eyeY,targetEyeY,deltaSeconds,.055);
+         if(now>=nextBlink){blinkStartedAt=now;const seed=lastIntentStateVersion*17+(++blinkSequence);nextBlink=now+6500+deterministicUnit(seed)*7500}
+         blinkT=sampleBlink(now-blinkStartedAt,blinkDurationMs);
          if(now>=nextSaccade){const amp=bodySignal.speaking?.12:.24;const seed=lastIntentStateVersion*31+(++saccadeSequence);targetEyeX=(deterministicUnit(seed)-.5)*amp;targetEyeY=(deterministicUnit(seed+1)-.5)*amp*.52;nextSaccade=now+1200+deterministicUnit(seed+2)*3200}
        });
     }catch(err){status.textContent='fallback';send('live2d_error',{error:String(err?.message||err)})}
