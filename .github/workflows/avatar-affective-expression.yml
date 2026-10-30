@@ -11,6 +11,8 @@ on:
       - "app/scripts/avatar-facial-microchannels.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/avatar/bodyDynamics.ts"
+      - "app/scripts/avatar-body-dynamics.test.mjs"
       - "app/src/components/Avatar3DStage.tsx"
       - "app/scripts/avatar-affective-expression.test.mjs"
       - "app/package.json"
@@ -51,6 +53,9 @@ jobs:
       - name: Run facial microchannel regression tests
         working-directory: app
         run: npm run test:avatar-facial-microchannels
+      - name: Run body dynamics regression tests
+        working-directory: app
+        run: npm run test:avatar-body-dynamics
       - name: Typecheck app
         working-directory: app
         run: npm ci && npm run typecheck
