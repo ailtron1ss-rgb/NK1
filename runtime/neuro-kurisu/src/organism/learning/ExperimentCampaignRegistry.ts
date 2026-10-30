@@ -290,14 +290,33 @@ export class ExperimentCampaignRegistry {
       }
       const registration = raw.registration as unknown as ExperimentCampaignRegistration;
       const { registrationFingerprint: expected, ...withoutFingerprint } = registration;
+      let normalizedPolicy: PromotionGateConfig | null = null;
+      try {
+        normalizedPolicy = normalizePromotionGateConfig(registration.promotionPolicy);
+      } catch {
+        normalizedPolicy = null;
+      }
+      const candidateMethods = Array.isArray(registration.candidates)
+        ? registration.candidates.map(item => item?.method)
+        : [];
+      const expectedCandidates = [...candidateMethods].sort((a, b) =>
+        typeof a === 'string' && typeof b === 'string' ? a.localeCompare(b) : 0);
       if (registration.schemaVersion !== 1 || registration.split !== 'holdout' ||
+          !/^[A-Za-z0-9][A-Za-z0-9._:-]{2,95}$/.test(registration.campaignId) ||
+          !nonEmpty(registration.baselineMethod) ||
+          registration.primaryMetric !== 'task-pass-rate' ||
+          !Number.isSafeInteger(registration.registeredAt) || registration.registeredAt <= 0 ||
           expected !== registrationFingerprint(withoutFingerprint) ||
           !isSha256(registration.manifestFingerprint) ||
           !isSha256(registration.holdoutManifestFingerprint) ||
           !isSha256(registration.planFingerprint) ||
           !isSha256(registration.baselineFingerprint) ||
           !Array.isArray(registration.candidates) || !registration.candidates.length ||
-          registration.candidates.some(item => !item || !nonEmpty(item.method) || !isSha256(item.fingerprint))) {
+          registration.candidates.some(item => !item || !nonEmpty(item.method) ||
+            item.method === registration.baselineMethod || !isSha256(item.fingerprint)) ||
+          new Set(candidateMethods).size !== candidateMethods.length ||
+          canonical(candidateMethods) !== canonical(expectedCandidates) ||
+          !normalizedPolicy || canonical(normalizedPolicy) !== canonical(registration.promotionPolicy)) {
         throw new Error('campaign registration fingerprint or fields are invalid');
       }
       if (registry.campaigns.has(registration.campaignId) ||
