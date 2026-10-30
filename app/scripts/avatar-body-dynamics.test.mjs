@@ -12,7 +12,7 @@ test("body dynamics are deterministic and bounded for every affect state",()=>{
   assert.ok(Math.abs(a.verticalOffset)<=.008);
   assert.ok(Math.abs(a.weightShift)<=.006);
   assert.ok(a.shoulderLift>=0&&a.shoulderLift<=.007);
- });
+ }
 });
 test("arousal and acute affect increase cadence while calm and sleep slow it",()=>{
  const calm=deriveBodyDynamics({...base,emotion:"calm",arousal:.1,elapsedSeconds:3});
