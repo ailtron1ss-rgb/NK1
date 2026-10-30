@@ -18,6 +18,11 @@ export interface P78Event {
   evidenceRef?:string;
   /** Exact immutable RuntimeEvidenceBus outcome event ID paired with evidenceRef. */
   evidenceReceiptId?:string;
+  verified01?:number;
+  independent01?:number;
+  evidence01?:number;
+  consequence01?:number;
+  identityUpdateScale01?:number;
   authorship?:P78Authorship;
   episodeId?:string;
 }
@@ -44,8 +49,13 @@ const hasBoundEvidence=(event:P78Event)=>{
   if(event.evidenceStatus!=='verified-independent')return false;
   const receiptId=String(event.evidenceReceiptId??'').trim();
   const receipt=/^reb:(\d+):(\d+):outcome$/i.exec(receiptId);
+  const quality=Number.isFinite(event.verified01)&&event.verified01!>=.85&&
+    Number.isFinite(event.independent01)&&event.independent01!>=.80&&
+    Number.isFinite(event.evidence01)&&event.evidence01!>=.72&&
+    Number.isFinite(event.consequence01)&&event.consequence01!>=.70&&
+    Number.isFinite(event.identityUpdateScale01)&&event.identityUpdateScale01!>=.45;
   return Boolean(
-    receipt&&Number(receipt[1])===event.tick&&
+    quality&&receipt&&Number(receipt[1])===event.tick&&
     String(event.evidenceRef??'').trim()===`external-verification:${receiptId}`
   );
 };
@@ -91,17 +101,24 @@ export class P78AutobiographicalSelfContinuity{
   snapshot(){return JSON.parse(JSON.stringify(this.state)) as P78State;}
   observe(events:P78Event[]){
     const candidates=events.slice(-16).filter(e=>e&&Number.isFinite(e.tick)&&Number.isFinite(e.at)&&typeof e.action==='string');
-    const eventKey=(e:P78Event)=>JSON.stringify([
-      e.tick,e.at,boundedText(e.action,48),e.outcome??'',boundedText(e.text,120),boundedText(e.mode,32),
-      e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),boundedText(e.evidenceReceiptId,180),e.authorship??'unknown',boundedText(e.episodeId,80)
-    ]);
+    const eventKey=(e:P78Event)=>{
+      const receiptId=boundedText(e.evidenceReceiptId,180);
+      // A RuntimeEvidenceBus event ID is immutable identity: altered payloads cannot replay as new episodes.
+      if(receiptId)return JSON.stringify(['receipt',receiptId]);
+      return JSON.stringify([
+        e.tick,e.at,boundedText(e.action,48),e.outcome??'',boundedText(e.text,120),boundedText(e.mode,32),
+        e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),e.authorship??'unknown',boundedText(e.episodeId,80)
+      ]);
+    };
     const seen=new Set(this.state.processedEventKeys);
     const recent=candidates.filter(e=>{const key=eventKey(e);if(seen.has(key))return false;seen.add(key);return true;});
     if(!recent.length)return this.snapshot();
     this.state.processedEventKeys=[...this.state.processedEventKeys,...recent.map(eventKey)].slice(-512);
     const observationKey=JSON.stringify(recent.map(e=>[
       e.tick,e.at,boundedText(e.action,48),e.outcome??'',boundedText(e.text,120),boundedText(e.mode,32),
-      e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),boundedText(e.evidenceReceiptId,180),e.authorship??'unknown',boundedText(e.episodeId,80)
+      e.evidenceStatus??'legacy-unverified',boundedText(e.evidenceRef,220),boundedText(e.evidenceReceiptId,180),
+      e.verified01??null,e.independent01??null,e.evidence01??null,e.consequence01??null,e.identityUpdateScale01??null,
+      e.authorship??'unknown',boundedText(e.episodeId,80)
     ])).slice(-4096);
     if(observationKey===this.state.lastObservationKey)return this.snapshot();
     this.state.lastObservationKey=observationKey;
