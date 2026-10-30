@@ -1,5 +1,12 @@
 # Neuro-Kurisu — Changelog
 
+## 34.2.0 — Aspect 01: единая когнитивная проекция и целостность цикла
+- Усилено восстановление `UnifiedCognitiveSubstrate`: явный allow-list полей, безопасная нормализация метрик/счётчиков/меток; неизвестные и унаследованные поля не принимаются.
+- Добавлены строгая монотонность tick и защита от переполнения счётчика циклов; отклонённый tick не меняет состояние.
+- Добавлен `workpass617-unified-substrate-restore-integrity.mjs`, зарегистрирован npm-скрипт и CI-шаг WorkPass287-288.
+- Это hardening существующей bounded-проекции, а не новый владелец когнитивного состояния. Проверка считается пройденной только после успешного CI на точном HEAD.
+
+
 ## 34.1.0 — Portable Subject Boundary + evidence/benchmark hardening
 - Introduced `neuro-kurisu.subject-transfer.v1`.
 - Added persistent `subjectIdentity` and SHA-256 subject fingerprints.
