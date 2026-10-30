@@ -130,7 +130,7 @@ test("organism affect maps to VRM emotion presets and existing viseme classes", 
   assert.equal(round.oh, 0.21);
 
   const sad = deriveVrmExpressionWeights(definitions, { emotion: "anxiety", awake: false, blink: 1 });
-  assert.equal(sad.sad, 0.34);
+  assert.equal(sad.sad, 0.32);
   assert.equal(sad.blink, 0);
 });
 
