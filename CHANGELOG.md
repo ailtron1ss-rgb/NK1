@@ -1,6 +1,7 @@
 ## [NK1][Aspect 09 — Live2D] Frame-rate-independent expression, gaze, lip and blink control (2026-10-30)
 
-- Replace per-frame interpolation factors with elapsed-time smoothing shared by the app and runtime viewers. Facial expression, mouth opening/form, semantic gaze and micro-saccades now respond consistently across 14/30/60/144 Hz and after background-tab stalls.
+- Replace per-frame interpolation factors with elapsed-time smoothing shared by the app and runtime viewers.
+- Keep app `viewer.html` as a classic inline script for the existing message-handler regression harness; dynamically import the shared helpers before Cubism initialization. Runtime viewer imports the same helpers statically. Facial expression, mouth opening/form, semantic gaze and micro-saccades now respond consistently across 14/30/60/144 Hz and after background-tab stalls.
 - Replace the accumulating blink multiplier with a bounded 180 ms symmetric time-sampled envelope; repeated blinks no longer depend on ticker frequency.
 - Add expression-specific eye openness so tired, sad, focused and other expressions do not all force the eyes to the same fully-open baseline.
 - Hoist face profiles out of the per-frame update path to avoid recreating the profile map on every Cubism update.
