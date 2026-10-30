@@ -1,3 +1,8 @@
+## [NK1][Aspect 02] Fail closed on malformed art manifests (2026-10-30)
+
+- Guard the executable Original 2D asset validator against non-object contracts/manifests and malformed required arrays before inventory iteration. Invalid structure now produces a controlled validation failure instead of an unhandled `.filter`/`Set` exception.
+- Preserve the explicit boundary: the inventory remains a planning contract and no production artwork is inferred from empty slots.
+
 ## [NK1][Aspect 02] Establish Original 2D art identity and production contract (2026-10-30)
 
 - Add an executable `npm run validate:original-2d-assets` gate that checks contract coverage, safe asset paths, file existence, SHA-256 integrity and source/preview separation before artwork can advance through the manifest. It reports authored versus pending slots without treating the planning inventory as completed art.
