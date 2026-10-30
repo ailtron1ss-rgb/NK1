@@ -125,3 +125,18 @@ node scripts/depth-rig-glb-validator.mjs ../build/kurisu-depth-rig.glb
 - Three.js adapter принимает ожидаемые `id → parentId` связи из manifest и сверяет их с реальными `Object3D.parent.name` до первой мутации.
 - Корневой узел manifest может находиться под импортёрным/container wrapper; для дочерних узлов parent должен совпадать строго.
 - Несовпадение возвращает `parent-mismatch:<id>` атомарно, не применяя ни одну трансформацию. Это защищает от GLB, в котором имена слоёв совпали, но Blender hierarchy была экспортирована иначе.
+
+
+### WorkPass644 — воспроизводимая Blender-сцена и фактический GLB smoke-test
+
+Добавлен `tools/blender/create_nk1_depth_rig_demo.py`. Он программно создаёт технический манекен в коллекции `NK1_RIG`: root → torso → head → face/eyes, передний/задний слой волос, передняя часть/хвост пальто и обе цепочки рук. Геометрия намеренно простая и не претендует на визуальный образ Курису. Размеры baked в вершины mesh, потому что runtime depth-rig управляет scale узла самостоятельно (дыхание корпуса) и сбрасывает импортированный scale к семантическому значению.
+
+Focused CI теперь должен выполнить полный headless цикл:
+
+```bash
+blender --background --python tools/blender/create_nk1_depth_rig_demo.py
+blender --background nk1-depth-rig-demo.blend --python tools/blender/export_nk1_depth_rig.py -- --output build/nk1-depth-rig-demo.glb --collection NK1_RIG
+node app/scripts/depth-rig-glb-validator.mjs build/nk1-depth-rig-demo.glb
+```
+
+Проверка включает реальный Blender GLB exporter, инъекцию scene extras и последующую проверку manifest + имён + parent graph. До завершения CI этот путь считается добавленным, но не подтверждённым. Даже после успешного smoke-test остаются отдельными задачами визуальный browser/Android E2E и замена манекена полноценной художественной моделью с правильными скрытыми областями, материалами, морфами и occlusion.
