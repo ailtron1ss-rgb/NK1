@@ -96,7 +96,7 @@ assert.equal(tracker.snapshot(0)[0].lastFrameAt,before.lastFrameAt);
 // Expired tracks are not revived after a long gap.
 const expiryTracker=new TemporalObjectTracker({sessionId:'expiry',maxTrackGapMs:1_000,maxTrackAgeMs:2_000});
 const old=expiryTracker.update({cameraId:0,at:1_000,objects:[{label:'book',bbox:box(.2,.2),confidence01:.9,bboxConfidence01:.9}]});
-const fresh=expiryTracker.update({cameraId:0,at:4_000,objects:[{label:'book',bbox:box(.2,.2),confidence01:.9}]});
+const fresh=expiryTracker.update({cameraId:0,at:4_000,objects:[{label:'book',bbox:box(.2,.2),confidence01:.9,bboxConfidence01:.9}]});
 assert.notEqual(old.objects[0].trackId,fresh.objects[0].trackId);
 assert.equal(fresh.metrics.newTrackCount,1);
 
