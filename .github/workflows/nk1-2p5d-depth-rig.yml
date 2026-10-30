@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
       - "app/src/components/avatar/depthRig.ts"
       - "app/src/components/avatar/depthRigThreeAdapter.ts"
       - "app/src/components/avatar/depthRigFace.ts"
@@ -15,6 +16,7 @@ on:
       - "work/nk1-2p5d-depth-rig-2026-10-30"
     paths:
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/AvatarStage.tsx"
       - "app/src/components/avatar/depthRig.ts"
       - "app/src/components/avatar/depthRigThreeAdapter.ts"
       - "app/src/components/avatar/depthRigFace.ts"
