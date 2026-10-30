@@ -15,12 +15,12 @@
 <body>
 <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
 <div id="status">загрузка…</div>
-<script type="module">
-import { smoothToward, sampleBlink } from './temporal-smoothing.mjs';
+<script>
 (() => {
   const status=document.getElementById('status');
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json';
+  let smoothToward=null,sampleBlink=null;
   let lastIntentStateVersion=0,lastSpeechEventId=null,lastAudioClockId=null,lastAudioTimeMs=0,lastAppliedExpression=null;
   let blinkT=0,blinkStartedAt=-Infinity,blinkDurationMs=180,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   // Low-pass facial channels prevent abrupt expression jumps while keeping intent responsive.
@@ -164,6 +164,9 @@ import { smoothToward, sampleBlink } from './temporal-smoothing.mjs';
   }
   async function boot(){
     try{
+      // Keep the app viewer's classic inline-script contract; load shared pure timing helpers before model updates begin.
+      const timing=await import('./temporal-smoothing.mjs');
+      smoothToward=timing.smoothToward;sampleBlink=timing.sampleBlink;
       assetProfile=chooseProfile();
       modelPath=modelForProfile(assetProfile);
       status.textContent=`ядро · ${assetProfile}`;
