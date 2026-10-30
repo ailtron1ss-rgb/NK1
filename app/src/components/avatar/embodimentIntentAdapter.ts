@@ -59,3 +59,71 @@ export function resolveDepthRigPoseFromEmbodimentIntent(
     gestureIntensity: intent.body.gesture ? clamp(intent.expressionIntensity, 0, 1) : 0,
   });
 }
+
+
+/** Renderer-neutral joint sample emitted by the NK1 motor controller. */
+export interface MotorJointFrameV1 {
+  id: string;
+  angleRad: number;
+  targetAngleRad: number;
+  velocityRadPerSec: number;
+  available: boolean;
+}
+export interface MotorFrameV1 {
+  version: 1;
+  goalId: string | null;
+  phase: "idle" | "moving" | "holding" | "rejected" | "expired";
+  joints: Record<string, MotorJointFrameV1>;
+}
+export interface DepthRigJointBinding {
+  nodeId: string;
+  jointId: string;
+  /** Motor angle corresponding to the artwork node's authored rest pose. */
+  restAngleRad?: number;
+  /** Optional sign/magnitude calibration; defaults to radians -> degrees. */
+  degreesPerRadian?: number;
+  /** Hard safety envelope for one bound node. Defaults to 45 degrees. */
+  maxAbsDegrees?: number;
+}
+
+/**
+ * Apply a motor-controller frame to explicitly bound rig nodes. The mapping is
+ * data-driven because a motor skeleton and an artwork hierarchy are different
+ * coordinate systems; IDs are never guessed from names. Only active goals move
+ * the puppet, unavailable/missing joints are ignored, and every delta is bounded.
+ */
+export function resolveDepthRigPoseFromMotorFrame(
+  rig: DepthRigDefinition,
+  frame: MotorFrameV1,
+  bindings: readonly DepthRigJointBinding[],
+): DepthRigPose {
+  if (!frame || frame.version !== 1 || !frame.joints || typeof frame.joints !== "object"
+    || !["idle", "moving", "holding", "rejected", "expired"].includes(frame.phase)
+    || !Array.isArray(bindings)) {
+    throw new Error("Invalid motor frame v1 payload.");
+  }
+  const nodes = new Set(rig.nodes.map((node) => node.id));
+  const seenNodes = new Set<string>();
+  const deltas: Record<string, { rotation: number }> = {};
+  if (frame.goalId === null || frame.phase === "idle" || frame.phase === "rejected" || frame.phase === "expired") {
+    return { rigId: rig.id, deltas };
+  }
+  for (const binding of bindings) {
+    if (!binding || !nodes.has(binding.nodeId) || seenNodes.has(binding.nodeId)
+      || typeof binding.jointId !== "string" || !binding.jointId.trim()) {
+      throw new Error("Invalid or duplicate depth-rig joint binding.");
+    }
+    seenNodes.add(binding.nodeId);
+    const joint = frame.joints[binding.jointId];
+    if (!joint || joint.available !== true || !Number.isFinite(joint.targetAngleRad)) continue;
+    const rest = binding.restAngleRad ?? 0;
+    const degreesPerRadian = binding.degreesPerRadian ?? (180 / Math.PI);
+    const maxAbs = binding.maxAbsDegrees ?? 45;
+    if (![rest, degreesPerRadian, maxAbs].every(Number.isFinite) || degreesPerRadian === 0 || maxAbs <= 0 || maxAbs > 90) {
+      throw new Error("Invalid depth-rig joint calibration.");
+    }
+    const delta = clamp((joint.targetAngleRad - rest) * degreesPerRadian, -maxAbs, maxAbs);
+    deltas[binding.nodeId] = { rotation: delta };
+  }
+  return { rigId: rig.id, deltas };
+}
