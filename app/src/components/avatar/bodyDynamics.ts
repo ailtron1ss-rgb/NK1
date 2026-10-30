@@ -7,6 +7,8 @@ export interface BodyDynamicsInput {
   uncertainty: number;
   awake: boolean;
   elapsedSeconds: number;
+  /** Optional accumulated breath-cycle phase; keeps cadence changes phase-continuous. */
+  phaseCycles?: number;
 }
 export interface BodyDynamicsFrame {
   breathsPerMinute: number;
@@ -26,7 +28,10 @@ export function deriveBodyDynamics(input:BodyDynamicsInput):BodyDynamicsFrame {
   const sleepBias=input.awake?0:-2.1;
   const breathsPerMinute=clamp(10+arousal*4.8+energy*1.4+emotionBias+sleepBias,6,19);
   const elapsed=clamp(input.elapsedSeconds,0,86400*365);
-  const breathPhase=((elapsed*breathsPerMinute/60)%1)*Math.PI*2;
+  const fallbackCycles=elapsed*breathsPerMinute/60;
+  const rawCycles=Number.isFinite(input.phaseCycles)?input.phaseCycles!:fallbackCycles;
+  const normalizedCycles=((rawCycles%1)+1)%1;
+  const breathPhase=normalizedCycles*Math.PI*2;
   const inhale=Math.max(0,Math.sin(breathPhase));
   const activity=input.awake?.72:.38;
   const sway=activity*(.35+uncertainty*.65);
