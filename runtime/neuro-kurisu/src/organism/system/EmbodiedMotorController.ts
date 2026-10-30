@@ -30,6 +30,8 @@ export interface JointState {
 export interface MotorGoal {
   id: string;
   action: string;
+  /** Exact ActionGateway tool identity required for trusted outcome learning. */
+  verificationToolId?: string;
   source: "organism" | "reflex" | "user" | "recovery";
   priority: number;
   confidence01: number;
@@ -73,6 +75,7 @@ export function validateMotorGoal(goal: MotorGoal): { ok: boolean; reason: strin
   if (!goal || typeof goal !== "object") return { ok: false, reason: "goal-not-object" };
   if (!/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(String(goal.id ?? ""))) return { ok: false, reason: "invalid-goal-id" };
   if (!String(goal.action ?? "").trim()) return { ok: false, reason: "missing-action" };
+  if (goal.verificationToolId !== undefined && (typeof goal.verificationToolId !== "string" || !/^[a-z0-9][a-z0-9._:-]{1,179}$/i.test(goal.verificationToolId))) return { ok: false, reason: "invalid-verification-tool-id" };
   if (!["organism", "reflex", "user", "recovery"].includes(goal.source)) return { ok: false, reason: "invalid-source" };
   if (!Number.isFinite(goal.priority) || goal.priority < 0 || goal.priority > 100) return { ok: false, reason: "priority-out-of-range" };
   if (!Number.isFinite(goal.confidence01) || goal.confidence01 < 0 || goal.confidence01 > 1) return { ok: false, reason: "confidence-out-of-range" };
