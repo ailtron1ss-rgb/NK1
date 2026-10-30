@@ -32,3 +32,18 @@ export function semanticMorphValues(input:{emotion:string; speaking:boolean; mou
   blink:Math.max(0,Math.min(1,Number.isFinite(input.blink)?input.blink:0)),
  };
 }
+
+export interface SemanticMorphBinding { influences: number[]; index: number; channel: SemanticMorphChannel; }
+/**
+ * Apply the shared expression snapshot without erasing stronger authored animation.
+ * Blendshape clips run first; the semantic layer only raises a channel to its requested
+ * floor. This keeps imported animation clips and NK1 affect/viseme intent composable.
+ */
+export function applySemanticMorphTargets(bindings:SemanticMorphBinding[],values:Record<SemanticMorphChannel,number>):void {
+ for(const binding of bindings){
+  const current=binding.influences[binding.index];
+  if(!Number.isFinite(current))continue;
+  const requested=Number.isFinite(values[binding.channel])?Math.max(0,Math.min(1,values[binding.channel])):0;
+  binding.influences[binding.index]=Math.max(current,requested);
+ }
+}
