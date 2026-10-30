@@ -91,7 +91,7 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 - VRM/3D pack loader and uploaded Avatar3DStage invocation: 90% for the software integration contract; real garment assets and visual E2E remain pending.
 - Actual interchangeable garment assets: 0% verified.
 - Live2D/2.5D renderer application: 0% integrated; Live2D capability inspection is present but no garment switch contract is confirmed.
-- Whole Aspect 08: 52% (conservative; procedural outfits and verified VRM pack invocation are integrated, while real compatible/licensed garments, persistent state, Live2D/2.5D, visual E2E and device validation remain substantial).
+- Whole wardrobe aspect: 56% (engineering estimate after per-slot composition, multi-garment VRM application, stable body identity and commit-only resource cleanup; real rights-cleared garments, persistent selection, Live2D/2.5D application, visual E2E and device validation remain open).
 
 ## Next work
 
@@ -216,3 +216,55 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 ## Import hardening — 2026-10-30
 
 Перед декодированием base64 теперь выполняется структурная проверка manifest. Каждый переданный путь обязан быть объявлен; ожидаемая длина base64 вычисляется из заявленного размера; после декодирования сверяется фактический размер; обязательны все manifest-файлы. Это ограничивает лишние/несогласованные payload до выделения памяти и сохраняет финальную SHA-256-проверку в loader.
+
+
+## Aspect 15 — multi-slot correctness and modular selection pass (2026-10-30)
+
+The user-facing project taxonomy calls wardrobe work **Aspect 15**; the existing engineering PR remains the historical code track named Aspect 08.
+
+### Implemented in this pass
+
+- Added `visitBaseAvatarRig` and `collectVrmAvatarRigIdentityDescriptors`. Wardrobe-owned scene subtrees are excluded from canonical avatar bone discovery, inverse-bind lookup and body identity. Applying clothes no longer changes the target body's fingerprint or pollutes later bone matching.
+- Made same-slot attachment rollback-safe: the previous garment visibility/metadata snapshot is restored if attachment fails.
+- Extended the VRM pack loader to support multiple requested garments in distinct slots. The base skeleton is used for every garment remap even after earlier garment roots have been attached.
+- Added commit-only cleanup: old garments are removed and geometry/material/texture resources disposed only after the complete replacement set has attached and the renderer acknowledgement is accepted. Failed/partial application still restores the prior look.
+- Added `resolveWardrobeSelection`: an independent-slot composition API validates unknown IDs, duplicate garments, slot collisions, dependencies, exclusions and renderer-specific verified assets. A structurally valid selection is not marked renderable when assets are missing.
+- Hardened asset-path validation against non-string untrusted values and byte verification against invalid inputs or Web Crypto digest exceptions.
+- Added independent per-asset VRM selection controls in `Avatar3DStage`. Only checked VRM assets are requested; unselected slots remain unchanged.
+
+### Regression coverage added
+
+- A garment attachment must not change the base avatar rig identity.
+- A single verified pack can attach garments to different slots without treating previous garment skeletons as avatar bones.
+- Replaced garment roots are removed after successful commit rather than left as invisible scene children.
+- Independent slot selections are validated and missing art remains explicitly non-renderable.
+- Malformed non-string paths and invalid byte payloads fail closed.
+- The 3D stage source contract protects per-slot selection and shared identity discovery.
+
+### Current readiness after this pass
+
+- Wardrobe domain and per-slot composition API: 95% (metadata/control; still no licensed source art).
+- Manifest and byte-integrity validation: 95% (declaration and payload gate; external provenance/rights still require review).
+- VRM multi-slot loader/adapter: 90% (software integration; awaiting real production garment packs and visual E2E).
+- Procedural 3D outfit preview: implemented for three concept silhouettes, not a production character wardrobe.
+- Uploaded VRM per-slot selection UI: implemented for supplied verified bundles.
+- Verified interchangeable garment art: 0%.
+- Live2D garment switching: 0% verified; Cubism drawable/part mapping remains uninspected at binary/editor level.
+- 2.5D garment layers: 0% production assets and renderer application.
+- Persistent outfit/garment selection: not implemented.
+- Desktop/Android visual E2E: not verified.
+- Whole Aspect 15 estimate: 56%. The estimate must not be raised until the new HEAD CI and end-to-end evidence are available.
+
+### Next work — remaining completion gates
+
+1. Produce the first rights-cleared modular garment pack for the exact uploaded VRM target body and rig fingerprint. Include skinned outerwear, top/bottom and footwear assets, material textures, checksums and full provenance.
+2. Add a pack authoring/inspection tool that can read the avatar rig fingerprint, list supported slots/bones and report bind-pose differences before export.
+3. Add persistent outfit state and local pack storage with versioning, quota handling, migration and corruption recovery. Restore only after the same body ID/rig version is loaded and every stored asset re-verifies.
+4. Inspect the canonical Kurisu moc3 using the licensed Cubism SDK/Editor; only then decide whether any real drawable/part toggles can support a Live2D wardrobe adapter. Do not infer clothing switches from physics or expression parameters.
+5. Author a layered 2.5D body/garment master with occlusion underdraw, masks, pivots, deformation weights and per-pose validation.
+6. Add renderer adapters for Live2D and DepthRig using the same pack/switch contract and explicit capability reports.
+7. Validate real clothing deformation and clipping across neutral, arms-raised, crossed-arms, seated, reach and head-turn poses.
+8. Complete desktop and Android E2E, including switching only one slot, preserving other slots, switching body model, failed pack rollback, app restart and memory/resource leak checks.
+9. Record asset provenance, license evidence and SHA-256 manifest in the final release inventory.
+
+No real garment art, licensing entitlement, Live2D switch, 2.5D renderer application or device E2E is claimed by this pass.
