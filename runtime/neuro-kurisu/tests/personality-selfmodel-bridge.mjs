@@ -14,6 +14,7 @@ const verifiedEvent={
   tick:10,at:1000,action:'explore',outcome:0.9,
   evidenceStatus:'verified-independent',
   evidenceRef:'external-verification:reb:10:11:outcome',
+  evidenceReceiptId:'reb:10:11:outcome',
   authorship:'self-initiated',
   episodeId:'episode-10',
 };
@@ -49,7 +50,7 @@ assert.deepEqual(unbound.personality.relationshipTrust,trustBeforeUnbound,'unbou
 assert.equal(unbound.personality.learningUpdates,2);
 assert.deepEqual(unbound.personality.selfBeliefs,selfBeliefsBeforeUnbound,'unsupported receipt namespaces cannot update autobiographical self-beliefs');
 const mismatchedReceipt = bridge.recordOutcome({
-  event:{tick:12,at:1200,action:'verify',outcome:0.9,evidenceStatus:'verified-independent',evidenceRef:'external-verification:reb:12:99:outcome'},
+  event:{tick:12,at:1200,action:'verify',outcome:0.9,evidenceStatus:'verified-independent',evidenceRef:'external-verification:reb:12:99:outcome',evidenceReceiptId:'reb:12:98:outcome'},
   evidenceReceiptId:'reb:12:98:outcome',action:'verify',reward01:0.9,goalAlignment01:0.9,
   predictionError01:0.1,identityGap01:0.1,learningScale01:1,evidence01:0.95,independent01:0.95,consequence01:0.95,
 });
