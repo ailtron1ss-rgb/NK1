@@ -251,11 +251,13 @@ export class GroundedWorldState {
     const relationFacts=[...rel.values()].slice(0,128).map(x=>{
       const src=perceptionRelations.get(x.id);
       const kind=normalizeEvidence(src?.evidenceKind);
-      return `${kind}-relation:${x.from}:${x.relation}:${x.to}`;
+      const fresh=Boolean(src&&Number.isFinite(src.at)&&src.at<=at&&at-src.at<=5_000);
+      return `${fresh?kind:'historical-'+kind}-relation:${x.from}:${x.relation}:${x.to}`;
     });
     const evidenceFacts=(e?.evidence??[]).slice(0,64).map(x=>{
       const kind=normalizeEvidence(x.kind);
-      return `${kind}-evidence:${x.claim}`;
+      const fresh=Number.isFinite(x.at)&&x.at<=at&&at-x.at<=5_000;
+      return `${fresh?kind:'historical-'+kind}-evidence:${x.claim}`;
     });
     const baseFacts=[...(base?.facts??[]).slice(-96),...relationFacts,...evidenceFacts,...eventFacts];
     const facts=[...new Set(baseFacts.map(norm).filter(Boolean))].slice(-192);
@@ -291,7 +293,11 @@ export class GroundedWorldState {
       });
     }
     const eventList=[...eventRows.values()].sort((a,b)=>b.lastAt-a.lastAt).slice(0,96);
-    const eventFacts=eventList.slice(0,64).map(x=>`${normalizeEvidence(x.evidenceKind)}-event:${x.label}`);
+    const eventFacts=eventList.slice(0,64).map(x=>{
+      const fresh=x.lastAt<=at&&at-x.lastAt<=5_000;
+      const kind=normalizeEvidence(x.evidenceKind);
+      return `${fresh?kind:'historical-'+kind}-event:${x.label}`;
+    });
     const semanticConfidence=p?clamp(
       p.metrics.grounding01*.25+
       p.metrics.crossModalEvidenceCoverage01*.20+
