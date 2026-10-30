@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nk1.invalid/schemas/kurisu-layered-art-manifest.schema.json",
+  "title": "NK1 Kurisu layered 2D / future 2.5D handoff manifest",
+  "description": "Machine-readable delivery contract for authored layered artwork. This schema does not imply that any production art or rig currently exists.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "characterContract",
+    "assetId",
+    "canvas",
+    "coordinateSystem",
+    "layers",
+    "provenance",
+    "review"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "characterContract": { "const": "nk1-kurisu-original-2d" },
+    "assetId": { "type": "string", "minLength": 1 },
+    "canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "colorSpace", "alpha"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "colorSpace": { "const": "sRGB" },
+        "alpha": { "const": true }
+      }
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "units", "positiveX", "positiveY"],
+      "properties": {
+        "origin": { "const": "top-left" },
+        "units": { "const": "normalized-0-to-1" },
+        "positiveX": { "const": "right" },
+        "positiveY": { "const": "down" }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/layer" }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["author", "sourceFile", "sourceUrl", "license", "licenseUrl", "redistributionAllowed"],
+      "properties": {
+        "author": { "type": "string", "minLength": 1 },
+        "sourceFile": { "type": "string", "minLength": 1 },
+        "sourceUrl": { "type": ["string", "null"], "format": "uri" },
+        "license": { "type": "string", "minLength": 1 },
+        "licenseUrl": { "type": ["string", "null"], "format": "uri" },
+        "redistributionAllowed": { "type": "boolean" },
+        "evidenceNotes": { "type": "string" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewer", "reviewedAt", "deformationContactSheet"],
+      "properties": {
+        "status": { "enum": ["draft", "needs-revision", "approved"] },
+        "reviewer": { "type": ["string", "null"] },
+        "reviewedAt": { "type": ["string", "null"], "format": "date-time" },
+        "deformationContactSheet": { "type": ["string", "null"] },
+        "notes": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "unitPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0, "maximum": 1 },
+        "y": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "parentId",
+        "zIndex",
+        "depthPlane",
+        "pivot",
+        "restTransform",
+        "bounds",
+        "occlusion",
+        "deformation",
+        "sourceAssetId"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$" },
+        "parentId": { "type": ["string", "null"] },
+        "zIndex": { "type": "integer", "minimum": 0 },
+        "depthPlane": {
+          "enum": [
+            "far-background",
+            "hair-back",
+            "body-and-limbs",
+            "torso-and-garments",
+            "neck-and-ears",
+            "face-and-features",
+            "front-hair-and-accessories",
+            "hands-and-held-props",
+            "foreground-effects"
+          ]
+        },
+        "pivot": { "$ref": "#/$defs/unitPoint" },
+        "restTransform": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["translation", "rotationDegrees", "scale"],
+          "properties": {
+            "translation": { "$ref": "#/$defs/unitPoint" },
+            "rotationDegrees": { "type": "number", "minimum": -360, "maximum": 360 },
+            "scale": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["x", "y"],
+              "properties": {
+                "x": { "type": "number", "exclusiveMinimum": 0 },
+                "y": { "type": "number", "exclusiveMinimum": 0 }
+              }
+            }
+          }
+        },
+        "bounds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "width", "height"],
+          "properties": {
+            "x": { "type": "number", "minimum": 0, "maximum": 1 },
+            "y": { "type": "number", "minimum": 0, "maximum": 1 },
+            "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+          }
+        },
+        "occlusion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["maskLayerIds", "underpaintRequired", "overlapBleedPixels"],
+          "properties": {
+            "maskLayerIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+            "underpaintRequired": { "type": "boolean" },
+            "overlapBleedPixels": { "type": "number", "minimum": 0 }
+          }
+        },
+        "deformation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "translationLimit", "rotationLimitDegrees", "mesh"],
+          "properties": {
+            "mode": { "enum": ["rigid", "mesh", "static"] },
+            "translationLimit": { "$ref": "#/$defs/unitPoint" },
+            "rotationLimitDegrees": { "type": "number", "minimum": 0, "maximum": 180 },
+            "mesh": {
+              "type": ["object", "null"],
+              "additionalProperties": false,
+              "required": ["topologyVersion", "vertexCount", "pinnedVertexIds", "seamConstraints"],
+              "properties": {
+                "topologyVersion": { "type": "string", "minLength": 1 },
+                "vertexCount": { "type": "integer", "minimum": 3 },
+                "pinnedVertexIds": { "type": "array", "uniqueItems": true, "items": { "type": "integer", "minimum": 0 } },
+                "seamConstraints": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "sourceAssetId": { "type": "string", "minLength": 1 },
+        "mirroredGeometryShared": { "type": "boolean" }
+      }
+    }
+  }
+}
