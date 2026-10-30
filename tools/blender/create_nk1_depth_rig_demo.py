@@ -54,6 +54,10 @@ def make_ellipsoid(name, role, parent, collection, location, scale, depth, paral
     obj.parent = parent
     obj.location = location
     obj.scale = scale
+    # Bake dimensions into mesh vertices: the runtime rig owns node scale and
+    # intentionally resets it to its semantic breathing scale each frame.
+    obj.data.transform(Matrix.Diagonal((scale[0], scale[1], scale[2], 1.0)))
+    obj.scale = (1.0, 1.0, 1.0)
     obj["nk1_role"] = role
     obj["nk1_depth"] = depth
     obj["nk1_parallax"] = parallax
