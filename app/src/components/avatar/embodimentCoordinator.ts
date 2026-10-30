@@ -45,15 +45,16 @@ export type EmbodimentSwitchOutcome =
   | { status: "failed"; activeAdapterId: string; revision: number; reason: string };
 
 const isStringList = (value: readonly string[]): boolean =>
-  Array.isArray(value) && value.every(item => typeof item === "string" && item.length > 0);
+  Array.isArray(value) && value.every(item => typeof item === "string" && item.trim().length > 0)
+    && new Set(value).size === value.length;
 
 const isValidReceipt = (receipt: AdapterApplyReceipt, adapterId: string, revision: number): boolean =>
   Boolean(receipt && receipt.adapterId === adapterId && receipt.stateRevision === revision
     && Number.isFinite(receipt.appliedAtMonotonicMs) && receipt.appliedAtMonotonicMs >= 0
     && typeof receipt.executionId === "string" && receipt.executionId.length > 0
     && isStringList(receipt.acceptedChannels) && receipt.acceptedChannels.length > 0
-    && new Set(receipt.acceptedChannels).size === receipt.acceptedChannels.length
-    && isStringList(receipt.rejectedChannels));
+    && isStringList(receipt.rejectedChannels)
+    && !receipt.acceptedChannels.some(channel => receipt.rejectedChannels.includes(channel)));
 
 /**
  * Verification must cover every channel the adapter claimed to apply, for the same
