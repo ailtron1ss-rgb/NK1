@@ -51,7 +51,7 @@ export function inspectSelfContainedGlb(input: ArrayBuffer | Uint8Array): { vali
 }
 
 const defaultParseGlb: GlbParser = (bytes) => new Promise((resolve, reject) => {
-  new GLTFLoader().parse(bytes, "", (gltf) => resolve(gltf as unknown as ParsedScene), reject);
+  new GLTFLoader().parse(bytes, "", (gltf: unknown) => resolve(gltf as ParsedScene), (error: ErrorEvent) => reject(error));
 });
 
 function asArrayBuffer(input: ArrayBuffer | Uint8Array): ArrayBuffer {
