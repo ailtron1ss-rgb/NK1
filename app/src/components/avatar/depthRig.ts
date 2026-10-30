@@ -69,8 +69,9 @@ export interface DepthRigPose {
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, Number.isFinite(value) ? value : 0));
 
-const finiteTransform = (t: DepthRigTransform): boolean =>
-  [t.x, t.y, t.z, t.rotation, t.scaleX, t.scaleY].every(Number.isFinite);
+const finiteTransform = (t: DepthRigTransform | null | undefined): boolean =>
+  Boolean(t && typeof t === "object")
+  && [t.x, t.y, t.z, t.rotation, t.scaleX, t.scaleY].every(Number.isFinite);
 
 export function validateDepthRig(rig: DepthRigDefinition): DepthRigDiagnostic[] {
   const diagnostics: DepthRigDiagnostic[] = [];
@@ -80,8 +81,13 @@ export function validateDepthRig(rig: DepthRigDefinition): DepthRigDiagnostic[] 
   }
 
   const byId = new Map<string, DepthRigNode>();
-  for (const node of rig.nodes) {
-    if (!node.id?.trim()) {
+  for (const candidate of rig.nodes) {
+    if (!candidate || typeof candidate !== "object") {
+      diagnostics.push({ code: "invalid-id", message: "Every node must be an object." });
+      continue;
+    }
+    const node = candidate;
+    if (typeof node.id !== "string" || !node.id.trim()) {
       diagnostics.push({ code: "invalid-id", message: "Every node needs a non-empty id." });
       continue;
     }
@@ -90,17 +96,19 @@ export function validateDepthRig(rig: DepthRigDefinition): DepthRigDiagnostic[] 
     if (!Number.isFinite(node.depthOrder) || !finiteTransform(node.rest)) {
       diagnostics.push({ code: "invalid-number", nodeId: node.id, message: "Depth order and rest transform must contain finite numbers." });
     }
-    if (!node.pivot || !Number.isFinite(node.pivot.x) || !Number.isFinite(node.pivot.y)
+    if (!node.pivot || typeof node.pivot !== "object"
+      || !Number.isFinite(node.pivot.x) || !Number.isFinite(node.pivot.y)
       || node.pivot.x < 0 || node.pivot.x > 1 || node.pivot.y < 0 || node.pivot.y > 1) {
       diagnostics.push({ code: "invalid-pivot", nodeId: node.id, message: "Pivot coordinates must be finite and within 0..1." });
     }
   }
 
-  const roots = rig.nodes.filter((node) => node.parentId === null);
+  const roots = rig.nodes.filter((node) => node && typeof node === "object" && node.parentId === null);
   if (roots.length === 0) diagnostics.push({ code: "missing-root", message: "Rig must contain one root node." });
   if (roots.length > 1) diagnostics.push({ code: "multiple-roots", message: "Rig must contain exactly one root node." });
 
   for (const node of rig.nodes) {
+    if (!node || typeof node !== "object" || typeof node.id !== "string") continue;
     if (node.parentId !== null && !byId.has(node.parentId)) {
       diagnostics.push({ code: "missing-parent", nodeId: node.id, message: `Parent ${node.parentId} does not exist.` });
     }
