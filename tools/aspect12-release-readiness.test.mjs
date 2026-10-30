@@ -80,3 +80,28 @@ test("generated report is explicit that structural checks are not device or rele
   assert.match(report.limitations.join(" "), /real-device behavior/);
   assert.match(report.limitations.join(" "), /release-asset freshness/);
 });
+
+
+test("reports repository LICENSE/NOTICE files missing from the human review inventory", async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  const vendor = path.join(root, "runtime/neuro-kurisu/research/vendor/Example");
+  await mkdir(vendor, { recursive: true });
+  await writeFile(path.join(vendor, "LICENSE"), "Example license evidence");
+  const report = await buildReadinessReport(root);
+  const coverage = report.checks.find(x => x.id === "release:license-inventory-coverage");
+  assert.equal(coverage.pass, false);
+  assert.match(coverage.detail, /research\\/vendor\\/Example\\/LICENSE/);
+});
+
+test("accepts complete repository LICENSE/NOTICE path coverage without inferring approval", async t => {
+  const root = await fixture(); t.after(() => rm(root, { recursive: true, force: true }));
+  const licensePath = "runtime/neuro-kurisu/LICENSE";
+  await writeFile(path.join(root, licensePath), "Example license evidence");
+  const manifestPath = path.join(root, "contracts/RELEASE_LICENSE_REVIEW.json");
+  const manifest = JSON.parse(await (await import("node:fs/promises")).readFile(manifestPath, "utf8"));
+  manifest.repositoryLicenseFiles[0].path = licensePath;
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  const report = await buildReadinessReport(root);
+  assert.equal(report.checks.find(x => x.id === "release:license-inventory-coverage").pass, true);
+  assert.equal(report.releaseClearance, "LICENSE_RECORDS_APPROVED");
+});
