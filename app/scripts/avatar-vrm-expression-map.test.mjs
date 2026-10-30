@@ -225,7 +225,7 @@ test("applies clamped accumulated expression values to mapped targets without to
   ];
   applyVrmMorphTargetWeights(groups, { happy: 0.8, sad: 0.4 });
   assert.equal(mesh.morphTargetInfluences[0], 0.8);
-  assert.equal(mesh.morphTargetInfluences[1], 0.8);
+  assert.equal(mesh.morphTargetInfluences[1], 1);
   assert.equal(mesh.morphTargetInfluences[2], 0.8);
 });
 
