@@ -1,4 +1,10 @@
-## [NK1][Aspect 08] Connect verified wardrobe packs to the switch runtime (2026-10-30)\n\n- Add a runtime preparation boundary that verifies manifest structure and every payload byte before a renderer switch plan can become ready.\n- Bind requested asset IDs to the selected renderer's manifest entries; reject unverified IDs, cross-renderer IDs, tampered payloads and body/rig mismatches.\n- Keep renderer acknowledgement as a separate final commit gate; no filesystem/network loader, actual clothing art or renderer implementation is claimed.\n\n## [NK1][Aspect 08] Inspect actual Live2D garment-switch capabilities (2026-10-30)
+## [NK1][Aspect 08] Connect verified wardrobe packs to the switch runtime (2026-10-30)
+
+- Add a runtime preparation boundary that verifies manifest structure and every payload byte before a renderer switch plan can become ready.
+- Bind requested asset IDs to the selected renderer's manifest entries; reject unverified IDs, cross-renderer IDs, tampered payloads and body/rig mismatches.
+- Keep renderer acknowledgement as a separate final commit gate; no filesystem/network loader, actual clothing art or renderer implementation is claimed.
+
+## [NK1][Aspect 08] Inspect actual Live2D garment-switch capabilities (2026-10-30)
 
 - Inventory the canonical Kurisu Cubism model metadata and add a conservative capability inspector for model3/CDI/expression JSON.
 - Distinguish static texture atlases and clothing-related physics from true independent garment switching; expression-only controls remain limited; even an explicit wardrobe-named parameter is only a candidate until its moc3 drawable/part mapping is verified.
@@ -1550,7 +1556,13 @@
 - Added regression assertions for exact seed pairing, baseline parity, train/holdout isolation, missing baseline cells and cell-level intervals. This remains evidence-pipeline code; the fixture does not measure live learner performance.
 - Research adaptation: AgentMemoryBench separates online, replay, transfer and repair modes; SkillLearnBench separates skill quality, trajectory quality and verified task outcome; retention-bench emphasizes process resets and distinguishing stored records from integrated learning. NK1 now exposes more granular outcome evidence, but still needs a real runner, independent tasks, and process-reset experiments. No upstream code/data copied in this pass.
 
-## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)\n\n- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.\n- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.\n- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.\n\n## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
+## WorkPass111 — verifier-ledger to continual-learning matrix (2026-10-20)
+
+- Added `ContinualOutcomeMatrix.ts`, an adapter that builds task-by-checkpoint score matrices from `VerifiedOutcomeLedger` evidence instead of hand-entered scores. It filters to the selected split and attempt 1, accepts only independent-verifier or human-review authority, and binds output to the exact manifest fingerprint.
+- Enforces unique stage IDs/methods, complete task × stage coverage, and identical seed sets for every cell; retries cannot inflate scores and mismatched seed sets fail closed. Optional pre-training baseline produces forward-transfer inputs without fabricating missing values.
+- Added regression cases for matched-seed aggregation, train/holdout isolation, missing cells, duplicate stage definitions and uneven seed sets. This adapter still consumes recorded evidence; it does not execute the learner or independently retrieve/validate external artifacts.
+
+## WorkPass110 — continual-learning retention and transfer metrics (2026-10-20)
 
 - Added a reusable sequential-task metric module reporting final average score, peak-to-final forgetting, backward transfer, and forward transfer relative to an explicit reference policy.
 - Enforces a square task-by-stage score matrix, unique task identities, finite [0,1] scores and explicit handling of missing pre-training baselines; unavailable forward-transfer values remain null rather than being fabricated.
