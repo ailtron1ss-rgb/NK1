@@ -1,3 +1,8 @@
+## [NK1][WorkPass637] Add focused 2.5D depth-rig CI gate (2026-10-30)
+
+- Add a Node 24 / approved Actions v7 workflow for the integrated depth-rig core, face resolver and Three.js transform adapter suites (23 focused test cases across three files).
+- Trigger the gate when any of the depth-rig runtime, face, renderer adapter, stage or focused tests change.
+
 ## [NK1][WorkPass636] Audit current visual assets before 2.5D art production (2026-10-30)
 
 - Inventory the canonical Live2D model/physics/CDI3, the 32 complete legacy sprite PNGs and the editable SVG concept; distinguish reusable visual references from actual layered source art.
