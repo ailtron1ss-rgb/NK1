@@ -135,6 +135,25 @@ assert.equal(normalized.objects[0].visibilityKnown, false);
 assert.equal(normalized.objects[0].collectionKnown, false);
 assert.equal(normalized.objects[0].evidenceKind, 'model-output');
 
+const imageSpaceNormalized=normalizeWorldContext({
+  tick:2,location:'lab',energy:.8,attention:.7,uncertainty:.2,facts:[],events:[],
+  objects:[
+    {id:'screen-chair',label:'chair',location:'lab',value:0,valueKnown:false,visible:true,visibilityKnown:true,collected:false,collectionKnown:false,evidenceKind:'model-output',
+      bbox2D:{x:.1,y:.2,width:.3,height:.4},bboxCameraId:1,bboxAt:2000,bboxConfidence01:.82},
+    {id:'bad-box',label:'chair',location:'lab',value:0,valueKnown:false,visible:true,visibilityKnown:true,collected:false,collectionKnown:false,evidenceKind:'model-output',
+      bbox2D:{x:.9,y:.2,width:.3,height:.4},bboxCameraId:1,bboxAt:2000,bboxConfidence01:.99},
+    {id:'no-camera',label:'chair',location:'lab',value:0,valueKnown:false,visible:true,visibilityKnown:true,collected:false,collectionKnown:false,evidenceKind:'model-output',
+      bbox2D:{x:.1,y:.2,width:.3,height:.4},bboxAt:2000,bboxConfidence01:.99},
+  ],
+});
+assert.ok(imageSpaceNormalized);
+assert.deepEqual(imageSpaceNormalized.objects[0].bbox2D,{x:.1,y:.2,width:.3,height:.4});
+assert.equal(imageSpaceNormalized.objects[0].bboxCameraId,1);
+assert.equal(imageSpaceNormalized.objects[0].bboxAt,2000);
+assert.equal(imageSpaceNormalized.objects[0].bboxConfidence01,.82);
+assert.equal('bbox2D' in imageSpaceNormalized.objects[1],false,'out-of-frame boxes are rejected');
+assert.equal('bbox2D' in imageSpaceNormalized.objects[2],false,'image boxes without a camera namespace are rejected');
+
 // Spatial coordinates are forwarded only as a complete tuple bound to a
 // declared coordinate frame. A 2D image point is not a 3D world position.
 const spatialNormalized = normalizeWorldContext({
