@@ -56,3 +56,9 @@ The references motivate the design. NK1's implementation is a limited native ada
 - Device telemetry declares typed freshness, evidence-source, sample identity and normalized metric fields. Undefined telemetry measurements are omitted rather than emitted as non-JSON properties; a device sample is only treated as fresh/verified when the source is Android Termux, staleness is zero, and a finite positive sample timestamp exists.
 - World observation declares the simulator source, tick, independence key and success flag; its bounded additional observation payload is still checked for JSON safety/depth/size.
 - These contracts make the gateway enforce schemas at two ends for the first live tool paths while keeping external ActionGateway verification as the authority for real-world consequences.
+
+
+## WorkPass627 — align Proxy detection with the repository Node type surface
+
+- Replace the deep node:util/types type import with the documented node:util namespace export types.isProxy.
+- Runtime behavior remains the same; this is a TypeScript declaration-surface compatibility fix for the repository's pinned @types/node.

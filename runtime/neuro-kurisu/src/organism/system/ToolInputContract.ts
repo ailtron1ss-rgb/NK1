@@ -1,4 +1,6 @@
-import { isProxy } from "node:util/types";
+import { types as nodeUtilTypes } from "node:util";
+
+const isProxy = (value: unknown): boolean => nodeUtilTypes.isProxy(value);
 
 export type ToolInputType = "object" | "array" | "string" | "number" | "integer" | "boolean" | "null";
 export type ToolInputScalar = string | number | boolean | null;

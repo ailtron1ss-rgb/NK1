@@ -1,3 +1,8 @@
+## [NK1][WorkPass627] Use the supported Node util type surface
+
+- Import types.isProxy from node:util instead of the deep node:util/types path, which is available at runtime but absent from the repository's pinned Node declarations.
+- Preserve Proxy rejection and the existing trap-nonexecution regression without weakening the validation boundary.
+
 ## [NK1][WorkPass626] Adopt output contracts for live runtime tools (2026-10-30)
 
 - Declare output schemas for Android listen, device telemetry and simulator world observation in the existing ActionGateway registrations.
