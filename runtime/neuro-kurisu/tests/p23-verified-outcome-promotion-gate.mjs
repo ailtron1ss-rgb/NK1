@@ -184,6 +184,7 @@ const uncomputableLargeSample = evaluateOutcomePromotion(summary({
   pairedN: 1_000_001,
   discordantCandidateWins: 500_001,
   discordantBaselineWins: 500_000,
+  signTestPValue: 0.5,
 }), families);
 assert.equal(uncomputableLargeSample.eligible, false);
 assert.ok(uncomputableLargeSample.reasons.includes('uncomputable-aggregate-sign-test-evidence'));
