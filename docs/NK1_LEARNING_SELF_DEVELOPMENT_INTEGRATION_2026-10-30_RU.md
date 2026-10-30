@@ -215,4 +215,4 @@ Workflow `.github/workflows/p26-learning-validation.yml` расширен: до�
 - полное покрытие всех task families в запланированном наборе;
 - сохранение точного manifest/plan fingerprint и matched coverage, проверяемых обычным валидатором.
 
-Новый gate не объявляет эксперимент успешным и не подменяет реальные outcomes: он проверяет только пригодность расписания эксперимента. Само улучшение всё ещё требует независимых подписанных результатов, метрик transfer/forgetting и отдельного promotion approval. Регрессия включена в P26 Learning Validation.
+Новый gate не объявляет эксперимент успешным и не подменяет реальные outcomes: он проверяет только пригодность расписания эксперимента. CLI `scripts/create-learning-experiment-plan.mjs` получил флаг `--research-grade`: он отклоняет планы с менее чем пятью seed и пишет `researchGrade: true` только после успешной проверки. Без флага остаётся доступен быстрый smoke-план. Само улучшение всё ещё требует независимых подписанных результатов, метрик transfer/forgetting и отдельного promotion approval. Регрессия включена в P26 Learning Validation.
