@@ -42,8 +42,8 @@ async function loadAsset(store:string):Promise<{blob:Blob;name:string}|null>{
  }finally{db.close();}
 }
 
-async function saveAsset(store:string,blob:Blob,name:string,label:string):Promise<void>{
- if(!(blob instanceof Blob)||!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES)throw new Error(`${label} must be non-empty and at most 90 MB`);
+async function saveAsset(store:string,blob:Blob,name:string,label:string,maxBytes:number):Promise<void>{
+ if(!(blob instanceof Blob)||!blob.size||blob.size>maxBytes)throw new Error(`${label} must be non-empty and at most 90 MB`);
  const safeNameValue=safeFileName(name,label);
  const db=await openDatabase();
  try{
@@ -74,7 +74,7 @@ export function loadStoredAvatarModel():Promise<{blob:Blob;name:string}|null>{
  return loadAsset(MODEL_STORE);
 }
 export function saveAvatarModel(blob:Blob,name:string):Promise<void>{
- return saveAsset(MODEL_STORE,blob,name,"avatar.vrm");
+ return saveAsset(MODEL_STORE,blob,name,"avatar.vrm",MAX_AVATAR_MODEL_BYTES);
 }
 export function clearStoredAvatarModel():Promise<void>{
  return clearAsset(MODEL_STORE,"avatar");
@@ -84,7 +84,7 @@ export function loadStoredAvatarAnimation():Promise<{blob:Blob;name:string}|null
  return loadAsset(ANIMATION_STORE);
 }
 export function saveAvatarAnimation(blob:Blob,name:string):Promise<void>{
- return saveAsset(ANIMATION_STORE,blob,name,"animation.vrma");
+ return saveAsset(ANIMATION_STORE,blob,name,"animation.vrma",MAX_AVATAR_ANIMATION_BYTES);
 }
 export function clearStoredAvatarAnimation():Promise<void>{
  return clearAsset(ANIMATION_STORE,"VRMA animation");
