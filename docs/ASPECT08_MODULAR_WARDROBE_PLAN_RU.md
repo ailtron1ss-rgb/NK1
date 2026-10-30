@@ -79,16 +79,18 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 ### Точная граница готовности второго прохода
 
 - **Реализовано:** доменная модель, рекомендация, декларативный pack gate, протокол commit/rollback и регрессионные сценарии.
-- **Не реализовано:** чтение/хэширование реальных файлов, установка пакетов, долговременное хранение выбора, UI гардероба, подключение к Live2D/Cubism, depth-2D и VRM renderer, физика ткани и визуальные E2E.
+- **Реализовано в третьем проходе:** проверка фактических байтов по SHA-256 и размерам; whole-pack gate требует все заявленные файлы и отклоняет незаявленные.
+- **Не реализовано:** файловый/network loader, установка пакетов, долговременное хранение выбора, UI гардероба, подключение к Live2D/Cubism, depth-2D и VRM renderer, физика ткани и визуальные E2E.
 - **Не подтверждено:** выполнение новых тестов и typecheck на последнем HEAD через GitHub Actions; пустой ответ commit-scoped workflow lookup не считается успешным CI.
 
 ## Progress
 
-- Wardrobe domain/data contract: 80% for the first implementation slice.
-- Selection policy: 75% for the first implementation slice.
+- Wardrobe domain/data contract: 85% for the metadata/control foundation.
+- Selection policy: 75% for the current implementation slice.
+- Pack declaration + actual-byte/whole-payload integrity gates: 85% for the validation foundation; runtime loader integration remains pending.
 - Actual interchangeable garment assets: 0% verified.
 - Live2D/2.5D/VRM renderer application: 0% integrated by this pass.
-- Whole Aspect 08: 25% (conservative; asset creation and visual E2E dominate remaining work).
+- Whole Aspect 08: 30% (conservative; real assets, runtime loader, renderer integration and visual E2E dominate remaining work).
 
 ## Next work
 
