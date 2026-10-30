@@ -6,6 +6,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts"
       - "runtime/neuro-kurisu/tests/workpass617-unified-substrate-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts"
+      - "runtime/neuro-kurisu/tests/workpass618-canonical-memory-lifecycle-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
@@ -29,6 +31,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
       - "runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts"
       - "runtime/neuro-kurisu/tests/workpass617-unified-substrate-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/CanonicalMemoryLifecycleAuthority.ts"
+      - "runtime/neuro-kurisu/tests/workpass618-canonical-memory-lifecycle-integrity.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
@@ -86,3 +90,6 @@ jobs:
       - name: Check unified cognitive substrate restore and tick integrity
         working-directory: runtime/neuro-kurisu
         run: npm run test:aspect01:unified-substrate-integrity
+      - name: Check canonical memory lifecycle restore and tick integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:aspect01:canonical-memory-lifecycle-integrity
