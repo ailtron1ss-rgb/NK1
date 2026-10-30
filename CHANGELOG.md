@@ -1,3 +1,9 @@
+## [NK1][аспект7] Add affect-conditioned temporal facial microdynamics (2026-10-30)
+
+- Extend the shared facial profile with bounded blink interval/duration and saccade interval/amplitude targets derived deterministically from arousal and emotion.
+- Apply validated temporal targets in the Live2D viewer with bounded local cadence variation; attenuate gaze saccades while speaking and retain compatibility defaults for older senders.
+- Add regression coverage for numeric bounds and expected arousal/context response. Device-level visual calibration remains pending.
+
 ## [NK1][аспект7] Add bounded affect-to-expression embodiment adapter (2026-10-30)
 
 - Add a pure affective-expression adapter mapping canonical emotion, valence, arousal and dominance into bounded expression intensity, gaze offsets, head tilt, gesture readiness and voice emphasis.
