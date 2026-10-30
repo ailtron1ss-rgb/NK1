@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { P23LearningEngine } from '../src/organism/learning/P23LearningEngine.ts';
-import { configureDefaultLearningJournals } from '../src/organism/learning/LearningJournalBootstrap.ts';
+import { configureDefaultLearningJournals, configureLearningJournals, createDefaultLearningJournals } from '../src/organism/learning/LearningJournalBootstrap.ts';
 
 const root = mkdtempSync(join(tmpdir(), 'nk1-learning-journal-bootstrap-'));
 try {
@@ -22,6 +22,19 @@ try {
   assert.equal(engine.learningLifecycleJournalDiagnostics().available, true);
   assert.equal(engine.learningLifecycleJournalDiagnostics().eventCount, 0);
   assert.equal(engine.learningLifecycleJournalDiagnostics().pendingActivationCount, 0);
+
+  // The core learner and optional revision coordinator share the same durable sinks.
+  const sharedSinks = createDefaultLearningJournals(stateFile + '.shared');
+  const coreLearner = new P23LearningEngine();
+  const revisionLearner = new P23LearningEngine();
+  configureLearningJournals(coreLearner, sharedSinks);
+  configureLearningJournals(revisionLearner, sharedSinks);
+  assert.equal(coreLearner.learningFitnessJournalDiagnostics().available, true);
+  assert.equal(revisionLearner.learningFitnessJournalDiagnostics().available, true);
+  assert.equal(coreLearner.learningLifecycleJournalDiagnostics().available, true);
+  assert.equal(revisionLearner.learningLifecycleJournalDiagnostics().available, true);
+  assert.equal(sharedSinks.fitnessPath, stateFile.replace(/\\.json$/i, '.shared.learning-fitness.jsonl'));
+  assert.equal(sharedSinks.lifecyclePath, stateFile.replace(/\\.json$/i, '.shared.learning-lifecycle.jsonl'));
 
   let hostFitnessWrites = 0;
   let hostLifecycleWrites = 0;
