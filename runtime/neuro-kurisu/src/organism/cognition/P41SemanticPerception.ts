@@ -303,7 +303,15 @@ export class P41SemanticPerceptionEngine {
 
   ingestWorld(w:NonNullable<P41SemanticInput['world']>,at:number){
     const sceneEvidenceKind=w.evidenceKind??'unresolved';
-    if(w.scene){ const label=String(w.scene).slice(0,120); this.state.scene={label,confidence01:clamp(w.objects?.length?Math.max(...w.objects.map(o=>Number.isFinite(o.confidence01)?Number(o.confidence01):.5)):.35),stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.05:.5),at}; this.state.sceneEvidenceKind=sceneEvidenceKind; this.epistemic.add({at,modality:'world',claim:`scene:${label}`,source:sceneEvidenceKind,confidence01:this.state.scene.confidence01}); }
+    if(w.scene){
+      const label=String(w.scene).slice(0,120);
+      const sameSceneObservation=this.state.scene.at===at&&this.state.scene.label===label;
+      const incomingConfidence=clamp(w.objects?.length?Math.max(...w.objects.map(o=>Number.isFinite(o.confidence01)?Number(o.confidence01):.5)):.35);
+      const evidenceRank=(kind:P41EvidenceKind)=>kind==='observed'?3:kind==='model-output'?2:kind==='derived'?1:0;
+      this.state.scene={label,confidence01:sameSceneObservation?Math.max(this.state.scene.confidence01,incomingConfidence):incomingConfidence,stability01:clamp(this.state.scene.label===label?this.state.scene.stability01+.05:.5),at};
+      if(!sameSceneObservation||evidenceRank(sceneEvidenceKind)>=evidenceRank(this.state.sceneEvidenceKind??'unresolved'))this.state.sceneEvidenceKind=sceneEvidenceKind;
+      this.epistemic.add({at,modality:'world',claim:`scene:${label}`,source:sceneEvidenceKind,confidence01:incomingConfidence});
+    }
     for(const o of (w.objects??[]).slice(0,24)){
       const suppliedTrackId=cleanTrackId(o.trackId);
       const namespacedTrackId=suppliedTrackId?'world:'+(cleanTrackId(o.sourceId)||'canonical')+':'+suppliedTrackId:undefined;
