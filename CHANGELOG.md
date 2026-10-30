@@ -2805,3 +2805,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - [NK1][Aspect 12] Extend the Chromium viewport smoke report with the 12 most likely off-canvas DOM elements (bounds, selectors, overflow styles and text) to identify the source of mobile horizontal overflow.
 
 - [NK1][Aspect 12] Extend mobile overflow diagnostics to report clipped scroll containers, root/body widths, computed sizing, transforms, grid/flex constraints, and pseudo-element styles; visible border-box checks alone missed the 31 px document overflow.
+
+## 2026-10-30 — Aspect 12 mobile grid containment
+- Added `min-w-0` to the Integration Console's responsive grid columns and panel surfaces, and to Hexis panel/stat cards, so long content cannot impose an oversized min-content width on their parent grids.
+- Fix targets the measured 392px/346px grid tracks inside a 332px mobile content area; validation remains pending in the exact-SHA browser smoke.
