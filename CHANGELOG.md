@@ -1,4 +1,4 @@
-## [NK1][аспект7] Add affect-conditioned temporal facial microdynamics (2026-10-30)
+## [NK1][аспект7] Share affective facial microchannels with Original 2D (2026-10-30)\n\n- Feed the same canonical facial microchannel snapshot to NK1 Original 2D, Live2D and procedural/imported 3D; keep appraisal ownership in AvatarStage and avoid a renderer-specific emotion engine.\n- Apply bounded eye-smile, asymmetric brow offsets and cheek intensity in the authored SVG face; speaking visemes remain authoritative for mouth articulation.\n- Add a focused source-contract regression and include it in the aspect-07 validation workflow. SVG visual calibration remains pending.\n\n## [NK1][аспект7] Add affect-conditioned temporal facial microdynamics (2026-10-30)
 
 - Extend the shared facial profile with bounded blink interval/duration and saccade interval/amplitude targets derived deterministically from arousal and emotion.
 - Apply validated temporal targets in the Live2D viewer with bounded local cadence variation; attenuate gaze saccades while speaking and retain compatibility defaults for older senders.
