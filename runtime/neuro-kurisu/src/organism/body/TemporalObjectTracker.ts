@@ -85,7 +85,7 @@ interface MatchEdge {
 }
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
-const clean=(value:unknown,max=120)=>typeof value==='string'?value.normalize('NFKC').replace(/[\\r\\n\\t]+/g,' ').trim().slice(0,max):'';
+const clean=(value:unknown,max=120)=>typeof value==='string'?value.normalize('NFKC').replace(/[\r\n\t]+/g,' ').trim().slice(0,max):'';
 const kindOf=(value:unknown)=>clean(value,32)||'unknown';
 
 export function isValidNormalizedBoundingBox(value:unknown):value is NormalizedBoundingBox {
