@@ -17,12 +17,12 @@ const safeCount=(value:unknown)=>{const n=Number(value);return Number.isSafeInte
 export const defaultP80=():P80State=>({version:1,cycles:0,continuity01:.9,coherence01:.8,agency01:.5,realityAlignment01:.5,currentMode:'wait',recentModes:[],recentActions:[],modeStreak:0,noveltyPressure01:.2,lastTick:0,lastAction:'wait',lastReason:''});
 export class P80UnifiedSelfState {
   private state=defaultP80();
-  restore(raw:Partial<P80State>|undefined){if(!raw)return;const d=defaultP80(),r:any=raw;this.state={version:1,cycles:safeCount(r.cycles),continuity01:clamp(Number(r.continuity01??d.continuity01)),coherence01:clamp(Number(r.coherence01??d.coherence01)),agency01:clamp(Number(r.agency01??d.agency01)),realityAlignment01:clamp(Number(r.realityAlignment01??d.realityAlignment01)),currentMode:P80_MODES.includes(r.currentMode)?r.currentMode:d.currentMode,recentModes:Array.isArray(r.recentModes)?r.recentModes.filter((x:unknown):x is P80Mode=>P80_MODES.includes(x as P80Mode)).slice(-32):[],recentActions:Array.isArray(r.recentActions)?r.recentActions.map((x:unknown)=>cleanText(x,48)).filter(Boolean).slice(-32):[],modeStreak:safeCount(r.modeStreak),noveltyPressure01:clamp(Number(r.noveltyPressure01??d.noveltyPressure01)),lastTick:safeCount(r.lastTick),lastAction:cleanText(r.lastAction,48)||d.lastAction,lastReason:cleanText(r.lastReason,240)};}
+  restore(raw:Partial<P80State>|undefined){if(!raw)return;const d=defaultP80(),r:any=raw;this.state={version:1,cycles:safeCount(r.cycles),continuity01:clamp(Number(r.continuity01??d.continuity01)),coherence01:clamp(Number(r.coherence01??d.coherence01)),agency01:clamp(Number(r.agency01??d.agency01)),realityAlignment01:clamp(Number(r.realityAlignment01??d.realityAlignment01)),currentMode:P80_MODES.includes(r.currentMode)?r.currentMode:d.currentMode,recentModes:Array.isArray(r.recentModes)?r.recentModes.filter((x:unknown):x is P80Mode=>P80_MODES.includes(x as P80Mode)).slice(-32):[],recentActions:Array.isArray(r.recentActions)?r.recentActions.filter((x:unknown):x is P80Mode=>P80_MODES.includes(x as P80Mode)).slice(-32):[],modeStreak:safeCount(r.modeStreak),noveltyPressure01:clamp(Number(r.noveltyPressure01??d.noveltyPressure01)),lastTick:safeCount(r.lastTick),lastAction:P80_MODES.includes(r.lastAction)?r.lastAction:d.lastAction,lastReason:cleanText(r.lastReason,240)};}
   snapshot(){return JSON.parse(JSON.stringify(this.state)) as P80State;}
   summary(){return{version:1,cycles:this.state.cycles,continuity01:this.state.continuity01,coherence01:this.state.coherence01,agency01:this.state.agency01,realityAlignment01:this.state.realityAlignment01,currentMode:this.state.currentMode,noveltyPressure01:this.state.noveltyPressure01,lastTick:this.state.lastTick,lastAction:this.state.lastAction};}
   update(i:P80Input){
     const mode=P80_MODES.includes(i.mode)?i.mode:'wait';
-    const action=P80_MODES.includes(i.action as P80Mode)?i.action:cleanText(i.action,48)||'wait';
+    const action=P80_MODES.includes(i.action as P80Mode)?i.action:'wait';
     const tick=safeCount(i.tick);
     const identity=clamp(i.identity01),memory=clamp(i.memoryContinuity01),gap=clamp(i.realityGap01);
     const predictionError=clamp(i.predictionError01),uncertainty=clamp(i.uncertainty01);
@@ -35,7 +35,7 @@ export class P80UnifiedSelfState {
     const noveltyPressure=clamp(monotony*.55+novelty*.25+uncertainty*.2);
     const continuity=clamp(identity*.25+memory*.2+grounding*.12+causal*.12+workspace*.11+(1-predictionError)*.1+capacity*.1);
     const coherence=clamp(workspace*.2+grounding*.16+causal*.16+(1-uncertainty)*.16+capacity*.14+memory*.1+(1-gap)*.08);
-    const agency=clamp((i.externalInput?.55:.72)+(actionScore-.5)*.18-uncertainty*.08);
+    const agency=clamp((i.externalInput ? .55 : .72)+(actionScore-.5)*.18-uncertainty*.08);
     const realityAlignment=clamp(1-gap);
     this.state.cycles=Math.min(1_000_000,this.state.cycles+1);
     this.state.lastTick=tick;this.state.lastAction=action;this.state.currentMode=mode;this.state.modeStreak=modeStreak;
