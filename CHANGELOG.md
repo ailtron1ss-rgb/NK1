@@ -1,3 +1,9 @@
+## [NK1][Aspect 10] Record remaining runtime and app-lock integration gates (2026-10-30)
+
+- Document the remaining gap between grounded planner contracts and actual OrganismRuntime camera-to-hand actuation; no physical execution is claimed.
+- Record the Aspect 10 focused CI coverage and the separately scoped app manifest/lockfile drift that still blocks full app dependency installation.
+- Release ZIP remains unchanged.
+
 ## [NK1][Aspect 10] Require explicit authorization for physical reach (2026-10-30)
 
 - Add a separate deny-by-default reach permission; reaching is treated as physical movement, not passive inspection.

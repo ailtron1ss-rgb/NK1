@@ -157,3 +157,11 @@ This pass hardens grounded planning, safety authorization and the evidence gate.
 - Add seven regressions for default denial, source gating, authorization binding, expiry, affordance and trusted verifier behavior.
 
 This is a planning safety gate only. It does not execute a hand trajectory or prove collision-free movement; those still require a calibrated renderer/device adapter and independent postcondition.
+
+
+## [NK1][Aspect 10] Integration and dependency boundary — 2026-10-30
+
+- Repository runtime review confirms the new grounded interaction planner is not yet invoked from `OrganismRuntime`'s current general-purpose `EmbodiedActionExecutor`. Do not claim a live camera-to-hand actuation path: spatial body state, renderer/device movement adapter and independently observed physical postcondition still need integration.
+- The focused Aspect 10 workflow is green on the branch head before the app manifest-only commit; it runs the 47 planner assertions, 13 grounding assertions, renderer-independent arm IK, VRM humanoid mapping, calibration profile/session and model fingerprint suites.
+- The app manifest's unavailable `@radix-ui/react-separator@^1.2.6` range was aligned to the existing lockfile range `^1.1.8` (locked package `1.1.15`). This exposed pre-existing wider lock drift: `npm ci` reports `@radix-ui/react-popover` manifest `1.3.1` versus lock `1.1.23` and 14 missing Radix package entries. Full app install/build remains blocked until the app manifest and lockfile are reconciled as a separate repository-wide dependency pass.
+- No Release ZIP was changed or published by this Aspect 10 pass.
