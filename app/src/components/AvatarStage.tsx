@@ -126,7 +126,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       }
       if (ev.data.type === "live2d_intent_ack") {
         const version = ev.data.stateVersion;
-        if (!Number.isSafeInteger(version) || version <= 0 || version !== latestIntentStateVersionRef.current) return;
+        if (typeof version !== "number" || !Number.isSafeInteger(version) || version <= 0 || version !== latestIntentStateVersionRef.current) return;
         if (ev.data.appliedRevision !== version || ev.data.complete !== false) return;
         if (ev.data.status !== "parameters-observed" && ev.data.status !== "accepted-unverified") return;
         if (ev.data.expressionStatus !== "not-independently-verified" || ev.data.motionStatus !== "not-independently-verified") return;
