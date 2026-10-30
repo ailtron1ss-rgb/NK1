@@ -1,3 +1,9 @@
+## [NK1][Aspect 01 — Live2D] Force-preempt Cubism motion on speech cancellation (2026-10-30)
+
+- Verified the pinned `pixi-live2d-display@0.4.0` API and use its `MotionPriority.FORCE` value (3) when a validated cancelled speech intent selects `Idle[0]`; ordinary intents retain NORMAL priority (2).
+- Preserve `speechPhase` through the runtime normalizer and add regression coverage for both app and runtime viewer entry points.
+- Cubism 4's motion manager stops the prior motion queue when the forced motion begins; real browser/Android latency remains unmeasured.
+
 ## [NK1][Aspect 01 — Live2D] Reset expressive pose on speech cancellation (2026-10-30)
 
 - On cancelled speech, AvatarStage now emits the shipped `Idle[0]` motion and clears gesture profile/intensity and head tilt, preventing the interrupted response pose from remaining the active intent.
