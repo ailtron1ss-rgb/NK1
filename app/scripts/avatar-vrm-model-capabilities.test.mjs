@@ -6,7 +6,7 @@ import {
   VRM_HUMANOID_BONE_NAMES,
 } from "../src/components/avatar/vrmModelCapabilities.ts";
 
-function makeVrm({ missing = [], expressions = [], springJoints = 0, lookAt = true, skinned = true } = {}) {
+function makeVrm({ missing = [], expressions = ["aa", "ih", "ou", "ee", "oh"], springJoints = 0, lookAt = true, skinned = true } = {}) {
   const absent = new Set(missing);
   const nodes = [];
   const humanoid = {
