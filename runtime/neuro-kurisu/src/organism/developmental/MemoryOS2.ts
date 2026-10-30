@@ -755,11 +755,13 @@ export class MemoryOS2{
   const restoreNow=Date.now();
   const rawItems:MemoryItem2[]=[];
   let invalidRowsDropped=0;
+  // Initialize counters before normalization: the row normalizer records repair events.
+  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
   for(const candidate of boundedItems){
    const normalized=this.normalizeRestoredMemoryRow(candidate,restoreNow);
    if(normalized)rawItems.push(normalized);else invalidRowsDropped++;
   }
-  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
+  this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,invalidRowsDropped};
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
     semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
