@@ -358,7 +358,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
       gaze: { x: motorPlan.gazeX, y: motorPlan.gazeY, driven: true },
       body: {
-        headTilt: motorPlan.headTilt,
+        // Profile-specific micro-tilt composes with the authored clip; the CDI3 rig has no arm IK.
+        headTilt: Math.max(-0.15, Math.min(0.15, motorPlan.headTilt + (
+          motorPlan.gestureProfile === "considering" || motorPlan.gestureProfile === "examining" ? -1 :
+          motorPlan.gestureProfile === "none" ? 0 : 1
+        ) * motorPlan.gestureIntensity * 0.018)),
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
