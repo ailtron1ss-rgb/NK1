@@ -4,6 +4,7 @@
 - Update the Original renderer integration regression to describe its new truthful 2.5D depth/parallax preview rather than the previous 2D-only label.
 - No runtime behavior is weakened: validation order, preservation of the loaded model and pre-disposal mixer cleanup remain explicitly asserted.
 
+
 ## [NK1][Aspect 11] Add gaze-driven 2.5D depth preview to Original SVG body — 2026-10-30
 
 - Add four independently transformed SVG depth layers: rear hair, torso, head and front fringe. Differential bounded offsets derive from the organism gaze signal, preserving vector artwork and existing expression/viseme behavior.
@@ -11,6 +12,7 @@
 - Add deterministic finite/clamped viewBox-space transform mapping, 320ms layer transitions and `prefers-reduced-motion` suppression.
 - Add depth/parallax regression coverage to the avatar hardening suite.
 - Production PSD/occlusion masks, articulated joints, rendered browser/device E2E and real cross-renderer handoff remain separate gates.
+
 
 
 
@@ -22,6 +24,14 @@
 - Derive bounded browser TTS pitch/rate/volume from the canonical emotion appraisal, action and personality traits. Use the same rate for synthesis and the approximate viseme timeline; regulate high negative arousal rather than amplifying it.
 - Add validator, import-lifecycle and prosody regressions plus a dedicated Node 24 workflow for tests, app typecheck and build.
 - Evidence boundary: source and regression coverage are committed here; hosted exact-HEAD CI and browser/Android visual/audio E2E must pass before promotion. This does not grant model redistribution rights, implement a complete VRM runtime, or update the canonical Release ZIP.
+
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
 
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
