@@ -282,3 +282,76 @@ Workflow PASS подтверждает только успешно выполн�
 - Внешние независимые эксперименты с настоящей production-моделью/устройством в этом проходе не выполнялись. Синтетические регрессии подтверждают контракт кода, а не реальный прирост интеллектуальных способностей.
 - Release ZIP и `main` не изменялись.
 
+## 12. Confirmatory inference, multiplicity и управление доступом к holdout
+
+### 12.1 Единица независимого наблюдения — seed
+
+До этого прохода ledger уже умел строить paired comparison, сгруппированный по seed, но promotion gate не получал явного признака статистической единицы. Теперь `PairedMethodSummary` возвращает:
+
+- `statisticalUnit: 'paired-cell' | 'seed'`;
+- `signTestPValue` — точный двусторонний sign-test по discordant независимым единицам.
+
+Для confirmatory promotion принимаются только summaries с `statisticalUnit === 'seed'`. Task-cell сравнение остаётся доступным как диагностика, но не маскируется под независимые seed.
+
+Sign-test исключает ties и проверяет вероятность положительного знака среди discordant пар при нулевой гипотезе 1/2. Он дополняет оценку эффекта и доверительный интервал, но не заменяет их: p-value не показывает размер или практическую важность эффекта.
+
+### 12.2 Несколько кандидатов — одна семья гипотез
+
+Добавлен `ExperimentInference.ts`:
+
+- `holmAdjustPValues(...)` реализует step-down Holm correction;
+- `evaluateOutcomePromotionPortfolio(...)` принимает полный список заранее объявленных кандидатов;
+- для каждого кандидата возвращаются raw p-value, adjusted p-value, ранг, gate и точные причины отказа.
+
+Проверка на candidate portfolio выполняет correction по числу одновременно рассматриваемых вариантов. Нельзя запускать gate отдельно для каждого кандидата, показывать только победителя и игнорировать количество проверенных вариантов.
+
+Family summaries по типам задач сохраняются как защитные срезы. Они проверяются на регрессии и правильную seed-единицу; primary endpoint остаётся отдельным заранее выбранным показателем.
+
+### 12.3 Одноразовая confirmatory holdout-кампания
+
+Добавлен `ExperimentCampaignRegistry.ts`. До ознакомления с holdout-результатами регистрируется:
+
+- уникальный campaign ID;
+- fingerprint полной task manifest и отдельный fingerprint только holdout-части;
+- deterministic plan fingerprint;
+- baseline method + fingerprint baseline-конфигурации;
+- полный список candidate methods + fingerprints конфигураций;
+- primary metric;
+- promotion policy целиком (минимум seed, порог эффекта, семейные ограничения, alpha и режим family coverage);
+- timestamp предварительной регистрации.
+
+Для одного и того же holdout-only fingerprint разрешена ровно одна confirmatory-кампания. Изменение только train/validation manifest не создаёт новый holdout и не обходит блокировку.
+
+Оценка кампании:
+1. повторно проверяет exact plan и manifest fingerprint;
+2. требует полного покрытия каждой запланированной task/seed/arm ячейки;
+3. требует signed verifier artifact на каждую ячейку;
+4. сверяет signed `runId`, task/version, method, seed, attempt, verifier, outcome, timestamp и `methodFingerprint` с preregistered plan;
+5. вычисляет aggregate и family comparisons из канонического ledger;
+6. применяет Holm correction ко всем зарегистрированным кандидатам;
+7. фиксирует outcome fingerprint и финальный результат.
+
+После финализации повторная оценка на изменившихся outcome rows запрещена. Точная повторная доставка того же набора данных возвращает сохранённый результат. Restore registry сохраняет lock и финальный snapshot; snapshot fingerprint защищает от случайной/частичной порчи, но сам по себе не является цифровой подписью или защитой от злонамеренного пересоздания всей истории.
+
+### 12.4 Связь signed artifact с конкретной конфигурацией
+
+`SignedOutcomePayload` получил необязательное для старых сценариев поле `methodFingerprint`. Campaign registry требует его для confirmatory evaluation и сравнивает со значением, зарегистрированным до запуска. Таким образом, подпись verifier привязывает не только метод с текстовым именем, но и конкретный content fingerprint конфигурации baseline/candidate.
+
+Проверенный artifact payload доступен только через process-local authenticated receipt в `VerifiedOutcomeArtifact.ts`. Сериализованный ledger не переносит доверие автоматически: после восстановления signed artifact должен быть повторно проверен.
+
+### 12.5 Границы и научная основа
+
+Этот механизм — строгая одноразовая reservation policy, а не реализация *Reusable Holdout* на differential privacy. Он сознательно предпочитает новый независимый holdout для новой confirmatory кампании. Специальный DP-based adaptive holdout, приватный статистический oracle, бюджет утечек и privacy accountant ещё не интегрированы.
+
+Решения основаны на следующих работах:
+- Holm, S. (1979), *A Simple Sequentially Rejective Multiple Test Procedure*, Scandinavian Journal of Statistics 6(2), 65–70 — контроль family-wise error при множественных проверках: https://www.jstor.org/stable/4615733
+- Dwork et al. (2015), *The Reusable Holdout: Preserving Validity in Adaptive Data Analysis*, Science 349(6248), 636–638, DOI: https://doi.org/10.1126/science.aaa9375 — проблема адаптивного повторного использования holdout и DP-based способ безопасного повторного анализа.
+- National Academies (2019), *Reproducibility and Replicability in Science*, раздел о preregistration — различие confirmatory/exploratory analysis и фиксация аналитического плана до просмотра результатов: https://www.ncbi.nlm.nih.gov/books/NBK547525/
+
+### 12.6 Новые CI-регрессии
+
+- `p23-experiment-inference.mjs` — exact sign-test, Holm ranks/monotonicity, ties, candidate portfolio и блокировка unadjusted-only победителя.
+- `p23-experiment-campaign-registry.mjs` — preregistration, lock holdout-only fingerprint при изменении train manifest, отказ от unsigned outcomes, точное связывание method fingerprint и run ID, полный signed coverage, однократная финализация, idempotent restore и запрет на повторную адаптивную оценку.
+- `p23-seed-clustered-outcome-comparison.mjs` теперь явно подтверждает seed как statistical unit и точное sign-test значение для небольшого примера.
+
+**Статус реализации:** новые модули, тесты и CI steps добавлены в рабочую ветку. Их статус считается `UNVERIFIED` до завершения exact-head GitHub Actions; зелёный предыдущий SHA не переносится на эти коммиты. Production rollout и применение реального независимого holdout не заявляются.
