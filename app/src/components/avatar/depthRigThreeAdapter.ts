@@ -13,12 +13,12 @@ export interface DepthRigApplyResult {
  * ambiguous or missing names are reported before any scene node is mutated.
  */
 export function applyDepthRigTransforms(
-  root: THREE.Object3D,
+  root: any,
   transforms: readonly DepthRigTransform[],
 ): DepthRigApplyResult {
-  const byName = new Map<string, THREE.Object3D>();
+  const byName = new Map<string, any>();
   const duplicates = new Set<string>();
-  root.traverse((node) => {
+  root.traverse((node: any) => {
     if (!node.name) return;
     if (byName.has(node.name)) duplicates.add(node.name);
     else byName.set(node.name, node);
