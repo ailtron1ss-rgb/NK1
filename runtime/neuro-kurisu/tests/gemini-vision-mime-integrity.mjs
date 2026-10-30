@@ -44,7 +44,8 @@ try {
   const result = await backend.analyze({ imagePath, at: 100, cameraId: 0, context: { scene: 'laboratory' } });
   assert.equal(sentMime, 'image/png', 'the request MIME must match the actual camera bytes');
   assert.equal(result.semantic, true);
-  assert.equal(result.objects.length, 1);
+  assert.equal(result.objects.length, 2, 'objects with invalid boxes remain semantic observations');
+  assert.equal(result.objects[1].label, 'ambiguous-object');
   assert.equal(result.objects[0].label, 'chair');
   assert.equal('x' in result.objects[0], false, '2D image-relative coordinates must not be passed as 3D world positions');
   assert.equal('y' in result.objects[0], false);
