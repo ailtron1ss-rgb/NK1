@@ -3,26 +3,30 @@ on:
   pull_request:
     paths:
       - "app/src/components/Avatar3DStage.tsx"
-      - "app/src/components/AvatarStage.tsx"
       - "app/src/components/avatar/depthRig.ts"
       - "app/src/components/avatar/depthRigThreeAdapter.ts"
       - "app/src/components/avatar/depthRigFace.ts"
       - "app/scripts/depth-rig.test.mjs"
       - "app/scripts/depth-rig-face.test.mjs"
       - "app/scripts/depth-rig-three-adapter.test.mjs"
+      - "app/scripts/depth-rig-glb-validator.mjs"
+      - "app/scripts/depth-rig-glb-validator.test.mjs"
+      - "tools/blender/export_nk1_depth_rig.py"
       - ".github/workflows/nk1-2p5d-depth-rig.yml"
   push:
     branches:
       - "work/nk1-2p5d-depth-rig-2026-10-30"
     paths:
       - "app/src/components/Avatar3DStage.tsx"
-      - "app/src/components/AvatarStage.tsx"
       - "app/src/components/avatar/depthRig.ts"
       - "app/src/components/avatar/depthRigThreeAdapter.ts"
       - "app/src/components/avatar/depthRigFace.ts"
       - "app/scripts/depth-rig.test.mjs"
       - "app/scripts/depth-rig-face.test.mjs"
       - "app/scripts/depth-rig-three-adapter.test.mjs"
+      - "app/scripts/depth-rig-glb-validator.mjs"
+      - "app/scripts/depth-rig-glb-validator.test.mjs"
+      - "tools/blender/export_nk1_depth_rig.py"
       - ".github/workflows/nk1-2p5d-depth-rig.yml"
   workflow_dispatch:
 permissions:
@@ -39,6 +43,6 @@ jobs:
       - name: Install app dependencies without lifecycle scripts
         working-directory: app
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Validate depth-rig contracts, face channels and Three.js adapter
+      - name: Validate depth-rig contracts, face channels, Three.js adapter and exported GLB
         working-directory: app
-        run: node --experimental-strip-types --test scripts/depth-rig.test.mjs scripts/depth-rig-face.test.mjs scripts/depth-rig-three-adapter.test.mjs
+        run: node --experimental-strip-types --test scripts/depth-rig.test.mjs scripts/depth-rig-face.test.mjs scripts/depth-rig-three-adapter.test.mjs scripts/depth-rig-glb-validator.test.mjs
