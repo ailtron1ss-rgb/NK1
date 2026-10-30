@@ -4,6 +4,8 @@ import type { PerceptualEvidenceState } from '../body/PerceptualEvidenceCompiler
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const norm=(x:string)=>String(x??'').trim().toLowerCase().slice(0,120);
+// Match P41 cleanTrackId: identity tokens retain case and only normalize Unicode/whitespace.
+const cleanIdentity=(value:unknown)=>typeof value==='string'?value.normalize('NFKC').replace(/[\\r\\n\\t]+/g,' ').trim().slice(0,120):'';
 const stableHash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
 
 export interface GroundedEntity {
@@ -175,8 +177,8 @@ export class GroundedWorldState {
     // Canonical world-context objects preserve their own IDs and their actual
     // knowledge flags. A confidence score is not a resource value or a grasp.
     for(const o of (base?.objects??[])){
-      const sourceId=norm(o.sourceId||'world-context');
-      const objectId=norm(o.id);
+      const sourceId=cleanIdentity(o.sourceId)||'world-context';
+      const objectId=cleanIdentity(o.id);
       const trackId=objectId?('world:'+sourceId+':'+objectId):undefined;
       const evidenceKind=normalizeEvidence(o.evidenceKind);
       const visibleKnown=o.visibilityKnown===false?false:(o.visibilityKnown===true||typeof o.visible==='boolean');
