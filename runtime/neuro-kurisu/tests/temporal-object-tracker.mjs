@@ -108,6 +108,7 @@ assert.equal(strictGroundedRestore.snapshot().entities.find(entity=>entity.label
 // Simulate process restart: restore local temporal identities from the persisted
 // canonical P41 snapshot, then continue tracking on a third camera frame.
 const restartedTracker=new TemporalObjectTracker({sessionId:'new-process'});
+console.log('P41_TEMPORAL_RESTORE_INPUT',JSON.stringify(restoredP41.entities.filter(entity=>entity.label==='chair').map(entity=>({trackId:entity.trackId,imageBoxCameraId:entity.imageBoxCameraId,imageBoxAt:entity.imageBoxAt,imageBoxConfidence01:entity.imageBoxConfidence01,firstSeenAt:entity.firstSeenAt,lastSeenAt:entity.lastSeenAt,imageBox:entity.imageBox}))));
 const restoreResult=restartedTracker.restoreFromPerception(restoredP41.entities,1_600);
 assert.equal(restoreResult.restored,2);
 assert.ok(restartedTracker.snapshot(0)[0].tracks.every(track=>track.firstSeenAt===1_000));
