@@ -10,6 +10,14 @@ const cleanIdentity=(value:unknown)=>{
   return value.normalize('NFKC').replace(/[\r\n\t]+/g,' ').trim().slice(0,120);
 };
 const stableHash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
+const normalizeImageBox=(value:unknown)=>{
+  if(!value||typeof value!=='object')return undefined;
+  const box=value as Record<string,unknown>;
+  if(![box.x,box.y,box.width,box.height].every(v=>typeof v==='number'&&Number.isFinite(v)))return undefined;
+  const x=Number(box.x),y=Number(box.y),width=Number(box.width),height=Number(box.height);
+  if(x<0||y<0||width<=0||height<=0||x+width>1.000001||y+height>1.000001)return undefined;
+  return {x,y,width,height};
+};
 
 export interface GroundedEntity {
   id:string;
@@ -66,20 +74,28 @@ export class GroundedWorldState {
   restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
     const d=defaultGroundedWorldState(); const r=raw??{};
     this.state={...d,...r,
-      entities:Array.isArray(r.entities)?r.entities.slice(0,128).map((e:any)=>({
-        ...e,
-        modalities:Array.isArray(e?.modalities)?[...new Set(e.modalities.filter((x:any)=>typeof x==='string'))]:[],
-        trackAliases:Array.isArray(e?.trackAliases)?[...new Set(e.trackAliases.filter((x:any)=>typeof x==='string'))].slice(-16):[],
-        sourceIds:Array.isArray(e?.sourceIds)?[...new Set(e.sourceIds.filter((x:any)=>typeof x==='string'))].slice(-16):[],
-        modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?{...e.modalityEvidenceKinds}:{},
-        presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
-        persistence01:clamp(Number(e?.persistence01??0)),
-        absenceEvidence01:clamp(Number(e?.absenceEvidence01??0)),
-        observationCount:Math.max(1,Math.floor(Number(e?.observationCount??1))),
-        valueKnown:e?.valueKnown===true,
-        visibilityKnown:e?.visibilityKnown===true,
-        collectionKnown:e?.collectionKnown===true,
-      })):[],
+      entities:Array.isArray(r.entities)?r.entities.slice(0,128).map((e:any)=>{
+        const imageBox=normalizeImageBox(e?.imageBox);
+        const imageBoxCameraId=Number.isSafeInteger(e?.imageBoxCameraId)&&Number(e.imageBoxCameraId)>=0?Number(e.imageBoxCameraId):undefined;
+        const imageBoxAt=Number.isFinite(e?.imageBoxAt)&&Number(e.imageBoxAt)>=0&&Number(e.imageBoxAt)<=Number(r.lastAt??0)?Number(e.imageBoxAt):undefined;
+        const imageBoxConfidence01=Number.isFinite(e?.imageBoxConfidence01)&&Number(e.imageBoxConfidence01)>=.42&&Number(e.imageBoxConfidence01)<=1?Number(e.imageBoxConfidence01):undefined;
+        const validImageEvidence=Boolean(imageBox&&imageBoxCameraId!==undefined&&imageBoxAt!==undefined&&imageBoxConfidence01!==undefined);
+        return {
+          ...e,
+          modalities:Array.isArray(e?.modalities)?[...new Set(e.modalities.filter((x:any)=>typeof x==='string'))]:[],
+          trackAliases:Array.isArray(e?.trackAliases)?[...new Set(e.trackAliases.filter((x:any)=>typeof x==='string'))].slice(-16):[],
+          sourceIds:Array.isArray(e?.sourceIds)?[...new Set(e.sourceIds.filter((x:any)=>typeof x==='string'))].slice(-16):[],
+          modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?{...e.modalityEvidenceKinds}:{},
+          ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
+          presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
+          persistence01:clamp(Number(e?.persistence01??0)),
+          absenceEvidence01:clamp(Number(e?.absenceEvidence01??0)),
+          observationCount:Math.max(1,Math.floor(Number(e?.observationCount??1))),
+          valueKnown:e?.valueKnown===true,
+          visibilityKnown:e?.visibilityKnown===true,
+          collectionKnown:e?.collectionKnown===true,
+        };
+      }):[],
       relations:Array.isArray(r.relations)?r.relations.slice(0,256):[],
       events:Array.isArray(r.events)?r.events.slice(0,96):[],
       facts:Array.isArray(r.facts)?r.facts.slice(0,192):[],
