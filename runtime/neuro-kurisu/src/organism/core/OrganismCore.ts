@@ -6124,7 +6124,7 @@ export class OrganismCore {
             tick: state.tick, novelty01: state.needs.novelty, uncertainty01: state.needs.uncertainty,
             goalPressure01: state.needs.goalPressure,
             identityGap01: clamp(Math.max(1 - p80SelfNow.continuity01, personalityContinuityNow.drift)),
-            actionUtilities: b365Frame.forecastUtilities as Record<ActionKind, number>,
+            actionUtilities: (b365FullFrame?.forecastUtilities ?? (Object.fromEntries(actions.map(action => [action, .5])) as Record<ActionKind, number>)),
             identityVector: personalitySelfVectorNow, relationshipId: observation.text ? 'user' : undefined,
         });
         const buildSpineOnlyCandidate = (action: ActionKind): IntentCandidate => {
