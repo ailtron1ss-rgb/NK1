@@ -36,6 +36,13 @@
 | Core → P41 spatial ingress | Сохранять координаты и frame для моторного/пространственного планирования |
 | GroundedWorldState spatial round-trip | Не терять position/frame при консолидации и повторной выдаче WorldContext |
 | Spatial regression | Проверять frame-bound coordinates и запрет image-plane → 3D promotion |
+| TemporalObjectTracker | Поддержать per-camera tracks для валидных normalized 2D boxes |
+| Bidirectional ambiguity gate | Не сливать два detection в один track при неоднозначном выборе |
+| Independent bbox confidence | Не использовать confidence объекта как confidence локализации |
+| Runtime camera integration | Передавать tracker result в канонический P41 при каждом capture |
+| Capture receipt identity | Использовать execution ID, а не image hash, как уникальный capture frame |
+| Duplicate detection guard | Не создавать две сущности из почти идентичных box в одном кадре |
+| Tracker regression suite | Проверять ID continuity, порядок detections, камеры, expiry, stale frames и provider IDs |
 
 ## Текущий статус
 
@@ -45,4 +52,4 @@
 - На том же HEAD прошли `cognitive-contracts`, `source-lineage-contract`, `verified-promotion`, `metrics`, `verified-experience-lanes`, `correlated-postcondition` и `local-language-resilience`.
 - Большой `targeted-and-regression` job на момент обновления ещё выполняется; его финальный результат не приписывается этому проходу.
 - Локальный запуск тестов в контейнере не заявляется: прямой GitHub clone недоступен из-за DNS; проверяемые результаты получены через GitHub Actions.
-- Android/Termux camera soak, object tracker и независимая разметка остаются отдельными acceptance gates.
+- Android/Termux camera soak и независимая разметка остаются отдельными acceptance gates; новый 2D tracker является runtime feature, но production IDF1/HOTA и long-occlusion re-identification ещё не подтверждены.
