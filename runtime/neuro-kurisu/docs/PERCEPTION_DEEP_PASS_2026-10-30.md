@@ -21,6 +21,8 @@ The intent is to improve the reliability of the organism's *world model*, not to
 
 - P41 entities now preserve an optional stable provider track key, cross-modal track aliases, and smoothed velocity.
 - Camera/source namespace is included in vision IDs, preventing identical detector IDs from unrelated cameras/backends from colliding.
+- Scene relations can bind endpoints to exact entity IDs through track IDs/aliases. A label-only endpoint is resolved only when exactly one matching entity exists; repeated chairs/tables remain intentionally ambiguous rather than being attached to an arbitrary instance.
+- Existing label-only relation IDs are upgraded in place when identity becomes resolvable.
 - Spatial nearest-neighbour association is allowed only when a coordinate-frame ID is explicitly declared and matches the previous observation; camera backends may provide this frame metadata, otherwise geometry is stored but not used to claim track continuity.
 - Without a stable provider ID or a declared common frame, the system does not invent spatial continuity.
 - Cross-modal association is conservative: a new modality ID is attached only when exactly one recent same-label candidate is available. Ambiguous repeated objects remain separate.
@@ -84,6 +86,7 @@ These are architecture inspirations, not third-party runtime dependencies or cla
 - Recent reviews of active visual perception emphasize uncertainty reduction and selection of observations that improve downstream tasks. This pass makes cross-modal evidence freshness explicit so future next-best-sensor policies can use trustworthy coverage.
 - Object-centric 3D scene-graph work motivates stable entity identity and relations that persist across observations. P41 now has provider track IDs, aliases, explicit coordinate-frame metadata, and velocity fields.
 - World-model research using predicted 3D scene flow motivates keeping spatial continuity distinct from semantic labels. This pass only estimates velocity when same-frame geometry exists; it does not introduce a heavyweight learned 3D world model.
+- Object-centric scene-graph research motivates preserving relation endpoints as persistent entity references, not only free-form labels. The P41 relation store now supports this when the track identity is unambiguous.
 - Event-camera research motivates a future low-latency asynchronous sensing adapter. No event-camera hardware or vendor SDK is claimed as integrated here.
 
 ## Validation commands
