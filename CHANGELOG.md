@@ -40,6 +40,14 @@
 - Add the Aspect 04 production plan for layered master artwork, hidden-area paint, occlusion, face rig, IK, secondary motion, modular garments and release acceptance.
 - Honest boundary: this is a code contract/pose foundation, not a rendered 2.5D model. Production art, GLB, IK execution, garment physics and desktop/Android visual E2E remain pending.
 
+## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
+
+- Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
+- Зафиксированы точные успешные Actions после исправления TS ошибок в PR #406 и #411; сами PR всё ещё требуют rebase и browser/Android E2E.
+- Закреплено архитектурное решение: PR #408 — единственный canonical 2.5D runtime; PR #409 — только migration/reference source; PR #410 — единственный joint-space motor substrate; PR #415 — handoff orchestration.
+- Отдельно сохранены незакрытые лицензионные, художественные, device/E2E и Release ZIP gates; статусы не подменялись.
+
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
