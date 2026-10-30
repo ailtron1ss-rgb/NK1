@@ -1,3 +1,10 @@
+## [NK1][WorkPass632] Rebind persisted VRMA on same-name avatar replacement (2026-10-30)
+
+- Add a model revision token that increments on each successful imported avatar replacement.
+- Include model revision in the sidecar restore effect dependencies so a saved VRMA is recompiled against the new humanoid rig even when the replacement file has the same name and state label.
+- Distinguish official VRM ExpressionManager status from the custom morphTarget fallback in the active model status message.
+- Add a regression test for same-name replacement and document the lifecycle invariant.
+
 ## [NK1][WorkPass631] Editable SVG 2.5D depth-layer parallax (2026-10-30)
 
 - Add a pure gaze-to-depth offset adapter for four existing editable SVG groups: rear hair, torso, head and front fringe.
