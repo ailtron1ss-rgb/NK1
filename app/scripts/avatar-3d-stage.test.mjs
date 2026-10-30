@@ -56,3 +56,16 @@ test("uploaded VRM stage exposes a rights-confirmed verified wardrobe pack appli
  assert.match(stage,/Проверить и применить к VRM/);
  assert.match(stage,/setWardrobePack\(null\)/);
 });
+
+
+test("VRM wardrobe UI supports independent slot selection and keeps body identity wardrobe-independent",async()=>{
+ const stage=await readFile(stagePath,"utf8"),adapter=await readFile(path.join(root,"src/components/avatar/vrmWardrobeAdapter.ts"),"utf8");
+ assert.match(stage,/collectVrmAvatarRigIdentityDescriptors/);
+ assert.match(stage,/wardrobeSelectedAssetIds/);
+ assert.match(stage,/Выберите элементы, которые нужно заменить/);
+ assert.match(stage,/expectedAssetIds=\[\.\.\.new Set\(wardrobeSelectedAssetIds\)\]/);
+ assert.match(stage,/checked=event\.currentTarget\.checked/);
+ assert.match(adapter,/visitBaseAvatarRig/);
+ assert.match(adapter,/nk1WardrobeSlot !== undefined/);
+ assert.match(adapter,/collectVrmAvatarRigIdentityDescriptors/);
+});
