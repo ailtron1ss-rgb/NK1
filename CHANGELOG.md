@@ -1,3 +1,12 @@
+## [NK1][Aspect 09 — Live2D] Frame-rate-independent expression, gaze, lip and blink control (2026-10-30)
+
+- Replace per-frame interpolation factors with elapsed-time smoothing shared by the app and runtime viewers. Facial expression, mouth opening/form, semantic gaze and micro-saccades now respond consistently across 14/30/60/144 Hz and after background-tab stalls.
+- Replace the accumulating blink multiplier with a bounded 180 ms symmetric time-sampled envelope; repeated blinks no longer depend on ticker frequency.
+- Add expression-specific eye openness so tired, sad, focused and other expressions do not all force the eyes to the same fully-open baseline.
+- Hoist face profiles out of the per-frame update path to avoid recreating the profile map on every Cubism update.
+- Add a production contract test for model file references, CDI parameter writes, physics input/output IDs, registered expressions/motion groups, and app/runtime helper parity.
+- This is a code-level timing and asset-integrity improvement. Visual calibration, real browser rendering, Android thermal/memory soak, and measured lip-sync/interrupt latency remain unverified.
+
 ## [NK1][Aspect 01 — Live2D] Guard asynchronous Cubism motion transitions (2026-10-30)
 
 - Add monotonic request sequencing to both app and runtime viewers so stale promise completions cannot overwrite newer motion state or emit obsolete errors.
