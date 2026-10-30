@@ -3,6 +3,7 @@ import type { OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { deriveAffectiveExpression, smoothAffectiveExpression } from "./avatar/affectiveExpression";
 import { deriveFacialMicrochannels } from "./avatar/facialMicrochannels";
+import { deriveSpeechProsody, type SpeechProsodyEmotion } from "./avatar/speechProsody";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -162,7 +163,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
         const language = inferSpeechLanguage(text);
-        const rate = 0.96;
+        const utteranceEmotion = (lastTurn.emotion ?? snap.emotion.label) as SpeechProsodyEmotion;
+        const speechAffect = deriveAffectiveExpression({
+          emotion: snap.emotion.label,
+          valence: snap.emotion.valence,
+          arousal: snap.emotion.arousal,
+          dominance: snap.emotion.dominance,
+        });
+        const prosody = deriveSpeechProsody({
+          emotion: utteranceEmotion,
+          valence: snap.emotion.valence,
+          arousal: snap.emotion.arousal,
+          dominance: snap.emotion.dominance,
+          emphasis: speechAffect.voiceEmphasis,
+        });
+        const rate = prosody.rate;
         const sequence = ++speechSequenceRef.current;
         const speechEventId = `avatar-speech-${Date.now().toString(36)}-${sequence.toString(36)}`;
         const session: BrowserSpeechSession = {
@@ -183,9 +198,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         setVoiceStatus("ready");
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = language;
-        utterance.rate = rate;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
-        utterance.pitch = utteranceEmotion === "joy" ? 1.03 : utteranceEmotion === "frustration" || utteranceEmotion === "anger" ? 0.92 : 1.0;
+        utterance.rate = prosody.rate;
+        utterance.pitch = prosody.pitch;
+        utterance.volume = prosody.volume;
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;
