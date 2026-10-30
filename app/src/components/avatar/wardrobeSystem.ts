@@ -83,7 +83,7 @@ export function getGarment(id: string): GarmentDef | undefined { return garmentB
 
 /** Reject absolute paths, traversal, query strings and remote URLs in wardrobe packs. */
 export function isSafeWardrobeAssetPath(path: string): boolean {
-  if (!path || path.length > 240 || path.startsWith("/") || path.includes("\\") || /[?#\u0000-\u001f]/u.test(path)) return false;
+  if (!path || path.length > 240 || path.startsWith("/") || path.includes(":") || path.includes("\\") || /[?#\u0000-\u001f]/u.test(path)) return false;
   const parts = path.split("/");
   return parts.every((part) => part.length > 0 && part !== "." && part !== "..") &&
     /\.(?:png|webp|jpg|jpeg|json|vrm|glb|gltf)$/iu.test(path);
