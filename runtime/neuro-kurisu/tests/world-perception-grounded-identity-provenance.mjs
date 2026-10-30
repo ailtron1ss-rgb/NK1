@@ -87,6 +87,15 @@ assert.ok(!stale.snapshot().provenanceIds.includes('stale-observed-receipt'));
 assert.ok(staleWorld.facts.includes('historical-observed-evidence:old:door-open'));
 assert.ok(!staleWorld.facts.includes('observed-evidence:old:door-open'));
 
+// A same-cycle unresolved world summary must not downgrade a direct vision model result.
+const fusedEngine = new P41SemanticPerceptionEngine();
+const fused = fusedEngine.ingest({
+  at: 4_000,
+  vision: { semantic: true, sceneLabel: 'laboratory', confidence01: 0.93, objects: [], relations: [], events: [] },
+  world: { scene: 'laboratory', objects: [] },
+});
+assert.equal(fused.sceneEvidenceKind, 'model-output');
+
 // Missing provenance is fail-closed; explicit independent evidence remains representable.
 const unknownEngine = new P41SemanticPerceptionEngine();
 const unknown = unknownEngine.ingest({
