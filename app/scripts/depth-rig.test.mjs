@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { orderDepthRigNodes, resolveDepthRigPose, resolveDepthRigWorldPose, validateDepthRig } from "../src/components/avatar/depthRig.ts";
 import { resolveDepthRigPoseFromEmbodimentIntent, resolveDepthRigPoseFromMotorFrame } from "../src/components/avatar/embodimentIntentAdapter.ts";
+import { applyDepthRigWorldPoseToLayers } from "../src/components/avatar/depthRigRendererAdapter.ts";
 
 const transform = { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1 };
 const node = (id, role, parentId, depthOrder) => ({
@@ -199,4 +200,36 @@ test("validates calibration even when a bound motor joint is absent", () => {
   assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, {
     version: 1, goalId: "goal.missing-joint", phase: "moving", joints: {},
   }, [{ nodeId: "head", jointId: "not-present", maxAbsDegrees: 100 }]), /calibration/);
+});
+
+
+test("writes composed affine matrices and painter order into renderer-owned layers", () => {
+  const calls = [];
+  const target = () => ({
+    matrix: { set: (...values) => calls.push(values) },
+    matrixAutoUpdate: true, renderOrder: -1, visible: false,
+  });
+  const root = target(), head = target();
+  const result = applyDepthRigWorldPoseToLayers(rig, [
+    { nodeId: "root", target: root },
+    { nodeId: "head", target: head, pivotOffset: { x: 0.25, y: 0.5 } },
+  ]);
+  assert.deepEqual(result.renderedNodeIds, ["root", "head"]);
+  assert.deepEqual(result.missingNodeIds, ["arm-left", "torso", "neck", "hair-front"]);
+  assert.equal(root.matrixAutoUpdate, false);
+  assert.equal(root.renderOrder, 0);
+  assert.equal(root.visible, true);
+  assert.equal(head.renderOrder, 4);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].length, 16);
+});
+
+test("renderer adapter rejects duplicate bindings and non-finite pivots", () => {
+  const target = () => ({ matrix: { set() {} }, matrixAutoUpdate: true, renderOrder: 0, visible: true });
+  assert.throws(() => applyDepthRigWorldPoseToLayers(rig, [
+    { nodeId: "head", target: target() }, { nodeId: "head", target: target() },
+  ]), /binding/);
+  assert.throws(() => applyDepthRigWorldPoseToLayers(rig, [
+    { nodeId: "head", target: target(), pivotOffset: { x: Number.NaN, y: 0 } },
+  ]), /pivot/);
 });
