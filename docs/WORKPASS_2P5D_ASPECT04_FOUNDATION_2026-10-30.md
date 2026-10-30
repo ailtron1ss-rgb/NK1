@@ -131,3 +131,8 @@ The first exact-head run failed in two assertions, not in the transform implemen
 ### Boundary
 
 This is now a renderer-facing transform bridge, not a complete visual renderer. It does not load PNG/PSD/GLB layers, create occlusion masks, derive pivots from artwork, or provide a production character. The existing Three.js stage remains a procedural 3D preview and the canonical Live2D stage remains separate. Real layered art and browser/device visual E2E are still required.
+
+
+### Follow-up hardening — renderer matrix propagation
+
+After writing a new local affine matrix, the adapter now sets the renderer object's `matrixWorldNeedsUpdate` flag. This matters for objects already present in a Three.js scene: setting `matrixAutoUpdate=false` and changing `matrix` alone does not guarantee an already-computed world matrix is invalidated. The focused test now asserts this propagation signal. The next CI run covers this follow-up.
