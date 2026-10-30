@@ -24,6 +24,7 @@ function createPortsFromFabric(fabric:OrganismSystemFabric): CognitiveSubsystemP
     },
     memory:{
       snapshot:()=>fabric.memory.snapshot(),
+      userModel:()=>fabric.memory.userModel.snapshot(),
       epistemic:()=>fabric.memory.p65EpistemicLedger.snapshot(),
       prediction:()=>fabric.research.predictionLedger.snapshot(),
       predictionDebt:()=>fabric.research.predictionDebt.snapshot(),
