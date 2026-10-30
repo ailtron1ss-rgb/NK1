@@ -1,5 +1,7 @@
 # Unreleased
 
+- [NK1][Aspect 12] Add a fail-closed release-readiness auditor for project manifests, lockfile alignment, source hygiene and explicit human license clearance; add contract tests, a dedicated exact-SHA GitHub Actions workflow, and a Russian plan covering browser/device E2E, performance baselines, soak/recovery, SBOM/provenance and canonical Release ZIP verification. Structural pass is explicitly not release approval; current pending human license reviews remain blockers.
+
 - [NK1][Embodiment] Added renderer-neutral bounded joint motor controller, priority-aware goal interruption, snapshot recovery, planar two-bone IK, basal-ganglia/cerebellar motor-goal arbitration, independently verified outcome credit with restart-safe deduplication, regression tests and Aspect 06 implementation plan. This is an initial execution substrate; full 3D dynamics, cognitive goal wiring and renderer adapters remain pending.
 
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
