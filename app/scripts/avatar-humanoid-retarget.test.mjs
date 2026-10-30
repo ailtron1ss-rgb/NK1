@@ -11,9 +11,12 @@ import {
 
 const identity = [0, 0, 0, 1];
 const zQuarter = [0, 0, Math.sin(Math.PI / 4), Math.cos(Math.PI / 4)];
-const rig = ({ roles = ["hips", "spine", "head"], height = 1, lengths = {} } = {}) => ({
+const xQuarter = [Math.sin(Math.PI / 4), 0, 0, Math.cos(Math.PI / 4)];
+const yQuarter = [0, Math.sin(Math.PI / 4), 0, Math.cos(Math.PI / 4)];
+const rig = ({ roles = ["hips", "spine", "head"], height = 1, lengths = {}, world = null } = {}) => ({
   roleToNode: new Map(roles.map((role, index) => [role, index + 10])),
   restLocalRotation: new Map(roles.map((role) => [role, identity])),
+  ...(world ? { restWorldRotation: new Map(roles.map((role) => [role, world[role] ?? identity])) } : {}),
   boneLength: new Map(Object.entries(lengths)),
   height,
 });
@@ -35,6 +38,7 @@ test("profile maps shared semantic roles and reports target omissions", () => {
   );
   assert.deepEqual(profile.sharedRoles, ["head", "hips", "spine"]);
   assert.deepEqual(profile.missingTargetRoles, ["leftupperarm"]);
+  assert.deepEqual(profile.uncalibratedAxisRoles, ["head", "hips", "spine"]);
   assert.ok(Math.abs(profile.heightScale - 1.9 / 1.7) < 1e-8);
 });
 
@@ -57,6 +61,25 @@ test("source rotation delta is transferred relative to the target rest pose", ()
   const output = retargetLocalRotations(profile, new Map([["head", zQuarter]]));
   const expected = multiplyQuaternion(zQuarter, zQuarter);
   assert.deepEqual(output.get("head"), expected);
+});
+
+test("world-rest calibration conjugates source-local motion into target-local axes", () => {
+  const profile = buildHumanoidRetargetProfile(
+    rig({ roles: ["head"], world: { head: zQuarter } }),
+    rig({ roles: ["head"], world: { head: identity } }),
+  );
+  assert.deepEqual(profile.sourceToTargetAxisBasis.get("head"), zQuarter);
+  const output = retargetLocalRotations(profile, new Map([["head", xQuarter]]), { requireAxisCalibration: true });
+  assert.ok(output.has("head"));
+  const expected = multiplyQuaternion(multiplyQuaternion(zQuarter, xQuarter), inverseQuaternion(zQuarter));
+  assert.ok(output.get("head")!.every((value, index) => Math.abs(value - expected[index]) < 1e-8));
+  assert.ok(Math.abs(output.get("head")![1] - yQuarter[1]) < 1e-8);
+});
+
+test("strict axis calibration skips roles that have no paired world-rest frame", () => {
+  const profile = buildHumanoidRetargetProfile(rig({ roles: ["head"] }), rig({ roles: ["head"] }));
+  assert.equal(retargetLocalRotations(profile, new Map([["head", xQuarter]]), { requireAxisCalibration: true }).size, 0);
+  assert.equal(retargetLocalRotations(profile, new Map([["head", xQuarter]])).size, 1);
 });
 
 test("rotation safety cap bounds the transferred delta", () => {
