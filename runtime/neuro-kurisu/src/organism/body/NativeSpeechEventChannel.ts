@@ -45,6 +45,8 @@ export function createNativeSpeechEventChannel(
 ): NativeSpeechEventChannel {
   const listeners = new Set<(event: NativeSpeechProviderEventV1) => void>();
   const sequences = new Map<string, number>();
+  const pending: NativeSpeechProviderEventV1[] = [];
+  let dispatching = false;
   let eventCounter = 0;
 
   return {
@@ -73,8 +75,21 @@ export function createNativeSpeechEventChannel(
         ...(input.errorCode ? { errorCode: String(input.errorCode).slice(0, 64) } : {}),
         ...(input.reason ? { reason: String(input.reason).replace(/[\\r\\n\\t]+/g, ' ').slice(0, 160) } : {}),
       });
-      for (const listener of [...listeners]) {
-        try { listener(event); } catch { /* observers must never affect speech execution */ }
+      pending.push(event);
+      // Queue reentrant publications so every observer sees the same total order.
+      if (!dispatching) {
+        dispatching = true;
+        try {
+          while (pending.length) {
+            const next = pending.shift();
+            if (!next) continue;
+            for (const listener of [...listeners]) {
+              try { listener(next); } catch { /* observers must never affect speech execution */ }
+            }
+          }
+        } finally {
+          dispatching = false;
+        }
       }
       return event;
     },
