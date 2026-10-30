@@ -57,3 +57,10 @@ test("fails closed for malformed or truncated GLB containers", () => {
   const broken = glb(document()).subarray(0, 18);
   assert.ok(validateDepthRigGlb(broken).errors.includes("glb-length-mismatch"));
 });
+
+test("rejects a manifest parent that differs from the actual exported glTF graph", () => {
+  const rig = manifest();
+  rig.nodes[1].parentId = "not-the-exported-parent";
+  const result = validateDepthRigGlb(glb(document(rig)));
+  assert.ok(result.errors.includes("missing-parent:head"));
+});
