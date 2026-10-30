@@ -15,7 +15,7 @@ Deliver real, independently selectable clothing and accessories for one NK1 iden
 
 ## Current state
 
-**Conservative aspect estimate: 58/100.** This is an engineering estimate for the wardrobe aspect, not a whole-project score. It is not a device-verified or release-complete claim.
+**Conservative aspect estimate: 59/100.** This is an engineering estimate for the wardrobe aspect, not a whole-project score. It is not a device-verified or release-complete claim.
 
 | Subsystem | Current status | Readiness |
 |---|---|---:|
@@ -142,3 +142,11 @@ A metadata-only catalog, procedural preview or passing unit suite alone cannot s
 - Regression coverage added for body-specific keys, safe stored slot selection, cancellation before parsing and cancellation after parsing.
 
 Boundary: this is implementation-level IndexedDB and cancellation wiring. Real browser quota/restart tests, Android validation, actual garment GLBs, and Live2D/2.5D adapters still need to pass before the aspect can be called complete.
+
+
+### Latest verified checkpoint
+
+- HEAD: `52ea82e3bf60f0524a32ad5bb2d5212b4d38b6dc`
+- [NK1 modular wardrobe validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41086075600): **62 passed / 0 failed / 0 skipped**
+- The suite now covers per-slot selection, body/rig persistence validation, multi-slot VRM attachment, stable skeleton identity, stale-load cancellation and fail-closed asset verification.
+- General NeuroCore regression was still in progress at the latest status check; it is not claimed as complete.
