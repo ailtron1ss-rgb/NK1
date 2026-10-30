@@ -119,3 +119,15 @@ The first exact-head run failed in two assertions, not in the transform implemen
 - Added `resolveDepthRigPoseFromMotorFrame(...)` with explicit `DepthRigJointBinding` records. Motor joint IDs are never guessed from node names; each binding specifies node ID, joint ID, rest angle and optional scale/safety envelope.
 - Active motor goals can drive bound rig rotations through bounded radians-to-degrees conversion. Idle/rejected/expired frames produce no pose deltas; unavailable joints are ignored; duplicate or unsafe bindings fail closed.
 - This is the intended narrow seam for PR #410's renderer-neutral `MotorFrame` output. It is not yet wired into a live 2.5D renderer, and the actual skeleton-to-art binding profile still needs authoring.
+
+
+## Renderer integration seam — WorkPass 02
+
+- Added `app/src/components/avatar/depthRigRendererAdapter.ts`. It consumes the validated rig and canonical world-pose output, then writes affine matrices and explicit painter depth into renderer-owned layer objects. The structural target contract is compatible with Three.js `Object3D` while keeping Three.js scene/resource ownership outside the rig core.
+- Per-layer `pivotOffset` translates the geometry origin to its authored pivot before the world matrix is written. Layer geometry, textures, masks, crop dimensions and scene lifecycle remain owned by the renderer.
+- The adapter reports absent layer bindings as `missingNodeIds`; it does not fabricate placeholders or mark an incomplete puppet as complete. Duplicate/unknown bindings, non-finite pivot offsets and invalid world matrices fail closed.
+- Added two regression tests covering matrix emission/order and malformed bindings. The dedicated workflow path filter includes the renderer adapter.
+
+### Boundary
+
+This is now a renderer-facing transform bridge, not a complete visual renderer. It does not load PNG/PSD/GLB layers, create occlusion masks, derive pivots from artwork, or provide a production character. The existing Three.js stage remains a procedural 3D preview and the canonical Live2D stage remains separate. Real layered art and browser/device visual E2E are still required.
