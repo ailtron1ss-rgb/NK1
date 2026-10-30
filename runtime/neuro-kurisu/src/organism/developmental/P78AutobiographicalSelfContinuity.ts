@@ -50,15 +50,26 @@ export class P78AutobiographicalSelfContinuity{
   restore(raw:Partial<P78State>|undefined){
     if(!raw)return;
     const d=defaultP78();
+    const counter=(value:unknown)=>{
+      const n=Number(value);
+      return Number.isSafeInteger(n)&&n>=0?n:0;
+    };
+    const chaptersData=Array.isArray(raw.chaptersData)?raw.chaptersData.slice(-32).map((row:any,index:number)=>({
+      id:boundedText(row?.id,96)||`chapter:restored:${index}`,
+      fromTick:counter(row?.fromTick),toTick:counter(row?.toTick),
+      summary:boundedText(row?.summary,240),
+      significance01:clamp(Number(row?.significance01??0))
+    })):[];
     this.state={
       ...d,...raw,version:2,
-      chapters:Math.max(0,Math.floor(Number(raw.chapters)||0)),
-      samples:Math.max(0,Math.floor(Number(raw.samples)||0)),
-      chaptersData:Array.isArray(raw.chaptersData)?raw.chaptersData.slice(-32):[],
-      lastObservationKey:String(raw.lastObservationKey??''),
-      verifiedOutcomeSamples:Math.max(0,Math.floor(Number(raw.verifiedOutcomeSamples)||0)),
-      unverifiedOutcomeSamples:Math.max(0,Math.floor(Number(raw.unverifiedOutcomeSamples)||0)),
-      authorshipEvidenceSamples:Math.max(0,Math.floor(Number(raw.authorshipEvidenceSamples)||0)),
+      chapters:counter(raw.chapters),
+      samples:counter(raw.samples),
+      chaptersData,
+      recentSummary:boundedText(raw.recentSummary,512)||d.recentSummary,
+      lastObservationKey:boundedText(raw.lastObservationKey,4096),
+      verifiedOutcomeSamples:counter(raw.verifiedOutcomeSamples),
+      unverifiedOutcomeSamples:counter(raw.unverifiedOutcomeSamples),
+      authorshipEvidenceSamples:counter(raw.authorshipEvidenceSamples),
       processedEventKeys:Array.isArray(raw.processedEventKeys)
         ? [...new Set(raw.processedEventKeys.filter((x):x is string=>typeof x==='string'&&x.length>0&&x.length<=2048))].slice(-512)
         : []
