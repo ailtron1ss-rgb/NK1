@@ -34,12 +34,12 @@ test("unreachable and degenerate IK targets are safely projected", () => {
 
 test("highest-priority intent wins and equal-priority proposals blend deterministically", () => {
   const result = resolveMotorProposals([
-    { source: "gesture", priority: 60, joints: { shoulder: 1, elbow: 1 } },
+    { source: "gesture", priority: 60, joints: { shoulder: 1, elbow: 0.8 } },
     { source: "safety", priority: 100, joints: { shoulder: -0.4 } },
-    { source: "social", priority: 60, weight: 1, joints: { elbow: -1 } },
+    { source: "social", priority: 60, weight: 1, joints: { elbow: 0.2 } },
   ], limits);
   assert.equal(result.pose.shoulder, -0.4);
-  assert.equal(result.pose.elbow, 0);
+  assert.equal(result.pose.elbow, 0.5);
   assert.deepEqual(result.owners.shoulder, ["safety"]);
   assert.deepEqual(result.owners.elbow, ["gesture", "social"]);
 });
