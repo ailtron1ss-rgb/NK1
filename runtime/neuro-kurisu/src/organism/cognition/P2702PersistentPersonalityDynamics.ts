@@ -49,7 +49,7 @@ export class P2702PersistentPersonalityDynamics{
   const adaptiveNames=names(r.adaptiveNames,d.adaptiveNames);
   const valueNames=names(r.valueNames,d.valueNames);
   const trustSource=r.relationshipTrust&&typeof r.relationshipTrust==='object'&&!Array.isArray(r.relationshipTrust)?Object.entries(r.relationshipTrust):[];
-  const relationshipTrust=Object.fromEntries(trustSource.filter(([k])=>typeof k==='string'&&k.trim().length>0).slice(0,32).map(([k,v])=>[String(k).slice(0,80),clamp(Number(v))]));
+  const relationshipTrust=Object.fromEntries(trustSource.filter(([k])=>typeof k==='string'&&k.trim().length>0&&String(k).length<=80&&!['__proto__','prototype','constructor'].includes(String(k))).slice(0,32).map(([k,v])=>[String(k).slice(0,80),clamp(Number(v))]));
   const actionPreference=Object.fromEntries(ACTIONS.map(action=>[action,clamp(Number(r.actionPreference?.[action]??0),-1,1)])) as Record<ActionKind,number>;
   this.state={...d,...deep(r),version:1,
    tick:count(r.tick),experienceCount:count(r.experienceCount),learningUpdates:count(r.learningUpdates),
@@ -83,7 +83,8 @@ export class P2702PersistentPersonalityDynamics{
   this.state.relationshipTrust[key]=clamp(prior*(1-boundedRate)+clamp(trustSignal)*boundedRate);
 }
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
-  this.state.tick=args.tick;this.state.experienceCount++;this.state.lastReward01=clamp(args.reward01??.5);
+  if(Number.isSafeInteger(args.tick)&&args.tick>=0)this.state.tick=args.tick;
+  this.state.experienceCount=Math.min(1_000_000,this.state.experienceCount+1);this.state.lastReward01=clamp(args.reward01??.5);
   const tension=clamp(args.identityGap01*.5+args.uncertainty01*.3+args.novelty01*.2);
   const canonCuriosity=this.state.invariantValues[this.state.invariantNames.indexOf('curiosity')]??.96;
   const rigor=this.state.invariantValues[this.state.invariantNames.indexOf('scientificRigor')]??.95;
