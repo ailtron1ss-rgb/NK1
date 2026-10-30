@@ -1,3 +1,11 @@
+## [NK1][Aspect 08] Connect verified wardrobe packs to uploaded VRM models (2026-10-30)
+
+- Add local NK1 wardrobe JSON bundle v1 ingestion (manifest plus base64 payload map); no ZIP parser or remote asset fetch is implied.
+- Expose a deterministic skeleton-name fingerprint and rig contract version for pack authoring; show the exact target identity in the stage UI.
+- Wire the uploaded-model stage to the existing verified VRM pack loader, including byte/hash checks, renderer/body/rig validation, self-contained GLB parsing, skeleton preflight and rollback.
+- Require explicit user self-attestation of usage rights before application, while clearly stating that the app does not independently verify legal rights or provenance.
+- Add focused regression coverage for the uploaded VRM pack path. Actual compatible garment GLBs, persistence and visual/device E2E remain pending.
+
 ## [NK1][Aspect 08] Integrate selectable procedural outfits into Avatar3DStage (2026-10-30)
 
 - Add three actual procedural 3D clothing silhouettes to the stage: lab coat, casual top and hoodie. Outfit controls switch geometry visibility rather than merely changing a label; the selected variant is applied to the live procedural body and reset remains compatible with the existing model lifecycle.
