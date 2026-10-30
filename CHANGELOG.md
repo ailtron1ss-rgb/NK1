@@ -1,3 +1,9 @@
+## [NK1][Perception] Exercise motion prediction after a measured velocity sample (2026-10-30)
+
+- The motion-tracking regression now establishes velocity with two accepted observations before testing a larger subsequent displacement.
+- This verifies the implemented constant-velocity predictor without expecting a direction estimate from a single seed frame.
+- Identity continuity remains asserted across the seed, measured-motion primer and predicted follow-up.
+
 ## [NK1][Perception] Count same-frame duplicate detections as ambiguous (2026-10-30)
 
 - The tracker already rejected overlapping same-label detections as ambiguous and withheld local IDs, but did not include those records in the ambiguous metric.
