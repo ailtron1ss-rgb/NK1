@@ -1,3 +1,10 @@
+## [NK1][Aspect 10] Add grounded interaction and VRM rig calibration foundations (2026-10-30)
+
+- Add a fail-closed, renderer-independent embodied interaction planner with target/frame freshness, explicit safety authorization and independent postcondition requirements.
+- Add the grounded interaction bridge and regressions; simulator outcomes remain explicitly simulated and are not treated as physical completion.
+- Add planar arm IK math, VRM humanoid arm-chain recognition, rig calibration profiles/sessions and local avatar-model fingerprinting. These are calibration foundations; IK is not yet applied as a production full-body controller.
+- Preserve current dependency versions and lockfiles; only add targeted scripts. The current 3D procedural/GLTF stage remains a preview/import surface, not a bundled licensed Kurisu production model.
+
 ## [NK1][Security] Add governed tool input/output contracts (2026-10-30)
 
 - Add a bounded JSON-schema-inspired contract validator at the canonical ActionGateway, with validation before approval consumption and executor entry.
