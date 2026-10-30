@@ -85,3 +85,8 @@ The contract is provider-neutral and names a native TTS provider, but the native
 **Критически важно:** это не события воспроизведения и не `SpeechLifecycleEventV1`. Поле `playbackVerified` всегда равно `false`; `process-spawned` не означает, что Android TTS начал выдавать звук, а `process-exited` не означает, что звук закончился. Канал пока локален процессу runtime и ещё не доставляется в браузерный/Live2D viewer. Для полной синхронизации следующий шаг — явный host-to-UI transport с сохранением operation/utterance identity, а затем независимый playback/audio clock source; нельзя подменять их process events.
 
 Добавлен тестовый набор `test:workpass628:native-speech-events` для порядка и изоляции operation ID, монотонного времени, безопасных подписчиков/unsubscribe и запрета трактовать process events как playback evidence. Hosted CI для новых коммитов ещё не подтверждён.
+
+
+### Typecheck correction
+
+Первый CI-прогон новой интеграции поймал несовместимость импорта `node:perf_hooks` с минимальными ambient declarations runtime. Источник исправлен: используется типизированный глобальный `performance.now()` (монотонные часы Node), без расширения shim и без новой зависимости. Исправление записано в CHANGELOG; повторная hosted-проверка нового HEAD ожидается.
