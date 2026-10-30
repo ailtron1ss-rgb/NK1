@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, defaultWardrobeAssetSelection, updateWardrobeAssetSelection, validateWardrobePackManifest, verifyWardrobeAssetBytes, verifyWardrobePackPayload } from "../src/components/avatar/wardrobePack.ts";
+import { acknowledgeWardrobeSwitch, createWardrobeSwitchPlan, defaultWardrobeAssetSelection, updateWardrobeAssetSelection, validateWardrobeAssetSelection, validateWardrobePackManifest, verifyWardrobeAssetBytes, verifyWardrobePackPayload } from "../src/components/avatar/wardrobePack.ts";
 
 const validManifest = () => ({
   schemaVersion: 1,
@@ -172,4 +172,23 @@ test("selecting a garment replaces only its own slot and preserves other slots",
  value.assets.push({...other,id:"shoes-vrm",garmentId:"shoes",slot:"footwear",path:"garments/shoes.glb",sha256:"c".repeat(64)});
  assert.deepEqual(updateWardrobeAssetSelection(value,"vrm3d",["lab-coat-vrm","shoes-vrm"],"lab-coat-alt",true),["shoes-vrm","lab-coat-alt"]);
  assert.deepEqual(updateWardrobeAssetSelection(value,"vrm3d",["lab-coat-alt","shoes-vrm"],"lab-coat-alt",false),["shoes-vrm"]);
+});
+
+
+test("renderer-scoped selection rejects unknown, cross-renderer, duplicate and same-slot assets",()=>{
+ const value=validManifest();
+ value.assets.push({...value.assets[0],id:"coat-alt",path:"garments/coat-alt.glb",sha256:"b".repeat(64)});
+ value.assets.push({...value.assets[0],id:"coat-depth",path:"previews/coat.webp",renderer:"depth2d",mime:"image/webp",sha256:"c".repeat(64)});
+ assert.deepEqual(validateWardrobeAssetSelection(value,"vrm3d",["lab-coat-vrm"]),[]);
+ assert.ok(validateWardrobeAssetSelection(value,"vrm3d",["missing"]).includes("wardrobe:selection-unknown-asset:missing"));
+ assert.ok(validateWardrobeAssetSelection(value,"vrm3d",["coat-depth"]).includes("wardrobe:selection-wrong-renderer:coat-depth"));
+ assert.ok(validateWardrobeAssetSelection(value,"vrm3d",["lab-coat-vrm","coat-alt"]).includes("wardrobe:selection-duplicate-slot:outerwear"));
+ assert.ok(validateWardrobeAssetSelection(value,"vrm3d",["lab-coat-vrm","lab-coat-vrm"]).includes("wardrobe:selection-duplicate-id:lab-coat-vrm"));
+});
+test("selection update sanitizes stale and cross-renderer ids while preserving other slots",()=>{
+ const value=validManifest();
+ value.assets.push({...value.assets[0],id:"coat-alt",path:"garments/coat-alt.glb",sha256:"b".repeat(64)});
+ value.assets.push({...value.assets[0],id:"shoes",slot:"footwear",path:"garments/shoes.glb",sha256:"c".repeat(64)});
+ value.assets.push({...value.assets[0],id:"depth-preview",renderer:"depth2d",path:"previews/coat.webp",mime:"image/webp",sha256:"d".repeat(64)});
+ assert.deepEqual(updateWardrobeAssetSelection(value,"vrm3d",["missing","depth-preview","lab-coat-vrm","shoes"],"coat-alt",true),["shoes","coat-alt"]);
 });
