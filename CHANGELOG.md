@@ -1,3 +1,141 @@
+## [NK1][2.5D] Replace MotorFrame polling with live event transport (2026-10-30)
+
+- Replace periodic HTTP polling with one EventSource connection while 3D/2.5D mode is active; close it on mode change/unmount and rely on EventSource reconnection after transient network failures.
+- Parse each event through the same strict response/joint validator before forwarding it to the renderer.
+- Avoid per-frame request overhead and avoid colliding with the backend's ordinary API rate limit while receiving the controller's bounded continuous stream.
+- The stream is read-only; semantic fallback remains active until a calibrated skeleton and explicit joint bindings exist.
+
+## [NK1][2.5D] Verify renderer pose application and rollback on failure (2026-10-30)
+
+- Upgrade the Three.js depth-rig adapter from write-only transforms to a postcondition-checked application: resolve all nodes first, snapshot their prior local pose, apply transforms, update matrices, and read back position/rotation/scale/visibility/render order.
+- If any readback differs from the requested pivot-compensated transform, restore the complete pre-apply pose and return a fail-closed diagnostic; exceptions also trigger best-effort rollback.
+- Surface a single bounded UI warning when an animated 2.5D pose cannot be confirmed, without repeatedly flooding the interface.
+- Add a regression that injects a transform write fault and verifies rollback of the mutated scene node.
+- This verifies Three.js Object3D local-transform postconditions in the runtime adapter. It does not establish artist calibration, actual device pixels, cross-renderer equivalence or a production Kurisu rig.
+
+## [NK1][2.5D] Deliver canonical MotorFrames to the avatar stage (2026-10-30)
+
+- Add the app API client for the backend's read-only `GET /api/organism/motor-frame` snapshot and server-sent event stream.
+- When 3D or 2.5D mode is selected, subscribe to the server-owned MotorFrame event stream; close the stream when the user switches to another avatar mode.
+- Validate the response envelope and every joint's identity, availability and numeric state before forwarding the measured angle data to the existing explicit-binding adapter.
+- Keep semantic animation as the fallback when the backend is unavailable, the skeleton is unconfigured, or no calibrated bindings are supplied. The UI cannot submit or fabricate motor frames.
+- Use one reconnecting EventSource connection instead of high-frequency polling, avoiding per-frame HTTP request overhead and the API request-rate limit. Add the API file to the focused workflow and run the app TypeScript check there.
+- This is a transport bridge only: the server currently has no calibrated Kurisu skeleton profile or autonomous motor-goal source, and no production joint bindings or visual postcondition are claimed. This UI path depends on the read-only endpoint introduced by PR #410.
+
+## [NK1][2.5D] Repair exported-GLB validator regression fixtures (2026-10-30)
+
+- Fix a missing local GLB document in the parent/TRS mismatch test, which caused a ReferenceError before exercising the validator.
+- Make the quaternion drift test mutate the actual exported GLB node rotation while keeping the manifest reference at identity; the prior fixture accidentally removed the exported quaternion and therefore did not test drift.
+- Re-run the focused depth-rig workflow on the exact follow-up HEAD before claiming validation.
+
+## [NK1][WorkPass646] Cover exported quaternion rotation fidelity (2026-10-30)
+
+- Add a non-zero glTF quaternion to Euler XYZ round-trip regression and a negative rotation-drift assertion, so rotation comparison is tested beyond identity poses.
+- Correct GLB JSON padding trimming in the Blender exporter to strip actual JSON padding characters rather than literal escape letters.
+- Keep the exporter fail-closed for matrix transforms until the runtime schema has a tested matrix decomposition path.
+
+## [NK1][WorkPass645] Reconcile 2.5D manifest against exported glTF transforms (2026-10-30)
+
+- Stop copying Blender-space object locations and Euler rotations into the runtime manifest before glTF axis conversion.
+- After export, resolve each rig node by a unique exported glTF name and derive local translation, quaternion-to-XYZ rotation and parent ID from the actual glTF node graph.
+- Fail closed when a rig parent is outside the declared collection, an exported node is ambiguous, a node uses a matrix transform the current runtime schema cannot represent, or the exported hierarchy contains a non-rig parent.
+- Extend the dependency-free GLB validator to compare manifest TRS and parent provenance against the actual glTF node graph, including root-parent mismatches.
+- Add regressions for local translation mismatch and hidden root reparenting. This improves export fidelity but does not replace authored Kurisu artwork, Blender authoring calibration or browser/device E2E.
+
+## [NK1][WorkPass644] Make the headless Blender blockout version-compatible (2026-10-30)
+
+- Remove an unused render-engine assignment from the deterministic geometry-only demo scene. Blender's headless glTF export does not render frames, and the assignment selected `BLENDER_EEVEE_NEXT`, which is absent from the Ubuntu Blender 4.0.2 package used by CI.
+- Keep the scene generator independent of Blender's render-engine enum so the actual GLB export smoke test can reach the exporter on supported Blender 4.x distributions.
+- The next exact-HEAD CI run, including a real Blender export and GLB validation, is the acceptance gate; this source change alone is not reported as a pass.
+
+## [NK1][WorkPass643] Enforce imported 2.5D hierarchy provenance (2026-10-30)
+
+- Extend the Three.js adapter with an optional expected-parent contract and compare manifest parent IDs against actual Object3D parent names before applying any transform.
+- Pass the validated manifest graph during initial GLB/VRM load; the manifest root remains allowed beneath the loader/container wrapper, while child-parent relations must match exactly.
+- Add an atomic-failure regression proving mismatched hierarchy is rejected without partially mutating the scene.
+- This closes a gap left by name-only validation: a model cannot pass 2.5D capability detection solely because node labels match when its actual layer graph is wrong.
+
+## [NK1][WorkPass642] Verify Blender exporter syntax and stage metadata handoff (2026-10-30)
+
+- Add focused source-contract regressions proving that Blender's scene extras are consumed by Avatar3DStage for both the depth manifest and custom face morph bindings, and that bindings are cleared on model reset.
+- Compile the Blender helper with Python's `py_compile` in focused CI; this catches syntax regressions without pretending Blender itself or an authored scene is available on the runner.
+- Correct the first GLB-validator fixture failures based on the actual GitHub Actions trace. The exact-HEAD rerun is the validation authority.
+
+## [NK1][WorkPass641] Consume artist face bindings from GLB scene extras (2026-10-30)
+
+- Read optional `nk1DepthRigFaceBindings` from the same glTF scene extras as the canonical depth-rig manifest and pass the mapping to the face morph resolver.
+- Keep asset metadata fail-safe through the existing channel/alias validation; absent bindings retain default morph-name discovery.
+- Clear face bindings when a model is reset so one model's custom morph mapping cannot leak into another model's lifecycle.
+- The exporter-to-runtime metadata path is now connected for both body rig and face morph aliases; no authored model or Blender execution is claimed.
+
+## [NK1][WorkPass639] Add Blender-to-GLB 2.5D export and asset validation (2026-10-30)
+
+- Add a Blender Python exporter that builds the runtime v1 depth-rig manifest from a named rig collection, preserving node IDs, parent links, local transforms, artist pivots, depth/parallax and visibility.
+- Inject `nk1DepthRigManifest` and optional `nk1DepthRigFaceBindings` into the active glTF scene extras so Three.js GLTFLoader exposes the exact metadata location consumed by Avatar3DStage.
+- Validate exported GLB node names before writing the metadata and fail closed on missing/invalid rig controls.
+- Add a dependency-free GLB v2 validator and synthetic-container regressions for node presence, hierarchy mismatches, duplicate IDs, cycles, missing parents and truncated files.
+- Extend the focused 2.5D CI gate to run the new GLB validator tests and watch exporter/validator paths.
+- This is an executable export/validation pipeline, not a production Kurisu asset. No Blender scene, artwork, visual E2E or canonical Release ZIP update is claimed.
+
+## [NK1][WorkPass639] Pass revisioned motor frames through the avatar stage boundary (2026-10-30)
+
+- Expose optional typed PR #410-compatible `MotorFrame` and explicit depth-rig motor bindings on the parent `AvatarStage`, then forward them unchanged to `Avatar3DStage`.
+- Keep the source optional and externally supplied: no motor goal or frame is synthesized from emotion, action, gaze, or UI state. Without a real frame, the existing semantic fallback remains active.
+- Add `AvatarStage.tsx` to both focused workflow path filters so this integration boundary is covered by the depth-rig gate.
+- This closes the React pass-through seam only; it does not claim that OrganismCore currently produces/publishes MotorFrames or that an end-to-end motor action has been executed and read back by a renderer.
+
+## [NK1][WorkPass638] Canonicalize the 2.5D depth-rig integration path (2026-10-30)
+
+- Select PR #408 `DepthRigManifest` as the single current runtime schema because it is the schema wired into `Avatar3DStage` and the Three.js scene adapter; keep PR #409's normalized affine contract as a source of migration requirements, not a competing runtime.
+- Record explicit boundaries for PR #410 MotorFrame ownership, real runtime-to-stage frame provenance, renderer readback, Live2D partial acknowledgements, production layered artwork and cross-renderer verification.
+- Specify a staged migration path for normalized pivots, rest-pose calibration, depth/occlusion metadata and semantic gestures without guessing units or joint names.
+- No schema was silently merged, no renderer behavior was claimed as end-to-end, and the canonical Release ZIP was not changed.
+
+## [NK1][WorkPass637] Install app dependencies in the focused depth-rig gate (2026-10-30)
+
+- The first focused workflow run passed the depth-rig core and face tests but could not resolve the Three.js package used by the renderer adapter fixture because the job intentionally started without app dependencies.
+- Add a lifecycle-script-disabled `npm ci` step before the Three.js adapter suite; retain the pinned Node 24 and Actions v7 contract.
+
+## [NK1][WorkPass637] Add focused 2.5D depth-rig CI gate (2026-10-30)
+
+- Add a Node 24 / approved Actions v7 workflow for the integrated depth-rig core, face resolver and Three.js transform adapter suites (23 focused test cases across three files).
+- Trigger the gate when any of the depth-rig runtime, face, renderer adapter, stage or focused tests change.
+
+## [NK1][WorkPass636] Audit current visual assets before 2.5D art production (2026-10-30)
+
+- Inventory the canonical Live2D model/physics/CDI3, the 32 complete legacy sprite PNGs and the editable SVG concept; distinguish reusable visual references from actual layered source art.
+- Document the hash-locked runtime-to-app Live2D asset hydration path, confirmed model capabilities and the missing production PSD/ORA/GLB with hidden-area paint, pivots and occlusion masks.
+- Add a staged art-production specification and readiness matrix. No new images were generated; no Release ZIP change.
+
+## [NK1][2.5D] Asymmetric facial rig and speech visemes (2026-10-30)
+
+- Expanded the renderer-independent face contract with independent left/right eyelid closure, brow raise/furrow, eye gaze axes, and eight viseme channels (AA, EE, IH, OH, OU, FV, MBP, L).
+- Added bounded speech-viseme resolution and frame-rate-independent expression blending; malformed artist binding metadata is ignored safely rather than crashing the avatar.
+- Wired the existing grapheme speech timeline's mouth categories into the imported GLB/VRM face morph adapter, including gaze and a deliberately slight asymmetric blink.
+- Added regression coverage for asymmetry, gaze clamping, viseme exclusivity, transition convergence, optional morphs, alias ambiguity, and malformed custom bindings.
+- These are runtime contracts and adapter behavior, not a claim that a production Kurisu face asset or artist-authored viseme shapes are already present.
+
+## [NK1][WorkPass635] Feed explicit autonomous motor frames into the 2.5D renderer (2026-10-30)
+
+- Add a fail-closed adapter from the PR #410 `MotorFrame` shape into the integrated Three.js depth-rig intent contract; renderer channels are connected only through explicit joint bindings, never guessed IDs.
+- Use the measured `angleRad` from each active moving/holding frame, not the future `targetAngleRad`, to prevent visual teleportation; preserve semantic fallback intent for idle/rejected/expired frames and unavailable/unbound joints.
+- Bound each mapped channel, validate frame/binding identity and reject duplicate channels/joints atomically; add five focused regressions and optional `Avatar3DStage` props for the frame and calibration bindings.
+- The current parent UI does not yet supply live MotorFrames; this establishes the renderer adapter boundary, not a claim of autonomous end-to-end actuation. No production layered art or Release ZIP change.
+
+## 2026-10-30 — NK1 2.5D semantic face rig
+
+- Added renderer-independent facial intent mapping for blink, brows, smile/frown, emotion shapes and speech mouth forms.
+- Wired the resolver into the imported avatar morph-target pipeline; optional morph channels are capability-based, missing channels are non-fatal, and ambiguous normalized names are skipped.
+- Added tests for bounded expression mapping, partial rigs, custom artist aliases and ambiguous morph names.
+
+## 2026-10-30 — NK1 2.5D depth-rig runtime follow-through
+
+- Added semantic spring follow-through for hair-front/back and coat-front/tail, with per-node state, bounded displacement/velocity and frame-delta clamping.
+- Wired the secondary motion into the imported GLB/VRM animation loop without affecting ordinary 3D models.
+- Added a capability-gated 2.5D avatar selector; it becomes available only after a depth-rig manifest and imported node mapping validate, and falls back to 3D when that capability is removed.
+- Added regression coverage for semantic-only spring motion and preserved tuple typing for Three.js transforms.
+- Validation: previous depth-rig foundation HEAD passed both core and WorkPass79 CI; latest follow-through HEAD is awaiting fresh CI.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
@@ -2794,3 +2932,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][WorkPass644] Add deterministic 2.5D Blender blockout and real GLB export gate (2026-10-30)
+
+- Added `tools/blender/create_nk1_depth_rig_demo.py`, a reproducible non-production mannequin scene with a named parent hierarchy for root, torso, head, face/eyes, front/back hair, coat panels and both arm chains. The generated meshes bake dimensions into geometry so the runtime's unit node-scale contract does not erase their shape.
+- Extended the focused GitHub Actions job to install Blender, generate the scene, run the existing Blender-to-GLB exporter, and validate the resulting binary GLB with NK1's dependency-free validator. Both Python helpers receive syntax compilation first.
+- This turns the previous syntax-only exporter check into a real headless export/metadata/hierarchy validation gate. The blockout is technical geometry, not finished Kurisu art; browser rendering, device rendering and the canonical Release ZIP remain separate gates.
