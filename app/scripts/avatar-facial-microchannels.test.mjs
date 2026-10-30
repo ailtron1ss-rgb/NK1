@@ -28,3 +28,12 @@ test("malformed numeric inputs cannot escape normalized bounds",()=>{
  for(const value of Object.values(x))assert.ok(Number.isFinite(value));
  assert.ok(x.mouthTension<=.55&&x.blinkBias<=.2);
 });
+
+test("Live2D adapter only addresses facial parameters present in the shipped CDI3 rig", async()=>{
+ const {readFile}=await import("node:fs/promises");
+ const cdi=JSON.parse(await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.cdi3.json",import.meta.url),"utf8"));
+ const ids=new Set(cdi.Parameters.map((p)=>p.Id));
+ for(const id of ["ParamEyeLSmile","ParamEyeRSmile","ParamBrowLY","ParamBrowRY","ParamBrowLForm","ParamBrowRForm","ParamCheek","ParamMouthForm"])assert.ok(ids.has(id),id);
+ const viewer=await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html",import.meta.url),"utf8");
+ for(const id of ["ParamEyeLSmile","ParamEyeRSmile","ParamBrowLY","ParamBrowRY","ParamBrowLForm","ParamBrowRForm","ParamCheek","ParamMouthForm"])assert.ok(viewer.includes(id),id);
+});
