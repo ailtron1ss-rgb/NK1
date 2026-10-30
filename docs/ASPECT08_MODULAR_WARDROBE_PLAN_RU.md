@@ -143,4 +143,8 @@ The focused regression suite includes the published SHA-256 test vector for `abc
 - VRM/3D: есть procedural body и пользовательская загрузка модели, но production-ready модульный комплект одежды не подтверждён.
 
 Следующий правильный шаг — проверить фактические drawable/part IDs и texture atlas в Cubism Editor/SDK, а не пытаться подменить части модели через случайные параметры. Параллельно следует подготовить первый настоящий 2.5D layered asset contract: body occlusion masks, garment layers, pivots, deformation weights и per-pose validation.
-\n\n## Runtime activation boundary — 2026-10-30\n\nAdded `wardrobeRuntime.ts`: the runtime now has one preparation entry point that accepts a manifest, byte map and switch request. It verifies the whole payload, ensures each requested ID belongs to the selected renderer and has passed byte verification, then checks body/rig compatibility before returning a ready plan. A helper rejects stale, failed, partial and duplicate renderer acknowledgements. This is an integration contract only: it does not yet fetch files, verify legal rights, persist state, or apply meshes/textures in Live2D/depth-2D/VRM.\n
+
+
+## Runtime activation boundary — 2026-10-30
+
+Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that accepts a manifest, byte map and switch request. It verifies the whole payload, ensures each requested ID belongs to the selected renderer and has passed byte verification, then checks body/rig compatibility before returning a ready plan. A helper rejects stale, failed, partial and duplicate renderer acknowledgements. This is an integration contract only: it does not yet fetch files, verify legal rights, persist state, or apply meshes/textures in Live2D/depth-2D/VRM.
