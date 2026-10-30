@@ -141,9 +141,9 @@ RuntimeEvidenceBus ID проверяется на точное совпаден�
 
 ### Точное происхождение эпизода
 
-- P78 verified ingress требует event-owned `evidenceReceiptId` вида `reb:<tick>:<sequence>:outcome`, совпадения tick и точного `evidenceRef=external-verification:<тот же ID>`. Receipt ID включён в replay/event signature; observation batch сериализуется структурно через JSON, без неоднозначных текстовых разделителей.
-- `PersonalitySelfModelBridge` повторно сверяет caller receipt с event-owned receipt ID, форматом, kind и tick. SelfModel выполняет собственную независимую проверку для identity/agency write gate.
-- P2702 `afterOutcome` получил внутренний receipt gate: stable values, relationship trust, self-beliefs и autobiographicalStrength меняются только при точной receipt/reference/tick паре и одновременно сильных показателях verified/evidence/independence/consequence. Прямой вызов P2702 с искусственными `verified=1` и `evidence=1` без receipt не повышает эти высокоуровневые состояния.
+- P78 verified ingress требует event-owned `evidenceReceiptId` вида `reb:<tick>:<sequence>:outcome`, совпадения tick и точного `evidenceRef=external-verification:<тот же ID>`, а также числовых порогов verified ≥ 0.85, independent ≥ 0.80, evidence ≥ 0.72, consequence ≥ 0.70 и identityUpdateScale ≥ 0.45. Receipt ID включён в replay/event signature как immutable episode identity; изменённый payload с тем же ID не создаёт новый эпизод. Observation batch сериализуется структурно через JSON, без неоднозначных текстовых разделителей.
+- `PersonalitySelfModelBridge` повторно сверяет caller receipt с event-owned receipt ID, форматом, kind и tick и передаёт в downstream learners те же числовые показатели. SelfModel независимо проверяет receipt/reference/tick и каждый quality threshold, включая identityUpdateScale ≥ 0.45, непосредственно перед identity/agency write.
+- P2702 `afterOutcome` получил внутренний receipt gate: stable values, relationship trust, self-beliefs и autobiographicalStrength меняются только при точной receipt/reference/tick паре и одновременно сильных показателях verified/evidence/independence/consequence плюс identityUpdateScale ≥ 0.45. Прямой вызов P2702 с искусственными `verified=1` и `evidence=1` без receipt либо с низким identityUpdateScale не повышает эти высокоуровневые состояния.
 - Поведенческие привычки остаются обучаемыми по ослабленному evidence-weighted сигналу; это позволяет использовать симуляцию и неполную обратную связь для ограниченного обучения, но не превращать её в доказательство собственной идентичности или доверия к человеку.
 
 ### Семантические ценности и напряжения характера
@@ -156,7 +156,7 @@ RuntimeEvidenceBus ID проверяется на точное совпаден�
 
 ### Усиленные регрессии и сохранение
 
-- Тесты проверяют обход P2702 напрямую без receipt, несовпадающий event/caller receipt, wrong tick, unknown issuer, восстановление canonical trait mapping, NFKC-дубликаты и опасные relationship keys, доказательную изоляцию stable values/trust/self-beliefs, value-sensitive/relationship-sensitive action bias и named tension/self-belief diagnostics.
+- Тесты проверяют обход P2702 напрямую без receipt, несовпадающий event/caller receipt, wrong tick, unknown issuer, недостаточное качество evidence и низкий identityUpdateScale на P78/SelfModel/P2702, immutable receipt replay с изменённым payload, восстановление canonical trait mapping, NFKC-дубликаты и опасные relationship keys, доказательную изоляцию stable values/trust/self-beliefs, value-sensitive/relationship-sensitive action bias и named tension/self-belief diagnostics.
 - PersistenceProjectionCoordinator содержит по одной записи P2702 в identity materialization и hot sync. Дублирующая запись, появлявшаяся во время предыдущей правки, удалена.
 - CI продолжает запускать `npm run test:personality`; новый exact HEAD пока не имеет подтверждённого Actions результата. Поэтому тесты не объявляются прошедшими.
 
