@@ -10,6 +10,8 @@ export interface SignedOutcomePayload {
   taskId: string;
   taskVersion: string;
   method: string;
+  /** Content hash of the exact baseline/candidate configuration evaluated by this run. */
+  methodFingerprint?: string;
   seed: number;
   attempt: number;
   passed: boolean;
@@ -41,7 +43,11 @@ export function outcomePayloadFingerprint(payload: SignedOutcomePayload): string
 
 // A provenance receipt is process-local by design. A restored ledger snapshot does
 // not inherit trust: its signed artifacts must be re-ingested and re-verified.
-const authenticatedEvidence = new WeakMap<VerifiedOutcomeLedger, Map<string, string>>();
+interface AuthenticatedEvidenceReceipt {
+  fingerprint: string;
+  payload: Readonly<SignedOutcomePayload>;
+}
+const authenticatedEvidence = new WeakMap<VerifiedOutcomeLedger, Map<string, AuthenticatedEvidenceReceipt>>();
 
 export function hasAuthenticatedOutcomeEvidence(ledger: VerifiedOutcomeLedger, evidenceRef: string): boolean {
   return authenticatedEvidence.get(ledger)?.has(evidenceRef) ?? false;
@@ -51,7 +57,16 @@ export function authenticatedOutcomeEvidenceFingerprint(
   ledger: VerifiedOutcomeLedger,
   evidenceRef: string,
 ): string | undefined {
-  return authenticatedEvidence.get(ledger)?.get(evidenceRef);
+  return authenticatedEvidence.get(ledger)?.get(evidenceRef)?.fingerprint;
+}
+
+/** Return the exact signed payload only when this ledger holds a verified receipt. */
+export function authenticatedOutcomeArtifactPayload(
+  ledger: VerifiedOutcomeLedger,
+  evidenceRef: string,
+): Readonly<SignedOutcomePayload> | undefined {
+  const payload = authenticatedEvidence.get(ledger)?.get(evidenceRef)?.payload;
+  return payload ? Object.freeze({ ...payload }) : undefined;
 }
 
 /**
@@ -91,6 +106,7 @@ export function ingestSignedOutcomeArtifact(
   if (!isNonEmptyString(payload.artifactId) || !isNonEmptyString(payload.runId) ||
       !isNonEmptyString(payload.taskId) || !isNonEmptyString(payload.taskVersion) ||
       !isNonEmptyString(payload.method) || !isNonEmptyString(payload.verifierId) ||
+      (payload.methodFingerprint !== undefined && !/^[a-f0-9]{64}$/i.test(payload.methodFingerprint)) ||
       !Number.isSafeInteger(payload.seed) || payload.seed < 0 ||
       !Number.isSafeInteger(payload.attempt) || payload.attempt < 1 ||
       typeof payload.passed !== 'boolean' ||
@@ -152,8 +168,11 @@ export function ingestSignedOutcomeArtifact(
       return { accepted: false, artifactFingerprint: fingerprint, rejection: result.rejection?.code ?? 'ledger-rejected' };
     }
   }
-  const evidence = authenticatedEvidence.get(ledger) ?? new Map<string, string>();
-  evidence.set(outcome.evidenceRef, fingerprint);
+  const evidence = authenticatedEvidence.get(ledger) ?? new Map<string, AuthenticatedEvidenceReceipt>();
+  evidence.set(outcome.evidenceRef, {
+    fingerprint,
+    payload: Object.freeze({ ...payload }),
+  });
   authenticatedEvidence.set(ledger, evidence);
   return { accepted: true, artifactFingerprint: fingerprint };
 }

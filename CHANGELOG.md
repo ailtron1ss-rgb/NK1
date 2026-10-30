@@ -1,3 +1,12 @@
+## [NK1][Эксперименты] Make confirmatory sample units, inference limits and metrics explicit (2026-10-30)
+
+- Rename the promotion minimum to `minIndependentSeeds`; keep `minPairedTasks` only as a deprecated compatibility alias and reject conflicting values. Promotion results now expose `independentSeeds`, while the old `pairedTasks` output remains a compatibility alias.
+- Bound exact paired sign-test computation to one million discordant seed pairs and replace the temporary log-term array with an O(1)-memory recurrence. Inputs beyond the exact-computation budget fail closed at the promotion gate instead of trusting a caller-supplied p-value or allowing unbounded validation work.
+- Require confirmatory campaign primary metric `task-pass-rate`, the only endpoint actually computed by the current signed outcome ledger. Reject unsupported metric labels and non-string candidate fingerprints; revalidate metric and promotion-policy semantics on registry restore.
+- Extend adversarial tests for extreme sample counts, p-value consistency, alias conflicts, explicit independent-seed output, metric spoofing and fingerprint type coercion.
+- CI previously exposed a floating-point exact-equality assertion (`0.007812500000000002` vs `0.0078125`); replace it with a tight numeric tolerance without weakening the statistical calculation.
+- No production learner was promoted and no real-world learning uplift is claimed. Exact-head GitHub Actions must pass before this pass is considered validated.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.

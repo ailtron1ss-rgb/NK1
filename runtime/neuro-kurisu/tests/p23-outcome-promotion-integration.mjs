@@ -32,16 +32,17 @@ const makeLedger = (regressedFamily = null) => {
 };
 
 const goodLedger = makeLedger();
-const goodAggregate = goodLedger.comparePaired('baseline', 'candidate');
-const goodFamilies = goodLedger.comparePairedByFamily('baseline', 'candidate');
+const goodAggregate = goodLedger.comparePairedBySeed('baseline', 'candidate');
+const goodFamilies = goodLedger.comparePairedByFamilyAndSeed('baseline', 'candidate');
 const eligible = evaluateOutcomePromotion(goodAggregate, goodFamilies);
-assert.equal(goodAggregate.pairedN, 90);
-assert.equal(goodFamilies.reduce((n, family) => n + family.pairedN, 0), goodAggregate.pairedN);
+assert.equal(goodAggregate.pairedN, 30, 'seed, not task cell, is the independent unit');
+assert.ok(goodAggregate.signTestPValue < 0.05);
+assert.ok(goodFamilies.every(family => family.statisticalUnit === 'seed' && family.pairedN === 30));
 assert.equal(eligible.eligible, true, JSON.stringify(eligible));
 
 const badLedger = makeLedger('transfer');
-const badAggregate = badLedger.comparePaired('baseline', 'candidate');
-const badFamilies = badLedger.comparePairedByFamily('baseline', 'candidate');
+const badAggregate = badLedger.comparePairedBySeed('baseline', 'candidate');
+const badFamilies = badLedger.comparePairedByFamilyAndSeed('baseline', 'candidate');
 const blocked = evaluateOutcomePromotion(badAggregate, badFamilies);
 assert.equal(blocked.eligible, false);
 assert.ok(blocked.reasons.includes('family-regression:transfer'));
