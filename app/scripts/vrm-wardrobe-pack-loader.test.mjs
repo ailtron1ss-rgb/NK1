@@ -107,3 +107,21 @@ test("one verified pack can attach garments across distinct slots without pollut
   assert.equal(roots.length,2);
   assert.deepEqual(roots.map(node=>node.userData.nk1WardrobeSlot).sort(),["footwear","outerwear"]);
 });
+
+
+test("stale wardrobe request is rejected before GLB parsing",async()=>{
+ const input=inputFor(glb());let parsed=false;
+ const result=await applyVerifiedVrmWardrobePack({...input,isCurrent:()=>false,parseGlb:async()=>{parsed=true;return {scene:garment()};}});
+ assert.equal(result.committed,false);assert.equal(parsed,false);
+ assert.ok(result.errors.includes("wardrobe:request-stale"));
+});
+test("stale wardrobe request after asynchronous parsing disposes prepared GPU resources and does not mutate avatar",async()=>{
+ const input=inputFor(glb()),target=input.avatarRoot;
+ const source=garment();let geometryDisposed=0,parsed=false,current=true;
+ source.children[0].geometry={dispose(){geometryDisposed++;}};
+ const result=await applyVerifiedVrmWardrobePack({...input,isCurrent:()=>current,parseGlb:async()=>{parsed=true;current=false;return {scene:source};}});
+ assert.equal(parsed,true);assert.equal(result.committed,false);
+ assert.ok(result.errors.includes("wardrobe:request-stale"));
+ assert.equal(geometryDisposed,1);
+ assert.equal(target.children.some((node)=>node.userData?.nk1WardrobeAssetId==="coat-v1"),false);
+});
