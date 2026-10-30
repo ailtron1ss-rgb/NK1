@@ -1,3 +1,10 @@
+## [NK1][Aspect 10] Add provenance-aware VRM calibration capture sessions (2026-10-30)
+
+- Add immutable bilateral bind/reference capture sessions bound to the exact model fingerprint, coordinate frame and four resolved arm bones.
+- Record fixture identity, capture timestamp and bounded operator note in a separate JSON provenance sidecar.
+- Finalize profiles only after both arms pass the existing measured-angle, off-axis and joint-limit checks; revalidate against the currently loaded rig.
+- Add focused regression coverage and CI execution. This is a capture-session API, not yet a visual calibration wizard; no live IK actuation is enabled.
+
 ## [NK1][Aspect 10] Derive VRM arm calibration from measured reference poses (2026-10-30)
 
 - Add a deterministic per-arm calibration derivation from captured bind/reference Euler poses and independently known fixture angles.
