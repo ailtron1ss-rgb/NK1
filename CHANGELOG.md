@@ -2803,3 +2803,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Add renderer capability filtering so Live2D, future 2.5D rigs and VRM adapters report unsupported channels instead of silently claiming execution.
 - Add deterministic regression coverage for IK geometry, unreachable targets, priority arbitration, invalid data, speed bounds and capability negotiation.
 - This is a tested control/math foundation, not yet a complete full-body runtime integration; balance, contact/grasping, renderer adapters and device E2E remain explicit follow-up gates.
+
+
+## [NK1][WorkPass629] Connect canonical motor intents to loaded 3D humanoid rigs (2026-10-30)
+
+- Add a renderer adapter that recognizes common VRM/Mixamo humanoid bone aliases and exposes only channels actually present in the loaded skeleton.
+- Apply canonical NK1 head, neck, spine, shoulder, elbow and leg channels as bounded additive offsets over the active GLTF animation-mixer pose.
+- Resolve cognitive-action and affective-expression proposals by priority, advance them with per-joint speed limits, and report unsupported channels instead of pretending every model supports every movement.
+- Keep IK, balance, contact, grasping, world interaction and clothing physics explicitly unsupported until a real execution backend exists.
+- Add deterministic adapter tests for alias mapping, additive animation layering and fail-closed unsupported/non-finite channels.
