@@ -179,7 +179,7 @@ export class GroundedWorldState {
       const objectId=norm(o.id);
       const trackId=objectId?('world:'+sourceId+':'+objectId):undefined;
       const evidenceKind=normalizeEvidence(o.evidenceKind);
-      const visibleKnown=o.visibilityKnown===true||typeof o.visible==='boolean';
+      const visibleKnown=o.visibilityKnown===false?false:(o.visibilityKnown===true||typeof o.visible==='boolean');
       const incoming:GroundedEntity={
         id:objectId?('world-'+stableHash(sourceId+':'+objectId)):'world-'+stableHash(o.label+':'+at),
         label:norm(o.label)||'unknown',kind:'object',
