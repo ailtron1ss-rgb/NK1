@@ -74,6 +74,8 @@ jobs:
         run: npm --prefix app run test:avatar-pixiv-vrm-runtime
       - name: Validate uploaded VRM license metadata handling
         run: npm --prefix app run test:avatar-vrm-license-metadata
+      - name: Validate VRMA sidecar animation integration
+        run: npm --prefix app run test:avatar-vrma-animation
       - name: Validate affect-aware browser prosody and lip timing
         run: npm --prefix app run test:browser-voice-prosody
       - name: Validate Live2D/speech timeline
