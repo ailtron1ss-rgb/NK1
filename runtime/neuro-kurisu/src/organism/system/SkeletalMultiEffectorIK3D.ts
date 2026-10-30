@@ -105,7 +105,7 @@ export function solveMultiEffectorIK3D(input:MultiEffectorIK3DInput):MultiEffect
     const residuals=effectors.map((e,i)=>({id:e.id,position:frames[i].endEffector,error:norm(sub(e.target,frames[i].endEffector)),weight:e.weight??1}));
     return {frames,residuals,maxError:Math.max(...residuals.map(r=>r.error))};
   };
-  let state=evaluate(),iterations=0,stalled=false;
+  let state=evaluate(),iterations=0;
   for(;iterations<maxIterations&&state.residuals.some(r=>r.error>tolerance);iterations++){
     const rows:number[][]=[],errors:number[]=[];
     for(let eIndex=0;eIndex<effectors.length;eIndex++){
@@ -126,7 +126,7 @@ export function solveMultiEffectorIK3D(input:MultiEffectorIK3DInput):MultiEffect
       let sum=0;for(let j=0;j<union.length;j++)sum+=rows[r][j]*rows[c][j];
       return sum+(r===c?damping*damping:0);
     }));
-    const dual=solveLinear(normal,errors);if(!dual){stalled=true;break;}
+    const dual=solveLinear(normal,errors);if(!dual)break;
     let applied=0;
     for(let j=0;j<union.length;j++){
       let delta=0;for(let r=0;r<taskSize;r++)delta+=rows[r][j]*dual[r];
@@ -134,7 +134,7 @@ export function solveMultiEffectorIK3D(input:MultiEffectorIK3DInput):MultiEffect
       const next=Math.max(joint.minAngleRad,Math.min(joint.maxAngleRad,pose[id]+Math.max(-maxStep,Math.min(maxStep,delta))));
       applied=Math.max(applied,Math.abs(next-pose[id]));pose[id]=next;
     }
-    if(applied<1e-9){stalled=true;break;}
+    if(applied<1e-9)break;
     state=evaluate();
   }
   const converged=state.residuals.every(r=>r.error<=tolerance);
