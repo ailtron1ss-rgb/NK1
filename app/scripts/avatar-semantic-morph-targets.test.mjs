@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applySemanticMorphTargets, resolveSemanticMorphTargets, semanticMorphValues, smoothSemanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
+import { applySemanticMorphTargets, resolveSemanticMorphTargets, resolveVrmExpressionMorphTargets, semanticMorphValues, smoothSemanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
 
 test("semantic resolver recognizes common VRM/GLB face morph labels",()=>{
  const targets=resolveSemanticMorphTargets({Joy:0,EyeBlinkLeft:1,eye_close_right:2,viseme_aa:3,viseme_O:4,Fcl_MTH_Sad:5,Fcl_EYE_Angry:6,UnknownRigChannel:7,Fcl_MTH_A:8,Fcl_MTH_O:9,negative:-1});
@@ -64,4 +64,44 @@ test("imported expression smoothing is bounded with fast speech and slower affec
  assert.ok(released.joy/first.joy>released.mouthOpen/first.mouthOpen,"affect release must retain a larger fraction than speech release");
  const unchanged=smoothSemanticMorphValues(first,target,0);
  assert.deepEqual(unchanged,first);
+});
+
+
+test("VRM 1.0 preset expressions resolve official node-indexed morph binds",()=>{
+ const influences=[0,0,.15];
+ const mesh={morphTargetInfluences:influences};
+ const root={traverse(fn){fn(mesh);}};
+ const parser={associations:new Map([[mesh,{nodes:7,meshes:3}]]),json:{extensions:{VRMC_vrm:{expressions:{preset:{
+  happy:{morphTargetBinds:[{node:7,index:0,weight:.8}]},
+  blink:{morphTargetBinds:[{node:7,index:2,weight:1}]},
+  aa:{morphTargetBinds:[{node:7,index:1,weight:.65}]},
+  custom:{morphTargetBinds:[{node:7,index:0,weight:1}]}
+ }}}}}};
+ const bindings=resolveVrmExpressionMorphTargets(root,parser);
+ assert.deepEqual(bindings.map(({index,channel,weight})=>[index,channel,weight]),[[0,"joy",.8],[2,"blink",1],[1,"mouthOpen",.65]]);
+ const values={joy:1,sadness:0,anger:0,mouthOpen:1,mouthOh:0,blink:1};
+ applySemanticMorphTargets(bindings,values);
+ assert.deepEqual(influences,[.8,.65,1]);
+});
+
+test("VRM 0.x blendShapeGroups resolve mesh-indexed binds and percentage weights",()=>{
+ const influences=[0,.1];
+ const mesh={morphTargetInfluences:influences};
+ const root={traverse(fn){fn(mesh);}};
+ const parser={associations:new Map([[mesh,{meshes:4}]]),json:{extensions:{VRM:{blendShapeMaster:{blendShapeGroups:[
+  {presetName:"joy",binds:[{mesh:4,index:0,weight:75}]},
+  {presetName:"blink",binds:[{mesh:4,index:1,weight:100}]},
+  {presetName:"unknown",binds:[{mesh:4,index:0,weight:100}]}
+ ]}}}}};
+ const bindings=resolveVrmExpressionMorphTargets(root,parser);
+ assert.deepEqual(bindings.map(({index,channel,weight})=>[index,channel,weight]),[[0,"joy",.75],[1,"blink",1]]);
+ applySemanticMorphTargets(bindings,{joy:1,sadness:0,anger:0,mouthOpen:0,mouthOh:0,blink:.5});
+ assert.deepEqual(influences,[.75,.5]);
+});
+
+test("VRM resolver rejects malformed metadata and never guesses unknown channels",()=>{
+ const mesh={morphTargetInfluences:[0]};
+ const root={traverse(fn){fn(mesh);}};
+ assert.deepEqual(resolveVrmExpressionMorphTargets(root,{associations:new Map([[mesh,{nodes:0}]]),json:{extensions:{VRMC_vrm:{expressions:{preset:{happy:{morphTargetBinds:[{node:0,index:99,weight:1},{node:-1,index:0,weight:1}]},unknown:{morphTargetBinds:[{node:0,index:0,weight:1}]}}}}}}}),[]);
+ assert.deepEqual(resolveVrmExpressionMorphTargets(root,{}),[]);
 });
