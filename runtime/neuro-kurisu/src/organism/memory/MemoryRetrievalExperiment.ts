@@ -54,7 +54,29 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
       deltas: slice.deltas,
     };
   }
-  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, taskCategoryStratification: report.taskCategoryStratification });
+  // Timing is deliberately excluded from the deterministic quality signature.
+  // p95 latency is measured separately; host scheduling and cache warmth vary.
+  const stableMetrics = (value: any) => ({
+    queries: value.queries, answerableQueries: value.answerableQueries, unanswerableQueries: value.unanswerableQueries,
+    unsupportedRetrievalCount: value.unsupportedRetrievalCount, unsupportedRetrievalRate01: value.unsupportedRetrievalRate01,
+    correctAbstentionRate01: value.correctAbstentionRate01, falseAbstentionCount: value.falseAbstentionCount,
+    falseAbstentionRate01: value.falseAbstentionRate01, recallAtK01: value.recallAtK01, mrr01: value.mrr01,
+    precisionAtK01: value.precisionAtK01, queryCoverage01: value.queryCoverage01,
+    quarantinedResultCount: value.quarantinedResultCount, staleResultCount: value.staleResultCount,
+    futureResultCount: value.futureResultCount, dormantResultCount: value.dormantResultCount,
+    invalidEpistemicStatusResultCount: value.invalidEpistemicStatusResultCount, duplicateResultCount: value.duplicateResultCount,
+    invalidResultRate01: value.invalidResultRate01,
+  });
+  const taskCategorySlices = Object.fromEntries(Object.entries(report.taskCategoryStratification?.slices ?? {}).map(([category, rawSlice]) => {
+    const slice = rawSlice as any;
+    return [category, { holdoutQueries: slice.holdoutQueries, answerableHoldoutQueries: slice.answerableHoldoutQueries,
+      unanswerableHoldoutQueries: slice.unanswerableHoldoutQueries, baseline: stableMetrics(slice.baseline),
+      candidate: stableMetrics(slice.candidate), deltas: slice.deltas }];
+  }));
+  const taskCategorySignature = { enabled: report.taskCategoryStratification?.enabled,
+    annotationsComplete: report.taskCategoryStratification?.annotationsComplete,
+    categories: report.taskCategoryStratification?.categories, slices: taskCategorySlices };
+  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, taskCategoryStratification: taskCategorySignature });
 }
 
 /**
