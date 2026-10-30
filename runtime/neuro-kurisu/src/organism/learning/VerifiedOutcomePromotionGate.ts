@@ -131,10 +131,13 @@ function validateSummary(value: unknown, prefix: 'aggregate' | 'family'): string
 
   if (isCount(value.discordantCandidateWins) && isCount(value.discordantBaselineWins) &&
       typeof value.signTestPValue === 'number' && Number.isFinite(value.signTestPValue)) {
-    let expectedPValue: number | null = null;
-    try { expectedPValue = pairedSignTestPValue(value.discordantCandidateWins, value.discordantBaselineWins); } catch { /* counted above */ }
-    if (expectedPValue !== null && Math.abs(expectedPValue - value.signTestPValue) > 1e-12) {
-      reasons.push(`inconsistent-${prefix}-sign-test-p-value`);
+    try {
+      const expectedPValue = pairedSignTestPValue(value.discordantCandidateWins, value.discordantBaselineWins);
+      if (Math.abs(expectedPValue - value.signTestPValue) > 1e-12) {
+        reasons.push(`inconsistent-${prefix}-sign-test-p-value`);
+      }
+    } catch {
+      reasons.push(`uncomputable-${prefix}-sign-test-evidence`);
     }
   }
 
