@@ -24,6 +24,8 @@ on:
       - "runtime/neuro-kurisu/src/organism/learning/LearningJournalBootstrap.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts"
       - "runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs"
+      - "runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/P36HostEvaluatorBootstrap.ts"
       - "runtime/neuro-kurisu/src/organism/learning/P36VerifiedOutcomeLedgerEvaluator.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
