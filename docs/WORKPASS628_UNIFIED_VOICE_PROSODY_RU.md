@@ -33,3 +33,8 @@ The previous browser path used a fixed `rate=0.96` and a tiny pitch switch for j
 ## Evidence boundary
 
 Source changes and focused unit coverage are committed on this candidate branch. No hosted CI, Android device playback, acoustic quality, or Release ZIP refresh is claimed until independently verified.
+
+
+## Follow-up — speech clock edge-case regressions
+
+The focused timeline suite now also covers provider-boundary duplicate suppression, backward audio-time rejection, malformed boundary rejection, first-boundary origin refinement, the 16-anchor history cap and preservation of the newest calibration. Monotonic-clock tests exercise invalid anchors and late/malformed elapsed-time reports. These tests strengthen deterministic clock invariants; they do not substitute for Chromium/WebView audio capture or phoneme-level alignment.
