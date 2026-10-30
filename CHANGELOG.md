@@ -1,3 +1,11 @@
+## [NK1][2.5D] Verify renderer pose application and rollback on failure (2026-10-30)
+
+- Upgrade the Three.js depth-rig adapter from write-only transforms to a postcondition-checked application: resolve all nodes first, snapshot their prior local pose, apply transforms, update matrices, and read back position/rotation/scale/visibility/render order.
+- If any readback differs from the requested pivot-compensated transform, restore the complete pre-apply pose and return a fail-closed diagnostic; exceptions also trigger best-effort rollback.
+- Surface a single bounded UI warning when an animated 2.5D pose cannot be confirmed, without repeatedly flooding the interface.
+- Add a regression that injects a transform write fault and verifies rollback of the mutated scene node.
+- This verifies Three.js Object3D local-transform postconditions in the runtime adapter. It does not establish artist calibration, actual device pixels, cross-renderer equivalence or a production Kurisu rig.
+
 ## [NK1][2.5D] Deliver canonical MotorFrames to the avatar stage (2026-10-30)
 
 - Add the app API client for the backend's read-only `GET /api/organism/motor-frame` snapshot.
