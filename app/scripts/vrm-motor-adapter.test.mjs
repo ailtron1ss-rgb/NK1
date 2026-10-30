@@ -56,3 +56,19 @@ test("discovers bilateral VRM J_Bip arm and leg channels without claiming IK", (
   ]) assert.ok(adapter.capabilities.joints.includes(channel), `missing ${channel}`);
   assert.equal(adapter.capabilities.supportsIk, false);
 });
+
+test("maps the built-in procedural 3D body groups to shared head and shoulder channels", () => {
+  const head = node("headIntent", 0.02, -0.03, 0.01);
+  const leftArm = node("leftArm", 0, 0, -0.2);
+  const rightArm = node("rightArm", 0, 0, 0.2);
+  const adapter = createVrmMotorAdapter(rig(head, leftArm, rightArm));
+  for (const channel of ["headYaw", "headPitch", "headRoll", "leftShoulderPitch", "leftShoulderRoll", "rightShoulderPitch", "rightShoulderRoll"]) {
+    assert.ok(adapter.capabilities.joints.includes(channel), "missing " + channel);
+  }
+  const result = adapter.applyPose({ headYaw: 0.1, headPitch: -0.05, leftShoulderPitch: 0.2, rightShoulderRoll: -0.1 });
+  assert.equal(result.executionStatus, "applied");
+  near(head.rotation.y, 0.07);
+  near(head.rotation.x, -0.03);
+  near(leftArm.rotation.x, 0.2);
+  near(rightArm.rotation.z, 0.1);
+});
