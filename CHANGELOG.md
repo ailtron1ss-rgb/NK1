@@ -1,3 +1,11 @@
+## [NK1][Aspect 04] Port validated 2.5D DepthRig foundation onto current source (2026-10-30)
+
+- Selectively port the versioned DepthRig manifest, strict parent-graph/transform validation, Three.js adapter, face/morph/viseme bindings, Blender exporter and deterministic mannequin fixture from PR #408 onto source checkpoint 258cd9e703dc.
+- Keep ordinary GLB/VRM behavior unchanged unless an asset carries a validated NK1 depth-rig manifest; malformed or ambiguous rig metadata fails closed before scene mutation.
+- Add focused depth-rig unit/integration tests and the dedicated CI workflow. The source feature branch's exact-head checks passed; this new integration commit still requires its own exact-head CI.
+- The mannequin is a technical fixture, not finished Kurisu artwork. Production layered art, independent visual review, browser/Android E2E and release inclusion remain open.
+- No canonical Release ZIP was modified.
+
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
 - Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
