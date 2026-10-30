@@ -12,6 +12,7 @@ test("pins the official MIT Pixiv VRM runtime against the repository Three.js ve
   assert.equal(packageJson.dependencies["@pixiv/three-vrm"], "3.5.5");
   assert.equal(lock.packages[""].dependencies["@pixiv/three-vrm"], "3.5.5");
   assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].version, "3.5.5");
+  assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].license, "MIT");
   assert.equal(lock.packages["node_modules/three"].version, "0.180.0");
   assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].peerDependencies.three, ">=0.137");
   assert.ok(lock.packages["node_modules/@pixiv/three-vrm-materials-mtoon"]);
