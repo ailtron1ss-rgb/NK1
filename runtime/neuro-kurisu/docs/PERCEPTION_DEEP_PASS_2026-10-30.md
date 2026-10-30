@@ -21,7 +21,7 @@ The intent is to improve the reliability of the organism's *world model*, not to
 
 - P41 entities now preserve an optional stable provider track key, cross-modal track aliases, and smoothed velocity.
 - Camera/source namespace is included in vision IDs, preventing identical detector IDs from unrelated cameras/backends from colliding.
-- Spatial nearest-neighbour association is allowed only when a coordinate-frame ID is explicitly declared and matches the previous observation.
+- Spatial nearest-neighbour association is allowed only when a coordinate-frame ID is explicitly declared and matches the previous observation; camera backends may provide this frame metadata, otherwise geometry is stored but not used to claim track continuity.
 - Without a stable provider ID or a declared common frame, the system does not invent spatial continuity.
 - Cross-modal association is conservative: a new modality ID is attached only when exactly one recent same-label candidate is available. Ambiguous repeated objects remain separate.
 - A primary track ID is never overwritten by a secondary modality's alias.
@@ -31,9 +31,9 @@ The intent is to improve the reliability of the organism's *world model*, not to
 ### 3. Time-bounded multimodal evidence coverage
 
 - P41 records the last-seen timestamp independently for each modality on each entity.
-- `crossModalEvidenceCoverage01` now measures the fraction of active entities with at least two modalities observing the same track inside a bounded freshness window.
+- `crossModalEvidenceCoverage01` now measures the fraction of active entities with at least two modalities observing the same track inside a bounded freshness window; per-entity last-seen timestamps prevent old sensor history from inflating current coverage.
 - Old modality history does not count as current cross-modal corroboration.
-- A separate `outcomeAlignment01` stores action-outcome alignment; the old `crossModalAgreement01` field is retained for persisted-state compatibility and is no longer used as a proxy for confidence spread.
+- A separate `outcomeAlignment01` stores action-outcome alignment; the legacy `crossModalAgreement01` field is retained for persisted-state compatibility and is no longer used as an estimate of modality agreement or confidence spread.
 - Perceptual snapshot uncertainty and verification/rest biases use observable cross-modal evidence coverage rather than unrelated modality priors.
 
 **Why:** a camera observation from minutes ago is not fresh confirmation from the current world model.
@@ -48,7 +48,7 @@ P41 now separates:
 
 Detector confidence updates reported quality only. Successful acquisition updates service success only. Empirical reliability and calibration statistics change only through the explicit human-annotation/independent-verifier observation method, with a bounded evidence-ID replay guard.
 
-The Core exposes a narrow typed method for applying these calibration observations. A production caller must supply an independently sourced receipt; a model's own confidence or a successful transport response is not a correctness label.
+The Core exposes a narrow typed method for applying these calibration observations. It requires the exact matching `outcome` receipt to exist in the Core-owned RuntimeEvidenceBus snapshot, with a permitted source and matching modality/confidence/correctness payload. A model's own confidence or a successful transport response is not a correctness label.
 
 **Why:** camera capture success, model confidence, and semantic correctness are different facts and must not train one another circularly.
 
@@ -56,6 +56,7 @@ The Core exposes a narrow typed method for applying these calibration observatio
 
 - `nextPerception(at)` expires old requests before selection.
 - Fulfilment is accepted only for a currently pending request before its deadline.
+- A later retry gets a new generation ID, so an expired predecessor cannot shadow or consume the new request.
 - Tool completion updates service-success telemetry, not semantic accuracy.
 
 **Why:** stale requests should not be replayed as active work and successful tool invocation should not self-certify semantic truth.
@@ -65,6 +66,7 @@ The Core exposes a narrow typed method for applying these calibration observatio
 - Repeating an identical claim is corroboration only when the new claim comes from a different modality.
 - Repeating a claim from the same modality does not create independent corroboration.
 - A claim is counted as resolved only when an explicit `supersedes` edge points to an existing claim.
+- Replaying an identical claim with the same deterministic receipt ID is idempotent and does not add another graph node.
 
 **Why:** repetition, independent support, and contradiction resolution are distinct epistemic operations.
 
@@ -91,6 +93,7 @@ From `runtime/neuro-kurisu` with the repository-pinned Node 24 runtime:
 ```bash
 npm run test:world-perception
 npm run test:p41:integration
+npm run test:p41:perceptual-integrity-deep-pass
 npm run typecheck
 ```
 
