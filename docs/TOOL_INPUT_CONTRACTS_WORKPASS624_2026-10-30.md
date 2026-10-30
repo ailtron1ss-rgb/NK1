@@ -89,3 +89,12 @@ The same check runs before approval preview/fingerprinting and before provider r
 This is not an authorization grant and does not replace per-tool schemas, human approval, durable idempotency, provider reconciliation, or independent postcondition verification. Legacy tools should continue migrating to explicit input/output contracts.
 
 Validation added to `tests/tool-input-contracts-workpass624.mjs`: getter non-execution, Proxy trap non-execution, cyclic and oversized payload rejection, unsafe approval-preview rejection, and reconciliation ingress rejection.
+
+
+## WorkPass633 — risk-weighted tool governance coverage
+
+ActionGateway now exposes `toolGovernanceReport()`, a read-only snapshot of the registered tool surface. It classifies tools as standard, elevated or critical and reports required/present gates for input contracts, output contracts, approval persistence, durable receipts, independent verification and provider reconciliation.
+
+The report is intentionally observational: it does not silently disable existing integrations or promote any tool. This gives NK1 a measurable migration backlog and lets CI/runtime dashboards detect when a newly registered high-risk tool lacks required protections.
+
+A destructive code-modification fixture verifies that the report marks the tool critical and identifies missing input/output contracts and independent verification. The report does not claim that a configured persister is independently audited durable storage; it reports only whether the gateway has a persistence adapter configured.
