@@ -38,3 +38,10 @@ Source changes and focused unit coverage are committed on this candidate branch.
 ## Follow-up — speech clock edge-case regressions
 
 The focused timeline suite now also covers provider-boundary duplicate suppression, backward audio-time rejection, malformed boundary rejection, first-boundary origin refinement, the 16-anchor history cap and preservation of the newest calibration. Monotonic-clock tests exercise invalid anchors and late/malformed elapsed-time reports. These tests strengthen deterministic clock invariants; they do not substitute for Chromium/WebView audio capture or phoneme-level alignment.
+
+
+## Follow-up — versioned speech lifecycle events
+
+The browser speech adapter now records each utterance through SpeechLifecycleEventV1: queued, started, provider character boundary, ended, cancelled or error. Each event carries an utterance ID, event ID, provider, clock ID, monotonic timestamp and strictly increasing per-utterance sequence. The contract rejects duplicate/out-of-order sequence numbers, clock/provider changes, regressing character boundaries and any event after a terminal phase. Browser callbacks also retain the existing active-session identity guard, so late callbacks from a superseded utterance cannot mutate the current session.
+
+The contract is provider-neutral and names a native TTS provider, but the native adapter has not yet been wired to emit these events. The browser boundary remains a provider-reported text offset, not a phoneme timestamp. No Android/Termux playback or acoustic sync validation is claimed.
