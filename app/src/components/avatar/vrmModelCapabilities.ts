@@ -97,7 +97,8 @@ export function inspectVrmModelCapabilities(
   const upperBody = has(["leftUpperArm", "rightUpperArm", "leftLowerArm", "rightLowerArm"]);
   const lowerBody = has(["leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"]);
   const hands = has(["leftHand", "rightHand"]);
-  const fingers = has(["leftIndexProximal", "leftMiddleProximal", "leftRingProximal", "leftLittleProximal", "rightIndexProximal", "rightMiddleProximal", "rightRingProximal", "rightLittleProximal"]);
+  const fingerBones = VRM_HUMANOID_BONE_NAMES.filter((name) => /^(left|right)(Thumb|Index|Middle|Ring|Little)/u.test(name));
+  const fingers = fingerBones.length > 0 && fingerBones.every(hasBone);
 
   const expressionNames = new Set<string>();
   const rawExpressions = expressionManager?.expressions;
