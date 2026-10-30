@@ -23,6 +23,32 @@ test("applies named transforms, visibility, render order and pivot compensation"
   assert.equal(head.renderOrder, 1200);
 });
 
+test("rolls back the whole rig when a local transform fails readback", () => {
+  const root = new THREE.Group();
+  const head = new THREE.Group();
+  head.name = "head";
+  root.add(head);
+  const beforePosition = head.position.toArray();
+  const beforeRotation = [head.rotation.x, head.rotation.y, head.rotation.z];
+  const originalUpdateMatrix = head.updateMatrix.bind(head);
+  let injected = false;
+  head.updateMatrix = function () {
+    if (!injected) {
+      injected = true;
+      this.position.x += 100;
+    }
+    return originalUpdateMatrix();
+  };
+  const result = applyDepthRigTransforms(root, [
+    transform("head", { position: [2, 3, 4], rotation: [0.1, -0.2, 0.3] }),
+  ]);
+  assert.equal(result.ok, false);
+  assert.equal(result.applied, 0);
+  assert.deepEqual(result.errors, ["postcondition-mismatch:head"]);
+  assert.deepEqual(head.position.toArray(), beforePosition);
+  assert.deepEqual([head.rotation.x, head.rotation.y, head.rotation.z], beforeRotation);
+});
+
 test("fails closed on missing or ambiguous scene node names", () => {
   const root = new THREE.Group();
   const a = new THREE.Group(); a.name = "head";
