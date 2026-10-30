@@ -1,3 +1,9 @@
+## [NK1][Aspect 10] Add model-bound VRM calibration JSON import/export (2026-10-30)
+
+- Add bounded JSON parsing with safe malformed-input handling and mandatory validation against the currently loaded model fingerprint, coordinate frame and exact bilateral bone identities.
+- Add deterministic JSON export that revalidates the profile and refuses export when it no longer matches the active rig.
+- Add round-trip, malformed JSON, size-limit and model-mismatch regressions. This is a programmatic import/export boundary, not a calibration wizard or proof that imported measurements are physically accurate.
+
 ## [NK1][Aspect 10] Distinguish malformed VRM profiles from unsafe calibration values (2026-10-30)
 
 - Split profile-shape/bone-identity validation from numerical calibration validation so the declared `invalid-calibration` result is reachable and meaningful.
