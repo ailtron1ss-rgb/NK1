@@ -149,4 +149,7 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /ParamCheek/);
   assert.match(viewer, /ParamBreath/);
   assert.match(viewer, /ParamBodyAngleX/);
+  assert.match(viewer, /semanticEyeX\+=/);
+  assert.match(viewer, /deterministicUnit/);
+  assert.doesNotMatch(viewer, /Math\.random\(\)/);
 });
