@@ -85,12 +85,13 @@ Each pack should declare: pack ID/version, creator/source, license and attributi
 
 ## Progress
 
-- Wardrobe domain/data contract: 85% for the metadata/control foundation.
-- Selection policy: 75% for the current implementation slice.
-- Pack declaration + actual-byte/whole-payload integrity gates: 85% for the validation foundation; runtime loader integration remains pending.
+- Wardrobe domain/data contract: 90% for the metadata/control foundation.
+- Selection policy: 75% for the current implementation slice; recommendations remain advisory until a user-enabled runtime applies them.
+- Pack declaration + actual-byte/whole-payload integrity gates: 90% for the validation foundation.
+- VRM/3D pack loader and application API: 80% for the isolated loader/rig-preflight/rollback contract; UI and Avatar3DStage integration remain pending.
 - Actual interchangeable garment assets: 0% verified.
-- Live2D/2.5D/VRM renderer application: 0% integrated by this pass.
-- Whole Aspect 08: 30% (conservative; real assets, runtime loader, renderer integration and visual E2E dominate remaining work).
+- Live2D/2.5D renderer application: 0% integrated; Live2D capability inspection is present but no garment switch contract is confirmed.
+- Whole Aspect 08: 45% (conservative; real licensed assets, stage UI/state integration, other renderers, visual E2E and device validation remain substantial).
 
 ## Next work
 
@@ -177,3 +178,10 @@ Added `wardrobeRuntime.ts`: the runtime now has one preparation entry point that
 
 **Что теперь реально сделано:** существует production API для проверки, GLB parsing, rig preflight и применения VRM garment pack. **Что ещё не сделано:** UI выбора/импорта пакета, постоянное состояние гардероба, вызов API из `Avatar3DStage`, реальные rights-cleared skinned garment GLB, адаптеры Live2D/2.5D, визуальный E2E и Android/desktop проверки. Тестовый GLB в suite — структурная фикстура, а не одежда для Курису.
 
+
+
+## Текущий CI evidence checkpoint — 2026-10-30
+
+- Последний завершённый wardrobe workflow на HEAD `e49bd6eba0c55b37a21571975a521bbfe5417a6e`: 37 tests passed, 0 failed, 0 skipped. Включены новые GLB loader, external URI rejection, rig preflight, successful apply и rollback cases.
+- Предыдущий core regression run поймал один TypeScript strict-mode дефект (implicit `any` у callback GLTFLoader); callback типизирован в последующем commit. Повторный core typecheck на обновлённом HEAD обязателен перед заявлением о полной CI-готовности.
+- Draft PR остаётся открытым; никаких claims о real garment assets, visual E2E или Release ZIP refresh нет.
