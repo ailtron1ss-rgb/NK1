@@ -33,7 +33,7 @@ export function semanticMorphValues(input:{emotion:string; speaking:boolean; mou
  };
 }
 
-export interface SemanticMorphBinding { influences: number[]; index: number; channel: SemanticMorphChannel; }
+export interface SemanticMorphBinding { influences: number[]; index: number; channel: SemanticMorphChannel; baseInfluence: number; }
 /**
  * Apply the shared expression snapshot without erasing stronger authored animation.
  * Blendshape clips run first; the semantic layer only raises a channel to its requested
