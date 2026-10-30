@@ -6,6 +6,7 @@ const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0))
 const now = () => Date.now();
 const MAX_TRACK_GAP_MS=30_000;
 const MAX_TRACK_ASSOCIATION_DISTANCE=.75;
+const MAX_CROSS_MODAL_ASSOCIATION_MS=5_000;
 function normalizePerceptualLabel(value:unknown):string{
   if(typeof value!=='string')return '';
   return value.normalize('NFKC').replace(/\s+/g,' ').trim().toLowerCase().slice(0,180);
@@ -43,6 +44,8 @@ export interface P41PerceptualEntity {
   lastSeenAt:number;
   observations:number;
   modalities:P41Modality[];
+  /** Last timestamp each modality independently observed this entity. */
+  modalityLastSeenAt?:Partial<Record<P41Modality,number>>;
   position:{x:number;y:number;z:number}|null;
   /** Smoothed velocity in the same coordinate frame as position, per second. */
   velocity?:{x:number;y:number;z:number}|null;
@@ -311,7 +314,7 @@ export class P41SemanticPerceptionEngine {
     // same-label candidate that has not already been observed by this modality.
     // Ambiguous repeated objects remain separate instead of being force-merged.
     if(!e&&explicitTrackId){
-      const crossModal=this.state.entities.filter(x=>x.label===key&&x.kind===kind&&!x.modalities.includes(modality)&&at>=x.lastSeenAt&&at-x.lastSeenAt<=5_000);
+      const crossModal=this.state.entities.filter(x=>x.label===key&&x.kind===kind&&!x.modalities.includes(modality)&&at>=x.lastSeenAt&&at-x.lastSeenAt<=MAX_CROSS_MODAL_ASSOCIATION_MS);
       if(crossModal.length===1)e=crossModal[0];
     }
     // Spatial nearest-neighbour association is only used when observations share
@@ -331,7 +334,7 @@ export class P41SemanticPerceptionEngine {
     const trackId=explicitTrackId??(!e&&canTrackPosition?'auto-track-'+(++this.state.nextTrackSequence):undefined);
     if(!e){
       const id=stableId('entity',kind+':'+key+':'+(trackId??'singleton'));
-      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],position:pos,positionFrameId:safePositionFrameId||undefined,velocity:null,trackAliases:[]};
+      e={id,label:key,kind,...(trackId?{trackId}:{}),confidence01:clamp(confidence01),salience01:clamp(salience01),present01:1,firstSeenAt:at,lastSeenAt:at,observations:1,modalities:[modality],modalityLastSeenAt:{[modality]:at},position:pos,positionFrameId:safePositionFrameId||undefined,velocity:null,trackAliases:[]};
       this.state.entities.unshift(e);
     }else{
       const previousAt=e.lastSeenAt;
@@ -349,6 +352,7 @@ export class P41SemanticPerceptionEngine {
       e.lastSeenAt=at;
       e.observations++;
       if(!e.modalities.includes(modality))e.modalities.push(modality);
+      e.modalityLastSeenAt={...(e.modalityLastSeenAt??{}),[modality]:at};
       if(pos)e.position=pos;
       if(safePositionFrameId)e.positionFrameId=safePositionFrameId;
       if(explicitTrackId&&e.trackId&&e.trackId!==explicitTrackId){
@@ -419,7 +423,7 @@ export class P41SemanticPerceptionEngine {
     // Track the fraction of active entities independently corroborated by at
     // least two modalities; retain crossModalAgreement as an outcome-calibrated
     // metric until explicit contradictory evidence is available.
-    const corroborated=active.filter(e=>new Set(e.modalities).size>=2).length;
+    const corroborated=active.filter(e=>Object.values(e.modalityLastSeenAt??{}).filter(seenAt=>typeof seenAt==='number'&&Number.isFinite(seenAt)&&at>=seenAt&&at-seenAt<=MAX_CROSS_MODAL_ASSOCIATION_MS).length>=2).length;
     const coverage=active.length?corroborated/active.length:0;
     this.state.metrics.crossModalEvidenceCoverage01=clamp(this.state.metrics.crossModalEvidenceCoverage01*.9+coverage*.1);
     const unresolved=this.state.pending.filter(x=>x.status==='pending').length;
