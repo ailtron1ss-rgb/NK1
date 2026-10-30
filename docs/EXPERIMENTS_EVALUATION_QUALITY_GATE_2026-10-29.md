@@ -397,3 +397,16 @@ Family summaries по типам задач сохраняются как защ
 
 Теперь registry принимает только `task-pass-rate` — реальный поддерживаемый endpoint текущей реализации. Другие показатели потребуют расширить signed outcome schema, добавить соответствующие наблюдения/единицы измерения, реализовать агрегацию и сравнение, после чего вводить новый schema/policy version. Campaign restore повторно проверяет эту семантику, типы fingerprints, уникальность/сортировку candidate set и нормализованную promotion policy.
 
+### 12.12 Подпись связывается с точной версией исходного кода
+
+Confirmatory preregistration теперь сохраняет `sourceCommitSha` (40 hex-символов Git SHA). Каждый outcome artifact должен подписать тот же `sourceCommitSha`, который зарегистрирован до открытия holdout. Campaign evaluation сравнивает одновременно:
+
+- Git commit исходного runtime;
+- manifest fingerprint и конкретный `runId`;
+- task/version, arm/method, seed/attempt;
+- `methodFingerprint` — SHA конкретной конфигурации baseline/candidate;
+- независимого verifier, outcome и timestamp.
+
+Так исключается смешивание в одной выборке запусков из разных исходных ревизий под одним и тем же текстовым названием метода. `methodFingerprint` остаётся отдельным полем: один commit может запускать разные настройки/модели, а одна модель может быть запущена разным runtime-кодом.
+
+Legacy signed artifacts по-прежнему могут существовать без `sourceCommitSha` для старых не-confirmatory ledger workflows. Но они не принимаются в новую confirmatory campaign. Это обратно совместимый ingestion contract с более строгим promotion contract.
