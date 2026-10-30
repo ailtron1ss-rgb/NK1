@@ -51,6 +51,7 @@ test("detects parent cycles and multiple roots", () => {
       node("root-a", "root", "root-b", 0),
       node("root-b", "torso", "root-a", 1),
       node("root-c", "root", null, 2),
+      node("root-d", "root", null, 3),
     ],
   };
   const codes = validateDepthRig(invalid).map((entry) => entry.code);
