@@ -153,3 +153,18 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /deterministicUnit/);
   assert.doesNotMatch(viewer, /Math\.random\(\)/);
 });
+
+
+test("both Live2D viewer entry points smooth semantic gaze and avoid nondeterministic random motion", async () => {
+  const viewers = await Promise.all([
+    readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8"),
+    readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8"),
+  ]);
+  for (const viewer of viewers) {
+    assert.match(viewer, /semanticEyeX\+=\(clamp\(bodySignal\.gazeX/);
+    assert.match(viewer, /semanticEyeY\+=\(clamp\(bodySignal\.gazeY/);
+    assert.match(viewer, /lastIntentStateVersion\*17/);
+    assert.match(viewer, /lastIntentStateVersion\*31/);
+    assert.doesNotMatch(viewer, /Math\.random\(\)/);
+  }
+});
