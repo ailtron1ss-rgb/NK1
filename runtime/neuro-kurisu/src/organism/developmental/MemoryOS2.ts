@@ -1643,6 +1643,7 @@ export class MemoryOS2{
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
   const ids=new Set(items.map(item=>item.id));
   let hashMismatch=0,invalidConfidence=0,invalidStatus=0,danglingRevision=0,danglingLinks=0,duplicateContent=0,futureEvidence=0,duplicateEvidenceKeys=0;
+  hashMismatch+=restore.contentHashMismatchesRepaired;
   for(const item of items){
    const actualHash=memoContentHash(String(item.content??''));
    if(!item.contentHash||item.contentHash!==actualHash){hashMismatch++;add('content-hash-mismatch','error',item.id,'Stored content hash is absent or differs from the canonical content hash.');}
