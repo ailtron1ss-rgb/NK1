@@ -100,15 +100,24 @@ export class P2702PersistentPersonalityDynamics{
   const relationshipTrust=relationshipKey?this.state.relationshipTrust[relationshipKey]??.5:.5;
   const responsibility=this.state.invariantValues[this.state.invariantNames.indexOf('responsibility')]??.90;
   const privacy=value('privacy'),loyalty=value('loyalty'),relationshipValue=value('relationship');
+  const skepticism=this.state.invariantValues[this.state.invariantNames.indexOf('skepticism')]??.86;
+  const tensionTargets=[
+    Math.abs(value('truth')-relationshipValue)*(relationshipKey ? 0.9 : 0.25),
+    Math.abs(value('autonomy')-loyalty)*clamp(args.goalPressure01*.6+args.novelty01*.4),
+    Math.abs(skepticism-canonCuriosity)*clamp(args.uncertainty01*.6+args.novelty01*.4),
+    Math.abs(adaptive('composure')-adaptive('tenderness'))*clamp(args.identityGap01*.5+args.uncertainty01*.5),
+    Math.abs(value('science')-privacy)*clamp(args.uncertainty01*.6+args.goalPressure01*.4),
+  ];
+  this.state.tensionState=tensionTargets.map((target,index)=>clamp((this.state.tensionState[index]??.5)*.94+target*.06));
   const bias:Record<ActionKind,number>=Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>;
   // Stable values and adaptive traits shape candidate preference, but remain a small
   // additive prior; OrganismCore's existing arbiters still choose the action.
   bias.explore=clamp((canonCuriosity*.043+value('curiosity')*.008)*args.novelty01 + adaptive('playfulness')*.008);
-  bias.verify=clamp((rigor*.043+value('truth')*.008+value('science')*.008+adaptive('composure')*.012)*args.uncertainty01);
-  bias.reflect=clamp((autonomy*.025+adaptive('guardedness')*.012)*args.identityGap01 + this.state.contradiction01*.006);
+  bias.verify=clamp((rigor*.043+value('truth')*.008+value('science')*.008+adaptive('composure')*.012)*args.uncertainty01+(this.state.tensionState[2]??0)*0.003+(this.state.tensionState[4]??0)*0.003);
+  bias.reflect=clamp((autonomy*.025+adaptive('guardedness')*.012)*args.identityGap01 + this.state.contradiction01*.006+(this.state.tensionState[0]??0)*0.003+(this.state.tensionState[3]??0)*0.003);
   const relationalApproach=(relationshipTrust-.5)*.025*(1-privacy*.45);
   const relationalCommitment=(loyalty-.5)*.006+(relationshipValue-.5)*.006;
-  bias.respond=clamp((adaptive('warmth')*.020+adaptive('directness')*.015)*(1-args.identityGap01)+relationalApproach+relationalCommitment);
+  bias.respond=clamp((adaptive('warmth')*.020+adaptive('directness')*.015)*(1-args.identityGap01)+relationalApproach+relationalCommitment-(this.state.tensionState[0]??0)*0.002);
   bias.rest=clamp((1-args.goalPressure01)*.010);
   bias.wait=clamp(args.uncertainty01*.010*(1-responsibility*.5));
   bias.defer=clamp(args.uncertainty01*.014*(1-adaptive('directness')));
@@ -122,6 +131,11 @@ export class P2702PersistentPersonalityDynamics{
   this.state.contradiction01=clamp(this.state.contradiction01*.94+(selfErr*.55+tension*.45)*.06);
   this.state.identityContinuity01=clamp(this.state.identityContinuity01*.97+(1-selfErr)*.03);
   this.state.coherence01=clamp(this.state.coherence01*.95+(1-this.state.contradiction01)*.05);
+  const canon=defaultState();
+  const traitDrift=this.state.adaptiveNames.reduce((sum,name,index)=>sum+Math.abs((this.state.adaptiveValues[index]??.5)-(canon.adaptiveValues[canon.adaptiveNames.indexOf(name)]??.5)),0)/Math.max(1,this.state.adaptiveNames.length);
+  const valueDrift=this.state.valueNames.reduce((sum,name,index)=>sum+Math.abs((this.state.valueWeights[index]??.5)-(canon.valueWeights[canon.valueNames.indexOf(name)]??.5)),0)/Math.max(1,this.state.valueNames.length);
+  const measuredDrift=clamp(traitDrift*.72+valueDrift*.28);
+  this.state.drift01=clamp(this.state.drift01*.98+measuredDrift*.02);
   this.state.stability01=clamp(this.state.stability01*.98+(1-this.state.drift01)*.02);
   // Relationship trust is outcome evidence, not a proxy for the organism's own continuity.
   return {actionBias:bias,traitVector:this.state.adaptiveValues.slice(),valueVector:this.state.valueWeights.slice(),identityContinuity01:this.state.identityContinuity01,coherence01:this.state.coherence01,stability01:this.state.stability01,contradiction01:this.state.contradiction01};
@@ -150,6 +164,8 @@ export class P2702PersistentPersonalityDynamics{
   const strongIndependentOutcome=verified>=.9&&evidence>=.72&&independent>=.8&&consequence>=.7;
   // Core values and relationship trust have a higher evidential bar than behavioral habits.
   if(strongIndependentOutcome){
+   const autobiographicalEvidence=clamp(evidence*.45+independent*.30+consequence*.25);
+   this.state.autobiographicalStrength01=clamp(this.state.autobiographicalStrength01*.985+autobiographicalEvidence*.015);
    const valueEta=eta*.12;
    for(let i=0;i<this.state.valueWeights.length;i++)this.state.valueWeights[i]=clamp(this.state.valueWeights[i]!+(signal-.5)*valueEta*(i<2?.35:1));
    if(args.relationshipId){const trustSignal=clamp(reward*.55+verified*.3+(1-clamp(args.identityGap01))*.15);this.updateRelationshipTrust(args.relationshipId,trustSignal,.025);}
