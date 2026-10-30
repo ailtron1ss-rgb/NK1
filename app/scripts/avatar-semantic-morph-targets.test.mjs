@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applySemanticMorphTargets, resolveSemanticMorphTargets, resolveVrmExpressionMorphTargets, semanticMorphValues, smoothSemanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
+import { applySemanticMorphTargets, resolveSemanticMorphTargets, resolveVrmExpressionMorphTargets, resolveVrmHumanoidBoneRoles, semanticMorphValues, smoothSemanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
 
 test("semantic resolver recognizes common VRM/GLB face morph labels",()=>{
  const targets=resolveSemanticMorphTargets({Joy:0,EyeBlinkLeft:1,eye_close_right:2,viseme_aa:3,viseme_O:4,Fcl_MTH_Sad:5,Fcl_EYE_Angry:6,UnknownRigChannel:7,Fcl_MTH_A:8,Fcl_MTH_O:9,negative:-1});
@@ -104,4 +104,21 @@ test("VRM resolver rejects malformed metadata and never guesses unknown channels
  const root={traverse(fn){fn(mesh);}};
  assert.deepEqual(resolveVrmExpressionMorphTargets(root,{associations:new Map([[mesh,{nodes:0}]]),json:{extensions:{VRMC_vrm:{expressions:{preset:{happy:{morphTargetBinds:[{node:0,index:99,weight:1},{node:-1,index:0,weight:1}]},unknown:{morphTargetBinds:[{node:0,index:0,weight:1}]}}}}}}}),[]);
  assert.deepEqual(resolveVrmExpressionMorphTargets(root,{}),[]);
+});
+
+
+test("VRM 1.0 humanoid roles map arbitrary bone names through node associations",()=>{
+ const head={isBone:true,name:"Bone_004",rotation:{}},spine={isBone:true,name:"Armature_Bone_12",rotation:{}};
+ const parser={associations:new Map([[head,{nodes:11}],[spine,{nodes:4}]]),json:{extensions:{VRMC_vrm:{humanoid:{humanBones:{head:{node:11},spine:{node:4},leftUpperArm:{node:99}}}}}}};
+ const roles=resolveVrmHumanoidBoneRoles(parser);
+ assert.equal(roles.get(head),"head");assert.equal(roles.get(spine),"spine");assert.equal(roles.size,2);
+});
+
+test("VRM 0.x humanoid bone arrays resolve legacy role names and ignore invalid nodes",()=>{
+ const arm={isBone:true,name:"Bone_L_Arm",rotation:{}},neck={isBone:true,name:"Bone_Neck",rotation:{}};
+ const parser={associations:new Map([[arm,{nodes:2}],[neck,{nodes:3}]]),json:{extensions:{VRM:{humanoid:{humanBones:[
+  {bone:"leftUpperArm",node:2},{bone:"neck",node:3},{bone:"head",node:100}
+ ]}}}}};
+ const roles=resolveVrmHumanoidBoneRoles(parser);
+ assert.equal(roles.get(arm),"leftupperarm");assert.equal(roles.get(neck),"neck");assert.equal(roles.size,2);
 });
