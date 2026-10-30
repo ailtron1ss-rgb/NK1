@@ -256,7 +256,7 @@ export class TemporalObjectTracker {
       track.bbox={...detection.bbox!};track.lastSeenAt=at;track.hits++;
       track.confidence01=clamp(track.confidence01*.65+clamp(detection.confidence01??.5)*.35);
       outputs[index].trackId=track.id;
-      outputs[index].sourceId='nk1-temporal-box-tracker';
+      outputs[index].sourceId=[clean(detection.sourceId),'nk1-temporal-box-tracker'].filter(Boolean).join(':');
       outputs[index].trackingStatus='associated';
       assignedDetections.add(index);assignedTracks.add(track.id);associatedTrackCount++;
     }
@@ -274,7 +274,7 @@ export class TemporalObjectTracker {
         firstSeenAt:at,lastSeenAt:at,hits:1,providerOwned:false,
       });
       outputs[index].trackId=id;
-      outputs[index].sourceId='nk1-temporal-box-tracker';
+      outputs[index].sourceId=[clean(objects[index].sourceId),'nk1-temporal-box-tracker'].filter(Boolean).join(':');
       outputs[index].trackingStatus='new';newTrackCount++;
     }
     for(const index of objects.keys()){
