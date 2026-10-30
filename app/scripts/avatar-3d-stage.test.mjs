@@ -81,3 +81,11 @@ test("generic GLB facial morphs are wired into the live renderer with speech pri
  assert.match(runtime,/composeFacialWeights\(expressions,speechVisemes\)/);
  assert.match(runtime,/morphTargetInfluences\[binding\.morphIndex\]=weights\.get\(binding\.semantic\)\?\?0/);
 });
+
+test("partial native VRM facial maps leave unbound semantic channels to the GLB fallback",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/nativeSemantics=new Set\(rt\.vrmMorphTargets\.flatMap/);
+ assert.match(stage,/genericWeights=Object\.fromEntries\(Object\.entries\(expressionWeights\)\.filter/);
+ assert.match(stage,/speechSemantics\.filter\(\(semantic\)=>!nativeSemantics\.has\(semantic\)\)/);
+ assert.ok(stage.indexOf("applyVrmMorphTargetWeights(rt.vrmMorphTargets,expressionWeights)")<stage.indexOf("applyThreeFacialSemanticWeights(rt.facialMorphTargets,genericWeights,speechVisemes)"));
+});
