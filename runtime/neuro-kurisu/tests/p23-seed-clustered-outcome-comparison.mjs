@@ -52,6 +52,8 @@ assert.equal(bySeed.candidatePassRate, 0.75);
 assert.equal(bySeed.absoluteGain, 0.5);
 assert.equal(bySeed.discordantCandidateWins, 4, 'wins count seed-level aggregate differences');
 assert.equal(bySeed.discordantBaselineWins, 0);
+assert.equal(bySeed.statisticalUnit, 'seed');
+assert.equal(bySeed.signTestPValue, 2 / (2 ** 4), 'four independent seed wins and no losses have an exact two-sided sign-test p-value of 0.125');
 assert.ok(bySeed.approximate95CI);
 assert.ok(bySeed.bootstrap95CI, 'seed-cluster bootstrap interval is available with multiple independent seeds');
 assert.ok(bySeed.bootstrap95CI[0] <= bySeed.absoluteGain && bySeed.bootstrap95CI[1] >= bySeed.absoluteGain);
