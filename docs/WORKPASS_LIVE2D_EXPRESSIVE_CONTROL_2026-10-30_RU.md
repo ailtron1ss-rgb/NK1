@@ -58,3 +58,8 @@ This workpass improves the existing Cubism avatar only. It does not claim to cre
 - Existing Live2D foundation: 65/100.
 - Continuous face/body channel coverage after this code pass: estimated 50/100.
 - Aspect 01 overall: estimated 68/100 before device E2E; code-level gains do not substitute for visual acceptance.
+
+
+## Дополнение: плавное смешивание мимики
+
+После прохождения исходного CI добавлен ограниченный low-pass переход для каналов бровей, угла бровей, улыбки глаз и румянца. Он сглаживает смену эмоциональных состояний без подмены авторских Cubism motion/physics. Коэффициент смешивания фиксирован (`0.18` на вызов `beforeModelUpdate`); визуальная настройка под частоту кадров и Android ещё требует проверки.
