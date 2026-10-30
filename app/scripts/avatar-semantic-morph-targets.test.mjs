@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveSemanticMorphTargets, semanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
+import { applySemanticMorphTargets, resolveSemanticMorphTargets, semanticMorphValues } from "../src/components/avatar/semanticMorphTargets.ts";
 
 test("semantic resolver recognizes common VRM/GLB face morph labels",()=>{
  const targets=resolveSemanticMorphTargets({Joy:0,EyeBlinkLeft:1,eye_close_right:2,viseme_aa:3,viseme_O:4,Fcl_MTH_Sad:5,Fcl_EYE_Angry:6,UnknownRigChannel:7,Fcl_MTH_A:8,Fcl_MTH_O:9,negative:-1});
@@ -31,5 +31,19 @@ test("imported avatar stage applies the shared facial timeline through semantic 
  assert.ok(stage.includes("semanticMorphValues"));
  assert.ok(stage.includes("blink:p.awake?facialMotion.blinkClosure*.92:0"));
  assert.ok(stage.includes("mouthOpen:p.mouthPose.open"));
- assert.ok(stage.includes("node.morphTargetInfluences[target.index]=morphValues[target.channel]"));
+ assert.ok(stage.includes("applySemanticMorphTargets(rt.morphTargets,morphValues)"));\n assert.ok(stage.includes("rt.morphTargets.push"));\n assert.ok(stage.includes("rt.morphTargets=[]"));
+});
+
+test("semantic expression composes with stronger authored morph animation",()=>{
+ const influences=[.9,.1,.25,.4];
+ const bindings=[
+  {influences,index:0,channel:"joy"},
+  {influences,index:1,channel:"blink"},
+  {influences,index:2,channel:"mouthOpen"},
+  {influences,index:3,channel:"anger"}
+ ];
+ applySemanticMorphTargets(bindings,{joy:.2,sadness:0,anger:.7,mouthOpen:.8,mouthOh:0,blink:.6});
+ assert.deepEqual(influences,[.9,.6,.8,.7]);
+ applySemanticMorphTargets(bindings,{joy:0,sadness:0,anger:0,mouthOpen:0,mouthOh:0,blink:0});
+ assert.deepEqual(influences,[.9,.6,.8,.7],"semantic layer must not erase a running authored clip");
 });
