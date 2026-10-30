@@ -4,6 +4,13 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ExperimentInference.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/ExperimentCampaignRegistry.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
+      - "runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts"
+      - "runtime/neuro-kurisu/tests/p23-experiment-inference.mjs"
+      - "runtime/neuro-kurisu/tests/p23-experiment-campaign-registry.mjs"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts"
       - "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeArtifact.ts"
       - "runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts"
@@ -52,6 +59,12 @@ jobs:
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: npm run typecheck
+      - name: Verify exact paired inference and Holm correction
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-experiment-inference.mjs
+      - name: Verify one-shot signed holdout campaign governance
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p23-experiment-campaign-registry.mjs
       - name: Verify promotion gate and adversarial evidence cases
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/p23-verified-outcome-promotion-gate.mjs
