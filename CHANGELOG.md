@@ -2812,3 +2812,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Resolve cognitive-action and affective-expression proposals by priority, advance them with per-joint speed limits, and report unsupported channels instead of pretending every model supports every movement.
 - Keep IK, balance, contact, grasping, world interaction and clothing physics explicitly unsupported until a real execution backend exists.
 - Add deterministic adapter tests for alias mapping, additive animation layering and fail-closed unsupported/non-finite channels.
+
+
+## [NK1][WorkPass630] Correct VRM neck capability mapping and adapter regressions (2026-10-30)
+
+- Fix VRM `J_Bip_C_Neck` capability discovery for both neck yaw and pitch; the initial adapter regression had exposed a missing canonical alias.
+- Make the adapter's Euler assertions precision-safe instead of requiring exact binary floating-point equality.
+- Clarify the adapter's frame contract: `Avatar3DStage` restores the model's baseline bone pose, updates the animation mixer, and then applies NK1 offsets for that frame. This avoids accumulating motor offsets across frames.
+- Preserve fail-closed behavior for missing bones and non-finite channels. Exact-head CI after these fixes is still pending.
