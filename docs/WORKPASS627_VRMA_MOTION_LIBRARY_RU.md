@@ -39,7 +39,7 @@ A dedicated AnimationMixer now exists for every successfully loaded VRM, includi
 
 The 3D motion motor no longer calls stopAllAction on every action change. transitionClip fades the previous action out while fading the next one in, clamps the time scale, and tracks the active action by clip identity. This reduces abrupt pose jumps during action/emotion changes.
 
-Replacing a character or resetting the stage still stops the old mixer and invalidates any in-flight VRMA parse. The VRMA sidecar parser also checks the active runtime token before attaching a clip, so a late result from a previous avatar cannot mutate the new avatar.
+Replacing a character or resetting the stage still stops the old mixer and invalidates any in-flight VRMA parse. Imported VRM/GLB geometry is now parented under a dedicated NK1AvatarMotionPivot. Drag yaw and subtle body sway rotate this wrapper rather than rewriting the model scene orientation, preserving VRM 0.x normalization and keeping humanoid/VRMA tracks on the original model root. The VRMA sidecar parser also checks the active runtime token before attaching a clip, so a late result from a previous avatar cannot mutate the new avatar.
 
 ## 4. Preserve VRMA-authored face and gaze channels
 
