@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateStoredWardrobeSelection, wardrobeStorageKey } from "../src/components/avatar/wardrobePackStore.ts";
+import { validateStoredWardrobeSelection, validateWardrobeStorageIdentity, wardrobeStorageKey } from "../src/components/avatar/wardrobePackStore.ts";
 
 const manifest=()=>({
  schemaVersion:1,packId:"kurisu-modular",version:"1.0.0",creator:"NK1 test",source:"https://example.org/kurisu-pack",
@@ -31,4 +31,12 @@ test("wardrobe persistence keys are body- and rig-specific and bounded",()=>{
  assert.notEqual(wardrobeStorageKey("body-a","rig-1"),wardrobeStorageKey("body-b","rig-1"));
  assert.notEqual(wardrobeStorageKey("body-a","rig-1"),wardrobeStorageKey("body-a","rig-2"));
  assert.throws(()=>wardrobeStorageKey("","rig-1"),/invalid-storage-identity/);
+});
+
+
+test("stored manifest identity must match both the exact body and rig version",()=>{
+ const value=manifest();
+ assert.deepEqual(validateWardrobeStorageIdentity("body-kurisu-v1","nk1-three-skeleton-name-map-v1",value),[]);
+ assert.ok(validateWardrobeStorageIdentity("other-body","nk1-three-skeleton-name-map-v1",value).includes("wardrobe:storage-body-mismatch"));
+ assert.ok(validateWardrobeStorageIdentity("body-kurisu-v1","other-rig",value).includes("wardrobe:storage-rig-mismatch"));
 });
