@@ -2823,3 +2823,8 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Correct the Gemini vision regression: an out-of-frame bounding box is rejected, but the semantic object observation remains present without a `bbox` field.
 - Assert both object identity and omission of invalid geometry; preserve the rule that image-relative x/y/z are never promoted to world coordinates.
 - This fixes a contradictory test expectation without weakening runtime validation.
+
+## [NK1][Aspect 03] Harden backward-compatible local track restoration (2026-10-30)
+
+- Accept a direct legacy `local:` track ID as well as the current P41 source-qualified form, while still rejecting non-local provider IDs.
+- Add temporary structured diagnostics to the restart regression to expose the exact persisted track identity and image-evidence fields if the integration gate remains red.
