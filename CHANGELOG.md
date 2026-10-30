@@ -1,3 +1,11 @@
+## [NK1][Aspect 02] Establish Original 2D art identity and production contract (2026-10-30)
+
+- Add a machine-readable Original 2D character art contract that pins the current SVG concept identity, palette, composition guides, required views/expressions/outfits, layer order and production handoff requirements.
+- Add a Russian production brief defining the visual identity lock, turnaround/expression/outfit/prop sheets, stable layer naming, pivot metadata, export/provenance requirements and acceptance gates.
+- Scope SVG paint-server IDs with React `useId`, preventing gradients, pattern and filter references from colliding when multiple Original 2D previews are mounted in the same document.
+- Add focused regressions for instance-scoped SVG references, identity defaults, art-contract boundaries and state-driven component wiring.
+- This pass improves the Original 2D foundation and art-production contract; it does not claim that layered production artwork, a finished expression atlas, independent garment assets or a 2.5D rig have been authored.
+
 ## [NK1][восприятие] Deep P41 world perception, identity tracking, and evidence calibration (2026-10-30)
 
 - Keep OrganismCore as the single canonical owner of runtime perception; runtime publishes the exact post-Core event instead of running a duplicate PerceptionEngine.
