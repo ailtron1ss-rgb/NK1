@@ -14,6 +14,8 @@ export interface PersonalityOutcomeRecord {
   predictionError01:number;
   identityGap01:number;
   relationshipId?:string;
+  /** Optional compact identity estimate from the canonical self-state owner. */
+  identityVector?:number[];
 }
 
 export interface PersonalityOutcomeResult {
@@ -41,7 +43,8 @@ export class PersonalitySelfModelBridge {
   prepareDecision(input:Parameters<P2702PersistentPersonalityDynamics['beforeDecision']>[0]) {
     const personality=this.personality.beforeDecision(input);
     const selfModelActionBias=Object.fromEntries(ACTIONS.map(action=>[action,this.selfModel.actionBias(action)])) as Record<ActionKind,number>;
-    return {personality,selfModelActionBias};
+    const actionBias=Object.fromEntries(ACTIONS.map(action=>[action,Math.max(-.10,Math.min(.10,(personality.actionBias[action]??0)+selfModelActionBias[action]))])) as Record<ActionKind,number>;
+    return {personality,selfModelActionBias,actionBias};
   }
 
   recordOutcome(input:PersonalityOutcomeRecord):PersonalityOutcomeResult {
@@ -76,7 +79,7 @@ export class PersonalitySelfModelBridge {
     this.personality.afterOutcome({
       tick:input.event.tick,reward01:input.reward01,verified01:evidenceAccepted?1:0,
       predictionError01:input.predictionError01,identityGap01:input.identityGap01,
-      action:input.action,relationshipId:input.relationshipId,
+      action:input.action,relationshipId:input.relationshipId,identityVector:input.identityVector,
     });
     const selfModelUpdate=this.selfModel.learnGoalOutcome({
       action:input.action,goalAlignment01:input.goalAlignment01,reward01:input.reward01,tick:input.event.tick,
