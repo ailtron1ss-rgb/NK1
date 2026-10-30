@@ -44,25 +44,41 @@ export type EmbodimentSwitchOutcome =
   | { status: "rolled-back"; activeAdapterId: string; revision: number; reason: string }
   | { status: "failed"; activeAdapterId: string; revision: number; reason: string };
 
+const isStringList = (value: readonly string[]): boolean =>
+  Array.isArray(value) && value.every(item => typeof item === "string" && item.length > 0);
+
 const isValidReceipt = (receipt: AdapterApplyReceipt, adapterId: string, revision: number): boolean =>
   Boolean(receipt && receipt.adapterId === adapterId && receipt.stateRevision === revision
     && Number.isFinite(receipt.appliedAtMonotonicMs) && receipt.appliedAtMonotonicMs >= 0
     && typeof receipt.executionId === "string" && receipt.executionId.length > 0
-    && Array.isArray(receipt.acceptedChannels) && Array.isArray(receipt.rejectedChannels));
-
-const isValidVerification = (result: AdapterVerification, revision: number): boolean =>
-  Boolean(result && result.stateRevision === revision && Number.isFinite(result.observedAtMonotonicMs)
-    && result.observedAtMonotonicMs >= 0 && Array.isArray(result.observedChannels)
-    && Array.isArray(result.mismatches) && typeof result.verified === "boolean");
+    && isStringList(receipt.acceptedChannels) && receipt.acceptedChannels.length > 0
+    && new Set(receipt.acceptedChannels).size === receipt.acceptedChannels.length
+    && isStringList(receipt.rejectedChannels));
 
 /**
- * Transactional renderer handoff. The source remains mounted and authoritative until
- * the destination has prepared, applied the same semantic revision and independently
- * verified its execution receipt. A failed destination is disposed and the source is
- * asked to restore the captured snapshot before the failure is reported.
- *
- * This coordinator deliberately does not infer that a renderer executed a pose from
- * a successful method call: only a matching, verified receipt can commit the switch.
+ * Verification must cover every channel the adapter claimed to apply, for the same
+ * revision, and must be observed no earlier than the apply receipt. A bare verified
+ * flag or a partial observation is never sufficient to commit a renderer handoff.
+ */
+const isValidVerification = (
+  result: AdapterVerification,
+  receipt: AdapterApplyReceipt,
+): boolean => {
+  if (!result || result.stateRevision !== receipt.stateRevision
+    || !Number.isFinite(result.observedAtMonotonicMs)
+    || result.observedAtMonotonicMs < receipt.appliedAtMonotonicMs
+    || !isStringList(result.observedChannels)
+    || !Array.isArray(result.mismatches)
+    || !result.mismatches.every(item => typeof item === "string")
+    || typeof result.verified !== "boolean") return false;
+  const observed = new Set(result.observedChannels);
+  return receipt.acceptedChannels.every(channel => observed.has(channel));
+};
+
+/**
+ * Transactional renderer handoff. The source remains authoritative until the
+ * destination prepares, applies and independently verifies the same semantic revision.
+ * Failed destinations are disposed and the source is asked to restore the snapshot.
  */
 export class EmbodimentSwitchCoordinator {
   private active: EmbodimentAdapter;
@@ -121,7 +137,7 @@ export class EmbodimentSwitchCoordinator {
 
       emit("verifying");
       const verification = await destination.verify(receipt, controller.signal);
-      if (!isValidVerification(verification, revision) || !verification.verified || verification.mismatches.length) {
+      if (!isValidVerification(verification, receipt) || !verification.verified || verification.mismatches.length) {
         throw new Error(verification?.reason || "destination-verification-failed");
       }
       if (controller.signal.aborted) throw new Error("switch-aborted");
@@ -129,7 +145,6 @@ export class EmbodimentSwitchCoordinator {
       this.active = destination;
       this.lastRevision = revision;
       emit("committed");
-      // Source disposal is post-commit cleanup; it cannot undo an already verified handoff.
       try { await source.dispose(); } catch { /* destination is already authoritative */ }
       return { status: "committed", activeAdapterId: destination.id, revision, receipt, verification };
     } catch (error) {
@@ -142,7 +157,7 @@ export class EmbodimentSwitchCoordinator {
         const rollbackReceipt = await source.apply(snapshot, new AbortController().signal);
         if (!isValidReceipt(rollbackReceipt, source.id, revision)) throw new Error("invalid-source-rollback-receipt");
         const rollbackVerification = await source.verify(rollbackReceipt, new AbortController().signal);
-        if (!isValidVerification(rollbackVerification, revision)
+        if (!isValidVerification(rollbackVerification, rollbackReceipt)
           || !rollbackVerification.verified || rollbackVerification.mismatches.length) {
           throw new Error("source-rollback-verification-failed");
         }
