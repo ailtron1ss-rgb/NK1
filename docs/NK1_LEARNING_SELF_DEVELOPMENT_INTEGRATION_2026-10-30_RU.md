@@ -205,3 +205,14 @@ Workflow `.github/workflows/p26-learning-validation.yml` расширен: до�
 - Production promotion по-прежнему требует независимого host verifier, подписанных outcome artifacts, точной идентичности task manifest / payload / seed, paired validation и holdout, явного approval и доступного rollback.
 - До принятия PR необходимо выполнить exact-head CI; после него — matched RU/EN evaluation минимум на пяти парных seeds, тесты transfer/forgetting/drift, restart/kill recovery и длинный runtime soak.
 - Release ZIP не обновлялся.
+
+## 9. Research-grade evidence gate — five paired seeds
+
+Добавлена отдельная функция `validateResearchGradeLearningExperimentPlan(...)`. Обычный планировщик по-прежнему допускает небольшие smoke/validation эксперименты, но они не могут считаться достаточным подтверждением устойчивого самоулучшения. Для research-grade вывода обязательны:
+
+- независимый `holdout` split;
+- минимум пять уникальных парных seed;
+- полное покрытие всех task families в запланированном наборе;
+- сохранение точного manifest/plan fingerprint и matched coverage, проверяемых обычным валидатором.
+
+Новый gate не объявляет эксперимент успешным и не подменяет реальные outcomes: он проверяет только пригодность расписания эксперимента. Само улучшение всё ещё требует независимых подписанных результатов, метрик transfer/forgetting и отдельного promotion approval. Регрессия включена в P26 Learning Validation.
