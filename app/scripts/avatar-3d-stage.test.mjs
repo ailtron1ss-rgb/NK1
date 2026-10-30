@@ -64,6 +64,7 @@ test("VRM wardrobe UI supports independent slot selection and keeps body identit
  assert.match(stage,/wardrobeSelectedAssetIds/);
  assert.match(stage,/defaultWardrobeAssetSelection\(pack\.manifest,"vrm3d"\)/);
  assert.match(stage,/updateWardrobeAssetSelection\(wardrobePack\.manifest,"vrm3d",current,asset\.id,checked\)/);
+ assert.match(stage,/validateWardrobeAssetSelection\(wardrobePack\.manifest,"vrm3d",wardrobeSelectedAssetIds\)/);
  assert.match(stage,/Выберите элементы, которые нужно заменить/);
  assert.match(stage,/expectedAssetIds=\[\.\.\.new Set\(wardrobeSelectedAssetIds\)\]/);
  assert.match(stage,/checked=event\.currentTarget\.checked/);
