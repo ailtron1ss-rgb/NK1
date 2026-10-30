@@ -95,17 +95,18 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
   assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
 });
 
-test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
+test("2.5D Original depth preview is selectable and keeps independent outfit/pose customization", async () => {
   const stage = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
   const original = await readFile(new URL("../src/components/KurisuOriginalStage.tsx", import.meta.url), "utf8");
   assert.ok(stage.includes('type ViewMode = "live2d" | "legacy" | "original" | "3d"'));
   assert.ok(stage.includes('onClick={() => setMode("original")}'));
+  assert.ok(stage.includes(">2.5D Original</button>"));
   assert.ok(stage.includes("<KurisuOriginalStage"));
   assert.ok(stage.includes('saved === "legacy" || saved === "original" || saved === "3d"'));
   assert.ok(original.includes('type Outfit = "lab" | "casual" | "night"'));
   assert.ok(original.includes('type PoseOverride = "auto" | "crossed" | "thinking" | "explain"'));
   assert.ok(original.includes('writeAvatarPreference("kurisu-original-outfit", outfit)'));
-  assert.ok(original.includes("Original 2D concept"));
+  assert.ok(original.includes("2.5D depth preview"));
 });
 
 test("the app-served viewer applies intent parameters after Cubism motion and physics updates", async () => {
