@@ -158,6 +158,17 @@ test("invalid motion, extra protocol fields, and out-of-range data fail closed",
   assert.equal(isAppEmbodimentIntentV1({ ...cancelled, cancellationToken: "cancel:another-speech" }), false);
 });
 
+test("speech cancellation resets the avatar to idle and clears expressive gesture offsets", async () => {
+  const stage = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /const speechCancelled = speechPhaseRef\.current === "cancelled"/);
+  assert.match(stage, /const motionGroup = speechCancelled \? "Idle" : motorPlan\.motionGroup/);
+  assert.match(stage, /const motionIndex = speechCancelled \? 0 : motorPlan\.motionIndex/);
+  assert.match(stage, /headTilt: speechCancelled \? 0/);
+  assert.match(stage, /gestureProfile: speechCancelled \? "none" : motorPlan\.gestureProfile/);
+  assert.match(stage, /gestureIntensity: speechCancelled \? 0 : motorPlan\.gestureIntensity/);
+  assert.match(stage, /gesture: bodyGestureActive/);
+});
+
 test("the production viewer listens to the protocol emitted by AvatarStage and uses token-aware motion identity", async () => {
   const viewer = await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8");
   assert.match(viewer, /type="module"/);
