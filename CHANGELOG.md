@@ -1,3 +1,13 @@
+## [NK1][Aspect 15] Add reproducible garment authoring preflight (2026-10-30)
+
+- Add `wardrobe-authoring-preflight.mjs` to validate local wardrobe pack manifests and payloads before import.
+- Verify safe manifest paths, file existence, exact byte lengths, SHA-256 and declared MIME signatures.
+- Inspect GLB v2 chunk structure and reject malformed containers, external buffer/image URIs, and GLBs without meshes.
+- Add focused tests for valid assets, tampering, MIME mismatch, traversal, self-contained GLB and external resource rejection.
+- Add `npm run wardrobe:preflight` and `npm run test:wardrobe:authoring`.
+- Document reproducible Blender garment authoring, Humanoid bind-pose/weights, pose acceptance, 2.5D hidden underdraw/deformation and Cubism capability evidence.
+- This is a production-pipeline tool/documentation increment; no production garment art or rights-cleared pack is claimed, and CI/device verification is pending.
+
 ## [NK1][Aspect 15] Harden renderer-scoped garment selection (2026-10-30)
 
 - Add a single selection validator that rejects unknown asset IDs, duplicate IDs, cross-renderer assets and multiple garments in one slot before renderer mutation.
