@@ -97,6 +97,22 @@ export class PerceptualEvidenceCompiler{
           parents:[r.fromEntityId,r.toEntityId].filter((x):x is string=>Boolean(x)),
         });
       }
+      for(const event of semantic.events.slice(0,16)){
+        const modalities=event.modalities.length?event.modalities:['world' as const];
+        for(const modality of modalities){
+          const evidenceKind=event.modalityEvidenceKinds?.[modality]??'unresolved';
+          const observedAt=event.modalityLastSeenAt?.[modality]??event.lastAt;
+          records.push({
+            id:`pe-${stableHash(`event:${event.id}:${modality}:${observedAt}`)}`,
+            at:observedAt,modality,
+            claim:`event:${event.id}:${event.label}`,
+            confidence01:clamp(event.confidence01),
+            uncertainty01:1-clamp(event.confidence01),
+            kind:evidenceKind,
+            parents:[event.id],
+          });
+        }
+      }
       if(semantic.scene.label!=='unknown') records.push({id:`pe-${stableHash(`scene:${semantic.scene.label}:${semantic.scene.at}`)}`,at:semantic.scene.at,modality:'fusion',claim:`scene:${semantic.scene.label}`,confidence01:semantic.scene.confidence01,uncertainty01:1-semantic.scene.confidence01,kind:semantic.sceneEvidenceKind??'unresolved',parents:[]});
     }
     if(native){
