@@ -19,6 +19,7 @@ assert.equal(verified.phase,'completed');
 const deniedFrame=new EmbodiedInteractionController();
 assert.equal(deniedFrame.plan({target,body:{...body,frameId:'camera-local'},kind:'look',now}).reason,'spatial-coordinate-frame-mismatch');
 const denied=new EmbodiedInteractionController();
+assert.equal(denied.plan({target:{...target,source:'simulator'},body,kind:'touch',now}).reason,'contact-requires-live-camera-grounding');
 assert.equal(denied.plan({target,body,kind:'touch',now}).reason,'contact-not-explicitly-authorized');
 assert.equal(denied.plan({target:{...target,label:'hot chemical container'},body,kind:'touch',now}).reason,'hazardous-or-unknown-object-contact-denied');
 assert.equal(denied.plan({target:{...target,observedAt:now-9000},body,kind:'look',now}).reason,'stale-or-future-observation');
