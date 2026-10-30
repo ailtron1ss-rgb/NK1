@@ -25,7 +25,7 @@
     "assets:sync": "node scripts/sync-canonical-public-assets.mjs",
     "test:embodiment-timeline": "node --experimental-strip-types --test scripts/embodiment-timeline.test.mjs",
     "test:avatar-motor-intent": "node --experimental-strip-types --test scripts/avatar-motor-intent.test.mjs",
-    "test:wardrobe": "node --experimental-strip-types --test scripts/wardrobe-system.test.mjs"
+    "test:wardrobe": "node --experimental-strip-types --test scripts/wardrobe-system.test.mjs scripts/wardrobe-pack.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
