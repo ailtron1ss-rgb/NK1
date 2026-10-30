@@ -1,7 +1,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import {resolveDepthRigPose,stepDepthRigSecondaryMotion,stepSecondaryMotion,validateDepthRig} from "../src/components/avatar/depthRig.ts";
+import {resolveDepthRigPose,resolveDepthRigIntentFromMotorFrame,stepDepthRigSecondaryMotion,stepSecondaryMotion,validateDepthRig} from "../src/components/avatar/depthRig.ts";
 const rig={version:1,id:"kurisu-2p5d-test",units:"scene",nodes:[
 {id:"root",parentId:null,role:"root",position:[0,0,0],pivot:[0,0],rotation:[0,0,0],depth:0,parallax:0},
 {id:"torso",parentId:"root",role:"torso",position:[0,-.2,.1],pivot:[0,0],rotation:[0,0,0],depth:.1,parallax:.5},
@@ -27,4 +27,59 @@ test("secondary motion adds inertial follow-through only to hair and coat semant
  assert.equal(get(pose,"eyes").rotation[2],get(base,"eyes").rotation[2]);
  for(let n=0;n<600;n++)pose=stepDepthRigSecondaryMotion(rig,base,intent,states,1/60);
  for(const id of ["hair-front","coat-tail"]){const state=states.get(id);assert.ok(Number.isFinite(state.position)&&Number.isFinite(state.velocity));assert.ok(Math.abs(state.position)<=.16);}
+});
+
+
+const motorFrame=(overrides={})=>({
+ version:1,goalId:"goal-2p5d-test",phase:"moving",
+ joints:{
+  headYaw:{id:"headYaw",angleRad:.2,targetAngleRad:.6,velocityRadPerSec:.1,available:true},
+  leftShoulder:{id:"leftShoulder",angleRad:-.4,targetAngleRad:-.8,velocityRadPerSec:-.2,available:true},
+  rightShoulder:{id:"rightShoulder",angleRad:.35,targetAngleRad:.7,velocityRadPerSec:.1,available:false},
+ },
+ ...overrides,
+});
+test("maps measured MotorFrame joint angles through explicit bindings without jumping to targets",()=>{
+ const base={headYaw:-.1,headRoll:.08,torsoYaw:.03};
+ const result=resolveDepthRigIntentFromMotorFrame(base,motorFrame(),[
+  {jointId:"headYaw",channel:"headYaw"},
+  {jointId:"leftShoulder",channel:"leftArm",gain:-1},
+ ]);
+ assert.equal(result.status,"applied");
+ assert.deepEqual(result.appliedChannels,["headYaw","leftArm"]);
+ assert.ok(Math.abs(result.intent.headYaw-.2)<1e-10);
+ assert.ok(Math.abs(result.intent.leftArm-.4)<1e-10);
+ assert.equal(result.intent.headRoll,.08);
+ assert.equal(result.intent.torsoYaw,.03);
+});
+test("idle, rejected and expired motor frames preserve the semantic fallback pose",()=>{
+ const base={headYaw:.12,leftArm:-.2};
+ for(const phase of ["idle","rejected","expired"]){
+  const result=resolveDepthRigIntentFromMotorFrame(base,motorFrame({phase}),[{jointId:"headYaw",channel:"headYaw"}]);
+  assert.equal(result.status,"inactive");
+  assert.deepEqual(result.intent,base);
+ }
+});
+test("unavailable and absent motor joints are not applied",()=>{
+ const frame=motorFrame({joints:{rightShoulder:{id:"rightShoulder",angleRad:.35,targetAngleRad:.7,velocityRadPerSec:.1,available:false}}});
+ const result=resolveDepthRigIntentFromMotorFrame({rightArm:.1},frame,[{jointId:"rightShoulder",channel:"rightArm"},{jointId:"missing",channel:"leftArm"}]);
+ assert.equal(result.status,"no-bindings");
+ assert.deepEqual(result.intent,{rightArm:.1});
+});
+test("invalid frame states and ambiguous bindings fail closed",()=>{
+ const base={headYaw:.1};
+ const malformed=motorFrame({joints:{headYaw:{id:"wrong",angleRad:NaN,targetAngleRad:0,velocityRadPerSec:0,available:true}}});
+ assert.equal(resolveDepthRigIntentFromMotorFrame(base,malformed,[{jointId:"headYaw",channel:"headYaw"}]).status,"rejected");
+ assert.deepEqual(resolveDepthRigIntentFromMotorFrame(base,motorFrame(),[
+  {jointId:"headYaw",channel:"headYaw"},{jointId:"leftShoulder",channel:"headYaw"},
+ ]).intent,base);
+ assert.equal(resolveDepthRigIntentFromMotorFrame(base,motorFrame(),[
+  {jointId:"headYaw",channel:"headYaw",gain:Infinity},
+ ]).reason,"invalid-motor-binding-gain");
+});
+test("motor frame values are clamped to the depth-rig channel safety envelope",()=>{
+ const frame=motorFrame({joints:{headYaw:{id:"headYaw",angleRad:4,targetAngleRad:4,velocityRadPerSec:0,available:true}}});
+ const result=resolveDepthRigIntentFromMotorFrame({},frame,[{jointId:"headYaw",channel:"headYaw"}]);
+ assert.equal(result.status,"applied");
+ assert.equal(result.intent.headYaw,.65);
 });
