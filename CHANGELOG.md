@@ -1,3 +1,12 @@
+## [NK1][Embodiment] Connect organism runtime to canonical MotorFrame channel (2026-10-30)
+
+- Add an organism-owned motor runtime composition around the single canonical EmbodiedMotorController and bounded MotorFrameChannel.
+- Expose explicit skeleton configuration, approved-goal submission, frame subscription and latest-frame snapshot through OrganismRuntime.
+- Advance configured motor state on each completed cognitive step using a monotonic runtime clock; publish no frames until a calibrated skeleton is configured.
+- Preserve the safety boundary: no goals are synthesized from emotion, gaze, speech, UI state or simulated world actions. The upstream action/ethical gate must supply an already-approved MotorGoal.
+- Add focused regression coverage for unconfigured fail-closed behavior, idle/no-fabricated-goal semantics, approved-goal movement, defensive frame snapshots and monotonic-clock enforcement.
+- Renderer/device readback, calibrated Kurisu skeleton profiles and endogenous cognitive motor-goal generation remain pending.
+
 ## [NK1][Aspect 06] Add bounded MotorFrame transport channel (2026-10-30)
 
 - Add a renderer-neutral, single-slot MotorFrame channel with strict frame validation, monotonic tick/time checks, defensive snapshots, bounded subscriptions, optional explicit replay, and listener exception isolation.
