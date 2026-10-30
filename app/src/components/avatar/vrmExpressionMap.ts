@@ -224,20 +224,21 @@ export function deriveVrmExpressionWeights(
   definitions: readonly VrmExpressionDefinition[],
   input: VrmExpressionInput,
 ): Record<string, number> {
-  const definitionMap = new Map(definitions.map((definition) => [definition.key, definition]));
+  const definitionMap = new Map<string, VrmExpressionDefinition>(definitions.map((definition) => [definition.key, definition] as const));
   const emotion = String(input.emotion ?? "calm").toLowerCase();
   const valence = clamp(input.valence ?? 0.5);
+  const arousal = clamp(input.arousal ?? 0.5);
   const curiosity = clamp(input.curiosity ?? 0.5);
   const warmth = clamp(input.warmth ?? 0.5);
   const values: Record<string, number> = Object.fromEntries(
     Array.from(KNOWN_EXPRESSIONS, (key) => [key, 0]),
   );
 
-  if (emotion === "joy") values.happy = 0.66 + valence * 0.14;
-  else if (emotion === "anger") values.angry = 0.76;
-  else if (emotion === "frustration") values.angry = 0.52;
-  else if (emotion === "sadness") values.sad = 0.68;
-  else if (emotion === "anxiety") values.sad = 0.34;
+  if (emotion === "joy") values.happy = 0.60 + valence * 0.12 + arousal * 0.08;
+  else if (emotion === "anger") values.angry = 0.58 + arousal * 0.17;
+  else if (emotion === "frustration") values.angry = 0.42 + arousal * 0.12;
+  else if (emotion === "sadness") values.sad = 0.56 + (1 - valence) * 0.12;
+  else if (emotion === "anxiety") values.sad = 0.26 + arousal * 0.12;
   else if (emotion === "calm") values.relaxed = 0.12 + warmth * 0.16;
   else if (emotion === "protective") values.relaxed = 0.12;
   else if (emotion === "curiosity") values.surprised = 0.08 + curiosity * 0.16;
