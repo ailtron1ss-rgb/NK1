@@ -17,6 +17,11 @@ test("validates a complete semantic snapshot and rejects corrupt state", () => {
   assert.equal(validateSemanticBodyState({ ...state, revision: -1 }), false);
   assert.equal(validateSemanticBodyState({ ...state, pose: { headYaw: Infinity } }), false);
   assert.equal(validateSemanticBodyState({ ...state, speech: { ...state.speech, mouthOpen: 4 } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, expression: 42 }), false);
+  assert.equal(validateSemanticBodyState({ ...state, gaze: { ...state.gaze, targetId: "   " } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, speech: { ...state.speech, eventId: 42 } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, intentId: "x".repeat(129) }), false);
+  assert.equal(validateSemanticBodyState({ ...state, wardrobeId: "x".repeat(129) }), false);
 });
 
 test("plans a capability-aware switch without losing canonical speech, emotion or intent", () => {
