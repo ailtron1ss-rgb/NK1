@@ -37,7 +37,8 @@
     "test:avatar-motion-clip-selector": "node --experimental-strip-types --test scripts/avatar-motion-clip-selector.test.mjs",
     "test:avatar-25d-depth": "node --experimental-strip-types --test scripts/avatar-25d-depth.test.mjs",
     "test:avatar-humanoid-retarget": "node --experimental-strip-types --test scripts/avatar-humanoid-retarget.test.mjs",
-    "test:avatar-three-humanoid-snapshot": "node --experimental-strip-types --test scripts/avatar-three-humanoid-rig-snapshot.test.mjs"
+    "test:avatar-three-humanoid-snapshot": "node --experimental-strip-types --test scripts/avatar-three-humanoid-rig-snapshot.test.mjs",
+    "test:avatar-three-humanoid-retarget": "node --experimental-strip-types --test scripts/avatar-three-humanoid-clip-retarget.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
