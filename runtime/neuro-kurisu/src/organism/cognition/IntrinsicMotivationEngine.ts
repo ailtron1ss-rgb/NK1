@@ -38,7 +38,7 @@ const isEmotion=(value:unknown):value is IntrinsicEmotionLabel=>typeof value==='
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const finiteInput=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
 const safeTimestamp=(value:unknown,fallback=0):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:fallback;
-const safeId=(value:unknown):string|null=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&!/[\\u0000-\\u001f\\u007f-\\u009f]/u.test(value)?value:null;
+const safeId=(value:unknown):string|null=>typeof value==='string'&&value.length>0&&value.length<=256&&value.trim()===value&&!Array.from(value).some(ch=>{const code=ch.charCodeAt(0);return code<32||(code>=127&&code<=159);})?value:null;
 const defaultAffectiveInfluence=():IntrinsicAffectiveInfluence=>({emotionId:null,label:'none',exploration01:0,regulation01:0,engagement01:0,connection01:0,confidence01:0});
 const normalizeAffectiveInfluence=(raw:unknown):IntrinsicAffectiveInfluence=>{
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return defaultAffectiveInfluence();
