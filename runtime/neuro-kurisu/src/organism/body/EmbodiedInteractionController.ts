@@ -170,7 +170,7 @@ export class EmbodiedInteractionController {
     if(!safeId(evidence.provenanceId))return blocked('postcondition-evidence-provenance-missing','uncertain');
     let independentlyVerified=false;try{independentlyVerified=this.verifyPostconditionEvidence?.(structuredClone(evidence),structuredClone(plan))===true;}catch{independentlyVerified=false;}
     if(!independentlyVerified)return blocked('trusted-postcondition-verifier-unavailable-or-rejected','uncertain');
-    if(plan.groundedWorldRevision!==undefined){if(!Number.isSafeInteger(evidence.worldRevision))return blocked('postcondition-world-revision-missing','uncertain');if(evidence.worldRevision<plan.groundedWorldRevision)return blocked('postcondition-world-revision-regressed');}
+    if(plan.groundedWorldRevision!==undefined){if(typeof evidence.worldRevision!=='number'||!Number.isSafeInteger(evidence.worldRevision))return blocked('postcondition-world-revision-missing','uncertain');if(evidence.worldRevision<plan.groundedWorldRevision)return blocked('postcondition-world-revision-regressed');}
     if(evidence.source==='simulator'){this.active={...plan,phase:'simulated'};return {accepted:true,phase:'simulated',reason:'simulated-postcondition-verified-not-real-world-proof',realityClass:'simulated'};}
     this.active={...plan,phase:'completed'};
     return {accepted:true,phase:'completed',reason:'fresh-independent-target-bound-postcondition-verified',realityClass:'device-observation'};

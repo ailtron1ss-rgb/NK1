@@ -1,3 +1,9 @@
+## [NK1][Aspect 10] Align focused CI with Node 24 and strict evidence typing (2026-10-30)
+
+- Migrate the focused Aspect 10 workflow to the repository's Node 24 pin and supported Actions v7 tags; watch `.nvmrc` changes.
+- Explicitly narrow optional world-revision evidence before integer and monotonicity checks, eliminating a strict TypeScript error.
+- This does not alter the explicit hardware/renderer integration boundary.
+
 ## [NK1][Aspect 10] Evidence-gated grounded interaction hardening (2026-10-30)
 
 - Fix metric arm reach, unique plan IDs and the exclusive plan-expiry boundary.

@@ -137,3 +137,11 @@ Expected: deterministic planner tests covering grounded look, reach, contact pol
 
 ### Explicit remaining boundary
 This pass hardens grounded planning, safety authorization and the evidence gate. It does **not** add a physical camera pipeline, move a live VRM/2.5D rig, prove hand contact, or manipulate real objects. These still require calibrated sensor/renderer adapters, independently measured rig geometry and hardware-backed verification. Simulation remains separate from physical evidence.
+
+
+## [NK1][Aspect 10] CI runtime alignment and strict TypeScript narrowing — 2026-10-30
+
+- Align the focused Aspect 10 workflow with the repository-wide Node 24 policy: use `actions/checkout@v7`, `actions/setup-node@v7` and `.nvmrc` as the single runtime pin.
+- Add `.nvmrc` to workflow path filters so runtime changes re-run the focused contract.
+- Make optional world-revision evidence explicitly type-narrow before numeric comparison; this keeps runtime validation and strict TypeScript checks consistent.
+- Confirm the focused workflow on the corrected branch head. Broader PR failures in app dependency installation and unrelated integrity gates remain separate and are not represented as Aspect 10 failures.
