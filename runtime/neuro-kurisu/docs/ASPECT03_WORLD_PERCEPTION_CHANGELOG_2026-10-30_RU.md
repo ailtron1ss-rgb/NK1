@@ -46,6 +46,10 @@
 | Two-stage confidence gate | Слабые рамки только продолжают треки, сильные могут создавать новые |
 | Bounded motion prediction | Предсказывать смещение bbox из сглаженной скорости между кадрами |
 | P41 integration regression | Проверять сохранение двух одинаковых объектов и IDs в каноническом P41
+| P41 image-space entity fields | Сохранять bbox отдельно от calibrated world x/y/z
+| WorldContext image-space schema | Переносить рамку только с camera ID, timestamp и bbox confidence
+| GroundedWorldState image-box round-trip | Возвращать последнюю 2D рамку в WorldContext без потери camera namespace
+| Image-space regression | Проверять прохождение двух одинаковых объектов и reject out-of-frame/no-camera boxes
 
 ## Текущий статус
 
