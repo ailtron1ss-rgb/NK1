@@ -113,3 +113,33 @@ The focused regression suite includes the published SHA-256 test vector for `abc
 - Результат возвращает список подтверждённых asset ID и точные причины отказа по путям; повреждённый, неполный или расширенный посторонними файлами пакет не проходит gate.
 - Добавлены тесты для корректного полного payload, отсутствующего файла и незаявленного лишнего файла.
 - Это ещё не файловый загрузчик и не установка пакета: интеграция должна передать реальные байты в этот gate, а лицензия/подпись/происхождение остаются отдельными проверками.
+
+
+## Четвёртый инженерный проход — фактическая возможность смены одежды в Live2D
+
+Инвентаризация дерева активной ветки выявила существующую каноническую модель Kurisu:
+- Desktop Cubism model3 с одним atlas texture 4096 и общими moc3/physics/CDI;
+- Mobile model3 использует отдельную производную текстуру 2048, но те же moc3, physics, CDI, motions и expressions;
+- model3 регистрирует 5 motion clips в 4 группах и 8 expressions;
+- CDI содержит параметры физики одежды/волос/обуви (например, LowerCoatPhy, TiePhy, ShirtPhy, ShoesPhy), но это параметры деформации, не переключатели независимых предметов;
+- expression `Arm Change` меняет `HandChange`, что также не является wardrobe slot.
+
+**Ключевой вывод:** наличие одежды в текстуре и физики пальто/галстука не означает, что Cubism-модель позволяет подменять одежду. В JSON metadata не обнаружен явный wardrobe/outfit/garment switch contract. Реальная проверка drawable/part IDs требует инспекции moc3 через Cubism SDK/Editor; до этого Live2D одежда остаётся `no-switch-contract`, без поддельной активации.
+
+Добавлен `live2dWardrobeCapability.ts` — консервативный анализатор model3/CDI/expression metadata. Он:
+- не принимает texture atlas или physics-параметры за сменную одежду;
+- сверяет expression-параметры с CDI;
+- различает отсутствие контракта, expression-only ограниченные controls и явный параметр wardrobe;
+- возвращает ограничения, которые должен обработать будущий renderer adapter.
+
+Добавлен `live2d-wardrobe-capability.test.mjs` с тестами отсутствия контракта, expression-only ограничения, явного outfit-параметра и повреждённого manifest. `npm run test:wardrobe` теперь включает этот набор.
+
+### Реальная оценка после инвентаризации
+
+- Live2D media/physics: уже существует и пригоден для текущей анимации лица/тела.
+- Live2D независимая смена одежды: не подтверждена; JSON-level capability inspector добавлен.
+- 2D sprite library: 32 полных статичных PNG в четырёх наборах; это готовые позы/сцены, не независимые garment layers.
+- 2.5D wardrobe: исходные раздельные слои/маски/пивоты пока не найдены в активном manifest.
+- VRM/3D: есть procedural body и пользовательская загрузка модели, но production-ready модульный комплект одежды не подтверждён.
+
+Следующий правильный шаг — проверить фактические drawable/part IDs и texture atlas в Cubism Editor/SDK, а не пытаться подменить части модели через случайные параметры. Параллельно следует подготовить первый настоящий 2.5D layered asset contract: body occlusion masks, garment layers, pivots, deformation weights и per-pose validation.
