@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { pairedSignTestPValue } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
-import { evaluateOutcomePromotion } from '../src/organism/learning/VerifiedOutcomePromotionGate.ts';
+import { evaluateOutcomePromotion, normalizePromotionGateConfig } from '../src/organism/learning/VerifiedOutcomePromotionGate.ts';
 
 const bounded = value => Math.max(0, Math.min(1, value));
 const summary = (overrides = {}) => {
@@ -164,11 +164,29 @@ const reversedCI = evaluateOutcomePromotion(summary({ approximate95CI: [0.3, 0.1
 assert.equal(reversedCI.eligible, false);
 assert.ok(reversedCI.reasons.includes('invalid-aggregate-approximate-confidence-interval'));
 
-assert.equal(pairedSignTestPValue(8, 0), 2 / (2 ** 8));
-assert.equal(pairedSignTestPValue(0, 8), 2 / (2 ** 8));
+assert.ok(Math.abs(pairedSignTestPValue(8, 0) - 2 / (2 ** 8)) < 1e-15);
+assert.ok(Math.abs(pairedSignTestPValue(0, 8) - 2 / (2 ** 8)) < 1e-15);
 assert.equal(pairedSignTestPValue(6, 6), 1);
 assert.equal(pairedSignTestPValue(0, 0), 1);
 assert.throws(() => pairedSignTestPValue(-1, 2), /non-negative/);
+assert.throws(() => pairedSignTestPValue(500_001, 500_000), /exact computation limit/);
+
+const normalizedPolicy = normalizePromotionGateConfig({ minIndependentSeeds: 42 });
+assert.equal(normalizedPolicy.minIndependentSeeds, 42);
+assert.equal(normalizedPolicy.minPairedTasks, undefined);
+const legacyPolicy = normalizePromotionGateConfig({ minPairedTasks: 19 });
+assert.equal(legacyPolicy.minIndependentSeeds, 19, 'legacy option is accepted as a compatibility alias');
+assert.throws(() => normalizePromotionGateConfig({
+  minIndependentSeeds: 20, minPairedTasks: 19,
+}), /conflicting/);
+
+const uncomputableLargeSample = evaluateOutcomePromotion(summary({
+  pairedN: 1_000_001,
+  discordantCandidateWins: 500_001,
+  discordantBaselineWins: 500_000,
+}), families);
+assert.equal(uncomputableLargeSample.eligible, false);
+assert.ok(uncomputableLargeSample.reasons.includes('uncomputable-aggregate-sign-test-evidence'));
 
 console.log('P23_VERIFIED_OUTCOME_PROMOTION_GATE=PASS');
 console.log(JSON.stringify({
