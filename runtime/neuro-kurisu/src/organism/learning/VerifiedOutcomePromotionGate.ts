@@ -1,4 +1,4 @@
-import type { PairedMethodSummary } from './VerifiedOutcomeLedger.ts';
+import { pairedSignTestPValue, type PairedMethodSummary } from './VerifiedOutcomeLedger.ts';
 
 export interface FamilyOutcomeSummary extends PairedMethodSummary {
   family: string;
@@ -12,6 +12,8 @@ export interface PromotionGateConfig {
   requirePositiveConfidenceLowerBound: boolean;
   /** partition: family cells sum to aggregate pairs; seed-repeated: each family shares the same seed-level paired N. */
   familyPairCountMode: 'partition' | 'seed-repeated';
+  /** Family-wise significance threshold for the preregistered primary endpoint. */
+  familyWiseAlpha: number;
 }
 
 export interface PromotionGateResult {
@@ -21,7 +23,13 @@ export interface PromotionGateResult {
   familyCount: number;
   aggregateGain: number | null;
   worstFamilyGain: number | null;
-  familyResults: Array<{ family: string; pairedN: number; gain: number | null; eligible: boolean }>;
+  familyResults: Array<{ family: string; pairedN: number; gain: number | null; signTestPValue: number | null; eligible: boolean }>;
+  statisticalEvidence: {
+    unit: 'seed' | 'invalid';
+    rawPValue: number | null;
+    alpha: number;
+    significant: boolean;
+  };
 }
 
 const DEFAULTS: PromotionGateConfig = {
@@ -31,6 +39,7 @@ const DEFAULTS: PromotionGateConfig = {
   maxFamilyRegression: 0.05,
   requirePositiveConfidenceLowerBound: true,
   familyPairCountMode: 'partition',
+  familyWiseAlpha: 0.05,
 };
 
 type RecordValue = Record<string, unknown>;
@@ -71,6 +80,11 @@ function validateSummary(value: unknown, prefix: 'aggregate' | 'family'): string
     reasons.push(`invalid-${prefix}-pass-rate`);
   }
   if (!isGain(value.absoluteGain)) reasons.push(`invalid-${prefix}-gain`);
+  if (value.statisticalUnit !== 'seed') reasons.push(`non-seed-statistical-unit:${prefix}`);
+  if (typeof value.signTestPValue !== 'number' || !Number.isFinite(value.signTestPValue) ||
+      value.signTestPValue < 0 || value.signTestPValue > 1) {
+    reasons.push(`invalid-${prefix}-sign-test-p-value`);
+  }
   if (!isCount(value.discordantCandidateWins) || !isCount(value.discordantBaselineWins)) {
     reasons.push(`invalid-${prefix}-discordant-counts`);
   } else if (isCount(value.pairedN) &&
@@ -80,6 +94,15 @@ function validateSummary(value: unknown, prefix: 'aggregate' | 'family'): string
   if (isUnit(value.baselinePassRate) && isUnit(value.candidatePassRate) && isGain(value.absoluteGain) &&
       Math.abs((value.candidatePassRate - value.baselinePassRate) - value.absoluteGain) > 1e-6) {
     reasons.push(`inconsistent-${prefix}-gain`);
+  }
+
+  if (isCount(value.discordantCandidateWins) && isCount(value.discordantBaselineWins) &&
+      typeof value.signTestPValue === 'number' && Number.isFinite(value.signTestPValue)) {
+    let expectedPValue: number | null = null;
+    try { expectedPValue = pairedSignTestPValue(value.discordantCandidateWins, value.discordantBaselineWins); } catch { /* counted above */ }
+    if (expectedPValue !== null && Math.abs(expectedPValue - value.signTestPValue) > 1e-12) {
+      reasons.push(`inconsistent-${prefix}-sign-test-p-value`);
+    }
   }
 
   const approximate = readInterval(value.approximate95CI);
@@ -109,7 +132,8 @@ export function evaluateOutcomePromotion(
       !Number.isFinite(cfg.minAbsoluteGain) || cfg.minAbsoluteGain < 0 || cfg.minAbsoluteGain > 1 ||
       !Number.isFinite(cfg.maxFamilyRegression) || cfg.maxFamilyRegression < 0 || cfg.maxFamilyRegression > 1 ||
       typeof cfg.requirePositiveConfidenceLowerBound !== 'boolean' ||
-      !['partition', 'seed-repeated'].includes(cfg.familyPairCountMode)) {
+      !['partition', 'seed-repeated'].includes(cfg.familyPairCountMode) ||
+      !Number.isFinite(cfg.familyWiseAlpha) || cfg.familyWiseAlpha <= 0 || cfg.familyWiseAlpha >= 1) {
     throw new Error('invalid promotion gate configuration');
   }
 
@@ -125,6 +149,12 @@ export function evaluateOutcomePromotion(
     reasons.push('missing-aggregate-evidence');
   } else if (aggregateGain < cfg.minAbsoluteGain) {
     reasons.push('aggregate-gain-below-threshold');
+  }
+  const aggregatePValue = isRecord(aggregate) &&
+    typeof aggregate.signTestPValue === 'number' && Number.isFinite(aggregate.signTestPValue)
+    ? aggregate.signTestPValue : null;
+  if (aggregatePValue === null || aggregatePValue > cfg.familyWiseAlpha) {
+    reasons.push('primary-sign-test-not-significant');
   }
 
   // Prefer the cluster-bootstrap interval. Never fall back to a more optimistic
@@ -142,7 +172,7 @@ export function evaluateOutcomePromotion(
   const familyResults: PromotionGateResult['familyResults'] = safeFamilies.map((raw) => {
     if (!isRecord(raw)) {
       reasons.push('invalid-family-entry');
-      return { family: '(invalid)', pairedN: 0, gain: null, eligible: false };
+      return { family: '(invalid)', pairedN: 0, gain: null, signTestPValue: null, eligible: false };
     }
     const name = nonEmpty(raw.family) ? raw.family.normalize('NFKC').trim() : '';
     const key = name.toLocaleLowerCase('en-US');
@@ -154,11 +184,14 @@ export function evaluateOutcomePromotion(
     reasons.push(...validateSummary(raw, 'family'));
     const n = isCount(raw.pairedN) ? raw.pairedN : 0;
     const gain = isGain(raw.absoluteGain) ? raw.absoluteGain : null;
+    const signTestPValue = typeof raw.signTestPValue === 'number' &&
+      Number.isFinite(raw.signTestPValue) && raw.signTestPValue >= 0 && raw.signTestPValue <= 1
+      ? raw.signTestPValue : null;
     const valid = !validateSummary(raw, 'family').length;
     const eligible = valid && n > 0 && gain !== null && gain >= -cfg.maxFamilyRegression;
     if (n === 0) reasons.push(`missing-family-pairs:${name}`);
     if (gain !== null && gain < -cfg.maxFamilyRegression) reasons.push(`family-regression:${name}`);
-    return { family: name, pairedN: n, gain, eligible };
+    return { family: name, pairedN: n, gain, signTestPValue, eligible };
   });
 
   const familyPairTotal = familyResults.reduce((sum, item) => sum + item.pairedN, 0);
@@ -177,5 +210,11 @@ export function evaluateOutcomePromotion(
     aggregateGain,
     worstFamilyGain,
     familyResults,
+    statisticalEvidence: {
+      unit: isRecord(aggregate) && aggregate.statisticalUnit === 'seed' ? 'seed' : 'invalid',
+      rawPValue: aggregatePValue,
+      alpha: cfg.familyWiseAlpha,
+      significant: aggregatePValue !== null && aggregatePValue <= cfg.familyWiseAlpha,
+    },
   };
 }
