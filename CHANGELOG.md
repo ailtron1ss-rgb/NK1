@@ -1,3 +1,10 @@
+## [NK1][executor] Restore project-executor snapshot round-trip identity (2026-10-30)
+
+- Restore the missing `lastOutcomeId` key in the canonical default executor snapshot so fresh and restored snapshots preserve identical own-key shape.
+- Align stale project-runtime/idempotency regressions with the intentional executor schema v7 and make the persistence failure fixture target the current ready step's preferred tool.
+- Source PR #421 exact-head CI passed all five checks. The combined integration branch still requires exact-head revalidation.
+- No new external action behavior is introduced; this is a state-identity and regression correction.
+
 ## [NK1][Aspect 06] Port renderer-neutral motor control substrate (2026-10-30)
 
 - Add the canonical joint-space motor controller, goal arbiter, versioned rig profiles, motor-frame channel, kinematics and multi-effector/pose IK, plus OrganismRuntime/server integration and focused regression suites from PR #410.
