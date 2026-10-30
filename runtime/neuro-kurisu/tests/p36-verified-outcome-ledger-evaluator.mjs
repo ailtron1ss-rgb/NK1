@@ -168,6 +168,8 @@ const hypothesis=p36.propose(state,{worldError01:.7,selfError01:.6,perception01:
 assert.ok(hypothesis);
 const recorded=p36.recordExternalEvidence({
   ...evidenceInput,
+  // Bind external evidence to the hypothesis actually issued by this engine cycle.
+  hypothesisId:hypothesis.id,
   toolId:P36_EXTERNAL_EVIDENCE_TOOL_ID,
   executionId:result.executionId,
   decisionId,
