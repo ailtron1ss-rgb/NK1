@@ -1,3 +1,12 @@
+
+## [NK1][Aspect 04] Canonical 2.5D Depth Rig runtime foundation (2026-10-30)
+
+- Integrate the canonical DepthRigManifest v1 runtime in Avatar3DStage: strict manifest validation, actual imported GLB parent-hierarchy check before mutation, pivot-aware Three.js adapter, face morph/viseme resolver and bounded hair/coat secondary motion.
+- Add a capability-gated 2.5D selector that activates only for a loaded GLB/VRM with a validated nk1DepthRigManifest; ordinary 3D models stay in 3D mode.
+- Add validated MotorFrame transport from the canonical runtime when no frame is injected by the host; stale/invalid frames are dropped rather than synthesized.
+- Add GLB validator, Blender export/demo tooling and focused regression workflow. The demo geometry is a technical rig fixture, not production Kurisu artwork.
+- Production layered artwork, hidden-area repaint, licensed source assets, real Blender master and desktop/Android visual E2E remain open gates.
+
 ## [NK1][Aspect 8] Governed tool execution and safety boundary (2026-10-30)
 
 - Add a dependency-free, bounded JSON-schema-inspired input contract subset; reject unsupported schema keywords instead of silently accepting them.
