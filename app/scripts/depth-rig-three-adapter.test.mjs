@@ -46,3 +46,15 @@ test("reports missing imported nodes without partially mutating the scene", () =
   assert.ok(result.errors.includes("missing-scene-node:eyes"));
   assert.deepEqual(head.position.toArray(), [0, 0, 0]);
 });
+
+
+test("ignores duplicate names that are outside the manifest contract", () => {
+  const root = new THREE.Group();
+  const a = new THREE.Group(); a.name = "head";
+  const unrelatedA = new THREE.Group(); unrelatedA.name = "mesh";
+  const unrelatedB = new THREE.Group(); unrelatedB.name = "mesh";
+  root.add(a, unrelatedA, unrelatedB);
+  const result = applyDepthRigTransforms(root, [transform("head")]);
+  assert.equal(result.ok, true);
+  assert.equal(result.applied, 1);
+});
