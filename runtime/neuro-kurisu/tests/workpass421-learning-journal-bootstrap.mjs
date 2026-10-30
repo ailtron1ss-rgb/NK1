@@ -24,7 +24,7 @@ try {
   assert.equal(engine.learningLifecycleJournalDiagnostics().pendingActivationCount, 0);
 
   // The core learner and optional revision coordinator share the same durable sinks.
-  const sharedSinks = createDefaultLearningJournals(stateFile + '.shared');
+  const sharedSinks = createDefaultLearningJournals(stateFile.replace(/\\.json$/i, '.shared.json'));
   const coreLearner = new P23LearningEngine();
   const revisionLearner = new P23LearningEngine();
   configureLearningJournals(coreLearner, sharedSinks);
