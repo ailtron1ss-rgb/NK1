@@ -28,7 +28,9 @@ const summary = (overrides = {}) => {
       value.discordantBaselineWins = Math.min(value.pairedN - value.discordantCandidateWins, Math.max(0, Math.round(Math.max(0, -value.absoluteGain) * value.pairedN)));
     }
   }
-  value.signTestPValue = pairedSignTestPValue(value.discordantCandidateWins, value.discordantBaselineWins);
+  if (!Object.hasOwn(overrides, 'signTestPValue')) {
+    value.signTestPValue = pairedSignTestPValue(value.discordantCandidateWins, value.discordantBaselineWins);
+  }
   return value;
 };
 const family = (name, overrides = {}) => ({
