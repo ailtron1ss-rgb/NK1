@@ -153,7 +153,7 @@ export class VerifiedOutcomeLedger {
     }
   }
 
-  /** Stable digest for binding verifier artifacts to the exact task manifest. */
+  /** Stable digest for binding verifier artifacts to the exact complete task manifest. */
   manifestFingerprint(): string {
     const canonicalManifest = [...this.manifest.values()]
       .map(entry => ({
@@ -165,6 +165,28 @@ export class VerifiedOutcomeLedger {
         version: entry.version,
       }))
       .sort((a, b) => a.taskId.localeCompare(b.taskId));
+    return createHash('sha256').update(JSON.stringify(canonicalManifest)).digest('hex');
+  }
+
+  /**
+   * Stable split-scoped digest. Campaign reservation uses the holdout-only
+   * fingerprint so changing unrelated train/validation rows cannot silently
+   * turn an already exposed holdout set into a "new" confirmatory dataset.
+   */
+  splitManifestFingerprint(split: EvaluationSplit): string {
+    if (!['train', 'validation', 'holdout'].includes(split)) throw new Error('invalid evaluation split');
+    const canonicalManifest = [...this.manifest.values()]
+      .filter(entry => entry.split === split)
+      .map(entry => ({
+        taskId: entry.taskId,
+        family: entry.family,
+        split: entry.split,
+        promptFingerprint: entry.promptFingerprint,
+        verifierId: entry.verifierId,
+        version: entry.version,
+      }))
+      .sort((a, b) => a.taskId.localeCompare(b.taskId));
+    if (!canonicalManifest.length) throw new Error(`manifest has no tasks for split ${split}`);
     return createHash('sha256').update(JSON.stringify(canonicalManifest)).digest('hex');
   }
 
