@@ -355,3 +355,20 @@ Family summaries по типам задач сохраняются как защ
 - `p23-seed-clustered-outcome-comparison.mjs` теперь явно подтверждает seed как statistical unit и точное sign-test значение для небольшого примера.
 
 **Статус реализации:** новые модули, тесты и CI steps добавлены в рабочую ветку. Их статус считается `UNVERIFIED` до завершения exact-head GitHub Actions; зелёный предыдущий SHA не переносится на эти коммиты. Production rollout и применение реального независимого holdout не заявляются.
+
+### 12.7 Durable campaign reservation и crash recovery
+
+Добавлен `ExperimentCampaignRegistryFileStore.ts` по образцу уже используемого атомарного `VerifiedOutcomeLedgerFileStore`:
+
+- один canonical registry file сохраняет регистрации и финализированные результаты в checksum envelope;
+- обновления выполняются только через `transact(callback)`: store получает exclusive lock-файл через `open(..., 'wx')`, перечитывает последний snapshot под lock, выполняет callback и записывает новый snapshot через same-directory temp + fsync + atomic rename;
+- второй процесс, пытающийся писать в тот же registry path, получает lock error вместо перезаписи чужого состояния;
+- callback, который выбрасывает ошибку, не сохраняется — частичная регистрация откатывается;
+- после рестарта registry восстанавливает holdout reservation из snapshot;
+- stale lock после аварийного завершения процесса намеренно не удаляется автоматически. Оператор должен проверить отсутствие живого владельца и только затем вручную удалить lock-файл.
+
+**Deployment boundary:** это single-host файловая блокировка. Несколько серверов, NFS/object storage или несколько разных registry paths не образуют единого глобального lock. Production-эксплуатация обязана настроить один canonical durable path, резервное копирование и контроль доступа. Для multi-host production потребуется настоящий транзакционный coordinator (например, DB unique constraint/serializable transaction или distributed lock с lease/fencing token), которого эта реализация пока не предоставляет.
+
+### 12.8 CI regression для durable store
+
+`p23-experiment-campaign-file-store.mjs` проверяет restore после рестарта, повторный захват одного holdout из второго экземпляра store, exclusive lock, rollback callback error, checksum tampering, size limit и отсутствие оставшегося lock после штатных ошибок. Тест и source path добавлены в существующий `WorkPass108 paired evidence identity and verified promotion gate` workflow, который уже присутствует в base branch и потому запускается на PR-коммитах. Статус exact-head проверки остаётся `UNVERIFIED` до завершения этого workflow.
