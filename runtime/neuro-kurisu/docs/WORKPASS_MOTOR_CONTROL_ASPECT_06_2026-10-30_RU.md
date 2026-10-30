@@ -38,7 +38,7 @@
 
 ### 2. MotorGoalArbiter.ts
 
-Добавлен нижнеуровневый арбитр моторных подцелей, который переиспользует существующие `BasalGangliaSelectionCircuit` и `CerebellarPredictiveController`. Он не подменяет OrganismCore и не выбирает когнитивные действия: он ранжирует только уже сформированные моторные подцели. Перед передачей цели проверяется её контракт, выбор блокируется ниже минимального gate threshold. Outcome дополнительно должен ссылаться на реально принятую моторную цель, иметь уникальный evidence ID и caller-supplied признаки независимой верификации; идентификаторы доказательств и ожидающие goal IDs сохраняются в snapshot для защиты от повторного начисления после перезапуска. **Ограничение:** эти признаки пока являются входным контрактом вызывающего слоя, а не криптографически/объектно подтверждённым receipt из канонического `OutcomeVerificationService`. Прямая привязка к trusted receipt и фактическому наблюдению от рендерера/устройства остаётся следующим обязательным этапом.
+Добавлен нижнеуровневый арбитр моторных подцелей, который переиспользует существующие `BasalGangliaSelectionCircuit` и `CerebellarPredictiveController`. Он не подменяет OrganismCore и ранжирует только уже сформированные моторные подцели. Для обучения теперь требуется точный объект receipt, созданный `OutcomeVerificationService`: `isTrustedDecisionLinkedExternalPostcondition` проверяет process-local WeakMap provenance и точное совпадение `toolId`, `executionId`, `decisionId` и полного `input`. Моторная цель несёт `verificationToolId`; обучающий исход дополнительно привязывается к принятому `goalId`, уникальному `observationId`, тикам и confidence ≥ 0.6. Caller-supplied `verified/independent` больше не принимаются, копия/JSON-roundtrip receipt отвергается, повторный evidence ID не начисляется. Метаданные ожидающих целей и evidence dedup сохраняются в snapshot. Это закрывает границу доверия между моторным обучением и канонической проверкой исхода, но не заменяет будущую реальную проверку позы через renderer/device observation.
 
 ### 3. Регрессионные тесты
 
@@ -53,7 +53,7 @@
 - сохранение/восстановление движения;
 - достижимые и недостижимые IK-цели;
 - арбитраж через существующие basal-ganglia/cerebellar механизмы;
-- запрет обучения по неподтверждённым и повторным outcome;
+- отказ от caller-supplied verification flags, проверку trusted receipt через канонический `OutcomeVerificationService`, точную привязку к execution/decision/tool/input и goal;
 - сохранение дедупликации evidence после восстановления.
 
 Тест зарегистрирован как `npm run test:embodied-motor-controller` в runtime-пакете и как одноимённая команда в корневом package.json.
@@ -75,7 +75,7 @@
 ## Следующие этапы
 
 1. Связать кандидатов OrganismCore с BasalGangliaSelectionCircuit, сохранив единственного владельца выбора.
-2. Связать `recordVerifiedOutcome` с точным trusted receipt из `OutcomeVerificationService` / `ExternalPostconditionVerifier`, привязать его к executionId, goalId и фактическому наблюдению; только после этого подавать моторные исходы к CerebellarPredictiveController.
+2. Подключить реальный renderer/device postcondition producer, который выдаёт `OutcomeVerificationService` точные наблюдения для фактической позы/траектории; текущий арбитр уже принимает только trusted receipt, но физическое подтверждение ещё не подключено.
 3. Добавить 3D transform hierarchy и quaternion FK/IK, сохранив текущий контроллер как слой суставных ограничений.
 4. Добавить Damped Least Squares IK для многосуставных цепей, а также FABRIK как альтернативный solver для дешёвого мобильного режима.
 5. Добавить velocity/acceleration/jerk limits, контакт стоп и ограничения коллизий.
