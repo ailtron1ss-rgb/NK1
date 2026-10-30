@@ -127,8 +127,10 @@ assert.throws(() => strictIdentity.prepareStepOperation({
 }), /project-step-checkpoint-invalid-identity/);
 
 const exhausted = new AutonomousProjectExecutor();
-exhausted.restore({ version: 7, projectId: 'sequence-exhausted', steps: [], operationSequence: Number.MAX_SAFE_INTEGER });
 exhausted.ensure({ id: 'sequence-exhausted', origin: 'identity' });
+const exhaustedSnapshot = exhausted.snapshot();
+exhaustedSnapshot.operationSequence = Number.MAX_SAFE_INTEGER;
+exhausted.restore(exhaustedSnapshot);
 const exhaustedStep = exhausted.currentStep();
 assert.throws(() => exhausted.prepareStepOperation({
   projectId: 'sequence-exhausted', stepId: exhaustedStep.id, toolId: 'fixture.read', requestFingerprint: strictFingerprint,
