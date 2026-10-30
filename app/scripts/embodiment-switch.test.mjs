@@ -22,6 +22,16 @@ test("validates a complete semantic snapshot and rejects corrupt state", () => {
   assert.equal(validateSemanticBodyState({ ...state, speech: { ...state.speech, eventId: 42 } }), false);
   assert.equal(validateSemanticBodyState({ ...state, intentId: "x".repeat(129) }), false);
   assert.equal(validateSemanticBodyState({ ...state, wardrobeId: "x".repeat(129) }), false);
+  assert.equal(validateSemanticBodyState({ ...state, expression: "   " }), false);
+  assert.equal(validateSemanticBodyState({ ...state, action: "" }), false);
+  assert.equal(validateSemanticBodyState({ ...state, action: "  " }), false);
+  assert.equal(validateSemanticBodyState({ ...state, speech: { ...state.speech, eventId: "" } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, speech: { ...state.speech, eventId: "  " } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, intentId: "" }), false);
+  assert.equal(validateSemanticBodyState({ ...state, intentId: "  " }), false);
+  assert.equal(validateSemanticBodyState({ ...state, wardrobeId: "" }), false);
+  assert.equal(validateSemanticBodyState({ ...state, wardrobeId: "  " }), false);
+  assert.equal(validateSemanticBodyState({ ...state, intentId: null, wardrobeId: null, speech: { ...state.speech, eventId: null } }), true);
 });
 
 test("plans a capability-aware switch without losing canonical speech, emotion or intent", () => {
