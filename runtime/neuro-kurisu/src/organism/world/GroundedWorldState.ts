@@ -259,9 +259,6 @@ export class GroundedWorldState {
       const fresh=Number.isFinite(x.at)&&x.at<=at&&at-x.at<=5_000;
       return `${fresh?kind:'historical-'+kind}-evidence:${x.claim}`;
     });
-    const baseFacts=[...(base?.facts??[]).slice(-96),...relationFacts,...evidenceFacts,...eventFacts];
-    const facts=[...new Set(baseFacts.map(norm).filter(Boolean))].slice(-192);
-
     for(const entity of rows){
       const age=Math.max(0,at-entity.lastSeenAt);
       if(age>90000){
@@ -298,6 +295,8 @@ export class GroundedWorldState {
       const kind=normalizeEvidence(x.evidenceKind);
       return `${fresh?kind:'historical-'+kind}-event:${x.label}`;
     });
+    const baseFacts=[...(base?.facts??[]).slice(-96),...relationFacts,...evidenceFacts,...eventFacts];
+    const facts=[...new Set(baseFacts.map(norm).filter(Boolean))].slice(-192);
     const semanticConfidence=p?clamp(
       p.metrics.grounding01*.25+
       p.metrics.crossModalEvidenceCoverage01*.20+
