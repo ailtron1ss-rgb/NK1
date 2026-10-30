@@ -14,6 +14,9 @@ import {
   sampleVisemeClock,
   sampleVisemeTimeline,
   timelineOffsetForCharIndex,
+  createSpeechLifecycleEventV1,
+  isSpeechLifecycleEventV1,
+  acceptsSpeechLifecycleEventV1,
 } from "../src/components/avatar/embodimentTimeline.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -269,4 +272,45 @@ test("invalid monotonic clock samples fail closed at the last known high-water m
   assert.equal(anchored.highWaterMs, 1190);
   assert.equal(anchored.anchorElapsedMs, 1190);
   assert.equal(sampleMonotonicAudioClock(anchored.highWaterMs, anchored.anchorElapsedMs, anchored.anchorPerformanceAtMs, 950), 1240);
+});
+
+
+test("versioned speech lifecycle accepts a monotonic queued-start-boundary-end sequence", () => {
+  const base = { utteranceId: "utt-1", provider: "browser-speech-synthesis", clockId: "clock-1" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:2", sequence: 2, monotonicTimeMs: 12, phase: "started" });
+  const boundary = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:3", sequence: 3, monotonicTimeMs: 120, phase: "boundary", charIndex: 4 });
+  const ended = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:4", sequence: 4, monotonicTimeMs: 340, phase: "ended" });
+  assert.equal(isSpeechLifecycleEventV1(queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(null, queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(queued, started), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, boundary), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(boundary, ended), true);
+});
+
+test("speech lifecycle rejects duplicate, stale, cross-clock and post-terminal events", () => {
+  const base = { utteranceId: "utt-1", provider: "browser-speech-synthesis", clockId: "clock-1" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:2", sequence: 2, monotonicTimeMs: 10, phase: "started" });
+  const ended = createSpeechLifecycleEventV1({ ...base, eventId: "utt-1:3", sequence: 3, monotonicTimeMs: 100, phase: "ended" });
+  const duplicate = { ...started, eventId: "utt-1:2b" };
+  const stale = { ...started, eventId: "utt-1:3", sequence: 3, monotonicTimeMs: 9 };
+  const otherClock = { ...started, eventId: "utt-1:3", sequence: 3, clockId: "clock-2", monotonicTimeMs: 11 };
+  assert.equal(acceptsSpeechLifecycleEventV1(started, duplicate), false);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, stale), false);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, otherClock), false);
+  assert.equal(acceptsSpeechLifecycleEventV1(ended, { ...ended, sequence: 4, eventId: "utt-1:4", phase: "cancelled", monotonicTimeMs: 110 }), false);
+  assert.equal(isSpeechLifecycleEventV1({ ...started, phase: "boundary" }), false, "boundary events require a UTF-16 character index");
+});
+
+test("speech lifecycle terminal states are mutually exclusive", () => {
+  const base = { utteranceId: "utt-2", provider: "native-tts", clockId: "native-clock" };
+  const queued = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:1", sequence: 1, monotonicTimeMs: 0, phase: "queued" });
+  const started = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:2", sequence: 2, monotonicTimeMs: 2, phase: "started" });
+  const cancelled = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:3", sequence: 3, monotonicTimeMs: 20, phase: "cancelled" });
+  const lateEnd = createSpeechLifecycleEventV1({ ...base, eventId: "utt-2:4", sequence: 4, monotonicTimeMs: 30, phase: "ended" });
+  assert.equal(acceptsSpeechLifecycleEventV1(null, queued), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(queued, started), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(started, cancelled), true);
+  assert.equal(acceptsSpeechLifecycleEventV1(cancelled, lateEnd), false);
 });
