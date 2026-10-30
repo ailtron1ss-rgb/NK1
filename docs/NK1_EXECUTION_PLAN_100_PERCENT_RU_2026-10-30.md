@@ -1,8 +1,8 @@
 # NK1 — исполнительный мастер-план до 100% готовности
 **Дата сверки:** 30 октября 2026  
-**Рабочая исходная линия:** \`workpass70-source\`  
-**Проверенный HEAD исходников:** \`ad564d1879028f00549be41ec5172a2f72e25897\`  
-**HEAD ветки поставки:** \`main\` — \`c51bdd9920c317baa13ad86a04851b125a8f440b\`  
+**Рабочая исходная линия:** `workpass70-source`  
+**Проверенный HEAD исходников:** `ad564d1879028f00549be41ec5172a2f72e25897`  
+**HEAD ветки поставки:** `main` — `c51bdd9920c317baa13ad86a04851b125a8f440b`  
 **Каноническая поставка:** GitHub Release ZIP; не считать обновлённым до фактической публикации нового asset.
 
 ---
@@ -30,17 +30,17 @@ NK1 считается завершённым не тогда, когда в р�
 
 | Область | Фактическое состояние на дату сверки |
 |---|---|
-| Кодовая база | \`workpass70-source\` @ \`ad564d1879028f00549be41ec5172a2f72e25897\` |
-| Ветка Release / workflows | \`main\` @ \`c51bdd9920c317baa13ad86a04851b125a8f440b\` |
+| Кодовая база | `workpass70-source` @ `ad564d1879028f00549be41ec5172a2f72e25897` |
+| Ветка Release / workflows | `main` @ `c51bdd9920c317baa13ad86a04851b125a8f440b` |
 | Размер исходного дерева | 10 622 tracked/tree entries в рекурсивном Git tree |
 | Ветки | 488 веток в пяти страницах GitHub API; многие исторические/экспериментальные |
-| Последняя опубликованная версия | WorkPass70 Hotfix 1, tag \`workpass70-hotfix1-2026-10-19\` |
-| Последний ZIP | \`Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip\`, 136 354 713 bytes |
-| SHA-256 ZIP | \`9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb\` |
+| Последняя опубликованная версия | WorkPass70 Hotfix 1, tag `workpass70-hotfix1-2026-10-19` |
+| Последний ZIP | `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136 354 713 bytes |
+| SHA-256 ZIP | `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb` |
 | Обновление Release | Нового Release asset после 19.10.2026 не обнаружено |
-| Текущий source CI | 4 из 5 check-runs успешны; \`package-and-publish\` блокируется проверкой лицензий |
+| Текущий source CI | 4 из 5 check-runs успешны; `package-and-publish` блокируется проверкой лицензий |
 
-**Правило работы:** \`workpass70-source\` — рабочая кодовая база; \`main\` — процессы упаковки/публикации. Release ZIP — канонический скачиваемый артефакт. Не заменять ZIP архивом ветки \`main\`, не объявлять Release обновлённым после одного коммита и не переносить код в \`main\` вместо исходной линии.
+**Правило работы:** `workpass70-source` — рабочая кодовая база; `main` — процессы упаковки/публикации. Release ZIP — канонический скачиваемый артефакт. Не заменять ZIP архивом ветки `main`, не объявлять Release обновлённым после одного коммита и не переносить код в `main` вместо исходной линии.
 
 ### 2.2 Статус текущего CI и блокировок
 
@@ -52,24 +52,24 @@ NK1 считается завершённым не тогда, когда в р�
 | Voice/prosody branch | 21/21 PASS | Сильный кандидат; после интеграции повторить exact-SHA проверки |
 | Original 2D art branch | 7/7 PASS | Контракт/asset inventory проходят; это ещё не готовый финальный рисунок |
 | Depth-rig branch | 6/6 PASS | Контракт рига проходит; полноценного художественного 2.5D тела нет |
-| Affective-expression branch | 5/7 PASS, 2 FAIL | App typecheck: \`Avatar3DStage.tsx(78,226): TS1005 ':' expected\` |
-| Tool-governance branch | 20/21 PASS | \`tool-input-contracts-workpass624.mjs:29\`: bounded regex quantifier test fails |
+| Affective-expression branch | 5/7 PASS, 2 FAIL | App typecheck: `Avatar3DStage.tsx(78,226): TS1005 ':' expected` |
+| Tool-governance branch | 20/21 PASS | `tool-input-contracts-workpass624.mjs:29`: bounded regex quantifier test fails |
 | Embodied-world-interaction branch | 18/22 PASS | 4 job failures из-за npm install/typecompiler command setup; нужно исправить workflow и повторить |
 | Release-reliability branch | 3/3 PASS | Только её собственные проверки; не закрывает human license review и device E2E |
 
 Ключевые точные CI-свидетельства:
-- Source release gate: run \`41008370747\`, job \`123908360120\`.
-- Tool contracts: run \`41110799579\`, job \`124252392603\`.
-- Affective expression: run \`41103797431\`, job \`124228015053\`; второй failure — job \`124227534565\`.
-- Embodied interaction: run \`41086531472\`; проблемные jobs \`124169039715\`, \`124169039351\`, \`124169038697\`, \`124169038412\`.
+- Source release gate: run `41008370747`, job `123908360120`.
+- Tool contracts: run `41110799579`, job `124252392603`.
+- Affective expression: run `41103797431`, job `124228015053`; второй failure — job `124227534565`.
+- Embodied interaction: run `41086531472`; проблемные jobs `124169039715`, `124169039351`, `124169038697`, `124169038412`.
 
 ### 2.3 Важнейшие известные пробелы
 
-1. \`recallDelta\` ещё не показал независимого измеримого улучшения на неизменяемом multi-seed holdout; статус promotion остаётся заблокированным.
+1. `recallDelta` ещё не показал независимого измеримого улучшения на неизменяемом multi-seed holdout; статус promotion остаётся заблокированным.
 2. Live2D/виземы имеют программные и контрактные проверки, но реальный браузерный WebGL/Live2D E2E и физический Android/Termux audio E2E не подтверждены.
 3. Нет длительного многодневного soak/recovery теста на актуальном source HEAD.
 4. Нет подтверждённого нового Release ZIP от 30.10.2026.
-5. \`contracts/RELEASE_LICENSE_REVIEW.json\` остаётся pending. В CI отсутствуют необходимые человеческие решения, подтверждения лицензий и разрешения на распространение для ряда архивов и license/NOTICE-файлов. Нельзя заполнять их фиктивно или обходить fail-closed проверку.
+5. `contracts/RELEASE_LICENSE_REVIEW.json` остаётся pending. В CI отсутствуют необходимые человеческие решения, подтверждения лицензий и разрешения на распространение для ряда архивов и license/NOTICE-файлов. Нельзя заполнять их фиктивно или обходить fail-closed проверку.
 6. 2.5D depth-rig code и часть artwork pipeline развиваются в отдельных расходящихся ветках; авторские слои и полноценная модель ещё не поставлены.
 7. 3D stage присутствует, но production-ready лицензированная Kurisu VRM-модель и полноценная VRM runtime-совместимость не подтверждены.
 
@@ -81,7 +81,7 @@ NK1 считается завершённым не тогда, когда в р�
 |---:|---|---:|---|---|
 | 01 | Единое когнитивное ядро и runtime | **75%** | MEASURED на уровне контрактов/перезапуска | Длительный soak, нагрузка, единый ownership всех событий |
 | 02 | Восприятие и модель мира | **65%** | INTEGRATED | Живые источники, temporal grounding, независимая проверка фактов |
-| 03 | Долговременная память и непрерывность | **65%** | INTEGRATED | \`recallDelta > 0\` на независимом holdout, false-memory rate |
+| 03 | Долговременная память и непрерывность | **65%** | INTEGRATED | `recallDelta > 0` на независимом holdout, false-memory rate |
 | 04 | Обучение и саморазвитие | **55%** | Большая кандидатная ветка; не интегрирована целиком | Выборочная интеграция 92-коммитной ветки и повторные проверки на новом HEAD |
 | 05 | Личность, SelfModel и UserModel | **55%** | Частично TESTED | UserModel ветка отдельно; длительная оценка последовательности личности |
 | 06 | Внутренняя мотивация и автономная инициатива | **60%** | TESTED по внутренним сценариям | Реальная фоновая инициатива, quiet-hours, отмена, отсутствие спама |
@@ -106,33 +106,33 @@ NK1 считается завершённым не тогда, когда в р�
 
 ## 4. Повторный анализ веток и план интеграции
 
-Сравнение выполнено относительно \`workpass70-source\` HEAD \`ad564d...\`. «Ahead» — дополнительные коммиты относительно базы; это не количество готовых функций. Расходящиеся истории нельзя без анализа сливать целиком.
+Сравнение выполнено относительно `workpass70-source` HEAD `ad564d...`. «Ahead» — дополнительные коммиты относительно базы; это не количество готовых функций. Расходящиеся истории нельзя без анализа сливать целиком.
 
 | Направление / ветка | HEAD | Разница относительно source | CI | Решение |
 |---|---|---:|---|---|
-| Cognitive core hardening \`work/nk1-aspect01-cognitive-core-hardening-2026-10-30\` | \`8239d8e...\` | +35 / 0 | Не засчитывать без exact-head повторной проверки | Выборочно сверить ownership/restore fixes; current source уже содержит часть обновлений |
-| World perception deep pass \`aspect02-world-perception-deep-pass-2026-10-30\` | \`63ab148...\` | 0 / −4 | Source world-perception PASS | Не мержить вслепую: сравнить, что уже поглощено |
-| Learning/self-development \`aspect03-learning-self-development-2026-10-30\` | \`76d17ce...\` | +92 / −3 | 21/21 PASS | Сначала rebase/current-base sync, затем file-by-file integration и повтор 21 gates |
-| Tool governance \`aspect08-tool-governance-2026-10-30\` | \`b076193...\` | +10 / 0 | 20/21 PASS | Исправить bounded-quantifier validator regression, затем интегрировать контракт через ActionGateway |
-| World interaction \`aspect10-embodied-world-interaction-2026-10-30\` | \`a094667...\` | +94 / 0 | 18/22 PASS | Сначала npm/TypeScript workflow setup, затем spatial policy/adapters; физическое действие не включать без независимой evidence |
-| Release reliability \`aspect12-release-reliability-2026-10-30\` | \`f959f24...\` | +72 / 0 | 3/3 PASS | Использовать как кандидата на release hardening; человеческое approval не подменять CI |
-| Original 2D art \`work/aspect-02-original-2d-art-system-2026-10-30\` | \`1eed2bb...\` | +51 / 0 | 7/7 PASS | Лучший безопасный следующий кандидат: manifest/schema/asset audit/validator; синхронизировать с current AvatarStage |
-| Affective expression \`work/aspect-07-affective-expression-2026-10-30\` | \`a75ed09...\` | +145 / 0 | 5/7 PASS | Заблокировано TS syntax error; исправить Avatar3DStage и повторить все affected app checks |
-| Depth rig \`work/nk1-aspect04-depth-rig-2026-10-30\` | \`f309f4e...\` | +45 / 0 | 6/6 PASS | Интегрировать как контракт/validator после совместимости с artwork pipeline; пока не называть готовым телом |
-| Artwork pipeline \`work/nk1-aspect11-artwork-pipeline-2026-10-30\` | \`d0aff1d...\` | +114 / 0 | По итоговым веткам проверять заново | Diverged от depth-rig; сравнить manifest/renderer/Three adapter, не объединять параллельно |
-| User model \`work/nk1-aspect05-user-model-grounding-2026-10-30\` | \`2737685...\` | +8 / 0 | Exact HEAD checks нужны | Интегрировать после определения единственного владельца UserModel |
-| Voice/prosody \`work/nk1-aspect9-unified-voice-prosody-2026-10-30\` | \`c55e5d5...\` | +78 / 0 | 21/21 PASS | Сильный кандидат; синхронизировать transport/timeline и проверить реальный Android |
-| 2D emotional renderer work | \`a75ed09...\` | Diverged from 2D art: 145 ahead / 51 behind | Typecheck FAIL | Сначала починить; потом свести artwork API и affective renderer-neutral API |
-| True 3D foundation \`work/nk1-aspect12-true-3d-humanoid-foundation-2026-10-30\` | \`ad564d...\` | identical | В составе source | Уже совпадает с source; дальнейшая работа — не повторно переносить, а закончить VRM runtime/asset |
+| Cognitive core hardening `work/nk1-aspect01-cognitive-core-hardening-2026-10-30` | `8239d8e...` | +35 / 0 | Не засчитывать без exact-head повторной проверки | Выборочно сверить ownership/restore fixes; current source уже содержит часть обновлений |
+| World perception deep pass `aspect02-world-perception-deep-pass-2026-10-30` | `63ab148...` | 0 / −4 | Source world-perception PASS | Не мержить вслепую: сравнить, что уже поглощено |
+| Learning/self-development `aspect03-learning-self-development-2026-10-30` | `76d17ce...` | +92 / −3 | 21/21 PASS | Сначала rebase/current-base sync, затем file-by-file integration и повтор 21 gates |
+| Tool governance `aspect08-tool-governance-2026-10-30` | `b076193...` | +10 / 0 | 20/21 PASS | Исправить bounded-quantifier validator regression, затем интегрировать контракт через ActionGateway |
+| World interaction `aspect10-embodied-world-interaction-2026-10-30` | `a094667...` | +94 / 0 | 18/22 PASS | Сначала npm/TypeScript workflow setup, затем spatial policy/adapters; физическое действие не включать без независимой evidence |
+| Release reliability `aspect12-release-reliability-2026-10-30` | `f959f24...` | +72 / 0 | 3/3 PASS | Использовать как кандидата на release hardening; человеческое approval не подменять CI |
+| Original 2D art `work/aspect-02-original-2d-art-system-2026-10-30` | `1eed2bb...` | +51 / 0 | 7/7 PASS | Лучший безопасный следующий кандидат: manifest/schema/asset audit/validator; синхронизировать с current AvatarStage |
+| Affective expression `work/aspect-07-affective-expression-2026-10-30` | `a75ed09...` | +145 / 0 | 5/7 PASS | Заблокировано TS syntax error; исправить Avatar3DStage и повторить все affected app checks |
+| Depth rig `work/nk1-aspect04-depth-rig-2026-10-30` | `f309f4e...` | +45 / 0 | 6/6 PASS | Интегрировать как контракт/validator после совместимости с artwork pipeline; пока не называть готовым телом |
+| Artwork pipeline `work/nk1-aspect11-artwork-pipeline-2026-10-30` | `d0aff1d...` | +114 / 0 | По итоговым веткам проверять заново | Diverged от depth-rig; сравнить manifest/renderer/Three adapter, не объединять параллельно |
+| User model `work/nk1-aspect05-user-model-grounding-2026-10-30` | `2737685...` | +8 / 0 | Exact HEAD checks нужны | Интегрировать после определения единственного владельца UserModel |
+| Voice/prosody `work/nk1-aspect9-unified-voice-prosody-2026-10-30` | `c55e5d5...` | +78 / 0 | 21/21 PASS | Сильный кандидат; синхронизировать transport/timeline и проверить реальный Android |
+| 2D emotional renderer work | `a75ed09...` | Diverged from 2D art: 145 ahead / 51 behind | Typecheck FAIL | Сначала починить; потом свести artwork API и affective renderer-neutral API |
+| True 3D foundation `work/nk1-aspect12-true-3d-humanoid-foundation-2026-10-30` | `ad564d...` | identical | В составе source | Уже совпадает с source; дальнейшая работа — не повторно переносить, а закончить VRM runtime/asset |
 
 ### Правильный порядок интеграции
 
-1. **Стабилизировать source baseline:** зафиксировать новый интеграционный branch от актуального source HEAD; не менять \`main\`.
+1. **Стабилизировать source baseline:** зафиксировать новый интеграционный branch от актуального source HEAD; не менять `main`.
 2. **Сначала безопасные data contracts:** Original 2D asset manifest/validator, depth-rig schema, UserModel port, voice event contract. Проверить пересечения с package manifests, app/runtime lockfiles и текущими UI-компонентами.
 3. **Обновить core/learning:** выбрать изменения learning branch после сравнения текущих core files; сохранить один P23 owner, один candidate store, одну policy authority и отдельные стадии create/evaluate/approve/activate/reconcile.
 4. **Исправить блокировки кандидатов:** bounded-regex test; affective TypeScript syntax; npm setup на embodied branch.
 5. **Объединить тело:** один renderer-neutral intent; единые emotion/face/voice channels; отдельные adapters для Live2D, Original2D, 2.5D и VRM/3D.
-6. **Каждый слой интегрировать отдельным PR/commit** с названием \`[NK1][aspect] ...\`, CHANGELOG, exact source SHA, targeted tests и полным набором затронутых workflow.
+6. **Каждый слой интегрировать отдельным PR/commit** с названием `[NK1][aspect] ...`, CHANGELOG, exact source SHA, targeted tests и полным набором затронутых workflow.
 7. Не считать candidate branch интегрированной, пока её commit не является ancestor текущей source ветки или пока конкретные изменения не были воспроизведены новым PR на актуальной базе и checks не прошли на новом HEAD.
 
 ## 5. Единая архитектура сменяемого тела
@@ -143,7 +143,7 @@ NK1 считается завершённым не тогда, когда в р�
 
 ### 5.2 Целевой поток
 
-\`\`\`text
+```text
 OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
                          |
                          v
@@ -154,23 +154,23 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
                          |
                          v
                BodyRendererRegistry
-          /              |               \\
+          /              |               \
        Live2D         Layered 2.5D       VRM / 3D
-          \\              |               /
-           \\\\---- Capability-aware API ----/
+          \              |               /
+           \\---- Capability-aware API ----/
                          |
                          v
               Renderer-local presentation
-\`\`\`
+```
 
-Названия \`BodyRendererRegistry\` и capability API — целевая интеграционная конструкция; не считать их полностью реализованными только потому, что отдельные adapters появились в feature-ветках.
+Названия `BodyRendererRegistry` и capability API — целевая интеграционная конструкция; не считать их полностью реализованными только потому, что отдельные adapters появились в feature-ветках.
 
 ### 5.3 Обязательные контракты
 
-- \`EmbodimentIntent v1\`: action, emotion appraisal, valence/arousal/dominance/confidence, gaze, head intent, gesture intent, speech event, viseme timeline, cancellation token, monotonic version/timestamp.
-- \`RendererCapabilityManifest\`: supported facial channels, expressions, visemes, motion groups, joints, IK, garments, props, camera freedom, physics, quality profiles, memory budget, renderer version.
-- \`BodySelection\`: \`live2d\` / \`original-2d\` / \`2.5d\` / \`3d\`; selected body id, asset fingerprint, version, last validation, fallback state. Сохранять в безопасном пользовательском preference store, не в личностной памяти.
-- \`BodyTransition\`: load → validate → prepare → align neutral pose → transfer current intent → crossfade/transition → dispose previous renderer. Если загрузка или validation не прошла — сохранить прежнее тело и явно сообщить fallback.
+- `EmbodimentIntent v1`: action, emotion appraisal, valence/arousal/dominance/confidence, gaze, head intent, gesture intent, speech event, viseme timeline, cancellation token, monotonic version/timestamp.
+- `RendererCapabilityManifest`: supported facial channels, expressions, visemes, motion groups, joints, IK, garments, props, camera freedom, physics, quality profiles, memory budget, renderer version.
+- `BodySelection`: `live2d` / `original-2d` / `2.5d` / `3d`; selected body id, asset fingerprint, version, last validation, fallback state. Сохранять в безопасном пользовательском preference store, не в личностной памяти.
+- `BodyTransition`: load → validate → prepare → align neutral pose → transfer current intent → crossfade/transition → dispose previous renderer. Если загрузка или validation не прошла — сохранить прежнее тело и явно сообщить fallback.
 - Все временные параметры используют общий speech/organism clock. Версии и event IDs возрастают монотонно; дубли и опоздавшие кадры отбрасываются.
 - Renderer сообщает capability mismatch. Нельзя показывать жест, lip sync, garment change или physical action, если текущая модель этого не поддерживает.
 - Модель импортируется локально с проверкой размера, MIME/extension, hash, schema, resource budget и разрешений. Не отправлять приватные локальные файлы модели на сервер без явного согласия.
@@ -182,7 +182,7 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
 1. Сохранить Live2D как основной anime renderer: не ломать Cubism model, physics, expressions и mobile texture profile.
 2. Расширить library осмысленных motion clips: idle/listen/think/explain/comfort/surprised/concern/response; не создавать бесконечную таблицу «эмоция = один клип».
 3. Сохранить Original SVG как самостоятельный 2D режим и подготовить production art master: turnarounds (front/3⁄4/profile/back), neutral proportions, expression atlas, руки/кисти/обувь, реальные независимые garments, props, named layers/pivots.
-4. Использовать \`asset-manifest.json\`, \`character-art-contract.json\`, \`layered-art-manifest.schema.json\` и существующий asset validator только после проверки на текущем source HEAD.
+4. Использовать `asset-manifest.json`, `character-art-contract.json`, `layered-art-manifest.schema.json` и существующий asset validator только после проверки на текущем source HEAD.
 5. Исправить семантику 32 legacy PNG и не путать still sprite with rigged body.
 6. Визуально проверить узнаваемость при 128px, нейтральном лице, каждой одежде и всех поддерживаемых позах.
 
@@ -195,7 +195,7 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
 1. Создать editable layered master (PSD/Krita) с дорисованной скрытой анатомией за перекрытиями.
 2. Разделить слои: back/front/side hair, clip, head/neck/face, eyes/iris/pupils/lids/brows/mouth/jaw/visemes, torso/body, coat/shirt/tie, upper/lower arms, hands/fingers, pelvis/legs/feet, outfit layers, props.
 3. Для каждого слоя определить stable id, parent, pivot, rest transform, z-depth, mask/occlusion group, bounds, material/texture, source hash.
-4. Подготовить Blender scene/export pipeline → GLB plus \`nk1DepthRigManifest\`; проверять, что все manifest node IDs совпадают с реальными Three.js Object3D IDs, без дублирования/частичной загрузки.
+4. Подготовить Blender scene/export pipeline → GLB plus `nk1DepthRigManifest`; проверять, что все manifest node IDs совпадают с реальными Three.js Object3D IDs, без дублирования/частичной загрузки.
 5. Подключить depth-rig adapter и capability manifest; двухкостный IK включить после калибровки фактических длин сегментов.
 6. Реализовать secondary motion волос и ткани на fixed timestep с ограниченными spring/damping, reset при смене модели, без накопления ошибок при длинных сессиях.
 7. Отдельно калибровать face rig, eye gaze, mouth visemes и outfit attach points.
@@ -224,11 +224,11 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
 ### A01 — Когнитивное ядро и единое состояние
 
 **Сделать**
-- Утвердить единственные writable owners для \`OrganismState\`, goals, memory, action evidence и event lifecycle.
-- Сохранить \`OrganismBus\`/facades/ports; запретить новые прямые импорты между подсистемами.
-- Закрыть последовательность \`Perceive → Predict → Appraise → Attend → Recall → Goal → Plan → Gate → Act → Observe → Reflect → Consolidate\`.
+- Утвердить единственные writable owners для `OrganismState`, goals, memory, action evidence и event lifecycle.
+- Сохранить `OrganismBus`/facades/ports; запретить новые прямые импорты между подсистемами.
+- Закрыть последовательность `Perceive → Predict → Appraise → Attend → Recall → Goal → Plan → Gate → Act → Observe → Reflect → Consolidate`.
 - Вывести версионируемые события, причинные parent links, monotonic tick, idempotency и единый clock.
-- Уменьшать монолит \`OrganismCore.ts\` только небольшими безопасными извлечениями; не переписывать целиком.
+- Уменьшать монолит `OrganismCore.ts` только небольшими безопасными извлечениями; не переписывать целиком.
 
 **100% проверка**
 - 10 000 детерминированных ticks на нескольких seed; replay/restart/restore не меняют outcome.
@@ -260,7 +260,7 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
 
 **100% проверка**
 - Независимый immutable RU/EN holdout, paired seeds (минимум 5 для итоговой оценки), сравнение с frozen baseline.
-- \`recallDelta > 0\` с устойчивым доверительным интервалом; ложные воспоминания и регрессии не ухудшаются.
+- `recallDelta > 0` с устойчивым доверительным интервалом; ложные воспоминания и регрессии не ухудшаются.
 - Измерить recall precision/recall, contradiction accuracy, forgotten/updated fact accuracy, p50/p95 latency и storage/CPU budget.
 - Ориентир latency поиска ≤30 ms на 10k entries — целевая метрика, не считать достигнутой без benchmark evidence.
 
@@ -299,7 +299,7 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
 - Общие drives/homeostasis: curiosity, competence, social connection, autonomy, continuity, energy/rest, uncertainty/stress.
 - Цели порождаются из drive deltas, событий, незакрытых намерений и контекстных возможностей; priority arbitration и дедлайны.
 - Background reflection/initiative loop с quiet-hours, rate limits, budget, snooze, cancel, pause/resume, resource guards.
-- Хранить \`time_since_last_interaction\`, последнюю причину контакта, незавершённые темы и rationale.
+- Хранить `time_since_last_interaction`, последнюю причину контакта, незавершённые темы и rationale.
 - Инициатива должна быть полезной и объяснимой, а не бесконечным «пингом» пользователя.
 
 **100% проверка**
@@ -429,7 +429,7 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
 8. **Поставка:** CHANGELOG, статус gate, обновление Release только после полного прохождения условий.
 
 Статусы компонентов:
-\`PLANNED → IMPLEMENTED → TESTED → INTEGRATED → MEASURED → RELEASED\`.
+`PLANNED → IMPLEMENTED → TESTED → INTEGRATED → MEASURED → RELEASED`.
 
 Нельзя:
 - ставить PASS на основании наличия теста, если его не запускали;
@@ -445,7 +445,7 @@ OrganismState + EmotionAppraisal + SpeechTimeline + ActionIntent
 
 Проект получает 100% **операционной готовности** только когда одновременно выполнено всё ниже:
 
-- Все 12 аспектов достигли \`MEASURED\`; критические пользовательские сценарии проверены в target environments.
+- Все 12 аспектов достигли `MEASURED`; критические пользовательские сценарии проверены в target environments.
 - Все candidate branches либо интегрированы выборочно, либо явно закрыты/отложены с обоснованием; нет скрытых зависимостей от feature-only кода.
 - Память показывает независимый положительный recall uplift на holdout, с контролем ложных воспоминаний.
 - Автономная инициатива и личностная непрерывность подтверждены длинными сценариями.
