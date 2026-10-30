@@ -98,6 +98,18 @@ export async function buildReadinessReport(root = defaultRoot) {
     pendingReviews.length ? `${pendingReviews.length} pending/unapproved review record(s); no approval was inferred` : "all review records explicitly approved", "advisory");
 
   const files = await walk(root);
+  const declaredLicensePaths = new Set((licenseReview?.repositoryLicenseFiles ?? [])
+    .map(record => typeof record?.path === "string" ? record.path.replaceAll("\\\\", "/") : null)
+    .filter(Boolean));
+  const uncoveredLicenseFiles = files
+    .filter(file => /(?:^|\\/)(?:LICENSE|NOTICE)(?:\\.[^/]*)?$/i.test(file.relative))
+    .map(file => file.relative)
+    .filter(file => !declaredLicensePaths.has(file));
+  add(checks, "release:license-inventory-coverage", uncoveredLicenseFiles.length === 0,
+    uncoveredLicenseFiles.length
+      ? `${uncoveredLicenseFiles.length} LICENSE/NOTICE file(s) lack review-manifest records: ${uncoveredLicenseFiles.join("; ")}`
+      : "all repository LICENSE/NOTICE files are represented in the review manifest", "advisory");
+
   const hygieneIssues = [];
   for (const file of files) {
     const rel = file.relative;
