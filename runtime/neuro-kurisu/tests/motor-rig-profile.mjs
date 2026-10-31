@@ -54,6 +54,23 @@ shared.joints[2].binding.component = "x";
 assert.equal(validateMotorRigProfile(shared).ok, true, "one native node can receive distinct axes");
 const depth = profile("depth2d");
 assert.equal(compileSkeletalJoints3D(depth).length, 3);
+const depthRotation = profile("depth2d");
+depthRotation.joints[1].binding.component = "rotation";
+depthRotation.joints[1].binding.scale = 90;
+depthRotation.joints[1].binding.minValue = -90;
+depthRotation.joints[1].binding.maxValue = 90;
+assert.equal(validateMotorRigProfile(depthRotation).ok, true, "2.5D rig nodes accept calibrated rotation channels");
+const depthRotationBatch = mapMotorFrameToRendererCommands(depthRotation, frame({
+  "neck.yaw": state("neck.yaw", 0), "head.yaw": state("head.yaw", 0.3),
+  "left.shoulder.pitch": state("left.shoulder.pitch", 0)
+}));
+assert.equal(depthRotationBatch.ok, true);
+assert.equal(depthRotationBatch.batch.commands[1].component, "rotation");
+assert.equal(depthRotationBatch.batch.commands[1].value, 27);
+assert.equal(depthRotationBatch.batch.commands[1].valueUnit, "degrees");
+const invalidVrmRotation = profile("vrm3d");
+invalidVrmRotation.joints[1].binding.component = "rotation";
+assert.match(validateMotorRigProfile(invalidVrmRotation).reason, /component-mismatch/);
 const live = profile("live2d");
 live.joints[0].binding.scale = 30; live.joints[0].binding.minValue = -30; live.joints[0].binding.maxValue = 30;
 assert.equal(mapMotorFrameToRendererCommands(live, frame({
