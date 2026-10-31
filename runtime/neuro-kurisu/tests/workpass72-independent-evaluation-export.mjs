@@ -40,8 +40,15 @@ const bundle = buildIndependentEvaluationEvidenceBundle({
   cycleCounters:{version:2,cycles:2,coreCompleteCycles:2,fullCompleteCycles:1,completeCycles:1,incompleteCycles:1,brokenLineages:0,meanCoreStageCoverage01:1,meanStageCoverage01:.5,meanCausalContinuity01:.9,lastTick:42,lastCoreComplete:true,lastFullComplete:false,lastComplete:false,lastCoreMissingStages:[],lastMissingStages:['plan']},
   exportedAtMs:2000,
 });
-assert.equal(bundle.schemaVersion, 'nk1.independent-evaluation-evidence.v1');
+assert.equal(bundle.schemaVersion, 'nk1.independent-evaluation-evidence.v2');
 assert.equal(bundle.cycles.length, 2);
+assert.equal(bundle.timeline.cycleCount, 2);
+assert.equal(bundle.timeline.algorithm, 'sha256-canonical-json-v1');
+assert.equal(bundle.cycles[0].sequenceIndex, 0);
+assert.equal(bundle.cycles[0].previousChainDigest, null);
+assert.equal(bundle.cycles[1].sequenceIndex, 1);
+assert.equal(bundle.cycles[1].previousChainDigest, bundle.cycles[0].chainDigest);
+assert.equal(bundle.timeline.headDigest, bundle.cycles[1].chainDigest);
 assert.equal(bundle.cycles[0].events.length, 11);
 assert.equal(bundle.cycles[1].events.length, 10);
 assert.equal(bundle.realityEvidence.classes['external-observation'], 1);
