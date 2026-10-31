@@ -27,6 +27,7 @@ export function ChatPanel() {
   const end = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const recordingFailedRef = useRef(false);
   const startLockRef = useRef(false);
   const mountedRef = useRef(true);
   const chunksRef = useRef<Blob[]>([]);
@@ -119,20 +120,25 @@ export function ChatPanel() {
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       streamRef.current = stream;
       recorderRef.current = recorder;
+      recordingFailedRef.current = false;
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorder.onerror = () => {
+        recordingFailedRef.current = true;
         setVoiceStatus("Браузер не смог записать аудио с микрофона.");
         if (recorder.state !== "inactive") recorder.stop();
       };
       recorder.onstop = () => {
         const captured = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        const failed = recordingFailedRef.current;
+        recordingFailedRef.current = false;
         chunksRef.current = [];
         releaseMicrophone();
         setRecording(false);
-        if (captured.size > 0) void transcribeRecording(captured);
+        if (failed) setVoiceStatus("Запись завершилась с ошибкой; аудио не отправлено на распознавание.");
+        else if (captured.size > 0) void transcribeRecording(captured);
         else setVoiceStatus("Запись пуста. Попробуйте ещё раз.");
       };
       recorder.start(250);
@@ -161,17 +167,17 @@ export function ChatPanel() {
   useEffect(() => {
     mountedRef.current = true;
     return () => {
-    mountedRef.current = false;
-    startLockRef.current = true;
-    if (recordTimerRef.current !== null) window.clearTimeout(recordTimerRef.current);
-    const recorder = recorderRef.current;
-    if (recorder) {
-      recorder.onstop = null;
-      recorder.onerror = null;
-      if (recorder.state !== "inactive") recorder.stop();
-    }
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    transcriptionAbortRef.current?.abort();
+      mountedRef.current = false;
+      startLockRef.current = true;
+      if (recordTimerRef.current !== null) window.clearTimeout(recordTimerRef.current);
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.onstop = null;
+        recorder.onerror = null;
+        if (recorder.state !== "inactive") recorder.stop();
+      }
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+      transcriptionAbortRef.current?.abort();
     };
   }, []);
 
