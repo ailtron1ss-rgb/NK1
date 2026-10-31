@@ -64,4 +64,5 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: npm run test:hexis-server-smoke
       - name: Test Hexis belief, trust and adaptation contracts
+        working-directory: runtime/neuro-kurisu
         run: npm run test:hexis-adaptation
