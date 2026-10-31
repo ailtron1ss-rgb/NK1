@@ -46,10 +46,11 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:whisper-cpp-provider
       - name: Test browser WAV codec
         run: node --experimental-strip-types --test app/scripts/browser-whisper-audio.test.mjs
-      - name: Check server/provider syntax
+      - name: Check server/provider and Termux script syntax
         run: |
           node --check runtime/neuro-kurisu/src/server/server.mjs
           node --check runtime/neuro-kurisu/src/server/local-whisper-cpp-provider.mjs
+          bash -n runtime/neuro-kurisu/scripts/build-whisper-cpp-termux.sh
       - name: Install app dependencies without lifecycle scripts
         run: npm ci --prefix app --ignore-scripts
       - name: Typecheck browser integration
