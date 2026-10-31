@@ -135,7 +135,7 @@ export async function parseAvatarAssetEvidenceBundleJson(
       || !Number.isSafeInteger(report.issues.numInfos) || (report.issues.numInfos as number) < 0
       || !Number.isSafeInteger(report.issues.numHints) || (report.issues.numHints as number) < 0
       || !Array.isArray(report.issues.messages) || typeof report.issues.truncated !== "boolean"
-      || !record(report.info) || report.info.version !== "2.0") return reject("khronos-report-invalid");
+      || report.mimeType !== "model/gltf-binary" || !record(report.info) || report.info.version !== "2.0") return reject("khronos-report-invalid");
     if (report.issues.truncated !== false) return reject("khronos-report-incomplete");
     if (report.issues.numErrors !== 0 || report.issues.messages.some((message) =>
       record(message) && message.severity === 0)) return reject("khronos-report-has-errors");
