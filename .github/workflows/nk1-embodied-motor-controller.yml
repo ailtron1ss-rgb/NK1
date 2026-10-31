@@ -29,7 +29,9 @@ on:
       - "runtime/neuro-kurisu/tests/embodied-motor-controller.mjs"
       - ".github/workflows/nk1-embodied-motor-controller.yml"
   push:
-    branches: [work/nk1-autonomous-motor-control-2026-10-30]
+    branches:
+      - work/nk1-autonomous-motor-control-2026-10-30
+      - work/nk1-unified-embodiment-motor-*
 
 permissions:
   contents: read
