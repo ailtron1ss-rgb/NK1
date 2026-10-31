@@ -9,6 +9,7 @@ on:
       - "app/src/components/avatar/**"
       - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/scripts/avatar-motor-intent.test.mjs"
+      - "app/scripts/avatar-motor-kinematics.test.mjs"
       - "app/scripts/live2d-production-contract.test.mjs"
       - "app/package.json"
       - "app/package-lock.json"
@@ -53,6 +54,8 @@ jobs:
         run: npm --prefix app run test:avatar-3d-stage
       - name: Avatar motor intent
         run: npm --prefix app run test:avatar-motor-intent
+      - name: Avatar motor kinematics
+        run: npm --prefix app run test:avatar-motor-kinematics
       - name: Live2D production contract
         run: npm --prefix app run test:live2d-production-contract
       - name: Development bundle build
