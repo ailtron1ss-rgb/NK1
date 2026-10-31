@@ -63,7 +63,7 @@ test("rejects external buffers and image URLs before invoking Three.js", () => {
 
 test("rejects node graph cycles, shared parents, invalid scene roots and out-of-range references", () => {
   const cycle = minimal({ nodes: [{ children: [1] }, { children: [0] }], scenes: [{ nodes: [0] }] });
-  assert.equal(preflightAvatarGlb(makeGlb(cycle)).reason, "gltf-node-parent-graph-invalid");
+  assert.equal(preflightAvatarGlb(makeGlb(cycle)).reason, "gltf-node-cycle-detected");
   const sharedParent = minimal({ nodes: [{ children: [2] }, { children: [2] }, {}], scenes: [{ nodes: [0, 1] }] });
   assert.equal(preflightAvatarGlb(makeGlb(sharedParent)).reason, "gltf-node-parent-graph-invalid");
   const badScene = minimal({ scenes: [{ nodes: [3] }] });
@@ -95,7 +95,7 @@ test("rejects excessive vertices, nodes, animations and file bytes before model 
   assert.equal(preflightAvatarGlb(makeGlb(vertex), { maxTotalVertices: 50 }).reason, "gltf-vertex-budget-exceeded");
   assert.equal(preflightAvatarGlb(makeGlb(minimal({ nodes: [{}, {}], scenes: [{ nodes: [0, 1] }] })), { maxNodes: 1 }).reason,
     "gltf-node-count-exceeded");
-  assert.equal(preflightAvatarGlb(makeGlb(minimal({ animations: [{}] })), { maxAnimations: 0 }).reason, "preflight-limits-invalid");
+  assert.equal(preflightAvatarGlb(makeGlb(minimal({ animations: Array.from({ length: 257 }, () => ({})) }))).reason, "gltf-animation-count-exceeded");
   assert.equal(preflightAvatarGlb(makeGlb(minimal()), { maxFileBytes: 8 }).reason, "glb-file-size-exceeded");
 });
 
