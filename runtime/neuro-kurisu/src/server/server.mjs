@@ -406,6 +406,15 @@ async function route(req, res) {
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            return json(res, 200, {
+                ok: true,
+                evidence: runtime.independentEvaluationEvidenceSnapshot(),
+                note: 'Read-only, hashed and payload-free independent-evaluation projection.',
+            });
+        }
         if (req.method === 'POST' && url.pathname === '/api/organism/learning/compound-repair-revision') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });

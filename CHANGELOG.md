@@ -1,3 +1,12 @@
+## [NK1][Evaluation] Add Inspect AI independent evidence evaluation (2026-10-31)
+
+- Add a bounded, read-only runtime projection over the canonical CognitiveEventFabric, RealityEvidenceLedger and UnifiedCognitiveCycle; hash event and parent-event IDs, and omit source labels, free-text claims and payloads.
+- Expose the projection through the existing API authorization/rate-limit boundary at GET /api/organism/evaluation/evidence.
+- Add an offline Inspect AI 0.3.286 harness that independently checks all eleven cognitive stages and twenty causal edges, plus separate external/simulator evidence accounting.
+- Keep the evaluator out of the live runtime and deny it memory, P23, ActionGateway, skill-promotion and release authority; no LLM call is needed for this deterministic structural scorer.
+- Add privacy, digest-tamper, incomplete-cycle, duplicate-stage, tick-mismatch, source-separation, API-route and Python scoring regressions. Full host CI and Inspect task execution are the validation gates.
+- The exported snapshot is bounded (256 CEF events / 96 reality records), and its unsigned SHA-256 digest is integrity-only; this pass does not establish source authenticity, physical truth or memory recall uplift.
+
 ## [NK1][Cognition] Separate core and strict full cognitive-cycle completion (2026-10-31)
 
 - Add a two-tier policy: the six-stage core cycle remains available for continuity diagnostics, while a full cognitive cycle requires all eleven stages and a separately verified full causal lineage.
