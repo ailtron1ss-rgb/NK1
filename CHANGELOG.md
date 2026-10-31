@@ -1,3 +1,23 @@
+## [NK1][Aspect12] Integrate standard VRM humanoid node maps (2026-10-31)
+
+- Add an authoritative VRM 1.0 `VRMC_vrm.humanoid.humanBones` and legacy VRM 0.x `VRM.humanoid.humanBones` parser. Bind roles by glTF node index through Three.js GLTFLoader parser associations, not by assuming every humanoid node is a `THREE.Bone`.
+- Integrate the parsed node map into `Avatar3DStage`. A valid extension is authoritative; a present but malformed extension blocks name-based fallback. Generic GLB without VRM metadata retains the conservative explicit-Bone name audit.
+- Keep unnamed intermediary scene nodes in explicit VRM hierarchy analysis. Apply version-specific required roles: VRM 0.x requires chest and neck; VRM 1.0 does not.
+- Reject conflicting extensions, unsupported VRM 1.0 versions, malformed entries, duplicate humanoid roles/node indices, out-of-range indices, oversized glTF node tables and more than 50,000 humanoid extension entries. Legacy duplicate-role detection uses a Set to avoid quadratic scans. Report valid map entries that do not resolve into the active loaded scene.
+- Add 14 node-map regressions plus 2 additional humanoid audit cases and 2 Avatar3DStage import/status regressions; the dedicated CI command executes both audit suites (27 audit and node-map tests total).
+- Apply the VRM 1.0 thumb `Metacarpal → Proximal → Distal` chain and VRM 0.x thumb `Proximal → Intermediate → Distal` chain; reject thumb-role names from the wrong spec version. Validate optional `upperChest → chest`, neck anchors, and optional eye/jaw/toe/finger parent dependencies without making optional nodes mandatory.
+- `Avatar3DStage` now reports rig presence from validated mapped roles rather than only `THREE.Bone` count; synthetic loader roots and non-node mesh groups are excluded unless they have a confirmed glTF `associations.nodes` index.
+- This validates the extension mapping and scene ancestry only. It does not add VRM expression/spring-bone runtime, retargeting, calibration, IK/MotorFrame actuation or rendered/device evidence.
+
+## [NK1][Aspect12] Fail-closed humanoid rig discovery (2026-10-31)
+
+- Restrict semantic role mapping to nodes explicitly marked as bones; ordinary scene objects with matching names are reported as rejected evidence and cannot create a humanoid capability.
+- Require unique bone matches and connected torso, arm, leg and head ancestry; detect cyclic parent graphs and preserve a truthful optional chest/neck fallback.
+- Report finger articulation only when all 30 finger segments are uniquely mapped and every hand-to-proximal-to-intermediate-to-distal chain is connected.
+- Bound audit input to 50,000 nodes and replace per-bone parent-chain rescans with a single O(n) cycle walk, preventing pathological deep rigs from causing quadratic audit work.
+- Add regressions for ordinary and mixed nodes, duplicate bones, disconnected branches, cycles, optional upper-body joints, complete fingers and repeated references.
+- This remains a conservative name/hierarchy audit, not VRM-spec validation, animation retargeting, IK actuation, or rendered-pose verification.
+
 ## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
 
 - Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.

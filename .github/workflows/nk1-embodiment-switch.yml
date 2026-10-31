@@ -5,6 +5,11 @@ on:
     branches: [workpass70-source]
     paths:
       - "app/src/components/avatar/embodimentSwitch.ts"
+      - "app/src/components/avatar/vrmHumanoidRigAudit.ts"
+      - "app/src/components/avatar/vrmHumanoidNodeMap.ts"
+      - "app/scripts/vrm-humanoid-rig-audit.test.mjs"
+      - "app/scripts/vrm-humanoid-node-map.test.mjs"
+      - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/src/components/avatar/motorFrameMapper.ts"
       - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
@@ -40,5 +45,9 @@ jobs:
         run: npm ci --prefix app --ignore-scripts
       - name: Test renderer-neutral body handoff
         run: npm --prefix app run test:embodiment-switch
+      - name: Test fail-closed VRM humanoid rig audit
+        run: npm --prefix app run test:vrm-humanoid-rig-audit
+      - name: Test 3D avatar stage regression
+        run: node --test app/scripts/avatar-3d-stage.test.mjs
       - name: App typecheck
         run: npm --prefix app run typecheck

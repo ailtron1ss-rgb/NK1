@@ -33,4 +33,20 @@ test("existing sprite and Live2D files remain available",async()=>{
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
 
-test("VRM stage reports conservative left/right humanoid arm discovery without claiming IK actuation",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/resolveVrmArm/);assert.match(stage,/leftArmRig/);assert.match(stage,/rightArmRig/);assert.match(stage,/пока рассчитывается отдельно и не применяется к костям/);});
+test("VRM node-index metadata is authoritative during 3D import and invalid extensions block name fallback",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/parseVrmHumanoidNodeMap\(gltf\.parser\?\.json\?\.extensions/);
+ assert.match(stage,/buildVrmHumanoidAuditNodes\(activeSceneNodes,gltf\.parser\?\.associations,vrmNodeMap\)/);
+ assert.match(stage,/allowNameHeuristic:false/);
+ assert.match(stage,/VRM humanoid extension rejected:/);
+ assert.match(stage,/Обязательная full-body иерархия VRM/);
+ assert.match(stage,/leftArmAvailable/);
+ assert.match(stage,/hasAuditedRig/);
+ assert.match(stage,/Обязательная full-body иерархия VRM/);
+});
+test("3D status follows authoritative humanoid role mappings, not THREE.Bone count",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/const hasAuditedRig=Object\.keys\(humanoidAudit\.nodes\)\.length>0\|\|rt\.bones\.length>0/);
+ assert.match(stage,/leftArmAvailable=!!humanoidAudit\.nodes\.leftUpperArm/);
+ assert.match(stage,/humanoid-узлы и Bone-скелет не подтверждены/);
+});
