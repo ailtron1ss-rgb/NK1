@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveVrmMotorFrame } from "../src/components/avatar/motorFrameVrm";
+import { resolveVrmMotorFrame } from "../src/components/avatar/motorFrameVrm.ts";
 
 const bone = (name) => ({ name, x: 0, y: 0, z: 0, node: { rotation: { x: 0, y: 0, z: 0 } } });
 const bones = [bone("J_Bip_C_Head"), bone("J_Bip_L_UpperArm"), bone("J_Bip_R_UpperArm")];
