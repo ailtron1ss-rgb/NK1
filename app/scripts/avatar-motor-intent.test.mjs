@@ -98,7 +98,9 @@ test("the production viewer listens to the protocol emitted by AvatarStage and u
 test("Original 2D concept is selectable and keeps independent outfit/pose customization", async () => {
   const stage = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
   const original = await readFile(new URL("../src/components/KurisuOriginalStage.tsx", import.meta.url), "utf8");
-  assert.ok(stage.includes('type ViewMode = "live2d" | "legacy" | "original" | "3d"'));
+  assert.match(stage, /type ViewMode = "live2d" \\| "legacy" \\| "original" \\| "2\\.5d" \\| "3d"/)
+  assert.ok(stage.includes('requestViewMode("original")'))
+  assert.ok(stage.includes("<KurisuOriginalStage"));
   assert.ok(stage.includes('onClick={() => setMode("original")}'));
   assert.ok(stage.includes("<KurisuOriginalStage"));
   assert.ok(stage.includes('saved === "legacy" || saved === "original" || saved === "3d"'));
