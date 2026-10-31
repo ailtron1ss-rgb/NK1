@@ -177,3 +177,34 @@ test("rejects oversized audit input before scanning or allocating role maps", ()
   const oversized = Array.from({ length: 50_001 }, () => ({}));
   assert.throws(() => auditHumanoidRig(oversized), /node-limit-exceeded/);
 });
+
+test("optional eye, jaw and toe nodes must preserve their specified parent hierarchy", () => {
+  const nodes = buildHumanoidRig();
+  const add = (name, parentName) => {
+    const node = { name, isBone: true, parent: nodes.get(parentName) };
+    nodes.set(name, node);
+  };
+  add("LeftEye", "LeftHand");
+  add("RightEye", "Head");
+  add("Jaw", "RightUpperLeg");
+  add("LeftToes", "LeftFoot");
+  add("RightToes", "RightLowerLeg");
+  const audit = auditHumanoidRig(values(nodes));
+  assert.equal(audit.capabilities.fullBodyHumanoid, true);
+  assert.equal(audit.capabilities.eyes, false);
+  assert.ok(audit.warnings.some((warning) => warning.includes("Unexpected optional bone hierarchy")));
+  assert.ok(audit.warnings.some((warning) => warning.includes("Eye-bone gaze is unavailable")));
+});
+
+test("an optional upperChest cannot exist without its required chest parent", () => {
+  const nodes = buildHumanoidRig();
+  nodes.delete("Chest");
+  nodes.get("Neck").parent = nodes.get("Spine");
+  nodes.get("LeftShoulder").parent = nodes.get("Neck");
+  nodes.get("RightShoulder").parent = nodes.get("Neck");
+  const upperChest = { name: "UpperChest", isBone: true, parent: nodes.get("Spine") };
+  nodes.set("UpperChest", upperChest);
+  const audit = auditHumanoidRig(values(nodes));
+  assert.equal(audit.capabilities.fullBodyHumanoid, false);
+  assert.ok(audit.warnings.some((warning) => warning.includes("upperChest requires chest")));
+});
