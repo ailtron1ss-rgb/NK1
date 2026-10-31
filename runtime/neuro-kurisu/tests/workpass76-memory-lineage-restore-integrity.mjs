@@ -84,8 +84,14 @@ assert.equal(duplicateReport.counts.duplicateIds, 1,
   'doctor must retain evidence that restore dropped an ambiguous duplicate ID');
 assert.ok(duplicateReport.issues.some(issue => issue.code === 'duplicate-memory-id-dropped'),
   'dropped duplicate IDs must be visible in the restore integrity report');
-assert.equal(duplicateReport.pass, false,
-  'a snapshot that required dropping ambiguous memory records must not be reported clean');
+assert.equal(duplicateReport.pass, true,
+  'the in-memory state is safe after ambiguous rows are dropped, while the repair remains a warning');
+assert.ok(duplicateReport.warnings > 0,
+  'restore-time data loss must remain visible as a warning');
+const duplicateRoundTrip = new MemoryOS2();
+duplicateRoundTrip.restore(duplicateRestored.snapshot());
+assert.equal(duplicateRoundTrip.doctor().counts.duplicateIds, 1,
+  'restore loss diagnostics must survive a later snapshot/restore cycle');
 
 const oneSidedReport = oneSidedRestored.doctor();
 assert.equal(oneSidedReport.counts.danglingRevision, 1,
