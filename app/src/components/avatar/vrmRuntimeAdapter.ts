@@ -178,7 +178,7 @@ export function applyVrmExpressionFrame(vrm: VRM, frame: VrmExpressionFrame): vo
   if (frame.blink) manager.setValue("blink", 1);
 }
 
-/** Call once per frame after NK1 writes raw body pose and expression weights. */
+/** Call once per frame after NK1 writes normalized humanoid pose and expression weights. */
 export function updateVrmForNk1Frame(vrm: VRM | null, deltaSeconds: number): void {
   if (!vrm || !Number.isFinite(deltaSeconds) || deltaSeconds < 0) return;
   vrm.update(Math.min(deltaSeconds, 0.05));
