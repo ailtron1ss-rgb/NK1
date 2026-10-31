@@ -163,8 +163,10 @@ test("VRM 0 metadata is supported and missing license remains explicit", () => {
 
 test("Avatar3DStage registers the native plugin and updates/disposes VRM runtime", async () => {
   const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
-  assert.match(stage, /new VRMLoaderPlugin\(parser,\s*\{\s*autoUpdateHumanBones:\s*false\s*\}\)/);
+  assert.match(stage, /new VRMLoaderPlugin\(parser,\s*\{\s*autoUpdateHumanBones:\s*true\s*\}\)/);
   assert.match(stage, /gltf\.userData\?\.vrm/);
+  assert.match(stage, /configureVrmForNk1NormalizedMotorDrive\(vrm\)/);
+  assert.match(stage, /applyVrmNormalizedMotorFrame\(rt\.vrm/);
   assert.match(stage, /VRMUtils\.rotateVRM0\(vrm\)/);
   assert.match(stage, /updateVrmForNk1Frame\(rt\.vrm,dt\)/);
   assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
