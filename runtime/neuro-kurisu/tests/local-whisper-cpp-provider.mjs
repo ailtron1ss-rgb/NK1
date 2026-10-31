@@ -37,6 +37,9 @@ test("WAV gate accepts only bounded mono 16 kHz PCM16 captures", () => {
   assert.throws(() => validateWhisperPcm16Wav(makeWav({ bits: 8 })), /audio-invalid-wav/);
   assert.throws(() => validateWhisperPcm16Wav(Buffer.from("not audio")), /audio-invalid-wav/);
   assert.throws(() => validateWhisperPcm16Wav(makeWav({ seconds: 0.01 })), /audio-invalid-wav/);
+  const trailingGarbage = Buffer.concat([wav, Buffer.from([0])]);
+  trailingGarbage.writeUInt32LE(trailingGarbage.byteLength - 8, 4);
+  assert.throws(() => validateWhisperPcm16Wav(trailingGarbage), /audio-invalid-wav/);
 });
 
 test("provider refuses non-loopback endpoints and stays disabled by default", async () => {
@@ -71,7 +74,6 @@ test("provider forwards WAV through whisper.cpp multipart API and returns bounde
         method: init.method,
         language: form.get("language"),
         responseFormat: form.get("response_format"),
-        noContext: form.get("no_context"),
         fileName: file.name,
         mimeType: file.type,
         bytes: Buffer.from(await file.arrayBuffer()),
@@ -88,7 +90,6 @@ test("provider forwards WAV through whisper.cpp multipart API and returns bounde
   assert.equal(observed.method, "POST");
   assert.equal(observed.language, "auto");
   assert.equal(observed.responseFormat, "verbose_json");
-  assert.equal(observed.noContext, "true");
   assert.equal(observed.fileName, "nk1-capture.wav");
   assert.equal(observed.mimeType, "audio/wav");
   assert.deepEqual(observed.bytes, wav);
@@ -122,6 +123,15 @@ test("single-flight gate rejects overlapping audio jobs and releases after compl
   await assert.rejects(provider.transcribeWav(makeWav()), /whisper-provider-busy/);
   resolveFetch(new Response(JSON.stringify({ text: "done", language: "English", segments: [] }), { status: 200 }));
   assert.equal((await first).text, "done");
+  assert.equal(provider.snapshot().inFlight, false);
+});
+
+test("provider bounds response stream before buffering oversized sidecar output", async () => {
+  const provider = createLocalWhisperCppProvider({
+    endpoint: "http://127.0.0.1:8081/inference",
+    fetchImpl: async () => new Response("x".repeat(1_000_001), { status: 200 }),
+  });
+  await assert.rejects(provider.transcribeWav(makeWav()), /whisper-response-too-large/);
   assert.equal(provider.snapshot().inFlight, false);
 });
 
