@@ -1,8 +1,8 @@
 # NK1 — Аспект 03: восприятие мира — рабочий проход 2
 
-Дата: 30 октября 2026  
-Рабочая база: `workpass70-source`  
-Ветка реализации: `aspect03-world-perception-truthful-grounding-2026-10-30`  
+Дата: 30 октября 2026
+Рабочая база: `workpass70-source`
+Ветка реализации: `aspect03-world-perception-truthful-grounding-2026-10-30`
 Целевой PR: Draft в `workpass70-source`
 
 ## 1. Цель
