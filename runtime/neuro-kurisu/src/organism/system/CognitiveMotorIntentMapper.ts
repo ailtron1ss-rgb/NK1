@@ -18,12 +18,24 @@ export interface CognitiveMotorIntentInput {
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
+function isUsableJoint(
+  joint: CognitiveMotorIntentInput['joints'][number],
+): boolean {
+  return /^[a-z][a-z0-9._-]{0,63}$/i.test(joint.id)
+    && Number.isFinite(joint.minAngleRad)
+    && Number.isFinite(joint.maxAngleRad)
+    && Number.isFinite(joint.restAngleRad)
+    && joint.minAngleRad <= joint.restAngleRad
+    && joint.restAngleRad <= joint.maxAngleRad
+    && joint.minAngleRad <= joint.maxAngleRad;
+}
+
 function findJoint(
   joints: CognitiveMotorIntentInput['joints'],
   roles: readonly CanonicalMotorJointRole[],
 ) {
   for (const role of roles) {
-    const joint = joints.find((candidate) => candidate.role === role);
+    const joint = joints.find((candidate) => candidate.role === role && isUsableJoint(candidate));
     if (joint) return joint;
   }
   return null;
