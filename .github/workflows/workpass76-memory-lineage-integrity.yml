@@ -44,3 +44,5 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:revision-graph:persistence
       - name: Verify revision-aware memory projection
         run: npm --prefix runtime/neuro-kurisu run test:revision-aware-projection
+      - name: Verify read-only memory doctor still reports normalized restore damage
+        run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
