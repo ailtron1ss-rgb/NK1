@@ -3,8 +3,10 @@
 - Add a deterministic action-to-gesture mapper for the explicit low-amplitude allowlist `respond`, `explore`, `verify`, and `rest`; every target resolves through a host-supplied calibrated rig role, clamps to the profile's joint limits, and expires after 1.2 seconds.
 - Wire the selected OrganismCore decision into the existing runtime-owned `MotorGoalArbiter` only after the embodied recovery gate allows the same action and the embodied action executor reports `executed`. Cognitive-only actions, unavailable rigs, and missing joint roles produce no motor candidate.
 - Publish arbitration outcome as causal action evidence. The motor gesture is explicitly an avatar projection, not a device/world side effect or proof of physical actuation.
-- Add regressions for bounded response nod, alternating exploration scan, rejection of cognitive-only actions, and fail-closed missing rig roles. Gate mapper source in the motor workflow.
-- Validation status: source and test wiring committed; exact-head Actions and full NeuroCore regression are pending. No real avatar visual E2E or phone validation is claimed.
+- Add regressions for bounded response nod, alternating exploration scan, verify/rest gestures, calibrated joint-limit clamping, rejection of cognitive-only actions, missing rig roles, and malformed calibration. Gate mapper source in the motor workflow.
+- Expose the canonical arbiter's last selection and pending-goal counters in organism motor diagnostics, with integration assertions.
+- TDD evidence: the test-first commit `6a0434922670695bde01ed637d1cd6f0e0deba63` failed at the new mapper import as expected (Actions run `41222351989`); the implementation and follow-up corrections then passed the full motor workflow.
+- Validation: motor workflow passed on exact source/test head `a40e3181b96da2e8b19e1dc0c3f0dbc94203d0c2` (run [41223078737](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41223078737)); Aspect 04 unified 2D/2.5D/3D workflow also passed on that head (run [41223078857](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41223078857)). These are focused CI results, not full NeuroCore, browser visual E2E, Android/Termux or physical-device validation.
 
 ## [NK1][Embodiment] Share canonical motor controller with subgoal arbitration (2026-10-31)
 
