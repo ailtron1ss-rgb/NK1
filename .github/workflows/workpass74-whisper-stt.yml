@@ -1,0 +1,56 @@
+name: WorkPass74 local Whisper STT boundary
+
+on:
+  push:
+    branches:
+      - nk1-workpass74-whisper-stt
+    paths:
+      - "runtime/neuro-kurisu/src/server/local-whisper-cpp-provider.mjs"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/local-whisper-cpp-provider.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "app/src/components/ChatPanel.tsx"
+      - "app/src/components/avatar/browserWhisperAudio.ts"
+      - "app/scripts/browser-whisper-audio.test.mjs"
+      - "docs/WORKPASS74_WHISPER_CPP_LOCAL_STT_RU.md"
+      - "runtime/neuro-kurisu/scripts/build-whisper-cpp-termux.sh"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "runtime/neuro-kurisu/src/server/local-whisper-cpp-provider.mjs"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/local-whisper-cpp-provider.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "app/src/components/ChatPanel.tsx"
+      - "app/src/components/avatar/browserWhisperAudio.ts"
+      - "app/scripts/browser-whisper-audio.test.mjs"
+      - "docs/WORKPASS74_WHISPER_CPP_LOCAL_STT_RU.md"
+      - "runtime/neuro-kurisu/scripts/build-whisper-cpp-termux.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-stt-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Test bounded local whisper.cpp provider
+        run: npm --prefix runtime/neuro-kurisu run test:whisper-cpp-provider
+      - name: Test browser WAV codec
+        run: node --experimental-strip-types --test app/scripts/browser-whisper-audio.test.mjs
+      - name: Check server/provider syntax
+        run: |
+          node --check runtime/neuro-kurisu/src/server/server.mjs
+          node --check runtime/neuro-kurisu/src/server/local-whisper-cpp-provider.mjs
+      - name: Install app dependencies without lifecycle scripts
+        run: npm ci --prefix app --ignore-scripts
+      - name: Typecheck browser integration
+        run: npm --prefix app run typecheck
