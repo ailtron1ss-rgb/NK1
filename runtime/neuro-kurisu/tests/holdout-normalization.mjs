@@ -15,6 +15,7 @@ export function canonicalizeHoldoutRows(rows) {
       id: row.id,
       query: normalizeHoldoutQuery(row.query),
       ...(row.language === undefined ? {} : { language: row.language }),
+      ...(row.independenceGroupId === undefined ? {} : { independenceGroupId: String(row.independenceGroupId).trim().slice(0, 120) }),
       relevantIds: [...new Set(row.relevantIds)].sort(),
       split: row.split,
       answerable: row.answerable !== false,
