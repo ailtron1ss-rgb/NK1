@@ -5,6 +5,7 @@ SOURCE_DIR="${WHISPER_CPP_SOURCE_DIR:-$HOME/src/whisper.cpp-1.9.5}"
 BUILD_DIR="${WHISPER_CPP_BUILD_DIR:-$SOURCE_DIR/build-nk1-termux}"
 JOBS="${WHISPER_CPP_JOBS:-2}"
 MODEL_NAME="${WHISPER_CPP_MODEL:-tiny}"
+THREADS="${WHISPER_CPP_THREADS:-2}"
 
 if [[ ! -f "$SOURCE_DIR/CMakeLists.txt" || ! -f "$SOURCE_DIR/include/whisper.h" ]]; then
   echo "whisper.cpp source not found: $SOURCE_DIR" >&2
@@ -13,6 +14,10 @@ if [[ ! -f "$SOURCE_DIR/CMakeLists.txt" || ! -f "$SOURCE_DIR/include/whisper.h" 
 fi
 if ! command -v cmake >/dev/null 2>&1 || ! command -v clang++ >/dev/null 2>&1; then
   echo "Install Termux build tools first: pkg install cmake clang make" >&2
+  exit 2
+fi
+if ! [[ "$THREADS" =~ ^[1-8]$ ]]; then
+  echo "WHISPER_CPP_THREADS must be an integer from 1 to 8." >&2
   exit 2
 fi
 case "$MODEL_NAME" in
@@ -55,6 +60,6 @@ fi
 
 echo "Build ready."
 echo "Start the local sidecar with:"
-printf '  "%s" --host 127.0.0.1 --port 8081 --model "%s" --language auto --threads 4 --no-gpu\n' "$SERVER" "$MODEL_PATH"
+printf '  "%s" --host 127.0.0.1 --port 8081 --model "%s" --language auto --threads "$THREADS" --no-gpu\n' "$SERVER" "$MODEL_PATH"
 echo "Configure the NK1 runtime with:"
 echo "  NK1_WHISPER_CPP_URL=http://127.0.0.1:8081/inference"
