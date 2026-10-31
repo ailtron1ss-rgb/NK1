@@ -49,7 +49,7 @@ test("rejects report digest tampering, unsupported version and non-GLB asset met
   {accepted:false,reason:"khronos-report-digest-mismatch"});
  const wrongMime=await bundle({report:{mimeType:"model/gltf+json"}});
  const wrongMimeParsed=await parseAvatarAssetEvidenceBundleJson(wrongMime.json,context);
- assert.equal(wrongMimeParsed.accepted,true,"Khronos MIME metadata is checked separately from NK1 extension/format policy");
+ assert.deepEqual(wrongMimeParsed,{accepted:false,reason:"khronos-report-invalid"});
 });
 
 test("rejects Khronos report errors, truncation, external resources and validator-version mismatch",async()=>{
