@@ -32,6 +32,15 @@ export interface VisemeClockAnchor {
   timelineTimeMs: number;
 }
 
+export type AffectLabelV1 = "curiosity" | "calm" | "joy" | "anxiety" | "frustration" | "sadness" | "anger" | "protective";
+
+export interface AffectStateV1 {
+  label: AffectLabelV1;
+  valence01: number;
+  arousal01: number;
+  dominance01: number;
+}
+
 export interface EmbodimentIntentV1 {
   type: "kurisu_embodiment_intent";
   protocolVersion: 1;
@@ -56,6 +65,8 @@ export interface EmbodimentIntentV1 {
     motionToken: number;
   };
   voiceEmphasis: number;
+  /** Canonical organism affect snapshot shared by face, voice and body projections. */
+  affect: AffectStateV1;
 }
 
 const clamp = (n: number, low: number, high: number): number =>
@@ -270,7 +281,13 @@ export function isEmbodimentIntentV1(value: unknown): value is EmbodimentIntentV
   if (!intent.body || !Number.isFinite(intent.body.headTilt) || intent.body.headTilt < -0.15 || intent.body.headTilt > 0.15) return false;
   if (typeof intent.body.gesture !== "boolean" || typeof intent.body.motionGroup !== "string" || !/^[a-zA-Z0-9_-]{1,32}$/.test(intent.body.motionGroup)) return false;
   if (!Number.isInteger(intent.body.motionIndex) || intent.body.motionIndex < 0 || intent.body.motionIndex > 32 || !Number.isSafeInteger(intent.body.motionToken) || intent.body.motionToken < 0) return false;
-  return Number.isFinite(intent.voiceEmphasis) && Number(intent.voiceEmphasis) >= 0 && Number(intent.voiceEmphasis) <= 1;
+  if (!Number.isFinite(intent.voiceEmphasis) || Number(intent.voiceEmphasis) < 0 || Number(intent.voiceEmphasis) > 1) return false;
+  const affectLabels: AffectLabelV1[] = ["curiosity", "calm", "joy", "anxiety", "frustration", "sadness", "anger", "protective"];
+  if (!intent.affect || !affectLabels.includes(intent.affect.label)
+    || !Number.isFinite(intent.affect.valence01) || intent.affect.valence01 < 0 || intent.affect.valence01 > 1
+    || !Number.isFinite(intent.affect.arousal01) || intent.affect.arousal01 < 0 || intent.affect.arousal01 > 1
+    || !Number.isFinite(intent.affect.dominance01) || intent.affect.dominance01 < 0 || intent.affect.dominance01 > 1) return false;
+  return true;
 }
 
 
