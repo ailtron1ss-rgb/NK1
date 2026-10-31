@@ -252,9 +252,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       onProjection: (projection) => {
         setLive2dMotorProjection(projection.state);
         if (projection.state === "ready") setLive2dMotorBatch(projection.batch);
-        else if (projection.state === "unconfigured" || projection.state === "unmapped" || projection.state === "invalid") {
-          setLive2dMotorBatch(null);
-        }
+        else setLive2dMotorBatch(null);
       },
     });
   }, [mode, live, live2dMotorModelId]);
