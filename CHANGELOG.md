@@ -1,5 +1,15 @@
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
+## WorkPass76 — MemoryOS2 revision-lineage restore integrity
+- Reconcile supersession links before rebuilding memory retrieval indexes: only reciprocal, same-lineage, strictly forward revision edges are trusted.
+- Repair a missing historical validity end from a verified successor's `validFromAt`, preventing a restored current-memory query from reviving an obsolete fact.
+- Clear dangling, one-sided, cross-lineage, cyclic/backward, or otherwise ambiguous supersession edges.
+- Drop all records sharing a duplicate memory ID instead of allowing restore order to choose an authority-bearing row.
+- Normalize invalid revision sequence values to a safe positive integer.
+- Add `test:workpass76:memory-lineage-integrity` with regression coverage for interval repair, edge integrity, duplicate IDs, and sequence normalization.
+- Scope: MemoryOS2 restore integrity only; no database schema or production connector was changed.
+
+
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
 - Export HMAC-SHA256 pseudonyms for normalized query, example and memory IDs using one ephemeral per-experiment key shared across paired bootstrap seeds. The key and raw prompt/memory payloads are not serialized.
 - Include RU/EN train/holdout labels, relevant memory pseudonyms, top-K BM25 and MemoryOS2 ranks, bounded result-safety flags, dataset/corpus/retrieval fingerprints and evaluation thresholds.
