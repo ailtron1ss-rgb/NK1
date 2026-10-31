@@ -36,7 +36,8 @@ export function solvePlanarTwoBoneIK(input: PlanarTwoBoneIKInput): PlanarTwoBone
   const targetAngle = Math.atan2(y, x);
   const cosine = clamp((distance * distance - upper * upper - lower * lower) / (2 * upper * lower), -1, 1);
   const interior = Math.acos(cosine);
-  const elbow = direction * (Math.PI - interior);
+  // The signed relative joint angle is acos(cosine), not its supplementary angle.
+  const elbow = direction * interior;
   const shoulder = targetAngle - Math.atan2(lower * Math.sin(elbow), upper + lower * Math.cos(elbow));
   return {
     shoulderRotation: finite(shoulder + Math.PI / 2),
