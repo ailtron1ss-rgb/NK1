@@ -1,5 +1,13 @@
 # Neuro-Kurisu — Changelog
 
+## 2026-10-31 — Aspect 01: runtime integrity and eleven-phase enforcement
+- `UnifiedCognitiveCycle` теперь различает legacy-шестистадийный контракт и расширенный одиннадцатифазный: появление любой расширенной фазы включает требование полного набора; полнота проверяет уникальные event IDs для каждой обязательной стадии.
+- Restore цикла использует только собственные перечислимые поля, нормализует счётчики/метрики/список отсутствующих фаз и отклоняет неизвестную версию до замены текущего состояния.
+- `UnifiedCognitiveSubstrate` переведён с небезопасного object spread на явную проекцию allow-list; вложенные поля, счётчики, метрики и строки проверяются, неизвестные поля и prototype inheritance не переносятся.
+- Интеграция substrate требует строго возрастающий safe-integer tick и проверяет входные группы до изменения состояния; replay/invalid input не должны мутировать проекцию.
+- Добавлен `test:aspect01:cognitive-runtime-integrity` (legacy compatibility, 11-phase completeness, duplicate IDs, prototype pollution, invalid restore, tick replay, non-mutation) и подключён к WorkPass287-288 CI.
+- Изменения сделаны отдельной веткой от актуального `workpass70-source`; CI exact-head и runtime/typecheck ещё должны подтвердить результат. Release не обновлялся.
+
 ## 34.1.0 — Portable Subject Boundary + evidence/benchmark hardening
 - Introduced `neuro-kurisu.subject-transfer.v1`.
 - Added persistent `subjectIdentity` and SHA-256 subject fingerprints.
