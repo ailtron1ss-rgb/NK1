@@ -1,7 +1,9 @@
 import {
-  compileMotorJointDefinitions, validateMotorRigProfile,
-  type JointDefinition, type MotorRigProfileV1,
+  compileMotorJointDefinitions,
+  validateMotorRigProfile,
+  type MotorRigProfileV1,
 } from '../system/MotorRigProfile.ts';
+import type { JointDefinition } from '../system/EmbodiedMotorController.ts';
 
 export const MAX_MOTOR_RIG_PROFILE_CONFIG_BYTES = 512 * 1024;
 export const MAX_MOTOR_RIG_PROFILES = 16;
