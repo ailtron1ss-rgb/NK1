@@ -76,9 +76,12 @@ function validateBatch(
   const commands: RendererMotorCommand[] = [];
   for (const rawCommand of raw.commands) {
     if (!isRecord(rawCommand) || !isId(rawCommand.jointId, 64) || !isId(rawCommand.targetId, 64)
+      || (renderer === "live2d" && !/^Param[A-Za-z0-9_]{1,56}$/.test(rawCommand.targetId))
       || rawCommand.targetKind !== expectedTargetKind(renderer)
       || !["value", "x", "y", "z", "rotation"].includes(String(rawCommand.component))
       || typeof rawCommand.value !== "number" || !Number.isFinite(rawCommand.value)
+      || (renderer === "live2d" && Math.abs(rawCommand.value) > 100)
+      || (renderer === "vrm3d" && Math.abs(rawCommand.value) > Math.PI * 2 + 1e-5)
       || typeof rawCommand.clamped !== "boolean"
       || !["direct", "approximate"].includes(String(rawCommand.fidelity))) return null;
     const component = rawCommand.component as MotorBindingComponent;
