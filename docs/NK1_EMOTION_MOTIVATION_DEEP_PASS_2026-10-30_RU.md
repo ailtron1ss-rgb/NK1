@@ -256,3 +256,11 @@ WorkPass290 добавляет временную непрерывность moo
 
 **Ограничение:** runtime-передача из `OrganismCore` пока требует отдельной проверки и завершения: чтение большого `OrganismCore.ts` через текущий GitHub file endpoint вернуло пустое содержимое, поэтому нельзя достоверно утверждать, что live cycle уже передаёт `mixedAffect` в новый `affectiveComponents` вход. Legacy single-label путь остаётся совместимым.
 
+
+## 12. WorkPass293 — сохранение confidence для components-only мотивационного входа
+
+Обнаружен и исправлен крайний случай в `IntrinsicMotivationEngine`: когда `affectiveComponents` передавался без legacy-поля `affect`, распределение компонентов учитывалось в drive channels, но итоговый `affectiveInfluence.confidence01` ошибочно становился нулём. Теперь confidence выводится из максимальной confidence нормализованных компонентов; если компонентов нет, сохраняется прежний нейтральный fallback.
+
+Добавлен регрессионный сценарий components-only (curiosity + anxiety): проверяются ненулевая и ограниченная confidence, а также сохранение provenance. Исправление не меняет legacy single-affect контракт и не повышает уверенность выше входных свидетельств.
+
+Проверка Actions на новом HEAD требуется; до её завершения результат считается внесённым кодом и тестом, но не подтверждённым CI.
