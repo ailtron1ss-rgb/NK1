@@ -139,7 +139,7 @@ class MemoryHoldoutScoringTests(unittest.TestCase):
         self.assertTrue(result["valid"], result)
         self.assertFalse(result["promotionEligible"])
         self.assertEqual(result["languages"]["en"]["unsafeCandidateResultCount"], 1)
-        self.assertFalse(result["languages"]["en"]["gates"]["candidateHasNoUnsafeResults"])
+        self.assertFalse(result["languages"]["en"]["gates"]["noUnsafeCandidateResults"])
 
     def test_unknown_memory_digest_and_duplicate_ranked_id_are_invalid(self):
         record = make_record()
