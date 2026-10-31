@@ -160,3 +160,20 @@ function addToMap(nodes, name, parentName) {
   nodes.set(name, node);
   return node;
 }
+test("cycle detection is bounded to one graph walk on a deep acyclic hierarchy", () => {
+  const nodes = [];
+  let parent = null;
+  for (let index = 0; index < 12_000; index += 1) {
+    const node = { name: "helper-" + index, isBone: true, parent };
+    nodes.push(node);
+    parent = node;
+  }
+  const audit = auditHumanoidRig(nodes);
+  assert.equal(audit.capabilities.fullBodyHumanoid, false);
+  assert.equal(audit.warnings.some((warning) => warning.includes("Cyclic parent hierarchy")), false);
+});
+
+test("rejects oversized audit input before scanning or allocating role maps", () => {
+  const oversized = Array.from({ length: 50_001 }, () => ({}));
+  assert.throws(() => auditHumanoidRig(oversized), /node-limit-exceeded/);
+});
