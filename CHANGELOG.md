@@ -1,3 +1,11 @@
+## [NK1][Aspect 05] UserModel evidence boundary — rebased (2026-10-31)
+
+- Rebase the evidence-bounded UserModel implementation onto the current `workpass70-source` head rather than the stale 2026-10-31 morning base.
+- Add the missing `userModelEvidence` restore input contract; persist the model through `SelfSubsystemRuntime` snapshot/restore and the canonical advanced persistence projection.
+- Keep confirmed low-risk explicit claims separate from disputed claims and unconfirmed behavioral candidates; sensitive or unclassified inputs remain rejected by the model boundary.
+- Add dedicated unit and runtime persistence regressions and execute both in WorkPass79 CI.
+- No response-policy consumer or complete Theory-of-Mind capability is claimed in this pass.
+
 ## [NK1][Learning] Run P26 validation on canonical source pushes (2026-10-31)
 
 - Add a narrow push trigger on workpass70-source for the persisted learning-experiment plan validator, its regression/CLI tests, and the workflow itself.
