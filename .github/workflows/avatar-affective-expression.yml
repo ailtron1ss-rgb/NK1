@@ -20,8 +20,6 @@ on:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/semanticMorphTargets.ts"
       - "app/scripts/avatar-semantic-morph-targets.test.mjs"
-      - "app/src/components/avatar/semanticMorphTargets.ts"
-      - "app/scripts/avatar-semantic-morph-targets.test.mjs"
       - "app/src/components/KurisuOriginalStage.tsx"
       - "app/scripts/avatar-original-facial-wiring.test.mjs"
       - "app/scripts/avatar-affective-expression.test.mjs"
@@ -30,6 +28,9 @@ on:
   pull_request:
     paths:
       - "app/src/components/avatar/affectiveExpression.ts"
+      - "app/src/components/avatar/affectiveBodyLanguage.ts"
+      - "app/scripts/avatar-affective-body-language.test.mjs"
+      - "app/scripts/avatar-affective-body-language-wiring.test.mjs"
       - "app/src/components/avatar/affectiveArmPosture.ts"
       - "app/scripts/avatar-affective-arm-posture.test.mjs"
       - "app/src/components/avatar/speechProsody.ts"
