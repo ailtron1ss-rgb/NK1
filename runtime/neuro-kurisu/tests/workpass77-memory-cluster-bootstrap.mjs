@@ -68,6 +68,7 @@ const report = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
   bootstrapSamples: 200,
   maxExamples: 512,
   datasetProvenance: provenance,
+  includeQueryEvidence: true,
   seed: 29,
 });
 
@@ -81,6 +82,12 @@ assert.equal(report.datasetIntegrity.independenceGroupCount, 8);
 assert.equal(report.datasetIntegrity.independenceGroupSplitLeakageCount, 0);
 assert.equal(report.datasetIntegrity.validForPromotion, true,
   'well-formed group labels must not block promotion by themselves');
+assert.ok(report.queryEvidence, 'query evidence must be available when explicitly requested');
+assert.match(report.queryEvidence.holdout[0].independenceGroupDigest, /^[a-f0-9]{64}$/);
+assert.equal(report.queryEvidence.holdout[0].independenceGroupDigest, report.queryEvidence.holdout[1].independenceGroupDigest,
+  'two prompts from the same source episode must share one privacy-preserving group digest');
+assert.notEqual(report.queryEvidence.holdout[0].independenceGroupDigest, report.queryEvidence.holdout[2].independenceGroupDigest,
+  'different source episodes must not collapse into one evidence group');
 
 const changedGroup = structuredClone(examples);
 changedGroup[4].independenceGroupId = 'episode-renamed';
