@@ -647,7 +647,6 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
-  this.restoreIntegrityFindings=[];
   const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
   const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
     content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
@@ -709,7 +708,7 @@ export class MemoryOS2{
   this.state.items=normalizeMemoryRevisionGraph(this.state.items,(id,count)=>{
    const existing=this.state.restoreIntegrityFindings.find(finding=>finding.code==='duplicate-memory-id-dropped'&&finding.memoryId===id);
    if(existing)existing.duplicateCount=Math.max(existing.duplicateCount,count);
-   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'duplicate-memory-id-dropped',memoryId:id,duplicateCount:count}].slice(-64);
+   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'duplicate-memory-id-dropped' as const,memoryId:id,duplicateCount:count}].slice(-64);
   });
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
