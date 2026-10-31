@@ -51,6 +51,7 @@ const requiredVrm1 = [
 function nodeMapFor(scene, roles) {
   const nodeIndex = new Map(scene.nodes.map((node, index) => [node, index]));
   const associations = new Map(scene.nodes.map((node, index) => [node, { nodes: index }]));
+  associations.delete(scene.byName.get("SceneRoot")); // GLTFLoader's synthetic root has no glTF node index.
   const humanBones = Object.fromEntries(roles.map((role) => [role, { node: nodeIndex.get(scene.byName.get(role)) }]));
   return { nodeIndex, associations, humanBones };
 }
@@ -168,4 +169,27 @@ test("node-index adapter preserves non-humanoid parent nodes between mapped huma
   const extension = { VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones } } };
   const { audit } = auditFromScene(scene, roles, extension);
   assert.equal(audit.capabilities.fullBodyHumanoid, true);
+});
+
+test("ignores a synthetic loader scene root that has no glTF node association", () => {
+  const scene = makeScene();
+  const roles = requiredVrm1;
+  const { humanBones, associations } = nodeMapFor(scene, roles);
+  const extension = { VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones } } };
+  const { audit, bound } = auditFromScene(scene, roles, extension);
+  assert.equal(bound.nodes.some((node) => node.name === "scene-node-SceneRoot"), false);
+  assert.equal(bound.unresolvedRoles.length, 0);
+  assert.equal(audit.capabilities.fullBodyHumanoid, true);
+  assert.ok(associations.has(scene.byName.get("hips")));
+});
+test("does not fabricate role nodes when parser associations are unavailable", () => {
+  const scene = makeScene();
+  const roles = requiredVrm1;
+  const { humanBones } = nodeMapFor(scene, roles);
+  const map = parseVrmHumanoidNodeMap({ VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones } } }, scene.nodes.length);
+  const bound = buildVrmHumanoidAuditNodes(scene.nodes, undefined, map);
+  assert.equal(bound.nodes.length, 0);
+  assert.equal(bound.unresolvedRoles.length, roles.length);
+  const audit = auditHumanoidRig(bound.nodes, { vrmVersion: "1.0", allowNameHeuristic: false });
+  assert.equal(audit.capabilities.fullBodyHumanoid, false);
 });
