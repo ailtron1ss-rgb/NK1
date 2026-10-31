@@ -10,6 +10,17 @@ test("a real Three.js 3D mode exists rather than reusing the legacy Avatar2D ali
  const parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8"),stage=await readFile(stagePath,"utf8"),legacy=await readFile(path.join(repoRoot,"legacy/kurisu-v56/src/components/Avatar3D.tsx"),"utf8");
  assert.match(parent,/"3d"/);assert.match(parent,/<Avatar3DStage/);assert.match(stage,/new THREE\.WebGLRenderer/);assert.match(stage,/new THREE\.Scene/);assert.match(stage,/makeBody/);assert.match(legacy,/return <Avatar2D \{\.\.\.props\} \/>/);assert.match(stage,/Процедурный 3D-концепт/);
 });
+test("VRM/GLB upload runs structural preflight before Three.js parses local bytes",async()=>{
+ const stage=await readFile(stagePath,"utf8"),preflight=await readFile(path.join(root,"src/components/avatar/avatarGlbPreflight.ts"),"utf8");
+ assert.match(stage,/preflightAvatarGlb\(data\)/);
+ assert.ok(stage.indexOf("preflightAvatarGlb(data)")<stage.indexOf("new GLTFLoader().parse"));
+ assert.match(stage,/glb-preflight:/);
+ assert.match(preflight,/external-buffer-uri-forbidden/);
+ assert.match(preflight,/external-image-uri-forbidden/);
+ assert.match(preflight,/gltf-node-cycle-detected/);
+ assert.match(preflight,/gltf-vertex-budget-exceeded/);
+ assert.match(preflight,/gltf-texture-pixel-budget-exceeded/);
+});
 test("local VRM/GLB upload is bounded and browser-local",async()=>{
  const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/avatarModelStore.ts"),"utf8");
  assert.match(stage,/accept="\.vrm,\.glb,model\/gltf-binary"/);assert.match(stage,/MAX_AVATAR_MODEL_BYTES/);assert.match(stage,/saveAvatarModel\(blob,name\)/);assert.match(stage,/loadStoredAvatarModel/);assert.match(stage,/clearStoredAvatarModel/);assert.match(store,/90 \* 1024 \* 1024/);assert.match(store,/indexedDB\.open/);assert.doesNotMatch(stage,/https?:\/\/[^"'\s]+\.glb/i);
