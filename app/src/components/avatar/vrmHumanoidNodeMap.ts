@@ -81,10 +81,11 @@ export function parseVrmHumanoidNodeMap(extensions: unknown, nodeCount: number):
       if (!isRecord(item) || typeof item.bone !== "string") {
         return invalid("legacy-vrm-human-bone-entry-is-malformed", version);
       }
-      if (legacyEntries.some(([bone]) => bone.toLowerCase() === item.bone!.toLowerCase())) {
+      const boneName = item.bone;
+      if (legacyEntries.some(([bone]) => bone.toLowerCase() === boneName.toLowerCase())) {
         return invalid("duplicate-legacy-vrm-humanoid-role", version);
       }
-      legacyEntries.push([item.bone, item.node]);
+      legacyEntries.push([boneName, item.node]);
     }
     entries = legacyEntries;
   }
