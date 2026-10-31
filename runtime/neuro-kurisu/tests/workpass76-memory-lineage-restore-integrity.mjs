@@ -79,6 +79,21 @@ const duplicateRestored = new MemoryOS2();
 duplicateRestored.restore(duplicated);
 assert.equal(duplicateRestored.get(middle.id), null);
 assert.equal(duplicateRestored.get(parent.id)?.supersededById, null);
+const duplicateReport = duplicateRestored.doctor();
+assert.equal(duplicateReport.counts.duplicateIds, 1,
+  'doctor must retain evidence that restore dropped an ambiguous duplicate ID');
+assert.ok(duplicateReport.issues.some(issue => issue.code === 'duplicate-memory-id-dropped'),
+  'dropped duplicate IDs must be visible in the restore integrity report');
+assert.equal(duplicateReport.pass, false,
+  'a snapshot that required dropping ambiguous memory records must not be reported clean');
+
+const oneSidedReport = oneSidedRestored.doctor();
+assert.equal(oneSidedReport.counts.danglingRevision, 1,
+  'danglingRevision must count only missing revision targets');
+assert.equal(oneSidedReport.counts.invalidRevisionEdges, 2,
+  'non-reciprocal edge findings must have their own diagnostic count');
+assert.equal(oneSidedReport.counts.revisionRestoreFindings, 3,
+  'all restore-time revision repairs must remain visible to the doctor');
 
 // Invalid revision counters must not survive restore as ordering authority.
 const invalidSequence = memory.snapshot();
