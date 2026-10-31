@@ -1,3 +1,10 @@
+## [NK1][Voice] Enforce native speech lifecycle transitions (2026-10-31)
+
+- Extend the native Termux event tracker from sequence-only filtering to a bounded per-operation phase state machine.
+- Reject impossible phase jumps, events after terminal process outcomes, duplicate/stale sequence numbers and backward monotonic timestamps; valid events remain accepted after a rejected event with the same sequence.
+- Preserve partial-stream compatibility: a newly observed operation may begin at a later lifecycle phase, but once a terminal phase is observed it cannot move backwards.
+- Keep native process telemetry separate from browser playback state; this validates event ordering only and does not establish audible playback or authorize provider arbitration.
+
 ## [NK1][Voice] Bound browser speech lifecycle with watchdogs (2026-10-31)
 
 - Added a queue-start watchdog and a conservative duration watchdog for browser SpeechSynthesis so a stalled browser cannot leave the avatar indefinitely in a speaking state.
