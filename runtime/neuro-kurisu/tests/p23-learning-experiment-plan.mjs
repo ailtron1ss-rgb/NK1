@@ -18,6 +18,15 @@ assert.deepEqual(plan.seedIds, [3, 9, 17]);
 assert.ok(plan.runs.every(run => run.split === 'holdout'));
 assert.equal(new Set(plan.runs.map(run => run.runId)).size, plan.runs.length);
 assert.deepEqual(validateLearningExperimentPlan(plan, manifest), { valid: true, runCount: 24 });
+const unsupportedEmptyPlan = {
+  ...plan,
+  split: 'external',
+  counts: { ...plan.counts, tasks: 0, runs: 0 },
+  runs: [],
+};
+assert.throws(() => validateLearningExperimentPlan(unsupportedEmptyPlan, manifest),
+  /plan split must be train, validation or holdout/,
+  'an empty schedule must not make an unsupported split appear valid');
 assert.deepEqual(createLearningExperimentPlan(manifest, options), plan, 'plan must be reproducible byte-for-byte');
 assert.notDeepEqual(createLearningExperimentPlan(manifest, { ...options, seeds: [17, 3, 10] }), plan, 'changing seeds must change plan identity');
 assert.throws(() => validateLearningExperimentPlan({ ...plan, runs: plan.runs.slice(1) }, manifest), /run count mismatch|incomplete matched coverage/);
