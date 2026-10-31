@@ -1,0 +1,56 @@
+name: NK1 architecture import integrity
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/scripts/audit-architecture.mjs"
+      - "runtime/neuro-kurisu/scripts/lib/import-specifiers.mjs"
+      - "runtime/neuro-kurisu/tests/import-specifier-scanner.mjs"
+      - "runtime/neuro-kurisu/tests/world-perception-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "app/scripts/avatar-motor-intent.test.mjs"
+      - "tools/verify-final-release.mjs"
+      - ".github/workflows/architecture-import-integrity.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/scripts/audit-architecture.mjs"
+      - "runtime/neuro-kurisu/scripts/lib/import-specifiers.mjs"
+      - "runtime/neuro-kurisu/tests/import-specifier-scanner.mjs"
+      - "runtime/neuro-kurisu/tests/world-perception-runtime-wiring.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "app/scripts/avatar-motor-intent.test.mjs"
+      - "tools/verify-final-release.mjs"
+      - ".github/workflows/architecture-import-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-architecture-import-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  architecture-import-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Scan relative import specifiers (unit regressions)
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:architecture-import-scanner
+      - name: Run the canonical architecture audit
+        working-directory: runtime/neuro-kurisu
+        run: npm run audit:architecture
+      - name: Reproduce the world-perception runtime wiring contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:world-perception-runtime-wiring

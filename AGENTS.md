@@ -4,6 +4,8 @@
 
 ## Latest checkpoint
 
+Read [the architecture import integrity fix](runtime/neuro-kurisu/scripts/lib/import-specifiers.mjs) first. The architecture audit no longer treats quoted import text as a real import: `scripts/audit-architecture.mjs` now uses the pure scanner `scripts/lib/import-specifiers.mjs`, so test fixtures that quote `import { X } from './X.ts'` no longer produce false "missing import" failures. Verified locally on `workpass70-source` @ `ad564d18`: `npm run audit:architecture` = PASS (2268 files, 634 canonical, 0 missing/cycles/leakage), `npm run test:architecture-import-scanner` = 16/16, `npm run test:world-perception-runtime-wiring` = PASS, runtime + app typecheck = PASS, app `test:scripts` = 254/254, and `tools/verify-final-release.mjs` = `ok: true` (was `ok: false`). A genuinely missing import still fails closed. Release ZIP, license gate and device/E2E gates remain open.
+
 Read [WorkPass127 proposal authenticity report](docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md) first. The candidate store now rejects copied or fabricated proposal objects using a module-private same-process issuance registry; successful lifecycle fixtures use signed manifest-bound artifacts. Runtime test/typecheck/CI are not yet verified, and the broader activation call-graph audit remains open.
 
 
