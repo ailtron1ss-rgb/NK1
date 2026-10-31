@@ -9,6 +9,12 @@ import {
 } from "./avatar/nativeSpeechProviderEvents";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { buildBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
+import {
+  connectMotorFrameStream,
+  type MotorFrameConnectionStatus,
+  type MotorFrameProjectionState,
+  type RendererMotorCommandBatch,
+} from "./avatar/motorFrameStream";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -114,6 +120,11 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const lastSpeechSessionRef = useRef<BrowserSpeechSession | null>(null);
   const speechPhaseRef = useRef<SpeechPhase>("idle");
   const [live, setLive] = useState(false);
+  const [live2dMotorModelId, setLive2dMotorModelId] = useState<string | null>(null);
+  const [live2dMotorBatch, setLive2dMotorBatch] = useState<RendererMotorCommandBatch | null>(null);
+  const [live2dMotorProjection, setLive2dMotorProjection] = useState<MotorFrameProjectionState>("unmapped");
+  const [live2dMotorConnection, setLive2dMotorConnection] = useState<MotorFrameConnectionStatus>("unavailable");
+  const [live2dMotorAck, setLive2dMotorAck] = useState<{ frameTick: number; observedCount: number; commandCount: number; readbackAvailable: boolean } | null>(null);
   const [viewerReadyRevision, setViewerReadyRevision] = useState(0);
   // Native speech is opt-in. Opening the app never starts speaking historical chat.
   const [voiceEnabled, setVoiceEnabled] = useState(() => readAvatarPreference("kurisu-avatar-voice-enabled") === "true");
@@ -163,7 +174,16 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (ev.origin !== window.location.origin || ev.source !== frame.current?.contentWindow) return;
       if (!isRecord(ev.data) || typeof ev.data.type !== "string") return;
       if (ev.data.type === "live2d_ready") {
-        if (typeof ev.data.profile !== "string" || ev.data.profile.length > 24) return;
+        if (typeof ev.data.profile !== "string" || ev.data.profile.length > 24 || typeof ev.data.modelPath !== "string") return;
+        const live2dIdentity = ev.data.profile === "mobile" && ev.data.modelPath === "./Kurisu.mobile/Kurisu-mobile.model3.json"
+          ? "kurisu-live2d-mobile-v1"
+          : (ev.data.profile === "balanced" || ev.data.profile === "quality") && ev.data.modelPath === "./Kurisu/Kurisu.model3.json"
+            ? "kurisu-live2d-balanced-v1" : null;
+        if (!live2dIdentity) return;
+        setLive2dMotorModelId(live2dIdentity);
+        setLive2dMotorBatch(null);
+        setLive2dMotorProjection("waiting");
+        setLive2dMotorAck(null);
         setLive(true);
         // A remounted iframe may be a new viewer even if `live` was already true.
         // Bump a nonce so the latest intent is replayed only after that viewer is ready.
@@ -181,9 +201,24 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const observedCount = Object.values(observed).filter((value) => typeof value === "number" && Number.isFinite(value)).length;
         setIntentAck({ stateVersion: version, status: ev.data.status, observedCount, expressionStatus: ev.data.expressionStatus, motionStatus: ev.data.motionStatus });
       }
+      if (ev.data.type === "live2d_motor_frame_ack") {
+        const ack = ev.data;
+        if (currentModeRef.current !== "live2d" || typeof ack.modelId !== "string" || ack.modelId !== live2dModelId
+          || typeof ack.frameTick !== "number" || !Number.isSafeInteger(ack.frameTick) || ack.frameTick < 0
+          || typeof ack.profileId !== "string" || ack.profileId.length > 96
+          || typeof ack.observedCount !== "number" || !Number.isSafeInteger(ack.observedCount) || ack.observedCount < 0
+          || typeof ack.commandCount !== "number" || !Number.isSafeInteger(ack.commandCount) || ack.commandCount < 1
+          || ack.observedCount > ack.commandCount || typeof ack.readbackAvailable !== "boolean"
+          || ack.visualCompletionVerified !== false) return;
+        setLive2dMotorAck({ frameTick: ack.frameTick, observedCount: ack.observedCount,
+          commandCount: ack.commandCount, readbackAvailable: ack.readbackAvailable });
+      }
       if (ev.data.type === "live2d_error") {
         if (typeof ev.data.error !== "string" || ev.data.error.length > 512) return;
         setLive(false);
+        setLive2dMotorModelId(null);
+        setLive2dMotorBatch(null);
+        setLive2dMotorProjection("unmapped");
         setIntentAck(null);
       }
     };
@@ -195,8 +230,34 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     if (mode !== "live2d") {
       latestIntentStateVersionRef.current = 0;
       setIntentAck(null);
+      setLive2dMotorBatch(null);
+      setLive2dMotorProjection("unmapped");
+      setLive2dMotorConnection("unavailable");
+      setLive2dMotorAck(null);
     }
   }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "live2d" || !live || !live2dMotorModelId) {
+      setLive2dMotorConnection("unavailable");
+      setLive2dMotorBatch(null);
+      return;
+    }
+    setLive2dMotorConnection("connecting");
+    return connectMotorFrameStream({
+      url: neuroApiUrl("/api/organism/motor-frame/stream"),
+      renderer: "live2d",
+      modelId: live2dMotorModelId,
+      onConnection: setLive2dMotorConnection,
+      onProjection: (projection) => {
+        setLive2dMotorProjection(projection.state);
+        if (projection.state === "ready") setLive2dMotorBatch(projection.batch);
+        else if (projection.state === "unconfigured" || projection.state === "unmapped" || projection.state === "invalid") {
+          setLive2dMotorBatch(null);
+        }
+      },
+    });
+  }, [mode, live, live2dMotorModelId]);
 
   useEffect(() => {
     // Each preference is best-effort: a blocked storage write must not prevent avatar/voice controls.
@@ -461,8 +522,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       voiceEmphasis: activeUtterance ? (session?.voiceEmphasis ?? 0) : 0,
     };
     latestIntentStateVersionRef.current = intent.stateVersion;
-    win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+    win.postMessage({ ...intent, motorFrameBatch: live2dMotorBatch }, window.location.origin);
+  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey, live2dMotorBatch]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
@@ -480,7 +541,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between p-4">
-          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p><p className="text-[10px] text-muted">Termux provider: {nativeSpeechConnection === "connected" ? "подключён" : nativeSpeechConnection === "reconnecting" ? "переподключение" : nativeSpeechConnection === "closed" ? "отключён" : "подключение"}</p>{nativeSpeechProviderEvent ? <p className="max-w-[min(75vw,420px)] text-[10px] text-muted">{describeNativeSpeechProviderStatus(nativeSpeechProviderEvent)}</p> : null}{intentAck ? <p className="text-[9px] text-muted tabular-nums">intent #{intentAck.stateVersion} · {intentAck.status === "parameters-observed" ? `параметры: ${intentAck.observedCount}/6` : "принятие без readback"} · expr:{intentAck.expressionStatus} · motion:{intentAck.motionStatus} · partial</p> : null}</div>
+          <div><p className="font-display text-lg tracking-tight text-fg">Kurisu</p><p className="text-xs text-muted tabular-nums">{snap.awake ? "awake" : "sleep"} · {snap.emotion.label} · t{snap.tick}</p><p className="text-[10px] text-muted">{voiceStatus === "unsupported" ? "голос недоступен в этом браузере" : voiceStatus === "unknown" ? "исход воспроизведения неизвестен" : voiceStatus === "speaking" ? "говорит · виземы привязаны к временной шкале речи" : voiceEnabled ? "голос включён · речь запускается для новых реплик" : "голос выключен"}</p><p className="text-[10px] text-muted">Termux provider: {nativeSpeechConnection === "connected" ? "подключён" : nativeSpeechConnection === "reconnecting" ? "переподключение" : nativeSpeechConnection === "closed" ? "отключён" : "подключение"}</p>
+          <p className="text-[9px] text-muted">MotorFrame · {live2dMotorProjection} / {live2dMotorConnection}{live2dMotorAck ? ` · tick ${live2dMotorAck.frameTick} · readback ${live2dMotorAck.observedCount}/${live2dMotorAck.commandCount}` : ""}</p>{nativeSpeechProviderEvent ? <p className="max-w-[min(75vw,420px)] text-[10px] text-muted">{describeNativeSpeechProviderStatus(nativeSpeechProviderEvent)}</p> : null}{intentAck ? <p className="text-[9px] text-muted tabular-nums">intent #{intentAck.stateVersion} · {intentAck.status === "parameters-observed" ? `параметры: ${intentAck.observedCount}/6` : "принятие без readback"} · expr:{intentAck.expressionStatus} · motion:{intentAck.motionStatus} · partial</p> : null}</div>
           <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "live2d" : "live2d unavailable"}</span>
         </div>
       </>}
