@@ -313,12 +313,14 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
  const unique=items.filter(item=>typeof item.id==='string'&&item.id.trim().length>0&&idCounts.get(item.id)===1);
  const byId=new Map(unique.map(item=>[item.id,item]));
  const sameLineage=(a:MemoryItem2,b:MemoryItem2)=>String(a.revisionGroupId??a.id)===String(b.revisionGroupId??b.id);
- const forward=(parent:MemoryItem2,child:MemoryItem2)=>
-  parent.id!==child.id&&sameLineage(parent,child)&&
-  Number.isSafeInteger(parent.revisionSequence)&&Number.isSafeInteger(child.revisionSequence)&&
-  parent.revisionSequence>=1&&child.revisionSequence>parent.revisionSequence&&
-  Number.isFinite(parent.validFromAt)&&Number.isFinite(child.validFromAt)&&
-  child.validFromAt>parent.validFromAt;
+ const forward=(parent:MemoryItem2,child:MemoryItem2)=>{
+  const parentSequence=Number(parent.revisionSequence),childSequence=Number(child.revisionSequence);
+  const parentFrom=Number(parent.validFromAt),childFrom=Number(child.validFromAt);
+  return parent.id!==child.id&&sameLineage(parent,child)&&
+   Number.isSafeInteger(parentSequence)&&Number.isSafeInteger(childSequence)&&
+   parentSequence>=1&&childSequence>parentSequence&&
+   Number.isFinite(parentFrom)&&Number.isFinite(childFrom)&&childFrom>parentFrom;
+ };
  for(const child of unique){
   const parentId=child.supersedesId;
   if(parentId){
@@ -326,9 +328,9 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
    if(!parent||parent.supersededById!==child.id||!forward(parent,child)){
     child.supersedesId=null;
     if(parent?.supersededById===child.id)parent.supersededById=null;
-   }else if(parent.validUntilAt==null||parent.validUntilAt>child.validFromAt){
+   }else if(parent.validUntilAt==null||parent.validUntilAt>Number(child.validFromAt)){
     // A reciprocal, monotonic successor is sufficient to repair a lost interval end.
-    parent.validUntilAt=child.validFromAt;
+    parent.validUntilAt=Number(child.validFromAt);
    }
   }
   const childId=child.supersededById;
@@ -337,8 +339,8 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
    if(!successor||successor.supersedesId!==child.id||!forward(child,successor)){
     child.supersededById=null;
     if(successor?.supersedesId===child.id)successor.supersedesId=null;
-   }else if(child.validUntilAt==null||child.validUntilAt>successor.validFromAt){
-    child.validUntilAt=successor.validFromAt;
+   }else if(child.validUntilAt==null||child.validUntilAt>Number(successor.validFromAt)){
+    child.validUntilAt=Number(successor.validFromAt);
    }
   }
  }
