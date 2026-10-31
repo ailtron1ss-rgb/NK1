@@ -1,3 +1,8 @@
+## [NK1][Aspect 08] Isolate bounded-pattern regression fixture from code-policy classification (2026-10-31)
+
+- Rename the bounded-regex fixture field and tool ID to neutral `tag` / `catalog.regex-check` identifiers. This keeps the test focused on bounded quantifier validation instead of coupling it to code-operation policy classification.
+- Preserve the negative case (`nk1!`) and positive bounded-quantifier case (`nk1`). Re-run exact-head CI before marking the regression fixed.
+
 ## [NK1][Learning] Integrate P23 self-development journals and holdout integrity (2026-10-30)
 
 - Added durable P23 fitness/lifecycle journals, lifecycle reconciliation on restore, and file-backed compound-repair retry/backoff recovery.
