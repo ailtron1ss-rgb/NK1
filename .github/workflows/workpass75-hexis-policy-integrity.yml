@@ -1,0 +1,41 @@
+name: NK1 WorkPass75 Hexis policy integrity
+
+on:
+  push:
+    branches:
+      - workpass75-hexis-rebased-2026-10-31
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs'
+      - '.github/workflows/workpass75-hexis-policy-integrity.yml'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/integration/hexis/HexisAdaptationFabric.ts'
+      - 'runtime/neuro-kurisu/tests/integration/hexis-adaptation.mjs'
+      - '.github/workflows/workpass75-hexis-policy-integrity.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-workpass75-hexis-policy-integrity-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  hexis-policy-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install the locked runtime dependency graph
+        working-directory: runtime/neuro-kurisu
+        run: npm ci --no-audit --no-fund
+      - name: Run Hexis adaptation and connector-policy integrity contracts
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:hexis-adaptation
