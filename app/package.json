@@ -39,10 +39,11 @@
     "test:depth-rig-scene": "node --experimental-strip-types --test scripts/depth-rig-scene-adapter.test.mjs",
     "test:motor-frame-stream": "node --experimental-strip-types --test scripts/motor-frame-stream.test.mjs",
     "test:motor-frame-depth-rig": "node --experimental-strip-types --test scripts/motor-frame-depth-rig.test.mjs",
-    "test:unified-embodiment": "npm run test:depth-rig-scene && npm run test:motor-frame-stream && npm run test:motor-frame-depth-rig && npm run test:motor-frame-vrm && npm run test:live2d-motor-frame && npm run test:active-embodiment-switch && npm run test:embodiment-switch",
+    "test:unified-embodiment": "npm run test:avatar-glb-preflight && npm run test:depth-rig-scene && npm run test:motor-frame-stream && npm run test:motor-frame-depth-rig && npm run test:motor-frame-vrm && npm run test:live2d-motor-frame && npm run test:active-embodiment-switch && npm run test:embodiment-switch",
     "test:live2d-motor-frame": "node --experimental-strip-types --test scripts/live2d-motor-frame.test.mjs",
     "test:motor-frame-vrm": "node --experimental-strip-types --test scripts/motor-frame-vrm.test.mjs",
-    "test:active-embodiment-switch": "node --experimental-strip-types --test scripts/active-embodiment-switch.test.mjs"
+    "test:active-embodiment-switch": "node --experimental-strip-types --test scripts/active-embodiment-switch.test.mjs",
+    "test:avatar-glb-preflight": "node --experimental-strip-types --test scripts/avatar-glb-preflight.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
