@@ -21,7 +21,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
   const status=document.getElementById('status');
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json',lastAppliedExpression='';
-  let lastIntentStateVersion=0,pendingIntentReadback=null,lastMotorFrameTick=-1;
+  let lastIntentStateVersion=0,pendingIntentReadback=null,pendingSwitchReadback=null,lastMotorFrameTick=-1;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
   const EXPR_MAP={
@@ -125,6 +125,59 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     };
     maybeEmitIntentAck(pending);
   }
+  function flushSwitchReadback(core){
+    const pending=pendingSwitchReadback;
+    if(!pending||!core)return;
+    const ids=pending.channels;
+    if(typeof core.getParameterValueById!=='function'){
+      if(!pending.applySent){
+        pending.applySent=true;
+        pending.appliedAt=performance.now();
+        send('live2d_switch_apply_receipt',{
+          adapterId:pending.adapterId,stateRevision:pending.stateRevision,
+          appliedAtMonotonicMs:pending.appliedAt,acceptedChannels:ids,rejectedChannels:[],
+          executionId:pending.executionId,visualCompletionVerified:false,
+        });
+      }else if(!pending.verificationSent){
+        pending.verificationSent=true;
+        send('live2d_switch_verification',{
+          adapterId:pending.adapterId,executionId:pending.executionId,verified:false,
+          stateRevision:pending.stateRevision,observedAtMonotonicMs:performance.now(),
+          observedChannels:[],mismatches:ids,reason:'cubism-parameter-readback-unavailable',
+          visualCompletionVerified:false,
+        });
+        pendingSwitchReadback=null;
+      }
+      return;
+    }
+    const observed={};
+    for(const id of ids){
+      try{const value=core.getParameterValueById(id);if(typeof value==='number'&&Number.isFinite(value))observed[id]=value;}catch{}
+    }
+    if(!pending.applySent){
+      if(ids.some(id=>typeof observed[id]!=='number'))return;
+      pending.expected=observed;
+      pending.applySent=true;
+      pending.appliedAt=performance.now();
+      send('live2d_switch_apply_receipt',{
+        adapterId:pending.adapterId,stateRevision:pending.stateRevision,
+        appliedAtMonotonicMs:pending.appliedAt,acceptedChannels:ids,rejectedChannels:[],
+        executionId:pending.executionId,visualCompletionVerified:false,
+      });
+      return;
+    }
+    if(pending.verificationSent)return;
+    const matches=ids.filter(id=>typeof observed[id]==='number'&&Math.abs(observed[id]-pending.expected[id])<=0.12);
+    const mismatches=ids.filter(id=>!matches.includes(id));
+    pending.verificationSent=true;
+    send('live2d_switch_verification',{
+      adapterId:pending.adapterId,executionId:pending.executionId,verified:mismatches.length===0,
+      stateRevision:pending.stateRevision,observedAtMonotonicMs:performance.now(),
+      observedChannels:matches,mismatches,reason:mismatches.length?'cubism-parameter-readback-mismatch':undefined,
+      visualCompletionVerified:false,
+    });
+    pendingSwitchReadback=null;
+  }
   function applyModelParameterOverrides(){
     const core=model?.internalModel?.coreModel;
     if(!core)return;
@@ -167,6 +220,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
     // Read back only after setters ran in the model-update hook. This confirms these
     // parameter values, not expression/motion completion or a presented GPU frame.
     flushIntentParameterReadback(core);
+    flushSwitchReadback(core);
   }
   function applyExpression(expr,revision=null){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
@@ -277,6 +331,15 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
         emitted:false,
       };
       normalized.motorFrameBatch=sanitizeLive2DMotorBatch(d.motorFrameBatch);
+      const switchExecutionId=typeof d.switchExecutionId==='string'&&/^[a-z0-9][a-z0-9._:-]{1,127}$/i.test(d.switchExecutionId)?d.switchExecutionId:null;
+      const switchStateRevision=Number.isSafeInteger(d.switchStateRevision)&&d.switchStateRevision>=0?d.switchStateRevision:normalized.stateVersion;
+      pendingSwitchReadback=switchExecutionId?{
+        adapterId:'live2d:'+modelIdForProfile(assetProfile),
+        executionId:switchExecutionId,
+        stateRevision:switchStateRevision,
+        channels:['ParamAngleX','ParamAngleY','ParamAngleZ','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'],
+        expected:null,applySent:false,verificationSent:false,appliedAt:0,
+      }:null;
       applyEmbodiment(normalized,pendingIntentReadback);
     }
     else if(d.type==='kurisu_embodiment')applyEmbodiment(d);
