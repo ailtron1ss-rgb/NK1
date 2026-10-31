@@ -1,0 +1,73 @@
+name: NK1 embodied motor controller
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/body/OrganismMotorRuntime.ts"
+      - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/tests/server-smoke.mjs"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/index.ts"
+      - "runtime/neuro-kurisu/tests/organism-motor-runtime.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/EmbodiedMotorController.ts"
+      - "runtime/neuro-kurisu/src/organism/system/MotorRigProfile.ts"
+      - "runtime/neuro-kurisu/tests/motor-rig-profile.mjs"
+      - "runtime/neuro-kurisu/tests/organism-motor-rig-profile.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/MotorFrameChannel.ts"
+      - "runtime/neuro-kurisu/tests/motor-frame-channel.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/SkeletalKinematics3D.ts"
+      - "runtime/neuro-kurisu/src/organism/system/SkeletalPoseIK3D.ts"
+      - "runtime/neuro-kurisu/src/organism/system/SkeletalMultiEffectorIK3D.ts"
+      - "runtime/neuro-kurisu/tests/skeletal-kinematics-3d.mjs"
+      - "runtime/neuro-kurisu/tests/skeletal-pose-ik-3d.mjs"
+      - "runtime/neuro-kurisu/tests/skeletal-multi-effector-ik-3d.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/src/organism/system/MotorGoalArbiter.ts"
+      - "runtime/neuro-kurisu/src/organism/system/BasalGangliaSelectionCircuit.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CerebellarPredictiveController.ts"
+      - "runtime/neuro-kurisu/tests/embodied-motor-controller.mjs"
+      - ".github/workflows/nk1-embodied-motor-controller.yml"
+  push:
+    branches: [work/nk1-autonomous-motor-control-2026-10-30]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-embodied-motor-controller-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  motor-controller:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install pinned runtime toolchain
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts
+      - name: Typecheck runtime
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run canonical motor-rig profile regressions
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/motor-rig-profile.mjs
+      - name: Run organism motor-rig profile integration regressions
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/organism-motor-rig-profile.mjs
+      - name: Run motor-control regression suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/embodied-motor-controller.mjs
+      - name: Run 3D skeletal kinematics regression suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/skeletal-kinematics-3d.mjs
+      - name: Run combined 3D pose IK regression suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/skeletal-pose-ik-3d.mjs
+      - name: Run coordinated multi-effector IK regression suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/skeletal-multi-effector-ik-3d.mjs
+      - name: Run MotorFrame transport regression suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/motor-frame-channel.mjs
+      - name: Run organism-owned motor runtime integration suite
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/organism-motor-runtime.mjs
+      - name: Run server MotorFrame HTTP smoke test
+        run: npm --prefix runtime/neuro-kurisu run test:server-smoke
