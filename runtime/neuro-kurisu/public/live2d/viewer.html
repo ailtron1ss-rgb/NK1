@@ -334,7 +334,7 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       const switchExecutionId=typeof d.switchExecutionId==='string'&&/^[a-z0-9][a-z0-9._:-]{1,127}$/i.test(d.switchExecutionId)?d.switchExecutionId:null;
       const switchStateRevision=Number.isSafeInteger(d.switchStateRevision)&&d.switchStateRevision>=0?d.switchStateRevision:normalized.stateVersion;
       pendingSwitchReadback=switchExecutionId?{
-        adapterId:'live2d:'+modelIdForProfile(assetProfile),
+        adapterId:'nk1-live2d',
         executionId:switchExecutionId,
         stateRevision:switchStateRevision,
         channels:['ParamAngleX','ParamAngleY','ParamAngleZ','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'],
