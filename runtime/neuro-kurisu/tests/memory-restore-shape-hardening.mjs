@@ -132,7 +132,7 @@ assert.equal(
 const diagnostics = restored.restoreDiagnostics();
 assert.equal(diagnostics.sourceRows, 7);
 assert.equal(diagnostics.acceptedRows, 2);
-assert.equal(diagnostics.invalidRowsDropped, 5);
+assert.equal(diagnostics.invalidRowsDropped, 4, 'blank IDs are tracked separately from malformed nonblank rows');
 assert.equal(diagnostics.contentHashMismatchesRepaired, 2,
   'restore must record both stale serialized content hashes while repairing them');
 assert.equal(diagnostics.invalidVectorsDiscarded, 1,
@@ -146,7 +146,7 @@ assert.equal(doctor.pass, false, 'memory doctor must expose data loss during res
 assert.ok(doctor.issues.some(issue => issue.code === 'restore-invalid-rows-dropped'));
 assert.ok(doctor.issues.some(issue => issue.code === 'restore-content-hash-mismatch-repaired'));
 assert.ok(doctor.issues.some(issue => issue.code === 'restore-facts-downgraded'));
-assert.equal(doctor.restore.invalidRowsDropped, 5);
+assert.equal(doctor.restore.invalidRowsDropped, 4);
 assert.equal(doctor.counts.restoreContentHashMismatches, 2);
 assert.equal(doctor.counts.restoreInvalidVectors, 1);
 assert.equal(doctor.counts.restoreFactsDowngraded, 1);
