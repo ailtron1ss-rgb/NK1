@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Drive VRM normalized humanoid from NK1 motor (WorkPass76, 2026-10-31)
+
+- Replace the interim raw-bone ownership bridge with the canonical `VRMHumanoid.getNormalizedBoneNode()` command surface and enable `autoUpdateHumanBones=true`; `vrm.update()` now transfers NK1's normalized pose into the model-specific raw rig.
+- Route existing gaze/head-tilt and explore/respond/verify arm intents into normalized head, neck and upper-arm nodes; split head/neck offsets 35/65 and reset normalized nodes each frame to prevent accumulated Euler drift.
+- Keep generic GLB on the prior raw-bone motor/mixer path; explicitly document that GLTF animation tracks targeting raw VRM humanoid bones are not yet retargeted to normalized nodes.
+- Add normalized rig availability, deterministic mapping, missing-bone and no-drift tests. Spatial planar IK is deliberately not claimed: live perception target coordinates, limb measurements and exact model calibration are not yet supplied to Avatar3DStage.
+
 ## [NK1][Embodiment] Integrate native three-vrm runtime (WorkPass75, 2026-10-31)
 
 - Pin `@pixiv/three-vrm@3.5.5` and its complete 14-package runtime/type dependency graph with npm integrity hashes; keep the existing `three@0.180.0` runtime.
