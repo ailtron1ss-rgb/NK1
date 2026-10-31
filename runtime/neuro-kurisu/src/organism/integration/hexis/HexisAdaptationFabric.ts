@@ -258,7 +258,7 @@ export class HexisAdaptationFabric {
                 });
             }
         }
-        const metricInput = isRecord(value.metrics) ? value.metrics : {};
+        const metricInput: Record<string, unknown> = isRecord(value.metrics) ? value.metrics : Object.create(null) as Record<string, unknown>;
         const metrics = Object.fromEntries(
             Object.entries(defaults.metrics).map(([key, fallback]) => {
                 const candidate = metricInput[key];
