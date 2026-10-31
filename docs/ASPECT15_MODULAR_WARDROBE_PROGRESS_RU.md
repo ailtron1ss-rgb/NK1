@@ -140,3 +140,14 @@ Unit tests и metadata-only pack сами по себе не означают 10
 6. Add real IndexedDB quota/restart and Android restore E2E.
 7. Author 2.5D layered garment assets and inspect the Cubism source before claiming Live2D garment capability.
 8. Complete independent rights review, then refresh the canonical Release ZIP from the verified source SHA.
+
+
+## CI failure investigation — 2026-10-31
+
+- Re-read PR #412 metadata: actual branch HEAD before this repair pass was `7ad91461c738cc2984e86f8b3b9672c5c2947307`; the older checkpoint SHA above was stale.
+- Retrieved the failed GitHub Actions job logs. The wardrobe workflow fails in five new authoring-preflight tests; the Core regression workflow reaches the same script suite and fails on those same five tests, so its later typecheck/build stages are skipped. This is a shared preflight-test failure, not evidence of a separate cognitive-core regression.
+- Fixed a real GLB JSON padding parser defect: the regex had double-escaped Unicode code points and did not correctly trim legal JSON chunk padding.
+- Improved authoring-preflight assertions so subsequent CI output includes the exact validation errors instead of only boolean assertion failures.
+- New commits: `2f8b0482bcbb7f5229c29df7215e99608853c4c01` (GLB padding fix) and `824f7df978d700b2dcc7c51d4bf6ed387ac631ec` (diagnostic assertions).
+- Current branch head at report time: `824f7df978d700b2dcc7c51d4bf6ed387ac631ec`. No new workflow run/status was returned for this exact HEAD yet; the failing runs are from the preceding HEAD. Therefore the repair is committed but not yet CI-verified.
+- The exact common structural-validation cause behind the five initial failures still requires a fresh run with the new assertion diagnostics. Aspect 15 remains **61/100**; no production garments, Live2D/2.5D switching, device E2E or Release ZIP update are newly verified.
