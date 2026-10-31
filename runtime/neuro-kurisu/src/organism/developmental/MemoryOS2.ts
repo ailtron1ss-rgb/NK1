@@ -308,14 +308,22 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
  * same-lineage, strictly forward edges. Repair a missing predecessor end from its
  * verified successor; drop ambiguous duplicate IDs and malformed edges fail-closed.
  */
-type MemoryRestoreIntegrityFinding={code:'duplicate-memory-id-dropped';memoryId:string;duplicateCount:number};
+type MemoryRestoreIntegrityFinding=
+ | {code:'duplicate-memory-id-dropped';memoryId:string;duplicateCount:number}
+ | {code:'blank-memory-id-dropped';count:number};
 function normalizeMemoryRestoreIntegrityFindings(value:unknown):MemoryRestoreIntegrityFinding[]{
  if(!Array.isArray(value))return [];
- return value.slice(-64).flatMap((row:any)=>row?.code==='duplicate-memory-id-dropped'&&typeof row.memoryId==='string'&&row.memoryId.trim()&&Number.isSafeInteger(row.duplicateCount)&&row.duplicateCount>=2
-  ? [{code:'duplicate-memory-id-dropped' as const,memoryId:row.memoryId.slice(0,180),duplicateCount:row.duplicateCount}]
-  : []);
+ return value.slice(-64).flatMap((row:any)=>{
+  if(row?.code==='duplicate-memory-id-dropped'&&typeof row.memoryId==='string'&&row.memoryId.trim()&&Number.isSafeInteger(row.duplicateCount)&&row.duplicateCount>=2)
+   return [{code:'duplicate-memory-id-dropped' as const,memoryId:row.memoryId.slice(0,180),duplicateCount:row.duplicateCount}];
+  if(row?.code==='blank-memory-id-dropped'&&Number.isSafeInteger(row.count)&&row.count>=1)
+   return [{code:'blank-memory-id-dropped' as const,count:Math.min(1600,row.count)}];
+  return [];
+ });
 }
-function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:string,count:number)=>void):MemoryItem2[]{
+function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:string,count:number)=>void,onBlankId?:(count:number)=>void):MemoryItem2[]{
+ const blankIdCount=items.filter(item=>typeof item.id!=='string'||!item.id.trim()).length;
+ if(blankIdCount)onBlankId?.(blankIdCount);
  const idCounts=new Map<string,number>();
  for(const item of items){
   if(typeof item.id==='string'&&item.id.trim())idCounts.set(item.id,(idCounts.get(item.id)??0)+1);
@@ -706,9 +714,13 @@ export class MemoryOS2{
   // Reconcile the authority-bearing revision graph before any retrieval index is rebuilt.
   // Duplicate IDs are dropped fail-closed, but the loss must remain visible to diagnostics.
   this.state.items=normalizeMemoryRevisionGraph(this.state.items,(id,count)=>{
-   const existing=this.state.restoreIntegrityFindings.find(finding=>finding.code==='duplicate-memory-id-dropped'&&finding.memoryId===id);
+   const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'duplicate-memory-id-dropped'}>=>finding.code==='duplicate-memory-id-dropped'&&finding.memoryId===id);
    if(existing)existing.duplicateCount=Math.max(existing.duplicateCount,count);
    else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'duplicate-memory-id-dropped' as const,memoryId:id,duplicateCount:count}].slice(-64);
+  },count=>{
+   const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'blank-memory-id-dropped'}>=>finding.code==='blank-memory-id-dropped');
+   if(existing)existing.count=Math.max(existing.count,count);
+   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count}].slice(-64);
   });
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
@@ -1557,10 +1569,15 @@ export class MemoryOS2{
   const issues:Array<{code:string;severity:'error'|'warning';memoryId:string|null;detail:string}> = [];
   let totalErrors=0,totalWarnings=0;
   const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(severity==='error')totalErrors++;else totalWarnings++;if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
-  let restoreDuplicateIds=0;
+  let restoreDuplicateIds=0,restoreDroppedBlankIds=0;
   for(const finding of this.state.restoreIntegrityFindings){
-   restoreDuplicateIds++;
-   add(finding.code,'warning',finding.memoryId,'Restore dropped '+finding.duplicateCount+' records sharing the same memory ID.');
+   if(finding.code==='duplicate-memory-id-dropped'){
+    restoreDuplicateIds++;
+    add(finding.code,'warning',finding.memoryId,'Restore dropped '+finding.duplicateCount+' records sharing the same memory ID.');
+   }else{
+    restoreDroppedBlankIds+=finding.count;
+    add(finding.code,'warning',undefined,'Restore dropped '+finding.count+' records with blank memory IDs.');
+   }
   }
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
   const ids=new Set(items.map(item=>item.id));
@@ -1615,7 +1632,7 @@ export class MemoryOS2{
   if(!index.pass)add('index-integrity-failure','error',null,'The canonical memory indexes disagree with the persisted memory list.');
   const errors=totalErrors;
   const warnings=totalWarnings;
-  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length+restoreDuplicateIds,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,invalidRevisionEdges,revisionRestoreFindings,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
+  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length+restoreDuplicateIds,restoreDroppedBlankIds,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,invalidRevisionEdges,revisionRestoreFindings,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
  }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
