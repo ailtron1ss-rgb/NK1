@@ -1,3 +1,13 @@
+## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
+
+- Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
+- Export HMAC-SHA256 pseudonyms for normalized query, example and memory IDs using one ephemeral per-experiment key shared across paired bootstrap seeds. The key and raw prompt/memory payloads are not serialized.
+- Include RU/EN train/holdout labels, relevant memory pseudonyms, top-K BM25 and MemoryOS2 ranks, bounded result-safety flags, dataset/corpus/retrieval fingerprints and evaluation thresholds.
+- Add an independent Inspect AI scorer that recomputes Recall@K, MRR, unanswerable-query abstention, paired bootstrap intervals, language-stratified gates, split leakage and candidate result integrity.
+- Add an Inspect task, Python scorer tests, real MemoryOS2 clone-path HMAC-export regression, CLI opt-in switch, documentation and CI integration. Synthetic CI evidence is explicitly classified as test-only and can never qualify for promotion.
+- No real external labelled holdout dataset is bundled or claimed. Recall uplift, independent provenance and real-world memory quality remain unmeasured until a separately licensed immutable RU/EN dataset is supplied.
+- The evaluator cannot write memory or promote a candidate; P23 and live runtime state remain outside this path.
+
 ## [NK1][Evaluation] Add Inspect AI independent evidence evaluation (2026-10-31)
 
 - Add a bounded, read-only runtime projection over the canonical CognitiveEventFabric, RealityEvidenceLedger and UnifiedCognitiveCycle; hash event and parent-event IDs, and omit source labels, free-text claims and payloads.

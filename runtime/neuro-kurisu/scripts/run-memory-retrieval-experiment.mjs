@@ -13,12 +13,14 @@ const MAX_EXAMPLES = 512;
 function usage() {
   return [
     'Usage:',
-    '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>]',
+    '  node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs --snapshot <MemoryOSState2.json> --labels <labels.jsonl> --provenance <dataset-provenance.json> --out <report.json> [--seeds 11,29,47,71,101] [--k 5] [--now <unix-ms>] [--inspect-evidence true] [--min-train-per-language 4] [--min-answerable-per-language 20] [--min-unanswerable-per-language 8]',
     '',
     'The label file is JSONL; optional explicit language labels are "en", "ru", or "other".',
     'A tagged benchmark requires all rows tagged and both en and ru for promotion; per-language holdout gates run separately.',
     'For an explicitly unanswerable query, use "answerable":false with an empty relevantIds array; omitted answerable defaults to true.',
     'The snapshot must be the exported MemoryOSState2 object. The provenance file must contain datasetId, datasetVersion, sourceRef and labelingProtocol.',
+    'The Inspect export contains only per-query HMAC digests and bounded ranked-memory flags; the ephemeral key is never written to the report.',
+    'The default bilingual evidence minimums are 4 train, 20 answerable holdout, and 8 unanswerable holdout queries per language.',
     'This runs offline on a clone; it does not alter live memory or automatically promote a candidate.',
   ].join('\n');
 }
@@ -107,6 +109,19 @@ function parseSeeds(value) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) { console.log(usage()); return; }
+  if (args['inspect-evidence'] !== undefined && !['true','false'].includes(args['inspect-evidence'])) {
+    throw new Error('--inspect-evidence-must-be-true-or-false');
+  }
+  const includeQueryEvidence=args['inspect-evidence']==='true';
+  const boundedIntegerOption=(name,fallback,min,max)=>{
+    if(args[name]===undefined)return fallback;
+    const value=Number(args[name]);
+    if(!Number.isSafeInteger(value)||value<min||value>max)throw new Error(`--${name}-must-be-integer-${min}-to-${max}`);
+    return value;
+  };
+  const minTrainPerLanguage=boundedIntegerOption('min-train-per-language',includeQueryEvidence?4:2,includeQueryEvidence?4:2,32);
+  const minAnswerablePerLanguage=boundedIntegerOption('min-answerable-per-language',includeQueryEvidence?20:8,includeQueryEvidence?20:8,64);
+  const minUnanswerablePerLanguage=boundedIntegerOption('min-unanswerable-per-language',includeQueryEvidence?8:2,includeQueryEvidence?8:2,32);
   const [snapshotFile, labelsFile, provenanceFile] = await Promise.all([
     readBounded(args.snapshot, MAX_SNAPSHOT_BYTES, 'snapshot'),
     readBounded(args.labels, MAX_LABEL_BYTES, 'labels'),
@@ -117,7 +132,7 @@ async function main() {
   try { provenance = JSON.parse(provenanceFile.text); } catch { throw new Error('provenance-invalid-json'); }
   if (!snapshot || typeof snapshot !== 'object' || !Array.isArray(snapshot.items)) throw new Error('snapshot-must-be-MemoryOSState2-with-items-array');
   if (!provenance || typeof provenance !== 'object' || Array.isArray(provenance)) throw new Error('provenance-must-be-json-object');
-  for (const key of ['datasetId', 'datasetVersion', 'sourceRef', 'labelingProtocol']) if (typeof provenance[key] !== 'string' || !provenance[key].trim()) throw new Error(`provenance-field-required:${key}`);
+  for (const key of ['datasetId', 'datasetVersion', 'sourceRef', 'labelingProtocol', 'licenseId']) if (typeof provenance[key] !== 'string' || !provenance[key].trim()) throw new Error(`provenance-field-required:${key}`);
   const examples = parseLabels(labelsFile.text);
   const seeds = parseSeeds(args.seeds);
   const k = args.k === undefined ? 5 : Number(args.k);
@@ -126,7 +141,12 @@ async function main() {
   if (!Number.isSafeInteger(now) || now < 0) throw new Error('now-must-be-nonnegative-unix-milliseconds');
   const report = runMemoryOS2RetrievalExperiment(snapshot, examples, {
     now, k, seeds, maxExamples: MAX_EXAMPLES,
-    minHoldoutQueries: 8,
+    includeQueryEvidence,
+    minHoldoutQueries: includeQueryEvidence ? minAnswerablePerLanguage * 2 : 8,
+    minUnanswerableHoldoutQueries: includeQueryEvidence ? minUnanswerablePerLanguage * 2 : 4,
+    minLanguageTrainQueries: minTrainPerLanguage,
+    minLanguageAnswerableHoldoutQueries: minAnswerablePerLanguage,
+    minLanguageUnanswerableHoldoutQueries: minUnanswerablePerLanguage,
     datasetProvenance: provenance,
   });
   report.input = {
@@ -150,6 +170,7 @@ async function main() {
     unanswerableHoldoutQueries: holdoutMetrics?.unanswerableQueries ?? 0,
     unsupportedRetrievalRate01: holdoutMetrics?.unsupportedRetrievalRate01 ?? 0,
     correctAbstentionRate01: holdoutMetrics?.correctAbstentionRate01 ?? 0,
+    queryEvidenceIncluded: Boolean(report.queryEvidence),
     promotion: report.promotion.status,
     reason: report.promotion.reason,
   }, null, 2));

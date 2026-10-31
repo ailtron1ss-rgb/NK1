@@ -1,3 +1,6 @@
 evidence*.json
 samples*.jsonl
 *.eval
+
+memory-report*.json
+memory-samples*.jsonl

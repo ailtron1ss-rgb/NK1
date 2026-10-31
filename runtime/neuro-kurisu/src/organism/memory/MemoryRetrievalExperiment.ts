@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   runMemoryOS2RetrievalBenchmark,
   type MemoryRetrievalBenchmarkExample,
@@ -54,7 +55,7 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
       deltas: slice.deltas,
     };
   }
-  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices } });
+  return JSON.stringify({ baseline: metrics(report.metrics.baseline), candidate: metrics(report.metrics.candidate), trainBaseline: metrics(report.metrics.train.baseline), trainCandidate: metrics(report.metrics.train.candidate), baselineConfigurationFingerprint: report.baselineConfigurationFingerprint, deltas: report.deltas, languageStratification: { enabled: report.languageStratification.enabled, annotationsComplete: report.languageStratification.annotationsComplete, slices: languageSlices }, queryEvidence: report.queryEvidence ?? null });
 }
 
 /**
@@ -74,6 +75,14 @@ export function runMemoryOS2RetrievalExperiment(
   if (seeds.length < 3) throw new Error('experiment-requires-at-least-3-distinct-bootstrap-seeds');
 
   const benchmarkOptions: MemoryRetrievalBenchmarkOptions = { ...options, now, maxExamples: Math.max(64, Math.min(512, Math.floor(Number(options.maxExamples ?? 512)))) };
+  // One ephemeral key is shared across paired bootstrap seeds. It is never placed
+  // into the report; the exported query/memory pseudonyms are useful only inside it.
+  if (benchmarkOptions.includeQueryEvidence === true) {
+    benchmarkOptions.evidenceHashSalt = typeof benchmarkOptions.evidenceHashSalt === 'string'
+      && /^[a-f0-9]{64}$/i.test(benchmarkOptions.evidenceHashSalt)
+      ? benchmarkOptions.evidenceHashSalt.toLowerCase()
+      : randomBytes(32).toString('hex');
+  }
   delete (benchmarkOptions as MemoryRetrievalExperimentOptions).seeds;
   const runs = seeds.map(seed => runMemoryOS2RetrievalBenchmark(snapshot, examples, { ...benchmarkOptions, seed }));
   const signatures = runs.map(qualitySignature);
@@ -128,6 +137,17 @@ export function runMemoryOS2RetrievalExperiment(
     corpusIntegrity: runs[0]?.corpusIntegrity ?? null,
     datasetIntegrity: runs[0]?.datasetIntegrity ?? null,
     datasetProvenance: runs[0]?.datasetProvenance ?? null,
+    evaluationThresholds: {
+      k: runs[0]?.k ?? 5,
+      minimumHoldoutQueries: runs[0]?.promotion.minimumHoldoutQueries ?? 8,
+      minimumUnanswerableHoldoutQueries: runs[0]?.promotion.minimumUnanswerableHoldoutQueries ?? 4,
+      minimumTrainQueriesPerLanguage: runs[0]?.promotion.minimumLanguageTrainQueries ?? 2,
+      minimumAnswerableHoldoutQueriesPerLanguage: runs[0]?.promotion.minimumLanguageAnswerableHoldoutQueries ?? 8,
+      minimumUnanswerableHoldoutQueriesPerLanguage: runs[0]?.promotion.minimumLanguageUnanswerableHoldoutQueries ?? 2,
+      minimumRecallUplift01: runs[0]?.promotion.minimumRecallUplift01 ?? .02,
+      maximumMrrRegression01: runs[0]?.promotion.maximumMrrRegression01 ?? .01,
+      maximumUnsupportedRetrievalRegression01: runs[0]?.promotion.maximumUnsupportedRetrievalRegression01 ?? 0,
+    },
     determinism: {
       retrievalQualityMetricsStableAcrossSeeds: metricsDeterministic,
       datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds: provenanceConsistent,
@@ -145,6 +165,7 @@ export function runMemoryOS2RetrievalExperiment(
       maximumMrrRegression01: maximumMrrRegression,
     },
     runs: perSeed,
+    ...(runs[0]?.queryEvidence ? { queryEvidence: runs[0].queryEvidence } : {}),
     promotion: {
       allowed: false,
       status: independentReviewEligible ? 'candidate-eligible-for-independent-review' : 'not-promoted',
