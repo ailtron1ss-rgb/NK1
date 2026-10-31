@@ -71,6 +71,8 @@ policyRestoreSnapshot.connectorPolicies = [
   { ...policy, id: 'malformed-missing-contexts', contexts: undefined },
   { ...policy, id: 'malformed-truthy-string-autonomy', allowAutonomous: 'false' },
   { ...policy, id: 'malformed-window-counter', windowCount: Number.NaN },
+  { ...policy, id: 'malformed-overlong-window', windowMs: Number.MAX_SAFE_INTEGER },
+  { ...policy, id: 'malformed-fractional-window-start', windowStartedAt: 1.5 },
 ];
 policyRestoreSnapshot.metrics.policyAllows = Number.POSITIVE_INFINITY;
 policyRestoreSnapshot.metrics.policyDenials = -1;
