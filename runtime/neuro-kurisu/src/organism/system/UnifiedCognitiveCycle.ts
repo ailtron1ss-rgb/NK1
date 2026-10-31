@@ -66,7 +66,7 @@ interface LegacyUnifiedCognitiveCycleStateV1 {
   lastMissingStages?: unknown;
 }
 
-type RestorableUnifiedCognitiveCycleState = Partial<UnifiedCognitiveCycleState> & LegacyUnifiedCognitiveCycleStateV1;
+type RestorableUnifiedCognitiveCycleState = Partial<Omit<UnifiedCognitiveCycleState, 'version'>> & ({ version?: 2 } | LegacyUnifiedCognitiveCycleStateV1);
 
 const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
 const safeCounter = (value: unknown): number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
