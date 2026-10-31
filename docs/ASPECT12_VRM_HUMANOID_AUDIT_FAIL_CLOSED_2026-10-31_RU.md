@@ -65,7 +65,7 @@
 9. Повтор объекта не создаёт ложную неоднозначность; не-массивный ввод отклоняется.
 10. Глубокая ациклическая цепочка обрабатывается одним обходом; превышение лимита узлов отклоняется до сканирования.
 
-Команда: `npm --prefix app run test:vrm-humanoid-rig-audit` (13 generic Bone audit + 13 explicit VRM node-map tests).
+Команда: `npm --prefix app run test:vrm-humanoid-rig-audit` (13 generic Bone audit + 14 explicit VRM node-map tests).
 
 
 ## 5. Нормативная VRM humanoid node map
@@ -86,7 +86,7 @@ Bone-only эвристика остаётся fallback для generic GLB, но 
 
 ## 6. Дополнительные VRM regressions
 
-Добавлены 13 сценариев node-map suite:
+Добавлены 14 сценариев node-map suite:
 
 1. VRM 1.0 принимает авторитетные glTF node indices и валидные non-Bone humanoid nodes.
 2. VRM 0.x применяет собственный список обязательных ролей, включая chest и neck.
