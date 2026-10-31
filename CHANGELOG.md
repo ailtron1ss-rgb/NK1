@@ -1,8 +1,8 @@
 ## [NK1][Aspect 09] Add wrist and finger articulation to the 3D motor loop (2026-10-31)
 
-- Extended the procedural shoulder → elbow chain with an independently controlled wrist, palm, four finger groups and thumb; wrist and finger targets blend from the same semantic motor gesture profile and speech state.
+- Extended the procedural shoulder → elbow chain with an independently controlled wrist, palm, four finger groups and thumb; wrist/finger targets now come from the shared `resolveAvatarHandPose(...)` semantic policy in `motorIntent.ts`, used by both procedural and imported rigs.
 - Imported humanoid rigs now receive bounded wrist/hand and recognized finger-bone offsets when their names expose those joints; rigs without those bones retain their authored animation path.
-- Expanded the avatar kinematics contract test to guard procedural wrist/finger wiring and imported-bone routing.
+- Added bounded-profile and speech-state tests for the shared hand-pose policy, and expanded the avatar kinematics contract test to guard procedural wrist/finger wiring and imported-bone routing.
 - This remains a conservative procedural articulation adapter, not contact-aware grasping, hand-pose retargeting, collision avoidance, or full spatial IK. No browser/device visual validation or Release ZIP update is claimed.
 
 ## [NK1][Aspect 09] Verify arm IK against forward kinematics (2026-10-31)
