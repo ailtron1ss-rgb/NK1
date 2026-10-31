@@ -107,7 +107,7 @@ export class AdaptiveCausalMemoryPlanner {
       actionConfidence01:arr(r.actionConfidence01,ACTION_COUNT,.25),actionDisagreement01:arr(r.actionDisagreement01,ACTION_COUNT,.25),
       rules:Array.isArray(r.rules)?r.rules.slice(-96):[],traces:Array.isArray(r.traces)?r.traces.slice(-256):[],
       lastActionScores:arr(r.lastActionScores,ACTION_COUNT,.5),lastCounterfactualReward:arr(r.lastCounterfactualReward,ACTION_COUNT,.5),
-      lastMemoryCredit:arr(r.lastMemoryCredit,16,0),selectiveForesight01:clamp(Number(r.selectiveForesight01??.65)),
+      lastMemoryCredit:Array.isArray(r.lastMemoryCredit)?r.lastMemoryCredit.slice(0,16).map((x:any)=>clamp(Number(x)||0)):d.lastMemoryCredit,selectiveForesight01:clamp(Number(r.selectiveForesight01??.65)),
       epistemicValue01:clamp(Number(r.epistemicValue01??.5)),causalSensitivity01:clamp(Number(r.causalSensitivity01??0)),transfer01:clamp(Number(r.transfer01??0)),
       longHorizonConsistency01:clamp(Number(r.longHorizonConsistency01??.5)),lastSelectedConfidence01:clamp(Number(r.lastSelectedConfidence01??.5)),
       lastComputeCost01:clamp(Number(r.lastComputeCost01??0)),retainedForesightCount:Number(r.retainedForesightCount??0),rejectedForesightCount:Number(r.rejectedForesightCount??0),

@@ -27,8 +27,11 @@ export interface PageHinkleySnapshot {
   mean: number;
   sumIncrease: number;
   sumDecrease: number;
-  minIncrease: number;
-  maxDecrease: number;
+  // `null` is the JSON-safe encoding of the unbounded sentinels: a fresh window
+  // has minIncrease = +Infinity and maxDecrease = -Infinity, which JSON.stringify
+  // would otherwise turn into null and break a snapshot/restore round-trip.
+  minIncrease: number | null;
+  maxDecrease: number | null;
   driftDetected: boolean;
   detections: number;
 }
@@ -115,8 +118,8 @@ export class PageHinkleyDriftDetector {
       mean: this.mean,
       sumIncrease: this.sumIncrease,
       sumDecrease: this.sumDecrease,
-      minIncrease: this.minIncrease,
-      maxDecrease: this.maxDecrease,
+      minIncrease: Number.isFinite(this.minIncrease) ? this.minIncrease : null,
+      maxDecrease: Number.isFinite(this.maxDecrease) ? this.maxDecrease : null,
       driftDetected: this.detected,
       detections: this.detections,
     };
@@ -128,26 +131,29 @@ export class PageHinkleyDriftDetector {
     const optionsMatch = !!s.options && JSON.stringify(s.options) === JSON.stringify(this.options);
     const validCount = Number.isSafeInteger(s.count) && Number(s.count) >= 0;
     const validDetections = Number.isSafeInteger(s.detections) && Number(s.detections) >= 0;
+    // Accept both the JSON-safe null sentinel and the legacy in-memory infinities.
+    const minIncrease = s.minIncrease === null ? Number.POSITIVE_INFINITY : s.minIncrease;
+    const maxDecrease = s.maxDecrease === null ? Number.NEGATIVE_INFINITY : s.maxDecrease;
     const validExtrema =
-      (s.minIncrease === Number.POSITIVE_INFINITY || finite(s.minIncrease)) &&
-      (s.maxDecrease === Number.NEGATIVE_INFINITY || finite(s.maxDecrease));
+      (minIncrease === Number.POSITIVE_INFINITY || finite(minIncrease)) &&
+      (maxDecrease === Number.NEGATIVE_INFINITY || finite(maxDecrease));
     const validFreshState = s.count !== 0 ||
       (s.mean === 0 && s.sumIncrease === 0 && s.sumDecrease === 0 &&
-       s.minIncrease === Number.POSITIVE_INFINITY &&
-       s.maxDecrease === Number.NEGATIVE_INFINITY && s.driftDetected === false);
+       minIncrease === Number.POSITIVE_INFINITY &&
+       maxDecrease === Number.NEGATIVE_INFINITY && s.driftDetected === false);
     if (s.version !== 1 || !optionsMatch || !validCount || !validDetections ||
         typeof s.driftDetected !== 'boolean' || !finite(s.mean) ||
         !finite(s.sumIncrease) || !finite(s.sumDecrease) || !validExtrema ||
         !validFreshState || (Number(s.count) > 0 &&
-          (s.minIncrease === Number.POSITIVE_INFINITY || s.maxDecrease === Number.NEGATIVE_INFINITY))) {
+          (minIncrease === Number.POSITIVE_INFINITY || maxDecrease === Number.NEGATIVE_INFINITY))) {
       throw new TypeError('page-hinkley-snapshot-invalid');
     }
     this.count = Number(s.count);
     this.mean = Number(s.mean);
     this.sumIncrease = Number(s.sumIncrease);
     this.sumDecrease = Number(s.sumDecrease);
-    this.minIncrease = s.minIncrease as number;
-    this.maxDecrease = s.maxDecrease as number;
+    this.minIncrease = minIncrease as number;
+    this.maxDecrease = maxDecrease as number;
     this.detected = s.driftDetected;
     this.detections = Number(s.detections);
   }

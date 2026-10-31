@@ -76,6 +76,7 @@ export class B304SemanticHoldoutLedger{
   private phase:B304SemanticPhase='training';
 
   restore(raw?:Partial<B304SemanticHoldoutState>|null){
+    const hasRaw=!!raw;
     const d=defaultB304SemanticHoldoutState(),r:any=raw??{};
     const counts=(src:any)=>{const out=zeroActions();for(const a of ACTIONS)out[a]=signed(Number(src?.[a]??0));return out;};
     const dist=(src:any)=>{const out=zeroActions();for(const a of ACTIONS)out[a]=clamp01(Number(src?.[a]??0));return out;};
@@ -91,7 +92,13 @@ export class B304SemanticHoldoutLedger{
       recentResourcePressure01:arr(r.recentResourcePressure01,128),recentRewards01:arr(r.recentRewards01,128),recentPredictionErrors01:arr(r.recentPredictionErrors01,128),
       lastPhase:(r.lastPhase==='holdout'||r.lastPhase==='recovery')?r.lastPhase:'training',
     };
-    this.recompute();
+    // Re-derive aggregates only when they are absent from the snapshot. When a
+    // snapshot carries its own derived values we trust them verbatim: recomputing
+    // would rewrite the signed-out state (e.g. zero readiness, zero compliance)
+    // and break an exact snapshot/restore round-trip. A default/no-op call
+    // (raw omitted) likewise leaves the pristine state untouched.
+    const carriesAggregates=typeof r.evaluationReadiness01==='number'||typeof r.holdoutCoherence01==='number'||typeof r.resourceBudgetCompliance01==='number';
+    if(hasRaw&&!carriesAggregates)this.recompute();
     this.phase=this.state.lastPhase;
   }
   snapshot(){return structuredClone(this.state);}
