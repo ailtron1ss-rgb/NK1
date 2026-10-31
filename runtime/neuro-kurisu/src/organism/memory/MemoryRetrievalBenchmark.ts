@@ -184,7 +184,7 @@ type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[];unsup
 function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:string,k:number)=>BenchmarkRetrievalResult, k:number, now:number, includeQueryEvidence=false, digestEvidence?:(value:string)=>string):Evaluation {
   let recall=0,mrr=0,precision=0,covered=0,quarantined=0,stale=0,future=0,dormant=0,invalidEpistemic=0,duplicates=0,invalid=0;
   let answerableQueries=0,unanswerableQueries=0,unsupportedRetrievalCount=0,falseAbstentionCount=0;
-  const latency:number[]=[]; const setupLatency:number[]=[]; const outcomes:QueryOutcome[]=[]; const unsupportedRetrievalOutcomes:number[]=[];
+  const latency:number[]=[]; const setupLatency:number[]=[]; const outcomes:QueryOutcome[]=[]; const unsupportedRetrievalOutcomes:BootstrapValueOutcome[]=[];
   const queryEvidence:MemoryRetrievalQueryEvidenceV1[]=[];
   for(const ex of examples){
     const start=performance.now();
