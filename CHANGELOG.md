@@ -1,3 +1,12 @@
+## [NK1][Aspect 05] UserModel evidence boundary — current-source integration (2026-10-31)
+
+- Rebase the evidence-bounded UserModel onto the latest `workpass70-source` head after the Aspect 08 source update.
+- Add a single `SelfSubsystemRuntime` owner with snapshot/restore and a typed advanced-persistence projection.
+- Keep explicit low-risk claims, disputed facts and unconfirmed behavior hypotheses separate; sensitive or unclassified inputs fail closed.
+- Harden restore to read own data properties only; getter-backed roots, rows and array slots are ignored without executing accessors.
+- Add dedicated unit and runtime persistence regressions and gate them in WorkPass79.
+- No response-policy consumer, complete Theory-of-Mind model or production learning uplift is claimed.
+
 ## [NK1][Aspect 08] Isolate bounded-pattern regression fixture from code-policy classification (2026-10-31)
 
 - Rename the bounded-regex fixture field and tool ID to neutral `tag` / `catalog.regex-check` identifiers, keeping the test focused on bounded-quantifier behavior rather than a potentially policy-sensitive identifier.
