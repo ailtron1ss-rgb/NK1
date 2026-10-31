@@ -1,5 +1,5 @@
 
-Канонический релиз: 35.40.0
+Канонический релиз: 35.90.0 · organism core `100.32.0-r26-hierarchical-lowrank-causal` · state schema `225` · WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline
 > **АКТУАЛЬНЫЙ RELEASE POINTER (P2760):** Neuro-Kurisu **35.15.0** · organism core `100.6.0-continuum-memory-p2760` · state schema `205` · `Stage-97/Continuum-Causal-World/P2760`. Старые release pointers ниже сохранены как исторические записи; машинный source of truth: `VERSION.json` + `RELEASE_MANIFEST.json` + `ARCHITECTURE_MANIFEST.json` + `src/organism/system/ReleaseContract.ts`.
 
 CURRENT RELEASE: 35.6.34 / B420

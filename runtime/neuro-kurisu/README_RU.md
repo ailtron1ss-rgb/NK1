@@ -1,5 +1,5 @@
 > **АКТУАЛЬНЫЙ RELEASE POINTER (P2774):** Neuro-Kurisu **35.16.0** · organism core `100.7.0-model-time-replay-p2774` · state schema `206` · `Stage-98/Model-Time-Replay-Consolidation/P2774`. Машинный source of truth: `VERSION.json` + `RELEASE_MANIFEST.json` + `ARCHITECTURE_MANIFEST.json` + `src/organism/system/ReleaseContract.ts`.
-Канонический релиз: 35.40.0
+Канонический релиз: 35.90.0 · organism core `100.32.0-r26-hierarchical-lowrank-causal` · state schema `225` · WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline
 
 
 ## 35.18.1 / P2835 — Self-Knowledge + Transfer-Safety Synergy

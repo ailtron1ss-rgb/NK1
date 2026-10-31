@@ -1,3 +1,12 @@
+## [NK1][WorkPass635] Repair release-gate audit false positives and rotted regressions (2026-10-31)
+
+- Fix `audit:architecture` matching `from './x.ts'` / `import('./x.ts')` inside string and regex literals, which reported valid test assertions (e.g. `source.includes("... from '../cognition/PerceptionEngine.ts'")`) as missing relative imports. Specifier detection now masks comments, strings and regex literals while preserving offsets, so real missing imports still fail.
+- Add `test:architecture-audit-masking` regression covering comments, template strings, regex literals, division-vs-regex and the two previously flagged files; wire it into `audit:all`.
+- Repair rotted migration/retention regressions that drifted from the current source: `big-pass-104`/`-105`/`-106`, `p2688-causal-replay-credit` and `p2688-long-horizon-replay-transfer` now mint real external postcondition receipts instead of the deprecated `independentVerified:true` caller boolean; `big-pass-104`/`-106` migration assert continuum `version:7`; `p2687`/`p2688` migration assert the live schema instead of a frozen number; and `audit:pass104` asserts `version:7`.
+- These test repairs keep the evidence-gating contract intact (a caller boolean still cannot authorize success) rather than weakening assertions to restore green.
+- Restore doc currency: the eight canonical docs now state the live release (`35.90.0`), so `audit:source-truth` passes.
+- These are tooling, test-integrity and documentation-currency corrections. They do not change runtime behaviour or claim any new learning/capability.
+
 ## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
 
 - Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.

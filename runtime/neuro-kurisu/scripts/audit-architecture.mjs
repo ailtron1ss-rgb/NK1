@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { maskNonCode } from './lib/source-mask.mjs';
 const root=process.cwd(); const files=[];
 async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){const p=path.join(d,e.name); if(e.isDirectory()){if(['legacy-original','legacy','state','node_modules','history','.git','dist','coverage','.grok'].includes(e.name))continue; await walk(p)} else if(/\.(ts|tsx|mts|cts|mjs|cjs|js|jsx)$/.test(e.name)) files.push(p)}}
 // Runtime integration tests deliberately import a few canonical React/API source
@@ -16,8 +17,14 @@ function resolve(base,spec){const clean=String(spec).split('?')[0]; const p=path
 for(const f of files){
   const t=await readFile(f,'utf8');
   const runtimeText=t.replace(/import\s+type\s+[^;\n]+from\s+['\"][^'\"]+['\"]\s*;?/g,'');
+  // Offsets are preserved between runtimeText and masked, so a match whose span is
+  // fully blanked by the mask is specifier text inside a comment/string/regex literal
+  // (e.g. tests asserting on `source.includes("... from './x.ts'")`), not a real import.
+  const masked=maskNonCode(runtimeText);
   let m; while((m=pat.exec(runtimeText))){
-    const spec=m[2]; const r=resolve(f,spec); if(r) graph.get(f).push(r); else missing.push([path.relative(root,f),spec]);
+    const spec=m[2];
+    if(masked.slice(m.index,m.index+m[0].length).trim()==='') continue;
+    const r=resolve(f,spec); if(r) graph.get(f).push(r); else missing.push([path.relative(root,f),spec]);
   }
 }
 if(missing.length) throw new Error(`missing relative imports: ${JSON.stringify(missing.slice(0,10))}`);

@@ -17,7 +17,7 @@ const raw={
 };
 const migrated=migratePersistedOrganism(raw);
 const ec=migrated.facets.advanced.experienceContinuum;
-assert.equal(ec.version,6);
+assert.equal(ec.version,7);
 assert.ok(ec.retention);
 assert.ok(Array.isArray(ec.memorySkillBindings));
 assert.equal(ec.graphNodes[0].memoryId,'m-old');
