@@ -99,6 +99,11 @@ assert.throws(
   /maxPerWindow must be a positive safe integer/,
 );
 assert.throws(
+  () => fabric.grantConnectorPolicy({ connectorId: { toString: () => 'telegram' }, actionKind: 'send' }),
+  /connector policy identity must be strings/,
+  'runtime identity objects must not be coerced into connector authority',
+);
+assert.throws(
   () => fabric.grantConnectorPolicy({ connectorId: 'telegram', actionKind: 'send', windowMs: Number.POSITIVE_INFINITY }),
   /windowMs must be a safe integer/,
 );
