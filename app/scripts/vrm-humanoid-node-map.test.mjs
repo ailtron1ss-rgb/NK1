@@ -159,7 +159,7 @@ test("reports VRM node indices missing from the active loaded scene", () => {
 
 test("node-index adapter preserves non-humanoid parent nodes between mapped humanoid roles", () => {
   const scene = makeScene();
-  const between = { name: "twist-helper", isBone: false, parent: scene.byName.get("spine") };
+  const between = { name: "", isBone: false, parent: scene.byName.get("spine") };
   const upper = scene.byName.get("leftUpperArm");
   upper.parent = between;
   scene.nodes.push(between);
