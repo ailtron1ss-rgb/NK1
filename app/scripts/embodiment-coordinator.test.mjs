@@ -53,7 +53,7 @@ test("verification failure disposes destination and restores the source", async 
   assert.equal(result.status, "rolled-back");
   assert.equal(coordinator.activeAdapterId, "live");
   assert.deepEqual(target.calls, ["prepare", "apply", "verify", "dispose"]);
-  assert.deepEqual(source.calls, ["apply", "verify"]);
+  assert.deepEqual(source.calls, ["prepare", "apply", "verify"]);
 });
 
 test("rejects stale revisions without touching either adapter", async () => {
@@ -180,4 +180,17 @@ test("rejects blank or duplicate observed channel claims", async () => {
   const result = await coordinator.switchTo(target, snapshot);
   assert.equal(result.status, "rolled-back");
   assert.equal(coordinator.activeAdapterId, "live");
+});
+
+test("prepares the source renderer before rollback readback", async () => {
+  const source = adapter("live");
+  const target = adapter("vrm", { verify: async receipt => ({
+    adapterId: "vrm", executionId: receipt.executionId, verified: false,
+    stateRevision: receipt.stateRevision, observedAtMonotonicMs: 220,
+    observedChannels: [], mismatches: ["headYaw"], reason: "destination-not-ready",
+  }) });
+  const coordinator = new EmbodimentSwitchCoordinator(source);
+  const result = await coordinator.switchTo(target, snapshot);
+  assert.equal(result.status, "rolled-back");
+  assert.deepEqual(source.calls, ["prepare", "apply", "verify"]);
 });
