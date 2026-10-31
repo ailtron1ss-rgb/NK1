@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Carry canonical affect through the unified face/voice/body intent (2026-10-31)
+
+- Extend the versioned `EmbodimentIntentV1` contract with one allowlisted, bounded affect snapshot: label, valence, arousal and dominance. The app publishes it from the same `OrganismSnapshot.emotion` used by the voice planner and cognitive motor mapper; the schema and runtime validator reject unknown labels and out-of-range channels.
+- Live2D now combines its existing discrete authored expression with very small continuous brow offsets derived from that same affect snapshot. This adds affect nuance without introducing another emotion engine, independent clock, arbitrary parameter registry or action authority.
+- The brow projection uses bounded offsets on standard Cubism brow channels; missing model parameters remain harmless no-ops. Mouth articulation remains owned by the existing monotonic speech/viseme clock.
+- Added contract and renderer regressions and included the speech/affect timeline test in the Aspect 04 CI path filter. This is parameter-level projection only: actual GPU-presented frame, per-model brow calibration, browser E2E and Android/Termux timing remain unverified.
+
 ## [NK1][Embodiment] Couple appraisal state to governed avatar gestures (2026-10-31)
 
 - Extend the existing action-to-motor mapper with a bounded affect context read from the same canonical cognitive snapshot already used by voice prosody; no parallel emotion engine or direct renderer control is introduced.
