@@ -101,9 +101,9 @@ test("Original 2D concept is selectable and keeps independent outfit/pose custom
   assert.match(stage, /type ViewMode = "live2d" \\| "legacy" \\| "original" \\| "2\\.5d" \\| "3d"/)
   assert.ok(stage.includes('requestViewMode("original")'))
   assert.ok(stage.includes("<KurisuOriginalStage"));
-  assert.ok(stage.includes('onClick={() => setMode("original")}'));
+  assert.ok(stage.includes('requestViewMode("original")'));
   assert.ok(stage.includes("<KurisuOriginalStage"));
-  assert.ok(stage.includes('saved === "legacy" || saved === "original" || saved === "3d"'));
+  assert.ok(stage.includes('saved === "legacy" || saved === "original" || saved === "2.5d" || saved === "3d"'));
   assert.ok(original.includes('type Outfit = "lab" | "casual" | "night"'));
   assert.ok(original.includes('type PoseOverride = "auto" | "crossed" | "thinking" | "explain"'));
   assert.ok(original.includes('writeAvatarPreference("kurisu-original-outfit", outfit)'));
