@@ -20,7 +20,7 @@
   const status=document.getElementById('status');
   const parent=window.parent;
   let model=null,app=null,lipTarget=0,lipCurrent=0,lipFormTarget=0,lipFormCurrent=0,bodySignal={},assetProfile='auto',modelPath='./Kurisu/Kurisu.model3.json';
-  let lastIntentStateVersion=0,lastSpeechEventId=null,lastAudioClockId=null,lastAudioTimeMs=0,lastAppliedExpression=null;
+  let lastIntentStateVersion=0,lastSpeechEventId=null,lastAudioClockId=null,lastAudioTimeMs=0,lastAppliedExpression=null,lastMotorFrameTick=-1;
   let blinkT=0,blinkUntil=0,nextBlink=performance.now()+6500,nextSaccade=performance.now()+1200;
   let eyeX=0,eyeY=0,targetEyeX=0,targetEyeY=0,lastMotionKey='';
   const EXPR_MAP={
@@ -75,6 +75,32 @@
     set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
     set('ParamMouthOpenY',clamp(lipCurrent,0,1));
     if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
+    const batch=bodySignal.motorFrameBatch;
+    const expectedModelId=assetProfile==='mobile'?'kurisu-live2d-mobile-v1':'kurisu-live2d-balanced-v1';
+    if(!batch||batch.renderer!=='live2d'||batch.modelId!==expectedModelId||batch.frameTick<=lastMotorFrameTick)return;
+    let appliedCount=0,observedCount=0;
+    const observedParameters={};
+    const canRead=typeof core.getParameterValueById==='function';
+    for(const command of batch.commands){
+      try{
+        core.setParameterValueById(command.targetId,command.value,1);
+        appliedCount++;
+        if(canRead){
+          const value=core.getParameterValueById(command.targetId);
+          if(typeof value==='number'&&Number.isFinite(value)&&Math.abs(value-command.value)<=0.1){
+            observedParameters[command.targetId]=value;observedCount++;
+          }
+        }
+      }catch{}
+    }
+    if(appliedCount===batch.commands.length){
+      lastMotorFrameTick=batch.frameTick;
+      send('live2d_motor_frame_ack',{
+        modelId:batch.modelId,profileId:batch.profileId,frameTick:batch.frameTick,
+        observedCount,commandCount:batch.commands.length,readbackAvailable:canRead,
+        visualCompletionVerified:false,
+      });
+    }
   }
   function applyExpression(expr){
     const expressionName=EXPR_MAP[expr]||EXPR_MAP.neutral;
@@ -91,6 +117,9 @@
   function modelForProfile(profile){
     if(profile==='mobile') return './Kurisu.mobile/Kurisu-mobile.model3.json';
     return './Kurisu/Kurisu.model3.json';
+  }
+  function modelIdForProfile(profile){
+    return profile==='mobile'?'kurisu-live2d-mobile-v1':'kurisu-live2d-balanced-v1';
   }
   async function boot(){
     try{
@@ -112,7 +141,7 @@
       if(!model?.width)throw new Error('модель без размера');
       const fit=()=>{if(!model)return;const screenW=app.screen.width,screenH=app.screen.height;const scale=Math.min(screenW/model.width,screenH/model.height)*.92;model.scale.set(scale);model.x=screenW/2;model.y=screenH*.99;model.anchor.set(.5,1)};
       fit();window.addEventListener('resize',fit,{passive:true});app.stage.addChild(model);
-      status.textContent=`ок · ${assetProfile}`;send('live2d_ready',{profile:assetProfile,modelPath});
+      status.textContent=`ок · ${assetProfile}`;send('live2d_ready',{profile:assetProfile,modelPath,modelId:modelIdForProfile(assetProfile)});
       model.internalModel?.on?.('beforeModelUpdate',applyModelParameterOverrides);
        app.ticker.add(() => {
          if(!model)return;
@@ -139,6 +168,30 @@
   },{passive:true});
   const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
   const finiteNumber=(value,min,max,fallback=0)=>typeof value==='number'&&Number.isFinite(value)?clamp(value,min,max):fallback;
+  function sanitizeLive2DMotorBatch(raw){
+    const expectedModelId=modelIdForProfile(assetProfile);
+    if(!isRecord(raw)||raw.version!==1||raw.renderer!=='live2d'||raw.modelId!==expectedModelId
+      ||typeof raw.profileId!=='string'||!/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(raw.profileId)
+      ||!Number.isSafeInteger(raw.frameTick)||raw.frameTick<0
+      ||typeof raw.frameAtMs!=='number'||!Number.isFinite(raw.frameAtMs)||raw.frameAtMs<0
+      ||!(raw.goalId===null||(typeof raw.goalId==='string'&&raw.goalId.length<=128))
+      ||!Array.isArray(raw.commands)||raw.commands.length<1||raw.commands.length>64
+      ||!Array.isArray(raw.unmappedFrameJointIds)||raw.unmappedFrameJointIds.length>128
+      ||!Array.isArray(raw.clampedJointIds)||raw.clampedJointIds.length>128)return null;
+    const jointIds=new Set(),targets=new Set(),commands=[];
+    for(const command of raw.commands){
+      if(!isRecord(command)||typeof command.jointId!=='string'||!/^[a-z][a-z0-9._-]{1,63}$/i.test(command.jointId)
+        ||typeof command.targetId!=='string'||!/^Param[A-Za-z0-9_]{1,56}$/.test(command.targetId)
+        ||command.targetKind!=='cubism-parameter'||command.component!=='value'||command.valueUnit!=='parameter'
+        ||typeof command.value!=='number'||!Number.isFinite(command.value)||Math.abs(command.value)>100
+        ||typeof command.clamped!=='boolean'||!['direct','approximate'].includes(command.fidelity))return null;
+      if(jointIds.has(command.jointId)||targets.has(command.targetId))return null;
+      jointIds.add(command.jointId);targets.add(command.targetId);
+      commands.push({jointId:command.jointId,targetId:command.targetId,value:command.value});
+    }
+    return {version:1,profileId:raw.profileId,modelId:raw.modelId,renderer:'live2d',
+      frameTick:raw.frameTick,frameAtMs:raw.frameAtMs,goalId:raw.goalId,commands};
+  }
   function sanitizeIntent(d){
     if(d.protocolVersion!==1||!Number.isSafeInteger(d.stateVersion)||d.stateVersion<=lastIntentStateVersion)return null;
     if(typeof d.sentAtEpochMs!=='number'||!Number.isFinite(d.sentAtEpochMs))return null;
@@ -186,6 +239,7 @@
       motionIndex:d.body.motionIndex,
       motionToken:d.body.motionToken,
       voiceEmphasis:finiteNumber(d.voiceEmphasis,0,1),
+      motorFrameBatch:sanitizeLive2DMotorBatch(d.motorFrameBatch),
     };
   }
   window.addEventListener('message',ev=>{

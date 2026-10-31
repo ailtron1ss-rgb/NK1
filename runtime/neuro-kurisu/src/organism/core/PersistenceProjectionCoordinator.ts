@@ -190,6 +190,7 @@ export class PersistenceProjectionCoordinator {
       }
       if(materialize.has('critical')) {
       target.facets.advanced.p80UnifiedSelfState=this.snapshotOnce('snap:selfSubsystem.p80UnifiedSelfState', ctx.selfSubsystem.p80UnifiedSelfState);
+      target.facets.advanced.userModelEvidence=this.snapshotOnce('snap:selfSubsystem.userModelEvidence', ctx.selfSubsystem.userModelEvidence);
       }
       if(materialize.has('critical')) {
       target.facets.advanced.p81PredictiveAttention=this.snapshotOnce('snap:p81PredictiveAttention', ctx.p81PredictiveAttention);

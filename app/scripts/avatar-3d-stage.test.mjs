@@ -10,6 +10,17 @@ test("a real Three.js 3D mode exists rather than reusing the legacy Avatar2D ali
  const parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8"),stage=await readFile(stagePath,"utf8"),legacy=await readFile(path.join(repoRoot,"legacy/kurisu-v56/src/components/Avatar3D.tsx"),"utf8");
  assert.match(parent,/"3d"/);assert.match(parent,/<Avatar3DStage/);assert.match(stage,/new THREE\.WebGLRenderer/);assert.match(stage,/new THREE\.Scene/);assert.match(stage,/makeBody/);assert.match(legacy,/return <Avatar2D \{\.\.\.props\} \/>/);assert.match(stage,/Процедурный 3D-концепт/);
 });
+test("VRM/GLB upload runs structural preflight before Three.js parses local bytes",async()=>{
+ const stage=await readFile(stagePath,"utf8"),preflight=await readFile(path.join(root,"src/components/avatar/avatarGlbPreflight.ts"),"utf8");
+ assert.match(stage,/preflightAvatarGlb\(data\)/);
+ assert.ok(stage.indexOf("preflightAvatarGlb(data)")<stage.indexOf("new GLTFLoader().parse"));
+ assert.match(stage,/glb-preflight:/);
+ assert.match(preflight,/external-buffer-uri-forbidden/);
+ assert.match(preflight,/external-image-uri-forbidden/);
+ assert.match(preflight,/gltf-node-cycle-detected/);
+ assert.match(preflight,/gltf-vertex-budget-exceeded/);
+ assert.match(preflight,/gltf-texture-pixel-budget-exceeded/);
+});
 test("local VRM/GLB upload is bounded and browser-local",async()=>{
  const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/avatarModelStore.ts"),"utf8");
  assert.match(stage,/accept="\.vrm,\.glb,model\/gltf-binary"/);assert.match(stage,/MAX_AVATAR_MODEL_BYTES/);assert.match(stage,/saveAvatarModel\(blob,name\)/);assert.match(stage,/loadStoredAvatarModel/);assert.match(stage,/clearStoredAvatarModel/);assert.match(store,/90 \* 1024 \* 1024/);assert.match(store,/indexedDB\.open/);assert.doesNotMatch(stage,/https?:\/\/[^"'\s]+\.glb/i);
@@ -33,4 +44,43 @@ test("existing sprite and Live2D files remain available",async()=>{
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
 
-test("VRM stage reports conservative left/right humanoid arm discovery without claiming IK actuation",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/resolveVrmArm/);assert.match(stage,/leftArmRig/);assert.match(stage,/rightArmRig/);assert.match(stage,/пока рассчитывается отдельно и не применяется к костям/);});
+test("VRM stage discovers bilateral arm chains and gates IK on exact measured calibration",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/resolveVrmArmChain/);
+ assert.match(stage,/leftArmRig/);
+ assert.match(stage,/rightArmRig/);
+ assert.match(stage,/nk1CoordinateFrameId/);
+ assert.match(stage,/fingerprint&&coordinateFrameId&&leftArmRig&&rightArmRig/);
+ assert.match(stage,/setVrmCalibrationStatus\("awaiting-profile"\)/);
+ assert.match(stage,/applyCalibratedVrmArmGesture/);
+ assert.match(stage,/calibratedProfile&&calibratedContext&&calibratedBindings/);
+});
+
+test("VRM arm actuation requires exact fingerprint, declared coordinate frame and measured bilateral sidecar",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/root\.userData\?\.nk1CoordinateFrameId/);
+ assert.match(stage,/fingerprint&&coordinateFrameId&&leftArmRig&&rightArmRig/);
+ assert.match(stage,/resolveVrmArmChain\(rigBones,"left"\)/);
+ assert.match(stage,/resolveVrmArmChain\(rigBones,"right"\)/);
+ assert.match(stage,/parseVrmRigCalibrationBundleJson\(json,context\)/);
+ assert.match(stage,/applyCalibratedVrmArmGesture\(calibratedBindings\.left/);
+ assert.match(stage,/applyCalibratedVrmArmGesture\(calibratedBindings\.right/);
+ assert.match(stage,/serializeVrmRigCalibrationBundleJson/);
+ assert.match(stage,/vrmCalibrationSessionRef\.current=result\.bundle\.session/);
+ assert.match(stage,/Импорт IK bundle/);
+ assert.match(stage,/VRM IK · \{vrmCalibrationStatus\}/);
+ assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="explore"\?-.14/);
+ assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="respond"&&p\.speaking\?-.26/);
+});
+
+test("asset evidence UI binds Khronos report and manifest to the current preflighted model and release license",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/assetPreflightPassedRef\.current=true/);
+ assert.match(stage,/parseAvatarAssetEvidenceBundleJson\(json/);
+ assert.match(stage,/modelFingerprint,coordinateFrameId,nk1PreflightPassed:assetPreflightPassedRef\.current/);
+ assert.match(stage,/assetManifestRef\.current=result\.manifest/);
+ assert.match(stage,/result\.releaseEligible\?"release-ready":"verified-local"/);
+ assert.match(stage,/Импорт provenance/);
+ assert.match(stage,/GLTFLoader не принял модель/);
+ assert.match(stage,/Khronos .*0 errors/);
+});

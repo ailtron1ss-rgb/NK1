@@ -1,11 +1,12 @@
 import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, stat } from 'node:fs/promises';
 import { existsSync as fsExistsSync, statSync as fsStatSync, readdirSync as fsReaddirSync, readFileSync as fsReadFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { OrganismRuntime } from '../organism/core/OrganismRuntime.ts';
+import { parseMotorRigProfileConfigJson, MAX_MOTOR_RIG_PROFILE_CONFIG_BYTES } from '../organism/body/MotorRigProfileBootstrap.ts';
 import { Mem0PlatformAdapter } from '../organism/integration/mem0/Mem0PlatformAdapter.ts';
 import { P23LearningEngine } from '../organism/learning/P23LearningEngine.ts';
 import { generateLocalSkillRevision } from '../organism/learning/P23LocalModelSkillRevisionGenerator.ts';
@@ -42,6 +43,7 @@ const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
+const MOTOR_RIG_PROFILE_CONFIG_FILE = String(process.env.NEURO_MOTOR_RIG_PROFILES_FILE || '').trim();
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
@@ -177,6 +179,20 @@ const runtime = new OrganismRuntime({
     ...(TRUSTED_SHADOW_LEARNING ? { trustedShadowLearning: TRUSTED_SHADOW_LEARNING } : {}),
     ...(COMPOUND_REPAIR_REVISION ? { compoundRepairRevision: COMPOUND_REPAIR_REVISION } : {}),
 });
+async function configureHostOwnedMotorRendererProfiles() {
+    if (!MOTOR_RIG_PROFILE_CONFIG_FILE)
+        return { configured: false, profileCount: 0, reason: 'host-profile-file-not-configured' };
+    const profilePath = path.resolve(MOTOR_RIG_PROFILE_CONFIG_FILE);
+    const metadata = await stat(profilePath);
+    if (!metadata.isFile() || metadata.size < 2 || metadata.size > MAX_MOTOR_RIG_PROFILE_CONFIG_BYTES)
+        throw new Error('motor-rig-profile-config-file-size-or-type-invalid');
+    if ((metadata.mode & 0o022) !== 0) throw new Error('motor-rig-profile-config-file-must-not-be-group-or-world-writable');
+    const parsed = parseMotorRigProfileConfigJson(await readFile(profilePath, 'utf8'));
+    if (!parsed.accepted) throw new Error('motor-rig-profile-config-rejected:' + parsed.reason);
+    runtime.configureMotorRendererProfiles(parsed.profiles);
+    return { configured: true, profileCount: parsed.profiles.length,
+        renderers: parsed.profiles.map((profile) => profile.renderer + ':' + profile.modelId) };
+}
 let runtimeReady = false;
 const willSdk = new WillSdkFacade({ step: (message, options) => runtime.step(message, options), snapshot: () => runtime.core.snapshot(), flush: () => runtime.core.flush(), exportWillPma: () => runtime.core.exportWillPma(), validateWillPma: (pma) => runtime.core.validateWillPma(pma) }, { enqueue: (input) => runtime.core.willEnqueueEnvelope(input), ack: (input) => runtime.core.willAckEnvelope(input), searchText: (text, k) => runtime.core.willSearchVector(text, k), benchmarkVectorIndex: (queries, k, ef) => runtime.core.willBenchmarkVectorIndex(queries, k, ef), diagnostics: () => runtime.core.willIntegrationDiagnostics() }, 'kurisu');
 const willMcp = new WillMcpJsonRpcServer(willSdk);
@@ -518,6 +534,134 @@ async function route(req, res) {
                 activeGoal: status.activeGoal,
                 body: status.body,
                 voice: runtime.embodiment.voiceSnapshot(),
+            });
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame/stream') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const requestedRenderer = url.searchParams.get('renderer');
+            const requestedModelId = url.searchParams.get('modelId');
+            if (requestedRenderer !== null && !['live2d', 'depth2d', 'vrm3d'].includes(requestedRenderer))
+                return json(res, 400, { ok: false, error: 'invalid-motor-renderer' });
+            if (requestedRenderer === null && requestedModelId !== null)
+                return json(res, 400, { ok: false, error: 'motor-model-requires-renderer' });
+            if (requestedModelId !== null && !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(requestedModelId))
+                return json(res, 400, { ok: false, error: 'invalid-motor-model-id' });
+            const projectRendererCommands = (frame) => requestedRenderer === null
+                ? null
+                : runtime.motor.rendererCommandsForFrame(frame, requestedRenderer, requestedModelId ?? undefined);
+            res.writeHead(200, {
+                'content-type': 'text/event-stream; charset=utf-8',
+                'cache-control': 'no-cache, no-transform',
+                connection: 'keep-alive',
+                'x-accel-buffering': 'no',
+            });
+            res.write(': nk1-motor-frame-stream\n\n');
+            let closed = false;
+            let blocked = false;
+            let pending = null;
+            let unsubscribe = () => {};
+            const envelope = (frame) => {
+                const diagnostics = runtime.motor.diagnostics();
+                return {
+                    ok: true,
+                    configured: diagnostics.configured,
+                    frame,
+                    rendererCommands: projectRendererCommands(frame),
+                    diagnostics: {
+                        registeredProfiles: diagnostics.registeredProfiles,
+                        controllerTick: diagnostics.controllerTick,
+                        activeGoalId: diagnostics.activeGoalId,
+                        continuousLoopRunning: diagnostics.continuousLoopRunning,
+                        continuousLoopErrors: diagnostics.continuousLoopErrors,
+                        lastContinuousLoopError: diagnostics.lastContinuousLoopError,
+                        channel: {
+                            published: diagnostics.channel.published,
+                            rejected: diagnostics.channel.rejected,
+                            listenerErrors: diagnostics.channel.listenerErrors,
+                            hasLatest: diagnostics.channel.hasLatest,
+                            lastTick: diagnostics.channel.lastTick,
+                            lastAtMs: diagnostics.channel.lastAtMs,
+                        },
+                    },
+                    readOnly: true,
+                };
+            };
+            const write = (payload) => {
+                if (closed) return;
+                if (blocked) {
+                    pending = payload;
+                    return;
+                }
+                if (!res.write(payload)) blocked = true;
+            };
+            const publish = (frame) => {
+                write(`event: motor-frame\ndata: ${JSON.stringify(envelope(frame))}\n\n`);
+            };
+            const onDrain = () => {
+                blocked = false;
+                if (pending !== null) {
+                    const next = pending;
+                    pending = null;
+                    write(next);
+                }
+            };
+            const cleanup = () => {
+                if (closed) return;
+                closed = true;
+                clearInterval(heartbeat);
+                unsubscribe();
+                res.off('drain', onDrain);
+            };
+            const heartbeat = setInterval(() => {
+                if (!closed && !blocked) res.write(': keep-alive\n\n');
+            }, 15000);
+            heartbeat.unref?.();
+            res.on('drain', onDrain);
+            res.on('close', cleanup);
+            req.on('aborted', cleanup);
+            const initialDiagnostics = runtime.motor.diagnostics();
+            write(`event: motor-frame-status\ndata: ${JSON.stringify({ configured: initialDiagnostics.configured, hasFrame: initialDiagnostics.channel.hasLatest, requestedRenderer, requestedModelId, registeredProfiles: initialDiagnostics.registeredProfiles })}\n\n`);
+            unsubscribe = runtime.motor.subscribe(publish, true);
+            return;
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const requestedRenderer = url.searchParams.get('renderer');
+            const requestedModelId = url.searchParams.get('modelId');
+            if (requestedRenderer !== null && !['live2d', 'depth2d', 'vrm3d'].includes(requestedRenderer))
+                return json(res, 400, { ok: false, error: 'invalid-motor-renderer' });
+            if (requestedRenderer === null && requestedModelId !== null)
+                return json(res, 400, { ok: false, error: 'motor-model-requires-renderer' });
+            if (requestedModelId !== null && !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(requestedModelId))
+                return json(res, 400, { ok: false, error: 'invalid-motor-model-id' });
+            const diagnostics = runtime.motor.diagnostics();
+            const frame = runtime.motor.latestFrame();
+            return json(res, 200, {
+                ok: true,
+                configured: diagnostics.configured,
+                frame,
+                rendererCommands: frame && requestedRenderer !== null
+                    ? runtime.motor.rendererCommandsForFrame(frame, requestedRenderer, requestedModelId ?? undefined)
+                    : null,
+                diagnostics: {
+                    registeredProfiles: diagnostics.registeredProfiles,
+                    controllerTick: diagnostics.controllerTick,
+                    activeGoalId: diagnostics.activeGoalId,
+                    continuousLoopRunning: diagnostics.continuousLoopRunning,
+                    continuousLoopErrors: diagnostics.continuousLoopErrors,
+                    lastContinuousLoopError: diagnostics.lastContinuousLoopError,
+                    channel: {
+                        published: diagnostics.channel.published,
+                        rejected: diagnostics.channel.rejected,
+                        listenerErrors: diagnostics.channel.listenerErrors,
+                        hasLatest: diagnostics.channel.hasLatest,
+                        lastTick: diagnostics.channel.lastTick,
+                        lastAtMs: diagnostics.channel.lastAtMs,
+                    },
+                },
+                readOnly: true,
             });
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/ui-snapshot') {
@@ -2324,6 +2468,8 @@ process.on('SIGINT', () => void shutdown());
 process.on('SIGTERM', () => void shutdown());
 try {
     await runtime.init();
+    const motorProfiles = await configureHostOwnedMotorRendererProfiles();
+    console.log('[Neuro-Kurisu motor] host renderer profiles:', JSON.stringify(motorProfiles));
     await runtime.core.p40ConfigureModelBackend('llama.cpp', LLAMA_CPP_PROVIDER.configured());
     runtimeReady = true;
 }

@@ -1,3 +1,70 @@
+## [NK1][Aspect 05] UserModel evidence boundary — current-source integration (2026-10-31)
+
+- Rebase the evidence-bounded UserModel onto the latest `workpass70-source` head after the Aspect 08 source update.
+- Add a single `SelfSubsystemRuntime` owner with snapshot/restore and a typed advanced-persistence projection.
+- Keep explicit low-risk claims, disputed facts and unconfirmed behavior hypotheses separate; sensitive or unclassified inputs fail closed.
+- Harden restore to read own data properties only; getter-backed roots, rows and array slots are ignored without executing accessors.
+- Add dedicated unit and runtime persistence regressions and gate them in WorkPass79.
+- No response-policy consumer, complete Theory-of-Mind model or production learning uplift is claimed.
+
+## [NK1][WorkPass635] Repair release-gate audit false positives and rotted regressions (2026-10-31)
+
+- Fix `audit:architecture` matching `from './x.ts'` / `import('./x.ts')` inside string and regex literals, which reported valid test assertions (e.g. `source.includes("... from '../cognition/PerceptionEngine.ts'")`) as missing relative imports. Specifier detection now masks comments, strings and regex literals while preserving offsets, so real missing imports still fail.
+- Add `test:architecture-audit-masking` regression covering comments, template strings, regex literals, division-vs-regex and the two previously flagged files; wire it into `audit:all`.
+- Repair rotted migration/retention regressions that drifted from the current source: `big-pass-104`/`-105`/`-106`, `p2688-causal-replay-credit` and `p2688-long-horizon-replay-transfer` now mint real external postcondition receipts instead of the deprecated `independentVerified:true` caller boolean; `big-pass-104`/`-106` migration assert continuum `version:7`; `p2687`/`p2688` migration assert the live schema instead of a frozen number; and `audit:pass104` asserts `version:7`.
+- These test repairs keep the evidence-gating contract intact (a caller boolean still cannot authorize success) rather than weakening assertions to restore green.
+- Restore doc currency: the eight canonical docs now state the live release (`35.90.0`), so `audit:source-truth` passes.
+- These are tooling, test-integrity and documentation-currency corrections. They do not change runtime behaviour or claim any new learning/capability.
+
+## [NK1][Embodiment][Integration Hardening] Host-owned rig bootstrap and CI regression repairs (2026-10-31)
+
+- Added an opt-in host-owned MotorRigProfile file loader with file size/permission bounds, schema validation, production-calibration requirement, renderer/model uniqueness and canonical skeleton parity.
+- Wired host profiles into server startup. No configured file keeps MotorFrame unconfigured; invalid explicit configuration fails startup. No fixture profiles or synthetic goals are introduced.
+- Fixed same-revision duplicate profile diagnostics and repaired malformed literal newlines in the VRM stage regression.
+
+## 2026-10-31 — unified embodiment CI repair and external toolchain intake
+
+- Narrowed untrusted Live2D renderer signal revisions and timestamps before constructing typed apply/verify receipts.
+- Classified malformed Khronos report JSON/schema as invalid before exact-byte digest comparison; well-formed reports still require SHA-256 binding.
+- Corrected typed-array buffer variance and Three.js matrixWorld scene-readback typing.
+- Prioritized anger/frustration cross-arm intent over idle `wait/rest` action labels.
+- Corrected duplicate renderer/model registration error ordering without relaxing monotonic profile revisions.
+- Recorded the uploaded Khronos Validator and Blender VRM Add-on hashes, licenses and authoring-only usage policy in `docs/NK1_EXTERNAL_AVATAR_TOOLCHAIN_INTAKE_2026-10-31_RU.md`.
+
+## [NK1][Embodiment] Local avatar evidence bundle UI (2026-10-31)
+
+- Added browser-side import of an asset provenance bundle containing the manifest and original Khronos report JSON.
+- Re-hashes the exact report text with WebCrypto; requires glTF 2.0, binary GLB MIME, zero errors, non-truncated report and no external resources.
+- Binds manifest to the current uploaded model SHA-256, root coordinate frame and successful NK1 preflight.
+- UI separates `release-ready` from `verified-local`; a valid personal import with no redistribution permission remains viewable but is marked release-blocked.
+- Explicit limitation: the canonical Release ZIP workflow is not yet wired to enforce these manifests automatically; maintainers must manually inspect evidence until that gate is integrated.
+
+## [NK1][Embodiment] Measured VRM IK and avatar provenance/release gate (2026-10-31)
+
+- Added unique shoulder/elbow/hand chain resolution and model-root metre segment geometry checks for bilateral VRM rigs.
+- Added bounded two-link IK for semantic arm gestures. IK is only applied from an explicit per-model measured calibration profile and absolute bind pose; uncalibrated shoulder heuristics are removed from imported VRM arms.
+- Added UI import/export for profile+measurement-session bundle. Profile-only sidecars, model fingerprint/frame mismatch, wrong bone names and missing fixture provenance cannot activate IK.
+- Added versioned JSON Schemas for calibration bundles and avatar asset provenance manifests.
+- Added manifest validation binding model SHA, coordinate frame, Khronos report digest and NK1 preflight receipt. Local viewing and permission to redistribute in the canonical Release are reported independently.
+- Production trust remains bounded: fixture capture UI, independent reviewer/signature and real model/device visual E2E remain unverified. A JSON fixtureId alone is not cryptographic proof.
+
+## [NK1][Embodiment] GLB/VRM import preflight and artist pipeline (2026-10-31)
+
+- Added a local GLB 2.0 preflight before Three.js parsing: binary container/chunk bounds, self-contained buffers/images, scene graph cycles/parenting, mesh/accessor/skin/animation references and texture/resource budgets.
+- Added adversarial tests for malformed headers, external URI rejection, graph cycles/shared parents, broken indices, excessive vertices/animations and oversized textures.
+- Corrected the active Original 2D selector regression to account for the transactional `2.5d` mode; corrected the stale Live2D duplicate-channel test and renderer-profile error expectation.
+- Added an artist/engineering workflow note for Khronos glTF-Validator and Blender VRM Add-on, including the uploaded archive checksums, notices/licenses and the explicit boundary between structural validation, NK1 security preflight, per-model calibration and GPU presentation.
+- Khronos Validator and Blender Add-on are documented as external tools; neither binary bundle is vendored into NK1 runtime. `main` and the canonical Release ZIP remain unchanged.
+
+## [NK1][Embodiment] One MotorFrame across Live2D, 2.5D and VRM/3D (2026-10-31)
+
+- Integrated one organism-owned motor controller with a bounded registry of calibrated renderer/model profiles; profiles share the exact canonical skeleton and cannot replace or mutate the controller.
+- Added renderer/model-scoped read-only MotorFrame JSON/SSE projections and strict client validation of model identity, frame tick, target kind, units, duplicates and renderer output bounds.
+- Added Live2D mobile/balanced stable model IDs, Cubism Param* binding validation, model-update application and parameter readback ACK (visualCompletionVerified=false).
+- Connected calibrated MotorFrame channels to layered DepthRig poses and atomic VRM bone projection; no goal creation or secondary motor state is introduced in renderers.
+- Added server smoke coverage for invalid renderer/model selectors and fail-closed unconfigured state, plus app/runtime regression scripts and CI path coverage.
+- Preserved the distinction between parameter/scene readback and a genuinely presented GPU frame. No production model calibration or device/browser visual E2E is claimed by this integration.
+
 ## [NK1][Cognition] Separate core and strict full cognitive-cycle completion (2026-10-31)
 
 - Add a two-tier policy: the six-stage core cycle remains available for continuity diagnostics, while a full cognitive cycle requires all eleven stages and a separately verified full causal lineage.

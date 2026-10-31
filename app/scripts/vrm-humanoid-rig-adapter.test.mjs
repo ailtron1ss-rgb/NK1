@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {applyVrmArmPose,captureVrmArmBindPose,computeVrmArmPose,resolveLeftVrmArm,resolveVrmArm,restoreVrmArmBindPose} from "../src/components/avatar/vrmHumanoidRigAdapter.ts";
+import {applyVrmArmPose,captureVrmArmBindPose,computeVrmArmPose,resolveLeftVrmArm,resolveVrmArm,resolveVrmHand,resolveVrmArmChain,restoreVrmArmBindPose} from "../src/components/avatar/vrmHumanoidRigAdapter.ts";
 import {solvePlanarArmIK} from "../src/components/avatar/planarArmIK.ts";
 const bone=(name,x=0,y=0,z=0)=>({name,rotation:{x,y,z}});
 const calibration={shoulderAxis:"z",elbowAxis:"z",shoulderSign:1,elbowSign:1,shoulderOffsetRad:0,elbowOffsetRad:0,shoulderMinRad:-1.2,shoulderMaxRad:1.2,elbowMinRad:0,elbowMaxRad:2.4};
@@ -17,3 +17,18 @@ test("rejects pose application to a different rig and invalid blend weights",()=
 test("resolves the right arm independently",()=>{const map=resolveVrmArm([bone("RightUpperArm"),bone("RightLowerArm"),bone("LeftUpperArm"),bone("LeftLowerArm")],"right");assert.ok(map);assert.equal(map.shoulder.name,"RightUpperArm");assert.equal(map.elbow.name,"RightLowerArm");});
 
 test("zero blend weight leaves live bone rotations untouched",()=>{const map={shoulder:bone("s",.2,.3,.4),elbow:bone("e",.5,.6,.7)};const before=JSON.parse(JSON.stringify({shoulder:map.shoulder.rotation,elbow:map.elbow.rotation}));const pose={shoulder:{x:1,y:1,z:1},elbow:{x:1,y:1,z:1},shoulderBoneName:"s",elbowBoneName:"e"};assert.equal(applyVrmArmPose(map,pose,0),true);assert.deepEqual({shoulder:map.shoulder.rotation,elbow:map.elbow.rotation},before);});
+
+test("resolves one exact left/right hand bone for a complete two-segment IK chain",()=>{
+ const bones=[bone("J_Bip_L_UpperArm"),bone("J_Bip_L_LowerArm"),bone("J_Bip_L_Hand"),
+  bone("J_Bip_R_UpperArm"),bone("J_Bip_R_LowerArm"),bone("J_Bip_R_Hand")];
+ const left=resolveVrmArmChain(bones,"left"),right=resolveVrmArmChain(bones,"right");
+ assert.equal(left?.hand.name,"J_Bip_L_Hand");assert.equal(right?.hand.name,"J_Bip_R_Hand");
+ assert.equal(resolveVrmHand(bones,"left")?.name,"J_Bip_L_Hand");
+ assert.equal(resolveVrmHand(bones,"right")?.name,"J_Bip_R_Hand");
+});
+test("refuses missing or ambiguous hand nodes instead of guessing the IK endpoint",()=>{
+ const bones=[bone("LeftUpperArm"),bone("LeftLowerArm"),bone("LeftHand"),bone("J_Bip_L_Hand")];
+ assert.equal(resolveVrmHand(bones,"left"),null);
+ assert.equal(resolveVrmArmChain(bones,"left"),null);
+ assert.equal(resolveVrmHand([bone("LeftUpperArm"),bone("LeftLowerArm")],"left"),null);
+});

@@ -1,0 +1,320 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nk1.invalid/contracts/vrm-calibration-bundle.v1.schema.json",
+  "title": "NK1 measured VRM calibration bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profile",
+    "session"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "session": {
+      "$ref": "#/$defs/session"
+    }
+  },
+  "$defs": {
+    "rotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "z"
+      ],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": -6.2842,
+          "maximum": 6.2842
+        },
+        "y": {
+          "type": "number",
+          "minimum": -6.2842,
+          "maximum": 6.2842
+        },
+        "z": {
+          "type": "number",
+          "minimum": -6.2842,
+          "maximum": 6.2842
+        }
+      }
+    },
+    "armCapture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shoulder",
+        "elbow"
+      ],
+      "properties": {
+        "shoulder": {
+          "$ref": "#/$defs/rotation"
+        },
+        "elbow": {
+          "$ref": "#/$defs/rotation"
+        }
+      }
+    },
+    "boneNames": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shoulder",
+        "elbow"
+      ],
+      "properties": {
+        "shoulder": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "elbow": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "calibrationArm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shoulderAxis",
+        "elbowAxis",
+        "shoulderSign",
+        "elbowSign",
+        "shoulderOffsetRad",
+        "elbowOffsetRad",
+        "shoulderMinRad",
+        "shoulderMaxRad",
+        "elbowMinRad",
+        "elbowMaxRad",
+        "shoulderBoneName",
+        "elbowBoneName"
+      ],
+      "properties": {
+        "shoulderAxis": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        "elbowAxis": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        "shoulderSign": {
+          "enum": [
+            -1,
+            1
+          ]
+        },
+        "elbowSign": {
+          "enum": [
+            -1,
+            1
+          ]
+        },
+        "shoulderOffsetRad": {
+          "type": "number",
+          "minimum": -6.283185307179586,
+          "maximum": 6.283185307179586
+        },
+        "elbowOffsetRad": {
+          "type": "number",
+          "minimum": -6.283185307179586,
+          "maximum": 6.283185307179586
+        },
+        "shoulderMinRad": {
+          "type": "number",
+          "minimum": -6.283185307179586,
+          "maximum": 6.283185307179586
+        },
+        "shoulderMaxRad": {
+          "type": "number",
+          "minimum": -6.283185307179586,
+          "maximum": 6.283185307179586
+        },
+        "elbowMinRad": {
+          "type": "number",
+          "minimum": -6.283185307179586,
+          "maximum": 6.283185307179586
+        },
+        "elbowMaxRad": {
+          "type": "number",
+          "minimum": -6.283185307179586,
+          "maximum": 6.283185307179586
+        },
+        "shoulderBoneName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "elbowBoneName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "modelFingerprint",
+        "coordinateFrameId",
+        "calibrationMethod",
+        "left",
+        "right"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "modelFingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "coordinateFrameId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9._:-]+$"
+        },
+        "calibrationMethod": {
+          "const": "manual-measured"
+        },
+        "left": {
+          "$ref": "#/$defs/calibrationArm"
+        },
+        "right": {
+          "$ref": "#/$defs/calibrationArm"
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "modelFingerprint",
+        "coordinateFrameId",
+        "modelName",
+        "createdAt",
+        "boneNames",
+        "bindPose",
+        "referencePose",
+        "reference"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "modelFingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "coordinateFrameId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9._:-]+$"
+        },
+        "modelName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "boneNames": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "left",
+            "right"
+          ],
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/boneNames"
+            },
+            "right": {
+              "$ref": "#/$defs/boneNames"
+            }
+          }
+        },
+        "bindPose": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "left",
+            "right"
+          ],
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/armCapture"
+            },
+            "right": {
+              "$ref": "#/$defs/armCapture"
+            }
+          }
+        },
+        "referencePose": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "left",
+            "right"
+          ],
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/armCapture"
+            },
+            "right": {
+              "$ref": "#/$defs/armCapture"
+            }
+          }
+        },
+        "reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fixtureId",
+            "capturedAt",
+            "operatorNote"
+          ],
+          "properties": {
+            "fixtureId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "capturedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "operatorNote": {
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        }
+      }
+    }
+  }
+}

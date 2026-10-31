@@ -412,6 +412,8 @@ export interface AdvancedDevelopmentFacet {
   p78AutobiographicalSelfContinuity: import('../developmental/P78AutobiographicalSelfContinuity.ts').P78State;
   p79EmbodiedSituationModel: import('../world/P79EmbodiedSituationModel.ts').P79State;
   p80UnifiedSelfState: import('../cognition/P80UnifiedSelfState.ts').P80State;
+  /** Explicit low-risk user interaction facts; hypotheses remain unconfirmed. */
+  userModelEvidence?: import('../cognition/UserModelEvidenceModel.ts').UserModelState;
   p81PredictiveAttention: import('../cognition/P81PredictiveAttention.ts').P81State;
   p82RealityProgress: import('../system/P82RealityProgressController.ts').P82State;
   p83PersistentRealityModel: import('../world/P83PersistentRealityModel.ts').PersistentRealityModelState;

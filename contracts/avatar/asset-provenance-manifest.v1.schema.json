@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nk1.invalid/contracts/avatar-asset-manifest.v1.schema.json",
+  "title": "NK1 avatar asset provenance manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "assetId",
+    "format",
+    "modelFingerprint",
+    "source",
+    "license",
+    "coordinateFrame",
+    "validation"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "assetId": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9._:-]+$"
+    },
+    "format": {
+      "enum": [
+        "vrm",
+        "glb2",
+        "layered-2.5d-glb2"
+      ]
+    },
+    "modelFingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "name",
+        "url",
+        "author"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "original",
+            "commissioned",
+            "licensed",
+            "open-source",
+            "user-import"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spdxId",
+        "redistributionPermitted",
+        "attribution",
+        "evidenceUrl"
+      ],
+      "properties": {
+        "spdxId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "redistributionPermitted": {
+          "type": "boolean"
+        },
+        "attribution": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "evidenceUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        }
+      }
+    },
+    "coordinateFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "unit",
+        "handedness",
+        "upAxis",
+        "forwardAxis"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-z0-9][a-z0-9._:-]+$"
+        },
+        "unit": {
+          "const": "meter"
+        },
+        "handedness": {
+          "enum": [
+            "right",
+            "left"
+          ]
+        },
+        "upAxis": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        "forwardAxis": {
+          "enum": [
+            "+x",
+            "-x",
+            "+y",
+            "-y",
+            "+z",
+            "-z"
+          ]
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "createdAt",
+        "khronosValidatorVersion",
+        "khronosReportSha256",
+        "nk1PreflightVersion",
+        "nk1PreflightStatus"
+      ],
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "khronosValidatorVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "khronosReportSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "nk1PreflightVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "nk1PreflightStatus": {
+          "const": "pass"
+        }
+      }
+    },
+    "vrmCalibrationBundleSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "depthRigAssetVersion": {
+      "const": 1
+    }
+  }
+}

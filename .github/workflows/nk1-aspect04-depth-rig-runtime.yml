@@ -1,0 +1,81 @@
+name: NK1 Aspect 04 canonical 2.5D scene adapter
+
+on:
+  push:
+    branches:
+      - work/nk1-depth-rig-scene-runtime-*
+      - work/nk1-unified-embodiment-motor-*
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - app/src/components/avatar/depthRig.ts
+      - app/src/components/avatar/depthRigSceneAdapter.ts
+      - app/src/components/avatar/motorFrameStream.ts
+      - app/src/components/avatar/motorFrameDepthRig.ts
+      - app/scripts/motor-frame-vrm.test.mjs
+      - app/src/components/avatar/motorFrameVrm.ts
+      - app/scripts/motor-frame-stream.test.mjs
+      - app/scripts/motor-frame-depth-rig.test.mjs
+      - app/scripts/live2d-motor-frame.test.mjs
+      - runtime/neuro-kurisu/public/live2d/viewer.html
+      - app/scripts/active-embodiment-switch.test.mjs
+      - app/public/live2d/viewer.html
+      - docs/NK1_UNIFIED_EMBODIMENT_MOTORFRAME_RU.md
+      - app/src/components/Avatar3DStage.tsx
+      - app/src/components/AvatarStage.tsx
+      - app/scripts/depth-rig-scene-adapter.test.mjs
+      - app/scripts/avatar-glb-preflight.test.mjs
+      - contracts/avatar/asset-provenance-manifest.v1.schema.json
+      - contracts/avatar/vrm-calibration-bundle.v1.schema.json
+      - app/scripts/avatar-asset-contract-schema.test.mjs
+      - app/scripts/avatar-asset-manifest.test.mjs
+      - app/scripts/avatar-asset-evidence-bundle.test.mjs
+      - app/src/components/avatar/avatarAssetManifest.ts
+      - app/src/components/avatar/vrmRigCalibrationProfile.ts
+      - app/src/components/avatar/vrmHumanoidRigAdapter.ts
+      - app/scripts/vrm-calibrated-arm-runtime.test.mjs
+      - app/scripts/avatar-3d-stage.test.mjs
+      - app/src/components/avatar/vrmCalibratedArmRuntime.ts
+      - app/src/components/avatar/avatarGlbPreflight.ts
+      - app/package.json
+      - contracts/depth-rig-scene-asset.v1.schema.json
+      - .github/workflows/nk1-aspect04-depth-rig-runtime.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-aspect04-depth-rig-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  depth-rig-scene-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Verify Node.js pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version mismatch" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Install locked app dependencies
+        working-directory: app
+        run: npm ci
+      - name: Run unified 2D/2.5D/3D embodiment regressions
+        working-directory: app
+        run: npm run test:unified-embodiment
+      - name: Typecheck app integration
+        working-directory: app
+        run: npm run typecheck

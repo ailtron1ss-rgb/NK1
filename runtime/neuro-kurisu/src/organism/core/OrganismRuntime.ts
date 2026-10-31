@@ -11,6 +11,7 @@ import { buildAutonomousDialoguePrompt, buildCognitivePrompt, type LanguageInvok
 import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.ts';
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
+import { OrganismMotorRuntime } from '../body/OrganismMotorRuntime.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
@@ -113,6 +114,8 @@ export interface RuntimeConfig extends OrganismConfig {
   mem0CognitiveRecall?: boolean;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+  /** Optional host-supplied calibrated renderer profiles; never inferred from uploaded model names. */
+  motorRigProfiles?: readonly import('../system/MotorRigProfile.ts').MotorRigProfileV1[];
 }
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
@@ -147,6 +150,8 @@ export class OrganismRuntime {
   readonly consolidation = new OfflineConsolidation();
   readonly counterfactuals = new CounterfactualEngine(this.environment);
   readonly embodiment = new EmbodimentRuntime();
+  /** Single owner of canonical renderer-neutral MotorFrame execution. */
+  readonly motor = new OrganismMotorRuntime();
   readonly embodiedActions = new EmbodiedActionExecutor(this.embodiment);
   readonly embodiedRecovery = new EmbodiedRecoveryController();
   private readonly config: Required<Pick<RuntimeConfig, 'intervalMs'|'enableLanguage'>> & RuntimeConfig;
@@ -365,6 +370,7 @@ export class OrganismRuntime {
       if (!world) { await this.worldStore.save(this.environment.persisted()); this.lastWorldCheckpointAt = Date.now(); }
       const snap = this.core.snapshot();
       await this.embodiment.init(snap.facets.embodiment?.body);
+      if (this.config.motorRigProfiles?.length) this.configureMotorRendererProfiles(this.config.motorRigProfiles);
       this.embodiedRecovery.restore(snap.facets.embodiment?.embodiedRecovery);
       this.core.registerActionTool({ id:'android.listen', capability:'android.stt', destructive:false, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'}},required:['ok'],additionalProperties:true,maxProperties:2}, execute:async()=>{ const text=await this.embodiment.listen(); return {ok:text!=null,text:text?.slice(0,4000) ?? null}; } });
       this.core.registerActionTool({ id:'organism.project.device', capability:'project.device.read', destructive:false, projectAllowed:true, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'},verified:{type:'boolean'},evidenceSource:{type:'string',enum:['device','host-fallback']},independenceKey:{type:'string',minLength:1,maxLength:180},battery01:{type:'number',minimum:0,maximum:1},thermal01:{type:'number',minimum:0,maximum:1},cpuLoad01:{type:'number',minimum:0,maximum:1},ramPressure01:{type:'number',minimum:0,maximum:1},awake:{type:'boolean'},sampledAt:{type:'number',minimum:0},staleMs:{type:'number',minimum:0},error:{type:'string',minLength:1,maxLength:80}},required:['ok','verified','evidenceSource','independenceKey'],additionalProperties:false,maxProperties:12}, execute:async()=>{ const b=this.embodiment.snapshot(); const sampleAt=b.telemetry.sampledAt; const fresh=b.telemetry.source==='android-termux' && b.telemetry.staleMs===0 && Number.isFinite(sampleAt) && sampleAt>0; return {ok:fresh,verified:fresh,evidenceSource:fresh?'device':'host-fallback',independenceKey:`device:${Number.isFinite(sampleAt)?sampleAt:'unavailable'}`,...(Number.isFinite(b.telemetry.battery01)?{battery01:b.telemetry.battery01}:{}),...(Number.isFinite(b.telemetry.thermalPressure01)?{thermal01:b.telemetry.thermalPressure01}:{}),...(Number.isFinite(b.telemetry.cpuLoad01)?{cpuLoad01:b.telemetry.cpuLoad01}:{}),...(Number.isFinite(b.telemetry.ramPressure01)?{ramPressure01:b.telemetry.ramPressure01}:{}),...(typeof b.awake==='boolean'?{awake:b.awake}:{}),...(Number.isFinite(sampleAt)?{sampledAt:sampleAt}:{}),...(Number.isFinite(b.telemetry.staleMs)?{staleMs:b.telemetry.staleMs}:{}),...(fresh?{}:{error:'android-telemetry-not-fresh'})}; } });
@@ -392,6 +398,43 @@ export class OrganismRuntime {
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
   }
+
+  /**
+   * Install the complete calibrated Live2D/2.5D/VRM profile set atomically.
+   * The first profile supplies the canonical skeleton; later profiles must
+   * describe exactly the same joint contract. Profiles are host-owned config,
+   * not client-uploaded commands.
+   */
+  configureMotorRendererProfiles(
+    profiles: readonly import('../system/MotorRigProfile.ts').MotorRigProfileV1[],
+  ): void {
+    this.motor.registerRendererRigProfiles(profiles);
+    this.motor.startContinuous(50);
+  }
+
+  /** Configure the one canonical motor skeleton from a calibrated avatar profile. */
+  configureMotorSkeleton(definitions: readonly import('../system/EmbodiedMotorController.ts').JointDefinition[]): void {
+    this.motor.configureSkeleton(definitions);
+    this.motor.startContinuous(50);
+  }
+
+  /** Submit a goal only after the upstream cognitive/action/ethical gate has approved it. */
+  submitApprovedMotorGoal(
+    goal: import('../system/EmbodiedMotorController.ts').MotorGoal,
+    monotonicNowMs = performance.now(),
+  ): { accepted: boolean; reason: string } {
+    return this.motor.submitApprovedGoal(goal, monotonicNowMs);
+  }
+
+  /** Renderer adapters subscribe to the bounded latest-value MotorFrame channel. */
+  subscribeMotorFrames(
+    listener: (frame: import('../system/EmbodiedMotorController.ts').MotorFrame) => void,
+    replayLatest = true,
+  ): () => void {
+    return this.motor.subscribe(listener, replayLatest);
+  }
+
+  motorFrameSnapshot() { return this.motor.latestFrame(); }
 
   /** B368: explicit endogenous cycle with no external command. */
   async autonomousStep(options: { deliberate?: boolean } = { deliberate: false }): Promise<RuntimeStep> {
@@ -1048,8 +1091,8 @@ export class OrganismRuntime {
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
-    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete,fullIntegrity01:cycleLineage.fullIntegrity01});
+    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.state.tick);
+    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
 
@@ -1550,6 +1593,7 @@ export class OrganismRuntime {
     // stores to persist the final in-memory cycle.  On mobile this is especially
     // dangerous because checkpoint cadence is deliberately throttled.
     this.stopping = true;
+    this.motor.stopContinuous();
     this.clockScheduler.stop();
     await this.clockScheduler.drain();
     await this.trustedShadowLearningScheduler?.drain();
