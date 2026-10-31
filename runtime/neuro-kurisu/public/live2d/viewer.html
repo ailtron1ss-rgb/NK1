@@ -333,13 +333,18 @@ import { normalizeEmbodimentIntentV1 } from './embodiment-intent.mjs';
       normalized.motorFrameBatch=sanitizeLive2DMotorBatch(d.motorFrameBatch);
       const switchExecutionId=typeof d.switchExecutionId==='string'&&/^[a-z0-9][a-z0-9._:-]{1,127}$/i.test(d.switchExecutionId)?d.switchExecutionId:null;
       const switchStateRevision=Number.isSafeInteger(d.switchStateRevision)&&d.switchStateRevision>=0?d.switchStateRevision:normalized.stateVersion;
-      pendingSwitchReadback=switchExecutionId?{
-        adapterId:'nk1-live2d',
-        executionId:switchExecutionId,
-        stateRevision:switchStateRevision,
-        channels:['ParamAngleX','ParamAngleY','ParamAngleZ','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'],
-        expected:null,applySent:false,verificationSent:false,appliedAt:0,
-      }:null;
+      if(!switchExecutionId){
+        pendingSwitchReadback=null;
+      }else if(!pendingSwitchReadback||pendingSwitchReadback.executionId!==switchExecutionId
+        ||pendingSwitchReadback.stateRevision!==switchStateRevision){
+        pendingSwitchReadback={
+          adapterId:'nk1-live2d',
+          executionId:switchExecutionId,
+          stateRevision:switchStateRevision,
+          channels:['ParamAngleX','ParamAngleY','ParamAngleZ','ParamEyeBallX','ParamEyeBallY','ParamMouthOpenY'],
+          expected:null,applySent:false,verificationSent:false,appliedAt:0,
+        };
+      }
       applyEmbodiment(normalized,pendingIntentReadback);
     }
     else if(d.type==='kurisu_embodiment')applyEmbodiment(d);
