@@ -80,7 +80,7 @@ export interface CausalLearningPacket {
 }
 
 export function defaultCausalExperienceStream():CausalExperienceState {
-  return {version:4,observations:0,outcomes:0,consolidated:0,records:[],rolling:{surprise01:0,predictionError01:0,causalStrength01:0,learningOpportunity01:0},lastConsolidatedAt:0,behavioralImpact01:0,behavioralContextSamples:0,behavioralDivergence01:0};
+  return {version:4,observations:0,outcomes:0,consolidated:0,records:[],rolling:{surprise01:0,predictionError01:0,causalStrength01:0,learningOpportunity01:0},lastConsolidatedAt:0,behavioralImpact01:0,behavioralContextSamples:0,behavioralDivergence01:0,recordedTraceIds:[]};
 }
 
 function vector(state:OrganismState){
