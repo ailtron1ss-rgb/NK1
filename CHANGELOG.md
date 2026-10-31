@@ -3,6 +3,14 @@
 - Run the Hexis source-lineage contract on every canonical source push so the release publisher's exact-SHA requirement is always backed by an actual check run.
 - Keep pull-request path filters unchanged; release publication still requires both checks to complete successfully for the exact source SHA and retains provenance/license gates.
 
+## [NK1][Agency] Harden deterministic decision history and restore integrity (WorkPass74, 2026-10-31)
+
+- Validate restored AgencyDeliberation records, reject malformed timestamps/actions, deduplicate record IDs and cap history at 512 entries.
+- Recompute override/autonomous rates and last-decision time from accepted records; persisted aggregate counters are never treated as evidence.
+- Replace random decision IDs with injectable-clock, monotonic-sequence IDs for reproducible tests and collision resistance.
+- Bound action/reason/counterfactual text, normalize non-finite pressure values and reject empty chosen actions.
+- Add a focused runtime contract test and npm script. This strengthens decision-history integrity; it does not by itself prove autonomous behavior or subjective experience.
+
 ## WorkPass78 — Hexis belief trust integrity
 - Update belief confidence, source trust and accepted-belief timestamp only when evidence is actually applied.
 - Duplicate evidence remains auditable but cannot inflate trust or advance the accepted-belief timestamp; protected contradictions remain audit-only and cannot mutate protected confidence/trust.
