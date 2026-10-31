@@ -3,6 +3,24 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
+
+// The runtime must not accept a complete causal trace from an adjacent tick.
+const fabric = new CognitiveEventFabric();
+const cycleIds = fabric.recordOperationalCycle({
+  tick: 7,
+  observation: { source: 'test' },
+  prediction: { source: 'test' },
+  action: { source: 'test' },
+  outcome: { source: 'test' },
+  learning: { source: 'test' },
+  selfUpdate: { source: 'test' },
+  at: 7,
+});
+assert.equal(fabric.verifyOperationalCycle(cycleIds, 7).complete, true, 'same-tick causal trace must verify');
+const adjacentTick = fabric.verifyOperationalCycle(cycleIds, 8);
+assert.equal(adjacentTick.complete, false, 'adjacent-tick causal trace must not verify');
+assert.ok(adjacentTick.invalidStages.includes('cycle:tick-mismatch'));
 
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'nk161-'));
 const stateFile=path.join(dir,'organism.json');
