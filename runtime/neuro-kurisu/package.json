@@ -1836,6 +1836,7 @@
     "test:workpass71:strict-cycle-completeness": "node --experimental-strip-types tests/CycleCompletenessPolicy.test.mjs && node --experimental-strip-types tests/workpass71-unified-cycle-completeness.mjs && node --experimental-strip-types tests/workpass71-cognitive-event-lineage.mjs",
     "test:workpass72:inspect-export": "node --experimental-strip-types tests/workpass72-independent-evaluation-export.mjs",
     "test:workpass72:inspect-route": "node tests/workpass72-inspect-evidence-route.mjs",
-    "test:workpass72": "npm run test:workpass72:inspect-export && npm run test:workpass72:inspect-route"
+    "test:workpass72": "npm run test:workpass72:inspect-export && npm run test:workpass72:inspect-route",
+    "test:whisper-cpp-provider": "node --test tests/local-whisper-cpp-provider.mjs"
   }
 }
