@@ -73,3 +73,12 @@ test("authoring preflight rejects GLB external buffers and images",async t=>{
  assert.ok(result.errors.includes("asset:item-v1:glb-external-buffer:0"),result.errors.join(","));
  assert.ok(result.errors.includes("asset:item-v1:glb-external-image:0"));
 });
+
+test("authoring preflight ignores forward-compatible unknown GLB chunk types",async t=>{
+ const base=glb({asset:{version:"2.0"},scene:0,scenes:[{nodes:[0]}],nodes:[{mesh:0}],meshes:[{primitives:[{attributes:{POSITION:0}}]}]});
+ const header=Buffer.alloc(8);header.writeUInt32LE(4,0);header.writeUInt32LE(0x12345678,4);
+ const bytes=Buffer.concat([base,header,Buffer.from([1,2,3,4])]);bytes.writeUInt32LE(bytes.length,8);
+ const f=await fixture(t,bytes,"model/gltf-binary");
+ const result=await preflightWardrobePack({manifestPath:f.manifestPath,assetsRoot:f.root});
+ assert.equal(result.valid,true,result.errors.join(","));
+});
