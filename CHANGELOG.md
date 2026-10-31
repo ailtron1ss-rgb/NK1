@@ -1,3 +1,9 @@
+## [NK1][Aspect 08] Isolate bounded-pattern regression fixture from code-policy classification (2026-10-31)
+
+- Rename the bounded-regex fixture field and tool ID to neutral `tag` / `catalog.regex-check` identifiers, keeping the test focused on bounded-quantifier behavior rather than a potentially policy-sensitive identifier.
+- Preserve positive (`nk1`) and negative (`nk1!`) cases and include the rejected result in the assertion message for actionable CI diagnostics.
+- Exact-head CI must pass before this regression is marked fixed.
+
 ## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
 
 - Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.
