@@ -73,6 +73,11 @@ policyRestoreSnapshot.connectorPolicies = [
   { ...policy, id: 'malformed-window-counter', windowCount: Number.NaN },
   { ...policy, id: 'malformed-overlong-window', windowMs: Number.MAX_SAFE_INTEGER },
   { ...policy, id: 'malformed-fractional-window-start', windowStartedAt: 1.5 },
+  { ...policy, id: 'malformed-empty-contexts', contexts: [] },
+  { ...policy, id: 'malformed-overquota-counter', windowCount: 1_000_001 },
+  { ...policy, id: 'malformed-overquota-limit', maxPerWindow: 1_000_001 },
+  { ...policy, id: 'duplicate-policy-id' },
+  { ...policy, id: 'duplicate-policy-id' },
 ];
 policyRestoreSnapshot.metrics.policyAllows = Number.POSITIVE_INFINITY;
 policyRestoreSnapshot.metrics.policyDenials = -1;
@@ -104,6 +109,14 @@ assert.throws(
   () => fabric.grantConnectorPolicy({ connectorId: { toString: () => 'telegram' }, actionKind: 'send' }),
   /connector policy identity must be strings/,
   'runtime identity objects must not be coerced into connector authority',
+);
+assert.throws(
+  () => fabric.grantConnectorPolicy({ connectorId: 'telegram', actionKind: 'send', maxPerWindow: 1_000_001 }),
+  /maxPerWindow must be a positive safe integer/,
+);
+assert.throws(
+  () => fabric.grantConnectorPolicy({ connectorId: 'telegram', actionKind: 'send', expiresAt: 1.5 }),
+  /expiresAt must be a non-negative safe integer/,
 );
 assert.throws(
   () => fabric.grantConnectorPolicy({ connectorId: 'telegram', actionKind: 'send', windowMs: Number.POSITIVE_INFINITY }),
