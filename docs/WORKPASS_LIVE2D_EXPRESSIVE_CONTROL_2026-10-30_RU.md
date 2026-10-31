@@ -42,6 +42,13 @@ This workpass improves the existing Cubism avatar only. It does not claim to cre
 - The face/body controls use parameters confirmed in the shipped CDI3 inventory.
 - The two viewer entry points are kept in sync to prevent app/runtime drift.
 
+## Дополнение: кисть и пальцы в общем моторном контуре
+
+- Процедурная рука теперь имеет отдельный узел запястья, ладонь, четыре группы пальцев и большой палец. Запястье и сгибание пальцев плавно получают цели из существующего `motorPlan.gestureProfile` и фазы речи; отдельный конкурирующий планировщик моторики не создаётся.
+- Для импортированных VRM/GLB-скелетов добавлена ограниченная маршрутизация к костям wrist/hand и распознаваемым пальцам по именам. Это best-effort адаптер: произвольная ориентация bind pose и локальные оси конкретного рига пока не калибруются.
+- Добавлен source-contract regression на наличие процедурных узлов и импортированного маршрута кисти/пальцев.
+- Это ещё не grasp/contact: нет захвата объекта, оценки контакта, collision/self-collision, анатомической ретаргет-калибровки и полной 3D IK. Browser E2E и Android soak не выполнены.
+
 ## Remaining work
 
 ### P0
