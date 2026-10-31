@@ -179,3 +179,36 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
 
   return { action: intent, motionGroup, motionIndex, headTilt, gazeX, gazeY, gesture, gestureProfile, gestureIntensity, reason };
 }
+
+
+export interface AvatarHandPose {
+  wristRotation: number;
+  fingerCurl: number;
+}
+
+/** Resolve wrist orientation and finger flex from the same semantic motor profile. */
+export function resolveAvatarHandPose(
+  profile: AvatarGestureProfile,
+  speaking: boolean,
+): AvatarHandPose {
+  const wristByProfile: Record<AvatarGestureProfile, number> = {
+    none: 0,
+    considering: 0.025,
+    presenting: 0.14,
+    examining: -0.12,
+    reassuring: -0.09,
+    emphatic: 0.2,
+  };
+  const fingerByProfile: Record<AvatarGestureProfile, number> = {
+    none: 0.055,
+    considering: 0.055,
+    presenting: 0.055,
+    examining: 0.055,
+    reassuring: 0.035,
+    emphatic: 0.16,
+  };
+  return {
+    wristRotation: clamp(wristByProfile[profile] ?? 0, -0.3, 0.3),
+    fingerCurl: clamp(speaking ? 0.12 : fingerByProfile[profile] ?? 0.055, 0, 0.28),
+  };
+}
