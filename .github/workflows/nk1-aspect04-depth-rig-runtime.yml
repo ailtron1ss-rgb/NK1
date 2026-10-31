@@ -30,6 +30,7 @@ on:
       - contracts/avatar/vrm-calibration-bundle.v1.schema.json
       - app/scripts/avatar-asset-contract-schema.test.mjs
       - app/scripts/avatar-asset-manifest.test.mjs
+      - app/scripts/avatar-asset-evidence-bundle.test.mjs
       - app/src/components/avatar/avatarAssetManifest.ts
       - app/src/components/avatar/vrmRigCalibrationProfile.ts
       - app/src/components/avatar/vrmHumanoidRigAdapter.ts
