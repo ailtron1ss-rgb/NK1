@@ -68,7 +68,7 @@ function normalizeQuestion(candidate:unknown,index:number):LongMemEvalQuestion{
  const abstention=id.toLocaleLowerCase().endsWith('_abs')||type.toLocaleLowerCase()==='abstention';
  if(abstention&&answerSessionIds.length>0)throw new Error('LongMemEval abstention question has answer sessions: '+id);
  if(!abstention&&answerSessionIds.length===0)throw new Error('LongMemEval answerable question has no answer sessions: '+id);
- return {id,type,query,at,sessions,answerSessionIds:[...new Set(answerSessionIds)].sort(),answerable:!abstention};
+ return {id,type,query,at,sessions,answerSessionIds:[...new Set(answerSessionIds)].sort(),answerable:!abstention,independenceGroupId:''};
 }
 function normalizeRows(rows:unknown):LongMemEvalQuestion[]{
  if(!Array.isArray(rows)||rows.length<1||rows.length>1000)throw new Error('LongMemEval dataset must be an array with 1–1000 questions');
