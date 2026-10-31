@@ -26,6 +26,7 @@ REALITY_CLASSES = (
 EXTERNAL_CLASSES = {"external-observation", "device-observation", "user-reported"}
 DIGEST_RE = re.compile(r"^[a-f0-9]{64}$")
 MAX_CYCLES = 256
+MAX_EVENTS = 256
 MAX_EVENTS_PER_CYCLE = 64
 
 # Child -> parent. These are the same full-causal edges required by
