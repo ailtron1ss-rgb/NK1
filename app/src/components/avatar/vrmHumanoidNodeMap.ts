@@ -109,6 +109,13 @@ export function parseVrmHumanoidNodeMap(extensions: unknown, nodeCount: number):
     usedNodeIndices.add(index);
 
     const role = toHumanoidRole(rawRole);
+    const lowerRole = rawRole.toLowerCase();
+    if (version === "1.0" && /^(left|right)thumbintermediate$/.test(lowerRole)) {
+      return invalid("thumb-intermediate-is-not-a-vrm-1.0-humanoid-role", version);
+    }
+    if (version === "0.x" && /^(left|right)thumbmetacarpal$/.test(lowerRole)) {
+      return invalid("thumb-metacarpal-is-not-a-vrm-0.x-humanoid-role", version);
+    }
     if (role) nodeRoleByIndex.set(index, role);
     else unsupportedRoles.push(rawRole);
   }
