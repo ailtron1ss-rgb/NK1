@@ -87,7 +87,10 @@ assert.equal(report.confidence.independentGroupCount, 2,
   'questions sharing a session ID must be one independent bootstrap group');
 assert.equal(report.sampleAdequacy.independentGroups, 2);
 assert.equal(report.sampleAdequacy.enoughIndependentGroups, true);
-assert.equal(report.perQuestion.filter(row => row.independenceGroupDigest === report.perQuestion[0].independenceGroupDigest).length >= 1, true);
+assert.equal(new Set(report.perQuestion.map(row => row.independenceGroupDigest)).size, 2,
+  'shared session IDs must collapse questions into the same independent group');
+assert.equal(report.confidence.answerableIndependentGroups, 1);
+assert.equal(report.confidence.unanswerableIndependentGroups, 1);
 assert.equal(report.confidence.runs.length, 3);
 assert.equal(report.promotion.allowed, false,
   'English-only external evidence cannot auto-promote a bilingual retrieval policy');
