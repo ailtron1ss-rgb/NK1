@@ -98,3 +98,49 @@ test("provider process completion never becomes a claim of audible playback", ()
   const event = tracker.accept(envelope({}, { phase: "process-exited" }));
   assert.equal(describeNativeSpeechProviderStatus(event), "процесс Termux завершился; факт слышимого воспроизведения не подтверждён");
 });
+
+
+test("tracker enforces the native provider lifecycle and terminal phases", () => {
+  const tracker = new NativeSpeechProviderEventTracker();
+  const send = (sequence, phase) => tracker.accept(envelope({}, {
+    eventId: `lifecycle-${sequence}`,
+    operationId: "lifecycle-operation",
+    sequence,
+    monotonicTimeMs: sequence * 10,
+    phase,
+  }));
+
+  assert.equal(send(1, "command-requested")?.phase, "command-requested");
+  assert.equal(send(2, "process-spawned")?.phase, "process-spawned");
+  assert.equal(send(3, "interrupt-requested")?.phase, "interrupt-requested");
+  assert.equal(send(4, "interrupt-unconfirmed")?.phase, "interrupt-unconfirmed");
+  assert.equal(send(5, "process-exited"), null);
+});
+
+test("tracker rejects impossible transitions without consuming the next sequence", () => {
+  const tracker = new NativeSpeechProviderEventTracker();
+  const send = (sequence, phase, eventId = `invalid-${sequence}`) => tracker.accept(envelope({}, {
+    eventId,
+    operationId: "guarded-operation",
+    sequence,
+    monotonicTimeMs: sequence * 10,
+    phase,
+  }));
+
+  assert.equal(send(1, "process-spawned")?.phase, "process-spawned");
+  assert.equal(send(2, "command-requested"), null);
+  assert.equal(send(2, "interrupt-unconfirmed"), null);
+  assert.equal(send(2, "process-exited")?.phase, "process-exited");
+  assert.equal(send(3, "process-error"), null);
+});
+
+test("partial event streams may begin at a terminal snapshot but cannot move backwards", () => {
+  const tracker = new NativeSpeechProviderEventTracker();
+  assert.equal(tracker.accept(envelope({}, { phase: "process-exited" }))?.phase, "process-exited");
+  assert.equal(tracker.accept(envelope({}, {
+    eventId: "late-spawn",
+    sequence: 2,
+    monotonicTimeMs: 20,
+    phase: "process-spawned",
+  })), null);
+});
