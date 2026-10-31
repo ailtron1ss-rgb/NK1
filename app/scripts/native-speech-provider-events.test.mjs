@@ -114,7 +114,8 @@ test("tracker enforces the native provider lifecycle and terminal phases", () =>
   assert.equal(send(2, "process-spawned")?.phase, "process-spawned");
   assert.equal(send(3, "interrupt-requested")?.phase, "interrupt-requested");
   assert.equal(send(4, "interrupt-unconfirmed")?.phase, "interrupt-unconfirmed");
-  assert.equal(send(5, "process-exited"), null);
+  assert.equal(send(5, "process-exited")?.phase, "process-exited");
+  assert.equal(send(6, "process-error"), null);
 });
 
 test("tracker rejects impossible transitions without consuming the next sequence", () => {
