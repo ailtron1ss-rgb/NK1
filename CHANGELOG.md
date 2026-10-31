@@ -1,3 +1,12 @@
+## [NK1][Memory] Harden snapshot restore identity and quarantine conflicting duplicates (WorkPass81, 2026-10-31)
+
+- Normalize persisted MemoryOS2 rows before rebuilding indexes; reject malformed identity/content/kind rows and bound serialized strings, context, links, vectors and counters.
+- Resolve duplicate IDs deterministically by current validity and revision authority, independent of snapshot array order.
+- Quarantine equally-ranked conflicting payloads rather than selecting a disputed fact; quarantined rows are excluded from current factual recall.
+- Rebind content hashes, validate and normalize embeddings, close malformed non-null expiries, and downgrade facts with invalid source/confidence to unknown.
+- Expose bounded restore diagnostics and surface lossy repairs through the existing read-only memory doctor.
+- Preserve the current revision-graph reconciliation and persisted revision-integrity findings; no second memory owner or live memory mutation was introduced.
+
 ## [NK1][CI] Exact-SHA release validation trigger coverage (2026-10-31)
 - Run the canonical NeuroCore core regression workflow on every push to `workpass70-source`, not only when a curated path list matches.
 - Run the Hexis source-lineage contract on every canonical source push so the release publisher's exact-SHA requirement is always backed by an actual check run.
