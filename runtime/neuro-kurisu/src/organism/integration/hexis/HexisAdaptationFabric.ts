@@ -204,7 +204,7 @@ function isHexisPolicyRecord(value: unknown): value is Record<string, unknown> {
 
 function isHexisPolicyText(value: unknown, maxLength: number): value is string {
     return typeof value === 'string' && value.trim().length > 0 &&
-        value.length <= maxLength && !/[\\u0000-\\u001f\\u007f]/.test(value);
+        value.length <= maxLength && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
 function normalizeHexisPolicyStringList(
