@@ -1,4 +1,4 @@
-import { resolveDepthRigWorldPose, type DepthRigDefinition, type DepthRigPose, type DepthRigTransform } from "./depthRig";
+import { resolveDepthRigWorldPose, type DepthRigDefinition, type DepthRigPose, type DepthRigTransform } from "./depthRig.ts";
 import type { RendererMotorCommandBatch } from "./motorFrameStream";
 
 export interface DepthRigMotorPoseOverlay {
