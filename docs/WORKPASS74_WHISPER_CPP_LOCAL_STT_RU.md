@@ -64,7 +64,7 @@ NK1_WHISPER_CPP_URL=http://127.0.0.1:8081/inference
 - WAV должен быть mono PCM16 16 kHz, с корректными RIFF/chunk lengths; 100 ms минимум, 60 s максимум.
 - Максимум 2,000,044 bytes, максимум один активный inference job; второй получает `whisper-provider-busy`.
 - Запрос к sidecar ограничен таймаутом; disconnect браузера отменяет inference через AbortSignal.
-- В sidecar отправляются только файл и фиксированные параметры `language=auto`, `response_format=verbose_json`, `temperature=0`, `no_context=true`.
+- В sidecar отправляются только файл и фиксированные параметры `language=auto`, `response_format=verbose_json`, `temperature=0`; whisper.cpp 1.9.5 server defaults `no_context=true` and this field is not configurable through its multipart handler.
 - Текст и сегменты проходят ограничение длины/количества и проверку временных границ.
 - В runtime не логируются WAV bytes и transcript; provider snapshot содержит только счётчики/latency/host.
 - Не настроенный провайдер отвечает 503 `whisper-provider-not-configured`, а не делает вид, что распознавание работает.
