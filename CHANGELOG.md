@@ -1,3 +1,10 @@
+## [NK1][аспект14] Add per-channel asymmetric body-language dynamics (2026-10-31)
+
+- Replace the single magnitude-based smoothing constant with explicit per-channel attack/release time constants for torso, weight shift, shoulder tension, arm openness, gesture amplitude, tempo, stillness, stability, head tilt and gaze.
+- Make expressive activation quicker than relaxation where appropriate; preserve gentle settling and handle signed posture reversals without snapping.
+- Keep the filter frame-rate independent, bounded and renderer-neutral; all avatar modes continue to consume the same shared smoothed profile.
+- Add regressions for faster gesture activation, gradual release and signed torso transition behavior. Visual timing still requires browser/device calibration.
+
 ## [NK1][Affect] Make decimal conditional expressions unambiguous (2026-10-30)
 
 - Normalized decimal-valued ternary branches in Avatar3DStage.tsx so TypeScript cannot tokenize them as optional chaining.
