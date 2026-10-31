@@ -17,10 +17,11 @@
 
 ## Изменения
 
-### 1. Только явные Bone-узлы
+### 1. Bone-only fallback для generic GLB
 
-- Для сопоставления ролей допускаются только объекты с `isBone === true`.
-- Обычные scene nodes с совпадающими именами не становятся ролями скелета.
+- Для generic GLB без VRM extension сопоставление по имени допускается только для объектов с `isBone === true`.
+- Обычные scene nodes с совпадающими именами не становятся ролями в generic fallback.
+- Для VRM применяется отдельный authoritative node-index путь (раздел 5): он корректно допускает humanoid node, который не является skin joint/Three.js Bone.
 - Поле `nonBoneMatches` перечисляет роли, для которых обнаружено только неподходящее совпадение.
 - Если совпавшие имена есть, но ни одного явного Bone-узла нет, capability-флаги остаются отрицательными и добавляется поясняющее предупреждение.
 - Повтор одной и той же ссылки на объект дедуплицируется; два разных Bone-узла с одинаковой ролью остаются неоднозначностью.
@@ -64,7 +65,7 @@
 9. Повтор объекта не создаёт ложную неоднозначность; не-массивный ввод отклоняется.
 10. Глубокая ациклическая цепочка обрабатывается одним обходом; превышение лимита узлов отклоняется до сканирования.
 
-Команда: `npm --prefix app run test:vrm-humanoid-rig-audit`.
+Команда: `npm --prefix app run test:vrm-humanoid-rig-audit` (13 generic Bone audit + 13 explicit VRM node-map tests).
 
 
 ## 5. Нормативная VRM humanoid node map
@@ -77,7 +78,7 @@ Bone-only эвристика остаётся fallback для generic GLB, но 
 - Parent graph переносится на временные wrappers, чтобы audit работал с единым набором ссылок и не зависел от типа исходного Three.js объекта.
 - В явном VRM-режиме сохраняются также безымянные промежуточные scene nodes: они могут законно располагаться между двумя humanoid node roles.
 - При наличии VRM extension name heuristic выключен. Повреждённое расширение или неразрешённые обязательные индексы не могут «исправиться» за счёт случайных названий костей.
-- Для VRM 0.x `chest` и `neck` обязательны; для VRM 1.0 они остаются optional согласно соответствующей таблице required bones.
+- Для VRM 0.x `chest` и `neck` обязательны; для VRM 1.0 они остаются optional согласно соответствующей таблице required bones. `upperChest`, если указан, требует `chest` и должен быть его потомком.
 - Дублирующийся node index, повтор роли, отрицательный/вышедший за диапазон индекс, неподдерживаемая версия и одновременное присутствие двух VRM extensions отвергаются fail-closed.
 - Неизвестные для локального capability type роли сохраняются как diagnostics и не маппятся на произвольные joints.
 
@@ -85,7 +86,7 @@ Bone-only эвристика остаётся fallback для generic GLB, но 
 
 ## 6. Дополнительные VRM regressions
 
-Добавлены 8 сценариев node-map suite:
+Добавлены 13 сценариев node-map suite:
 
 1. VRM 1.0 принимает авторитетные glTF node indices и валидные non-Bone humanoid nodes.
 2. VRM 0.x применяет собственный список обязательных ролей, включая chest и neck.
@@ -97,6 +98,20 @@ Bone-only эвристика остаётся fallback для generic GLB, но 
 8. Безымянная промежуточная parent node сохраняется и не разрывает валидную ancestry.
 
 Общий test script `npm --prefix app run test:vrm-humanoid-rig-audit` теперь включает generic audit и explicit VRM map suites. Stage regression отдельно подтверждает, что Avatar3DStage передаёт `parser.json.extensions` и `parser.associations` в adapter и отключает name fallback для VRM.
+
+
+### Version-specific пальцы и optional hierarchy
+
+Официальная карта отличается по версии:
+
+- VRM 0.x: большой палец — `Proximal → Intermediate → Distal`.
+- VRM 1.0: большой палец — `Metacarpal → Proximal → Distal`; `ThumbIntermediate` в VRM 1.0 не является допустимой ролью.
+- VRM 1.0 role `ThumbMetacarpal` не переносится обратно в VRM 0.x.
+- Остальные четыре пальца используют `Proximal → Intermediate → Distal` в обеих версиях.
+
+Аудит считает 15 ожидаемых ролей пальцев на руку по активной схеме версии. Если downstream-сегмент присутствует без обязательного для него предшествующего пальцевого звена, цепь не помечается артикулируемой. Отсутствие необязательных пальцев не ломает базовый `fullBodyHumanoid`.
+
+Дополнительно проверяются optional parents для глаз/челюсти/пальцев ног. Их некорректная связь выдаёт отдельное предупреждение и отключает соответствующую optional capability, но не ломает обязательный core-body результат. Неверная опора `upperChest` (он присутствует без `chest`) считается структурной ошибкой full-body hierarchy.
 
 ### Границы
 
