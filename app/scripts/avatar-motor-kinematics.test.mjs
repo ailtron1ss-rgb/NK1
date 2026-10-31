@@ -47,5 +47,12 @@ test("procedural and imported 3D arm paths both consume elbow IK", async () => {
   assert.match(stage, /rightElbow/);
   assert.match(stage, /leftforearm|leftlowerarm|leftelbow/);
   assert.match(stage, /rightforearm|rightlowerarm|rightelbow/);
+  assert.match(stage, /leftWrist:leftArm\.wrist/);
+  assert.match(stage, /rightWrist:rightArm\.wrist/);
+  assert.match(stage, /leftFingers:leftArm\.fingers/);
+  assert.match(stage, /rightFingers:rightArm\.fingers/);
+  assert.match(stage, /leftwrist|lefthand/);
+  assert.match(stage, /righthand|rightwrist/);
+  assert.match(stage, /thumb|index|middle|ring|pinky/);
   assert.match(stage, /upperLength:\.30,lowerLength:\.30/);
 });
