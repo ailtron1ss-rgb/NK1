@@ -28,6 +28,8 @@ export interface MemoryEvidenceSource {
 }
 export interface MemoryItem2 { id:string;
 content:string;
+/** Restore-time integrity findings retained for the read-only memory doctor. */
+revisionIntegrityIssues?:string[];
 /** Content-addressed identity adapted from Memo; stable across process restarts. */
 contentHash?:string;
 tags?:string[];
@@ -312,6 +314,7 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
  }
  const unique=items.filter(item=>typeof item.id==='string'&&item.id.trim().length>0&&idCounts.get(item.id)===1);
  const byId=new Map(unique.map(item=>[item.id,item]));
+ const mark=(item:MemoryItem2,code:string)=>{item.revisionIntegrityIssues=[...new Set([...(item.revisionIntegrityIssues??[]),code])].slice(-8);};
  const sameLineage=(a:MemoryItem2,b:MemoryItem2)=>String(a.revisionGroupId??a.id)===String(b.revisionGroupId??b.id);
  const forward=(parent:MemoryItem2,child:MemoryItem2)=>{
   const parentSequence=parent.revisionSequence;
@@ -330,9 +333,14 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
   const parentId=child.supersedesId;
   if(parentId){
    const parent=byId.get(parentId);
-   if(!parent||parent.supersededById!==child.id||!forward(parent,child)){
+   if(!parent){
+    mark(child,'dangling-supersedes-id');
     child.supersedesId=null;
-    if(parent?.supersededById===child.id)parent.supersededById=null;
+   }else if(parent.supersededById!==child.id||!forward(parent,child)){
+    mark(child,'invalid-supersedes-edge');
+    mark(parent,'invalid-supersedes-edge');
+    child.supersedesId=null;
+    if(parent.supersededById===child.id)parent.supersededById=null;
    }else{
     const childValidFrom=child.validFromAt;
     const parentValidUntil=parent.validUntilAt;
@@ -346,9 +354,14 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
   const childId=child.supersededById;
   if(childId){
    const successor=byId.get(childId);
-   if(!successor||successor.supersedesId!==child.id||!forward(child,successor)){
+   if(!successor){
+    mark(child,'dangling-superseded-by-id');
     child.supersededById=null;
-    if(successor?.supersedesId===child.id)successor.supersedesId=null;
+   }else if(successor.supersedesId!==child.id||!forward(child,successor)){
+    mark(child,'invalid-superseded-by-edge');
+    mark(successor,'invalid-superseded-by-edge');
+    child.supersededById=null;
+    if(successor.supersedesId===child.id)successor.supersedesId=null;
    }else{
     const successorValidFrom=successor.validFromAt;
     const childValidUntil=child.validUntilAt;
@@ -362,7 +375,7 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
  return unique;
 }
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
@@ -668,6 +681,7 @@ export class MemoryOS2{
     supersedesId:m?.supersedesId==null?null:String(m.supersedesId),
     supersededById:m?.supersededById==null?null:String(m.supersededById),
     revisionHistory:normalizeRevisionHistory(m?.revisionHistory),
+    revisionIntegrityIssues:Array.isArray(m?.revisionIntegrityIssues)?[...new Set(m.revisionIntegrityIssues.filter((x:any)=>typeof x==='string').map((x:any)=>String(x).slice(0,96)))].slice(-8):[],
     revisionGroupId:m?.revisionGroupId?String(m.revisionGroupId):String(m?.id??m?.contentHash??'revision'),
     revisionSequence:Number.isSafeInteger(m?.revisionSequence)&&m.revisionSequence>=1?m.revisionSequence:1,
     provenanceClass:(['device','external','user','agent','derived','simulation','unknown'].includes(m?.provenanceClass)?m.provenanceClass:'unknown') as MemoryProvenanceClass,
@@ -1538,6 +1552,7 @@ export class MemoryOS2{
    if(!EPISTEMIC_STATUSES.has(item.epistemicStatus)){invalidStatus++;add('invalid-epistemic-status','error',item.id,'Memory epistemic status is not in the supported enum.');}
    if(Number.isFinite(item.observedAt)&&Number(item.observedAt)>at+300000){futureEvidence++;add('future-observation-timestamp','warning',item.id,'Observation timestamp is more than five minutes in the future.');}
    if(Number.isFinite(item.evidenceFreshnessAt)&&Number(item.evidenceFreshnessAt)>at+300000){futureEvidence++;add('future-evidence-freshness','warning',item.id,'Evidence freshness timestamp is more than five minutes in the future.');}
+   for(const issue of item.revisionIntegrityIssues??[]){danglingRevision++;add('revision-restore-integrity-finding','warning',item.id,'Restore normalized a damaged revision edge: '+String(issue).slice(0,120));}
    const group=item.revisionGroupId??item.id;
    const revisions=revisionMembers.get(group)??[];revisions.push(item);revisionMembers.set(group,revisions);
    for(const [field,ref] of [['supersedesId',item.supersedesId],['supersededById',item.supersededById]] as Array<[string,string|null|undefined]>){
