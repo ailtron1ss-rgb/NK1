@@ -302,6 +302,7 @@ export class OrganismMotorRuntime {
       activeRenderer: onlyProfile?.renderer ?? null,
       registeredProfiles: profiles,
       channel: this.frames.diagnostics(),
+      arbitration: this.goalArbiter.diagnostics(),
       continuousLoopRunning: this.continuousTimer !== null,
       continuousLoopErrors: this.continuousLoopErrors,
       lastContinuousLoopError: this.lastContinuousLoopError,
