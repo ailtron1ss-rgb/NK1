@@ -3,7 +3,8 @@
 - Add a pinned adapter for the MIT-licensed, English-only LongMemEval-S cleaned benchmark without bundling or downloading dataset contents in CI.
 - Build one isolated MemoryOS2 corpus per question so sessions from other questions cannot leak into retrieval.
 - Compare canonical MemoryOS2 retrieval with a deterministic per-question Okapi BM25 baseline; report recall@K, MRR, precision, abstention and unsupported retrieval.
-- Add paired bootstrap confidence intervals across fixed seeds, pin upstream revision and raw file SHA-256, and export only hashed IDs plus aggregate metrics.
+- Add paired bootstrap confidence intervals over shared-session independence groups, pin upstream revision and raw file SHA-256, and export only hashed IDs plus aggregate metrics.
+- Release raw transcript/query payloads as each question is scored to keep the local runner's memory footprint bounded.
 - Keep automatic promotion disabled because English-only evidence cannot satisfy NK1's independent RU/EN holdout requirement.
 
 ## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
