@@ -133,6 +133,42 @@ export function Avatar3DStage(props:Props){
    return()=>{disposed=true;cancelAnimationFrame(raf);observer?.disconnect();window.removeEventListener("resize",resize);renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointermove",move);renderer.domElement.removeEventListener("pointerup",up);renderer.domElement.removeEventListener("pointercancel",up);rt.mixer?.stopAllAction();disposeTree(scene);renderer.dispose();renderer.domElement.remove();runtime.current=null;setReady(false);};
   }catch(e){setState("webgl-unavailable");setMessage("WebGL недоступен. Включите аппаратное ускорение или используйте браузер с поддержкой WebGL.");setStorageMessage(e instanceof Error?e.message.slice(0,160):"Ошибка запуска 3D-рендерера");return()=>renderer?.dispose?.();}
  },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const rt=runtime.current;if(!rt)return;
+  if(!rt.loaded){rt.body.root.visible=props.bodyMode!=="2.5d";return;}
+  if(props.bodyMode==="2.5d"){
+    const rawAsset=rt.loaded.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY];
+    const preparation=rawAsset===undefined?null:prepareDepthRigSceneV1(rt.loaded,rawAsset);
+    if(!preparation?.ok||!preparation.prepared){
+      rt.depthRigScene=null;rt.mixer?.stopAllAction();rt.mixer=null;
+      rt.loaded.visible=false;rt.body.root.visible=false;
+      setState("error");setMessage("Для 2.5D нужна загруженная layered GLB-сцена с валидным nk1DepthRigAssetV1.");
+      setMotorModelId(null);setMotorFrameBatch(null);setMotorFrameProjection("unmapped");
+      return;
+    }
+    rt.loaded.visible=true;rt.depthRigScene=preparation.prepared;rt.depthRigFrame=0;rt.motorFrameTick=-1;
+    rt.mixer?.stopAllAction();rt.mixer=null;rt.body.root.visible=false;
+    setState("loaded");setMessage("2.5D rig готов. Scene readback включён; presented frame остаётся отдельной проверкой.");
+    setMotorModelId(preparation.prepared.asset.rig.id);
+    return;
+  }
+  const wasDepthRig=rt.depthRigScene!==null;
+  rt.depthRigScene=null;rt.depthRigFrame=0;rt.motorFrameTick=-1;rt.mixer?.stopAllAction();
+  const hasRigAsset=rt.loaded.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY]!==undefined;
+  if(wasDepthRig&&hasRigAsset&&rt.bones.length===0){
+    rt.loaded.visible=false;rt.body.root.visible=true;rt.mixer=null;
+    setState("procedural");setMessage("2.5D слои переключены на процедурное 3D-тело; для скелетного 3D загрузите VRM/GLB со скелетом.");
+    setMotorModelId(null);setMotorFrameBatch(null);setMotorFrameProjection("unmapped");
+    return;
+  }
+  rt.loaded.visible=true;rt.body.root.visible=false;
+  rt.mixer=rt.clips.length?new THREE.AnimationMixer(rt.loaded):null;rt.clipName="";
+  const rawMotorModelId=rt.loaded.userData?.nk1MotorModelId;
+  const declaredMotorModelId=typeof rawMotorModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawMotorModelId)?rawMotorModelId:null;
+  setMotorModelId(declaredMotorModelId);setState("loaded");
+  setMessage(rt.bones.length?"3D skeleton active; calibrated motor projection is model-bound.":"Геометрия загружена; скелет не найден, движения костей недоступны.");
+ },[props.bodyMode,ready]);
  useEffect(()=>{if(!ready)return;let cancelled=false;void loadStoredAvatarModel().then((saved)=>{if(!cancelled&&saved)void loadModel(saved.blob,saved.name,false);}).catch(()=>{if(!cancelled)setStorageMessage("IndexedDB недоступна; процедурное тело остаётся рабочим.");});return()=>{cancelled=true;};},[ready,loadModel]);
  useEffect(()=>{
   const renderer=props.bodyMode==="2.5d"?"depth2d":props.bodyMode==="3d"?"vrm3d":null;
