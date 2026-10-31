@@ -3,6 +3,7 @@ export type RotationAxis="x"|"y"|"z";
 export interface MutableEulerLike{x:number;y:number;z:number}
 export interface HumanoidBoneLike{name?:string;rotation:MutableEulerLike}
 export interface VrmArmBoneMap{shoulder:HumanoidBoneLike;elbow:HumanoidBoneLike}
+export interface VrmArmChainMap extends VrmArmBoneMap { hand: HumanoidBoneLike; }
 export interface AxisCalibration{shoulderAxis:RotationAxis;elbowAxis:RotationAxis;shoulderSign:1|-1;elbowSign:1|-1;shoulderOffsetRad:number;elbowOffsetRad:number;shoulderMinRad:number;shoulderMaxRad:number;elbowMinRad:number;elbowMaxRad:number}
 export interface VrmArmPose{shoulder:MutableEulerLike;elbow:MutableEulerLike;shoulderBoneName:string;elbowBoneName:string}
 export interface VrmArmBindPose{readonly shoulder:Readonly<MutableEulerLike>;readonly elbow:Readonly<MutableEulerLike>;readonly shoulderBoneName:string;readonly elbowBoneName:string}
@@ -22,6 +23,24 @@ export function resolveVrmArm(bones:readonly HumanoidBoneLike[],side:ArmSide):Vr
  return{shoulder:shoulders[0],elbow:elbows[0]};
 }
 export const resolveLeftVrmArm=(bones:readonly HumanoidBoneLike[])=>resolveVrmArm(bones,"left");
+export function resolveVrmHand(bones: readonly HumanoidBoneLike[], side: ArmSide): HumanoidBoneLike | null {
+ const aliasesBySide: Record<ArmSide, string[]> = {
+  left: ["lefthand", "handleft", "handl", "jbiplhand"],
+  right: ["righthand", "handright", "handr", "jbiprhand"],
+ };
+ const aliasesForSide = aliasesBySide[side];
+ if (!aliasesForSide) return null;
+ const candidates = bones.filter((bone) => bone && typeof bone.name === "string" && bone.rotation
+  && [bone.rotation.x, bone.rotation.y, bone.rotation.z].every(Number.isFinite)
+  && aliasesForSide.some((alias) => matches(normalize(bone.name!), [alias])));
+ return candidates.length === 1 ? candidates[0] : null;
+}
+export function resolveVrmArmChain(bones: readonly HumanoidBoneLike[], side: ArmSide): VrmArmChainMap | null {
+ const arm = resolveVrmArm(bones, side);
+ const hand = resolveVrmHand(bones, side);
+ if (!arm || !hand || hand === arm.shoulder || hand === arm.elbow) return null;
+ return { ...arm, hand };
+}
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 const finiteRotation=(rotation:MutableEulerLike)=>[rotation?.x,rotation?.y,rotation?.z].every(Number.isFinite);
 const cloneRotation=(rotation:MutableEulerLike):MutableEulerLike=>({x:rotation.x,y:rotation.y,z:rotation.z});
