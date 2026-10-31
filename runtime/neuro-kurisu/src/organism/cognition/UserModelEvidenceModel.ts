@@ -51,7 +51,7 @@ export class UserModelEvidenceModel {
   this.remember(ref);
   const old=this.state.claims.find(c=>c.key===key&&c.domain===i.domain);
   if(old&&old.value!==value){old.status='disputed';old.contradictions++;old.lastSeenTick=i.tick;return{accepted:true,status:'disputed',claim:clone(old)};}
-  if(old){old.confirmations++;old.lastSeenTick=i.tick;old.status='confirmed';return{accepted:true,status:old.status,claim:clone(old)};}
+  if(old){old.confirmations++;old.lastSeenTick=i.tick;if(old.status==='disputed')return{accepted:true,status:'disputed',claim:clone(old)};return{accepted:true,status:old.status,claim:clone(old)};}
   const claim:UserModelClaim={key,domain:i.domain,value,status:'confirmed',source:'user-explicit',evidenceRef:ref,firstSeenTick:i.tick,lastSeenTick:i.tick,confirmations:1,contradictions:0};
   this.state.claims=[...this.state.claims,claim].slice(-128);
   this.state.candidates=this.state.candidates.filter(c=>!(c.key===key&&c.domain===i.domain));
