@@ -3,36 +3,6 @@ name: NeuroCore core regression validation
 on:
   push:
     branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
-    paths:
-      - "app/**"
-      - "runtime/neuro-kurisu/src/**"
-      - "runtime/neuro-kurisu/tests/**"
-      - ".github/workflows/workpass71-validation.yml"
-      - "tools/audit-assets.mjs"
-      - "tools/audit-runtime-test-coverage.mjs"
-      - "contracts/inventory/canonical-public-assets-workpass42.json"
-      - "app/scripts/sync-canonical-public-assets.mjs"
-      - "app/scripts/sync-canonical-public-assets.test.mjs"
-      - ".gitignore"
-      - "docs/WORKPASS72_HANDOVER_2026-10-19.md"
-      - "docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.md"
-      - "docs/REPOSITORY_CLEANUP_AUDIT_WORKPASS72.json"
-      - "README.md"
-      - "AGENTS.md"
-      - "CHANGELOG.md"
-      - "SUPER_VERSION.json"
-      - "package.json"
-      - "tools/verify-ci-reliability.mjs"
-      - "tools/verify-ci-reliability.test.mjs"
-      - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
-      - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
-      - 'app/package-lock.json'
-      - 'runtime/neuro-kurisu/package.json'
-      - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/tsconfig.clean.json'
-      - 'runtime/neuro-kurisu/src/node-shims.d.ts'
-      - '.nvmrc'
-      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
   pull_request:
     branches: [main, workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
     paths:
