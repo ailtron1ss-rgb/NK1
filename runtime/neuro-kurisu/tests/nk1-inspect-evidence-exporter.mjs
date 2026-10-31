@@ -93,7 +93,7 @@ test('external postcondition receipt requires a linked corroborating external ob
 
   const record = buildNK1InspectEvidenceRecord(fabric.snapshot());
   assert.equal(record.receiptAudit.receiptCount, 1);
-  assert.equal(record.receiptAudit.intactReceiptCount, 1);
+  assert.equal(record.receiptAudit.intactReceiptCount, 1, JSON.stringify(record.receiptAudit, null, 2));
   assert.equal(record.receiptAudit.externalPostconditionClaimCount, 1);
   assert.equal(record.receiptAudit.externallyCorroboratedCount, 1);
   assert.deepEqual(record.receiptAudit.receipts[0].issues, []);
