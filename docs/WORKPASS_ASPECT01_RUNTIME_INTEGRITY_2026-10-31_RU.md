@@ -1,7 +1,7 @@
 # NK1 Aspect 01 — Cognitive runtime integrity pass
 
 **Date:** 2026-10-31  
-**Base:** `workpass70-source` at `ae67e35fb276002106d66702192d3cbdbd6b82d5`  
+**Base:** `workpass70-source` at `18d8f10aced4c554a206b2215b3b079f7cade6a7`  
 **Branch:** `work/nk1-aspect01-runtime-integrity-2026-10-31`
 
 ## Scope
