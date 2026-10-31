@@ -1,10 +1,9 @@
 /**
  * Organism-owned composition boundary for the canonical motor controller.
  *
- * This wrapper deliberately does not invent motor goals from emotion, gaze,
- * speech, UI state, or world actions. A caller must provide an already-approved
- * MotorGoal from the organism's action/ethical gate. The runtime then advances
- * the one canonical controller and publishes immutable latest-value frames.
+ * One controller owns the organism's joint state. Renderer profiles are immutable
+ * calibrated projections of that same state; adding a 2D/2.5D/3D profile never
+ * creates or reconfigures a second controller. No profile can create motor goals.
  */
 import {
   EmbodiedMotorController,
@@ -21,48 +20,134 @@ import {
   compileMotorJointDefinitions,
   mapMotorFrameToRendererCommands,
   type MotorRigProfileV1,
+  type MotorRendererKind,
   type RendererMotorCommandBatch,
 } from '../system/MotorRigProfile.ts';
+
+export interface RegisteredMotorRendererProfile {
+  profileId: string;
+  modelId: string;
+  renderer: MotorRendererKind;
+  revision: number;
+  calibrated: boolean;
+}
 
 export interface OrganismMotorRuntimeDiagnostics {
   configured: boolean;
   controllerTick: number;
   activeGoalId: string | null;
+  /** Backward-compatible when exactly one renderer profile is registered. */
   activeRigProfileId: string | null;
-  activeRenderer: MotorRigProfileV1['renderer'] | null;
+  /** Backward-compatible when exactly one renderer profile is registered. */
+  activeRenderer: MotorRendererKind | null;
+  registeredProfiles: RegisteredMotorRendererProfile[];
   channel: MotorFrameChannelDiagnostics;
   continuousLoopRunning: boolean;
   continuousLoopErrors: number;
   lastContinuousLoopError: string | null;
 }
 
+function cloneDefinitions(definitions: readonly JointDefinition[]): JointDefinition[] {
+  return definitions.map((joint) => ({ ...joint }));
+}
+
+function sameCanonicalSkeleton(a: readonly JointDefinition[], b: readonly JointDefinition[]): boolean {
+  if (a.length !== b.length) return false;
+  const byId = new Map(a.map((joint) => [joint.id, joint]));
+  return b.every((joint) => {
+    const current = byId.get(joint.id);
+    return Boolean(current
+      && current.parentId === joint.parentId
+      && current.minAngleRad === joint.minAngleRad
+      && current.maxAngleRad === joint.maxAngleRad
+      && current.restAngleRad === joint.restAngleRad
+      && current.maxSpeedRadPerSec === joint.maxSpeedRadPerSec
+      && current.maxAccelerationRadPerSec2 === joint.maxAccelerationRadPerSec2
+      && current.maxJerkRadPerSec3 === joint.maxJerkRadPerSec3);
+  });
+}
+
+function profileSummary(profile: MotorRigProfileV1): RegisteredMotorRendererProfile {
+  return {
+    profileId: profile.profileId,
+    modelId: profile.modelId,
+    renderer: profile.renderer,
+    revision: profile.revision,
+    calibrated: profile.calibration.status === 'calibrated',
+  };
+}
+
 export class OrganismMotorRuntime {
   private readonly controller = new EmbodiedMotorController();
   private readonly frames = new MotorFrameChannel();
   private configured = false;
-  private activeRigProfile: MotorRigProfileV1 | null = null;
+  private canonicalDefinitions: JointDefinition[] | null = null;
+  private readonly rendererProfiles = new Map<string, MotorRigProfileV1>();
   private continuousTimer: ReturnType<typeof setInterval> | null = null;
   private continuousLoopErrors = 0;
   private lastContinuousLoopError: string | null = null;
 
+  /**
+   * Explicit low-level configuration resets renderer profiles because their
+   * joint contract may no longer describe the new controller skeleton.
+   */
   configureSkeleton(definitions: readonly JointDefinition[]): void {
+    const safeDefinitions = cloneDefinitions(definitions);
     this.stopContinuous();
-    this.controller.configureSkeleton(definitions);
+    this.controller.configureSkeleton(safeDefinitions);
+    this.canonicalDefinitions = safeDefinitions;
     this.configured = true;
-    this.activeRigProfile = null;
+    this.rendererProfiles.clear();
+    this.frames.clear();
   }
 
-  /** Configure the one canonical controller from a production-calibrated renderer profile. */
-  configureRigProfile(profile: MotorRigProfileV1): void {
+  /**
+   * Register a calibrated projection over the existing canonical skeleton.
+   * The first profile may establish that skeleton; later profiles must match
+   * its exact joint IDs, topology, limits and dynamics.
+   */
+  registerRendererRigProfile(profile: MotorRigProfileV1): void {
     const definitions = compileMotorJointDefinitions(profile);
-    this.configureSkeleton(definitions);
-    this.activeRigProfile = structuredClone(profile);
+    if (!this.configured) {
+      this.configureSkeleton(definitions);
+    } else if (!this.canonicalDefinitions || !sameCanonicalSkeleton(this.canonicalDefinitions, definitions)) {
+      throw new Error('renderer-profile-canonical-skeleton-mismatch');
+    }
+
+    const previous = this.rendererProfiles.get(profile.profileId);
+    if (previous && (profile.revision <= previous.revision || previous.renderer !== profile.renderer)) {
+      throw new Error('renderer-profile-revision-not-increasing-or-kind-changed');
+    }
+    this.rendererProfiles.set(profile.profileId, structuredClone(profile));
   }
 
-  /** Project a controller-produced frame; this does not claim renderer application. */
-  rendererCommandsForFrame(frame: MotorFrame): { ok: boolean; reason: string; batch: RendererMotorCommandBatch | null } {
-    if (!this.activeRigProfile) return { ok: false, reason: 'motor-rig-profile-not-configured', batch: null };
-    return mapMotorFrameToRendererCommands(this.activeRigProfile, frame);
+  /** Backward-compatible entry point; it now registers instead of replacing the controller. */
+  configureRigProfile(profile: MotorRigProfileV1): void {
+    this.registerRendererRigProfile(profile);
+  }
+
+  /** Defensive profile readback. Ambiguous renderer/model selections fail closed. */
+  rendererProfileFor(renderer: MotorRendererKind, modelId?: string): MotorRigProfileV1 | null {
+    const matches = [...this.rendererProfiles.values()].filter((profile) =>
+      profile.renderer === renderer && (modelId === undefined || profile.modelId === modelId));
+    return matches.length === 1 ? structuredClone(matches[0]) : null;
+  }
+
+  /**
+   * Project one measured controller frame through the explicitly selected
+   * renderer/model calibration. An omitted selector works only with one profile.
+   */
+  rendererCommandsForFrame(
+    frame: MotorFrame,
+    renderer?: MotorRendererKind,
+    modelId?: string,
+  ): { ok: boolean; reason: string; batch: RendererMotorCommandBatch | null } {
+    const matches = [...this.rendererProfiles.values()].filter((profile) =>
+      (renderer === undefined || profile.renderer === renderer)
+      && (modelId === undefined || profile.modelId === modelId));
+    if (!matches.length) return { ok: false, reason: 'renderer-profile-not-configured', batch: null };
+    if (matches.length > 1) return { ok: false, reason: 'renderer-profile-selection-ambiguous', batch: null };
+    return mapMotorFrameToRendererCommands(matches[0], frame);
   }
 
   /**
@@ -135,12 +220,15 @@ export class OrganismMotorRuntime {
 
   diagnostics(): OrganismMotorRuntimeDiagnostics {
     const snapshot = this.controller.snapshot();
+    const profiles = [...this.rendererProfiles.values()].map(profileSummary);
+    const onlyProfile = profiles.length === 1 ? profiles[0] : null;
     return {
       configured: this.configured,
       controllerTick: snapshot.tick,
       activeGoalId: snapshot.activeGoal?.id ?? null,
-      activeRigProfileId: this.activeRigProfile?.profileId ?? null,
-      activeRenderer: this.activeRigProfile?.renderer ?? null,
+      activeRigProfileId: onlyProfile?.profileId ?? null,
+      activeRenderer: onlyProfile?.renderer ?? null,
+      registeredProfiles: profiles,
       channel: this.frames.diagnostics(),
       continuousLoopRunning: this.continuousTimer !== null,
       continuousLoopErrors: this.continuousLoopErrors,
