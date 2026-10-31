@@ -33,13 +33,13 @@
   },
   "lockedNpmDependencies": {
     "status": "pending",
-    "componentCount": 462,
+    "componentCount": 477,
     "componentFingerprintSha256": null,
     "reviewerType": null,
     "reviewer": null,
     "reviewedAt": null,
     "evidenceRef": null,
-    "note": "The fingerprint is intentionally unset until a human review is recorded. Review the full locked dependency inventory; changed packages or license expressions require a fresh review."
+    "note": "The fingerprint is intentionally unset until a human review is recorded. Review the full locked dependency inventory; changed packages or license expressions require a fresh review. Current measured inventory: 477 components at source SHA 7dc96bd0dfa612f6b47c37b6add2bc6ba82a33d2; fingerprint remains intentionally unset pending human review."
   },
   "sourceArchives": [
     {
