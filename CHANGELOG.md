@@ -1,3 +1,9 @@
+## [NK1][Learning] Run P26 validation on canonical source pushes (2026-10-31)
+
+- Add a narrow push trigger on workpass70-source for the persisted learning-experiment plan validator, its regression/CLI tests, and the workflow itself.
+- Preserve the existing pull-request gate. This closes the gap where direct commits to the canonical source branch did not run P26 because the workflow previously listened only to pull requests and manual dispatch.
+- The workflow trigger is not itself evidence of a passing test; the exact-source Actions run must complete successfully.
+
 ## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
 
 - Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.
