@@ -1,3 +1,11 @@
+## [NK1][Aspect 11] Wire cross-renderer body switching into the avatar UI (2026-10-31)
+
+- Add `app/src/components/avatar/embodimentUiBridge.ts`: projects the canonical `OrganismSnapshot` into the shared `SemanticBodyState`, holds a static, honest capability table for the four UI renderers (Live2D, Original SVG, Legacy sprites as 2D; Three.js VRM as 3D), plans the handoff through `planEmbodimentSwitch`, and runs a bounded monotonic crossfade.
+- Wire the contract into `AvatarStage.tsx`: a body change now plans a handoff, applies the bounded crossfade, and reports the handoff plus any unsupported channels. The effect depends on `mode` only and reads the latest snapshot/mouth pose from refs, so per-tick snapshot updates cannot cancel the transition.
+- `requiresNeutralRebind` is recomputed from the precise renderer identity, so switching between two different 2D renderers still replaces the body.
+- Add `app/scripts/embodiment-ui-bridge.test.mjs` (9 regressions) and the `test:embodiment-ui-bridge` script; extend the `NK1 embodiment switch contract` workflow to run it. App tests 367/367, app typecheck PASS.
+- Scope honesty: this is a contract/UI layer. It creates no `AdapterApplyReceipt` and claims no pose execution or frame completion. The 2.5D depth-rig adapter is still not on a render path, so no separate 2.5D UI renderer is added.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
