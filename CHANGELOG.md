@@ -1,3 +1,12 @@
+## 2026-10-31 — unified embodiment CI repair and external toolchain intake
+
+- Narrowed untrusted Live2D renderer signal revisions and timestamps before constructing typed apply/verify receipts.
+- Classified malformed Khronos report JSON/schema as invalid before exact-byte digest comparison; well-formed reports still require SHA-256 binding.
+- Corrected typed-array buffer variance and Three.js matrixWorld scene-readback typing.
+- Prioritized anger/frustration cross-arm intent over idle `wait/rest` action labels.
+- Corrected duplicate renderer/model registration error ordering without relaxing monotonic profile revisions.
+- Recorded the uploaded Khronos Validator and Blender VRM Add-on hashes, licenses and authoring-only usage policy in `docs/NK1_EXTERNAL_AVATAR_TOOLCHAIN_INTAKE_2026-10-31_RU.md`.
+
 ## [NK1][Embodiment] Local avatar evidence bundle UI (2026-10-31)
 
 - Added browser-side import of an asset provenance bundle containing the manifest and original Khronos report JSON.

@@ -77,7 +77,7 @@ function parseGlbChunks(bytes: Uint8Array): { json: RecordValue; jsonBytes: numb
   let offset = 12;
   let json: RecordValue | null = null;
   let jsonBytes = 0;
-  let bin = new Uint8Array(0);
+  let bin: Uint8Array = new Uint8Array(0);
   let sawBin = false;
   while (offset < bytes.byteLength) {
     if (offset + 8 > bytes.byteLength) return fail("glb-chunk-header-truncated");

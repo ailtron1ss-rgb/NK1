@@ -139,15 +139,15 @@ export class OrganismMotorRuntime {
       const modelKey = profile.renderer + ':' + profile.modelId;
       if (modelKeys.has(modelKey)) throw new Error('renderer-model-profile-already-registered');
       modelKeys.add(modelKey);
-      const previous = staged.get(profile.profileId);
-      if (previous && (profile.revision <= previous.revision || previous.renderer !== profile.renderer)) {
-        throw new Error('renderer-profile-revision-not-increasing-or-kind-changed');
-      }
       const duplicateModelProfile = [...staged.values()].some((registered) =>
         registered.profileId !== profile.profileId
         && registered.renderer === profile.renderer
         && registered.modelId === profile.modelId);
       if (duplicateModelProfile) throw new Error('renderer-model-profile-already-registered');
+      const previous = staged.get(profile.profileId);
+      if (previous && (profile.revision <= previous.revision || previous.renderer !== profile.renderer)) {
+        throw new Error('renderer-profile-revision-not-increasing-or-kind-changed');
+      }
       staged.set(profile.profileId, structuredClone(profile));
     }
     if (staged.size > 16) throw new Error('renderer-profile-registry-capacity-reached');

@@ -33,6 +33,7 @@ export interface DepthRigSceneNodeLike {
   renderOrder: number;
   matrixAutoUpdate?: boolean;
   matrixWorldNeedsUpdate?: boolean;
+  matrixWorld?: { elements: number[] };
   matrix?: { clone?(): unknown; copy?(value: unknown): unknown };
   updateMatrix?(): void;
   updateMatrixWorld?(force?: boolean): void;

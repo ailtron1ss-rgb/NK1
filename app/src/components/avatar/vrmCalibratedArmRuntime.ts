@@ -97,15 +97,17 @@ function gestureTarget(
   binding: VrmArmRuntimeBinding,
   state: VrmArmGestureState,
 ): Readonly<{ x: number; y: number }> | null {
-  if (!state.awake || state.action === "wait" || state.action === "rest") return null;
+  if (!state.awake) return null;
   const reach = binding.upperArmLengthM + binding.forearmLengthM;
   const inward = binding.side === "right" ? -1 : 1;
+  // High-arousal anger gestures outrank an otherwise idle action label.
   if (state.emotion === "anger" || state.emotion === "frustration") {
     return {
       x: binding.shoulder.x + inward * Math.min(0.20, reach * 0.42),
       y: binding.shoulder.y + Math.min(0.045, reach * 0.10),
     };
   }
+  if (state.action === "wait" || state.action === "rest") return null;
   if (state.action === "respond" && state.speaking && binding.side === "right") {
     return {
       x: binding.shoulder.x - Math.min(0.17, reach * 0.34),

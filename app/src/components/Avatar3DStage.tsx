@@ -205,7 +205,7 @@ export function Avatar3DStage(props:Props){
           readbackReady=rt.depthRigScene.bindings.size===rt.depthRigScene.asset.rig.nodes.length
             &&[...rt.depthRigScene.bindings.values()].every((node)=>Number.isFinite(node.position.x)
               &&Number.isFinite(node.position.y)&&Number.isFinite(node.rotation.z)
-              &&node.matrixWorld.elements.every(Number.isFinite));
+              &&node.matrixWorld !== undefined&&node.matrixWorld.elements.every(Number.isFinite));
         }else{
           const visibleRoot=rt.loaded?.visible?rt.loaded:rt.body.root;
           visibleRoot.updateMatrixWorld(true);

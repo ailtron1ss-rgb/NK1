@@ -427,7 +427,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const receipt = ev.data;
         const context = switchContextRef.current;
         if (!context || receipt.adapterId !== "nk1-live2d" || receipt.executionId !== context.executionId
-          || receipt.stateRevision !== context.revision || !Number.isFinite(receipt.appliedAtMonotonicMs)
+           || typeof receipt.stateRevision !== "number" || !Number.isSafeInteger(receipt.stateRevision)
+          || receipt.stateRevision !== context.revision || typeof receipt.appliedAtMonotonicMs !== "number" || !Number.isFinite(receipt.appliedAtMonotonicMs)
           || !Array.isArray(receipt.acceptedChannels) || receipt.acceptedChannels.length === 0
           || receipt.acceptedChannels.length > 32
           || !receipt.acceptedChannels.every((x: unknown) => typeof x === "string" && x.length > 0 && x.length <= 96)
@@ -438,15 +439,16 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         publishRendererSignal({ kind: "apply", receipt: {
           adapterId: receipt.adapterId, executionId: receipt.executionId, stateRevision: receipt.stateRevision,
           appliedAtMonotonicMs: receipt.appliedAtMonotonicMs,
-          acceptedChannels: receipt.acceptedChannels, rejectedChannels: receipt.rejectedChannels,
+          acceptedChannels: receipt.acceptedChannels as string[], rejectedChannels: receipt.rejectedChannels as string[],
         } });
       }
       if (ev.data.type === "live2d_switch_verification") {
         const verification = ev.data;
         const context = switchContextRef.current;
         if (!context || verification.adapterId !== "nk1-live2d" || verification.executionId !== context.executionId
+           || typeof verification.stateRevision !== "number" || !Number.isSafeInteger(verification.stateRevision)
           || verification.stateRevision !== context.revision || typeof verification.verified !== "boolean"
-          || !Number.isFinite(verification.observedAtMonotonicMs)
+          || typeof verification.observedAtMonotonicMs !== "number" || !Number.isFinite(verification.observedAtMonotonicMs)
           || !Array.isArray(verification.observedChannels)
           || !verification.observedChannels.every((x: unknown) => typeof x === "string" && x.length > 0 && x.length <= 96)
           || !Array.isArray(verification.mismatches)
@@ -455,7 +457,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         publishRendererSignal({ kind: "verify", verification: {
           adapterId: verification.adapterId, executionId: verification.executionId, stateRevision: verification.stateRevision,
           verified: verification.verified, observedAtMonotonicMs: verification.observedAtMonotonicMs,
-          observedChannels: verification.observedChannels, mismatches: verification.mismatches,
+          observedChannels: verification.observedChannels as string[], mismatches: verification.mismatches as string[],
           reason: typeof verification.reason === "string" ? verification.reason.slice(0, 160) : undefined,
         } });
       }

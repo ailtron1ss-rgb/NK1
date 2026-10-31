@@ -121,32 +121,50 @@ export async function parseAvatarAssetEvidenceBundleJson(
       || typeof raw.khronosReportJson !== "string" || raw.khronosReportJson.length < 2
       || raw.khronosReportJson.length > 3 * 1024 * 1024) return reject("invalid-evidence-bundle");
 
-    const expectedDigest = raw.manifest.validation && record(raw.manifest.validation)
-      ? raw.manifest.validation.khronosReportSha256 : null;
-    if (!digest(expectedDigest)) return reject("invalid-evidence-bundle");
-    const actualDigest = await sha256Hex(raw.khronosReportJson);
-    if (actualDigest !== expectedDigest) return reject("khronos-report-digest-mismatch");
+    const manifest = raw.manifest;
+    const validation = record(manifest.validation) ? manifest.validation : null;
+    if (!validation) return reject("invalid-evidence-bundle");
+    const expectedDigestValue = validation.khronosReportSha256;
+    const expectedValidatorVersionValue = validation.khronosValidatorVersion;
+    if (!digest(expectedDigestValue) || !nonempty(expectedValidatorVersionValue, 80)) {
+      return reject("invalid-evidence-bundle");
+    }
+    const expectedDigest = expectedDigestValue;
+    const expectedValidatorVersion = expectedValidatorVersionValue;
+    const reportJson = raw.khronosReportJson;
 
     let report: unknown;
-    try { report = JSON.parse(raw.khronosReportJson); } catch { return reject("khronos-report-invalid"); }
-    if (!record(report) || !nonempty(report.validatorVersion, 80) || !record(report.issues)
-      || !Number.isSafeInteger(report.issues.numErrors) || (report.issues.numErrors as number) < 0
-      || !Number.isSafeInteger(report.issues.numWarnings) || (report.issues.numWarnings as number) < 0
-      || !Number.isSafeInteger(report.issues.numInfos) || (report.issues.numInfos as number) < 0
-      || !Number.isSafeInteger(report.issues.numHints) || (report.issues.numHints as number) < 0
-      || !Array.isArray(report.issues.messages) || typeof report.issues.truncated !== "boolean"
-      || report.mimeType !== "model/gltf-binary" || !record(report.info) || report.info.version !== "2.0") return reject("khronos-report-invalid");
-    if (report.issues.truncated !== false) return reject("khronos-report-incomplete");
-    if (report.issues.numErrors !== 0 || report.issues.messages.some((message) =>
+    try { report = JSON.parse(reportJson); } catch { return reject("khronos-report-invalid"); }
+    if (!record(report)) return reject("khronos-report-invalid");
+    const reportValidatorVersion = report.validatorVersion;
+    const issues = record(report.issues) ? report.issues : null;
+    const info = record(report.info) ? report.info : null;
+    if (!nonempty(reportValidatorVersion, 80) || !issues || !info
+      || !Number.isSafeInteger(issues.numErrors) || (issues.numErrors as number) < 0
+      || !Number.isSafeInteger(issues.numWarnings) || (issues.numWarnings as number) < 0
+      || !Number.isSafeInteger(issues.numInfos) || (issues.numInfos as number) < 0
+      || !Number.isSafeInteger(issues.numHints) || (issues.numHints as number) < 0
+      || !Array.isArray(issues.messages) || typeof issues.truncated !== "boolean"
+      || report.mimeType !== "model/gltf-binary" || info.version !== "2.0") {
+      return reject("khronos-report-invalid");
+    }
+
+    // Malformed JSON/schema is invalid-report; digest mismatch is reserved for a
+    // structurally valid report whose exact bytes differ from the manifest digest.
+    const actualDigest = await sha256Hex(reportJson);
+    if (actualDigest !== expectedDigest) return reject("khronos-report-digest-mismatch");
+
+    if (issues.truncated !== false) return reject("khronos-report-incomplete");
+    if (issues.numErrors !== 0 || issues.messages.some((message) =>
       record(message) && message.severity === 0)) return reject("khronos-report-has-errors");
-    if (report.validatorVersion !== raw.manifest.validation.khronosValidatorVersion) {
+    if (reportValidatorVersion !== expectedValidatorVersion) {
       return reject("khronos-validator-version-mismatch");
     }
-    if (Array.isArray(report.info.resources) && report.info.resources.some((resource) =>
+    if (Array.isArray(info.resources) && info.resources.some((resource) =>
       record(resource) && resource.storage === "external")) {
       return reject("external-resource-in-khronos-report");
     }
-    const manifestResult = validateAvatarAssetManifestV1(raw.manifest, {
+    const manifestResult = validateAvatarAssetManifestV1(manifest, {
       ...context,
       khronosReportSha256: actualDigest,
     });
@@ -157,12 +175,12 @@ export async function parseAvatarAssetEvidenceBundleJson(
       releaseEligible: manifestResult.releaseEligible,
       releaseBlockReason: manifestResult.releaseBlockReason,
       khronosReport: {
-        validatorVersion: report.validatorVersion,
+        validatorVersion: reportValidatorVersion,
         validatedAt: typeof report.validatedAt === "string" && iso(report.validatedAt) ? report.validatedAt : null,
         numErrors: 0,
-        numWarnings: report.issues.numWarnings as number,
-        numInfos: report.issues.numInfos as number,
-        numHints: report.issues.numHints as number,
+        numWarnings: issues.numWarnings as number,
+        numInfos: issues.numInfos as number,
+        numHints: issues.numHints as number,
       },
     };
   } catch (error) {
