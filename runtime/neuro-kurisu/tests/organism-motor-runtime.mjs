@@ -206,6 +206,28 @@ const exploreB = createCognitiveMotorGoalCandidate({
 });
 assert.notEqual(exploreA.goal.targetJointAnglesRad['head-yaw-joint'], exploreB.goal.targetJointAnglesRad['head-yaw-joint'],
   'exploration scan direction alternates deterministically instead of drifting one-sided');
+const verifyIntent = createCognitiveMotorGoalCandidate({
+  action: 'verify', tick: 13, nowMs: 1600, joints: motorProfileJoints,
+  score01: .7, predictedUtility01: .7, confidence01: .75, effort01: .12,
+  conflict01: .1, goalFit01: .7, novelty01: .3,
+});
+assert.ok(verifyIntent);
+assert.ok(verifyIntent.goal.targetJointAnglesRad['head-pitch-joint'] > 0);
+const restIntent = createCognitiveMotorGoalCandidate({
+  action: 'rest', tick: 14, nowMs: 1700,
+  joints: [{ id: 'head-rest-joint', role: 'head.pitch', minAngleRad: -.4, maxAngleRad: .4, restAngleRad: .12 }],
+  score01: .6, predictedUtility01: .6, confidence01: .7, effort01: .01,
+  conflict01: .1, goalFit01: .6, novelty01: .1,
+});
+assert.equal(restIntent.goal.targetJointAnglesRad['head-rest-joint'], .12);
+const clampedIntent = createCognitiveMotorGoalCandidate({
+  action: 'respond', tick: 15, nowMs: 1800,
+  joints: [{ id: 'narrow-head', role: 'head.pitch', minAngleRad: -.02, maxAngleRad: .02, restAngleRad: 0 }],
+  score01: .9, predictedUtility01: .9, confidence01: .9, effort01: .02,
+  conflict01: 0, goalFit01: .9, novelty01: .2,
+});
+assert.equal(clampedIntent.goal.targetJointAnglesRad['narrow-head'], -.02,
+  'gesture offsets must clamp to the calibrated joint envelope');
 assert.equal(createCognitiveMotorGoalCandidate({
   action: 'reflect', tick: 10, nowMs: 1300, joints: motorProfileJoints,
   score01: .9, predictedUtility01: .9, confidence01: .9, effort01: 0,
