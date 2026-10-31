@@ -1,9 +1,28 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { parseLabels } from '../scripts/run-memory-retrieval-experiment.mjs';
 import {
   fingerprintMemoryRetrievalDataset,
   runMemoryOS2RetrievalBenchmark,
 } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+
+const parserRows = parseLabels(JSON.stringify({
+  id: 'parser-row',
+  query: 'source clustered memory query',
+  relevantIds: ['cluster-memory-0'],
+  split: 'holdout',
+  independenceGroupId: 'episode-parser',
+}));
+assert.equal(parserRows[0].independenceGroupId, 'episode-parser',
+  'the real experiment CLI parser must preserve source-cluster labels');
+assert.throws(() => parseLabels(JSON.stringify({
+  id: 'parser-long-group',
+  query: 'source clustered memory query',
+  relevantIds: ['cluster-memory-0'],
+  split: 'holdout',
+  independenceGroupId: 'g'.repeat(121),
+})), /labels-invalid-independence-group-id-line:1/,
+  'overlong source-group IDs must be rejected rather than silently truncated');
 
 const now = 2_000_000_000_000;
 const memory = new MemoryOS2();
@@ -114,6 +133,22 @@ assert.equal(leakedReport.datasetIntegrity.independenceGroupSplitLeakageCount, 1
 assert.equal(leakedReport.datasetIntegrity.validForPromotion, false);
 assert.equal(leakedReport.promotion.gates.datasetIntegrity, false);
 assert.equal(leakedReport.promotion.allowed, false);
+
+const oversizedGroup = structuredClone(examples);
+oversizedGroup[4].independenceGroupId = 'g'.repeat(121);
+const oversizedFingerprint = fingerprintMemoryRetrievalDataset(oversizedGroup);
+const oversizedReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), oversizedGroup, {
+  now,
+  k: 5,
+  bootstrapSamples: 200,
+  maxExamples: 512,
+  datasetProvenance: { ...provenance, contentSha256: oversizedFingerprint },
+  seed: 29,
+});
+assert.equal(oversizedReport.datasetIntegrity.truncatedFieldRows, 1,
+  'an overlong source-group identity must be reported as truncated input');
+assert.equal(oversizedReport.datasetIntegrity.validForPromotion, false,
+  'lossy source-group normalization must block promotion');
 
 console.log('WORKPASS77_MEMORY_CLUSTER_BOOTSTRAP=PASS', JSON.stringify({
   clusters: report.confidence.recallAtK01.clusterCount,
