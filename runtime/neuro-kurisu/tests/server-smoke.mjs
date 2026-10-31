@@ -72,6 +72,15 @@ try {
   const motorFrameResponse=await fetch(`http://127.0.0.1:${port}/api/organism/motor-frame`);
   const motorFrame=await motorFrameResponse.json();
   if(!motorFrameResponse.ok || motorFrame.ok!==true || motorFrame.configured!==false || motorFrame.frame!==null || motorFrame.readOnly!==true || motorFrame.diagnostics?.channel?.hasLatest!==false || motorFrame.diagnostics?.continuousLoopRunning!==false) throw new Error(`motor frame endpoint must fail closed before calibrated skeleton setup: status=${motorFrameResponse.status} body=${JSON.stringify(motorFrame)}`);
+  const invalidMotorRenderer=await fetch(`http://127.0.0.1:${port}/api/organism/motor-frame?renderer=live2d%2F..%2Fadmin`);
+  if(invalidMotorRenderer.status!==400 || (await invalidMotorRenderer.json()).error!=='invalid-motor-renderer') throw new Error('motor frame endpoint must reject unsupported renderer identifiers');
+  const motorModelWithoutRenderer=await fetch(`http://127.0.0.1:${port}/api/organism/motor-frame?modelId=kurisu-live2d-v1`);
+  if(motorModelWithoutRenderer.status!==400 || (await motorModelWithoutRenderer.json()).error!=='motor-model-requires-renderer') throw new Error('motor model selector must be scoped to an explicit renderer');
+  const invalidMotorModel=await fetch(`http://127.0.0.1:${port}/api/organism/motor-frame?renderer=depth2d&modelId=../../server`);
+  if(invalidMotorModel.status!==400 || (await invalidMotorModel.json()).error!=='invalid-motor-model-id') throw new Error('motor frame endpoint must reject path-like model identifiers');
+  const requestedMotorProfile=await fetch(`http://127.0.0.1:${port}/api/organism/motor-frame?renderer=depth2d&modelId=kurisu-depth-profile`);
+  const requestedMotorBody=await requestedMotorProfile.json();
+  if(!requestedMotorProfile.ok || requestedMotorBody.configured!==false || requestedMotorBody.rendererCommands!==null || !Array.isArray(requestedMotorBody.diagnostics?.registeredProfiles)) throw new Error('renderer-scoped motor projection must remain null before calibrated profile setup');
   const motorStreamResponse=await rawFetch(`http://127.0.0.1:${port}/api/organism/motor-frame/stream`,{signal:AbortSignal.timeout(4000)});
   if(!motorStreamResponse.ok || !String(motorStreamResponse.headers.get('content-type')||'').includes('text/event-stream')) throw new Error('motor frame stream must open as server-sent events');
   const motorStreamReader=motorStreamResponse.body.getReader();
