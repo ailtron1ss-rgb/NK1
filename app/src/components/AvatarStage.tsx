@@ -9,6 +9,7 @@ import {
 } from "./avatar/nativeSpeechProviderEvents";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { buildBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
+import { browserSpeechWatchdogMs } from "./avatar/browserSpeechWatchdog";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -63,6 +64,7 @@ type BrowserSpeechSession = {
   voiceEmphasis: number;
   lifecycleSequence: number;
   lastLifecycleEvent: SpeechLifecycleEventV1 | null;
+  watchdogTimer: number | null;
 };
 
 function speechAudioClockNow(session: BrowserSpeechSession, nowMs: number): number {
@@ -92,6 +94,12 @@ function recordSpeechLifecycle(session: BrowserSpeechSession, phase: SpeechLifec
   if (!acceptsSpeechLifecycleEventV1(session.lastLifecycleEvent, event)) return;
   session.lifecycleSequence = event.sequence;
   session.lastLifecycleEvent = event;
+}
+
+function clearBrowserSpeechWatchdog(session: BrowserSpeechSession): void {
+  if (session.watchdogTimer === null) return;
+  window.clearTimeout(session.watchdogTimer);
+  session.watchdogTimer = null;
 }
 
 function sameMouthPose(a: MouthPose, b: MouthPose): boolean {
@@ -138,6 +146,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
     if (active) {
+      clearBrowserSpeechWatchdog(active);
       active.lastAudioElapsedMs = Math.max(active.lastAudioElapsedMs, speechAudioClockNow(active, performance.now()));
       activeSpeechSessionRef.current = null;
       lastSpeechSessionRef.current = active;
@@ -248,6 +257,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           voiceEmphasis: prosody.emphasis01,
           lifecycleSequence: 0,
           lastLifecycleEvent: null,
+          watchdogTimer: null,
         };
         recordSpeechLifecycle(session, "queued", performance.now());
         activeSpeechSessionRef.current = session;
@@ -263,8 +273,24 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         const availableVoices = voicesRef.current;
         const selected = availableVoices.find((voice) => voice.name === voiceName) ?? availableVoices.find((voice) => voice.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())) ?? null;
         if (selected) utterance.voice = selected;
+        const expireSpeechSession = (errorCode: string) => {
+          if (activeSpeechSessionRef.current !== session) return;
+          clearBrowserSpeechWatchdog(session);
+          session.lastAudioElapsedMs = Math.max(session.lastAudioElapsedMs, speechAudioClockNow(session, performance.now()));
+          activeSpeechSessionRef.current = null;
+          lastSpeechSessionRef.current = session;
+          speechPhaseRef.current = "unknown";
+          recordSpeechLifecycle(session, "error", performance.now(), { errorCode });
+          utteranceRef.current = null;
+          try { synth.cancel(); } catch { /* browser may deny cancellation */ }
+          setVoiceStatus("unknown");
+          setMouthPose(CLOSED_MOUTH);
+          console.warn("Kurisu browser speech watchdog expired", { speechEventId, errorCode });
+        };
         utterance.onstart = () => {
           if (activeSpeechSessionRef.current !== session) return;
+          clearBrowserSpeechWatchdog(session);
+          session.watchdogTimer = window.setTimeout(() => expireSpeechSession("speech-watchdog-timeout"), browserSpeechWatchdogMs(text, rate, "speaking"));
           const now = performance.now();
           session.boundaryAnchors = [{ charIndex: 0, audioTimeMs: 0, timelineTimeMs: 0 }];
           session.anchorAudioPerformanceAtMs = now;
@@ -306,6 +332,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         };
         utterance.onend = () => {
           if (activeSpeechSessionRef.current !== session) return;
+          clearBrowserSpeechWatchdog(session);
           session.lastAudioElapsedMs = Math.max(session.lastAudioElapsedMs, speechAudioClockNow(session, performance.now()));
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
@@ -317,6 +344,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         };
         utterance.onerror = (event) => {
           if (activeSpeechSessionRef.current !== session) return;
+          clearBrowserSpeechWatchdog(session);
           session.lastAudioElapsedMs = Math.max(session.lastAudioElapsedMs, speechAudioClockNow(session, performance.now()));
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
@@ -330,8 +358,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         utteranceRef.current = utterance;
         try {
           synth.cancel();
+          session.watchdogTimer = window.setTimeout(() => expireSpeechSession("speech-queue-watchdog-timeout"), browserSpeechWatchdogMs(text, rate, "queued"));
           synth.speak(utterance);
         } catch (error) {
+          clearBrowserSpeechWatchdog(session);
           activeSpeechSessionRef.current = null;
           lastSpeechSessionRef.current = session;
           speechPhaseRef.current = "unknown";
@@ -351,6 +381,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       synth.removeEventListener?.("voiceschanged", readVoices);
       const active = activeSpeechSessionRef.current;
       if (active) {
+        clearBrowserSpeechWatchdog(active);
         active.lastAudioElapsedMs = Math.max(active.lastAudioElapsedMs, speechAudioClockNow(active, performance.now()));
         activeSpeechSessionRef.current = null;
         lastSpeechSessionRef.current = active;
