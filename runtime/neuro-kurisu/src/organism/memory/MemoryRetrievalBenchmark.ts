@@ -1,5 +1,35 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { MemoryOS2, type MemoryOSState2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
+
+/** RFC 2104 HMAC-SHA256 built on the runtime's approved createHash primitive. */
+export function hmacSha256Hex(key: string, message: string): string {
+  if (typeof key !== 'string' || !key.length || /[^\x00-\x7f]/.test(key)) {
+    throw new TypeError('memory-evidence-hmac-key-must-be-nonempty-ascii');
+  }
+  const blockSize = 64;
+  let keyBytes = new Uint8Array([...key].map(char => char.charCodeAt(0)));
+  if (keyBytes.length > blockSize) {
+    const digest = createHash('sha256').update(keyBytes).digest('hex');
+    keyBytes = new Uint8Array(32);
+    for (let index = 0; index < keyBytes.length; index += 1) {
+      keyBytes[index] = Number.parseInt(digest.slice(index * 2, index * 2 + 2), 16);
+    }
+  }
+  const normalizedKey = new Uint8Array(blockSize);
+  normalizedKey.set(keyBytes.subarray(0, blockSize));
+  const innerPad = new Uint8Array(blockSize);
+  const outerPad = new Uint8Array(blockSize);
+  for (let index = 0; index < blockSize; index += 1) {
+    innerPad[index] = normalizedKey[index]! ^ 0x36;
+    outerPad[index] = normalizedKey[index]! ^ 0x5c;
+  }
+  const innerHex = createHash('sha256').update(innerPad).update(message).digest('hex');
+  const innerDigest = new Uint8Array(32);
+  for (let index = 0; index < innerDigest.length; index += 1) {
+    innerDigest[index] = Number.parseInt(innerHex.slice(index * 2, index * 2 + 2), 16);
+  }
+  return createHash('sha256').update(outerPad).update(innerDigest).digest('hex');
+}
 
 export type MemoryRetrievalLanguage = 'en' | 'ru' | 'other';
 
@@ -48,6 +78,10 @@ export interface MemoryRetrievalBenchmarkOptions {
   bootstrapSamples?: number;
   seed?: number;
   datasetProvenance?: MemoryRetrievalBenchmarkProvenance;
+  /** Emit a bounded, hashed per-query baseline/candidate trace for an external evaluator. */
+  includeQueryEvidence?: boolean;
+  /** Ephemeral HMAC key shared across paired bootstrap runs; never serialized into reports. */
+  evidenceHashSalt?: string;
   /** Explicitly enable opt-in metadata recall for the candidate arm only; default is canonical retrieval. */
   metadataRecallEnabled?: boolean;
   /** Offline experiments may raise this bounded limit; the HTTP API leaves it at 64. */
@@ -125,12 +159,30 @@ function textField(value:unknown,max=200){return typeof value==='string'?value.t
 
 type BenchmarkRetrievalResult = MemoryItem2[] | { items: MemoryItem2[]; latencyMs: number; isolationSetupMs?: number };
 type QueryOutcome={recallAtK01:number;mrr01:number};
-type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[];unsupportedRetrievalOutcomes:number[]};
+export interface MemoryRetrievalArmEvidenceV1 {
+  memoryIdDigest:string;
+  quarantined:boolean;
+  stale:boolean;
+  future:boolean;
+  dormant:boolean;
+  invalidEpistemicStatus:boolean;
+}
+export interface MemoryRetrievalQueryEvidenceV1 {
+  exampleIdDigest:string;
+  queryDigest:string;
+  split:'train'|'holdout';
+  language:MemoryRetrievalLanguage;
+  answerable:boolean;
+  relevantMemoryIdDigests:string[];
+  rankedMemory:MemoryRetrievalArmEvidenceV1[];
+}
+type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[];unsupportedRetrievalOutcomes:number[];queryEvidence:MemoryRetrievalQueryEvidenceV1[]};
 
-function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:string,k:number)=>BenchmarkRetrievalResult, k:number, now:number):Evaluation {
+function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:string,k:number)=>BenchmarkRetrievalResult, k:number, now:number, includeQueryEvidence=false, digestEvidence?:(value:string)=>string):Evaluation {
   let recall=0,mrr=0,precision=0,covered=0,quarantined=0,stale=0,future=0,dormant=0,invalidEpistemic=0,duplicates=0,invalid=0;
   let answerableQueries=0,unanswerableQueries=0,unsupportedRetrievalCount=0,falseAbstentionCount=0;
   const latency:number[]=[]; const setupLatency:number[]=[]; const outcomes:QueryOutcome[]=[]; const unsupportedRetrievalOutcomes:number[]=[];
+  const queryEvidence:MemoryRetrievalQueryEvidenceV1[]=[];
   for(const ex of examples){
     const start=performance.now();
     let results:MemoryItem2[]=[];
@@ -144,6 +196,25 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
     const relevant=new Set(ex.relevantIds);
     const answerable=ex.answerable!==false;
     const hits=results.filter(row=>row?.id&&relevant.has(row.id));
+    if(includeQueryEvidence){
+      if(typeof digestEvidence!=='function')throw new Error('memory-query-evidence-hash-key-required');
+      queryEvidence.push({
+        exampleIdDigest:digestEvidence(ex.id),
+        queryDigest:digestEvidence(normalizeQuery(ex.query)),
+        split:ex.split,
+        language:ex.language??'other',
+        answerable,
+        relevantMemoryIdDigests:[...new Set(ex.relevantIds.map(id=>digestEvidence(id)))].sort(),
+        rankedMemory:results.filter(row=>Boolean(row?.id)).map(row=>({
+          memoryIdDigest:digestEvidence(row.id),
+          quarantined:row.epistemicStatus==='quarantined',
+          stale:(row.validUntilAt!=null&&Number(row.validUntilAt)<=now)||(row.supersededById!=null&&row.validUntilAt==null),
+          future:row.validFromAt!=null&&Number(row.validFromAt)>now,
+          dormant:Boolean(row.dormant),
+          invalidEpistemicStatus:!['fact','belief','hypothesis','unknown','quarantined'].includes(String(row.epistemicStatus)),
+        })),
+      });
+    }
     if(answerable){
       answerableQueries++;
       const hitIds=new Set(hits.map(row=>row.id));
@@ -178,7 +249,7 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
     duplicateResultCount:duplicates,invalidResultRate01:clamp(invalid/Math.max(1,examples.length*k)),
     latencyP95Ms:Number(p95(latency).toFixed(3)),isolationSetupP95Ms:Number(p95(setupLatency).toFixed(3))
   };
-  return {metrics,outcomes,unsupportedRetrievalOutcomes};
+  return {metrics,outcomes,unsupportedRetrievalOutcomes,queryEvidence};
 }
 function pairedBootstrapInterval(baseline:QueryOutcome[],candidate:QueryOutcome[],metric:'recallAtK01'|'mrr01',samples:number,seed:number){
   const n=Math.min(baseline.length,candidate.length);
@@ -347,8 +418,14 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const boundedSnapshotForBenchmark = { ...structuredClone(snapshot), items: structuredClone(corpus) } as MemoryOSState2;
   const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{const setupStarted=performance.now();const isolated=new MemoryOS2({metadataRecallEnabled:options.metadataRecallEnabled===true});isolated.restore(structuredClone(boundedSnapshotForBenchmark));const setupMs=performance.now()-setupStarted;const started=performance.now();const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};};
 
-  const baselineEval=evaluate(holdout,baseline,k,now);const candidateEval=evaluate(holdout,candidate,k,now);
-  const trainBaseline=evaluate(train,baseline,k,now);const trainCandidate=evaluate(train,candidate,k,now);
+  const includeQueryEvidence=options.includeQueryEvidence===true;
+  const evidenceHashSalt = includeQueryEvidence
+    ? (typeof options.evidenceHashSalt==='string' && /^[a-f0-9]{64}$/i.test(options.evidenceHashSalt)
+      ? options.evidenceHashSalt.toLowerCase() : randomUUID().replace(/-/g,'') + randomUUID().replace(/-/g,''))
+    : '';
+  const digestEvidence=(value:string)=>hmacSha256Hex(evidenceHashSalt,value);
+  const baselineEval=evaluate(holdout,baseline,k,now,includeQueryEvidence,digestEvidence);const candidateEval=evaluate(holdout,candidate,k,now,includeQueryEvidence,digestEvidence);
+  const trainBaseline=evaluate(train,baseline,k,now,includeQueryEvidence,digestEvidence);const trainCandidate=evaluate(train,candidate,k,now,includeQueryEvidence,digestEvidence);
   const datasetFingerprint=stableFingerprint(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot,options);
   const seed=providedSeed??Number.parseInt(createHash('sha256').update(`${datasetFingerprint}:${corpusHash}`).digest('hex').slice(0,8),16);
   const confidence={
@@ -447,6 +524,30 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const unanswerableHoldoutQueries=holdout.filter(x=>x.answerable===false).length;
   const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
   const enoughUnanswerableEvidence=unanswerableHoldoutQueries>=minUnanswerableHoldout;
+  const queryEvidence=includeQueryEvidence?{
+    schemaVersion:1 as const,
+    digestAlgorithm:'hmac-sha256-ephemeral-per-experiment' as const,
+    queryNormalization:'NFKC-lower-punctuation-symbol-and-whitespace-normalization' as const,
+    k,
+    datasetFingerprint,
+    corpusFingerprint:corpusHash,
+    retrievalConfigurationFingerprint:retrievalConfigHash,
+    baselineConfigurationFingerprint,
+    corpusMemoryIdDigests:[...new Set(corpus.map(row=>digestEvidence(row.id)))].sort(),
+    train:trainBaseline.queryEvidence.map(row=>({
+      exampleIdDigest:row.exampleIdDigest,queryDigest:row.queryDigest,language:row.language,split:row.split,
+    })),
+    holdout:baselineEval.queryEvidence.map((row,index)=>({
+      exampleIdDigest:row.exampleIdDigest,
+      queryDigest:row.queryDigest,
+      language:row.language,
+      split:row.split,
+      answerable:row.answerable,
+      relevantMemoryIdDigests:row.relevantMemoryIdDigests,
+      baselineRankedMemory:row.rankedMemory,
+      candidateRankedMemory:candidateEval.queryEvidence[index]?.rankedMemory??[],
+    })),
+  }:undefined;
   const baselineMetrics=baselineEval.metrics;const candidateMetrics=candidateEval.metrics;
   const recallDelta=candidateMetrics.recallAtK01-baselineMetrics.recallAtK01;
   const mrrDelta=candidateMetrics.mrr01-baselineMetrics.mrr01;
@@ -492,6 +593,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
     deltas:{recallAtK01:Number(recallDelta.toFixed(4)),mrr01:Number(mrrDelta.toFixed(4))},confidence,
     languageStratification,
+    ...(queryEvidence?{queryEvidence}:{}),
     promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumUnanswerableHoldoutQueries:minUnanswerableHoldout,minimumLanguageTrainQueries:minLanguageTrainQueries,minimumLanguageAnswerableHoldoutQueries:minLanguageAnswerableHoldoutQueries,minimumLanguageUnanswerableHoldoutQueries:minLanguageUnanswerableHoldoutQueries,requiredLanguages:['en','ru'],minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
     guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,minimumLanguageStratifiedQualityRequired:true,bothEnglishAndRussianRequiredForPromotion:true,perLanguageConfidenceBoundsRequired:true,languageLabelsMustBeExplicit:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,candidateModeExplicit:true,candidateModeAutoPromoted:false,bootstrapSeed:seed},
   };

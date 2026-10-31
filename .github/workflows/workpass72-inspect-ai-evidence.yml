@@ -1,4 +1,4 @@
-name: WorkPass72 Inspect AI evidence evaluation
+name: WorkPass72-73 independent evidence and memory evaluation
 
 on:
   push:
@@ -6,31 +6,39 @@ on:
       - "runtime/neuro-kurisu/src/organism/system/IndependentEvaluationEvidence.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/workpass72-*.mjs"
+      - "runtime/neuro-kurisu/tests/workpass73-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "evaluation/inspect_ai/**"
+      - "docs/WORKPASS72_INSPECT_AI_INDEPENDENT_EVIDENCE_RU.md"
+      - "docs/WORKPASS73_MEMORY_INSPECT_EVALUATION_RU.md"
       - ".github/workflows/workpass72-inspect-ai-evidence.yml"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/system/IndependentEvaluationEvidence.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/src/server/server.mjs"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts"
+      - "runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs"
       - "runtime/neuro-kurisu/tests/workpass72-*.mjs"
+      - "runtime/neuro-kurisu/tests/workpass73-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "evaluation/inspect_ai/**"
+      - "docs/WORKPASS72_INSPECT_AI_INDEPENDENT_EVIDENCE_RU.md"
+      - "docs/WORKPASS73_MEMORY_INSPECT_EVALUATION_RU.md"
       - ".github/workflows/workpass72-inspect-ai-evidence.yml"
 
 permissions:
   contents: read
 
-concurrency:
-  group: nk1-workpass72
-  cancel-in-progress: true
-
 jobs:
   independent-evidence-evaluation:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -42,19 +50,31 @@ jobs:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: evaluation/inspect_ai/requirements.txt
-      - name: Check sanitized NK1 evidence export
+
+      - name: Check sanitized cognitive evidence export
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass72-independent-evaluation-export.mjs evaluation/inspect_ai/evidence.ci.json
-      - name: Verify bundle digest and export Inspect dataset
+      - name: Verify cognitive bundle digest and export Inspect dataset
         run: python evaluation/inspect_ai/nk1_evidence.py evaluation/inspect_ai/evidence.ci.json --output evaluation/inspect_ai/samples.ci.jsonl
-      - name: Test independent scorer and tamper rejection
+
+      - name: Run existing MemoryOS2 bilingual A/B experiment on an isolated clone
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass73-memory-inspect-evidence.mjs evaluation/inspect_ai/memory-report.ci.json
+      - name: Verify HMAC-only per-query trace and export memory Inspect sample
+        run: python evaluation/inspect_ai/nk1_memory_evidence.py evaluation/inspect_ai/memory-report.ci.json --output evaluation/inspect_ai/memory-samples.ci.jsonl
+
+      - name: Test independent cognitive and memory scorers
         run: python -m unittest discover -s evaluation/inspect_ai/tests -v
       - name: Install pinned Inspect AI
         run: python -m pip install --disable-pip-version-check --no-input -r evaluation/inspect_ai/requirements.txt
-      - name: Run Inspect AI task without external model calls
+      - name: Run cognitive evidence Inspect task without external model calls
         env:
           NK1_INSPECT_SAMPLES: evaluation/inspect_ai/samples.ci.jsonl
         run: inspect eval evaluation/inspect_ai/nk1_inspect_task.py --model mockllm/model
-      - name: Check runtime route contract
+      - name: Run bilingual memory holdout Inspect task without external model calls
+        env:
+          NK1_MEMORY_INSPECT_SAMPLES: evaluation/inspect_ai/memory-samples.ci.jsonl
+        run: inspect eval evaluation/inspect_ai/nk1_memory_inspect_task.py --model mockllm/model
+
+      - name: Check runtime evidence route contract
         working-directory: runtime/neuro-kurisu
         run: node tests/workpass72-inspect-evidence-route.mjs
       - name: Typecheck canonical runtime
