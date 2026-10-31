@@ -36,7 +36,8 @@ const iso=(value:unknown):value is string=>typeof value==="string"&&Number.isFin
 
 /** Validate identity and evidence; redistribution rights are a separate output, never inferred. */
 export function validateAvatarAssetManifestV1(raw:unknown,context:AvatarAssetManifestContext):AvatarAssetManifestResult{
- const reject=(reason:AvatarAssetManifestResult extends {accepted:false;reason:infer R}?R:never):AvatarAssetManifestResult=>({accepted:false,reason});
+  type AvatarAssetManifestRejectReason = "invalid-manifest" | "model-fingerprint-mismatch" | "coordinate-frame-mismatch" | "validation-evidence-mismatch";
+const reject=(reason:AvatarAssetManifestRejectReason):AvatarAssetManifestResult=>({accepted:false,reason});
  if(!record(raw)||raw.schemaVersion!==1||!nonempty(raw.assetId,128)||!/^[a-z0-9][a-z0-9._:-]+$/i.test(raw.assetId)
   ||!["vrm","glb2","layered-2.5d-glb2"].includes(String(raw.format))||!sha256(raw.modelFingerprint)
   ||!record(raw.source)||!["original","commissioned","licensed","open-source","user-import"].includes(String(raw.source.kind))
