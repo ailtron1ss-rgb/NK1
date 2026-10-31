@@ -1,5 +1,4 @@
 import type { VRM, VRMMeta } from "@pixiv/three-vrm";
-import type { Euler, Object3D } from "three";
 
 export interface VrmExpressionFrame {
   emotion: string;
@@ -36,7 +35,7 @@ export interface VrmNormalizedMotorFrame {
   speaking: boolean;
 }
 
-type NormalizedBoneNode = Object3D & { rotation: Euler };
+type NormalizedBoneNode = { rotation: { x: number; y: number; z: number; set(x: number, y: number, z: number): unknown } };
 
 export interface VrmNormalizedMotorRig {
   head: NormalizedBoneNode | null;
@@ -104,7 +103,7 @@ export function applyVrmNormalizedMotorFrame(
 ): VrmNormalizedMotorResult {
   const rig = resolveVrmNormalizedMotorRig(vrm);
   const entries = Object.entries(rig) as [keyof VrmNormalizedMotorRig, NormalizedBoneNode | null][];
-  const seen = new Set<Object3D>();
+  const seen = new Set<NormalizedBoneNode>();
   for (const [, node] of entries) {
     if (!node || seen.has(node)) continue;
     seen.add(node);
