@@ -10,6 +10,10 @@ on:
     paths:
       - app/src/components/avatar/depthRig.ts
       - app/src/components/avatar/depthRigSceneAdapter.ts
+      - app/src/components/avatar/motorFrameStream.ts
+      - app/src/components/avatar/motorFrameDepthRig.ts
+      - app/scripts/motor-frame-stream.test.mjs
+      - app/scripts/motor-frame-depth-rig.test.mjs
       - app/src/components/Avatar3DStage.tsx
       - app/src/components/AvatarStage.tsx
       - app/scripts/depth-rig-scene-adapter.test.mjs
@@ -48,9 +52,9 @@ jobs:
       - name: Install locked app dependencies
         working-directory: app
         run: npm ci
-      - name: Run canonical 2.5D scene adapter regressions
+      - name: Run unified 2D/2.5D/3D embodiment regressions
         working-directory: app
-        run: npm run test:depth-rig-scene
+        run: npm run test:unified-embodiment
       - name: Typecheck app integration
         working-directory: app
         run: npm run typecheck
