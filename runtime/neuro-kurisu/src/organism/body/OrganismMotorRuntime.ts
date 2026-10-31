@@ -118,6 +118,12 @@ export class OrganismMotorRuntime {
     if (previous && (profile.revision <= previous.revision || previous.renderer !== profile.renderer)) {
       throw new Error('renderer-profile-revision-not-increasing-or-kind-changed');
     }
+    const duplicateModelProfile = [...this.rendererProfiles.values()].some((registered) =>
+      registered.profileId !== profile.profileId
+      && registered.renderer === profile.renderer
+      && registered.modelId === profile.modelId);
+    if (duplicateModelProfile) throw new Error('renderer-model-profile-already-registered');
+    if (!previous && this.rendererProfiles.size >= 16) throw new Error('renderer-profile-registry-capacity-reached');
     this.rendererProfiles.set(profile.profileId, structuredClone(profile));
   }
 
