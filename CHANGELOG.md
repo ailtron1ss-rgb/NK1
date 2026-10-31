@@ -1,3 +1,9 @@
+## WorkPass76 follow-up — preserve blank memory-ID restore loss
+- Drop blank/whitespace memory IDs during restore and retain a bounded `blank-memory-id-dropped` diagnostic instead of silently erasing malformed source rows.
+- Extend the read-only MemoryDoctor with a dedicated `restoreDroppedBlankIds` count and warning; duplicate-ID counts remain semantically separate.
+- Add regression coverage for fail-closed removal, safe post-restore state, and diagnostic persistence across snapshot/restore.
+- No live database, connector, `main`, or Release ZIP changes.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
 ## WorkPass76 — MemoryOS2 revision-lineage restore integrity
