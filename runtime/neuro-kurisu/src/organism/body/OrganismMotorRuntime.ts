@@ -43,6 +43,7 @@ export interface OrganismMotorRuntimeDiagnostics {
   activeRenderer: MotorRendererKind | null;
   registeredProfiles: RegisteredMotorRendererProfile[];
   channel: MotorFrameChannelDiagnostics;
+  arbitration: ReturnType<MotorGoalArbiter['diagnostics']>;
   continuousLoopRunning: boolean;
   continuousLoopErrors: number;
   lastContinuousLoopError: string | null;
