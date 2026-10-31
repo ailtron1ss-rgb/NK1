@@ -229,7 +229,7 @@ export function connectMotorFrameStream(options: {
   };
   source.addEventListener("motor-frame", deliverFrame);
   source.addEventListener("motor-frame-status", deliverStatus);
-  source.onopen = () => options.onConnection?.("connected");
+  source.onopen = () => { lastTick = -1; options.onConnection?.("connected"); };
   source.onerror = () => options.onConnection?.("reconnecting");
   options.onConnection?.("connecting");
   return () => {
