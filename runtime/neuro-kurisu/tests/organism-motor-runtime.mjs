@@ -63,4 +63,52 @@ await new Promise((resolve) => setTimeout(resolve, 55));
 assert.equal(continuous.latestFrame()?.tick, stoppedTick, 'stop must prevent further motor ticks');
 assert.equal(continuous.diagnostics().continuousLoopErrors, 0);
 
-console.log('Organism motor runtime integration: 15 assertions passed.');
+// Renderer profiles are projections over one canonical controller, not replacement skeletons.
+const calibration = {
+  status: 'calibrated', evidenceId: 'rig.calibration.runtime-test',
+  calibratedAt: '2026-10-30T12:00:00.000Z', verifierVersion: 'runtime-test-v1',
+};
+function rendererProfile(renderer, modelId) {
+  const live2d = renderer === 'live2d';
+  const depth2d = renderer === 'depth2d';
+  return {
+    schemaVersion: 1, profileId: 'kurisu.' + renderer + '.runtime-test', modelId, revision: 1, renderer,
+    coordinateFrame: { handedness: 'right', upAxis: 'y', forwardAxis: '-z',
+      positionUnit: renderer === 'vrm3d' ? 'meters' : 'normalized', angleUnit: 'radians' },
+    calibration: structuredClone(calibration),
+    joints: [{
+      id: 'shoulder', role: 'left.shoulder.pitch', parentId: null,
+      minAngleRad: -1, maxAngleRad: 1, restAngleRad: 0,
+      maxSpeedRadPerSec: 2, maxAccelerationRadPerSec2: 8, maxJerkRadPerSec3: 80,
+      geometry: { offset: { x: 0, y: 0, z: 0 }, axis: { x: 0, y: 1, z: 0 } },
+      binding: {
+        targetId: 'left-arm', targetKind: live2d ? 'cubism-parameter' : depth2d ? 'depth-rig-node' : 'humanoid-bone',
+        component: live2d ? 'value' : depth2d ? 'rotation' : 'x',
+        scale: depth2d ? 90 : 1, offset: 0, minValue: depth2d ? -90 : -1,
+        maxValue: depth2d ? 90 : 1, fidelity: live2d ? 'approximate' : 'direct', requiredInFrame: true,
+      },
+    }],
+  };
+}
+motor.configureRigProfile(rendererProfile('depth2d', 'kurisu.depth-test'));
+motor.configureRigProfile(rendererProfile('vrm3d', 'kurisu.vrm-test'));
+const depthCommands = motor.rendererCommandsForFrame(moving, 'depth2d', 'kurisu.depth-test');
+assert.equal(depthCommands.ok, true);
+assert.equal(depthCommands.batch.commands[0].valueUnit, 'degrees');
+assert.equal(depthCommands.batch.renderer, 'depth2d');
+const vrmCommands = motor.rendererCommandsForFrame(moving, 'vrm3d', 'kurisu.vrm-test');
+assert.equal(vrmCommands.ok, true);
+assert.equal(vrmCommands.batch.commands[0].valueUnit, 'radians');
+assert.equal(vrmCommands.batch.renderer, 'vrm3d');
+assert.equal(motor.rendererCommandsForFrame(moving).reason, 'renderer-profile-selection-ambiguous');
+assert.equal(motor.diagnostics().registeredProfiles.length, 2);
+const profileCopy = motor.rendererProfileFor('depth2d', 'kurisu.depth-test');
+profileCopy.joints[0].binding.scale = 999;
+assert.equal(motor.rendererProfileFor('depth2d', 'kurisu.depth-test').joints[0].binding.scale, 90,
+  'renderer profile reads must be defensive copies');
+assert.throws(() => motor.configureRigProfile({
+  ...rendererProfile('live2d', 'kurisu.live-test'),
+  joints: [{ ...rendererProfile('live2d', 'kurisu.live-test').joints[0], maxAngleRad: 0.9 }],
+}), /canonical-skeleton-mismatch/, 'a renderer cannot silently alter the controller skeleton');
+
+console.log('Organism motor runtime integration: single controller, multi-renderer profile registry and fail-closed selection passed.');
