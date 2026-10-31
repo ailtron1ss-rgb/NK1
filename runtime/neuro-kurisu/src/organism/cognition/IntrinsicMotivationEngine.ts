@@ -132,7 +132,7 @@ export class IntrinsicMotivationEngine {
       dominance01:finiteInput(input.affect.dominance01,.5),
       confidence01:primary?Math.max(...normalizedComponents.map(x=>x.confidence01)):finiteInput(input.affect.confidence01),
     }:null;
-    const confidence=affect?.confidence01??0,arousal=affect?.arousal01??.5;
+    const confidence=affect?.confidence01??(normalizedComponents.length?Math.max(...normalizedComponents.map(item=>item.confidence01)):0),arousal=affect?.arousal01??.5;
     let exploration01=0,regulation01=0,engagement01=0,connection01=0;
     for(const component of normalizedComponents){
       const weight=component.intensity01*component.confidence01;
