@@ -12,8 +12,8 @@ export type HumanoidRole =
   | "leftUpperLeg" | "leftLowerLeg" | "leftFoot" | "leftToes"
   | "rightUpperLeg" | "rightLowerLeg" | "rightFoot" | "rightToes"
   | "leftEye" | "rightEye"
-  | `left00`
-  | `right00`;
+  | `left${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`
+  | `right${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`;
 
 export interface HumanoidNodeLike {
   readonly name?: string;
@@ -45,45 +45,40 @@ export interface HumanoidRigAudit {
 }
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
-const aliases: Readonly<Record<HumanoidRole, readonly string[]>> = {
-  hips: ["hips", "pelvis", "root"],
-  spine: ["spine", "spine1", "lowerback"],
-  chest: ["chest", "spine2", "thorax"],
-  upperChest: ["upperchest", "chest2", "spine3"],
-  neck: ["neck"],
-  head: ["head"],
-  leftShoulder: ["leftshoulder", "shoulderl", "lshoulder", "claviclel"],
-  leftUpperArm: ["leftupperarm", "upperarml", "lupperarm", "leftarm"],
-  leftLowerArm: ["leftlowerarm", "leftforearm", "forearml", "lowerarml", "lforearm"],
-  leftHand: ["lefthand", "handl", "lhand"],
-  rightShoulder: ["rightshoulder", "shoulderr", "rshoulder", "clavicler"],
-  rightUpperArm: ["rightupperarm", "upperarmr", "rupperarm", "rightarm"],
-  rightLowerArm: ["rightlowerarm", "rightforearm", "forearmr", "lowerarmr", "rforearm"],
-  rightHand: ["righthand", "handr", "rhand"],
-  leftUpperLeg: ["leftupperleg", "upperlegl", "leftupleg", "thighl"],
-  leftLowerLeg: ["leftlowerleg", "leftleg", "lowerlegl", "calfl"],
-  leftFoot: ["leftfoot", "footl"],
-  leftToes: ["lefttoes", "toesl", "lefttoe"],
-  rightUpperLeg: ["rightupperleg", "upperlegr", "rightupleg", "thighr"],
-  rightLowerLeg: ["rightlowerleg", "rightleg", "lowerlegr", "calfr"],
-  rightFoot: ["rightfoot", "footr"],
-  rightToes: ["righttoes", "toesr", "righttoe"],
-  leftEye: ["lefteye", "eyel"],
-  rightEye: ["righteye", "eyer"],
-  ...Object.fromEntries((["left", "right"] as const).flatMap((side) =>
-    (["Thumb", "Index", "Middle", "Ring", "Little"] as const).flatMap((finger) =>
-      (["Proximal", "Intermediate", "Distal"] as const).map((segment) => {
-        const role = `${side}${finger}${segment}` as HumanoidRole;
-        const s = side === "left" ? "l" : "r";
-        const f = finger.toLowerCase();
-        const part = segment.toLowerCase();
-        return [role, [`${side}${finger}${segment}`, `${f}${part}${s}`, `${s}${f}${part}`]];
-      }),
-    ),
-  )),
-} as Record<HumanoidRole, readonly string[]>;
-
-const roles = Object.keys(aliases) as HumanoidRole[];
+const aliases = new Map<HumanoidRole, readonly string[]>();
+const baseAliases: readonly (readonly [HumanoidRole, readonly string[]])[] = [
+  ["hips", ["hips", "pelvis", "root"]], ["spine", ["spine", "spine1", "lowerback"]],
+  ["chest", ["chest", "spine2", "thorax"]], ["upperChest", ["upperchest", "chest2", "spine3"]],
+  ["neck", ["neck"]], ["head", ["head"]],
+  ["leftShoulder", ["leftshoulder", "shoulderl", "lshoulder", "claviclel"]],
+  ["leftUpperArm", ["leftupperarm", "upperarml", "lupperarm", "leftarm"]],
+  ["leftLowerArm", ["leftlowerarm", "leftforearm", "forearml", "lowerarml", "lforearm"]],
+  ["leftHand", ["lefthand", "handl", "lhand"]],
+  ["rightShoulder", ["rightshoulder", "shoulderr", "rshoulder", "clavicler"]],
+  ["rightUpperArm", ["rightupperarm", "upperarmr", "rupperarm", "rightarm"]],
+  ["rightLowerArm", ["rightlowerarm", "rightforearm", "forearmr", "lowerarmr", "rforearm"]],
+  ["rightHand", ["righthand", "handr", "rhand"]],
+  ["leftUpperLeg", ["leftupperleg", "upperlegl", "leftupleg", "thighl"]],
+  ["leftLowerLeg", ["leftlowerleg", "leftleg", "lowerlegl", "calfl"]],
+  ["leftFoot", ["leftfoot", "footl"]], ["leftToes", ["lefttoes", "toesl", "lefttoe"]],
+  ["rightUpperLeg", ["rightupperleg", "upperlegr", "rightupleg", "thighr"]],
+  ["rightLowerLeg", ["rightlowerleg", "rightleg", "lowerlegr", "calfr"]],
+  ["rightFoot", ["rightfoot", "footr"]], ["rightToes", ["righttoes", "toesr", "righttoe"]],
+  ["leftEye", ["lefteye", "eyel"]], ["rightEye", ["righteye", "eyer"]],
+];
+for (const [role, names] of baseAliases) aliases.set(role, names);
+for (const side of ["left", "right"] as const) {
+  for (const finger of ["Thumb", "Index", "Middle", "Ring", "Little"] as const) {
+    for (const segment of ["Proximal", "Intermediate", "Distal"] as const) {
+      const role = (side + finger + segment) as HumanoidRole;
+      const s = side === "left" ? "l" : "r";
+      const f = finger.toLowerCase();
+      const part = segment.toLowerCase();
+      aliases.set(role, [side + finger + segment, f + part + s, s + f + part]);
+    }
+  }
+}
+const roles = Array.from(aliases.keys());
 const required: readonly HumanoidRole[] = [
   "hips", "spine", "head",
   "leftUpperArm", "leftLowerArm", "leftHand",
@@ -110,7 +105,7 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
   const nodes: Partial<Record<HumanoidRole, HumanoidNodeLike>> = {};
   const ambiguous: HumanoidRole[] = [];
   for (const role of roles) {
-    const names = aliases[role];
+    const names = aliases.get(role) ?? [];
     const matches = normalized.filter(({ name }) => names.some((alias) => name === normalize(alias)));
     if (matches.length === 1) nodes[role] = matches[0].node;
     else if (matches.length > 1) ambiguous.push(role);
