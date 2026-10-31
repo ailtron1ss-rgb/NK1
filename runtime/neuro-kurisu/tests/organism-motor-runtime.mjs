@@ -90,6 +90,35 @@ function rendererProfile(renderer, modelId) {
     }],
   };
 }
+const batchedRegistry = new OrganismMotorRuntime();
+const rendererProfiles = [
+  rendererProfile('live2d', 'kurisu.live-test'),
+  rendererProfile('depth2d', 'kurisu.depth-batch-test'),
+  rendererProfile('vrm3d', 'kurisu.vrm-batch-test'),
+];
+batchedRegistry.registerRendererRigProfiles(rendererProfiles);
+assert.equal(batchedRegistry.diagnostics().configured, true);
+assert.equal(batchedRegistry.diagnostics().registeredProfiles.length, 3,
+  'host initialization must register all three renderer profiles as one calibrated set');
+const invalidInitialBatch = new OrganismMotorRuntime();
+const mismatchedProfile = {
+  ...rendererProfile('vrm3d', 'kurisu.vrm-invalid-test'),
+  joints: [{ ...rendererProfile('vrm3d', 'kurisu.vrm-invalid-test').joints[0], maxAngleRad: 0.9 }],
+};
+assert.throws(() => invalidInitialBatch.registerRendererRigProfiles([
+  rendererProfile('live2d', 'kurisu.live-invalid-test'),
+  mismatchedProfile,
+]), /canonical-skeleton-mismatch/);
+assert.equal(invalidInitialBatch.diagnostics().configured, false,
+  'a failed batch must not leave a partially configured controller');
+const existingProfiles = batchedRegistry.diagnostics().registeredProfiles.length;
+assert.throws(() => batchedRegistry.registerRendererRigProfiles([
+  ...rendererProfiles,
+  rendererProfile('live2d', 'kurisu.live-overflow-test'),
+]), /renderer-model-profile-already-registered/);
+assert.equal(batchedRegistry.diagnostics().registeredProfiles.length, existingProfiles,
+  'a failed update must preserve the existing complete renderer registry');
+
 motor.configureRigProfile(rendererProfile('depth2d', 'kurisu.depth-test'));
 motor.configureRigProfile(rendererProfile('vrm3d', 'kurisu.vrm-test'));
 const depthCommands = motor.rendererCommandsForFrame(moving, 'depth2d', 'kurisu.depth-test');
