@@ -99,7 +99,7 @@ assert.equal(report.guardrails.rawSessionContentIncluded, false);
 assert.equal(report.guardrails.liveMemoryMutation, false);
 assert.equal(JSON.stringify(report).includes('Which vehicle is scheduled'), false);
 assert.equal(JSON.stringify(report).includes('Orion vehicle for its 2030 launch'), false);
-assert.equal(report.perQuestion.length, 2);
+assert.equal(report.perQuestion.length, 3);
 assert.equal(report.perQuestion.every(row => row.queryDigest.length === 64), true);
 assert.equal(report.perQuestion.every(row => row.questionIdDigest.length === 64), true);
 
