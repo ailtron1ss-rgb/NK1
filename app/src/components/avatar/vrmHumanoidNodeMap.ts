@@ -85,7 +85,7 @@ export function parseVrmHumanoidNodeMap(extensions: unknown, nodeCount: number):
       if (legacyEntries.some(([bone]) => bone.toLowerCase() === boneName.toLowerCase())) {
         return invalid("duplicate-legacy-vrm-humanoid-role", version);
       }
-      legacyEntries.push([boneName, item.node]);
+      legacyEntries.push([boneName, { node: item.node }]);
     }
     entries = legacyEntries;
   }
