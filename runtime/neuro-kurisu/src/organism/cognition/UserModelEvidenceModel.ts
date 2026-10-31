@@ -28,19 +28,39 @@ const validTick=(n:number)=>Number.isSafeInteger(n)&&n>=0;
 const clone=<T>(v:T):T=>JSON.parse(JSON.stringify(v)) as T;
 const normalizeKey=(v:unknown)=>boundedText(v,64).toLowerCase().replace(/[^a-z0-9._:-]/g,'-').replace(/-+/g,'-');
 const isDomain=(v:unknown):v is UserModelDomain=>typeof v==='string'&&DOMAINS.includes(v as UserModelDomain);
+/** Read persisted data without invoking getters; snapshots are untrusted input. */
+const ownData=(value:unknown,key:string):unknown=>{
+ if(!value||typeof value!=='object')return undefined;
+ const descriptor=Object.getOwnPropertyDescriptor(value,key);
+ return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
+};
+const boundedOwnArray=(value:unknown,max:number):unknown[]=>{
+ if(!Array.isArray(value))return [];
+ const length=ownData(value,'length');
+ if(!Number.isSafeInteger(length)||Number(length)<0)return [];
+ const result:unknown[]=[];
+ for(let index=Math.max(0,Number(length)-max);index<Number(length);index++){
+  const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+  if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value'))continue;
+  result.push(descriptor.value);
+ }
+ return result;
+};
 
 /** Fail-closed minimization boundary; upstream privacy policy and receipt attestation remain required. */
 export class UserModelEvidenceModel {
  private state:UserModelState={version:1,claims:[],candidates:[],processedEvidenceRefs:[],rejectedSensitiveCount:0,rejectedMalformedCount:0};
  snapshot(){return clone(this.state);}
  restore(raw?:Partial<UserModelState>|null){
-  const r=raw&&typeof raw==='object'?raw:{};
-  this.state={version:1,
-   claims:(Array.isArray(r.claims)?r.claims.slice(-128):[]).map((x:any)=>this.cleanClaim(x)).filter((x):x is UserModelClaim=>!!x),
-   candidates:(Array.isArray(r.candidates)?r.candidates.slice(-128):[]).map((x:any)=>this.cleanCandidate(x)).filter((x):x is UserModelCandidate=>!!x),
-   processedEvidenceRefs:Array.isArray(r.processedEvidenceRefs)?[...new Set(r.processedEvidenceRefs.filter((x):x is string=>typeof x==='string').map(x=>boundedText(x,180)).filter(Boolean))].slice(-512):[],
-   rejectedSensitiveCount:Number.isSafeInteger(r.rejectedSensitiveCount)?Math.max(0,r.rejectedSensitiveCount as number):0,
-   rejectedMalformedCount:Number.isSafeInteger(r.rejectedMalformedCount)?Math.max(0,r.rejectedMalformedCount as number):0};
+  const claims=boundedOwnArray(ownData(raw,'claims'),128).map(x=>this.cleanClaim(x)).filter((x):x is UserModelClaim=>!!x);
+  const candidates=boundedOwnArray(ownData(raw,'candidates'),128).map(x=>this.cleanCandidate(x)).filter((x):x is UserModelCandidate=>!!x);
+  const refs=boundedOwnArray(ownData(raw,'processedEvidenceRefs'),512)
+   .filter((x):x is string=>typeof x==='string').map(x=>boundedText(x,180)).filter(Boolean);
+  const sensitive=ownData(raw,'rejectedSensitiveCount');
+  const malformed=ownData(raw,'rejectedMalformedCount');
+  this.state={version:1,claims,candidates,processedEvidenceRefs:[...new Set(refs)].slice(-512),
+   rejectedSensitiveCount:Number.isSafeInteger(sensitive)?Math.max(0,sensitive as number):0,
+   rejectedMalformedCount:Number.isSafeInteger(malformed)?Math.max(0,malformed as number):0};
  }
  recordExplicit(i:{key:string;domain:UserModelDomain;value:string;tick:number;evidenceRef:string;explicit:boolean;sensitivity:'low-risk'|'sensitive'|'unknown'}):UserModelResult{
   if(i.sensitivity!=='low-risk'){this.state.rejectedSensitiveCount++;return{accepted:false,reason:'sensitive-or-unclassified'};}
@@ -97,14 +117,18 @@ export class UserModelEvidenceModel {
  }
  private remember(ref:string){this.state.processedEvidenceRefs=[...this.state.processedEvidenceRefs,ref].slice(-512);}
  private cleanClaim(r:any):UserModelClaim|null{
-  const key=normalizeKey(r?.key),value=boundedText(r?.value,120),ref=boundedText(r?.evidenceRef,180);
-  if(!key||!value||!isDomain(r?.domain)||!validTick(r?.firstSeenTick)||!validTick(r?.lastSeenTick)||!ref)return null;
-  return{key,domain:r.domain,value,status:r.status==='disputed'?'disputed':'confirmed',source:'user-explicit',evidenceRef:ref,firstSeenTick:r.firstSeenTick,lastSeenTick:r.lastSeenTick,confirmations:Number.isSafeInteger(r.confirmations)?Math.max(1,Math.min(1000,r.confirmations)):1,contradictions:Number.isSafeInteger(r.contradictions)?Math.max(0,Math.min(1000,r.contradictions)):0};
+  const key=normalizeKey(ownData(r,'key')),value=boundedText(ownData(r,'value'),120),ref=boundedText(ownData(r,'evidenceRef'),180);
+  const domain=ownData(r,'domain'),firstSeenTick=ownData(r,'firstSeenTick'),lastSeenTick=ownData(r,'lastSeenTick');
+  const status=ownData(r,'status'),confirmations=ownData(r,'confirmations'),contradictions=ownData(r,'contradictions');
+  if(!key||!value||!isDomain(domain)||!validTick(firstSeenTick as number)||!validTick(lastSeenTick as number)||!ref)return null;
+  return{key,domain,value,status:status==='disputed'?'disputed':'confirmed',source:'user-explicit',evidenceRef:ref,firstSeenTick:firstSeenTick as number,lastSeenTick:lastSeenTick as number,confirmations:Number.isSafeInteger(confirmations)?Math.max(1,Math.min(1000,confirmations as number)):1,contradictions:Number.isSafeInteger(contradictions)?Math.max(0,Math.min(1000,contradictions as number)):0};
  }
  private cleanCandidate(r:any):UserModelCandidate|null{
-  const key=normalizeKey(r?.key),value=boundedText(r?.value,120);
-  if(!key||!value||!isDomain(r?.domain)||!validTick(r?.firstSeenTick)||!validTick(r?.lastSeenTick))return null;
-  const observations=Number.isSafeInteger(r.observations)?Math.max(1,Math.min(1000,r.observations)):1;
-  return{key,domain:r.domain,value,observations,firstSeenTick:r.firstSeenTick,lastSeenTick:r.lastSeenTick,confidence01:Math.min(.65,clamp01(r.confidence01)),status:'unconfirmed-candidate'};
+  const key=normalizeKey(ownData(r,'key')),value=boundedText(ownData(r,'value'),120);
+  const domain=ownData(r,'domain'),firstSeenTick=ownData(r,'firstSeenTick'),lastSeenTick=ownData(r,'lastSeenTick');
+  const rawObservations=ownData(r,'observations'),rawConfidence=ownData(r,'confidence01');
+  if(!key||!value||!isDomain(domain)||!validTick(firstSeenTick as number)||!validTick(lastSeenTick as number))return null;
+  const observations=Number.isSafeInteger(rawObservations)?Math.max(1,Math.min(1000,rawObservations as number)):1;
+  return{key,domain,value,observations,firstSeenTick:firstSeenTick as number,lastSeenTick:lastSeenTick as number,confidence01:Math.min(.65,clamp01(rawConfidence as number)),status:'unconfirmed-candidate'};
  }
 }
