@@ -72,7 +72,7 @@ function rendererProfile(renderer, modelId) {
   const live2d = renderer === 'live2d';
   const depth2d = renderer === 'depth2d';
   return {
-    schemaVersion: 1, profileId: 'kurisu.' + renderer + '.runtime-test', modelId, revision: 1, renderer,
+    schemaVersion: 1, profileId: 'kurisu.' + renderer + '.' + modelId, modelId, revision: 1, renderer,
     coordinateFrame: { handedness: 'right', upAxis: 'y', forwardAxis: '-z',
       positionUnit: renderer === 'vrm3d' ? 'meters' : 'normalized', angleUnit: 'radians' },
     calibration: structuredClone(calibration),
@@ -114,7 +114,7 @@ assert.equal(invalidInitialBatch.diagnostics().configured, false,
 const existingProfiles = batchedRegistry.diagnostics().registeredProfiles.length;
 assert.throws(() => batchedRegistry.registerRendererRigProfiles([
   ...rendererProfiles,
-  rendererProfile('live2d', 'kurisu.live-overflow-test'),
+  rendererProfile('live2d', 'kurisu.live-test'),
 ]), /renderer-model-profile-already-registered/);
 assert.equal(batchedRegistry.diagnostics().registeredProfiles.length, existingProfiles,
   'a failed update must preserve the existing complete renderer registry');
