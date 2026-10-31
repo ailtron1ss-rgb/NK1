@@ -22,8 +22,9 @@ import {
 } from "./avatar/motorFrameStream";
 import { overlayMotorFrameOnDepthRigPose } from "./avatar/motorFrameDepthRig";
 import { resolveVrmMotorFrame } from "./avatar/motorFrameVrm";
+import type { EmbodimentRendererSignal } from "./avatar/embodimentRendererSignals";
 
-type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyMode?: "3d" | "2.5d"; revision?: number; motorFrameBatch?: RendererMotorCommandBatch | null };
+type Props = { switchExecutionId?: string | null; switchStateRevision?: number; onRendererSignal?: (signal: EmbodimentRendererSignal) => void; emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyMode?: "3d" | "2.5d"; revision?: number; motorFrameBatch?: RendererMotorCommandBatch | null };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
 type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; mixer:any; clips:any[]; clipName:string; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number; depthRigScene:PreparedDepthRigSceneV1|null; depthRigFrame:number; motorFrameTick:number };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
@@ -58,7 +59,7 @@ function disposeTree(root:any){root?.traverse?.((node:any)=>{node.geometry?.disp
 function bonesOf(root:any):Bone[]{const out:Bone[]=[];root.traverse((node:any)=>{if(node.isBone)out.push({node,name:String(node.name||"").toLowerCase().replace(/[^a-z0-9]/g,""),x:node.rotation.x,y:node.rotation.y,z:node.rotation.z});});return out;}
 function selectClip(clips:any[],action:ActionKind){const rules:Record<ActionKind,RegExp>={respond:/talk|speak|gesture|explain|wave/i,explore:/look|walk|explore|turn|inspect/i,verify:/think|inspect|focus|work|write/i,rest:/idle|rest|breath|sit/i,reflect:/think|ponder|idle/i,wait:/idle|stand|breath/i};return clips.find((clip)=>rules[action].test(String(clip.name||"")))||clips.find((clip)=>/idle|breath|stand/i.test(String(clip.name||"")) )||null;}
 export function Avatar3DStage(props:Props){
- const host=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),runtime=useRef<Runtime|null>(null),latest=useRef(props),loadToken=useRef(0);
+ const host=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),runtime=useRef<Runtime|null>(null),latest=useRef(props),loadToken=useRef(0),switchProgress=useRef<{executionId:string;adapterId:string;stateRevision:number;applyFrame:number;acceptedChannels:string[];applySent:boolean;verifySent:boolean}|null>(null);
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[modelFingerprint,setModelFingerprint]=useState(""),[state,setState]=useState<"procedural"|"loading"|"loaded"|"error"|"webgl-unavailable">("procedural"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("Реальная лицензированная модель Курису не включена в текущий репозиторий.");
  const [motorModelId,setMotorModelId]=useState<string|null>(null);
  const [motorFrameBatch,setMotorFrameBatch]=useState<RendererMotorCommandBatch|null>(null);
@@ -103,12 +104,45 @@ export function Avatar3DStage(props:Props){
         const overlay=overlayMotorFrameOnDepthRigPose(rt.depthRigScene.asset.rig,depthPose,depthMotor);
         if(overlay.ok&&overlay.pose){rendererPose=overlay.pose;rt.motorFrameTick=overlay.frameTick??rt.motorFrameTick;}
       }
-      const revision=typeof p.revision==="number"&&Number.isSafeInteger(p.revision)&&p.revision>=0?p.revision:0;
-      const result=applyDepthRigPreparedScenePoseV1(rt.depthRigScene,rendererPose,{stateRevision:revision,executionId:"depth-rig-frame-"+revision+"-"+(++rt.depthRigFrame)});
+      const revision=p.switchExecutionId&&Number.isSafeInteger(p.switchStateRevision)?p.switchStateRevision!:typeof p.revision==="number"&&Number.isSafeInteger(p.revision)&&p.revision>=0?p.revision:0;
+      const result=applyDepthRigPreparedScenePoseV1(rt.depthRigScene,rendererPose,{stateRevision:revision,executionId:p.switchExecutionId??("depth-rig-frame-"+revision+"-"+(++rt.depthRigFrame))});
       // A scene readback is deliberately not called GPU presentation evidence.
       if(result.status!=="applied") console.warn("NK1 2.5D renderer rejected pose",result.errors);
     }
     renderer.render(scene,camera);
+    const switchId=p.switchExecutionId;
+    if(!switchId){switchProgress.current=null;}
+    else{
+      const adapterId=p.bodyMode==="2.5d"?"nk1-depth-rig-scene-v1":"nk1-three-scene-v1";
+      const revision=Number.isSafeInteger(p.switchStateRevision)?p.switchStateRevision!:0;
+      let progress=switchProgress.current;
+      if(!progress||progress.executionId!==switchId||progress.adapterId!==adapterId){
+        progress={executionId:switchId,adapterId,stateRevision:revision,applyFrame:0,
+          acceptedChannels:p.bodyMode==="2.5d"?["depthRigSceneNodes"]:["rendererScene"],applySent:false,verifySent:false};
+        switchProgress.current=progress;
+      }
+      const surfaceReady=p.bodyMode==="2.5d"
+        ? Boolean(rt.depthRigScene&&rt.loaded?.visible&&rt.depthRigScene.bindings.size===rt.depthRigScene.asset.rig.nodes.length)
+        : Boolean((rt.loaded?.visible||rt.body.root.visible)&&renderer.domElement.isConnected);
+      if(surfaceReady&&!progress.applySent){
+        progress.applySent=true;
+        progress.applyFrame=renderer.info.render.frame;
+        p.onRendererSignal?.({kind:"apply",receipt:{
+          adapterId,stateRevision:revision,appliedAtMonotonicMs:performance.now(),
+          acceptedChannels:progress.acceptedChannels,rejectedChannels:[],executionId:switchId,
+        }});
+      }else if(surfaceReady&&progress.applySent&&!progress.verifySent&&renderer.info.render.frame>progress.applyFrame){
+        const readbackReady=p.bodyMode==="2.5d"
+          ? Boolean(rt.depthRigScene&&[...rt.depthRigScene.bindings.values()].every((node)=>Number.isFinite(node.position.x)&&Number.isFinite(node.position.y)&&Number.isFinite(node.rotation.z)))
+          : Boolean(renderer.domElement.isConnected&&(rt.loaded?.visible||rt.body.root.visible));
+        progress.verifySent=true;
+        p.onRendererSignal?.({kind:"verify",verification:{
+          adapterId,executionId:switchId,verified:readbackReady,stateRevision:revision,
+          observedAtMonotonicMs:performance.now(),observedChannels:readbackReady?progress.acceptedChannels:[],
+          mismatches:readbackReady?[]:progress.acceptedChannels,reason:readbackReady?undefined:"renderer-scene-readback-failed",
+        }});
+      }
+    }
    };raf=requestAnimationFrame(animate);setReady(true);setState("procedural");setMessage("");setStorageMessage("Процедурное 3D-тело готово; загрузите локальную VRM/GLB-модель для замены.");
    return()=>{disposed=true;cancelAnimationFrame(raf);observer?.disconnect();window.removeEventListener("resize",resize);renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointermove",move);renderer.domElement.removeEventListener("pointerup",up);renderer.domElement.removeEventListener("pointercancel",up);rt.mixer?.stopAllAction();disposeTree(scene);renderer.dispose();renderer.domElement.remove();runtime.current=null;setReady(false);};
   }catch(e){setState("webgl-unavailable");setMessage("WebGL недоступен. Включите аппаратное ускорение или используйте браузер с поддержкой WebGL.");setStorageMessage(e instanceof Error?e.message.slice(0,160):"Ошибка запуска 3D-рендерера");return()=>renderer?.dispose?.();}
@@ -116,7 +150,15 @@ export function Avatar3DStage(props:Props){
  useEffect(()=>{
   if(!ready)return;
   const rt=runtime.current;if(!rt)return;
-  if(!rt.loaded){rt.body.root.visible=props.bodyMode!=="2.5d";return;}
+  if(!rt.loaded){
+    rt.body.root.visible=props.bodyMode!=="2.5d";
+    if(props.bodyMode==="3d"){
+      props.onRendererSignal?.({kind:"ready",adapterId:"nk1-three-scene-v1",executionId:props.switchExecutionId??"",stateRevision:props.switchStateRevision??0,modelId:"nk1-procedural-vrm3d"});
+    }else{
+      setMessage("Ожидание авторской layered GLB-сцены для 2.5D.");
+    }
+    return;
+  }
   if(props.bodyMode==="2.5d"){
     const rawAsset=rt.loaded.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY];
     const preparation=rawAsset===undefined?null:prepareDepthRigSceneV1(rt.loaded,rawAsset);
@@ -131,6 +173,7 @@ export function Avatar3DStage(props:Props){
     rt.mixer?.stopAllAction();rt.mixer=null;rt.body.root.visible=false;
     setState("loaded");setMessage("2.5D rig готов. Scene readback включён; presented frame остаётся отдельной проверкой.");
     setMotorModelId(preparation.prepared.asset.rig.id);
+    props.onRendererSignal?.({kind:"ready",adapterId:"nk1-depth-rig-scene-v1",executionId:props.switchExecutionId??"",stateRevision:props.switchStateRevision??0,modelId:preparation.prepared.asset.rig.id});
     return;
   }
   const wasDepthRig=rt.depthRigScene!==null;
@@ -148,6 +191,7 @@ export function Avatar3DStage(props:Props){
   const declaredMotorModelId=typeof rawMotorModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawMotorModelId)?rawMotorModelId:null;
   setMotorModelId(declaredMotorModelId);setState("loaded");
   setMessage(rt.bones.length?"3D skeleton active; calibrated motor projection is model-bound.":"Геометрия загружена; скелет не найден, движения костей недоступны.");
+  props.onRendererSignal?.({kind:"ready",adapterId:"nk1-three-scene-v1",executionId:props.switchExecutionId??"",stateRevision:props.switchStateRevision??0,modelId:declaredMotorModelId??undefined});
  },[props.bodyMode,ready]);
  useEffect(()=>{if(!ready)return;let cancelled=false;void loadStoredAvatarModel().then((saved)=>{if(!cancelled&&saved)void loadModel(saved.blob,saved.name,false);}).catch(()=>{if(!cancelled)setStorageMessage("IndexedDB недоступна; процедурное тело остаётся рабочим.");});return()=>{cancelled=true;};},[ready,loadModel]);
  const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){setState("error");setMessage("Поддерживаются бинарные модели .vrm и .glb.");return;}void loadModel(file,file.name,true);};
