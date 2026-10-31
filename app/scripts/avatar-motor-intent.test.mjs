@@ -278,3 +278,22 @@ test("3D stage consumes the shared cognitive motor planner instead of a separate
   assert.match(stage, /armTargets\.left/);
   assert.match(stage, /armTargets\.right/);
 });
+
+
+test("semantic hand pose policy stays bounded and differentiates gesture profiles", async () => {
+  const { resolveAvatarHandPose } = await import("../src/components/avatar/motorIntent.ts");
+  const presenting = resolveAvatarHandPose("presenting", false);
+  const examining = resolveAvatarHandPose("examining", false);
+  const emphatic = resolveAvatarHandPose("emphatic", false);
+  const speaking = resolveAvatarHandPose("reassuring", true);
+  assert.ok(presenting.wristRotation > 0);
+  assert.ok(examining.wristRotation < 0);
+  assert.ok(emphatic.fingerCurl > presenting.fingerCurl);
+  assert.equal(speaking.fingerCurl, 0.12);
+  for (const pose of [presenting, examining, emphatic, speaking]) {
+    assert.ok(Number.isFinite(pose.wristRotation));
+    assert.ok(Number.isFinite(pose.fingerCurl));
+    assert.ok(pose.wristRotation >= -0.3 && pose.wristRotation <= 0.3);
+    assert.ok(pose.fingerCurl >= 0 && pose.fingerCurl <= 0.28);
+  }
+});
