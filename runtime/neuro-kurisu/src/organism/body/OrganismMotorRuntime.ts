@@ -5,6 +5,7 @@
  * calibrated projections of that same state; adding a 2D/2.5D/3D profile never
  * creates or reconfigures a second controller. No profile can create motor goals.
  */
+import { MotorGoalArbiter, type MotorGoalCandidate, type MotorArbitrationContext, type MotorArbitrationResult } from '../system/MotorGoalArbiter.ts';
 import {
   EmbodiedMotorController,
   type JointDefinition,
@@ -79,6 +80,8 @@ function profileSummary(profile: MotorRigProfileV1): RegisteredMotorRendererProf
 
 export class OrganismMotorRuntime {
   private readonly controller = new EmbodiedMotorController();
+  /** Subgoal arbitration shares the exact controller; it never owns a parallel skeleton. */
+  private readonly goalArbiter = new MotorGoalArbiter(this.controller);
   private readonly frames = new MotorFrameChannel();
   private configured = false;
   private canonicalDefinitions: JointDefinition[] | null = null;
@@ -227,6 +230,34 @@ export class OrganismMotorRuntime {
 
   cancelGoal(reason = 'organism-motor-goal-cancelled'): void {
     this.controller.cancelGoal(reason);
+  }
+
+  /**
+   * Arbitrate already-authorized, renderer-neutral motor subgoals against the
+   * organism's one canonical controller. The selected frame is published on
+   * the same bounded channel as continuous-loop frames; no second controller
+   * or renderer-owned goal path is created here.
+   */
+  arbitrateApprovedGoals(
+    candidates: readonly MotorGoalCandidate[],
+    context: MotorArbitrationContext,
+  ): MotorArbitrationResult {
+    if (!this.configured) {
+      return {
+        version: 1, tick: Math.max(0, Math.floor(Number(context?.tick) || 0)),
+        selectedCandidateId: null, selectedAction: null, selectedGate01: 0,
+        selectionMargin01: 0, accepted: false, reason: 'motor-skeleton-not-configured',
+        motorFrame: null, ranked: [],
+      };
+    }
+    const result = this.goalArbiter.propose(candidates, context);
+    if (result.motorFrame) {
+      const publication = this.frames.publish(result.motorFrame);
+      if (!publication.accepted) {
+        throw new Error(`organism-motor-arbitration-frame-publication-rejected:${publication.reason}`);
+      }
+    }
+    return result;
   }
 
   /** Advance with a caller-supplied monotonic clock; never uses wall-clock time. */
