@@ -3,7 +3,7 @@ name: WorkPass75 native VRM runtime
 on:
   push:
     branches:
-      - nk1-workpass75-native-vrm-runtime
+      - nk1-workpass75-native-vrm-runtime-current
     paths:
       - "app/package.json"
       - "app/package-lock.json"
