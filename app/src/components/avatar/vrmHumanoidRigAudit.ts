@@ -1,9 +1,9 @@
 /**
  * Conservative, renderer-independent humanoid rig discovery for imported VRM/GLB.
  *
- * This is a name-based audit, NOT a claim that arbitrary GLB bones implement the
- * VRM humanoid specification. A production VRM runtime should supply semantic
- * humanoid nodes directly; this adapter is a safe fallback for generic glTF.
+ * Generic GLB uses a conservative Bone-name fallback; VRM uses its validated
+ * extension node-index map. Neither audit mode is a production VRM runtime or
+ * proof that the imported rig can be retargeted and actuated.
  *
  * For generic GLB, only explicit Bone nodes can be mapped by name. For VRM, the
  * extension's validated glTF node-index map is authoritative; VRM humanoid nodes
@@ -312,7 +312,8 @@ export function auditHumanoidRig(
     nonBoneMatches: Object.freeze(nonBoneMatches),
     capabilities: Object.freeze({
       torso, head, bilateralArms, bilateralHands, bilateralLegs, bilateralFeet,
-      eyes: !!nodes.leftEye && !!nodes.rightEye,
+      eyes: !!nodes.leftEye && !!nodes.rightEye
+        && !brokenOptionalHierarchy.some(([, role]) => role === "leftEye" || role === "rightEye"),
       leftFingerCount, rightFingerCount, fingerArticulation,
       locomotionSkeleton, fullBodyHumanoid,
     }),
