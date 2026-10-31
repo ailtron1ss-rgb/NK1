@@ -93,6 +93,28 @@ duplicateRoundTrip.restore(duplicateRestored.snapshot());
 assert.equal(duplicateRoundTrip.doctor().counts.duplicateIds, 1,
   'restore loss diagnostics must survive a later snapshot/restore cycle');
 
+// Blank/whitespace IDs are also dropped fail-closed, and their loss must survive snapshots.
+const blankIds = memory.snapshot();
+const blankIdItem = structuredClone(blankIds.items.find(item => item.id === middle.id));
+assert.ok(blankIdItem);
+blankIdItem.id = '   ';
+blankIds.items.push(blankIdItem);
+const blankIdRestored = new MemoryOS2();
+blankIdRestored.restore(blankIds);
+assert.equal(blankIdRestored.statsLight().items, blankIds.items.length - 1,
+  'restore must drop records with blank memory IDs');
+const blankIdReport = blankIdRestored.doctor();
+assert.equal(blankIdReport.counts.restoreDroppedBlankIds, 1,
+  'doctor must count records dropped for blank memory IDs');
+assert.ok(blankIdReport.issues.some(issue => issue.code === 'blank-memory-id-dropped'),
+  'blank memory ID loss must remain visible as a warning');
+assert.equal(blankIdReport.pass, true,
+  'the normalized in-memory state remains safe while the source loss is visible');
+const blankIdRoundTrip = new MemoryOS2();
+blankIdRoundTrip.restore(blankIdRestored.snapshot());
+assert.equal(blankIdRoundTrip.doctor().counts.restoreDroppedBlankIds, 1,
+  'blank-ID restore diagnostics must survive a snapshot/restore round-trip');
+
 const oneSidedReport = oneSidedRestored.doctor();
 assert.equal(oneSidedReport.counts.danglingRevision, 1,
   'danglingRevision must count only missing revision targets');
@@ -118,5 +140,6 @@ console.log('WORKPASS76_MEMORY_LINEAGE_RESTORE_INTEGRITY=PASS', JSON.stringify({
   crossLineageEdgesCleared: crossRestored.get(parent.id)?.supersededById === null &&
     crossRestored.get(middle.id)?.supersedesId === null,
   duplicateCopiesDropped: duplicateRestored.get(middle.id) === null,
+  blankIdDroppedWithDiagnostic: blankIdRestored.statsLight().items === blankIds.items.length - 1 && blankIdRestored.doctor().counts.restoreDroppedBlankIds === 1,
   invalidSequenceNormalized: sequenceRestored.get(tip.id)?.revisionSequence === 1,
 }));
