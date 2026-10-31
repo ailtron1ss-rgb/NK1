@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { OrganismSnapshot } from "@/organism/types";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { deriveAffectiveExpression, smoothAffectiveExpression } from "./avatar/affectiveExpression";
@@ -109,7 +109,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       dominance: snap.emotion.dominance,
     }).expressionIntensity,
   });
-  const bodyLanguageProfile = deriveAffectiveBodyLanguage({
+  const bodyLanguageProfile = useMemo(() => deriveAffectiveBodyLanguage({
     emotion: snap.emotion.label,
     valence: snap.emotion.valence,
     arousal: snap.emotion.arousal,
@@ -124,9 +124,21 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     speaking: voiceStatus === "speaking",
     thinking,
     awake: snap.awake,
-  });
+  }), [snap.emotion.label, snap.emotion.valence, snap.emotion.arousal, snap.emotion.dominance, snap.needs.energy, snap.needs.cognitiveLoad, snap.needs.uncertainty, snap.needs.socialNeed, snap.identity.traits.guardedness, snap.identity.traits.composure, snap.lastOption, voiceStatus, thinking, snap.awake]);
   const [renderBodyLanguageProfile, setRenderBodyLanguageProfile] = useState(bodyLanguageProfile);
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
+
+  useEffect(() => {
+    const now = performance.now();
+    const previous = bodyLanguageProfileRef.current;
+    const smoothed = smoothAffectiveBodyLanguage(
+      previous?.profile ?? null,
+      bodyLanguageProfile,
+      previous ? now - previous.at : 16,
+    );
+    bodyLanguageProfileRef.current = { profile: smoothed, at: now };
+    setRenderBodyLanguageProfile(smoothed);
+  }, [bodyLanguageProfile]);
 
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
@@ -437,17 +449,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     win.postMessage(intent, window.location.origin);
     // Separate additive face channel keeps the strict EmbodimentIntentV1 envelope stable.
     win.postMessage({ type: "kurisu_face_microchannels", stateVersion: intent.stateVersion, ...deriveFacialMicrochannels({ emotion: snap.emotion.label, valence: snap.emotion.valence, arousal: snap.emotion.arousal, dominance: snap.emotion.dominance, expressionIntensity: affective.expressionIntensity }) }, window.location.origin);
-    const bodyNow = performance.now();
-    const previousBody = bodyLanguageProfileRef.current;
-    const smoothedBody = smoothAffectiveBodyLanguage(
-      previousBody?.profile ?? null,
-      bodyLanguageProfile,
-      previousBody ? bodyNow - previousBody.at : 16,
-    );
-    bodyLanguageProfileRef.current = { profile: smoothedBody, at: bodyNow };
-    setRenderBodyLanguageProfile(smoothedBody);
-    win.postMessage({ type: "kurisu_body_language", protocolVersion: 1, stateVersion: intent.stateVersion, ...smoothedBody }, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey, snap.needs, snap.identity.traits.guardedness, snap.identity.traits.composure]);
+    win.postMessage({ type: "kurisu_body_language", protocolVersion: 1, stateVersion: intent.stateVersion, ...renderBodyLanguageProfile }, window.location.origin);
+  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey, snap.needs, snap.identity.traits.guardedness, snap.identity.traits.composure, renderBodyLanguageProfile]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
