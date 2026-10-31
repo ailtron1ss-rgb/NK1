@@ -256,3 +256,13 @@ test("VRM thumb role names cannot cross version boundaries", () => {
   assert.equal(vrm0.status, "invalid");
   assert.match(vrm0.reason, /not-a-vrm-0.x/);
 });
+test("caps VRM 1.0 and legacy 0.x humanoid extension entries before validation", () => {
+  const vrm1Entries = Object.fromEntries(Array.from({ length: 50_001 }, (_, index) => ["unknownRole" + index, { node: 0 }]));
+  const legacyEntries = Array.from({ length: 50_001 }, (_, index) => ({ bone: "unknownRole" + index, node: 0 }));
+  const vrm1 = parseVrmHumanoidNodeMap({ VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones: vrm1Entries } } }, 1);
+  const vrm0 = parseVrmHumanoidNodeMap({ VRM: { humanoid: { humanBones: legacyEntries } } }, 1);
+  assert.equal(vrm1.status, "invalid");
+  assert.equal(vrm0.status, "invalid");
+  assert.match(vrm1.reason, /entry-count-exceeds-limit/);
+  assert.match(vrm0.reason, /entry-count-exceeds-limit/);
+});
