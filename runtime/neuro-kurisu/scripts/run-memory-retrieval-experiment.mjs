@@ -71,7 +71,7 @@ async function publishReportExclusive(outputPath, contents) {
     throw error;
   }
 }
-function parseLabels(text) {
+export function parseLabels(text) {
   const lines = text.split(/\r?\n/);
   const rows = [];
   for (let index = 0; index < lines.length; index++) {
@@ -85,6 +85,7 @@ function parseLabels(text) {
     if (typeof row.query !== 'string' || !row.query.trim() || row.query.length > 500) throw new Error(`labels-invalid-query-line:${index + 1}`);
     if (row.answerable !== undefined && typeof row.answerable !== 'boolean') throw new Error(`labels-invalid-answerable-line:${index + 1}`);
     if (row.language !== undefined && !['en', 'ru', 'other'].includes(row.language)) throw new Error(`labels-invalid-language-line:${index + 1}`);
+    if (row.independenceGroupId !== undefined && (typeof row.independenceGroupId !== 'string' || !row.independenceGroupId.trim() || row.independenceGroupId.trim().length > 120)) throw new Error(`labels-invalid-independence-group-id-line:${index + 1}`);
     const answerable = row.answerable !== false;
     if (!Array.isArray(row.relevantIds) || row.relevantIds.length > 24 ||
         (answerable ? row.relevantIds.length < 1 : row.relevantIds.length !== 0) ||
@@ -92,7 +93,7 @@ function parseLabels(text) {
       throw new Error(`labels-invalid-relevantIds-line:${index + 1}`);
     }
     if (row.split !== 'train' && row.split !== 'holdout') throw new Error(`labels-invalid-split-line:${index + 1}`);
-    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split, answerable, ...(row.language === undefined ? {} : { language: row.language }) });
+    rows.push({ id: row.id.trim(), query: row.query.trim(), relevantIds: row.relevantIds.map(id => id.trim()), split: row.split, answerable, ...(row.language === undefined ? {} : { language: row.language }), ...(row.independenceGroupId === undefined ? {} : { independenceGroupId: row.independenceGroupId.trim() }) });
     if (rows.length > MAX_EXAMPLES) throw new Error(`labels-exceed-limit:${MAX_EXAMPLES}`);
   }
   if (!rows.length) throw new Error('labels-empty');

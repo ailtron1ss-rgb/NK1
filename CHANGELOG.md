@@ -1,4 +1,37 @@
+## WorkPass77 — source-clustered memory retrieval evaluation
+
+## [NK1][Memory] Preserve and validate independent source-group labels (WorkPass77 follow-up, 2026-10-31)
+
+- Fixed the real offline experiment CLI dropping `independenceGroupId`; source-derived query groups now survive JSONL parsing and reach the paired cluster bootstrap.
+- Reject blank or over-120-character source-group IDs at CLI ingress instead of silently losing or clipping cluster identity.
+- Mark overlong source-group IDs as truncated input and block promotion in the benchmark's fail-closed dataset integrity gate.
+- Added regressions for CLI round-trip, overlong-label rejection, and benchmark promotion blocking. No retrieval quality uplift is claimed.
+
+- Add optional `independenceGroupId` labels so multiple prompts derived from one source episode/document are resampled as a single statistical cluster.
+- Replace query-IID paired bootstrap with paired source-cluster bootstrap for recall, MRR, and unsupported-retrieval confidence intervals; legacy datasets fall back to one cluster per example.
+- Bind independence-group labels into dataset fingerprints and block promotion when one source group crosses train/holdout.
+- Export only per-experiment HMAC digests of source-group IDs in optional query evidence, allowing independent reviewers to verify grouping without exposing raw group labels.
+- Extend the independent bilingual holdout runner and add a regression contract for grouped resampling, fingerprint binding, and split leakage.
+- This improves uncertainty estimation only; it does not establish retrieval uplift or authorize automatic promotion.
+
+## WorkPass76 follow-up — preserve blank memory-ID restore loss
+- Drop blank/whitespace memory IDs during restore and retain a bounded `blank-memory-id-dropped` diagnostic instead of silently erasing malformed source rows.
+- Extend the read-only MemoryDoctor with a dedicated `restoreDroppedBlankIds` count and warning; duplicate-ID counts remain semantically separate.
+- Add regression coverage for fail-closed removal, safe post-restore state, and diagnostic persistence across snapshot/restore.
+- No live database, connector, `main`, or Release ZIP changes.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
+
+## WorkPass76 — MemoryOS2 revision-lineage restore integrity
+- Reconcile supersession links before rebuilding memory retrieval indexes: only reciprocal, same-lineage, strictly forward revision edges are trusted.
+- Repair a missing historical validity end from a verified successor's `validFromAt`, preventing a restored current-memory query from reviving an obsolete fact.
+- Clear dangling, one-sided, cross-lineage, cyclic/backward, or otherwise ambiguous supersession edges.
+- Retain bounded restore-integrity findings on surviving records so the read-only MemoryOS2 doctor can report repairs instead of silently hiding corruption.
+- Drop all records sharing a duplicate memory ID instead of allowing restore order to choose an authority-bearing row.
+- Normalize invalid revision sequence values to a safe positive integer.
+- Add `test:workpass76:memory-lineage-integrity` with regression coverage for interval repair, edge integrity, duplicate IDs, and sequence normalization.
+- Scope: MemoryOS2 restore integrity only; no database schema or production connector was changed.
+
 
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
 - Export HMAC-SHA256 pseudonyms for normalized query, example and memory IDs using one ephemeral per-experiment key shared across paired bootstrap seeds. The key and raw prompt/memory payloads are not serialized.

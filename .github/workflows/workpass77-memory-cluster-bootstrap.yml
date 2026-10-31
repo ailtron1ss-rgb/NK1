@@ -1,0 +1,45 @@
+name: NK1 paired cluster-bootstrap memory retrieval integrity
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts"
+      - "runtime/neuro-kurisu/tests/workpass77-memory-cluster-bootstrap.mjs"
+      - "runtime/neuro-kurisu/tests/holdout-normalization.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/workpass77-memory-cluster-bootstrap.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: memory-cluster-bootstrap-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Runtime typecheck and clustered retrieval evaluation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Cluster-bootstrap regression
+        run: npm --prefix runtime/neuro-kurisu run test:workpass77:memory-cluster-bootstrap
+      - name: Existing retrieval experiment regression
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
+      - name: Independent bilingual evidence regression
+        run: npm --prefix runtime/neuro-kurisu run test:workpass73:memory-inspect-evidence

@@ -35,6 +35,7 @@ for(const row of data.examples){
  assert.ok(!exampleIds.has(row.id),'duplicate example id: '+row.id); exampleIds.add(row.id);
  assert.ok(typeof row.query==='string'&&row.query.trim(),'query required');
  assert.ok(row.split==='train'||row.split==='holdout','split must be train or holdout');
+ assert.ok(row.independenceGroupId===undefined||(typeof row.independenceGroupId==='string'&&row.independenceGroupId.trim()),'independenceGroupId must be a non-empty string when provided');
  assert.ok(row.language==='ru'||row.language==='en','language must be explicitly ru or en');
  assert.ok(Array.isArray(row.relevantIds),'relevantIds must be an array');
  assert.ok(row.answerable===false?row.relevantIds.length===0:row.relevantIds.length>0,'answerability and labels disagree');
