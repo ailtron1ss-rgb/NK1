@@ -33,4 +33,4 @@ test("existing sprite and Live2D files remain available",async()=>{
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
 
-test("VRM stage reports conservative left/right humanoid arm discovery without claiming IK actuation",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/resolveVrmArm/);assert.match(stage,/leftArmRig/);assert.match(stage,/rightArmRig/);assert.match(stage,/пока рассчитывается отдельно и не применяется к костям/);});
+test("VRM stage reports conservative left/right humanoid arm discovery without claiming IK actuation",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/resolveVrmArm/);assert.match(stage,/leftArmRig/);assert.match(stage,/rightArmRig/);assert.match(stage,/auditHumanoidRig/);assert.match(stage,/IK пока не исполняется на импортированных костях/);assert.match(stage,/Полный Humanoid Rig не подтверждён/);});
