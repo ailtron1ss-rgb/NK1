@@ -1,9 +1,10 @@
-## [NK1][Aspect 15] Repair authoring-preflight GLB parsing and expose CI diagnostics (2026-10-31)
+## [NK1][Aspect 15] Correct CI evidence and harden GLB forward compatibility (2026-10-31)
 
-- Investigate the exact PR #412 wardrobe and Core workflow failures from their GitHub Actions job logs; both were blocked by the same five new wardrobe authoring-preflight tests, so later Core typecheck/build stages did not run.
-- Correct the GLB JSON chunk padding regex so it matches actual NUL/space code points rather than escaped character spellings.
-- Improve focused preflight assertions to include validation error details on failure, making the next hosted run diagnostically useful.
-- Record the actual branch HEAD and the CI evidence boundary in the Aspect 15 progress report. The fixes are committed, but no fresh Actions result exists yet for the final repair HEAD; do not call the failure resolved until that run passes.
+- Record the older failed wardrobe/Core runs on `018b8a4...` separately from the later green runs on `7ad9146...`: wardrobe suite **70/70 passed** in run #41115451795; Core regression workflow completed successfully in run #41115451729, including app typecheck, development build and runtime typecheck.
+- Do not attribute the earlier five preflight failures to the JSON padding regex: the available logs do not prove that causal link.
+- Keep the padding-normalization cleanup and add failure diagnostics to the authoring-preflight assertions.
+- Change GLB preflight to ignore unknown chunk types for forward compatibility, and add a regression test using a valid mesh GLB with an unknown chunk.
+- Current PR head after this work: `2add71d...`; the green runs are on the earlier `7ad9146...` SHA and do not verify the current head. Production garment assets, renderer E2E, rights review and Release ZIP remain pending.
 
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
