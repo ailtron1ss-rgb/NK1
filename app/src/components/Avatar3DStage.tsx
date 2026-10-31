@@ -180,7 +180,7 @@ export function Avatar3DStage(props:Props){
    onProjection:(projection)=>{
     setMotorFrameProjection(projection.state);
     if(projection.state==="ready")setMotorFrameBatch(projection.batch);
-    else if(projection.state==="unmapped"||projection.state==="unconfigured"||projection.state==="invalid")setMotorFrameBatch(null);
+    else setMotorFrameBatch(null);
    },
   });
  },[props.bodyMode,motorModelId]);
