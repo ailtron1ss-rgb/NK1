@@ -17,7 +17,7 @@
 
 Когда доступны обе кости head/neck, угловое намерение распределяется между ними в долях 35/65, чтобы не удваивать исходный raw-bone offset. Все четыре node rotations на каждом кадре сбрасываются к normalized identity и рассчитываются заново — без накопления Euler drift. Затем `vrm.update(delta)` штатно копирует normalized pose в raw bones и обновляет look-at, expression manager, node constraints, spring bones и MToon materials.
 
-Для generic GLB сохраняется прежний raw-bone motor/mixer. Для VRM normalized humanoid update является владельцем человеческого скелета; embedded GLTF animation tracks, направленные в raw humanoid bones, не должны считаться полноценным retargeted motion clip — отдельный VRMA/normalized animation retargeting ещё предстоит сделать.
+Для generic GLB сохраняется прежний raw-bone motor/mixer. Для VRM normalized humanoid update является владельцем человеческого скелета; raw-targeted GLTF clip mixer намеренно не создаётся для VRM, потому что он был бы перезаписан следующим normalized→raw update. Embedded GLTF animation tracks пока не проигрываются на VRM humanoid, пока не появится отдельный VRMA/normalized animation retargeter.
 
 ## Граница IK
 
