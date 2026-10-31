@@ -88,6 +88,11 @@ function normalizeRows(rows:unknown):LongMemEvalQuestion[]{
  const digestByRoot=new Map([...membersByRoot].map(([root,members])=>[root,digest([...members].sort().join('\\0'))]));
  return sorted.map(row=>({...row,independenceGroupId:digestByRoot.get(find(row.id))!}));
 }
+function fingerprintQuestions(questions:LongMemEvalQuestion[]){
+ const hash=createHash('sha256');
+ for(const question of questions)hash.update(JSON.stringify(stableValue(question))).update('\\n');
+ return hash.digest('hex');
+}
 function buildQuestionMemory(question:LongMemEvalQuestion){
  const memory=new MemoryOS2({embeddingProvider:null,metadataRecallEnabled:false});
  const docs:{id:string;sessionId:string;at:number;content:string;tokens:string[];tf:Map<string,number>}[]=[];
@@ -210,6 +215,8 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
  if(!/^[a-f0-9]{40}$/u.test(revision))throw new Error('LongMemEval datasetRevision must be a pinned 40-character commit SHA');
  if(!/^[a-f0-9]{64}$/u.test(fileSha))throw new Error('LongMemEval datasetFileSha256 must be a SHA-256 digest');
  const questions=normalizeRows(rawRows);
+ const datasetFingerprint=fingerprintQuestions(questions);
+ const answerableCount=questions.filter(row=>row.answerable).length,unanswerableCount=questions.length-answerableCount;
  const k=Math.floor(finiteOption(options.k,5,1,10));
  const bootstrapSamples=Math.floor(finiteOption(options.bootstrapSamples,2000,200,5000));
  const seeds=[...new Set((options.seeds??[13,29,53,71,101]).map(Number).filter(seed=>Number.isSafeInteger(seed)&&seed>0&&seed<=0xffffffff))];
@@ -241,7 +248,6 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
  const datasetFingerprint=digest(JSON.stringify(stableValue(questions)));
  const baseline=aggregate(baselineOutcomes),candidate=aggregate(candidateOutcomes);
  const confidence=pairedBootstrap(paired,seeds,bootstrapSamples);
- const answerableCount=questions.filter(row=>row.answerable).length,unanswerableCount=questions.length-answerableCount;
  const minAnswerable=Math.floor(finiteOption(options.minAnswerableQueries,20,1,500));
  const minUnanswerable=Math.floor(finiteOption(options.minUnanswerableQueries,8,1,500));
  const minIndependentGroups=Math.floor(finiteOption(options.minIndependentGroups,20,1,500));
