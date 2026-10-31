@@ -13,6 +13,8 @@ on:
       - app/src/components/avatar/depthRigSceneAdapter.ts
       - app/src/components/avatar/motorFrameStream.ts
       - app/src/components/avatar/motorFrameDepthRig.ts
+      - app/scripts/motor-frame-vrm.test.mjs
+      - app/src/components/avatar/motorFrameVrm.ts
       - app/scripts/motor-frame-stream.test.mjs
       - app/scripts/motor-frame-depth-rig.test.mjs
       - app/scripts/live2d-motor-frame.test.mjs
