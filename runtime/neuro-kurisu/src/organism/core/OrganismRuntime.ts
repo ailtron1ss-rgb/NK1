@@ -872,7 +872,7 @@ export class OrganismRuntime {
         const arbitration = this.motor.arbitrateApprovedGoals([motorCandidate], {
           tick: cycle.state.tick,
           nowMs: motorNowMs,
-          dopamine01: cycle.state.lastActionSuccess ?? selectedCandidate.confidence,
+          dopamine01: cycle.state.lastActionSuccess ?? selectedCandidate?.confidence ?? 0.5,
           predictionError01: cycle.state.predictionError,
           uncertainty01: cycle.state.needs.uncertainty,
           novelty01: cycle.state.needs.novelty,
