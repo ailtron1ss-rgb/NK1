@@ -21,11 +21,14 @@ export function ChatPanel() {
   const error = useKurisu((s) => s.error);
   const [text, setText] = useState("");
   const [recording, setRecording] = useState(false);
+  const [startingCapture, setStartingCapture] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState("");
   const end = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const startLockRef = useRef(false);
+  const mountedRef = useRef(true);
   const chunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<number | null>(null);
   const transcriptionAbortRef = useRef<AbortController | null>(null);
@@ -79,7 +82,7 @@ export function ChatPanel() {
       }
     } finally {
       if (transcriptionAbortRef.current === controller) transcriptionAbortRef.current = null;
-      setTranscribing(false);
+      if (mountedRef.current) setTranscribing(false);
     }
   };
 
@@ -89,17 +92,24 @@ export function ChatPanel() {
       if (recorder && recorder.state !== "inactive") recorder.stop();
       return;
     }
-    if (busy || transcribing) return;
+    if (busy || transcribing || startingCapture || startLockRef.current) return;
     setVoiceStatus("");
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setVoiceStatus("Этот браузер не поддерживает запись с микрофона.");
       return;
     }
+    startLockRef.current = true;
+    setStartingCapture(true);
     let stream: MediaStream | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        stream = null;
+        return;
+      }
       const mimeType = [
         "audio/webm;codecs=opus",
         "audio/webm",
@@ -126,6 +136,8 @@ export function ChatPanel() {
         else setVoiceStatus("Запись пуста. Попробуйте ещё раз.");
       };
       recorder.start(250);
+      startLockRef.current = false;
+      setStartingCapture(false);
       setRecording(true);
       setVoiceStatus("Запись… нажмите микрофон ещё раз, чтобы закончить.");
       recordTimerRef.current = window.setTimeout(() => {
@@ -136,12 +148,21 @@ export function ChatPanel() {
       stream?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       recorderRef.current = null;
-      const reason = caught instanceof Error ? caught.message : "microphone-access-failed";
-      setVoiceStatus(`Нет доступа к микрофону: ${reason}`);
+      if (mountedRef.current) {
+        const reason = caught instanceof Error ? caught.message : "microphone-access-failed";
+        setVoiceStatus(`Нет доступа к микрофону: ${reason}`);
+      }
+    } finally {
+      startLockRef.current = false;
+      if (mountedRef.current) setStartingCapture(false);
     }
   };
 
-  useEffect(() => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    startLockRef.current = true;
     if (recordTimerRef.current !== null) window.clearTimeout(recordTimerRef.current);
     const recorder = recorderRef.current;
     if (recorder) {
@@ -151,6 +172,7 @@ export function ChatPanel() {
     }
     streamRef.current?.getTracks().forEach((track) => track.stop());
     transcriptionAbortRef.current?.abort();
+    };
   }, []);
 
   return (
@@ -210,7 +232,7 @@ export function ChatPanel() {
           size="icon"
           aria-label={recording ? "Stop recording and transcribe" : "Record speech"}
           aria-pressed={recording}
-          disabled={transcribing || (busy && !recording)}
+          disabled={startingCapture || transcribing || (busy && !recording)}
           onClick={() => void toggleMicrophone()}
         >
           {recording ? <MicOff className="size-4 text-accent" /> : <Mic className="size-4" />}
