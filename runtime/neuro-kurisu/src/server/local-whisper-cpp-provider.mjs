@@ -40,16 +40,18 @@ export function validateWhisperPcm16Wav(input, maxBytes = MAX_WAV_BYTES) {
   let format = null;
   let dataBytes = null;
   let offset = 12;
-  while (offset + 8 <= audio.byteLength) {
+  while (offset < audio.byteLength) {
+    if (offset + 8 > audio.byteLength) throw providerError("audio-invalid-wav", 415);
     const chunkId = audio.toString("ascii", offset, offset + 4);
     const chunkBytes = audio.readUInt32LE(offset + 4);
     const chunkStart = offset + 8;
     const chunkEnd = chunkStart + chunkBytes;
-    if (!Number.isSafeInteger(chunkEnd) || chunkEnd > audio.byteLength) {
+    const paddedEnd = chunkEnd + (chunkBytes & 1);
+    if (!Number.isSafeInteger(chunkEnd) || paddedEnd > audio.byteLength) {
       throw providerError("audio-invalid-wav", 415);
     }
     if (chunkId === "fmt ") {
-      if (chunkBytes < 16) throw providerError("audio-invalid-wav", 415);
+      if (format !== null || chunkBytes < 16) throw providerError("audio-invalid-wav", 415);
       format = {
         encoding: audio.readUInt16LE(chunkStart),
         channels: audio.readUInt16LE(chunkStart + 2),
@@ -62,8 +64,9 @@ export function validateWhisperPcm16Wav(input, maxBytes = MAX_WAV_BYTES) {
       if (dataBytes !== null) throw providerError("audio-invalid-wav", 415);
       dataBytes = chunkBytes;
     }
-    offset = chunkEnd + (chunkBytes & 1);
+    offset = paddedEnd;
   }
+  if (offset !== audio.byteLength) throw providerError("audio-invalid-wav", 415);
 
   if (!format || dataBytes === null
     || format.encoding !== 1
@@ -97,6 +100,37 @@ function resolveLoopbackInferenceUrl(value) {
     throw providerError("whisper-endpoint-must-be-loopback-inference", 500);
   }
   return url.toString();
+}
+
+async function readBoundedResponseText(response, maxBytes = 1_000_000) {
+  const declared = Number(response.headers?.get?.("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw providerError("whisper-response-too-large", 502);
+  }
+  if (!response.body?.getReader) {
+    const text = await response.text();
+    if (Buffer.byteLength(text, "utf8") > maxBytes) throw providerError("whisper-response-too-large", 502);
+    return text;
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!(value instanceof Uint8Array)) continue;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw providerError("whisper-response-too-large", 502);
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return new TextDecoder("utf-8", { fatal: false }).decode(Buffer.concat(chunks, bytes));
 }
 
 function normalizeSegments(value, durationSeconds) {
@@ -151,7 +185,8 @@ export function createLocalWhisperCppProvider({
         form.set("language", "auto");
         form.set("response_format", "verbose_json");
         form.set("temperature", "0.0");
-        form.set("no_context", "true");
+        // whisper.cpp 1.9.5 defaults no_context=true; the server does not
+        // consume a multipart no_context field, so leave that setting at its default.
 
         const deadline = AbortSignal.timeout(safeTimeoutMs);
         const requestSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
@@ -165,8 +200,7 @@ export function createLocalWhisperCppProvider({
           }
           throw providerError("whisper-provider-unavailable", 503);
         }
-        const responseText = await response.text();
-        if (responseText.length > 1_000_000) throw providerError("whisper-response-too-large", 502);
+        const responseText = await readBoundedResponseText(response);
         if (!response.ok) {
           throw providerError(response.status === 503 ? "whisper-model-not-ready" : "whisper-provider-rejected-audio", 502);
         }
