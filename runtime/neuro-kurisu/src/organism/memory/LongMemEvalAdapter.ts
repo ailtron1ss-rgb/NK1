@@ -90,7 +90,7 @@ function normalizeRows(rows:unknown):LongMemEvalQuestion[]{
 }
 function fingerprintQuestions(questions:LongMemEvalQuestion[]){
  const hash=createHash('sha256');
- for(const question of questions)hash.update(JSON.stringify(stableValue(question))).update('\\n');
+ for(const question of questions)hash.update(JSON.stringify(stableValue(question))).update('\n');
  return hash.digest('hex');
 }
 function buildQuestionMemory(question:LongMemEvalQuestion){
