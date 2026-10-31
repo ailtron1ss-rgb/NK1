@@ -35,7 +35,8 @@
     "test:vrm-humanoid-rig": "node --experimental-strip-types --test scripts/vrm-humanoid-rig-adapter.test.mjs",
     "test:vrm-rig-calibration-profile": "node --experimental-strip-types --test scripts/vrm-rig-calibration-profile.test.mjs",
     "test:vrm-rig-calibration-session": "node --experimental-strip-types --test scripts/vrm-rig-calibration-session.test.mjs",
-    "test:avatar-model-fingerprint": "node --experimental-strip-types --test scripts/avatar-model-fingerprint.test.mjs"
+    "test:avatar-model-fingerprint": "node --experimental-strip-types --test scripts/avatar-model-fingerprint.test.mjs",
+    "test:browser-speech-watchdog": "node --experimental-strip-types --test scripts/browser-speech-watchdog.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
