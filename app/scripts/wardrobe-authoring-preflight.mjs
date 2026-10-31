@@ -34,7 +34,7 @@ function inspectGlb(bytes, id) {
     } else if(type===0x004e4942) {
       if(binLength) errors.push(`asset:${id}:glb-duplicate-bin-chunk`);
       binLength=length;
-    } else errors.push(`asset:${id}:glb-unknown-chunk`);
+    } // GLB readers must ignore chunk types they do not recognize.
     offset+=length; index++;
   }
   if(offset!==bytes.length) errors.push(`asset:${id}:glb-trailing-or-truncated-data`);
