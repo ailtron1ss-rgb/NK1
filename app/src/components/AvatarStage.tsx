@@ -294,7 +294,8 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     };
   };
   const requestViewMode = async (targetView: ViewMode) => {
-    if (targetView === currentModeRef.current || switchContextRef.current) return;
+    const previousView = currentModeRef.current;
+    if (targetView === previousView || switchContextRef.current) return;
     const targetMode = embodimentModeForView(targetView);
     if (!targetMode) {
       switchCoordinatorRef.current = null;
@@ -349,7 +350,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     } catch (error) {
       setSwitchPhase("failed");
       setSwitchDetail(error instanceof Error ? error.message : "body-switch-failed");
-      if (currentModeRef.current !== targetView) setMode(currentModeRef.current);
+      if (currentModeRef.current !== previousView) setMode(previousView);
     } finally {
       switchContextRef.current = null;
       setActiveSwitch(null);
