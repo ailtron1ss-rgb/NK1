@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/nk1-depth-rig-scene-runtime-*
+      - work/nk1-unified-embodiment-motor-*
   pull_request:
     branches:
       - workpass70-source
@@ -14,6 +15,9 @@ on:
       - app/src/components/avatar/motorFrameDepthRig.ts
       - app/scripts/motor-frame-stream.test.mjs
       - app/scripts/motor-frame-depth-rig.test.mjs
+      - app/scripts/live2d-motor-frame.test.mjs
+      - app/public/live2d/viewer.html
+      - docs/NK1_UNIFIED_EMBODIMENT_MOTORFRAME_RU.md
       - app/src/components/Avatar3DStage.tsx
       - app/src/components/AvatarStage.tsx
       - app/scripts/depth-rig-scene-adapter.test.mjs
