@@ -21,6 +21,9 @@ on:
       - runtime/neuro-kurisu/public/live2d/viewer.html
       - app/scripts/active-embodiment-switch.test.mjs
       - app/src/components/avatar/embodimentCoordinator.ts
+      - app/src/components/avatar/embodimentTimeline.ts
+      - app/scripts/embodiment-timeline.test.mjs
+      - contracts/embodiment-intent.v1.schema.json
       - app/scripts/embodiment-coordinator.test.mjs
       - app/public/live2d/viewer.html
       - docs/NK1_UNIFIED_EMBODIMENT_MOTORFRAME_RU.md
@@ -78,6 +81,9 @@ jobs:
       - name: Run unified 2D/2.5D/3D embodiment regressions
         working-directory: app
         run: npm run test:unified-embodiment
+      - name: Test unified speech and affect timeline contract
+        working-directory: app
+        run: npm run test:embodiment-timeline
       - name: Typecheck app integration
         working-directory: app
         run: npm run typecheck
