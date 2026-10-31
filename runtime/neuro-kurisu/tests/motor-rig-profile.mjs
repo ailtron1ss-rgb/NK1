@@ -20,9 +20,9 @@ function profile(renderer = "vrm3d", status = "calibrated") {
   return { schemaVersion: 1, profileId: "kurisu." + renderer + ".test-v1", modelId: "kurisu.test", revision: 1, renderer,
     coordinateFrame: { handedness: "right", upAxis: "y", forwardAxis: "-z", positionUnit: renderer === "vrm3d" ? "meters" : "normalized", angleUnit: "radians" },
     calibration: status === "calibrated" ? structuredClone(calibration) : { status: "test-fixture" },
-    joints: [joint("neck.yaw", "neck.yaw", null, renderer, "neckNode"),
-      joint("head.yaw", "head.yaw", "neck.yaw", renderer, "headNode"),
-      joint("left.shoulder.pitch", "left.shoulder.pitch", "neck.yaw", renderer, "leftArm", "x")] };
+    joints: [joint("neck.yaw", "neck.yaw", null, renderer, renderer === "live2d" ? "ParamAngleY" : "neckNode"),
+      joint("head.yaw", "head.yaw", "neck.yaw", renderer, renderer === "live2d" ? "ParamAngleX" : "headNode"),
+      joint("left.shoulder.pitch", "left.shoulder.pitch", "neck.yaw", renderer, renderer === "live2d" ? "ParamBodyAngleX" : "leftArm", "x")] };
 }
 function state(id, angleRad, available = true) {
   return { id, angleRad, targetAngleRad: angleRad, velocityRadPerSec: 0, accelerationRadPerSec2: 0, available };
