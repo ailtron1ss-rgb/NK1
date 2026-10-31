@@ -119,7 +119,8 @@ export class SelfSubsystemRuntime {
     this.p71SelfConsistency.restore(input.p71 as any);
     this.p76IdentityLifeOS.restore(input.p76 as any);
     this.p78AutobiographicalSelfContinuity.restore(input.p78 as any);
-    this.p80UnifiedSelfState.restore(input.p80 as any);\n    this.userModelEvidence.restore(input.userModelEvidence as any);
+    this.p80UnifiedSelfState.restore(input.p80 as any);
+    this.userModelEvidence.restore(input.userModelEvidence as any);
     this.p48Awareness.restore(input.p48 as any);
     this.p49TemporalLife.restore(input.p49 as any);
     this.p84AutobiographicalContinuity.restore(input.p84 as any);
@@ -137,7 +138,8 @@ export class SelfSubsystemRuntime {
       p71: this.p71SelfConsistency.snapshot(),
       p76: this.p76IdentityLifeOS.snapshot(),
       p78: this.p78AutobiographicalSelfContinuity.snapshot(),
-      p80: this.p80UnifiedSelfState.snapshot(),\n      userModelEvidence: this.userModelEvidence.snapshot(),
+      p80: this.p80UnifiedSelfState.snapshot(),
+      userModelEvidence: this.userModelEvidence.snapshot(),
       p48: this.p48Awareness.snapshot(),
       p49: this.p49TemporalLife.snapshot(),
       p84: this.p84AutobiographicalContinuity.snapshot(),
