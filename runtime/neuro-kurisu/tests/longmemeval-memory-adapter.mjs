@@ -36,6 +36,26 @@ const rows = [
     ]],
     answer_session_ids: [],
   },
+  {
+    question_id: 'lme-answerable-003',
+    question_type: 'single-session-user',
+    question: 'Which vehicle is planned for the Orion mission?',
+    answer: 'Orion',
+    question_date: '2030-06-02T00:00:00.000Z',
+    haystack_session_ids: ['session-a', 'session-d'],
+    haystack_dates: ['2030-04-01T00:00:00.000Z', '2030-04-05T00:00:00.000Z'],
+    haystack_sessions: [
+      [
+        { role: 'user', content: 'We are preparing the Orion vehicle for its 2030 launch.' },
+        { role: 'assistant', content: 'I will remember the Orion launch plan.' },
+      ],
+      [
+        { role: 'user', content: 'The backup mission is named Zephyr.' },
+        { role: 'assistant', content: 'I will remember the Zephyr backup mission.' },
+      ],
+    ],
+    answer_session_ids: ['session-a'],
+  },
 ];
 
 const report = runLongMemEvalMemoryBenchmark(rows, {
@@ -54,14 +74,18 @@ assert.equal(report.sourceDataset.licenseId, 'MIT');
 assert.equal(report.sourceDataset.languages.join(','), 'en');
 assert.equal(report.sourceDataset.datasetRevision, '98d7416c24c778c2fee6e6f3006e7a073259d48f');
 assert.equal(report.sourceDataset.fileSha256, 'a'.repeat(64));
-assert.equal(report.metrics.baseline.queries, 2);
-assert.equal(report.metrics.candidate.queries, 2);
-assert.equal(report.metrics.candidate.answerableQueries, 1);
+assert.equal(report.metrics.baseline.queries, 3);
+assert.equal(report.metrics.candidate.queries, 3);
+assert.equal(report.metrics.candidate.answerableQueries, 2);
 assert.equal(report.metrics.candidate.unanswerableQueries, 1);
 assert.equal(report.metrics.candidate.recallAtK01, 1);
 assert.equal(report.metrics.candidate.correctAbstentionRate01, 1);
 assert.equal(report.metrics.candidate.unsupportedRetrievalCount, 0);
 assert.equal(report.confidence.seedCount, 3);
+assert.equal(report.confidence.independentGroupCount, 2,
+  'questions sharing a session ID must be one independent bootstrap group');
+assert.equal(report.sampleAdequacy.independentGroups, 2);
+assert.equal(report.perQuestion.filter(row => row.independenceGroupDigest === report.perQuestion[0].independenceGroupDigest).length >= 1, true);
 assert.equal(report.confidence.runs.length, 3);
 assert.equal(report.promotion.allowed, false,
   'English-only external evidence cannot auto-promote a bilingual retrieval policy');
