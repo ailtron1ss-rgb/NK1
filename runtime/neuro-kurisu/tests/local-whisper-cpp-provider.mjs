@@ -48,6 +48,7 @@ test("provider refuses non-loopback endpoints and stays disabled by default", as
   for (const endpoint of [
     "https://127.0.0.1:8081/inference",
     "http://example.com:8081/inference",
+    "http://localhost:8081/inference",
     "http://192.168.1.10:8081/inference",
     "http://127.0.0.1:8081/other",
     "http://user:pass@127.0.0.1:8081/inference",
