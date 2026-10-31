@@ -109,7 +109,8 @@ export async function parseAvatarAssetEvidenceBundleJson(
   json: string,
   context: AvatarAssetEvidenceBundleContext,
 ): Promise<AvatarAssetEvidenceBundleResult> {
-  const reject = (reason: AvatarAssetEvidenceBundleResult extends { accepted: false; reason: infer R } ? R : never): AvatarAssetEvidenceBundleResult =>
+  type EvidenceRejectReason = "invalid-evidence-bundle" | "khronos-report-digest-mismatch" | "khronos-report-invalid" | "khronos-report-has-errors" | "khronos-report-incomplete" | "khronos-validator-version-mismatch" | "external-resource-in-khronos-report";
+  const reject = (reason: EvidenceRejectReason): AvatarAssetEvidenceBundleResult =>
     ({ accepted: false, reason });
   if (typeof json !== "string" || json.length < 2 || json.length > 4 * 1024 * 1024) {
     return reject("invalid-evidence-bundle");
