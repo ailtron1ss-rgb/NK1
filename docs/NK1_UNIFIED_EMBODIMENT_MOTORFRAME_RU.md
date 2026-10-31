@@ -77,6 +77,14 @@ Live2D viewer принимает только Cubism parameter commands для �
 
 Для DepthRig применяются scene graph readback и атомарный rollback, однако `presentedFrameVerified` остаётся false. Для VRM в этом pass добавлен atomic bone projection, но реальный skinned asset и визуальный кадр ещё требуют device/browser проверки.
 
+## VRM calibration and provenance
+
+- A loaded VRM is not considered calibrated from bone names alone. Runtime requires an explicit root `nk1CoordinateFrameId`, the exact uploaded-byte SHA-256, unique shoulder/elbow/hand chains on both sides and source-meter segment geometry.
+- The UI imports/exports only a measured profile+session bundle. The bundle requires exact fingerprint/frame/bone identities, bind and reference pose, known fixture ID and timestamps. A profile JSON by itself cannot activate calibrated IK.
+- Semantic arm actions are passed through bounded two-link planar IK and an absolute bind-pose projection. Missing profile, weak/ambiguous rig or frame mismatch fails closed; no approximate shoulder rotation is used as a fallback.
+- The bundle checks consistency/provenance fields but is not cryptographically signed evidence. A real fixture capture UI, trusted reviewer signature and independent physical measurement audit remain open.
+- Asset provenance has its own manifest. Local view permission and redistribution permission are separate: a model can be opened locally while being explicitly blocked from public Release packaging.
+
 ## Калибровка и границы безопасности
 
 Производственный renderer profile обязан иметь `calibration.status = calibrated`, непустые evidence ID, calibratedAt и verifier version. `test-fixture` профили разрешены только в тестах и не могут активировать production compile path.
