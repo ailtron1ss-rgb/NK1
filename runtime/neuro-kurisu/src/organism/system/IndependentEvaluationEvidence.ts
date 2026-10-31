@@ -61,6 +61,14 @@ export interface IndependentEvaluationEvidenceBundle {
     newestTick: number | null;
   };
   cycles: IndependentEvaluationCycle[];
+  timeline: {
+    version: 1;
+    algorithm: 'sha256-canonical-json-v1';
+    cycleCount: number;
+    firstTick: number | null;
+    lastTick: number | null;
+    headDigest: string | null;
+  };
   realityEvidence: {
     total: number;
     observedRecent: number;
