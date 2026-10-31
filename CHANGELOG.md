@@ -1,6 +1,6 @@
 ## [NK1][Aspect 09] Verify arm IK against forward kinematics (2026-10-31)
 
-- Corrected the signed local elbow rotation for the nested shoulder → elbow hierarchy. The previous sign inversion could produce finite, bounded angles while placing the end effector on the wrong side of the intended target.
+- Corrected the two-link law-of-cosines joint angle and its signed local rotation for the nested shoulder → elbow hierarchy. The prior supplementary-angle/sign combination could produce finite, bounded values while failing to reconstruct the requested endpoint.
 - Added a forward-kinematics reconstruction regression for both bend directions; it checks the solved endpoint against the requested shoulder-local target to 1e-8 tolerance.
 - Removed a duplicated kinematics test path from the 3D validation workflow filter.
 - Exact-HEAD CI is pending; no browser/device visual validation or Release ZIP update is claimed.
