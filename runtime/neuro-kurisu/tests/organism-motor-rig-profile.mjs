@@ -32,5 +32,5 @@ assert.equal(commands.ok, true);
 assert.equal(commands.batch.commands[0].targetId, "J_Bip_C_Head");
 runtime.configureSkeleton([{ id: "head.yaw", minAngleRad: -0.7, maxAngleRad: 0.7, restAngleRad: 0, maxSpeedRadPerSec: 1 }]);
 assert.equal(runtime.diagnostics().activeRigProfileId, null);
-assert.equal(runtime.rendererCommandsForFrame(frame).reason, "motor-rig-profile-not-configured");
+assert.equal(runtime.rendererCommandsForFrame(frame).reason, "renderer-profile-not-configured");
 console.log("Organism motor rig profile integration: calibration gate, configure, approved-goal projection and stale-binding reset passed.");
