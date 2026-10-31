@@ -214,4 +214,12 @@ assert.equal(createCognitiveMotorGoalCandidate({
   score01: .9, predictedUtility01: .9, confidence01: .9, effort01: 0,
   conflict01: 0, goalFit01: .9, novelty01: .1,
 }), null, 'missing calibrated joint roles must fail closed');
+
+assert.equal(createCognitiveMotorGoalCandidate({
+  action: 'respond', tick: 12, nowMs: 1500,
+  joints: [{ id: 'bad-joint', role: 'head.pitch', minAngleRad: 1, maxAngleRad: -1, restAngleRad: NaN }],
+  score01: .9, predictedUtility01: .9, confidence01: .9, effort01: 0,
+  conflict01: 0, goalFit01: .9, novelty01: .1,
+}), null, 'malformed calibration values must fail closed before creating a motor goal');
+
 console.log('Cognitive motor intent mapping: bounded, profile-bound action gestures passed.');
