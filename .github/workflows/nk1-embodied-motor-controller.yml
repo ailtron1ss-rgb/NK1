@@ -29,6 +29,7 @@ on:
       - "runtime/neuro-kurisu/tests/skeletal-multi-effector-ik-3d.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/src/organism/system/MotorGoalArbiter.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveMotorIntentMapper.ts"
       - "runtime/neuro-kurisu/src/organism/system/BasalGangliaSelectionCircuit.ts"
       - "runtime/neuro-kurisu/src/organism/system/CerebellarPredictiveController.ts"
       - "runtime/neuro-kurisu/tests/embodied-motor-controller.mjs"
