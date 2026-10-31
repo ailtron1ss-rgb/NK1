@@ -1,3 +1,12 @@
+## [NK1][Embodiment] Measured VRM IK and avatar provenance/release gate (2026-10-31)
+
+- Added unique shoulder/elbow/hand chain resolution and model-root metre segment geometry checks for bilateral VRM rigs.
+- Added bounded two-link IK for semantic arm gestures. IK is only applied from an explicit per-model measured calibration profile and absolute bind pose; uncalibrated shoulder heuristics are removed from imported VRM arms.
+- Added UI import/export for profile+measurement-session bundle. Profile-only sidecars, model fingerprint/frame mismatch, wrong bone names and missing fixture provenance cannot activate IK.
+- Added versioned JSON Schemas for calibration bundles and avatar asset provenance manifests.
+- Added manifest validation binding model SHA, coordinate frame, Khronos report digest and NK1 preflight receipt. Local viewing and permission to redistribute in the canonical Release are reported independently.
+- Production trust remains bounded: fixture capture UI, independent reviewer/signature and real model/device visual E2E remain unverified. A JSON fixtureId alone is not cryptographic proof.
+
 ## [NK1][Embodiment] GLB/VRM import preflight and artist pipeline (2026-10-31)
 
 - Added a local GLB 2.0 preflight before Three.js parsing: binary container/chunk bounds, self-contained buffers/images, scene graph cycles/parenting, mesh/accessor/skin/animation references and texture/resource budgets.
