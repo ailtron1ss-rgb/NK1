@@ -36,6 +36,10 @@ SHA-256 полного архива:
 
 Эта сборка — **implementation hotfix, не production-approved**. Не подтверждены production build вместе с миграцией БД, настоящий browser/Live2D E2E, синхронизация реального Android/Termux audio, независимый multi-seed retrieval uplift (текущий benchmark всё ещё показывает `recallDelta=0`), длительный soak и полный license review. Никаких выводов о субъективном сознании или общей интеллектуальной эффективности из этих тестов не делается.
 
+## Мастер-план проекта
+
+- [Мастер-план интеграции и завершения проекта (30 фаз, 300 шагов)](docs/NK1_FINAL_MASTER_PLAN_2026-10-28_RU.md)
+
 ## Следующий этап
 
 Следующий крупный проход должен сосредоточиться на независимой оценке retrieval/learning: paired seeds, неизменяемый holdout, task success, regret, calibration, forgetting, catastrophic failures и ресурсная стоимость. Ничего не продвигать автоматически без устойчивого улучшения на независимом наборе.
