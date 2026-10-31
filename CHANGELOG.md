@@ -1,3 +1,7 @@
+## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
+- Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
+- Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
+
 ## [NK1][CI] Exact-SHA release validation trigger coverage (2026-10-31)
 - Run the canonical NeuroCore core regression workflow on every push to `workpass70-source`, not only when a curated path list matches.
 - Run the Hexis source-lineage contract on every canonical source push so the release publisher's exact-SHA requirement is always backed by an actual check run.
