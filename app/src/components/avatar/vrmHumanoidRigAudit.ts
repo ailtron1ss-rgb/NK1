@@ -16,8 +16,8 @@ export type HumanoidRole =
   | "leftUpperLeg" | "leftLowerLeg" | "leftFoot" | "leftToes"
   | "rightUpperLeg" | "rightLowerLeg" | "rightFoot" | "rightToes"
   | "leftEye" | "rightEye"
-  | \`left\${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}\${"Proximal" | "Intermediate" | "Distal"}\`
-  | \`right\${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}\${"Proximal" | "Intermediate" | "Distal"}\`;
+  | `left${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`
+  | `right${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`;
 
 export interface HumanoidNodeLike {
   readonly name?: string;
@@ -112,11 +112,6 @@ function hasParentCycle(node: HumanoidNodeLike): boolean {
     current = current.parent ?? null;
   }
   return false;
-}
-
-function hasAlias(name: string, role: HumanoidRole): boolean {
-  const normalizedName = normalize(name);
-  return (aliases.get(role) ?? []).some((alias) => normalizedName === normalize(alias));
 }
 
 /** Resolve only unique explicit bone names and a connected humanoid hierarchy. */
