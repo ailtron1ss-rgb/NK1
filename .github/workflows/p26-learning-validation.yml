@@ -1,6 +1,17 @@
 name: P26 Learning Validation
 
 on:
+  # Run the learning-plan integrity gate on the canonical source branch too.
+  # Direct source pushes do not create pull_request events, so without this
+  # trigger a change to the persisted-plan validator could remain untested.
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/learning/LearningExperimentPlan.ts"
+      - "runtime/neuro-kurisu/tests/p23-learning-experiment-plan.mjs"
+      - "runtime/neuro-kurisu/tests/p23-learning-experiment-plan-cli.mjs"
+      - "runtime/neuro-kurisu/scripts/create-learning-experiment-plan.mjs"
+      - ".github/workflows/p26-learning-validation.yml"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts"
