@@ -1,3 +1,11 @@
+## [NK1][Memory] Add isolated LongMemEval-S retrieval evaluation adapter (WorkPass82, 2026-10-31)
+
+- Add a pinned adapter for the MIT-licensed, English-only LongMemEval-S cleaned benchmark without bundling or downloading dataset contents in CI.
+- Build one isolated MemoryOS2 corpus per question so sessions from other questions cannot leak into retrieval.
+- Compare canonical MemoryOS2 retrieval with a deterministic per-question Okapi BM25 baseline; report recall@K, MRR, precision, abstention and unsupported retrieval.
+- Add paired bootstrap confidence intervals across fixed seeds, pin upstream revision and raw file SHA-256, and export only hashed IDs plus aggregate metrics.
+- Keep automatic promotion disabled because English-only evidence cannot satisfy NK1's independent RU/EN holdout requirement.
+
 ## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
 - Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
 - Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
