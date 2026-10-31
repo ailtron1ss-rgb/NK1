@@ -1,3 +1,8 @@
+## [NK1][CI] Exact-SHA release validation trigger coverage (2026-10-31)
+- Run the canonical NeuroCore core regression workflow on every push to `workpass70-source`, not only when a curated path list matches.
+- Run the Hexis source-lineage contract on every canonical source push so the release publisher's exact-SHA requirement is always backed by an actual check run.
+- Keep pull-request path filters unchanged; release publication still requires both checks to complete successfully for the exact source SHA and retains provenance/license gates.
+
 ## WorkPass78 — Hexis belief trust integrity
 - Update belief confidence, source trust and accepted-belief timestamp only when evidence is actually applied.
 - Duplicate evidence remains auditable but cannot inflate trust or advance the accepted-belief timestamp; protected contradictions remain audit-only and cannot mutate protected confidence/trust.

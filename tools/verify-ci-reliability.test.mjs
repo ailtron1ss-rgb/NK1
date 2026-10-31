@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { validateCiConfig } from "./verify-ci-reliability.mjs";
 
 const pinnedWorkflow = `name: example
@@ -97,4 +98,21 @@ test("requires cognitive CI for pull requests targeting rebuild", () => {
     nodeVersion: "22.16.0"
   });
   assert.match(errors.join("\n"), /must run for pull requests targeting rebuild/);
+});
+
+
+test("release-required exact-SHA checks run on every canonical source push", async () => {
+  const files = [
+    ".github/workflows/workpass71-validation.yml",
+    ".github/workflows/nk1-hexis-source-lineage.yml"
+  ];
+  for (const file of files) {
+    const source = await readFile(new URL("../" + file, import.meta.url), "utf8");
+    const pushBlock = /^  push:\n([\s\S]*?)(?=^  (?:pull_request|workflow_dispatch):|^jobs:)/m.exec(source)?.[1] ?? "";
+    assert.ok(pushBlock, file + ": canonical source push trigger must exist");
+    assert.match(pushBlock, /workpass70-source/, file + ": push trigger must include the canonical source branch");
+    assert.doesNotMatch(pushBlock, /^\s*paths:/m, file + ": exact-SHA release-required check must not be skipped by push path filters");
+    const pullRequestBlock = /^  pull_request:\n([\s\S]*?)(?=^  workflow_dispatch:|^permissions:)/m.exec(source)?.[1] ?? "";
+    assert.match(pullRequestBlock, /^\s*paths:/m, file + ": pull-request path filters should remain scoped");
+  }
 });

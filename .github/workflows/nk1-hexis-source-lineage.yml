@@ -5,18 +5,6 @@ on:
     branches:
       - workpass70-source
       - 'fix/hexis-source-lineage-*'
-    paths:
-      - '.github/workflows/nk1-hexis-source-lineage.yml'
-      - 'CHANGELOG.md'
-      - 'runtime/neuro-kurisu/package.json'
-      - 'runtime/neuro-kurisu/package-lock.json'
-      - 'runtime/neuro-kurisu/src/server/server.mjs'
-      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
-      - 'runtime/neuro-kurisu/src/organism/integration/hexis/**'
-      - 'runtime/neuro-kurisu/src/organism/memory/EvidenceLineageProvenance.ts'
-      - 'runtime/neuro-kurisu/src/organism/memory/SourceMonitor.ts'
-      - 'runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts'
-      - 'runtime/neuro-kurisu/tests/integration/hexis-*.mjs'
   pull_request:
     branches:
       - workpass70-source
