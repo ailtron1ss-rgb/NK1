@@ -94,6 +94,8 @@ assert.equal(arbitration.motorFrame.goalId, 'goal-look-left');
 assert.equal(governedFrames.length, 1, 'arbiter output must publish to the shared frame channel');
 assert.equal(governed.latestFrame().goalId, 'goal-look-left');
 assert.equal(governed.diagnostics().controllerTick, governed.latestFrame().tick);
+assert.equal(governed.diagnostics().arbitration.lastSelectedAction, 'look-left', 'runtime diagnostics must expose the canonical arbiter decision');
+assert.equal(governed.diagnostics().arbitration.pendingGoalCount, 1);
 
 // Renderer profiles are projections over one canonical controller, not replacement skeletons.
 const calibration = {
