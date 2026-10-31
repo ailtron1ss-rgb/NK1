@@ -6,14 +6,14 @@ import {
   type VrmArmChainMap,
   type VrmArmPose,
   type ArmSide,
-} from "./vrmHumanoidRigAdapter";
-import { solvePlanarArmIK } from "./planarArmIK";
+} from "./vrmHumanoidRigAdapter.ts";
+import { solvePlanarArmIK } from "./planarArmIK.ts";
 import {
   getVrmArmCalibration,
   validateVrmRigCalibrationProfile,
   type VrmRigCalibrationContext,
   type VrmRigCalibrationProfile,
-} from "./vrmRigCalibrationProfile";
+} from "./vrmRigCalibrationProfile.ts";
 
 export interface VrmArmPoint3 { x: number; y: number; z: number; }
 export interface VrmArmRuntimeBinding {
