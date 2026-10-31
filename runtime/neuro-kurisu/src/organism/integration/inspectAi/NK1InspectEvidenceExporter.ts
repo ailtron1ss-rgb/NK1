@@ -114,7 +114,7 @@ function auditReceiptProjections(snapshot: CognitiveEventFabricSnapshot, events:
       if (action.payload?.decisionId && action.payload?.decisionLinked === true && !action.parentIds.includes(String(action.payload.decisionId))) issues.push('decision-parent-link-missing');
     }
 
-    if (entry.projectionHash !== undefined && !/^[a-f0-9]{64}\u0024/i.test(String(entry.projectionHash))) issues.push('receipt-projection-hash-invalid');
+    if (entry.projectionHash !== undefined && (String(entry.projectionHash).length !== 64 || ![...String(entry.projectionHash)].every((character) => /[a-f0-9]/i.test(character)))) issues.push('receipt-projection-hash-invalid');
 
     const externalObservations = (Array.isArray(entry.externalObservations) ? entry.externalObservations : []).slice(-32).map((ref) => {
       const event = events.get(ref.eventId);
