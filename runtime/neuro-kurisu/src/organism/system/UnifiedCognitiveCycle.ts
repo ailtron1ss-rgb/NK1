@@ -44,7 +44,7 @@ export class UnifiedCognitiveCycle {
       lastMissingStages:missing};
   }
   evaluate(input:{tick:number;stageIds:Partial<Record<UnifiedCycleStage,string|undefined>>;parentIntegrity01:number}):UnifiedCognitiveCycleResult {
-    if(!isRecord(input))throw new TypeError('cognitive cycle input must be an object');
+    if(input===null||typeof input!=='object')throw new TypeError('cognitive cycle input must be an object');
     if(!isRecord(input.stageIds))throw new TypeError('stageIds must be an object');
     if(!Number.isSafeInteger(input.tick)||input.tick<0)throw new RangeError('cognitive cycle tick must be a non-negative safe integer');
     if(input.tick<=this.state.lastTick)throw new RangeError('cognitive cycle tick must strictly increase');
