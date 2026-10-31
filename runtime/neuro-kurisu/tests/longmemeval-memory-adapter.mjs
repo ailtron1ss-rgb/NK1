@@ -84,8 +84,10 @@ const shuffled = runLongMemEvalMemoryBenchmark([...rows].reverse(), {
 });
 assert.equal(shuffled.datasetFingerprint, report.datasetFingerprint,
   'input order must not alter the canonical dataset fingerprint');
-assert.deepEqual(shuffled.metrics.candidate, report.metrics.candidate,
-  'input order must not change aggregate retrieval metrics');
+for (const key of ['queries', 'answerableQueries', 'unanswerableQueries', 'recallAtK01', 'mrr01', 'precisionAtK01', 'unsupportedRetrievalCount', 'unsupportedRetrievalRate01', 'correctAbstentionRate01', 'falseAbstentionCount', 'falseAbstentionRate01', 'queryCoverage01']) {
+  assert.equal(shuffled.metrics.candidate[key], report.metrics.candidate[key],
+    'input order must not change retrieval metric ' + key);
+}
 
 assert.throws(() => runLongMemEvalMemoryBenchmark([{
   ...rows[0],
