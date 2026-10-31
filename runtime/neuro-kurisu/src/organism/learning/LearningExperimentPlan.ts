@@ -155,6 +155,9 @@ export function validateLearningExperimentPlan(
   if (!plan || plan.protocol !== 'nk1-matched-reset-retention' || plan.protocolVersion !== 1) {
     throw new Error('unsupported experiment plan');
   }
+  if (!['train', 'validation', 'holdout'].includes(plan.split)) {
+    throw new Error('plan split must be train, validation or holdout');
+  }
   if (!Array.isArray(plan.seedIds) || !plan.seedIds.length ||
       plan.seedIds.some(seed => !Number.isSafeInteger(seed) || seed < 0) ||
       new Set(plan.seedIds).size !== plan.seedIds.length ||
