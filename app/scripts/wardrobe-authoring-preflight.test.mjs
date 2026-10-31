@@ -36,27 +36,27 @@ const png=Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0]);
 test("authoring preflight accepts exact asset bytes, SHA-256 and MIME signature",async t=>{
  const f=await fixture(t,png);
  const result=await preflightWardrobePack({manifestPath:f.manifestPath,assetsRoot:f.root});
- assert.equal(result.valid,true);assert.equal(result.assetsChecked,1);assert.equal(result.totalBytes,png.length);
+ assert.equal(result.valid,true,result.errors.join(","));assert.equal(result.assetsChecked,1);assert.equal(result.totalBytes,png.length);
 });
 
 test("authoring preflight rejects payload tampering even when the manifest remains unchanged",async t=>{
  const f=await fixture(t,png);
  await writeFile(f.assetPath,Buffer.concat([png,Buffer.from([1])]));
  const result=await preflightWardrobePack({manifestPath:f.manifestPath,assetsRoot:f.root});
- assert.equal(result.valid,false);assert.ok(result.errors.includes("asset:item-v1:byte-length-mismatch"));assert.ok(result.errors.includes("asset:item-v1:sha256-mismatch"));
+ assert.equal(result.valid,false);assert.ok(result.errors.includes("asset:item-v1:byte-length-mismatch"),result.errors.join(","));assert.ok(result.errors.includes("asset:item-v1:sha256-mismatch"));
 });
 
 test("authoring preflight rejects content whose signature disagrees with the declared MIME",async t=>{
  const f=await fixture(t,Buffer.from("not an image"));
  const result=await preflightWardrobePack({manifestPath:f.manifestPath,assetsRoot:f.root});
- assert.ok(result.errors.includes("asset:item-v1:mime-signature-mismatch"));
+ assert.ok(result.errors.includes("asset:item-v1:mime-signature-mismatch"),result.errors.join(","));
 });
 
 test("authoring preflight rejects missing files and path traversal before attachment",async t=>{
  const f=await fixture(t,png);
  f.manifest.assets[0].path="../outside.png";await writeFile(f.manifestPath,JSON.stringify(f.manifest));
  const result=await preflightWardrobePack({manifestPath:f.manifestPath,assetsRoot:f.root});
- assert.equal(result.valid,false);assert.ok(result.errors.some(x=>x.includes("unsafe-path")));
+ assert.equal(result.valid,false);assert.ok(result.errors.some(x=>x.includes("unsafe-path")),result.errors.join(","));
 });
 
 test("authoring preflight accepts a self-contained GLB v2 with a mesh",async t=>{
@@ -70,6 +70,6 @@ test("authoring preflight rejects GLB external buffers and images",async t=>{
  const bytes=glb({asset:{version:"2.0"},buffers:[{uri:"https://example.invalid/body.bin",byteLength:4}],images:[{uri:"textures/coat.png"}],meshes:[{primitives:[]}]});
  const f=await fixture(t,bytes,"model/gltf-binary");
  const result=await preflightWardrobePack({manifestPath:f.manifestPath,assetsRoot:f.root});
- assert.ok(result.errors.includes("asset:item-v1:glb-external-buffer:0"));
+ assert.ok(result.errors.includes("asset:item-v1:glb-external-buffer:0"),result.errors.join(","));
  assert.ok(result.errors.includes("asset:item-v1:glb-external-image:0"));
 });
