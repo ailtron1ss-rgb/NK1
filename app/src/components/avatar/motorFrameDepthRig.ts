@@ -52,23 +52,24 @@ export function overlayMotorFrameOnDepthRigPose(
     if (!command || command.targetKind !== "depth-rig-node"
       || typeof command.jointId !== "string" || command.jointId.length < 2 || command.jointId.length > 64
       || typeof command.targetId !== "string" || !knownNodes.has(command.targetId)
-      || !["x", "y", "z", "rotation"].includes(command.component)
+      || (command.component !== "x" && command.component !== "y" && command.component !== "z" && command.component !== "rotation")
       || typeof command.value !== "number" || !Number.isFinite(command.value)) {
       return reject("motor-command-target-or-value-invalid");
     }
-    const expectedUnit = command.component === "rotation" ? "degrees" : "normalized";
+    const component: "x" | "y" | "z" | "rotation" = command.component;
+    const expectedUnit = component === "rotation" ? "degrees" : "normalized";
     if (command.valueUnit !== expectedUnit) return reject("motor-command-unit-mismatch");
     if (jointIds.has(command.jointId)) return reject("motor-frame-joint-duplicate");
-    const channelKey = command.targetId + ":" + command.component;
+    const channelKey = command.targetId + ":" + component;
     if (channels.has(channelKey)) return reject("motor-frame-target-channel-duplicate");
-    const limit = command.component === "x" || command.component === "y" ? 2
-      : command.component === "z" ? 10 : 90;
+    const limit = component === "x" || component === "y" ? 2
+      : component === "z" ? 10 : 90;
     if (Math.abs(command.value) > limit) return reject("motor-command-value-out-of-range");
 
     jointIds.add(command.jointId);
     channels.add(channelKey);
     const current = deltas[command.targetId] ?? {};
-    deltas[command.targetId] = { ...current, [command.component]: command.value };
+    deltas[command.targetId] = { ...current, [component]: command.value };
   }
 
   const pose: DepthRigPose = { rigId: rig.id, deltas };
