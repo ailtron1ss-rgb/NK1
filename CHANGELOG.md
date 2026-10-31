@@ -2,6 +2,7 @@
 - Add optional `independenceGroupId` labels so multiple prompts derived from one source episode/document are resampled as a single statistical cluster.
 - Replace query-IID paired bootstrap with paired source-cluster bootstrap for recall, MRR, and unsupported-retrieval confidence intervals; legacy datasets fall back to one cluster per example.
 - Bind independence-group labels into dataset fingerprints and block promotion when one source group crosses train/holdout.
+- Export only per-experiment HMAC digests of source-group IDs in optional query evidence, allowing independent reviewers to verify grouping without exposing raw group labels.
 - Extend the independent bilingual holdout runner and add a regression contract for grouped resampling, fingerprint binding, and split leakage.
 - This improves uncertainty estimation only; it does not establish retrieval uplift or authorize automatic promotion.
 
