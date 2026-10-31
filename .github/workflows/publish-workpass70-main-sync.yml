@@ -1,8 +1,6 @@
 name: Publish validated WorkPass70 source release
 
 on:
-  push:
-    branches: [workpass70-source]
   workflow_run:
     workflows: ["NeuroCore core regression validation"]
     branches: [workpass70-source]
@@ -19,7 +17,7 @@ concurrency:
 
 jobs:
   package-and-publish:
-    if: ${{ github.event_name == 'push' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'workpass70-source') }}
+    if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'workpass70-source' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
