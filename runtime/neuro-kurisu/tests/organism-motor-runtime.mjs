@@ -63,6 +63,37 @@ await new Promise((resolve) => setTimeout(resolve, 55));
 assert.equal(continuous.latestFrame()?.tick, stoppedTick, 'stop must prevent further motor ticks');
 assert.equal(continuous.diagnostics().continuousLoopErrors, 0);
 
+// Approved semantic motor candidates must pass through the runtime-owned arbiter
+// and publish through the same canonical MotorFrame channel as continuous ticks.
+const governed = new OrganismMotorRuntime();
+governed.configureSkeleton([{
+  id: 'head-yaw', minAngleRad: -1, maxAngleRad: 1, restAngleRad: 0,
+  maxSpeedRadPerSec: 2,
+}]);
+const governedFrames = [];
+governed.subscribe((frame) => governedFrames.push(frame), false);
+const arbitration = governed.arbitrateApprovedGoals([{
+  id: 'candidate-look-left',
+  goal: {
+    id: 'goal-look-left', action: 'look-left', source: 'organism', priority: 50,
+    confidence01: .95, createdAtMs: 100, expiresAtMs: 5000,
+    targetJointAnglesRad: { 'head-yaw': .35 }, reason: 'approved cognitive gesture',
+  },
+  corticalValue01: .95, predictedUtility01: .9, confidence01: .95, effort01: .05,
+  goalFit01: .95, conflict01: .02,
+}], {
+  tick: 1, nowMs: 100, dopamine01: .95, predictionError01: .05,
+  uncertainty01: .05, novelty01: .25, energy01: .95, thermal01: .05,
+  cognitiveCapacity01: .95, conflict01: .02, goalPressure01: .95,
+  minimumGate01: .05,
+});
+assert.equal(arbitration.accepted, true, JSON.stringify(arbitration));
+assert.equal(arbitration.selectedAction, 'look-left');
+assert.equal(arbitration.motorFrame.goalId, 'goal-look-left');
+assert.equal(governedFrames.length, 1, 'arbiter output must publish to the shared frame channel');
+assert.equal(governed.latestFrame().goalId, 'goal-look-left');
+assert.equal(governed.diagnostics().controllerTick, governed.latestFrame().tick);
+
 // Renderer profiles are projections over one canonical controller, not replacement skeletons.
 const calibration = {
   status: 'calibrated', evidenceId: 'rig.calibration.runtime-test',
