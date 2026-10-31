@@ -13,6 +13,7 @@ export interface CognitiveMotorIntentInput {
   conflict01: number;
   goalFit01: number;
   novelty01: number;
+  emotion?: { label?: string; valence01?: number; arousal01?: number; dominance01?: number };
 }
 
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
@@ -55,6 +56,18 @@ export function createCognitiveMotorGoalCandidate(
 
   const action = String(input.action ?? '');
   const targets: Record<string, number> = {};
+  const knownEmotions = new Set(['curiosity', 'calm', 'joy', 'anxiety', 'frustration', 'sadness', 'anger', 'protective']);
+  const rawEmotion = String(input.emotion?.label ?? 'calm').toLocaleLowerCase();
+  const emotionLabel = knownEmotions.has(rawEmotion) ? rawEmotion : 'calm';
+  const valence01 = clamp01(input.emotion?.valence01 ?? 0.5);
+  const arousal01 = clamp01(input.emotion?.arousal01 ?? 0.22);
+  // High-arousal distress softens gestures; affect may tune, never override, the selected action.
+  const regulationScale = (['anxiety', 'frustration', 'anger'].includes(emotionLabel) ? 0.58 : emotionLabel === 'protective' ? 0.82 : 1)
+    * (arousal01 >= 0.78 ? 0.82 : 1);
+  const affectNodOffset = emotionLabel === 'joy' ? -0.008
+    : emotionLabel === 'sadness' ? 0.006
+      : emotionLabel === 'anxiety' ? 0.012
+        : emotionLabel === 'frustration' || emotionLabel === 'anger' ? 0.008 : 0;
   const addOffset = (
     roles: readonly CanonicalMotorJointRole[],
     offset: number,
@@ -69,13 +82,13 @@ export function createCognitiveMotorGoalCandidate(
   let mapped = false;
   switch (action) {
     case 'respond':
-      mapped = addOffset(['head.pitch', 'neck.pitch'], -0.06);
+      mapped = addOffset(['head.pitch', 'neck.pitch'], -0.06 * regulationScale + affectNodOffset);
       break;
     case 'explore':
-      mapped = addOffset(['head.yaw', 'neck.yaw'], input.tick % 2 === 0 ? -0.07 : 0.07);
+      mapped = addOffset(['head.yaw', 'neck.yaw'], (input.tick % 2 === 0 ? -0.07 : 0.07) * (emotionLabel === 'curiosity' ? 1 : regulationScale));
       break;
     case 'verify':
-      mapped = addOffset(['head.pitch', 'neck.pitch'], 0.035);
+      mapped = addOffset(['head.pitch', 'neck.pitch'], 0.035 + (emotionLabel === 'anxiety' ? 0.012 : emotionLabel === 'curiosity' ? 0.006 : 0));
       break;
     case 'rest':
       mapped = addOffset(['head.pitch', 'neck.pitch'], 0);
@@ -99,7 +112,7 @@ export function createCognitiveMotorGoalCandidate(
       expiresAtMs: input.nowMs + 1_200,
       targetJointAnglesRad: targets,
       interruptible: true,
-      reason: `cognitive-action-approved:${action}`,
+      reason: `cognitive-action-approved:${action};affect:${emotionLabel};valence:${valence01.toFixed(2)};arousal:${arousal01.toFixed(2)}`,
     },
     corticalValue01: clamp01(input.score01),
     predictedUtility01: clamp01(input.predictedUtility01),

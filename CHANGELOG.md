@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Couple appraisal state to governed avatar gestures (2026-10-31)
+
+- Extend the existing action-to-motor mapper with a bounded affect context read from the same canonical cognitive snapshot already used by voice prosody; no parallel emotion engine or direct renderer control is introduced.
+- Preserve action authority: appraisal can only modulate the small gesture selected by the cognitive action. High-arousal anxiety/frustration/anger soften response motion; joy/sadness add small differentiated response offsets; curiosity can preserve full exploration scan amplitude; verification gets a restrained attention cue.
+- Unknown emotion labels fall back to calm; all continuous values are clamped; the existing rig-role lookup, joint-envelope clamp, motor arbiter, action/recovery gate and 1.2-second TTL remain authoritative.
+- Add regression coverage showing calm, anxious and joyful response gestures are distinct while remaining inside calibrated joint bounds. The test-first run intentionally failed on the generic fixed nod before this implementation (motor workflow [41231072910](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41231072910)).
+- External design reference: synchronize expressive cues against media/sample time rather than independent wall-clock timers; this pass only adds the canonical affect-to-motion mapping, not sample-accurate audio/avatar scheduling.
+
 ## [NK1][Core] Bind real core/full event lineage into unified cognitive-cycle contract (2026-10-31)
 
 - Fix the runtime handoff from `CognitiveEventFabric.verifyOperationalCycle()` to `UnifiedCognitiveCycle.evaluate()`: forward explicit `coreLineageComplete`, `fullLineageComplete`, `coreIntegrity01`, and `fullIntegrity01` evidence instead of relying on the evaluator's conservative defaults.

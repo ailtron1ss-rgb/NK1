@@ -867,6 +867,7 @@ export class OrganismRuntime {
               conflict01: cycle.state.needs.cognitiveLoad,
               goalFit01: selectedCandidate.predictedNeedRelief,
               novelty01: cycle.state.needs.novelty,
+              emotion: this.voiceEmotionContext(),
             })
           : null;
         if (motorCandidate) {
