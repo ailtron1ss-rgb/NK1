@@ -1,3 +1,8 @@
+## [NK1][License] Complete evidence inventory without approval (2026-10-31)
+- Correct locked npm component count to 477 and record evidence references for root/runtime, dependencies and eight archives.
+- Add evidence-only license expressions and exact SHA-256 records for all eleven repository LICENSE/NOTICE files, including the four previously missing vendor files.
+- Keep every status pending, every redistribution approval false, and all human reviewer fields blank; do not treat evidence as permission to redistribute.
+
 ## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
 - Tighten the publisher job condition: packaging is accepted only for a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source`. The workflow was already configured with `workflow_run`; this change makes the job guard explicit and fail-closed.
 - Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
