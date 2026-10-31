@@ -57,7 +57,7 @@ function sameCanonicalSkeleton(a: readonly JointDefinition[], b: readonly JointD
   return b.every((joint) => {
     const current = byId.get(joint.id);
     return Boolean(current
-      && current.parentId === joint.parentId
+      && (current.parentId ?? null) === (joint.parentId ?? null)
       && current.minAngleRad === joint.minAngleRad
       && current.maxAngleRad === joint.maxAngleRad
       && current.restAngleRad === joint.restAngleRad
