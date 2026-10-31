@@ -30,7 +30,7 @@ function inspectGlb(bytes, id) {
     if(index===0 && type!==0x4e4f534a) errors.push(`asset:${id}:glb-json-chunk-must-be-first`);
     if(type===0x4e4f534a) {
       if(json) errors.push(`asset:${id}:glb-duplicate-json-chunk`);
-      else { try { json=JSON.parse(chunk.toString("utf8").replace(/[\\u0000\\u0020]+$/u,"")); } catch { errors.push(`asset:${id}:glb-json-invalid`); } }
+      else { try { json=JSON.parse(chunk.toString("utf8").replace(/[\u0000\u0020]+$/u,"")); } catch { errors.push(`asset:${id}:glb-json-invalid`); } }
     } else if(type===0x004e4942) {
       if(binLength) errors.push(`asset:${id}:glb-duplicate-bin-chunk`);
       binLength=length;
