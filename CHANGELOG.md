@@ -1,3 +1,11 @@
+## [NK1][Aspect 09] Add two-bone IK to 3D embodiment (2026-10-31)
+
+- Added a pure planar two-bone IK solver with finite-input normalization, safe reachable-annulus clamping, explicit reach-error reporting, and deterministic shoulder/elbow angles.
+- Rebuilt the procedural 3D arm hierarchy as shoulder → elbow → forearm/hand groups. Both joints now ease toward IK targets generated from the shared semantic motor gesture profile.
+- Imported humanoid rigs now receive the same solved upper-arm and forearm/elbow intent when their bone names expose those joints; unsupported rigs remain safely on their authored animation path.
+- Added IK regression coverage for reachable/unreachable targets, invalid numeric inputs, and both procedural/imported rig integration. Registered the test in the app package and required 3D embodiment workflow.
+- This is planar arm IK, not full 3D humanoid IK: hand orientation, finger articulation, self-collision, reach-to-object constraints, and multi-joint body balance remain future work.
+
 ## [NK1][Embodiment] Add focused 3D stage validation and syntax regression (2026-10-30)
 
 - Registered a dedicated 3D stage test command covering body wiring, local model storage, resource disposal, renderer limits and shipped visual assets.
