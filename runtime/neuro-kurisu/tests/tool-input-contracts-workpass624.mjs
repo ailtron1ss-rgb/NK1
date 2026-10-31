@@ -20,15 +20,16 @@ assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.hasInputC
 assert.equal(gateway.listTools().find(x => x.id === "catalog.search")?.inputSchema?.type, "object");
 assert.deepEqual(gateway.listTools().map(x => x.id), [...gateway.listTools().map(x => x.id)].sort());
 gateway.registerTool({
-  // Keep this ID read-only: "code" in a tool name intentionally triggers ActionGateway code-operation policy.
-  id: "catalog.short-tag",
+  // Keep this ID read-only: avoid reserved code-operation identifiers so this fixture tests regex semantics only.
+  id: "catalog.regex-check",
   capability: "catalog.read",
   destructive: false,
-  inputContract: { type: "object", properties: { code: { type: "string", pattern: "^[a-z0-9]{2,5}$" } }, required: ["code"], additionalProperties: false },
-  execute: async input => ({ ok: true, code: input.code }),
+  inputContract: { type: "object", properties: { tag: { type: "string", pattern: "^[a-z0-9]{2,5}$" } }, required: ["tag"], additionalProperties: false },
+  execute: async input => ({ ok: true, tag: input.tag }),
 });
-assert.equal((await gateway.executeTool("catalog.short-tag", { code: "nk1" })).ok, true, "bounded quantifiers remain supported in safe patterns");
-assert.equal((await gateway.executeTool("catalog.short-tag", { code: "nk1!" })).ok, false, "values outside the bounded alphanumeric pattern are rejected");
+const boundedPositive = await gateway.executeTool("catalog.regex-check", { tag: "nk1" });
+assert.equal(boundedPositive.ok, true, `bounded quantifiers remain supported in safe patterns: ${JSON.stringify(boundedPositive.result)}`);
+assert.equal((await gateway.executeTool("catalog.regex-check", { tag: "nk1!" })).ok, false, "values outside the bounded alphanumeric pattern are rejected");
 assert.equal((await gateway.executeTool("catalog.search", { query: "nk1 architecture", limit: 3, filters: { kinds: ["memory", "tool"] } })).ok, true);
 assert.equal(calls, 1);
 
