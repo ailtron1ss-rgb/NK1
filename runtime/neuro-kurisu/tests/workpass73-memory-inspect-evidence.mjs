@@ -4,7 +4,7 @@ import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { fingerprintMemoryRetrievalDataset, hmacSha256Hex } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
 import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
 
-assert.equal(hmacSha256Hex('Jefe', 'what do ya want for nothing?'), '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58aeead7a2e', 'HMAC-SHA256 must match RFC 2202 test vector');
+assert.equal(hmacSha256Hex('Jefe', 'what do ya want for nothing?'), '5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843', 'HMAC-SHA256 must match RFC 2202 test vector');
 
 const now = 2_000_000_000_000;
 const memory = new MemoryOS2();
