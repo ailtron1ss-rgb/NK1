@@ -25,7 +25,7 @@ const timestamp=(value:unknown,label:string):number=>{
 };
 type LongMemEvalTurn={role:string;content:string};
 type LongMemEvalSession={id:string;at:number;content:string};
-type LongMemEvalQuestion={id:string;type:string;query:string;at:number;sessions:LongMemEvalSession[];answerSessionIds:string[];answerable:boolean};
+type LongMemEvalQuestion={id:string;type:string;query:string;at:number;sessions:LongMemEvalSession[];answerSessionIds:string[];answerable:boolean;independenceGroupId:string};
 function normalizeQuestion(candidate:unknown,index:number):LongMemEvalQuestion{
  if(!candidate||typeof candidate!=='object'||Array.isArray(candidate))throw new Error('LongMemEval row must be an object at index '+index);
  const row=candidate as Record<string,any>;
@@ -75,7 +75,18 @@ function normalizeRows(rows:unknown):LongMemEvalQuestion[]{
  const normalized=rows.map(normalizeQuestion);
  const ids=new Set<string>();
  for(const row of normalized){if(ids.has(row.id))throw new Error('LongMemEval duplicate question_id: '+row.id);ids.add(row.id);}
- return normalized.sort((a,b)=>a.id.localeCompare(b.id));
+ const sorted=normalized.sort((a,b)=>a.id.localeCompare(b.id));
+ // Questions sharing any source session are one statistical unit. This prevents
+ // repeated sessions from inflating the effective independent sample count.
+ const parent=new Map(sorted.map(row=>[row.id,row.id]));
+ const find=(id:string):string=>{const root=parent.get(id)!;if(root===id)return id;const resolved=find(root);parent.set(id,resolved);return resolved;};
+ const union=(left:string,right:string)=>{const a=find(left),b=find(right);if(a===b)return;const [first,second]=[a,b].sort();parent.set(second,first);};
+ const ownerBySession=new Map<string,string>();
+ for(const row of sorted)for(const session of row.sessions){const owner=ownerBySession.get(session.id);if(owner)union(row.id,owner);else ownerBySession.set(session.id,row.id);}
+ const membersByRoot=new Map<string,string[]>();
+ for(const row of sorted){const root=find(row.id);const members=membersByRoot.get(root)??[];members.push(row.id);membersByRoot.set(root,members);}
+ const digestByRoot=new Map([...membersByRoot].map(([root,members])=>[root,digest([...members].sort().join('\\0'))]));
+ return sorted.map(row=>({...row,independenceGroupId:digestByRoot.get(find(row.id))!}));
 }
 function buildQuestionMemory(question:LongMemEvalQuestion){
  const memory=new MemoryOS2({embeddingProvider:null,metadataRecallEnabled:false});
@@ -146,30 +157,37 @@ function aggregate(outcomes:Array<{answerable:boolean;recallAtK01:number;mrr01:n
 }
 function mulberry32(seed:number){let value=seed>>>0;return ()=>{value+=0x6D2B79F5;let t=value;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;};}
 const quantile=(values:number[],p:number)=>{const sorted=[...values].sort((a,b)=>a-b);return sorted[Math.max(0,Math.min(sorted.length-1,Math.ceil(p*sorted.length)-1))]??0;};
-function pairedBootstrap(rows:Array<{answerable:boolean;baselineRecall:number;candidateRecall:number;baselineMrr:number;candidateMrr:number;baselineUnsupported:boolean;candidateUnsupported:boolean}>,seeds:number[],samples:number){
+function pairedBootstrap(rows:Array<{answerable:boolean;groupId:string;baselineRecall:number;candidateRecall:number;baselineMrr:number;candidateMrr:number;baselineUnsupported:boolean;candidateUnsupported:boolean}>,seeds:number[],samples:number){
  const answerable=rows.filter(row=>row.answerable),unanswerable=rows.filter(row=>!row.answerable);
+ const groupMeans=(source:typeof rows,select:(row:typeof rows[number])=>number)=>{
+  const groups=new Map<string,number[]>();for(const row of source){const values=groups.get(row.groupId)??[];values.push(select(row));groups.set(row.groupId,values);}
+  return [...groups.values()].map(mean);
+ };
+ const recallGroups=groupMeans(answerable,row=>row.candidateRecall-row.baselineRecall);
+ const mrrGroups=groupMeans(answerable,row=>row.candidateMrr-row.baselineMrr);
+ const unsupportedGroups=groupMeans(unanswerable,row=>(row.candidateUnsupported?1:0)-(row.baselineUnsupported?1:0));
  const runs=seeds.map(seed=>{
   const rng=mulberry32(seed),recall:number[]=[],mrr:number[]=[],unsupported:number[]=[];
   for(let sample=0;sample<samples;sample++){
    const sampleMean=(source:Array<any>,select:(row:any)=>number)=>{
     if(!source.length)return 0;let total=0;for(let i=0;i<source.length;i++)total+=select(source[Math.floor(rng()*source.length)]);return total/source.length;
    };
-   recall.push(sampleMean(answerable,row=>row.candidateRecall-row.baselineRecall));
-   mrr.push(sampleMean(answerable,row=>row.candidateMrr-row.baselineMrr));
-   unsupported.push(sampleMean(unanswerable,row=>(row.candidateUnsupported?1:0)-(row.baselineUnsupported?1:0)));
+   recall.push(sampleMean(recallGroups,value=>value));
+   mrr.push(sampleMean(mrrGroups,value=>value));
+   unsupported.push(sampleMean(unsupportedGroups,value=>value));
   }
   return {
    seed,
-   recallDelta01:mean(answerable.map(row=>row.candidateRecall-row.baselineRecall)),
+   recallDelta01:mean(recallGroups),
    recallDeltaCi95:{lower01:Number(quantile(recall,.025).toFixed(6)),upper01:Number(quantile(recall,.975).toFixed(6))},
-   mrrDelta01:mean(answerable.map(row=>row.candidateMrr-row.baselineMrr)),
+   mrrDelta01:mean(mrrGroups),
    mrrDeltaCi95:{lower01:Number(quantile(mrr,.025).toFixed(6)),upper01:Number(quantile(mrr,.975).toFixed(6))},
-   unsupportedRetrievalDelta01:mean(unanswerable.map(row=>(row.candidateUnsupported?1:0)-(row.baselineUnsupported?1:0))),
+   unsupportedRetrievalDelta01:mean(unsupportedGroups),
    unsupportedRetrievalDeltaCi95:{lower01:Number(quantile(unsupported,.025).toFixed(6)),upper01:Number(quantile(unsupported,.975).toFixed(6))},
   };
  });
  return {
-  seedCount:runs.length,runs,pairedBootstrapSamples:samples,
+  seedCount:runs.length,runs,pairedBootstrapSamples:samples,independentGroupCount:new Set(rows.map(row=>row.groupId)).size,answerableIndependentGroups:recallGroups.length,unanswerableIndependentGroups:unsupportedGroups.length,grouping:'connected-components-of-shared-session-ids',
   recallUpliftSupportedAcrossAllSeeds:runs.length>0&&runs.every(row=>row.recallDeltaCi95.lower01>=.02),
   mrrNonInferioritySupportedAcrossAllSeeds:runs.length>0&&runs.every(row=>row.mrrDeltaCi95.lower01>=-.01),
   unsupportedRetrievalNonInferioritySupportedAcrossAllSeeds:runs.length>0&&runs.every(row=>row.unsupportedRetrievalDeltaCi95.upper01<=0),
@@ -209,12 +227,12 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
   const baselineScore=scoreResults(baselineIds,question,k),candidateScore=scoreResults(candidateIds,question,k);
   baselineOutcomes.push({...baselineScore,answerable:question.answerable,latencyMs:baselineLatency});
   candidateOutcomes.push({...candidateScore,answerable:question.answerable,latencyMs:candidateLatency});
-  paired.push({answerable:question.answerable,baselineRecall:baselineScore.recallAtK01,candidateRecall:candidateScore.recallAtK01,baselineMrr:baselineScore.mrr01,candidateMrr:candidateScore.mrr01,baselineUnsupported:baselineScore.unsupportedRetrieval,candidateUnsupported:candidateScore.unsupportedRetrieval});
+  paired.push({answerable:question.answerable,groupId:question.independenceGroupId,baselineRecall:baselineScore.recallAtK01,candidateRecall:candidateScore.recallAtK01,baselineMrr:baselineScore.mrr01,candidateMrr:candidateScore.mrr01,baselineUnsupported:baselineScore.unsupportedRetrieval,candidateUnsupported:candidateScore.unsupportedRetrieval});
   const fingerprintSalt=revision+'\0'+fileSha;
   perQuestion.push({
    questionIdDigest:digest(fingerprintSalt+'\0question\0'+question.id),
    queryDigest:digest(fingerprintSalt+'\0query\0'+question.query),
-   questionType:question.type,answerable:question.answerable,relevantSessionCount:question.answerSessionIds.length,
+   questionType:question.type,answerable:question.answerable,independenceGroupDigest:digest(fingerprintSalt+'\\0group\\0'+question.independenceGroupId),relevantSessionCount:question.answerSessionIds.length,
    baseline:{recallAtK01:baselineScore.recallAtK01,mrr01:baselineScore.mrr01,precisionAtK01:baselineScore.precisionAtK01,retrievedCount:baselineScore.retrievedCount,unsupportedRetrieval:baselineScore.unsupportedRetrieval,rankedSessionDigests:baselineIds.map(id=>digest(fingerprintSalt+'\0session\0'+id))},
    candidate:{recallAtK01:candidateScore.recallAtK01,mrr01:candidateScore.mrr01,precisionAtK01:candidateScore.precisionAtK01,retrievedCount:candidateScore.retrievedCount,unsupportedRetrieval:candidateScore.unsupportedRetrieval,rankedSessionDigests:candidateIds.map(id=>digest(fingerprintSalt+'\0session\0'+id))},
   });
@@ -235,7 +253,7 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
    fileSha256:fileSha,datasetFingerprint,
   },
   experiment:{candidateMode:'canonical-memoryos2',baseline:'Okapi BM25 per question corpus',k,bootstrapSamples,seeds},
-  sampleAdequacy:{answerableQueries:answerableCount,unanswerableQueries:unanswerableCount,minimumAnswerableQueries:minAnswerable,minimumUnanswerableQueries:minUnanswerable,enoughAnswerableQueries:answerableCount>=minAnswerable,enoughUnanswerableQueries:unanswerableCount>=minUnanswerable},
+  sampleAdequacy:{answerableQueries:answerableCount,unanswerableQueries:unanswerableCount,independentGroups:confidence.independentGroupCount,minimumAnswerableQueries:minAnswerable,minimumUnanswerableQueries:minUnanswerable,enoughAnswerableQueries:answerableCount>=minAnswerable,enoughUnanswerableQueries:unanswerableCount>=minUnanswerable},
   metrics:{baseline,candidate,deltas:{
    recallAtK01:Number((candidate.recallAtK01-baseline.recallAtK01).toFixed(6)),
    mrr01:Number((candidate.mrr01-baseline.mrr01).toFixed(6)),
