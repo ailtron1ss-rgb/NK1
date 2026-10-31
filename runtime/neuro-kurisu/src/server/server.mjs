@@ -520,6 +520,134 @@ async function route(req, res) {
                 voice: runtime.embodiment.voiceSnapshot(),
             });
         }
+        if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame/stream') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const requestedRenderer = url.searchParams.get('renderer');
+            const requestedModelId = url.searchParams.get('modelId');
+            if (requestedRenderer !== null && !['live2d', 'depth2d', 'vrm3d'].includes(requestedRenderer))
+                return json(res, 400, { ok: false, error: 'invalid-motor-renderer' });
+            if (requestedRenderer === null && requestedModelId !== null)
+                return json(res, 400, { ok: false, error: 'motor-model-requires-renderer' });
+            if (requestedModelId !== null && !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(requestedModelId))
+                return json(res, 400, { ok: false, error: 'invalid-motor-model-id' });
+            const projectRendererCommands = (frame) => requestedRenderer === null
+                ? null
+                : runtime.motor.rendererCommandsForFrame(frame, requestedRenderer, requestedModelId ?? undefined);
+            res.writeHead(200, {
+                'content-type': 'text/event-stream; charset=utf-8',
+                'cache-control': 'no-cache, no-transform',
+                connection: 'keep-alive',
+                'x-accel-buffering': 'no',
+            });
+            res.write(': nk1-motor-frame-stream\n\n');
+            let closed = false;
+            let blocked = false;
+            let pending = null;
+            let unsubscribe = () => {};
+            const envelope = (frame) => {
+                const diagnostics = runtime.motor.diagnostics();
+                return {
+                    ok: true,
+                    configured: diagnostics.configured,
+                    frame,
+                    rendererCommands: projectRendererCommands(frame),
+                    diagnostics: {
+                        registeredProfiles: diagnostics.registeredProfiles,
+                        controllerTick: diagnostics.controllerTick,
+                        activeGoalId: diagnostics.activeGoalId,
+                        continuousLoopRunning: diagnostics.continuousLoopRunning,
+                        continuousLoopErrors: diagnostics.continuousLoopErrors,
+                        lastContinuousLoopError: diagnostics.lastContinuousLoopError,
+                        channel: {
+                            published: diagnostics.channel.published,
+                            rejected: diagnostics.channel.rejected,
+                            listenerErrors: diagnostics.channel.listenerErrors,
+                            hasLatest: diagnostics.channel.hasLatest,
+                            lastTick: diagnostics.channel.lastTick,
+                            lastAtMs: diagnostics.channel.lastAtMs,
+                        },
+                    },
+                    readOnly: true,
+                };
+            };
+            const write = (payload) => {
+                if (closed) return;
+                if (blocked) {
+                    pending = payload;
+                    return;
+                }
+                if (!res.write(payload)) blocked = true;
+            };
+            const publish = (frame) => {
+                write(`event: motor-frame\ndata: ${JSON.stringify(envelope(frame))}\n\n`);
+            };
+            const onDrain = () => {
+                blocked = false;
+                if (pending !== null) {
+                    const next = pending;
+                    pending = null;
+                    write(next);
+                }
+            };
+            const cleanup = () => {
+                if (closed) return;
+                closed = true;
+                clearInterval(heartbeat);
+                unsubscribe();
+                res.off('drain', onDrain);
+            };
+            const heartbeat = setInterval(() => {
+                if (!closed && !blocked) res.write(': keep-alive\n\n');
+            }, 15000);
+            heartbeat.unref?.();
+            res.on('drain', onDrain);
+            res.on('close', cleanup);
+            req.on('aborted', cleanup);
+            const initialDiagnostics = runtime.motor.diagnostics();
+            write(`event: motor-frame-status\ndata: ${JSON.stringify({ configured: initialDiagnostics.configured, hasFrame: initialDiagnostics.channel.hasLatest, requestedRenderer, requestedModelId, registeredProfiles: initialDiagnostics.registeredProfiles })}\n\n`);
+            unsubscribe = runtime.motor.subscribe(publish, true);
+            return;
+        }
+        if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const requestedRenderer = url.searchParams.get('renderer');
+            const requestedModelId = url.searchParams.get('modelId');
+            if (requestedRenderer !== null && !['live2d', 'depth2d', 'vrm3d'].includes(requestedRenderer))
+                return json(res, 400, { ok: false, error: 'invalid-motor-renderer' });
+            if (requestedRenderer === null && requestedModelId !== null)
+                return json(res, 400, { ok: false, error: 'motor-model-requires-renderer' });
+            if (requestedModelId !== null && !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(requestedModelId))
+                return json(res, 400, { ok: false, error: 'invalid-motor-model-id' });
+            const diagnostics = runtime.motor.diagnostics();
+            const frame = runtime.motor.latestFrame();
+            return json(res, 200, {
+                ok: true,
+                configured: diagnostics.configured,
+                frame,
+                rendererCommands: frame && requestedRenderer !== null
+                    ? runtime.motor.rendererCommandsForFrame(frame, requestedRenderer, requestedModelId ?? undefined)
+                    : null,
+                diagnostics: {
+                    registeredProfiles: diagnostics.registeredProfiles,
+                    controllerTick: diagnostics.controllerTick,
+                    activeGoalId: diagnostics.activeGoalId,
+                    continuousLoopRunning: diagnostics.continuousLoopRunning,
+                    continuousLoopErrors: diagnostics.continuousLoopErrors,
+                    lastContinuousLoopError: diagnostics.lastContinuousLoopError,
+                    channel: {
+                        published: diagnostics.channel.published,
+                        rejected: diagnostics.channel.rejected,
+                        listenerErrors: diagnostics.channel.listenerErrors,
+                        hasLatest: diagnostics.channel.hasLatest,
+                        lastTick: diagnostics.channel.lastTick,
+                        lastAtMs: diagnostics.channel.lastAtMs,
+                    },
+                },
+                readOnly: true,
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/ui-snapshot') {
             const snapshot = runtime.core.snapshot();
             const state = snapshot.state;
