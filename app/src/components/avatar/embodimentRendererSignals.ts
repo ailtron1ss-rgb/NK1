@@ -1,7 +1,7 @@
 import type {
   AdapterApplyReceipt,
   AdapterVerification,
-} from "./embodimentCoordinator.ts";
+} from "./embodimentCoordinator";
 
 export type EmbodimentRendererSignal =
   | { kind: "ready"; adapterId: string; executionId: string; stateRevision: number; modelId?: string }
