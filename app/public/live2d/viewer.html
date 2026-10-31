@@ -75,6 +75,18 @@
     set('ParamEyeLOpen',1-blinkT);set('ParamEyeROpen',1-blinkT);
     set('ParamMouthOpenY',clamp(lipCurrent,0,1));
     if(bodySignal.speaking)set('ParamMouthForm',clamp(lipFormCurrent,-1,1));
+    // Small continuous affect offsets complement the authored discrete expression.
+    // Unsupported model parameters are harmless: addCoreOffset fails closed per channel.
+    const affect=bodySignal.affect||{};
+    const valence=clamp(affect.valence01,0,1);
+    const arousal=clamp(affect.arousal01,0,1);
+    const dominance=clamp(affect.dominance01,0,1);
+    const browLift=clamp((valence-.5)*.055-(arousal-.5)*.018+(dominance-.5)*.012,-.045,.045);
+    const browAngle=clamp((arousal-.5)*.035+(dominance-.5)*.018,-.035,.035);
+    addCoreOffset('ParamBrowLY',browLift+browAngle,-.06,.06);
+    addCoreOffset('ParamBrowRY',browLift+browAngle,-.06,.06);
+    addCoreOffset('ParamBrowLAngle',-browAngle,-.04,.04);
+    addCoreOffset('ParamBrowRAngle',browAngle,-.04,.04);
     const batch=bodySignal.motorFrameBatch;
     const expectedModelId=assetProfile==='mobile'?'kurisu-live2d-mobile-v1':'kurisu-live2d-balanced-v1';
     if(!batch||batch.renderer!=='live2d'||batch.modelId!==expectedModelId||batch.frameTick<=lastMotorFrameTick)return;
@@ -207,7 +219,9 @@
     const cancellationToken=d.cancellationToken===null?null:(typeof d.cancellationToken==='string'&&d.cancellationToken.length<=220?d.cancellationToken:null);
     if(d.cancellationToken!==null&&cancellationToken===null)return null;
     if(d.speechPhase==='cancelled'&&(!speechEventId||cancellationToken!==`cancel:${speechEventId}`))return null;
-    if(!d.mouth||typeof d.mouth!=='object'||!d.gaze||typeof d.gaze!=='object'||!d.body||typeof d.body!=='object')return null;
+    if(!d.mouth||typeof d.mouth!=='object'||!d.gaze||typeof d.gaze!=='object'||!d.body||typeof d.body!=='object'||!isRecord(d.affect))return null;
+    const affectLabels=['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'];
+    if(!affectLabels.includes(d.affect.label)||!['valence01','arousal01','dominance01'].every(key=>typeof d.affect[key]==='number'&&Number.isFinite(d.affect[key])&&d.affect[key]>=0&&d.affect[key]<=1))return null;
     if(typeof d.expression!=='string'||!Object.prototype.hasOwnProperty.call(EXPR_MAP,d.expression))return null;
     if(typeof d.mouth.viseme!=='string'||!/^[a-z]{1,16}$/.test(d.mouth.viseme))return null;
     if(typeof d.gaze.driven!=='boolean'||typeof d.body.gesture!=='boolean')return null;
@@ -239,6 +253,7 @@
       motionIndex:d.body.motionIndex,
       motionToken:d.body.motionToken,
       voiceEmphasis:finiteNumber(d.voiceEmphasis,0,1),
+      affect:{label:d.affect.label,valence01:d.affect.valence01,arousal01:d.affect.arousal01,dominance01:d.affect.dominance01},
       motorFrameBatch:sanitizeLive2DMotorBatch(d.motorFrameBatch),
     };
   }
