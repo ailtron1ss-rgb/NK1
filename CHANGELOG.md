@@ -1,5 +1,5 @@
 ## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
-- Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
+- Tighten the publisher job condition: packaging is accepted only for a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source`. The workflow was already configured with `workflow_run`; this change makes the job guard explicit and fail-closed.
 - Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
 
 ## [NK1][Embodiment] Add official VRM runtime to the 3D body (2026-10-31)
