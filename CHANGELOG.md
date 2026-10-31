@@ -1,4 +1,12 @@
 ## WorkPass77 — source-clustered memory retrieval evaluation
+
+## [NK1][Memory] Preserve and validate independent source-group labels (WorkPass77 follow-up, 2026-10-31)
+
+- Fixed the real offline experiment CLI dropping `independenceGroupId`; source-derived query groups now survive JSONL parsing and reach the paired cluster bootstrap.
+- Reject blank or over-120-character source-group IDs at CLI ingress instead of silently losing or clipping cluster identity.
+- Mark overlong source-group IDs as truncated input and block promotion in the benchmark's fail-closed dataset integrity gate.
+- Added regressions for CLI round-trip, overlong-label rejection, and benchmark promotion blocking. No retrieval quality uplift is claimed.
+
 - Add optional `independenceGroupId` labels so multiple prompts derived from one source episode/document are resampled as a single statistical cluster.
 - Replace query-IID paired bootstrap with paired source-cluster bootstrap for recall, MRR, and unsupported-retrieval confidence intervals; legacy datasets fall back to one cluster per example.
 - Bind independence-group labels into dataset fingerprints and block promotion when one source group crosses train/holdout.
