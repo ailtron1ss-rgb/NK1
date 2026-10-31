@@ -6,7 +6,8 @@ import { preflightAvatarGlb } from "./avatar/avatarGlbPreflight";
 import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
 import * as THREE from "three";
 import { resolveVrmArmChain } from "./avatar/vrmHumanoidRigAdapter";
-import { parseVrmRigCalibrationProfileJson, serializeVrmRigCalibrationProfileJson, type VrmRigCalibrationContext, type VrmRigCalibrationProfile } from "./avatar/vrmRigCalibrationProfile";
+import { type VrmRigCalibrationContext, type VrmRigCalibrationProfile } from "./avatar/vrmRigCalibrationProfile";
+import { parseVrmRigCalibrationBundleJson, serializeVrmRigCalibrationBundleJson, type VrmRigCalibrationSession } from "./avatar/vrmRigCalibrationSession";
 import { prepareVrmArmRuntimeBinding, applyCalibratedVrmArmGesture, type VrmArmRuntimeBinding } from "./avatar/vrmCalibratedArmRuntime";
 import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
 import { neuroApiUrl } from "@/neuro-kurisu/api";
@@ -53,7 +54,7 @@ function bonesOf(root:any):Bone[]{const out:Bone[]=[];root.traverse((node:any)=>
 function selectClip(clips:any[],action:ActionKind){const rules:Record<ActionKind,RegExp>={respond:/talk|speak|gesture|explain|wave/i,explore:/look|walk|explore|turn|inspect/i,verify:/think|inspect|focus|work|write/i,rest:/idle|rest|breath|sit/i,reflect:/think|ponder|idle/i,wait:/idle|stand|breath/i};return clips.find((clip)=>rules[action].test(String(clip.name||"")))||clips.find((clip)=>/idle|breath|stand/i.test(String(clip.name||"")) )||null;}
 export function Avatar3DStage(props:Props){
  const host=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),calibrationInput=useRef<HTMLInputElement>(null),runtime=useRef<Runtime|null>(null),latest=useRef(props),loadToken=useRef(0),switchProgress=useRef<{executionId:string;adapterId:string;stateRevision:number;applyFrame:number;acceptedChannels:string[];applySent:boolean;verifySent:boolean}|null>(null);
- const vrmCalibrationContextRef=useRef<VrmRigCalibrationContext|null>(null),vrmCalibrationProfileRef=useRef<VrmRigCalibrationProfile|null>(null),vrmArmBindingsRef=useRef<{left:VrmArmRuntimeBinding;right:VrmArmRuntimeBinding}|null>(null);
+ const vrmCalibrationContextRef=useRef<VrmRigCalibrationContext|null>(null),vrmCalibrationProfileRef=useRef<VrmRigCalibrationProfile|null>(null),vrmCalibrationSessionRef=useRef<VrmRigCalibrationSession|null>(null),vrmArmBindingsRef=useRef<{left:VrmArmRuntimeBinding;right:VrmArmRuntimeBinding}|null>(null);
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[modelFingerprint,setModelFingerprint]=useState(""),[state,setState]=useState<"procedural"|"loading"|"loaded"|"error"|"webgl-unavailable">("procedural"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("Реальная лицензированная модель Курису не включена в текущий репозиторий.");
  const [motorModelId,setMotorModelId]=useState<string|null>(null);
  const [motorFrameBatch,setMotorFrameBatch]=useState<RendererMotorCommandBatch|null>(null);
@@ -65,14 +66,14 @@ export function Avatar3DStage(props:Props){
  const loadModel=useCallback(async(blob:Blob,name:string,persist:boolean)=>{
   if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){setState("error");setMessage("Файл должен быть непустым и не больше 90 МБ.");return;}
   const rt=runtime.current;if(!rt){setState("error");setMessage("3D-сцена ещё запускается; повторите загрузку.");return;}
-  const token=++loadToken.current;setState("loading");setMessage("Загрузка локальной модели…");vrmCalibrationContextRef.current=null;vrmCalibrationProfileRef.current=null;vrmArmBindingsRef.current=null;setVrmCalibrationStatus("not-loaded");setVrmCalibrationDetail("Проверяем fingerprint, root coordinate frame и обе цепи рук…");
+  const token=++loadToken.current;setState("loading");setMessage("Загрузка локальной модели…");vrmCalibrationContextRef.current=null;vrmCalibrationProfileRef.current=null;vrmCalibrationSessionRef.current=null;vrmArmBindingsRef.current=null;setVrmCalibrationStatus("not-loaded");setVrmCalibrationDetail("Проверяем fingerprint, root coordinate frame и обе цепи рук…");
   try{const data=await blob.arrayBuffer();if(token!==loadToken.current)return;
   const preflight=preflightAvatarGlb(data);
   if(!preflight.ok){
     setState("error");
     setMessage("GLB preflight отклонил модель до Three.js: "+preflight.reason+(preflight.detail?": "+preflight.detail:""));
     setModelFingerprint("");
-    vrmCalibrationContextRef.current=null;vrmCalibrationProfileRef.current=null;vrmArmBindingsRef.current=null;setVrmCalibrationStatus("blocked");setVrmCalibrationDetail("Импорт отклонён security/resource preflight.");
+    vrmCalibrationContextRef.current=null;vrmCalibrationProfileRef.current=null;vrmCalibrationSessionRef.current=null;vrmArmBindingsRef.current=null;setVrmCalibrationStatus("blocked");setVrmCalibrationDetail("Импорт отклонён security/resource preflight.");
     if(latest.current.switchExecutionId)latest.current.onRendererSignal?.({
       kind:"failed",adapterId:latest.current.bodyMode==="2.5d"?"nk1-depth-rig-scene-v1":"nk1-three-scene-v1",
       executionId:latest.current.switchExecutionId,stateRevision:latest.current.switchStateRevision??0,
@@ -110,7 +111,7 @@ export function Avatar3DStage(props:Props){
     }else{
       setVrmCalibrationStatus("awaiting-profile");setVrmCalibrationDetail("Bilateral rig найден. Импортируйте измеренный JSON sidecar для точного fingerprint и frame.");
     }
-    setMessage(activeDepthRig?"2.5D rig загружен. Scene readback доступен; представленный GPU-кадр отдельно не подтверждён.":rt.bones.length?"Модель загружена; bilateral цепи рук распознаны. Импортируйте точную калибровку для активации IK.":"Геометрия загружена; скелет не найден, движения тела недоступны.");
+    setMessage(activeDepthRig?"2.5D rig загружен. Scene readback доступен; представленный GPU-кадр отдельно не подтверждён.":rt.bones.length?"Модель загружена; bilateral цепи рук распознаны. Импортируйте измеренный calibration bundle для активации IK.":"Геометрия загружена; скелет не найден, движения тела недоступны.");
     if(latest.current.switchExecutionId){latest.current.onRendererSignal?.({kind:"ready",adapterId:activeDepthRig?"nk1-depth-rig-scene-v1":"nk1-three-scene-v1",executionId:latest.current.switchExecutionId,stateRevision:latest.current.switchStateRevision??0,modelId:nextMotorModelId??undefined});}
     if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена локально в браузере; файл не отправляется на сервер.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
    }catch(e){disposeTree(gltf.scene);setState("error");setMessage(e instanceof Error?e.message:"Не удалось подготовить модель.");if(latest.current.switchExecutionId)latest.current.onRendererSignal?.({kind:"failed",adapterId:latest.current.bodyMode==="2.5d"?"nk1-depth-rig-scene-v1":"nk1-three-scene-v1",executionId:latest.current.switchExecutionId,stateRevision:latest.current.switchStateRevision??0,reason:e instanceof Error?e.message.slice(0,240):"avatar-model-prepare-failed"});}
@@ -256,37 +257,39 @@ export function Avatar3DStage(props:Props){
  const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){setState("error");setMessage("Поддерживаются бинарные модели .vrm и .glb.");return;}void loadModel(file,file.name,true);};
  const onCalibrationFile=(event:ChangeEvent<HTMLInputElement>)=>{
   const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;
-  if(file.size<2||file.size>32_768||!file.name.toLowerCase().endsWith(".json")){
-    setVrmCalibrationStatus("rejected");setVrmCalibrationDetail("Sidecar должен быть JSON размером от 2 до 32 768 байт.");return;
+  if(file.size<2||file.size>65_536||!file.name.toLowerCase().endsWith(".json")){
+    setVrmCalibrationStatus("rejected");setVrmCalibrationDetail("Calibration bundle должен быть JSON размером от 2 до 65 536 байт.");return;
   }
   const context=vrmCalibrationContextRef.current;
   if(!context){setVrmCalibrationStatus("blocked");setVrmCalibrationDetail("Нет подтверждённого fingerprint/frame/bilateral rig для привязки.");return;}
   void file.text().then((json)=>{
-    const result=parseVrmRigCalibrationProfileJson(json,context);
+    const result=parseVrmRigCalibrationBundleJson(json,context);
     if(!result.accepted){
       vrmCalibrationProfileRef.current=null;setVrmCalibrationStatus("rejected");
       setVrmCalibrationDetail("Профиль отклонён: "+result.reason);return;
     }
-    vrmCalibrationProfileRef.current=result.profile;
+    vrmCalibrationProfileRef.current=result.bundle.profile;
+    vrmCalibrationSessionRef.current=result.bundle.session;
     setVrmCalibrationStatus("profile-matched");
-    setVrmCalibrationDetail("Профиль привязан к текущему SHA-256, coordinate frame и обеим цепям. Method: "+result.profile.calibrationMethod+".");
+    setVrmCalibrationDetail("Профиль и fixture session привязаны к текущему SHA-256, coordinate frame и обеим цепям. Fixture: "+result.bundle.session.reference?.fixtureId+".");
   }).catch(()=>{
     vrmCalibrationProfileRef.current=null;setVrmCalibrationStatus("rejected");setVrmCalibrationDetail("Не удалось прочитать JSON calibration sidecar.");
   });
  };
  const exportCalibrationProfile=()=>{
   const context=vrmCalibrationContextRef.current,profile=vrmCalibrationProfileRef.current;
-  const json=context&&profile?serializeVrmRigCalibrationProfileJson(profile,context):null;
+  const session=vrmCalibrationSessionRef.current;
+  const json=context&&profile&&session?serializeVrmRigCalibrationBundleJson(profile,session,context):null;
   if(!json){setVrmCalibrationStatus("rejected");setVrmCalibrationDetail("Текущая калибровка больше не совпадает с загруженной моделью.");return;}
   const url=URL.createObjectURL(new Blob([json],{type:"application/json"}));
   const anchor=document.createElement("a");anchor.href=url;anchor.download=(modelName.replace(/\.[^.]+$/,"")||"nk1-avatar")+".vrm-calibration.json";
   anchor.click();URL.revokeObjectURL(url);
  };
- const reset=async()=>{loadToken.current++;vrmCalibrationContextRef.current=null;vrmCalibrationProfileRef.current=null;vrmArmBindingsRef.current=null;setVrmCalibrationStatus("not-loaded");setVrmCalibrationDetail("Загрузите VRM/GLB для калибровки.");const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.clipName="";rt.bones=[];rt.depthRigScene=null;rt.depthRigFrame=0;rt.motorFrameTick=-1;rt.body.root.visible=latest.current.bodyMode!=="2.5d";}setMotorModelId(null);setMotorFrameBatch(null);setMotorFrameProjection("unmapped");setModelName("");setModelFingerprint("");setState(rt?(latest.current.bodyMode==="2.5d"?"error":"procedural"):"webgl-unavailable");setMessage(latest.current.bodyMode==="2.5d"?"2.5D rig сброшен. Загрузите GLB с nk1DepthRigAssetV1.":"");try{await clearStoredAvatarModel();setStorageMessage("Используется процедурное 3D-тело; выбранная модель удалена из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
+ const reset=async()=>{loadToken.current++;vrmCalibrationContextRef.current=null;vrmCalibrationProfileRef.current=null;vrmCalibrationSessionRef.current=null;vrmArmBindingsRef.current=null;setVrmCalibrationStatus("not-loaded");setVrmCalibrationDetail("Загрузите VRM/GLB для калибровки.");const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.clipName="";rt.bones=[];rt.depthRigScene=null;rt.depthRigFrame=0;rt.motorFrameTick=-1;rt.body.root.visible=latest.current.bodyMode!=="2.5d";}setMotorModelId(null);setMotorFrameBatch(null);setMotorFrameProjection("unmapped");setModelName("");setModelFingerprint("");setState(rt?(latest.current.bodyMode==="2.5d"?"error":"procedural"):"webgl-unavailable");setMessage(latest.current.bodyMode==="2.5d"?"2.5D rig сброшен. Загрузите GLB с nk1DepthRigAssetV1.":"");try{await clearStoredAvatarModel();setStorageMessage("Используется процедурное 3D-тело; выбранная модель удалена из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
   <div ref={host} className="absolute inset-0"/>
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p></div></div>:null}
-  <div className="absolute right-3 top-3 z-20 flex max-w-[75%] flex-wrap justify-end gap-1.5"><button type="button" onClick={()=>fileInput.current?.click()} disabled={!ready} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>{props.bodyMode!=="2.5d"?<button type="button" onClick={()=>calibrationInput.current?.click()} disabled={vrmCalibrationStatus==="blocked"||vrmCalibrationStatus==="not-loaded"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 disabled:opacity-40">Импорт IK-профиля</button>:null}{vrmCalibrationStatus==="profile-matched"?<button type="button" onClick={exportCalibrationProfile} className="rounded-md border border-emerald-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-emerald-50">Экспорт профиля</button>:null}{modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}<input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/><input ref={calibrationInput} type="file" accept=".json,application/json" onChange={onCalibrationFile} className="hidden" aria-label="Импортируйте VRM calibration sidecar"/></div>
+  <div className="absolute right-3 top-3 z-20 flex max-w-[75%] flex-wrap justify-end gap-1.5"><button type="button" onClick={()=>fileInput.current?.click()} disabled={!ready} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>{props.bodyMode!=="2.5d"?<button type="button" onClick={()=>calibrationInput.current?.click()} disabled={vrmCalibrationStatus==="blocked"||vrmCalibrationStatus==="not-loaded"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 disabled:opacity-40">Импорт IK bundle</button>:null}{vrmCalibrationStatus==="profile-matched"?<button type="button" onClick={exportCalibrationProfile} className="rounded-md border border-emerald-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-emerald-50">Экспорт профиля</button>:null}{modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}<input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/><input ref={calibrationInput} type="file" accept=".json,application/json" onChange={onCalibrationFile} className="hidden" aria-label="Импортируйте VRM calibration sidecar"/></div>
   <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-2"><div className="max-w-[80%] rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 backdrop-blur"><p className="text-[11px] font-semibold tracking-wide text-slate-100">{modelName||(props.bodyMode==="2.5d"?"NK1 · LAYERED 2.5D BODY":"NK1 · TRUE 3D BODY")}</p><p className="mt-0.5 text-[10px] leading-relaxed text-slate-300/80">{state==="loaded"?(props.bodyMode==="2.5d"?"2.5D слои · scene readback включён":"3D-модель · эмоция, действие, взгляд и речь связаны с состоянием NK1"):state==="loading"?"Подготовка модели…":state==="error"?"Модель не загружена · процедурное тело сохраняется":state==="webgl-unavailable"?"Требуется WebGL":"Процедурный 3D-концепт · эмоции и движение от состояния NK1"}</p></div><p className="mt-1 text-[9px] text-cyan-100/65">MotorFrame · {motorFrameProjection} / {motorFrameConnection}{motorFrameBatch?` · tick ${motorFrameBatch.frameTick}`:""}</p><p className="mt-1 text-[9px] text-cyan-100/65">VRM IK · {vrmCalibrationStatus} · {vrmCalibrationDetail}</p><div className="rounded-full border border-cyan-200/20 bg-slate-950/70 px-2 py-1 text-[9px] uppercase tracking-wider text-cyan-100/80">{props.awake?(props.thinking?"thinking":props.speaking?"speaking":props.emotion):"sleep"}</div></div>
   {message?<p role="status" className="absolute bottom-[4.6rem] left-3 z-20 max-w-[78%] rounded bg-slate-950/80 px-2 py-1.5 text-[10px] text-amber-100/90">{message}</p>:null}
   <p className="absolute right-3 bottom-[4.6rem] z-20 max-w-[42%] text-right text-[9px] text-white/45">Потяните тело, чтобы повернуть. {modelFingerprint ? `SHA-256 ${modelFingerprint.slice(7, 23)}… · идентичность модели зафиксирована` : state === "loaded" ? "SHA-256 недоступен · калибровка этой модели заблокирована" : ""} {storageMessage}</p>
