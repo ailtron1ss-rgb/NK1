@@ -24,16 +24,16 @@
 
 Все три файла побайтно совпадают с [LICENSE проекта 0x0funky/agent-sprite-forge](https://github.com/0x0funky/agent-sprite-forge/blob/main/LICENSE). Текст — MIT. Это подтверждает совпадение текста лицензии, но само по себе не доказывает точное происхождение каждого skill-каталога или разрешение на распространение всего NK1.
 
-## Четыре vendor LICENSE без записей человеческого review
+## Четыре vendor LICENSE: evidence records добавлены, approval отсутствует
 
 | Локальный файл | Проверенное upstream-свидетельство | Отличие / ограничение |
 |---|---|---|
-| `runtime/neuro-kurisu/research/vendor/CleanRL/LICENSE` | [vwxyzjn/cleanrl LICENSE](https://github.com/vwxyzjn/cleanrl/blob/master/LICENSE); root MIT notice | Upstream LICENSE — составной файл с дополнительными third-party notices. Локальный файл содержит только начальную root MIT часть и не является полной копией upstream LICENSE. Intake заявляет, что код не копировался, адаптировались только методы. |
-| `runtime/neuro-kurisu/research/vendor/ContinualAI-Avalanche/LICENSE` | [ContinualAI/avalanche LICENSE](https://github.com/ContinualAI/avalanche/blob/master/LICENSE); MIT | Локальная копия не byte-identical, но полный текст совпадает после нормализации whitespace; различие — переносы/пробелы. |
-| `runtime/neuro-kurisu/research/vendor/OpenAI-Baselines/LICENSE` | [openai/baselines LICENSE](https://github.com/openai/baselines/blob/master/LICENSE); MIT | Локальный файл совпадает с upstream по содержимому. |
-| `runtime/neuro-kurisu/research/vendor/SkillLearnBench/LICENSE` | [cxcscmu/SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench); GitHub repository metadata reports MIT | Локальный LICENSE совпадает с upstream LICENSE по содержимому. |
+| `runtime/neuro-kurisu/research/vendor/CleanRL/LICENSE` | [vwxyzjn/cleanrl LICENSE](https://github.com/vwxyzjn/cleanrl/blob/master/LICENSE); root MIT notice | SHA-256 локального файла: `34ad40e40ee9d274d4bfcbcd1b56f2a1f8a22b5eb71e42094e78151b76377a85`. Upstream LICENSE — составной файл с дополнительными third-party notices. Локальный файл содержит только начальную root MIT часть и не является полной копией upstream LICENSE. Intake заявляет, что код не копировался, адаптировались только методы. |
+| `runtime/neuro-kurisu/research/vendor/ContinualAI-Avalanche/LICENSE` | [ContinualAI/avalanche LICENSE](https://github.com/ContinualAI/avalanche/blob/master/LICENSE); MIT | SHA-256 локального файла: `81a826c503145d79c454c6e49fce9f7bea17d8c1dacff93fe0dbc92283c8bbe5`. Локальная копия не byte-identical, но полный текст совпадает после нормализации whitespace; различие — переносы/пробелы. |
+| `runtime/neuro-kurisu/research/vendor/OpenAI-Baselines/LICENSE` | [openai/baselines LICENSE](https://github.com/openai/baselines/blob/master/LICENSE); MIT | SHA-256 локального файла: `fd85a61f2f086d9da85b5d3cbb1a5f49665fc7fe9fed5f799cb5753ad766f710`. Локальный файл совпадает с upstream по содержимому. |
+| `runtime/neuro-kurisu/research/vendor/SkillLearnBench/LICENSE` | [cxcscmu/SkillLearnBench](https://github.com/cxcscmu/SkillLearnBench); GitHub repository metadata reports MIT | SHA-256 локального файла: `d4a5e863f521c0fe405a0d94271be34740539f9dfa973c99ab883a771f7fa622`. Локальный LICENSE совпадает с upstream LICENSE по содержимому. |
 
-Файлы `UPSTREAM_INTAKE.md` для этих четырёх компонентов указывают, что исходный код не копировался, а адаптировались методики. Это утверждение требует подтверждения владельцем проекта. Для четырёх LICENSE-файлов отсутствуют записи в `repositoryLicenseFiles`; я не добавлял фиктивных reviewer, timestamp, approval или redistribution permission.
+Файлы `UPSTREAM_INTAKE.md` для этих четырёх компонентов указывают, что исходный код не копировался, а адаптировались методики. Это утверждение требует подтверждения владельцем проекта. Четыре записи добавлены в `repositoryLicenseFiles` со статусом `pending`, точными SHA-256, выражением лицензии и evidenceRef. Поля reviewer/reviewerType/reviewedAt оставлены пустыми, `redistributionApproved=false`; никакого approval не добавлено.
 
 ## Другие обнаруженные LICENSE/NOTICE
 
@@ -71,3 +71,12 @@
 6. Только после этого заполнить human reviewer, дату, evidenceRef и redistributionApproved, затем повторить release audit.
 
 **Ничего не помечено как approved. Новый Release не опубликован.**
+
+
+## Статусы manifest после evidence-only обновления
+
+- Все 11 repository LICENSE/NOTICE файлов теперь имеют строки в manifest; четыре vendor строки добавлены с проверенными SHA-256.
+- Все 8 source archive rows получили `licenseExpression: NOASSERTION` и evidenceRef, пока точные архивные лицензии/происхождение не проверены.
+- Root project получил `NOASSERTION` (корневой LICENSE отсутствует); runtime получил `LicenseRef-NK1-Private-All-Rights-Reserved` как внутреннее обозначение текущего private notice.
+- `NOASSERTION` означает отсутствие подтверждённого утверждения о лицензии, а `LicenseRef-NK1-Private-All-Rights-Reserved` обозначает локальный proprietary notice. Ни одно из этих значений не разрешает распространение.
+- Все записи остаются `pending`; `redistributionApproved=false`; `reviewerType`, `reviewer` и `reviewedAt` не заполнены. Это evidence-only инвентаризация, не human approval.
