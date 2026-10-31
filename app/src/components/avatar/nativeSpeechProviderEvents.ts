@@ -104,7 +104,6 @@ type NativeSpeechOperationProgress = {
 const TERMINAL_PHASES = new Set<NativeSpeechProviderPhase>([
   "process-exited",
   "process-error",
-  "interrupt-unconfirmed",
 ]);
 
 function canAdvanceNativeSpeechPhase(previous: NativeSpeechProviderPhase, next: NativeSpeechProviderPhase): boolean {
@@ -115,9 +114,10 @@ function canAdvanceNativeSpeechPhase(previous: NativeSpeechProviderPhase, next: 
       return next === "process-exited" || next === "process-error" || next === "interrupt-requested";
     case "interrupt-requested":
       return next === "process-exited" || next === "process-error" || next === "interrupt-unconfirmed";
+    case "interrupt-unconfirmed":
+      return next === "process-exited" || next === "process-error";
     case "process-exited":
     case "process-error":
-    case "interrupt-unconfirmed":
       return false;
   }
 }
