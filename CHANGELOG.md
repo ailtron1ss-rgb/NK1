@@ -1,3 +1,11 @@
+## [NK1][Agency] Harden deterministic decision history and restore integrity (WorkPass74, 2026-10-31)
+
+- Validate restored AgencyDeliberation records, reject malformed timestamps/actions, deduplicate record IDs and cap history at 512 entries.
+- Recompute override/autonomous rates and last-decision time from accepted records; persisted aggregate counters are never treated as evidence.
+- Replace random decision IDs with injectable-clock, monotonic-sequence IDs for reproducible tests and collision resistance.
+- Bound action/reason/counterfactual text, normalize non-finite pressure values and reject empty chosen actions.
+- Add a focused runtime contract test and npm script. This strengthens decision-history integrity; it does not by itself prove autonomous behavior or subjective experience.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
