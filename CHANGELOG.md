@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Local avatar evidence bundle UI (2026-10-31)
+
+- Added browser-side import of an asset provenance bundle containing the manifest and original Khronos report JSON.
+- Re-hashes the exact report text with WebCrypto; requires glTF 2.0, binary GLB MIME, zero errors, non-truncated report and no external resources.
+- Binds manifest to the current uploaded model SHA-256, root coordinate frame and successful NK1 preflight.
+- UI separates `release-ready` from `verified-local`; a valid personal import with no redistribution permission remains viewable but is marked release-blocked.
+- Explicit limitation: the canonical Release ZIP workflow is not yet wired to enforce these manifests automatically; maintainers must manually inspect evidence until that gate is integrated.
+
 ## [NK1][Embodiment] Measured VRM IK and avatar provenance/release gate (2026-10-31)
 
 - Added unique shoulder/elbow/hand chain resolution and model-root metre segment geometry checks for bilateral VRM rigs.
