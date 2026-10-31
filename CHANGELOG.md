@@ -4,6 +4,7 @@
 - Reconcile supersession links before rebuilding memory retrieval indexes: only reciprocal, same-lineage, strictly forward revision edges are trusted.
 - Repair a missing historical validity end from a verified successor's `validFromAt`, preventing a restored current-memory query from reviving an obsolete fact.
 - Clear dangling, one-sided, cross-lineage, cyclic/backward, or otherwise ambiguous supersession edges.
+- Retain bounded restore-integrity findings on surviving records so the read-only MemoryOS2 doctor can report repairs instead of silently hiding corruption.
 - Drop all records sharing a duplicate memory ID instead of allowing restore order to choose an authority-bearing row.
 - Normalize invalid revision sequence values to a safe positive integer.
 - Add `test:workpass76:memory-lineage-integrity` with regression coverage for interval repair, edge integrity, duplicate IDs, and sequence normalization.
