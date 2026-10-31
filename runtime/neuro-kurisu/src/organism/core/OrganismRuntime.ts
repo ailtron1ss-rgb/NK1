@@ -20,6 +20,7 @@ import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/Runt
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
+import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
 import { ContinuousCognitiveFabric } from '../system/ContinuousCognitiveFabric.ts';
@@ -1111,6 +1112,22 @@ export class OrganismRuntime {
       if(gate.run) await this.consolidateInternal(false);
     }
     return { cycle: { ...cycle, multimodal: this.core.multimodalSnapshot(), cognitiveProposal }, worldAction, language, embodiedAction };
+  }
+
+  /**
+   * Read-only privacy-minimal snapshot for independent external evaluation.
+   * The adapter hashes identifiers and drops raw payloads before leaving runtime.
+   */
+  independentEvaluationEvidenceSnapshot() {
+    const eventSnapshot = this.cognitiveEventFabric.snapshot();
+    return buildIndependentEvaluationEvidenceBundle({
+      events: this.cognitiveEventFabric.recent(256),
+      eventTotal: eventSnapshot.total,
+      eventBuffered: eventSnapshot.buffered,
+      realityEvidence: this.core.realityEvidenceLedgerSnapshot(),
+      cycleCounters: this.unifiedCycle.snapshot(),
+      exportedAtMs: Date.now(),
+    });
   }
 
   realityGroundingSnapshot(){ return this.realityGrounding.snapshot(); }

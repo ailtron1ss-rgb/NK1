@@ -1,0 +1,2 @@
+# Pinned to the source archive reviewed for NK1 WorkPass72.
+inspect-ai==0.3.286
