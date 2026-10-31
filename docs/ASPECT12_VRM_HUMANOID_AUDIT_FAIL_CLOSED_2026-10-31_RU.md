@@ -34,7 +34,7 @@
 - обе руки — плечо (если оно найдено) → верхняя рука → нижняя рука → кисть;
 - обе ноги — hips → бедро → голень → стопа.
 
-Проверяются циклы в parent-графе единым обходом с состояниями узлов (`O(n))), а не повторным проходом от каждой кости. Вход ограничен 50 000 узлами до дальнейшего анализа. Цикл или разрыв обязательной цепочки отключает `locomotionSkeleton` и `fullBodyHumanoid`. Наличие optional-узла само по себе не считается ошибкой, но если он присутствует, его положение также проверяется.
+Проверяются циклы в parent-графе единым обходом с состояниями узлов (`O(n)`), а не повторным проходом от каждой кости. Вход ограничен 50 000 узлами до дальнейшего анализа. Цикл или разрыв обязательной цепочки отключает `locomotionSkeleton` и `fullBodyHumanoid`. Наличие optional-узла само по себе не считается ошибкой, но если он присутствует, его положение также проверяется.
 
 ### 3. Пальцы
 
@@ -66,8 +66,46 @@
 
 Команда: `npm --prefix app run test:vrm-humanoid-rig-audit`.
 
+
+## 5. Нормативная VRM humanoid node map
+
+Bone-only эвристика остаётся fallback для generic GLB, но не является корректным способом аудита VRM. В VRM роль humanoid bone задаётся через ссылку на **glTF node index**. Такой узел не обязан быть объектом `THREE.Bone` или входить в skin joints. Поэтому был добавлен отдельный путь семантического сопоставления:
+
+- VRM 1.0: `extensions.VRMC_vrm.humanoid.humanBones` — объект role → `{ node }`, при `specVersion: "1.0"`.
+- VRM 0.x: `extensions.VRM.humanoid.humanBones` — legacy-массив записей `{ bone, node }`.
+- Индексы связываются с фактическими объектами загруженной сцены через `GLTFLoader.parser.associations` (`association.nodes`).
+- Parent graph переносится на временные wrappers, чтобы audit работал с единым набором ссылок и не зависел от типа исходного Three.js объекта.
+- В явном VRM-режиме сохраняются также безымянные промежуточные scene nodes: они могут законно располагаться между двумя humanoid node roles.
+- При наличии VRM extension name heuristic выключен. Повреждённое расширение или неразрешённые обязательные индексы не могут «исправиться» за счёт случайных названий костей.
+- Для VRM 0.x `chest` и `neck` обязательны; для VRM 1.0 они остаются optional согласно соответствующей таблице required bones.
+- Дублирующийся node index, повтор роли, отрицательный/вышедший за диапазон индекс, неподдерживаемая версия и одновременное присутствие двух VRM extensions отвергаются fail-closed.
+- Неизвестные для локального capability type роли сохраняются как diagnostics и не маппятся на произвольные joints.
+
+Интеграция находится в `Avatar3DStage` и выполняется после успешного GLTFLoader parse. Она не меняет движение и не включает IK: только улучшает достоверность отчёта о реальной структуре импортированной VRM модели.
+
+## 6. Дополнительные VRM regressions
+
+Добавлены 8 сценариев node-map suite:
+
+1. VRM 1.0 принимает авторитетные glTF node indices и валидные non-Bone humanoid nodes.
+2. VRM 0.x применяет собственный список обязательных ролей, включая chest и neck.
+3. Отсутствующие chest/neck в VRM 0.x не маскируются generic fallback.
+4. Один glTF node index нельзя назначить двум humanoid roles.
+5. Проверяются malformed extension, неподдерживаемая версия, отрицательный/out-of-range index, повторяющиеся legacy roles и конфликт двух VRM extensions.
+6. Невалидное VRM metadata не включает name heuristic fallback.
+7. Индексы, отсутствующие в active loaded scene, выдаются как unresolved diagnostics.
+8. Безымянная промежуточная parent node сохраняется и не разрывает валидную ancestry.
+
+Общий test script `npm --prefix app run test:vrm-humanoid-rig-audit` теперь включает generic audit и explicit VRM map suites. Stage regression отдельно подтверждает, что Avatar3DStage передаёт `parser.json.extensions` и `parser.associations` в adapter и отключает name fallback для VRM.
+
+### Границы
+
+Использование `GLTFLoader.parser.associations` подтверждено реализацией Three.js GLTFLoader: при создании node loader записывает исходный glTF index в association `nodes`, а после загрузки scene сохраняет associations для объектов этой scene. При этом association остаётся loader-level связью, а не самостоятельной проверкой runtime. Этот код не добавляет сам VRM expression runtime, spring bones, humanoid retargeting, IK/motor actuation, calibration или visual/device E2E.
+
+Официальные источники спецификаций: [VRMC_vrm 1.0](https://github.com/vrm-c/vrm-specification/tree/master/specification/VRMC_vrm-1.0), [VRM 0.x](https://github.com/vrm-c/vrm-specification/tree/master/specification/0.0), [Three.js GLTFLoader](https://github.com/mrdoob/three.js/blob/dev/examples/jsm/loaders/GLTFLoader.js).
+
 ## Чего изменение НЕ делает
 
-Это discovery/audit слой на основе имен и parent-графа. Он не подтверждает соответствие произвольной модели спецификации VRM, не заменяет семантический humanoid mapping из VRM runtime, не калибрует суставные оси и bind pose, не ретаргетит клипы, не исполняет IK/MotorFrame и не проверяет итоговый отрендеренный кадр. Для этих стадий остаются отдельные runtime-, калибровочные-, device- и visual-E2E gates.
+Generic GLB path — discovery/audit слой на основе имен и parent-графа; VRM path additionally validates the normative extension node map and node hierarchy. Neither path is a production VRM runtime: the implementation does not calibrate joint axes or bind pose, retarget clips, execute IK/MotorFrame, or verify the rendered frame. Для этих стадий остаются отдельные runtime-, калибровочные-, device- и visual-E2E gates.
 
 Ни `main`, ни canonical GitHub Release ZIP не менялись.
