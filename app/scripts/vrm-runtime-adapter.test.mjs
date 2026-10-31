@@ -167,6 +167,7 @@ test("Avatar3DStage registers the native plugin and updates/disposes VRM runtime
   assert.match(stage, /gltf\.userData\?\.vrm/);
   assert.match(stage, /configureVrmForNk1NormalizedMotorDrive\(vrm\)/);
   assert.match(stage, /applyVrmNormalizedMotorFrame\(rt\.vrm/);
+  assert.match(stage, /rt\.mixer=!vrm&&rt\.clips\.length\?new THREE\.AnimationMixer\(root\):null/);
   assert.match(stage, /VRMUtils\.rotateVRM0\(vrm\)/);
   assert.match(stage, /updateVrmForNk1Frame\(rt\.vrm,dt\)/);
   assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
