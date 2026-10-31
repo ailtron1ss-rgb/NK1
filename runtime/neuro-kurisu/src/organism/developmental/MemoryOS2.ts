@@ -465,34 +465,6 @@ export class MemoryOS2{
   private incrementRestoreDiagnostic(counter:'contentHashMismatchesRepaired'|'missingContentHashesRebuilt'|'invalidVectorsDiscarded'|'invalidExpiriesClosed'|'factsDowngraded'){
    this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,[counter]:this.lastRestoreDiagnosticsData[counter]+1};
   }
-  private restoredIdentityRank(item:MemoryItem2,at:number):number[]{
-   return [
-    Number(this.validAt(item,at)),
-    Number(item.epistemicStatus!=='quarantined'&&!item.dormant),
-    Number(Number(item.validFromAt??item.createdAt)<=at),
-    Number.isFinite(Number(item.revisionSequence))?Number(item.revisionSequence):1,
-    Number.isFinite(Number(item.observedAt??item.createdAt))?Number(item.observedAt??item.createdAt):0,
-    Number.isFinite(Number(item.createdAt))?Number(item.createdAt):0,
-   ];
-  }
-  private restoredIdentityFingerprint(item:MemoryItem2):string{
-   return stableMemoryJson({
-    id:item.id,content:item.content,kind:item.kind,source:item.source,epistemicStatus:item.epistemicStatus,
-    context:item.context??{},tags:[...(item.tags??[])].sort(),entities:[...(item.entities??[])].sort(),
-    semanticLinks:[...(item.semanticLinks??[])].sort(),temporalLinks:[...(item.temporalLinks??[])].sort(),
-    causalLinks:[...(item.causalLinks??[])].sort(),contradictionLinks:[...(item.contradictionLinks??[])].sort(),
-    validFromAt:item.validFromAt,validUntilAt:item.validUntilAt,observedAt:item.observedAt,
-    supersedesId:item.supersedesId,supersededById:item.supersededById,
-    revisionGroupId:item.revisionGroupId,revisionSequence:item.revisionSequence,
-    evidenceLineageKeys:[...(item.evidenceLineageKeys??[])].sort(),
-   });
-  }
-  /**
-   * Treat persisted snapshots as untrusted serialized input. Keep compatible legacy
-   * rows by repairing bounded optional fields, but reject rows that cannot represent
-   * a memory (identity, text or kind). Derived vectors are validated and re-created
-   * lazily; stored hashes are never trusted over the actual content.
-   */
   private normalizeRestoredMemoryRow(candidate:unknown,now:number):MemoryItem2|null{
    if(!candidate||typeof candidate!=='object'||Array.isArray(candidate))return null;
    const row=candidate as Record<string,any>;
@@ -593,34 +565,6 @@ export class MemoryOS2{
     semanticVector,
     residencyTier,
    };
-  }
-  private dedupeRestoredItems(rows:MemoryItem2[]):MemoryItem2[]{
-   const groups=new Map<string,MemoryItem2[]>();
-   for(const item of rows){const group=groups.get(item.id)??[];group.push(item);groups.set(item.id,group);}
-   const at=Date.now();const result:MemoryItem2[]=[];let identityConflictsQuarantined=0;
-   for(const group of groups.values()){
-    if(group.length===1){result.push(group[0]!);continue;}
-    const rank=(item:MemoryItem2)=>this.restoredIdentityRank(item,at);
-    const compareRank=(left:MemoryItem2,right:MemoryItem2)=>{
-     const a=rank(left),b=rank(right);
-     for(let index=0;index<a.length;index++)if(a[index]!==b[index])return Number(b[index])-Number(a[index]);
-     return stableMemoryJson(left).localeCompare(stableMemoryJson(right));
-    };
-    const ordered=[...group].sort(compareRank);const selected=ordered[0]!;const selectedRank=rank(selected);
-    const tied=ordered.filter(item=>rank(item).every((value,index)=>value===selectedRank[index]));
-    const tiedFingerprints=new Set(tied.map(item=>this.restoredIdentityFingerprint(item)));
-    if(tiedFingerprints.size>1){
-     // Array order and confidence are not authority when equally-ranked records reuse
-     // an ID for different facts. Preserve an audit row, but disable recall as fact.
-     const from=selected.epistemicStatus;
-     result.push({...selected,epistemicStatus:'quarantined',confidence:0,revisionHistory:normalizeRevisionHistory([
-      ...selected.revisionHistory,{at,from,to:'quarantined',reason:'restore-duplicate-id-conflict'},
-     ])});
-     identityConflictsQuarantined++;
-    }else result.push(selected);
-   }
-   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:result.length,duplicateIdsResolved:rows.length-result.length,identityConflictsQuarantined};
-   return result;
   }
 
  private validAt(item:MemoryItem2,at:number){const from=Number(item.validFromAt??item.createdAt),until=item.validUntilAt==null?Number.POSITIVE_INFINITY:Number(item.validUntilAt);return Number.isFinite(from)&&from<=at&&at<until;}
@@ -846,10 +790,15 @@ export class MemoryOS2{
   const restoreNow=Date.now();
   const rawItems:MemoryItem2[]=[];
   let invalidRowsDropped=0;
+  let blankIdRowsDropped=0;
   this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
   for(const candidate of boundedItems){
+   const blankIdentity=Boolean(candidate&&typeof candidate==='object'&&!Array.isArray(candidate)&&
+    (typeof (candidate as any).id!=='string'||!(candidate as any).id.trim()));
    const normalized=this.normalizeRestoredMemoryRow(candidate,restoreNow);
-   if(normalized)rawItems.push(normalized);else invalidRowsDropped++;
+   if(normalized)rawItems.push(normalized);
+   else if(blankIdentity)blankIdRowsDropped++;
+   else invalidRowsDropped++;
   }
   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,invalidRowsDropped};
   const legacyEstimate=rawItems.reduce((total,item)=>total+estimateMemoryBytes({
@@ -875,19 +824,25 @@ export class MemoryOS2{
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
    restoreIntegrityFindings:normalizeMemoryRestoreIntegrityFindings((s as any)?.restoreIntegrityFindings),
-   items:this.dedupeRestoredItems(rawItems),
+   items:rawItems,
   };
-  // Resolve duplicate IDs before validating revision edges. Preserve the existing
-  // revision graph checks and durable restore findings on the normalized rows.
+  // Preserve the current fail-closed identity rule: every copy of a duplicate ID
+  // is dropped, because choosing one would leave external references ambiguous.
   this.state.items=normalizeMemoryRevisionGraph(this.state.items,(id,count)=>{
+   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,duplicateIdsResolved:this.lastRestoreDiagnosticsData.duplicateIdsResolved+1};
    const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'duplicate-memory-id-dropped'}>=>finding.code==='duplicate-memory-id-dropped'&&finding.memoryId===id);
    if(existing)existing.duplicateCount=Math.max(existing.duplicateCount,count);
    else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'duplicate-memory-id-dropped' as const,memoryId:id,duplicateCount:count}].slice(-64);
   },count=>{
+   const dropped=Math.max(count,blankIdRowsDropped);
    const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'blank-memory-id-dropped'}>=>finding.code==='blank-memory-id-dropped');
-   if(existing)existing.count=Math.max(existing.count,count);
-   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count}].slice(-64);
+   if(existing)existing.count=Math.max(existing.count,dropped);
+   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:dropped}].slice(-64);
   });
+  if(blankIdRowsDropped>0&&!this.state.restoreIntegrityFindings.some(finding=>finding.code==='blank-memory-id-dropped')){
+   this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:blankIdRowsDropped}].slice(-64);
+  }
+  this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
   this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
@@ -1806,7 +1761,7 @@ export class MemoryOS2{
   if(!index.pass)add('index-integrity-failure','error',null,'The canonical memory indexes disagree with the persisted memory list.');
   const errors=totalErrors;
   const warnings=totalWarnings;
-  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,restore,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length+restoreDuplicateIds+restore.duplicateIdsResolved,restoreDroppedBlankIds,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,invalidRevisionEdges,revisionRestoreFindings,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1,restoreInvalidRows:restore.invalidRowsDropped,restoreTruncatedRows:restore.truncatedRows,restoreDuplicateIds:restore.duplicateIdsResolved,restoreIdentityConflicts:restore.identityConflictsQuarantined,restoreContentHashMismatches:restore.contentHashMismatchesRepaired,restoreMissingContentHashes:restore.missingContentHashesRebuilt,restoreInvalidVectors:restore.invalidVectorsDiscarded,restoreInvalidExpiries:restore.invalidExpiriesClosed,restoreFactsDowngraded:restore.factsDowngraded},indexes:index};
+  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,restore,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length+restoreDuplicateIds,restoreDroppedBlankIds,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,invalidRevisionEdges,revisionRestoreFindings,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1,restoreDuplicateRows:restore.duplicateIdsResolved,restoreInvalidRows:restore.invalidRowsDropped,restoreTruncatedRows:restore.truncatedRows,restoreDuplicateIds:restore.duplicateIdsResolved,restoreIdentityConflicts:restore.identityConflictsQuarantined,restoreContentHashMismatches:restore.contentHashMismatchesRepaired,restoreMissingContentHashes:restore.missingContentHashesRebuilt,restoreInvalidVectors:restore.invalidVectorsDiscarded,restoreInvalidExpiries:restore.invalidExpiriesClosed,restoreFactsDowngraded:restore.factsDowngraded},indexes:index};
  }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;
