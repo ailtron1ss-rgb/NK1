@@ -60,3 +60,15 @@ test("VRM arm actuation requires exact fingerprint, declared coordinate frame an
  assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="explore"\?-.14/);
  assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="respond"&&p\.speaking\?-.26/);
 });
+
+test("asset evidence UI binds Khronos report and manifest to the current preflighted model and release license",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/assetPreflightPassedRef\.current=true/);
+ assert.match(stage,/parseAvatarAssetEvidenceBundleJson\(json/);
+ assert.match(stage,/modelFingerprint,coordinateFrameId,nk1PreflightPassed:assetPreflightPassedRef\.current/);
+ assert.match(stage,/assetManifestRef\.current=result\.manifest/);
+ assert.match(stage,/result\.releaseEligible\?"release-ready":"verified-local"/);
+ assert.match(stage,/Импорт provenance/);
+ assert.match(stage,/GLTFLoader не принял модель/);
+ assert.match(stage,/Khronos .*0 errors/);
+});
