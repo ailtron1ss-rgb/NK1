@@ -1832,6 +1832,7 @@
     "test:p23:learning-governance": "npm run test:p23:learning-attempt-diagnosis && npm run test:p23:reflection-reason-runtime-wiring && npm run test:workpass383:p23-revision-generator-boundary && npm run test:workpass402:production-family-gate && npm run test:workpass404:paired-seed-confidence && npm run test:workpass405:learning-fitness-journal && npm run test:workpass406:robust-metrics && npm run test:workpass407:learning-lifecycle-journal && npm run test:workpass408:lifecycle-reconciliation && npm run test:workpass419:retry-backoff-store && npm run test:workpass421:learning-journal-bootstrap && npm run test:hexis:correction-memory && npm run test:p36:verified-outcome-ledger-evaluator && npm run test:p36:host-evaluator-bootstrap && npm run test:p23:continual-outcome-matrix && npm run test:p23:paired-outcome-identity && npm run test:p23:verified-outcome-ledger && node --experimental-strip-types tests/p23-hermes-production-promotion-gate.mjs",
     "test:p23:verified-outcome-ledger": "node --experimental-strip-types tests/p23-verified-outcome-ledger.mjs",
     "test:tool-input-contracts-workpass624": "node --experimental-strip-types tests/tool-input-contracts-workpass624.mjs",
-    "test:aspect10:interaction": "node --experimental-strip-types tests/aspect10-embodied-interaction.mjs && node --experimental-strip-types tests/aspect10-grounded-bridge.mjs"
+    "test:aspect10:interaction": "node --experimental-strip-types tests/aspect10-embodied-interaction.mjs && node --experimental-strip-types tests/aspect10-grounded-bridge.mjs",
+    "test:aspect01:cognitive-runtime-integrity": "node --experimental-strip-types tests/aspect01-cognitive-runtime-integrity-2026-10-31.mjs"
   }
 }
