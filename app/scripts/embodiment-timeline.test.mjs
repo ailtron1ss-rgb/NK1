@@ -159,6 +159,10 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
   assert.doesNotMatch(source, /type: "kurisu_lipsync"|type: "kurisu_embodiment"|type: "kurisu_expression"/, "the app must not split one state over legacy control messages");
   assert.match(viewer, /d\.type!=='kurisu_embodiment_intent'/);
   assert.match(viewer, /intent\.stateVersion/);
+  assert.match(source, /affect: \{/);
+  assert.match(viewer, /const browLift=/, "Live2D must project continuous canonical affect, not only switch discrete expressions");
+  assert.match(viewer, /addCoreOffset\(\x27ParamBrowLY\x27/);
+  assert.match(viewer, /affectLabels=/);
   assert.doesNotMatch(viewer, /d\.type==='kurisu_lipsync'|d\.type==='kurisu_embodiment'|d\.type==='kurisu_expression'/, "viewer must accept the unified control contract, not competing writers");
 });
 
