@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const viewer = await readFile(new URL("../public/live2d/viewer.html", import.meta.url), "utf8");
+const viewer = await readFile(new URL("../../runtime/neuro-kurisu/public/live2d/viewer.html", import.meta.url), "utf8");
 const avatar = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
 
 test("Live2D viewer binds mobile and balanced Cubism models to stable MotorFrame model ids", () => {
@@ -38,4 +38,15 @@ test("AvatarStage streams Live2D commands through the same renderer-neutral Moto
   assert.match(avatar, /motorFrameBatch: live2dMotorBatch/);
   assert.match(avatar, /setLive2dMotorProjection\(projection\.state\)/);
   assert.match(avatar, /live2dMotorAck\.observedCount/);
+});
+
+test("served Live2D viewer binds MotorFrame and transactional switch receipts to independent model readback", () => {
+  assert.match(viewer, /function sanitizeLive2DMotorBatch\(raw\)/);
+  assert.match(viewer, /normalized\.motorFrameBatch=sanitizeLive2DMotorBatch\(d\.motorFrameBatch\)/);
+  assert.match(viewer, /live2d_motor_frame_ack/);
+  assert.match(viewer, /live2d_switch_apply_receipt/);
+  assert.match(viewer, /live2d_switch_verification/);
+  assert.match(viewer, /pendingSwitchReadback/);
+  assert.match(viewer, /observedAtMonotonicMs:performance\.now\(\)/);
+  assert.match(viewer, /visualCompletionVerified:false/);
 });
