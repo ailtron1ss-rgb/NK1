@@ -188,7 +188,9 @@
     "audit:ci-reliability": "node tools/verify-ci-reliability.mjs",
     "test:avatar-motor-intent": "npm --prefix app run test:avatar-motor-intent",
     "test:aspect10:interaction": "npm --prefix runtime/neuro-kurisu run test:aspect10:interaction",
-    "test:aspect10:ik": "npm --prefix app run test:planar-arm-ik"
+    "test:aspect10:ik": "npm --prefix app run test:planar-arm-ik",
+    "test:embodied-motor-controller": "npm --prefix runtime/neuro-kurisu run test:embodied-motor-controller",
+    "test:skeletal-kinematics-3d": "npm --prefix runtime/neuro-kurisu run test:skeletal-kinematics-3d"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
