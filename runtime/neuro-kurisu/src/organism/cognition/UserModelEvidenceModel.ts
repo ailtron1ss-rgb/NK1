@@ -82,6 +82,19 @@ export class UserModelEvidenceModel {
   c.value=value;c.status='confirmed';c.evidenceRef=ref;c.lastSeenTick=i.tick;c.confirmations++;c.contradictions=0;
   return{accepted:true,status:c.status,claim:clone(c)};
  }
+ /** Read-only decision view: disputed claims are excluded from confirmed facts. */
+ decisionContext(){
+  return{
+   confirmedClaims:this.state.claims.filter(c=>c.status==='confirmed').map(c=>({key:c.key,domain:c.domain,value:c.value,evidenceRef:c.evidenceRef})),
+   disputedClaims:this.state.claims.filter(c=>c.status==='disputed').map(c=>({key:c.key,domain:c.domain})),
+   hypotheses:this.state.candidates.map(c=>({key:c.key,domain:c.domain,value:c.value,confidence01:c.confidence01,status:c.status as const})),
+  };
+ }
+ confirmedValue(key:string,domain:UserModelDomain):string|null{
+  const normalized=normalizeKey(key);
+  const claim=this.state.claims.find(c=>c.key===normalized&&c.domain===domain&&c.status==='confirmed');
+  return claim?.value??null;
+ }
  private remember(ref:string){this.state.processedEvidenceRefs=[...this.state.processedEvidenceRefs,ref].slice(-512);}
  private cleanClaim(r:any):UserModelClaim|null{
   const key=normalizeKey(r?.key),value=boundedText(r?.value,120),ref=boundedText(r?.evidenceRef,180);
