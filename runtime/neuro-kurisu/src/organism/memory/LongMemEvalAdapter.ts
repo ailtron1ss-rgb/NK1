@@ -244,8 +244,9 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
    baseline:{recallAtK01:baselineScore.recallAtK01,mrr01:baselineScore.mrr01,precisionAtK01:baselineScore.precisionAtK01,retrievedCount:baselineScore.retrievedCount,unsupportedRetrieval:baselineScore.unsupportedRetrieval,rankedSessionDigests:baselineIds.map(id=>digest(fingerprintSalt+'\0session\0'+id))},
    candidate:{recallAtK01:candidateScore.recallAtK01,mrr01:candidateScore.mrr01,precisionAtK01:candidateScore.precisionAtK01,retrievedCount:candidateScore.retrievedCount,unsupportedRetrieval:candidateScore.unsupportedRetrieval,rankedSessionDigests:candidateIds.map(id=>digest(fingerprintSalt+'\0session\0'+id))},
   });
+  // Release transcript/query payloads as soon as their hashed metrics are recorded.
+  question.sessions.length=0;question.query='';question.answerSessionIds.length=0;question.id='';question.type='';question.at=0;question.independenceGroupId='';
  }
- const datasetFingerprint=digest(JSON.stringify(stableValue(questions)));
  const baseline=aggregate(baselineOutcomes),candidate=aggregate(candidateOutcomes);
  const confidence=pairedBootstrap(paired,seeds,bootstrapSamples);
  const minAnswerable=Math.floor(finiteOption(options.minAnswerableQueries,20,1,500));
@@ -256,7 +257,7 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
   mode:'offline-only; per-question isolated corpus; no-live-memory-mutation; no-auto-promotion',
   sourceDataset:{
    datasetId:LONGMEMEVAL_DATASET_ID,datasetRevision:revision,
-   sourceRef:`https://huggingface.co/datasets/${LONGMEMEVAL_DATASET_ID}/tree/${revision}`,
+   sourceRef:`https://huggingface.co/datasets/${LONGMEMEVAL_DATASET_ID}/resolve/${revision}/longmemeval_s_cleaned.json`,
    licenseId:LONGMEMEVAL_LICENSE_ID,languages:['en'],questionCount:questions.length,sessionCount,
    fileSha256:fileSha,datasetFingerprint,
   },
