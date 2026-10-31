@@ -2810,3 +2810,5 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
 - **WorkPass293:** исправлен confidence fallback в `IntrinsicMotivationEngine` для входа только с `affectiveComponents`; добавлен regression test на ненулевую bounded confidence и сохранение provenance.
+
+- **WorkPass294:** расширен live `OrganismCore` regression: проверяется точная передача полного `mixedAffect` distribution в `IntrinsicAffectiveInfluence.components`, не только dominant label / emotion ID.
