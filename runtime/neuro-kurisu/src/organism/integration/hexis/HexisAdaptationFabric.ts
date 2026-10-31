@@ -192,6 +192,94 @@ const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, N
 const digest = (value: unknown) => sha256Stable(value, 'legacy');
 const sourceKey = (source: HexisEvidenceSource) => String(source.ref || source.label || source.contentHash || digest(source));
 const nowMs = () => Date.now();
+
+const HEXIS_POLICY_MAX_ENTRIES = 256;
+const HEXIS_POLICY_MAX_TARGETS = 256;
+const HEXIS_POLICY_MAX_WINDOW_MS = 31_536_000_000;
+const HEXIS_POLICY_MAX_RATE = 1_000_000;
+
+function isHexisPolicyRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isHexisPolicyText(value: unknown, maxLength: number): value is string {
+    return typeof value === 'string' && value.trim().length > 0 &&
+        value.length <= maxLength && !/[\\u0000-\\u001f\\u007f]/.test(value);
+}
+
+function normalizeHexisPolicyStringList(
+    value: unknown,
+    maxEntries: number,
+    maxStringLength: number,
+    lowercase = false,
+): string[] | null {
+    if (!Array.isArray(value) || value.length > maxEntries) return null;
+    const result: string[] = [];
+    const seen = new Set<string>();
+    for (const item of value) {
+        if (!isHexisPolicyText(item, maxStringLength)) return null;
+        const normalized = (lowercase ? item.trim().toLowerCase() : item.trim()).normalize('NFKC');
+        if (!normalized) return null;
+        if (!seen.has(normalized)) {
+            seen.add(normalized);
+            result.push(normalized);
+        }
+    }
+    return result;
+}
+
+/** Persisted connector policy is an authorization boundary; malformed rows never survive restore. */
+function normalizeHexisConnectorPolicy(value: unknown): HexisConnectorPolicy | null {
+    if (!isHexisPolicyRecord(value)) return null;
+    const row = value;
+    if (!isHexisPolicyText(row.id, 256) || !isHexisPolicyText(row.connectorId, 128) ||
+        !isHexisPolicyText(row.actionKind, 128) ||
+        typeof row.allowAutonomous !== 'boolean' || typeof row.requiresApproval !== 'boolean' ||
+        (row.status !== 'active' && row.status !== 'revoked')) return null;
+    const contexts = normalizeHexisPolicyStringList(row.contexts, 32, 128);
+    const allowedTargets = normalizeHexisPolicyStringList(row.allowedTargets, HEXIS_POLICY_MAX_TARGETS, 512);
+    const deniedTargets = normalizeHexisPolicyStringList(row.deniedTargets, HEXIS_POLICY_MAX_TARGETS, 512);
+    if (!contexts || contexts.length === 0 || !allowedTargets || !deniedTargets) return null;
+    if (typeof row.windowMs !== 'number' || !Number.isSafeInteger(row.windowMs) ||
+        row.windowMs < 1000 || row.windowMs > HEXIS_POLICY_MAX_WINDOW_MS ||
+        typeof row.windowStartedAt !== 'number' || !Number.isSafeInteger(row.windowStartedAt) || row.windowStartedAt < 0 ||
+        typeof row.windowCount !== 'number' || !Number.isSafeInteger(row.windowCount) ||
+        row.windowCount < 0 || row.windowCount > HEXIS_POLICY_MAX_RATE ||
+        typeof row.grantedAt !== 'number' || !Number.isSafeInteger(row.grantedAt) || row.grantedAt < 0) return null;
+    if (row.maxPerWindow !== undefined &&
+        (typeof row.maxPerWindow !== 'number' || !Number.isSafeInteger(row.maxPerWindow) ||
+            row.maxPerWindow < 1 || row.maxPerWindow > HEXIS_POLICY_MAX_RATE)) return null;
+    if (row.expiresAt !== undefined &&
+        (typeof row.expiresAt !== 'number' || !Number.isSafeInteger(row.expiresAt) || row.expiresAt < 0)) return null;
+    return {
+        id: row.id.trim().normalize('NFKC'),
+        connectorId: row.connectorId.trim().normalize('NFKC').toLowerCase(),
+        actionKind: row.actionKind.trim().normalize('NFKC').toLowerCase(),
+        contexts,
+        allowAutonomous: row.allowAutonomous,
+        requiresApproval: row.requiresApproval,
+        allowedTargets,
+        deniedTargets,
+        ...(row.maxPerWindow === undefined ? {} : { maxPerWindow: row.maxPerWindow }),
+        windowMs: row.windowMs,
+        ...(row.expiresAt === undefined ? {} : { expiresAt: row.expiresAt }),
+        windowStartedAt: row.windowStartedAt,
+        windowCount: row.windowCount,
+        status: row.status,
+        grantedAt: row.grantedAt,
+    };
+}
+
+function normalizeHexisConnectorPolicies(value: unknown): HexisConnectorPolicy[] {
+    if (!Array.isArray(value)) return [];
+    const candidates = value.slice(-HEXIS_POLICY_MAX_ENTRIES)
+        .map(normalizeHexisConnectorPolicy)
+        .filter((policy): policy is HexisConnectorPolicy => policy !== null);
+    const counts = new Map<string, number>();
+    for (const policy of candidates) counts.set(policy.id, (counts.get(policy.id) ?? 0) + 1);
+    // Duplicate IDs are ambiguous for revocation; fail closed by dropping every duplicate.
+    return candidates.filter(policy => counts.get(policy.id) === 1);
+}
 const protectedSections = new Set(['identity', 'worldview', 'drives', 'emotional_triggers', 'narrative', 'goals']);
 export function defaultHexisAdaptationState(): HexisAdaptationState {
     return { version: 1, source: { name: 'Hexis-main', mode: 'canonical-adapter', integratedAt: '2026-10-08' }, beliefs: [], beliefAudit: [], temporal: [], learningReviews: [], retentionProposals: [], fidelityReceipts: [], hmxStages: [], outbox: [], connectorPolicies: [], executions: [], metrics: { beliefRevisions: 0, duplicateEvidence: 0, temporalQueries: 0, reviewsCreated: 0, reviewDecisions: 0, retentionProposals: 0, hmxStaged: 0, hmxAccepted: 0, outboxQueued: 0, outboxPublished: 0, outboxIdempotencyConflicts: 0, policyAllows: 0, policyDenials: 0, executionPlans: 0 } };
@@ -201,64 +289,10 @@ export class HexisAdaptationFabric {
     restore(raw?: Partial<HexisAdaptationState> | null): void {
         const defaults = defaultHexisAdaptationState();
         const value = raw ?? {};
-        const isRecord = (candidate: unknown): candidate is Record<string, unknown> =>
-            candidate !== null && typeof candidate === 'object' && !Array.isArray(candidate);
-        const safeString = (candidate: unknown, max: number): candidate is string =>
-            typeof candidate === 'string' && candidate.length > 0 && candidate.length <= max && candidate.trim() === candidate;
-        const safeStringList = (candidate: unknown, maxItems: number, maxLength: number): candidate is string[] =>
-            Array.isArray(candidate) && candidate.length <= maxItems &&
-            candidate.every(item => safeString(item, maxLength));
-        const safeTimestamp = (candidate: unknown): candidate is number =>
-            Number.isSafeInteger(candidate) && (candidate as number) >= 0;
-        const normalizedPolicies: HexisConnectorPolicy[] = [];
-        const seenPolicyIds = new Set<string>();
-        if (Array.isArray(value.connectorPolicies)) {
-            for (const candidate of value.connectorPolicies.slice(-256)) {
-                if (!isRecord(candidate)) continue;
-                const id = candidate.id;
-                const connectorId = candidate.connectorId;
-                const actionKind = candidate.actionKind;
-                const contexts = candidate.contexts;
-                const allowedTargets = candidate.allowedTargets;
-                const deniedTargets = candidate.deniedTargets;
-                const maxPerWindow = candidate.maxPerWindow;
-                const expiresAt = candidate.expiresAt;
-                if (!safeString(id, 128) || seenPolicyIds.has(id) ||
-                    !safeString(connectorId, 128) || connectorId !== connectorId.toLowerCase() ||
-                    !safeString(actionKind, 128) || actionKind !== actionKind.toLowerCase() ||
-                    !safeStringList(contexts, 64, 128) ||
-                    !safeStringList(allowedTargets, 256, 256) ||
-                    !safeStringList(deniedTargets, 256, 256) ||
-                    typeof candidate.allowAutonomous !== 'boolean' ||
-                    typeof candidate.requiresApproval !== 'boolean' ||
-                    (maxPerWindow !== undefined && (!Number.isSafeInteger(maxPerWindow) || (maxPerWindow as number) < 1)) ||
-                    !Number.isSafeInteger(candidate.windowMs) || (candidate.windowMs as number) < 1000 || (candidate.windowMs as number) > 31536000000 ||
-                    !safeTimestamp(candidate.windowStartedAt) ||
-                    !Number.isSafeInteger(candidate.windowCount) || (candidate.windowCount as number) < 0 ||
-                    !safeTimestamp(candidate.grantedAt) ||
-                    (expiresAt !== undefined && !safeTimestamp(expiresAt)) ||
-                    (candidate.status !== 'active' && candidate.status !== 'revoked')) continue;
-                seenPolicyIds.add(id);
-                normalizedPolicies.push({
-                    id,
-                    connectorId,
-                    actionKind,
-                    contexts: [...new Set(contexts)],
-                    allowAutonomous: candidate.allowAutonomous,
-                    requiresApproval: candidate.requiresApproval,
-                    allowedTargets: [...new Set(allowedTargets)],
-                    deniedTargets: [...new Set(deniedTargets)],
-                    ...(maxPerWindow === undefined ? {} : { maxPerWindow: maxPerWindow as number }),
-                    windowMs: candidate.windowMs as number,
-                    ...(expiresAt === undefined ? {} : { expiresAt: expiresAt as number }),
-                    windowStartedAt: candidate.windowStartedAt,
-                    windowCount: candidate.windowCount as number,
-                    status: candidate.status,
-                    grantedAt: candidate.grantedAt,
-                });
-            }
-        }
-        const metricInput: Record<string, unknown> = isRecord(value.metrics) ? value.metrics : Object.create(null) as Record<string, unknown>;
+        const normalizedPolicies = normalizeHexisConnectorPolicies(value.connectorPolicies);
+        const metricInput: Record<string, unknown> = isHexisPolicyRecord(value.metrics)
+            ? value.metrics
+            : Object.create(null) as Record<string, unknown>;
         const metrics = Object.fromEntries(
             Object.entries(defaults.metrics).map(([key, fallback]) => {
                 const candidate = metricInput[key];
@@ -457,13 +491,10 @@ export class HexisAdaptationFabric {
         windowMs?: number;
         expiresAt?: number;
     }): HexisConnectorPolicy {
-        const at = nowMs();
         if (typeof input.connectorId !== 'string' || typeof input.actionKind !== 'string') {
             throw new TypeError('connector policy identity must be strings');
         }
-        const connectorId = input.connectorId.trim().toLowerCase();
-        const actionKind = input.actionKind.trim().toLowerCase();
-        if (!connectorId || connectorId.length > 128 || !actionKind || actionKind.length > 128) {
+        if (!isHexisPolicyText(input.connectorId, 128) || !isHexisPolicyText(input.actionKind, 128)) {
             throw new TypeError('connector policy identity must be non-empty and bounded');
         }
         if (input.allowAutonomous !== undefined && typeof input.allowAutonomous !== 'boolean') {
@@ -472,41 +503,36 @@ export class HexisAdaptationFabric {
         if (input.requiresApproval !== undefined && typeof input.requiresApproval !== 'boolean') {
             throw new TypeError('requiresApproval must be a boolean');
         }
-        const normalizeList = (value: unknown, label: string, fallback: string[] = []): string[] => {
-            if (value === undefined) return fallback;
-            if (!Array.isArray(value) || value.length > 256 ||
-                value.some(item => typeof item !== 'string' || !item.trim() || item.length > 256 || item.trim() !== item)) {
-                throw new TypeError(`${label} must be a bounded list of non-empty strings`);
-            }
-            return [...new Set(value)];
-        };
-        const contexts = normalizeList(input.contexts, 'contexts', ['chat']);
-        if (contexts.length > 64 || contexts.some(context => context.length > 128)) {
-            throw new TypeError('contexts exceed the connector policy bounds');
-        }
+        const contexts = normalizeHexisPolicyStringList(input.contexts ?? ['chat'], 32, 128);
+        const allowedTargets = normalizeHexisPolicyStringList(input.allowedTargets ?? [], HEXIS_POLICY_MAX_TARGETS, 512);
+        const deniedTargets = normalizeHexisPolicyStringList(input.deniedTargets ?? [], HEXIS_POLICY_MAX_TARGETS, 512);
+        if (!contexts || contexts.length === 0) throw new TypeError('contexts must be a bounded non-empty string list');
+        if (!allowedTargets || !deniedTargets) throw new TypeError('connector targets must be bounded string lists');
         if (input.maxPerWindow !== undefined &&
-            (!Number.isSafeInteger(input.maxPerWindow) || input.maxPerWindow < 1)) {
+            (!Number.isSafeInteger(input.maxPerWindow) || input.maxPerWindow < 1 || input.maxPerWindow > HEXIS_POLICY_MAX_RATE)) {
             throw new TypeError('maxPerWindow must be a positive safe integer');
         }
         const windowMs = input.windowMs ?? 86400000;
-        if (!Number.isSafeInteger(windowMs) || windowMs < 1000 || windowMs > 31536000000) {
+        if (!Number.isSafeInteger(windowMs) || windowMs < 1000 || windowMs > HEXIS_POLICY_MAX_WINDOW_MS) {
             throw new TypeError('windowMs must be a safe integer between 1000 and one year');
         }
-        if (input.expiresAt !== undefined && !Number.isFinite(input.expiresAt)) {
-            throw new TypeError('expiresAt must be finite');
+        if (input.expiresAt !== undefined &&
+            (!Number.isSafeInteger(input.expiresAt) || input.expiresAt < 0)) {
+            throw new TypeError('expiresAt must be a non-negative safe integer');
         }
+        const at = nowMs();
         const policy: HexisConnectorPolicy = {
             id: randomUUID(),
-            connectorId,
-            actionKind,
+            connectorId: input.connectorId.trim().normalize('NFKC').toLowerCase(),
+            actionKind: input.actionKind.trim().normalize('NFKC').toLowerCase(),
             contexts,
             allowAutonomous: input.allowAutonomous ?? false,
             requiresApproval: input.requiresApproval ?? true,
-            allowedTargets: normalizeList(input.allowedTargets, 'allowedTargets'),
-            deniedTargets: normalizeList(input.deniedTargets, 'deniedTargets'),
-            maxPerWindow: input.maxPerWindow,
+            allowedTargets,
+            deniedTargets,
+            ...(input.maxPerWindow === undefined ? {} : { maxPerWindow: input.maxPerWindow }),
             windowMs,
-            expiresAt: input.expiresAt,
+            ...(input.expiresAt === undefined ? {} : { expiresAt: input.expiresAt }),
             windowStartedAt: at,
             windowCount: 0,
             status: 'active',
