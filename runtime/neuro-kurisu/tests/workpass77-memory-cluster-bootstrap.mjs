@@ -1,0 +1,115 @@
+import assert from 'node:assert/strict';
+import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import {
+  fingerprintMemoryRetrievalDataset,
+  runMemoryOS2RetrievalBenchmark,
+} from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+
+const now = 2_000_000_000_000;
+const memory = new MemoryOS2();
+for (let index = 0; index < 16; index += 1) {
+  memory.encode({
+    id: 'cluster-memory-' + index,
+    content: 'NK1 retrieval cluster concept ' + index + ' shared project context',
+    kind: 'semantic',
+    source: 'workpass77-cluster-bootstrap-fixture',
+    tags: ['cluster-bootstrap'],
+    context: { area: 'workpass77' },
+    salience: 0.7,
+    emotionalWeight: 0.1,
+    identityRelevance: 0.2,
+    goalRelevance: 0.3,
+    socialRelevance: 0.1,
+    predictionError: 0.05,
+    confidence: 0.95,
+    epistemicStatus: 'fact',
+    entities: [],
+    semanticLinks: [],
+    temporalLinks: [],
+    causalLinks: [],
+    contradictionLinks: [],
+    validFromAt: now - 60_000,
+    observedAt: now - 1_000,
+    provenanceClass: 'external',
+    sourceAuthority01: 0.9,
+  });
+}
+const examples = [];
+for (let index = 0; index < 4; index += 1) {
+  examples.push({
+    id: 'train-' + index,
+    query: 'training concept ' + index + ' nk1 memory',
+    relevantIds: ['cluster-memory-' + index],
+    split: 'train',
+    independenceGroupId: 'train-source-' + index,
+  });
+}
+for (let index = 0; index < 8; index += 1) {
+  examples.push({
+    id: 'holdout-' + index,
+    query: 'holdout concept ' + index + ' nk1 memory',
+    relevantIds: ['cluster-memory-' + (index + 4)],
+    split: 'holdout',
+    // Two prompts derived from one source episode are one independent sampling unit.
+    independenceGroupId: 'episode-' + Math.floor(index / 2),
+  });
+}
+const provenance = {
+  datasetId: 'workpass77-cluster-bootstrap',
+  datasetVersion: '1',
+  sourceRef: 'test-fixture-only',
+  labelingProtocol: 'Deterministic fixture labels; not production evidence.',
+  licenseId: 'LicenseRef-NK1-TestFixture',
+  contentSha256: fingerprintMemoryRetrievalDataset(examples),
+};
+const report = runMemoryOS2RetrievalBenchmark(memory.snapshot(), examples, {
+  now,
+  k: 5,
+  bootstrapSamples: 200,
+  maxExamples: 512,
+  datasetProvenance: provenance,
+  seed: 29,
+});
+
+assert.equal(report.confidence.method, 'paired-cluster-bootstrap-percentile-interval',
+  'confidence intervals must resample independent source groups, not correlated query rows');
+assert.equal(report.confidence.recallAtK01.clusterCount, 4,
+  'eight holdout prompts from four source episodes must count as four independent clusters');
+assert.equal(report.confidence.mrr01.clusterCount, 4);
+assert.equal(report.confidence.recallAtK01.resamplingUnit, 'independenceGroupId-or-exampleId');
+assert.equal(report.datasetIntegrity.independenceGroupCount, 8);
+assert.equal(report.datasetIntegrity.independenceGroupSplitLeakageCount, 0);
+assert.equal(report.datasetIntegrity.validForPromotion, true,
+  'well-formed group labels must not block promotion by themselves');
+
+const changedGroup = structuredClone(examples);
+changedGroup[4].independenceGroupId = 'episode-renamed';
+assert.notEqual(
+  fingerprintMemoryRetrievalDataset(changedGroup),
+  fingerprintMemoryRetrievalDataset(examples),
+  'dataset fingerprints must bind independence group labels',
+);
+
+const leaked = structuredClone(examples);
+leaked[0].independenceGroupId = 'cross-split-source';
+leaked[4].independenceGroupId = 'cross-split-source';
+const leakedFingerprint = fingerprintMemoryRetrievalDataset(leaked);
+const leakedReport = runMemoryOS2RetrievalBenchmark(memory.snapshot(), leaked, {
+  now,
+  k: 5,
+  bootstrapSamples: 200,
+  maxExamples: 512,
+  datasetProvenance: { ...provenance, contentSha256: leakedFingerprint },
+  seed: 29,
+});
+assert.equal(leakedReport.datasetIntegrity.independenceGroupSplitLeakageCount, 1,
+  'one source group appearing in both train and holdout must be detected');
+assert.equal(leakedReport.datasetIntegrity.validForPromotion, false);
+assert.equal(leakedReport.promotion.gates.datasetIntegrity, false);
+assert.equal(leakedReport.promotion.allowed, false);
+
+console.log('WORKPASS77_MEMORY_CLUSTER_BOOTSTRAP=PASS', JSON.stringify({
+  clusters: report.confidence.recallAtK01.clusterCount,
+  resamplingUnit: report.confidence.recallAtK01.resamplingUnit,
+  splitLeakageDetected: leakedReport.datasetIntegrity.independenceGroupSplitLeakageCount,
+}));
