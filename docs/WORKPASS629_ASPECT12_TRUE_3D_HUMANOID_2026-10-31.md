@@ -112,6 +112,18 @@ The 3D adapter owns only model-specific mapping, coordinate conversion, calibrat
 Acceptance: canonical model, editable source, complete provenance and reproducible export.
 
 ### 12.2 — Authoritative VRM runtime
+
+**Research decision (2026-10-31):** `@pixiv/three-vrm` is the leading integration candidate, not a speculative custom VRM parser. Its upstream v3.4.4 release explicitly bumped Three.js to r180, matching NK1's pinned Three.js 0.180.0; upstream currently lists stable v3.5.5 and a newer 3.6.0 beta. Prefer the stable release for the first integration spike; do not adopt the beta for production without a separate compatibility review. References: [three-vrm releases](https://github.com/pixiv/three-vrm/releases), [upstream loader-plugin usage](https://github.com/pixiv/three-vrm), [API docs](https://pixiv.github.io/three-vrm/docs/modules/three-vrm.html).
+
+- Evaluate and integrate the stable `@pixiv/three-vrm@3.5.5` runtime against the current Three.js version and license.
+- Register `VRMLoaderPlugin` on the existing `GLTFLoader`; read the parsed `gltf.userData.vrm` object and retain a generic GLB fallback.
+- Use `vrm.humanoid` semantic bone nodes when present; keep the new name-based audit only as fallback for generic GLB.
+- Verify VRM version support, expressions, MToon, spring bones, look-at and animation retargeting.
+- Pin dependencies and update lockfile; test bundle size and mobile memory.
+- Fail closed when required extension semantics are missing.
+
+Acceptance: real VRM fixture renders with validated humanoid, expression and spring-bone support; generic GLB remains a separately labeled compatibility mode.
+
 - Evaluate and integrate a maintained VRM runtime (e.g. `@pixiv/three-vrm`) against current Three.js version and license.
 - Use VRM humanoid semantic mapping when available; keep the new name-based audit only as fallback.
 - Verify VRM version support, expressions, MToon, spring bones, look-at and animation retargeting.
