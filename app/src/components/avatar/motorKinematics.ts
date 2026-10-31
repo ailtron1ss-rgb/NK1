@@ -40,7 +40,9 @@ export function solvePlanarTwoBoneIK(input: PlanarTwoBoneIKInput): PlanarTwoBone
   const shoulder = targetAngle - Math.atan2(lower * Math.sin(elbow), upper + lower * Math.cos(elbow));
   return {
     shoulderRotation: finite(shoulder + Math.PI / 2),
-    elbowRotation: finite(-elbow),
+    // Nested shoulder and elbow groups compose local Z rotations additively.
+    // Preserve the signed IK joint angle so forward kinematics reaches the requested target.
+    elbowRotation: finite(elbow),
     reachableDistance: distance,
     requestedDistance: requested,
     reachError: Math.abs(requested - distance),
