@@ -45,3 +45,18 @@ test("existing sprite and Live2D files remain available",async()=>{
 });
 
 test("VRM stage reports conservative left/right humanoid arm discovery without claiming IK actuation",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/resolveVrmArm/);assert.match(stage,/leftArmRig/);assert.match(stage,/rightArmRig/);assert.match(stage,/пока рассчитывается отдельно и не применяется к костям/);});
+
+test("VRM arm actuation requires exact fingerprint, declared coordinate frame and measured bilateral sidecar",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/root\.userData\?\.nk1CoordinateFrameId/);
+ assert.match(stage,/fingerprint&&coordinateFrameId&&leftArmRig&&rightArmRig/);
+ assert.match(stage,/resolveVrmArmChain\(rigBones,"left"\)/);
+ assert.match(stage,/resolveVrmArmChain\(rigBones,"right"\)/);
+ assert.match(stage,/parseVrmRigCalibrationProfileJson\(json,context\)/);
+ assert.match(stage,/applyCalibratedVrmArmGesture\(calibratedBindings\.left/);
+ assert.match(stage,/applyCalibratedVrmArmGesture\(calibratedBindings\.right/);
+ assert.match(stage,/serializeVrmRigCalibrationProfileJson/);
+ assert.match(stage,/VRM IK · \{vrmCalibrationStatus\}/);
+ assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="explore"\?-.14/);
+ assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="respond"&&p\.speaking\?-.26/);
+});
