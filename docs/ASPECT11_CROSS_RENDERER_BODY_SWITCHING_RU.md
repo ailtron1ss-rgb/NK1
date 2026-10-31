@@ -160,3 +160,18 @@ OrganismCore → EmbodimentIntentV1 / MotorGoal → MotorFrame (#410) → render
 - Проверки включены в `test:embodiment-switch` и workflow `nk1-embodiment-switch.yml`.
 
 Граница следующего этапа: адаптер должен применить semantic pose к конкретному Live2D/DepthRig/VRM рендереру, прочитать фактические параметры/кости после обновления кадра и вернуть независимую revision-bound verification. До этого моторный mapping не разрешает commit переключения и не считается визуально исполненным действием.
+
+## Интеграция в UI: bridge (2026-10-31)
+
+`app/src/components/avatar/embodimentUiBridge.ts` — мост между каноническим `OrganismSnapshot` и чистым контрактом `embodimentSwitch.ts`. Он:
+
+- проецирует snapshot в `SemanticBodyState` (ревизия монотонна, значения clamp-ятся, невалидная проекция не выпускается);
+- хранит статическую таблицу возможностей для четырёх UI-рендеров (`live2d`, `original`, `legacy` — 2D-класс; `3d` — 3D-класс), честно объявляя только реально применяемые каналы (`headYaw`, `gazeX`, `gazeY`, `breath` для Live2D; `gazeX/gazeY` для SVG/3D; спрайты не заявляют каналов);
+- планирует handoff через `planEmbodimentSwitch` и переопределяет `requiresNeutralRebind` по точной идентичности рендера (два разных 2D-рендера всё равно требуют rebind);
+- ведёт монотонный ограниченный crossfade (`advanceBodySwitch`, 220 ms, окно 150–350 ms).
+
+`AvatarStage.tsx` теперь реально использует мост: при смене тела планируется handoff, применяется ограниченный crossfade, а диагностика (`body from→to · rev · rebind · unsupported: ...`) честно показывает неподдержанные каналы. Эффект зависит только от `mode`; последние значения читаются из refs, поэтому обновления snapshot по тику не сбрасывают анимацию перехода.
+
+**Ограничение:** это контрактный/UI-слой. Он не создаёт `AdapterApplyReceipt` и не заявляет исполнение позы или визуальное завершение кадра. 2.5D depth-rig (`depthRigRendererAdapter.ts`) по-прежнему не подключён к render-пути, поэтому отдельный 2.5D-рендер в UI не добавляется.
+
+Тесты: `app/scripts/embodiment-ui-bridge.test.mjs` (9), вместе с `test:embodiment-switch` (26). CI: `NK1 embodiment switch contract`.

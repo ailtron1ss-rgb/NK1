@@ -8,8 +8,10 @@ on:
       - "app/src/components/avatar/motorFrameMapper.ts"
       - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
+      - "app/src/components/avatar/embodimentUiBridge.ts"
       - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/live2d-intent-ack.test.mjs"
+      - "app/scripts/embodiment-ui-bridge.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/scripts/embodiment-switch.test.mjs"
@@ -40,5 +42,7 @@ jobs:
         run: npm ci --prefix app --ignore-scripts
       - name: Test renderer-neutral body handoff
         run: npm --prefix app run test:embodiment-switch
+      - name: Test body-switch UI integration bridge
+        run: npm --prefix app run test:embodiment-ui-bridge
       - name: App typecheck
         run: npm --prefix app run typecheck

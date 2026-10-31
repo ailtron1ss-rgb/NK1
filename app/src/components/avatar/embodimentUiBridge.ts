@@ -1,0 +1,163 @@
+/**
+ * UI bridge for renderer-neutral body switching (NK1 aspect 11).
+ *
+ * Integration layer between the canonical organism snapshot and the pure
+ * `embodimentSwitch` contract. It projects a `SemanticBodyState` plus static
+ * renderer capability descriptors and exposes the bounded handoff used by
+ * `AvatarStage`. It never mutates organism state and never claims that a
+ * renderer executed a channel it does not support.
+ */
+import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import { advanceSwitchProgress, planEmbodimentSwitch } from "./embodimentSwitch.ts";
+import type {
+  BodyChannel,
+  EmbodimentMode,
+  ExpressionChannel,
+  RendererCapabilities,
+  SemanticBodyState,
+  SpeechPhase,
+  SwitchPlan,
+} from "./embodimentSwitch.ts";
+import type { MouthPose } from "./embodimentTimeline";
+
+/** UI renderer modes. `legacy` and `original` are 2D fallbacks, not skeletal adapters. */
+export type UiRenderMode = "live2d" | "legacy" | "original" | "3d";
+
+/** Bounded monotonic handoff progress used to drive a crossfade. */
+export interface BodySwitchProgress {
+  progress: number;
+  committed: boolean;
+}
+
+export interface SemanticBodyProjectionInput {
+  snapshot: OrganismSnapshot;
+  revision: number;
+  monotonicMs: number;
+  headTilt: number;
+  gaze: { x: number; y: number };
+  speechPhase: SpeechPhase;
+  speechEventId: string | null;
+  audioTimeMs: number;
+  mouth: MouthPose;
+}
+
+const EXPRESSION_CHANNELS: readonly ExpressionChannel[] = [
+  "neutral", "joy", "sadness", "anger", "anxiety", "curiosity", "protective", "surprise",
+];
+
+const EMOTION_TO_EXPRESSION: Record<EmotionLabel, ExpressionChannel> = {
+  curiosity: "curiosity", calm: "neutral", joy: "joy", anxiety: "anxiety",
+  frustration: "anger", sadness: "sadness", anger: "anger", protective: "protective",
+};
+
+const EXPRESSION_TEXT: Record<EmotionLabel, string> = {
+  curiosity: "thinking", calm: "neutral", joy: "happy", anxiety: "sad",
+  frustration: "angry", sadness: "sad", anger: "angry", protective: "focused",
+};
+
+/**
+ * Channels each wired renderer actually applies today. Deliberately narrow:
+ * limbs, hands and clothing layers are not driven by the current UI, so they are
+ * reported as unsupported instead of being silently dropped.
+ */
+const LIVE2D_CHANNELS: readonly BodyChannel[] = ["headYaw", "gazeX", "gazeY", "breath"];
+const SVG_CHANNELS: readonly BodyChannel[] = ["gazeX", "gazeY"];
+const SPRITE_CHANNELS: readonly BodyChannel[] = [];
+const VRM3D_CHANNELS: readonly BodyChannel[] = ["gazeX", "gazeY"];
+
+/**
+ * Static capability table. `mode` is the coarse renderer class the switch
+ * contract understands (2D = `live2d`, 2.5D = `depth2d`, 3D = `vrm3d`);
+ * `rendererId` is the precise adapter identity, so two 2D renderers still switch.
+ */
+const CAPABILITY_TABLE: Record<UiRenderMode, RendererCapabilities> = {
+  live2d: {
+    mode: "live2d", rendererId: "nk1-live2d-cubism", channels: LIVE2D_CHANNELS,
+    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: true,
+    supportsWorldTargets: true, supportsClothingLayers: false, supportsPhysics: true,
+  },
+  original: {
+    mode: "live2d", rendererId: "nk1-original-svg-2d", channels: SVG_CHANNELS,
+    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: false,
+    supportsWorldTargets: true, supportsClothingLayers: false, supportsPhysics: false,
+  },
+  legacy: {
+    mode: "live2d", rendererId: "nk1-legacy-sprites-2d", channels: SPRITE_CHANNELS,
+    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: false,
+    supportsWorldTargets: false, supportsClothingLayers: false, supportsPhysics: false,
+  },
+  "3d": {
+    mode: "vrm3d", rendererId: "nk1-three-vrm3d", channels: VRM3D_CHANNELS,
+    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: true,
+    supportsWorldTargets: true, supportsClothingLayers: false, supportsPhysics: true,
+  },
+};
+
+const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
+const clampUnit = (value: number): number => Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0));
+
+export function capabilitiesForMode(mode: UiRenderMode): RendererCapabilities {
+  return CAPABILITY_TABLE[mode];
+}
+
+/** Project the canonical snapshot into a renderer-neutral semantic body state. */
+export function projectSemanticBodyState(input: SemanticBodyProjectionInput): SemanticBodyState {
+  const label = input.snapshot.emotion.label;
+  const gazeX = clampUnit(input.gaze.x);
+  const gazeY = clampUnit(input.gaze.y);
+  return {
+    schemaVersion: 1,
+    revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0,
+    capturedAtMonotonicMs: Math.max(0, Number.isFinite(input.monotonicMs) ? input.monotonicMs : 0),
+    emotion: EMOTION_TO_EXPRESSION[label] ?? "neutral",
+    emotionIntensity: clamp01(input.snapshot.emotion.arousal),
+    expression: EXPRESSION_TEXT[label] ?? "neutral",
+    gaze: { x: gazeX, y: gazeY },
+    speech: {
+      eventId: input.speechEventId && input.speechEventId.length <= 128 ? input.speechEventId : null,
+      phase: input.speechPhase,
+      audioTimeMs: Math.max(0, Number.isFinite(input.audioTimeMs) ? input.audioTimeMs : 0),
+      mouthOpen: clamp01(input.mouth.open),
+      mouthForm: clampUnit(input.mouth.form),
+    },
+    action: (typeof input.snapshot.lastOption === "string" && input.snapshot.lastOption.trim()) ? input.snapshot.lastOption.slice(0, 96) : "wait",
+    intentId: null,
+    pose: {
+      headYaw: clampUnit(input.headTilt),
+      gazeX,
+      gazeY,
+    },
+    wardrobeId: null,
+  };
+}
+
+/**
+ * Plan a capability-aware handoff. Throws if the projected state is invalid.
+ *
+ * `requiresNeutralRebind` is recomputed from the precise renderer identity, not
+ * the coarse mode: switching between two different 2D renderers (e.g. Live2D to
+ * the SVG original) still replaces the body and therefore still needs a rebind.
+ */
+export function beginBodySwitch(
+  from: UiRenderMode,
+  to: UiRenderMode,
+  state: SemanticBodyState,
+): { plan: SwitchPlan; progress: BodySwitchProgress } {
+  const plan = planEmbodimentSwitch(CAPABILITY_TABLE[from].mode, CAPABILITY_TABLE[to], state);
+  return {
+    plan: { ...plan, requiresNeutralRebind: from !== to },
+    progress: { progress: 0, committed: from === to },
+  };
+}
+
+/** Monotonic crossfade progress; stale frames cannot move a handoff backwards. */
+export function advanceBodySwitch(
+  previous: BodySwitchProgress,
+  elapsedMs: number,
+  durationMs: number,
+): BodySwitchProgress {
+  const progress = advanceSwitchProgress(previous.progress, elapsedMs, durationMs);
+  return { progress, committed: progress >= 1 };
+}
+
+export type { EmbodimentMode, SwitchPlan };
