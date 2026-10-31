@@ -1,3 +1,10 @@
+## [NK1][Aspect 15] Repair authoring-preflight GLB parsing and expose CI diagnostics (2026-10-31)
+
+- Investigate the exact PR #412 wardrobe and Core workflow failures from their GitHub Actions job logs; both were blocked by the same five new wardrobe authoring-preflight tests, so later Core typecheck/build stages did not run.
+- Correct the GLB JSON chunk padding regex so it matches actual NUL/space code points rather than escaped character spellings.
+- Improve focused preflight assertions to include validation error details on failure, making the next hosted run diagnostically useful.
+- Record the actual branch HEAD and the CI evidence boundary in the Aspect 15 progress report. The fixes are committed, but no fresh Actions result exists yet for the final repair HEAD; do not call the failure resolved until that run passes.
+
 ## [NK1][план] Актуализация аудита веток, CI и архитектуры тела (2026-10-30)
 
 - Обновлён исполнительный мастер-план по 488 веткам относительно source HEAD 3b64e60...
