@@ -25,6 +25,8 @@ on:
       - app/src/components/Avatar3DStage.tsx
       - app/src/components/AvatarStage.tsx
       - app/scripts/depth-rig-scene-adapter.test.mjs
+      - app/scripts/avatar-glb-preflight.test.mjs
+      - app/src/components/avatar/avatarGlbPreflight.ts
       - app/package.json
       - contracts/depth-rig-scene-asset.v1.schema.json
       - .github/workflows/nk1-aspect04-depth-rig-runtime.yml
