@@ -313,7 +313,7 @@ type MemoryRestoreIntegrityFinding=
  | {code:'blank-memory-id-dropped';count:number};
 function normalizeMemoryRestoreIntegrityFindings(value:unknown):MemoryRestoreIntegrityFinding[]{
  if(!Array.isArray(value))return [];
- return value.slice(-64).flatMap((row:any)=>{
+ return value.slice(-64).flatMap<MemoryRestoreIntegrityFinding>((row:any):MemoryRestoreIntegrityFinding[]=>{
   if(row?.code==='duplicate-memory-id-dropped'&&typeof row.memoryId==='string'&&row.memoryId.trim()&&Number.isSafeInteger(row.duplicateCount)&&row.duplicateCount>=2)
    return [{code:'duplicate-memory-id-dropped' as const,memoryId:row.memoryId.slice(0,180),duplicateCount:row.duplicateCount}];
   if(row?.code==='blank-memory-id-dropped'&&Number.isSafeInteger(row.count)&&row.count>=1)
@@ -1576,7 +1576,7 @@ export class MemoryOS2{
     add(finding.code,'warning',finding.memoryId,'Restore dropped '+finding.duplicateCount+' records sharing the same memory ID.');
    }else{
     restoreDroppedBlankIds+=finding.count;
-    add(finding.code,'warning',undefined,'Restore dropped '+finding.count+' records with blank memory IDs.');
+    add(finding.code,'warning',null,'Restore dropped '+finding.count+' records with blank memory IDs.');
    }
   }
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
