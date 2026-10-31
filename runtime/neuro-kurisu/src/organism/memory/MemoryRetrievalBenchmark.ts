@@ -172,6 +172,7 @@ export interface MemoryRetrievalArmEvidenceV1 {
 }
 export interface MemoryRetrievalQueryEvidenceV1 {
   exampleIdDigest:string;
+  independenceGroupDigest:string;
   queryDigest:string;
   split:'train'|'holdout';
   language:MemoryRetrievalLanguage;
@@ -204,6 +205,7 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
       if(typeof digestEvidence!=='function')throw new Error('memory-query-evidence-hash-key-required');
       queryEvidence.push({
         exampleIdDigest:digestEvidence(ex.id),
+        independenceGroupDigest:digestEvidence(independenceGroupId),
         queryDigest:digestEvidence(normalizeQuery(ex.query)),
         split:ex.split,
         language:ex.language??'other',
@@ -569,10 +571,11 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     baselineConfigurationFingerprint,
     corpusMemoryIdDigests:[...new Set(corpus.map(row=>digestEvidence(row.id)))].sort(),
     train:trainBaseline.queryEvidence.map(row=>({
-      exampleIdDigest:row.exampleIdDigest,queryDigest:row.queryDigest,language:row.language,split:row.split,
+      exampleIdDigest:row.exampleIdDigest,independenceGroupDigest:row.independenceGroupDigest,queryDigest:row.queryDigest,language:row.language,split:row.split,
     })),
     holdout:baselineEval.queryEvidence.map((row,index)=>({
       exampleIdDigest:row.exampleIdDigest,
+      independenceGroupDigest:row.independenceGroupDigest,
       queryDigest:row.queryDigest,
       language:row.language,
       split:row.split,
