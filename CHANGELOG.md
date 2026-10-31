@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Add official VRM runtime to the 3D body (2026-10-31)
+- Pin MIT-licensed @pixiv/three-vrm 3.5.5, compatible with the app's Three.js 0.180.0 line, including exact transitive lock metadata.
+- Register VRMLoaderPlugin on GLTFLoader; .vrm files must expose a parsed VRM extension or fail clearly, while ordinary .glb remains supported through the generic glTF path.
+- Drive VRM normalized humanoid neck/head/arm bones, preset emotion expressions, speech visemes and blink expressions from the existing NeuroCore snapshot; call vrm.update(dt) so spring bones and runtime systems advance with each frame.
+- Preserve procedural fallback and generic GLB morph-target path; keep Live2D and other avatar modes untouched.
+- No generated Kurisu mesh is included yet: Higgsfield rejected the approved 25-credit request because the current Private workspace has no available generation credits.
+
 ## [NK1][CI] Exact-SHA release validation trigger coverage (2026-10-31)
 - Run the canonical NeuroCore core regression workflow on every push to `workpass70-source`, not only when a curated path list matches.
 - Run the Hexis source-lineage contract on every canonical source push so the release publisher's exact-SHA requirement is always backed by an actual check run.
