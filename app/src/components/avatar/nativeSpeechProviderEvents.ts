@@ -95,9 +95,37 @@ export function parseNativeSpeechHostEnvelope(value: unknown): NativeSpeechHostE
 }
 
 /** Reject duplicate, stale and non-monotonic provider telemetry. */
+type NativeSpeechOperationProgress = {
+  sequence: number;
+  monotonicTimeMs: number;
+  phase: NativeSpeechProviderPhase;
+};
+
+const TERMINAL_PHASES = new Set<NativeSpeechProviderPhase>([
+  "process-exited",
+  "process-error",
+  "interrupt-unconfirmed",
+]);
+
+function canAdvanceNativeSpeechPhase(previous: NativeSpeechProviderPhase, next: NativeSpeechProviderPhase): boolean {
+  switch (previous) {
+    case "command-requested":
+      return next === "process-spawned" || next === "process-error" || next === "interrupt-requested";
+    case "process-spawned":
+      return next === "process-exited" || next === "process-error" || next === "interrupt-requested";
+    case "interrupt-requested":
+      return next === "process-exited" || next === "process-error" || next === "interrupt-unconfirmed";
+    case "process-exited":
+    case "process-error":
+    case "interrupt-unconfirmed":
+      return false;
+  }
+}
+
+/** Reject duplicate, stale, non-monotonic and impossible lifecycle telemetry. */
 export class NativeSpeechProviderEventTracker {
   private readonly seen = new Set<string>();
-  private readonly operations = new Map<string, { sequence: number; monotonicTimeMs: number }>();
+  private readonly operations = new Map<string, NativeSpeechOperationProgress>();
 
   accept(value: unknown): NativeSpeechProviderEvent | null {
     const envelope = parseNativeSpeechHostEnvelope(value);
@@ -106,13 +134,19 @@ export class NativeSpeechProviderEventTracker {
     if (this.seen.has(event.eventId)) return null;
 
     const previous = this.operations.get(event.operationId);
-    if (previous && (event.sequence <= previous.sequence || event.monotonicTimeMs < previous.monotonicTimeMs)) return null;
+    if (previous && (
+      TERMINAL_PHASES.has(previous.phase)
+      || event.sequence <= previous.sequence
+      || event.monotonicTimeMs < previous.monotonicTimeMs
+      || !canAdvanceNativeSpeechPhase(previous.phase, event.phase)
+    )) return null;
 
     this.seen.add(event.eventId);
     this.operations.delete(event.operationId);
     this.operations.set(event.operationId, {
       sequence: event.sequence,
       monotonicTimeMs: event.monotonicTimeMs,
+      phase: event.phase,
     });
 
     if (this.seen.size > 512) {
