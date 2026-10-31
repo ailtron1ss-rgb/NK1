@@ -93,7 +93,6 @@ function buildQuestionMemory(question:LongMemEvalQuestion){
    entities:[],semanticLinks:[],temporalLinks:[],causalLinks:[],contradictionLinks:[],
    validFromAt:session.at,validUntilAt:null,observedAt:session.at,provenanceClass:'external',
    sourceAuthority01:.8,independenceKey,evidenceSources:[evidenceSource],evidenceLineageKeys:[independenceKey],
-   revisionHistory:[],revisionSequence:1,dormant:false,retrievalCount:0,
   },{forceDistinct:true,clone:false});
   const tokens=tokenSequence(session.content),tf=new Map<string,number>();
   for(const token of tokens)tf.set(token,(tf.get(token)??0)+1);
