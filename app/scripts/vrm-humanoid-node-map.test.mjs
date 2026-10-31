@@ -193,3 +193,66 @@ test("does not fabricate role nodes when parser associations are unavailable", (
   const audit = auditHumanoidRig(bound.nodes, { vrmVersion: "1.0", allowNameHeuristic: false });
   assert.equal(audit.capabilities.fullBodyHumanoid, false);
 });
+
+function addFingerRoles(scene, side, parentName, vrmVersion) {
+  const add = (name, parent) => {
+    const node = { name: "scene-node-" + name, isBone: false, parent: scene.byName.get(parent) };
+    scene.nodes.push(node);
+    scene.byName.set(name, node);
+  };
+  for (const finger of ["Thumb", "Index", "Middle", "Ring", "Little"]) {
+    const segments = finger === "Thumb" && vrmVersion === "1.0"
+      ? ["Metacarpal", "Proximal", "Distal"]
+      : ["Proximal", "Intermediate", "Distal"];
+    let parent = side + "Hand";
+    for (const segment of segments) {
+      const role = side.toLowerCase() + finger + segment;
+      add(role, parent);
+      parent = role;
+    }
+  }
+}
+
+test("VRM 1.0 uses thumb metacarpal/proximal/distal while the other fingers use three phalanges", () => {
+  const scene = makeScene();
+  addFingerRoles(scene, "Left", "LeftHand", "1.0");
+  addFingerRoles(scene, "Right", "RightHand", "1.0");
+  const roles = [...requiredVrm1, ...scene.nodes.map((node) => node.name.replace("scene-node-", "")).filter((name) => /^(left|right)(Thumb|Index|Middle|Ring|Little)/.test(name))];
+  const { humanBones } = nodeMapFor(scene, roles);
+  const extension = { VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones } } };
+  const { audit, map } = auditFromScene(scene, roles, extension);
+  assert.equal(map.status, "valid");
+  assert.equal(map.nodeRoleByIndex.size, 30);
+  assert.equal(audit.capabilities.leftFingerCount, 15);
+  assert.equal(audit.capabilities.rightFingerCount, 15);
+  assert.equal(audit.capabilities.fingerArticulation, true);
+  assert.ok(audit.nodes.leftThumbMetacarpal);
+  assert.equal(audit.nodes.leftThumbIntermediate, undefined);
+});
+
+test("VRM 0.x keeps its legacy thumb proximal/intermediate/distal chain", () => {
+  const scene = makeScene();
+  addFingerRoles(scene, "Left", "LeftHand", "0.x");
+  addFingerRoles(scene, "Right", "RightHand", "0.x");
+  const roles = [...requiredVrm1, "chest", "neck", ...scene.nodes.map((node) => node.name.replace("scene-node-", "")).filter((name) => /^(left|right)(Thumb|Index|Middle|Ring|Little)/.test(name))];
+  const nodeIndex = new Map(scene.nodes.map((node, index) => [node, index]));
+  const extension = { VRM: { humanoid: { humanBones: roles.map((bone) => ({ bone, node: nodeIndex.get(scene.byName.get(bone)) })) } } };
+  const map = parseVrmHumanoidNodeMap(extension, scene.nodes.length);
+  assert.equal(map.status, "valid");
+  const bound = buildVrmHumanoidAuditNodes(scene.nodes, nodeMapFor(scene, []).associations, map);
+  const audit = auditHumanoidRig(bound.nodes, { vrmVersion: map.version, allowNameHeuristic: false });
+  assert.equal(audit.capabilities.leftFingerCount, 15);
+  assert.equal(audit.capabilities.rightFingerCount, 15);
+  assert.equal(audit.capabilities.fingerArticulation, true);
+  assert.ok(audit.nodes.leftThumbIntermediate);
+  assert.equal(audit.nodes.leftThumbMetacarpal, undefined);
+});
+
+test("VRM thumb role names cannot cross version boundaries", () => {
+  const vrm1 = parseVrmHumanoidNodeMap({ VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones: { leftThumbIntermediate: { node: 0 } } } } }, 1);
+  const vrm0 = parseVrmHumanoidNodeMap({ VRM: { humanoid: { humanBones: [{ bone: "leftThumbMetacarpal", node: 0 }] } } }, 1);
+  assert.equal(vrm1.status, "invalid");
+  assert.match(vrm1.reason, /not-a-vrm-1.0/);
+  assert.equal(vrm0.status, "invalid");
+  assert.match(vrm0.reason, /not-a-vrm-0.x/);
+});
