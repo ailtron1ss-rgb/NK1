@@ -1,3 +1,9 @@
+## WorkPass78 — Hexis belief trust integrity
+- Update belief confidence, source trust and accepted-belief timestamp only when evidence is actually applied.
+- Duplicate evidence remains auditable but cannot inflate trust or advance the accepted-belief timestamp; protected contradictions remain audit-only and cannot mutate protected confidence/trust.
+- Add regression coverage for duplicate-source trust inflation and blocked protected contradictions; execute the Hexis adapter suite in source-lineage CI.
+- Scope: adapter state and tests only; canonical memory ownership and external connector permissions remain unchanged.
+
 ## WorkPass77 — source-clustered memory retrieval evaluation
 
 ## [NK1][Memory] Preserve and validate independent source-group labels (WorkPass77 follow-up, 2026-10-31)
