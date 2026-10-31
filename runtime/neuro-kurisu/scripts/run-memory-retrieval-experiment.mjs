@@ -71,7 +71,7 @@ async function publishReportExclusive(outputPath, contents) {
     throw error;
   }
 }
-function parseLabels(text) {
+export function parseLabels(text) {
   const lines = text.split(/\r?\n/);
   const rows = [];
   for (let index = 0; index < lines.length; index++) {
