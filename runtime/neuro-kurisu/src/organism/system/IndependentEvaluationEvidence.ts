@@ -11,7 +11,7 @@ import type { UnifiedCognitiveCycleState } from './UnifiedCognitiveCycle.ts';
  * and UnifiedCognitiveCycle snapshots. Raw event payloads, source names, claims
  * and independence keys are never exported.
  */
-export const INDEPENDENT_EVIDENCE_SCHEMA = 'nk1.independent-evaluation-evidence.v1' as const;
+export const INDEPENDENT_EVIDENCE_SCHEMA = 'nk1.independent-evaluation-evidence.v2' as const;
 
 export const OPERATIONAL_CYCLE_STAGES = [
   'observation', 'prediction', 'appraisal', 'attention', 'memory', 'goal',
@@ -43,6 +43,10 @@ export interface IndependentEvaluationCycle {
   cycleIdDigest: string;
   tick: number;
   events: IndependentEvaluationEvent[];
+  sequenceIndex: number;
+  previousChainDigest: string | null;
+  cycleDigest: string;
+  chainDigest: string;
 }
 
 export interface IndependentEvaluationEvidenceBundle {
@@ -167,7 +171,7 @@ export function buildIndependentEvaluationEvidenceBundle(
     cyclesByTick.set(tick, rows);
   }
 
-  const cycles = [...cyclesByTick.entries()]
+  const orderedCycles = [...cyclesByTick.entries()]
     .sort(([left], [right]) => left - right)
     .map(([tick, events]) => ({
       cycleIdDigest: sha256(`nk1-cycle:${tick}`),
@@ -177,6 +181,25 @@ export function buildIndependentEvaluationEvidenceBundle(
         || left.idDigest.localeCompare(right.idDigest),
       ),
     }));
+
+  // A deterministic, ordered hash chain makes multi-tick omissions, duplicates,
+  // and reorderings independently detectable by the external verifier. It is
+  // an integrity structure, not a signature or proof of source authenticity.
+  let previousChainDigest: string | null = null;
+  const cycles: IndependentEvaluationCycle[] = orderedCycles.map((cycle, sequenceIndex) => {
+    const cycleDigest = sha256(canonicalIndependentEvidenceJson(cycle));
+    const chainRecord = { sequenceIndex, tick: cycle.tick, cycleDigest, previousChainDigest };
+    const chainDigest = sha256(canonicalIndependentEvidenceJson(chainRecord));
+    const chained: IndependentEvaluationCycle = {
+      ...cycle,
+      sequenceIndex,
+      previousChainDigest,
+      cycleDigest,
+      chainDigest,
+    };
+    previousChainDigest = chainDigest;
+    return chained;
+  });
 
   const recentReality = Array.isArray(input.realityEvidence?.recent)
     ? input.realityEvidence.recent.slice(0, MAX_REALITY_RECORDS)
@@ -231,6 +254,14 @@ export function buildIndependentEvaluationEvidenceBundle(
       newestTick: ticks.length ? ticks[ticks.length - 1] : null,
     },
     cycles,
+    timeline: {
+      version: 1 as const,
+      algorithm: 'sha256-canonical-json-v1' as const,
+      cycleCount: cycles.length,
+      firstTick: cycles.length ? cycles[0].tick : null,
+      lastTick: cycles.length ? cycles[cycles.length - 1].tick : null,
+      headDigest: cycles.length ? cycles[cycles.length - 1].chainDigest : null,
+    },
     realityEvidence: {
       total: safeCounter(input.realityEvidence.total, 'reality-total'),
       observedRecent: recentReality.length,
