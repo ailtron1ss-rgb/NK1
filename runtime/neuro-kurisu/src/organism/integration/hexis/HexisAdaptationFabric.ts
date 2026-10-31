@@ -285,7 +285,7 @@ export class HexisAdaptationFabric {
     else {
         posteriorConfidence01 = Math.max(0.05, priorConfidence01 * (1 - 0.35 * evidenceTrust));
         applied = true;
-    } if (independent) {
+    } if (independent && applied) {
         if (input.stance === 'supports')
             belief.sourceKeys = [...new Set([...belief.sourceKeys, key])].slice(-256);
         else
