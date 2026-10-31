@@ -87,7 +87,7 @@ export interface IndependentEvaluationEvidenceInput {
 }
 
 function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 function canonicalValue(value: unknown): unknown {
@@ -144,9 +144,15 @@ export function buildIndependentEvaluationEvidenceBundle(
     const id = typeof event.id === 'string' ? event.id.trim() : '';
     if (!id || id.length > 180) throw new TypeError('independent-evidence-event-id-invalid');
     const stage = event.stage as typeof OPERATIONAL_CYCLE_STAGES[number];
-    const parentIds = Array.isArray(event.parentIds)
-      ? event.parentIds.filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).slice(0, 12)
-      : [];
+    const parentIds: string[] = [];
+    const rawParentIds: unknown = event.parentIds;
+    if (Array.isArray(rawParentIds)) {
+      for (const candidate of rawParentIds as unknown[]) {
+        if (typeof candidate !== 'string' || !candidate.trim()) continue;
+        parentIds.push(candidate.trim());
+        if (parentIds.length >= 12) break;
+      }
+    }
     const row: IndependentEvaluationEvent = {
       idDigest: sha256(id),
       tick,

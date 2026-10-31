@@ -1,6 +1,6 @@
 ## [NK1][Evaluation] Add Inspect AI independent evidence evaluation (2026-10-31)
 
-- Add a bounded, read-only runtime projection over the canonical CognitiveEventFabric, RealityEvidenceLedger and UnifiedCognitiveCycle; hash event/parent/source identifiers and omit all raw claims, payloads and source labels.
+- Add a bounded, read-only runtime projection over the canonical CognitiveEventFabric, RealityEvidenceLedger and UnifiedCognitiveCycle; hash event and parent-event IDs, and omit source labels, free-text claims and payloads.
 - Expose the projection through the existing API authorization/rate-limit boundary at GET /api/organism/evaluation/evidence.
 - Add an offline Inspect AI 0.3.286 harness that independently checks all eleven cognitive stages and twenty causal edges, plus separate external/simulator evidence accounting.
 - Keep the evaluator out of the live runtime and deny it memory, P23, ActionGateway, skill-promotion and release authority; no LLM call is needed for this deterministic structural scorer.

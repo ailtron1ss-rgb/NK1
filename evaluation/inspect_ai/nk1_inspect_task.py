@@ -75,9 +75,11 @@ def _load_samples(path: Path) -> list[Sample]:
 
 @task
 def nk1_independent_evidence_eval():
-    dataset_path = Path(os.environ.get(
+    configured_path = Path(os.environ.get(
         "NK1_INSPECT_SAMPLES", "evaluation/inspect_ai/samples.jsonl"
-    )).resolve()
+    ))
+    repository_root = Path(__file__).resolve().parents[2]
+    dataset_path = configured_path if configured_path.is_absolute() else (repository_root / configured_path).resolve()
     return Task(
         dataset=_load_samples(dataset_path),
         solver=nk1_evidence_passthrough(),
