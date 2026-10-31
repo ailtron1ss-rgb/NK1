@@ -65,6 +65,7 @@ const report = runLongMemEvalMemoryBenchmark(rows, {
   seeds: [13, 29, 53],
   minAnswerableQueries: 1,
   minUnanswerableQueries: 1,
+  minIndependentGroups: 2,
 });
 
 assert.equal(report.schemaVersion, 1);
@@ -85,6 +86,7 @@ assert.equal(report.confidence.seedCount, 3);
 assert.equal(report.confidence.independentGroupCount, 2,
   'questions sharing a session ID must be one independent bootstrap group');
 assert.equal(report.sampleAdequacy.independentGroups, 2);
+assert.equal(report.sampleAdequacy.enoughIndependentGroups, true);
 assert.equal(report.perQuestion.filter(row => row.independenceGroupDigest === report.perQuestion[0].independenceGroupDigest).length >= 1, true);
 assert.equal(report.confidence.runs.length, 3);
 assert.equal(report.promotion.allowed, false,
