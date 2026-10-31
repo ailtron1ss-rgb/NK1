@@ -2,7 +2,7 @@
 
 - Extend the native Termux event tracker from sequence-only filtering to a bounded per-operation phase state machine.
 - Reject impossible phase jumps, events after terminal process outcomes, duplicate/stale sequence numbers and backward monotonic timestamps; valid events remain accepted after a rejected event with the same sequence.
-- Preserve partial-stream compatibility: a newly observed operation may begin at a later lifecycle phase, but once a terminal phase is observed it cannot move backwards.
+- Preserve partial-stream compatibility: a newly observed operation may begin at a later lifecycle phase. `interrupt-unconfirmed` is not treated as terminal because the process may subsequently exit; only `process-exited` and `process-error` close the operation.
 - Keep native process telemetry separate from browser playback state; this validates event ordering only and does not establish audible playback or authorize provider arbitration.
 
 ## [NK1][Voice] Bound browser speech lifecycle with watchdogs (2026-10-31)
