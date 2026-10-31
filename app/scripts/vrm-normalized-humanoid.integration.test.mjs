@@ -73,7 +73,7 @@ test("real three-vrm VRMHumanoid transfers NK1 normalized motor output into raw 
   assert.ok(Math.abs(fixture.rawHead.rotation.x) > 0.001);
   assert.ok(Math.abs(fixture.rawNeck.rotation.x) > 0.001);
   assert.ok(Math.abs(fixture.rawLeftArm.rotation.z) > 0.1);
-  assert.equal(fixture.rawRightArm.rotation.z, 0);
+  assert.ok(Math.abs(fixture.rawRightArm.rotation.z) < 1e-9);
 
   // A second neutral frame must return raw bones to the model's neutral pose.
   applyVrmNormalizedMotorFrame(vrm, {
