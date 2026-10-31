@@ -1,0 +1,58 @@
+name: NK1 Inspect AI evidence adapter
+
+on:
+  push:
+    branches: [nk1-inspect-eval]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/inspectAi/**"
+      - "runtime/neuro-kurisu/scripts/export-nk1-inspect-evidence.mjs"
+      - "runtime/neuro-kurisu/tests/nk1-inspect-evidence-exporter.mjs"
+      - "research/inspect-ai-nk1-evaluator/**"
+      - ".github/workflows/nk1-inspect-ai-evidence.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/inspectAi/**"
+      - "runtime/neuro-kurisu/scripts/export-nk1-inspect-evidence.mjs"
+      - "runtime/neuro-kurisu/tests/nk1-inspect-evidence-exporter.mjs"
+      - "research/inspect-ai-nk1-evaluator/**"
+      - ".github/workflows/nk1-inspect-ai-evidence.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-inspect-evidence
+  cancel-in-progress: true
+
+jobs:
+  privacy-reduced-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v7
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: "pip"
+          cache-dependency-path: research/inspect-ai-nk1-evaluator/pyproject.toml
+      - name: Run NK1 TypeScript exporter regressions
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types --test tests/nk1-inspect-evidence-exporter.mjs
+      - name: Validate export CLI syntax
+        run: node --check runtime/neuro-kurisu/scripts/export-nk1-inspect-evidence.mjs
+      - name: Run standard-library evidence validator tests
+        run: python -m unittest discover -s research/inspect-ai-nk1-evaluator/tests -v
+      - name: Compile Python modules
+        run: python -m py_compile research/inspect-ai-nk1-evaluator/nk1_evidence.py research/inspect-ai-nk1-evaluator/nk1_inspect_task.py research/inspect-ai-nk1-evaluator/run_eval.py
+      - name: Install pinned Inspect AI evaluator dependency
+        run: python -m pip install --no-cache-dir -e research/inspect-ai-nk1-evaluator
+      - name: Run Inspect AI without a model or network provider
+        run: python research/inspect-ai-nk1-evaluator/run_eval.py --evidence research/inspect-ai-nk1-evaluator/tests/fixtures/valid-cycle.jsonl --log-dir /tmp/nk1-inspect-eval-logs
