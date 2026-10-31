@@ -170,6 +170,19 @@ assert.ok(mixedDrive.affectiveInfluence.regulation01 > 0,
   'simultaneous anxiety/frustration must retain regulation contributions');
 assert.equal(mixedDrive.affectiveInfluence.components.length, 3,
   'intrinsic motivation must preserve the complete bounded mixed-affect provenance');
+const componentsOnlyDrive = motivation.update({
+  ...motivationInput,
+  affectiveComponents: [
+    { label: 'curiosity', intensity01: .6, confidence01: .9 },
+    { label: 'anxiety', intensity01: .4, confidence01: .8 },
+  ],
+});
+assert.ok(componentsOnlyDrive.affectiveInfluence.confidence01 > 0,
+  'components-only input must preserve component confidence without a legacy single affect');
+assert.ok(componentsOnlyDrive.affectiveInfluence.confidence01 <= 1,
+  'components-only confidence must remain bounded');
+assert.equal(componentsOnlyDrive.affectiveInfluence.components.length, 2,
+  'components-only input must retain its full affect provenance');
 assert.ok(mixedDrive.affectiveInfluence.components[0].intensity01 > mixedDrive.affectiveInfluence.components[1].intensity01,
   'mixed affect components must be normalized and retain relative intensity ordering');
 for (const key of ['epistemic', 'novelty', 'competence', 'coherence', 'social', 'homeostatic', 'overall']) {
