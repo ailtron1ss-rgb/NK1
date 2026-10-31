@@ -120,18 +120,31 @@ Preflight — защита от некорректных структур и ч�
 
 Текущая NK1 2.5D scene adapter проверяет authored node graph и применяет позу к существующим Three.js nodes. Сам художественный master asset и hidden geometry ещё не поставлены.
 
-## VRM calibration sidecar
+## VRM calibration bundle and bilateral IK
 
-В source уже существуют:
+В source существуют:
 
-- `vrmHumanoidRigAdapter.ts`;
-- `vrmRigCalibrationProfile.ts`;
-- `vrmRigCalibrationSession.ts`;
-- `planarArmIK.ts`.
+- `vrmHumanoidRigAdapter.ts` — unique shoulder/elbow/hand resolution, bind pose, absolute pose mapping;
+- `planarArmIK.ts` — renderer-independent 2-link IK in model-root metres;
+- `vrmRigCalibrationProfile.ts` — per-model axes, signs, offsets and joint ranges;
+- `vrmRigCalibrationSession.ts` — immutable bind/reference pose capture and measured profile finalization;
+- `vrmCalibratedArmRuntime.ts` — exact-context IK and semantic arm gesture runtime.
 
-Профиль валидируется по fingerprint точных байтов модели, coordinateFrameId и именам плеч/локтей. Измеренный профиль должен создаваться через известный reference fixture; animation clip не считается ground truth. Слабое движение, off-axis motion, неверные лимиты и несовпадение модели отклоняются.
+Для активации bilateral IK приложение требует одновременно:
 
-**Ограничение этого прохода:** профильные модули и тесты уже присутствуют, но интерактивный импорт/экспорт calibration sidecar и полноценное применение измеренной двусторонней IK к реальному skinned VRM ещё не подключены к UI. До этого момента не заявлять, что любой загруженный VRM полностью моторно откалиброван.
+1. SHA-256 точных загруженных байтов модели;
+2. root extras `nk1CoordinateFrameId` (никаких догадок из filename);
+3. однозначные цепи shoulder → elbow → hand слева и справа;
+4. геометрию сегментов в root coordinate frame и разумную длину/планарность;
+5. JSON bundle, в котором профиль и measurement session совпадают по fingerprint, frame и bone names;
+6. `calibrationMethod = manual-measured`, known fixture ID, timestamp, operator note, bind pose и reference pose.
+
+Публичные контракты: `contracts/avatar/vrm-calibration-bundle.v1.schema.json` и `contracts/avatar/asset-provenance-manifest.v1.schema.json`.
+
+UI импортирует/экспортирует только bundle. Обычный профиль без measurement session, профиль от другой модели, другой coordinate frame, другая bone hierarchy или неизвестная сторона отклоняются; VRM может остаться доступен как viewer, но IK остаётся выключенной. После успешной проверки semantic actions (respond/explore/verify/reflect и crossed-arms) преобразуются в 2-link IK и абсолютную pose относительно immutable bind pose; это предотвращает накопление Euler drift.
+
+**Граница доверия:** JSON bundle подтверждает согласованность и наличие заявленной fixture provenance, но сам по себе не доказывает, что физическое измерение действительно было честным. Для production нужен независимый reviewer, подписанный measurement receipt и проверка художественного/физического результата. Интерактивный capture known-angle fixture workflow в приложении пока не реализован: сессии могут быть созданы внешним измерительным процессом через API/sidecar; приложение валидирует и исполняет только готовый bundle.
+
 
 ## Рекомендуемый workflow для художника/инженера
 
