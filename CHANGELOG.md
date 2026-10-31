@@ -1,3 +1,9 @@
+## WorkPass78 — Hexis belief trust integrity
+- Update belief confidence, source trust and accepted-belief timestamp only when evidence is actually applied.
+- Duplicate evidence remains auditable but cannot inflate trust or advance the accepted-belief timestamp; protected contradictions remain audit-only and cannot mutate protected confidence/trust.
+- Add regression coverage for duplicate-source trust inflation and blocked protected contradictions; execute the Hexis adapter suite in source-lineage CI.
+- Scope: adapter state and tests only; canonical memory ownership and external connector permissions remain unchanged.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
