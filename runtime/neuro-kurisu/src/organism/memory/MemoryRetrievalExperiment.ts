@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import {
   runMemoryOS2RetrievalBenchmark,
   type MemoryRetrievalBenchmarkExample,
@@ -81,7 +81,7 @@ export function runMemoryOS2RetrievalExperiment(
     benchmarkOptions.evidenceHashSalt = typeof benchmarkOptions.evidenceHashSalt === 'string'
       && /^[a-f0-9]{64}$/i.test(benchmarkOptions.evidenceHashSalt)
       ? benchmarkOptions.evidenceHashSalt.toLowerCase()
-      : randomBytes(32).toString('hex');
+      : randomUUID().replace(/-/g,'') + randomUUID().replace(/-/g,'');
   }
   delete (benchmarkOptions as MemoryRetrievalExperimentOptions).seeds;
   const runs = seeds.map(seed => runMemoryOS2RetrievalBenchmark(snapshot, examples, { ...benchmarkOptions, seed }));

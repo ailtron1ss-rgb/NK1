@@ -1,5 +1,35 @@
-import { createHash, createHmac, randomBytes } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { MemoryOS2, type MemoryOSState2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
+
+/** RFC 2104 HMAC-SHA256 built on the runtime's approved createHash primitive. */
+export function hmacSha256Hex(key: string, message: string): string {
+  if (typeof key !== 'string' || !key.length || /[^\x00-\x7f]/.test(key)) {
+    throw new TypeError('memory-evidence-hmac-key-must-be-nonempty-ascii');
+  }
+  const blockSize = 64;
+  let keyBytes = new Uint8Array([...key].map(char => char.charCodeAt(0)));
+  if (keyBytes.length > blockSize) {
+    const digest = createHash('sha256').update(keyBytes).digest('hex');
+    keyBytes = new Uint8Array(32);
+    for (let index = 0; index < keyBytes.length; index += 1) {
+      keyBytes[index] = Number.parseInt(digest.slice(index * 2, index * 2 + 2), 16);
+    }
+  }
+  const normalizedKey = new Uint8Array(blockSize);
+  normalizedKey.set(keyBytes.subarray(0, blockSize));
+  const innerPad = new Uint8Array(blockSize);
+  const outerPad = new Uint8Array(blockSize);
+  for (let index = 0; index < blockSize; index += 1) {
+    innerPad[index] = normalizedKey[index]! ^ 0x36;
+    outerPad[index] = normalizedKey[index]! ^ 0x5c;
+  }
+  const innerHex = createHash('sha256').update(innerPad).update(message).digest('hex');
+  const innerDigest = new Uint8Array(32);
+  for (let index = 0; index < innerDigest.length; index += 1) {
+    innerDigest[index] = Number.parseInt(innerHex.slice(index * 2, index * 2 + 2), 16);
+  }
+  return createHash('sha256').update(outerPad).update(innerDigest).digest('hex');
+}
 
 export type MemoryRetrievalLanguage = 'en' | 'ru' | 'other';
 
@@ -391,9 +421,9 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const includeQueryEvidence=options.includeQueryEvidence===true;
   const evidenceHashSalt = includeQueryEvidence
     ? (typeof options.evidenceHashSalt==='string' && /^[a-f0-9]{64}$/i.test(options.evidenceHashSalt)
-      ? options.evidenceHashSalt.toLowerCase() : randomBytes(32).toString('hex'))
+      ? options.evidenceHashSalt.toLowerCase() : randomUUID().replace(/-/g,'') + randomUUID().replace(/-/g,''))
     : '';
-  const digestEvidence=(value:string)=>createHmac('sha256',evidenceHashSalt).update(value).digest('hex');
+  const digestEvidence=(value:string)=>hmacSha256Hex(evidenceHashSalt,value);
   const baselineEval=evaluate(holdout,baseline,k,now,includeQueryEvidence,digestEvidence);const candidateEval=evaluate(holdout,candidate,k,now,includeQueryEvidence,digestEvidence);
   const trainBaseline=evaluate(train,baseline,k,now,includeQueryEvidence,digestEvidence);const trainCandidate=evaluate(train,candidate,k,now,includeQueryEvidence,digestEvidence);
   const datasetFingerprint=stableFingerprint(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot,options);
