@@ -9,9 +9,7 @@ test("one affective body profile reaches Original 2D and 3D",()=>{
  assert.match(stage,/setRenderBodyLanguageProfile\(smoothed\)/);
  assert.match(stage,/bodyLanguage=\{renderBodyLanguageProfile\}/);
  assert.match(stage,/kurisu_body_language[^\n]*renderBodyLanguageProfile/);
- assert.match(stage,/setRenderBodyLanguageProfile\(smoothedBody\)/);
  assert.match(stage,/bodyLanguage=\{renderBodyLanguageProfile\}/);
- assert.match(stage,/kurisu_body_language[^\n]*smoothedBody/);
  assert.match(original,/bodyLanguage\.torsoLean/);assert.match(original,/bodyLanguage\.headTiltBias/);
  assert.match(three,/p\.bodyLanguage\.armOpenness/);assert.match(three,/p\.bodyLanguage\.movementTempo/);
 });
