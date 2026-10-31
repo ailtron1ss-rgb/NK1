@@ -42,5 +42,21 @@ test("VRM node-index metadata is authoritative during 3D import and invalid exte
  assert.match(stage,/allowNameHeuristic:false/);
  assert.match(stage,/VRM humanoid extension rejected:/);
  assert.match(stage,/Полная карта VRM/);
+ assert.match(stage,/leftArmAvailable/);
+});
+
+test("VRM node-index metadata is authoritative during 3D import and invalid extensions block name fallback",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/parseVrmHumanoidNodeMap\(gltf\.parser\?\.json\?\.extensions/);
+ assert.match(stage,/buildVrmHumanoidAuditNodes\(activeSceneNodes,gltf\.parser\?\.associations,vrmNodeMap\)/);
+ assert.match(stage,/allowNameHeuristic:false/);
+ assert.match(stage,/VRM humanoid extension rejected:/);
+ assert.match(stage,/Обязательная full-body иерархия VRM/);
  assert.match(stage,/resolveVrmArm/);
+});
+test("3D status follows authoritative humanoid role mappings, not THREE.Bone count",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/const hasAuditedRig=Object\.keys\(humanoidAudit\.nodes\)\.length>0\|\|rt\.bones\.length>0/);
+ assert.match(stage,/leftArmAvailable=!!humanoidAudit\.nodes\.leftUpperArm/);
+ assert.match(stage,/humanoid-узлы и Bone-скелет не подтверждены/);
 });
