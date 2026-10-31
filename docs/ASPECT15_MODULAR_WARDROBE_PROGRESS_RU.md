@@ -7,7 +7,7 @@ PR: [#412](https://github.com/ailtron1ss-rgb/NK1/pull/412) — Draft, не сл�
 
 ## Краткий статус
 
-**Инженерная готовность: 60/100.** Это оценка реализованного кода и тестовых контрактов, а не готовности к production/release. Реальные художественные активы и визуальная проверка на устройствах пока не закрыты.
+**Инженерная готовность: 61/100.** Это оценка реализованного кода и тестовых контрактов, а не готовности к production/release. Реальные художественные активы и визуальная проверка на устройствах пока не закрыты.
 
 | Подсистема | Оценка | Состояние |
 |---|---:|---|
@@ -142,12 +142,12 @@ Unit tests и metadata-only pack сами по себе не означают 10
 8. Complete independent rights review, then refresh the canonical Release ZIP from the verified source SHA.
 
 
-## CI failure investigation — 2026-10-31
+## CI investigation and forward-compatible GLB hardening — 2026-10-31
 
-- Re-read PR #412 metadata: actual branch HEAD before this repair pass was `7ad91461c738cc2984e86f8b3b9672c5c2947307`; the older checkpoint SHA above was stale.
-- Retrieved the failed GitHub Actions job logs. The wardrobe workflow fails in five new authoring-preflight tests; the Core regression workflow reaches the same script suite and fails on those same five tests, so its later typecheck/build stages are skipped. This is a shared preflight-test failure, not evidence of a separate cognitive-core regression.
-- Fixed a real GLB JSON padding parser defect: the regex had double-escaped Unicode code points and did not correctly trim legal JSON chunk padding.
-- Improved authoring-preflight assertions so subsequent CI output includes the exact validation errors instead of only boolean assertion failures.
-- New commits: `2f8b0482bcbb7f5229c29df7215e99608853c4c01` (GLB padding fix) and `824f7df978d700b2dcc7c51d4bf6ed387ac631ec` (diagnostic assertions).
-- Current branch head at report time: `824f7df978d700b2dcc7c51d4bf6ed387ac631ec`. No new workflow run/status was returned for this exact HEAD yet; the failing runs are from the preceding HEAD. Therefore the repair is committed but not yet CI-verified.
-- The exact common structural-validation cause behind the five initial failures still requires a fresh run with the new assertion diagnostics. Aspect 15 remains **61/100**; no production garments, Live2D/2.5D switching, device E2E or Release ZIP update are newly verified.
+- The first exact failing Actions runs were on older HEAD `018b8a441b0fac9297a3cd8cfb127d43beb7c25e`: wardrobe run [#41104071103](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41104071103) and Core run [#41104071361](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41104071361). Both exposed five failures in the newly added authoring-preflight tests; Core's later typecheck/build stages were skipped in that run.
+- A later exact-HEAD run on `7ad91461c738cc2984e86f8b3b9672c5c2947307` passed the complete wardrobe suite: [run #41115451795](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41115451795), **70 passed, 0 failed, 0 skipped**. The Core regression job on the same SHA also completed successfully, including app typecheck, app development build and runtime typecheck: [run #41115451729](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41115451729).
+- Important evidence correction: the GLB JSON padding regex change is present, but available evidence does **not** establish it as the root cause of the five earlier failures. The later green run is on a different SHA and cannot verify commits added after it.
+- New forward-compatibility hardening: unknown GLB chunk types are ignored as required for tolerant GLB readers; a regression fixture covers a self-contained mesh GLB with an unknown chunk. This avoids rejecting otherwise valid future extensions.
+- Added more useful assertion diagnostics and retained the padding normalization cleanup. These are code changes, not proof of the historical failure's root cause.
+- Current PR head: `2add71d9a456ee75dd6f5f2b83ca4dc398180984`. No Actions run has yet been observed for this exact SHA; the 70/70 and Core green results above are evidence for `7ad9146...` only.
+- Aspect 15 remains **61/100**. Production garment art, independent Live2D/2.5D garment switching, browser/device E2E, independent rights review and canonical Release ZIP refresh remain unverified.
