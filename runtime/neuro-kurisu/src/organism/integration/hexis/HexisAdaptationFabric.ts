@@ -208,8 +208,8 @@ export class HexisAdaptationFabric {
         const safeStringList = (candidate: unknown, maxItems: number, maxLength: number): candidate is string[] =>
             Array.isArray(candidate) && candidate.length <= maxItems &&
             candidate.every(item => safeString(item, maxLength));
-        const finiteNonNegative = (candidate: unknown): candidate is number =>
-            typeof candidate === 'number' && Number.isFinite(candidate) && candidate >= 0;
+        const safeTimestamp = (candidate: unknown): candidate is number =>
+            Number.isSafeInteger(candidate) && (candidate as number) >= 0;
         const normalizedPolicies: HexisConnectorPolicy[] = [];
         const seenPolicyIds = new Set<string>();
         if (Array.isArray(value.connectorPolicies)) {
@@ -232,11 +232,11 @@ export class HexisAdaptationFabric {
                     typeof candidate.allowAutonomous !== 'boolean' ||
                     typeof candidate.requiresApproval !== 'boolean' ||
                     (maxPerWindow !== undefined && (!Number.isSafeInteger(maxPerWindow) || (maxPerWindow as number) < 1)) ||
-                    !Number.isSafeInteger(candidate.windowMs) || (candidate.windowMs as number) < 1000 ||
-                    !finiteNonNegative(candidate.windowStartedAt) ||
+                    !Number.isSafeInteger(candidate.windowMs) || (candidate.windowMs as number) < 1000 || (candidate.windowMs as number) > 31536000000 ||
+                    !safeTimestamp(candidate.windowStartedAt) ||
                     !Number.isSafeInteger(candidate.windowCount) || (candidate.windowCount as number) < 0 ||
-                    !finiteNonNegative(candidate.grantedAt) ||
-                    (expiresAt !== undefined && !finiteNonNegative(expiresAt)) ||
+                    !safeTimestamp(candidate.grantedAt) ||
+                    (expiresAt !== undefined && !safeTimestamp(expiresAt)) ||
                     (candidate.status !== 'active' && candidate.status !== 'revoked')) continue;
                 seenPolicyIds.add(id);
                 normalizedPolicies.push({
