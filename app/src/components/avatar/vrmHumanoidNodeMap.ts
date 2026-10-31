@@ -144,10 +144,13 @@ export function buildVrmHumanoidAuditNodes(
     if (!sceneNode || typeof sceneNode !== "object" || wrapperByObject.has(sceneNode)) continue;
     const associationValue = associations?.get(sceneNode as object);
     const nodeIndex = isRecord(associationValue) ? associationValue.nodes : undefined;
-    const validIndex = Number.isInteger(nodeIndex) && (nodeIndex as number) >= 0
-      ? nodeIndex as number : undefined;
-    const role = validIndex === undefined ? undefined : mapping.nodeRoleByIndex.get(validIndex);
-    if (validIndex !== undefined && role) resolvedIndices.add(validIndex);
+    // Only GLTF node associations establish a normative node index. Loader
+    // synthetic scene roots and mesh/primitive groups must not masquerade as
+    // source nodes or interrupt ancestry between humanoid node references.
+    if (!Number.isInteger(nodeIndex) || (nodeIndex as number) < 0) continue;
+    const validIndex = nodeIndex as number;
+    const role = mapping.nodeRoleByIndex.get(validIndex);
+    if (role) resolvedIndices.add(validIndex);
     wrapperByObject.set(sceneNode, {
       ...(typeof sceneNode.name === "string" ? { name: sceneNode.name } : {}),
       isBone: sceneNode.isBone === true,
