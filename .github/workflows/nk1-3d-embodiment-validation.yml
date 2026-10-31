@@ -10,7 +10,6 @@ on:
       - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/scripts/avatar-motor-intent.test.mjs"
       - "app/scripts/avatar-motor-kinematics.test.mjs"
-      - "app/scripts/avatar-motor-kinematics.test.mjs"
       - "app/scripts/live2d-production-contract.test.mjs"
       - "app/package.json"
       - "app/package-lock.json"
