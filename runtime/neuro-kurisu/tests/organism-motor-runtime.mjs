@@ -80,7 +80,7 @@ function rendererProfile(renderer, modelId) {
       id: 'shoulder', role: 'left.shoulder.pitch', parentId: null,
       minAngleRad: -1, maxAngleRad: 1, restAngleRad: 0,
       maxSpeedRadPerSec: 2, maxAccelerationRadPerSec2: 8, maxJerkRadPerSec3: 80,
-      geometry: { offset: { x: 0, y: 0, z: 0 }, axis: { x: 0, y: 1, z: 0 } },
+      ...(live2d ? {} : { geometry: { offset: { x: 0, y: 0, z: 0 }, axis: { x: 0, y: 1, z: 0 } } }),
       binding: {
         targetId: 'left-arm', targetKind: live2d ? 'cubism-parameter' : depth2d ? 'depth-rig-node' : 'humanoid-bone',
         component: live2d ? 'value' : depth2d ? 'rotation' : 'x',
