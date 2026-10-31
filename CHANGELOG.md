@@ -1,3 +1,10 @@
+## WorkPass77 — source-clustered memory retrieval evaluation
+- Add optional `independenceGroupId` labels so multiple prompts derived from one source episode/document are resampled as a single statistical cluster.
+- Replace query-IID paired bootstrap with paired source-cluster bootstrap for recall, MRR, and unsupported-retrieval confidence intervals; legacy datasets fall back to one cluster per example.
+- Bind independence-group labels into dataset fingerprints and block promotion when one source group crosses train/holdout.
+- Extend the independent bilingual holdout runner and add a regression contract for grouped resampling, fingerprint binding, and split leakage.
+- This improves uncertainty estimation only; it does not establish retrieval uplift or authorize automatic promotion.
+
 ## WorkPass76 follow-up — preserve blank memory-ID restore loss
 - Drop blank/whitespace memory IDs during restore and retain a bounded `blank-memory-id-dropped` diagnostic instead of silently erasing malformed source rows.
 - Extend the read-only MemoryDoctor with a dedicated `restoreDroppedBlankIds` count and warning; duplicate-ID counts remain semantically separate.
