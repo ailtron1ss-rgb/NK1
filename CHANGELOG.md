@@ -2928,3 +2928,13 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Resolve VRM 1.0 `VRMC_vrm.humanoid.humanBones` and VRM 0.x `VRM.humanoid.humanBones` to actual Three.js Bone objects through GLTFLoader node associations.
 - Prefer canonical VRM roles (head, neck, spine/chest, left/right upper arm) over artist-specific bone names in the existing bounded motor adapter; retain name-based fallback for non-VRM GLB.
 - Add regressions for arbitrary bone labels, both VRM metadata generations and invalid node references. Look-at and spring-bone simulation remain pending.
+
+
+## [NK1][аспект14] Unify smoothed body-language output across avatar modes (2026-10-31)
+
+- Move affective body-language smoothing to the shared AvatarStage boundary instead of running it only inside the Live2D-only effect.
+- Feed the same frame-rate-aware smoothed profile to Live2D, Original 2D and procedural/imported 3D so switching modes does not change the temporal response or expose a raw, unsmoothed pose in 2D/3D.
+- Memoize the derived body profile by its actual organism inputs to keep the smoothing effect stable and avoid render-triggered update loops.
+- Extend the renderer-wiring regression to assert that every mode receives the shared smoothed profile.
+- Fix the focused workflow pull_request path filter so changes to the shared body-language adapter and its tests actually trigger CI; remove duplicate push filters.
+- Real browser/device visual validation remains pending; source wiring and CI do not prove artistic quality on every rig.
