@@ -346,6 +346,13 @@ try {
   assert.equal(intrinsic.affectiveInfluence.emotionId, decisionEmotion.id,
     'intrinsic drives must consume the exact canonical appraisal from this cycle');
   assert.equal(intrinsic.affectiveInfluence.label, decisionEmotion.label);
+  const expectedLiveComponents = (decisionEmotion.mixedAffect ?? []).map(item => ({
+    label: item.label, intensity01: item.intensity01, confidence01: item.confidence01,
+  }));
+  assert.ok(expectedLiveComponents.length > 0,
+    'the live decision appraisal must expose its mixed-affect distribution');
+  assert.deepEqual(intrinsic.affectiveInfluence.components, expectedLiveComponents,
+    'OrganismCore must pass the complete mixed appraisal distribution into intrinsic motivation');
 
   await core.feedback({
     success: .86, reward: .62, surprise: .14, evidenceSource: 'internal',
