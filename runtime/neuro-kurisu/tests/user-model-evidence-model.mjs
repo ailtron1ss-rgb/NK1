@@ -74,4 +74,30 @@ hostile.restore({
 assert.equal(hostile.snapshot().claims.length, 1);
 assert.equal(hostile.snapshot().candidates.length, 0);
 assert.equal(hostile.snapshot().processedEvidenceRefs.length, 1);
+
+let rootGetterExecuted = false;
+const accessorEnvelope = {};
+Object.defineProperty(accessorEnvelope, 'claims', {
+  enumerable: true,
+  get() { rootGetterExecuted = true; return [{ key: 'injected', domain: 'interaction-style', value: 'unsafe', firstSeenTick: 1, lastSeenTick: 1, evidenceRef: 'getter' }]; },
+});
+const accessorClaim = { key: 'nested', domain: 'interaction-style', firstSeenTick: 1, lastSeenTick: 1, evidenceRef: 'nested-ref' };
+Object.defineProperty(accessorClaim, 'value', {
+  enumerable: true,
+  get() { rootGetterExecuted = true; return 'unsafe'; },
+});
+accessorEnvelope.candidates = [];
+const accessorArray = [];
+Object.defineProperty(accessorArray, '0', {
+  enumerable: true,
+  get() { rootGetterExecuted = true; return accessorClaim; },
+});
+accessorArray.length = 1;
+accessorEnvelope.processedEvidenceRefs = accessorArray;
+const accessorSafe = new UserModelEvidenceModel();
+accessorSafe.restore(accessorEnvelope);
+assert.equal(rootGetterExecuted, false, 'restore must not execute root, row or array-slot getters');
+assert.equal(accessorSafe.snapshot().claims.length, 0);
+assert.equal(accessorSafe.snapshot().processedEvidenceRefs.length, 0);
+
 console.log('UserModelEvidenceModel: all assertions passed');
