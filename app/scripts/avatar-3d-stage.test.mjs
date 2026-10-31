@@ -44,7 +44,17 @@ test("existing sprite and Live2D files remain available",async()=>{
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
 
-test("VRM stage reports conservative left/right humanoid arm discovery without claiming IK actuation",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/resolveVrmArm/);assert.match(stage,/leftArmRig/);assert.match(stage,/rightArmRig/);assert.match(stage,/пока рассчитывается отдельно и не применяется к костям/);});
+test("VRM stage discovers bilateral arm chains and gates IK on exact measured calibration",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/resolveVrmArmChain/);
+ assert.match(stage,/leftArmRig/);
+ assert.match(stage,/rightArmRig/);
+ assert.match(stage,/nk1CoordinateFrameId/);
+ assert.match(stage,/fingerprint&&coordinateFrameId&&leftArmRig&&rightArmRig/);
+ assert.match(stage,/setVrmCalibrationStatus\("awaiting-profile"\)/);
+ assert.match(stage,/applyCalibratedVrmArmGesture/);
+ assert.match(stage,/calibratedProfile&&calibratedContext&&calibratedBindings/);
+});
 
 test("VRM arm actuation requires exact fingerprint, declared coordinate frame and measured bilateral sidecar",async()=>{
  const stage=await readFile(stagePath,"utf8");
