@@ -134,10 +134,12 @@ export function applyVrmNormalizedMotorFrame(
     rig.neck.rotation.set(headX * 0.35, headY * 0.35, headZ * 0.35);
     rig.head.rotation.set(headX * 0.65, headY * 0.65, headZ * 0.65);
     controlledBones.push("neck", "head");
-  } else if (rig.head || rig.neck) {
+  } else {
     const node = rig.head ?? rig.neck;
-    node.rotation.set(headX, headY, headZ);
-    controlledBones.push(rig.head ? "head" : "neck");
+    if (node) {
+      node.rotation.set(headX, headY, headZ);
+      controlledBones.push(rig.head ? "head" : "neck");
+    }
   }
 
   if (rig.leftUpperArm) {
