@@ -17,8 +17,16 @@ const cycleIds = fabric.recordOperationalCycle({
   selfUpdate: { source: 'test' },
   at: 7,
 });
-assert.equal(fabric.verifyOperationalCycle(cycleIds, 7).complete, true, 'same-tick causal trace must verify');
-const adjacentTick = fabric.verifyOperationalCycle(cycleIds, 8);
+const cycleStageMap = {
+  observation: cycleIds.observation,
+  prediction: cycleIds.prediction,
+  action: cycleIds.action,
+  outcome: cycleIds.outcome,
+  learning: cycleIds.learning,
+  'self-update': cycleIds.selfUpdate,
+};
+assert.equal(fabric.verifyOperationalCycle(cycleStageMap, 7).complete, true, 'same-tick causal trace must verify');
+const adjacentTick = fabric.verifyOperationalCycle(cycleStageMap, 8);
 assert.equal(adjacentTick.complete, false, 'adjacent-tick causal trace must not verify');
 assert.ok(adjacentTick.invalidStages.includes('cycle:tick-mismatch'));
 
