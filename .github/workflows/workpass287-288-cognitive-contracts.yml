@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CycleCompletenessPolicy.ts"
+      - "runtime/neuro-kurisu/tests/CycleCompletenessPolicy.test.mjs"
+      - "runtime/neuro-kurisu/tests/workpass71-unified-cycle-completeness.mjs"
+      - "runtime/neuro-kurisu/tests/workpass71-cognitive-event-lineage.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
@@ -25,6 +29,10 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CycleCompletenessPolicy.ts"
+      - "runtime/neuro-kurisu/tests/CycleCompletenessPolicy.test.mjs"
+      - "runtime/neuro-kurisu/tests/workpass71-unified-cycle-completeness.mjs"
+      - "runtime/neuro-kurisu/tests/workpass71-cognitive-event-lineage.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
@@ -64,6 +72,9 @@ jobs:
       - name: Check unified cognitive-cycle contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs
+      - name: Check strict core/full eleven-stage completeness and event lineage
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass71:strict-cycle-completeness
       - name: Check intrinsic motivation contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs
