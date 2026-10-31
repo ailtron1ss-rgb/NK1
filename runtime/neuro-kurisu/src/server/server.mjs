@@ -26,6 +26,7 @@ import { WillSdkFacade } from '../organism/integration/will/WillSdkFacade.ts';
 import { WillMcpJsonRpcServer } from '../organism/integration/will/WillMcpJsonRpc.ts';
 import { WillChannelAdapter } from '../organism/integration/will/WillChannelAdapter.ts';
 import { startNativeSpeechSseStream } from './native-speech-sse.mjs';
+import { createLocalWhisperCppProvider } from './local-whisper-cpp-provider.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '../..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -42,6 +43,8 @@ const LOCAL_LANGUAGE_BACKEND_POLICY = new LocalLanguageBackendPolicy();
 const MEM0_MEMORY_ADAPTER = Mem0PlatformAdapter.fromEnvironment();
 const REQUEST_TIMEOUT_MS = Math.max(5000, Number(process.env.NEURO_REQUEST_TIMEOUT_MS || 45000));
 const MAX_BODY_BYTES = Math.max(4096, Number(process.env.NEURO_MAX_BODY_BYTES || 256000));
+// Opt-in local-only STT. Blank configuration keeps the endpoint safely disabled.
+const WHISPER_CPP_PROVIDER = createLocalWhisperCppProvider({ endpoint: process.env.NK1_WHISPER_CPP_URL || '' });
 const PHONE_POLICY = resolvePhonePolicyConfig(process.env);
 // Opt-in only: malformed production settings abort startup, and absence means no shadow child process.
 const TRUSTED_SHADOW_LEARNING = parseTrustedShadowLearningScheduleConfig(process.env.NEURO_SKILL_SHADOW_SCHEDULER_JSON);
@@ -284,6 +287,35 @@ async function body(req) {
     const source = Buffer.concat(chunks).toString('utf8');
     return source ? JSON.parse(source) : {};
 }
+async function boundedAudioBody(req, maxBytes) {
+    const declared = Number(req.headers['content-length'] || 0);
+    if (Number.isFinite(declared) && declared > maxBytes) {
+        const error = new Error('audio-too-large');
+        error.code = 'audio-too-large';
+        error.status = 413;
+        throw error;
+    }
+    const chunks = [];
+    let bytes = 0;
+    for await (const chunk of req) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        bytes += buffer.byteLength;
+        if (bytes > maxBytes) {
+            const error = new Error('audio-too-large');
+            error.code = 'audio-too-large';
+            error.status = 413;
+            throw error;
+        }
+        chunks.push(buffer);
+    }
+    if (bytes < 46) {
+        const error = new Error('audio-invalid-wav');
+        error.code = 'audio-invalid-wav';
+        error.status = 415;
+        throw error;
+    }
+    return Buffer.concat(chunks, bytes);
+}
 function localFallback(request) {
     const action = /selected_action=([a-z-]+)/i.exec(request.system)?.[1] || 'reflect';
     const phrases = {
@@ -405,6 +437,32 @@ async function route(req, res) {
         }
         if (url.pathname === '/health' || url.pathname === '/api/health') {
             return json(res, 200, { ok: true, ready: runtimeReady, service: 'neuro-kurisu', version: RELEASE_CONTRACT.application, organismCore: RELEASE_CONTRACT.organismCore, schemaVersion: RELEASE_CONTRACT.stateSchema, tick: runtimeReady ? runtime.core.operationalStatusSnapshot().tick : 0, uptimeSec: Math.round(process.uptime()), bodySource: runtimeReady ? runtime.embodiment.snapshot().telemetry.source : 'initializing', actionLedger: runtimeReady ? runtime.core.actionExecutionLedgerMetrics() : null });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/organism/speech/transcribe') {
+            if (!WHISPER_CPP_PROVIDER.enabled)
+                return json(res, 503, { ok: false, error: 'whisper-provider-not-configured' });
+            if (String(req.headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase() !== 'audio/wav')
+                return json(res, 415, { ok: false, error: 'audio-wav-content-type-required' });
+            const controller = new AbortController();
+            const abortRequest = () => { if (!controller.signal.aborted) controller.abort(); };
+            const abortResponse = () => { if (!res.writableEnded) abortRequest(); };
+            req.once('aborted', abortRequest);
+            res.once('close', abortResponse);
+            try {
+                const audio = await boundedAudioBody(req, WHISPER_CPP_PROVIDER.snapshot().maxWavBytes);
+                if (controller.signal.aborted || res.destroyed) return;
+                const transcription = await WHISPER_CPP_PROVIDER.transcribeWav(audio, { signal: controller.signal });
+                if (res.destroyed || res.writableEnded) return;
+                return json(res, 200, { ok: true, ...transcription });
+            } catch (error) {
+                if (res.destroyed || res.writableEnded) return;
+                const status = Number.isInteger(error?.status) ? error.status : 503;
+                const code = typeof error?.code === 'string' ? error.code : 'speech-transcription-failed';
+                return json(res, status, { ok: false, error: code });
+            } finally {
+                req.off('aborted', abortRequest);
+                res.off('close', abortResponse);
+            }
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/evaluation/evidence') {
             if (!runtimeReady)
