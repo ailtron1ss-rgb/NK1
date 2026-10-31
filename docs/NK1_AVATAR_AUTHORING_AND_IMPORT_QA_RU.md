@@ -120,6 +120,22 @@ Preflight — защита от некорректных структур и ч�
 
 Текущая NK1 2.5D scene adapter проверяет authored node graph и применяет позу к существующим Three.js nodes. Сам художественный master asset и hidden geometry ещё не поставлены.
 
+## Provenance evidence bundle in the avatar UI
+
+В 3D/2.5D stage имеется отдельная кнопка `Импорт provenance`. Она принимает локальный JSON bundle:
+
+- `manifest` с точным model fingerprint, source/license, frame и заявленными validator receipts;
+- `khronosReportJson` — исходный JSON-отчёт Khronos как неизменённая строка.
+
+NK1 пересчитывает SHA-256 исходного report text через WebCrypto, проверяет validator version, `info.version = 2.0`, `mimeType = model/gltf-binary`, `issues.numErrors = 0`, `truncated = false` и отсутствие external resources. Затем manifest сверяется с текущей загруженной моделью, root `nk1CoordinateFrameId` и уже пройденным NK1 preflight.
+
+UI различает:
+- `release-ready` — receipt и manifest согласованы, а лицензия заявляет право распространения;
+- `verified-local` — модель и report валидны, но публичное распространение явно не разрешено;
+- `blocked/rejected` — отсутствует обязательная идентичность, preflight или Khronos evidence.
+
+**Важное ограничение:** статус `release-ready` пока является локальным результатом UI/validator. GitHub Release ZIP workflow ещё не подключён к сбору этих manifest и к обязательной блокировке публикации. До подключения этого gate Release maintainer обязан проверять manifest вручную. SPDX ID и report digest не доказывают юридические права или честность внешнего процесса.
+
 ## VRM calibration bundle and bilateral IK
 
 В source существуют:
