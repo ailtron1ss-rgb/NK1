@@ -1048,7 +1048,7 @@ export class OrganismRuntime {
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
+    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.state.tick);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});

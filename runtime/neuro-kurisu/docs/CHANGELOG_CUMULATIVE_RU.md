@@ -1,5 +1,13 @@
 # Neuro-Kurisu — Changelog
 
+## 2026-10-31 — Aspect 01: runtime integrity and eleven-phase enforcement
+- `UnifiedCognitiveCycle` теперь различает legacy-шестистадийный контракт и расширенный одиннадцатифазный: появление любой расширенной фазы включает требование полного набора; полнота проверяет уникальные event IDs для каждой обязательной стадии.
+- Restore цикла использует только собственные перечислимые поля, нормализует счётчики/метрики/список отсутствующих фаз и отклоняет неизвестную версию до замены текущего состояния.
+- `UnifiedCognitiveSubstrate` переведён с небезопасного object spread на явную проекцию allow-list; вложенные поля, счётчики, метрики и строки проверяются, неизвестные поля и prototype inheritance не переносятся.
+- Интеграция substrate требует строго возрастающий safe-integer tick и проверяет входные группы до изменения состояния; replay/invalid input не должны мутировать проекцию.
+- Добавлен `test:aspect01:cognitive-runtime-integrity` (legacy compatibility, 11-phase completeness, duplicate IDs, prototype pollution, invalid restore, tick replay, non-mutation) и подключён к WorkPass287-288 CI.
+- Предыдущий PR HEAD `faa9838` прошёл 21 GitHub Actions workflow. После следующего runtime-lineage commit `df7df7c` выделенный WorkPass287-288 workflow завершился успешно, остальные связанные regression workflows перепроверяются на новом HEAD. Это не заменяет device soak, holdout и production E2E. Release не обновлялся.
+
 ## 34.1.0 — Portable Subject Boundary + evidence/benchmark hardening
 - Introduced `neuro-kurisu.subject-transfer.v1`.
 - Added persistent `subjectIdentity` and SHA-256 subject fingerprints.
@@ -33,3 +41,9 @@ The project remains an L0 synthetic research system. Functional consciousness in
 - Corrected context comparison so tick-only changes do not create false world transitions.
 - Added Core, fabric and subsystem benchmarks/regressions.
 - State schema remains 92; no new mandatory persisted branch.
+
+## 2026-10-31 — Aspect 01: bind cognitive lineage to the requested runtime tick
+- `CognitiveEventFabric.verifyOperationalCycle` теперь принимает необязательный `expectedTick` и отклоняет корректно связанный event-граф, если он относится к другому tick или replayed cycle.
+- Production `OrganismRuntime` передаёт фактический tick при проверке одиннадцати фаз; несовпадение больше не может получить causal-integrity credit.
+- Добавлен runtime integration regression: три реальных autonomous steps, проверка всех 11 phase IDs и parent edges, negative test для соседнего tick и restart round-trip persisted cycle state.
+- Проверка подключена к WorkPass287-288 CI; Release ZIP не обновлялся.
