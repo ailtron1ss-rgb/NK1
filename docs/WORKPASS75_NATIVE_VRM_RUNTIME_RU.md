@@ -6,11 +6,22 @@
 
 При обнаружении VRM активируется `gltf.userData.vrm`, а в сцену добавляется `vrm.scene`. Для VRM 0.0 выполняется `VRMUtils.rotateVRM0`; VRM-меши исключаются из frustum culling. При замене/сбросе VRM освобождается через `VRMUtils.deepDispose`.
 
-## Почему отключён normalized-to-raw auto update
+## Единый normalized humanoid motor (WorkPass76)
 
-Существующий NK1 avatar motor и импортированные GLTF clips напрямую изменяют raw skeleton nodes. Стандартный `VRMHumanoid.autoUpdateHumanBones=true` копирует normalized humanoid pose в raw skeleton во время `vrm.update()` и мог бы перезаписать текущие motor/clip изменения. Поэтому `VRMLoaderPlugin` конфигурируется с `autoUpdateHumanBones:false`. Существующий raw rig остаётся под контролем NK1; сам VRM runtime по-прежнему обновляет look-at, expression manager, node constraints, spring bones и MToon materials при каждом `vrm.update(delta)`.
+Первый проход WorkPass75 временно держал `autoUpdateHumanBones:false`, поскольку исходный motor менял raw skeleton напрямую. WorkPass76 устранил этот конфликт: `VRMLoaderPlugin` и `configureVrmForNk1NormalizedMotorDrive` включают `autoUpdateHumanBones:true`, а сам NK1 motor теперь пишет humanoid intent в штатные proxy nodes, полученные через `vrm.humanoid.getNormalizedBoneNode()`.
 
-Это осознанный мост совместимости, а не заявление, что normalized humanoid pose уже управляется NK1 напрямую. Следующий отдельный этап — адаптер normalized-pose/IK с измерением поведения на контрольных VRM 0.x и 1.0 моделях.
+В текущий normalized output path подключены:
+- `head` + `neck`: gaze X/Y, cognitive load, energy, sadness/anger head tilt;
+- `leftUpperArm`: существующий explore gesture;
+- `rightUpperArm`: существующие respond/speaking и verify gestures.
+
+Когда доступны обе кости head/neck, угловое намерение распределяется между ними в долях 35/65, чтобы не удваивать исходный raw-bone offset. Все четыре node rotations на каждом кадре сбрасываются к normalized identity и рассчитываются заново — без накопления Euler drift. Затем `vrm.update(delta)` штатно копирует normalized pose в raw bones и обновляет look-at, expression manager, node constraints, spring bones и MToon materials.
+
+Для generic GLB сохраняется прежний raw-bone motor/mixer. Для VRM normalized humanoid update является владельцем человеческого скелета; embedded GLTF animation tracks, направленные в raw humanoid bones, не должны считаться полноценным retargeted motion clip — отдельный VRMA/normalized animation retargeting ещё предстоит сделать.
+
+## Граница IK
+
+В NK1 уже есть `planarArmIK` и model-specific `vrmRigCalibrationProfile`, но в `Avatar3DStage` пока нет валидированного пространственного target observation: 2D/3D target coordinates в avatar-root frame, измеренных upper/forearm lengths и confidence/provenance от perception. Поэтому этот проход подключает существующий мотор к normalized humanoid, но **не выдаёт фиктивную IK-позу** и не считает planar solver интегрированным в реальный live arm control. Следующий корректный шаг — подать туда реальные perception/action targets и exact-fingerprint calibration profile, затем применить accepted IK через уже существующий calibrated raw/normalized bridge.
 
 ## Выражения и речь
 
@@ -39,6 +50,6 @@
 
 ## Проверка и незакрытые вопросы
 
-Добавлены unit tests для affect→VRM expression mapping, bounded frame updates, VRM 0/1 meta parsing и preservation of raw-bone motor ownership. CI дополнительно выполнит app TypeScript typecheck и production Vite build.
+Добавлены unit tests для affect→VRM expression mapping, normalized humanoid head/neck/arm mapping, missing-bone rejection, no-drift frame output, bounded frame updates и VRM 0/1 meta parsing. CI дополнительно выполнит app TypeScript typecheck и production Vite build.
 
 Физический визуальный E2E с авторизованными VRM 0.x/1.0 моделями на Android пока не считается пройденным: требуется проверить реальный MToon render, spring-bone jiggle, model-specific expression mappings, memory/freeing при многократной загрузке, и синхронность mouth pose. Generic GLB behavior также должен остаться регрессионно совместимым.
