@@ -121,6 +121,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const speechPhaseRef = useRef<SpeechPhase>("idle");
   const [live, setLive] = useState(false);
   const [live2dMotorModelId, setLive2dMotorModelId] = useState<string | null>(null);
+  const live2dMotorModelIdRef = useRef<string | null>(null);
   const [live2dMotorBatch, setLive2dMotorBatch] = useState<RendererMotorCommandBatch | null>(null);
   const [live2dMotorProjection, setLive2dMotorProjection] = useState<MotorFrameProjectionState>("unmapped");
   const [live2dMotorConnection, setLive2dMotorConnection] = useState<MotorFrameConnectionStatus>("unavailable");
@@ -180,6 +181,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           : (ev.data.profile === "balanced" || ev.data.profile === "quality") && ev.data.modelPath === "./Kurisu/Kurisu.model3.json"
             ? "kurisu-live2d-balanced-v1" : null;
         if (!live2dIdentity || ev.data.modelId !== live2dIdentity) return;
+        live2dMotorModelIdRef.current = live2dIdentity;
         setLive2dMotorModelId(live2dIdentity);
         setLive2dMotorBatch(null);
         setLive2dMotorProjection("waiting");
@@ -203,7 +205,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       }
       if (ev.data.type === "live2d_motor_frame_ack") {
         const ack = ev.data;
-        if (currentModeRef.current !== "live2d" || typeof ack.modelId !== "string" || ack.modelId !== live2dModelId
+        if (currentModeRef.current !== "live2d" || typeof ack.modelId !== "string" || ack.modelId !== live2dMotorModelIdRef.current
           || typeof ack.frameTick !== "number" || !Number.isSafeInteger(ack.frameTick) || ack.frameTick < 0
           || typeof ack.profileId !== "string" || ack.profileId.length > 96
           || typeof ack.observedCount !== "number" || !Number.isSafeInteger(ack.observedCount) || ack.observedCount < 0
@@ -216,6 +218,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (ev.data.type === "live2d_error") {
         if (typeof ev.data.error !== "string" || ev.data.error.length > 512) return;
         setLive(false);
+        live2dMotorModelIdRef.current = null;
         setLive2dMotorModelId(null);
         setLive2dMotorBatch(null);
         setLive2dMotorProjection("unmapped");
