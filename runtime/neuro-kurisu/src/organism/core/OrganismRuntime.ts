@@ -12,6 +12,7 @@ import type { ContextBudgetLedgerReport } from '../language/ContextBudgetLedger.
 import { CounterfactualEngine } from '../world/CounterfactualEngine.ts';
 import { EmbodimentRuntime } from '../body/EmbodimentRuntime.ts';
 import { OrganismMotorRuntime } from '../body/OrganismMotorRuntime.ts';
+import { createCognitiveMotorGoalCandidate } from '../system/CognitiveMotorIntentMapper.ts';
 import { Mem0PlatformAdapter, type Mem0Candidate } from '../integration/mem0/Mem0PlatformAdapter.ts';
 import { buildCognitiveProposalPrompt, parseCognitiveProposal } from '../language/LanguageOrgan.ts';
 import { OperationalJournal } from '../persistence/OperationalJournal.ts';
@@ -843,6 +844,61 @@ export class OrganismRuntime {
         return { ok: shot.ok === true, path: 'path' in shot ? shot.path : undefined, size: 'size' in shot ? shot.size : undefined, hash: 'hash' in shot ? shot.hash : undefined, error: 'error' in shot ? shot.error : undefined, executionId: shot.executionId, providerReceiptId: 'providerReceiptId' in shot ? shot.providerReceiptId : undefined };
       },
     });
+    // Only the already-selected action, allowed by embodied recovery and actually
+    // executed by the action adapter, may emit a small calibrated avatar gesture.
+    // This is expressive output, not a second world/device action path.
+    const motorProfile = this.config.motorRigProfiles?.[0];
+    if (actionAdvice.allowed && physicalAction === internalAction
+      && embodiedAction.status === 'executed'
+      && this.motor.diagnostics().configured
+      && motorProfile) {
+      const motorNowMs = performance.now();
+      const motorCandidate = selectedCandidate
+        ? createCognitiveMotorGoalCandidate({
+            action: selectedCandidate.action,
+            tick: cycle.state.tick,
+            nowMs: motorNowMs,
+            joints: motorProfile.joints,
+            score01: selectedCandidate.score,
+            predictedUtility01: selectedCandidate.predictedUtility,
+            confidence01: selectedCandidate.confidence,
+            effort01: selectedCandidate.predictedCost,
+            conflict01: cycle.state.needs.cognitiveLoad,
+            goalFit01: selectedCandidate.predictedNeedRelief,
+            novelty01: cycle.state.needs.novelty,
+          })
+        : null;
+      if (motorCandidate) {
+        const arbitration = this.motor.arbitrateApprovedGoals([motorCandidate], {
+          tick: cycle.state.tick,
+          nowMs: motorNowMs,
+          dopamine01: cycle.state.lastActionSuccess ?? selectedCandidate.confidence,
+          predictionError01: cycle.state.predictionError,
+          uncertainty01: cycle.state.needs.uncertainty,
+          novelty01: cycle.state.needs.novelty,
+          energy01: body.bodyEnergy01,
+          thermal01: body.thermalStrain01,
+          cognitiveCapacity01: body.cognitiveCapacity01,
+          conflict01: cycle.state.needs.cognitiveLoad,
+          goalPressure01: cycle.state.needs.goalPressure,
+        });
+        this.evidenceBus.publish({
+          tick: cycle.state.tick,
+          kind: 'action',
+          source: 'cognitive-motor-arbitration',
+          confidence01: arbitration.accepted ? arbitration.selectedGate01 : 0.2,
+          parentIds: [actionEvidence.id],
+          payload: {
+            candidateId: motorCandidate.id,
+            selectedAction: arbitration.selectedAction,
+            accepted: arbitration.accepted,
+            reason: arbitration.reason,
+            frameTick: arbitration.motorFrame?.tick ?? null,
+            note: 'avatar gesture only; no independent device/world side effect',
+          },
+        });
+      }
+    }
     await this.core.setEmbodiedActionResult(embodiedAction);
     const consequencePredictedForRecovery = clamp01(.10 + .34*Number(cycle.decision.selected?.confidence ?? .5) + .34*(1-cycle.state.predictionError) + .12*(1-body.thermalStrain01) + .10*(body.awake ? 1 : .4));
     const recoveryRecord = this.embodiedRecovery.record({
