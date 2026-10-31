@@ -3,6 +3,7 @@
 - Restrict semantic role mapping to nodes explicitly marked as bones; ordinary scene objects with matching names are reported as rejected evidence and cannot create a humanoid capability.
 - Require unique bone matches and connected torso, arm, leg and head ancestry; detect cyclic parent graphs and preserve a truthful optional chest/neck fallback.
 - Report finger articulation only when all 30 finger segments are uniquely mapped and every hand-to-proximal-to-intermediate-to-distal chain is connected.
+- Bound audit input to 50,000 nodes and replace per-bone parent-chain rescans with a single O(n) cycle walk, preventing pathological deep rigs from causing quadratic audit work.
 - Add regressions for ordinary and mixed nodes, duplicate bones, disconnected branches, cycles, optional upper-body joints, complete fingers and repeated references.
 - This remains a conservative name/hierarchy audit, not VRM-spec validation, animation retargeting, IK actuation, or rendered-pose verification.
 
