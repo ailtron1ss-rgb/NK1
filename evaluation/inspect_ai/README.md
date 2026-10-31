@@ -59,3 +59,20 @@ node --experimental-strip-types runtime/neuro-kurisu/tests/workpass72-independen
 - Не измеряет качество памяти, recall uplift, полезность целей, сознание или автономность.
 - Не является независимым holdout для качества модели: для этого нужен отдельно созданный immutable dataset, не использованный обучением/настройкой.
 - Не даёт Inspect AI права оценивать или одобрять собственное обучение NK1.
+
+## Multi-tick sequence integrity (WorkPass73)
+
+The v2 export adds a deterministic SHA-256 chain over ordered tick projections. Each
+cycle contains its sequence index, previous chain digest, canonical cycle digest and
+chain digest; the timeline manifest records the first/last tick and chain head.
+The independent Python validator checks strictly increasing unique ticks, canonical
+cycle identity, globally unique event IDs, parent references that do not point to
+known future events, event-window counters and the final chain head. Inspect AI
+receives a dedicated timeline sample in addition to per-cycle and reality-ledger
+samples.
+
+The chain detects accidental or post-export changes when compared with a retained
+bundle digest. It is **not a digital signature**, does not authenticate the host,
+and cannot prevent a party with authority to rewrite the source bundle from
+recomputing all hashes. For source authenticity, retain the digest outside the NK1
+host or add a separately governed signing/anchoring mechanism.

@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "nk1.independent-evaluation-evidence.v1"
+SCHEMA_VERSION = "nk1.independent-evaluation-evidence.v2"
 STAGES = (
     "observation", "prediction", "appraisal", "attention", "memory", "goal",
     "plan", "action", "outcome", "learning", "self-update",
@@ -26,6 +26,7 @@ REALITY_CLASSES = (
 EXTERNAL_CLASSES = {"external-observation", "device-observation", "user-reported"}
 DIGEST_RE = re.compile(r"^[a-f0-9]{64}$")
 MAX_CYCLES = 256
+MAX_EVENTS = 256
 MAX_EVENTS_PER_CYCLE = 64
 
 # Child -> parent. These are the same full-causal edges required by
@@ -64,6 +65,10 @@ def bundle_digest(bundle: dict[str, Any]) -> str:
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
+def canonical_sha256(value: Any) -> str:
+    return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
+
+
 def _non_negative_int(value: Any) -> bool:
     return type(value) is int and value >= 0
 
@@ -82,16 +87,138 @@ def validate_bundle(bundle: Any) -> dict[str, Any]:
     cycles = bundle.get("cycles")
     if not isinstance(cycles, list) or len(cycles) > MAX_CYCLES:
         raise ValueError("cycle window is malformed or exceeds the export bound")
-    for cycle in cycles:
-        if not isinstance(cycle, dict) or not _non_negative_int(cycle.get("tick")):
-            raise ValueError("cycle tick is malformed")
-        if not isinstance(cycle.get("cycleIdDigest"), str) or not DIGEST_RE.fullmatch(cycle["cycleIdDigest"]):
-            raise ValueError("cycle identity digest is malformed")
-        events = cycle.get("events")
-        if not isinstance(events, list) or len(events) > MAX_EVENTS_PER_CYCLE:
-            raise ValueError("cycle event list is malformed or too large")
+    timeline_result = score_timeline({
+        "kind": "evidence-timeline",
+        "timeline": bundle.get("timeline"),
+        "cycles": cycles,
+    })
+    if timeline_result.get("passed") is not True:
+        raise ValueError(f"timeline sequence invalid: {timeline_result.get('reason')}")
+
+    event_window = bundle.get("eventWindow")
+    if not isinstance(event_window, dict):
+        raise ValueError("event window is missing")
+    limit = event_window.get("limit")
+    total = event_window.get("total")
+    buffered = event_window.get("buffered")
+    exported = event_window.get("exportedOperationalEvents")
+    if (not _non_negative_int(limit) or limit != MAX_EVENTS
+            or not _non_negative_int(total) or not _non_negative_int(buffered)
+            or not _non_negative_int(exported) or total < buffered
+            or exported > limit or exported > buffered):
+        raise ValueError("event window counters are inconsistent")
+    observed_events = sum(len(cycle["events"]) for cycle in cycles)
+    if exported != observed_events:
+        raise ValueError("event window exported count does not match cycle contents")
+    expected_oldest = cycles[0]["tick"] if cycles else None
+    expected_newest = cycles[-1]["tick"] if cycles else None
+    if event_window.get("oldestTick") != expected_oldest or event_window.get("newestTick") != expected_newest:
+        raise ValueError("event window tick bounds do not match cycle contents")
+
+    counters = bundle.get("cycleCounters")
+    if not isinstance(counters, dict) or counters.get("version") != 2:
+        raise ValueError("cycle counters v2 are missing")
+    for field in ("cycles", "coreCompleteCycles", "fullCompleteCycles", "incompleteCycles", "brokenLineages"):
+        if not _non_negative_int(counters.get(field)):
+            raise ValueError(f"cycle counter {field} is invalid")
+    if (counters["coreCompleteCycles"] > counters["cycles"]
+            or counters["fullCompleteCycles"] > counters["cycles"]
+            or counters["incompleteCycles"] > counters["cycles"]
+            or counters["cycles"] < len(cycles)):
+        raise ValueError("cycle counters are inconsistent with the exported timeline")
+    last_tick = counters.get("lastTick")
+    if type(last_tick) is not int or last_tick < -1 or (cycles and last_tick < cycles[-1]["tick"]):
+        raise ValueError("cycle counter lastTick precedes the exported timeline")
     return bundle
 
+
+def score_timeline(record: dict[str, Any]) -> dict[str, Any]:
+    """Verify ordered multi-tick continuity, per-cycle digests and the hash chain."""
+    if not isinstance(record, dict):
+        return {"passed": False, "reason": "timeline-record-malformed"}
+    cycles = record.get("cycles")
+    timeline = record.get("timeline")
+    if not isinstance(cycles, list) or len(cycles) > MAX_CYCLES or not isinstance(timeline, dict):
+        return {"passed": False, "reason": "timeline-shape-invalid"}
+    if (type(timeline.get("version")) is not int or timeline.get("version") != 1
+            or timeline.get("algorithm") != "sha256-canonical-json-v1"
+            or type(timeline.get("cycleCount")) is not int or timeline.get("cycleCount") != len(cycles)):
+        return {"passed": False, "reason": "timeline-manifest-invalid"}
+
+    previous_chain_digest: str | None = None
+    previous_tick = -1
+    seen_cycle_ids: set[str] = set()
+    event_ticks: dict[str, int] = {}
+    event_rows: list[dict[str, Any]] = []
+    for index, cycle in enumerate(cycles):
+        if not isinstance(cycle, dict):
+            return {"passed": False, "reason": "timeline-cycle-not-object", "index": index}
+        tick = cycle.get("tick")
+        cycle_id = cycle.get("cycleIdDigest")
+        events = cycle.get("events")
+        if (not _non_negative_int(tick) or tick <= previous_tick
+                or not isinstance(cycle_id, str) or not DIGEST_RE.fullmatch(cycle_id)
+                or cycle_id != hashlib.sha256(f"nk1-cycle:{tick}".encode("utf-8")).hexdigest()
+                or cycle_id in seen_cycle_ids
+                or not isinstance(events, list) or len(events) > MAX_EVENTS_PER_CYCLE):
+            return {"passed": False, "reason": "timeline-cycle-order-or-identity-invalid", "index": index}
+        if (type(cycle.get("sequenceIndex")) is not int or cycle.get("sequenceIndex") != index
+                or cycle.get("previousChainDigest") != previous_chain_digest):
+            return {"passed": False, "reason": "timeline-linkage-invalid", "index": index}
+
+        cycle_core = {"cycleIdDigest": cycle_id, "tick": tick, "events": events}
+        cycle_digest = canonical_sha256(cycle_core)
+        if not hmac.compare_digest(str(cycle.get("cycleDigest", "")), cycle_digest):
+            return {"passed": False, "reason": "timeline-cycle-digest-mismatch", "index": index}
+        chain_record = {
+            "sequenceIndex": index,
+            "tick": tick,
+            "cycleDigest": cycle_digest,
+            "previousChainDigest": previous_chain_digest,
+        }
+        chain_digest = canonical_sha256(chain_record)
+        if not hmac.compare_digest(str(cycle.get("chainDigest", "")), chain_digest):
+            return {"passed": False, "reason": "timeline-chain-digest-mismatch", "index": index}
+
+        seen_cycle_ids.add(cycle_id)
+        for event_index, event in enumerate(events):
+            if not isinstance(event, dict):
+                return {"passed": False, "reason": "timeline-event-not-object", "index": index, "eventIndex": event_index}
+            event_id = event.get("idDigest")
+            parent_ids = event.get("parentIdDigests")
+            if (not isinstance(event_id, str) or not DIGEST_RE.fullmatch(event_id)
+                    or event_id in event_ticks
+                    or not _non_negative_int(event.get("tick")) or event.get("tick") != tick
+                    or event.get("stage") not in STAGES
+                    or not isinstance(parent_ids, list)
+                    or not all(isinstance(parent, str) and DIGEST_RE.fullmatch(parent) for parent in parent_ids)):
+                return {"passed": False, "reason": "timeline-event-identity-invalid", "index": index, "eventIndex": event_index}
+            event_ticks[event_id] = tick
+            event_rows.append(event)
+        previous_chain_digest = chain_digest
+        previous_tick = tick
+
+    for event in event_rows:
+        for parent_id in event["parentIdDigests"]:
+            parent_tick = event_ticks.get(parent_id)
+            if parent_tick is not None and parent_tick > event["tick"]:
+                return {"passed": False, "reason": "timeline-parent-points-to-future", "tick": event["tick"]}
+
+    expected_first = cycles[0]["tick"] if cycles else None
+    expected_last = cycles[-1]["tick"] if cycles else None
+    if (timeline.get("firstTick") != expected_first
+            or timeline.get("lastTick") != expected_last
+            or timeline.get("headDigest") != previous_chain_digest):
+        return {"passed": False, "reason": "timeline-head-or-bounds-mismatch"}
+    return {
+        "passed": True,
+        "reason": "ordered-hash-chain-verified",
+        "cycleCount": len(cycles),
+        "firstTick": expected_first,
+        "lastTick": expected_last,
+        "headDigest": previous_chain_digest,
+        "uniqueEventIds": len(event_ticks),
+    }
 
 def score_cycle(record: dict[str, Any]) -> dict[str, Any]:
     """Independently recompute full 11-stage coverage and all 20 causal edges."""
@@ -209,6 +336,8 @@ def score_reality_ledger(record: dict[str, Any]) -> dict[str, Any]:
 def score_record(record: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(record, dict):
         return {"passed": False, "reason": "sample-not-object"}
+    if record.get("kind") == "evidence-timeline":
+        return score_timeline(record)
     if record.get("kind") == "cognitive-cycle":
         return score_cycle(record)
     if record.get("kind") == "reality-ledger":
@@ -217,7 +346,15 @@ def score_record(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def samples_from_bundle(bundle: dict[str, Any]) -> list[dict[str, str]]:
-    samples: list[dict[str, str]] = []
+    samples: list[dict[str, str]] = [{
+        "id": "evidence-timeline",
+        "input": canonical_json({
+            "kind": "evidence-timeline",
+            "timeline": bundle["timeline"],
+            "cycles": bundle["cycles"],
+        }),
+        "target": "ordered-multi-tick-integrity-audit",
+    }]
     for cycle in bundle["cycles"]:
         record = {
             "kind": "cognitive-cycle",

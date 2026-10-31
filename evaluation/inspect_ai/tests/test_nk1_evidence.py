@@ -17,6 +17,7 @@ from nk1_evidence import (
     export_bundle,
     score_cycle,
     score_reality_ledger,
+    score_timeline,
     validate_bundle,
 )
 
@@ -39,12 +40,46 @@ def make_cycle(tick: int, omit_stage: str | None = None) -> dict:
     return {"cycleIdDigest": hashlib.sha256(f"nk1-cycle:{tick}".encode()).hexdigest(), "tick": tick, "events": events}
 
 
+def chain_cycles(cycles: list[dict]) -> tuple[list[dict], dict]:
+    chained = []
+    previous = None
+    for index, cycle in enumerate(cycles):
+        core = {"cycleIdDigest": cycle["cycleIdDigest"], "tick": cycle["tick"], "events": cycle["events"]}
+        cycle_digest = hashlib.sha256(canonical_json(core).encode("utf-8")).hexdigest()
+        chain_record = {
+            "sequenceIndex": index,
+            "tick": cycle["tick"],
+            "cycleDigest": cycle_digest,
+            "previousChainDigest": previous,
+        }
+        chain_digest = hashlib.sha256(canonical_json(chain_record).encode("utf-8")).hexdigest()
+        chained.append({
+            **core,
+            "sequenceIndex": index,
+            "previousChainDigest": previous,
+            "cycleDigest": cycle_digest,
+            "chainDigest": chain_digest,
+        })
+        previous = chain_digest
+    timeline = {
+        "version": 1,
+        "algorithm": "sha256-canonical-json-v1",
+        "cycleCount": len(chained),
+        "firstTick": chained[0]["tick"] if chained else None,
+        "lastTick": chained[-1]["tick"] if chained else None,
+        "headDigest": previous,
+    }
+    return chained, timeline
+
+
 def make_bundle() -> dict:
+    cycles, timeline = chain_cycles([make_cycle(1), make_cycle(2, "plan")])
     bundle = {
         "schemaVersion": SCHEMA_VERSION,
         "exportedAtMs": 1700000000000,
         "eventWindow": {"limit": 256, "total": 21, "buffered": 21, "exportedOperationalEvents": 21, "oldestTick": 1, "newestTick": 2},
-        "cycles": [make_cycle(1), make_cycle(2, "plan")],
+        "cycles": cycles,
+        "timeline": timeline,
         "realityEvidence": {
             "total": 3, "observedRecent": 3,
             "classes": {"external-observation": 1, "device-observation": 1, "simulator": 1, "derived": 0, "model-generated": 0, "user-reported": 0},
@@ -89,6 +124,59 @@ class EvidenceScoringTests(unittest.TestCase):
         record["realityEvidence"]["externalIndependentSources"] = 4
         self.assertFalse(score_reality_ledger(record)["passed"])
 
+    def test_timeline_verifies_ordered_hash_chain(self):
+        bundle = make_bundle()
+        result = score_timeline({
+            "kind": "evidence-timeline",
+            "timeline": bundle["timeline"],
+            "cycles": bundle["cycles"],
+        })
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["cycleCount"], 2)
+        self.assertEqual(result["firstTick"], 1)
+        self.assertEqual(result["lastTick"], 2)
+
+    def test_reordered_cycles_fail_even_after_outer_digest_recomputed(self):
+        bundle = make_bundle()
+        bundle["cycles"].reverse()
+        bundle["bundleDigest"] = bundle_digest(bundle)
+        with self.assertRaisesRegex(ValueError, "timeline sequence invalid"):
+            validate_bundle(bundle)
+
+    def test_duplicate_event_id_across_ticks_fails_closed(self):
+        bundle = make_bundle()
+        duplicate = dict(bundle["cycles"][1]["events"][0])
+        duplicate["idDigest"] = bundle["cycles"][0]["events"][0]["idDigest"]
+        bundle["cycles"][1]["events"][0] = duplicate
+        bundle["cycles"], bundle["timeline"] = chain_cycles(bundle["cycles"])
+        bundle["eventWindow"]["exportedOperationalEvents"] = sum(len(c["events"]) for c in bundle["cycles"])
+        bundle["bundleDigest"] = bundle_digest(bundle)
+        with self.assertRaisesRegex(ValueError, "timeline sequence invalid"):
+            validate_bundle(bundle)
+
+    def test_cycle_payload_tampering_fails_after_outer_digest_recomputed(self):
+        bundle = make_bundle()
+        bundle["cycles"][0]["events"][0]["confidenceBps"] = 1
+        bundle["bundleDigest"] = bundle_digest(bundle)
+        with self.assertRaisesRegex(ValueError, "timeline sequence invalid"):
+            validate_bundle(bundle)
+
+    def test_future_parent_reference_fails_closed(self):
+        bundle = make_bundle()
+        later_id = bundle["cycles"][1]["events"][0]["idDigest"]
+        bundle["cycles"][0]["events"][0]["parentIdDigests"].append(later_id)
+        bundle["cycles"], bundle["timeline"] = chain_cycles(bundle["cycles"])
+        bundle["bundleDigest"] = bundle_digest(bundle)
+        with self.assertRaisesRegex(ValueError, "timeline sequence invalid"):
+            validate_bundle(bundle)
+
+    def test_event_window_count_mismatch_fails_closed(self):
+        bundle = make_bundle()
+        bundle["eventWindow"]["exportedOperationalEvents"] -= 1
+        bundle["bundleDigest"] = bundle_digest(bundle)
+        with self.assertRaisesRegex(ValueError, "event window exported count"):
+            validate_bundle(bundle)
+
     def test_bundle_digest_rejects_tampering(self):
         bundle = make_bundle()
         validate_bundle(bundle)
@@ -103,8 +191,9 @@ class EvidenceScoringTests(unittest.TestCase):
             source.write_text(json.dumps(make_bundle()), encoding="utf-8")
             result = export_bundle(source, destination)
             rows = [json.loads(line) for line in destination.read_text(encoding="utf-8").splitlines()]
-            self.assertEqual(result["samples"], 3)
-            self.assertEqual(len(rows), 3)
+            self.assertEqual(result["samples"], 4)
+            self.assertEqual(len(rows), 4)
+            self.assertEqual(rows[0]["id"], "evidence-timeline")
             self.assertEqual(rows[-1]["id"], "reality-ledger-accounting")
 
 
