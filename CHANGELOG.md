@@ -1,8 +1,8 @@
 ## [NK1][Memory] Harden snapshot restore identity and quarantine conflicting duplicates (WorkPass81, 2026-10-31)
 
 - Normalize persisted MemoryOS2 rows before rebuilding indexes; reject malformed identity/content/kind rows and bound serialized strings, context, links, vectors and counters.
-- Resolve duplicate IDs deterministically by current validity and revision authority, independent of snapshot array order.
-- Quarantine equally-ranked conflicting payloads rather than selecting a disputed fact; quarantined rows are excluded from current factual recall.
+- Preserve NK1's strict identity rule: drop every copy of a duplicated memory ID, independent of snapshot order, because choosing one would leave references ambiguous.
+- Keep duplicate-ID and blank-ID loss visible through durable restore findings and the read-only doctor; never promote a disputed duplicate into recall.
 - Rebind content hashes, validate and normalize embeddings, close malformed non-null expiries, and downgrade facts with invalid source/confidence to unknown.
 - Expose bounded restore diagnostics and surface lossy repairs through the existing read-only memory doctor.
 - Preserve the current revision-graph reconciliation and persisted revision-integrity findings; no second memory owner or live memory mutation was introduced.
