@@ -70,21 +70,30 @@ export function parseVrmHumanoidNodeMap(extensions: unknown, nodeCount: number):
     if (!isRecord(humanoid) || !isRecord(humanoid.humanBones)) {
       return invalid("vrmc-vrm-human-bones-map-is-missing", version);
     }
+    if (Object.keys(humanoid.humanBones).length > MAX_GLTF_NODES) {
+      return invalid("vrm-humanoid-entry-count-exceeds-limit", version);
+    }
     entries = Object.entries(humanoid.humanBones);
   } else {
     const humanoid = extension.humanoid;
     if (!isRecord(humanoid) || !Array.isArray(humanoid.humanBones)) {
       return invalid("legacy-vrm-human-bones-array-is-missing", version);
     }
+    if (humanoid.humanBones.length > MAX_GLTF_NODES) {
+      return invalid("vrm-humanoid-entry-count-exceeds-limit", version);
+    }
     const legacyEntries: [string, unknown][] = [];
+    const legacyRoleNames = new Set<string>();
     for (const item of humanoid.humanBones) {
       if (!isRecord(item) || typeof item.bone !== "string") {
         return invalid("legacy-vrm-human-bone-entry-is-malformed", version);
       }
       const boneName = item.bone;
-      if (legacyEntries.some(([bone]) => bone.toLowerCase() === boneName.toLowerCase())) {
+      const normalizedBoneName = boneName.toLowerCase();
+      if (legacyRoleNames.has(normalizedBoneName)) {
         return invalid("duplicate-legacy-vrm-humanoid-role", version);
       }
+      legacyRoleNames.add(normalizedBoneName);
       legacyEntries.push([boneName, { node: item.node }]);
     }
     entries = legacyEntries;
