@@ -55,13 +55,22 @@ export function deriveAffectiveBodyLanguage(i: AffectiveBodyLanguageInput): Affe
   gazeEngagement:clamp(.38+social*.22+speak*.1+d*.08+e.gaze+a.gaze-guard*.22-(1-awake)*.55,0,1)
  };
 }
-/** Frame-rate independent smoothing for renderer cues, not semantic motor goals. */
+/** Per-channel attack/release constants (ms); activation is brisk, relaxation is deliberately softer. */
+const TEMPORAL: Record<typeof KEYS[number], { attack:number; release:number }> = {
+ torsoLean:{attack:105,release:235}, torsoRoll:{attack:115,release:245}, weightShift:{attack:145,release:310},
+ shoulderTension:{attack:125,release:360}, armOpenness:{attack:135,release:290}, gestureAmplitude:{attack:78,release:255},
+ movementTempo:{attack:100,release:225}, stillness:{attack:185,release:320}, postureStability:{attack:160,release:285},
+ headTiltBias:{attack:120,release:250}, gazeEngagement:{attack:85,release:210}
+};
+/** Frame-rate independent, per-channel asymmetric smoothing for renderer cues, not semantic motor goals. */
 export function smoothAffectiveBodyLanguage(previous:AffectiveBodyLanguage|null,next:AffectiveBodyLanguage,deltaMs:number):AffectiveBodyLanguage {
  if(!previous||!Number.isFinite(deltaMs)||deltaMs<=0) return {...next};
  const dt=clamp(deltaMs,0,1000), out={} as AffectiveBodyLanguage;
  for(const key of KEYS) {
   const [lo,hi]=RANGE[key], from=clamp(previous[key],lo,hi), to=clamp(next[key],lo,hi);
-  const tau=Math.abs(to)>Math.abs(from)?95:175, alpha=1-Math.exp(-dt/tau);
+  const activation=Math.abs(to)>Math.abs(from)+1e-6 || (Math.sign(to)!==Math.sign(from)&&Math.abs(to)>1e-4);
+  const tau=activation?TEMPORAL[key].attack:TEMPORAL[key].release;
+  const alpha=1-Math.exp(-dt/tau);
   out[key]=clamp(from+(to-from)*alpha,lo,hi);
  }
  return out;
