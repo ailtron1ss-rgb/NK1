@@ -54,6 +54,10 @@ assert.equal(corrected.accepted, true);
 assert.equal(corrected.status, 'confirmed');
 assert.equal(corrected.claim.value, 'detailed');
 assert.equal(corrected.claim.contradictions, 0);
+assert.equal(model.confirmedValue('reply.detail', 'interaction-style'), 'detailed');
+assert.equal(model.decisionContext().disputedClaims.length, 0);
+assert.equal(model.decisionContext().confirmedClaims.some(x => x.key === 'reply.detail'), true);
+assert.equal(model.decisionContext().hypotheses.every(x => x.status === 'unconfirmed-candidate'), true);
 
 const restored = new UserModelEvidenceModel();
 restored.restore(model.snapshot());
