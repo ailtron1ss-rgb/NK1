@@ -139,7 +139,16 @@ export function validateMotorRigProfile(raw: unknown): MotorRigValidation {
     const targetKey = b.targetKind + ":" + b.targetId + ":" + b.component;
     if (targets.has(targetKey)) return fail("renderer-target-channel-duplicate", joints.length);
     if (![b.scale,b.offset,b.minValue,b.maxValue].every((n) => typeof n === "number" && Number.isFinite(n))
-      || Math.abs(b.scale) < 0.000001 || Math.abs(b.scale) > 1000 || b.minValue >= b.maxValue) return fail("renderer-binding-range-invalid", joints.length);
+      || Math.abs(b.scale) < 0.000001 || Math.abs(b.scale) > 1000 || Math.abs(b.offset) > 100 || b.minValue >= b.maxValue) return fail("renderer-binding-range-invalid", joints.length);
+    if (renderer === "live2d") {
+      if (!/^Param[A-Za-z0-9_]{1,56}$/.test(b.targetId)) return fail("live2d-target-id-invalid", joints.length);
+      if (b.minValue < -100 || b.maxValue > 100) return fail("renderer-binding-output-range-invalid", joints.length);
+    } else if (renderer === "depth2d") {
+      const outputLimit = b.component === "rotation" ? 90 : b.component === "z" ? 10 : 2;
+      if (b.minValue < -outputLimit || b.maxValue > outputLimit) return fail("renderer-binding-output-range-invalid", joints.length);
+    } else if (b.minValue < -Math.PI * 2 || b.maxValue > Math.PI * 2) {
+      return fail("renderer-binding-output-range-invalid", joints.length);
+    }
     if (typeof b.requiredInFrame !== "boolean" || !["direct","approximate"].includes(b.fidelity)) return fail("renderer-binding-policy-invalid", joints.length);
     if (renderer === "live2d" && b.fidelity !== "approximate") return fail("live2d-binding-must-be-approximate", joints.length);
     targets.add(targetKey); roles.add(j.role); byId.set(j.id,j);
