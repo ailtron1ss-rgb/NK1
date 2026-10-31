@@ -605,7 +605,7 @@ async function route(req, res) {
             res.on('close', cleanup);
             req.on('aborted', cleanup);
             const initialDiagnostics = runtime.motor.diagnostics();
-            write(`event: motor-frame-status\ndata: ${JSON.stringify({ configured: initialDiagnostics.configured, hasFrame: initialDiagnostics.channel.hasLatest, requestedRenderer, registeredProfiles: initialDiagnostics.registeredProfiles })}\n\n`);
+            write(`event: motor-frame-status\ndata: ${JSON.stringify({ configured: initialDiagnostics.configured, hasFrame: initialDiagnostics.channel.hasLatest, requestedRenderer, requestedModelId, registeredProfiles: initialDiagnostics.registeredProfiles })}\n\n`);
             unsubscribe = runtime.motor.subscribe(publish, true);
             return;
         }
