@@ -85,3 +85,38 @@ test("reports matching calibrated profiles from the initial SSE status without f
   }), "depth2d", "kurisu-depth-rig");
   assert.equal(missing.state, "unmapped");
 });
+
+function live2dEnvelope(overrides = {}) {
+  const cubismCommand = {
+    jointId: "head.yaw", role: "head.yaw", targetId: "ParamAngleX",
+    targetKind: "cubism-parameter", component: "value", value: 12,
+    valueUnit: "parameter", fidelity: "approximate", clamped: false,
+  };
+  return JSON.stringify({
+    ok: true, configured: true, readOnly: true,
+    frame: { version: 1, tick: 8, atMs: 400, phase: "moving", joints: {} },
+    rendererCommands: {
+      ok: true, reason: "renderer-command-batch-ready",
+      batch: {
+        version: 1, profileId: "kurisu.live2d.v1", modelId: "kurisu-live2d-balanced-v1",
+        renderer: "live2d", frameTick: 8, frameAtMs: 400, goalId: "gaze",
+        commands: [cubismCommand], unmappedFrameJointIds: [], clampedJointIds: [],
+      },
+    },
+    ...overrides,
+  });
+}
+
+test("accepts only an allow-listed, model-bound Cubism parameter MotorFrame", () => {
+  const accepted = parseMotorFrameEnvelope(live2dEnvelope(), "live2d", "kurisu-live2d-balanced-v1");
+  assert.equal(accepted.state, "ready");
+  assert.equal(accepted.batch.commands[0].targetId, "ParamAngleX");
+  assert.equal(accepted.batch.commands[0].valueUnit, "parameter");
+  const invalidTarget = JSON.parse(live2dEnvelope());
+  invalidTarget.rendererCommands.batch.commands[0].targetId = "window.location";
+  assert.equal(parseMotorFrameEnvelope(JSON.stringify(invalidTarget), "live2d", "kurisu-live2d-balanced-v1").state, "invalid");
+  const invalidRange = JSON.parse(live2dEnvelope());
+  invalidRange.rendererCommands.batch.commands[0].value = 101;
+  assert.equal(parseMotorFrameEnvelope(JSON.stringify(invalidRange), "live2d", "kurisu-live2d-balanced-v1").state, "invalid");
+  assert.equal(parseMotorFrameEnvelope(live2dEnvelope(), "live2d", "kurisu-live2d-mobile-v1").state, "invalid");
+});
