@@ -523,6 +523,17 @@ async function route(req, res) {
         if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame/stream') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const requestedRenderer = url.searchParams.get('renderer');
+            const requestedModelId = url.searchParams.get('modelId');
+            if (requestedRenderer !== null && !['live2d', 'depth2d', 'vrm3d'].includes(requestedRenderer))
+                return json(res, 400, { ok: false, error: 'invalid-motor-renderer' });
+            if (requestedRenderer === null && requestedModelId !== null)
+                return json(res, 400, { ok: false, error: 'motor-model-requires-renderer' });
+            if (requestedModelId !== null && !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(requestedModelId))
+                return json(res, 400, { ok: false, error: 'invalid-motor-model-id' });
+            const projectRendererCommands = (frame) => requestedRenderer === null
+                ? null
+                : runtime.motor.rendererCommandsForFrame(frame, requestedRenderer, requestedModelId ?? undefined);
             res.writeHead(200, {
                 'content-type': 'text/event-stream; charset=utf-8',
                 'cache-control': 'no-cache, no-transform',
@@ -540,7 +551,9 @@ async function route(req, res) {
                     ok: true,
                     configured: diagnostics.configured,
                     frame,
+                    rendererCommands: projectRendererCommands(frame),
                     diagnostics: {
+                        registeredProfiles: diagnostics.registeredProfiles,
                         controllerTick: diagnostics.controllerTick,
                         activeGoalId: diagnostics.activeGoalId,
                         continuousLoopRunning: diagnostics.continuousLoopRunning,
@@ -592,19 +605,32 @@ async function route(req, res) {
             res.on('close', cleanup);
             req.on('aborted', cleanup);
             const initialDiagnostics = runtime.motor.diagnostics();
-            write(`event: motor-frame-status\ndata: ${JSON.stringify({ configured: initialDiagnostics.configured, hasFrame: initialDiagnostics.channel.hasLatest })}\n\n`);
+            write(`event: motor-frame-status\ndata: ${JSON.stringify({ configured: initialDiagnostics.configured, hasFrame: initialDiagnostics.channel.hasLatest, requestedRenderer, registeredProfiles: initialDiagnostics.registeredProfiles })}\n\n`);
             unsubscribe = runtime.motor.subscribe(publish, true);
             return;
         }
         if (req.method === 'GET' && url.pathname === '/api/organism/motor-frame') {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const requestedRenderer = url.searchParams.get('renderer');
+            const requestedModelId = url.searchParams.get('modelId');
+            if (requestedRenderer !== null && !['live2d', 'depth2d', 'vrm3d'].includes(requestedRenderer))
+                return json(res, 400, { ok: false, error: 'invalid-motor-renderer' });
+            if (requestedRenderer === null && requestedModelId !== null)
+                return json(res, 400, { ok: false, error: 'motor-model-requires-renderer' });
+            if (requestedModelId !== null && !/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(requestedModelId))
+                return json(res, 400, { ok: false, error: 'invalid-motor-model-id' });
             const diagnostics = runtime.motor.diagnostics();
+            const frame = runtime.motor.latestFrame();
             return json(res, 200, {
                 ok: true,
                 configured: diagnostics.configured,
-                frame: runtime.motor.latestFrame(),
+                frame,
+                rendererCommands: frame && requestedRenderer !== null
+                    ? runtime.motor.rendererCommandsForFrame(frame, requestedRenderer, requestedModelId ?? undefined)
+                    : null,
                 diagnostics: {
+                    registeredProfiles: diagnostics.registeredProfiles,
                     controllerTick: diagnostics.controllerTick,
                     activeGoalId: diagnostics.activeGoalId,
                     continuousLoopRunning: diagnostics.continuousLoopRunning,
