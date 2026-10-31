@@ -180,7 +180,3 @@ export function applyCalibratedVrmArmGesture(
   return result;
 }
 
-function requireVrmPoseApplier(): typeof import("./vrmHumanoidRigAdapter") {
-  return poseAdapter;
-}
-import * as poseAdapter from "./vrmHumanoidRigAdapter";
