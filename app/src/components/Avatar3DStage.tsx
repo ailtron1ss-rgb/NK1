@@ -2,6 +2,7 @@ import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "reac
 import type { ActionKind, EmotionLabel } from "@/organism/types";
 import type { MouthPose } from "./avatar/embodimentTimeline";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { preflightAvatarGlb } from "./avatar/avatarGlbPreflight";
 import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
 import * as THREE from "three";
 import { resolveVrmArm } from "./avatar/vrmHumanoidRigAdapter";
@@ -60,7 +61,20 @@ export function Avatar3DStage(props:Props){
   if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){setState("error");setMessage("Файл должен быть непустым и не больше 90 МБ.");return;}
   const rt=runtime.current;if(!rt){setState("error");setMessage("3D-сцена ещё запускается; повторите загрузку.");return;}
   const token=++loadToken.current;setState("loading");setMessage("Загрузка локальной модели…");
-  try{const data=await blob.arrayBuffer();if(token!==loadToken.current)return;const fingerprint=await fingerprintAvatarModel(data);if(token!==loadToken.current)return;setModelFingerprint(fingerprint??"");new GLTFLoader().parse(data,"",(gltf:any)=>{
+  try{const data=await blob.arrayBuffer();if(token!==loadToken.current)return;
+  const preflight=preflightAvatarGlb(data);
+  if(!preflight.ok){
+    setState("error");
+    setMessage("GLB preflight отклонил модель до Three.js: "+preflight.reason+(preflight.detail?": "+preflight.detail:""));
+    setModelFingerprint("");
+    if(latest.current.switchExecutionId)latest.current.onRendererSignal?.({
+      kind:"failed",adapterId:latest.current.bodyMode==="2.5d"?"nk1-depth-rig-scene-v1":"nk1-three-scene-v1",
+      executionId:latest.current.switchExecutionId,stateRevision:latest.current.switchStateRevision??0,
+      reason:"glb-preflight:"+preflight.reason,
+    });
+    return;
+  }
+  const fingerprint=await fingerprintAvatarModel(data);if(token!==loadToken.current)return;setModelFingerprint(fingerprint??"");new GLTFLoader().parse(data,"",(gltf:any)=>{
    if(token!==loadToken.current||runtime.current!==rt){disposeTree(gltf.scene);return;}
    try{const root=gltf.scene;if(!root)throw new Error("В файле нет glTF-сцены.");const rawDepthRig=root.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY];const preparation=rawDepthRig===undefined?null:prepareDepthRigSceneV1(root,rawDepthRig);if(rawDepthRig!==undefined&&(!preparation?.ok||!preparation.prepared))throw new Error("Невалидный 2.5D rig: "+(preparation?.errors.join(", ")||"unknown validation error"));if(latest.current.bodyMode==="2.5d"&&!preparation?.prepared)throw new Error("Для 2.5D нужен авторский GLB с nk1DepthRigAssetV1 и точной parent-иерархией.");const activeDepthRig=latest.current.bodyMode==="2.5d"?preparation?.prepared??null:null;const rawMotorModelId=root.userData?.nk1MotorModelId;const declaredMotorModelId=typeof rawMotorModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawMotorModelId)?rawMotorModelId:null;const nextMotorModelId=activeDepthRig?.asset.rig.id??declaredMotorModelId;const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
     if(rt.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.loaded=root;rt.scene.add(root);rt.body.root.visible=false;rt.depthRigScene=activeDepthRig;rt.depthRigFrame=0;rt.motorFrameTick=-1;setMotorModelId(nextMotorModelId);setMotorFrameBatch(null);setMotorFrameProjection(nextMotorModelId?"waiting":"unmapped");rt.bones=bonesOf(root);rt.clips=Array.isArray(gltf.animations)?gltf.animations:[];rt.mixer=rt.clips.length&&!activeDepthRig?new THREE.AnimationMixer(root):null;rt.clipName="";setModelName(name);setState("loaded");const rigBones=rt.bones.map((bone)=>({name:bone.name,rotation:bone.node.rotation}));const leftArmRig=resolveVrmArm(rigBones,"left"),rightArmRig=resolveVrmArm(rigBones,"right");setMessage(activeDepthRig?"2.5D rig загружен. Scene readback доступен; представленный GPU-кадр отдельно не подтверждён.":rt.bones.length?`Модель загружена; найденные цепи рук: ${leftArmRig?"левая":""}${leftArmRig&&rightArmRig?" и ":""}${rightArmRig?"правая":""}${!leftArmRig&&!rightArmRig?"не распознаны":""}. Поза IK пока рассчитывается отдельно и не применяется к костям.`:"Геометрия загружена; скелет не найден, поэтому движения тела ограничены.");
