@@ -2,7 +2,7 @@ const MAX_WAV_BYTES = 2_000_044;
 const MAX_WAV_DURATION_SECONDS = 60;
 const MAX_TRANSCRIPT_CHARS = 12_000;
 const MAX_SEGMENTS = 512;
-const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "[::1]"]);
 
 function providerError(code, status = 503) {
   const error = new Error(code);
