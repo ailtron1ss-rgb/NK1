@@ -40,6 +40,7 @@ function intent(overrides = {}) {
     gaze: { x: 0.1, y: -0.1, driven: true },
     body: { headTilt: 0.02, gesture: true, motionGroup: "Special", motionIndex: 1, motionToken: 17 },
     voiceEmphasis: 0.3,
+    affect: { label: "curiosity", valence01: 0.6, arousal01: 0.5, dominance01: 0.55 },
     ...overrides,
   };
 }
@@ -139,6 +140,8 @@ test("the intent envelope requires a speech identity and audio clock while speak
   assert.equal(isEmbodimentIntentV1(intent({ speechPhase: "speaking", speechEventId: null })), false);
   assert.equal(isEmbodimentIntentV1(intent({ audioTimeMs: Number.NaN })), false);
   assert.equal(isEmbodimentIntentV1(intent({ mouth: { open: 2, form: 0, viseme: "wide" } })), false, "the shared protocol rejects out-of-range values before rendering");
+  assert.equal(isEmbodimentIntentV1(intent({ affect: { label: "unknown", valence01: 0.5, arousal01: 0.5, dominance01: 0.5 } })), false, "unknown affect labels fail closed");
+  assert.equal(isEmbodimentIntentV1(intent({ affect: { label: "joy", valence01: 1.1, arousal01: 0.5, dominance01: 0.5 } })), false, "affect channels are bounded before rendering");
 });
 
 test("AvatarStage publishes one versioned embodiment intent and rejects stale utterance callbacks", async () => {
@@ -163,7 +166,7 @@ test("AvatarStage publishes one versioned embodiment intent and rejects stale ut
 test("versioned EmbodimentIntent JSON schema is present and pins all synchronized channels", async () => {
   const schema = JSON.parse(await readFile(join(root, "../contracts/embodiment-intent.v1.schema.json"), "utf8"));
   assert.equal(schema.properties.protocolVersion.const, 1);
-  for (const key of ["stateVersion", "speechEventId", "audioClockId", "speechPhase", "audioTimeMs", "priority", "cancellationToken", "expression", "mouth", "gaze", "body", "voiceEmphasis"]) {
+  for (const key of ["stateVersion", "speechEventId", "audioClockId", "speechPhase", "audioTimeMs", "priority", "cancellationToken", "expression", "mouth", "gaze", "body", "voiceEmphasis", "affect"]) {
     assert.ok(schema.required.includes(key), `schema must require ${key}`);
   }
 });
