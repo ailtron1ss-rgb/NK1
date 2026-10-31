@@ -15,7 +15,7 @@ export type HumanoidRole =
   | "rightShoulder" | "rightUpperArm" | "rightLowerArm" | "rightHand"
   | "leftUpperLeg" | "leftLowerLeg" | "leftFoot" | "leftToes"
   | "rightUpperLeg" | "rightLowerLeg" | "rightFoot" | "rightToes"
-  | "leftEye" | "rightEye"
+  | "leftEye" | "rightEye" | "jaw"
   | `left${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`
   | `right${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`;
 
@@ -23,6 +23,8 @@ export interface HumanoidNodeLike {
   readonly name?: string;
   readonly parent?: HumanoidNodeLike | null;
   readonly isBone?: boolean;
+  /** Semantic role assigned by a validated VRM extension node index. */
+  readonly humanoidRole?: HumanoidRole;
 }
 export interface HumanoidRigCapabilities {
   readonly torso: boolean;
@@ -38,9 +40,15 @@ export interface HumanoidRigCapabilities {
   readonly locomotionSkeleton: boolean;
   readonly fullBodyHumanoid: boolean;
 }
+export interface HumanoidRigAuditOptions {
+  /** When present, explicit VRM node bindings are authoritative; do not fall back to names. */
+  readonly vrmVersion?: "0.x" | "1.0";
+  readonly allowNameHeuristic?: boolean;
+  readonly mappingWarnings?: readonly string[];
+}
 export interface HumanoidRigAudit {
   readonly schemaVersion: 1;
-  readonly mappingMethod: "conservative-name-heuristic";
+  readonly mappingMethod: "conservative-name-heuristic" | "explicit-vrm-0.x" | "explicit-vrm-1.0";
   readonly nodes: Readonly<Partial<Record<HumanoidRole, HumanoidNodeLike>>>;
   readonly missingRequired: readonly HumanoidRole[];
   readonly ambiguous: readonly HumanoidRole[];
@@ -70,7 +78,7 @@ const baseAliases: readonly (readonly [HumanoidRole, readonly string[]])[] = [
   ["rightUpperLeg", ["rightupperleg", "upperlegr", "rightupleg", "thighr"]],
   ["rightLowerLeg", ["rightlowerleg", "rightleg", "lowerlegr", "calfr"]],
   ["rightFoot", ["rightfoot", "footr"]], ["rightToes", ["righttoes", "toesr", "righttoe"]],
-  ["leftEye", ["lefteye", "eyel"]], ["rightEye", ["righteye", "eyer"]],
+  ["leftEye", ["lefteye", "eyel"]], ["rightEye", ["righteye", "eyer"]], ["jaw", ["jaw"]],
 ];
 for (const [role, names] of baseAliases) aliases.set(role, names);
 for (const side of ["left", "right"] as const) {
@@ -85,6 +93,9 @@ for (const side of ["left", "right"] as const) {
   }
 }
 const roles = Array.from(aliases.keys());
+export function isHumanoidRole(value: unknown): value is HumanoidRole {
+  return typeof value === "string" && aliases.has(value as HumanoidRole);
+}
 const required: readonly HumanoidRole[] = [
   "hips", "spine", "head",
   "leftUpperArm", "leftLowerArm", "leftHand",
@@ -124,23 +135,43 @@ function hasParentCycles(nodes: readonly HumanoidNodeLike[]): boolean {
   return false;
 }
 
-/** Resolve only unique explicit bone names and a connected humanoid hierarchy. */
-export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRigAudit {
+/** Resolve explicit VRM node bindings first; otherwise use a conservative Bone-name fallback. */
+export function auditHumanoidRig(
+  input: readonly HumanoidNodeLike[],
+  options: HumanoidRigAuditOptions = {},
+): HumanoidRigAudit {
   if (!Array.isArray(input)) throw new TypeError("humanoid-rig-input-must-be-an-array");
   if (input.length > MAX_HUMANOID_AUDIT_NODES) throw new RangeError("humanoid-rig-node-limit-exceeded");
-  const namedNodes = Array.from(new Set(input.filter(
-    (node) => node && typeof node.name === "string" && node.name.trim().length > 0,
+  const sceneNodes = Array.from(new Set(input.filter(
+    (node) => node && typeof node === "object" && (
+      (typeof node.name === "string" && node.name.trim().length > 0)
+      || node.isBone === true || isHumanoidRole(node.humanoidRole)
+    ),
   )));
-  const boneNodes = namedNodes.filter((node) => node.isBone === true);
-  const normalizedBones = boneNodes.map((node) => ({ node, name: normalize(node.name!) }));
-  const normalizedNonBones = namedNodes
-    .filter((node) => node.isBone !== true)
+  const boneNodes = sceneNodes.filter((node) => node.isBone === true);
+  const explicitNodes = sceneNodes.filter((node) => isHumanoidRole(node.humanoidRole));
+  const namedBones = boneNodes.filter((node) => typeof node.name === "string" && node.name.trim().length > 0);
+  const normalizedBones = namedBones.map((node) => ({ node, name: normalize(node.name!) }));
+  const normalizedNonBones = sceneNodes
+    .filter((node) => node.isBone !== true && !isHumanoidRole(node.humanoidRole)
+      && typeof node.name === "string" && node.name.trim().length > 0)
     .map((node) => ({ node, name: normalize(node.name!) }));
+  const allowNameHeuristic = options.allowNameHeuristic !== false && !options.vrmVersion;
 
   const nodes: Partial<Record<HumanoidRole, HumanoidNodeLike>> = {};
   const ambiguous: HumanoidRole[] = [];
   const nonBoneMatches: HumanoidRole[] = [];
   for (const role of roles) {
+    const explicitMatches = explicitNodes.filter((node) => node.humanoidRole === role);
+    if (explicitMatches.length === 1) {
+      nodes[role] = explicitMatches[0];
+      continue;
+    }
+    if (explicitMatches.length > 1) {
+      ambiguous.push(role);
+      continue;
+    }
+    if (!allowNameHeuristic) continue;
     const boneMatches = normalizedBones.filter(({ name }) => (aliases.get(role) ?? []).some((alias) => name === normalize(alias)));
     const nonBoneRoleMatches = normalizedNonBones.filter(({ name }) => (aliases.get(role) ?? []).some((alias) => name === normalize(alias)));
     if (boneMatches.length === 1) nodes[role] = boneMatches[0].node;
@@ -148,7 +179,8 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
     else if (nonBoneRoleMatches.length > 0) nonBoneMatches.push(role);
   }
 
-  const missingRequired = required.filter((role) => !nodes[role]);
+  const requiredRoles = options.vrmVersion === "0.x" ? [...required, "chest", "neck"] as HumanoidRole[] : required;
+  const missingRequired = requiredRoles.filter((role) => !nodes[role]);
   const leftFingerCount = roles.filter((role) => role.startsWith("left") && /Thumb|Index|Middle|Ring|Little/.test(role) && !!nodes[role]).length;
   const rightFingerCount = roles.filter((role) => role.startsWith("right") && /Thumb|Index|Middle|Ring|Little/.test(role) && !!nodes[role]).length;
   const torso = !!nodes.hips && !!nodes.spine;
@@ -185,7 +217,7 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
   const brokenHierarchy = hierarchyPairs.filter(([ancestorRole, childRole]) =>
     nodes[ancestorRole] && nodes[childRole] && !isAncestor(nodes[ancestorRole]!, nodes[childRole]!),
   );
-  const parentCyclesDetected = hasParentCycles(boneNodes);
+  const parentCyclesDetected = hasParentCycles(sceneNodes.filter((node) => node.isBone === true || isHumanoidRole(node.humanoidRole)));
 
   const fingerHierarchyPairs: [HumanoidRole, HumanoidRole][] = [];
   let allFingerChainsMapped = true;
@@ -212,7 +244,10 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
   if (brokenHierarchy.length) warnings.push("Unexpected parent hierarchy: " + brokenHierarchy.map(([a, b]) => a + "→" + b).join(", ") + ".");
   if (parentCyclesDetected) warnings.push("Cyclic parent hierarchy detected; rig mapping is not trusted.");
   if (nonBoneMatches.length) warnings.push("Name matches excluded because those nodes are not bones: " + nonBoneMatches.join(", ") + ".");
-  if (namedNodes.length && boneNodes.length === 0) warnings.push("No nodes are explicitly marked as bones; name matching alone is not proof of a deforming skeleton.");
+  if (options.mappingWarnings?.length) warnings.push(...options.mappingWarnings);
+  if (!explicitNodes.length && sceneNodes.length && boneNodes.length === 0 && allowNameHeuristic) {
+    warnings.push("No nodes are explicitly marked as bones; name matching alone is not proof of a deforming skeleton.");
+  }
   if (!nodes.neck) warnings.push("Neck articulation is unavailable; head mapping may use the spine/chest fallback.");
   if (leftFingerCount !== 15 || rightFingerCount !== 15 || !allFingerChainsMapped || brokenFingerHierarchy.length) {
     warnings.push("Finger articulation is unavailable or its complete hand-to-tip hierarchy is not confirmed.");
@@ -228,7 +263,8 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
 
   return Object.freeze({
     schemaVersion: 1,
-    mappingMethod: "conservative-name-heuristic",
+    mappingMethod: options.vrmVersion === "0.x" ? "explicit-vrm-0.x"
+      : options.vrmVersion === "1.0" ? "explicit-vrm-1.0" : "conservative-name-heuristic",
     nodes: Object.freeze(nodes),
     missingRequired: Object.freeze(missingRequired),
     ambiguous: Object.freeze(ambiguous),
