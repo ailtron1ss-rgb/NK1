@@ -141,9 +141,25 @@ Preflight — защита от некорректных структур и ч�
 
 Публичные контракты: `contracts/avatar/vrm-calibration-bundle.v1.schema.json` и `contracts/avatar/asset-provenance-manifest.v1.schema.json`.
 
-UI импортирует/экспортирует только bundle. Обычный профиль без measurement session, профиль от другой модели, другой coordinate frame, другая bone hierarchy или неизвестная сторона отклоняются; VRM может остаться доступен как viewer, но IK остаётся выключенной. После успешной проверки semantic actions (respond/explore/verify/reflect и crossed-arms) преобразуются в 2-link IK и абсолютную pose относительно immutable bind pose; это предотвращает накопление Euler drift.
+UI импортирует/экспортирует только bundle. Обычный профиль без measurement session, профиль от другой модели, другого coordinate frame, другая bone hierarchy или неизвестная сторона отклоняются; VRM может остаться доступен как viewer, но IK остаётся выключенной. После успешной проверки semantic actions (respond/explore/verify/reflect и crossed-arms) преобразуются в 2-link IK и absolute pose относительно immutable bind pose; это предотвращает накопление Euler drift.
 
-**Граница доверия:** JSON bundle подтверждает согласованность и наличие заявленной fixture provenance, но сам по себе не доказывает, что физическое измерение действительно было честным. Для production нужен независимый reviewer, подписанный measurement receipt и проверка художественного/физического результата. Интерактивный capture known-angle fixture workflow в приложении пока не реализован: сессии могут быть созданы внешним измерительным процессом через API/sidecar; приложение валидирует и исполняет только готовый bundle.
+**Граница доверия:** JSON bundle подтверждает согласованность и наличие заявленной fixture provenance, но сам по себе не доказывает, что физическое измерение действительно было честным. Для production нужен независимый reviewer, подписанный measurement receipt и проверка художественного/физического результата. Capture known-angle fixture workflow в приложении пока не реализован: сессии создаются внешним измерительным процессом через API/sidecar; приложение валидирует и исполняет только готовый bundle.
+
+## Asset provenance и права на распространение
+
+Контракт: `contracts/avatar/asset-provenance-manifest.v1.schema.json`; runtime validator: `avatarAssetManifest.ts`.
+
+Manifest привязывает:
+
+- конкретные байты через `modelFingerprint`;
+- источник, автора и URL;
+- SPDX identifier, attribution и явный `redistributionPermitted`;
+- coordinate frame и unit;
+- Khronos report SHA-256/version;
+- NK1 preflight version/status;
+- опциональные digest калибровочного bundle и version DepthRig.
+
+Validator возвращает два независимых решения: `accepted` означает, что manifest совпал с моделью/рамкой/доказательствами; `releaseEligible` означает, что отдельно объявлено разрешение на распространение. Пользовательский импорт может быть валиден для локального просмотра, но при `redistributionPermitted=false` запрещён для включения в публичный Release ZIP. Наличие SPDX string не заменяет прочтение текста лицензии и проверку прав.
 
 
 ## Рекомендуемый workflow для художника/инженера
