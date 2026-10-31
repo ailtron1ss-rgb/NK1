@@ -314,12 +314,17 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
  const byId=new Map(unique.map(item=>[item.id,item]));
  const sameLineage=(a:MemoryItem2,b:MemoryItem2)=>String(a.revisionGroupId??a.id)===String(b.revisionGroupId??b.id);
  const forward=(parent:MemoryItem2,child:MemoryItem2)=>{
-  const parentSequence=Number(parent.revisionSequence),childSequence=Number(child.revisionSequence);
-  const parentFrom=Number(parent.validFromAt),childFrom=Number(child.validFromAt);
+  const parentSequence=parent.revisionSequence;
+  const childSequence=child.revisionSequence;
+  const parentValidFrom=parent.validFromAt;
+  const childValidFrom=child.validFromAt;
   return parent.id!==child.id&&sameLineage(parent,child)&&
-   Number.isSafeInteger(parentSequence)&&Number.isSafeInteger(childSequence)&&
+   typeof parentSequence==='number'&&Number.isSafeInteger(parentSequence)&&
+   typeof childSequence==='number'&&Number.isSafeInteger(childSequence)&&
    parentSequence>=1&&childSequence>parentSequence&&
-   Number.isFinite(parentFrom)&&Number.isFinite(childFrom)&&childFrom>parentFrom;
+   typeof parentValidFrom==='number'&&Number.isFinite(parentValidFrom)&&
+   typeof childValidFrom==='number'&&Number.isFinite(childValidFrom)&&
+   childValidFrom>parentValidFrom;
  };
  for(const child of unique){
   const parentId=child.supersedesId;
@@ -328,9 +333,14 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
    if(!parent||parent.supersededById!==child.id||!forward(parent,child)){
     child.supersedesId=null;
     if(parent?.supersededById===child.id)parent.supersededById=null;
-   }else if(parent.validUntilAt==null||parent.validUntilAt>Number(child.validFromAt)){
-    // A reciprocal, monotonic successor is sufficient to repair a lost interval end.
-    parent.validUntilAt=Number(child.validFromAt);
+   }else{
+    const childValidFrom=child.validFromAt;
+    const parentValidUntil=parent.validUntilAt;
+    if(typeof childValidFrom==='number'&&Number.isFinite(childValidFrom)&&
+       (parentValidUntil==null||parentValidUntil>childValidFrom)){
+     // A reciprocal, monotonic successor is sufficient to repair a lost interval end.
+     parent.validUntilAt=childValidFrom;
+    }
    }
   }
   const childId=child.supersededById;
@@ -339,8 +349,13 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
    if(!successor||successor.supersedesId!==child.id||!forward(child,successor)){
     child.supersededById=null;
     if(successor?.supersedesId===child.id)successor.supersedesId=null;
-   }else if(child.validUntilAt==null||child.validUntilAt>Number(successor.validFromAt)){
-    child.validUntilAt=Number(successor.validFromAt);
+   }else{
+    const successorValidFrom=successor.validFromAt;
+    const childValidUntil=child.validUntilAt;
+    if(typeof successorValidFrom==='number'&&Number.isFinite(successorValidFrom)&&
+       (childValidUntil==null||childValidUntil>successorValidFrom)){
+     child.validUntilAt=successorValidFrom;
+    }
    }
   }
  }
