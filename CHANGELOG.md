@@ -1,3 +1,12 @@
+## [NK1][Aspect12] Integrate standard VRM humanoid node maps (2026-10-31)
+
+- Add an authoritative VRM 1.0 `VRMC_vrm.humanoid.humanBones` and legacy VRM 0.x `VRM.humanoid.humanBones` parser. Bind roles by glTF node index through Three.js GLTFLoader parser associations, not by assuming every humanoid node is a `THREE.Bone`.
+- Integrate the parsed node map into `Avatar3DStage`. A valid extension is authoritative; a present but malformed extension blocks name-based fallback. Generic GLB without VRM metadata retains the conservative explicit-Bone name audit.
+- Keep unnamed intermediary scene nodes in explicit VRM hierarchy analysis. Apply version-specific required roles: VRM 0.x requires chest and neck; VRM 1.0 does not.
+- Reject conflicting extensions, unsupported VRM 1.0 versions, malformed entries, duplicate humanoid roles/node indices, out-of-range indices and oversized glTF node tables. Report valid map entries that do not resolve into the active loaded scene.
+- Add 8 node-map regressions plus an Avatar3DStage integration regression; combine both audit suites in the dedicated CI test command.
+- This validates the extension mapping and scene ancestry only. It does not add VRM expression/spring-bone runtime, retargeting, calibration, IK/MotorFrame actuation or rendered/device evidence.
+
 ## [NK1][Aspect12] Fail-closed humanoid rig discovery (2026-10-31)
 
 - Restrict semantic role mapping to nodes explicitly marked as bones; ordinary scene objects with matching names are reported as rejected evidence and cannot create a humanoid capability.
