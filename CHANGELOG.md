@@ -1,3 +1,12 @@
+## [NK1][Embodiment] One MotorFrame across Live2D, 2.5D and VRM/3D (2026-10-31)
+
+- Integrated one organism-owned motor controller with a bounded registry of calibrated renderer/model profiles; profiles share the exact canonical skeleton and cannot replace or mutate the controller.
+- Added renderer/model-scoped read-only MotorFrame JSON/SSE projections and strict client validation of model identity, frame tick, target kind, units, duplicates and renderer output bounds.
+- Added Live2D mobile/balanced stable model IDs, Cubism Param* binding validation, model-update application and parameter readback ACK (visualCompletionVerified=false).
+- Connected calibrated MotorFrame channels to layered DepthRig poses and atomic VRM bone projection; no goal creation or secondary motor state is introduced in renderers.
+- Added server smoke coverage for invalid renderer/model selectors and fail-closed unconfigured state, plus app/runtime regression scripts and CI path coverage.
+- Preserved the distinction between parameter/scene readback and a genuinely presented GPU frame. No production model calibration or device/browser visual E2E is claimed by this integration.
+
 ## [NK1][Aspect 08] Isolate bounded-pattern regression fixture from code-policy classification (2026-10-31)
 
 - Rename the bounded-regex fixture field and tool ID to neutral `tag` / `catalog.regex-check` identifiers, keeping the test focused on bounded-quantifier behavior rather than a potentially policy-sensitive identifier.
