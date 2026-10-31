@@ -116,3 +116,14 @@ test("release-required exact-SHA checks run on every canonical source push", asy
     assert.match(pullRequestBlock, /^\s*paths:/m, file + ": pull-request path filters should remain scoped");
   }
 });
+
+ 
+test("release publisher starts only after exact-SHA core regression completes", async () => {
+  const source = await readFile(new URL("../.github/workflows/publish-workpass70-main-sync.yml", import.meta.url), "utf8");
+  const onBlock = /^on:\n([\s\S]*?)(?=^permissions:)/m.exec(source)?.[1] ?? "";
+  assert.match(onBlock, /^  workflow_run:/m, "publisher must be triggered by the completed core regression workflow");
+  assert.doesNotMatch(onBlock, /^  push:/m, "publisher must not race the core regression on an immediate source push");
+  assert.match(onBlock, /workflows:\s*\["NeuroCore core regression validation"\]/);
+  assert.match(source, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(source, /github\.event\.workflow_run\.head_branch == 'workpass70-source'/);
+});

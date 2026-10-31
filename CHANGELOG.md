@@ -1,3 +1,7 @@
+## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
+- Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
+- Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
+
 ## [NK1][Embodiment] Add official VRM runtime to the 3D body (2026-10-31)
 - Pin MIT-licensed @pixiv/three-vrm 3.5.5, compatible with the app's Three.js 0.180.0 line, including exact transitive lock metadata.
 - Register VRMLoaderPlugin on GLTFLoader; .vrm files must expose a parsed VRM extension or fail clearly, while ordinary .glb remains supported through the generic glTF path.
