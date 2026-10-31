@@ -157,7 +157,7 @@ def score_timeline(record: dict[str, Any]) -> dict[str, Any]:
         events = cycle.get("events")
         if (not _non_negative_int(tick) or tick <= previous_tick
                 or not isinstance(cycle_id, str) or not DIGEST_RE.fullmatch(cycle_id)
-                or cycle_id != canonical_sha256(f"nk1-cycle:{tick}")
+                or cycle_id != hashlib.sha256(f"nk1-cycle:{tick}".encode("utf-8")).hexdigest()
                 or cycle_id in seen_cycle_ids
                 or not isinstance(events, list) or len(events) > MAX_EVENTS_PER_CYCLE):
             return {"passed": False, "reason": "timeline-cycle-order-or-identity-invalid", "index": index}
