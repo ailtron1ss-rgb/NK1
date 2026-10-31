@@ -1,3 +1,12 @@
+## [NK1][Aspect05] Add evidence-bounded UserModel foundation (2026-10-31)
+
+- Add a separate, bounded UserModel for low-risk interaction preferences and explicit user boundaries; keep it distinct from SelfModel and relationship inference.
+- Require explicit, low-risk, evidence-referenced statements for confirmed claims; repeated behavior remains a capped unconfirmed candidate.
+- Mark contradictory explicit statements as disputed and require an explicit correction to resolve them; deduplicate evidence and sanitize restored snapshots.
+- Reject sensitive or unclassified inputs by default; cap text, records, replay references and inferred confidence.
+- Add a dedicated regression command covering confirmation, repeated behavior, sensitive-input rejection, contradictions, correction, replay and restore.
+- This is an isolated foundation; full OrganismCore wiring and exact-head CI/device validation remain pending.
+
 ## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
 
 - Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.
