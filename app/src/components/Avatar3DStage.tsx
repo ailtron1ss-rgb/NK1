@@ -90,7 +90,7 @@ export function Avatar3DStage(props:Props){
         const expectedModelId=typeof rawModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawModelId)?rawModelId:null;
         const projection=resolveVrmMotorFrame(vrmMotor,expectedModelId,rt.bones);
         if(projection.ok&&projection.frameTick!==null){
-          for(const item of projection.updates)item.bone.node.rotation[item.component]=item.bone.node.rotation[item.component]+item.value;
+          for(const item of projection.updates)item.bone.node.rotation[item.component]=item.value;
           rt.motorFrameTick=projection.frameTick;
         }
       }
@@ -135,9 +135,19 @@ export function Avatar3DStage(props:Props){
         progress.applySent=true;progress.applyFrame=renderer.info.render.frame;
         p.onRendererSignal?.({kind:"apply",receipt:{adapterId,stateRevision:revision,appliedAtMonotonicMs:performance.now(),acceptedChannels:progress.acceptedChannels,rejectedChannels:[],executionId:switchId}});
       }else if(surfaceReady&&progress.applySent&&!progress.verifySent&&renderer.info.render.frame>progress.applyFrame){
-        const readbackReady=p.bodyMode==="2.5d"
-          ?Boolean(rt.depthRigScene&&[...rt.depthRigScene.bindings.values()].every((node)=>Number.isFinite(node.position.x)&&Number.isFinite(node.position.y)&&Number.isFinite(node.rotation.z)))
-          :Boolean(renderer.domElement.isConnected&&(rt.loaded?.visible||rt.body.root.visible));
+        let readbackReady=false;
+        if(p.bodyMode==="2.5d"&&rt.depthRigScene){
+          rt.scene.updateMatrixWorld(true);
+          readbackReady=rt.depthRigScene.bindings.size===rt.depthRigScene.asset.rig.nodes.length
+            &&[...rt.depthRigScene.bindings.values()].every((node)=>Number.isFinite(node.position.x)
+              &&Number.isFinite(node.position.y)&&Number.isFinite(node.rotation.z)
+              &&node.matrixWorld.elements.every(Number.isFinite));
+        }else{
+          const visibleRoot=rt.loaded?.visible?rt.loaded:rt.body.root;
+          visibleRoot.updateMatrixWorld(true);
+          readbackReady=renderer.domElement.isConnected&&visibleRoot.visible
+            &&visibleRoot.matrixWorld.elements.every(Number.isFinite);
+        }
         progress.verifySent=true;
         p.onRendererSignal?.({kind:"verify",verification:{adapterId,executionId:switchId,verified:readbackReady,stateRevision:revision,observedAtMonotonicMs:performance.now(),observedChannels:readbackReady?progress.acceptedChannels:[],mismatches:readbackReady?[]:progress.acceptedChannels,reason:readbackReady?undefined:"renderer-scene-readback-failed"}});
       }
