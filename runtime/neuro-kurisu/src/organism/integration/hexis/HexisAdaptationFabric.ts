@@ -458,8 +458,11 @@ export class HexisAdaptationFabric {
         expiresAt?: number;
     }): HexisConnectorPolicy {
         const at = nowMs();
-        const connectorId = String(input.connectorId ?? '').trim().toLowerCase();
-        const actionKind = String(input.actionKind ?? '').trim().toLowerCase();
+        if (typeof input.connectorId !== 'string' || typeof input.actionKind !== 'string') {
+            throw new TypeError('connector policy identity must be strings');
+        }
+        const connectorId = input.connectorId.trim().toLowerCase();
+        const actionKind = input.actionKind.trim().toLowerCase();
         if (!connectorId || connectorId.length > 128 || !actionKind || actionKind.length > 128) {
             throw new TypeError('connector policy identity must be non-empty and bounded');
         }
