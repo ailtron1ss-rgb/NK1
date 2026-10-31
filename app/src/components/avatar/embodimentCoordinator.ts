@@ -160,7 +160,9 @@ export class EmbodimentSwitchCoordinator {
       }
       emit("rolling-back", reason);
       try {
-        const rollbackReceipt = await source.apply(snapshot, new AbortController().signal);
+        const rollbackController = new AbortController();
+        await source.prepare(snapshot, rollbackController.signal);
+        const rollbackReceipt = await source.apply(snapshot, rollbackController.signal);
         if (!isValidReceipt(rollbackReceipt, source.id, revision)) throw new Error("invalid-source-rollback-receipt");
         const rollbackVerification = await source.verify(rollbackReceipt, new AbortController().signal);
         if (!isValidVerification(rollbackVerification, rollbackReceipt)
