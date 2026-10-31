@@ -1,3 +1,12 @@
+## [NK1][Hexis] Harden connector policy restore and grant boundaries (WorkPass75, 2026-10-31)
+
+- Validate restored connector policies before they can authorize tool or external actions: canonical bounded identities, exact boolean flags, bounded target/context lists, valid expiry/window counters and unique IDs.
+- Drop malformed persisted policies instead of allowing incomplete records to reach `evaluateConnectorAction`.
+- Sanitize persisted metric counters to non-negative safe integers and keep the canonical Hexis adapter identity/version rather than trusting caller-supplied metadata.
+- Reject unsafe policy grants (truthy non-booleans, malformed quotas, non-finite windows and oversized lists) before mutating policy state.
+- Add regressions for malformed restore records, metric poisoning, valid-policy continuity and invalid grant inputs.
+- Scope is connector-policy integrity only; this does not validate all Hexis snapshot sections or claim production external-action safety.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
