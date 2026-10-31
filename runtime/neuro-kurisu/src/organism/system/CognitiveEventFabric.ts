@@ -28,11 +28,21 @@ type OperationalCyclePhaseInput = { source?:string; external?:boolean; confidenc
 
 export interface OperationalCycleLineageCheck {
   tick: number | null;
+  /** Legacy-compatible six-stage verdict. */
   complete: boolean;
+  coreComplete: boolean;
+  /** Strict eleven-stage verdict. */
+  fullComplete: boolean;
   integrity01: number;
+  coreIntegrity01: number;
+  fullIntegrity01: number;
   missingStages: string[];
+  coreMissingStages: string[];
+  fullMissingStages: string[];
   invalidStages: string[];
   missingEdges: string[];
+  coreMissingEdges: string[];
+  fullMissingEdges: string[];
 }
 
 export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; }
@@ -61,6 +71,8 @@ export interface CognitiveEventFabricSnapshot {
   danglingParentLinks: number;
   lineageIntegrity01: number;
   cycleCoverage01: number;
+  coreCycleCoverage01?: number;
+  fullCycleCoverage01?: number;
   causalDensity01: number;
   recentTicks: number;
   recent: CognitiveEventNode[];
@@ -475,7 +487,54 @@ export class CognitiveEventFabric {
     const edgeCoverage = validEdges / Math.max(1, requiredEdges.length + extendedEdgeCount);
     const integrity01 = clamp01(.50 * stageCoverage + .32 * edgeCoverage + .18 * optionalCoverage);
     const complete = missingStages.length === 0 && invalidStages.length === 0 && missingEdges.length === 0;
-    return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
+
+    // Keep the legacy six-stage verdict while calculating a separate strict
+    // eleven-stage result. Optional stages are mandatory only for fullComplete.
+    const coreMissingEdges = missingEdges.filter(label => requiredEdges.some(edge => edge[2] === label));
+    const coreInvalid = invalidStages.some(label => required.some(stage => label.startsWith(stage + ':')));
+    const coreIntegrity01 = clamp01(.65 * stageCoverage + .35 * ((requiredEdges.length - coreMissingEdges.length) / requiredEdges.length));
+    const fullMissingStages = [
+      ...missingStages,
+      ...optional.filter(stage => !found.has(stage)),
+    ];
+    const fullEdges: Array<[string, string, string]> = [
+      ...requiredEdges,
+      ...optional.flatMap(child => extendedParents[child].map(parent => [child, parent, child + '->' + parent] as [string, string, string])),
+      ['action','plan','action->plan'],
+      ['outcome','prediction','outcome->prediction'],
+      ['learning','action','learning->action'],
+      ['self-update','outcome','self-update->outcome'],
+    ];
+    const fullMissingEdges: string[] = [];
+    let fullValidEdges = 0;
+    for (const [childStage, parentStage, label] of fullEdges) {
+      const child = found.get(childStage);
+      const parent = found.get(parentStage);
+      if (child && parent && child.parentIds.includes(parent.id)) fullValidEdges += 1;
+      else fullMissingEdges.push(label);
+    }
+    const fullStageCoverage = (11 - fullMissingStages.length) / 11;
+    const fullEdgeCoverage = fullValidEdges / fullEdges.length;
+    const fullIntegrity01 = clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage);
+    const coreComplete = missingStages.length === 0 && !coreInvalid && coreMissingEdges.length === 0;
+    const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 && fullMissingEdges.length === 0;
+
+    return {
+      tick: cycleTick,
+      complete,
+      coreComplete,
+      fullComplete,
+      integrity01: complete ? 1 : integrity01,
+      coreIntegrity01,
+      fullIntegrity01: fullComplete ? 1 : fullIntegrity01,
+      missingStages,
+      coreMissingStages: missingStages,
+      fullMissingStages,
+      invalidStages,
+      missingEdges,
+      coreMissingEdges,
+      fullMissingEdges,
+    };
   }
 
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
@@ -492,8 +551,12 @@ export class CognitiveEventFabric {
       if(!operationalStages.has(e.stage)) continue;
       const s=byTick.get(e.tick)??new Set<CognitiveStage>();s.add(e.stage);byTick.set(e.tick,s);
     }
-    const complete=[...byTick.values()].filter(s=>s.has('observation')&&s.has('prediction')&&s.has('action')&&s.has('outcome')).length;
-    const coverage=byTick.size?clamp01(complete/byTick.size):0;
+    const coreStages=['observation','prediction','action','outcome','learning','self-update'] as const;
+    const fullStages=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'] as const;
+    const coreCompleteTicks=[...byTick.values()].filter(stages=>coreStages.every(stage=>stages.has(stage))).length;
+    const fullCompleteTicks=[...byTick.values()].filter(stages=>fullStages.every(stage=>stages.has(stage))).length;
+    const coreCoverage=byTick.size?clamp01(coreCompleteTicks/byTick.size):0;
+    const fullCoverage=byTick.size?clamp01(fullCompleteTicks/byTick.size):0;
     const totalParentRefs=linked+dangling;
     const allTicks=this.events.map(e=>e.tick);
     const recentTicks=allTicks.length?Math.max(...allTicks)-Math.min(...allTicks):0;
@@ -504,6 +567,6 @@ export class CognitiveEventFabric {
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
     const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coreCoverage,coreCycleCoverage01:coreCoverage,fullCycleCoverage01:fullCoverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
   }
 }

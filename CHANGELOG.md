@@ -1,3 +1,13 @@
+## [NK1][Cognition] Separate core and strict full cognitive-cycle completion (2026-10-31)
+
+- Add a two-tier policy: the six-stage core cycle remains available for continuity diagnostics, while a full cognitive cycle requires all eleven stages and a separately verified full causal lineage.
+- Extend CognitiveEventFabric with strict full-stage/edge verification, duplicate-stage protection, and separate core/full integrity and coverage diagnostics.
+- Wire both EventFabric verdicts into UnifiedCognitiveCycle and OrganismRuntime; the public `complete` / `completeCycles` aliases now represent full eleven-stage completion.
+- Migrate persisted cycle state from schema v1 to v2 conservatively. Historical v1 completions are retained as core history and are not retroactively promoted to full-cycle evidence.
+- Add WorkPass71 policy, restore/migration, EventFabric and runtime-wiring tests; attach the suite to WorkPass287 CI.
+- Record uploaded Inspect AI, whisper.cpp and three-vrm archive hashes, upstream refs and MIT notice handling in the external source inventory. No full third-party runtime was vendored in this pass.
+- Validation remains pending exact-branch CI and runtime typecheck; do not infer production readiness from the local policy tests alone.
+
 ## [NK1][Aspect 08] Isolate bounded-pattern regression fixture from code-policy classification (2026-10-31)
 
 - Rename the bounded-regex fixture field and tool ID to neutral `tag` / `catalog.regex-check` identifiers, keeping the test focused on bounded-quantifier behavior rather than a potentially policy-sensitive identifier.
