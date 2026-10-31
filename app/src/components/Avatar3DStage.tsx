@@ -124,7 +124,8 @@ export function Avatar3DStage(props:Props){
       const revision=Number.isSafeInteger(p.switchStateRevision)?p.switchStateRevision!:0;
       let progress=switchProgress.current;
       if(!progress||progress.executionId!==switchId||progress.adapterId!==adapterId){
-        progress={executionId:switchId,adapterId,stateRevision:revision,applyFrame:0,acceptedChannels:p.bodyMode==="2.5d"?["depthRigSceneNodes"]:["rendererScene"],applySent:false,verifySent:false};
+        progress={executionId:switchId,adapterId,stateRevision:revision,applyFrame:0,
+          acceptedChannels:p.bodyMode==="2.5d"?["depthRigSceneNodes"]:["rendererScene"],applySent:false,verifySent:false};
         switchProgress.current=progress;
       }
       const surfaceReady=p.bodyMode==="2.5d"
