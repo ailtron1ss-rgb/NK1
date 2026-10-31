@@ -839,8 +839,10 @@ export class MemoryOS2{
    if(existing)existing.count=Math.max(existing.count,dropped);
    else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:dropped}].slice(-64);
   });
-  if(blankIdRowsDropped>0&&!this.state.restoreIntegrityFindings.some(finding=>finding.code==='blank-memory-id-dropped')){
-   this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:blankIdRowsDropped}].slice(-64);
+  if(blankIdRowsDropped>0){
+   const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'blank-memory-id-dropped'}>=>finding.code==='blank-memory-id-dropped');
+   if(existing)existing.count=Math.max(existing.count,blankIdRowsDropped);
+   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:blankIdRowsDropped}].slice(-64);
   }
   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
