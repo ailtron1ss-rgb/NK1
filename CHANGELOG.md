@@ -1,3 +1,10 @@
+## [NK1][architecture] Ignore quoted import text in the architecture audit (2026-10-30)
+
+- Fix a false-positive in `runtime/neuro-kurisu/scripts/audit-architecture.mjs`: the import scanner matched `from './x'` / `import('./x')` text inside string literals, template literals and comments, so test fixtures that quote an import statement (for example `source.includes("import { X } from './X.ts'")`) were reported as missing modules. That failed `npm run audit:architecture`, `audit:quick` and `tools/verify-final-release.mjs` (`release:verify`) even though the code was correct.
+- Extract a pure, dependency-free scanner `runtime/neuro-kurisu/scripts/lib/import-specifiers.mjs` that only reports relative specifiers in executable code and preserves the historical scope (`from`/`import()` only, type-only imports ignored, returned indices point into the original text for ordering checks).
+- Add `runtime/neuro-kurisu/tests/import-specifier-scanner.mjs` (16 regressions) covering strings, templates, comments, regex-vs-division, dynamic imports, re-exports, type-only imports and the two real repository fixtures that previously failed.
+- Add scripts `test:architecture-import-scanner` and `audit:architecture:verified`, and the `NK1 architecture import integrity` workflow so the audit and its regressions run in CI. A genuinely missing import still fails closed (verified).
+- `tools/verify-final-release.mjs` now reports `ok: true`; the earlier failure was the only blocker in the strict release gate. Release ZIP, license gate and device/E2E gates are unchanged and remain open.
 ## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
 
 - Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.

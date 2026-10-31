@@ -33,3 +33,6 @@ npm-debug.log*
 /app/public/live2d/Kurisu.mobile/Kurisu-mobile.model3.json
 /app/public/live2d/Kurisu.mobile/Kurisu.2048/texture_00_mobile_2048.png
 /app/public/live2d/PROVENANCE.json
+
+# Build output produced by the app production build
+app/.vercel/
