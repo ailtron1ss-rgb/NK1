@@ -42,6 +42,8 @@ export interface MemoryRetrievalBenchmarkExample {
   language?: MemoryRetrievalLanguage;
   /** False marks an intentionally unanswerable query; it must have no relevant labels. */
   answerable?: boolean;
+  /** Queries derived from one source episode/document share one bootstrap sampling unit. */
+  independenceGroupId?: string;
 }
 
 export interface MemoryRetrievalBenchmarkProvenance {
@@ -136,7 +138,7 @@ const queryNearDuplicate=(left:string,right:string)=>{
   let intersection=0;for(const shingle of sa)if(sb.has(shingle))intersection++;
   return intersection/(sa.size+sb.size-intersection)>=.88;
 };
-const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),...(x.language===undefined?{}:{language:x.language}),relevantIds:[...x.relevantIds].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
+const canonicalExamples=(rows:MemoryRetrievalBenchmarkExample[])=>[...rows].map(x=>({id:x.id,query:normalizeQuery(x.query),...(x.language===undefined?{}:{language:x.language}),...(x.independenceGroupId===undefined?{}:{independenceGroupId:textField(x.independenceGroupId,120)}),relevantIds:[...x.relevantIds].sort(),split:x.split,answerable:x.answerable!==false})).sort((a,b)=>a.id.localeCompare(b.id)||a.split.localeCompare(b.split)||a.query.localeCompare(b.query)||a.relevantIds.join('\0').localeCompare(b.relevantIds.join('\0')));
 const stableFingerprint=(rows:MemoryRetrievalBenchmarkExample[])=>createHash('sha256').update(JSON.stringify(canonicalExamples(rows))).digest('hex');
 
 /** Stable canonical fingerprint shared by dataset provenance writers and the retrieval promotion gate. */
@@ -158,7 +160,8 @@ function p95(values:number[]){if(!values.length)return 0;const a=[...values].sor
 function textField(value:unknown,max=200){return typeof value==='string'?value.trim().slice(0,max):'';}
 
 type BenchmarkRetrievalResult = MemoryItem2[] | { items: MemoryItem2[]; latencyMs: number; isolationSetupMs?: number };
-type QueryOutcome={recallAtK01:number;mrr01:number};
+type QueryOutcome={groupId:string;recallAtK01:number;mrr01:number};
+type BootstrapValueOutcome={groupId:string;value:number};
 export interface MemoryRetrievalArmEvidenceV1 {
   memoryIdDigest:string;
   quarantined:boolean;
@@ -176,7 +179,7 @@ export interface MemoryRetrievalQueryEvidenceV1 {
   relevantMemoryIdDigests:string[];
   rankedMemory:MemoryRetrievalArmEvidenceV1[];
 }
-type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[];unsupportedRetrievalOutcomes:number[];queryEvidence:MemoryRetrievalQueryEvidenceV1[]};
+type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[];unsupportedRetrievalOutcomes:BootstrapValueOutcome[];queryEvidence:MemoryRetrievalQueryEvidenceV1[]};
 
 function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:string,k:number)=>BenchmarkRetrievalResult, k:number, now:number, includeQueryEvidence=false, digestEvidence?:(value:string)=>string):Evaluation {
   let recall=0,mrr=0,precision=0,covered=0,quarantined=0,stale=0,future=0,dormant=0,invalidEpistemic=0,duplicates=0,invalid=0;
@@ -195,6 +198,7 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
     for(const row of results){if(!row?.id){invalid++;continue;} if(ids.has(row.id)){duplicates++;dup=true;} ids.add(row.id); if(row.epistemicStatus==='quarantined')quarantined++;if((row.validUntilAt!=null&&Number(row.validUntilAt)<=now)||(row.supersededById!=null&&row.validUntilAt==null))stale++;if(row.validFromAt!=null&&Number(row.validFromAt)>now)future++;if(row.dormant)dormant++;if(!['fact','belief','hypothesis','unknown','quarantined'].includes(String(row.epistemicStatus)))invalidEpistemic++;}
     const relevant=new Set(ex.relevantIds);
     const answerable=ex.answerable!==false;
+    const independenceGroupId=textField(ex.independenceGroupId,120)||ex.id;
     const hits=results.filter(row=>row?.id&&relevant.has(row.id));
     if(includeQueryEvidence){
       if(typeof digestEvidence!=='function')throw new Error('memory-query-evidence-hash-key-required');
@@ -221,7 +225,7 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
       const queryRecall=relevant.size?hitIds.size/relevant.size:0;
       const first=results.findIndex(row=>relevant.has(row.id));
       const queryMrr=first>=0?1/(first+1):0;
-      outcomes.push({recallAtK01:queryRecall,mrr01:queryMrr});
+      outcomes.push({groupId:independenceGroupId,recallAtK01:queryRecall,mrr01:queryMrr});
       recall+=queryRecall;
       // Precision counts unique relevant memory IDs, not duplicate rows for one memory.
       precision+=new Set(hits.map(row=>row.id)).size/k;
@@ -230,7 +234,7 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
     }else{
       unanswerableQueries++;
       const unsupported=results.length>0?1:0;
-      unsupportedRetrievalOutcomes.push(unsupported);
+      unsupportedRetrievalOutcomes.push({groupId:independenceGroupId,value:unsupported});
       if(unsupported)unsupportedRetrievalCount++;
     }
     if(results.length)covered++;
@@ -253,36 +257,63 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
 }
 function pairedBootstrapInterval(baseline:QueryOutcome[],candidate:QueryOutcome[],metric:'recallAtK01'|'mrr01',samples:number,seed:number){
   const n=Math.min(baseline.length,candidate.length);
-  if(!n)return {samples:0,lowerBound01:0,medianDelta01:0,upperBound01:0};
-  // xorshift32 makes the resampling sequence deterministic across runs and does not
-  // depend on platform-specific crypto/random state after the seed is chosen.
+  const groups=new Map<string,Array<[number,number]>>();
+  for(let index=0;index<n;index++){
+    const groupId=baseline[index]!.groupId;
+    if(!groupId||candidate[index]!.groupId!==groupId)continue;
+    const rows=groups.get(groupId)??[];
+    rows.push([baseline[index]![metric],candidate[index]![metric]]);
+    groups.set(groupId,rows);
+  }
+  const groupRows=[...groups.values()];
+  const clusterCount=groupRows.length;
+  const empty={samples:0,clusterCount:0,resamplingUnit:'independenceGroupId-or-exampleId' as const,lowerBound01:0,medianDelta01:0,upperBound01:0};
+  if(!clusterCount)return empty;
+  // Resample whole source groups, preserving all paired query outcomes within a group.
   let state=(seed>>>0)||0x6d2b79f5;
   const random=()=>{state^=state<<13;state^=state>>>17;state^=state<<5;return (state>>>0)/4294967296;};
   const deltas:number[]=[];
-  for(let s=0;s<samples;s++){
-    let delta=0;
-    for(let i=0;i<n;i++){const ix=Math.floor(random()*n);delta+=candidate[ix][metric]-baseline[ix][metric];}
-    deltas.push(delta/n);
+  for(let sample=0;sample<samples;sample++){
+    let delta=0,count=0;
+    for(let draw=0;draw<clusterCount;draw++){
+      const rows=groupRows[Math.floor(random()*clusterCount)]!;
+      for(const [baseValue,candidateValue] of rows){delta+=candidateValue-baseValue;count++;}
+    }
+    deltas.push(count?delta/count:0);
   }
   deltas.sort((a,b)=>a-b);
   const at=(p:number)=>Number((deltas[Math.min(deltas.length-1,Math.max(0,Math.floor((deltas.length-1)*p)))]??0).toFixed(4));
-  return {samples,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
+  return {samples,clusterCount,resamplingUnit:'independenceGroupId-or-exampleId' as const,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
 }
 
-function pairedBootstrapValuesInterval(baseline:number[],candidate:number[],samples:number,seed:number){
+function pairedBootstrapValuesInterval(baseline:BootstrapValueOutcome[],candidate:BootstrapValueOutcome[],samples:number,seed:number){
   const n=Math.min(baseline.length,candidate.length);
-  if(!n)return {samples:0,lowerBound01:0,medianDelta01:0,upperBound01:0};
+  const groups=new Map<string,Array<[number,number]>>();
+  for(let index=0;index<n;index++){
+    const groupId=baseline[index]!.groupId;
+    if(!groupId||candidate[index]!.groupId!==groupId)continue;
+    const rows=groups.get(groupId)??[];
+    rows.push([baseline[index]!.value,candidate[index]!.value]);
+    groups.set(groupId,rows);
+  }
+  const groupRows=[...groups.values()];
+  const clusterCount=groupRows.length;
+  const empty={samples:0,clusterCount:0,resamplingUnit:'independenceGroupId-or-exampleId' as const,lowerBound01:0,medianDelta01:0,upperBound01:0};
+  if(!clusterCount)return empty;
   let state=(seed>>>0)||0x6d2b79f5;
   const random=()=>{state^=state<<13;state^=state>>>17;state^=state<<5;return (state>>>0)/4294967296;};
   const deltas:number[]=[];
-  for(let s=0;s<samples;s++){
-    let delta=0;
-    for(let i=0;i<n;i++){const ix=Math.floor(random()*n);delta+=candidate[ix]-baseline[ix];}
-    deltas.push(delta/n);
+  for(let sample=0;sample<samples;sample++){
+    let delta=0,count=0;
+    for(let draw=0;draw<clusterCount;draw++){
+      const rows=groupRows[Math.floor(random()*clusterCount)]!;
+      for(const [baseValue,candidateValue] of rows){delta+=candidateValue-baseValue;count++;}
+    }
+    deltas.push(count?delta/count:0);
   }
   deltas.sort((a,b)=>a-b);
   const at=(p:number)=>Number((deltas[Math.min(deltas.length-1,Math.max(0,Math.floor((deltas.length-1)*p)))]??0).toFixed(4));
-  return {samples,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
+  return {samples,clusterCount,resamplingUnit:'independenceGroupId-or-exampleId' as const,lowerBound01:at(.025),medianDelta01:at(.5),upperBound01:at(.975)};
 }
 function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:MemoryItem2[],truncatedExamples:number,droppedExamples:number,truncatedFieldRows:number,malformedRelevantLabelCount:number){
   const knownIds=new Set(corpus.map(row=>row.id));
@@ -297,6 +328,9 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   // Count repeated normalized query groups explicitly. Cross-split overlap is a hard
   // leakage risk even if each individual row has a unique example ID.
   const queryCounts=new Map<string,number>();for(const row of rawExamples){const q=normalizeQuery(row.query);queryCounts.set(q,(queryCounts.get(q)??0)+1);}
+  const groupSplits=new Map<string,Set<'train'|'holdout'>>();
+  for(const row of rawExamples){const groupId=textField(row.independenceGroupId,120)||row.id;const splits=groupSplits.get(groupId)??new Set<'train'|'holdout'>();splits.add(row.split);groupSplits.set(groupId,splits);}
+  const independenceGroupSplitLeakageCount=[...groupSplits.values()].filter(splits=>splits.size>1).length;
   const repeatedQueryKeys=[...queryCounts.entries()].filter(([,count])=>count>1).map(([q])=>q);
   const crossSplitQueryLeakageCount=repeatedQueryKeys.filter(q=>new Set(rawExamples.filter(row=>normalizeQuery(row.query)===q).map(row=>row.split)).size>1).length;
   // Exact normalization misses tiny edits such as an added trailing word. Detect only
@@ -321,8 +355,8 @@ function inspectDataset(rawExamples:MemoryRetrievalBenchmarkExample[],corpus:Mem
   // Same-split duplicate prompts distort independent-query weighting too, so they are
   // reported and block promotion rather than being silently treated as extra evidence.
   const duplicateQueryGroupCount=repeatedQueryKeys.length;
-  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&malformedRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0&&languageAnnotationComplete;
-  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,malformedRelevantLabelCount,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,languageAnnotationUsed,languageAnnotationComplete,validForPromotion};
+  const validForPromotion=truncatedExamples===0&&droppedExamples===0&&truncatedFieldRows===0&&duplicateExampleIdCount===0&&duplicateQueryGroupCount===0&&duplicateRelevantLabelCount===0&&malformedRelevantLabelCount===0&&unknownRelevantMemoryIdCount===0&&crossSplitQueryLeakageCount===0&&nearDuplicateCrossSplitPairCount===0&&independenceGroupSplitLeakageCount===0&&languageAnnotationComplete;
+  return {sourceExamples:rawExamples.length+truncatedExamples+droppedExamples,acceptedExamples:rawExamples.length,droppedExamples,truncatedExamples,truncatedFieldRows,malformedRelevantLabelCount,duplicateExampleIdCount,duplicateQueryGroupCount,duplicateRelevantLabelCount,uniqueTrainQueries,uniqueHoldoutQueries,independenceGroupCount:groupSplits.size,independenceGroupSplitLeakageCount,crossSplitQueryLeakageCount,nearDuplicateCrossSplitPairCount,unknownRelevantMemoryIdCount,languageAnnotationUsed,languageAnnotationComplete,validForPromotion};
 }
 
 /**
@@ -358,10 +392,10 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   // Bounded copies remain diagnostic-only if the source labels/text would be clipped.
   const truncatedFieldRows=limited.filter(row=>Boolean(row&&((typeof row.id==='string'&&row.id.length>120)||(typeof row.query==='string'&&row.query.length>500)||(Array.isArray(row.relevantIds)&&(row.relevantIds.length>24||row.relevantIds.some(id=>typeof id==='string'&&id.length>160)))))).length;
   const examples=limited.filter((row):row is MemoryRetrievalBenchmarkExample=>{
-    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.language===undefined||row.language==='en'||row.language==='ru'||row.language==='other')&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.split==='train'||row.split==='holdout'));
+    const valid=Boolean(row&&typeof row.id==='string'&&row.id.trim()&&typeof row.query==='string'&&row.query.trim()&&Array.isArray(row.relevantIds)&&(row.language===undefined||row.language==='en'||row.language==='ru'||row.language==='other')&&(row.answerable===undefined||typeof row.answerable==='boolean')&&(row.answerable===false?row.relevantIds.length===0:row.relevantIds.slice(0,24).some(x=>typeof x==='string'&&x.trim()))&&(row.independenceGroupId===undefined||(typeof row.independenceGroupId==='string'&&row.independenceGroupId.trim()))&&(row.split==='train'||row.split==='holdout'));
     if(!valid)droppedExamples++;
     return valid;
-  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),...(row.language===undefined?{}:{language:row.language}),relevantIds:row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)),split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
+  }).map(row=>({id:row.id.trim().slice(0,120),query:row.query.trim().slice(0,500),...(row.language===undefined?{}:{language:row.language}),...(row.independenceGroupId===undefined?{}:{independenceGroupId:row.independenceGroupId.trim().slice(0,120)}),relevantIds:row.relevantIds.filter(x=>typeof x==='string'&&x.trim()).slice(0,24).map(x=>x.trim().slice(0,160)),split:row.split,answerable:row.answerable!==false})).filter(row=>row.answerable===false||row.relevantIds.length>0).sort((a,b)=>a.split.localeCompare(b.split)||normalizeQuery(a.query).localeCompare(normalizeQuery(b.query))||a.id.localeCompare(b.id));
   const sourceItems=Array.isArray(snapshot?.items)?snapshot.items:[];
   const boundedSourceItems=sourceItems.slice(0,1600);
   const malformedCorpusRows=boundedSourceItems.filter(m=>!m||typeof m.id!=='string'||!m.id.trim()||typeof m.content!=='string').length;
@@ -429,7 +463,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const datasetFingerprint=stableFingerprint(examples);const corpusHash=corpusFingerprint(corpus);const retrievalConfigHash=retrievalConfigurationFingerprint(snapshot,options);
   const seed=providedSeed??Number.parseInt(createHash('sha256').update(`${datasetFingerprint}:${corpusHash}`).digest('hex').slice(0,8),16);
   const confidence={
-    method:'paired-query-bootstrap-percentile-interval' as const,
+    method:'paired-cluster-bootstrap-percentile-interval' as const,
     seed,
     recallAtK01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'recallAtK01',bootstrapSamples,seed),
     mrr01:pairedBootstrapInterval(baselineEval.outcomes,candidateEval.outcomes,'mrr01',bootstrapSamples,seed^0x9e3779b9),
@@ -444,7 +478,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     const languageCandidate=evaluate(languageHoldout,candidate,k,now);
     const languageSeed=((seed^(language==='en'?0x13579bdf:language==='ru'?0x2468ace0:0x9e3779b9))>>>0)||1;
     const languageConfidence={
-      method:'paired-query-bootstrap-percentile-interval' as const,
+      method:'paired-cluster-bootstrap-percentile-interval' as const,
       seed:languageSeed,
       recallAtK01:pairedBootstrapInterval(languageBaseline.outcomes,languageCandidate.outcomes,'recallAtK01',bootstrapSamples,languageSeed),
       mrr01:pairedBootstrapInterval(languageBaseline.outcomes,languageCandidate.outcomes,'mrr01',bootstrapSamples,languageSeed^0x9e3779b9),
