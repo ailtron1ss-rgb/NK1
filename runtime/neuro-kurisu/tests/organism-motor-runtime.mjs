@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { OrganismMotorRuntime } from '../src/organism/body/OrganismMotorRuntime.ts';
+import { createCognitiveMotorGoalCandidate } from '../src/organism/system/CognitiveMotorIntentMapper.ts';
 
 const motor = new OrganismMotorRuntime();
 assert.equal(motor.submitApprovedGoal({
@@ -172,3 +173,45 @@ assert.throws(() => motor.configureRigProfile({
 }), /canonical-skeleton-mismatch/, 'a renderer cannot silently alter the controller skeleton');
 
 console.log('Organism motor runtime integration: single controller, multi-renderer profile registry and fail-closed selection passed.');
+
+// Cognitive action -> bounded semantic gesture mapping is explicit and profile-bound.
+const motorProfileJoints = [
+  { id: 'head-pitch-joint', role: 'head.pitch', minAngleRad: -0.4, maxAngleRad: 0.4, restAngleRad: 0 },
+  { id: 'head-yaw-joint', role: 'head.yaw', minAngleRad: -0.5, maxAngleRad: 0.5, restAngleRad: 0 },
+  { id: 'neck-pitch-joint', role: 'neck.pitch', minAngleRad: -0.3, maxAngleRad: 0.3, restAngleRad: 0 },
+];
+const respondIntent = createCognitiveMotorGoalCandidate({
+  action: 'respond', tick: 7, nowMs: 1000, joints: motorProfileJoints,
+  score01: .9, predictedUtility01: .85, confidence01: .92, effort01: .08,
+  conflict01: .02, goalFit01: .9, novelty01: .2,
+});
+assert.ok(respondIntent, 'approved response action should produce a semantic gesture candidate');
+assert.equal(respondIntent.goal.action, 'embodied.respond');
+assert.equal(respondIntent.goal.source, 'organism');
+assert.equal(respondIntent.goal.createdAtMs, 1000);
+assert.equal(respondIntent.goal.expiresAtMs, 2200);
+assert.ok(respondIntent.goal.targetJointAnglesRad['head-pitch-joint'] < 0);
+assert.ok(Math.abs(respondIntent.goal.targetJointAnglesRad['head-pitch-joint']) <= .08);
+const exploreA = createCognitiveMotorGoalCandidate({
+  action: 'explore', tick: 8, nowMs: 1100, joints: motorProfileJoints,
+  score01: .8, predictedUtility01: .8, confidence01: .8, effort01: .1,
+  conflict01: 0, goalFit01: .8, novelty01: .9,
+});
+const exploreB = createCognitiveMotorGoalCandidate({
+  action: 'explore', tick: 9, nowMs: 1200, joints: motorProfileJoints,
+  score01: .8, predictedUtility01: .8, confidence01: .8, effort01: .1,
+  conflict01: 0, goalFit01: .8, novelty01: .9,
+});
+assert.notEqual(exploreA.goal.targetJointAnglesRad['head-yaw-joint'], exploreB.goal.targetJointAnglesRad['head-yaw-joint'],
+  'exploration scan direction alternates deterministically instead of drifting one-sided');
+assert.equal(createCognitiveMotorGoalCandidate({
+  action: 'reflect', tick: 10, nowMs: 1300, joints: motorProfileJoints,
+  score01: .9, predictedUtility01: .9, confidence01: .9, effort01: 0,
+  conflict01: 0, goalFit01: .9, novelty01: .1,
+}), null, 'purely cognitive actions must not invent a physical gesture');
+assert.equal(createCognitiveMotorGoalCandidate({
+  action: 'respond', tick: 11, nowMs: 1400, joints: [],
+  score01: .9, predictedUtility01: .9, confidence01: .9, effort01: 0,
+  conflict01: 0, goalFit01: .9, novelty01: .1,
+}), null, 'missing calibrated joint roles must fail closed');
+console.log('Cognitive motor intent mapping: bounded, profile-bound action gestures passed.');
