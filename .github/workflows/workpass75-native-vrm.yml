@@ -1,0 +1,61 @@
+name: WorkPass75 native VRM runtime
+
+on:
+  push:
+    branches:
+      - nk1-workpass75-native-vrm-runtime
+    paths:
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/src/components/avatar/vrmHumanoidRigAdapter.ts"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
+      - "app/scripts/vrm-normalized-humanoid.integration.test.mjs"
+      - "app/scripts/vrm-humanoid-rig-adapter.test.mjs"
+      - "docs/WORKPASS75_NATIVE_VRM_RUNTIME_RU.md"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/src/components/avatar/vrmHumanoidRigAdapter.ts"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
+      - "app/scripts/vrm-humanoid-rig-adapter.test.mjs"
+      - "docs/WORKPASS75_NATIVE_VRM_RUNTIME_RU.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-vrm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned browser dependencies
+        run: npm ci --prefix app
+      - name: Test VRM expression and metadata bridge
+        run: npm --prefix app run test:vrm-runtime-adapter
+      - name: Verify normalized motor writes through actual three-vrm humanoid
+        run: npm --prefix app run test:vrm-normalized-humanoid
+      - name: Test existing humanoid rig adapter
+        run: npm --prefix app run test:vrm-humanoid-rig
+      - name: Test avatar intent and frame mapping
+        run: |
+          npm --prefix app run test:avatar-motor-intent
+          npm --prefix app run test:motor-frame-mapper
+          npm --prefix app run test:embodiment-timeline
+      - name: Typecheck app against native three-vrm declarations
+        run: npm --prefix app run typecheck
+      - name: Build browser app
+        run: npm --prefix app run build:dev

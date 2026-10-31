@@ -1,3 +1,18 @@
+## [NK1][Embodiment] Drive VRM normalized humanoid from NK1 motor (WorkPass76, 2026-10-31)
+
+- Replace the interim raw-bone ownership bridge with the canonical `VRMHumanoid.getNormalizedBoneNode()` command surface and enable `autoUpdateHumanBones=true`; `vrm.update()` now transfers NK1's normalized pose into the model-specific raw rig.
+- Route existing gaze/head-tilt and explore/respond/verify arm intents into normalized head, neck and upper-arm nodes; split head/neck offsets 35/65 and reset normalized nodes each frame to prevent accumulated Euler drift.
+- Keep generic GLB on the prior raw-bone motor/mixer path; explicitly document that GLTF animation tracks targeting raw VRM humanoid bones are not yet retargeted to normalized nodes.
+- Add normalized rig availability, deterministic mapping, missing-bone and no-drift tests plus an integration test using the actual `VRMHumanoid` implementation to prove normalized node rotations transfer into the raw skeleton. Spatial planar IK is deliberately not claimed: live perception target coordinates, limb measurements and exact model calibration are not yet supplied to Avatar3DStage.
+
+## [NK1][Embodiment] Integrate native three-vrm runtime (WorkPass75, 2026-10-31)
+
+- Pin `@pixiv/three-vrm@3.5.5` and its complete 14-package runtime/type dependency graph with npm integrity hashes; keep the existing `three@0.180.0` runtime.
+- Register `VRMLoaderPlugin` in the current Avatar3DStage loader, activate VRM 0.x orientation handling, and update VRM expressions/look-at/node constraints/spring bones/MToon through the existing frame loop.
+- Preserve the existing NK1 raw-bone motor and GLTF mixer by disabling normalized-to-raw auto-copy for these loaded models; keep generic GLB fallback and add explicit VRM resource disposal.
+- Map NK1 affect, mouth pose and blink into standard VRM expression presets; show model metadata as informational license context only.
+- Add adapter regression tests and CI for npm install, VRM/humanoid/motor tests, app typecheck and Vite browser build. Android visual E2E, device performance and multi-model memory soak remain pending.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
