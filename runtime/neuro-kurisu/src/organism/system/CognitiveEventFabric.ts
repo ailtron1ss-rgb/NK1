@@ -28,11 +28,21 @@ type OperationalCyclePhaseInput = { source?:string; external?:boolean; confidenc
 
 export interface OperationalCycleLineageCheck {
   tick: number | null;
+  /** Legacy-compatible six-stage verdict. */
   complete: boolean;
+  coreComplete: boolean;
+  /** Strict eleven-stage verdict. */
+  fullComplete: boolean;
   integrity01: number;
+  coreIntegrity01: number;
+  fullIntegrity01: number;
   missingStages: string[];
+  coreMissingStages: string[];
+  fullMissingStages: string[];
   invalidStages: string[];
   missingEdges: string[];
+  coreMissingEdges: string[];
+  fullMissingEdges: string[];
 }
 
 export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; }
