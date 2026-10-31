@@ -154,6 +154,13 @@ class EvidenceScoringTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "timeline sequence invalid"):
             validate_bundle(bundle)
 
+    def test_cycle_payload_tampering_fails_after_outer_digest_recomputed(self):
+        bundle = make_bundle()
+        bundle["cycles"][0]["events"][0]["confidenceBps"] = 1
+        bundle["bundleDigest"] = bundle_digest(bundle)
+        with self.assertRaisesRegex(ValueError, "timeline sequence invalid"):
+            validate_bundle(bundle)
+
     def test_future_parent_reference_fails_closed(self):
         bundle = make_bundle()
         later_id = bundle["cycles"][1]["events"][0]["idDigest"]
