@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Integrate native three-vrm runtime (WorkPass75, 2026-10-31)
+
+- Pin `@pixiv/three-vrm@3.5.5` and its complete 14-package runtime/type dependency graph with npm integrity hashes; keep the existing `three@0.180.0` runtime.
+- Register `VRMLoaderPlugin` in the current Avatar3DStage loader, activate VRM 0.x orientation handling, and update VRM expressions/look-at/node constraints/spring bones/MToon through the existing frame loop.
+- Preserve the existing NK1 raw-bone motor and GLTF mixer by disabling normalized-to-raw auto-copy for these loaded models; keep generic GLB fallback and add explicit VRM resource disposal.
+- Map NK1 affect, mouth pose and blink into standard VRM expression presets; show model metadata as informational license context only.
+- Add adapter regression tests and CI for npm install, VRM/humanoid/motor tests, app typecheck and Vite browser build. Android visual E2E, device performance and multi-model memory soak remain pending.
+
 ## [NK1][Evaluation] Add independent bilingual MemoryOS2 holdout scoring (WorkPass73, 2026-10-31)
 
 - Extend the existing MemoryRetrievalBenchmark with opt-in per-query baseline/candidate evidence; no second retrieval implementation or live memory mutation is introduced.
