@@ -26,6 +26,10 @@ on:
       - app/src/components/AvatarStage.tsx
       - app/scripts/depth-rig-scene-adapter.test.mjs
       - app/scripts/avatar-glb-preflight.test.mjs
+      - app/src/components/avatar/vrmRigCalibrationProfile.ts
+      - app/src/components/avatar/vrmHumanoidRigAdapter.ts
+      - app/scripts/vrm-calibrated-arm-runtime.test.mjs
+      - app/src/components/avatar/vrmCalibratedArmRuntime.ts
       - app/src/components/avatar/avatarGlbPreflight.ts
       - app/package.json
       - contracts/depth-rig-scene-asset.v1.schema.json
