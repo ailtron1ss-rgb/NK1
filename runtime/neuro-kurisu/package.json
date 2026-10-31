@@ -9,6 +9,8 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:user-model-evidence": "node --experimental-strip-types tests/user-model-evidence-model.mjs",
+    "test:user-model-runtime-persistence": "node --experimental-strip-types tests/user-model-runtime-persistence.mjs",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
