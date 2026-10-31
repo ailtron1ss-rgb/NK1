@@ -5,9 +5,9 @@
  * VRM humanoid specification. A production VRM runtime should supply semantic
  * humanoid nodes directly; this adapter is a safe fallback for generic glTF.
  *
- * Only nodes explicitly marked as bones are eligible for role mapping. Names on
- * ordinary Object3D/Group/mesh nodes are reported as rejected evidence and never
- * count as an articulated skeleton.
+ * For generic GLB, only explicit Bone nodes can be mapped by name. For VRM, the
+ * extension's validated glTF node-index map is authoritative; VRM humanoid nodes
+ * are not required to be skin joints or Three.js Bone instances.
  */
 export type HumanoidRole =
   | "hips" | "spine" | "chest" | "upperChest" | "neck" | "head"
@@ -144,8 +144,12 @@ export function auditHumanoidRig(
   if (input.length > MAX_HUMANOID_AUDIT_NODES) throw new RangeError("humanoid-rig-node-limit-exceeded");
   const sceneNodes = Array.from(new Set(input.filter(
     (node) => node && typeof node === "object" && (
-      (typeof node.name === "string" && node.name.trim().length > 0)
-      || node.isBone === true || isHumanoidRole(node.humanoidRole)
+      // In explicit VRM mode retain unnamed non-humanoid ancestors too: they
+      // may legally sit between two humanoid nodes in the glTF scene tree.
+      !!options.vrmVersion
+      || (typeof node.name === "string" && node.name.trim().length > 0)
+      || node.isBone === true
+      || isHumanoidRole(node.humanoidRole)
     ),
   )));
   const boneNodes = sceneNodes.filter((node) => node.isBone === true);
@@ -217,7 +221,9 @@ export function auditHumanoidRig(
   const brokenHierarchy = hierarchyPairs.filter(([ancestorRole, childRole]) =>
     nodes[ancestorRole] && nodes[childRole] && !isAncestor(nodes[ancestorRole]!, nodes[childRole]!),
   );
-  const parentCyclesDetected = hasParentCycles(sceneNodes.filter((node) => node.isBone === true || isHumanoidRole(node.humanoidRole)));
+  const parentCyclesDetected = hasParentCycles(options.vrmVersion
+    ? sceneNodes
+    : sceneNodes.filter((node) => node.isBone === true));
 
   const fingerHierarchyPairs: [HumanoidRole, HumanoidRole][] = [];
   let allFingerChainsMapped = true;
