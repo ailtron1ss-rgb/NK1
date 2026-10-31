@@ -4,6 +4,10 @@
  * This is a name-based audit, NOT a claim that arbitrary GLB bones implement the
  * VRM humanoid specification. A production VRM runtime should supply semantic
  * humanoid nodes directly; this adapter is a safe fallback for generic glTF.
+ *
+ * Only nodes explicitly marked as bones are eligible for role mapping. Names on
+ * ordinary Object3D/Group/mesh nodes are reported as rejected evidence and never
+ * count as an articulated skeleton.
  */
 export type HumanoidRole =
   | "hips" | "spine" | "chest" | "upperChest" | "neck" | "head"
@@ -12,8 +16,8 @@ export type HumanoidRole =
   | "leftUpperLeg" | "leftLowerLeg" | "leftFoot" | "leftToes"
   | "rightUpperLeg" | "rightLowerLeg" | "rightFoot" | "rightToes"
   | "leftEye" | "rightEye"
-  | `left${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`
-  | `right${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}${"Proximal" | "Intermediate" | "Distal"}`;
+  | \`left\${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}\${"Proximal" | "Intermediate" | "Distal"}\`
+  | \`right\${"Thumb" | "Index" | "Middle" | "Ring" | "Little"}\${"Proximal" | "Intermediate" | "Distal"}\`;
 
 export interface HumanoidNodeLike {
   readonly name?: string;
@@ -40,6 +44,7 @@ export interface HumanoidRigAudit {
   readonly nodes: Readonly<Partial<Record<HumanoidRole, HumanoidNodeLike>>>;
   readonly missingRequired: readonly HumanoidRole[];
   readonly ambiguous: readonly HumanoidRole[];
+  readonly nonBoneMatches: readonly HumanoidRole[];
   readonly capabilities: HumanoidRigCapabilities;
   readonly warnings: readonly string[];
 }
@@ -98,57 +103,135 @@ function isAncestor(ancestor: HumanoidNodeLike, node: HumanoidNodeLike): boolean
   return false;
 }
 
-/** Resolve only unique semantic-looking bone names; ambiguous matches fail closed. */
+function hasParentCycle(node: HumanoidNodeLike): boolean {
+  let current: HumanoidNodeLike | null = node;
+  const seen = new Set<HumanoidNodeLike>();
+  while (current) {
+    if (seen.has(current)) return true;
+    seen.add(current);
+    current = current.parent ?? null;
+  }
+  return false;
+}
+
+function hasAlias(name: string, role: HumanoidRole): boolean {
+  const normalizedName = normalize(name);
+  return (aliases.get(role) ?? []).some((alias) => normalizedName === normalize(alias));
+}
+
+/** Resolve only unique explicit bone names and a connected humanoid hierarchy. */
 export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRigAudit {
-  const candidates = input.filter((node) => node && typeof node.name === "string" && node.name.trim().length > 0);
-  const normalized = candidates.map((node) => ({ node, name: normalize(node.name!) }));
+  if (!Array.isArray(input)) throw new TypeError("humanoid-rig-input-must-be-an-array");
+  const namedNodes = Array.from(new Set(input.filter(
+    (node) => node && typeof node.name === "string" && node.name.trim().length > 0,
+  )));
+  const boneNodes = namedNodes.filter((node) => node.isBone === true);
+  const normalizedBones = boneNodes.map((node) => ({ node, name: normalize(node.name!) }));
+  const normalizedNonBones = namedNodes
+    .filter((node) => node.isBone !== true)
+    .map((node) => ({ node, name: normalize(node.name!) }));
+
   const nodes: Partial<Record<HumanoidRole, HumanoidNodeLike>> = {};
   const ambiguous: HumanoidRole[] = [];
+  const nonBoneMatches: HumanoidRole[] = [];
   for (const role of roles) {
-    const names = aliases.get(role) ?? [];
-    const matches = normalized.filter(({ name }) => names.some((alias) => name === normalize(alias)));
-    if (matches.length === 1) nodes[role] = matches[0].node;
-    else if (matches.length > 1) ambiguous.push(role);
+    const boneMatches = normalizedBones.filter(({ name }) => (aliases.get(role) ?? []).some((alias) => name === normalize(alias)));
+    const nonBoneRoleMatches = normalizedNonBones.filter(({ name }) => (aliases.get(role) ?? []).some((alias) => name === normalize(alias)));
+    if (boneMatches.length === 1) nodes[role] = boneMatches[0].node;
+    else if (boneMatches.length > 1) ambiguous.push(role);
+    else if (nonBoneRoleMatches.length > 0) nonBoneMatches.push(role);
   }
+
   const missingRequired = required.filter((role) => !nodes[role]);
   const leftFingerCount = roles.filter((role) => role.startsWith("left") && /Thumb|Index|Middle|Ring|Little/.test(role) && !!nodes[role]).length;
   const rightFingerCount = roles.filter((role) => role.startsWith("right") && /Thumb|Index|Middle|Ring|Little/.test(role) && !!nodes[role]).length;
   const torso = !!nodes.hips && !!nodes.spine;
-  const head = !!nodes.head && !!nodes.neck;
+  const head = !!nodes.head;
   const bilateralArms = !!nodes.leftUpperArm && !!nodes.leftLowerArm && !!nodes.rightUpperArm && !!nodes.rightLowerArm;
   const bilateralHands = !!nodes.leftHand && !!nodes.rightHand;
   const bilateralLegs = !!nodes.leftUpperLeg && !!nodes.leftLowerLeg && !!nodes.rightUpperLeg && !!nodes.rightLowerLeg;
   const bilateralFeet = !!nodes.leftFoot && !!nodes.rightFoot;
-  const hierarchyPairs: readonly [HumanoidRole, HumanoidRole][] = [
-    ["hips", "spine"], ["spine", "chest"], ["chest", "neck"], ["neck", "head"],
+
+  const hierarchyPairs: [HumanoidRole, HumanoidRole][] = [
+    ["hips", "spine"],
     ["leftUpperArm", "leftLowerArm"], ["leftLowerArm", "leftHand"],
     ["rightUpperArm", "rightLowerArm"], ["rightLowerArm", "rightHand"],
-    ["leftUpperLeg", "leftLowerLeg"], ["leftLowerLeg", "leftFoot"],
-    ["rightUpperLeg", "rightLowerLeg"], ["rightLowerLeg", "rightFoot"],
+    ["hips", "leftUpperLeg"], ["leftUpperLeg", "leftLowerLeg"], ["leftLowerLeg", "leftFoot"],
+    ["hips", "rightUpperLeg"], ["rightUpperLeg", "rightLowerLeg"], ["rightLowerLeg", "rightFoot"],
   ];
-  const brokenHierarchy = hierarchyPairs.filter(([a, b]) => nodes[a] && nodes[b] && !isAncestor(nodes[a]!, nodes[b]!));
+  if (nodes.spine && nodes.chest) hierarchyPairs.push(["spine", "chest"]);
+  if (nodes.upperChest) hierarchyPairs.push([nodes.chest ? "chest" : "spine", "upperChest"]);
+  if (nodes.neck) hierarchyPairs.push([nodes.chest ? "chest" : "spine", "neck"]);
+  const headParent: HumanoidRole = nodes.neck ? "neck" : nodes.chest ? "chest" : "spine";
+  hierarchyPairs.push([headParent, "head"]);
+
+  const armAnchor: HumanoidRole = nodes.upperChest ? "upperChest" : nodes.chest ? "chest" : "spine";
+  for (const side of ["left", "right"] as const) {
+    const shoulderRole = (side + "Shoulder") as HumanoidRole;
+    const upperArmRole = (side + "UpperArm") as HumanoidRole;
+    if (nodes[shoulderRole]) {
+      hierarchyPairs.push([armAnchor, shoulderRole], [shoulderRole, upperArmRole]);
+    } else {
+      hierarchyPairs.push([armAnchor, upperArmRole]);
+    }
+  }
+
+  const brokenHierarchy = hierarchyPairs.filter(([ancestorRole, childRole]) =>
+    nodes[ancestorRole] && nodes[childRole] && !isAncestor(nodes[ancestorRole]!, nodes[childRole]!),
+  );
+  const parentCycles = boneNodes.filter(hasParentCycle);
+
+  const fingerHierarchyPairs: [HumanoidRole, HumanoidRole][] = [];
+  let allFingerChainsMapped = true;
+  for (const side of ["left", "right"] as const) {
+    const handRole = (side + "Hand") as HumanoidRole;
+    for (const finger of ["Thumb", "Index", "Middle", "Ring", "Little"] as const) {
+      const proximal = (side + finger + "Proximal") as HumanoidRole;
+      const intermediate = (side + finger + "Intermediate") as HumanoidRole;
+      const distal = (side + finger + "Distal") as HumanoidRole;
+      if (!nodes[handRole] || !nodes[proximal] || !nodes[intermediate] || !nodes[distal]) {
+        allFingerChainsMapped = false;
+        continue;
+      }
+      fingerHierarchyPairs.push([handRole, proximal], [proximal, intermediate], [intermediate, distal]);
+    }
+  }
+  const brokenFingerHierarchy = fingerHierarchyPairs.filter(([ancestorRole, childRole]) =>
+    !isAncestor(nodes[ancestorRole]!, nodes[childRole]!),
+  );
+
   const warnings: string[] = [];
-  if (ambiguous.length) warnings.push(`Ambiguous bone names: ${ambiguous.join(", ")}.`);
-  if (missingRequired.length) warnings.push(`Missing required humanoid bones: ${missingRequired.join(", ")}.`);
-  if (brokenHierarchy.length) warnings.push(`Unexpected parent hierarchy: ${brokenHierarchy.map(([a, b]) => `${a}→${b}`).join(", ")}.`);
-  if (!leftFingerCount || !rightFingerCount) warnings.push("Finger articulation is unavailable or only partially mapped.");
+  if (ambiguous.length) warnings.push("Ambiguous bone names: " + ambiguous.join(", ") + ".");
+  if (missingRequired.length) warnings.push("Missing required humanoid bones: " + missingRequired.join(", ") + ".");
+  if (brokenHierarchy.length) warnings.push("Unexpected parent hierarchy: " + brokenHierarchy.map(([a, b]) => a + "→" + b).join(", ") + ".");
+  if (parentCycles.length) warnings.push("Cyclic parent hierarchy detected; rig mapping is not trusted.");
+  if (nonBoneMatches.length) warnings.push("Name matches excluded because those nodes are not bones: " + nonBoneMatches.join(", ") + ".");
+  if (namedNodes.length && boneNodes.length === 0) warnings.push("No nodes are explicitly marked as bones; name matching alone is not proof of a deforming skeleton.");
+  if (!nodes.neck) warnings.push("Neck articulation is unavailable; head mapping may use the spine/chest fallback.");
+  if (leftFingerCount !== 15 || rightFingerCount !== 15 || !allFingerChainsMapped || brokenFingerHierarchy.length) {
+    warnings.push("Finger articulation is unavailable or its complete hand-to-tip hierarchy is not confirmed.");
+  }
   if (!nodes.leftEye || !nodes.rightEye) warnings.push("Eye-bone gaze is unavailable; use head/gaze fallback.");
-  if (candidates.length && !candidates.some((node) => node.isBone)) warnings.push("No nodes are explicitly marked as bones; name matching alone is not proof of a deforming skeleton.");
-  const hierarchyValid = brokenHierarchy.length === 0;
-  const fullBodyHumanoid = missingRequired.length === 0 && ambiguous.length === 0 && hierarchyValid;
+
+  const hierarchyValid = brokenHierarchy.length === 0 && parentCycles.length === 0;
+  const fingerArticulation = leftFingerCount === 15 && rightFingerCount === 15
+    && allFingerChainsMapped && brokenFingerHierarchy.length === 0 && parentCycles.length === 0;
+  const locomotionSkeleton = torso && bilateralLegs && bilateralFeet && hierarchyValid;
+  const fullBodyHumanoid = missingRequired.length === 0 && ambiguous.length === 0
+    && hierarchyValid && torso && head && bilateralArms && bilateralHands && bilateralLegs && bilateralFeet;
+
   return Object.freeze({
     schemaVersion: 1,
     mappingMethod: "conservative-name-heuristic",
     nodes: Object.freeze(nodes),
     missingRequired: Object.freeze(missingRequired),
     ambiguous: Object.freeze(ambiguous),
+    nonBoneMatches: Object.freeze(nonBoneMatches),
     capabilities: Object.freeze({
       torso, head, bilateralArms, bilateralHands, bilateralLegs, bilateralFeet,
       eyes: !!nodes.leftEye && !!nodes.rightEye,
-      leftFingerCount, rightFingerCount,
-      fingerArticulation: leftFingerCount === 15 && rightFingerCount === 15,
-      locomotionSkeleton: torso && bilateralLegs && bilateralFeet && hierarchyValid,
-      fullBodyHumanoid,
+      leftFingerCount, rightFingerCount, fingerArticulation,
+      locomotionSkeleton, fullBodyHumanoid,
     }),
     warnings: Object.freeze(warnings),
   });
