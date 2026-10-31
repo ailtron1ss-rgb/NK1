@@ -114,6 +114,8 @@ export interface RuntimeConfig extends OrganismConfig {
   mem0CognitiveRecall?: boolean;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+  /** Optional host-supplied calibrated renderer profiles; never inferred from uploaded model names. */
+  motorRigProfiles?: readonly import('../system/MotorRigProfile.ts').MotorRigProfileV1[];
 }
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
@@ -368,6 +370,7 @@ export class OrganismRuntime {
       if (!world) { await this.worldStore.save(this.environment.persisted()); this.lastWorldCheckpointAt = Date.now(); }
       const snap = this.core.snapshot();
       await this.embodiment.init(snap.facets.embodiment?.body);
+      if (this.config.motorRigProfiles?.length) this.configureMotorRendererProfiles(this.config.motorRigProfiles);
       this.embodiedRecovery.restore(snap.facets.embodiment?.embodiedRecovery);
       this.core.registerActionTool({ id:'android.listen', capability:'android.stt', destructive:false, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'}},required:['ok'],additionalProperties:true,maxProperties:2}, execute:async()=>{ const text=await this.embodiment.listen(); return {ok:text!=null,text:text?.slice(0,4000) ?? null}; } });
       this.core.registerActionTool({ id:'organism.project.device', capability:'project.device.read', destructive:false, projectAllowed:true, inputContract:{type:'object',properties:{},required:[],additionalProperties:false,maxProperties:0}, outputContract:{type:'object',properties:{ok:{type:'boolean'},verified:{type:'boolean'},evidenceSource:{type:'string',enum:['device','host-fallback']},independenceKey:{type:'string',minLength:1,maxLength:180},battery01:{type:'number',minimum:0,maximum:1},thermal01:{type:'number',minimum:0,maximum:1},cpuLoad01:{type:'number',minimum:0,maximum:1},ramPressure01:{type:'number',minimum:0,maximum:1},awake:{type:'boolean'},sampledAt:{type:'number',minimum:0},staleMs:{type:'number',minimum:0},error:{type:'string',minLength:1,maxLength:80}},required:['ok','verified','evidenceSource','independenceKey'],additionalProperties:false,maxProperties:12}, execute:async()=>{ const b=this.embodiment.snapshot(); const sampleAt=b.telemetry.sampledAt; const fresh=b.telemetry.source==='android-termux' && b.telemetry.staleMs===0 && Number.isFinite(sampleAt) && sampleAt>0; return {ok:fresh,verified:fresh,evidenceSource:fresh?'device':'host-fallback',independenceKey:`device:${Number.isFinite(sampleAt)?sampleAt:'unavailable'}`,...(Number.isFinite(b.telemetry.battery01)?{battery01:b.telemetry.battery01}:{}),...(Number.isFinite(b.telemetry.thermalPressure01)?{thermal01:b.telemetry.thermalPressure01}:{}),...(Number.isFinite(b.telemetry.cpuLoad01)?{cpuLoad01:b.telemetry.cpuLoad01}:{}),...(Number.isFinite(b.telemetry.ramPressure01)?{ramPressure01:b.telemetry.ramPressure01}:{}),...(typeof b.awake==='boolean'?{awake:b.awake}:{}),...(Number.isFinite(sampleAt)?{sampledAt:sampleAt}:{}),...(Number.isFinite(b.telemetry.staleMs)?{staleMs:b.telemetry.staleMs}:{}),...(fresh?{}:{error:'android-telemetry-not-fresh'})}; } });
@@ -394,6 +397,19 @@ export class OrganismRuntime {
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });
+  }
+
+  /**
+   * Install the complete calibrated Live2D/2.5D/VRM profile set atomically.
+   * The first profile supplies the canonical skeleton; later profiles must
+   * describe exactly the same joint contract. Profiles are host-owned config,
+   * not client-uploaded commands.
+   */
+  configureMotorRendererProfiles(
+    profiles: readonly import('../system/MotorRigProfile.ts').MotorRigProfileV1[],
+  ): void {
+    this.motor.registerRendererRigProfiles(profiles);
+    this.motor.startContinuous(50);
   }
 
   /** Configure the one canonical motor skeleton from a calibrated avatar profile. */
