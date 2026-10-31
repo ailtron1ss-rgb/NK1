@@ -30,7 +30,7 @@ function sameCanonicalSkeleton(a: readonly JointDefinition[], b: readonly JointD
 /** Validate a host-owned profile set before atomic registration; never synthesize calibration. */
 export function parseMotorRigProfileConfigJson(json: string): MotorRigProfileConfigResult {
   const reject = (reason: string): MotorRigProfileConfigResult => ({ accepted: false, reason });
-  if (typeof json !== 'string' || json.length < 2
+  if (typeof json !== 'string' || json.length === 0
     || Buffer.byteLength(json, 'utf8') > MAX_MOTOR_RIG_PROFILE_CONFIG_BYTES) return reject('motor-rig-profile-config-size-invalid');
   let raw: unknown;
   try { raw = JSON.parse(json); } catch { return reject('motor-rig-profile-config-json-invalid'); }
