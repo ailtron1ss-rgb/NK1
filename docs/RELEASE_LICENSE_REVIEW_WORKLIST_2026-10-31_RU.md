@@ -7,9 +7,11 @@
 - Результат: fail-closed, 136 ошибок, release redistribution readiness = false.
 - Locked npm inventory: 477 компонентов.
 - Fingerprint: `a10f75530eeac185de88cdf338b094c2cbd9bec7a4c16c9cee7b5d040cb92cd4`.
-- В manifest исправлен count 462 → 477. Fingerprint оставлен null до human review; повторный аудит необходим.
+- В manifest исправлен count 462 → 477. Fingerprint оставлен null до human review.
+- В manifest добавлены evidenceRef и licenseExpression для root/runtime, locked inventory, 8 archives и всех 11 repository LICENSE/NOTICE файлов. Четыре vendor LICENSE получили строки с вычисленными SHA-256.
+- Все статусы остаются pending, `redistributionApproved=false`, reviewer-поля пусты. Повторный аудит после этих evidence-only изменений ещё не завершён.
 
-## Сводка блокировок последнего аудита
+## Сводка блокировок последнего аудита до evidence-only обновления manifest
 
 | Область | Ошибок | Причина |
 |---|---:|---|
@@ -18,7 +20,7 @@
 | Runtime project | 7 | LICENSE private / all rights reserved; human approval отсутствует |
 | Locked npm inventory | 7 до исправления count | 5 полей review + fingerprint + mismatch count; после count=477 mismatch должен исчезнуть, fingerprint остаётся pending |
 | Source archives | 56 | 8 архивов × 7 обязательных полей review |
-| Repository LICENSE/NOTICE | 53 | 7 существующих записей × 7 полей + 4 отсутствующих vendor review records |
+| Repository LICENSE/NOTICE | 53 | В последнем аудите было 7 записей × 7 полей + 4 отсутствующие vendor records; после evidence-only обновления все 11 строк существуют, но review всё ещё pending |
 | **Всего** | **136** | До повторного аудита после factual count correction |
 
 ## Порядок закрытия
@@ -29,6 +31,8 @@
 4. Разобрать 11 repository LICENSE/NOTICE: 7 pending, 4 vendor записи отсутствуют.
 5. Заполнить review-поля только после реального решения человека.
 6. Запустить release audit на актуальном source SHA; публиковать ZIP только при полном успехе всех gates.
+
+Эти числа относятся к аудиту до evidence-only обновления manifest; новый точный error count будет зафиксирован только после повторного CI-аудита.
 
 Подробные upstream-свидетельства и нерешённые вопросы: [RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md](RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md).
 
