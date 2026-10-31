@@ -139,10 +139,29 @@ function validateImageBytes(data: Uint8Array): { width: number; height: number }
 }
 
 function decodeDataImage(uri: string): Uint8Array | null {
-  const match = /^data:(image\\/(?:png|jpeg));base64,([A-Za-z0-9+/]*={0,2})$/i.exec(uri);
-  if (!match || match[2].length > 64 * 1024 * 1024 || match[2].length % 4 !== 0) return null;
+  const comma = uri.indexOf(",");
+  if (comma < 0) return null;
+  const header = uri.slice(0, comma).toLowerCase();
+  if (header !== "data:image/png;base64" && header !== "data:image/jpeg;base64") return null;
+  const payload = uri.slice(comma + 1);
+  if (!payload.length || payload.length > 64 * 1024 * 1024 || payload.length % 4 !== 0) return null;
+  let paddingStarted = false;
+  let paddingCount = 0;
+  for (let i = 0; i < payload.length; i++) {
+    const code = payload.charCodeAt(i);
+    if (code === 61) {
+      paddingStarted = true;
+      paddingCount++;
+      if (paddingCount > 2 || i < payload.length - 2) return null;
+      continue;
+    }
+    if (paddingStarted) return null;
+    const allowed = (code >= 65 && code <= 90) || (code >= 97 && code <= 122)
+      || (code >= 48 && code <= 57) || code === 43 || code === 47;
+    if (!allowed) return null;
+  }
   try {
-    const binary = atob(match[2]);
+    const binary = atob(payload);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
     return bytes;
