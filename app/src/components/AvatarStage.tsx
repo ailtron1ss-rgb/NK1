@@ -174,12 +174,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (ev.origin !== window.location.origin || ev.source !== frame.current?.contentWindow) return;
       if (!isRecord(ev.data) || typeof ev.data.type !== "string") return;
       if (ev.data.type === "live2d_ready") {
-        if (typeof ev.data.profile !== "string" || ev.data.profile.length > 24 || typeof ev.data.modelPath !== "string") return;
+        if (typeof ev.data.profile !== "string" || ev.data.profile.length > 24 || typeof ev.data.modelPath !== "string" || typeof ev.data.modelId !== "string") return;
         const live2dIdentity = ev.data.profile === "mobile" && ev.data.modelPath === "./Kurisu.mobile/Kurisu-mobile.model3.json"
           ? "kurisu-live2d-mobile-v1"
           : (ev.data.profile === "balanced" || ev.data.profile === "quality") && ev.data.modelPath === "./Kurisu/Kurisu.model3.json"
             ? "kurisu-live2d-balanced-v1" : null;
-        if (!live2dIdentity) return;
+        if (!live2dIdentity || ev.data.modelId !== live2dIdentity) return;
         setLive2dMotorModelId(live2dIdentity);
         setLive2dMotorBatch(null);
         setLive2dMotorProjection("waiting");
