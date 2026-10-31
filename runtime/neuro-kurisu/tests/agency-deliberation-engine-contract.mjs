@@ -41,13 +41,13 @@ restored.restore({
     {...second,id:'invalid-time',at:Infinity},
     {...second,id:'invalid-action',chosenAction:'  '},
   ],
-  overrideRate:1,
+  overrideRate:0,
   autonomousChoiceRate:0,
   lastDecisionAt:1,
 });
 const safe=restored.snapshot();
 assert.equal(safe.records.length,1,'restore must deduplicate IDs and reject malformed records');
-assert.equal(safe.overrideRate,0,'restored aggregate metrics must be recomputed');
+assert.equal(safe.overrideRate,1,'restored override rate must be recomputed from validated records');
 assert.equal(safe.autonomousChoiceRate,1,'restored autonomy rate must come from validated records');
 assert.equal(safe.lastDecisionAt,first.at,'restored lastDecisionAt must come from the newest accepted record');
 
