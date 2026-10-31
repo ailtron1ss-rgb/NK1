@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Explicit source preparation during renderer rollback (2026-10-31)
+
+- Harden failed body switches: after disposing a rejected destination, the coordinator now explicitly prepares/remounts the source renderer before applying and verifying the rollback snapshot. This makes rollback readiness part of the coordinator contract rather than relying only on adapter-specific side effects inside `apply()`.
+- Extend coordinator regressions to require the source call order `prepare → apply → verify` on rollback.
+- Extend the Aspect 04 workflow path filters so changes to the coordinator and its dedicated regression trigger CI.
+- Validation status: source, test and workflow changes are committed; a fresh exact-head workflow result has not yet been surfaced. No CI pass or real-device recovery is claimed.
+
 ## [NK1][Embodiment] Restore cognitive trace integrity and bind cycle verification to runtime tick (2026-10-31)
 
 - Restore the complete 573-line `CognitiveEventFabric` implementation after the embodiment integration branch accidentally carried a truncated 58-line fragment; preserve the canonical causal ledger rather than the malformed partial file.
