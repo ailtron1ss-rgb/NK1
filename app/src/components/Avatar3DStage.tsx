@@ -21,6 +21,7 @@ import {
   type RendererMotorCommandBatch,
 } from "./avatar/motorFrameStream";
 import { overlayMotorFrameOnDepthRigPose } from "./avatar/motorFrameDepthRig";
+import { resolveVrmMotorFrame } from "./avatar/motorFrameVrm";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyMode?: "3d" | "2.5d"; revision?: number; motorFrameBatch?: RendererMotorCommandBatch | null };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
@@ -73,18 +74,14 @@ export function Avatar3DStage(props:Props){
    try{const root=gltf.scene;if(!root)throw new Error("В файле нет glTF-сцены.");const rawDepthRig=root.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY];const depthPreparation=rawDepthRig===undefined?null:prepareDepthRigSceneV1(root,rawDepthRig);if(rawDepthRig!==undefined&&(!depthPreparation?.ok||!depthPreparation.prepared))throw new Error("Невалидный 2.5D rig: "+(depthPreparation?.errors.join(", ")||"unknown validation error"));if(latest.current.bodyMode==="2.5d"&&!depthPreparation?.prepared)throw new Error("Для 2.5D нужен авторский GLB с nk1DepthRigAssetV1 и точной parent-иерархией.");const activeDepthRig=latest.current.bodyMode==="2.5d"?depthPreparation?.prepared??null:null;const rawMotorModelId=root.userData?.nk1MotorModelId;const declaredMotorModelId=typeof rawMotorModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawMotorModelId)?rawMotorModelId:null;const nextMotorModelId=activeDepthRig?.asset.rig.id??declaredMotorModelId;const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
     if(rt.loaded&&!rt.depthRigScene){const clip=selectClip(rt.clips,p.action);if(rt.mixer&&clip&&clip.name!==rt.clipName){rt.mixer.stopAllAction();const a=rt.mixer.clipAction(clip);a.reset();a.setEffectiveTimeScale(p.awake?.55+energy*.45:.3);a.fadeIn(.28).play();rt.clipName=clip.name;}/* Reset to bind pose before the mixer so offsets do not accumulate; then add motor intent on top of the clip. */rt.bones.forEach((bone)=>{bone.node.rotation.set(bone.x,bone.y,bone.z);});rt.mixer?.update(dt);rt.bones.forEach((bone)=>{const n=bone.name;if(n.includes("head")||n.includes("neck")){bone.node.rotation.x+=-clamp(p.gazeY,-1,1)*.12-load*.035+(1-energy)*.04;bone.node.rotation.y+=clamp(p.gazeX,-1,1)*(.22-social*.05)+uncertainty*.025;bone.node.rotation.z+=p.emotion==="sadness"?.055:p.emotion==="anger"||p.emotion==="frustration"?-.04:0;}else if(n.includes("leftupperarm")||n.includes("leftshoulder"))bone.node.rotation.z+=p.action==="explore"?-.14:0;else if(n.includes("rightupperarm")||n.includes("rightshoulder"))bone.node.rotation.z+=p.action==="respond"&&p.speaking?-.26:p.action==="verify"?-.18:0;});
       const vrmMotor=p.motorFrameBatch;
-      if(vrmMotor&&vrmMotor.renderer==="vrm3d"&&vrmMotor.modelId===rt.loaded.userData?.nk1MotorModelId&&vrmMotor.frameTick>=rt.motorFrameTick){
-        const resolved=vrmMotor.commands.map((command)=>{
-          const targetName=String(command.targetId).toLowerCase().replace(/[^a-z0-9]/g,"");
-          const bone=rt.bones.find((entry)=>entry.name===targetName);
-          const component=command.component==="x"?"x":command.component==="y"?"y":command.component==="z"?"z":null;
-          if(!bone||!component||command.targetKind!=="humanoid-bone"||command.valueUnit!=="radians")return null;
-          return {bone,component,value:command.value};
-        });
-        // Apply a calibrated batch atomically: a missing target rejects the entire renderer projection.
-        if(resolved.length===vrmMotor.commands.length&&resolved.every(Boolean)){
-          for(const item of resolved)if(item)item.bone.node.rotation[item.component]=item.bone[item.component]+item.value;
-          rt.motorFrameTick=vrmMotor.frameTick;
+      if(vrmMotor&&vrmMotor.renderer==="vrm3d"&&vrmMotor.frameTick>rt.motorFrameTick){
+        const rawModelId=rt.loaded.userData?.nk1MotorModelId;
+        const expectedModelId=typeof rawModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawModelId)?rawModelId:null;
+        const projection=resolveVrmMotorFrame(vrmMotor,expectedModelId,rt.bones);
+        // The pure adapter resolves every target first. Only a complete batch is committed.
+        if(projection.ok&&projection.frameTick!==null){
+          for(const item of projection.updates)item.bone.node.rotation[item.component]=item.bone[item.component]+item.value;
+          rt.motorFrameTick=projection.frameTick;
         }
       }
       rt.loaded.traverse((node:any)=>{if(!node.isMesh||!node.morphTargetDictionary||!node.morphTargetInfluences)return;for(const [key,index]of Object.entries(node.morphTargetDictionary)){const k=String(key).toLowerCase().replace(/[^a-z0-9]/g,"");let value:number|null=null;if(/happy|joy|smile/.test(k))value=p.emotion==="joy"?.75:p.emotion==="protective"?.22:p.emotion==="calm"?warmth*.16:0;else if(/sad|sorrow|cry/.test(k))value=p.emotion==="sadness"||p.emotion==="anxiety"?.62:0;else if(/angry|anger|frown/.test(k))value=p.emotion==="anger"||p.emotion==="frustration"?.7:0;else if(/mouthopen|jawopen|visemeaa|phonemeaa/.test(k))value=p.speaking?clamp(p.mouthPose.open,0,1):0;else if(/visemeoh|phonemeoh/.test(k))value=p.speaking&&p.mouthPose.form<-.25?clamp(p.mouthPose.open,0,1):0;else if(/blink|eyeclose/.test(k))value=Math.sin(t*.83)>.994&&p.awake?.92:0;if(value!==null)node.morphTargetInfluences[Number(index)]=value;}});}
