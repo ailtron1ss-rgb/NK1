@@ -257,7 +257,7 @@ export function buildNK1InspectEvidenceRecord(
   const exportedAt = options.exportedAt ?? Date.now();
   if (!Number.isSafeInteger(exportedAt) || exportedAt < 0) throw new RangeError('inspect-evidence-export-time-invalid');
   const sourceCommit = options.sourceCommit?.trim();
-  if (sourceCommit && !/^[a-f0-9]{40}\u0024/i.test(sourceCommit)) throw new TypeError('inspect-evidence-source-commit-invalid');
+  if (sourceCommit && (sourceCommit.length !== 40 || ![...sourceCommit].every((character) => /[a-f0-9]/i.test(character)))) throw new TypeError('inspect-evidence-source-commit-invalid');
 
   const projectedCycleEvents = operationalEvents
     .filter((event) => event.tick === tick)
