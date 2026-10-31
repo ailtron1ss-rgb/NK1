@@ -71,6 +71,8 @@ export interface CognitiveEventFabricSnapshot {
   danglingParentLinks: number;
   lineageIntegrity01: number;
   cycleCoverage01: number;
+  coreCycleCoverage01?: number;
+  fullCycleCoverage01?: number;
   causalDensity01: number;
   recentTicks: number;
   recent: CognitiveEventNode[];
@@ -549,8 +551,12 @@ export class CognitiveEventFabric {
       if(!operationalStages.has(e.stage)) continue;
       const s=byTick.get(e.tick)??new Set<CognitiveStage>();s.add(e.stage);byTick.set(e.tick,s);
     }
-    const complete=[...byTick.values()].filter(s=>s.has('observation')&&s.has('prediction')&&s.has('action')&&s.has('outcome')).length;
-    const coverage=byTick.size?clamp01(complete/byTick.size):0;
+    const coreStages=['observation','prediction','action','outcome','learning','self-update'] as const;
+    const fullStages=['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update'] as const;
+    const coreCompleteTicks=[...byTick.values()].filter(stages=>coreStages.every(stage=>stages.has(stage))).length;
+    const fullCompleteTicks=[...byTick.values()].filter(stages=>fullStages.every(stage=>stages.has(stage))).length;
+    const coreCoverage=byTick.size?clamp01(coreCompleteTicks/byTick.size):0;
+    const fullCoverage=byTick.size?clamp01(fullCompleteTicks/byTick.size):0;
     const totalParentRefs=linked+dangling;
     const allTicks=this.events.map(e=>e.tick);
     const recentTicks=allTicks.length?Math.max(...allTicks)-Math.min(...allTicks):0;
@@ -561,6 +567,6 @@ export class CognitiveEventFabric {
     // sanitized receipt nodes that still have live replay guards so restart restore
     // can retain exact causal links even when a receipt falls outside that window.
     const receiptEvents=this.events.filter(event=>receiptIds.has(event.id)&&!recentIds.has(event.id)).map(event=>({...event,parentIds:[...event.parentIds],payload:{...event.payload}}));
-    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
+    return{version:1,capacity:this.capacity,total:this.total,buffered:this.events.length,linkedParentEvents:linked,danglingParentLinks:dangling,lineageIntegrity01:clamp01(linked/Math.max(1,totalParentRefs)),cycleCoverage01:coreCoverage,coreCycleCoverage01:coreCoverage,fullCycleCoverage01:fullCoverage,causalDensity01:clamp01(linked/Math.max(1,this.events.length*2)),recentTicks,recent,receiptEvents,receiptProjectionIndex:[...this.receiptProjectionIndex.values()]};
   }
 }
