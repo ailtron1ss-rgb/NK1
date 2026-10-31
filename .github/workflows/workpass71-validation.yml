@@ -104,6 +104,8 @@ jobs:
         run: npm --prefix app run test:embodiment-timeline
       - name: Native speech provider event UI regression
         run: npm --prefix app run test:native-speech-provider-events
+      - name: Browser speech watchdog liveness regression
+        run: npm --prefix app run test:browser-speech-watchdog
       - name: Run app script regression suite
         run: npm --prefix app run test:scripts
       - name: App typecheck
