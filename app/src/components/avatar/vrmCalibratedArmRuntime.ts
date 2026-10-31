@@ -1,7 +1,7 @@
 import {
+  applyVrmArmPose,
   captureVrmArmBindPose,
   computeVrmArmPose,
-  type MutableEulerLike,
   type VrmArmBindPose,
   type VrmArmChainMap,
   type VrmArmPose,
@@ -176,7 +176,6 @@ export function applyCalibratedVrmArmGesture(
   const result = solveCalibratedVrmArmGesture(binding, profile, context, state);
   if (!result.accepted) return result;
   if (!Number.isFinite(weight) || weight < 0 || weight > 1) return { accepted: false, reason: "invalid-pose-blend-weight" };
-  const { applyVrmArmPose } = requireVrmPoseApplier();
   if (!applyVrmArmPose(binding.map, result.pose, weight)) return { accepted: false, reason: "calibrated-vrm-pose-application-failed" };
   return result;
 }
