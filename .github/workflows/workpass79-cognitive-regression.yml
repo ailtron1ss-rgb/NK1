@@ -58,6 +58,12 @@ jobs:
       - name: Audit canonical cognitive subsystem ownership after runtime extraction
         working-directory: runtime/neuro-kurisu
         run: npm run audit:core-ownership
+      - name: Test evidence-bounded UserModel claims, candidates, contradiction and correction
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:user-model-evidence
+      - name: Test UserModel SelfSubsystemRuntime snapshot and restore
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:user-model-runtime-persistence
       - name: Test cold-memory retrieval and residency invariants
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass80:memory-residency

@@ -3,8 +3,8 @@ import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../src/organism
 import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
 import { defaultExperienceContinuum } from '../src/organism/memory/ExperienceContinuumFabric.ts';
 
-assert.equal(ORGANISM_STATE_SCHEMA, 195);
-assert.equal(RELEASE_CONTRACT.stateSchema, 195);
+assert.ok(ORGANISM_STATE_SCHEMA >= 195, `schema must not regress below 195`);
+assert.equal(RELEASE_CONTRACT.stateSchema, ORGANISM_STATE_SCHEMA);
 const base=defaultExperienceContinuum();
 const legacy={
   schemaVersion:194,
@@ -14,7 +14,7 @@ const legacy={
 };
 const migrated=migratePersistedOrganism(legacy);
 const experience=migrated.facets.advanced.experienceContinuum;
-assert.equal(migrated.schemaVersion,195);
+assert.equal(migrated.schemaVersion,ORGANISM_STATE_SCHEMA);
 assert.equal(experience.version,7);
 assert.equal(experience.graphNodes.length,1);
 assert.equal(experience.graphNodes[0].replayCount,0);

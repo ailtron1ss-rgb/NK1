@@ -10,6 +10,7 @@ import { P71SelfConsistencyModel } from '../cognition/P71SelfConsistencyModel.ts
 import { P76IdentityLifeOS } from '../system/P76IdentityLifeOS.ts';
 import { P78AutobiographicalSelfContinuity } from '../developmental/P78AutobiographicalSelfContinuity.ts';
 import { P80UnifiedSelfState } from '../cognition/P80UnifiedSelfState.ts';
+import { UserModelEvidenceModel } from '../cognition/UserModelEvidenceModel.ts';
 import { P48FunctionalAwarenessCore } from '../cognition/P48FunctionalAwarenessCore.ts';
 import { P49TemporalLifeEngine } from '../developmental/P49TemporalLifeEngine.ts';
 import { P84AutobiographicalContinuityFabric } from '../developmental/P84AutobiographicalContinuityFabric.ts';
@@ -47,6 +48,8 @@ export class SelfSubsystemRuntime {
   readonly p76IdentityLifeOS = new P76IdentityLifeOS();
   readonly p78AutobiographicalSelfContinuity = new P78AutobiographicalSelfContinuity();
   readonly p80UnifiedSelfState = new P80UnifiedSelfState();
+  /** Explicit, low-risk interaction preferences; never promote inferred sensitive traits. */
+  readonly userModelEvidence = new UserModelEvidenceModel();
   readonly p48Awareness = new P48FunctionalAwarenessCore();
   readonly p49TemporalLife = new P49TemporalLifeEngine();
   readonly p84AutobiographicalContinuity = new P84AutobiographicalContinuityFabric();
@@ -87,7 +90,7 @@ export class SelfSubsystemRuntime {
     this.restore({ identityContinuity:consciousness.identityContinuity, selfAuthorship:learning.selfAuthorship,
       p31:consciousness.p31, p32:consciousness.p32, p33:consciousness.p33, p34:consciousness.p34,
       p60:advanced.p60IdentityGuardian, p71:advanced.p71SelfConsistency, p76:advanced.p76IdentityLifeOS,
-      p78:advanced.p78AutobiographicalSelfContinuity, p80:advanced.p80UnifiedSelfState, p48:advanced.p48Awareness, p49:advanced.p49TemporalLife, p84:advanced.p84AutobiographicalContinuity });
+      p78:advanced.p78AutobiographicalSelfContinuity, p80:advanced.p80UnifiedSelfState, userModelEvidence:advanced.userModelEvidence, p48:advanced.p48Awareness, p49:advanced.p49TemporalLife, p84:advanced.p84AutobiographicalContinuity });
   }
 
   restore(input: {
@@ -102,6 +105,7 @@ export class SelfSubsystemRuntime {
     p76?: unknown;
     p78?: unknown;
     p80?: unknown;
+    userModelEvidence?: unknown;
     p48?: unknown;
     p49?: unknown;
     p84?: unknown;
@@ -117,6 +121,7 @@ export class SelfSubsystemRuntime {
     this.p76IdentityLifeOS.restore(input.p76 as any);
     this.p78AutobiographicalSelfContinuity.restore(input.p78 as any);
     this.p80UnifiedSelfState.restore(input.p80 as any);
+    this.userModelEvidence.restore(input.userModelEvidence as any);
     this.p48Awareness.restore(input.p48 as any);
     this.p49TemporalLife.restore(input.p49 as any);
     this.p84AutobiographicalContinuity.restore(input.p84 as any);
@@ -135,6 +140,7 @@ export class SelfSubsystemRuntime {
       p76: this.p76IdentityLifeOS.snapshot(),
       p78: this.p78AutobiographicalSelfContinuity.snapshot(),
       p80: this.p80UnifiedSelfState.snapshot(),
+      userModelEvidence: this.userModelEvidence.snapshot(),
       p48: this.p48Awareness.snapshot(),
       p49: this.p49TemporalLife.snapshot(),
       p84: this.p84AutobiographicalContinuity.snapshot(),

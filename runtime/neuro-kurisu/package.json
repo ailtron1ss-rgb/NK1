@@ -1839,6 +1839,10 @@
     "test:motor-frame-channel": "node --experimental-strip-types tests/motor-frame-channel.mjs",
     "test:motor-rig-profile": "node --experimental-strip-types tests/motor-rig-profile.mjs",
     "test:organism-motor-rig-profile": "node --experimental-strip-types tests/organism-motor-rig-profile.mjs",
-    "test:organism-motor-runtime": "node --experimental-strip-types tests/organism-motor-runtime.mjs"
+    "test:organism-motor-runtime": "node --experimental-strip-types tests/organism-motor-runtime.mjs",
+    "test:aspect01:cognitive-runtime-integrity": "node --experimental-strip-types tests/aspect01-cognitive-runtime-integrity-2026-10-31.mjs",
+    "test:user-model-evidence": "node --experimental-strip-types tests/user-model-evidence-model.mjs",
+    "test:user-model-runtime-persistence": "node --experimental-strip-types tests/user-model-runtime-persistence.mjs",
+    "test:architecture-audit-masking": "node tests/architecture-audit-masking.mjs"
   }
 }

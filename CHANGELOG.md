@@ -1,3 +1,21 @@
+## [NK1][Aspect 05] UserModel evidence boundary — current-source integration (2026-10-31)
+
+- Rebase the evidence-bounded UserModel onto the latest `workpass70-source` head after the Aspect 08 source update.
+- Add a single `SelfSubsystemRuntime` owner with snapshot/restore and a typed advanced-persistence projection.
+- Keep explicit low-risk claims, disputed facts and unconfirmed behavior hypotheses separate; sensitive or unclassified inputs fail closed.
+- Harden restore to read own data properties only; getter-backed roots, rows and array slots are ignored without executing accessors.
+- Add dedicated unit and runtime persistence regressions and gate them in WorkPass79.
+- No response-policy consumer, complete Theory-of-Mind model or production learning uplift is claimed.
+
+## [NK1][WorkPass635] Repair release-gate audit false positives and rotted regressions (2026-10-31)
+
+- Fix `audit:architecture` matching `from './x.ts'` / `import('./x.ts')` inside string and regex literals, which reported valid test assertions (e.g. `source.includes("... from '../cognition/PerceptionEngine.ts'")`) as missing relative imports. Specifier detection now masks comments, strings and regex literals while preserving offsets, so real missing imports still fail.
+- Add `test:architecture-audit-masking` regression covering comments, template strings, regex literals, division-vs-regex and the two previously flagged files; wire it into `audit:all`.
+- Repair rotted migration/retention regressions that drifted from the current source: `big-pass-104`/`-105`/`-106`, `p2688-causal-replay-credit` and `p2688-long-horizon-replay-transfer` now mint real external postcondition receipts instead of the deprecated `independentVerified:true` caller boolean; `big-pass-104`/`-106` migration assert continuum `version:7`; `p2687`/`p2688` migration assert the live schema instead of a frozen number; and `audit:pass104` asserts `version:7`.
+- These test repairs keep the evidence-gating contract intact (a caller boolean still cannot authorize success) rather than weakening assertions to restore green.
+- Restore doc currency: the eight canonical docs now state the live release (`35.90.0`), so `audit:source-truth` passes.
+- These are tooling, test-integrity and documentation-currency corrections. They do not change runtime behaviour or claim any new learning/capability.
+
 ## [NK1][Embodiment][Integration Hardening] Host-owned rig bootstrap and CI regression repairs (2026-10-31)
 
 - Added an opt-in host-owned MotorRigProfile file loader with file size/permission bounds, schema validation, production-calibration requirement, renderer/model uniqueness and canonical skeleton parity.
