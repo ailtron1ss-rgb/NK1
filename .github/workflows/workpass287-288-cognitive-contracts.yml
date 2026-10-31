@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - "runtime/neuro-kurisu/src/organism/system/UnifiedCognitiveCycle.ts"
+      - "runtime/neuro-kurisu/src/organism/core/UnifiedCognitiveSubstrate.ts"
+      - "runtime/neuro-kurisu/tests/aspect01-cognitive-runtime-integrity-2026-10-31.mjs"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/tests/workpass287-unified-cycle-contract.mjs"
       - "runtime/neuro-kurisu/tests/workpass288-intrinsic-motivation-contract.mjs"
@@ -64,6 +66,9 @@ jobs:
       - name: Check unified cognitive-cycle contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs
+      - name: Check unified cognitive runtime restore, tick and phase integrity
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:aspect01:cognitive-runtime-integrity
       - name: Check intrinsic motivation contract
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass288-intrinsic-motivation-contract.mjs
