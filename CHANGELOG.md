@@ -1,3 +1,9 @@
+## [NK1][Embodiment][Integration Hardening] Host-owned rig bootstrap and CI regression repairs (2026-10-31)
+
+- Added an opt-in host-owned MotorRigProfile file loader with file size/permission bounds, schema validation, production-calibration requirement, renderer/model uniqueness and canonical skeleton parity.
+- Wired host profiles into server startup. No configured file keeps MotorFrame unconfigured; invalid explicit configuration fails startup. No fixture profiles or synthetic goals are introduced.
+- Fixed same-revision duplicate profile diagnostics and repaired malformed literal newlines in the VRM stage regression.
+
 ## 2026-10-31 — unified embodiment CI repair and external toolchain intake
 
 - Narrowed untrusted Live2D renderer signal revisions and timestamps before constructing typed apply/verify receipts.

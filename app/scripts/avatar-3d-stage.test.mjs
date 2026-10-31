@@ -55,7 +55,9 @@ test("VRM arm actuation requires exact fingerprint, declared coordinate frame an
  assert.match(stage,/parseVrmRigCalibrationBundleJson\(json,context\)/);
  assert.match(stage,/applyCalibratedVrmArmGesture\(calibratedBindings\.left/);
  assert.match(stage,/applyCalibratedVrmArmGesture\(calibratedBindings\.right/);
- assert.match(stage,/serializeVrmRigCalibrationBundleJson/);\n assert.match(stage,/vrmCalibrationSessionRef\.current=result\.bundle\.session/);\n assert.match(stage,/Импорт IK bundle/);
+ assert.match(stage,/serializeVrmRigCalibrationBundleJson/);
+ assert.match(stage,/vrmCalibrationSessionRef\.current=result\.bundle\.session/);
+ assert.match(stage,/Импорт IK bundle/);
  assert.match(stage,/VRM IK · \{vrmCalibrationStatus\}/);
  assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="explore"\?-.14/);
  assert.doesNotMatch(stage,/bone\.node\.rotation\.z\+=p\.action==="respond"&&p\.speaking\?-.26/);
