@@ -246,4 +246,20 @@ assert.equal(createCognitiveMotorGoalCandidate({
   conflict01: 0, goalFit01: .9, novelty01: .1,
 }), null, 'malformed calibration values must fail closed before creating a motor goal');
 
+
+const affectBase = {
+  action: 'respond', tick: 21, nowMs: 2100, joints: motorProfileJoints,
+  score01: .9, predictedUtility01: .85, confidence01: .92, effort01: .08,
+  conflict01: .02, goalFit01: .9, novelty01: .2,
+};
+const calmRespond = createCognitiveMotorGoalCandidate({ ...affectBase, emotion: { label: 'calm', valence01: .5, arousal01: .2, dominance01: .5 } });
+const anxiousRespond = createCognitiveMotorGoalCandidate({ ...affectBase, emotion: { label: 'anxiety', valence01: .2, arousal01: .95, dominance01: .2 } });
+const joyfulRespond = createCognitiveMotorGoalCandidate({ ...affectBase, emotion: { label: 'joy', valence01: .9, arousal01: .6, dominance01: .8 } });
+assert.ok(calmRespond && anxiousRespond && joyfulRespond);
+assert.notEqual(anxiousRespond.goal.targetJointAnglesRad['head-pitch-joint'], calmRespond.goal.targetJointAnglesRad['head-pitch-joint'],
+  'high-arousal anxiety must soften the response gesture instead of reusing a generic nod');
+assert.notEqual(joyfulRespond.goal.targetJointAnglesRad['head-pitch-joint'], calmRespond.goal.targetJointAnglesRad['head-pitch-joint'],
+  'positive affect must produce a distinct but bounded response gesture');
+assert.ok(Math.abs(anxiousRespond.goal.targetJointAnglesRad['head-pitch-joint']) <= .08);
+
 console.log('Cognitive motor intent mapping: bounded, profile-bound action gestures passed.');
