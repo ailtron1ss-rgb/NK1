@@ -1,4 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  EmbodimentSwitchCoordinator,
+  type EmbodimentAdapter,
+  type AdapterApplyReceipt,
+  type AdapterVerification,
+  type EmbodimentSwitchPhase,
+} from "./avatar/embodimentCoordinator";
+import type { EmbodimentMode, SemanticBodyState, ExpressionChannel } from "./avatar/embodimentSwitch";
+import type { EmbodimentRendererSignal } from "./avatar/embodimentRendererSignals";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { neuroApiUrl } from "@/neuro-kurisu/api";
 import {
@@ -141,6 +150,211 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   });
   const currentModeRef = useRef(mode);
   currentModeRef.current = mode;
+  const [activeSwitch, setActiveSwitch] = useState<{ executionId: string; revision: number } | null>(null);
+  const [switchPhase, setSwitchPhase] = useState<EmbodimentSwitchPhase>("idle");
+  const [switchDetail, setSwitchDetail] = useState("");
+  const switchRevisionRef = useRef(0);
+  const switchExecutionCounterRef = useRef(0);
+  const switchContextRef = useRef<{ executionId: string; revision: number } | null>(null);
+  const switchCoordinatorRef = useRef<EmbodimentSwitchCoordinator | null>(null);
+  const switchSignalStoreRef = useRef(new Map<string, EmbodimentRendererSignal>());
+  const switchWaitersRef = useRef(new Map<string, Set<{ kind: "ready" | "apply" | "verify"; resolve: (signal: EmbodimentRendererSignal) => void; reject: (error: Error) => void }>>());
+  const signalKey = (executionId: string, adapterId: string, kind: string) => [executionId, adapterId, kind].join("|");
+  const publishRendererSignal = (signal: EmbodimentRendererSignal) => {
+    const executionId = signal.kind === "apply" ? signal.receipt.executionId
+      : signal.kind === "verify" ? signal.verification.executionId : signal.executionId;
+    const adapterId = signal.kind === "apply" ? signal.receipt.adapterId
+      : signal.kind === "verify" ? signal.verification.adapterId : signal.adapterId;
+    const key = signalKey(executionId, adapterId, signal.kind);
+    const store = switchSignalStoreRef.current;
+    store.set(key, signal);
+    if (store.size > 64) store.delete(store.keys().next().value as string);
+    const waiterKey = signalKey(executionId, adapterId, "*");
+    const waiters = switchWaitersRef.current.get(waiterKey);
+    if (waiters) {
+      for (const waiter of [...waiters]) {
+        if (signal.kind === "failed") {
+          waiter.reject(new Error(signal.reason || "renderer-prepare-failed"));
+          waiters.delete(waiter);
+        } else if (signal.kind === waiter.kind) {
+          waiter.resolve(signal);
+          waiters.delete(waiter);
+        }
+      }
+      if (waiters.size === 0) switchWaitersRef.current.delete(waiterKey);
+    }
+  };
+  const waitForRendererSignal = (
+    kind: "ready" | "apply" | "verify",
+    adapterId: string,
+    executionId: string,
+    signal: AbortSignal,
+    timeoutMs = 9000,
+  ): Promise<EmbodimentRendererSignal> => {
+    const cachedFailure = switchSignalStoreRef.current.get(signalKey(executionId, adapterId, "failed"));
+    if (cachedFailure?.kind === "failed") return Promise.reject(new Error(cachedFailure.reason));
+    const cached = switchSignalStoreRef.current.get(signalKey(executionId, adapterId, kind));
+    if (cached) return Promise.resolve(cached);
+    if (signal.aborted) return Promise.reject(new Error("switch-aborted"));
+    return new Promise((resolve, reject) => {
+      const waiterKey = signalKey(executionId, adapterId, "*");
+      const waiter = { kind, resolve, reject };
+      const waiters = switchWaitersRef.current.get(waiterKey) ?? new Set();
+      waiters.add(waiter);
+      switchWaitersRef.current.set(waiterKey, waiters);
+      const cleanup = () => {
+        window.clearTimeout(timer);
+        signal.removeEventListener("abort", onAbort);
+        waiters.delete(waiter);
+        if (!waiters.size) switchWaitersRef.current.delete(waiterKey);
+      };
+      const timer = window.setTimeout(() => { cleanup(); reject(new Error("renderer-signal-timeout:" + kind)); }, timeoutMs);
+      const onAbort = () => { cleanup(); reject(new Error("switch-aborted")); };
+      signal.addEventListener("abort", onAbort, { once: true });
+    });
+  };
+  const embodimentModeForView = (view: ViewMode): EmbodimentMode | null =>
+    view === "live2d" ? "live2d" : view === "2.5d" ? "depth2d" : view === "3d" ? "vrm3d" : null;
+  const viewForEmbodimentMode = (target: EmbodimentMode): ViewMode =>
+    target === "live2d" ? "live2d" : target === "depth2d" ? "2.5d" : "3d";
+  const adapterIdForMode = (target: EmbodimentMode): string =>
+    target === "live2d" ? "nk1-live2d" : target === "depth2d" ? "nk1-depth-rig-scene-v1" : "nk1-three-scene-v1";
+  const createEmbodimentAdapter = (target: EmbodimentMode): EmbodimentAdapter => {
+    const adapterId = adapterIdForMode(target);
+    const view = viewForEmbodimentMode(target);
+    const context = () => switchContextRef.current;
+    const ensureReady = async (signal: AbortSignal) => {
+      const active = context();
+      if (!active) throw new Error("switch-context-missing");
+      if (currentModeRef.current !== view) {
+        setMode(view);
+        const ready = await waitForRendererSignal("ready", adapterId, active.executionId, signal);
+        if (ready.kind !== "ready" || ready.stateRevision !== active.revision) throw new Error("renderer-ready-revision-mismatch");
+      }
+    };
+    return {
+      id: adapterId,
+      mode: target,
+      prepare: async (_state: SemanticBodyState, signal: AbortSignal) => {
+        const active = context();
+        if (!active) throw new Error("switch-context-missing");
+        if (currentModeRef.current !== view) setMode(view);
+        const ready = await waitForRendererSignal("ready", adapterId, active.executionId, signal);
+        if (ready.kind !== "ready" || ready.stateRevision !== active.revision) throw new Error("renderer-ready-revision-mismatch");
+      },
+      apply: async (_state: SemanticBodyState, signal: AbortSignal): Promise<AdapterApplyReceipt> => {
+        const active = context();
+        if (!active) throw new Error("switch-context-missing");
+        await ensureReady(signal);
+        const result = await waitForRendererSignal("apply", adapterId, active.executionId, signal);
+        if (result.kind !== "apply") throw new Error("renderer-apply-receipt-missing");
+        return result.receipt;
+      },
+      verify: async (_receipt: AdapterApplyReceipt, signal: AbortSignal): Promise<AdapterVerification> => {
+        const active = context();
+        if (!active) throw new Error("switch-context-missing");
+        const result = await waitForRendererSignal("verify", adapterId, active.executionId, signal);
+        if (result.kind !== "verify") throw new Error("renderer-verification-missing");
+        return result.verification;
+      },
+      dispose: async () => undefined,
+    };
+  };
+  const buildSemanticBodySnapshot = (revision: number): SemanticBodyState => {
+    const rawEmotion = String(snap.emotion.label).toLowerCase();
+    const emotion: ExpressionChannel =
+      rawEmotion.includes("joy") || rawEmotion.includes("happy") ? "joy"
+      : rawEmotion.includes("sad") ? "sadness"
+      : rawEmotion.includes("ang") || rawEmotion.includes("frustr") ? "anger"
+      : rawEmotion.includes("anx") || rawEmotion.includes("fear") ? "anxiety"
+      : rawEmotion.includes("curio") ? "curiosity"
+      : rawEmotion.includes("protect") ? "protective"
+      : rawEmotion.includes("surpris") ? "surprise" : "neutral";
+    const speechPhaseValue = String(speechPhaseRef.current);
+    const speechPhase = (["idle", "starting", "speaking", "ended", "cancelled"].includes(speechPhaseValue)
+      ? speechPhaseValue : "unknown") as SemanticBodyState["speech"]["phase"];
+    const activeSpeech = activeSpeechSessionRef.current;
+    const session = activeSpeech ?? lastSpeechSessionRef.current;
+    const audioTimeMs = activeSpeech ? speechAudioClockNow(activeSpeech, performance.now())
+      : Math.max(0, Number(session?.lastAudioElapsedMs ?? 0));
+    return {
+      schemaVersion: 1,
+      revision,
+      capturedAtMonotonicMs: performance.now(),
+      emotion,
+      emotionIntensity: Math.max(0, Math.min(1, snap.emotion.arousal)),
+      expression: String(snap.emotion.label || "neutral").slice(0, 96),
+      gaze: { x: Math.max(-1, Math.min(1, originalGaze.x)), y: Math.max(-1, Math.min(1, originalGaze.y)) },
+      speech: { eventId: session?.speechEventId ?? null, phase: speechPhase, audioTimeMs,
+        mouthOpen: Math.max(0, Math.min(1, mouthPose.open)), mouthForm: Math.max(-1, Math.min(1, mouthPose.form)) },
+      action: String(snap.lastOption || "wait").slice(0, 96),
+      intentId: turnKey || null,
+      pose: { gazeX: originalGaze.x, gazeY: originalGaze.y },
+      wardrobeId: null,
+    };
+  };
+  const requestViewMode = async (targetView: ViewMode) => {
+    if (targetView === currentModeRef.current || switchContextRef.current) return;
+    const targetMode = embodimentModeForView(targetView);
+    if (!targetMode) {
+      switchCoordinatorRef.current = null;
+      switchContextRef.current = null;
+      setActiveSwitch(null);
+      setSwitchPhase("idle");
+      setSwitchDetail("");
+      setMode(targetView);
+      return;
+    }
+    const revision = Math.max(switchRevisionRef.current + 1, Number.isSafeInteger(snap.tick) ? snap.tick : 0);
+    switchRevisionRef.current = revision;
+    switchExecutionCounterRef.current += 1;
+    const executionId = `nk1.switch.${revision}.${switchExecutionCounterRef.current}`;
+    const context = { executionId, revision };
+    switchContextRef.current = context;
+    setActiveSwitch(context);
+    setSwitchDetail("");
+    const snapshot = buildSemanticBodySnapshot(revision);
+    const sourceMode = embodimentModeForView(currentModeRef.current);
+    const events = (event: { phase: EmbodimentSwitchPhase; fromAdapterId: string; toAdapterId: string; revision: number; detail?: string }) => {
+      setSwitchPhase(event.phase);
+      setSwitchDetail(event.detail || "");
+    };
+    try {
+      if (!sourceMode) {
+        setSwitchPhase("preparing");
+        setMode(targetView);
+        const ready = await waitForRendererSignal("ready", adapterIdForMode(targetMode), executionId, new AbortController().signal);
+        if (ready.kind !== "ready" || ready.stateRevision !== revision) throw new Error("renderer-ready-revision-mismatch");
+        switchCoordinatorRef.current = new EmbodimentSwitchCoordinator(createEmbodimentAdapter(targetMode), events);
+        setSwitchPhase("committed");
+        setSwitchDetail("Initial renderer activated; subsequent body changes use transactional handoff. GPU presentation is not verified.");
+      } else {
+        if (!switchCoordinatorRef.current || switchCoordinatorRef.current.activeAdapterId !== adapterIdForMode(sourceMode)) {
+          switchCoordinatorRef.current = new EmbodimentSwitchCoordinator(createEmbodimentAdapter(sourceMode), events);
+        }
+        const outcome = await switchCoordinatorRef.current.switchTo(createEmbodimentAdapter(targetMode), snapshot, new AbortController().signal);
+        if (outcome.status === "committed") {
+          setSwitchPhase("committed");
+          setSwitchDetail("Renderer readback verified for the same semantic revision; presented GPU frame remains unverified.");
+        } else if (outcome.status === "rolled-back") {
+          setSwitchPhase("failed");
+          setSwitchDetail("Target renderer rejected; source body restored: " + outcome.reason);
+        } else if (outcome.status === "unchanged") {
+          setSwitchPhase("idle");
+        } else {
+          setSwitchPhase("failed");
+          setSwitchDetail(outcome.reason);
+        }
+      }
+    } catch (error) {
+      setSwitchPhase("failed");
+      setSwitchDetail(error instanceof Error ? error.message : "body-switch-failed");
+      if (currentModeRef.current !== targetView) setMode(currentModeRef.current);
+    } finally {
+      switchContextRef.current = null;
+      setActiveSwitch(null);
+    }
+  };
   const lastTurn = snap.chat[snap.chat.length - 1];
   const originalGazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
     explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
