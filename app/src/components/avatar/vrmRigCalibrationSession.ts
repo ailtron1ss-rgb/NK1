@@ -151,3 +151,145 @@ export function finalizeVrmRigCalibrationSession(
 export function serializeVrmRigCalibrationSession(session: VrmRigCalibrationSession): string {
   return JSON.stringify(session, null, 2);
 }
+
+export interface VrmRigCalibrationBundle {
+  readonly schemaVersion: 1;
+  readonly profile: VrmRigCalibrationProfile;
+  readonly session: VrmRigCalibrationSession;
+}
+export type VrmRigCalibrationBundleResult =
+  | { readonly accepted: true; readonly bundle: VrmRigCalibrationBundle }
+  | { readonly accepted: false; readonly reason: "invalid-bundle" | "invalid-session" | "invalid-profile" | "profile-session-mismatch" | "measurement-provenance-required" };
+
+function validRotationSnapshot(raw: unknown): raw is Rotation {
+  if (!raw || typeof raw !== "object") return false;
+  const value = raw as Record<string, unknown>;
+  return [value.x, value.y, value.z].every((n) => typeof n === "number" && Number.isFinite(n) && Math.abs(n) <= Math.PI * 2 + 1e-3);
+}
+function validArmCapture(raw: unknown): raw is ArmCapture {
+  if (!raw || typeof raw !== "object") return false;
+  const capture = raw as Record<string, unknown>;
+  return validRotationSnapshot(capture.shoulder) && validRotationSnapshot(capture.elbow);
+}
+
+/** Validate a persisted measurement session against the exact currently loaded model and bilateral rig. */
+export function validateVrmRigCalibrationSession(
+  raw: unknown,
+  context: VrmRigCalibrationContext,
+): VrmRigCalibrationSessionResult {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { accepted: false, reason: "invalid-context" };
+  const candidate = raw as Record<string, unknown>;
+  if (candidate.schemaVersion !== 1 || typeof candidate.modelFingerprint !== "string"
+    || typeof candidate.coordinateFrameId !== "string" || typeof candidate.modelName !== "string"
+    || !candidate.modelName.trim() || candidate.modelName.length > 180
+    || typeof candidate.createdAt !== "string" || !isoTime(candidate.createdAt)) {
+    return { accepted: false, reason: "invalid-context" };
+  }
+  if (candidate.modelFingerprint !== context.modelFingerprint || candidate.coordinateFrameId !== context.coordinateFrameId) {
+    return { accepted: false, reason: "rig-changed" };
+  }
+  const boneNames = candidate.boneNames as Record<string, unknown> | undefined;
+  if (!boneNames || !context.left || !context.right) return { accepted: false, reason: "invalid-context" };
+  const leftNames = boneNames.left as Record<string, unknown> | undefined;
+  const rightNames = boneNames.right as Record<string, unknown> | undefined;
+  if (!leftNames || !rightNames
+    || leftNames.shoulder !== context.left.shoulder.name || leftNames.elbow !== context.left.elbow.name
+    || rightNames.shoulder !== context.right.shoulder.name || rightNames.elbow !== context.right.elbow.name) {
+    return { accepted: false, reason: "rig-changed" };
+  }
+  const bindPose = candidate.bindPose as Record<string, unknown> | undefined;
+  const referencePose = candidate.referencePose as Record<string, unknown> | null | undefined;
+  const reference = candidate.reference as Record<string, unknown> | null | undefined;
+  if (!bindPose || !validArmCapture(bindPose.left) || !validArmCapture(bindPose.right)
+    || !referencePose || !validArmCapture(referencePose.left) || !validArmCapture(referencePose.right)
+    || !reference || typeof reference.fixtureId !== "string" || !reference.fixtureId.trim()
+    || reference.fixtureId.length > 120 || typeof reference.capturedAt !== "string"
+    || !isoTime(reference.capturedAt) || reference.capturedAt < candidate.createdAt
+    || typeof reference.operatorNote !== "string" || reference.operatorNote.length > 500) {
+    return { accepted: false, reason: "reference-not-captured" };
+  }
+  const freezeCapture = (capture: ArmCapture): ArmCapture => Object.freeze({
+    shoulder: Object.freeze({ ...capture.shoulder }),
+    elbow: Object.freeze({ ...capture.elbow }),
+  });
+  const session: VrmRigCalibrationSession = Object.freeze({
+    schemaVersion: 1,
+    modelFingerprint: candidate.modelFingerprint,
+    coordinateFrameId: candidate.coordinateFrameId,
+    modelName: candidate.modelName.trim(),
+    createdAt: candidate.createdAt,
+    boneNames: Object.freeze({
+      left: Object.freeze({ shoulder: String(leftNames.shoulder), elbow: String(leftNames.elbow) }),
+      right: Object.freeze({ shoulder: String(rightNames.shoulder), elbow: String(rightNames.elbow) }),
+    }),
+    bindPose: Object.freeze({
+      left: freezeCapture(bindPose.left as ArmCapture),
+      right: freezeCapture(bindPose.right as ArmCapture),
+    }),
+    referencePose: Object.freeze({
+      left: freezeCapture(referencePose.left as ArmCapture),
+      right: freezeCapture(referencePose.right as ArmCapture),
+    }),
+    reference: Object.freeze({
+      fixtureId: reference.fixtureId.trim(),
+      capturedAt: reference.capturedAt,
+      operatorNote: reference.operatorNote.trim(),
+    }),
+  });
+  return { accepted: true, session };
+}
+
+/** Parse a measurement + profile bundle; identity and measured-fixture provenance are both mandatory. */
+export function parseVrmRigCalibrationBundleJson(
+  json: string,
+  context: VrmRigCalibrationContext,
+): VrmRigCalibrationBundleResult {
+  if (typeof json !== "string" || json.length === 0 || json.length > 65_536) {
+    return { accepted: false, reason: "invalid-bundle" };
+  }
+  try {
+    const raw: unknown = JSON.parse(json);
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { accepted: false, reason: "invalid-bundle" };
+    const value = raw as Record<string, unknown>;
+    if (value.schemaVersion !== 1) return { accepted: false, reason: "invalid-bundle" };
+    const sessionResult = validateVrmRigCalibrationSession(value.session, context);
+    if (!sessionResult.accepted) return { accepted: false, reason: "invalid-session" };
+    const profileResult = validateVrmRigCalibrationProfile(value.profile, context);
+    if (!profileResult.accepted) return { accepted: false, reason: "invalid-profile" };
+    if (profileResult.profile.calibrationMethod !== "manual-measured") {
+      return { accepted: false, reason: "measurement-provenance-required" };
+    }
+    const profile = profileResult.profile, session = sessionResult.session;
+    if (profile.modelFingerprint !== session.modelFingerprint
+      || profile.coordinateFrameId !== session.coordinateFrameId
+      || profile.left.shoulderBoneName !== session.boneNames.left.shoulder
+      || profile.left.elbowBoneName !== session.boneNames.left.elbow
+      || profile.right.shoulderBoneName !== session.boneNames.right.shoulder
+      || profile.right.elbowBoneName !== session.boneNames.right.elbow) {
+      return { accepted: false, reason: "profile-session-mismatch" };
+    }
+    return { accepted: true, bundle: Object.freeze({ schemaVersion: 1, profile, session }) };
+  } catch {
+    return { accepted: false, reason: "invalid-bundle" };
+  }
+}
+
+/** Export a bundle only while both the measured session and profile still match the loaded model. */
+export function serializeVrmRigCalibrationBundleJson(
+  profile: VrmRigCalibrationProfile,
+  session: VrmRigCalibrationSession,
+  context: VrmRigCalibrationContext,
+): string | null {
+  const sessionResult = validateVrmRigCalibrationSession(session, context);
+  const profileResult = validateVrmRigCalibrationProfile(profile, context);
+  if (!sessionResult.accepted || !profileResult.accepted
+    || profileResult.profile.calibrationMethod !== "manual-measured") return null;
+  const parsed = parseVrmRigCalibrationBundleJson(JSON.stringify({
+    schemaVersion: 1, profile: profileResult.profile, session: sessionResult.session,
+  }), context);
+  return parsed.accepted ? JSON.stringify({
+    schemaVersion: 1,
+    profile: parsed.bundle.profile,
+    session: parsed.bundle.session,
+  }, null, 2) : null;
+}
