@@ -202,6 +202,7 @@ export interface LongMemEvalMemoryBenchmarkOptions {
  seeds?:number[];
  minAnswerableQueries?:number;
  minUnanswerableQueries?:number;
+ minIndependentGroups?:number;
 }
 export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEvalMemoryBenchmarkOptions){
  const revision=String(options.datasetRevision??'').toLowerCase();
@@ -243,6 +244,7 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
  const answerableCount=questions.filter(row=>row.answerable).length,unanswerableCount=questions.length-answerableCount;
  const minAnswerable=Math.floor(finiteOption(options.minAnswerableQueries,20,1,500));
  const minUnanswerable=Math.floor(finiteOption(options.minUnanswerableQueries,8,1,500));
+ const minIndependentGroups=Math.floor(finiteOption(options.minIndependentGroups,20,1,500));
  return {
   schemaVersion:1,evaluation:'longmemeval-s-memory-retrieval',generatedAt:new Date().toISOString(),
   mode:'offline-only; per-question isolated corpus; no-live-memory-mutation; no-auto-promotion',
@@ -253,7 +255,7 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
    fileSha256:fileSha,datasetFingerprint,
   },
   experiment:{candidateMode:'canonical-memoryos2',baseline:'Okapi BM25 per question corpus',k,bootstrapSamples,seeds},
-  sampleAdequacy:{answerableQueries:answerableCount,unanswerableQueries:unanswerableCount,independentGroups:confidence.independentGroupCount,minimumAnswerableQueries:minAnswerable,minimumUnanswerableQueries:minUnanswerable,enoughAnswerableQueries:answerableCount>=minAnswerable,enoughUnanswerableQueries:unanswerableCount>=minUnanswerable},
+  sampleAdequacy:{answerableQueries:answerableCount,unanswerableQueries:unanswerableCount,independentGroups:confidence.independentGroupCount,minimumAnswerableQueries:minAnswerable,minimumUnanswerableQueries:minUnanswerable,minimumIndependentGroups:minIndependentGroups,enoughAnswerableQueries:answerableCount>=minAnswerable,enoughUnanswerableQueries:unanswerableCount>=minUnanswerable,enoughIndependentGroups:confidence.independentGroupCount>=minIndependentGroups},
   metrics:{baseline,candidate,deltas:{
    recallAtK01:Number((candidate.recallAtK01-baseline.recallAtK01).toFixed(6)),
    mrr01:Number((candidate.mrr01-baseline.mrr01).toFixed(6)),
