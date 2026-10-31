@@ -190,7 +190,7 @@ export function Avatar3DStage(props:Props){
   setMotorModelId(declaredModelId);setMotorFrameBatch(null);setMotorFrameProjection(declaredModelId?"waiting":"unmapped");
   setState("loaded");setMessage(rt.bones.length?"3D skeleton active; calibrated motor projection is model-bound.":"Геометрия загружена; скелет не найден, движения костей недоступны.");
   props.onRendererSignal?.({kind:"ready",adapterId:"nk1-three-scene-v1",executionId:props.switchExecutionId??"",stateRevision:props.switchStateRevision??0,modelId:declaredModelId??undefined});
- },[props.bodyMode,props.switchExecutionId,props.switchStateRevision,ready]);
+ },[props.bodyMode,ready]);
  useEffect(()=>{
   const renderer=props.bodyMode==="2.5d"?"depth2d":props.bodyMode==="3d"?"vrm3d":null;
   if(!renderer||!motorModelId){setMotorFrameConnection("unavailable");setMotorFrameBatch(null);return;}
