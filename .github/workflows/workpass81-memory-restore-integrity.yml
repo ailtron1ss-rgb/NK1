@@ -1,0 +1,37 @@
+name: NK1 WorkPass81 memory restore integrity
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs"
+      - "runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs"
+      - ".github/workflows/workpass81-memory-restore-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-memory-restore-integrity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  memory-restore-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Restore duplicate identity regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs
+      - name: Restore shape hardening regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs
