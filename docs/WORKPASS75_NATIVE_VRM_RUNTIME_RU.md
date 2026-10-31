@@ -50,6 +50,6 @@
 
 ## Проверка и незакрытые вопросы
 
-Добавлены unit tests для affect→VRM expression mapping, normalized humanoid head/neck/arm mapping, missing-bone rejection, no-drift frame output, bounded frame updates и VRM 0/1 meta parsing. CI дополнительно выполнит app TypeScript typecheck и production Vite build.
+Добавлены unit tests для affect→VRM expression mapping, normalized humanoid head/neck/arm mapping, missing-bone rejection, no-drift frame output, bounded frame updates и VRM 0/1 meta parsing. Дополнительный integration test создаёт реальный `VRMHumanoid` из установленного `three-vrm`, применяет NK1 motor frame к normalized proxy nodes, вызывает штатный `humanoid.update()` и проверяет, что raw skeleton получает позу и затем возвращается к нейтральной. CI также выполняет app TypeScript typecheck и production Vite build.
 
 Физический визуальный E2E с авторизованными VRM 0.x/1.0 моделями на Android пока не считается пройденным: требуется проверить реальный MToon render, spring-bone jiggle, model-specific expression mappings, memory/freeing при многократной загрузке, и синхронность mouth pose. Generic GLB behavior также должен остаться регрессионно совместимым.
