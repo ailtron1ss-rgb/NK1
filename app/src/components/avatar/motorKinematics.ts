@@ -14,7 +14,7 @@ export type PlanarTwoBoneIKResult = {
   reachError: number;
   clamped: boolean;
 };
-const finite = (value: number, fallback = 0) => Number.isFinite(value) ? value : fallback;
+const finite = (value: number | undefined, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 /**
