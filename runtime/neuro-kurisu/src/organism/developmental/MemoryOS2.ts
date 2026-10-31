@@ -152,6 +152,7 @@ budgetEvictions:number;
 budgetMisses:number;
 meanEvictionRegret01:number;
 evictionWitnesses:MemoryEvictionWitness[];
+restoreIntegrityFindings:MemoryRestoreIntegrityFinding[];
 }
 export interface MemoryEvictionWitness {
  id:string; kind:MemoryItem2['kind']; at:number; tick:number; bytes:number; value01:number; netValuePerByte01:number; reason:string; tokens:string[]; matchedQueries:number; realizedRegret01:number; counterfactualRegret01:number;
@@ -289,7 +290,7 @@ function bm25Score(queryTokens:string[],content:string,docCount:number,documentF
   return Math.max(0,score);
 }
 type MemoryEncodeInput=Omit<MemoryItem2,'id'|'createdAt'|'lastAccessAt'|'retrievalCount'|'revisionHistory'|'dormant'|'semanticVector'|'temperature01'|'residencyTier'> & {id?:string};
-export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:7,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[]});
+export const defaultMemoryOS2=():MemoryOSState2=>({items:[],forgetCount:0,reconsolidations:0,quarantined:0,lastMaintenanceAt:0,semanticQueries:0,semanticHits:0,linkUpdates:0,version:7,implicitConflictCandidates:0,implicitConflictsResolved:0,staleRetrievalsAvoided:0,lastConflictScanAt:0,implicitConflictsDeferred:0,provenanceProtected:0,estimatedBytes:0,byteBudget:524288,budgetEvictions:0,budgetMisses:0,meanEvictionRegret01:0,evictionWitnesses:[],restoreIntegrityFindings:[]});
 const MAX_MEMORY_REVISION_HISTORY=64;
 const EPISTEMIC_STATUSES=new Set<EpistemicStatus>(['fact','belief','hypothesis','unknown','quarantined']);
 function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
@@ -308,6 +309,12 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
  * verified successor; drop ambiguous duplicate IDs and malformed edges fail-closed.
  */
 type MemoryRestoreIntegrityFinding={code:'duplicate-memory-id-dropped';memoryId:string;duplicateCount:number};
+function normalizeMemoryRestoreIntegrityFindings(value:unknown):MemoryRestoreIntegrityFinding[]{
+ if(!Array.isArray(value))return [];
+ return value.slice(-64).flatMap((row:any)=>row?.code==='duplicate-memory-id-dropped'&&typeof row.memoryId==='string'&&row.memoryId.trim()&&Number.isSafeInteger(row.duplicateCount)&&row.duplicateCount>=2
+  ? [{code:'duplicate-memory-id-dropped' as const,memoryId:row.memoryId.slice(0,180),duplicateCount:row.duplicateCount}]
+  : []);
+}
 function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:string,count:number)=>void):MemoryItem2[]{
  const idCounts=new Map<string,number>();
  for(const item of items){
@@ -389,8 +396,6 @@ export interface SemanticIndexMaintenanceResult {
 }
 export class MemoryOS2{
  private state=defaultMemoryOS2();
- /** Restore-time losses are surfaced to the read-only doctor even though ambiguous rows are dropped. */
- private restoreIntegrityFindings:MemoryRestoreIntegrityFinding[]=[];
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -666,6 +671,7 @@ export class MemoryOS2{
    budgetMisses:Math.max(0,Math.floor(Number((s as any)?.budgetMisses??0))),
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
+   restoreIntegrityFindings:normalizeMemoryRestoreIntegrityFindings((s as any)?.restoreIntegrityFindings),
    items:rawItems.map((m:any)=>({
     ...m,
     // P2697: cold residency is allowed to remain truly cold across restore.
@@ -700,9 +706,11 @@ export class MemoryOS2{
   }))};
   // Reconcile the authority-bearing revision graph before any retrieval index is rebuilt.
   // Duplicate IDs are dropped fail-closed, but the loss must remain visible to diagnostics.
-  this.state.items=normalizeMemoryRevisionGraph(this.state.items,(id,count)=>this.restoreIntegrityFindings.push({
-   code:'duplicate-memory-id-dropped',memoryId:id,duplicateCount:count,
-  }));
+  this.state.items=normalizeMemoryRevisionGraph(this.state.items,(id,count)=>{
+   const existing=this.state.restoreIntegrityFindings.find(finding=>finding.code==='duplicate-memory-id-dropped'&&finding.memoryId===id);
+   if(existing)existing.duplicateCount=Math.max(existing.duplicateCount,count);
+   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'duplicate-memory-id-dropped',memoryId:id,duplicateCount:count}].slice(-64);
+  });
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
@@ -1551,9 +1559,9 @@ export class MemoryOS2{
   let totalErrors=0,totalWarnings=0;
   const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(severity==='error')totalErrors++;else totalWarnings++;if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
   let restoreDuplicateIds=0;
-  for(const finding of this.restoreIntegrityFindings){
+  for(const finding of this.state.restoreIntegrityFindings){
    restoreDuplicateIds++;
-   add(finding.code,'error',finding.memoryId,'Restore dropped '+finding.duplicateCount+' records sharing the same memory ID.');
+   add(finding.code,'warning',finding.memoryId,'Restore dropped '+finding.duplicateCount+' records sharing the same memory ID.');
   }
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
   const ids=new Set(items.map(item=>item.id));
