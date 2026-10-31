@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Restore cognitive trace integrity and bind cycle verification to runtime tick (2026-10-31)
+
+- Restore the complete 573-line `CognitiveEventFabric` implementation after the embodiment integration branch accidentally carried a truncated 58-line fragment; preserve the canonical causal ledger rather than the malformed partial file.
+- Extend `verifyOperationalCycle` with optional `expectedTick` validation so a complete trace from an adjacent runtime tick cannot be credited as evidence for the current cycle.
+- Add a regression covering same-tick acceptance and adjacent-tick rejection; include it in the embodiment motor CI workflow.
+- Exact motor workflow on code/test head `a245d97d9fc7fce2f791981b233c6b0e11d048b2` passed runtime typecheck, cognitive tick-binding regression, motor controller, rig profiles, IK, MotorFrame transport, organism motor runtime and server smoke (run 41215952064). App/DepthRig integration remains under CI.
+- No real GPU presented-frame, production avatar calibration, browser E2E or Android/Termux validation is claimed.
+
 ## [NK1][Aspect 05] UserModel evidence boundary — current-source integration (2026-10-31)
 
 - Rebase the evidence-bounded UserModel onto the latest `workpass70-source` head after the Aspect 08 source update.
