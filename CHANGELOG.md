@@ -1,3 +1,10 @@
+## [NK1][Voice] Bound browser speech lifecycle with watchdogs (2026-10-31)
+
+- Added a queue-start watchdog and a conservative duration watchdog for browser SpeechSynthesis so a stalled browser cannot leave the avatar indefinitely in a speaking state.
+- Watchdog expiry is recorded as an unknown speech outcome, cancels the browser queue best-effort, and never claims that audio did not play.
+- Timers are cleared on terminal events, cancellation and component cleanup; stale callbacks are fenced by utterance identity.
+- Added rate/length/bounds regressions and a CI gate. This does not provide Android playback confirmation or an acoustic audio clock.
+
 ## [NK1][Aspect 10] Add grounded interaction and VRM rig calibration foundations (2026-10-30)
 
 - Add a fail-closed, renderer-independent embodied interaction planner with target/frame freshness, explicit safety authorization and independent postcondition requirements.
