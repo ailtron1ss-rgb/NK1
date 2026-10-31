@@ -194,7 +194,7 @@ test("does not fabricate role nodes when parser associations are unavailable", (
   assert.equal(audit.capabilities.fullBodyHumanoid, false);
 });
 
-function addFingerRoles(scene, side, parentName, vrmVersion) {
+function addFingerRoles(scene, side, vrmVersion) {
   const add = (name, parent) => {
     const node = { name: "scene-node-" + name, isBone: false, parent: scene.byName.get(parent) };
     scene.nodes.push(node);
@@ -204,7 +204,7 @@ function addFingerRoles(scene, side, parentName, vrmVersion) {
     const segments = finger === "Thumb" && vrmVersion === "1.0"
       ? ["Metacarpal", "Proximal", "Distal"]
       : ["Proximal", "Intermediate", "Distal"];
-    let parent = side + "Hand";
+    let parent = side.toLowerCase() + "Hand";
     for (const segment of segments) {
       const role = side.toLowerCase() + finger + segment;
       add(role, parent);
@@ -215,8 +215,8 @@ function addFingerRoles(scene, side, parentName, vrmVersion) {
 
 test("VRM 1.0 uses thumb metacarpal/proximal/distal while the other fingers use three phalanges", () => {
   const scene = makeScene();
-  addFingerRoles(scene, "Left", "LeftHand", "1.0");
-  addFingerRoles(scene, "Right", "RightHand", "1.0");
+  addFingerRoles(scene, "Left", "1.0");
+  addFingerRoles(scene, "Right", "1.0");
   const roles = [...requiredVrm1, ...scene.nodes.map((node) => node.name.replace("scene-node-", "")).filter((name) => /^(left|right)(Thumb|Index|Middle|Ring|Little)/.test(name))];
   const { humanBones } = nodeMapFor(scene, roles);
   const extension = { VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones } } };
@@ -232,8 +232,8 @@ test("VRM 1.0 uses thumb metacarpal/proximal/distal while the other fingers use 
 
 test("VRM 0.x keeps its legacy thumb proximal/intermediate/distal chain", () => {
   const scene = makeScene();
-  addFingerRoles(scene, "Left", "LeftHand", "0.x");
-  addFingerRoles(scene, "Right", "RightHand", "0.x");
+  addFingerRoles(scene, "Left", "0.x");
+  addFingerRoles(scene, "Right", "0.x");
   const roles = [...requiredVrm1, "chest", "neck", ...scene.nodes.map((node) => node.name.replace("scene-node-", "")).filter((name) => /^(left|right)(Thumb|Index|Middle|Ring|Little)/.test(name))];
   const nodeIndex = new Map(scene.nodes.map((node, index) => [node, index]));
   const extension = { VRM: { humanoid: { humanBones: roles.map((bone) => ({ bone, node: nodeIndex.get(scene.byName.get(bone)) })) } } };
