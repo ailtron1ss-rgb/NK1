@@ -10,8 +10,8 @@ export interface VrmArmBindPose{readonly shoulder:Readonly<MutableEulerLike>;rea
 export type ArmSide="left"|"right";
 const normalize=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]/g,"");
 const aliases:Record<ArmSide,{shoulder:string[];elbow:string[]}>={
- left:{shoulder:["leftupperarm","leftarm","upperarml","armleft"],elbow:["leftlowerarm","leftforearm","forearml","lowerarml"]},
- right:{shoulder:["rightupperarm","rightarm","upperarmr","armright"],elbow:["rightlowerarm","rightforearm","forearmr","lowerarmr"]},
+ left:{shoulder:["leftupperarm","leftarm","upperarml","armleft","jbiplupperarm"],elbow:["leftlowerarm","leftforearm","forearml","lowerarml","jbipllowerarm"]},
+ right:{shoulder:["rightupperarm","rightarm","upperarmr","armright","jbiprupperarm"],elbow:["rightlowerarm","rightforearm","forearmr","lowerarmr","jbiprlowerarm"]},
 };
 function matches(name:string,candidates:readonly string[]){return candidates.some(candidate=>name===candidate||name.endsWith(candidate));}
 export function resolveVrmArm(bones:readonly HumanoidBoneLike[],side:ArmSide):VrmArmBoneMap|null{
