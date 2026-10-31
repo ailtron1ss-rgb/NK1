@@ -11,6 +11,58 @@ const duplicate = fabric.reviseBelief({ memoryId:'mem-1', confidence01:first.pos
 assert.equal(duplicate.applied, false);
 assert.equal(duplicate.reason, 'duplicate_source');
 
+// Duplicate evidence may be audited, but it must not increase belief trust or
+// advance the accepted-belief timestamp, even if the duplicate payload inflates trust.
+const trustGuard = new HexisAdaptationFabric();
+const trustedFirst = trustGuard.reviseBelief({
+  memoryId:'mem-trust-guard', confidence01:.5, trust01:.1, stance:'supports',
+  evidence:{ref:'stable-source',trust01:.2}, at:1000,
+});
+assert.equal(trustedFirst.applied, true);
+const beforeDuplicate = trustGuard.snapshot().beliefs.find(x => x.memoryId === 'mem-trust-guard');
+assert.ok(beforeDuplicate);
+const rejectedDuplicate = trustGuard.reviseBelief({
+  memoryId:'mem-trust-guard', confidence01:trustedFirst.posteriorConfidence01, trust01:.1, stance:'supports',
+  evidence:{ref:'stable-source',trust01:.99}, at:2000,
+});
+assert.equal(rejectedDuplicate.applied, false);
+assert.equal(rejectedDuplicate.priorTrust01, beforeDuplicate.trust01);
+assert.equal(rejectedDuplicate.posteriorTrust01, beforeDuplicate.trust01,
+  'duplicate evidence must not inflate the trust assigned to its source');
+const afterDuplicate = trustGuard.snapshot().beliefs.find(x => x.memoryId === 'mem-trust-guard');
+assert.equal(afterDuplicate?.trust01, beforeDuplicate.trust01);
+assert.equal(afterDuplicate?.confidence01, beforeDuplicate.confidence01);
+assert.equal(afterDuplicate?.updatedAt, beforeDuplicate.updatedAt,
+  'rejected duplicate evidence must not advance the accepted-belief timestamp');
+
+// A protected contradiction is recorded as an audit event but must not mutate
+// confidence, trust or the accepted-belief timestamp.
+const protectedGuard = new HexisAdaptationFabric();
+const protectedFirst = protectedGuard.reviseBelief({
+  memoryId:'protected-identity', confidence01:.8, trust01:.2, stance:'supports',
+  evidence:{ref:'identity-support',trust01:.1}, at:3000,
+});
+const protectedBefore = protectedGuard.snapshot().beliefs.find(x => x.memoryId === 'protected-identity');
+assert.ok(protectedBefore);
+const blockedContradiction = protectedGuard.reviseBelief({
+  memoryId:'protected-identity', confidence01:protectedFirst.posteriorConfidence01, trust01:.2,
+  stance:'contradicts', evidence:{ref:'new-independent-challenge',trust01:.99},
+  protectedBelief:true, at:4000,
+});
+assert.equal(blockedContradiction.applied, false);
+assert.equal(blockedContradiction.reason, 'protected');
+assert.ok(protectedGuard.snapshot().beliefAudit.some(row => row.id === blockedContradiction.id && row.applied === false),
+  'rejected protected evidence must remain visible in the audit trail');
+const protectedAfter = protectedGuard.snapshot().beliefs.find(x => x.memoryId === 'protected-identity');
+assert.equal(protectedAfter?.confidence01, protectedBefore.confidence01);
+assert.equal(protectedAfter?.trust01, protectedBefore.trust01,
+  'blocked protected-belief contradictions must not raise trust');
+assert.equal(protectedAfter?.updatedAt, protectedBefore.updatedAt);
+assert.deepEqual(protectedAfter?.sourceKeys, protectedBefore.sourceKeys,
+  'rejected protected contradictions must not mutate accepted supporting-source lineage');
+assert.deepEqual(protectedAfter?.contradictingSourceKeys, protectedBefore.contradictingSourceKeys,
+  'rejected protected contradictions must not mutate accepted contradiction-source lineage');
+
 const t1 = fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'alpha',confidence01:.7,validFrom:1000,source:'test',value:'alpha'});
 fabric.recordTemporalAssertion({memoryId:'mem-1',summary:'beta',confidence01:.8,validFrom:2000,source:'test',value:'beta'});
 assert.equal(fabric.temporalAt('mem-1',1500)?.valueHash, t1.valueHash);
