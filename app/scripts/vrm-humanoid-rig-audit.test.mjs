@@ -32,7 +32,7 @@ test("reports the exact supported body capabilities instead of assuming every GL
 });
 
 test("refuses missing and ambiguous bones and exposes them as explicit capability gaps", () => {
-  const missing = auditHumanoidRig(chain(coreNames.filter((name) => name !== "RightFoot")) && Object.values(chain(coreNames.filter((name) => name !== "RightFoot"))));
+  const missing = auditHumanoidRig(Object.values(chain(coreNames.filter((name) => name !== "RightFoot"))));
   assert.ok(missing.missingRequired.includes("rightFoot"));
   assert.equal(missing.capabilities.locomotionSkeleton, false);
   const ambiguousNodes = [...Object.values(chain(coreNames)), { name: "LeftUpperArm", isBone: true, parent: null }];
