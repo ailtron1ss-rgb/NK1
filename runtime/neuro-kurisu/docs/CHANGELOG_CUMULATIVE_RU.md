@@ -6,7 +6,7 @@
 - `UnifiedCognitiveSubstrate` переведён с небезопасного object spread на явную проекцию allow-list; вложенные поля, счётчики, метрики и строки проверяются, неизвестные поля и prototype inheritance не переносятся.
 - Интеграция substrate требует строго возрастающий safe-integer tick и проверяет входные группы до изменения состояния; replay/invalid input не должны мутировать проекцию.
 - Добавлен `test:aspect01:cognitive-runtime-integrity` (legacy compatibility, 11-phase completeness, duplicate IDs, prototype pollution, invalid restore, tick replay, non-mutation) и подключён к WorkPass287-288 CI.
-- Текущий PR HEAD прошёл 21 GitHub Actions workflow; это подтверждает CI на данном коммите, но не заменяет device soak, holdout и production E2E. Release не обновлялся.
+- Предыдущий PR HEAD `faa9838` прошёл 21 GitHub Actions workflow. После следующего runtime-lineage commit `df7df7c` выделенный WorkPass287-288 workflow завершился успешно, остальные связанные regression workflows перепроверяются на новом HEAD. Это не заменяет device soak, holdout и production E2E. Release не обновлялся.
 
 ## 34.1.0 — Portable Subject Boundary + evidence/benchmark hardening
 - Introduced `neuro-kurisu.subject-transfer.v1`.
