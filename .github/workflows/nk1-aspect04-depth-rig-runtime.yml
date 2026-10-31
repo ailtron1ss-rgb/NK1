@@ -18,6 +18,8 @@ on:
       - app/scripts/motor-frame-stream.test.mjs
       - app/scripts/motor-frame-depth-rig.test.mjs
       - app/scripts/live2d-motor-frame.test.mjs
+      - runtime/neuro-kurisu/public/live2d/viewer.html
+      - app/scripts/active-embodiment-switch.test.mjs
       - app/public/live2d/viewer.html
       - docs/NK1_UNIFIED_EMBODIMENT_MOTORFRAME_RU.md
       - app/src/components/Avatar3DStage.tsx
