@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   applyVrmExpressionFrame,
@@ -101,4 +102,14 @@ test("VRM 0 metadata is supported and missing license remains explicit", () => {
 
   const missing = summarizeVrmMeta(undefined);
   assert.equal(missing.license, "not declared");
+});
+
+test("Avatar3DStage registers the native plugin and updates/disposes VRM runtime", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /new VRMLoaderPlugin\(parser,\s*\{\s*autoUpdateHumanBones:\s*false\s*\}\)/);
+  assert.match(stage, /gltf\.userData\?\.vrm/);
+  assert.match(stage, /VRMUtils\.rotateVRM0\(vrm\)/);
+  assert.match(stage, /updateVrmForNk1Frame\(rt\.vrm,dt\)/);
+  assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
+  assert.match(stage, /applyVrmExpressionFrame\(rt\.vrm/);
 });
