@@ -139,9 +139,9 @@ def score_timeline(record: dict[str, Any]) -> dict[str, Any]:
     timeline = record.get("timeline")
     if not isinstance(cycles, list) or len(cycles) > MAX_CYCLES or not isinstance(timeline, dict):
         return {"passed": False, "reason": "timeline-shape-invalid"}
-    if (timeline.get("version") != 1
+    if (type(timeline.get("version")) is not int or timeline.get("version") != 1
             or timeline.get("algorithm") != "sha256-canonical-json-v1"
-            or timeline.get("cycleCount") != len(cycles)):
+            or type(timeline.get("cycleCount")) is not int or timeline.get("cycleCount") != len(cycles)):
         return {"passed": False, "reason": "timeline-manifest-invalid"}
 
     previous_chain_digest: str | None = None
@@ -161,7 +161,8 @@ def score_timeline(record: dict[str, Any]) -> dict[str, Any]:
                 or cycle_id in seen_cycle_ids
                 or not isinstance(events, list) or len(events) > MAX_EVENTS_PER_CYCLE):
             return {"passed": False, "reason": "timeline-cycle-order-or-identity-invalid", "index": index}
-        if cycle.get("sequenceIndex") != index or cycle.get("previousChainDigest") != previous_chain_digest:
+        if (type(cycle.get("sequenceIndex")) is not int or cycle.get("sequenceIndex") != index
+                or cycle.get("previousChainDigest") != previous_chain_digest):
             return {"passed": False, "reason": "timeline-linkage-invalid", "index": index}
 
         cycle_core = {"cycleIdDigest": cycle_id, "tick": tick, "events": events}
@@ -186,7 +187,7 @@ def score_timeline(record: dict[str, Any]) -> dict[str, Any]:
             parent_ids = event.get("parentIdDigests")
             if (not isinstance(event_id, str) or not DIGEST_RE.fullmatch(event_id)
                     or event_id in event_ticks
-                    or event.get("tick") != tick
+                    or not _non_negative_int(event.get("tick")) or event.get("tick") != tick
                     or event.get("stage") not in STAGES
                     or not isinstance(parent_ids, list)
                     or not all(isinstance(parent, str) and DIGEST_RE.fullmatch(parent) for parent in parent_ids)):
