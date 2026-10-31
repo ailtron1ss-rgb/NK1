@@ -391,7 +391,7 @@ export class CognitiveEventFabric {
     return ids;
   }
 
-  verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
+  verifyOperationalCycle(stageIds: OperationalCycleStageIds, expectedTick?: number): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
     const byId = new Map(this.events.map(event => [event.id, event] as const));
@@ -420,6 +420,13 @@ export class CognitiveEventFabric {
       if (cycleTick === null) cycleTick = event.tick;
       if (event.tick !== cycleTick) { invalidStages.push(stage + ':tick-mismatch'); continue; }
       found.set(stage, event);
+    }
+
+    // Bind the event lineage to the runtime tick that requested verification. A
+    // perfectly connected trace from an adjacent/replayed tick is not this cycle.
+    if (expectedTick !== undefined) {
+      if (!Number.isSafeInteger(expectedTick) || expectedTick < 0) invalidStages.push('cycle:invalid-expected-tick');
+      else if (cycleTick !== null && cycleTick !== expectedTick) invalidStages.push('cycle:tick-mismatch');
     }
 
     const requiredEdges: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
