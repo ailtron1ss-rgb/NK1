@@ -39,7 +39,7 @@ bash runtime/neuro-kurisu/scripts/build-whisper-cpp-termux.sh
 WHISPER_CPP_MODEL=base bash runtime/neuro-kurisu/scripts/build-whisper-cpp-termux.sh
 ```
 
-Скрипт включает CPU-only portable build, отключает GPU/OpenMP/FFmpeg и использует два параллельных job по умолчанию, чтобы не перегружать мобильную память. Это безопасная базовая сборка, а не утверждение о максимальной скорости конкретного устройства.
+Скрипт включает CPU-only portable build, отключает GPU/OpenMP/FFmpeg и использует два параллельных job для сборки и два inference-потока по умолчанию, чтобы не перегружать CPU/термальный бюджет телефона. Это безопасная базовая сборка, а не утверждение о максимальной скорости конкретного устройства.
 
 4. Запустите whisper-server в отдельной Termux-сессии, привязав его только к loopback:
 
@@ -47,7 +47,7 @@ WHISPER_CPP_MODEL=base bash runtime/neuro-kurisu/scripts/build-whisper-cpp-termu
 "$WHISPER_CPP_SOURCE_DIR/build-nk1-termux/bin/whisper-server" \
   --host 127.0.0.1 --port 8081 \
   --model "$WHISPER_CPP_SOURCE_DIR/models/ggml-tiny.bin" \
-  --language auto --threads 4 --no-gpu
+  --language auto --threads 2 --no-gpu
 ```
 
 5. Запустите NK1 с настройкой:
