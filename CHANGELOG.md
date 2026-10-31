@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Wire governed cognitive action to calibrated avatar gestures (2026-10-31)
+
+- Add a deterministic action-to-gesture mapper for the explicit low-amplitude allowlist `respond`, `explore`, `verify`, and `rest`; every target resolves through a host-supplied calibrated rig role, clamps to the profile's joint limits, and expires after 1.2 seconds.
+- Wire the selected OrganismCore decision into the existing runtime-owned `MotorGoalArbiter` only after the embodied recovery gate allows the same action and the embodied action executor reports `executed`. Cognitive-only actions, unavailable rigs, and missing joint roles produce no motor candidate.
+- Publish arbitration outcome as causal action evidence. The motor gesture is explicitly an avatar projection, not a device/world side effect or proof of physical actuation.
+- Add regressions for bounded response nod, alternating exploration scan, rejection of cognitive-only actions, and fail-closed missing rig roles. Gate mapper source in the motor workflow.
+- Validation status: source and test wiring committed; exact-head Actions and full NeuroCore regression are pending. No real avatar visual E2E or phone validation is claimed.
+
 ## [NK1][Embodiment] Share canonical motor controller with subgoal arbitration (2026-10-31)
 
 - Integrate the existing `MotorGoalArbiter` into `OrganismMotorRuntime` using the exact same `EmbodiedMotorController`; arbitration no longer needs a parallel controller instance to reach the runtime frame stream.
