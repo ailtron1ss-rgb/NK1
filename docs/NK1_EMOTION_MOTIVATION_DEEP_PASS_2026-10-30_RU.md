@@ -254,7 +254,7 @@ WorkPass290 добавляет временную непрерывность moo
 - Существующий `IntrinsicAffectiveInfluence` сохраняет распределение компонентов для provenance и checkpoint restore.
 - Добавлен регрессионный сценарий curiosity + anxiety + frustration, который проверяет одновременное наличие exploration и regulation.
 
-**Ограничение:** runtime-передача из `OrganismCore` пока требует отдельной проверки и завершения: чтение большого `OrganismCore.ts` через текущий GitHub file endpoint вернуло пустое содержимое, поэтому нельзя достоверно утверждать, что live cycle уже передаёт `mixedAffect` в новый `affectiveComponents` вход. Legacy single-label путь остаётся совместимым.
+**Проверка live wiring:** специализированный `WorkPass289` запускает настоящий `OrganismCore` (`observe` → публичный snapshot → `feedback`) и уже подтверждает, что appraisal episode связан с тем же `emotionId`, который записан в `IntrinsicAffectiveInfluence`, а causal outcome receipt привязан к исходному pre-action episode. В WorkPass294 усилен контракт: тест теперь сравнивает полный `decisionEmotion.mixedAffect` с `intrinsic.affectiveInfluence.components` в live core snapshot. Это проверяет передачу всех компонентов, а не только совпадение доминирующей метки. Сам `OrganismCore.ts` слишком велик для чтения целиком через текущий endpoint; доказательство строится на исполняемом runtime regression, а не на неподтверждённом визуальном аудите файла. До CI PASS на новом HEAD это новый тестовый контракт, а не подтверждённый результат.
 
 
 ## 12. WorkPass293 — сохранение confidence для components-only мотивационного входа
@@ -264,3 +264,9 @@ WorkPass290 добавляет временную непрерывность moo
 Добавлен регрессионный сценарий components-only (curiosity + anxiety): проверяются ненулевая и ограниченная confidence, а также сохранение provenance. Исправление не меняет legacy single-affect контракт и не повышает уверенность выше входных свидетельств.
 
 Проверка Actions на новом HEAD требуется; до её завершения результат считается внесённым кодом и тестом, но не подтверждённым CI.
+
+## 13. WorkPass294 — live mixed-affect wiring contract
+
+Усилен интеграционный сценарий `WorkPass289`: после реального `core.observe(...)` тест берёт последний decision-time `EmotionEpisode`, затем читает `core.snapshot().facets.consciousness.intrinsic.affectiveInfluence.components` и требует точного совпадения `label`, `intensity01`, `confidence01` со всеми компонентами appraisal. Проверка не ограничивается legacy dominant label или `emotionId`; она должна упасть, если runtime потеряет второй/третий эмоциональный компонент на границе `OrganismCore` → `IntrinsicMotivationEngine`.
+
+Это ключевой интеграционный gate для mixed affect. Результат считается подтверждённым только после прохождения специализированного workflow на commit, содержащем этот тест.
