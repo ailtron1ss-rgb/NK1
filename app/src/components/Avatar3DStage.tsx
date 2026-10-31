@@ -1,6 +1,14 @@
 import { type ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { ActionKind, EmotionLabel } from "@/organism/types";
 import type { MouthPose } from "./avatar/embodimentTimeline";
+import { neuroApiUrl } from "@/neuro-kurisu/api";
+import {
+  connectMotorFrameStream,
+  type MotorFrameConnectionStatus,
+  type MotorFrameProjectionState,
+  type RendererMotorCommandBatch,
+} from "./avatar/motorFrameStream";
+import { overlayMotorFrameOnDepthRigPose } from "./avatar/motorFrameDepthRig";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, saveAvatarModel } from "./avatar/avatarModelStore";
 import * as THREE from "three";
@@ -12,9 +20,9 @@ import {
   type PreparedDepthRigSceneV1,
 } from "./avatar/depthRigSceneAdapter";
 
-type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyMode?: "3d" | "2.5d"; revision?: number };
+type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyMode?: "3d" | "2.5d"; revision?: number; motorFrameBatch?: RendererMotorCommandBatch | null };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
-type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; mixer:any; clips:any[]; clipName:string; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number; depthRigScene:PreparedDepthRigSceneV1|null; depthRigFrame:number };
+type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; mixer:any; clips:any[]; clipName:string; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number; depthRigScene:PreparedDepthRigSceneV1|null; depthRigFrame:number; motorFrameTick:number };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
 const material=(color:number,roughness=0.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 function ellipsoid(parent:any,mat:any,pos:[number,number,number],scale:[number,number,number],name:string){
@@ -49,7 +57,11 @@ function selectClip(clips:any[],action:ActionKind){const rules:Record<ActionKind
 export function Avatar3DStage(props:Props){
  const host=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),runtime=useRef<Runtime|null>(null),latest=useRef(props),loadToken=useRef(0);
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[state,setState]=useState<"procedural"|"loading"|"loaded"|"error"|"webgl-unavailable">("procedural"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("Реальная лицензированная модель Курису не включена в текущий репозиторий.");
- latest.current=props;
+ const [motorModelId,setMotorModelId]=useState<string|null>(null);
+ const [motorFrameBatch,setMotorFrameBatch]=useState<RendererMotorCommandBatch|null>(null);
+ const [motorFrameConnection,setMotorFrameConnection]=useState<MotorFrameConnectionStatus>("unavailable");
+ const [motorFrameProjection,setMotorFrameProjection]=useState<MotorFrameProjectionState>("unmapped");
+ latest.current={...props,motorFrameBatch};
  const loadModel=useCallback(async(blob:Blob,name:string,persist:boolean)=>{
   if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){setState("error");setMessage("Файл должен быть непустым и не больше 90 МБ.");return;}
   const rt=runtime.current;if(!rt){setState("error");setMessage("3D-сцена ещё запускается; повторите загрузку.");return;}
