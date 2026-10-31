@@ -4,7 +4,9 @@
 - Integrate the parsed node map into `Avatar3DStage`. A valid extension is authoritative; a present but malformed extension blocks name-based fallback. Generic GLB without VRM metadata retains the conservative explicit-Bone name audit.
 - Keep unnamed intermediary scene nodes in explicit VRM hierarchy analysis. Apply version-specific required roles: VRM 0.x requires chest and neck; VRM 1.0 does not.
 - Reject conflicting extensions, unsupported VRM 1.0 versions, malformed entries, duplicate humanoid roles/node indices, out-of-range indices and oversized glTF node tables. Report valid map entries that do not resolve into the active loaded scene.
-- Add 8 node-map regressions plus an Avatar3DStage integration regression; combine both audit suites in the dedicated CI test command.
+- Add 13 node-map regressions plus 2 additional humanoid audit cases and 2 Avatar3DStage import/status regressions; the dedicated CI command executes both audit suites (26 audit and node-map tests total).
+- Apply the VRM 1.0 thumb `Metacarpal → Proximal → Distal` chain and VRM 0.x thumb `Proximal → Intermediate → Distal` chain; reject thumb-role names from the wrong spec version. Validate optional `upperChest → chest`, neck anchors, and optional eye/jaw/toe/finger parent dependencies without making optional nodes mandatory.
+- `Avatar3DStage` now reports rig presence from validated mapped roles rather than only `THREE.Bone` count; synthetic loader roots and non-node mesh groups are excluded unless they have a confirmed glTF `associations.nodes` index.
 - This validates the extension mapping and scene ancestry only. It does not add VRM expression/spring-bone runtime, retargeting, calibration, IK/MotorFrame actuation or rendered/device evidence.
 
 ## [NK1][Aspect12] Fail-closed humanoid rig discovery (2026-10-31)
