@@ -11,6 +11,7 @@ on:
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
       - "app/src/components/avatar/vrmHumanoidRigAdapter.ts"
       - "app/scripts/vrm-runtime-adapter.test.mjs"
+      - "app/scripts/vrm-normalized-humanoid.integration.test.mjs"
       - "app/scripts/vrm-humanoid-rig-adapter.test.mjs"
       - "docs/WORKPASS75_NATIVE_VRM_RUNTIME_RU.md"
   pull_request:
@@ -45,6 +46,8 @@ jobs:
         run: npm ci --prefix app
       - name: Test VRM expression and metadata bridge
         run: npm --prefix app run test:vrm-runtime-adapter
+      - name: Verify normalized motor writes through actual three-vrm humanoid
+        run: npm --prefix app run test:vrm-normalized-humanoid
       - name: Test existing humanoid rig adapter
         run: npm --prefix app run test:vrm-humanoid-rig
       - name: Test avatar intent and frame mapping
