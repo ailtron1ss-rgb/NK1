@@ -784,6 +784,12 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         motionToken: Number.isSafeInteger(motionToken) && motionToken > 0 ? motionToken : 0,
       },
       voiceEmphasis: activeUtterance ? (session?.voiceEmphasis ?? 0) : 0,
+      affect: {
+        label: (Object.prototype.hasOwnProperty.call(EXPR, snap.emotion.label) ? snap.emotion.label : "calm") as EmbodimentIntentV1["affect"]["label"],
+        valence01: Math.max(0, Math.min(1, Number(snap.emotion.valence) || 0)),
+        arousal01: Math.max(0, Math.min(1, Number(snap.emotion.arousal) || 0)),
+        dominance01: Math.max(0, Math.min(1, Number(snap.emotion.dominance) || 0)),
+      },
     };
     latestIntentStateVersionRef.current = intent.stateVersion;
     win.postMessage({ ...intent, motorFrameBatch: live2dMotorBatch, switchExecutionId: activeSwitch?.executionId ?? null, switchStateRevision: activeSwitch?.revision ?? null }, window.location.origin);
