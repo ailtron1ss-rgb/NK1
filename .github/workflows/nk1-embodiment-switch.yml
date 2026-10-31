@@ -6,7 +6,9 @@ on:
     paths:
       - "app/src/components/avatar/embodimentSwitch.ts"
       - "app/src/components/avatar/vrmHumanoidRigAudit.ts"
+      - "app/src/components/avatar/vrmHumanoidNodeMap.ts"
       - "app/scripts/vrm-humanoid-rig-audit.test.mjs"
+      - "app/scripts/vrm-humanoid-node-map.test.mjs"
       - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/src/components/avatar/motorFrameMapper.ts"
       - "app/scripts/motor-frame-mapper.test.mjs"
