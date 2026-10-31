@@ -1,4 +1,4 @@
-import { isHumanoidRole, type HumanoidNodeLike, type HumanoidRole } from "./vrmHumanoidRigAudit";
+import { isHumanoidRole, type HumanoidNodeLike, type HumanoidRole } from "./vrmHumanoidRigAudit.ts";
 
 export type VrmHumanoidVersion = "0.x" | "1.0";
 export type VrmHumanoidNodeMap =
