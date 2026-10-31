@@ -25,7 +25,8 @@ const HANDS = [
 export const CANONICAL_MOTOR_JOINT_ROLES = [...CORE, ...HANDS] as const;
 export type CanonicalMotorJointRole = typeof CANONICAL_MOTOR_JOINT_ROLES[number];
 export type MotorRendererKind = "live2d" | "depth2d" | "vrm3d";
-export type MotorBindingComponent = "value" | "x" | "y" | "z";
+export type MotorBindingComponent = "value" | "x" | "y" | "z" | "rotation";
+export type RendererMotorValueUnit = "parameter" | "radians" | "degrees" | "normalized" | "meters";
 type TargetKind = "cubism-parameter" | "depth-rig-node" | "humanoid-bone";
 type Fidelity = "direct" | "approximate";
 
@@ -67,7 +68,7 @@ export interface MotorRigValidation { ok: boolean; reason: string; jointCount: n
 export interface MotorRigCompileOptions { allowTestFixture?: boolean }
 export interface RendererMotorCommand {
   jointId: string; role: CanonicalMotorJointRole; targetId: string; targetKind: TargetKind;
-  component: MotorBindingComponent; value: number; valueUnit: "radians" | "parameter"; fidelity: Fidelity; clamped: boolean;
+  component: MotorBindingComponent; value: number; valueUnit: RendererMotorValueUnit; fidelity: Fidelity; clamped: boolean;
 }
 export interface RendererMotorCommandBatch {
   version: 1; profileId: string; modelId: string; renderer: MotorRendererKind;
@@ -132,7 +133,9 @@ export function validateMotorRigProfile(raw: unknown): MotorRigValidation {
     const b = j.binding;
     if (!isObject(b) || typeof b.targetId !== "string" || !ID.test(b.targetId)) return fail("renderer-binding-invalid", joints.length);
     if (b.targetKind !== TARGET_KIND[renderer]) return fail("renderer-binding-kind-mismatch", joints.length);
-    if (renderer === "live2d" ? b.component !== "value" : !["x","y","z"].includes(b.component)) return fail("renderer-binding-component-mismatch", joints.length);
+    if (renderer === "live2d" ? b.component !== "value"
+      : renderer === "depth2d" ? !["x","y","z","rotation"].includes(b.component)
+      : !["x","y","z"].includes(b.component)) return fail("renderer-binding-component-mismatch", joints.length);
     const targetKey = b.targetKind + ":" + b.targetId + ":" + b.component;
     if (targets.has(targetKey)) return fail("renderer-target-channel-duplicate", joints.length);
     if (![b.scale,b.offset,b.minValue,b.maxValue].every((n) => typeof n === "number" && Number.isFinite(n))
@@ -195,7 +198,10 @@ export function mapMotorFrameToRendererCommands(profile: MotorRigProfileV1, fram
     const isClamped = Math.abs(raw - value) > 1e-9;
     if (isClamped) clamped.push(j.id);
     commands.push({ jointId: j.id, role: j.role, targetId: j.binding.targetId, targetKind: j.binding.targetKind,
-      component: j.binding.component, value, valueUnit: profile.renderer === "live2d" ? "parameter" : "radians",
+      component: j.binding.component, value,
+      valueUnit: profile.renderer === "live2d" ? "parameter"
+        : profile.renderer === "depth2d" ? (j.binding.component === "rotation" ? "degrees" : "normalized")
+        : "radians",
       fidelity: j.binding.fidelity, clamped: isClamped });
   }
   if (!commands.length) return { ok: false, reason: "motor-frame-has-no-mappable-joints", batch: null };
