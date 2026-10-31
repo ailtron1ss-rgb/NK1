@@ -107,24 +107,54 @@ export class OrganismMotorRuntime {
    * its exact joint IDs, topology, limits and dynamics.
    */
   registerRendererRigProfile(profile: MotorRigProfileV1): void {
-    const definitions = compileMotorJointDefinitions(profile);
-    if (!this.configured) {
-      this.configureSkeleton(definitions);
-    } else if (!this.canonicalDefinitions || !sameCanonicalSkeleton(this.canonicalDefinitions, definitions)) {
-      throw new Error('renderer-profile-canonical-skeleton-mismatch');
-    }
+    this.registerRendererRigProfiles([profile]);
+  }
 
-    const previous = this.rendererProfiles.get(profile.profileId);
-    if (previous && (profile.revision <= previous.revision || previous.renderer !== profile.renderer)) {
-      throw new Error('renderer-profile-revision-not-increasing-or-kind-changed');
+  /**
+   * Atomically register a renderer set after every profile has been compiled,
+   * calibrated and checked against one canonical skeleton. A partially valid
+   * Live2D/2.5D/3D set never leaves a half-configured organism.
+   */
+  registerRendererRigProfiles(profiles: readonly MotorRigProfileV1[]): void {
+    if (!Array.isArray(profiles) || profiles.length < 1 || profiles.length > 16) {
+      throw new Error('renderer-profile-batch-size-out-of-range');
     }
-    const duplicateModelProfile = [...this.rendererProfiles.values()].some((registered) =>
-      registered.profileId !== profile.profileId
-      && registered.renderer === profile.renderer
-      && registered.modelId === profile.modelId);
-    if (duplicateModelProfile) throw new Error('renderer-model-profile-already-registered');
-    if (!previous && this.rendererProfiles.size >= 16) throw new Error('renderer-profile-registry-capacity-reached');
-    this.rendererProfiles.set(profile.profileId, structuredClone(profile));
+    const compiled = profiles.map((profile) => ({
+      profile,
+      definitions: compileMotorJointDefinitions(profile),
+    }));
+    const canonical = this.configured ? this.canonicalDefinitions : compiled[0]?.definitions;
+    if (!canonical) throw new Error('renderer-profile-canonical-skeleton-missing');
+
+    const ids = new Set<string>();
+    const modelKeys = new Set<string>();
+    const staged = new Map(this.rendererProfiles);
+    for (const item of compiled) {
+      const { profile, definitions } = item;
+      if (!sameCanonicalSkeleton(canonical, definitions)) {
+        throw new Error('renderer-profile-canonical-skeleton-mismatch');
+      }
+      if (ids.has(profile.profileId)) throw new Error('renderer-profile-id-duplicate-in-batch');
+      ids.add(profile.profileId);
+      const modelKey = profile.renderer + ':' + profile.modelId;
+      if (modelKeys.has(modelKey)) throw new Error('renderer-model-profile-already-registered');
+      modelKeys.add(modelKey);
+      const previous = staged.get(profile.profileId);
+      if (previous && (profile.revision <= previous.revision || previous.renderer !== profile.renderer)) {
+        throw new Error('renderer-profile-revision-not-increasing-or-kind-changed');
+      }
+      const duplicateModelProfile = [...staged.values()].some((registered) =>
+        registered.profileId !== profile.profileId
+        && registered.renderer === profile.renderer
+        && registered.modelId === profile.modelId);
+      if (duplicateModelProfile) throw new Error('renderer-model-profile-already-registered');
+      staged.set(profile.profileId, structuredClone(profile));
+    }
+    if (staged.size > 16) throw new Error('renderer-profile-registry-capacity-reached');
+
+    if (!this.configured) this.configureSkeleton(compiled[0].definitions);
+    this.rendererProfiles.clear();
+    for (const [profileId, profile] of staged) this.rendererProfiles.set(profileId, profile);
   }
 
   /** Backward-compatible entry point; it now registers instead of replacing the controller. */
