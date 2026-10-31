@@ -3,6 +3,15 @@
 - Run the Hexis source-lineage contract on every canonical source push so the release publisher's exact-SHA requirement is always backed by an actual check run.
 - Keep pull-request path filters unchanged; release publication still requires both checks to complete successfully for the exact source SHA and retains provenance/license gates.
 
+## [NK1][Hexis] Harden connector policy restore and grant boundaries (WorkPass75, 2026-10-31)
+
+- Validate restored connector policies before they can authorize tool or external actions: canonical bounded identities, exact boolean flags, non-empty contexts, bounded targets/quotas, safe-integer timestamps, and rate windows capped at one year.
+- Drop malformed persisted policies instead of allowing incomplete records to reach `evaluateConnectorAction`; drop every row sharing a duplicate policy ID so revocation remains unambiguous.
+- Sanitize persisted metric counters to non-negative safe integers and keep the canonical Hexis adapter identity/version rather than trusting caller-supplied metadata.
+- Reject unsafe policy grants (coerced/non-string identities, truthy non-booleans, oversized quotas, non-integer expiries, invalid windows and oversized lists) before mutating policy state.
+- Add regressions for malformed restore records, metric poisoning, valid-policy continuity and invalid grant inputs.
+- Scope is connector-policy integrity only; this does not validate all Hexis snapshot sections or claim production external-action safety.
+
 ## [NK1][Agency] Harden deterministic decision history and restore integrity (WorkPass74, 2026-10-31)
 
 - Validate restored AgencyDeliberation records, reject malformed timestamps/actions, deduplicate record IDs and cap history at 512 entries.
