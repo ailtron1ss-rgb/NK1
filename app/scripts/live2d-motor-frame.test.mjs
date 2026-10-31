@@ -20,7 +20,7 @@ test("Live2D accepts only calibrated Cubism parameter commands for its exact loa
   assert.match(viewer, /command\.targetKind!=='cubism-parameter'/);
   assert.match(viewer, /command\.component!=='value'\|\|command\.valueUnit!=='parameter'/);
   assert.match(viewer, /Math\.abs\(command\.value\)>100/);
-  assert.match(viewer, /jointIds\.has\(command\.jointId\)\|\|targets\.has\(command\.targetId\)/);
+  assert.match(viewer, /joints\.has\(command\.jointId\)\|\|targets\.has\(command\.targetId\)/);
 });
 
 test("Live2D applies the MotorFrame from the Cubism model update hook and reports parameter-only readback", () => {
