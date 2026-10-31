@@ -27,7 +27,8 @@ gateway.registerTool({
   inputContract: { type: "object", properties: { tag: { type: "string", pattern: "^[a-z0-9]{2,5}$" } }, required: ["tag"], additionalProperties: false },
   execute: async input => ({ ok: true, tag: input.tag }),
 });
-assert.equal((await gateway.executeTool("catalog.regex-check", { tag: "nk1" })).ok, true, "bounded quantifiers remain supported in safe patterns");
+const boundedPositive = await gateway.executeTool("catalog.regex-check", { tag: "nk1" });
+assert.equal(boundedPositive.ok, true, `bounded quantifiers remain supported in safe patterns: ${JSON.stringify(boundedPositive.result)}`);
 assert.equal((await gateway.executeTool("catalog.regex-check", { tag: "nk1!" })).ok, false, "values outside the bounded alphanumeric pattern are rejected");
 assert.equal((await gateway.executeTool("catalog.search", { query: "nk1 architecture", limit: 3, filters: { kinds: ["memory", "tool"] } })).ok, true);
 assert.equal(calls, 1);
