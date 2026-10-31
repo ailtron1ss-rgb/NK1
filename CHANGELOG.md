@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Share canonical motor controller with subgoal arbitration (2026-10-31)
+
+- Integrate the existing `MotorGoalArbiter` into `OrganismMotorRuntime` using the exact same `EmbodiedMotorController`; arbitration no longer needs a parallel controller instance to reach the runtime frame stream.
+- Add `arbitrateApprovedGoals(...)` for upstream-authorized semantic motor candidates. A selected frame is published to the same bounded `MotorFrameChannel` used by continuous motor ticks.
+- Add a runtime regression proving an accepted candidate is arbitrated and its frame is visible through the canonical subscription/snapshot path.
+- Scope boundary: this creates the missing runtime composition seam, not yet the cognitive candidate producer. `OrganismRuntime` still needs a governed mapping from its selected cognitive decision into authorized motor candidates; no autonomous brain-to-body control is claimed.
+- Validation: source and regression are committed; execution and fresh exact-head CI are pending.
+
 ## [NK1][Embodiment] Explicit source preparation during renderer rollback (2026-10-31)
 
 - Harden failed body switches: after disposing a rejected destination, the coordinator now explicitly prepares/remounts the source renderer before applying and verifying the rollback snapshot. This makes rollback readiness part of the coordinator contract rather than relying only on adapter-specific side effects inside `apply()`.
