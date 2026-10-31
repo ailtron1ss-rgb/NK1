@@ -63,3 +63,5 @@ jobs:
       - name: Test live Hexis server conflict and replay semantics
         working-directory: runtime/neuro-kurisu
         run: npm run test:hexis-server-smoke
+      - name: Test Hexis belief, trust and adaptation contracts
+        run: npm run test:hexis-adaptation
