@@ -150,6 +150,8 @@ assert.equal(doctor.restore.invalidRowsDropped, 4);
 assert.equal(doctor.counts.restoreContentHashMismatches, 2);
 assert.equal(doctor.counts.restoreInvalidVectors, 1);
 assert.equal(doctor.counts.restoreFactsDowngraded, 1);
+assert.equal(doctor.counts.restoreDroppedBlankIds, 1, 'blank identity loss has its own durable counter');
+assert.ok(doctor.issues.some(issue => issue.code === 'blank-memory-id-dropped'));
 
 const recalled = restored.retrieve(
   'What is the durable cache status for REF-228?',
