@@ -298,6 +298,52 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
   return [{at,from:row.from as EpistemicStatus,to:row.to as EpistemicStatus,reason:String(row.reason??'').slice(0,240)}];
  });
 }
+
+/**
+ * Restore-time revision graph reconciliation.
+ * Supersession edges are authority-bearing temporal links: accept only reciprocal,
+ * same-lineage, strictly forward edges. Repair a missing predecessor end from its
+ * verified successor; drop ambiguous duplicate IDs and malformed edges fail-closed.
+ */
+function normalizeMemoryRevisionGraph(items:MemoryItem2[]):MemoryItem2[]{
+ const idCounts=new Map<string,number>();
+ for(const item of items){
+  if(typeof item.id==='string'&&item.id.trim())idCounts.set(item.id,(idCounts.get(item.id)??0)+1);
+ }
+ const unique=items.filter(item=>typeof item.id==='string'&&item.id.trim().length>0&&idCounts.get(item.id)===1);
+ const byId=new Map(unique.map(item=>[item.id,item]));
+ const sameLineage=(a:MemoryItem2,b:MemoryItem2)=>String(a.revisionGroupId??a.id)===String(b.revisionGroupId??b.id);
+ const forward=(parent:MemoryItem2,child:MemoryItem2)=>
+  parent.id!==child.id&&sameLineage(parent,child)&&
+  Number.isSafeInteger(parent.revisionSequence)&&Number.isSafeInteger(child.revisionSequence)&&
+  parent.revisionSequence>=1&&child.revisionSequence>parent.revisionSequence&&
+  Number.isFinite(parent.validFromAt)&&Number.isFinite(child.validFromAt)&&
+  child.validFromAt>parent.validFromAt;
+ for(const child of unique){
+  const parentId=child.supersedesId;
+  if(parentId){
+   const parent=byId.get(parentId);
+   if(!parent||parent.supersededById!==child.id||!forward(parent,child)){
+    child.supersedesId=null;
+    if(parent?.supersededById===child.id)parent.supersededById=null;
+   }else if(parent.validUntilAt==null||parent.validUntilAt>child.validFromAt){
+    // A reciprocal, monotonic successor is sufficient to repair a lost interval end.
+    parent.validUntilAt=child.validFromAt;
+   }
+  }
+  const childId=child.supersededById;
+  if(childId){
+   const successor=byId.get(childId);
+   if(!successor||successor.supersedesId!==child.id||!forward(child,successor)){
+    child.supersededById=null;
+    if(successor?.supersedesId===child.id)successor.supersedesId=null;
+   }else if(child.validUntilAt==null||child.validUntilAt>successor.validFromAt){
+    child.validUntilAt=successor.validFromAt;
+   }
+  }
+ }
+ return unique;
+}
 type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
 const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
@@ -606,7 +652,7 @@ export class MemoryOS2{
     supersededById:m?.supersededById==null?null:String(m.supersededById),
     revisionHistory:normalizeRevisionHistory(m?.revisionHistory),
     revisionGroupId:m?.revisionGroupId?String(m.revisionGroupId):String(m?.id??m?.contentHash??'revision'),
-    revisionSequence:Math.max(1,Math.floor(Number(m?.revisionSequence??1))),
+    revisionSequence:Number.isSafeInteger(m?.revisionSequence)&&m.revisionSequence>=1?m.revisionSequence:1,
     provenanceClass:(['device','external','user','agent','derived','simulation','unknown'].includes(m?.provenanceClass)?m.provenanceClass:'unknown') as MemoryProvenanceClass,
     sourceAuthority01:clamp(Number(m?.sourceAuthority01??.5)),
     independenceKey:m?.independenceKey==null?undefined:String(m.independenceKey).slice(0,96),
@@ -616,6 +662,8 @@ export class MemoryOS2{
     temperature01:clamp(Number(m?.temperature01??0)),
     residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
   }))};
+  // Reconcile the authority-bearing revision graph before any retrieval index is rebuilt.
+  this.state.items=normalizeMemoryRevisionGraph(this.state.items);
   // Recompute serialized footprint because older snapshots did not count provenance trails.
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
