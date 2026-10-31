@@ -35,6 +35,7 @@ on:
       - app/src/components/avatar/vrmRigCalibrationProfile.ts
       - app/src/components/avatar/vrmHumanoidRigAdapter.ts
       - app/scripts/vrm-calibrated-arm-runtime.test.mjs
+      - app/scripts/avatar-3d-stage.test.mjs
       - app/src/components/avatar/vrmCalibratedArmRuntime.ts
       - app/src/components/avatar/avatarGlbPreflight.ts
       - app/package.json
