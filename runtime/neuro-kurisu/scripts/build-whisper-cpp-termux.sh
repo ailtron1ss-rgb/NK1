@@ -60,6 +60,6 @@ fi
 
 echo "Build ready."
 echo "Start the local sidecar with:"
-printf '  "%s" --host 127.0.0.1 --port 8081 --model "%s" --language auto --threads "$THREADS" --no-gpu\n' "$SERVER" "$MODEL_PATH"
+printf '  "%s" --host 127.0.0.1 --port 8081 --model "%s" --language auto --threads %s --no-gpu\n' "$SERVER" "$MODEL_PATH" "$THREADS"
 echo "Configure the NK1 runtime with:"
 echo "  NK1_WHISPER_CPP_URL=http://127.0.0.1:8081/inference"
