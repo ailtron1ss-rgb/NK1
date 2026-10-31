@@ -1,3 +1,11 @@
+## [NK1][Aspect 04] Canonical 2.5D GLB scene adapter (2026-10-30)
+
+- Keep the merged DepthRigDefinition as the only 2.5D authoring/pose schema; do not add a competing DepthRigManifest.
+- Add a versioned glTF nk1DepthRigAssetV1 envelope with explicit scene units, layer dimensions, exact object-name bindings and an authored parent hierarchy contract.
+- Add a Three.js adapter with exact hierarchy validation, pivot compensation, bounded semantic pose application, per-node readback and atomic rollback.
+- Expose a separate 2.5D avatar mode. It requires an authored GLB rig and never substitutes the procedural 3D concept for a 2.5D body.
+- Apply receipts bind adapterId, executionId and stateRevision, while explicitly marking GPU presented-frame verification as false.
+
 ## [NK1][Embodiment] Integrate canonical motor runtime, 3D IK and bounded MotorFrame transport (2026-10-30)
 
 - Added one organism-owned renderer-neutral motor controller, validated skeleton topology, joint limits and bounded angle/velocity/acceleration/jerk integration.
