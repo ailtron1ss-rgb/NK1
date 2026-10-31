@@ -1,3 +1,9 @@
+## [NK1][Core] Bind real core/full event lineage into unified cognitive-cycle contract (2026-10-31)
+
+- Fix the runtime handoff from `CognitiveEventFabric.verifyOperationalCycle()` to `UnifiedCognitiveCycle.evaluate()`: forward explicit `coreLineageComplete`, `fullLineageComplete`, `coreIntegrity01`, and `fullIntegrity01` evidence instead of relying on the evaluator's conservative defaults.
+- This restores the intended distinction: six-stage core completion is counted separately; strict eleven-stage completion remains false until every stage and causal edge is independently present. Runtime reality evidence continues to use the strict `complete` result.
+- The WorkPass71 source-contract test had exposed the missing lineage handoff. Exact-head CI on `9a304b1ee609bad1232422ef1a46e33e892bfc28`: WorkPass287-288 cognitive contracts [41223576507](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41223576507), motor controller [41223576449](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41223576449), Aspect 04 2D/2.5D/3D [41223576375](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41223576375), and world-perception integrity [41223576369](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41223576369) all passed.
+
 ## [NK1][Embodiment] Wire governed cognitive action to calibrated avatar gestures (2026-10-31)
 
 - Add a deterministic action-to-gesture mapper for the explicit low-amplitude allowlist `respond`, `explore`, `verify`, and `rest`; every target resolves through a host-supplied calibrated rig role, clamps to the profile's joint limits, and expires after 1.2 seconds.
