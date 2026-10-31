@@ -51,6 +51,8 @@ const blockedContradiction = protectedGuard.reviseBelief({
 });
 assert.equal(blockedContradiction.applied, false);
 assert.equal(blockedContradiction.reason, 'protected');
+assert.ok(protectedGuard.snapshot().beliefAudit.some(row => row.id === blockedContradiction.id && row.applied === false),
+  'rejected protected evidence must remain visible in the audit trail');
 const protectedAfter = protectedGuard.snapshot().beliefs.find(x => x.memoryId === 'protected-identity');
 assert.equal(protectedAfter?.confidence01, protectedBefore.confidence01);
 assert.equal(protectedAfter?.trust01, protectedBefore.trust01,
