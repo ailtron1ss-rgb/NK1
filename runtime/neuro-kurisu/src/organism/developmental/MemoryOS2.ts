@@ -311,6 +311,29 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
 type MemoryRestoreIntegrityFinding=
  | {code:'duplicate-memory-id-dropped';memoryId:string;duplicateCount:number}
  | {code:'blank-memory-id-dropped';count:number};
+export interface MemoryRestoreDiagnostics {
+ sourceRows:number;
+ acceptedRows:number;
+ duplicateIdsResolved:number;
+ invalidRowsDropped:number;
+ truncatedRows:number;
+ identityConflictsQuarantined:number;
+ contentHashMismatchesRepaired:number;
+ missingContentHashesRebuilt:number;
+ invalidVectorsDiscarded:number;
+ invalidExpiriesClosed:number;
+ factsDowngraded:number;
+}
+function stableMemoryJson(value:unknown):string {
+ if(Array.isArray(value))return `[${value.map(stableMemoryJson).join(',')}]`;
+ if(value&&typeof value==='object'){
+  const row=value as Record<string,unknown>;
+  return `{${Object.keys(row).filter(key=>row[key]!==undefined).sort().map(key=>`${JSON.stringify(key)}:${stableMemoryJson(row[key])}`).join(',')}}`;
+ }
+ const encoded=JSON.stringify(value);
+ return encoded===undefined?'null':encoded;
+}
+
 function normalizeMemoryRestoreIntegrityFindings(value:unknown):MemoryRestoreIntegrityFinding[]{
  if(!Array.isArray(value))return [];
  return value.slice(-64).flatMap<MemoryRestoreIntegrityFinding>((row:any):MemoryRestoreIntegrityFinding[]=>{
@@ -404,6 +427,7 @@ export interface SemanticIndexMaintenanceResult {
 }
 export class MemoryOS2{
  private state=defaultMemoryOS2();
+ private lastRestoreDiagnosticsData:MemoryRestoreDiagnostics={sourceRows:0,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:0,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
  private readonly exactIndex=new Map<string,string>();
  private readonly itemIndex=new Map<string,MemoryItem2>();
  private readonly contentIndex=new Map<string,string>();
@@ -437,6 +461,112 @@ export class MemoryOS2{
  private activePolicy:MemoryPolicyName='balanced';
  constructor(options:{signalFusionProfile?:MemoryFusionProfile;embeddingProvider?:TextEmbeddingProvider|null;metadataRecallEnabled?:boolean}={}){ this.signalFusionProfile=options.signalFusionProfile??'balanced'; this.signalFusion=new MemorySignalFusion(this.signalFusionProfile); this.embeddingProvider=options.embeddingProvider===null?undefined:(options.embeddingProvider??LocalEmbeddingProvider.fromEnvironment()); this.metadataRecallEnabled=options.metadataRecallEnabled===true; }
  embeddingConfigured(){return Boolean(this.embeddingProvider); }
+  restoreDiagnostics():MemoryRestoreDiagnostics{return {...this.lastRestoreDiagnosticsData};}
+  private incrementRestoreDiagnostic(counter:'contentHashMismatchesRepaired'|'missingContentHashesRebuilt'|'invalidVectorsDiscarded'|'invalidExpiriesClosed'|'factsDowngraded'){
+   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,[counter]:this.lastRestoreDiagnosticsData[counter]+1};
+  }
+  private normalizeRestoredMemoryRow(candidate:unknown,now:number):MemoryItem2|null{
+   if(!candidate||typeof candidate!=='object'||Array.isArray(candidate))return null;
+   const row=candidate as Record<string,any>;
+   const id=typeof row.id==='string'?row.id.trim():'';
+   const content=typeof row.content==='string'?row.content.trim():'';
+   const kinds=new Set(['sensory','working','episodic','semantic','autobiographical','procedural','social','identity','dream']);
+   if(!id||id.length>160||!content||content.length>32768||!kinds.has(String(row.kind)))return null;
+   const finite=(value:unknown,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?n:fallback;};
+   const boundedStrings=(value:unknown,maxItems:number,maxChars:number)=>{
+    if(!Array.isArray(value))return [];
+    return [...new Set(value.filter((item):item is string=>typeof item==='string').map(item=>item.trim().slice(0,maxChars)).filter(Boolean))].slice(0,maxItems);
+   };
+   const createdAt=finite(row.createdAt,finite(row.observedAt,now));
+   const observedAt=finite(row.observedAt,createdAt);
+   const validFromAt=finite(row.validFromAt,createdAt);
+   const validUntilProvided=row.validUntilAt!=null;
+   const validUntilCandidate=validUntilProvided?finite(row.validUntilAt,Number.NaN):null;
+   // A malformed expiry must never turn an expiring memory into a timeless fact.
+   const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:validUntilCandidate;
+   if(validUntilProvided&&!Number.isFinite(validUntilCandidate))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
+   const provenanceClasses=new Set(['device','external','user','agent','derived','simulation','unknown']);
+   const explicitProvenance=provenanceClasses.has(String(row.provenanceClass))?row.provenanceClass as MemoryProvenanceClass:undefined;
+   const sourceIsValid=typeof row.source==='string'&&Boolean(row.source.trim());
+   const source=sourceIsValid?row.source.trim().slice(0,240):'unknown';
+   const provenanceClass=this.provenanceClassFor(source,explicitProvenance);
+   const statusValues=new Set(['fact','belief','hypothesis','unknown','quarantined']);
+   const statusIsValid=statusValues.has(String(row.epistemicStatus));
+   const rawConfidence=Number(row.confidence);
+   const confidenceIsValid=Number.isFinite(rawConfidence)&&rawConfidence>=0&&rawConfidence<=1;
+   const epistemicStatus=statusIsValid&&sourceIsValid&&(row.epistemicStatus!=='fact'||confidenceIsValid)
+    ?row.epistemicStatus as EpistemicStatus:'unknown';
+   if(row.epistemicStatus==='fact'&&(!sourceIsValid||!confidenceIsValid))this.incrementRestoreDiagnostic('factsDowngraded');
+   const context:Record<string,string>={};
+   if(row.context&&typeof row.context==='object'&&!Array.isArray(row.context)){
+    for(const [key,value] of Object.entries(row.context).slice(0,24)){
+     if(typeof key==='string'&&typeof value==='string'&&key.trim())context[key.trim().slice(0,96)]=value.slice(0,1000);
+    }
+   }
+   const semanticVector=normalizeValidatedEmbeddingVector(row.semanticVector)??[];
+   if(Array.isArray(row.semanticVector)&&row.semanticVector.length>0&&semanticVector.length===0)this.incrementRestoreDiagnostic('invalidVectorsDiscarded');
+   const canonicalContentHash=memoContentHash(content);
+   const storedContentHash=typeof row.contentHash==='string'?row.contentHash.trim():'';
+   if(storedContentHash&&storedContentHash!==canonicalContentHash)this.incrementRestoreDiagnostic('contentHashMismatchesRepaired');
+   else if(!storedContentHash)this.incrementRestoreDiagnostic('missingContentHashesRebuilt');
+   const evidenceSeed={
+    ...row,id,content,source,createdAt,observedAt,
+    provenanceClass,
+    sourceAuthority01:clamp(finite(row.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),
+    evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+    independenceKey:typeof row.independenceKey==='string'?row.independenceKey.trim().slice(0,96):undefined,
+   };
+   const evidenceSources=this.normalizeEvidenceSources(evidenceSeed);
+   const evidenceLineageKeys=[...new Set([
+    ...boundedStrings(row.evidenceLineageKeys,32,160),
+    ...evidenceSources.map(item=>this.evidenceKey(item)),
+   ])].slice(-32);
+   const residencyTier=(row.residencyTier==='hot'||row.residencyTier==='warm'||row.residencyTier==='cold')
+    ?row.residencyTier:(semanticVector.length?'warm':'cold');
+   return {
+    id,content,contentHash:canonicalContentHash,
+    tags:boundedStrings(row.tags,24,120),
+    context:Object.keys(context).length?context:undefined,
+    kind:row.kind as MemoryItem2['kind'],
+    createdAt,
+    lastAccessAt:finite(row.lastAccessAt,createdAt),
+    salience:clamp(finite(row.salience,.5)),
+    emotionalWeight:clamp(finite(row.emotionalWeight,0)),
+    identityRelevance:clamp(finite(row.identityRelevance,0)),
+    goalRelevance:clamp(finite(row.goalRelevance,0)),
+    socialRelevance:clamp(finite(row.socialRelevance,0)),
+    predictionError:clamp(finite(row.predictionError,0)),
+    temperature01:clamp(finite(row.temperature01,0)),
+    confidence:confidenceIsValid?clamp(rawConfidence):.5,
+    epistemicStatus,
+    source,
+    entities:boundedStrings(row.entities,24,160).length?boundedStrings(row.entities,24,160):extractEntities(content),
+    semanticLinks:boundedStrings(row.semanticLinks,24,160),
+    temporalLinks:boundedStrings(row.temporalLinks,24,160),
+    causalLinks:boundedStrings(row.causalLinks,24,160),
+    contradictionLinks:boundedStrings(row.contradictionLinks,24,160),
+    revisionHistory:normalizeRevisionHistory(row.revisionHistory),
+    revisionIntegrityIssues:Array.isArray(row.revisionIntegrityIssues)?[...new Set(row.revisionIntegrityIssues.filter((item:unknown):item is string=>typeof item==='string').map((item:string)=>item.slice(0,96)))].slice(-8):[],
+    validFromAt,
+    validUntilAt:Number.isFinite(validUntilAt)?validUntilAt:null,
+    observedAt,
+    supersedesId:typeof row.supersedesId==='string'?row.supersedesId.slice(0,160):null,
+    supersededById:typeof row.supersededById==='string'?row.supersededById.slice(0,160):null,
+    revisionGroupId:typeof row.revisionGroupId==='string'&&row.revisionGroupId.trim()?row.revisionGroupId.trim().slice(0,160):id,
+    revisionSequence:Math.max(1,Math.min(1_000_000,Math.floor(finite(row.revisionSequence,1)))),
+    provenanceClass,
+    sourceAuthority01:clamp(finite(row.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),
+    independenceKey:evidenceSeed.independenceKey,
+    evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+    evidenceSources,
+    evidenceLineageKeys,
+    dormant:row.dormant===true,
+    retrievalCount:Math.max(0,Math.min(2_147_483_647,Math.floor(finite(row.retrievalCount,0)))),
+    semanticVector,
+    residencyTier,
+   };
+  }
+
  private validAt(item:MemoryItem2,at:number){const from=Number(item.validFromAt??item.createdAt),until=item.validUntilAt==null?Number.POSITIVE_INFINITY:Number(item.validUntilAt);return Number.isFinite(from)&&from<=at&&at<until;}
  private preferIndexRecord(candidate:MemoryItem2,incumbent:MemoryItem2,at:number){
   const currentDelta=Number(this.validAt(candidate,at))-Number(this.validAt(incumbent,at));if(currentDelta)return currentDelta>0;
@@ -655,13 +785,28 @@ export class MemoryOS2{
    }
  }
  restore(s:MemoryOSState2|undefined){
-  const rawItems=Array.isArray(s?.items)?s!.items.slice(0,1600):[];
-  const legacyEstimate=rawItems.reduce((n:any,m:any)=>n+estimateMemoryBytes({
-    content:String(m?.content??''),tags:Array.isArray(m?.tags)?m.tags:[],context:m?.context,
-    semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
-    temporalLinks:Array.isArray(m?.temporalLinks)?m.temporalLinks:[],
-    causalLinks:Array.isArray(m?.causalLinks)?m.causalLinks:[],
-    contradictionLinks:Array.isArray(m?.contradictionLinks)?m.contradictionLinks:[],
+  const sourceItems=Array.isArray(s?.items)?s!.items:[];
+  const boundedItems=sourceItems.slice(0,1600);
+  const restoreNow=Date.now();
+  const rawItems:MemoryItem2[]=[];
+  let invalidRowsDropped=0;
+  let blankIdRowsDropped=0;
+  this.lastRestoreDiagnosticsData={sourceRows:sourceItems.length,acceptedRows:0,duplicateIdsResolved:0,invalidRowsDropped:0,truncatedRows:sourceItems.length-boundedItems.length,identityConflictsQuarantined:0,contentHashMismatchesRepaired:0,missingContentHashesRebuilt:0,invalidVectorsDiscarded:0,invalidExpiriesClosed:0,factsDowngraded:0};
+  for(const candidate of boundedItems){
+   const blankIdentity=Boolean(candidate&&typeof candidate==='object'&&!Array.isArray(candidate)&&
+    (typeof (candidate as any).id!=='string'||!(candidate as any).id.trim()));
+   const normalized=this.normalizeRestoredMemoryRow(candidate,restoreNow);
+   if(normalized)rawItems.push(normalized);
+   else if(blankIdentity)blankIdRowsDropped++;
+   else invalidRowsDropped++;
+  }
+  this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,invalidRowsDropped};
+  const legacyEstimate=rawItems.reduce((total,item)=>total+estimateMemoryBytes({
+   content:item.content,tags:item.tags??[],context:item.context,
+   semanticLinks:item.semanticLinks??[],temporalLinks:item.temporalLinks??[],
+   causalLinks:item.causalLinks??[],contradictionLinks:item.contradictionLinks??[],
+   evidenceSources:item.evidenceSources,evidenceLineageKeys:item.evidenceLineageKeys,
+   revisionIntegrityIssues:item.revisionIntegrityIssues,revisionHistory:item.revisionHistory,
   }),0);
   const savedEstimate=Math.max(0,Math.floor(Number((s as any)?.estimatedBytes??legacyEstimate)));
   this.state={
@@ -679,68 +824,44 @@ export class MemoryOS2{
    meanEvictionRegret01:clamp(Number((s as any)?.meanEvictionRegret01??0)),
    evictionWitnesses:Array.isArray((s as any)?.evictionWitnesses)?(s as any).evictionWitnesses.slice(-256):[],
    restoreIntegrityFindings:normalizeMemoryRestoreIntegrityFindings((s as any)?.restoreIntegrityFindings),
-   items:rawItems.map((m:any)=>({
-    ...m,
-    // P2697: cold residency is allowed to remain truly cold across restore.
-    // Re-materialize vectors lazily only for candidates that actually reach
-    // semantic scoring; this avoids rebuilding up to 1600 vectors on startup.
-    semanticVector:Array.isArray(m?.semanticVector)&&m.semanticVector.length?m.semanticVector:[],
-    entities:Array.isArray(m?.entities)?m.entities:extractEntities(String(m?.content??'')),
-    contentHash:String(m?.contentHash||memoContentHash(String(m?.content??''))),
-    tags:Array.isArray(m?.tags)?[...new Set(m.tags.map((x:any)=>String(x)).filter(Boolean))].slice(0,24):[],
-    context:m?.context&&typeof m.context==='object'?Object.fromEntries(Object.entries(m.context).filter(([k,v])=>typeof k==='string'&&typeof v==='string').slice(0,24)):undefined,
-    semanticLinks:Array.isArray(m?.semanticLinks)?m.semanticLinks:[],
-    temporalLinks:Array.isArray(m?.temporalLinks)?m.temporalLinks:[],
-    causalLinks:Array.isArray(m?.causalLinks)?m.causalLinks:[],
-    contradictionLinks:Array.isArray(m?.contradictionLinks)?m.contradictionLinks:[],
-    validFromAt:Number.isFinite(Number(m?.validFromAt))?Number(m.validFromAt):Number(m?.createdAt??Date.now()),
-    validUntilAt:m?.validUntilAt==null?null:(Number.isFinite(Number(m.validUntilAt))?Number(m.validUntilAt):null),
-    observedAt:Number.isFinite(Number(m?.observedAt))?Number(m.observedAt):Number(m?.createdAt??Date.now()),
-    supersedesId:m?.supersedesId==null?null:String(m.supersedesId),
-    supersededById:m?.supersededById==null?null:String(m.supersededById),
-    revisionHistory:normalizeRevisionHistory(m?.revisionHistory),
-    revisionIntegrityIssues:Array.isArray(m?.revisionIntegrityIssues)?[...new Set(m.revisionIntegrityIssues.filter((x:any)=>typeof x==='string').map((x:any)=>String(x).slice(0,96)))].slice(-8):[],
-    revisionGroupId:m?.revisionGroupId?String(m.revisionGroupId):String(m?.id??m?.contentHash??'revision'),
-    revisionSequence:Number.isSafeInteger(m?.revisionSequence)&&m.revisionSequence>=1?m.revisionSequence:1,
-    provenanceClass:(['device','external','user','agent','derived','simulation','unknown'].includes(m?.provenanceClass)?m.provenanceClass:'unknown') as MemoryProvenanceClass,
-    sourceAuthority01:clamp(Number(m?.sourceAuthority01??.5)),
-    independenceKey:m?.independenceKey==null?undefined:String(m.independenceKey).slice(0,96),
-    evidenceFreshnessAt:Number.isFinite(Number(m?.evidenceFreshnessAt))?Number(m.evidenceFreshnessAt):Number(m?.observedAt??m?.createdAt??Date.now()),
-    evidenceSources:this.normalizeEvidenceSources(m),
-    evidenceLineageKeys:[...new Set([...(Array.isArray(m?.evidenceLineageKeys)?m.evidenceLineageKeys.map((x:any)=>String(x).slice(0,160)).filter(Boolean):[]),...this.normalizeEvidenceSources(m).map(row=>this.evidenceKey(row))])].slice(-32),
-    temperature01:clamp(Number(m?.temperature01??0)),
-    residencyTier:(m?.residencyTier==='hot'||m?.residencyTier==='warm'||m?.residencyTier==='cold')?m.residencyTier:(Array.isArray(m?.semanticVector)&&m.semanticVector.length?'warm':'cold'),
-  }))};
-  // Reconcile the authority-bearing revision graph before any retrieval index is rebuilt.
-  // Duplicate IDs are dropped fail-closed, but the loss must remain visible to diagnostics.
+   items:rawItems,
+  };
+  // Preserve the current fail-closed identity rule: every copy of a duplicate ID
+  // is dropped, because choosing one would leave external references ambiguous.
   this.state.items=normalizeMemoryRevisionGraph(this.state.items,(id,count)=>{
+   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,duplicateIdsResolved:this.lastRestoreDiagnosticsData.duplicateIdsResolved+1};
    const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'duplicate-memory-id-dropped'}>=>finding.code==='duplicate-memory-id-dropped'&&finding.memoryId===id);
    if(existing)existing.duplicateCount=Math.max(existing.duplicateCount,count);
    else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'duplicate-memory-id-dropped' as const,memoryId:id,duplicateCount:count}].slice(-64);
   },count=>{
+   const dropped=Math.max(count,blankIdRowsDropped);
    const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'blank-memory-id-dropped'}>=>finding.code==='blank-memory-id-dropped');
-   if(existing)existing.count=Math.max(existing.count,count);
-   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count}].slice(-64);
+   if(existing)existing.count=Math.max(existing.count,dropped);
+   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:dropped}].slice(-64);
   });
-  // Recompute serialized footprint because older snapshots did not count provenance trails.
+  if(blankIdRowsDropped>0){
+   const existing=this.state.restoreIntegrityFindings.find((finding):finding is Extract<MemoryRestoreIntegrityFinding,{code:'blank-memory-id-dropped'}>=>finding.code==='blank-memory-id-dropped');
+   if(existing)existing.count=Math.max(existing.count,blankIdRowsDropped);
+   else this.state.restoreIntegrityFindings=[...this.state.restoreIntegrityFindings,{code:'blank-memory-id-dropped' as const,count:blankIdRowsDropped}].slice(-64);
+  }
+  this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
   this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
-  for(const m of this.state.items){
-    const exactKey=`${m.kind}|${m.source}|${canonicalizeMemoryContent(m.content)}`;
-    const contentKey=`${m.kind}|${canonicalizeMemoryContent(m.content)}`;
-    const previousExactId=this.exactIndex.get(exactKey),previousContentId=this.contentIndex.get(contentKey);
-    const previousExact=previousExactId?this.itemIndex.get(previousExactId):undefined;
-    const previousContent=previousContentId?this.itemIndex.get(previousContentId):undefined;
-    this.itemIndex.set(m.id,m);
-    // State snapshots are normally newest-first, but import/restore order is not
-    // an authority. Rebuild de-dup indexes by validity/revision time, not row order.
-    if(!previousExact||this.preferIndexRecord(m,previousExact,indexAt))this.exactIndex.set(exactKey,m.id);
-    if(!previousContent||this.preferIndexRecord(m,previousContent,indexAt))this.contentIndex.set(contentKey,m.id);
-    this.indexItem(m);
+  for(const item of this.state.items){
+   const exactKey=`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`;
+   const contentKey=`${item.kind}|${canonicalizeMemoryContent(item.content)}`;
+   const previousExactId=this.exactIndex.get(exactKey),previousContentId=this.contentIndex.get(contentKey);
+   const previousExact=previousExactId?this.itemIndex.get(previousExactId):undefined;
+   const previousContent=previousContentId?this.itemIndex.get(previousContentId):undefined;
+   this.itemIndex.set(item.id,item);
+   if(!previousExact||this.preferIndexRecord(item,previousExact,indexAt))this.exactIndex.set(exactKey,item.id);
+   if(!previousContent||this.preferIndexRecord(item,previousContent,indexAt))this.contentIndex.set(contentKey,item.id);
+   this.indexItem(item);
   }
  }
+
  private tokensFor(text:string){const key=String(text);const hit=this.tokenCache.get(key);if(hit)return hit;const value=new Set(tokenize(key));if(this.tokenCache.size>=512){const first=this.tokenCache.keys().next().value as string|undefined;if(first)this.tokenCache.delete(first);}this.tokenCache.set(key,value);return value;}
  /** Curated metadata is indexed independently: it must not affect content-only BM25 statistics. */
  private metadataTokens(item:MemoryItem2):Set<string>{
@@ -1563,12 +1684,22 @@ export class MemoryOS2{
   const at=Number.isFinite(options.at)?Number(options.at):Date.now();
   const maxIssues=Math.max(1,Math.min(128,Math.floor(options.maxIssues??64)));
   const items=this.state.items;
+  const restore=this.restoreDiagnostics();
   const idCounts=new Map<string,number>();
   const hashCounts=new Map<string,number>();
   const revisionMembers=new Map<string,MemoryItem2[]>();
   const issues:Array<{code:string;severity:'error'|'warning';memoryId:string|null;detail:string}> = [];
   let totalErrors=0,totalWarnings=0;
   const add=(code:string,severity:'error'|'warning',memoryId:string|null,detail:string)=>{if(severity==='error')totalErrors++;else totalWarnings++;if(issues.length<maxIssues)issues.push({code,severity,memoryId,detail:detail.slice(0,240)});};
+  if(restore.invalidRowsDropped>0)add('restore-invalid-rows-dropped','error',null,String(restore.invalidRowsDropped)+' malformed snapshot rows were rejected before indexing.');
+  if(restore.truncatedRows>0)add('restore-row-limit-truncated','error',null,String(restore.truncatedRows)+' snapshot rows exceeded the 1600-record restore limit.');
+  if(restore.duplicateIdsResolved>0)add('restore-duplicate-ids-resolved','warning',null,String(restore.duplicateIdsResolved)+' duplicate-ID rows were resolved using temporal/revision authority.');
+  if(restore.identityConflictsQuarantined>0)add('restore-identity-conflicts-quarantined','error',null,String(restore.identityConflictsQuarantined)+' tied conflicting memory identities were quarantined.');
+  if(restore.contentHashMismatchesRepaired>0)add('restore-content-hash-mismatch-repaired','error',null,String(restore.contentHashMismatchesRepaired)+' serialized content hashes differed from canonical content and were repaired during restore.');
+  if(restore.missingContentHashesRebuilt>0)add('restore-content-hash-missing-rebuilt','warning',null,String(restore.missingContentHashesRebuilt)+' legacy rows had no content hash; hashes were rebuilt from content.');
+  if(restore.invalidVectorsDiscarded>0)add('restore-invalid-vectors-discarded','warning',null,String(restore.invalidVectorsDiscarded)+' invalid derived embedding vectors were discarded and left for lazy rebuild.');
+  if(restore.invalidExpiriesClosed>0)add('restore-invalid-expiries-closed','error',null,String(restore.invalidExpiriesClosed)+' malformed expiry values were closed to an empty validity interval.');
+  if(restore.factsDowngraded>0)add('restore-facts-downgraded','error',null,String(restore.factsDowngraded)+' records marked fact were downgraded because source or confidence was invalid.');
   let restoreDuplicateIds=0,restoreDroppedBlankIds=0;
   for(const finding of this.state.restoreIntegrityFindings){
    if(finding.code==='duplicate-memory-id-dropped'){
@@ -1581,7 +1712,7 @@ export class MemoryOS2{
   }
   for(const item of items){idCounts.set(item.id,(idCounts.get(item.id)??0)+1);}
   const ids=new Set(items.map(item=>item.id));
-  let hashMismatch=0,invalidConfidence=0,invalidStatus=0,danglingRevision=0,invalidRevisionEdges=0,revisionRestoreFindings=0,danglingLinks=0,duplicateContent=0,futureEvidence=0,duplicateEvidenceKeys=0;
+  let hashMismatch=restore.contentHashMismatchesRepaired,invalidConfidence=0,invalidStatus=0,danglingRevision=0,invalidRevisionEdges=0,revisionRestoreFindings=0,danglingLinks=0,duplicateContent=0,futureEvidence=0,duplicateEvidenceKeys=0;
   for(const item of items){
    const actualHash=memoContentHash(String(item.content??''));
    if(!item.contentHash||item.contentHash!==actualHash){hashMismatch++;add('content-hash-mismatch','error',item.id,'Stored content hash is absent or differs from the canonical content hash.');}
@@ -1632,7 +1763,7 @@ export class MemoryOS2{
   if(!index.pass)add('index-integrity-failure','error',null,'The canonical memory indexes disagree with the persisted memory list.');
   const errors=totalErrors;
   const warnings=totalWarnings;
-  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length+restoreDuplicateIds,restoreDroppedBlankIds,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,invalidRevisionEdges,revisionRestoreFindings,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1},indexes:index};
+  return {version:1,readOnly:true,pass:errors===0,at,itemCount:items.length,issueCount:errors+warnings,errors,warnings,issues,truncated:errors+warnings>issues.length,restore,counts:{duplicateIds:[...idCounts.values()].filter(count=>count>1).length+restoreDuplicateIds,restoreDroppedBlankIds,hashMismatch,invalidConfidence,invalidStatus,duplicateContent,danglingRevision,invalidRevisionEdges,revisionRestoreFindings,danglingLinks,futureEvidence,duplicateEvidenceKeys,revisionSequenceCollisions,brokenReciprocalRevisions,indexIntegrityFailures:index.pass?0:1,restoreDuplicateRows:restore.duplicateIdsResolved,restoreInvalidRows:restore.invalidRowsDropped,restoreTruncatedRows:restore.truncatedRows,restoreDuplicateIds:restore.duplicateIdsResolved,restoreIdentityConflicts:restore.identityConflictsQuarantined,restoreContentHashMismatches:restore.contentHashMismatchesRepaired,restoreMissingContentHashes:restore.missingContentHashesRebuilt,restoreInvalidVectors:restore.invalidVectorsDiscarded,restoreInvalidExpiries:restore.invalidExpiriesClosed,restoreFactsDowngraded:restore.factsDowngraded},indexes:index};
  }
  evidenceTrail(id:string){
   const item=this.itemIndex.get(String(id));if(!item)return null;

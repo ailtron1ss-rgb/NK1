@@ -41,7 +41,9 @@ damaged.restore(damagedSnapshot);
 const report = damaged.doctor({ at: now });
 assert.equal(report.readOnly, true, 'doctor must never repair or rewrite memory automatically');
 assert.equal(report.pass, false, 'content hash inconsistency should fail doctor');
-assert.ok(report.counts.hashMismatch > 0, 'doctor should detect altered canonical content hashes');
+assert.ok(report.counts.hashMismatch > 0, 'doctor should retain evidence that restore repaired an altered canonical content hash');
+assert.ok(report.issues.some(issue => issue.code === 'restore-content-hash-mismatch-repaired'),
+  'restore-time hash repair must remain visible to the read-only doctor');
 assert.ok(report.counts.danglingRevision > 0, 'doctor should detect unresolved revision pointers');
 assert.ok(report.counts.danglingLinks > 0, 'doctor should detect unresolved relationship links');
 assert.ok(report.counts.futureEvidence > 0, 'doctor should detect future-dated evidence');
@@ -52,8 +54,11 @@ assert.equal(capped.issues.length, 1, 'doctor must cap detailed issue payloads')
 assert.equal(capped.errors, 1, 'severity counters must include issues beyond the display cap');
 assert.ok(capped.warnings > 0, 'warning counters must include issues beyond the display cap');
 assert.equal(capped.truncated, true, 'doctor must mark a capped issue list as truncated');
-assert.equal(damaged.snapshot().items[0].contentHash, 'not-the-canonical-content-hash',
-  'read-only doctor must not mutate the record it reports');
+const hashBeforeDoctor = damaged.snapshot().items[0].contentHash;
+assert.notEqual(hashBeforeDoctor, 'not-the-canonical-content-hash',
+  'restore must rebind the persisted hash to canonical content before indexing');
+assert.equal(damaged.snapshot().items[0].contentHash, hashBeforeDoctor,
+  'read-only doctor must not mutate the normalized record it reports');
 
 console.log('WORKPASS314_MEMORY_DOCTOR=PASS', JSON.stringify({
   cleanPass: healthy.pass,
