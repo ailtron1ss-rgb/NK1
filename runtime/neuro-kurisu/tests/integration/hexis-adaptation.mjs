@@ -64,8 +64,6 @@ assert.equal(fabric.revokeConnectorPolicy(policy.id),true);
 
 const exec = fabric.planExecution({actionKind:'code.execute',requestedPlacement:'local',risk01:.9});
 assert.equal(exec.resolvedPlacement,'sandbox');
-console.log('HEXIS_ADAPTATION_PASS');
-console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
 
 const policyRestoreSnapshot = fabric.snapshot();
 policyRestoreSnapshot.connectorPolicies = [
@@ -104,3 +102,6 @@ assert.throws(
   () => fabric.grantConnectorPolicy({ connectorId: 'telegram', actionKind: 'send', windowMs: Number.POSITIVE_INFINITY }),
   /windowMs must be a safe integer/,
 );
+
+console.log('HEXIS_ADAPTATION_PASS');
+console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
