@@ -34,3 +34,13 @@ test("existing sprite and Live2D files remain available",async()=>{
 });
 
 test("VRM stage reports conservative left/right humanoid arm discovery without claiming IK actuation",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/resolveVrmArm/);assert.match(stage,/leftArmRig/);assert.match(stage,/rightArmRig/);assert.match(stage,/auditHumanoidRig/);assert.match(stage,/IK пока не исполняется на импортированных костях/);assert.match(stage,/Полный Humanoid Rig не подтверждён/);});
+
+test("VRM node-index metadata is authoritative during 3D import and invalid extensions block name fallback",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/parseVrmHumanoidNodeMap\(gltf\.parser\?\.json\?\.extensions/);
+ assert.match(stage,/buildVrmHumanoidAuditNodes\(activeSceneNodes,gltf\.parser\?\.associations,vrmNodeMap\)/);
+ assert.match(stage,/allowNameHeuristic:false/);
+ assert.match(stage,/VRM humanoid extension rejected:/);
+ assert.match(stage,/Полная карта VRM/);
+ assert.match(stage,/resolveVrmArm/);
+});
