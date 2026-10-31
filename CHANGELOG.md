@@ -1,3 +1,9 @@
+## [NK1][Learning] Reject unsupported persisted experiment splits (2026-10-31)
+
+- Harden saved learning-plan validation so only `train`, `validation`, and `holdout` splits are accepted, even when a forged/empty schedule has internally consistent zero-task counts.
+- Add a regression proving an unsupported split cannot pass validation by presenting an empty run list.
+- This is a plan-integrity correction; it does not claim a learner execution or independent holdout improvement.
+
 ## [NK1][Aspect 10] Add grounded interaction and VRM rig calibration foundations (2026-10-30)
 
 - Add a fail-closed, renderer-independent embodied interaction planner with target/frame freshness, explicit safety authorization and independent postcondition requirements.
