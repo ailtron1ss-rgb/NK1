@@ -1,3 +1,11 @@
+## [NK1][Embodiment] GLB/VRM import preflight and artist pipeline (2026-10-31)
+
+- Added a local GLB 2.0 preflight before Three.js parsing: binary container/chunk bounds, self-contained buffers/images, scene graph cycles/parenting, mesh/accessor/skin/animation references and texture/resource budgets.
+- Added adversarial tests for malformed headers, external URI rejection, graph cycles/shared parents, broken indices, excessive vertices/animations and oversized textures.
+- Corrected the active Original 2D selector regression to account for the transactional `2.5d` mode; corrected the stale Live2D duplicate-channel test and renderer-profile error expectation.
+- Added an artist/engineering workflow note for Khronos glTF-Validator and Blender VRM Add-on, including the uploaded archive checksums, notices/licenses and the explicit boundary between structural validation, NK1 security preflight, per-model calibration and GPU presentation.
+- Khronos Validator and Blender Add-on are documented as external tools; neither binary bundle is vendored into NK1 runtime. `main` and the canonical Release ZIP remain unchanged.
+
 ## [NK1][Embodiment] One MotorFrame across Live2D, 2.5D and VRM/3D (2026-10-31)
 
 - Integrated one organism-owned motor controller with a bounded registry of calibrated renderer/model profiles; profiles share the exact canonical skeleton and cannot replace or mutate the controller.
