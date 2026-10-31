@@ -49,6 +49,7 @@ export interface HumanoidRigAudit {
   readonly warnings: readonly string[];
 }
 
+const MAX_HUMANOID_AUDIT_NODES = 50_000;
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
 const aliases = new Map<HumanoidRole, readonly string[]>();
 const baseAliases: readonly (readonly [HumanoidRole, readonly string[]])[] = [
@@ -103,13 +104,22 @@ function isAncestor(ancestor: HumanoidNodeLike, node: HumanoidNodeLike): boolean
   return false;
 }
 
-function hasParentCycle(node: HumanoidNodeLike): boolean {
-  let current: HumanoidNodeLike | null = node;
-  const seen = new Set<HumanoidNodeLike>();
-  while (current) {
-    if (seen.has(current)) return true;
-    seen.add(current);
-    current = current.parent ?? null;
+/** Detect parent cycles in O(n) across the complete bone forest. */
+function hasParentCycles(nodes: readonly HumanoidNodeLike[]): boolean {
+  const state = new Map<HumanoidNodeLike, 1 | 2>();
+  for (const start of nodes) {
+    if (state.has(start)) continue;
+    const path: HumanoidNodeLike[] = [];
+    let current: HumanoidNodeLike | null = start;
+    while (current && !state.has(current)) {
+      state.set(current, 1);
+      path.push(current);
+      current = current.parent ?? null;
+    }
+    // State 1 can only belong to the current unfinished walk; completed walks
+    // are state 2, so this detects a cycle without re-walking every ancestor.
+    if (current && state.get(current) === 1) return true;
+    for (const visited of path) state.set(visited, 2);
   }
   return false;
 }
@@ -117,6 +127,7 @@ function hasParentCycle(node: HumanoidNodeLike): boolean {
 /** Resolve only unique explicit bone names and a connected humanoid hierarchy. */
 export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRigAudit {
   if (!Array.isArray(input)) throw new TypeError("humanoid-rig-input-must-be-an-array");
+  if (input.length > MAX_HUMANOID_AUDIT_NODES) throw new RangeError("humanoid-rig-node-limit-exceeded");
   const namedNodes = Array.from(new Set(input.filter(
     (node) => node && typeof node.name === "string" && node.name.trim().length > 0,
   )));
@@ -174,7 +185,7 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
   const brokenHierarchy = hierarchyPairs.filter(([ancestorRole, childRole]) =>
     nodes[ancestorRole] && nodes[childRole] && !isAncestor(nodes[ancestorRole]!, nodes[childRole]!),
   );
-  const parentCycles = boneNodes.filter(hasParentCycle);
+  const parentCyclesDetected = hasParentCycles(boneNodes);
 
   const fingerHierarchyPairs: [HumanoidRole, HumanoidRole][] = [];
   let allFingerChainsMapped = true;
@@ -199,7 +210,7 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
   if (ambiguous.length) warnings.push("Ambiguous bone names: " + ambiguous.join(", ") + ".");
   if (missingRequired.length) warnings.push("Missing required humanoid bones: " + missingRequired.join(", ") + ".");
   if (brokenHierarchy.length) warnings.push("Unexpected parent hierarchy: " + brokenHierarchy.map(([a, b]) => a + "→" + b).join(", ") + ".");
-  if (parentCycles.length) warnings.push("Cyclic parent hierarchy detected; rig mapping is not trusted.");
+  if (parentCyclesDetected) warnings.push("Cyclic parent hierarchy detected; rig mapping is not trusted.");
   if (nonBoneMatches.length) warnings.push("Name matches excluded because those nodes are not bones: " + nonBoneMatches.join(", ") + ".");
   if (namedNodes.length && boneNodes.length === 0) warnings.push("No nodes are explicitly marked as bones; name matching alone is not proof of a deforming skeleton.");
   if (!nodes.neck) warnings.push("Neck articulation is unavailable; head mapping may use the spine/chest fallback.");
@@ -208,9 +219,9 @@ export function auditHumanoidRig(input: readonly HumanoidNodeLike[]): HumanoidRi
   }
   if (!nodes.leftEye || !nodes.rightEye) warnings.push("Eye-bone gaze is unavailable; use head/gaze fallback.");
 
-  const hierarchyValid = brokenHierarchy.length === 0 && parentCycles.length === 0;
+  const hierarchyValid = brokenHierarchy.length === 0 && !parentCyclesDetected;
   const fingerArticulation = leftFingerCount === 15 && rightFingerCount === 15
-    && allFingerChainsMapped && brokenFingerHierarchy.length === 0 && parentCycles.length === 0;
+    && allFingerChainsMapped && brokenFingerHierarchy.length === 0 && !parentCyclesDetected;
   const locomotionSkeleton = torso && bilateralLegs && bilateralFeet && hierarchyValid;
   const fullBodyHumanoid = missingRequired.length === 0 && ambiguous.length === 0
     && hierarchyValid && torso && head && bilateralArms && bilateralHands && bilateralLegs && bilateralFeet;
