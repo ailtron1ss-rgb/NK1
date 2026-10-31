@@ -11,6 +11,19 @@ test("two-bone IK returns finite shoulder and elbow angles for a reachable targe
   assert.equal(result.clamped, false);
 });
 
+test("forward kinematics reconstructs the requested target for either bend direction", () => {
+  for (const bendDirection of [-1, 1]) {
+    const input = { targetX: 0.24, targetY: -0.42, upperLength: 0.3, lowerLength: 0.3, bendDirection };
+    const result = solvePlanarTwoBoneIK(input);
+    const upperAngle = result.shoulderRotation - Math.PI / 2;
+    const lowerAngle = upperAngle + result.elbowRotation;
+    const x = input.upperLength * Math.cos(upperAngle) + input.lowerLength * Math.cos(lowerAngle);
+    const y = input.upperLength * Math.sin(upperAngle) + input.lowerLength * Math.sin(lowerAngle);
+    assert.ok(Math.abs(x - input.targetX) < 1e-8, "x mismatch for bend direction " + bendDirection + ": " + x);
+    assert.ok(Math.abs(y - input.targetY) < 1e-8, "y mismatch for bend direction " + bendDirection + ": " + y);
+  }
+});
+
 test("unreachable targets clamp to the arm's safe reachable annulus", () => {
   const far = solvePlanarTwoBoneIK({ targetX: 100, targetY: -100, upperLength: 0.3, lowerLength: 0.3 });
   const near = solvePlanarTwoBoneIK({ targetX: 0, targetY: 0, upperLength: 0.3, lowerLength: 0.3 });
