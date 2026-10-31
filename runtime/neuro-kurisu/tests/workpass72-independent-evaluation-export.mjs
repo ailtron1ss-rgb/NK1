@@ -23,9 +23,29 @@ const fullEvents = stages.map((stage, index) => ({
   external: stage === 'observation' || stage === 'outcome', confidence01: 0.875,
   payload: { text: 'private-user-message-must-not-leak', claim: 'private-factual-claim' },
 }));
-const incompleteEvents = fullEvents
-  .filter(event => event.stage !== 'plan')
-  .map(event => ({ ...event, tick: 42 }));
+const tick42Ids = Object.fromEntries(stages.map((stage, index) => [stage, `event-42-${index + 1}`]));
+const tick42Parents = {
+  observation: [],
+  prediction: [tick42Ids.observation],
+  appraisal: [tick42Ids.observation, tick42Ids.prediction],
+  attention: [tick42Ids.appraisal, tick42Ids.prediction],
+  memory: [tick42Ids.attention, tick42Ids.observation],
+  goal: [tick42Ids.appraisal, tick42Ids.memory],
+  plan: [tick42Ids.goal, tick42Ids.prediction],
+  action: [tick42Ids.plan, tick42Ids.prediction, tick42Ids.observation],
+  outcome: [tick42Ids.action, tick42Ids.prediction],
+  learning: [tick42Ids.outcome, tick42Ids.action],
+  'self-update': [tick42Ids.learning, tick42Ids.outcome],
+};
+const incompleteEvents = stages
+  .filter(stage => stage !== 'plan')
+  .map((stage, index) => ({
+    ...fullEvents.find(event => event.stage === stage),
+    id: tick42Ids[stage],
+    tick: 42,
+    at: 2000 + index,
+    parentIds: tick42Parents[stage],
+  }));
 const realityEvidence = {
   version: 1, total: 3, externalCount: 2, simulatorCount: 1, independentSources: 2,
   recent: [
