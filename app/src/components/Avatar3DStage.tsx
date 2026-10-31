@@ -6,10 +6,25 @@ import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, 
 import * as THREE from "three";
 import { resolveVrmArm } from "./avatar/vrmHumanoidRigAdapter";
 import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
+import { neuroApiUrl } from "@/neuro-kurisu/api";
+import { resolveDepthRigPose } from "./avatar/depthRig";
+import {
+  applyDepthRigPreparedScenePoseV1,
+  prepareDepthRigSceneV1,
+  NK1_DEPTH_RIG_ASSET_USER_DATA_KEY,
+  type PreparedDepthRigSceneV1,
+} from "./avatar/depthRigSceneAdapter";
+import {
+  connectMotorFrameStream,
+  type MotorFrameConnectionStatus,
+  type MotorFrameProjectionState,
+  type RendererMotorCommandBatch,
+} from "./avatar/motorFrameStream";
+import { overlayMotorFrameOnDepthRigPose } from "./avatar/motorFrameDepthRig";
 
-type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
+type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean; bodyMode?: "3d" | "2.5d"; revision?: number; motorFrameBatch?: RendererMotorCommandBatch | null };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
-type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; mixer:any; clips:any[]; clipName:string; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number };
+type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; mixer:any; clips:any[]; clipName:string; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number; depthRigScene:PreparedDepthRigSceneV1|null; depthRigFrame:number; motorFrameTick:number };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
 const material=(color:number,roughness=0.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 function ellipsoid(parent:any,mat:any,pos:[number,number,number],scale:[number,number,number],name:string){
@@ -44,47 +59,107 @@ function selectClip(clips:any[],action:ActionKind){const rules:Record<ActionKind
 export function Avatar3DStage(props:Props){
  const host=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),runtime=useRef<Runtime|null>(null),latest=useRef(props),loadToken=useRef(0);
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[modelFingerprint,setModelFingerprint]=useState(""),[state,setState]=useState<"procedural"|"loading"|"loaded"|"error"|"webgl-unavailable">("procedural"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("Реальная лицензированная модель Курису не включена в текущий репозиторий.");
- latest.current=props;
+ const [motorModelId,setMotorModelId]=useState<string|null>(null);
+ const [motorFrameBatch,setMotorFrameBatch]=useState<RendererMotorCommandBatch|null>(null);
+ const [motorFrameConnection,setMotorFrameConnection]=useState<MotorFrameConnectionStatus>("unavailable");
+ const [motorFrameProjection,setMotorFrameProjection]=useState<MotorFrameProjectionState>("unmapped");
+ latest.current={...props,motorFrameBatch};
  const loadModel=useCallback(async(blob:Blob,name:string,persist:boolean)=>{
   if(!blob.size||blob.size>MAX_AVATAR_MODEL_BYTES){setState("error");setMessage("Файл должен быть непустым и не больше 90 МБ.");return;}
   const rt=runtime.current;if(!rt){setState("error");setMessage("3D-сцена ещё запускается; повторите загрузку.");return;}
   const token=++loadToken.current;setState("loading");setMessage("Загрузка локальной модели…");
   try{const data=await blob.arrayBuffer();if(token!==loadToken.current)return;const fingerprint=await fingerprintAvatarModel(data);if(token!==loadToken.current)return;setModelFingerprint(fingerprint??"");new GLTFLoader().parse(data,"",(gltf:any)=>{
    if(token!==loadToken.current||runtime.current!==rt){disposeTree(gltf.scene);return;}
-   try{const root=gltf.scene;if(!root)throw new Error("В файле нет glTF-сцены.");const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
-    if(rt.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.loaded=root;rt.scene.add(root);rt.body.root.visible=false;rt.bones=bonesOf(root);rt.clips=Array.isArray(gltf.animations)?gltf.animations:[];rt.mixer=rt.clips.length?new THREE.AnimationMixer(root):null;rt.clipName="";setModelName(name);setState("loaded");const rigBones=rt.bones.map((bone)=>({name:bone.name,rotation:bone.node.rotation}));const leftArmRig=resolveVrmArm(rigBones,"left"),rightArmRig=resolveVrmArm(rigBones,"right");setMessage(rt.bones.length?`Модель загружена; найденные цепи рук: ${leftArmRig?"левая":""}${leftArmRig&&rightArmRig?" и ":""}${rightArmRig?"правая":""}${!leftArmRig&&!rightArmRig?"не распознаны":""}. Поза IK пока рассчитывается отдельно и не применяется к костям.`:"Геометрия загружена; скелет не найден, поэтому движения тела ограничены.");
-    if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена локально в браузере; файл не отправляется на сервер.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
-   }catch(e){disposeTree(gltf.scene);setState("error");setMessage(e instanceof Error?e.message:"Не удалось подготовить модель.");}
-  },()=>{if(token!==loadToken.current)return;setState("error");setMessage("Не прочитан бинарный VRM/GLB. Нужен самодостаточный файл с геометрией и текстурами внутри.");});
-  }catch(e){setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
- },[]);
- useEffect(()=>{
-  const el=host.current;if(!el)return;let renderer:any;let raf=0;let observer:ResizeObserver|null=null;let disposed=false;
-  try{
-   renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:"low-power"});renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(Math.max(el.clientWidth,1),Math.max(el.clientHeight,1),false);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;renderer.shadowMap.enabled=false;renderer.domElement.style.cssText="display:block;width:100%;height:100%;touch-action:none;cursor:grab";renderer.domElement.setAttribute("aria-label","3D-модель Курису, потяните для поворота");el.appendChild(renderer.domElement);
-   const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(31,Math.max(el.clientWidth,1)/Math.max(el.clientHeight,1),.1,100);camera.position.set(0,1.78,6.65);camera.lookAt(0,1.69,0);
-   scene.add(new THREE.HemisphereLight(0xd8e9ff,0x352432,2.15));const key=new THREE.DirectionalLight(0xffe2d0,3);key.position.set(-3.5,5.5,4.5);scene.add(key);const fill=new THREE.DirectionalLight(0x82d8f4,1.25);fill.position.set(4,3,2.5);scene.add(fill);const rim=new THREE.DirectionalLight(0xbca3ff,1.15);rim.position.set(.5,3,-4);scene.add(rim);const mood=new THREE.PointLight(0x76c8e6,.58,7.5);mood.position.set(0,2.2,1.2);scene.add(mood);
-   const body=makeBody(scene);const rt:Runtime={scene,camera,renderer,body,loaded:null,mixer:null,clips:[],clipName:"",bones:[],yaw:0,dragX:null,mood,last:performance.now()};runtime.current=rt;
-   const resize=()=>{if(disposed)return;const w=Math.max(el.clientWidth,1),h=Math.max(el.clientHeight,1);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(w,h,false);};observer=typeof ResizeObserver!=="undefined"?new ResizeObserver(resize):null;observer?.observe(el);window.addEventListener("resize",resize);
-   const down=(e:PointerEvent)=>{rt.dragX=e.clientX;renderer.domElement.style.cursor="grabbing";try{renderer.domElement.setPointerCapture(e.pointerId);}catch{}};const move=(e:PointerEvent)=>{if(rt.dragX===null)return;rt.yaw+=(e.clientX-rt.dragX)*.008;rt.dragX=e.clientX;};const up=()=>{rt.dragX=null;renderer.domElement.style.cursor="grab";};renderer.domElement.addEventListener("pointerdown",down);renderer.domElement.addEventListener("pointermove",move);renderer.domElement.addEventListener("pointerup",up);renderer.domElement.addEventListener("pointercancel",up);
-   const animate=(now:number)=>{if(disposed||runtime.current!==rt)return;raf=requestAnimationFrame(animate);const dt=Math.min(.05,Math.max(0,(now-rt.last)/1000));rt.last=now;const t=now/1000,p=latest.current,b=rt.body,active=p.awake?1:.22,energy=clamp(p.energy,0,1),load=clamp(p.cognitiveLoad,0,1),uncertainty=clamp(p.uncertainty,0,1),social=clamp(p.socialNeed,0,1),novelty=clamp(p.novelty,0,1),curiosity=clamp(p.curiosity,0,1),goal=clamp(p.goalPressure,0,1),error=clamp(p.predictionError,0,1),dominance=clamp(p.dominance,0,1),valence=clamp(p.valence,0,1),warmth=clamp(p.traits.warmth??.5,0,1),sarcasm=clamp(p.traits.sarcasm??.5,0,1),guarded=clamp(p.traits.guardedness??.5,0,1),composure=clamp(p.traits.composure??.5,0,1);b.root.position.y=Math.sin(t*(p.awake?1.5+.5*energy:.45))*(.004+.018*energy);b.root.rotation.y=rt.yaw+Math.sin(t*.29)*(.006+.014*uncertainty);b.root.rotation.x=(p.action==="explore"?-.016:p.action==="verify"||p.action==="reflect"?-.026:p.action==="rest"?.035:0)+(goal-.35)*.045+load*.022-dominance*.018+(1-energy)*.035;b.head.rotation.x=-clamp(p.gazeY,-1,1)*.1+(p.thinking?-.035:0)-load*.045+(1-energy)*.05;b.head.rotation.y=clamp(p.gazeX,-1,1)*(.2-social*.075)+Math.sin(t*.6)*(.014*active+uncertainty*.025+novelty*.012+curiosity*.012);b.head.rotation.z=(p.emotion==="sadness"?.055:p.emotion==="anxiety"?-.035:p.emotion==="anger"||p.emotion==="frustration"?-.04:p.emotion==="curiosity"?.035:Math.sin(t*.75)*.009*active)+(0.5-valence)*.055+(0.5-composure)*.018;
-    const pose:Record<ActionKind,[number,number]>={respond:[p.speaking?-.25:-.08,p.speaking?.42:.1],explore:[-.23,-.45],verify:[.08,-.68],rest:[.08,-.08],reflect:[-.1,.18],wait:[0,0]};let l=pose[p.action][0],r=pose[p.action][1];if(p.emotion==="anger"||p.emotion==="frustration"){l=-.64;r=.64;}else if(p.emotion==="protective"){l-=.12;r-=.12;}l+=guarded*.08-load*.06;r-=guarded*.08;if(social>.68&&p.speaking){l-=.08;r+=.1;}if(!p.awake){l*=.25;r*=.25;}b.leftArm.rotation.z+=(l-b.leftArm.rotation.z)*Math.min(1,dt*4.5);b.rightArm.rotation.z+=(r-b.rightArm.rotation.z)*Math.min(1,dt*4.5);
-    b.mouth.scale.y=.014+clamp(p.speaking?p.mouthPose.open:0,0,1)*.07;b.mouth.scale.x=.045+clamp(p.speaking?Math.abs(p.mouthPose.form):0,0,1)*.035;b.mouth.rotation.z=(valence-.5)*.22+sarcasm*.025;const baseEye=p.emotion==="sadness"?.76:p.emotion==="anger"||p.emotion==="frustration"?.68:p.emotion==="curiosity"||p.emotion==="anxiety"?1.12:1;const eye=baseEye*(.76+energy*.24)*(1-load*.12)*(1+error*.1);b.eyeWhites.forEach((e:any)=>{e.scale.y=.101*eye;e.position.y=.035-clamp(p.gazeY,-1,1)*.018;});b.irises.forEach((e:any,i:number)=>{e.position.x=(i===0?-.126:.126)+clamp(p.gazeX,-1,1)*.024;e.position.y=.026-clamp(p.gazeY,-1,1)*.018;});b.brows.forEach((e:any,i:number)=>{const side=i===0?-1:1;e.rotation.z=(p.emotion==="anger"||p.emotion==="frustration"?(i===0?-.22:.22):p.emotion==="sadness"||p.emotion==="anxiety"?(i===0?.12:-.12):p.thinking?(i===0?-.06:.06):0)+side*(load*.1+(uncertainty-.5)*.05-sarcasm*.025);});
-    b.ringMat.opacity=.28+clamp(p.arousal,0,1)*.25+error*.12+goal*.08;const hue:Record<EmotionLabel,number>={curiosity:0x68d9ed,calm:0x76c8e6,joy:0xffa7bd,anxiety:0x858bd6,frustration:0xf27c6f,sadness:0x6e83c7,anger:0xff525e,protective:0xd9a4f5};rt.mood.color.setHex(hue[p.emotion]);rt.mood.intensity=.24+clamp(p.arousal,0,1)*.42+error*.16+uncertainty*.08;
-    if(rt.loaded){const clip=selectClip(rt.clips,p.action);if(rt.mixer&&clip&&clip.name!==rt.clipName){rt.mixer.stopAllAction();const a=rt.mixer.clipAction(clip);a.reset();a.setEffectiveTimeScale(p.awake?.55+energy*.45:.3);a.fadeIn(.28).play();rt.clipName=clip.name;}/* Reset to bind pose before the mixer so offsets do not accumulate; then add motor intent on top of the clip. */rt.bones.forEach((bone)=>{bone.node.rotation.set(bone.x,bone.y,bone.z);});rt.mixer?.update(dt);rt.bones.forEach((bone)=>{const n=bone.name;if(n.includes("head")||n.includes("neck")){bone.node.rotation.x+=-clamp(p.gazeY,-1,1)*.12-load*.035+(1-energy)*.04;bone.node.rotation.y+=clamp(p.gazeX,-1,1)*(.22-social*.05)+uncertainty*.025;bone.node.rotation.z+=p.emotion==="sadness"?.055:p.emotion==="anger"||p.emotion==="frustration"?-.04:0;}else if(n.includes("leftupperarm")||n.includes("leftshoulder"))bone.node.rotation.z+=p.action==="explore"?-.14:0;else if(n.includes("rightupperarm")||n.includes("rightshoulder"))bone.node.rotation.z+=p.action==="respond"&&p.speaking?-.26:p.action==="verify"?-.18:0;});rt.loaded.traverse((node:any)=>{if(!node.isMesh||!node.morphTargetDictionary||!node.morphTargetInfluences)return;for(const [key,index]of Object.entries(node.morphTargetDictionary)){const k=String(key).toLowerCase().replace(/[^a-z0-9]/g,"");let value:number|null=null;if(/happy|joy|smile/.test(k))value=p.emotion==="joy"?.75:p.emotion==="protective"?.22:p.emotion==="calm"?warmth*.16:0;else if(/sad|sorrow|cry/.test(k))value=p.emotion==="sadness"||p.emotion==="anxiety"?.62:0;else if(/angry|anger|frown/.test(k))value=p.emotion==="anger"||p.emotion==="frustration"?.7:0;else if(/mouthopen|jawopen|visemeaa|phonemeaa/.test(k))value=p.speaking?clamp(p.mouthPose.open,0,1):0;else if(/visemeoh|phonemeoh/.test(k))value=p.speaking&&p.mouthPose.form<-.25?clamp(p.mouthPose.open,0,1):0;else if(/blink|eyeclose/.test(k))value=Math.sin(t*.83)>.994&&p.awake?.92:0;if(value!==null)node.morphTargetInfluences[Number(index)]=value;}});}
+   try{const root=gltf.scene;if(!root)throw new Error("В файле нет glTF-сцены.");const rawDepthRig=root.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY];const depthPreparation=rawDepthRig===undefined?null:prepareDepthRigSceneV1(root,rawDepthRig);if(rawDepthRig!==undefined&&(!depthPreparation?.ok||!depthPreparation.prepared))throw new Error("Невалидный 2.5D rig: "+(depthPreparation?.errors.join(", ")||"unknown validation error"));if(latest.current.bodyMode==="2.5d"&&!depthPreparation?.prepared)throw new Error("Для 2.5D нужен авторский GLB с nk1DepthRigAssetV1 и точной parent-иерархией.");const activeDepthRig=latest.current.bodyMode==="2.5d"?depthPreparation?.prepared??null:null;const rawMotorModelId=root.userData?.nk1MotorModelId;const declaredMotorModelId=typeof rawMotorModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawMotorModelId)?rawMotorModelId:null;const nextMotorModelId=activeDepthRig?.asset.rig.id??declaredMotorModelId;const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
+    if(rt.loaded&&!rt.depthRigScene){const clip=selectClip(rt.clips,p.action);if(rt.mixer&&clip&&clip.name!==rt.clipName){rt.mixer.stopAllAction();const a=rt.mixer.clipAction(clip);a.reset();a.setEffectiveTimeScale(p.awake?.55+energy*.45:.3);a.fadeIn(.28).play();rt.clipName=clip.name;}/* Reset to bind pose before the mixer so offsets do not accumulate; then add motor intent on top of the clip. */rt.bones.forEach((bone)=>{bone.node.rotation.set(bone.x,bone.y,bone.z);});rt.mixer?.update(dt);rt.bones.forEach((bone)=>{const n=bone.name;if(n.includes("head")||n.includes("neck")){bone.node.rotation.x+=-clamp(p.gazeY,-1,1)*.12-load*.035+(1-energy)*.04;bone.node.rotation.y+=clamp(p.gazeX,-1,1)*(.22-social*.05)+uncertainty*.025;bone.node.rotation.z+=p.emotion==="sadness"?.055:p.emotion==="anger"||p.emotion==="frustration"?-.04:0;}else if(n.includes("leftupperarm")||n.includes("leftshoulder"))bone.node.rotation.z+=p.action==="explore"?-.14:0;else if(n.includes("rightupperarm")||n.includes("rightshoulder"))bone.node.rotation.z+=p.action==="respond"&&p.speaking?-.26:p.action==="verify"?-.18:0;});
+      const vrmMotor=p.motorFrameBatch;
+      if(vrmMotor&&vrmMotor.renderer==="vrm3d"&&vrmMotor.modelId===rt.loaded.userData?.nk1MotorModelId&&vrmMotor.frameTick>=rt.motorFrameTick){
+        const resolved=vrmMotor.commands.map((command)=>{
+          const targetName=String(command.targetId).toLowerCase().replace(/[^a-z0-9]/g,"");
+          const bone=rt.bones.find((entry)=>entry.name===targetName);
+          const component=command.component==="x"?"x":command.component==="y"?"y":command.component==="z"?"z":null;
+          if(!bone||!component||command.targetKind!=="humanoid-bone"||command.valueUnit!=="radians")return null;
+          return {bone,component,value:command.value};
+        });
+        // Apply a calibrated batch atomically: a missing target rejects the entire renderer projection.
+        if(resolved.length===vrmMotor.commands.length&&resolved.every(Boolean)){
+          for(const item of resolved)if(item)item.bone.node.rotation[item.component]=item.bone[item.component]+item.value;
+          rt.motorFrameTick=vrmMotor.frameTick;
+        }
+      }
+      rt.loaded.traverse((node:any)=>{if(!node.isMesh||!node.morphTargetDictionary||!node.morphTargetInfluences)return;for(const [key,index]of Object.entries(node.morphTargetDictionary)){const k=String(key).toLowerCase().replace(/[^a-z0-9]/g,"");let value:number|null=null;if(/happy|joy|smile/.test(k))value=p.emotion==="joy"?.75:p.emotion==="protective"?.22:p.emotion==="calm"?warmth*.16:0;else if(/sad|sorrow|cry/.test(k))value=p.emotion==="sadness"||p.emotion==="anxiety"?.62:0;else if(/angry|anger|frown/.test(k))value=p.emotion==="anger"||p.emotion==="frustration"?.7:0;else if(/mouthopen|jawopen|visemeaa|phonemeaa/.test(k))value=p.speaking?clamp(p.mouthPose.open,0,1):0;else if(/visemeoh|phonemeoh/.test(k))value=p.speaking&&p.mouthPose.form<-.25?clamp(p.mouthPose.open,0,1):0;else if(/blink|eyeclose/.test(k))value=Math.sin(t*.83)>.994&&p.awake?.92:0;if(value!==null)node.morphTargetInfluences[Number(index)]=value;}});}
+    if(rt.loaded&&rt.depthRigScene){
+      const gesture = p.emotion==="anger"||p.emotion==="frustration" ? "cross-arms" : p.action==="verify"||p.action==="reflect" ? "think" : p.action==="respond" ? (p.speaking?"explain-right":"shrug") : p.action==="explore" ? "explain-left" : "none";
+      const depthPose=resolveDepthRigPose(rt.depthRigScene.asset.rig,{
+        headYaw:clamp(p.gazeX,-1,1),
+        headPitch:clamp(p.gazeY,-1,1),
+        headRoll:p.emotion==="sadness"?.28:p.emotion==="anxiety"?-.18:p.emotion==="anger"||p.emotion==="frustration"?-.2:(p.valence-.5)*.15,
+        torsoYaw:clamp((p.gazeX*.12)+(p.dominance-.5)*.16,-1,1),
+        torsoLean:p.action==="explore"?.12:p.action==="verify"||p.action==="reflect"?-.08:p.action==="rest"?.1:0,
+        breath:.45+.12*Math.sin(t*(p.awake?1.1:.3)),
+        gesture,
+        gestureIntensity:p.awake?clamp(p.speaking?.92:p.action==="wait"?.12:.58,0,1):.08,
+      });
+      let rendererPose=depthPose;
+      const depthMotor=p.motorFrameBatch;
+      if(depthMotor&&depthMotor.renderer==="depth2d"&&depthMotor.frameTick>=rt.motorFrameTick){
+        const overlay=overlayMotorFrameOnDepthRigPose(rt.depthRigScene.asset.rig,depthPose,depthMotor);
+        if(overlay.ok&&overlay.pose){rendererPose=overlay.pose;rt.motorFrameTick=overlay.frameTick??rt.motorFrameTick;}
+      }
+      const revision=typeof p.revision==="number"&&Number.isSafeInteger(p.revision)&&p.revision>=0?p.revision:0;
+      const result=applyDepthRigPreparedScenePoseV1(rt.depthRigScene,rendererPose,{stateRevision:revision,executionId:"depth-rig-frame-"+revision+"-"+(++rt.depthRigFrame)});
+      // A scene readback is deliberately not called GPU presentation evidence.
+      if(result.status!=="applied") console.warn("NK1 2.5D renderer rejected pose",result.errors);
+    }
     renderer.render(scene,camera);
    };raf=requestAnimationFrame(animate);setReady(true);setState("procedural");setMessage("");setStorageMessage("Процедурное 3D-тело готово; загрузите локальную VRM/GLB-модель для замены.");
    return()=>{disposed=true;cancelAnimationFrame(raf);observer?.disconnect();window.removeEventListener("resize",resize);renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointermove",move);renderer.domElement.removeEventListener("pointerup",up);renderer.domElement.removeEventListener("pointercancel",up);rt.mixer?.stopAllAction();disposeTree(scene);renderer.dispose();renderer.domElement.remove();runtime.current=null;setReady(false);};
   }catch(e){setState("webgl-unavailable");setMessage("WebGL недоступен. Включите аппаратное ускорение или используйте браузер с поддержкой WebGL.");setStorageMessage(e instanceof Error?e.message.slice(0,160):"Ошибка запуска 3D-рендерера");return()=>renderer?.dispose?.();}
  },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const rt=runtime.current;if(!rt)return;
+  if(!rt.loaded){rt.body.root.visible=props.bodyMode!=="2.5d";return;}
+  if(props.bodyMode==="2.5d"){
+    const rawAsset=rt.loaded.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY];
+    const preparation=rawAsset===undefined?null:prepareDepthRigSceneV1(rt.loaded,rawAsset);
+    if(!preparation?.ok||!preparation.prepared){
+      rt.depthRigScene=null;rt.mixer?.stopAllAction();rt.mixer=null;
+      rt.loaded.visible=false;rt.body.root.visible=false;
+      setState("error");setMessage("Для 2.5D нужна загруженная layered GLB-сцена с валидным nk1DepthRigAssetV1.");
+      setMotorModelId(null);setMotorFrameBatch(null);setMotorFrameProjection("unmapped");
+      return;
+    }
+    rt.loaded.visible=true;rt.depthRigScene=preparation.prepared;rt.depthRigFrame=0;rt.motorFrameTick=-1;
+    rt.mixer?.stopAllAction();rt.mixer=null;rt.body.root.visible=false;
+    setState("loaded");setMessage("2.5D rig готов. Scene readback включён; presented frame остаётся отдельной проверкой.");
+    setMotorModelId(preparation.prepared.asset.rig.id);
+    return;
+  }
+  const wasDepthRig=rt.depthRigScene!==null;
+  rt.depthRigScene=null;rt.depthRigFrame=0;rt.motorFrameTick=-1;rt.mixer?.stopAllAction();
+  const hasRigAsset=rt.loaded.userData?.[NK1_DEPTH_RIG_ASSET_USER_DATA_KEY]!==undefined;
+  if(wasDepthRig&&hasRigAsset&&rt.bones.length===0){
+    rt.loaded.visible=false;rt.body.root.visible=true;rt.mixer=null;
+    setState("procedural");setMessage("2.5D слои переключены на процедурное 3D-тело; для скелетного 3D загрузите VRM/GLB со скелетом.");
+    setMotorModelId(null);setMotorFrameBatch(null);setMotorFrameProjection("unmapped");
+    return;
+  }
+  rt.loaded.visible=true;rt.body.root.visible=false;
+  rt.mixer=rt.clips.length?new THREE.AnimationMixer(rt.loaded):null;rt.clipName="";
+  const rawMotorModelId=rt.loaded.userData?.nk1MotorModelId;
+  const declaredMotorModelId=typeof rawMotorModelId==="string"&&/^[a-z0-9][a-z0-9._:-]{1,95}$/i.test(rawMotorModelId)?rawMotorModelId:null;
+  setMotorModelId(declaredMotorModelId);setState("loaded");
+  setMessage(rt.bones.length?"3D skeleton active; calibrated motor projection is model-bound.":"Геометрия загружена; скелет не найден, движения костей недоступны.");
+ },[props.bodyMode,ready]);
  useEffect(()=>{if(!ready)return;let cancelled=false;void loadStoredAvatarModel().then((saved)=>{if(!cancelled&&saved)void loadModel(saved.blob,saved.name,false);}).catch(()=>{if(!cancelled)setStorageMessage("IndexedDB недоступна; процедурное тело остаётся рабочим.");});return()=>{cancelled=true;};},[ready,loadModel]);
  const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){setState("error");setMessage("Поддерживаются бинарные модели .vrm и .glb.");return;}void loadModel(file,file.name,true);};
- const reset=async()=>{loadToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.clipName="";rt.bones=[];rt.body.root.visible=true;}setModelName("");setState(rt?"procedural":"webgl-unavailable");setMessage("");try{await clearStoredAvatarModel();setStorageMessage("Используется процедурное 3D-тело; выбранная модель удалена из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
+ const reset=async()=>{loadToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.clips=[];rt.clipName="";rt.bones=[];rt.depthRigScene=null;rt.depthRigFrame=0;rt.motorFrameTick=-1;rt.body.root.visible=latest.current.bodyMode!=="2.5d";setMotorModelId(null);setMotorFrameBatch(null);setMotorFrameProjection("unmapped");}setModelName("");setState(rt?(latest.current.bodyMode==="2.5d"?"error":"procedural"):"webgl-unavailable");setMessage(latest.current.bodyMode==="2.5d"?"2.5D rig сброшен. Загрузите GLB с nk1DepthRigAssetV1.":"");try{await clearStoredAvatarModel();setStorageMessage("Используется процедурное 3D-тело; выбранная модель удалена из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
   <div ref={host} className="absolute inset-0"/>
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p></div></div>:null}
   <div className="absolute right-3 top-3 z-20 flex max-w-[75%] flex-wrap justify-end gap-1.5"><button type="button" onClick={()=>fileInput.current?.click()} disabled={!ready} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>{modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}<input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/></div>
-  <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-2"><div className="max-w-[80%] rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 backdrop-blur"><p className="text-[11px] font-semibold tracking-wide text-slate-100">{modelName||"NK1 · TRUE 3D BODY"}</p><p className="mt-0.5 text-[10px] leading-relaxed text-slate-300/80">{state==="loaded"?"3D-модель · эмоция, действие, взгляд и речь связаны с состоянием NK1":state==="loading"?"Подготовка модели…":state==="error"?"Модель не загружена · процедурное тело сохраняется":state==="webgl-unavailable"?"Требуется WebGL":"Процедурный 3D-концепт · эмоции и движение от состояния NK1"}</p></div><div className="rounded-full border border-cyan-200/20 bg-slate-950/70 px-2 py-1 text-[9px] uppercase tracking-wider text-cyan-100/80">{props.awake?(props.thinking?"thinking":props.speaking?"speaking":props.emotion):"sleep"}</div></div>
+  <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-2"><div className="max-w-[80%] rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 backdrop-blur"><p className="text-[11px] font-semibold tracking-wide text-slate-100">{modelName||(props.bodyMode==="2.5d"?"NK1 · LAYERED 2.5D BODY":"NK1 · TRUE 3D BODY")}</p><p className="mt-0.5 text-[10px] leading-relaxed text-slate-300/80">{state==="loaded"?(props.bodyMode==="2.5d"?"2.5D слои · scene readback включён, кадр GPU не подтверждён":"3D-модель · эмоция, действие, взгляд и речь связаны с состоянием NK1"):state==="loading"?"Подготовка модели…":state==="error"?"Модель не загружена · процедурное тело сохраняется":state==="webgl-unavailable"?"Требуется WebGL":"Процедурный 3D-концепт · эмоции и движение от состояния NK1"}</p><p className="mt-1 text-[9px] text-cyan-100/65">MotorFrame · {motorFrameProjection} / {motorFrameConnection}{motorFrameBatch?` · tick ${motorFrameBatch.frameTick}`:""}</p></div><div className="rounded-full border border-cyan-200/20 bg-slate-950/70 px-2 py-1 text-[9px] uppercase tracking-wider text-cyan-100/80">{props.awake?(props.thinking?"thinking":props.speaking?"speaking":props.emotion):"sleep"}</div></div>
   {message?<p role="status" className="absolute bottom-[4.6rem] left-3 z-20 max-w-[78%] rounded bg-slate-950/80 px-2 py-1.5 text-[10px] text-amber-100/90">{message}</p>:null}
   <p className="absolute right-3 bottom-[4.6rem] z-20 max-w-[42%] text-right text-[9px] text-white/45">Потяните тело, чтобы повернуть. {modelFingerprint ? `SHA-256 ${modelFingerprint.slice(7, 23)}… · идентичность модели зафиксирована` : state === "loaded" ? "SHA-256 недоступен · калибровка этой модели заблокирована" : ""} {storageMessage}</p>
  </section>;
