@@ -17,6 +17,7 @@ const report=runLongMemEvalMemoryBenchmark(rows,{
  datasetRevision:flag('--revision')??DEFAULT_LONGMEMEVAL_REVISION,
  datasetFileSha256,
 });
+rows=[];
 const output=JSON.stringify(report,null,2)+'\n';
 const out=flag('--out');
 if(out)await writeFile(path.resolve(out),output,'utf8');
