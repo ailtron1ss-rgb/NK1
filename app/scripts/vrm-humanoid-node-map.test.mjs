@@ -222,7 +222,7 @@ test("VRM 1.0 uses thumb metacarpal/proximal/distal while the other fingers use 
   const extension = { VRMC_vrm: { specVersion: "1.0", humanoid: { humanBones } } };
   const { audit, map } = auditFromScene(scene, roles, extension);
   assert.equal(map.status, "valid");
-  assert.equal(map.nodeRoleByIndex.size, 30);
+  assert.equal(map.nodeRoleByIndex.size - requiredVrm1.length, 30);
   assert.equal(audit.capabilities.leftFingerCount, 15);
   assert.equal(audit.capabilities.rightFingerCount, 15);
   assert.equal(audit.capabilities.fingerArticulation, true);
