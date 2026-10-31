@@ -7,29 +7,29 @@
     "reviewerType": null,
     "reviewer": null,
     "reviewedAt": null,
-    "evidenceRef": null
+    "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md"
   },
   "rootProject": {
     "status": "pending",
-    "licenseExpression": null,
+    "licenseExpression": "NOASSERTION",
     "redistributionApproved": false,
     "reviewerType": null,
     "reviewer": null,
     "reviewedAt": null,
-    "evidenceRef": null,
+    "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#root-project",
     "scope": "repository-root",
-    "note": "Choose and document a project-wide license; no root policy is declared in current package metadata."
+    "note": "No repository-root LICENSE was found in the current source tree. NOASSERTION records the absence of a declared root license; it is not permission to redistribute."
   },
   "runtimeProject": {
     "status": "pending",
-    "licenseExpression": null,
+    "licenseExpression": "LicenseRef-NK1-Private-All-Rights-Reserved",
     "redistributionApproved": false,
     "reviewerType": null,
     "reviewer": null,
     "reviewedAt": null,
-    "evidenceRef": null,
+    "evidenceRef": "runtime/neuro-kurisu/LICENSE",
     "scope": "runtime/neuro-kurisu",
-    "note": "Confirm the runtime project's redistribution license and its relationship to the repository root."
+    "note": "The local runtime LICENSE states private / all rights reserved. LicenseRef-NK1-Private-All-Rights-Reserved is an internal identifier for that notice, not an open-source license or redistribution grant."
   },
   "lockedNpmDependencies": {
     "status": "pending",
@@ -38,122 +38,122 @@
     "reviewerType": null,
     "reviewer": null,
     "reviewedAt": null,
-    "evidenceRef": null,
+    "evidenceRef": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41234198086",
     "note": "The fingerprint is intentionally unset until a human review is recorded. Review the full locked dependency inventory; changed packages or license expressions require a fresh review. Current measured inventory: 477 components at source SHA 7dc96bd0dfa612f6b47c37b6add2bc6ba82a33d2; fingerprint remains intentionally unset pending human review."
   },
   "sourceArchives": [
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/NOMEGA_PASS20_CAPABILITY_FORGE.zip",
       "sha256": "01dfdf650158d29869c87bc0df584d7f9fed56b63feb17f47f9aae887af5079b",
       "inventoryLicenseReview": "license-not-detected-in-top-level-members",
       "embeddedLicenseMembers": [],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. Top-level license inventory did not find a license notice; nested archive contents and ownership remain unverified."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/NeuroCore_V126_Consolidation_Decontaminated_2026-09-30.zip",
       "sha256": "c57561e020593a67ae9bbf248da77cef9dee4b47d45e44c63db80ec05cd3dce0",
       "inventoryLicenseReview": "license-not-detected-in-top-level-members",
       "embeddedLicenseMembers": [],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. Top-level license inventory did not find a license notice; nested archive contents and ownership remain unverified."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/NeuroCore_V143_FwPKM_Language_2026-10-01.zip",
       "sha256": "97cacf02b82d1008ef52f2072a458d3a8467dbc5402408dd2e5733b077885d03",
       "inventoryLicenseReview": "license-not-detected-in-top-level-members",
       "embeddedLicenseMembers": [],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. Top-level license inventory did not find a license notice; nested archive contents and ownership remain unverified."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/external-sources/conscio-4.8.2.tar.gz",
       "sha256": "05cc43c834029a02e841f6318e353af3f7681c4863c176d9396715a7446b1fb6",
       "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
       "embeddedLicenseMembers": [
         "conscio-4.8.2/LICENSE"
       ],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. An embedded LICENSE member was detected, but its text and upstream source identity have not been verified."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/grok-workspace.zip",
       "sha256": "75d102549c372d7fed9cdcdcdbe9a3df5f475ca2540360d6be6551c3f2c53ea1",
       "inventoryLicenseReview": "license-not-detected-in-top-level-members",
       "embeddedLicenseMembers": [],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. Top-level license inventory did not find a license notice; nested archive contents and ownership remain unverified. Do not infer any relationship to xAI from the filename."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/raw-source-archives/letta-main.zip",
       "sha256": "5d28f152aba633fcc26fe20125fad28f73c6773e6526fc65249656b2d0c61075",
       "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
       "embeddedLicenseMembers": [
         "letta-main/LICENSE"
       ],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. An embedded LICENSE member was detected. Current upstream candidate is letta-ai/letta (Apache-2.0 metadata), but the exact archive revision and embedded text are not verified."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/raw-source-archives/lumina-main.zip",
       "sha256": "a820cb1b394018451c8ee5863ae0a1f74666bd10519007d6e37e69e42452d467",
       "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
       "embeddedLicenseMembers": [
         "lumina-main/LICENSE"
       ],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. An embedded LICENSE member was detected, but the upstream project identity is ambiguous and has not been verified."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "NOASSERTION",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "docs/RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md#source-archives",
       "path": "legacy/input-archives/raw-source-archives/will-main.zip",
       "sha256": "9d0c30277f0981b67104b1e2a07d9c7f025fee60ae57bd470cca898cf0d457a4",
       "inventoryLicenseReview": "license-evidence-found-not-a-legal-conclusion",
@@ -161,107 +161,163 @@
         "will-main/NOTICE",
         "will-main/LICENSE"
       ],
-      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash."
+      "note": "Review upstream license/NOTICE and redistribution rights for this exact archive hash. Embedded LICENSE and NOTICE members were detected. Current upstream candidate is mindot-ai/will (Apache-2.0); the extracted local LICENSE/NOTICE match upstream, but the exact archive revision is unverified."
     }
   ],
   "repositoryLicenseFiles": [
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "MIT",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "https://github.com/0x0funky/agent-sprite-forge/blob/main/LICENSE",
       "path": "app/.grok/skills/generate2dmap/LICENSE",
       "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
       "inventoryStatus": "license-text-present-id-needs-review",
-      "spdxIdentifier": null,
-      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+      "spdxIdentifier": "MIT",
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution. Local text matches the upstream license file."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "MIT",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "https://github.com/0x0funky/agent-sprite-forge/blob/main/LICENSE",
       "path": "app/.grok/skills/generate2dsprite/LICENSE",
       "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
       "inventoryStatus": "license-text-present-id-needs-review",
-      "spdxIdentifier": null,
-      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+      "spdxIdentifier": "MIT",
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution. Local text matches the upstream license file."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "MIT",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "https://github.com/0x0funky/agent-sprite-forge/blob/main/LICENSE",
       "path": "app/.grok/skills/video2dsprite/LICENSE",
       "sha256": "d63ddc781bf0d15753fe0ba22c7cd5828dabb7776465ea4d4939558d4909b0fa",
       "inventoryStatus": "license-text-present-id-needs-review",
-      "spdxIdentifier": null,
-      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+      "spdxIdentifier": "MIT",
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution. Local text matches the upstream license file."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "MIT",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "https://github.com/QuixiAI/Hexis/blob/main/LICENSE",
       "path": "legacy/input-archives/hexis-main-2026-10-08/LICENSE",
       "sha256": "b5138e29f1b4a2ca7f6106af7317efb23d89e255867609b79cd26baef4843308",
       "inventoryStatus": "license-text-present-id-needs-review",
-      "spdxIdentifier": null,
-      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+      "spdxIdentifier": "MIT",
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution. Local text matches the upstream license file."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "Apache-2.0",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "https://github.com/mindot-ai/will/blob/main/LICENSE",
       "path": "legacy/input-archives/will-main-2026-10-08/LICENSE",
       "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
       "inventoryStatus": "identified",
-      "spdxIdentifier": null,
-      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+      "spdxIdentifier": "Apache-2.0",
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution. Local text matches the upstream license file."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "Apache-2.0",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "https://github.com/mindot-ai/will/blob/main/NOTICE",
       "path": "legacy/input-archives/will-main-2026-10-08/NOTICE",
       "sha256": "baedc4a6fccbaaaa9801fde10279a5720e7f58542f3f46a4af9fd0be10e4812c",
       "inventoryStatus": "identified",
-      "spdxIdentifier": null,
-      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+      "spdxIdentifier": "Apache-2.0",
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution. NOTICE is associated with the Apache-2.0 licensed Will source tree; it is not a separate license grant."
     },
     {
       "status": "pending",
-      "licenseExpression": null,
+      "licenseExpression": "LicenseRef-NK1-Private-All-Rights-Reserved",
       "redistributionApproved": false,
       "reviewerType": null,
       "reviewer": null,
       "reviewedAt": null,
-      "evidenceRef": null,
+      "evidenceRef": "runtime/neuro-kurisu/LICENSE",
       "path": "runtime/neuro-kurisu/LICENSE",
       "sha256": "4a3eeabf67408063d4b46aada572343348a792c901db1eb0ae08cca30eea42c4",
       "inventoryStatus": "license-text-present-id-needs-review",
-      "spdxIdentifier": null,
-      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution."
+      "spdxIdentifier": "LicenseRef-NK1-Private-All-Rights-Reserved",
+      "note": "Classify this license/NOTICE evidence and confirm compatibility with the intended release distribution. Local private / all-rights-reserved notice; no redistribution approval."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": "MIT",
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": "https://github.com/vwxyzjn/cleanrl/blob/master/LICENSE",
+      "path": "runtime/neuro-kurisu/research/vendor/CleanRL/LICENSE",
+      "sha256": "34ad40e40ee9d274d4bfcbcd1b56f2a1f8a22b5eb71e42094e78151b76377a85",
+      "inventoryStatus": "present",
+      "spdxIdentifier": "MIT",
+      "note": "Local file matches only the leading root MIT section of upstream's composite LICENSE; no CleanRL source code is recorded as copied."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": "MIT",
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": "https://github.com/ContinualAI/avalanche/blob/master/LICENSE",
+      "path": "runtime/neuro-kurisu/research/vendor/ContinualAI-Avalanche/LICENSE",
+      "sha256": "81a826c503145d79c454c6e49fce9f7bea17d8c1dacff93fe0dbc92283c8bbe5",
+      "inventoryStatus": "present",
+      "spdxIdentifier": "MIT",
+      "note": "Local text differs only by whitespace/line wrapping after whitespace normalization."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": "MIT",
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": "https://github.com/openai/baselines/blob/master/LICENSE",
+      "path": "runtime/neuro-kurisu/research/vendor/OpenAI-Baselines/LICENSE",
+      "sha256": "fd85a61f2f086d9da85b5d3cbb1a5f49665fc7fe9fed5f799cb5753ad766f710",
+      "inventoryStatus": "present",
+      "spdxIdentifier": "MIT",
+      "note": "Local file content matches upstream license."
+    },
+    {
+      "status": "pending",
+      "licenseExpression": "MIT",
+      "redistributionApproved": false,
+      "reviewerType": null,
+      "reviewer": null,
+      "reviewedAt": null,
+      "evidenceRef": "https://github.com/cxcscmu/SkillLearnBench/blob/main/LICENSE",
+      "path": "runtime/neuro-kurisu/research/vendor/SkillLearnBench/LICENSE",
+      "sha256": "d4a5e863f521c0fe405a0d94271be34740539f9dfa973c99ab883a771f7fa622",
+      "inventoryStatus": "present",
+      "spdxIdentifier": "MIT",
+      "note": "Local file content matches upstream license."
     }
   ],
   "instructions": {
