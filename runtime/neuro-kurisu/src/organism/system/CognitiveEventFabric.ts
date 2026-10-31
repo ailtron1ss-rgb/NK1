@@ -485,7 +485,54 @@ export class CognitiveEventFabric {
     const edgeCoverage = validEdges / Math.max(1, requiredEdges.length + extendedEdgeCount);
     const integrity01 = clamp01(.50 * stageCoverage + .32 * edgeCoverage + .18 * optionalCoverage);
     const complete = missingStages.length === 0 && invalidStages.length === 0 && missingEdges.length === 0;
-    return { tick: cycleTick, complete, integrity01: complete ? 1 : integrity01, missingStages, invalidStages, missingEdges };
+
+    // Keep the legacy six-stage verdict while calculating a separate strict
+    // eleven-stage result. Optional stages are mandatory only for fullComplete.
+    const coreMissingEdges = missingEdges.filter(label => requiredEdges.some(edge => edge[2] === label));
+    const coreInvalid = invalidStages.some(label => required.some(stage => label.startsWith(stage + ':')));
+    const coreIntegrity01 = clamp01(.65 * stageCoverage + .35 * ((requiredEdges.length - coreMissingEdges.length) / requiredEdges.length));
+    const fullMissingStages = [
+      ...missingStages,
+      ...optional.filter(stage => !found.has(stage)),
+    ];
+    const fullEdges: Array<[string, string, string]> = [
+      ...requiredEdges,
+      ...optional.flatMap(child => extendedParents[child].map(parent => [child, parent, child + '->' + parent] as [string, string, string])),
+      ['action','plan','action->plan'],
+      ['outcome','prediction','outcome->prediction'],
+      ['learning','action','learning->action'],
+      ['self-update','outcome','self-update->outcome'],
+    ];
+    const fullMissingEdges: string[] = [];
+    let fullValidEdges = 0;
+    for (const [childStage, parentStage, label] of fullEdges) {
+      const child = found.get(childStage);
+      const parent = found.get(parentStage);
+      if (child && parent && child.parentIds.includes(parent.id)) fullValidEdges += 1;
+      else fullMissingEdges.push(label);
+    }
+    const fullStageCoverage = (11 - fullMissingStages.length) / 11;
+    const fullEdgeCoverage = fullValidEdges / fullEdges.length;
+    const fullIntegrity01 = clamp01(.50 * fullStageCoverage + .50 * fullEdgeCoverage);
+    const coreComplete = missingStages.length === 0 && !coreInvalid && coreMissingEdges.length === 0;
+    const fullComplete = fullMissingStages.length === 0 && invalidStages.length === 0 && fullMissingEdges.length === 0;
+
+    return {
+      tick: cycleTick,
+      complete,
+      coreComplete,
+      fullComplete,
+      integrity01: complete ? 1 : integrity01,
+      coreIntegrity01,
+      fullIntegrity01: fullComplete ? 1 : fullIntegrity01,
+      missingStages,
+      coreMissingStages: missingStages,
+      fullMissingStages,
+      invalidStages,
+      missingEdges,
+      coreMissingEdges,
+      fullMissingEdges,
+    };
   }
 
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
