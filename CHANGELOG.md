@@ -3484,3 +3484,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Duplicate trials for the same pair arm are treated as ambiguous and excluded instead of silently overwriting earlier evidence.
 - Add a deterministic regression for phase leakage, unpaired holdout rejection, duplicate-arm rejection and snapshot/restore parity.
 - This hardens the validity of memory-learning evidence; it does not itself demonstrate retrieval uplift or change the official readiness score.
+
+
+## [NK1][Memory] Restrict confirmatory replay effects to clean holdout pairs (2026-11-01)
+- Calculate the confirmatory condition difference, holdout means and delay coverage only from complete, non-ambiguous holdout replay-on/off pairs.
+- Keep the all-phase condition difference separately labelled as descriptive; acquisition/test outcomes cannot inflate the confirmatory effect.
+- Upgrade the focused holdout workflow to the repository-approved Node 24-compatible Actions v7 majors and `.nvmrc` pin.
+- Add regression coverage with deliberately divergent acquisition and holdout effects, unpaired holdout arms and duplicate restored arms.
+- This corrects evaluation integrity and CI compatibility; it does not claim positive recallDelta, new memory-learning uplift or Release ZIP publication.
