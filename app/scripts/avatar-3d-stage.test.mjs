@@ -90,3 +90,16 @@ test("uploaded model bytes are structurally preflighted before GLTFLoader parses
  assert.match(stage,/preflightAvatarModel\(data,name\)/);
  assert.ok(stage.indexOf("preflightAvatarModel(data,name)")<stage.indexOf("loader.parse(data"));
 });
+
+test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file download",async()=>{
+ const stage=await readFile(stagePath,"utf8"),catalog=await readFile(path.join(root,"src/components/avatar/avatarModelCatalog.ts"),"utf8");
+ assert.match(catalog,/NeuroKurisu_3D_v5\.glb/);
+ assert.match(catalog,/sha256:4cc4c34a62f72122b34c1d896d42bf10eddcba6f10f66563e4fc5e213a37e743/);
+ assert.match(catalog,/sizeBytes:\s*2035768/);
+ assert.match(stage,/fetch\(KURISU_HYBRID_MODEL\.url/);
+ assert.match(stage,/credentials:\s*"omit"/);
+ assert.match(stage,/fingerprintAvatarModel\(data\)/);
+ assert.match(stage,/KURISU_HYBRID_MODEL\.sha256/);
+ assert.match(stage,/loadModel\(blob,KURISU_HYBRID_MODEL\.filename,true\)/);
+ assert.match(stage,/Загрузить модель Курису v5/);
+});
