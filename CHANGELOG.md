@@ -7,7 +7,7 @@
 
 ## [NK1][Cognition] Harden CognitiveEventFabric snapshot restoration (WorkPass641, 2026-11-01)
 - Read persisted event, receipt-index and payload fields through own data descriptors so accessor-backed snapshot fields are ignored rather than executed during restore.
-- Bound restored payload sanitization to four object levels, 128 keys per object and 64 primitive array entries to prevent adversarial nesting/size from exhausting the restore path.
+- Bound restored payload sanitization to four object levels, 128 keys per object and 64 array entries per level while preserving safe nested object/array data.
 - Keep the live append payload contract unchanged; the stricter descriptor/depth/size sanitizer is applied only to untrusted restored snapshots.
 - Reject numeric-string causal ticks and receipt projection timestamps; do not truth-coerce string booleans or accept numeric-string confidence/counters as trusted state.
 - Add a focused restore-integrity regression and include it in the cognitive runtime CI workflow.
