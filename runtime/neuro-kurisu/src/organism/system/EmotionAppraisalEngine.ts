@@ -58,15 +58,209 @@ const emptyInteroception=():InteroceptiveAffectState=>({
 });
 const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{}});
 
+
+type EmotionSnapshotRecord = Record<string, unknown>;
+const EMOTION_LABELS: readonly EmotionLabel[] = ['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'];
+const EMOTION_ACTIONS: readonly EmotionActionTendency[] = ['explore','engage','verify','reflect','rest','protect','withdraw','approach'];
+
+function ownDataRecord(value:unknown): EmotionSnapshotRecord | null {
+  try {
+    if (value===null || typeof value!=='object' || Array.isArray(value)) return null;
+    const prototype=Object.getPrototypeOf(value);
+    if (prototype!==Object.prototype && prototype!==null) return null;
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key!=='string') return null;
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if (!descriptor || !('value' in descriptor) || descriptor.enumerable!==true) return null;
+    }
+    return value as EmotionSnapshotRecord;
+  } catch { return null; }
+}
+
+function ownValue(record:EmotionSnapshotRecord,key:string):unknown {
+  try {
+    const descriptor=Object.getOwnPropertyDescriptor(record,key);
+    return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+  } catch { return undefined; }
+}
+
+function boundedDataArray(value:unknown,max:number):unknown[] | null {
+  try {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value)!==Array.prototype) return null;
+    const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
+    const length=lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : -1;
+    if (!Number.isSafeInteger(length) || length<0 || length>max*4) return null;
+    const result:unknown[]=[];
+    for (let index=0;index<Math.min(length,max);index++) {
+      const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+      if (!descriptor || !('value' in descriptor) || descriptor.enumerable!==true) return null;
+      result.push(descriptor.value);
+    }
+    return result;
+  } catch { return null; }
+}
+
+function boundedCounter(value:unknown,fallback:number,max=1_000_000_000):number {
+  return typeof value==='number' && Number.isSafeInteger(value) && value>=0 && value<=max ? value : fallback;
+}
+function finiteTimestamp(value:unknown,fallback:number):number {
+  return typeof value==='number' && Number.isFinite(value) && value>=0 && value<=Number.MAX_SAFE_INTEGER ? value : fallback;
+}
+function snapshotMetric(value:unknown,fallback:number):number {
+  return typeof value==='number' && Number.isFinite(value) ? c(value) : fallback;
+}
+function snapshotString(value:unknown,max=256):string|null {
+  return typeof value==='string' && value.length>0 && value.length<=max ? value : null;
+}
+function snapshotEnum<T extends string>(value:unknown,allowed:readonly T[]):T|null {
+  return typeof value==='string' && allowed.includes(value as T) ? value as T : null;
+}
+function metricRecord(value:unknown,keys:readonly string[],fallback:Record<string,number>):Record<string,number> {
+  const record=ownDataRecord(value);
+  if (!record) return {...fallback};
+  const result:Record<string,number>={};
+  for (const key of keys) result[key]=snapshotMetric(ownValue(record,key),fallback[key]??0);
+  return result;
+}
+
+function restoreEmotionEpisode(value:unknown):EmotionEpisode|null {
+  const record=ownDataRecord(value);
+  if (!record) return null;
+  const appraisal=ownDataRecord(ownValue(record,'appraisal'));
+  const delta=ownDataRecord(ownValue(record,'interoceptiveDelta'));
+  if (!appraisal || !delta) return null;
+  const id=snapshotString(ownValue(record,'id'));
+  const tick=ownValue(record,'tick');
+  const at=ownValue(record,'at');
+  const label=snapshotEnum(ownValue(record,'label'),EMOTION_LABELS);
+  const actionTendency=snapshotEnum(ownValue(record,'actionTendency'),EMOTION_ACTIONS);
+  const cause=snapshotString(ownValue(record,'cause'),128);
+  if (!id || !Number.isSafeInteger(tick) || (tick as number)<0 || typeof at!=='number' || !Number.isFinite(at) || at<0 || !label || !actionTendency || !cause) return null;
+  const appraisalKeys=['relevance01','goalCongruence01','controllability01','novelty01','selfRelevance01','socialMeaning01','uncertainty01'] as const;
+  const deltaKeys=['stress01','energy01','load01','attentionCapture01'] as const;
+  const appraisalValues:Record<string,number>={};
+  const deltaValues:Record<string,number>={};
+  for (const key of appraisalKeys) {
+    const raw=ownValue(appraisal,key);
+    if (typeof raw!=='number' || !Number.isFinite(raw)) return null;
+    appraisalValues[key]=c(raw);
+  }
+  for (const key of deltaKeys) {
+    const raw=ownValue(delta,key);
+    if (typeof raw!=='number' || !Number.isFinite(raw)) return null;
+    deltaValues[key]=c(raw);
+  }
+  const valence=ownValue(record,'valence01'), arousal=ownValue(record,'arousal01'), dominance=ownValue(record,'dominance01');
+  const salience=ownValue(record,'memorySalienceMultiplier01'), confidence=ownValue(record,'confidence01');
+  for (const metric of [valence,arousal,dominance,salience,confidence]) if (typeof metric!=='number' || !Number.isFinite(metric)) return null;
+  return {
+    id,tick:tick as number,at,label,actionTendency,
+    valence01:c(valence as number),arousal01:c(arousal as number),dominance01:c(dominance as number),
+    appraisal:appraisalValues as EmotionEpisode['appraisal'],
+    interoceptiveDelta:deltaValues as EmotionEpisode['interoceptiveDelta'],
+    memorySalienceMultiplier01:c(salience as number),confidence01:c(confidence as number),cause,
+  };
+}
+
+function restoreFeelingEpisode(value:unknown):FeelingEpisode|null {
+  const record=ownDataRecord(value);
+  if (!record) return null;
+  const id=snapshotString(ownValue(record,'id'));
+  const causeEmotionId=snapshotString(ownValue(record,'causeEmotionId'));
+  const label=snapshotEnum(ownValue(record,'label'),EMOTION_LABELS);
+  const tick=ownValue(record,'tick'), at=ownValue(record,'at');
+  const metrics=['intensity01','interoceptiveMismatch01','selfAccessConfidence01','bodilyFocus01'] as const;
+  if (!id || !causeEmotionId || !label || !Number.isSafeInteger(tick) || (tick as number)<0 || typeof at!=='number' || !Number.isFinite(at) || at<0) return null;
+  const values:number[]=[];
+  for (const key of metrics) {
+    const value=ownValue(record,key);
+    if (typeof value!=='number' || !Number.isFinite(value)) return null;
+    values.push(c(value));
+  }
+  return {id,tick:tick as number,at,label,intensity01:values[0],interoceptiveMismatch01:values[1],selfAccessConfidence01:values[2],bodilyFocus01:values[3],causeEmotionId};
+}
+
+function restoreInteroception(value:unknown,fallback:InteroceptiveAffectState):InteroceptiveAffectState {
+  const record=ownDataRecord(value);
+  if (!record) return structuredClone(fallback);
+  const metricKeys=['meanMismatch01','lastMismatch01','regulationPressure01','stability01','recovery01','predictionCalibration01'] as const;
+  const lastObserved=metricRecord(ownValue(record,'lastObserved'),['energy01','thermal01','capacity01','load01'],fallback.lastObserved);
+  const predicted=metricRecord(ownValue(record,'predicted'),['energy01','thermal01','capacity01','load01'],fallback.predicted);
+  const result:InteroceptiveAffectState={
+    cycles:boundedCounter(ownValue(record,'cycles'),fallback.cycles,1_000_000_000),
+    meanMismatch01:snapshotMetric(ownValue(record,'meanMismatch01'),fallback.meanMismatch01),
+    lastMismatch01:snapshotMetric(ownValue(record,'lastMismatch01'),fallback.lastMismatch01),
+    regulationPressure01:snapshotMetric(ownValue(record,'regulationPressure01'),fallback.regulationPressure01),
+    stability01:snapshotMetric(ownValue(record,'stability01'),fallback.stability01),
+    recovery01:snapshotMetric(ownValue(record,'recovery01'),fallback.recovery01),
+    predictionCalibration01:snapshotMetric(ownValue(record,'predictionCalibration01'),fallback.predictionCalibration01),
+    lastObserved:lastObserved as InteroceptiveAffectState['lastObserved'],
+    predicted:predicted as InteroceptiveAffectState['predicted'],
+  };
+  return result;
+}
+
+function restoreOutcomeMap(value:unknown):Record<string,EmotionOutcomeCalibration> {
+  const record=ownDataRecord(value);
+  if (!record) return {};
+  const result:Record<string,EmotionOutcomeCalibration>={};
+  for (const action of Object.keys(record).slice(0,64)) {
+    if (!EMOTION_ACTIONS.includes(action as EmotionActionTendency)) continue;
+    const row=ownDataRecord(ownValue(record,action));
+    if (!row) continue;
+    const attempts=ownValue(row,'attempts');
+    if (!Number.isSafeInteger(attempts) || (attempts as number)<0 || (attempts as number)>1_000_000_000) continue;
+    const success=ownValue(row,'meanSuccess01'), surprise=ownValue(row,'meanSurprise01'), benefit=ownValue(row,'meanBenefit01');
+    if ([success,surprise,benefit].some(metric=>typeof metric!=='number' || !Number.isFinite(metric))) continue;
+    result[action]={attempts:attempts as number,meanSuccess01:c(success as number),meanSurprise01:c(surprise as number),meanBenefit01:c(benefit as number)};
+  }
+  return result;
+}
+
 export class EmotionAppraisalEngine {
   private state=empty();
   restore(raw?:Partial<EmotionAppraisalState>|null){
-    const d=empty(); const r=raw as any ?? {};
-    this.state={...d,...r,version:2,episodes:Math.max(0,Number(r.episodes??0)),lastTick:Number(r.lastTick??-1),lastAt:Number(r.lastAt??0),
-      lastLabel:(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'] as string[]).includes(String(r.lastLabel))?r.lastLabel as EmotionLabel:d.lastLabel,
-      history:Array.isArray(r.history)?r.history.slice(0,128):[], feelings:Array.isArray(r.feelings)?r.feelings.slice(0,128):[],
-      interoception:{...d.interoception,...(r.interoception??{}),lastObserved:{...d.interoception.lastObserved,...(r.interoception?.lastObserved??{})},predicted:{...d.interoception.predicted,...(r.interoception?.predicted??{})}},
-      outcomes:{...d.outcomes,...(r.outcomes??{})}};
+    const defaults=empty();
+    const root=ownDataRecord(raw);
+    if (!root || ownValue(root,'version')!==2) {
+      this.state=defaults;
+      return;
+    }
+    const historyRaw=boundedDataArray(ownValue(root,'history'),128);
+    const feelingsRaw=boundedDataArray(ownValue(root,'feelings'),128);
+    const history:EmotionEpisode[]=[];
+    const emotionIds=new Set<string>();
+    for (const candidate of historyRaw??[]) {
+      const episode=restoreEmotionEpisode(candidate);
+      if (!episode || emotionIds.has(episode.id)) continue;
+      emotionIds.add(episode.id);
+      history.push(episode);
+    }
+    const feelings:FeelingEpisode[]=[];
+    const feelingIds=new Set<string>();
+    for (const candidate of feelingsRaw??[]) {
+      const feeling=restoreFeelingEpisode(candidate);
+      if (!feeling || feelingIds.has(feeling.id) || !emotionIds.has(feeling.causeEmotionId)) continue;
+      feelingIds.add(feeling.id);
+      feelings.push(feeling);
+    }
+    const lastTickRaw=ownValue(root,'lastTick');
+    const lastTick=typeof lastTickRaw==='number' && Number.isSafeInteger(lastTickRaw) && lastTickRaw>=-1 ? lastTickRaw : defaults.lastTick;
+    this.state={
+      version:2,
+      episodes:boundedCounter(ownValue(root,'episodes'),defaults.episodes),
+      lastTick,
+      lastAt:finiteTimestamp(ownValue(root,'lastAt'),defaults.lastAt),
+      lastLabel:snapshotEnum(ownValue(root,'lastLabel'),EMOTION_LABELS)??defaults.lastLabel,
+      meanArousal01:snapshotMetric(ownValue(root,'meanArousal01'),defaults.meanArousal01),
+      meanValence01:snapshotMetric(ownValue(root,'meanValence01'),defaults.meanValence01),
+      meanStress01:snapshotMetric(ownValue(root,'meanStress01'),defaults.meanStress01),
+      meanAttentionCapture01:snapshotMetric(ownValue(root,'meanAttentionCapture01'),defaults.meanAttentionCapture01),
+      history,
+      feelings,
+      interoception:restoreInteroception(ownValue(root,'interoception'),defaults.interoception),
+      outcomes:restoreOutcomeMap(ownValue(root,'outcomes')),
+    };
   }
   snapshot(){return structuredClone(this.state);}
 
