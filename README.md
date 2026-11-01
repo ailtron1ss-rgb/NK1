@@ -1,39 +1,47 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Рабочая ветка:** `workpass70-source`  
-**Проверенный кодовый SHA:** `ccab4033b2e74efac2267a8e5d214d0abceece20`
+**Проверенный кодовый SHA:** `7ff9947bc4642cceb25e0c951899aa6355f02b6e`
 
-### Реальная работа в этом проходе
+### Реальная работа и интеграции
 - **Three.js lifecycle:** deduplicated disposal shared geometries/materials/textures/skeletons; renderer-owned toon gradient сохраняется при очистке импортированной модели.
-- **Renderer architecture:** toon material factory и non-VRM GLB conversion вынесены в `threeToonMaterials.ts`; source materials освобождаются без уничтожения текстур, используемых новыми материалами.
-- **Secure avatar intake:** добавлен GLB 2.0 preflight до `GLTFLoader.parse`: magic/version/declared length, JSON-first/BIN-second chunks, alignment/bounds, JSON и buffer metadata, VRM 0.x/1.0 identity, 90 MB cap.
-- **Local-only asset policy:** external buffer/image URLs отвергаются; новые upload и IndexedDB-restored модели проходят один и тот же preflight path.
-- **Regression/CI:** реальные Three.js disposal/material tests и отдельный GLB/VRM preflight test включены в embodiment CI.
+- **Renderer architecture:** toon material factory и non-VRM GLB conversion вынесены в `threeToonMaterials.ts`; исходные GLB materials освобождаются без уничтожения текстур, используемых новыми материалами.
+- **Secure avatar intake:** GLB 2.0 preflight до `GLTFLoader.parse`: magic/version/declared length, JSON-first/BIN-second chunks, alignment/bounds, JSON и buffer metadata, VRM 0.x/1.0 identity, 90 MB cap; внешние buffer/image URI запрещены.
+- **Restore consistency:** новый upload и IndexedDB restore проходят один preflight path.
+- **Release evidence:** manifest теперь покрывает 477 npm components, 8 source archives, 11 repository LICENSE/NOTICE файлов и четыре vendor LICENSE hash. Все legal decisions остаются pending.
+- **Release audit automation:** read-only exact-SHA workflow обновляет SBOM/provenance, запускает fail-closed audit и сохраняет JSON artifact; он не имеет publish/write permissions.
+- **Memory/evaluation integrations on source line:** Inspect AI evidence evaluator (diagnostic-only, no memory promotion) и LongMemEval-S retrieval adapter (English benchmark only, promotion disabled) добавлены отдельными commits и прошли свои targeted suites.
 
 ### Проверка exact source SHA
-- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41278360280) на `ccab4033b2e74efac2267a8e5d214d0abceece20`.
-- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41278360289) на том же SHA.
-- PR [#507](https://github.com/ailtron1ss-rgb/NK1/pull/507) — renderer refactor, squash-merged в `ef1ed6b` после 10/10 зелёных PR checks.
-- Дублирующие устаревшие PR [#508](https://github.com/ailtron1ss-rgb/NK1/pull/508) и [#509](https://github.com/ailtron1ss-rgb/NK1/pull/509) закрыты как superseded: preflight уже присутствует и проверен на canonical source branch.
+- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41279905546) на `7ff9947bc4642cceb25e0c951899aa6355f02b6e`.
+- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41279905550) на том же SHA.
+- [Non-publishing license audit snapshot — SUCCESS as a report job](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41279905494): exact SHA `7ff9947bc4642cceb25e0c951899aa6355f02b6e`, readiness **false**, 115 errors, 477 npm components, 8 archives, 11 repository license files.
+- Inspect AI integration commit `3f90ee6`: 4/4 associated checks passed.
+- LongMemEval-S integration commit `595f11b`: 9/9 associated checks passed.
+- PR [#507](https://github.com/ailtron1ss-rgb/NK1) — toon material module, squash-merged after 10/10 PR checks.
+- PR [#514](https://github.com/ailtron1ss-rgb/NK1/pull/514) — evidence-backed license inventory, merged with all review states pending.
+- PR [#523](https://github.com/ailtron1ss-rgb/NK1/pull/523) — non-publishing exact-SHA license audit workflow, merged after all 8 checks passed.
+- Stale duplicate PRs #495, #508, #509 and #521 closed after their changes were rebased or superseded.
 
 ### Что всё ещё НЕ доказано
 - Browser/WebGL E2E: реальная загрузка/замена/reset/reload VRM/GLB и renderer.info/GPU residency soak.
 - Android/Termux audio sync, interruption и длительный real-device soak.
-- Независимый лицензированный RU/EN holdout uplift.
+- Независимый лицензированный RU/EN holdout uplift; LongMemEval-S English-only evaluation не заменяет такой holdout.
 - Production soak, полная автономная инициатива и субъективное сознание не заявляются как доказанные.
 
-### Release status — важно различать stable и prerelease
-GitHub `/releases/latest` возвращает **последний stable Release**: tag `Neuro` / NeuroKurisu0.1, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+### Release status — stable и prerelease
+GitHub `/releases/latest` возвращает последний stable Release: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 
-Более поздний по времени **prerelease** — tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Поэтому для рабочего артефакта по правилу «последний ZIP, включая prerelease» использовать Hotfix 1; stable Neuro остаётся последним non-prerelease. Ни один из этих ZIP не содержит текущие изменения от 1 ноября.
+Более поздний по времени prerelease: tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Для рабочего артефакта по правилу «последний ZIP, включая prerelease» использовать Hotfix 1; stable Neuro остаётся последним non-prerelease. Ни один ZIP не содержит изменения от 1 ноября.
 
-Новый Release ZIP не собран и не опубликован. Human license review, root/runtime license decisions, locked dependency review и source-archive decisions остаются release gates. Не обходить их и не объявлять Release обновлённым до появления проверенного нового asset.
+**Новый Release ZIP не собран и не опубликован.** Для exact source SHA `7ff9947` core CI и source-lineage прошли, но отдельного publisher run на этом SHA не обнаружено; последний видимый main-sync publisher run — #89 на более старом commit `342d2ac` (31 октября). Требуется восстановить/проверить автоматический запуск publisher workflow. License audit readiness также остаётся false до человеческого решения по 115 пунктам.
 
 ### Следующие P0
-1. Browser/WebGL E2E: upload → preflight → parse → replace → reset → reload; проверить GPU resource counters и сохранность renderer-owned gradient.
-2. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и soak.
-3. Независимая RU/EN retrieval evaluation по source-clustered paired seeds.
-4. Закрыть license evidence и только затем собрать новый полный Release ZIP.
+1. Восстановить publisher workflow trigger и проверить, что он стартует только после exact-SHA core + lineage success и сохраняет fail-closed license gate.
+2. Browser/WebGL E2E: upload → preflight → parse → replace → reset → reload; проверить GPU resource counters и сохранность renderer-owned gradient.
+3. Закрыть human license review: глобальное/root/runtime решения, npm inventory fingerprint, 8 archives, 11 LICENSE/NOTICE records.
+4. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и soak.
+5. Независимая RU/EN retrieval evaluation по source-clustered paired seeds; не включать promotion без доказанного uplift.
 
 ---
 
