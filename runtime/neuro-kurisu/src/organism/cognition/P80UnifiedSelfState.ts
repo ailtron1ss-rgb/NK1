@@ -45,8 +45,10 @@ export class P80UnifiedSelfState {
       if(raw===null||typeof raw!=='object'||Array.isArray(raw)||Object.getPrototypeOf(raw)!==Object.prototype&&Object.getPrototypeOf(raw)!==null){this.state=defaults;return;}
       const version=ownData(raw,'version');
       if(version!==undefined&&version!==1){this.state=defaults;return;}
-      const recentModes=safeArray(ownData(raw,'recentModes'),32,isMode);
-      const recentActions=safeArray(ownData(raw,'recentActions'),32,isAction);
+      const recentModesRaw=ownData(raw,'recentModes');
+      const recentActionsRaw=ownData(raw,'recentActions');
+      const recentModes=recentModesRaw===undefined?[]:safeArray(recentModesRaw,32,isMode);
+      const recentActions=recentActionsRaw===undefined?[]:safeArray(recentActionsRaw,32,isAction);
       if(recentModes===null||recentActions===null){this.state=defaults;return;}
       const mode=ownData(raw,'currentMode');
       const lastAction=ownData(raw,'lastAction');
