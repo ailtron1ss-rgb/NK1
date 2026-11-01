@@ -63,15 +63,19 @@ export function Avatar3DStage(props:Props){
     if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена в IndexedDB; следующие запуски используют локальную копию.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
    }catch(e){const failedVrm=gltf.userData?.vrm??null;if(failedVrm)VRMUtils.deepDispose(failedVrm.scene);else disposeTree(gltf.scene);setState("error");setMessage(e instanceof Error?e.message:"Не удалось подготовить модель.");}
   },()=>{if(token!==loadToken.current)return;setState("error");setMessage("Не прочитан бинарный VRM/GLB. Нужен самодостаточный файл с геометрией и текстурами внутри.");});
-  }catch(e){setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
+  }catch(e){if(token!==loadToken.current)return;setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
  },[]);
  const loadBundledModel=useCallback(async()=>{
   const token=++loadToken.current;
   setState("loading");setMessage("Загрузка встроенной модели Курису и проверка SHA-256…");
   try{
-   const response=await fetch(KURISU_HYBRID_MODEL.url,{mode:"cors",credentials:"omit",cache:"force-cache"});
+   const response=await fetch(KURISU_HYBRID_MODEL.url,{mode:"cors",credentials:"omit",cache:"force-cache",signal:AbortSignal.timeout(25_000)});
    if(token!==loadToken.current)return;
    if(!response.ok)throw new Error(`Не удалось получить модель Курису (HTTP ${response.status}).`);
+   const contentType=(response.headers.get("content-type")??"").split(";")[0].trim().toLowerCase();
+   if(contentType!=="model/gltf-binary")throw new Error("CDN вернул неожиданный тип содержимого; GLB не будет передан парсеру.");
+   const declaredLength=Number(response.headers.get("content-length"));
+   if(Number.isFinite(declaredLength)&&declaredLength>0&&declaredLength!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Content-Length модели не совпадает с закреплённым манифестом.");
    const blob=await response.blob();
    if(token!==loadToken.current)return;
    if(blob.size!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Размер встроенной модели не совпадает с закреплённым манифестом.");
@@ -104,7 +108,20 @@ export function Avatar3DStage(props:Props){
    return()=>{disposed=true;cancelAnimationFrame(raf);observer?.disconnect();window.removeEventListener("resize",resize);renderer.domElement.removeEventListener("pointerdown",down);renderer.domElement.removeEventListener("pointermove",move);renderer.domElement.removeEventListener("pointerup",up);renderer.domElement.removeEventListener("pointercancel",up);rt.mixer?.stopAllAction();if(rt.vrm){rt.scene.remove(rt.vrm.scene);VRMUtils.deepDispose(rt.vrm.scene);rt.vrm=null;}disposeTree(scene);renderer.dispose();renderer.domElement.remove();runtime.current=null;setReady(false);};
   }catch(e){setState("webgl-unavailable");setMessage("WebGL недоступен. Включите аппаратное ускорение или используйте браузер с поддержкой WebGL.");setStorageMessage(e instanceof Error?e.message.slice(0,160):"Ошибка запуска 3D-рендерера");return()=>renderer?.dispose?.();}
  },[]);
- useEffect(()=>{if(!ready)return;let cancelled=false;void loadStoredAvatarModel().then((saved)=>{if(!cancelled&&saved)void loadModel(saved.blob,saved.name,false);}).catch(()=>{if(!cancelled)setStorageMessage("IndexedDB недоступна; процедурное тело остаётся рабочим.");});return()=>{cancelled=true;};},[ready,loadModel]);
+ useEffect(()=>{
+  if(!ready)return;
+  let cancelled=false;
+  void loadStoredAvatarModel().then((saved)=>{
+   if(cancelled)return;
+   if(saved)void loadModel(saved.blob,saved.name,false);
+   else{setStorageMessage("Локальной модели ещё нет; загружается закреплённая модель Курису v5.");void loadBundledModel();}
+  }).catch(()=>{
+   if(cancelled)return;
+   setStorageMessage("IndexedDB недоступна; пробуем встроенную модель, а при сетевой ошибке остаётся процедурное тело.");
+   void loadBundledModel();
+  });
+  return()=>{cancelled=true;loadToken.current++;};
+ },[ready,loadModel,loadBundledModel]);
  const onFile=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.currentTarget.files?.[0];event.currentTarget.value="";if(!file)return;const ext=file.name.toLowerCase().split(".").pop();if(ext!=="vrm"&&ext!=="glb"){setState("error");setMessage("Поддерживаются бинарные модели .vrm и .glb.");return;}void loadModel(file,file.name,true);};
  const reset=async()=>{loadToken.current++;const rt=runtime.current;if(rt?.loaded){rt.scene.remove(rt.loaded);disposeTree(rt.loaded);rt.loaded=null;}if(rt){rt.mixer?.stopAllAction();rt.mixer=null;rt.vrm=null;rt.clips=[];rt.clipName="";rt.bones=[];rt.body.root.visible=true;}setModelName("");setState(rt?"procedural":"webgl-unavailable");setMessage("");try{await clearStoredAvatarModel();setStorageMessage("Используется процедурное 3D-тело; выбранная модель удалена из локального хранилища.");}catch{setStorageMessage("Тело сброшено, но браузер не разрешил удалить сохранённый файл.");}};
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
