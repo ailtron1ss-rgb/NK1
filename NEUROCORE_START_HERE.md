@@ -3,7 +3,7 @@
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
 **Canonical source branch:** `workpass70-source`  
-**Source HEAD at this checkpoint:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b`  
+**Live source HEAD checked 2026-11-01:** `f921007a74a7a6124d274885354009dd3a3ef33c`  
 **Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
 
 ## Latest verified integrations — 2026-11-01
@@ -23,6 +23,14 @@
 - License review remains pending; redistribution approval is false. Do not publish until human license review and exact-SHA publisher gate pass.
 - MongoDB Atlas read-only inspection: Project 0 / Cluster0 is reachable, but only `sample_mflix` exists; no NK1 database or runtime adapter.
 - Supabase currently has zero projects. Redis Agent Memory SDK guidance exists, but no connected RAM data plane or `AGENT_MEMORY_*` secrets. Replit search found no NK1 app. No external database/schema/secret was created.
+
+## Active cognition work — 2026-11-01
+
+- **Draft PR #636** (`workpass634-affect-action-priors`): WorkPass634 adds signed/confidence-gated canonical action priors; WorkPass635 records exact affect appraisal and direct/workspace contributions in typed OrganismDecisionTrace and the appraisal→action CognitiveEventFabric lineage. WorkPass634/previous exact-head unified jobs failed without steps/log archives (404); the latest WorkPass635 SHA needs its own validation. No local test execution is claimed; status remains UNVERIFIED.
+- **Draft PR #630**: WorkPass612/613 persistence-boundary hardening for planner, P2702 personality and NeuralExperienceBranch. Typecheck passed on the first merge head; newer Actions were reported failed without accessible step logs, so validation is unresolved.
+- **Draft PR #619**: EmotionAppraisalEngine restore hardening; base synchronized, exact-head validation unresolved.
+- Issue #632 corrected: the affect→workspace→candidate-score path already exists; remaining gap is signed/confidence-gated priors, not absence of integration.
+- No source changes from these draft PRs are merged. No newer Release ZIP was assembled or internally inspected.
 
 ## Remaining P0 gates
 

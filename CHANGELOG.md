@@ -1,3 +1,23 @@
+## [NK1][Affect] Record causal appraisal-to-action evidence — WorkPass635 (2026-11-01)
+- Add a typed, optional AffectDecisionEvidence record to canonical OrganismDecisionTrace with episode identity, emotional label/tendency, valence/arousal/dominance, appraisal confidence, attention capture, feeling intensity, interoceptive mismatch and regulation pressure.
+- Record separate direct action prior, selected Global Workspace affect prior and their bounded combined value for the final selected canonical action.
+- Extend the cognitive-event lineage: the appraisal event records affect evidence, and the action event links directly back to that appraisal event with the selected prior values.
+- Extend the existing WorkPass39 real OrganismCore/Global Workspace integration test to resolve the exact appraisal episode from trace evidence, verify selected-action identity and enforce direct ±0.045, workspace ±0.035 and combined ±0.08 bounds.
+- The code is in Draft PR #636; exact-head Actions for previous WorkPass634 heads failed without exposed step summaries/log archives. WorkPass635 latest-head CI is still pending; no runtime pass or merge is claimed.
+
+## [NK1][Validation] Record WorkPass634 exact-head CI limitation (2026-11-01)
+- Unified organism workflow #41331040326 failed on the original WorkPass634 code head; the failed job was re-run and the retry also failed.
+- GitHub returned no step list for the job; downloading job logs returned 404. The docs-only latest head has no separate Actions run yet.
+- No local runtime execution is claimed because the working container cannot reach GitHub to materialize the branch files. Treat WorkPass634 behavior as implemented but test status unverified until actionable exact-head checks are available.
+
+## [NK1][Affect] Bound signed emotion priors in canonical action selection — WorkPass634 (2026-11-01)
+- Correct the direct affect action prior: preserve bounded negative regulatory influence instead of clamping every value to non-negative.
+- Map explore/engage/verify/reflect/rest/protect/withdraw/approach tendencies to the seven canonical ActionKind values; affect tendencies are never executable actions.
+- Gate direct priors on appraisal confidence and attention; cap the direct signal at ±0.045 and keep the existing selected-workspace signal capped at 0.035.
+- Apply signed outcome calibration only after at least three outcomes, with reliability ramping to full weight over subsequent observations.
+- Add deterministic directionality, low-confidence, regulation-decay, outcome-calibration, unknown-action and combined-prior bound regression; wire it with existing WorkPass39 and WorkPass172 integrations.
+- Draft PR #636 is ahead 5 / behind 0 of the live source base. Exact-head Actions are still running; no local test execution or merge/release is claimed.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
