@@ -1,3 +1,9 @@
+## [NK1][Affect] Connect appraisal, intrinsic drives, endogenous goals and causal outcome receipts (2026-11-01)
+- Port the affect-to-motivation causal path onto the current source lineage: canonical decision-time appraisal and mixed affect feed bounded exploration/regulation/engagement/connection projections; P66 pressure participates as an allostatic need signal.
+- Feed the six-channel intrinsic-drive profile into the existing B272 goal vector (no parallel planner), while preserving neutral-affect compatibility and confidence gating.
+- Attribute feedback to the pre-action emotion episode and stable trace-derived receipt; duplicate outcomes are idempotent and conflicting replays are rejected.
+- Add dedicated runtime causality and emotion-restore boundary regressions plus an Actions workflow. These are implementation claims only; quality uplift requires exact-head CI and paired-seed ablation, not inferred from wiring.
+
 ## [NK1][Cognition] Harden cognitive execution-plan restore integrity (2026-11-01)
 - Replace broad object spreads during CognitiveExecutionPlanner restore with allowlisted own-data reads for the version, tick, mode, operation maps, metabolism and statistics.
 - Ignore accessor-backed and inherited values without invoking getters; catch hostile and revoked Proxy reflection failures and fall back to the default planner state.
