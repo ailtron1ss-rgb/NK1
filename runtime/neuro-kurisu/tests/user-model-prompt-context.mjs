@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildUserModelPromptContext } from '../src/organism/language/LanguageOrgan.ts';
+import { buildAutonomousDialoguePrompt, buildCognitivePrompt, buildUserModelPromptContext } from '../src/organism/language/LanguageOrgan.ts';
 
 const base = {
   version: 1,
@@ -26,7 +26,25 @@ assert.equal(buildUserModelPromptContext({ ...base, claims: [{ ...base.claims[0]
 assert.equal(buildUserModelPromptContext({ ...base, claims: [{ ...base.claims[0], source: 'inferred' }] }), '');
 assert.equal(buildUserModelPromptContext({ ...base, claims: [{ ...base.claims[0], domain: 'sensitive' }] }), '');
 assert.equal(buildUserModelPromptContext({ ...base, claims: [{ ...base.claims[0], evidenceRef: '' }] }), '');
+assert.equal(buildUserModelPromptContext({ ...base, claims: [{ ...base.claims[0], value: 'constructor' }] }), '');
+assert.equal(buildUserModelPromptContext({ ...base, claims: [{ ...base.claims[0], value: '__proto__' }] }), '');
 for (const [value, expected] of [['balanced', /balanced level of detail/], ['detailed', /detailed explanations/]]) {
   assert.match(buildUserModelPromptContext({ ...base, claims: [{ ...base.claims[0], value }] }), expected);
 }
+
+const cycle = {
+  state: { tick: 12, at: 12, predictionError: 0.2, selfPredictionError: 0.1, needs: { energy: 0.8, cognitiveLoad: 0.2, uncertainty: 0.3, novelty: 0.4 } },
+  decision: { selected: null, candidates: [] },
+  goals: [],
+  memories: [],
+  workspace: { content: {} },
+};
+const cognitivePrompt = buildCognitivePrompt(cycle, [], 'Hello', undefined, '', [], base);
+assert.match(cognitivePrompt.system, /Prefer concise, direct answers/);
+const autonomousPrompt = buildAutonomousDialoguePrompt(cycle, {
+  id: 'initiative-1', topic: 'a scientific question', reason: 'curiosity',
+  openingIntent: 'share a thought', topicSource: 'internal',
+}, [], undefined, '', [], base);
+assert.match(autonomousPrompt.system, /Prefer concise, direct answers/);
+
 console.log('UserModel language-context projection: all assertions passed');
