@@ -97,6 +97,10 @@ const invalidRestore=new EmotionAppraisalEngine();
 invalidRestore.restore(invalidSnapshot);
 assert.ok(invalidRestore.snapshot().history.every(row=>row.label!=='transcendent' && row.actionTendency!=='launch_shell'));
 assert.equal(new Set(invalidRestore.snapshot().history.map(row=>row.id)).size,invalidRestore.snapshot().history.length);
+const duplicateSnapshot=structuredClone(valid);
+duplicateSnapshot.history.unshift({...valid.history[0],tick:valid.history[0].tick+1});
+const duplicateRestore=new EmotionAppraisalEngine(); duplicateRestore.restore(duplicateSnapshot);
+assert.equal(duplicateRestore.snapshot().history.length,1,'duplicate episode identities must not be restored twice');
 assert.ok(invalidRestore.snapshot().feelings.every(row=>row.causeEmotionId===valid.history[0].id));
 assert.deepEqual(Object.keys(invalidRestore.snapshot().outcomes),['rest']);
 
