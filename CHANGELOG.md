@@ -1,3 +1,8 @@
+## [NK1][CI] Trigger embodiment contract on canonical source pushes (2026-11-01)
+- Add `workpass70-source` to the embodiment-switch push branch filter and mirror the pull-request path allowlist, so direct canonical-source commits touching renderer, motor-frame, speech bridge or avatar pipeline paths run the same contract suite.
+- Preserve the existing feature-branch push coverage while avoiding full avatar CI on unrelated source commits.
+- This closes a CI trigger gap; it does not claim physical IK, renderer readback, audio drift or device soak.
+
 ## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
 - Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
 - Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
