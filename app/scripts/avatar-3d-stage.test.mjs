@@ -104,3 +104,14 @@ test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file down
  assert.match(stage,/Загрузить модель Курису v5/);
  assert.match(stage,/rig_kurisu/i);
 });
+
+test("3D mode restores the user's local model first and auto-loads the pinned Kurisu model otherwise",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/if\(saved\)void loadModel\(saved\.blob,saved\.name,false\)/);
+ assert.match(stage,/void loadBundledModel\(\)/);
+ assert.match(stage,/KURISU_HYBRID_MODEL\.url/);
+ assert.match(stage,/signal:AbortSignal\.timeout\(25_000\)/);
+ assert.match(stage,/contentType!==\"model\/gltf-binary\"/);
+ assert.match(stage,/declaredLength!==KURISU_HYBRID_MODEL\.sizeBytes/);
+ assert.match(stage,/loadToken\.current\+\+/);
+});
