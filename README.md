@@ -1,32 +1,32 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Рабочая ветка:** `workpass70-source`  
-**Проверенный кодовый HEAD:** `c6ab2f97e4922dc04d3d19ce2aae857824c21992`
+**Последний проверенный кодовый SHA:** `b4f1ad8389a51ad3dc6687ff65e75f5090ef37fb`
 
-### Что изменено
-- **WorkPass608 / MemoryOS2:** продвижение bilingual retrieval теперь учитывает независимые группы исходных эпизодов/документов отдельно для RU и EN; повторные запросы из одного источника не должны искусственно увеличивать статистическую независимость holdout.
-- **Embodiment:** процедурная 3D-модель и non-VRM GLB получили anime cel-shading; VRM сохраняет собственные MToon-материалы.
-- **GPU lifecycle:** процедурные и импортированные toon-материалы повторно используют одну лениво создаваемую градиентную DataTexture вместо выделения отдельной GPU-текстуры на каждый материал.
-- **Regression:** добавлена проверка кэша общей градиентной текстуры.
+### Реальная работа в текущем проходе
+- **3D/GPU lifecycle:** добавлена очистка уникальных ресурсов Three.js (геометрии, материалы, текстуры, skeletons) с сохранением renderer-owned toon gradient.
+- **GLB material conversion:** после замены исходных MeshStandardMaterial/MeshPhysicalMaterial на toon-материалы теперь освобождаются исходные material/program resources; текстуры не уничтожаются, поскольку остаются подключёнными к новым материалам.
+- **Regression:** тесты используют реальные Three.js ресурсы и проверяют однократный dispose shared resources, сохранение текстур и освобождение заменённых исходных материалов.
+- **Release evidence:** обновлена фиксация текущего fail-closed license audit ранее; release-процесс не обходился и не ослаблялся.
 
-### Проверка exact HEAD
-- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41275129040) для указанного HEAD: app script regression, app typecheck, app development build, runtime typecheck, memory retrieval experiment с unanswerable holdout, memory annotation pack, Live2D/avatar, EILS, P23 learning, cognitive spine, local LLM и speech regressions.
-- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41275129009) для указанного HEAD: runtime typecheck, canonical evidence lineage, live server conflict/replay и belief/trust/adaptation contracts.
+### Проверка exact code SHA
+- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277297970) на `b4f1ad8389a51ad3dc6687ff65e75f5090ef37fb`: app script regression, app typecheck, development build, runtime typecheck, Hexis lineage/server restart, memory retrieval + unanswerable holdout, annotation pack, recovered rebuild/Live2D/avatar, P23/EILS/cognitive spine, local LLM, tool governance, language HTTP and speech/persistence regression steps — все завершились успешно.
+- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277297962) на том же SHA.
 
-### Что эти результаты НЕ доказывают
-- Независимый внешний RU/EN holdout ещё не даёт основания заявлять о доказанном retrieval uplift.
-- Успешный CI не заменяет browser/WebGL E2E, реальный Android/Termux audio soak или длительный production soak.
-- Cel-shading — улучшение renderer, а не готовая полноценная Kurisu VRM-модель.
-- Никаких выводов о субъективном сознании из этих проверок не делается.
+### Что всё ещё НЕ доказано
+- Полноценный browser/WebGL E2E с реальным импортом, заменой, повторной загрузкой VRM/GLB и замером renderer.info/GPU residency.
+- Длительный Android/Termux audio soak и синхронизация на реальном телефоне.
+- Независимый лицензированный RU/EN holdout uplift; CI-эксперимент не заменяет независимую внешнюю выборку.
+- Production soak, полная автономная инициатива и субъективное сознание не заявляются как доказанные.
 
 ### Release status
-Последний подтверждённый полный Release ZIP по-прежнему **WorkPass70 Hotfix 1 от 19 октября 2026**. В этом проходе Release asset не пересобирался и не публиковался. Следующая публикация должна пройти exact-SHA regression, source freshness, provenance/SBOM и license gates; до подтверждения нового asset он не считается обновлённым.
+Последний подтверждённый полный Release ZIP — **WorkPass70 Hotfix 1 от 19 октября 2026**: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Текущие изменения находятся в source branch; Release ZIP не пересобирался и не публиковался. Публикация остаётся под exact-SHA, provenance/SBOM и license gates.
 
-### Следующие приоритеты
-1. Получить и проверить независимый лицензированный RU/EN holdout, затем сравнить retrieval по paired seeds, recall, MRR, abstention, forgetting и стоимости.
-2. Провести browser/WebGL E2E для procedural/GLB/VRM и проверку повторной загрузки/освобождения GPU-ресурсов.
-3. Закрыть Android/Termux audio synchronization и длительный soak.
-4. Только после прохождения release gates собрать и проверить новый полный Release ZIP.
+### Следующие P0
+1. Browser/WebGL E2E: upload → convert → replace → reset → reload; assert no stale renderer resources and no disposed shared gradient.
+2. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и soak.
+3. Независимая RU/EN memory retrieval evaluation по source-clustered paired seeds.
+4. Закрыть license evidence и только затем сформировать новый полный Release ZIP.
 
 ---
 
