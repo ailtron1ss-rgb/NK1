@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { ExperienceContinuumFabric } from '../src/organism/memory/ExperienceContinuumFabric.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const mem=(i,now)=>({
   id:`m-${i}`,content:`causal replay experience ${i} topic ${i%4}`,kind:i%7===0?'identity':i%5===0?'autobiographical':'episodic',
@@ -17,10 +18,18 @@ for(let tick=1;tick<=64;tick++) fabric.tick({tick,at:now+tick*1000,pressure01:ti
 const firstEvent=fabric.snapshot().replay.events.at(-1);
 assert(firstEvent,'expected at least one replay event');
 const validationAt=firstEvent.at+3*86400000;
-const validation=fabric.recordReplayValidation({
+// Causal replay credit requires a trusted external receipt bound to the exact tuple.
+const validationInput={
   memoryId:firstEvent.memoryId,retentionScore01:.88,baselineScore01:.61,delayMs:3*86400000,
-  transferPotential01:.79,interferenceRisk01:.08,independentVerified:true,evidenceKey:'p2688-causal-credit',
-  taskId:'task-A',contextKey:'ctx-A',replayEventId:firstEvent.id,at:validationAt
+  transferPotential01:.79,interferenceRisk01:.08,evidenceKey:'p2688-causal-credit',
+  taskId:'task-A',contextKey:'ctx-A'
+};
+const validationVerification=await new OutcomeVerificationService().verify(
+  {toolId:'memory.retention-postcondition',input:validationInput,result:{retentionScore01:.88}},
+  ()=>({verified:true,basis:'external-postcondition',confidence01:.99,externalObservation:true,observationId:'obs-p2688-causal-credit',expectedPostcondition:'retention-score:0.88',observedPostcondition:'retention-score:0.88'})
+);
+const validation=fabric.recordReplayValidation({
+  ...validationInput,verification:validationVerification,replayEventId:firstEvent.id,at:validationAt
 });
 assert.equal(validation.independentVerified,true);
 const summary=fabric.summary();
