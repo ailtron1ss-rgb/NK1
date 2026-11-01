@@ -163,6 +163,59 @@ const recalled = restored.retrieve(
 assert.equal(recalled[0]?.id, 'normalized-row', 'normalized legacy records remain retrievable');
 assert.match(recalled[0]?.content ?? '', /GREEN/, 'restored factual content remains intact');
 
+// Canonical JSON snapshots must not coerce numeric-looking strings into trusted numbers.
+const numericStringRow = {
+  ...structuredClone(seedRow),
+  id: 'numeric-string-row',
+  content: 'A numeric-string snapshot row must be restored conservatively.',
+  createdAt: String(now - 10_000),
+  observedAt: String(now - 2_000),
+  lastAccessAt: String(now - 1_000),
+  validFromAt: String(now - 5_000),
+  validUntilAt: String(now + 5_000),
+  salience: '0.91',
+  confidence: '0.99',
+  epistemicStatus: 'fact',
+  revisionHistory: [{ at: String(now - 500), from: 'belief', to: 'fact', reason: 'numeric timestamp' }],
+  evidenceSources: [{
+    source: 'external-feed',
+    provenanceClass: 'external',
+    sourceAuthority01: '0.999',
+    independenceKey: 'numeric-evidence',
+    observedAt: String(now - 100),
+    evidenceFreshnessAt: String(now - 50),
+  }],
+};
+const numericStringRestore = new MemoryOS2({ embeddingProvider: null });
+numericStringRestore.restore({ ...structuredClone(base), items: [numericStringRow] });
+const numericStringRestored = numericStringRestore.snapshot().items[0];
+assert(numericStringRestored);
+assert.notEqual(numericStringRestored.createdAt, now - 10_000,
+  'numeric-string timestamps must not be coerced into canonical timestamps');
+assert.equal(numericStringRestored.lastAccessAt, numericStringRestored.createdAt,
+  'invalid access timestamp must use the safe creation fallback');
+assert.equal(numericStringRestored.validUntilAt, numericStringRestored.validFromAt,
+  'numeric-string expiry must close the validity interval');
+assert.equal(numericStringRestored.salience, .5,
+  'numeric-string salience must use the conservative fallback');
+assert.equal(numericStringRestored.confidence, .5,
+  'numeric-string confidence must not be trusted');
+assert.equal(numericStringRestored.epistemicStatus, 'unknown',
+  'a fact with numeric-string confidence must be downgraded');
+assert.equal(numericStringRestored.revisionHistory.length, 0,
+  'numeric-string revision timestamps must not create trusted revision history');
+const nestedEvidence = numericStringRestored.evidenceSources?.find(item => item.source === 'external-feed');
+assert(nestedEvidence);
+assert.equal(nestedEvidence.sourceAuthority01, .9,
+  'numeric-string evidence authority must use the source-class fallback');
+assert.equal(nestedEvidence.observedAt, numericStringRestored.observedAt,
+  'numeric-string evidence timestamps must use the trusted parent observation time');
+assert.equal(nestedEvidence.evidenceFreshnessAt, nestedEvidence.observedAt,
+  'numeric-string evidence freshness must not be promoted into trusted chronology');
+const numericStringDiagnostics = numericStringRestore.restoreDiagnostics();
+assert.equal(numericStringDiagnostics.invalidExpiriesClosed, 1);
+assert.equal(numericStringDiagnostics.factsDowngraded, 1);
+
 console.log('MEMORY_RESTORE_SHAPE_HARDENING=PASS', JSON.stringify({
   sourceRows: diagnostics.sourceRows,
   acceptedRows: diagnostics.acceptedRows,
