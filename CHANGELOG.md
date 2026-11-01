@@ -1,3 +1,10 @@
+## [NK1][Affect] Harden emotion appraisal snapshot restore (2026-11-01)
+- Replace broad object spreads in `EmotionAppraisalEngine.restore()` with version-gated own-data reads and allowlisted reconstruction of episodes, feelings, interoception and outcome calibration.
+- Reject inherited/accessor-backed records, sparse or accessor-backed arrays, hostile/revoked Proxy inputs and invalid episode/feeling links without evaluating getters.
+- Bound retained history/calibration data, validate counters/timestamps, clamp finite normalized metrics and fail closed on unknown labels or actions.
+- Add a focused restore-contract regression suite and run it alongside the existing WorkPass172 affect/interoception integration test in the unified organism runtime workflow.
+- This is persistence-boundary integrity; it does not claim improved emotional intelligence, affect-to-action causal integration or subjective experience.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
