@@ -1,3 +1,11 @@
+## [NK1][SelfModel] Fail-closed durable preference forgetting (2026-11-01)
+- Upgrade UserModel snapshots to v2 while preserving v1 migration.
+- Persist per-key/domain deletion watermarks and reject stale explicit facts and inferred candidates.
+- Reconcile restored claims/candidates against tombstones; preserve only claims with a later source tick.
+- Reject oversized, sparse, accessor-backed or malformed tombstone ledgers by resetting the untrusted snapshot rather than dropping deletion history.
+- Enforce a 256-tombstone capacity without silently evicting old deletion boundaries.
+- Extend regression coverage for 520-event replay rollover, restart, stale restore rows, fresh re-consent, malformed snapshots and capacity exhaustion.
+
 ## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
 - Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
 - Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
