@@ -136,23 +136,28 @@ export class AdaptiveExperienceConsolidator {
 
   /** Restore is a bounded, validating import; malformed rows are skipped, never trusted. */
   restore(records?: ExperienceRecord[] | null): void {
-    if (!Array.isArray(records)) {
+    try {
+      if (!Array.isArray(records)) {
+        this.buffer = [];
+        return;
+      }
+      const restored: ExperienceRecord[] = [];
+      const seen = new Set<string>();
+      const start = Math.max(0, records.length - this.maxBuffer);
+      for (let index = start; index < records.length; index += 1) {
+        if (!Object.prototype.hasOwnProperty.call(records, index)) continue;
+        const descriptor = Object.getOwnPropertyDescriptor(records, String(index));
+        if (!descriptor || !('value' in descriptor)) continue;
+        const normalized = normalizeExperience(descriptor.value);
+        if (!normalized || seen.has(normalized.id)) continue;
+        seen.add(normalized.id);
+        restored.push(normalized);
+      }
+      this.buffer = restored;
+    } catch {
+      // A failed snapshot import is atomic: never retain a partially restored buffer.
       this.buffer = [];
-      return;
     }
-    const restored: ExperienceRecord[] = [];
-    const seen = new Set<string>();
-    const start = Math.max(0, records.length - this.maxBuffer);
-    for (let index = start; index < records.length; index += 1) {
-      if (!Object.prototype.hasOwnProperty.call(records, index)) continue;
-      const descriptor = Object.getOwnPropertyDescriptor(records, String(index));
-      if (!descriptor || !('value' in descriptor)) continue;
-      const normalized = normalizeExperience(descriptor.value);
-      if (!normalized || seen.has(normalized.id)) continue;
-      seen.add(normalized.id);
-      restored.push(normalized);
-    }
-    this.buffer = restored;
   }
 
   private score(experience: ExperienceRecord): number {
