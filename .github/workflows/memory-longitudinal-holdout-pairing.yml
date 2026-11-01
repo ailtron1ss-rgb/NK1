@@ -28,7 +28,6 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
-          package-manager-cache: false
       - name: Validate phase-isolated replay holdout evidence
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass78:longitudinal-holdout-phase-pairing
