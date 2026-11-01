@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Extract and test the Three.js toon material adapter (2026-11-01)
+- Move procedural cel-shading material creation, non-VRM GLB material conversion, shared gradient ownership and source-material cleanup out of the React avatar stage into a renderer-focused module.
+- Add real Three.js tests for shared-material conversion, physical-material conversion, unchanged non-PBR materials, texture-reference preservation, source-material disposal and shared renderer-gradient lifetime.
+- Add a targeted npm test command and run it in the embodiment-switch GitHub Actions workflow. VRM-authored MToon materials remain outside this conversion path.
+- This is a renderer lifecycle and testability improvement; it does not claim a finished Kurisu VRM asset or browser/device E2E validation.
+
 ## [NK1][Embodiment] Release replaced GLB source materials (2026-11-01)
 - Dispose each unique source MeshStandardMaterial/MeshPhysicalMaterial after its mesh has been converted to the cached toon material.
 - Keep textures alive: converted toon materials retain the original texture references, and the source-material cleanup intentionally does not dispose texture objects.
