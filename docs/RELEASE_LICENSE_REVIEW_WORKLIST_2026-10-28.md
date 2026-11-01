@@ -1,9 +1,9 @@
 # Latest audit update — 2026-11-01
 
-The publisher reran the provenance and license-readiness audit on source SHA `c6ab2f97e4922dc04d3d19ce2aae857824c21992` and failed closed before packaging.
+The latest publisher run reran the provenance and license-readiness audit on source SHA `86b3ec106c270d8b4faa4e05b84d116c15988413` and failed closed before packaging.
 
-- Audit run: [Publish WorkPass70 hotfix release #41275233591](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41275233591)
-- Exact source SHA audited: `c6ab2f97e4922dc04d3d19ce2aae857824c21992`
+- Audit run: [Publish WorkPass70 hotfix release #41276170895](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41275233591)
+- Exact source SHA audited: `86b3ec106c270d8b4faa4e05b84d116c15988413`
 - Current locked npm dependency count: **477** (previous worklist: 462)
 - Current dependency fingerprint: `a10f75530eeac185de88cdf338b094c2cbd9bec7a4c16c9cee7b5d040cb92cd4`
 - Source archives: **8**
