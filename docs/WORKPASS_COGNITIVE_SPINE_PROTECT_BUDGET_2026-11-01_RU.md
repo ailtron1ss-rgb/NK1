@@ -21,3 +21,7 @@ The unified organism runtime workflow runs `npm run test:big-pass-39` alongside 
 ## Limits
 
 These changes validate scheduler/resource policy and world-feedback input integrity. They do not establish measured Android battery draw, thermal throttling behavior, production background execution or cognitive quality improvement.
+
+## Исправление временной последовательности feedback в тесте
+
+WorkPass39 также отправлял два независимых outcome-события в один tick. B272 корректно защищает от повторного зачёта результата за тот же tick. Теперь тест проводит новое наблюдение между simulator- и device-outcome, сохраняя инвариант «один outcome credit на один когнитивный tick».
