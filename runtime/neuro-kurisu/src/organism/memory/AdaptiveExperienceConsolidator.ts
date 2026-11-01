@@ -41,7 +41,7 @@ function ownDataValue(record: Record<string, unknown>, key: string): unknown {
 }
 
 /** Rejects accessors, sparse arrays and malformed values without executing getters. */
-function normalizeExperience(value: unknown): ExperienceRecord | null {
+function normalizeExperienceUnsafe(value: unknown): ExperienceRecord | null {
   if (!isPlainRecord(value) || Object.getOwnPropertySymbols(value).length > 0) return null;
   const allowed = new Set(['id', 'timestamp', 'novelty', 'utility', 'uncertainty', 'tags']);
   if (Object.keys(value).some((key) => !allowed.has(key))) return null;
@@ -78,6 +78,15 @@ function normalizeExperience(value: unknown): ExperienceRecord | null {
     uncertainty: clamp01(uncertainty as number),
     tags,
   };
+}
+
+function normalizeExperience(value: unknown): ExperienceRecord | null {
+  try {
+    return normalizeExperienceUnsafe(value);
+  } catch {
+    // Proxy traps and exotic host objects are untrusted input, not fatal runtime errors.
+    return null;
+  }
 }
 
 export class AdaptiveExperienceConsolidator {
