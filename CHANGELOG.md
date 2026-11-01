@@ -1,7 +1,7 @@
 ## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
 - Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
-- Keep the separate platform material and leave imported VRM/glTF materials untouched, so authored VRM MToon/PBR materials retain their own appearance.
-- Add a source regression for toon material creation, gradient sampling and the retained 3D platform.
+- Keep VRM materials native so authored VRM MToon expressions remain intact; convert non-VRM GLB Standard/Physical materials to toon shading while preserving color, texture, normal, alpha and emissive channels.
+- Add regressions for toon material creation, imported non-VRM GLB conversion, preserved texture channels and the retained 3D platform.
 - This is a renderer/style improvement only; it is not a generated or production-ready Kurisu VRM asset. The independent Blender model project is tracked separately; no model binary is included in this PR.
 
 ## [NK1][Memory] Require independent bilingual holdout clusters (2026-11-01)
