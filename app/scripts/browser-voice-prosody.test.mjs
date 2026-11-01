@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { buildBrowserVoiceProsody, inferBrowserVoiceLanguage } from "../src/components/avatar/browserVoiceProsody.ts";
+import { buildBrowserVoiceProsody, inferBrowserVoiceLanguage, resolveBrowserVoiceAffect } from "../src/components/avatar/browserVoiceProsody.ts";
 import { buildVoicePlan } from "../../runtime/neuro-kurisu/src/organism/body/VoiceEmbodiment.ts";
 
 test("browser language inference delegates to the organism voice planner",()=>{
