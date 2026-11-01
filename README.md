@@ -1,8 +1,16 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Live source HEAD, проверен 1 ноября:** `f921007a74a7a6124d274885354009dd3a3ef33c` (перед каждым новым проходом обновляйте SHA по live branch).  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+### Открытые когнитивные PR — не считать интегрированными
+
+- [#619 — EmotionAppraisalEngine restore](https://github.com/ailtron1ss-rgb/NK1/pull/619): snapshot hardening и WorkPass610 regression. Ветка синхронизирована с base; точный CI не подтверждён.
+- [#630 — neural branch/personality/planner restore](https://github.com/ailtron1ss-rgb/NK1/pull/630): WorkPass612/613; внешний NeuralExperienceBranch restore boundary теперь использует общий bounded snapshotPlainData. Первый runtime typecheck был успешен; повторные Actions для более новых SHA завершились failed без доступных step/logs.
+- [#636 — signed affect action priors](https://github.com/ailtron1ss-rgb/NK1/pull/636): исправляет signed/confidence-gated действие эмоционального appraisal; exact-head unified workflow ожидает завершения. Issue [#632](https://github.com/ailtron1ss-rgb/NK1/issues/632) уточнён по фактической интеграции affect в OrganismCore.
+- Изменения этих PR не входят в `workpass70-source`, пока не объединены; ни одно не включено в опубликованный Release ZIP.
+
 
 ### Реально интегрировано и проверено
 
