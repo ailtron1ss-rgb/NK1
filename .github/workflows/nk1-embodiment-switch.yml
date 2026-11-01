@@ -13,8 +13,10 @@ on:
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/three-toon-materials.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
@@ -45,5 +47,7 @@ jobs:
         run: npm --prefix app run test:embodiment-switch
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test real Three.js toon material lifecycle
+        run: npm --prefix app run test:three-toon-materials
       - name: App typecheck
         run: npm --prefix app run typecheck
