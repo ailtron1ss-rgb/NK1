@@ -4,6 +4,9 @@ import { MemoryOS2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
 export const LONGMEMEVAL_DATASET_ID='xiaowu0162/longmemeval-cleaned';
 export const DEFAULT_LONGMEMEVAL_REVISION='98d7416c24c778c2fee6e6f3006e7a073259d48f';
 export const LONGMEMEVAL_LICENSE_ID='MIT';
+export const REVIEWED_LONGMEMEVAL_DATASET_ID='agentscope-ai/ReMe_longmemeval_clean_s_v2';
+export const REVIEWED_LONGMEMEVAL_FILE_SHA256='f8b308cc2d184d029dd2226e0c0a88eeac298e6318706d588e015beb1b83fc7d';
+export const ORIGINAL_LONGMEMEVAL_FILE_SHA256='d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442';
 const clamp=(value:number)=>Math.max(0,Math.min(1,Number.isFinite(value)?value:0));
 const finiteOption=(value:unknown,fallback:number,min:number,max:number)=>Math.max(min,Math.min(max,Number.isFinite(Number(value))?Number(value):fallback));
 const tokenSequence=(value:string)=>String(value).normalize('NFKC').toLocaleLowerCase().match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
@@ -204,6 +207,9 @@ function pairedBootstrap(rows:Array<{answerable:boolean;groupId:string;baselineR
 export interface LongMemEvalMemoryBenchmarkOptions {
  datasetRevision:string;
  datasetFileSha256:string;
+ datasetId?:string;
+ datasetFileName?:string;
+ licenseId?:string;
  k?:number;
  bootstrapSamples?:number;
  seeds?:number[];
