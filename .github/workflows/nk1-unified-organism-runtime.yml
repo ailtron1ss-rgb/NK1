@@ -48,6 +48,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Unified cognitive cycle and boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass287:cognitive-cycle && npm --prefix runtime/neuro-kurisu run test:cognitive-cycle-boundary-runtime-wiring
+      - name: P80 self-state agency scoring and restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:p80-p82
       - name: Autonomous runtime cadence and silence continuity
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-224
       - name: Endogenous motivation and goal genesis
