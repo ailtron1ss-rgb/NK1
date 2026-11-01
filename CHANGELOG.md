@@ -1,3 +1,10 @@
+## [NK1][Integration] Repository branch convergence audit (2026-11-01)
+- Inventory the GitHub repository: 627 branches, 189 open PRs, 131 drafts and 439 branches without an open PR at the snapshot time.
+- Record canonical `main` and `workpass70-source` SHAs, PR base distribution, and a safe per-branch consolidation protocol.
+- Explicitly prevent blind mass-merges, stale-SHA CI claims and automatic deletion of branches without provenance checks.
+- Document the Release license gate as a human-review requirement, not a technical gate to bypass.
+- Full snapshot and follow-up priorities: `docs/BRANCH_CONVERGENCE_AUDIT_2026-11-01_RU.md`.
+
 ## [NK1][Embodiment] Enforce GLB buffer cardinality and binary padding (2026-11-01)
 - Bound attacker-controlled glTF buffer metadata before iterating it, using a shared maximum of 32 buffers.
 - Enforce the GLB 2.0 URI-less buffer contract: at most one embedded buffer, at index zero, with a required BIN chunk.
