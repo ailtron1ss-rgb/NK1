@@ -1,3 +1,7 @@
+## [NK1][Embodiment] Remove obsolete VRM presentation-label assertion (2026-11-01)
+- Replace the removed UI-label source assertion with a behavioral integration contract for the active VRM 0.x orientation path (`VRMUtils.rotateVRM0`).
+- Keep the test focused on actual runtime integration rather than a presentation string that no longer exists.
+
 ## [NK1][Embodiment] Stabilize VRM adapter ownership regression (2026-11-01)
 - Assert exact adapter wiring with literal source contracts and verify that expression, normalized-bone and update behavior lives in `vrmRuntimeAdapter.ts`.
 - Avoid regex escaping brittleness while preserving all required integration assertions.
