@@ -103,19 +103,30 @@ const ownArray=(value:unknown,max:number):unknown[]=>{
 };
 const cleanPayload=(value:unknown):Record<string,unknown>=>isRecord(value)?{...value}:{};
 /** Copy only own data properties; snapshot accessors are never evaluated. */
-const cleanRestoredPayload=(value:unknown,depth=0):Record<string,unknown>=>{
+function cleanRestoredValue(value:unknown,depth=0):unknown {
+  if(value===null||typeof value==='string'||typeof value==='boolean'||(typeof value==='number'&&Number.isFinite(value)))return value;
+  if(depth>=4)return undefined;
+  if(Array.isArray(value)){
+    return ownArray(value,64).flatMap(item=>{
+      const clean=cleanRestoredValue(item,depth+1);
+      return clean===undefined?[]:[clean];
+    });
+  }
+  if(isRecord(value))return cleanRestoredPayload(value,depth);
+  return undefined;
+}
+function cleanRestoredPayload(value:unknown,depth=0):Record<string,unknown> {
   if(!isRecord(value)||depth>=4)return {};
   const result:Record<string,unknown>={};
   for(const key of Object.keys(value).slice(0,128)){
     if(key.length>128||key==='__proto__'||key==='prototype'||key==='constructor')continue;
     const item=ownData(value,key);
     if(item===undefined)continue;
-    if(item===null||typeof item==='string'||typeof item==='boolean'||(typeof item==='number'&&Number.isFinite(item)))result[key]=item;
-    else if(Array.isArray(item))result[key]=ownArray(item,64).filter(v=>v===null||typeof v==='string'||typeof v==='boolean'||(typeof v==='number'&&Number.isFinite(v)));
-    else if(isRecord(item))result[key]=cleanRestoredPayload(item,depth+1);
+    const clean=cleanRestoredValue(item,depth+1);
+    if(clean!==undefined)result[key]=clean;
   }
   return result;
-};
+}
 const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
 
 export class CognitiveEventFabric {
