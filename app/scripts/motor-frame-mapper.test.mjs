@@ -63,6 +63,18 @@ test("rejects malformed motor-frame joint indexes and invalid cursors", () => {
   assert.equal(mapMotorFrameToSemanticPose(frame(), profile, { previous: { tick: 6, atMs: -1 } }).reason, "invalid-motor-frame-cursor");
 });
 
+test("rejects unknown and contradictory reached/blocked joint references", () => {
+  assert.equal(mapMotorFrameToSemanticPose(frame({ reachedJointIds: ["missing_joint"] }), profile).reason, "invalid-motor-frame");
+  assert.equal(mapMotorFrameToSemanticPose(frame({ blockedJointIds: ["missing_joint"] }), profile).reason, "invalid-motor-frame");
+  assert.equal(mapMotorFrameToSemanticPose(frame({
+    reachedJointIds: ["left_elbow"], blockedJointIds: ["left_elbow"],
+  }), profile).reason, "invalid-motor-frame");
+  const consistent = mapMotorFrameToSemanticPose(frame({
+    reachedJointIds: ["left_elbow"], blockedJointIds: ["unavailable_joint"],
+  }), profile);
+  assert.equal(consistent.accepted, true);
+});
+
 test("a valid frame without a mapped joint is accepted as an empty, explicit sample", () => {
   const result = mapMotorFrameToSemanticPose(frame({ joints: {} }), profile);
   assert.equal(result.accepted, true);
