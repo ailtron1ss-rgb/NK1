@@ -111,8 +111,12 @@ assert.equal(bilingualReport.languageStratification.slices.ru.gates.sufficientIn
 const correlatedHoldoutExamples = bilingualExamples.map(row => row.split === "holdout"
   ? { ...row, independenceGroupId: `${row.language}-single-source` }
   : row);
+const correlatedProvenance = {
+  ...provenance,
+  contentSha256: fingerprintMemoryRetrievalDataset(correlatedHoldoutExamples),
+};
 const correlatedReport = runMemoryOS2RetrievalBenchmark(snapshot, correlatedHoldoutExamples, {
-  now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: provenance,
+  now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: correlatedProvenance,
 });
 assert.equal(correlatedReport.datasetIntegrity.validForPromotion, true,
   "same-split clustering is valid data; it must fail the independent-evidence gate, not corrupt dataset integrity");
