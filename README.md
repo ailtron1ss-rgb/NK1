@@ -1,7 +1,7 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Текущий source SHA:** `eb82e918cfbcb6648baba641e0b845470faf6ef1`
+**Code baseline до этого documentation-only checkpoint:** `eb82e918cfbcb6648baba641e0b845470faf6ef1`
 
 ### Реально интегрировано и проверено
 
