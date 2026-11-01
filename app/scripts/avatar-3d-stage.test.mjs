@@ -71,3 +71,10 @@ test("avatar stage delegates material conversion and renderer-owned texture pres
  assert.match(toon,/replaced\.add\(source\)/);
  assert.match(toon,/disposeReplacedThreeMaterials\(replaced\)/);
 });
+
+test("uploaded model bytes are structurally preflighted before GLTFLoader parses them",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/import \{ preflightAvatarModel \} from "\.\/avatar\/avatarModelPreflight"/);
+ assert.match(stage,/preflightAvatarModel\(data,name\)/);
+ assert.ok(stage.indexOf("preflightAvatarModel(data,name)")<stage.indexOf("loader.parse(data"));
+});
