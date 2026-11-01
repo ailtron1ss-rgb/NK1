@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Clear stale avatar mouth pose outside active speech (2026-11-01)
+- Drive semantic mouth-open/form channels only while the normalized speech lifecycle is `speaking`.
+- Force neutral mouth channels for idle, starting, ended, cancelled and unknown phases so a missing final audio frame or barge-in cannot leave the avatar visually speaking.
+- Add regressions for terminal/unknown provider phases and verify active speech visemes remain intact.
+- This is lifecycle-state correctness; it does not claim acoustic lip-sync accuracy or real-device timing.
+
 ## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
 - Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
 - Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
