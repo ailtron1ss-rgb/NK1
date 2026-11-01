@@ -1,3 +1,10 @@
+## [NK1][Aspect 05] Evidence-bounded UserModel integrated into SelfSubsystemRuntime (2026-11-01)
+- Add one canonical UserModelEvidenceModel owner for explicitly stated, low-risk interaction preferences; inferred behavior remains an unconfirmed hypothesis with confidence capped at 0.65.
+- Preserve contradiction and explicit correction states; expose a read-only decision context that excludes disputed claims from confirmed facts.
+- Reject sensitive/unclassified input, duplicate/missing evidence references, malformed values, unknown snapshot versions, invalid claim statuses, reversed chronology and accessor-backed restore data.
+- Wire snapshot/restore into SelfSubsystemRuntime and the critical persistence projection; add runtime and model regressions to WorkPass79.
+- This is a bounded preference model, not a complete Theory-of-Mind engine or automatic response-policy integration.
+
 ## [NK1][Evaluation] Integrate independent Inspect AI evidence adapter (2026-11-01)
 - Port the WorkPass72 read-only CognitiveEventFabric exporter, privacy-reduced JSONL schema, independent Python validator and pinned Inspect AI 0.3.286 deterministic scoring harness onto the current `workpass70-source` checkpoint (`6f83e2e`).
 - Re-run the 11-stage causal lineage and action → outcome → evidence receipt checks outside the runtime; raw conversation, memory and postcondition text remain excluded from exported records.
