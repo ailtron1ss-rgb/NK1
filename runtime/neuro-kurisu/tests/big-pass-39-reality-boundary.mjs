@@ -2,16 +2,39 @@ import assert from 'node:assert/strict';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+import { WorldSubsystemRuntime } from '../src/organism/core/WorldSubsystemRuntime.ts';
+
+const worldRuntime = new WorldSubsystemRuntime();
+const worldSnapshotBefore = worldRuntime.worldLearningSnapshot();
+const validContext = (tick) => ({
+  tick, location:'sim', energy:.8, attention:.7, uncertainty:.2,
+  facts:[], objects:[], events:[],
+});
+assert.throws(() => worldRuntime.observeActionOutcome({
+  action:'observe', before:validContext(0),
+  after:{...validContext(1),objects:undefined},
+  reward:.7,surprise:.1,at:Date.now(),
+}), { name:'TypeError', message:'invalid-world-transition' });
+assert.deepEqual(worldRuntime.worldLearningSnapshot(),worldSnapshotBefore,
+  'malformed feedback must be rejected before any world model is mutated');
+assert.throws(() => worldRuntime.observeActionOutcome({
+  action:'observe', before:validContext(2), after:validContext(1),
+  reward:.7,surprise:.1,at:Date.now(),
+}), { name:'TypeError', message:'invalid-world-transition' });
+assert.deepEqual(worldRuntime.worldLearningSnapshot(),worldSnapshotBefore,
+  'rewound world ticks must be rejected before any world model is mutated');
 
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64});
 await core.init();
 await core.observe({worldContext:{location:'sim',uncertainty:.2},embodiment:{bodyEnergy01:.82,cognitiveCapacity01:.9,thermalStrain01:.18,sensoryFreshness01:.9,awake:true}});
-await core.feedback({success:.8,reward:.7,evidenceSource:'simulator',surprise:.1,worldTransition:{action:'observe',before:{},after:{},reward:.7,surprise:.1,at:Date.now()}});
+await core.feedback({success:.8,reward:.7,evidenceSource:'simulator',surprise:.1,worldTransition:{action:'observe',before:validContext(0),after:validContext(1),reward:.7,surprise:.1,at:Date.now()}});
 let s=core.externalEvidenceSnapshot();
 const sim=s.records.at(-1);
 assert.ok(sim);
 assert.equal(sim.sourceClass,'simulator');
+// Distinct outcome receipts require a distinct cognitive tick (B272 invariant).
+await core.observe({worldContext:{location:'sim-device',uncertainty:.15},embodiment:{bodyEnergy01:.8,cognitiveCapacity01:.9,thermalStrain01:.2,sensoryFreshness01:.95,awake:true}});
 await core.feedback({success:.8,reward:.7,evidenceSource:'device',surprise:.1});
 s=core.externalEvidenceSnapshot();
 const device=s.records.find(r=>r.sourceClass==='device');
@@ -22,17 +45,33 @@ const loaded=await store.load();
 assert.equal(loaded.system.schemaVersion,RELEASE_CONTRACT.stateSchema);
 assert.ok(loaded.system.externalEvidenceTrust?.records?.length>=2);
 console.log('BIG_PASS_39_REALITY_BOUNDARY=PASS',JSON.stringify({schema:loaded.system.schemaVersion,simSourceClass:sim.sourceClass,deviceSourceClass:device.sourceClass,records:loaded.system.externalEvidenceTrust.records.length}));
-const projectCore=new OrganismCore(new MemoryStateStore(),{enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64});
+const projectCore=new OrganismCore(new MemoryStateStore(),{cycleResultMode:'operational',enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:64});
 await projectCore.init();
-projectCore.registerActionTool({id:'project.safe',capability:'project.read',destructive:false,projectAllowed:true,execute:async()=>({ok:true,verified:true,payload:'safe'})});
-projectCore.registerActionTool({id:'project.danger',capability:'project.write',destructive:true,projectAllowed:true,execute:async()=>({ok:true})});
 for (let i=0;i<3;i++) await projectCore.observe({worldContext:{location:'project-lab',uncertainty:.98},novelty:.88,surprise:.9,embodiment:{bodyEnergy01:.82,cognitiveCapacity01:.9,thermalStrain01:.18,sensoryFreshness01:.9,awake:true}});
 const project=projectCore.activeProjectSnapshot();
 assert.ok(project);
-const safeResult=await projectCore.executeProjectTool('project.safe',{request:'status'},'BIG_PASS_39');
-assert.equal(safeResult.ok,true);
-const dangerResult=await projectCore.executeProjectTool('project.danger',{request:'mutate'},'BIG_PASS_39');
+const safeExecutor=projectCore['agencySubsystem'].projectExecutor;
+const safePlan=safeExecutor.snapshot();
+safePlan.steps[safePlan.cursor].preferredTool='organism.project.context';
+safeExecutor.restore(safePlan);
+const safeTool=projectCore.actionToolsSnapshot().find(tool=>tool.id==='organism.project.context');
+assert.ok(safeTool?.projectAllowed && !safeTool.destructive,'canonical project step must use its safe context reader');
+const safeResult=await projectCore.executeProjectTool('organism.project.context',{request:'status'},'BIG_PASS_39');
+assert.equal(safeResult.ok,true,'the active project step must execute its exact canonical safe tool');
+
+const dangerCore=new OrganismCore(new MemoryStateStore(),{cycleResultMode:'operational',enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:0,checkpointMaxDirtyCycles:64});
+await dangerCore.init();
+for (let i=0;i<3;i++) await dangerCore.observe({worldContext:{location:'project-lab-danger',uncertainty:.98},novelty:.88,surprise:.9,embodiment:{bodyEnergy01:.82,cognitiveCapacity01:.9,thermalStrain01:.18,sensoryFreshness01:.9,awake:true}});
+const dangerProject=dangerCore.activeProjectSnapshot();
+assert.ok(dangerProject);
+dangerCore.registerActionTool({id:'project.danger',capability:'project.write',destructive:true,projectAllowed:true,execute:async()=>({ok:true})});
+const executor=dangerCore['agencySubsystem'].projectExecutor;
+const executorState=executor.snapshot();
+executorState.steps[executorState.cursor].preferredTool='project.danger';
+executor.restore(executorState);
+const dangerResult=await dangerCore.executeProjectTool('project.danger',{request:'mutate'},'BIG_PASS_39');
 assert.equal(dangerResult.ok,false);
 assert.equal(dangerResult.result.error,'project-destructive-tool-blocked');
 await projectCore.flush();
-console.log('BIG_PASS_39_PROJECT_TOOL_BRIDGE=PASS',JSON.stringify({projectId:project.id,safe:safeResult.ok,dangerBlocked:!dangerResult.ok}));
+await dangerCore.flush();
+console.log('BIG_PASS_39_PROJECT_TOOL_BRIDGE=PASS',JSON.stringify({projectId:project.id,dangerProjectId:dangerProject.id,safe:safeResult.ok,dangerBlocked:!dangerResult.ok}));
