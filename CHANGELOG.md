@@ -1,3 +1,8 @@
+## [NK1][Research] Add evidence review for cognition, affect, memory and autonomy (2026-11-01)
+- Add an implementation-focused Consensus literature synthesis covering appraisal, mixed affect, interoceptive regulation, memory consolidation/forgetting, endogenous goals, metacognition and long-horizon evaluation.
+- Translate research into architecture constraints and measurable validation priorities while explicitly separating functional cognitive capabilities from claims of phenomenal consciousness.
+- Research document is guidance/evidence, not a claim that the mechanisms are already implemented or that NK1 is conscious.
+
 ## [NK1][CI] Run embodiment contracts on canonical source pushes (2026-11-01)
 - Trigger the existing embodiment contract workflow on `workpass70-source` pushes as well as pull requests, using the same path allowlist for renderer, motor-frame, avatar and speech bridge changes.
 - Preserve the existing Live2D/2.5D/3D timeline coverage and the full pull-request contract suite; this refresh deliberately avoids the older draft's narrower path list.
