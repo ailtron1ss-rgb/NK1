@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Correct semantic head-tilt axis and enforce normalized motor bounds (2026-11-01)
+- Map the motor planner's headTilt to normalized headRoll, matching the semantic depth-rig convention, instead of mislabeling it as headYaw.
+- Update the Live2D bridge capability declaration and add regressions for axis identity and unsupported yaw reporting.
+- Reject body-joint channels outside [-1, 1] at the renderer-neutral boundary; renderer adapters remain responsible for conversion to native rig units.
+- Add positive/negative overflow and exact-boundary tests so malformed finite values cannot become extreme renderer targets.
+- Browser visual confirmation, 2.5D/VRM pose calibration and real-device soak remain pending.
+
 ## [NK1][Embodiment] Bound GLB/VRM complexity before mobile parsing (2026-11-01)
 - Keep the existing 90 MB upload ceiling and add independent limits for scene nodes, meshes/primitives, accessors and aggregate accessor elements, materials, textures, images, animations, skins, scenes and buffer views.
 - Reject malformed accessor counts and malformed mesh primitive collections before passing untrusted bytes to Three.js GLTFLoader.
