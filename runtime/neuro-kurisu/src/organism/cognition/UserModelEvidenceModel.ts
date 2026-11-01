@@ -154,7 +154,7 @@ export class UserModelEvidenceModel {
   */
  forgetExplicit(i:{key:string;domain:UserModelDomain;tick:number;evidenceRef:string;explicit:boolean}):
   | {accepted:true;removed:boolean;key:string;domain:UserModelDomain}
-  | {accepted:false;reason:'invalid-input'|'missing-evidence'|'duplicate-evidence'} {
+  | {accepted:false;reason:'invalid-input'|'missing-evidence'|'duplicate-evidence'|'tombstone-capacity-exhausted'} {
   const key=normalizeKey(i.key),ref=boundedText(i.evidenceRef,180);
   if(!i.explicit||!key||!isDomain(i.domain)||!validTick(i.tick)){
    this.state.rejectedMalformedCount++;
