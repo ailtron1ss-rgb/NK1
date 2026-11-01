@@ -96,6 +96,25 @@ await store.save({tick:3,identity:'interrupted-next-primary'});`;
   assert.equal(strictDirectoryStore.metrics().saves,0,
     'strict failure must not be accounted as a successful durable save');
 
+  // In strict mode, the backup rename must be directory-synced before primary is replaced.
+  const strictBackupPath=join(dir,'strict-backup-order.json');
+  const strictBackupStore=new FileStateStore(strictBackupPath,{
+    backupEverySaves:1,encoding:'json',strictDirectoryFsync:true,
+  });
+  const realStrictDirectorySync=strictBackupStore.syncParentDirectory.bind(strictBackupStore);
+  let strictDirectorySyncCalls=0;
+  strictBackupStore.syncParentDirectory=async()=>{
+    strictDirectorySyncCalls+=1;
+    await realStrictDirectorySync();
+  };
+  await strictBackupStore.save({tick:1,identity:'durable-before-rotation'});
+  assert.equal(strictDirectorySyncCalls,1,'the initial primary rename must be directory-synced');
+  await strictBackupStore.save({tick:2,identity:'new-primary'});
+  assert.equal(strictDirectorySyncCalls,3,
+    'backup rename and subsequent primary rename must each be directory-synced in strict mode');
+  assert.deepEqual(JSON.parse(await readFile(strictBackupPath,'utf8')),{tick:2,identity:'new-primary'});
+  assert.deepEqual(JSON.parse(await readFile(strictBackupPath+'.bak','utf8')),{tick:1,identity:'durable-before-rotation'});
+
   // Non-strict mode remains best-effort for filesystems that reject directory fsync.
   const bestEffortPath=join(dir,'best-effort-directory-fsync.json');
   const bestEffortStore=new FileStateStore(bestEffortPath,{
