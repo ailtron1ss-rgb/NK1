@@ -81,6 +81,88 @@ const rejected = (reason: string): MotorFrameMappingResult => ({
   unavailableJointIds: [], unmappedJointIds: [], rendererPoseVerified: false,
 });
 
+/**
+ * Snapshot only plain own data properties. Accessors are rejected without invocation;
+ * Proxy reflection traps are caught at the boundary and converted to invalid input.
+ */
+function snapshotDataRecord(value: unknown, maxKeys: number): Record<string, unknown> | null {
+  try {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.length > maxKeys) return null;
+    const snapshot: Record<string, unknown> = Object.create(null);
+    for (const key of keys) {
+      if (typeof key !== "string") return null;
+      const descriptor = descriptors[key];
+      if (!descriptor || !("value" in descriptor) || descriptor.enumerable !== true) return null;
+      snapshot[key] = descriptor.value;
+    }
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+/** Copy a dense, ordinary array without reading accessor-backed elements. */
+function snapshotDataArray(value: unknown, maxLength: number): unknown[] | null {
+  try {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const lengthDescriptor = descriptors.length;
+    const length = lengthDescriptor?.value;
+    if (!lengthDescriptor || !("value" in lengthDescriptor) || !Number.isSafeInteger(length)
+      || length < 0 || length > maxLength || Reflect.ownKeys(descriptors).length !== length + 1) return null;
+    const snapshot: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (!descriptor || !("value" in descriptor) || descriptor.enumerable !== true) return null;
+      snapshot.push(descriptor.value);
+    }
+    return snapshot;
+  } catch {
+    return null;
+  }
+}
+
+function snapshotMotorFrame(value: unknown): MotorFrameSample | null {
+  const frame = snapshotDataRecord(value, 16);
+  if (!frame) return null;
+  const rawJoints = snapshotDataRecord(frame.joints, 128);
+  const reached = snapshotDataArray(frame.reachedJointIds, 128);
+  const blocked = snapshotDataArray(frame.blockedJointIds, 128);
+  if (!rawJoints || !reached || !blocked) return null;
+
+  const joints: Record<string, MotorFrameJointSample> = Object.create(null);
+  for (const [id, rawJoint] of Object.entries(rawJoints)) {
+    const joint = snapshotDataRecord(rawJoint, 8);
+    if (!joint) return null;
+    joints[id] = joint as unknown as MotorFrameJointSample;
+  }
+  return {
+    ...frame,
+    joints,
+    reachedJointIds: reached as string[],
+    blockedJointIds: blocked as string[],
+  } as unknown as MotorFrameSample;
+}
+
+function snapshotMappingProfile(value: unknown): MotorFrameMappingProfile | null {
+  const profile = snapshotDataRecord(value, 4);
+  if (!profile) return null;
+  const rawMappings = snapshotDataArray(profile.mappings, 128);
+  if (!rawMappings) return null;
+  const mappings: MotorJointChannelCalibration[] = [];
+  for (const rawMapping of rawMappings) {
+    const mapping = snapshotDataRecord(rawMapping, 8);
+    if (!mapping) return null;
+    mappings.push(mapping as unknown as MotorJointChannelCalibration);
+  }
+  return { ...profile, mappings } as unknown as MotorFrameMappingProfile;
+}
+
 const validJointIdList = (value: unknown): value is string[] =>
   Array.isArray(value) && value.length <= 128
     && value.every((id) => typeof id === "string" && /^[a-z][a-z0-9._-]{0,63}$/i.test(id))
@@ -144,20 +226,30 @@ export function mapMotorFrameToSemanticPose(
   profile: MotorFrameMappingProfile,
   options: MotorFrameMappingOptions = {},
 ): MotorFrameMappingResult {
-  if (!validFrame(frame)) return rejected("invalid-motor-frame");
-  if (!validProfile(profile)) return rejected("invalid-motor-mapping-profile");
-  if (frame.phase === "rejected" || frame.phase === "expired") return rejected("motor-frame-not-executable");
-  if (options.previous && (!Number.isSafeInteger(options.previous.tick) || options.previous.tick < 0
-    || !Number.isFinite(options.previous.atMs) || options.previous.atMs < 0)) {
-    return rejected("invalid-motor-frame-cursor");
+  const safeFrame = snapshotMotorFrame(frame);
+  if (!safeFrame || !validFrame(safeFrame)) return rejected("invalid-motor-frame");
+  const safeProfile = snapshotMappingProfile(profile);
+  if (!safeProfile || !validProfile(safeProfile)) return rejected("invalid-motor-mapping-profile");
+  if (safeFrame.phase === "rejected" || safeFrame.phase === "expired") return rejected("motor-frame-not-executable");
+
+  const safeOptions = snapshotDataRecord(options, 3);
+  if (!safeOptions) return rejected("invalid-motor-frame-options");
+  let previous: MotorFrameCursor | null = null;
+  if (safeOptions.previous !== undefined && safeOptions.previous !== null) {
+    const cursor = snapshotDataRecord(safeOptions.previous, 2);
+    if (!cursor || !Number.isSafeInteger(cursor.tick) || (cursor.tick as number) < 0
+      || !Number.isFinite(cursor.atMs) || (cursor.atMs as number) < 0) {
+      return rejected("invalid-motor-frame-cursor");
+    }
+    previous = cursor as unknown as MotorFrameCursor;
   }
-  if (options.previous && (frame.tick <= options.previous.tick || frame.atMs < options.previous.atMs)) {
+  if (previous && (safeFrame.tick <= previous.tick || safeFrame.atMs < previous.atMs)) {
     return rejected("stale-or-rewound-motor-frame");
   }
-  if (options.nowMs !== undefined || options.maxAgeMs !== undefined) {
-    if (!Number.isFinite(options.nowMs) || !Number.isFinite(options.maxAgeMs)
-      || (options.maxAgeMs as number) < 0 || (options.nowMs as number) < frame.atMs
-      || (options.nowMs as number) - frame.atMs > (options.maxAgeMs as number)) {
+  if (safeOptions.nowMs !== undefined || safeOptions.maxAgeMs !== undefined) {
+    if (!Number.isFinite(safeOptions.nowMs) || !Number.isFinite(safeOptions.maxAgeMs)
+      || (safeOptions.maxAgeMs as number) < 0 || (safeOptions.nowMs as number) < safeFrame.atMs
+      || (safeOptions.nowMs as number) - safeFrame.atMs > (safeOptions.maxAgeMs as number)) {
       return rejected("stale-motor-frame");
     }
   }
@@ -166,8 +258,8 @@ export function mapMotorFrameToSemanticPose(
   const mappedJointIds: string[] = [];
   const unavailableJointIds: string[] = [];
   const unmappedJointIds: string[] = [];
-  const byJoint = new Map(profile.mappings.map((mapping) => [mapping.jointId, mapping]));
-  for (const [jointId, joint] of Object.entries(frame.joints)) {
+  const byJoint = new Map(safeProfile.mappings.map((mapping) => [mapping.jointId, mapping]));
+  for (const [jointId, joint] of Object.entries(safeFrame.joints)) {
     const mapping = byJoint.get(jointId);
     if (!mapping) { unmappedJointIds.push(jointId); continue; }
     if (!joint.available) { unavailableJointIds.push(jointId); continue; }
@@ -180,7 +272,7 @@ export function mapMotorFrameToSemanticPose(
   return {
     accepted: true,
     reason: mappedJointIds.length ? "motor-frame-mapped" : "motor-frame-has-no-calibrated-joints",
-    cursor: { tick: frame.tick, atMs: frame.atMs },
+    cursor: { tick: safeFrame.tick, atMs: safeFrame.atMs },
     pose, mappedJointIds, unavailableJointIds, unmappedJointIds,
     rendererPoseVerified: false,
   };
