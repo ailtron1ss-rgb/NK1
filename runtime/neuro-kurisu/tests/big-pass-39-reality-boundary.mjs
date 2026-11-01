@@ -51,15 +51,30 @@ assert.ok(loaded.system.externalEvidenceTrust?.records?.length>=2);
 console.log('BIG_PASS_39_REALITY_BOUNDARY=PASS',JSON.stringify({schema:loaded.system.schemaVersion,simSourceClass:sim.sourceClass,deviceSourceClass:device.sourceClass,records:loaded.system.externalEvidenceTrust.records.length}));
 const projectCore=new OrganismCore(new MemoryStateStore(),{enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64});
 await projectCore.init();
-projectCore.registerActionTool({id:'project.safe',capability:'project.read',destructive:false,projectAllowed:true,execute:async()=>({ok:true,verified:true,payload:'safe'})});
-projectCore.registerActionTool({id:'project.danger',capability:'project.write',destructive:true,projectAllowed:true,execute:async()=>({ok:true})});
 for (let i=0;i<3;i++) await projectCore.observe({worldContext:{location:'project-lab',uncertainty:.98},novelty:.88,surprise:.9,embodiment:{bodyEnergy01:.82,cognitiveCapacity01:.9,thermalStrain01:.18,sensoryFreshness01:.9,awake:true}});
 const project=projectCore.activeProjectSnapshot();
 assert.ok(project);
-const safeResult=await projectCore.executeProjectTool('project.safe',{request:'status'},'BIG_PASS_39');
-assert.equal(safeResult.ok,true);
-const dangerResult=await projectCore.executeProjectTool('project.danger',{request:'mutate'},'BIG_PASS_39');
+const safeTool=projectCore.actionToolsSnapshot().find(tool=>tool.id==='organism.project.evidence');
+assert.ok(safeTool?.projectAllowed && !safeTool.destructive,'canonical project step must have its safe evidence reader');
+const safeResult=await projectCore.executeProjectTool('organism.project.evidence',{request:'status'},'BIG_PASS_39');
+assert.equal(safeResult.ok,true,'the current planned step must execute its exact canonical safe tool');
+
+const dangerCore=new OrganismCore(new MemoryStateStore(),{enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64});
+await dangerCore.init();
+for (let i=0;i<3;i++) await dangerCore.observe({worldContext:{location:'project-lab-danger',uncertainty:.98},novelty:.88,surprise:.9,embodiment:{bodyEnergy01:.82,cognitiveCapacity01:.9,thermalStrain01:.18,sensoryFreshness01:.9,awake:true}});
+const dangerProject=dangerCore.activeProjectSnapshot();
+assert.ok(dangerProject);
+dangerCore.registerActionTool({id:'project.danger',capability:'project.write',destructive:true,projectAllowed:true,execute:async()=>({ok:true})});
+// Bind the isolated fixture's current plan step to the dangerous tool so the
+// project destructive-policy guard, not the earlier preferred-tool mismatch,
+// is the branch being exercised.
+const executor=dangerCore['agencySubsystem'].projectExecutor;
+const executorState=executor.snapshot();
+executorState.steps[executorState.cursor].preferredTool='project.danger';
+executor.restore(executorState);
+const dangerResult=await dangerCore.executeProjectTool('project.danger',{request:'mutate'},'BIG_PASS_39');
 assert.equal(dangerResult.ok,false);
 assert.equal(dangerResult.result.error,'project-destructive-tool-blocked');
 await projectCore.flush();
-console.log('BIG_PASS_39_PROJECT_TOOL_BRIDGE=PASS',JSON.stringify({projectId:project.id,safe:safeResult.ok,dangerBlocked:!dangerResult.ok}));
+await dangerCore.flush();
+console.log('BIG_PASS_39_PROJECT_TOOL_BRIDGE=PASS',JSON.stringify({projectId:project.id,dangerProjectId:dangerProject.id,safe:safeResult.ok,dangerBlocked:!dangerResult.ok}));
