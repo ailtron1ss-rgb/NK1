@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Wire renderer handoff into the avatar UI (Aspect 11, 2026-11-01)
+- Add `embodimentUiBridge.ts` to project the canonical organism snapshot into the shared `SemanticBodyState`, validate/clamp the handoff input, and declare only the channels each current renderer actually supports.
+- Connect `AvatarStage.tsx` mode changes to `planEmbodimentSwitch`, a bounded 220 ms crossfade and truthful diagnostics for unsupported channels. Keep the effect independent of per-tick snapshot churn by reading latest values through refs.
+- Add nine UI-bridge regressions and include them in the embodiment workflow. Renderer handoff is not an `AdapterApplyReceipt` and does not claim that a destination applied a pose or completed a frame.
+- 2.5D depth-rig remains outside the active render path; this stage wires existing 2D-class and Three.js 3D modes only. Browser/WebGL visual E2E and real-device soak remain pending.
+
 ## [NK1][Memory] Add isolated LongMemEval-S external retrieval benchmark (2026-11-01)
 - Add a pinned local-file adapter for the 500-question LongMemEval-S cleaned benchmark; validate dataset revision and SHA-256, normalize session chronology, and build a fresh isolated MemoryOS2 corpus for each question.
 - Compare canonical no-embedding MemoryOS2 retrieval with deterministic per-question BM25; report recall@K, MRR, precision, abstention, unsupported retrieval and session-clustered paired confidence intervals.
