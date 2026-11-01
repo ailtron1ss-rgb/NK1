@@ -80,5 +80,30 @@ await store.save({tick:3,identity:'interrupted-next-primary'});`;
   assert.equal(interrupted.signal,'SIGKILL','the child must stop at the backup-temp fsync crash point');
   assert.deepEqual(JSON.parse(await readFile(crashPath,'utf8')),{tick:2,identity:'current-primary'});
   assert.deepEqual(JSON.parse(await readFile(crashPath+'.bak','utf8')),{tick:1,identity:'previous-known-good-backup'},'an interrupted backup copy must leave the previous backup intact');
+  // Strict mode must surface directory-fsync failure instead of reporting a durable save.
+  const strictDirectoryPath=join(dir,'strict-directory-fsync.json');
+  const strictDirectoryStore=new FileStateStore(strictDirectoryPath,{
+    backupEverySaves:99,encoding:'json',strictDirectoryFsync:true,
+  });
+  strictDirectoryStore.syncParentDirectory=async()=>{ throw new Error('injected-directory-fsync-failure'); };
+  await assert.rejects(
+    strictDirectoryStore.save({tick:1,identity:'directory-sync-required'}),
+    /directory-fsync-required:injected-directory-fsync-failure/,
+    'strict directory fsync must fail closed when directory durability cannot be confirmed',
+  );
+  assert.deepEqual(JSON.parse(await readFile(strictDirectoryPath,'utf8')),{tick:1,identity:'directory-sync-required'},
+    'the rename can already be visible even though strict durability confirmation failed');
+  assert.equal(strictDirectoryStore.metrics().saves,0,
+    'strict failure must not be accounted as a successful durable save');
+
+  // Non-strict mode remains best-effort for filesystems that reject directory fsync.
+  const bestEffortPath=join(dir,'best-effort-directory-fsync.json');
+  const bestEffortStore=new FileStateStore(bestEffortPath,{
+    backupEverySaves:99,encoding:'json',strictDirectoryFsync:false,directoryFsyncEverySaves:1,
+  });
+  bestEffortStore.syncParentDirectory=async()=>{ throw new Error('injected-directory-fsync-unsupported'); };
+  await bestEffortStore.save({tick:2,identity:'best-effort'});
+  assert.deepEqual(JSON.parse(await readFile(bestEffortPath,'utf8')),{tick:2,identity:'best-effort'});
+
   console.log(JSON.stringify({pass:true,backupAtomicCrash:true,jsonBytes:(await readFile(jsonPath)).byteLength,v8Bytes:(await readFile(v8Path)).byteLength,migratedEncoding:'v8'}));
 } finally { await rm(dir,{recursive:true,force:true}); }
