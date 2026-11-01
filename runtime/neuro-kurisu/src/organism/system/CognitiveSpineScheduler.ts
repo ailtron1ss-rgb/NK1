@@ -69,7 +69,11 @@ export class CognitiveSpineScheduler {
 
     const runFor=(op:SpineOperation,force:boolean)=>{
       this.state.opportunities[op] += 1;
-      const run=force || input.tick % cadence[op] === 0;
+      // Protect is a hard budget boundary, not merely a slower cadence.
+      // External events remain available to core/reflex handling outside these
+      // optional secondary loops; they must not force research, rollout, shadow
+      // simulation or project work while the organism is resource-constrained.
+      const run=mode !== 'protect' && (force || input.tick % cadence[op] === 0);
       if(run) this.state.runs[op] += 1; else this.state.skips[op] += 1;
       return run;
     };
