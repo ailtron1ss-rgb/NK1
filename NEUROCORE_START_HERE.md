@@ -3,7 +3,7 @@
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
 **Canonical source branch:** `workpass70-source`  
-**Live source HEAD checked 2026-11-01:** `f921007a74a7a6124d274885354009dd3a3ef33c`  
+**Live source HEAD checked 2026-11-01:** `608435493b4af3b4a222d385f1b77d978d18583b`  
 **Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
 
 ## Latest verified integrations — 2026-11-01
