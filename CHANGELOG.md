@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Clear stale avatar mouth pose outside active speech (2026-11-01)
+- Drive semantic mouth-open/form channels only while the normalized speech lifecycle is `speaking`.
+- Force neutral mouth channels for idle, starting, ended, cancelled and unknown phases so a missing final audio frame or barge-in cannot leave the avatar visually speaking.
+- Add regressions for terminal/unknown provider phases and verify active speech visemes remain intact.
+- This is lifecycle-state correctness; it does not claim acoustic lip-sync accuracy or real-device timing.
+
 ## [NK1][Avatar] Add dependency-free GLB/VRM preflight CI (2026-11-01)
 - Add a focused GitHub Actions workflow for the existing upload preflight regression suite; it runs on source-branch pushes, pull requests targeting `workpass70-source`, and manual dispatch.
 - Run the Node 22.16 test directly without installing the app dependency tree, so parser-boundary regressions remain executable even when the npm registry is unavailable.
