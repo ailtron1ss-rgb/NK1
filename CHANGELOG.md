@@ -1,9 +1,16 @@
+## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
+- Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
+- Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
+- Add regressions for dangling references, cross-list contradictions and a valid disjoint status pair.
+- This closes a frame-integrity gap at the renderer-neutral mapping boundary; it does not claim renderer readback, visual E2E, physical calibration or device soak.
+
 ## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
 - Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
-- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
-- Invalidate the prior hash when recovering from a corrupt primary and protect the known-good backup from being overwritten by corrupt bytes during the first repair save.
-- Add regressions for missing-primary recovery, primary recreation, empty-store behavior and corrupt-primary backup preservation.
-- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace the broader organism recovery/soak tests.
+- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the missing primary instead of being skipped.
+- Invalidate the prior hash when recovering from a corrupt primary and preserve the known-good backup during repair.
+- Keep the backup-preservation guard active until the primary rename succeeds; clean up temporary files after ordinary failed writes/renames so a retry cannot rotate corrupt primary bytes over the verified backup.
+- Add regressions for missing-primary recovery, primary recreation, empty-store behavior, corrupt-primary preservation, failed-rename retry and temp-file cleanup.
+- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace broader organism recovery/soak tests.
 
 ## [NK1][Autonomy] Correct autonomous runtime cadence and silence accounting (2026-11-01)
 - Fix the inverted cadence gate: silent/internal activity now waits until its scheduled wake, while external signals remain immediately reactive.
