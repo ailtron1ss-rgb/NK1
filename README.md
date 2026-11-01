@@ -24,7 +24,7 @@
 - Production soak, полная автономная инициатива и субъективное сознание не заявляются как доказанные.
 
 ### Release status
-Последний подтверждённый полный Release ZIP — **WorkPass70 Hotfix 1 от 19 октября 2026**: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Текущие изменения находятся в source branch; Release ZIP не пересобирался и не публиковался. Публикация остаётся под exact-SHA, provenance/SBOM и license gates.
+Последний опубликованный GitHub Release подтверждён через Releases API: tag `Neuro` / **NeuroKurisu0.1**, опубликован 19 октября 2026. Единственный asset в API: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286` ([release](https://github.com/ailtron1ss-rgb/NK1/releases/tag/Neuro), [asset metadata](https://api.github.com/repos/ailtron1ss-rgb/NK1/releases/417371351/assets)). Предыдущая запись этого checkpoint про `WORKPASS70_HOTFIX1` и hash `9eff…` не совпадала с опубликованным asset и исправлена. Текущие изменения находятся в source branch; Release ZIP не пересобирался и не публиковался. Публикация остаётся под exact-SHA, provenance/SBOM и human license gates.
 
 ### Следующие P0
 1. Browser/WebGL E2E: upload → convert → replace → reset → reload; assert no stale renderer resources and no disposed shared gradient.
