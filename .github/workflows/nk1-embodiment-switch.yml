@@ -16,6 +16,8 @@ on:
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelStore.ts"
       - "app/scripts/avatar-model-preflight.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/package.json"
