@@ -45,6 +45,27 @@ const TIER_ORDER:Record<ExecutionTier,number>={critical:0,hot:1,warm:2,cold:3};
 const BASE_COST:Record<CognitiveExecutionOperation,number>={perception:.035,memory:.025,'world-rollout':.12,research:.28,shadow:.08,project:.10,'slow-cognition':.18};
 const DOMAIN:Record<CognitiveExecutionOperation,CognitiveDomain>={perception:'embodiment',memory:'memory','world-rollout':'world',research:'research',shadow:'self',project:'agency','slow-cognition':'governance'};
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const plainOwnRecord=(value:unknown):Record<string,unknown>|null=>{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  try{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null?value as Record<string,unknown>:null;}catch{return null;}
+};
+/** Read persisted planner fields through own data descriptors; never execute getters. */
+const ownData=(record:Record<string,unknown>,key:string):unknown=>{
+  try{const descriptor=Object.getOwnPropertyDescriptor(record,key);return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;}catch{return undefined;}
+};
+const readMetric=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+const readCounter=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+const readBoundedText=(value:unknown,fallback:string,max:number):string=>typeof value==='string'?value.trim().slice(0,max):fallback;
+const readBooleanMap=<K extends string>(value:unknown,fallback:Record<K,boolean>,keys:readonly K[]):Record<K,boolean>=>{
+  const source=plainOwnRecord(value),result={...fallback};
+  if(source)for(const key of keys){const item=ownData(source,key);if(typeof item==='boolean')result[key]=item;}
+  return result;
+};
+const readMetricMap=<K extends string>(value:unknown,fallback:Record<K,number>,keys:readonly K[]):Record<K,number>=>{
+  const source=plainOwnRecord(value),result={...fallback};
+  if(source)for(const key of keys){const item=ownData(source,key);if(typeof item==='number'&&Number.isFinite(item))result[key]=clamp(item);}
+  return result;
+};
 
 function freshStats():CognitiveExecutionStats{return {runs:0,skips:0,forced:0,opportunities:0,estimatedCost01:0,estimatedSavings01:0,lastReason:'initial'};}
 function defaultStats():Record<CognitiveExecutionOperation,CognitiveExecutionStats>{return Object.fromEntries(OPS.map(op=>[op,freshStats()])) as Record<CognitiveExecutionOperation,CognitiveExecutionStats>;}
@@ -74,8 +95,56 @@ export class CognitiveExecutionPlanner{
 
   restore(raw?:Partial<CognitiveExecutionPlan>|null){
     const d=defaultCognitiveExecutionPlanner();
-    this.plan={...d,...(raw??{}),run:{...d.run,...(raw?.run??{})},cost01:{...d.cost01,...(raw?.cost01??{})},informationGain01:{...d.informationGain01,...(raw?.informationGain01??{})},expectedValue01:{...d.expectedValue01,...(raw?.expectedValue01??{})},metabolism:{...d.metabolism,...(raw?.metabolism??{})},stats:{...d.stats}};
-    for(const op of OPS)this.plan.stats[op]={...d.stats[op],...(raw?.stats?.[op]??{})};
+    const root=plainOwnRecord(raw);
+    if(!root||((ownData(root,'version')!==undefined)&&(ownData(root,'version')!==1))){this.plan=d;return;}
+    const run=readBooleanMap(ownData(root,'run'),d.run,OPS);
+    const cost01=readMetricMap(ownData(root,'cost01'),d.cost01,OPS);
+    const informationGain01=readMetricMap(ownData(root,'informationGain01'),d.informationGain01,OPS);
+    const expectedValue01=readMetricMap(ownData(root,'expectedValue01'),d.expectedValue01,OPS);
+    const rawMetabolism=plainOwnRecord(ownData(root,'metabolism'));
+    const metabolism={...d.metabolism};
+    if(rawMetabolism){
+      for(const domain of Object.keys(d.metabolism) as CognitiveDomain[]){
+        const row=plainOwnRecord(ownData(rawMetabolism,domain));
+        if(!row)continue;
+        const rawDomain=ownData(row,'domain');
+        const active=ownData(row,'active');
+        metabolism[domain]={
+          domain,
+          priority01:readMetric(ownData(row,'priority01'),d.metabolism[domain].priority01),
+          budgetShare01:readMetric(ownData(row,'budgetShare01'),d.metabolism[domain].budgetShare01),
+          estimatedLoad01:readMetric(ownData(row,'estimatedLoad01'),d.metabolism[domain].estimatedLoad01),
+          active:typeof active==='boolean'?active:d.metabolism[domain].active,
+        };
+        if(rawDomain!==domain)metabolism[domain]=d.metabolism[domain];
+      }
+    }
+    const rawStats=plainOwnRecord(ownData(root,'stats'));
+    const stats=defaultStats();
+    if(rawStats){
+      for(const op of OPS){
+        const row=plainOwnRecord(ownData(rawStats,op));
+        if(!row)continue;
+        const fallback=d.stats[op];
+        stats[op]={
+          runs:readCounter(ownData(row,'runs'),fallback.runs),
+          skips:readCounter(ownData(row,'skips'),fallback.skips),
+          forced:readCounter(ownData(row,'forced'),fallback.forced),
+          opportunities:readCounter(ownData(row,'opportunities'),fallback.opportunities),
+          estimatedCost01:readMetric(ownData(row,'estimatedCost01'),fallback.estimatedCost01),
+          estimatedSavings01:readMetric(ownData(row,'estimatedSavings01'),fallback.estimatedSavings01),
+          lastReason:readBoundedText(ownData(row,'lastReason'),fallback.lastReason,180),
+        };
+      }
+    }
+    const mode=ownData(root,'mode');
+    this.plan={
+      version:1,
+      tick:readCounter(ownData(root,'tick'),d.tick),
+      mode:mode==='reflex'||mode==='balanced'||mode==='deep'||mode==='protect'?mode:d.mode,
+      reason:readBoundedText(ownData(root,'reason'),d.reason,512),
+      run,cost01,informationGain01,expectedValue01,metabolism,stats,
+    };
   }
 
   compile(frame:CognitiveFrame, spine:CognitiveSpineDecision, remainingBudget01:number, pressure?:CognitivePressureFieldState, contracts?:ReadonlyArray<Pick<OrganismSystemContract,'name'|'estimatedCost01'|'cadenceCycles'|'phase'|'executionRank'>>):CognitiveExecutionPlan{
