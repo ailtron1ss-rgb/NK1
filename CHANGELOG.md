@@ -1,9 +1,7 @@
-## [NK1][Embodiment] Enforce GLB buffer cardinality and binary padding (2026-11-01)
-- Bound attacker-controlled glTF buffer metadata before iterating it, using a shared maximum of 32 buffers.
-- Enforce the GLB 2.0 URI-less buffer contract: at most one embedded buffer, at index zero, with a required BIN chunk.
-- Require the BIN chunk to match the declared embedded buffer length with only the specification's zero-to-three alignment bytes; reject unreferenced BIN chunks.
-- Add five regressions for valid padding, duplicate embedded buffers, oversized padding, orphan BIN chunks and excessive buffer metadata.
-- This is parser-boundary hardening only; it does not claim improved avatar rendering or target-device performance.
+## [NK1][Embodiment] Normalize speech lifecycle state at renderer boundary (2026-11-01)
+- Coerce unknown speech lifecycle phases to the explicit `unknown` state so malformed provider data cannot abort an otherwise valid renderer handoff.
+- Trim speech event identifiers and reject blank, non-string or oversized values; tolerate absent gaze/mouth samples with neutral defaults before the shared semantic-state validator.
+- Add regressions for malformed phase/identifier and missing sensory samples. This hardens the UI projection boundary; it does not claim audio synchronization or visual pose completion.
 
 ## [NK1][Embodiment] Complete hosted Kurisu loader and asset verification (2026-11-01)
 - Verify the hosted model's content hash, exact size, GLB structure, humanoid skin, face morph targets and exported rig clip in the embodiment CI workflow.
