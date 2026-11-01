@@ -7,18 +7,19 @@ import { maskNonCode } from '../scripts/lib/source-mask.mjs';
 // Resolve from this file, not cwd, so the regression holds whether the suite is run
 // from the runtime package or the repository root.
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const pat = /(?:from\s*|import\()(['"])(\.\.?\/[^'"]+)\1/g;
+const pat = /(?:from\s*|import\s*\(|require\s*\()(['"])(\.\.?\/[^'"]+)\1/g;
 
 const codeSpecifiers = source => {
-  const masked = maskNonCode(source);
+  const runtimeText = source.replace(/import\s+type\s+[^;\n]+from\s+['"][^'"]+['"]\s*;?/g, '');
+  const masked = maskNonCode(runtimeText);
   const found = [];
   let m;
-  while ((m = pat.exec(source))) {
+  while ((m = pat.exec(runtimeText))) {
     if (masked.slice(m.index, m.index + m[0].length).trim() === '') continue;
     found.push(m[2]);
   }
   return found;
-};
+};;
 
 // Comments, strings and regex literals must be masked; real code must not be.
 assert.deepEqual(codeSpecifiers(`import x from './real.ts';\n`), ['./real.ts']);
@@ -33,6 +34,8 @@ assert.deepEqual(codeSpecifiers(`const re = /['"]/g;\n`), []);
 // Division is not a regex literal, so a following specifier-like string stays masked.
 assert.deepEqual(codeSpecifiers(`const q = a / b;\nconst s = "from './after-div.ts'";\n`), []);
 assert.deepEqual(codeSpecifiers(`const v = await import('./dynamic.ts');\n`), ['./dynamic.ts']);
+assert.deepEqual(codeSpecifiers(`const value = require('./required.cjs');\\n`), ['./required.cjs']);
+assert.deepEqual(codeSpecifiers(`import type { Shape } from './type-only.ts';\\n`), []);
 // A quote inside a comment must not open a phantom string that swallows real code.
 assert.deepEqual(codeSpecifiers(`// it's fine\nimport y from './after-comment.ts';\n`), ['./after-comment.ts']);
 
