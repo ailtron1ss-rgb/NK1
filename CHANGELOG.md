@@ -1,3 +1,11 @@
+## [NK1][Affect] Bound signed emotion priors in canonical action selection — WorkPass634 (2026-11-01)
+- Correct the direct affect action prior: preserve bounded negative regulatory influence instead of clamping every value to non-negative.
+- Map explore/engage/verify/reflect/rest/protect/withdraw/approach tendencies to the seven canonical ActionKind values; affect tendencies are never executable actions.
+- Gate direct priors on appraisal confidence and attention; cap the direct signal at ±0.045 and keep the existing selected-workspace signal capped at 0.035.
+- Apply signed outcome calibration only after at least three outcomes, with reliability ramping to full weight over subsequent observations.
+- Add deterministic directionality, low-confidence, regulation-decay, outcome-calibration, unknown-action and combined-prior bound regression; wire it with existing WorkPass39 and WorkPass172 integrations.
+- Draft PR #636 is ahead 5 / behind 0 of the live source base. Exact-head Actions are still running; no local test execution or merge/release is claimed.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
