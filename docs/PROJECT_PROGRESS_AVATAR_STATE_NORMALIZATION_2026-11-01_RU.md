@@ -8,3 +8,5 @@
 
 - Correct the avatar preflight workflow's Node.js drift: use approved `actions/checkout@v7` / `actions/setup-node@v7` and the root `.nvmrc` (Node 24), so the repository-wide CI reliability audit no longer fails on this workflow.
 - This workflow correction was identified from exact GitHub Actions logs; it is not inferred from a generic CI failure.
+- Make the TypeScript input contract match reality: gaze and mouth samples are optional/nullable; speech phase and event identity enter as untrusted values and are normalized before projection. Add a separate regression for omitted samples during reconnect, not only explicit `null`.
+- Disable setup-node's implicit package-manager cache in the isolated preflight workflow because the repository intentionally has no root lockfile. Exact-head parser-preflight run passed after this correction.
