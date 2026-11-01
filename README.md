@@ -1,7 +1,8 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Code baseline до этого documentation-only checkpoint:** `eb82e918cfbcb6648baba641e0b845470faf6ef1`
+**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
 
 ### Реально интегрировано и проверено
 
@@ -51,6 +52,10 @@
 |---|---|---|
 | [#571](https://github.com/ailtron1ss-rgb/NK1/pull/571) / `6db887b` | Исправлен перевёрнутый cadence gate автономного runtime: внутренние действия ждут `nextWakeAt`, внешние сигналы остаются реактивными; исправлен учёт продолжения после тишины | `test:big-pass-224` добавлен в unified runtime workflow; точный PR-head workflow прошёл |
 | [#574](https://github.com/ailtron1ss-rgb/NK1/pull/574) / `c039f84` | Статусы reached/blocked в motor frame теперь обязаны ссылаться на суставы того же кадра и не могут противоречить друг другу | `nk1-embodiment-switch` и все связанные PR checks прошли |
+| `efb7693` | UserModel v2: durable deletion watermarks, strict fail-closed restore, replay protection, 256-entry tombstone capacity and v1 migration | `explicit-forget` regression passed on the subsequent exact PR head |
+| [#594](https://github.com/ailtron1ss-rgb/NK1/pull/594) / `619ec5d` | FileStateStore recovers missing/corrupt primary from verified backup, recreates unchanged restored state and preserves the known-good backup | 11/11 exact-head checks passed before merge |
+| [#603](https://github.com/ailtron1ss-rgb/NK1/pull/603) / `9b36efb` | Semantic mouth channels are driven only during active speech; terminal/unknown phases reset stale mouth pose; missing sensor samples normalize safely | 9/9 exact-head checks passed before merge |
+| [#607](https://github.com/ailtron1ss-rgb/NK1/pull/607) / `735b83d` | Backup rotation writes a sibling temp, fsyncs it and atomically renames it over `.bak`; SIGKILL regression proves prior backup survives interruption before rename | 11/11 exact-head checks passed before merge |
 
 **Что эти изменения не доказывают:** они закрывают конкретные логические и контрактные дефекты, но не доказывают самостоятельное мышление, часовую автономную инициативу, визуальное применение позы, Android soak или субъективное сознание.
 
