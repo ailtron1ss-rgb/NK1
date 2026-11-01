@@ -60,6 +60,7 @@ export function preflightAvatarModel(
       if (chunkIndex !== 0) return reject("glb-json-chunk-must-be-first");
       jsonBytes = bytes.subarray(chunkStart, chunkEnd);
     } else if (chunkType === GLB_BIN_CHUNK) {
+      if (chunkIndex !== 1) return reject("glb-bin-chunk-must-be-second");
       if (hasBinaryChunk) return reject("glb-bin-chunk-duplicate");
       hasBinaryChunk = true;
       binaryChunkLength = chunkLength;
@@ -91,10 +92,11 @@ export function preflightAvatarModel(
   for (const entry of (Array.isArray(buffers) ? buffers : []) as unknown[]) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return reject("gltf-buffer-invalid");
     const buffer = entry as Record<string, unknown>;
+    if (buffer.uri !== undefined && typeof buffer.uri !== "string") return reject("gltf-buffer-uri-invalid");
     if (typeof buffer.uri === "string" && !buffer.uri.startsWith("data:")) {
       return reject("external-buffer-uri-unsupported");
     }
-    if (buffer.byteLength !== undefined && (!Number.isSafeInteger(buffer.byteLength) || Number(buffer.byteLength) < 0)) {
+    if (!Number.isSafeInteger(buffer.byteLength) || Number(buffer.byteLength) <= 0) {
       return reject("gltf-buffer-length-invalid");
     }
     if (buffer.uri === undefined && Number(buffer.byteLength ?? 0) > binaryChunkLength) {
@@ -110,6 +112,7 @@ export function preflightAvatarModel(
   for (const entry of (Array.isArray(images) ? images : []) as unknown[]) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return reject("gltf-image-invalid");
     const image = entry as Record<string, unknown>;
+    if (image.uri !== undefined && typeof image.uri !== "string") return reject("gltf-image-uri-invalid");
     if (typeof image.uri === "string" && !image.uri.startsWith("data:")) {
       return reject("external-image-uri-unsupported");
     }
@@ -120,6 +123,13 @@ export function preflightAvatarModel(
     return reject("gltf-extensions-invalid");
   }
   const extensionsUsed = (Array.isArray(used) ? used : []) as string[];
+  const required = document.extensionsRequired;
+  if (required !== undefined && (!Array.isArray(required) || required.some((value) => typeof value !== "string"))) {
+    return reject("gltf-extensions-invalid");
+  }
+  if (Array.isArray(required) && required.some((extension) => !extensionsUsed.includes(extension as string))) {
+    return reject("gltf-required-extension-missing");
+  }
   const format = extensionsUsed.some((extension) => extension === "VRMC_vrm" || extension === "VRM") ? "vrm" : "glb";
   if (safeName.endsWith(".vrm") && format !== "vrm") return reject("vrm-extension-missing");
 
