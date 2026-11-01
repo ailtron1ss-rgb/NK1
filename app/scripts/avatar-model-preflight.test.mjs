@@ -135,3 +135,38 @@ test("rejects excessive image and animation counts before renderer setup", () =>
   assert.throws(() => preflightAvatarModel(images, "images.glb"), /gltf-complexity-limit-images/);
   assert.throws(() => preflightAvatarModel(animations, "animations.glb"), /gltf-complexity-limit-animations/);
 });
+
+test("accepts a GLB BIN chunk with only the permitted one-to-three padding bytes", () => {
+  const document = { ...baseDocument(), buffers: [{ byteLength: 5 }] };
+  const result = preflightAvatarModel(glb(document, new Uint8Array([1, 2, 3, 4, 5])), "padded.glb");
+  assert.equal(result.hasBinaryChunk, true);
+});
+
+test("rejects multiple URI-less buffers in a GLB", () => {
+  const document = {
+    ...baseDocument(),
+    buffers: [{ byteLength: 4 }, { byteLength: 4 }],
+  };
+  assert.throws(() => preflightAvatarModel(glb(document), "multiple-buffers.glb"), /glb-buffer-layout-invalid/);
+});
+
+test("rejects BIN chunks with more than three bytes beyond the declared buffer length", () => {
+  const document = { ...baseDocument(), buffers: [{ byteLength: 4 }] };
+  assert.throws(
+    () => preflightAvatarModel(glb(document, new Uint8Array(8)), "oversized-bin.glb"),
+    /glb-bin-chunk-length-mismatch/,
+  );
+});
+
+test("rejects a BIN chunk that is not referenced by the first GLB buffer", () => {
+  const document = { asset: { version: "2.0" } };
+  assert.throws(() => preflightAvatarModel(glb(document), "orphan-bin.glb"), /glb-bin-chunk-unreferenced/);
+});
+
+test("bounds buffer metadata before iterating attacker-controlled entries", () => {
+  const buffers = Array.from({ length: 33 }, () => ({ byteLength: 1, uri: "data:application/octet-stream;base64,AA==" }));
+  assert.throws(
+    () => preflightAvatarModel(glb({ asset: { version: "2.0" }, buffers }, new Uint8Array()), "too-many-buffers.glb"),
+    /gltf-complexity-limit-buffers/,
+  );
+});
