@@ -214,10 +214,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
 
   // Plan a renderer handoff whenever the body changes. The projection is monotonic
   // and derived from the canonical snapshot; it never mutates organism state.
-  // Only channels the destination declares are applied, and the crossfade is bounded.
+  // Only channels the destination declares are applied, and the fade-in is bounded.
   //
   // This effect depends on `mode` alone: the snapshot changes every tick, so binding the
-  // crossfade to it would cancel and restart the animation each frame. Latest values are
+  // fade to it would cancel and restart the animation each frame. Latest values are
   // read from refs instead.
   useEffect(() => {
     const from = previousModeRef.current;
