@@ -32,6 +32,10 @@ test("projects a valid semantic body state from the canonical snapshot", () => {
   assert.equal(state.action, "wait");
   assert.equal(state.gaze.x, 0.2);
   assert.equal(state.gaze.y, -0.1);
+  assert.equal(state.pose.headRoll, 0.25);
+  assert.equal(state.pose.headYaw, undefined);
+  assert.ok(capabilitiesForMode("live2d").channels.includes("headRoll"));
+  assert.ok(!capabilitiesForMode("live2d").channels.includes("headYaw"));
 });
 
 test("clamps out-of-range numeric inputs instead of emitting an invalid snapshot", () => {
@@ -44,7 +48,8 @@ test("clamps out-of-range numeric inputs instead of emitting an invalid snapshot
   input.revision = -3;
   const state = projectSemanticBodyState(input);
   assert.equal(validateSemanticBodyState(state), true);
-  assert.equal(state.pose.headYaw, 1);
+  assert.equal(state.pose.headRoll, 1);
+  assert.equal(state.pose.headYaw, undefined);
   assert.equal(state.gaze.x, -1);
   assert.equal(state.gaze.y, 1);
   assert.equal(state.speech.mouthOpen, 1);
