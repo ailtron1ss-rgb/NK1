@@ -11,7 +11,6 @@ import { P76IdentityLifeOS } from '../system/P76IdentityLifeOS.ts';
 import { P78AutobiographicalSelfContinuity } from '../developmental/P78AutobiographicalSelfContinuity.ts';
 import { P80UnifiedSelfState } from '../cognition/P80UnifiedSelfState.ts';
 import { UserModelEvidenceModel } from '../cognition/UserModelEvidenceModel.ts';
-import { sanitizeAutonomousDialogueMessage } from '../system/AutonomousSocialInitiativeEngine.ts';
 import { P48FunctionalAwarenessCore } from '../cognition/P48FunctionalAwarenessCore.ts';
 import { P49TemporalLifeEngine } from '../developmental/P49TemporalLifeEngine.ts';
 import { P84AutobiographicalContinuityFabric } from '../developmental/P84AutobiographicalContinuityFabric.ts';
