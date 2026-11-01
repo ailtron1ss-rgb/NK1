@@ -1,3 +1,8 @@
+## [NK1][Memory] Pin dataset provenance and enforce checksum (WorkPass82, 2026-11-01)
+
+- Make dataset ID, file name and license metadata explicit in benchmark reports; reviewed ReMe data no longer inherits the original LongMemEval source URL or MIT license claim.
+- Require an exact ReMe dataset revision for reviewed input and verify the published source-file SHA-256 before parsing; preserve a separate original cleaned-S checksum.
+
 ## [NK1][Memory] Add category-level retrieval diagnostics and scope labels (WorkPass82, 2026-11-01)
 
 - Export baseline and MemoryOS2 metrics per LongMemEval question type, preserving corrected abstentions within their original categories.
