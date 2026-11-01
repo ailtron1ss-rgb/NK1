@@ -1,3 +1,9 @@
+## [NK1][Memory] Reject numeric-string coercion during snapshot restore (2026-11-01)
+- Treat persisted numeric fields as valid only when the JSON value is a finite number; numeric-looking strings no longer become timestamps, expiry metadata, salience or confidence through JavaScript coercion.
+- A numeric-string expiry now fails closed to an empty validity interval, and a fact with numeric-string confidence is downgraded to `unknown`.
+- Add a focused regression covering created/access/validity timestamps, salience, confidence, expiry diagnostics and fact-authority downgrade.
+- Compatibility note: canonical JSON snapshots serialize numeric fields as JSON numbers; no legacy string-number format is documented or accepted by the current snapshot contract.
+
 ## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
 - Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
 - Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
