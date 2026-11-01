@@ -1,3 +1,10 @@
+## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
+- Require finite JSON numbers for restored MemoryOS2 timestamps, expiry, salience, confidence, provenance scores, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
+- Reject numeric-string revision-history timestamps and nested evidence-source timestamps, freshness values and authority scores instead of treating them as trusted provenance.
+- Close malformed non-null validity expiries and downgrade facts whose confidence is not a finite number in [0, 1].
+- Compatibility boundary: canonical MemoryOS2 snapshots serialize numeric fields as JSON numbers; no string-number snapshot contract is documented.
+- Add isolated real MemoryOS2 restore regression coverage for timestamp, expiry, salience, confidence, epistemic status, revision history and nested evidence-source provenance.
+
 ## [NK1][Embodiment] Reuse the anime toon gradient texture (2026-11-01)
 - Reuse one lazily-created 3-band DataTexture across procedural and imported GLB toon materials instead of allocating one GPU texture per material. This prevents avoidable GPU resource growth when avatar meshes/models are replaced or reloaded.
 - Add a source-contract regression for the shared texture cache. The texture remains module-scoped and immutable after initialization; VRM-authored MToon materials remain untouched.
