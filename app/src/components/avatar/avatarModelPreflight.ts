@@ -2,6 +2,7 @@ import {
   MAX_AVATAR_ACCESSOR_ELEMENTS,
   MAX_AVATAR_ACCESSORS,
   MAX_AVATAR_ANIMATIONS,
+  MAX_AVATAR_BUFFERS,
   MAX_AVATAR_BUFFER_VIEWS,
   MAX_AVATAR_IMAGES,
   MAX_AVATAR_MATERIALS,
@@ -118,6 +119,7 @@ export function preflightAvatarModel(
   boundedArray("animations", MAX_AVATAR_ANIMATIONS);
   boundedArray("skins", MAX_AVATAR_SKINS);
   boundedArray("scenes", MAX_AVATAR_SCENES);
+  const buffers = boundedArray("buffers", MAX_AVATAR_BUFFERS);
   boundedArray("bufferViews", MAX_AVATAR_BUFFER_VIEWS);
   const accessors = boundedArray("accessors", MAX_AVATAR_ACCESSORS);
 
@@ -152,9 +154,8 @@ export function preflightAvatarModel(
   }
   // Keep the node array bounded even though it is not needed by later checks.
   void nodes;
-  const buffers = document.buffers;
-  if (buffers !== undefined && !Array.isArray(buffers)) return reject("gltf-buffers-invalid");
-  for (const entry of (Array.isArray(buffers) ? buffers : []) as unknown[]) {
+  let embeddedBufferSeen = false;
+  for (const [index, entry] of buffers.entries()) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return reject("gltf-buffer-invalid");
     const buffer = entry as Record<string, unknown>;
     if (buffer.uri !== undefined && typeof buffer.uri !== "string") return reject("gltf-buffer-uri-invalid");
@@ -164,13 +165,18 @@ export function preflightAvatarModel(
     if (!Number.isSafeInteger(buffer.byteLength) || Number(buffer.byteLength) <= 0) {
       return reject("gltf-buffer-length-invalid");
     }
-    if (buffer.uri === undefined && Number(buffer.byteLength ?? 0) > binaryChunkLength) {
-      return reject("glb-bin-chunk-too-small");
-    }
-    if (buffer.uri === undefined && Number(buffer.byteLength ?? 0) > 0 && !hasBinaryChunk) {
-      return reject("glb-bin-chunk-missing");
+    if (buffer.uri === undefined) {
+      // GLB 2.0 permits exactly one URI-less buffer, at index zero. Its BIN
+      // chunk may contain only the up-to-three padding bytes required by GLB.
+      if (index !== 0 || embeddedBufferSeen) return reject("glb-buffer-layout-invalid");
+      embeddedBufferSeen = true;
+      if (!hasBinaryChunk) return reject("glb-bin-chunk-missing");
+      const paddingBytes = binaryChunkLength - Number(buffer.byteLength);
+      if (paddingBytes < 0) return reject("glb-bin-chunk-too-small");
+      if (paddingBytes > 3) return reject("glb-bin-chunk-length-mismatch");
     }
   }
+  if (hasBinaryChunk && !embeddedBufferSeen) return reject("glb-bin-chunk-unreferenced");
 
   const images = document.images;
   if (images !== undefined && !Array.isArray(images)) return reject("gltf-images-invalid");
