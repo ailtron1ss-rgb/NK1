@@ -1,17 +1,21 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Рабочая ветка:** `workpass70-source`  
-**Последний проверенный кодовый SHA:** `b4f1ad8389a51ad3dc6687ff65e75f5090ef37fb`
+**Проверенный PR HEAD:** `bd62202ca462af8e0e1647bedc978f6f17540394`  
+**Merge commit в `workpass70-source`:** `ef1ed6b078d4001f526c9c82c86d7d81b950507f`
 
 ### Реальная работа в текущем проходе
 - **3D/GPU lifecycle:** добавлена очистка уникальных ресурсов Three.js (геометрии, материалы, текстуры, skeletons) с сохранением renderer-owned toon gradient.
 - **GLB material conversion:** после замены исходных MeshStandardMaterial/MeshPhysicalMaterial на toon-материалы теперь освобождаются исходные material/program resources; текстуры не уничтожаются, поскольку остаются подключёнными к новым материалам.
 - **Regression:** тесты используют реальные Three.js ресурсы и проверяют однократный dispose shared resources, сохранение текстур и освобождение заменённых исходных материалов.
+- **Renderer architecture:** toon-material pipeline вынесен из React-компонента в `threeToonMaterials.ts`; добавлены реальные тесты кэша, преобразования Standard/Physical материалов, неизменности non-PBR материалов, сохранения текстур и срока жизни общей gradient texture.
+- **CI:** отдельная команда `test:three-toon-materials` включена в `NK1 embodiment switch contract`.
 - **Release evidence:** обновлена фиксация текущего fail-closed license audit ранее; release-процесс не обходился и не ослаблялся.
 
 ### Проверка exact code SHA
-- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277297970) на `b4f1ad8389a51ad3dc6687ff65e75f5090ef37fb`: app script regression, app typecheck, development build, runtime typecheck, Hexis lineage/server restart, memory retrieval + unanswerable holdout, annotation pack, recovered rebuild/Live2D/avatar, P23/EILS/cognitive spine, local LLM, tool governance, language HTTP and speech/persistence regression steps — все завершились успешно.
-- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277297962) на том же SHA.
+- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277738534) на PR HEAD `bd62202ca462af8e0e1647bedc978f6f17540394`: app script regression, app typecheck, development build, runtime typecheck, Hexis, memory retrieval, recovered rebuild/Live2D/avatar, P23/EILS/cognitive spine, local LLM, tool governance, language HTTP и speech/persistence regressions — все завершились успешно.
+- [NK1 embodiment switch contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277738546): renderer-neutral handoff, procedural/VRM avatar contract, новый реальный Three.js toon-material lifecycle test и app typecheck — SUCCESS.
+- Дополнительно прошли Aspect 02, Aspect 10, Hexis, MemoryOS2 lineage, cognitive planner, WorkPass79, WorkPass108 и WorkPass110. Всего **10/10 применимых workflow — SUCCESS** на PR HEAD.
 
 ### Что всё ещё НЕ доказано
 - Полноценный browser/WebGL E2E с реальным импортом, заменой, повторной загрузкой VRM/GLB и замером renderer.info/GPU residency.
