@@ -65,7 +65,9 @@ function normalizeQuestion(candidate:unknown,index:number):LongMemEvalQuestion{
  if(answerSessionIds.length!==new Set(answerSessionIds).size)throw new Error('LongMemEval answer_session_ids contains duplicates: '+id);
  const sessionIds=new Set(sessions.map(session=>session.id));
  for(const answerId of answerSessionIds)if(!sessionIds.has(answerId))throw new Error('LongMemEval unknown answer session: '+id+':'+answerId);
- const abstention=id.toLocaleLowerCase().endsWith('_abs')||type.toLocaleLowerCase()==='abstention';
+ // Reviewed LongMemEval ground truth may mark an otherwise ordinary question as
+ // unanswerable by clearing answer_session_ids; do not require an _abs suffix.
+ const abstention=id.toLocaleLowerCase().endsWith('_abs')||type.toLocaleLowerCase()==='abstention'||answerSessionIds.length===0;
  if(abstention&&answerSessionIds.length>0)throw new Error('LongMemEval abstention question has answer sessions: '+id);
  if(!abstention&&answerSessionIds.length===0)throw new Error('LongMemEval answerable question has no answer sessions: '+id);
  return {id,type,query,at,sessions,answerSessionIds:[...new Set(answerSessionIds)].sort(),answerable:!abstention,independenceGroupId:''};
