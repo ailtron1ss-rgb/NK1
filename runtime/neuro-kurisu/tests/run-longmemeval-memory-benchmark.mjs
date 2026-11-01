@@ -4,7 +4,7 @@ import path from 'node:path';
 import { DEFAULT_LONGMEMEVAL_REVISION, runLongMemEvalMemoryBenchmark } from '../src/organism/memory/LongMemEvalAdapter.ts';
 
 const args=process.argv.slice(2);
-const flag=(name:string)=>{const index=args.indexOf(name);return index<0?undefined:args[index+1];};
+const flag=(name)=>{const index=args.indexOf(name);return index<0?undefined:args[index+1];};
 const input=flag('--dataset');
 if(!input){console.error('Usage: node --experimental-strip-types tests/run-longmemeval-memory-benchmark.mjs --dataset <path>/longmemeval_s_cleaned.json [--revision <40-char-sha>] [--out <report.json>]');process.exit(2);}
 if(!['longmemeval_s_cleaned.json','longmemeval_s_reme_cleaned.json'].includes(path.basename(input))){console.error('Use LongMemEval-S cleaned or reviewed cleaned-S JSON; do not pass M or oracle data to this adapter.');process.exit(2);}
