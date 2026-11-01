@@ -1842,6 +1842,17 @@ export class OrganismRuntime {
     this.lastWorldCheckpointAt = Date.now();
   }
 
+
+  /** Record only caller-confirmed low-risk preferences through the canonical evidence owner. */
+  async recordExplicitUserPreference(input: Parameters<OrganismCore['recordExplicitUserModelEvidence']>[0]) {
+    return this.enqueue(() => this.core.recordExplicitUserModelEvidence(input));
+  }
+
+  /** Correct an explicit preference without bypassing provenance, deduplication or persistence. */
+  async correctExplicitUserPreference(input: Parameters<OrganismCore['correctExplicitUserModelEvidence']>[0]) {
+    return this.enqueue(() => this.core.correctExplicitUserModelEvidence(input));
+  }
+
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
   async autonomousDialogueReady() {
     return this.enqueue(async () => this.core.pendingAutonomousSocialInitiativeMessage());

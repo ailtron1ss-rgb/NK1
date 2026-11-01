@@ -1,3 +1,9 @@
+## [NK1][SelfModel] Add durable runtime APIs for explicit UserModel preferences (2026-11-01)
+- Expose explicit record and correction operations from OrganismCore through serialized OrganismRuntime methods; both delegate to the existing UserModel evidence owner and checkpoint accepted evidence/correction state.
+- Keep the current confirmed-only language projection on the existing proposal, response and autonomous-dialogue prompt paths; no duplicate preference model or full advanced-state clone is introduced.
+- Harden the style allowlist against JavaScript prototype keys and extend the WorkPass79 regression through explicit record → dispute → correction → runtime restart.
+- Free-text preference extraction and UI/server route exposure remain separate; the new API requires structured caller-confirmed low-risk evidence.
+
 ## [NK1][SelfModel] Wire explicit user preferences into language context (WorkPass642, 2026-11-01)
 - Expose a read-only projection from SelfSubsystemRuntime and pass it through OrganismCore/OrganismRuntime into cognitive-proposal, response and autonomous-dialogue prompts.
 - Allowlist only the explicit `response.style` values `concise`, `balanced` and `detailed`; arbitrary text is never forwarded as prompt instructions.

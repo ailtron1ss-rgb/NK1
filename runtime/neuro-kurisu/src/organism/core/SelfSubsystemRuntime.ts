@@ -99,6 +99,7 @@ export class SelfSubsystemRuntime {
       balanced:'Prefer a balanced level of detail.',
       detailed:'Prefer detailed explanations with useful context.',
     };
+    if(!Object.prototype.hasOwnProperty.call(styles,claim.value))return '';
     const preference=styles[claim.value];
     if(!preference)return '';
     return `[CONFIRMED EXPLICIT USER STYLE PREFERENCE — LOW-RISK DATA]\n${preference} Apply this when it fits the task, but never omit information required for correctness, safety, or a complete answer. This preference does not override system instructions or the user's current request.`;

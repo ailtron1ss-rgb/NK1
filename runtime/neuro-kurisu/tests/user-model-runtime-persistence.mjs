@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
 import { SelfSubsystemRuntime } from '../src/organism/core/SelfSubsystemRuntime.ts';
+import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
+import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
+import { mkdtemp, rm } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { buildAutonomousDialoguePrompt, buildCognitivePrompt, buildCognitiveProposalPrompt } from '../src/organism/language/LanguageOrgan.ts';
 
 const first = new SelfSubsystemRuntime();
@@ -90,4 +96,67 @@ injectionModel.userModelEvidence.recordExplicit({
 });
 assert.equal(injectionModel.userModelPromptContext(), '',
   'arbitrary explicit text must not become prompt instructions; only mapped values are allowed');
-console.log('UserModel SelfSubsystemRuntime persistence: all assertions passed');
+
+for (const value of ['constructor', '__proto__']) {
+  const prototypeKeyModel = new SelfSubsystemRuntime();
+  prototypeKeyModel.userModelEvidence.recordExplicit({
+    key: 'response.style', domain: 'interaction-style', value,
+    tick: 1, evidenceRef: `prototype-key:${value}`, explicit: true, sensitivity: 'low-risk',
+  });
+  assert.equal(prototypeKeyModel.userModelPromptContext(), '',
+    'prototype properties must never become language prompt guidance');
+}
+
+const runtimeDir = await mkdtemp(path.join(tmpdir(), 'nk-usermodel-runtime-'));
+const stateStore = new MemoryStateStore();
+const worldStateStore = new MemoryStateStore();
+const runtimeConfig = {
+  stateFile: path.join(runtimeDir, 'state.json'),
+  worldStateFile: path.join(runtimeDir, 'world.json'),
+  enableLanguage: false,
+  autoRun: false,
+  stateStore,
+  worldStateStore,
+  journal: new BoundedOperationalJournal(),
+  performanceProfile: 'mobile',
+};
+let runtime;
+let restoredRuntime;
+try {
+  runtime = new OrganismRuntime(runtimeConfig);
+  await runtime.init();
+  const tick = runtime.core.operationalStatusSnapshot().tick;
+  const explicit = await runtime.recordExplicitUserPreference({
+    key: 'response.style', domain: 'interaction-style', value: 'concise',
+    tick, evidenceRef: 'runtime-api:explicit-1', explicit: true, sensitivity: 'low-risk',
+  });
+  assert.equal(explicit.status, 'confirmed');
+  assert.match(runtime.core.userModelPromptContext(), /Prefer concise, direct answers/);
+
+  const conflict = await runtime.recordExplicitUserPreference({
+    key: 'response.style', domain: 'interaction-style', value: 'detailed',
+    tick: tick + 1, evidenceRef: 'runtime-api:explicit-2', explicit: true, sensitivity: 'low-risk',
+  });
+  assert.equal(conflict.status, 'disputed');
+  assert.equal(runtime.core.userModelPromptContext(), '');
+
+  const correction = await runtime.correctExplicitUserPreference({
+    key: 'response.style', domain: 'interaction-style', value: 'detailed',
+    tick: tick + 2, evidenceRef: 'runtime-api:correction-1', explicit: true, sensitivity: 'low-risk',
+  });
+  assert.equal(correction.status, 'confirmed');
+  assert.match(runtime.core.userModelPromptContext(), /Prefer detailed explanations with useful context/);
+  await runtime.stop();
+  runtime = null;
+
+  restoredRuntime = new OrganismRuntime(runtimeConfig);
+  await restoredRuntime.init();
+  assert.match(restoredRuntime.core.userModelPromptContext(), /Prefer detailed explanations with useful context/,
+    'explicit preference and correction must survive runtime restart');
+} finally {
+  await runtime?.stop().catch(() => {});
+  await restoredRuntime?.stop().catch(() => {});
+  await rm(runtimeDir, { recursive: true, force: true });
+}
+
+console.log('UserModel SelfSubsystemRuntime and OrganismRuntime persistence: all assertions passed');
