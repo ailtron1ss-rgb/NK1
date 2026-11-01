@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MAX_AVATAR_MODEL_BYTES, preflightAvatarModel } from "../src/components/avatar/avatarModelPreflight.ts";
+import { MAX_AVATAR_MODEL_BYTES } from "../src/components/avatar/avatarModelLimits.ts";
+import { preflightAvatarModel } from "../src/components/avatar/avatarModelPreflight.ts";
 
 const JSON_CHUNK = 0x4e4f534a;
 const BIN_CHUNK = 0x004e4942;
