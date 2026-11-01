@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Drive all available hybrid GLB viseme targets (2026-11-01)
+- Replace the generic GLB two-shape mouth approximation with a dedicated morph adapter for `aa`, `ee`, `ih`, `oh`, and `ou` targets, selected from the bounded `MouthPose` articulatory class and form.
+- Preserve a strict neutral reset for all recognized mouth channels when speech is inactive, closed, resting or malformed; expression and blink targets remain independently controlled.
+- Add deterministic coverage for each viseme class, alias fallback, inactive-speech reset and malformed morph dictionaries; wire it into the normalized VRM/GLB workflow.
+- This improves renderer-side mouth-shape coverage but does not claim phoneme-level acoustic inference, lip-sync drift measurements or Android visual soak.
+
 ## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
 - Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
 - Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
