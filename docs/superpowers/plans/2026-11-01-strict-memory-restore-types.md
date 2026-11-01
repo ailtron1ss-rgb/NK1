@@ -4,7 +4,7 @@
 `workpass70-source` at `142df54b6880805092bfd8e861798240747b0797`.
 
 ## Tasks
-1. Add a real MemoryOS2 restore fixture containing numeric-looking strings in timestamps, validity bounds, salience, confidence and revision history.
+1. Add a real MemoryOS2 restore fixture containing numeric-looking strings in timestamps, validity bounds, salience, confidence, revision history and nested evidence-source provenance.
 2. Confirm the targeted memory-integrity workflow fails at the new assertion while runtime typecheck passes.
 3. Tighten the shared finite-number helper; independently validate revision-history timestamps and confidence without coercion.
 4. Document the compatibility boundary in CHANGELOG.
