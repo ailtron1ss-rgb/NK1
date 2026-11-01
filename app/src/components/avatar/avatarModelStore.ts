@@ -1,4 +1,5 @@
-export const MAX_AVATAR_MODEL_BYTES = 90 * 1024 * 1024;
+import { MAX_AVATAR_MODEL_BYTES } from "./avatarModelLimits.ts";
+export { MAX_AVATAR_MODEL_BYTES } from "./avatarModelLimits.ts";
 const DB = "nk1-avatar-model-store";
 const VERSION = 1;
 const STORE = "active-model";
