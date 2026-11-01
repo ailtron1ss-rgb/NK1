@@ -8,8 +8,8 @@
 
 ## Active code work — 2026-11-01
 
-- **Draft PR #630** (`workpass612-personality-restore`): fixes a revoked-Proxy escape in planner restore and replaces P2702 personality snapshot restore with own-data-only validation, fixed canonical vectors, finite counters/metrics and bounded action/trust maps. Adds WorkPass612 adversarial tests and CI wiring. Exact-head Actions pending; do not mark merged or released.
-- **Draft PR #619** (`workpass610-affect-restore`): protects EmotionAppraisalEngine snapshot restore. Its old branch head has a successful unified-organism workflow, but it is behind/diverged from the current source base and the WorkPass610 focused test was not independently confirmed. Rebase/update and run exact-head validation before merge.
+- **Draft PR #630** (`workpass612-personality-restore`): fixes a revoked-Proxy escape in planner restore and replaces P2702 personality snapshot restore with own-data-only validation, fixed canonical vectors, finite counters/metrics and bounded action/trust maps. Adds WorkPass612 adversarial tests and CI wiring. First exact-head runtime typecheck passed; the new test's incorrect expectation was fixed after observing CI logs. Follow-up Actions for subsequent SHA returned failures without accessible steps/logs; final focused status remains UNKNOWN. Do not mark merged or released.
+- **Draft PR #619** (`workpass610-affect-restore`): protects EmotionAppraisalEngine snapshot restore. Rebased onto live source head `f921007…` (ahead 9 / behind 0); WorkPass610 focused test and WorkPass172 interoceptive regression are now wired into unified organism CI. Exact-head workflow results are not yet validated.
 - No release archive was rebuilt or inspected during this pass. The October 19 ZIP remains historical and lacks November changes.
 
 
