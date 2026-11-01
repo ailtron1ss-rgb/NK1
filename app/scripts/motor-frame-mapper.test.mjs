@@ -58,6 +58,7 @@ test("rejects calibration ranges outside the renderer-neutral normalized contrac
 test("rejects malformed motor-frame joint indexes and invalid cursors", () => {
   assert.equal(mapMotorFrameToSemanticPose(frame({ reachedJointIds: ["left_elbow", "left_elbow"] }), profile).reason, "invalid-motor-frame");
   assert.equal(mapMotorFrameToSemanticPose(frame({ blockedJointIds: ["bad id"] }), profile).reason, "invalid-motor-frame");
+  assert.equal(mapMotorFrameToSemanticPose(frame({ reason: "x".repeat(257) }), profile).reason, "invalid-motor-frame");
   assert.equal(mapMotorFrameToSemanticPose(frame(), profile, { previous: { tick: -1, atMs: 120 } }).reason, "invalid-motor-frame-cursor");
   assert.equal(mapMotorFrameToSemanticPose(frame(), profile, { previous: { tick: 6, atMs: -1 } }).reason, "invalid-motor-frame-cursor");
 });
