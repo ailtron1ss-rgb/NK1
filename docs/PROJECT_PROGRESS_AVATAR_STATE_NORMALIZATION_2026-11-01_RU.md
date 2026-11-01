@@ -10,3 +10,4 @@
 - This workflow correction was identified from exact GitHub Actions logs; it is not inferred from a generic CI failure.
 - Make the TypeScript input contract match reality: gaze and mouth samples are optional/nullable; speech phase and event identity enter as untrusted values and are normalized before projection. Add a separate regression for omitted samples during reconnect, not only explicit `null`.
 - Disable setup-node's implicit package-manager cache in the isolated preflight workflow because the repository intentionally has no root lockfile. Exact-head parser-preflight run passed after this correction.
+- Reviewed the subsequent source-branch MotorFrame calibration hardening commit: it changes separate motor-mapping files and the shared CHANGELOG; no file overlap with this PR's avatar speech projection boundary was found. The PR remains one commit behind the source branch, and its next merge-ref CI run must validate the combined base/head state before merge.
