@@ -1,0 +1,172 @@
+ # Mirrored on main as the default-branch workflow_run anchor for validated source release.
+name: NeuroCore core regression validation
+
+on:
+  push:
+    branches: [workpass70-source, nk1-integration-workspace-2026-10-22]
+  pull_request:
+    branches: [workpass70-source, workpass203-independent-candidate-evaluator, nk1-integration-workspace-2026-10-22, rebuild]
+    paths:
+      - "app/**"
+      - "runtime/neuro-kurisu/src/**"
+      - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - "runtime/neuro-kurisu/tsconfig.clean.json"
+      - "runtime/neuro-kurisu/src/node-shims.d.ts"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - "tools/audit-assets.mjs"
+      - "tools/audit-runtime-test-coverage.mjs"
+      - ".github/workflows/workpass71-validation.yml"
+      - ".nvmrc"
+      - "CHANGELOG.md"
+      - "README.md"
+      - "AGENTS.md"
+      - "SUPER_VERSION.json"
+      - "package.json"
+      - "tools/verify-ci-reliability.mjs"
+      - "tools/verify-ci-reliability.test.mjs"
+      - "docs/CI_RELIABILITY_RUNBOOK_RU.md"
+      - "docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md"
+      - 'runtime/neuro-kurisu/scripts/typecheck-runtime.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  targeted-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Verify selected Node.js matches repository pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'expected=%s actual=%s\n' "$expected" "$actual"
+          case "$expected" in
+            *.*.*) test "$actual" = "$expected" ;;
+            *) case "$actual" in "$expected"|"$expected".*) ;; *) echo "Node version $actual does not match .nvmrc pin $expected" >&2; exit 1 ;; esac ;;
+          esac
+      - name: Audit CI Action/runtime compatibility contract
+        run: npm run audit:ci-reliability
+      - name: Test CI reliability audit regressions
+        run: node --test tools/verify-ci-reliability.test.mjs
+      - name: Install app dependencies without lifecycle scripts
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Audit canonical public asset ownership
+        run: node tools/audit-assets.mjs
+      - name: Audit runtime test reachability and required coverage
+        run: node tools/audit-runtime-test-coverage.mjs
+      - name: Validate grapheme timeline
+        run: npm --prefix app run test:embodiment-timeline
+      - name: Native speech provider event UI regression
+        run: npm --prefix app run test:native-speech-provider-events
+      - name: Run app script regression suite
+        run: npm --prefix app run test:scripts
+      - name: App typecheck
+        run: npm --prefix app run typecheck
+      - name: App development bundle build
+        run: npm --prefix app run build:dev
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Hexis evidence lineage and server restart persistence
+        run: npm --prefix runtime/neuro-kurisu run test:hexis-evidence-lineage && npm --prefix runtime/neuro-kurisu run test:hexis-server-smoke
+      - name: Memory retrieval experiment including unanswerable holdout
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
+      - name: Memory retrieval annotation pack regression
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-annotation-pack
+      - name: Recovered rebuild, causal replay, avatar storage, and Live2D regressions
+        run: npm run test:rebuild-recovered
+      - name: P23 persisted learning restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:workpass310:p23-restore-integrity
+      - name: WorkPass313 user model, EILS, and bounded sleep consolidation
+        run: npm --prefix runtime/neuro-kurisu run test:p313:user-mind-and-eils
+      - name: WorkPass314 verified skill holdout receipt gate
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p23-verified-skill-revision-gate.mjs
+      - name: Skill acquisition learning-split integrity
+        run: |
+          node --experimental-strip-types runtime/neuro-kurisu/tests/skill-acquisition-split-integrity.mjs
+          node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-47-integration.mjs
+      - name: WorkPass314 canonical memory doctor
+        run: npm --prefix runtime/neuro-kurisu run test:p314:memory-doctor
+      - name: WorkPass318 read-only memory doctor CLI
+        run: npm --prefix runtime/neuro-kurisu run test:p318:memory-doctor-cli
+      - name: WorkPass319 causal cognitive-cycle phase ordering
+        run: npm --prefix runtime/neuro-kurisu run test:p319:cycle-order
+      - name: WorkPass320 cognitive dependency restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:p320:cognitive-dependency-restore
+      - name: WorkPass321 eleven-phase cognitive causal spine
+        run: npm --prefix runtime/neuro-kurisu run test:p321:expanded-cognitive-phase-spine
+      - name: WorkPass322 cognitive resource restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:p322:cognitive-resource-restore
+      - name: WorkPass323 nested cognitive-loop persistence separation
+        run: npm --prefix runtime/neuro-kurisu run test:p323:cognitive-loop-persistence-scope
+      - name: WorkPass324 cognitive interrupt episode accounting
+        run: npm --prefix runtime/neuro-kurisu run test:p324:interrupt-episodes
+      - name: WorkPass325 Core eleven-phase causal spine
+        run: npm --prefix runtime/neuro-kurisu run test:p325:core-eleven-phase-spine
+      - name: WorkPass315 self-model evidence write gate
+        run: npm --prefix runtime/neuro-kurisu run test:p315:self-model-evidence-gate
+      - name: WorkPass316 HYVE-inspired relational tether
+        run: npm --prefix runtime/neuro-kurisu run test:p316:relational-tether
+      - name: WorkPass317 bounded MicroDream association hypotheses
+        run: npm --prefix runtime/neuro-kurisu run test:p317:micro-dream-associations
+      - name: Local LLM bounded-response regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-chat-provider-workpass40.mjs
+      - name: Optional live local LLM smoke (skips without explicit loopback URL)
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/local-llm-live-smoke.mjs
+      - name: Local LLM backend selection regression
+        run: node runtime/neuro-kurisu/tests/local-llm-selection-workpass74.mjs
+      - name: Governed tool input/output contract and approval-boundary regression
+        run: npm --prefix runtime/neuro-kurisu run test:tool-input-contracts-workpass624
+      - name: Language invocation ordering regression
+        run: node runtime/neuro-kurisu/tests/language-invoke-order-regression.mjs
+      - name: End-to-end local language HTTP regression
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/server-language-http-fake-provider.mjs
+      - name: Speech gateway, timescale and persistence regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd runtime/neuro-kurisu
+          node --experimental-strip-types tests/workpass71-continuum-timescale.mjs
+          node --experimental-strip-types tests/workpass69-speech-interruption-gateway.mjs
+          node --experimental-strip-types tests/termux-tts-concurrency-workpass69.mjs
+          npm run test:workpass628:native-speech-events
+          npm run test:workpass629:native-speech-host-router
+          npm run test:workpass630:native-speech-sse
+          node --experimental-strip-types tests/workpass64-archived-receipt-reconciliation.mjs
+          node --experimental-strip-types tests/organism-smoke.mjs
+          node --experimental-strip-types tests/memory-retrieval-experiment.mjs
+          node --experimental-strip-types tests/cold-retrieval-residency-regression.mjs
+          node --experimental-strip-types tests/r15-temporal-memory-behavior.mjs
+          node --experimental-strip-types tests/memory-temporal-inspector-closure.mjs
+          node --experimental-strip-types tests/memory-revision-history-budget-workpass36.mjs
+          node --experimental-strip-types tests/memory-retrieval-candidate-coverage.mjs
+          node --experimental-strip-types tests/memory-retrieval-numeric-terms.mjs
+          node --experimental-strip-types tests/memory-retrieval-fuzzy-workpass32.mjs
+          node --experimental-strip-types tests/workpass55-memory-concept-recall.mjs
+          node --experimental-strip-types tests/memory-query-intent-workpass51.mjs
+          node --experimental-strip-types tests/p2684-memory-residency.mjs
+          node --experimental-strip-types tests/p2697-mobile-residency.mjs
+          node --experimental-strip-types tests/memory-background-index-workpass56.mjs
+          node --experimental-strip-types tests/local-embedding-privacy-workpass56.mjs
+          node --experimental-strip-types tests/memory-policy-outcome-verification-gate-workpass72.mjs
+          node --experimental-strip-types tests/workpass72-verification-provenance-boundary.mjs
+          node --experimental-strip-types tests/memory-semantic-embeddings-workpass33.mjs
+          node --experimental-strip-types tests/memory-cognition-retrieval-workpass34.mjs
+          node --experimental-strip-types tests/p2693-delayed-policy-credit.mjs
+          node --experimental-strip-types tests/p2695-organism-policy-decision-flow.mjs
