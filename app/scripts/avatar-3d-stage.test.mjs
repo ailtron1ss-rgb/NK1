@@ -12,7 +12,7 @@ test("a real Three.js 3D mode exists rather than reusing the legacy Avatar2D ali
 });
 test("local VRM/GLB upload is bounded and browser-local",async()=>{
  const stage=await readFile(stagePath,"utf8"),store=await readFile(path.join(root,"src/components/avatar/avatarModelStore.ts"),"utf8");
- assert.match(stage,/accept="\.vrm,\.glb,model\/gltf-binary"/);assert.match(stage,/MAX_AVATAR_MODEL_BYTES/);assert.match(stage,/saveAvatarModel\(blob,name\)/);assert.match(stage,/loadStoredAvatarModel/);assert.match(stage,/clearStoredAvatarModel/);assert.match(store,/90 \* 1024 \* 1024/);assert.match(store,/indexedDB\.open/);assert.doesNotMatch(stage,/https?:\/\/[^"'\s]+\.glb/i);
+ assert.match(stage,/accept="\.vrm,\.glb,model\/gltf-binary"/);assert.match(stage,/MAX_AVATAR_MODEL_BYTES/);assert.match(stage,/saveAvatarModel\(blob,name\)/);assert.match(stage,/loadStoredAvatarModel/);assert.match(stage,/clearStoredAvatarModel/);assert.match(store,/avatarModelLimits\.ts/);assert.match(await readFile(path.join(root,"src/components/avatar/avatarModelLimits.ts"),"utf8"),/90 \* 1024 \* 1024/);assert.match(store,/indexedDB\.open/);assert.doesNotMatch(stage,/https?:\/\/[^"'\s]+\.glb/i);
 });
 test("the 3D body consumes organism emotion, action, arousal/valence, gaze, sleep and speech",async()=>{
  const stage=await readFile(stagePath,"utf8"),parent=await readFile(path.join(root,"src/components/AvatarStage.tsx"),"utf8");
@@ -70,4 +70,11 @@ test("avatar stage delegates material conversion and renderer-owned texture pres
  assert.match(toon,/const replaced = new Set<any>\(\)/);
  assert.match(toon,/replaced\.add\(source\)/);
  assert.match(toon,/disposeReplacedThreeMaterials\(replaced\)/);
+});
+
+test("uploaded model bytes are structurally preflighted before GLTFLoader parses them",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/import \{ preflightAvatarModel \} from "\.\/avatar\/avatarModelPreflight"/);
+ assert.match(stage,/preflightAvatarModel\(data,name\)/);
+ assert.ok(stage.indexOf("preflightAvatarModel(data,name)")<stage.indexOf("loader.parse(data"));
 });
