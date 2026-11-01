@@ -1,3 +1,10 @@
+## [NK1][Cognition] Make protective spine mode a hard secondary-work budget gate (2026-11-01)
+- Prevent external urgency and cadence divisibility from forcing research, world rollout, shadow simulation or project work while the cognitive spine is in `protect` mode.
+- Keep external events available to core/reflex and governance handling outside this optional secondary-work scheduler.
+- Add regressions for high-urgency external events under explicit sleep mode and under resource-pressure-derived protect mode; verify skipped operations remain counted as opportunities and budget deferrals.
+- Wire the existing WorkPass39 cognitive-spine suite into the unified organism runtime workflow.
+- This hardens resource governance; it does not claim improved cognitive quality, device energy profiling or production soak.
+
 ## [NK1][Persistence] Write backup snapshots atomically before primary replacement (2026-11-01)
 - Copy the previous primary into a unique backup temp file rather than truncating the live `.bak` path.
 - Fsync the backup temp, then atomically rename it over the backup; a crash during copy/fsync leaves the previous verified backup untouched.
