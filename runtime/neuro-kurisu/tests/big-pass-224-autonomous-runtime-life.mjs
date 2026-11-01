@@ -36,3 +36,49 @@ assert.equal(resumed.shouldAct,true,"internal initiative resumes once its cadenc
 assert.equal(resumed.autonomous,true);
 assert.equal(cadenceCtl.summary().selfStartedCycles,2);
 assert.equal(cadenceCtl.summary().continuedAfterSilence,1,"silence continuation compares against the prior activity timestamp");
+
+// Restore boundary: reject accessors without executing them and clamp malformed scalar state.
+const restoreBoundary = new AutonomousRuntimeLifeController();
+let restoreGetterCalls = 0;
+const hostileState = {
+  ticks: -5,
+  selfStartedCycles: Number.MAX_SAFE_INTEGER + 1,
+  selfAuthoredActivity01: 9,
+  meanOutcome01: Number.NaN,
+  lastMode: "not-a-mode",
+  lastReason: "   ",
+  recent: [
+    { tick: 8, mode: "active", reason: "newest", autonomous: true, outcome01: 1.4, at: 800 },
+    { tick: 7, mode: "reflect", reason: "older", autonomous: false, outcome01: 0.4, at: 700 },
+    { tick: 9, mode: "invalid", reason: "bad-mode", autonomous: true, outcome01: 0.5, at: 900 },
+    ,
+  ],
+};
+Object.defineProperty(hostileState, "ambientCycles", {
+  enumerable: true,
+  get() { restoreGetterCalls += 1; return 999; },
+});
+restoreBoundary.restore(hostileState);
+const normalizedRestore = restoreBoundary.snapshot();
+assert.equal(restoreGetterCalls, 0, "restore must never execute accessors");
+assert.equal(normalizedRestore.ticks, 0, "negative counters fall back to defaults");
+assert.equal(normalizedRestore.selfStartedCycles, 0, "unsafe counters fall back to defaults");
+assert.equal(normalizedRestore.selfAuthoredActivity01, 1, "bounded ratios are clamped");
+assert.equal(normalizedRestore.meanOutcome01, 0.5, "non-finite ratios fall back to defaults");
+assert.equal(normalizedRestore.lastMode, "idle", "unknown modes fall back to defaults");
+assert.equal(normalizedRestore.lastReason, "initial", "blank reasons fall back to defaults");
+assert.deepEqual(normalizedRestore.recent.map((entry) => entry.reason), ["newest", "older"]);
+assert.equal(normalizedRestore.recent[0].outcome01, 1, "restored outcome ratios are clamped");
+
+const proxyRestore = new AutonomousRuntimeLifeController();
+assert.doesNotThrow(() => proxyRestore.restore(new Proxy({}, {
+  getPrototypeOf() { throw new Error("hostile restore proxy"); },
+})));
+assert.equal(proxyRestore.summary().ticks, 0, "hostile snapshots reset atomically to safe defaults");
+
+const detachedRestore = new AutonomousRuntimeLifeController();
+const restoredRows = [{ tick: 1, mode: "active", reason: "safe", autonomous: true, outcome01: 0.7, at: 100 }];
+detachedRestore.restore({ recent: restoredRows });
+restoredRows[0].reason = "mutated-after-restore";
+assert.equal(detachedRestore.snapshot().recent[0].reason, "safe", "restored history is detached from caller-owned data");
+
