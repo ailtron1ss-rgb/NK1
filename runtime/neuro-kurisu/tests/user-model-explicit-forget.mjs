@@ -52,6 +52,9 @@ assert.equal(model.snapshot().claims.length, 0);
 assert.equal(model.snapshot().candidates.length, 0);
 assert.equal(model.snapshot().version, 2);
 assert.equal(model.snapshot().forgetTombstones.length, 1);
+assert.deepEqual(Object.keys(model.snapshot().forgetTombstones[0]).sort(), [
+  'domain', 'evidenceRef', 'forgottenAtTick', 'key',
+], 'forget tombstones must not retain the forgotten preference value');
 
 // Both the original assertion and the forget command survive restart as replay guards.
 const restored = new UserModelEvidenceModel();
