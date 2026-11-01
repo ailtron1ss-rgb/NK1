@@ -57,6 +57,8 @@ assert.equal(userContext.includes('sk-ABCDEFGHIJKLMNOPQRSTUVWX'), false,
   'credential-like values must be filtered before prompt construction');
 assert.equal(userContext.includes('runtime-turn:'), false,
   'raw evidence references must never be disclosed to the language model');
+assert.equal(restored.userModelPromptContext(0), '', 'a zero prompt budget must emit no claims');
+assert.equal(restored.userModelPromptContext(Number.NaN).includes('detailed'), true, 'non-finite budgets must use the safe default cap');
 
 const prompt = buildCognitiveProposalPrompt({
   state: { tick: 18, predictionError: 0.2, worldContextVersion: 3 },
