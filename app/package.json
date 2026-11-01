@@ -40,7 +40,8 @@
     "test:avatar-model-preflight": "node --experimental-strip-types --test scripts/avatar-model-preflight.test.mjs",
     "test:embodiment-ui-bridge": "node --experimental-strip-types --test scripts/embodiment-ui-bridge.test.mjs",
     "test:vrm-runtime-adapter": "node --experimental-strip-types --test scripts/vrm-runtime-adapter.test.mjs",
-    "test:vrm-normalized-humanoid": "node --experimental-strip-types --test scripts/vrm-normalized-humanoid.integration.test.mjs"
+    "test:vrm-normalized-humanoid": "node --experimental-strip-types --test scripts/vrm-normalized-humanoid.integration.test.mjs",
+    "verify:hosted-kurisu-model": "node --experimental-strip-types scripts/verify-hosted-kurisu-model.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

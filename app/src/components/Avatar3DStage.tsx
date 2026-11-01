@@ -11,6 +11,7 @@ import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
 import { preflightAvatarModel } from "./avatar/avatarModelPreflight";
 import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
 import { applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture } from "./avatar/threeToonMaterials";
+import { KURISU_HYBRID_MODEL } from "./avatar/avatarModelCatalog";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
@@ -46,7 +47,7 @@ function makeBody(scene:any){
 }
 function disposeTree(root:any){const gradient=getSharedAnimeGradientTexture();disposeThreeObjectTree(root,gradient?[gradient]:[]);}
 function bonesOf(root:any):Bone[]{const out:Bone[]=[];root.traverse((node:any)=>{if(node.isBone)out.push({node,name:String(node.name||"").toLowerCase().replace(/[^a-z0-9]/g,""),x:node.rotation.x,y:node.rotation.y,z:node.rotation.z});});return out;}
-function selectClip(clips:any[],action:ActionKind){const rules:Record<ActionKind,RegExp>={respond:/talk|speak|gesture|explain|wave/i,explore:/look|walk|explore|turn|inspect/i,verify:/think|inspect|focus|work|write/i,rest:/idle|rest|breath|sit/i,reflect:/think|ponder|idle/i,wait:/idle|stand|breath/i};return clips.find((clip)=>rules[action].test(String(clip.name||"")))||clips.find((clip)=>/idle|breath|stand/i.test(String(clip.name||"")) )||null;}
+function selectClip(clips:any[],action:ActionKind){const rules:Record<ActionKind,RegExp>={respond:/talk|speak|gesture|explain|wave/i,explore:/look|walk|explore|turn|inspect/i,verify:/think|inspect|focus|work|write/i,rest:/idle|rest|breath|sit/i,reflect:/think|ponder|idle/i,wait:/idle|stand|breath/i};return clips.find((clip)=>rules[action].test(String(clip.name||"")))||clips.find((clip)=>/idle|breath|stand/i.test(String(clip.name||"")) )||clips.find((clip)=>/rig_kurisu/i.test(String(clip.name||"")))||null;}
 export function Avatar3DStage(props:Props){
  const host=useRef<HTMLDivElement>(null),fileInput=useRef<HTMLInputElement>(null),runtime=useRef<Runtime|null>(null),latest=useRef(props),loadToken=useRef(0);
  const [ready,setReady]=useState(false),[modelName,setModelName]=useState(""),[modelFingerprint,setModelFingerprint]=useState(""),[state,setState]=useState<"procedural"|"loading"|"loaded"|"error"|"webgl-unavailable">("procedural"),[message,setMessage]=useState(""),[storageMessage,setStorageMessage]=useState("Реальная лицензированная модель Курису не включена в текущий репозиторий.");
@@ -59,11 +60,31 @@ export function Avatar3DStage(props:Props){
    if(token!==loadToken.current||runtime.current!==rt){const staleVrm=gltf.userData?.vrm??null;if(staleVrm)VRMUtils.deepDispose(staleVrm.scene);else disposeTree(gltf.scene);return;}
    try{const vrm=gltf.userData?.vrm??null;const fileName=name;if (fileName.toLowerCase().endsWith(".vrm") && !vrm)throw new Error("VRM runtime не распознал humanoid/VRM extension этого файла.");if(vrm){configureVrmForNk1NormalizedMotorDrive(vrm);VRMUtils.rotateVRM0(vrm);VRMUtils.removeUnnecessaryVertices(gltf.scene);VRMUtils.combineSkeletons(gltf.scene);VRMUtils.combineMorphs(vrm);}const root=vrm?.scene??gltf.scene;if(!root)throw new Error("В файле нет glTF-сцены.");if(!vrm)applyAnimeToonMaterials(root);const bounds=new THREE.Box3().setFromObject(root),size=new THREE.Vector3(),center=new THREE.Vector3();bounds.getSize(size);bounds.getCenter(center);const max=Math.max(size.x,size.y,size.z);if(!Number.isFinite(max)||max<.0001)throw new Error("У модели нет видимой геометрии.");const scale=3.15/max;root.scale.setScalar(scale);root.position.set(-center.x*scale,-bounds.min.y*scale+.04,-center.z*scale);root.traverse((n:any)=>{if(vrm)n.frustumCulled=false;if(n.isMesh){for(const m of(Array.isArray(n.material)?n.material:n.material?[n.material]:[])){if("roughness"in m)m.roughness=clamp(Number(m.roughness??.8),.18,1);}}});
     if(rt.loaded){rt.scene.remove(rt.loaded);if(rt.vrm)VRMUtils.deepDispose(rt.loaded);else disposeTree(rt.loaded);}rt.mixer?.stopAllAction();rt.loaded=root;rt.vrm=vrm;rt.scene.add(root);rt.body.root.visible=false;rt.bones=bonesOf(root);rt.clips=Array.isArray(gltf.animations)?gltf.animations:[];rt.mixer=!vrm&&rt.clips.length?new THREE.AnimationMixer(root):null;rt.clipName="";setModelName(name);setState("loaded");const rigBones=rt.bones.map((bone)=>({name:bone.name,rotation:bone.node.rotation}));const leftArmRig=resolveVrmArm(rigBones,"left"),rightArmRig=resolveVrmArm(rigBones,"right");setMessage(vrm?`VRM runtime · normalized humanoid, expressions and spring bones`:(rt.bones.length?`GLB загружен; найденные цепи рук: ${leftArmRig?"левая":""}${leftArmRig&&rightArmRig?" и ":""}${rightArmRig?"правая":""}${!leftArmRig&&!rightArmRig?"не распознаны":""}. Для IK нужна отдельная калибровка.`:"Геометрия загружена; скелет не найден, поэтому движения тела ограничены."));
-    if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена локально в браузере; файл не отправляется на сервер.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
+    if(persist)void saveAvatarModel(blob,name).then(()=>setStorageMessage("Модель сохранена в IndexedDB; следующие запуски используют локальную копию.")).catch(()=>setStorageMessage("Модель загружена, но браузер не разрешил сохранить её между сессиями."));else setStorageMessage("Восстановлена локальная модель из хранилища браузера.");
    }catch(e){const failedVrm=gltf.userData?.vrm??null;if(failedVrm)VRMUtils.deepDispose(failedVrm.scene);else disposeTree(gltf.scene);setState("error");setMessage(e instanceof Error?e.message:"Не удалось подготовить модель.");}
   },()=>{if(token!==loadToken.current)return;setState("error");setMessage("Не прочитан бинарный VRM/GLB. Нужен самодостаточный файл с геометрией и текстурами внутри.");});
   }catch(e){setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
  },[]);
+ const loadBundledModel=useCallback(async()=>{
+  const token=++loadToken.current;
+  setState("loading");setMessage("Загрузка встроенной модели Курису и проверка SHA-256…");
+  try{
+   const response=await fetch(KURISU_HYBRID_MODEL.url,{mode:"cors",credentials:"omit",cache:"force-cache"});
+   if(token!==loadToken.current)return;
+   if(!response.ok)throw new Error(`Не удалось получить модель Курису (HTTP ${response.status}).`);
+   const blob=await response.blob();
+   if(token!==loadToken.current)return;
+   if(blob.size!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Размер встроенной модели не совпадает с закреплённым манифестом.");
+   const data=await blob.arrayBuffer();
+   const fingerprint=await fingerprintAvatarModel(data);
+   if(token!==loadToken.current)return;
+   if(fingerprint!==KURISU_HYBRID_MODEL.sha256)throw new Error("SHA-256 модели не совпадает; загрузка заблокирована.");
+   await loadModel(blob,KURISU_HYBRID_MODEL.filename,true);
+  }catch(error){
+   if(token!==loadToken.current)return;
+   setState("error");setMessage(error instanceof Error?error.message:"Не удалось загрузить встроенную модель Курису.");
+  }
+ },[loadModel]);
  useEffect(()=>{
   const el=host.current;if(!el)return;let renderer:any;let raf=0;let observer:ResizeObserver|null=null;let disposed=false;
   try{
@@ -89,7 +110,7 @@ export function Avatar3DStage(props:Props){
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
   <div ref={host} className="absolute inset-0"/>
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p></div></div>:null}
-  <div className="absolute right-3 top-3 z-20 flex max-w-[75%] flex-wrap justify-end gap-1.5"><button type="button" onClick={()=>fileInput.current?.click()} disabled={!ready} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>{modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}<input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/></div>
+  <div className="absolute right-3 top-3 z-20 flex max-w-[75%] flex-wrap justify-end gap-1.5"><button type="button" onClick={()=>void loadBundledModel()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить модель Курису v5</button><button type="button" onClick={()=>fileInput.current?.click()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>{modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}<input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/></div>
   <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-2"><div className="max-w-[80%] rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 backdrop-blur"><p className="text-[11px] font-semibold tracking-wide text-slate-100">{modelName||"NK1 · TRUE 3D BODY"}</p><p className="mt-0.5 text-[10px] leading-relaxed text-slate-300/80">{state==="loaded"?"3D-модель · эмоция, действие, взгляд и речь связаны с состоянием NK1":state==="loading"?"Подготовка модели…":state==="error"?"Модель не загружена · процедурное тело сохраняется":state==="webgl-unavailable"?"Требуется WebGL":"Процедурный 3D-концепт · эмоции и движение от состояния NK1"}</p></div><div className="rounded-full border border-cyan-200/20 bg-slate-950/70 px-2 py-1 text-[9px] uppercase tracking-wider text-cyan-100/80">{props.awake?(props.thinking?"thinking":props.speaking?"speaking":props.emotion):"sleep"}</div></div>
   {message?<p role="status" className="absolute bottom-[4.6rem] left-3 z-20 max-w-[78%] rounded bg-slate-950/80 px-2 py-1.5 text-[10px] text-amber-100/90">{message}</p>:null}
   <p className="absolute right-3 bottom-[4.6rem] z-20 max-w-[42%] text-right text-[9px] text-white/45">Потяните тело, чтобы повернуть. {modelFingerprint ? `SHA-256 ${modelFingerprint.slice(7, 23)}… · идентичность модели зафиксирована` : state === "loaded" ? "SHA-256 недоступен · калибровка этой модели заблокирована" : ""} {storageMessage}</p>
