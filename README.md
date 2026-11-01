@@ -6,8 +6,8 @@
 
 ### Активные инженерные PR — не считать интегрированными
 
-- [#630 — planner + P2702 personality restore](https://github.com/ailtron1ss-rgb/NK1/pull/630): WorkPass612 добавляет own-data-only восстановление состояния личности, строгую проверку размерностей/имён векторов, bounded trust/action preferences и защиту planner restore от revoked Proxy. Draft; exact-head CI ещё проверяется.
-- [#619 — EmotionAppraisalEngine restore](https://github.com/ailtron1ss-rgb/NK1/pull/619): отдельная защита эмоционального snapshot restore. Draft; ветка отстала от live base, хотя unified-organism workflow на её прежнем head завершился success. Нужна актуализация base и отдельное подтверждение WorkPass610 regression.
+- [#630 — planner + P2702 personality restore](https://github.com/ailtron1ss-rgb/NK1/pull/630): WorkPass612 добавляет own-data-only восстановление состояния личности, строгую проверку размерностей/имён векторов, bounded trust/action preferences и защиту planner restore от revoked Proxy. Draft; runtime typecheck прошёл на первом точном прогоне, WorkPass612 test выявил ошибочное ожидание в тесте — исправлено; повторные Actions для последующих SHA возвращают failed без доступных step/logs, итог неизвестен.
+- [#619 — EmotionAppraisalEngine restore](https://github.com/ailtron1ss-rgb/NK1/pull/619): отдельная защита эмоционального snapshot restore. Draft; ветка синхронизирована с live base (`f921007…`, ahead 9 / behind 0), WorkPass610 и interoceptive regression включены в unified workflow; точный успешный прогон ещё не подтверждён.
 - Изменения открытых PR не входят в workpass70-source, пока не объединены; в опубликованный Release ZIP они не входят до сборки и проверки нового архива.
 
 
