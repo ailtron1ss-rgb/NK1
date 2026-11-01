@@ -89,7 +89,7 @@ function boundedDataArray(value:unknown,max:number):unknown[] | null {
     if (!Array.isArray(value) || Object.getPrototypeOf(value)!==Array.prototype) return null;
     const lengthDescriptor=Object.getOwnPropertyDescriptor(value,'length');
     const length=lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : -1;
-    if (!Number.isSafeInteger(length) || length<0 || length>max*4) return null;
+    if (typeof length!=='number' || !Number.isSafeInteger(length) || length<0 || length>max*4) return null;
     const result:unknown[]=[];
     for (let index=0;index<Math.min(length,max);index++) {
       const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
@@ -135,7 +135,7 @@ function restoreEmotionEpisode(value:unknown):EmotionEpisode|null {
   const label=snapshotEnum(ownValue(record,'label'),EMOTION_LABELS);
   const actionTendency=snapshotEnum(ownValue(record,'actionTendency'),EMOTION_ACTIONS);
   const cause=snapshotString(ownValue(record,'cause'),128);
-  if (!id || !Number.isSafeInteger(tick) || (tick as number)<0 || typeof at!=='number' || !Number.isFinite(at) || at<0 || !label || !actionTendency || !cause) return null;
+  if (!id || typeof tick!=='number' || !Number.isSafeInteger(tick) || tick<0 || typeof at!=='number' || !Number.isFinite(at) || at<0 || !label || !actionTendency || !cause) return null;
   const appraisalKeys=['relevance01','goalCongruence01','controllability01','novelty01','selfRelevance01','socialMeaning01','uncertainty01'] as const;
   const deltaKeys=['stress01','energy01','load01','attentionCapture01'] as const;
   const appraisalValues:Record<string,number>={};
@@ -170,7 +170,7 @@ function restoreFeelingEpisode(value:unknown):FeelingEpisode|null {
   const label=snapshotEnum(ownValue(record,'label'),EMOTION_LABELS);
   const tick=ownValue(record,'tick'), at=ownValue(record,'at');
   const metrics=['intensity01','interoceptiveMismatch01','selfAccessConfidence01','bodilyFocus01'] as const;
-  if (!id || !causeEmotionId || !label || !Number.isSafeInteger(tick) || (tick as number)<0 || typeof at!=='number' || !Number.isFinite(at) || at<0) return null;
+  if (!id || !causeEmotionId || !label || typeof tick!=='number' || !Number.isSafeInteger(tick) || tick<0 || typeof at!=='number' || !Number.isFinite(at) || at<0) return null;
   const values:number[]=[];
   for (const key of metrics) {
     const value=ownValue(record,key);
@@ -183,7 +183,6 @@ function restoreFeelingEpisode(value:unknown):FeelingEpisode|null {
 function restoreInteroception(value:unknown,fallback:InteroceptiveAffectState):InteroceptiveAffectState {
   const record=ownDataRecord(value);
   if (!record) return structuredClone(fallback);
-  const metricKeys=['meanMismatch01','lastMismatch01','regulationPressure01','stability01','recovery01','predictionCalibration01'] as const;
   const lastObserved=metricRecord(ownValue(record,'lastObserved'),['energy01','thermal01','capacity01','load01'],fallback.lastObserved);
   const predicted=metricRecord(ownValue(record,'predicted'),['energy01','thermal01','capacity01','load01'],fallback.predicted);
   const result:InteroceptiveAffectState={
@@ -209,7 +208,7 @@ function restoreOutcomeMap(value:unknown):Record<string,EmotionOutcomeCalibratio
     const row=ownDataRecord(ownValue(record,action));
     if (!row) continue;
     const attempts=ownValue(row,'attempts');
-    if (!Number.isSafeInteger(attempts) || (attempts as number)<0 || (attempts as number)>1_000_000_000) continue;
+    if (typeof attempts!=='number' || !Number.isSafeInteger(attempts) || attempts<0 || attempts>1_000_000_000) continue;
     const success=ownValue(row,'meanSuccess01'), surprise=ownValue(row,'meanSurprise01'), benefit=ownValue(row,'meanBenefit01');
     if ([success,surprise,benefit].some(metric=>typeof metric!=='number' || !Number.isFinite(metric))) continue;
     result[action]={attempts:attempts as number,meanSuccess01:c(success as number),meanSurprise01:c(surprise as number),meanBenefit01:c(benefit as number)};
