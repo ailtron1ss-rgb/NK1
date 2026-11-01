@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { runLongMemEvalMemoryBenchmark } from '../src/organism/memory/LongMemEvalAdapter.ts';
 
 const rows = [
@@ -167,16 +168,17 @@ assert.throws(() => runLongMemEvalMemoryBenchmark([{
   datasetFileSha256: 'a'.repeat(64),
 }), /abstention/i);
 
+const runnerPath = fileURLToPath(new URL('./run-longmemeval-memory-benchmark.mjs', import.meta.url));
 const cliUsage = spawnSync(process.execPath, [
   '--experimental-strip-types',
-  'runtime/neuro-kurisu/tests/run-longmemeval-memory-benchmark.mjs',
+  runnerPath,
 ], { encoding: 'utf8' });
 assert.equal(cliUsage.status, 2, 'CLI without required dataset path must exit with usage status 2');
 assert.match(cliUsage.stderr, /Usage: node .*run-longmemeval-memory-benchmark\.mjs/);
 
 const reviewedWithoutRevision = spawnSync(process.execPath, [
   '--experimental-strip-types',
-  'runtime/neuro-kurisu/tests/run-longmemeval-memory-benchmark.mjs',
+  runnerPath,
   '--dataset',
   '/tmp/longmemeval_s_reme_cleaned.json',
 ], { encoding: 'utf8' });
