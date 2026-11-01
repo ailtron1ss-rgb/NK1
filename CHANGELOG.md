@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Wire cross-renderer handoff into AvatarStage (2026-11-01)
+- Add a UI bridge that projects the canonical OrganismSnapshot into a validated SemanticBodyState and declares honest capabilities for Live2D, Original SVG, Legacy sprites and VRM 3D.
+- Plan body changes through the existing renderer-neutral switch contract, recompute rebind for the exact renderer identity, and drive a bounded monotonic 220 ms crossfade.
+- Keep the transition effect independent of per-tick snapshot churn by reading the latest snapshot and mouth pose from refs.
+- Show the current handoff revision, rebind requirement and unsupported channels without claiming renderer execution or visual completion.
+- Add 9 UI bridge regressions and run them in the embodiment CI workflow. This is a UI handoff contract, not proof of full limb/pose application.
+
 ## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
 - Require finite JSON numbers for restored MemoryOS2 timestamps, validity bounds, salience, confidence, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
 - Reject numeric-string revision-history timestamps and nested evidence-source timestamps, freshness values and authority scores instead of treating them as trusted provenance.
