@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Drive all available hybrid GLB viseme targets (2026-11-01)
+- Replace the generic GLB two-shape mouth approximation with a dedicated morph adapter for `aa`, `ee`, `ih`, `oh`, and `ou` targets, selected from the bounded `MouthPose` articulatory class and form.
+- Preserve a strict neutral reset for all recognized mouth channels when speech is inactive, closed, resting or malformed; expression and blink targets remain independently controlled.
+- Add deterministic coverage for each viseme class, alias fallback, inactive-speech reset and malformed dictionaries; wire it into the normalized VRM/GLB workflow.
+- This improves renderer-side mouth-shape coverage but does not claim phoneme-level acoustic inference, lip-sync drift measurements or Android visual soak.
+
 ## [NK1][SelfModel] Fail-closed durable preference forgetting (2026-11-01)
 - Upgrade UserModel snapshots to v2 while preserving v1 migration.
 - Persist per-key/domain deletion watermarks and reject stale explicit facts and inferred candidates.
