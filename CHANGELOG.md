@@ -1,3 +1,11 @@
+## [NK1][Embodiment] Validate imported GLB/VRM containers before parsing (2026-11-01)
+- Add a bounded GLB 2.0 preflight for magic, version, declared total length, JSON-first/BIN-second chunk ordering, chunk alignment/bounds, JSON structure, asset version, buffer metadata, and VRM 0.x/1.0 extension identity.
+- Reject external buffer/image URLs because NK1 stores the upload as one browser-local Blob and does not resolve remote subresources.
+- Enforce the existing 90 MB upload ceiling before invoking GLTFLoader; verify a .vrm extension actually contains VRM metadata.
+- Share the upload-size constant between the IndexedDB store and preflight validator.
+- Add focused tests for generic GLB, VRM 0.x/1.0, malformed headers/chunks/JSON, resource URIs, required extensions, chunk order, and oversize files.
+- The same gate runs for new uploads and browser-restored models. This does not include the separate Higgsfield binary model asset.
+
 ## [NK1][Embodiment] Release replaced GLB source materials (2026-11-01)
 - Dispose each unique source MeshStandardMaterial/MeshPhysicalMaterial after its mesh has been converted to the cached toon material.
 - Keep textures alive: converted toon materials retain the original texture references, and the source-material cleanup intentionally does not dispose texture objects.
