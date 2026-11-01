@@ -1,3 +1,8 @@
+## [NK1][Embodiment] Add semantic renderer handoff and bounded crossfade (2026-11-01)
+- Project the canonical organism snapshot into a validated/clamped SemanticBodyState and plan mode-specific renderer handoffs.
+- Connect AvatarStage mode changes to a bounded 220 ms crossfade and truthful diagnostics for unsupported renderer channels; latest snapshot and mouth pose are read through refs to avoid restarting transitions on every tick.
+- Add nine pure bridge regressions and run them in the embodiment-switch workflow. This is a handoff plan and visual transition, not an AdapterApplyReceipt or proof that the destination renderer applied a pose.
+
 ## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
 - Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
 - Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
@@ -3321,11 +3326,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
 - Bind browser TTS prosody to the same current affect snapshot used by the avatar; add focused regression coverage and CI.
 - This validates state coherence, not acoustic timing, voice quality or device synchronization.
-
-## [NK1][Aspect 05] Evidence-bounded UserModel integrated into SelfSubsystemRuntime (2026-11-01)
-- Add one canonical UserModelEvidenceModel owner for explicitly stated, low-risk interaction preferences; inferred behavior remains an unconfirmed hypothesis with confidence capped at 0.65.
-- Preserve contradiction and explicit correction states; expose a read-only decision context that excludes disputed claims from confirmed facts.
-- Reject sensitive/unclassified input, duplicate/missing evidence references, malformed values, unknown snapshot versions, invalid claim statuses, reversed chronology and accessor-backed restore data.
-- Wire snapshot/restore into SelfSubsystemRuntime and the critical persistence projection; add runtime and model regressions to WorkPass79.
-- This is a bounded preference model, not a complete Theory-of-Mind engine or automatic response-policy integration.
-
