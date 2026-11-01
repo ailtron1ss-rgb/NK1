@@ -3316,6 +3316,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
 - The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
 
+## [NK1][Avatar] Keep browser voice prosody on one current affect snapshot (2026-11-01)
+- Prevent historical `lastTurn.emotion` from overriding current organism affect while arousal and valence come from a newer snapshot.
+- Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Bind browser TTS prosody to the same current affect snapshot used by the avatar; add focused regression coverage and CI.
+- This validates state coherence, not acoustic timing, voice quality or device synchronization.
+
 ## [NK1][Aspect 05] Evidence-bounded UserModel integrated into SelfSubsystemRuntime (2026-11-01)
 - Add one canonical UserModelEvidenceModel owner for explicitly stated, low-risk interaction preferences; inferred behavior remains an unconfirmed hypothesis with confidence capped at 0.65.
 - Preserve contradiction and explicit correction states; expose a read-only decision context that excludes disputed claims from confirmed facts.
