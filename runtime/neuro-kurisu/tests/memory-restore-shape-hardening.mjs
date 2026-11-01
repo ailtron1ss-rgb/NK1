@@ -176,6 +176,7 @@ const numericStringRow = {
   salience: '0.91',
   confidence: '0.99',
   epistemicStatus: 'fact',
+  revisionHistory: [{ at: String(now - 500), from: 'belief', to: 'fact', reason: 'numeric timestamp' }],
 };
 const numericStringRestore = new MemoryOS2({ embeddingProvider: null });
 numericStringRestore.restore({ ...structuredClone(base), items: [numericStringRow] });
@@ -193,6 +194,8 @@ assert.equal(numericStringRestored.confidence, .5,
   'numeric-string confidence must not be trusted');
 assert.equal(numericStringRestored.epistemicStatus, 'unknown',
   'a fact with numeric-string confidence must be downgraded');
+assert.equal(numericStringRestored.revisionHistory.length, 0,
+  'numeric-string revision timestamps must not create trusted revision history');
 const numericStringDiagnostics = numericStringRestore.restoreDiagnostics();
 assert.equal(numericStringDiagnostics.invalidExpiriesClosed, 1);
 assert.equal(numericStringDiagnostics.factsDowngraded, 1);
