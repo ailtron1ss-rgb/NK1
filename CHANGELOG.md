@@ -1,3 +1,8 @@
+## [NK1][CI] Give the second reality-boundary feedback its own cognitive tick (2026-11-01)
+- Advance the organism with a fresh observation before submitting the independent device feedback sample in WorkPass39.
+- Preserve B272's one-outcome-per-tick invariant instead of weakening duplicate-credit protection to accommodate a stale test.
+- The fixture now models two separate observation/outcome episodes rather than two outcome credits for the same tick.
+
 ## [NK1][Cognition] Make protective spine mode a hard secondary-work budget gate (2026-11-01)
 - Prevent external urgency and cadence divisibility from forcing research, world rollout, shadow simulation or project work while the cognitive spine is in `protect` mode.
 - Keep external events available to core/reflex and governance handling outside this optional secondary-work scheduler.
