@@ -50,11 +50,10 @@ test("non-VRM GLB imports receive anime toon shading while VRM materials remain 
  const stage=await readFile(stagePath,"utf8");
  assert.ok(stage.includes("function applyAnimeToon"));
  assert.ok(stage.includes("if(!vrm)applyAnimeToon(root)"));
- assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
- assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
- assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
- assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
+ assert.ok(stage.includes("!source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial"));
  assert.ok(stage.includes("new THREE_TOON.MeshToonMaterial"));
  assert.ok(stage.includes("source.map"));
- assert.ok(stage.includes("THREE_TOON.RedFormat"));
+ assert.ok(stage.includes("source.normalMap"));
+ assert.ok(stage.includes("source.emissiveMap"));
+ assert.ok(stage.includes("toon.userData={...source.userData,nk1ToonConverted:true}"));
 });
