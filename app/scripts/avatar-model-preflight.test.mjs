@@ -75,3 +75,30 @@ test("rejects external resources that cannot survive local browser storage", () 
 test("enforces the same upload size ceiling before the renderer parses the binary", () => {
   assert.throws(() => preflightAvatarModel(new Uint8Array(MAX_AVATAR_MODEL_BYTES + 1), "oversize.glb"), /avatar-size-invalid/);
 });
+
+test("requires the optional BIN chunk immediately after the JSON chunk", () => {
+  const valid = glb(baseDocument());
+  const view = new DataView(valid.buffer);
+  const jsonLength = view.getUint32(12, true);
+  const binOffset = 20 + jsonLength;
+  const unknown = new Uint8Array(12);
+  const unknownView = new DataView(unknown.buffer);
+  unknownView.setUint32(0, 4, true);
+  unknownView.setUint32(4, 0x12345678, true);
+  unknown.set([1, 2, 3, 4], 8);
+  const reordered = new Uint8Array(valid.length + unknown.length);
+  reordered.set(valid.subarray(0, binOffset), 0);
+  reordered.set(unknown, binOffset);
+  reordered.set(valid.subarray(binOffset), binOffset + unknown.length);
+  new DataView(reordered.buffer).setUint32(8, reordered.length, true);
+  assert.throws(() => preflightAvatarModel(reordered, "reordered.glb"), /glb-bin-chunk-must-be-second/);
+});
+
+test("rejects malformed buffer metadata and unsatisfied required extensions", () => {
+  const stringLength = glb({ ...baseDocument(), buffers: [{ byteLength: "4" }] });
+  const invalidUriType = glb({ ...baseDocument(), buffers: [{ byteLength: 4, uri: 17 }] });
+  const requiredMissing = glb({ ...baseDocument(), extensionsUsed: [], extensionsRequired: ["VRMC_vrm"] });
+  assert.throws(() => preflightAvatarModel(stringLength, "bad.glb"), /gltf-buffer-length-invalid/);
+  assert.throws(() => preflightAvatarModel(invalidUriType, "bad.glb"), /gltf-buffer-uri-invalid/);
+  assert.throws(() => preflightAvatarModel(requiredMissing, "bad.glb"), /gltf-required-extension-missing/);
+});
