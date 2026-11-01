@@ -2,6 +2,7 @@ name: NK1 normalized VRM humanoid motor
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [workpass70-source]
     paths:
       - "app/src/components/Avatar3DStage.tsx"
@@ -13,7 +14,7 @@ on:
       - "app/package-lock.json"
       - ".github/workflows/workpass76-normalized-vrm-motor.yml"
   push:
-    branches: [workpass70-source]
+    branches: [workpass70-source, work/nk1-vrm-normalized-motor-final-2026-11-01]
   workflow_dispatch:
 
 permissions:
