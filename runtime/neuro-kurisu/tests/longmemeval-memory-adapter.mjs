@@ -59,7 +59,7 @@ const rows = [
   },
   {
     question_id: 'lme-reviewed-abstention-004',
-    question_type: 'multi-session',
+    question_type: 'single-session-user',
     question: 'What is the exact private code mentioned in the reviewed history?',
     answer: 'The information provided is not enough to answer this question.',
     question_date: '2030-06-03T00:00:00.000Z',
@@ -100,8 +100,9 @@ assert.equal(report.metrics.baseline.queries, 4);
 assert.equal(report.metrics.candidate.queries, 4);
 assert.equal(report.metrics.candidate.answerableQueries, 2);
 assert.equal(report.metrics.candidate.unanswerableQueries, 2);
-assert.equal(report.metrics.byQuestionType['single-session-user'].candidate.queries, 2);
-assert.equal(report.metrics.byQuestionType['multi-session'].candidate.queries, 1);
+assert.equal(report.metrics.byQuestionType['single-session-user'].candidate.queries, 3);
+assert.equal(report.metrics.byQuestionType['single-session-user'].candidate.unanswerableQueries, 1,
+  'reviewed empty-evidence abstention must remain visible in its original category');
   'category-level metrics must retain reviewed abstentions within their original question type');
 assert.equal(report.metrics.candidate.recallAtK01, 1);
 assert.equal(report.metrics.candidate.correctAbstentionRate01, 1);
