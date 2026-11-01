@@ -1,0 +1,33 @@
+name: NK1 longitudinal memory holdout pairing
+
+on:
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
+      - 'runtime/neuro-kurisu/tests/workpass78-longitudinal-holdout-phase-pairing.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/memory-longitudinal-holdout-pairing.yml'
+  push:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
+      - 'runtime/neuro-kurisu/tests/workpass78-longitudinal-holdout-phase-pairing.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/memory-longitudinal-holdout-pairing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  holdout-pairing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Validate phase-isolated replay holdout evidence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass78:longitudinal-holdout-phase-pairing
