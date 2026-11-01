@@ -35,16 +35,16 @@ test("existing sprite and Live2D files remain available",async()=>{
 
 test("VRM models use the official Pixiv runtime through the normalized adapter",async()=>{
  const stage=await readFile(stagePath,"utf8"),adapter=await readFile(path.join(root,"src/components/avatar/vrmRuntimeAdapter.ts"),"utf8");
- assert.match(stage,/import \\{ VRMLoaderPlugin, VRMUtils \\} from "@pixiv\\/three-vrm"/);
- assert.match(stage,/new VRMLoaderPlugin\\(parser,\\s*\\{\\s*autoUpdateHumanBones:\\s*true\\s*\\}\\)/);
- assert.match(stage,/gltf\\.userData\\?\\.vrm/);
- assert.match(stage,/applyVrmExpressionFrame/);
- assert.match(stage,/applyVrmNormalizedMotorFrame/);
- assert.match(stage,/updateVrmForNk1Frame/);
- assert.match(adapter,/expressionManager/);
- assert.match(adapter,/getNormalizedBoneNode/);
- assert.match(adapter,/vrm\\.update\\(/);
- assert.match(stage,/VRM runtime · humanoid, expressions and spring bones/);
+ assert.ok(stage.includes('import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm"'));
+ assert.ok(stage.includes("new VRMLoaderPlugin(parser, { autoUpdateHumanBones: true })"));
+ assert.ok(stage.includes("gltf.userData?.vrm"));
+ assert.ok(stage.includes("applyVrmExpressionFrame"));
+ assert.ok(stage.includes("applyVrmNormalizedMotorFrame"));
+ assert.ok(stage.includes("updateVrmForNk1Frame"));
+ assert.ok(adapter.includes("expressionManager"));
+ assert.ok(adapter.includes("getNormalizedBoneNode"));
+ assert.ok(adapter.includes("vrm.update("));
+ assert.ok(stage.includes("VRM runtime · humanoid, expressions and spring bones"));
 });
 test("GLB models retain the generic glTF fallback without pretending they are VRM",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/const root=vrm\?\.scene\s*\?\?\s*gltf\.scene/);assert.match(stage,/if \(fileName\.toLowerCase\(\)\.endsWith\("\.vrm"\) && !vrm\)/);});
 
