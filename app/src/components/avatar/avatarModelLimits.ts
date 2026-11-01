@@ -8,6 +8,7 @@ export const MAX_AVATAR_IMAGES = 128;
 export const MAX_AVATAR_ANIMATIONS = 64;
 export const MAX_AVATAR_SKINS = 32;
 export const MAX_AVATAR_SCENES = 64;
+export const MAX_AVATAR_BUFFERS = 32;
 export const MAX_AVATAR_BUFFER_VIEWS = 8192;
 export const MAX_AVATAR_ACCESSORS = 8192;
 export const MAX_AVATAR_ACCESSOR_ELEMENTS = 6_000_000;
