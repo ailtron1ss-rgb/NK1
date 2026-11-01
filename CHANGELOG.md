@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Reject hostile motor-frame record boundaries (2026-11-01)
+- Snapshot only plain own data properties at frame, joint, calibration, cursor and options boundaries; accessor-backed records are rejected without invoking getters.
+- Reject sparse/accessor-backed/non-standard arrays and malformed record shapes before pose mapping.
+- Convert hostile Proxy reflection traps into bounded invalid-input outcomes rather than allowing exceptions to escape the motor runtime.
+- Add regression tests for getter non-execution and hostile Proxy traps.
+- This is input-boundary integrity hardening; renderer readback, IK calibration and physical device soak remain separate gates.
+
 ## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
 - Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
 - Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
