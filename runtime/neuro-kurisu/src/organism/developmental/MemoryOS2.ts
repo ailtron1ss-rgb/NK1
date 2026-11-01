@@ -297,7 +297,7 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
  if(!Array.isArray(value))return [];
  return value.slice(0,MAX_MEMORY_REVISION_HISTORY).flatMap((row:any)=>{
   if(!row||typeof row!=='object')return [];
-  const at=Number(row.at);if(!Number.isFinite(at)||!EPISTEMIC_STATUSES.has(row.from)||!EPISTEMIC_STATUSES.has(row.to))return [];
+  const at=typeof row.at==='number'?row.at:Number.NaN;if(!Number.isFinite(at)||!EPISTEMIC_STATUSES.has(row.from)||!EPISTEMIC_STATUSES.has(row.to))return [];
   return [{at,from:row.from as EpistemicStatus,to:row.to as EpistemicStatus,reason:String(row.reason??'').slice(0,240)}];
  });
 }
@@ -472,7 +472,7 @@ export class MemoryOS2{
    const content=typeof row.content==='string'?row.content.trim():'';
    const kinds=new Set(['sensory','working','episodic','semantic','autobiographical','procedural','social','identity','dream']);
    if(!id||id.length>160||!content||content.length>32768||!kinds.has(String(row.kind)))return null;
-   const finite=(value:unknown,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?n:fallback;};
+   const finite=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?value:fallback;
    const boundedStrings=(value:unknown,maxItems:number,maxChars:number)=>{
     if(!Array.isArray(value))return [];
     return [...new Set(value.filter((item):item is string=>typeof item==='string').map(item=>item.trim().slice(0,maxChars)).filter(Boolean))].slice(0,maxItems);
@@ -492,7 +492,7 @@ export class MemoryOS2{
    const provenanceClass=this.provenanceClassFor(source,explicitProvenance);
    const statusValues=new Set(['fact','belief','hypothesis','unknown','quarantined']);
    const statusIsValid=statusValues.has(String(row.epistemicStatus));
-   const rawConfidence=Number(row.confidence);
+   const rawConfidence=typeof row.confidence==='number'?row.confidence:Number.NaN;
    const confidenceIsValid=Number.isFinite(rawConfidence)&&rawConfidence>=0&&rawConfidence<=1;
    const epistemicStatus=statusIsValid&&sourceIsValid&&(row.epistemicStatus!=='fact'||confidenceIsValid)
     ?row.epistemicStatus as EpistemicStatus:'unknown';
