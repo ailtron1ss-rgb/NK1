@@ -1,3 +1,9 @@
+## [NK1][Affect] Harden emotional appraisal snapshot restoration (2026-11-01)
+- Validate EmotionAppraisalEngine v2 snapshots through own data descriptors; reject accessors, inherited records, sparse arrays and hostile/revoked proxies without executing caller getters.
+- Bound episode history, feeling and outcome records; validate finite timestamps/metrics and preserve only matching episode-to-feeling identities.
+- Add focused WorkPass610 restore-boundary tests and run them with the existing interoceptive/affect regression in unified organism CI.
+- PR #619 is synchronized with the 2026-11-01 source base. Exact-head CI has not produced actionable step/log evidence; changes remain unmerged and are not in the published Release ZIP.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
