@@ -34,8 +34,8 @@ assert.equal(summary.matchedPairs,4);
 assert.equal(summary.evidenceGrade,'confirmatory-eligible');
 assert.ok(Math.abs(summary.holdoutConditionDifference01-(-.095))<1e-9,'confirmatory uplift metric must be computed only from paired holdout trials');
 assert.ok(summary.conditionDifference01>0,'all-phase exploratory aggregate remains separately available');
-assert.equal(summary.holdoutMeanRetentionOn01,.82);
-assert.equal(summary.holdoutMeanRetentionOff01,.915);
+assert.ok(Math.abs(summary.holdoutMeanRetentionOn01-.82)<1e-9);
+assert.ok(Math.abs(summary.holdoutMeanRetentionOff01-.915)<1e-9);
 
 const cleanSnapshot=fabric.snapshot();
 const restored=new ExperienceContinuumFabric();
