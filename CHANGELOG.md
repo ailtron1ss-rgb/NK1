@@ -1,3 +1,8 @@
+## [NK1][Memory] Support reviewed LongMemEval empty-evidence abstentions (WorkPass82, 2026-11-01)
+
+- Treat empty `answer_session_ids` as unanswerable even when the question ID has no `_abs` suffix and its category is not `abstention`; this supports corrected ground truth without misclassifying reviewed records.
+- Accept the reviewed cleaned-S filename in the local runner, document its separate ground-truth lineage, checksum and license caveat, and keep original and reviewed benchmark scores separate.
+
 ## [NK1][Memory] Add isolated LongMemEval-S retrieval evaluation adapter (WorkPass82, 2026-10-31)
 
 - Add a pinned adapter for the MIT-licensed, English-only LongMemEval-S cleaned benchmark without bundling or downloading dataset contents in CI.
