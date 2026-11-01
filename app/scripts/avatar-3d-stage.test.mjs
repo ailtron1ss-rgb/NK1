@@ -46,3 +46,15 @@ test("procedural 3D fallback uses cel-shaded anime materials without flattening 
  assert.ok(stage.includes("THREE_TOON.NearestFilter"));
  assert.ok(stage.includes("new THREE.MeshStandardMaterial({color:0x2d8198"));
 });
+test("non-VRM GLB imports receive anime toon shading while VRM materials remain native",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.ok(stage.includes("function applyAnimeToon"));
+ assert.ok(stage.includes("if(!vrm)applyAnimeToon(root)"));
+ assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
+ assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
+ assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
+ assert.ok(stage.includes("source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial")===false);
+ assert.ok(stage.includes("new THREE_TOON.MeshToonMaterial"));
+ assert.ok(stage.includes("source.map"));
+ assert.ok(stage.includes("THREE_TOON.RedFormat"));
+});
