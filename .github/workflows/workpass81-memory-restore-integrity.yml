@@ -1,6 +1,13 @@
 name: NK1 WorkPass81 memory restore integrity
 
 on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/tests/memory-restore-duplicate-identity.mjs"
+      - "runtime/neuro-kurisu/tests/memory-restore-shape-hardening.mjs"
+      - ".github/workflows/workpass81-memory-restore-integrity.yml"
   pull_request:
     branches: [workpass70-source]
     paths:
