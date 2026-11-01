@@ -551,7 +551,7 @@ export class OrganismRuntime {
     const budgetSnapshot = this.core.cognitiveBudgetOperationalSnapshot();
     const shouldAsk = Boolean(fusedObservation.trim()) && (deliberate || (autonomous && current.predictionError > 0.62));
     if (!shouldAsk) return null;
-    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext());
+    const request=buildCognitiveProposalPrompt(cycle,fusedObservation,this.core.knownEntityPromptContext('user'),this.core.personalityTraitPromptContext(),this.core.userModelPromptContext());
     if(signal) request.signal=signal;
     this.lastContextBudgetLedger = request.contextLedger ?? null;
     const budgetMode = budgetSnapshot?.mode ?? 'shallow';
@@ -765,8 +765,8 @@ export class OrganismRuntime {
       const mem0Query = externalText || autonomousAgenda?.topic || '';
       const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
       const request = externalText
-        ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories)
-        : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories);
+        ? buildCognitivePrompt(cycle, transition.after.facts, externalText, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext())
+        : buildAutonomousDialoguePrompt(cycle, autonomousAgenda!, transition.after.facts, this.core.knownEntityPromptContext('user'), this.core.personalityTraitPromptContext(), externalMem0Memories, this.core.userModelPromptContext());
       if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
