@@ -1,3 +1,33 @@
+## WorkPass — agentic memory evaluation and retrieval-driven learning intake (2026-11-01)
+
+**Status:** research intake / protocol adaptation only. No upstream package, dataset, code or model was vendored. All four sources below are arXiv preprints; author-reported results are not independent NK1 measurements.
+
+| Candidate | Primary source | Mechanism / evidence inspected | NK1 decision |
+|---|---|---|---|
+| AgentCL: Toward Rigorous Evaluation of Continual Learning in Language Agents (Shu et al., 2026) | https://arxiv.org/abs/2606.02461 | Distinguishes dependent/compositional task streams from unrelated/independent tasks; proposes read/write first pass and read-only second pass, with plasticity, stability and generalization gains. Its reported analysis warns that memory can interfere on weakly related or held-out tasks. | **ADAPT EVALUATION.** Extend the P26 continual matrix to separate compositional transfer from independent holdout; report all three gains and memoryless baseline. Do not reward only within-stream improvement. |
+| Mem2ActBench: A Benchmark for Evaluating Long-Term Memory Utilization in Task-Oriented Autonomous Agents (Shen et al., 2026) | https://arxiv.org/abs/2601.19935 | Constructs underspecified tool-use tasks whose correct tool arguments depend on distributed historical constraints; reports 400 tool-use tasks from 2,029 sessions and 91.3% human-verified memory dependence. Reports parameter F1, BLEU-1 and exact Tool Accuracy (correct tool plus all parameters). | **ADAPT TASK FAMILY.** Add leak-checked memory-to-action cases: user preference/task state appears only in prior history; final query omits a required argument; score exact tool+args, stale-fact use and abstention separately. |
+| Evo-Memory: Benchmarking LLM Agent Test-time Learning with Self-Evolving Memory (Wei et al., 2025) | https://arxiv.org/abs/2511.20857 | Evaluates memory evolution over sequential task streams; describes retrieval, adaptation and memory updates during deployment, and an action-think-memory-refine pipeline. | **RESEARCH-ONLY / ADAPT PROTOCOL.** Compare read/write learning pass with frozen read-only evaluation; keep current deterministic NK1 memory as baseline and isolate any candidate policy behind an experiment flag. |
+| Retrieval-Driven Memory Reconsolidation for Long-Term LLM Agents (Song et al., 2026) | https://arxiv.org/abs/2609.16053 | Proposes local topology updates after retrieval/use, with autonomous organization, adaptive retrieval and post-retrieval reconsolidation. Reported benchmark scores are author-reported preprint results. | **RESEARCH-ONLY.** Test whether co-retrieved evidence benefits future task success before changing canonical MemoryOS2 topology; measure graph churn, retrieval latency, stale-memory interference and rollback. |
+
+### Concrete NK1 experiment proposal
+
+Extend existing evaluation owners rather than creating another memory store:
+
+- Candidate owners: `runtime/neuro-kurisu/tests/p26-learning-continual-matrix.mjs`, `runtime/neuro-kurisu/tests/p26-holdout-provenance.mjs`, `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts`, and the existing memory-to-action / ActionGateway tests. Confirm exact current paths and scripts before editing.
+- Build a small, deterministic task stream with three groups: (a) compositional tasks where an earlier verified fact/skill is genuinely reusable; (b) unrelated tasks where reuse is not justified; (c) a frozen independent holdout never used for memory writes, policy tuning or consolidation.
+- Include at least one updated preference, explicit forget, contradictory evidence, delayed action and underspecified tool invocation. The gold tool call must be impossible to infer from the final query alone; keep a separate leakage test.
+- Compare memoryless baseline, current canonical MemoryOS2, and any candidate policy on the same task set, model settings, budgets and at least five paired seeds. Report exact tool+parameter accuracy, task success, wrong/stale memory application, abstention correctness, retrieval latency, token/storage cost, plasticity gain, stability gain and generalization gain.
+- Do not promote a retrieval/reconsolidation policy from recall-only uplift. Require positive independent holdout task utility, no material regression on unrelated tasks, bounded latency/cost and reversible rollback. Keep holdout frozen.
+- This proposal does not imply that the cited benchmarks' code/data have been reviewed for license compatibility or imported into NK1.
+
+### Source review notes
+
+- Consensus records were fetched for AgentCL, Evo-Memory and Mem2ActBench; Firecrawl paper inspection/read was used for Mem2ActBench, AgentCL and REALM/reconsolidation passages.
+- Consensus citation counts are volatile metadata and are intentionally not used as a quality score.
+- No claims of peer review, reproducibility in NK1, measured recall uplift or integration are made.
+
+---
+
 ## WorkPass266 — primary-source metadata check for memory and neuroscience candidates (2026-10-22)
 
 - [AMA-Bench, ICML 2026](https://proceedings.mlr.press/v306/zhao26bs.html) — publisher record describes long-horizon memory over agent/environment trajectories (states, actions, observations and tool output). Use its protocol as a candidate for trajectory-grounded evaluation; code/data integration has not been performed.
