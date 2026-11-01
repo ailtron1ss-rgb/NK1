@@ -28,6 +28,9 @@ let s=core.externalEvidenceSnapshot();
 const sim=s.records.at(-1);
 assert.ok(sim);
 assert.equal(sim.sourceClass,'simulator');
+// A second independent outcome needs a later cognitive tick; B272 prevents
+// duplicate outcome credit for the same tick rather than merging unrelated events.
+await core.observe({worldContext:{location:'sim-device',uncertainty:.15},embodiment:{bodyEnergy01:.8,cognitiveCapacity01:.9,thermalStrain01:.2,sensoryFreshness01:.95,awake:true}});
 await core.feedback({success:.8,reward:.7,evidenceSource:'device',surprise:.1});
 s=core.externalEvidenceSnapshot();
 const device=s.records.find(r=>r.sourceClass==='device');
