@@ -1,3 +1,12 @@
+## [NK1][Cognition] Harden planner and persistent personality snapshot restore (2026-11-01)
+- Move the planner's revoked-Proxy-sensitive Array.isArray check inside its fail-closed reflection boundary; keep the existing WorkPass611 root/nested revoked-Proxy regression in the active workflow.
+- Replace P2702 personality restore's pre-validation structuredClone and broad object spreads with own-data-only root/nested reads.
+- Enforce canonical trait/value name alignment, fixed vector dimensions, dense data-only arrays, safe counters, finite normalized metrics and supported schema version.
+- Bound relationship-trust entries, filter prototype-shaped keys, and restore only allowlisted numeric action preferences without implicit coercion.
+- Add WorkPass612 hostile-input regressions and wire them with P2702 dynamics and planner restore tests into the unified organism CI workflow.
+- Remove the duplicate WorkPass611 invocation from test:rebuild-recovered.
+- Draft PR #630 (https://github.com/ailtron1ss-rgb/NK1/pull/630) is open; exact-head CI is pending. This source-branch change is not merged or included in the published Release ZIP.
+
 ## [NK1][Governance] Reconcile current progress dashboard with release manifests (2026-11-01)
 - Replace contradictory active release pointers with one manifest-backed status header.
 - Record source code baseline separately from the published Release tag and ZIP asset digest.
