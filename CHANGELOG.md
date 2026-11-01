@@ -1,13 +1,9 @@
-## [NK1][CI] Align longitudinal memory holdout workflow with Node 24 (2026-11-01)
-- Replace legacy checkout/setup-node v4 actions with the repository-approved v7 major and resolve Node from the canonical `.nvmrc`.
-- Disable unnecessary npm cache discovery for this focused script-only workflow; add read-only checkout, concurrency cancellation and a bounded timeout.
-- This repairs the repository-wide action-runtime audit failure surfaced by the autonomous runtime PR; holdout methodology and score claims are unchanged.
-
-## [NK1][Autonomy] Harden autonomous life-state restoration (2026-11-01)
-- Restore now reads own data properties only; accessor-backed fields are never invoked and hostile proxy/descriptor failures reset the snapshot atomically to safe defaults.
-- Validate and bound counters, timestamps, normalized ratios, activity/mode/reason fields and the 96-entry recent activity history; malformed rows are skipped and valid history remains newest-first.
-- Detach restored history from caller-owned data and add regressions for getters, hostile proxies, unsafe counters, NaN, invalid modes, sparse history, ratio clamping and mutation after restore.
-- This closes a persistence trust-boundary gap in autonomous runtime continuity; it does not prove background execution, initiative quality or device soak.
+## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
+- Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
+- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
+- Invalidate the prior hash when recovering from a corrupt primary and protect the known-good backup from being overwritten by corrupt bytes during the first repair save.
+- Add regressions for missing-primary recovery, primary recreation, empty-store behavior and corrupt-primary backup preservation.
+- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace the broader organism recovery/soak tests.
 
 ## [NK1][SelfModel] Fail-closed durable preference forgetting (2026-11-01)
 - Upgrade UserModel snapshots to v2 while preserving v1 migration.
@@ -3510,3 +3506,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Compute holdout difference only from complete, phase-isolated holdout pairs; acquisition gains can no longer mask a negative holdout result in the confirmatory-facing metric.
 - Extend the WorkPass78 regression with deliberately opposed acquisition and holdout outcomes to prove metric isolation.
 - This makes the evidence report more interpretable; no real-world retrieval uplift is claimed.
+
+
+## [NK1][Memory] Require clean holdout pairs for confirmatory eligibility (2026-11-01)
+- Derive holdout means, effect and distinct-delay coverage only from complete, non-ambiguous replay-on/off holdout pairs.
+- Require the configured number of holdout pairs across at least two paired holdout delays; acquisition pairs and unpaired holdout arms cannot satisfy the gate.
+- Add regressions for duplicate arms and unpaired holdout rows at a second delay.
+- This tightens evidence integrity; it does not claim positive recallDelta or publish a new Release ZIP.
