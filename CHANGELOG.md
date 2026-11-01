@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Enforce normalized motor-frame calibration bounds (2026-11-01)
+- Reject motor mapping profiles whose calibrated channel limits extend outside the renderer-neutral `[-1, 1]` contract; downstream adapters cannot receive a mapper-approved out-of-contract pose.
+- Validate reached/blocked joint ID lists for shape, bounded size, identifier syntax and duplicates; reject oversized frame diagnostics and negative/invalid persisted cursors.
+- Add regressions for normalized-bound violations, malformed joint indexes, oversized reason strings and invalid cursors.
+- Scope is input-contract hardening only; no claim of improved physical IK, renderer readback, browser E2E or device calibration.
+
 ## [NK1][Avatar] Add dependency-free GLB/VRM preflight CI (2026-11-01)
 - Add a focused GitHub Actions workflow for the existing upload preflight regression suite; it runs on source-branch pushes, pull requests targeting `workpass70-source`, and manual dispatch.
 - Run the Node 22.16 test directly without installing the app dependency tree, so parser-boundary regressions remain executable even when the npm registry is unavailable.
