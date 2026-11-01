@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { runLongMemEvalMemoryBenchmark } from '../src/organism/memory/LongMemEvalAdapter.ts';
 
 const rows = [
@@ -163,5 +164,12 @@ assert.throws(() => runLongMemEvalMemoryBenchmark([{
   datasetRevision: '98d7416c24c778c2fee6e6f3006e7a073259d48f',
   datasetFileSha256: 'a'.repeat(64),
 }), /abstention/i);
+
+const cliUsage = spawnSync(process.execPath, [
+  '--experimental-strip-types',
+  'runtime/neuro-kurisu/tests/run-longmemeval-memory-benchmark.mjs',
+], { encoding: 'utf8' });
+assert.equal(cliUsage.status, 2, 'CLI without required dataset path must exit with usage status 2');
+assert.match(cliUsage.stderr, /Usage: node .*run-longmemeval-memory-benchmark\.mjs/);
 
 console.log('LONGMEMEVAL_MEMORY_ADAPTER=PASS');
