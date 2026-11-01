@@ -1,3 +1,20 @@
+## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
+- Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
+- Preserve opportunity/skip accounting so deferred operations remain observable.
+- Reject malformed or rewound WorldTransitionForOrganism payloads before any ensemble, contextual or latent-world mutation.
+- Repair the WorkPass39 reality-boundary fixture with complete contexts; test malformed transitions leave the world-learning snapshot unchanged.
+- Keep B272's one-outcome-credit-per-tick invariant by advancing the organism between simulator and device feedback.
+- Exercise canonical project context tooling against the active plan; separately verify destructive-tool denial using a test plan bound to the destructive tool.
+
+## [NK1][CI] Run WorkPass39 cognitive/world/project regression in unified runtime (2026-11-01)
+- Add the existing `test:big-pass-39` suite to the unified organism runtime workflow after planner restore/execution checks.
+- Extend CI coverage across protective scheduling, world feedback validation and project-tool authorization.
+
+## [NK1][CI] Make project-tool bridge fixture deterministic in operational mode (2026-11-01)
+- Configure the project bridge fixtures in operational cycle mode with immediate checkpoints.
+- Explicitly bind the safe fixture plan to the built-in `organism.project.context` reader and the destructive fixture plan to its test-only destructive tool.
+- Prove project-step tool binding, safe project read and destructive-operation denial as separate assertions.
+
 ## [NK1][Governance] Reconcile current progress dashboard with release manifests (2026-11-01)
 - Replace contradictory active release pointers with one manifest-backed status header.
 - Record source code baseline separately from the published Release tag and ZIP asset digest.
