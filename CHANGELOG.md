@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Add integrity-checked hosted Kurisu hybrid model (2026-11-01)
+- Publish the generated GLB as a stable Higgsfield media asset instead of relying on expiring 15-minute scene-export URLs.
+- Pin exact byte length and SHA-256 in a source-controlled model catalog; the app verifies both before parsing the remote GLB.
+- Add a one-tap in-app loader that fetches without credentials, passes the normal GLB structural/complexity preflight, and persists the verified model in browser-local IndexedDB.
+- Keep manual VRM/GLB upload and the procedural fallback available; no model bytes are copied into the public Git repository.
+- Asset is a project-generated fan model; public redistribution/license review remains separate from runtime integration and Release publication.
+
 ## [NK1][Embodiment] Correct semantic head-tilt axis and enforce normalized motor bounds (2026-11-01)
 - Map the motor planner's headTilt to normalized headRoll, matching the semantic depth-rig convention, instead of mislabeling it as headYaw.
 - Update the Live2D bridge capability declaration and add regressions for axis identity and unsupported yaw reporting.
