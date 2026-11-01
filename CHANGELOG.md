@@ -1,3 +1,9 @@
+## [NK1][World] Validate action-outcome transitions before world-model mutation (2026-11-01)
+- Reject malformed WorldTransitionForOrganism payloads before ensemble calibration, contextual updates or latent-state learning can partially mutate the runtime.
+- Validate required before/after WorldContext fields, bounded facts/events/object arrays, finite signals and monotonic tick order.
+- Replace the stale BIG_PASS_39 reality-boundary fixture that supplied empty contexts with a valid typed context and add a regression proving malformed post-state rejection leaves world-learning statistics unchanged.
+- This closes a feedback-boundary correctness gap exposed by enabling the existing WorkPass39 suite in unified runtime CI.
+
 ## [NK1][Cognition] Make protective spine mode a hard secondary-work budget gate (2026-11-01)
 - Prevent external urgency and cadence divisibility from forcing research, world rollout, shadow simulation or project work while the cognitive spine is in `protect` mode.
 - Keep external events available to core/reflex and governance handling outside this optional secondary-work scheduler.
