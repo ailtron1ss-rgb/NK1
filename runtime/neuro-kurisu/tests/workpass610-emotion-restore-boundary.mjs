@@ -55,7 +55,7 @@ const invalid = {
 const sanitized = new EmotionAppraisalEngine();
 sanitized.restore(invalid);
 const snap = sanitized.snapshot();
-assert.equal(snap.episodes,1,'episode count must remain at least retained valid history length');
+assert.equal(snap.episodes,0,'invalid persisted episode count must fall back to retained valid history length');
 assert.equal(snap.lastAt,0,'non-finite timestamp must be replaced');
 assert.equal(snap.meanStress01,1,'normalized metrics must be clamped');
 assert.equal(snap.meanArousal01,0,'normalized metrics must be clamped');
