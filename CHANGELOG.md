@@ -1,3 +1,7 @@
+## [NK1][SelfModel] Preserve claim evidence against partial-ledger replay (2026-11-01)
+- Reconcile every restored claim's current `evidenceRef` into the bounded processed-evidence ledger, even when a persisted snapshot has lost or omitted that ledger entry.
+- Add a regression proving a replayed claim reference remains rejected after restore from a partial snapshot; no evidence is silently re-consumed.
+
 ## [NK1][SelfModel] Preserve exact provenance for first explicit correction (2026-11-01)
 - Fix the no-existing-claim path in `correctExplicit`: delegate to the canonical explicit-record path with the original evidence reference instead of pre-consuming it and inventing a `correction:`-prefixed reference.
 - Add a regression proving the stored claim retains the exact caller reference, the reference is consumed once, and replay is rejected as a duplicate.
