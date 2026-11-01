@@ -40,3 +40,15 @@ This is diagnostic external evidence only. LongMemEval is English-only and canno
 ### LongMemEval-V2
 
 The dataset is Apache-2.0 but about 7.12 GB and designed for web/enterprise-agent trajectories. Defer it as a separate agent-memory benchmark rather than mixing it into conversational-memory scores.
+
+## Reviewed cleaned-S ground truth (optional, recommended for sensitivity analysis)
+
+A later independent review by the ReMe team published `agentscope-ai/ReMe_longmemeval_clean_s_v2`, preserving the same question/session histories while correcting 77 of 500 records: 57 answers and 58 evidence-session lists. In particular, 58 reviewed records have an empty evidence list because the reviewed answer says the supplied information is insufficient. The adapter therefore treats an empty `answer_session_ids` list as an abstention even when the question ID does not end in `_abs` and the original question type is not `abstention`.
+
+- Dataset: [agentscope-ai/ReMe_longmemeval_clean_s_v2](https://huggingface.co/datasets/agentscope-ai/ReMe_longmemeval_clean_s_v2)
+- Generated file SHA-256 published by its dataset card: `f8b308cc2d184d029dd2226e0c0a88eeac298e6318706d588e015beb1b83fc7d`
+- Upstream original file SHA-256: `d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442`
+- The reviewed dataset card does not clearly declare a separate redistribution license. Keep it as a user-supplied local evaluation file pending license review; do not commit or mirror it in NK1.
+- Compare the original and reviewed ground-truth reports separately. Do not combine them into one score or treat the reviewed labels as the original benchmark's official labels.
+
+Run it with the same CLI, using the reviewed filename `longmemeval_s_reme_cleaned.json`. The runner computes the exact local file SHA-256 and records it in the report. Preserve the generated-file SHA above for independent verification.
