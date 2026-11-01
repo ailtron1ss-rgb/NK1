@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Clear stale avatar mouth pose outside active speech (2026-11-01)
+- Drive semantic mouth-open/form channels only while the normalized speech lifecycle is `speaking`.
+- Force neutral mouth channels for idle, starting, ended, cancelled and unknown phases so a missing final audio frame or barge-in cannot leave the avatar visually speaking.
+- Add regressions for terminal/unknown provider phases and verify active speech visemes remain intact.
+- This is lifecycle-state correctness; it does not claim acoustic lip-sync accuracy or real-device timing.
+
 ## [NK1][CI] Align avatar preflight workflow with the Node 24 toolchain (2026-11-01)
 - Replace legacy checkout/setup-node v4 actions with the repository-approved v7 releases.
 - Resolve Node from the canonical `.nvmrc` instead of pinning the avatar-only workflow to Node 22.16.0.
