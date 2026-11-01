@@ -62,3 +62,13 @@ export function disposeThreeObjectTree(
   }
   for (const material of materials) material.dispose?.();
 }
+
+/**
+ * Dispose source materials after their meshes have been replaced by converted
+ * materials. The replacement already owns the texture references, so this
+ * deliberately releases material/program state only, never shared textures.
+ */
+export function disposeReplacedThreeMaterials(materials: Iterable<any>): void {
+  const unique = new Set(materials);
+  for (const material of unique) material?.dispose?.();
+}

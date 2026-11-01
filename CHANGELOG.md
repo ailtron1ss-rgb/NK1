@@ -1,3 +1,8 @@
+## [NK1][Embodiment] Release replaced GLB source materials (2026-11-01)
+- Dispose each unique source MeshStandardMaterial/MeshPhysicalMaterial after its mesh has been converted to the cached toon material.
+- Keep textures alive: converted toon materials retain the original texture references, and the source-material cleanup intentionally does not dispose texture objects.
+- Add a real-Three.js disposal regression for duplicate material references and a source integration contract for the GLB conversion path.
+
 ## [NK1][Embodiment] Deduplicate Three.js resource disposal (2026-11-01)
 - Replace per-mesh cleanup with an ownership-aware object-tree disposer that deduplicates shared geometries, materials, textures and skeletons before releasing GPU resources.
 - Traverse direct material texture properties and ShaderMaterial uniform values (including texture arrays); preserve the renderer-owned anime gradient texture when disposing an uploaded VRM/GLB.

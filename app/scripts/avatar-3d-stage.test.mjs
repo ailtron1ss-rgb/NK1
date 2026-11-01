@@ -60,3 +60,11 @@ test("non-VRM GLB imports receive anime toon shading while VRM materials remain 
  assert.ok(stage.includes("source.emissiveMap"));
  assert.ok(stage.includes("toon.userData={...source.userData,nk1ToonConverted:true}"));
 });
+
+test("non-VRM material conversion disposes replaced source materials after copying references",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.match(stage,/import \{ disposeReplacedThreeMaterials, disposeThreeObjectTree \}/);
+ assert.match(stage,/const replaced=new Set<any>\(\)/);
+ assert.match(stage,/replaced\.add\(source\)/);
+ assert.match(stage,/disposeReplacedThreeMaterials\(replaced\)/);
+});

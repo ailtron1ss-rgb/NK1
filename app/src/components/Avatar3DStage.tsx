@@ -7,7 +7,7 @@ import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, 
 import * as THREE from "three";
 import { resolveVrmArm } from "./avatar/vrmHumanoidRigAdapter";
 import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
-import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
+import { disposeReplacedThreeMaterials, disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
@@ -27,7 +27,7 @@ function createAnimeGradient(): any {if(sharedAnimeGradient)return sharedAnimeGr
 const material=(color:number,roughness=0.7,metalness=0)=>{void roughness;void metalness;return new THREE_TOON.MeshToonMaterial({color,gradientMap:createAnimeGradient()});};
 const importedToonMaterialCache=new WeakMap<object,any>();
 function toAnimeToonMaterial(source:any){if(!source||(!source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial))return source;const cached=importedToonMaterialCache.get(source);if(cached)return cached;const toon=new THREE_TOON.MeshToonMaterial({color:source.color,map:source.map,alphaMap:source.alphaMap,emissive:source.emissive,emissiveMap:source.emissiveMap,emissiveIntensity:source.emissiveIntensity,normalMap:source.normalMap,normalScale:source.normalScale,side:source.side,transparent:source.transparent,opacity:source.opacity,alphaTest:source.alphaTest,vertexColors:source.vertexColors,wireframe:source.wireframe,flatShading:source.flatShading,depthWrite:source.depthWrite,depthTest:source.depthTest,gradientMap:createAnimeGradient()} as any);toon.name=source.name?source.name+"_NK1_Toon":"NK1_Toon_Material";toon.userData={...source.userData,nk1ToonConverted:true};toon.needsUpdate=true;importedToonMaterialCache.set(source,toon);return toon;}
-function applyAnimeToon(root:any){root.traverse((node:any)=>{if(!node.isMesh||!node.material)return;node.material=Array.isArray(node.material)?node.material.map(toAnimeToonMaterial):toAnimeToonMaterial(node.material);});}
+function applyAnimeToon(root:any){const replaced=new Set<any>();root.traverse((node:any)=>{if(!node.isMesh||!node.material)return;const convert=(source:any)=>{const converted=toAnimeToonMaterial(source);if(converted!==source)replaced.add(source);return converted;};node.material=Array.isArray(node.material)?node.material.map(convert):convert(node.material);});disposeReplacedThreeMaterials(replaced);}
 
 function ellipsoid(parent:any,mat:any,pos:[number,number,number],scale:[number,number,number],name:string){
  const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mat);m.name=name;m.position.set(...pos);m.scale.set(...scale);parent.add(m);return m;
