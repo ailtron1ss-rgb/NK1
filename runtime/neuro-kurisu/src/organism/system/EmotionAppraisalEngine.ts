@@ -51,6 +51,8 @@ export interface EmotionAppraisalState {
 
 
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const signedActionPrior=(x:number)=>Math.max(-.045,Math.min(.045,Number.isFinite(x)?x:0));
+const ACTION_PRIOR_KEYS=new Set(['respond','explore','verify','rest','reflect','wait','defer']);
 const emptyInteroception=():InteroceptiveAffectState=>({
   cycles:0, meanMismatch01:.18, lastMismatch01:.18, regulationPressure01:.18, stability01:.72, recovery01:.5, predictionCalibration01:.5,
   lastObserved:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
@@ -135,13 +137,37 @@ export class EmotionAppraisalEngine {
   regulationPressure01():number{return this.state.interoception.regulationPressure01;}
 
   actionBias(action:string):number{
-    const e=this.state.history[0]; if(!e)return 0;
-    const match:Record<string,number>={explore:e.label==='curiosity'?0.08:0,verify:e.label==='anxiety'||e.label==='frustration'?0.06:0,reflect:e.label==='frustration'?0.055:0,rest:e.label==='protective'||e.label==='sadness'?0.04:0,protect:e.label==='protective'||e.label==='anger'?0.07:0,approach:e.label==='joy'?0.05:0,withdraw:e.label==='sadness'?0.06:0,engage:e.label==='calm'||e.label==='joy'?0.025:0};
+    const e=this.state.history[0];
+    if(!e||!ACTION_PRIOR_KEYS.has(action))return 0;
+
+    // Appraisal tendencies are priors over the canonical seven-action vocabulary,
+    // never executable actions. Positive and negative values are both meaningful:
+    // stress can support recovery/verification while suppressing exploration.
+    const tendencyPrior:Record<EmotionActionTendency,Record<string,number>>={
+      explore:{explore:.045,verify:.006,rest:-.010,respond:-.008,wait:-.008,defer:-.008},
+      engage:{respond:.040,explore:.008,wait:-.012,defer:-.012},
+      verify:{verify:.042,explore:-.025,respond:-.010},
+      reflect:{reflect:.042,explore:-.018,respond:-.006},
+      rest:{rest:.045,explore:-.035,respond:-.014},
+      protect:{rest:.038,verify:.018,explore:-.040,respond:-.025},
+      withdraw:{wait:.038,defer:.038,rest:.016,respond:-.038,explore:-.024},
+      approach:{respond:.042,explore:.014,wait:-.018,defer:-.018},
+    };
+    const regulationPrior:Record<string,number>={
+      respond:-.018,explore:-.045,verify:.024,rest:.050,reflect:.018,wait:.012,defer:.018,
+    };
     const intero=this.state.interoception;
-    const regulation:Record<string,number>={rest:intero.regulationPressure01*.075,protect:intero.regulationPressure01*.055,verify:intero.regulationPressure01*.025,reflect:intero.regulationPressure01*.015,explore:-intero.regulationPressure01*.055,approach:-intero.regulationPressure01*.02,engage:-intero.regulationPressure01*.015,withdraw:intero.regulationPressure01*.01};
     const calibration=this.state.outcomes[action];
-    const learned=calibration&&calibration.attempts>=3 ? (calibration.meanBenefit01-.5)*.045 : 0;
-    return c(Math.max(0,(match[action]??0)+regulation[action]+learned))*c(.55+e.interoceptiveDelta.attentionCapture01*.45);
+    const calibrationReliability=calibration&&calibration.attempts>=3
+      ? c((calibration.attempts-2)/4):0;
+    const learned=calibration
+      ? (calibration.meanBenefit01-.5)*.035*calibrationReliability:0;
+    const confidenceGate=c((c(e.confidence01)-.45)/.40);
+    const attentionGate=c(.35+c(e.interoceptiveDelta.attentionCapture01*.65);
+    const regulation=c(intero.regulationPressure01);
+    const prior=(tendencyPrior[e.actionTendency]?.[action]??0)
+      +regulation*regulationPrior[action]+learned;
+    return signedActionPrior(prior*confidenceGate*attentionGate);
   }
 
   summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes)};}
