@@ -1,9 +1,9 @@
-## [NK1][Aspect 05] Evidence-bounded UserModel integrated into SelfSubsystemRuntime (2026-11-01)
-- Add one canonical UserModelEvidenceModel owner for explicitly stated, low-risk interaction preferences; inferred behavior remains an unconfirmed hypothesis with confidence capped at 0.65.
-- Preserve contradiction and explicit correction states; expose a read-only decision context that excludes disputed claims from confirmed facts.
-- Reject sensitive/unclassified input, duplicate/missing evidence references, malformed values, unknown snapshot versions, invalid claim statuses, reversed chronology and accessor-backed restore data.
-- Wire snapshot/restore into SelfSubsystemRuntime and the critical persistence projection; add runtime and model regressions to WorkPass79.
-- This is a bounded preference model, not a complete Theory-of-Mind engine or automatic response-policy integration.
+## [NK1][Memory] Add isolated LongMemEval-S external retrieval benchmark (2026-11-01)
+- Add a pinned local-file adapter for the 500-question LongMemEval-S cleaned benchmark; validate dataset revision and SHA-256, normalize session chronology, and build a fresh isolated MemoryOS2 corpus for each question.
+- Compare canonical no-embedding MemoryOS2 retrieval with deterministic per-question BM25; report recall@K, MRR, precision, abstention, unsupported retrieval and session-clustered paired confidence intervals.
+- Hash question/session identifiers and export aggregate metrics only; do not bundle, download in CI, or transmit raw benchmark conversations. Keep automatic promotion disabled because this dataset is English-only and cannot satisfy the bilingual RU/EN gate.
+- Support the separately reviewed ReMe cleaned-S ground truth only with an explicit pinned revision and exact file hash; default its license to `not-verified`.
+- Wire the adapter into the recovered-runtime and integration-closure test chains. CI runs a synthetic contract fixture only; a real 500-question score and retrieval uplift remain unclaimed until a licensed local dataset is supplied and verified.
 
 ## [NK1][Evaluation] Integrate independent Inspect AI evidence adapter (2026-11-01)
 - Port the WorkPass72 read-only CognitiveEventFabric exporter, privacy-reduced JSONL schema, independent Python validator and pinned Inspect AI 0.3.286 deterministic scoring harness onto the current `workpass70-source` checkpoint (`6f83e2e`).
@@ -3309,3 +3309,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
 - Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
 - The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+
+## [NK1][Aspect 05] Evidence-bounded UserModel integrated into SelfSubsystemRuntime (2026-11-01)
+- Add one canonical UserModelEvidenceModel owner for explicitly stated, low-risk interaction preferences; inferred behavior remains an unconfirmed hypothesis with confidence capped at 0.65.
+- Preserve contradiction and explicit correction states; expose a read-only decision context that excludes disputed claims from confirmed facts.
+- Reject sensitive/unclassified input, duplicate/missing evidence references, malformed values, unknown snapshot versions, invalid claim statuses, reversed chronology and accessor-backed restore data.
+- Wire snapshot/restore into SelfSubsystemRuntime and the critical persistence projection; add runtime and model regressions to WorkPass79.
+- This is a bounded preference model, not a complete Theory-of-Mind engine or automatic response-policy integration.
