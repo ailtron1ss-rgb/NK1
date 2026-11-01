@@ -69,3 +69,27 @@ test("a valid frame without a mapped joint is accepted as an empty, explicit sam
   assert.equal(result.reason, "motor-frame-has-no-calibrated-joints");
   assert.deepEqual(result.pose, {});
 });
+
+test("rejects dangling and contradictory reached/blocked joint references", () => {
+  assert.equal(
+    mapMotorFrameToSemanticPose(frame({ reachedJointIds: ["missing_joint"] }), profile).reason,
+    "invalid-motor-frame",
+  );
+  assert.equal(
+    mapMotorFrameToSemanticPose(frame({ blockedJointIds: ["missing_joint"] }), profile).reason,
+    "invalid-motor-frame",
+  );
+  assert.equal(
+    mapMotorFrameToSemanticPose(frame({
+      reachedJointIds: ["left_elbow"],
+      blockedJointIds: ["left_elbow"],
+    }), profile).reason,
+    "invalid-motor-frame",
+  );
+  const valid = mapMotorFrameToSemanticPose(frame({
+    reachedJointIds: ["left_elbow"],
+    blockedJointIds: ["right_elbow"],
+  }), profile);
+  assert.equal(valid.accepted, true);
+  assert.deepEqual(valid.mappedJointIds, ["left_elbow", "right_elbow"]);
+});
