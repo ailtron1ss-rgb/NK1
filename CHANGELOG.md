@@ -1,3 +1,10 @@
+## [NK1][Affect] Record causal appraisal-to-action evidence — WorkPass635 (2026-11-01)
+- Add a typed, optional AffectDecisionEvidence record to canonical OrganismDecisionTrace with episode identity, emotional label/tendency, valence/arousal/dominance, appraisal confidence, attention capture, feeling intensity, interoceptive mismatch and regulation pressure.
+- Record separate direct action prior, selected Global Workspace affect prior and their bounded combined value for the final selected canonical action.
+- Extend the cognitive-event lineage: the appraisal event records affect evidence, and the action event links directly back to that appraisal event with the selected prior values.
+- Extend the existing WorkPass39 real OrganismCore/Global Workspace integration test to resolve the exact appraisal episode from trace evidence, verify selected-action identity and enforce direct ±0.045, workspace ±0.035 and combined ±0.08 bounds.
+- The code is in Draft PR #636; exact-head Actions for previous WorkPass634 heads failed without exposed step summaries/log archives. WorkPass635 latest-head CI is still pending; no runtime pass or merge is claimed.
+
 ## [NK1][Validation] Record WorkPass634 exact-head CI limitation (2026-11-01)
 - Unified organism workflow #41331040326 failed on the original WorkPass634 code head; the failed job was re-run and the retry also failed.
 - GitHub returned no step list for the job; downloading job logs returned 404. The docs-only latest head has no separate Actions run yet.
