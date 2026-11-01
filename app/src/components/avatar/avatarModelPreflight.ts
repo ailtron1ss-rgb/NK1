@@ -1,4 +1,4 @@
-import { MAX_AVATAR_MODEL_BYTES } from "./avatarModelStore";
+import { MAX_AVATAR_MODEL_BYTES } from "./avatarModelLimits.ts";
 
 export interface AvatarModelPreflightResult {
   readonly format: "glb" | "vrm";
