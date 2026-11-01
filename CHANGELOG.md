@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Auto-load the pinned Kurisu hybrid model safely (2026-11-01)
+- Restore an explicitly selected browser-local GLB/VRM first; when no local model exists, automatically fetch the pinned Kurisu v5 hybrid GLB instead of leaving the 3D renderer on the procedural placeholder.
+- Bound the hosted fetch with a 25-second timeout and validate the CDN media type, declared content length, actual byte length and SHA-256 before GLTFLoader receives the asset.
+- Keep the procedural body as the non-blocking offline/WebGL fallback; IndexedDB failure no longer prevents trying the built-in model.
+- Invalidate pending loads on component teardown and ignore stale asynchronous read failures so an old fetch cannot overwrite a newer avatar selection.
+- Add a regression covering local-first/default-hosted fallback and request-integrity guards. Browser/WebGL and Android visual soak remain pending.
+
 ## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
 - Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
 - Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
