@@ -1,3 +1,8 @@
+## [NK1][Embodiment] Add semantic renderer handoff and bounded crossfade (2026-11-01)
+- Project the canonical organism snapshot into a validated/clamped SemanticBodyState and plan mode-specific renderer handoffs.
+- Connect AvatarStage mode changes to a bounded 220 ms crossfade and truthful diagnostics for unsupported renderer channels; latest snapshot and mouth pose are read through refs to avoid restarting transitions on every tick.
+- Add nine pure bridge regressions and run them in the embodiment-switch workflow. This is a handoff plan and visual transition, not an AdapterApplyReceipt or proof that the destination renderer applied a pose.
+
 ## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
 - Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
 - Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
