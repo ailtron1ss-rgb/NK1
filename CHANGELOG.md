@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Validate imported GLB/VRM containers before parsing (2026-11-01)
+- Add a bounded GLB 2.0 preflight for magic, version, declared total length, chunk alignment/bounds/order, JSON structure, buffer lengths, and VRM extension classification.
+- Reject external buffer/image URIs because avatar uploads are stored as one browser-local Blob and the current loader intentionally has no remote resource resolver.
+- Enforce the existing 90 MB upload ceiling before invoking GLTFLoader; verify a .vrm extension actually contains VRM 0.x/1.0 metadata.
+- Add focused tests for valid generic GLB, VRM 0.x/1.0, malformed headers/chunks/JSON, external resources, and oversize files.
+- No binary model is embedded by this change; it hardens the user-provided model intake path.
+
 ## [NK1][Embodiment] Release replaced GLB source materials (2026-11-01)
 - Dispose each unique source MeshStandardMaterial/MeshPhysicalMaterial after its mesh has been converted to the cached toon material.
 - Keep textures alive: converted toon materials retain the original texture references, and the source-material cleanup intentionally does not dispose texture objects.
