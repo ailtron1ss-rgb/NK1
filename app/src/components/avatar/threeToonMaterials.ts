@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { disposeReplacedThreeMaterials } from "./threeResourceDisposal";
+import { disposeReplacedThreeMaterials } from "./threeResourceDisposal.ts";
 
 // Keep the constructor surface explicit for the pinned Three.js runtime.
 type ThreeToonApi = typeof THREE & {
