@@ -1,3 +1,33 @@
+# Latest audit update — 2026-11-01
+
+The publisher reran the provenance and license-readiness audit on source SHA `c6ab2f97e4922dc04d3d19ce2aae857824c21992` and failed closed before packaging.
+
+- Audit run: [Publish WorkPass70 hotfix release #41275233591](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41275233591)
+- Exact source SHA audited: `c6ab2f97e4922dc04d3d19ce2aae857824c21992`
+- Current locked npm dependency count: **477** (previous worklist: 462)
+- Current dependency fingerprint: `a10f75530eeac185de88cdf338b094c2cbd9bec7a4c16c9cee7b5d040cb92cd4`
+- Source archives: **8**
+- Repository LICENSE/NOTICE inventory entries: **11**
+- Current audit result: `releaseRedistributionReady: false`; **136 errors**.
+
+| Group | Current errors | Required action |
+|---|---:|---|
+| Global review | 6 | Human owner must record an actual redistribution decision and supporting evidence |
+| Root project | 7 | Human owner must choose and approve the root license policy |
+| Runtime project | 7 | Human owner must decide runtime license and relationship to root policy |
+| Locked npm inventory | 7 | Review all 477 components; bind the new fingerprint and component count |
+| Source archives | 56 | Human review of all 8 exact archive hashes and upstream redistribution terms |
+| Repository LICENSE/NOTICE files | 53 | Human review of 7 manifest records plus 4 vendored license files |
+| **Total** | **136** | |
+
+The SBOM/provenance regeneration itself passed and reported 477 npm components, 11 repository license files, 8 source archives and 4 detected license-evidence items. The separate human approval gate then rejected publication. The previous 462-component review fingerprint is stale and must not be reused.
+
+**No approval fields were changed.** Do not infer a license from a detected LICENSE file, do not fabricate a reviewer or evidence URL, and do not weaken the gate. A human reviewer must inspect the current exact inventory and make the actual decisions before the publisher can proceed.
+
+The publisher stopped before archive packaging and asset upload. The GitHub Release ZIP therefore remains unchanged.
+
+---
+
 # Release license review worklist — 2026-10-28
 
 ## Purpose and decision boundary
