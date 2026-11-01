@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
+- Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
+- Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
+- Add regressions for dangling references, cross-list contradictions and a valid disjoint status pair.
+- This closes a frame-integrity gap at the renderer-neutral mapping boundary; it does not claim renderer readback, visual E2E, physical calibration or device soak.
+
 ## [NK1][Embodiment] Auto-load the pinned Kurisu hybrid model safely (2026-11-01)
 - Restore an explicitly selected browser-local GLB/VRM first; when no local model exists, automatically fetch the pinned Kurisu v5 hybrid GLB instead of leaving the 3D renderer on the procedural placeholder.
 - Bound the hosted fetch with a 25-second timeout and validate the CDN media type, declared content length, actual byte length and SHA-256 before GLTFLoader receives the asset.
