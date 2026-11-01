@@ -3484,3 +3484,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Duplicate trials for the same pair arm are treated as ambiguous and excluded instead of silently overwriting earlier evidence.
 - Add a deterministic regression for phase leakage, unpaired holdout rejection, duplicate-arm rejection and snapshot/restore parity.
 - This hardens the validity of memory-learning evidence; it does not itself demonstrate retrieval uplift or change the official readiness score.
+
+
+## [NK1][WorkPass78] Separate holdout metrics from acquisition metrics (2026-11-01)
+- Expose holdout-only replay-on/off means and paired condition difference separately from the all-phase exploratory aggregate.
+- Compute holdout difference only from complete, phase-isolated holdout pairs; acquisition gains can no longer mask a negative holdout result in the confirmatory-facing metric.
+- Extend the WorkPass78 regression with deliberately opposed acquisition and holdout outcomes to prove metric isolation.
+- This makes the evidence report more interpretable; no real-world retrieval uplift is claimed.

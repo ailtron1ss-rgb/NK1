@@ -26,12 +26,16 @@ assert.equal(summary.holdoutMatchedPairs,0,'holdout arms must not borrow acquisi
 assert.equal(summary.evidenceGrade,'exploratory-matched','unpaired holdout cannot confirm uplift');
 
 // Two independent paired holdout contexts are required for confirmatory eligibility.
-add('holdout','replay-off','holdout-a',day,.72,7);
-add('holdout','replay-off','holdout-b',2*day,.71,8);
+add('holdout','replay-off','holdout-a',day,.92,7);
+add('holdout','replay-off','holdout-b',2*day,.91,8);
 summary=fabric.longitudinalReplaySummary('holdout-phase-isolation','memory-recall-ru-en');
 assert.equal(summary.holdoutMatchedPairs,2);
 assert.equal(summary.matchedPairs,4);
 assert.equal(summary.evidenceGrade,'confirmatory-eligible');
+assert.ok(Math.abs(summary.holdoutConditionDifference01-(-.095))<1e-9,'confirmatory uplift metric must be computed only from paired holdout trials');
+assert.ok(summary.conditionDifference01>0,'all-phase exploratory aggregate remains separately available');
+assert.ok(Math.abs(summary.holdoutMeanRetentionOn01-.82)<1e-9);
+assert.ok(Math.abs(summary.holdoutMeanRetentionOff01-.915)<1e-9);
 
 const cleanSnapshot=fabric.snapshot();
 const restored=new ExperienceContinuumFabric();

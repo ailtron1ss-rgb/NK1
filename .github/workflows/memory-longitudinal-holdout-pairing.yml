@@ -27,7 +27,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          package-manager-cache: false
       - name: Validate phase-isolated replay holdout evidence
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass78:longitudinal-holdout-phase-pairing
