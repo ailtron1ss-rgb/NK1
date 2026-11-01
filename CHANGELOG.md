@@ -1,3 +1,8 @@
+## [NK1][Embodiment] Reuse the anime toon gradient texture (2026-11-01)
+- Reuse one lazily-created 3-band DataTexture across procedural and imported GLB toon materials instead of allocating one GPU texture per material. This prevents avoidable GPU resource growth when avatar meshes/models are replaced or reloaded.
+- Add a source-contract regression for the shared texture cache. The texture remains module-scoped and immutable after initialization; VRM-authored MToon materials remain untouched.
+- Validation is pending the exact-HEAD embodiment and core regression workflows; no browser/WebGL soak is claimed.
+
 ## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
 - Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
 - Keep VRM materials native so authored VRM MToon expressions remain intact; convert non-VRM GLB Standard/Physical materials to toon shading while preserving color, texture, normal, alpha and emissive channels.
