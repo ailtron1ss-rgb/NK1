@@ -102,7 +102,6 @@ assert.equal(report.metrics.candidate.answerableQueries, 2);
 assert.equal(report.metrics.candidate.unanswerableQueries, 2);
 assert.equal(report.metrics.byQuestionType['single-session-user'].candidate.queries, 3);
 assert.equal(report.metrics.byQuestionType['single-session-user'].candidate.unanswerableQueries, 1,
-  'reviewed empty-evidence abstention must remain visible in its original category');
   'category-level metrics must retain reviewed abstentions within their original question type');
 assert.equal(report.metrics.candidate.recallAtK01, 1);
 assert.equal(report.metrics.candidate.correctAbstentionRate01, 1);
@@ -113,7 +112,8 @@ assert.equal(report.confidence.independentGroupCount, 3,
 assert.equal(report.sampleAdequacy.independentGroups, 3);
 assert.equal(report.sampleAdequacy.enoughIndependentGroups, true);
 assert.equal(report.sampleAdequacy.answerableIndependentGroups, 1);
-assert.equal(report.sampleAdequacy.unanswerableIndependentGroups, 1);
+assert.equal(report.sampleAdequacy.unanswerableIndependentGroups, 2,
+  'the two abstention questions use two distinct source-session components');
 assert.equal(report.sampleAdequacy.enoughAnswerableIndependentGroups, false,
   'answerable query count must not hide a single independent evidence group');
 assert.equal(report.sampleAdequacy.enoughUnanswerableIndependentGroups, true);
