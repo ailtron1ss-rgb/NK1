@@ -66,6 +66,8 @@ const report = runLongMemEvalMemoryBenchmark(rows, {
   minAnswerableQueries: 1,
   minUnanswerableQueries: 1,
   minIndependentGroups: 2,
+  minAnswerableIndependentGroups: 2,
+  minUnanswerableIndependentGroups: 1,
 });
 
 assert.equal(report.schemaVersion, 1);
@@ -87,6 +89,11 @@ assert.equal(report.confidence.independentGroupCount, 2,
   'questions sharing a session ID must be one independent bootstrap group');
 assert.equal(report.sampleAdequacy.independentGroups, 2);
 assert.equal(report.sampleAdequacy.enoughIndependentGroups, true);
+assert.equal(report.sampleAdequacy.answerableIndependentGroups, 1);
+assert.equal(report.sampleAdequacy.unanswerableIndependentGroups, 1);
+assert.equal(report.sampleAdequacy.enoughAnswerableIndependentGroups, false,
+  'answerable query count must not hide a single independent evidence group');
+assert.equal(report.sampleAdequacy.enoughUnanswerableIndependentGroups, true);
 assert.equal(new Set(report.perQuestion.map(row => row.independenceGroupDigest)).size, 2,
   'shared session IDs must collapse questions into the same independent group');
 assert.equal(report.confidence.answerableIndependentGroups, 1);
