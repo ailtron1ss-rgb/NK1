@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Enforce motor-frame outcome reference integrity (2026-11-01)
+- Require reached/blocked joint outcome IDs to reference joints present in the same motor frame.
+- Reject contradictory frames that mark one joint as both reached and blocked; keep the mapping boundary fail-closed before any renderer receives the pose.
+- Add regressions for unknown references, contradictory outcomes and valid references to available/unavailable joints.
+- This validates frame consistency only; it does not claim physical IK accuracy, renderer readback or device calibration.
+
 ## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
 - Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
 - Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
