@@ -97,9 +97,9 @@ export class UserModelEvidenceModel {
   if(!i.explicit||!key||!value||!isDomain(i.domain)||!validTick(i.tick)){this.state.rejectedMalformedCount++;return{accepted:false,reason:'invalid-input'};}
   if(!ref)return{accepted:false,reason:'missing-evidence'};
   if(this.state.processedEvidenceRefs.includes(ref))return{accepted:false,reason:'duplicate-evidence'};
-  this.remember(ref);
   const c=this.state.claims.find(x=>x.key===key&&x.domain===i.domain);
-  if(!c){const result=this.recordExplicit({...i,evidenceRef:'correction:'+ref});return result;}
+  if(!c)return this.recordExplicit(i);
+  this.remember(ref);
   c.value=value;c.status='confirmed';c.evidenceRef=ref;c.lastSeenTick=i.tick;c.confirmations++;c.contradictions=0;
   return{accepted:true,status:c.status,claim:clone(c)};
  }
