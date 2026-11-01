@@ -83,7 +83,7 @@ test("reports 2D renderers honestly: no skeletal channels are claimed", () => {
     const caps = capabilitiesForMode(mode);
     assert.equal(caps.mode, "live2d", `${mode} is a 2D renderer`);
     for (const channel of caps.channels) {
-      assert.ok(["headYaw", "gazeX", "gazeY", "breath"].includes(channel), `${mode} claims an unexpected channel ${channel}`);
+      assert.ok(["headRoll", "gazeX", "gazeY", "breath"].includes(channel), `${mode} claims an unexpected channel ${channel}`);
     }
   }
 });
