@@ -111,4 +111,19 @@ assert.equal(rootGetterExecuted, false, 'restore must not execute root, row or a
 assert.equal(accessorSafe.snapshot().claims.length, 0);
 assert.equal(accessorSafe.snapshot().processedEvidenceRefs.length, 0);
 
+
+// A correction for a previously unseen key is a first explicit claim; it must retain
+// the caller's exact evidence reference and consume that reference exactly once.
+const firstCorrectionModel = new UserModelEvidenceModel();
+const firstCorrection = firstCorrectionModel.correctExplicit({
+  ...base, key: 'reply.formality', value: 'formal', tick: 9, evidenceRef: 'turn:first-correction',
+});
+assert.equal(firstCorrection.accepted, true);
+assert.equal(firstCorrection.claim.evidenceRef, 'turn:first-correction');
+assert.equal(firstCorrectionModel.snapshot().processedEvidenceRefs.filter(x => x === 'turn:first-correction').length, 1);
+const replayedFirstCorrection = firstCorrectionModel.recordExplicit({
+  ...base, key: 'reply.formality', value: 'formal', tick: 9, evidenceRef: 'turn:first-correction',
+});
+assert.deepEqual(replayedFirstCorrection, { accepted: false, reason: 'duplicate-evidence' });
+
 console.log('UserModelEvidenceModel: all assertions passed');
