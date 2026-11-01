@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Correct semantic head-tilt axis in renderer bridge (2026-11-01)
+- Map the motor planner's headTilt to normalized `headRoll`, matching the existing EmbodimentIntent → depth-rig conversion, instead of mislabeling it as `headYaw`.
+- Update the Live2D bridge capability declaration and add regressions for axis identity and unsupported yaw reporting.
+- Prevents a pitch/roll intent from being interpreted as a left/right head turn during renderer handoff.
+- Browser visual confirmation and device calibration remain pending.
+
 ## [NK1][Embodiment] Enforce normalized semantic motor bounds (2026-11-01)
 - Reject any body-joint channel outside the shared normalized range [-1, 1] at the renderer-neutral state boundary; adapters remain responsible for converting normalized values into native rig units.
 - Add regressions for positive/negative overflow and exact boundary acceptance. This prevents malformed finite values from reaching Live2D/2.5D/VRM adapters as extreme joint targets.
