@@ -67,6 +67,8 @@ const CHANNELS = new Set<BodyChannel>([
   "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
 ]);
 const EXPRESSIONS = new Set<ExpressionChannel>(["neutral", "joy", "sadness", "anger", "anxiety", "curiosity", "protective", "surprise"]);
+/** Cross-renderer body channels are normalized; adapters convert to native rig units. */
+const NORMALIZED_CHANNEL_LIMIT = 1;
 
 const isBoundedNonBlankString = (value: unknown, maxLength: number): value is string =>
   typeof value === "string" && value.trim().length > 0 && value.length <= maxLength;
@@ -84,7 +86,9 @@ export function validateSemanticBodyState(value: SemanticBodyState): boolean {
   if (!value.speech || !["idle", "starting", "speaking", "ended", "cancelled", "unknown"].includes(value.speech.phase)) return false;
   if (!isNullableIdentifier(value.speech.eventId, 128)) return false;
   if (!Number.isFinite(value.speech.audioTimeMs) || value.speech.audioTimeMs < 0 || !Number.isFinite(value.speech.mouthOpen) || value.speech.mouthOpen < 0 || value.speech.mouthOpen > 1 || !Number.isFinite(value.speech.mouthForm) || Math.abs(value.speech.mouthForm) > 1) return false;
-  if (!value.pose || Object.entries(value.pose).some(([key, n]) => !CHANNELS.has(key as BodyChannel) || !Number.isFinite(n))) return false;
+  if (!value.pose || Object.entries(value.pose).some(([key, n]) =>
+    !CHANNELS.has(key as BodyChannel) || !Number.isFinite(n)
+      || Math.abs(n as number) > NORMALIZED_CHANNEL_LIMIT)) return false;
   return isBoundedNonBlankString(value.action, 96)
     && isNullableIdentifier(value.intentId, 128)
     && isNullableIdentifier(value.wardrobeId, 128);
