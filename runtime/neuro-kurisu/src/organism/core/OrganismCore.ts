@@ -13,7 +13,7 @@ import { defaultHexisAdaptationState, type HexisAdaptationState, type HexisEvide
 import { normalizeEvidenceLineageProvenance } from '../memory/EvidenceLineageProvenance.ts';
 import { defaultLettaGovernanceAdaptationState, type LettaGovernanceAdaptationState, type SourceBranchState, type ArtifactReviewRecord, type TelemetryPolicyState } from '../integration/letta/LettaGovernanceAdaptationFabric.ts';
 import { ConscioAdaptationFabric, defaultConscioAdaptationState, type ConscioAdaptationState, type ConscioSourceState } from '../integration/conscio/ConscioAdaptationFabric.ts';
-import type { ActionKind, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
+import type { ActionKind, AffectDecisionEvidence, OrganismDecisionTrace, IntentCandidate, OrganismCycleResult, OrganismGoal, OrganismObservation, OrganismState, LearningProvenance, OrganismNeeds, EmbodimentFacet, WorkspaceFrame, ConsolidatedMemory, PredictedActionOutcome, WorldTransitionForOrganism, } from './types.ts';
 import { FileStateStore, type JsonStateStore } from '../persistence/FileStateStore.ts';
 import { FileActionExecutionLedgerArchive } from '../persistence/FileActionExecutionLedgerArchive.ts';
 import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/RecoveryWatchdog.ts';
@@ -7905,6 +7905,30 @@ export class OrganismCore {
             observationKey: observation.text ? `text:${decisionForResilience.id}:${observation.text.slice(0, 96)}` : observation.worldEvent ? `world-event:${String((observation.worldEvent as any).id ?? (observation.worldEvent as any).type ?? 'event')}:${decisionForResilience.id}` : observation.vision ? `vision:${decisionForResilience.id}:${String(observation.vision.sceneLabel ?? 'scene')}:${(observation.vision.objects ?? []).slice(0, 3).map((o: any) => o.label).join(',')}` : `cycle:${decisionForResilience.id}:${state.tick}`,
             independentEvidence: Boolean(observation.text || observation.worldEvent || observation.vision || observation.audio || observation.success !== undefined || observation.reward !== undefined),
         });
+        const affectSelectedAction = selectedIntent?.action ?? null;
+        const affectDirectBias01 = affectSelectedAction
+            ? this.cognitiveRuntime.emotionAppraisal.actionBias(affectSelectedAction) : 0;
+        const affectWorkspaceBias01 = affectSelectedAction
+            ? affectWorkspaceActionBias(broadcast, emotionEpisode.actionTendency, affectSelectedAction) : 0;
+        const affectDecisionEvidence: AffectDecisionEvidence = {
+            version: 1,
+            episodeId: emotionEpisode.id,
+            label: emotionEpisode.label,
+            actionTendency: emotionEpisode.actionTendency,
+            selectedAction: affectSelectedAction,
+            valence01: emotionEpisode.valence01,
+            arousal01: emotionEpisode.arousal01,
+            dominance01: emotionEpisode.dominance01,
+            appraisalConfidence01: emotionEpisode.confidence01,
+            attentionCapture01: emotionEpisode.interoceptiveDelta.attentionCapture01,
+            feelingIntensity01: feelingEpisode.intensity01,
+            interoceptiveMismatch01: feelingEpisode.interoceptiveMismatch01,
+            regulationPressure01: this.cognitiveRuntime.emotionAppraisal.regulationPressure01(),
+            affectWorkspaceSelected: Boolean(broadcast?.selected.some(signal => signal.specialist === 'affect')),
+            directActionBias01: affectDirectBias01,
+            workspaceActionBias01: affectWorkspaceBias01,
+            combinedActionBias01: affectDirectBias01 + affectWorkspaceBias01,
+        };
         const decision: OrganismDecisionTrace = {
             id: randomUUID(),
             tick: state.tick,
@@ -7912,7 +7936,14 @@ export class OrganismCore {
             candidates: governedCandidates.slice(0, 7),
             selected: selectedIntent ?? null,
             stateBefore: previous,
+            affectEvidence: affectDecisionEvidence,
             reasoningSignals: {
+                affectDirectBias01: affectDirectBias01,
+                affectWorkspaceBias01: affectWorkspaceBias01,
+                affectCombinedPrior01: affectDecisionEvidence.combinedActionBias01,
+                affectConfidence01: emotionEpisode.confidence01,
+                affectArousal01: emotionEpisode.arousal01,
+                affectRegulationPressure01: affectDecisionEvidence.regulationPressure01,
                 homeostaticPressure: clamp((1 - n.energy) * 0.24 + n.cognitiveLoad * 0.24 + n.uncertainty * 0.24 + n.socialNeed * 0.12 + n.novelty * 0.08 + n.goalPressure * 0.08),
                 uncertainty: n.uncertainty,
                 cognitiveLoad: n.cognitiveLoad,
@@ -7986,14 +8017,14 @@ export class OrganismCore {
         });
         const observationEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'observation', source: observation.text ? 'user' : 'runtime', external: Boolean(observation.text || observation.worldContext || observation.vision || observation.audio), confidence01: clamp(1 - state.predictionError), payload: { hasText: Boolean(observation.text), hasWorld: Boolean(observation.worldContext), hasVision: Boolean(observation.vision), hasAudio: Boolean(observation.audio) } });
         const predictionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'prediction', source: 'core.predictive-selection', parentIds: [observationEvent.id], confidence01: clamp(Number(selectedIntent?.confidence ?? .5)), payload: { predictedUtility: clamp(Number(selectedIntent?.predictedUtility ?? .5)), action: selectedAction } });
-        const appraisalEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'appraisal', source: 'core.homeostatic-appraisal', parentIds: [observationEvent.id, predictionEvent.id], confidence01: clamp(1 - state.predictionError), payload: { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, socialNeed01: state.needs.socialNeed, goalPressure01: state.needs.goalPressure, identityCoherence01: state.needs.identityCoherence, predictionError01: state.predictionError } });
+        const appraisalEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'appraisal', source: 'core.homeostatic-affective-appraisal', parentIds: [observationEvent.id, predictionEvent.id], confidence01: clamp(1 - state.predictionError), payload: { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, socialNeed01: state.needs.socialNeed, goalPressure01: state.needs.goalPressure, identityCoherence01: state.needs.identityCoherence, predictionError01: state.predictionError, emotionEpisodeId: emotionEpisode.id, emotionLabel: emotionEpisode.label, actionTendency: emotionEpisode.actionTendency, valence01: emotionEpisode.valence01, arousal01: emotionEpisode.arousal01, dominance01: emotionEpisode.dominance01, appraisalConfidence01: emotionEpisode.confidence01, interoceptiveMismatch01: feelingEpisode.interoceptiveMismatch01, feelingIntensity01: feelingEpisode.intensity01, regulationPressure01: affectDecisionEvidence.regulationPressure01 } });
         const attentionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'attention', source: 'core.global-workspace', parentIds: [appraisalEvent.id, predictionEvent.id], confidence01: clamp(workspaceSnapshotNow.items.length / Math.max(1, workspaceSnapshotNow.capacity)), payload: { workspaceItemIds: workspaceSnapshotNow.items.slice(-12).map(item => item.id), workspaceCapacity: workspaceSnapshotNow.capacity, attentionBudget01: state.attentionBudget, recurrence01: this.persisted.facets.memory.workspace.recurrence } });
         const retrievedMemoryIds = (this.persisted.facets.memory.lastRetrievedMemoryIds ?? []).slice(-12);
         const memoryEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'memory', source: 'core.active-memory-context', parentIds: [attentionEvent.id, observationEvent.id], confidence01: clamp(retrievedMemoryIds.length / 8), payload: { retrievedMemoryIds, retrievedCount: retrievedMemoryIds.length, memoryEventCount: this.memorySubsystem.events.recent(8, false).length, identityContinuity01: identityContinuity.continuity } });
         const activeGoalIds = this.persisted.goals.filter(goal => goal.status === 'active').slice(0, 12).map(goal => goal.id);
         const goalEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'goal', source: 'core.canonical-goal-selection', parentIds: [appraisalEvent.id, memoryEvent.id], confidence01: clamp(Number(selectedIntent?.confidence ?? .5)), payload: { selectedGoalId: selectedIntent?.goalId ?? null, activeGoalIds, autonomousOverride, userRequestedAction } });
         const planEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'plan', source: 'core.plan-selection', parentIds: [goalEvent.id, predictionEvent.id], confidence01: clamp(Number(selectedIntent?.confidence ?? .5)), payload: { candidateCount: governedCandidates.length, candidateActions: governedCandidates.slice(0, 7).map(candidate => candidate.action), selectedAction, autonomous: autonomousChosen } });
-        const actionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'action', source: 'core.organism-policy', parentIds: [planEvent.id, predictionEvent.id, observationEvent.id], confidence01: clamp(Number(selectedIntent?.confidence ?? .5)), payload: { action: selectedAction, autonomous: autonomousChosen } });
+        const actionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'action', source: 'core.organism-policy', parentIds: [planEvent.id, predictionEvent.id, observationEvent.id, appraisalEvent.id], confidence01: clamp(Number(selectedIntent?.confidence ?? .5)), payload: { action: selectedAction, autonomous: autonomousChosen, affectEpisodeId: affectDecisionEvidence.episodeId, affectActionTendency: affectDecisionEvidence.actionTendency, affectDirectBias01: affectDecisionEvidence.directActionBias01, affectWorkspaceBias01: affectDecisionEvidence.workspaceActionBias01, affectCombinedPrior01: affectDecisionEvidence.combinedActionBias01 } });
         this.cognitiveCycleAnchors = { observation: observationEvent.id, prediction: predictionEvent.id, appraisal: appraisalEvent.id, attention: attentionEvent.id, memory: memoryEvent.id, goal: goalEvent.id, plan: planEvent.id, action: actionEvent.id };
         const actionSelectionOpClosed = closeOperationSemanticEvidence(actionSelectionOpOpen, { action: selectedAction, decisionId: decision.id, actionEventId: actionEvent.id }, { action: selectedAction, confidence: clamp(Number(selectedIntent?.confidence ?? .5)), predictionEventId: predictionEvent.id }, { effectMatched: Boolean(actionEvent.id) && decision.id === this.persisted.traces[0]?.id, invariant01: decision.selected === null || decision.selected?.action === selectedAction ? 1 : 0, closedAt: state.at });
         this.persisted.system.operationSemanticEvidence = [...(this.persisted.system.operationSemanticEvidence ?? []), actionSelectionOpClosed].slice(-256);
