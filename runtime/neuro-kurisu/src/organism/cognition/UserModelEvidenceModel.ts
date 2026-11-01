@@ -59,7 +59,7 @@ export class UserModelEvidenceModel {
    .filter((x):x is string=>typeof x==='string').map(x=>boundedText(x,180)).filter(Boolean);
   const sensitive=ownData(raw,'rejectedSensitiveCount');
   const malformed=ownData(raw,'rejectedMalformedCount');
-  this.state={version:1,claims,candidates,processedEvidenceRefs:[...new Set(refs)].slice(-512),
+  this.state={version:1,claims,candidates,processedEvidenceRefs:[...new Set([...refs,...claims.map(claim=>claim.evidenceRef)])].slice(-512),
    rejectedSensitiveCount:Number.isSafeInteger(sensitive)?Math.max(0,sensitive as number):0,
    rejectedMalformedCount:Number.isSafeInteger(malformed)?Math.max(0,malformed as number):0};
  }
