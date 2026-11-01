@@ -2557,6 +2557,32 @@ export class OrganismCore {
     }
     worldModel2Snapshot() { return structuredClone(this.worldSubsystem.worldModel2.snapshot()); }
     advancedDevelopmentSnapshot(): import('./types.ts').AdvancedDevelopmentFacet { return structuredClone(this.persisted.facets.advanced); }
+
+    /** Read-only, bounded prompt projection owned by the canonical self subsystem. */
+    userModelPromptContext(maxClaims = 6): string {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        return this.selfSubsystem.userModelPromptContext(maxClaims);
+    }
+    /** Explicit low-risk user evidence enters through the canonical SelfSubsystemRuntime owner. */
+    recordExplicitUserModelEvidence(input: Parameters<import('../cognition/UserModelEvidenceModel.ts').UserModelEvidenceModel['recordExplicit']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        const result = this.selfSubsystem.userModelEvidence.recordExplicit(input);
+        if (result.accepted || result.reason === 'sensitive-or-unclassified' || result.reason === 'invalid-input') {
+            this.persisted.facets.advanced.userModelEvidence = this.selfSubsystem.userModelEvidence.snapshot();
+            this.markPersistenceDirty();
+        }
+        return result;
+    }
+    /** Corrections use the canonical evidence model and preserve its exact provenance rules. */
+    correctExplicitUserModelEvidence(input: Parameters<import('../cognition/UserModelEvidenceModel.ts').UserModelEvidenceModel['correctExplicit']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        const result = this.selfSubsystem.userModelEvidence.correctExplicit(input);
+        if (result.accepted || result.reason === 'sensitive-or-unclassified' || result.reason === 'invalid-input') {
+            this.persisted.facets.advanced.userModelEvidence = this.selfSubsystem.userModelEvidence.snapshot();
+            this.markPersistenceDirty();
+        }
+        return result;
+    }
     temporalContinuitySnapshot() { return this.cognitiveRuntime.temporalContinuity.snapshot(); }
     recoveryWatchdogSnapshot() { return this.cognitiveRuntime.recoveryWatchdog.snapshot(); }
     recoveryPolicyDiagnostics() {
