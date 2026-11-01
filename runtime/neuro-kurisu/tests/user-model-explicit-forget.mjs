@@ -14,20 +14,31 @@ const recorded = model.recordExplicit({
 assert.equal(recorded.accepted, true);
 assert.equal(model.confirmedValue('response.style', 'interaction-style'), 'detailed');
 
+const conflict = model.recordExplicit({
+  key: 'response.style',
+  domain: 'interaction-style',
+  value: 'concise',
+  tick: 11,
+  evidenceRef: 'user-explicit:style:11',
+  explicit: true,
+  sensitivity: 'low-risk',
+});
+assert.equal(conflict.status, 'disputed');
+
 model.observeBehavior({
   key: 'response.style',
   domain: 'interaction-style',
   value: 'concise',
   tick: 11,
-  observationRef: 'behavior:style:11',
+  observationRef: 'behavior:style:12',
   sensitivity: 'low-risk',
 });
 
 const forgotten = model.forgetExplicit({
   key: 'response.style',
   domain: 'interaction-style',
-  tick: 12,
-  evidenceRef: 'user-explicit:forget-style:12',
+  tick: 13,
+  evidenceRef: 'user-explicit:forget-style:13',
   explicit: true,
 });
 assert.deepEqual(forgotten, {
@@ -48,7 +59,7 @@ assert.equal(restored.recordExplicit({
   key: 'response.style',
   domain: 'interaction-style',
   value: 'detailed',
-  tick: 13,
+  tick: 14,
   evidenceRef: 'user-explicit:style:10',
   explicit: true,
   sensitivity: 'low-risk',
@@ -56,8 +67,8 @@ assert.equal(restored.recordExplicit({
 assert.equal(restored.forgetExplicit({
   key: 'response.style',
   domain: 'interaction-style',
-  tick: 14,
-  evidenceRef: 'user-explicit:forget-style:12',
+  tick: 15,
+  evidenceRef: 'user-explicit:forget-style:13',
   explicit: true,
 }).reason, 'duplicate-evidence');
 
@@ -66,8 +77,8 @@ assert.equal(restored.recordExplicit({
   key: 'response.style',
   domain: 'interaction-style',
   value: 'concise',
-  tick: 15,
-  evidenceRef: 'user-explicit:style:15',
+  tick: 16,
+  evidenceRef: 'user-explicit:style:16',
   explicit: true,
   sensitivity: 'low-risk',
 }).status, 'confirmed');
@@ -76,14 +87,14 @@ assert.equal(restored.confirmedValue('response.style', 'interaction-style'), 'co
 assert.equal(restored.forgetExplicit({
   key: 'response.style',
   domain: 'interaction-style',
-  tick: 16,
+  tick: 17,
   evidenceRef: '',
   explicit: true,
 }).reason, 'missing-evidence');
 assert.equal(restored.forgetExplicit({
   key: '__proto__',
   domain: 'interaction-style',
-  tick: 17,
+  tick: 18,
   evidenceRef: 'invalid:key',
   explicit: false,
 }).reason, 'invalid-input');
