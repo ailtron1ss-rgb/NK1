@@ -7,6 +7,7 @@ import { clearStoredAvatarModel, loadStoredAvatarModel, MAX_AVATAR_MODEL_BYTES, 
 import * as THREE from "three";
 import { resolveVrmArm } from "./avatar/vrmHumanoidRigAdapter";
 import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
+import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
@@ -54,7 +55,7 @@ function makeBody(scene:any){
  const ringMat=new THREE.MeshStandardMaterial({color:0x2d8198,roughness:.4,metalness:.42,transparent:true,opacity:.5}),ring=new THREE.Mesh(new THREE.TorusGeometry(.62,.012,8,80),ringMat);ring.name="bodyPlatform";ring.rotation.x=Math.PI/2;ring.position.y=.035;root.add(ring);
  return {root,head,leftArm,rightArm,mouth,eyeWhites,irises,brows,ringMat};
 }
-function disposeTree(root:any){root?.traverse?.((node:any)=>{node.geometry?.dispose?.();for(const mat of(Array.isArray(node.material)?node.material:node.material?[node.material]:[])){for(const value of Object.values(mat)){if(value&&value!==sharedAnimeGradient&&typeof value==="object"&&(value as any).isTexture)(value as any).dispose?.();}mat.dispose?.();}});}
+function disposeTree(root:any){disposeThreeObjectTree(root,sharedAnimeGradient?[sharedAnimeGradient]:[]);}
 function bonesOf(root:any):Bone[]{const out:Bone[]=[];root.traverse((node:any)=>{if(node.isBone)out.push({node,name:String(node.name||"").toLowerCase().replace(/[^a-z0-9]/g,""),x:node.rotation.x,y:node.rotation.y,z:node.rotation.z});});return out;}
 function selectClip(clips:any[],action:ActionKind){const rules:Record<ActionKind,RegExp>={respond:/talk|speak|gesture|explain|wave/i,explore:/look|walk|explore|turn|inspect/i,verify:/think|inspect|focus|work|write/i,rest:/idle|rest|breath|sit/i,reflect:/think|ponder|idle/i,wait:/idle|stand|breath/i};return clips.find((clip)=>rules[action].test(String(clip.name||"")))||clips.find((clip)=>/idle|breath|stand/i.test(String(clip.name||"")) )||null;}
 export function Avatar3DStage(props:Props){
