@@ -2732,6 +2732,10 @@ export class OrganismCore {
         const personality = this.developmentalNeural.neuralGerminalOrganismB270.snapshot();
         return buildGradedTraitSalience({ values: personality.traitValues, evidence: personality.traitEvidence, maxTraits: 3 });
     }
+    /** Read-only explicit low-risk user preferences; inferred/disputed data never becomes prompt fact. */
+    userModelPromptContext() {
+        return this.selfSubsystem.userModelPromptContext();
+    }
     /** Retrieve an internally generated, user-facing dialogue topic. This does not execute tools or contact external services. */
     autonomousSocialInitiativeForGeneration() {
         return this.organismSystems.agency.autonomousSocialInitiative.latestPlanned(Date.now());
