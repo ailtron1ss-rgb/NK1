@@ -2,6 +2,17 @@ import { buildVoicePlan, inferVoiceLanguage } from "../../../../runtime/neuro-ku
 import type { OrganismBodyState } from "../../../../runtime/neuro-kurisu/src/organism/body/EmbodiedBody.ts";
 
 export type BrowserVoiceEmotion = "curiosity" | "calm" | "joy" | "anxiety" | "frustration" | "sadness" | "anger" | "protective";
+export interface BrowserVoiceAffectSnapshot { emotion: BrowserVoiceEmotion; arousal: number; valence: number; }
+const BROWSER_VOICE_EMOTIONS: readonly BrowserVoiceEmotion[] = ["curiosity","calm","joy","anxiety","frustration","sadness","anger","protective"];
+function finiteUnit(value: unknown, fallback: number): number {
+  const numeric = typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  return Math.max(0, Math.min(1, numeric));
+}
+/** Normalize one current organism affect snapshot; never mix historical turn emotion with newer channels. */
+export function resolveBrowserVoiceAffect(snapshot: { label: string; arousal: number; valence: number }): BrowserVoiceAffectSnapshot {
+  const emotion = BROWSER_VOICE_EMOTIONS.includes(snapshot.label as BrowserVoiceEmotion) ? snapshot.label as BrowserVoiceEmotion : "calm";
+  return { emotion, arousal: finiteUnit(snapshot.arousal, 0.22), valence: finiteUnit(snapshot.valence, 0.5) };
+}
 export interface BrowserVoiceProsodyInput {
   text: string;
   emotion: BrowserVoiceEmotion | string;
