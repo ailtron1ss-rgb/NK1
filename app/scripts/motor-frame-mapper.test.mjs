@@ -78,3 +78,27 @@ test("rejects dangling and contradictory reached/blocked joint references", () =
   assert.equal(valid.accepted, true);
   assert.deepEqual(valid.mappedJointIds, ["left_elbow", "right_elbow"]);
 });
+
+test("rejects accessor-backed frame and joint records without executing getters", () => {
+  let frameGetterCalls = 0;
+  const accessorFrame = frame();
+  Object.defineProperty(accessorFrame, "tick", { enumerable: true, get() { frameGetterCalls += 1; return 7; } });
+  assert.equal(mapMotorFrameToSemanticPose(accessorFrame, profile).reason, "invalid-motor-frame");
+  assert.equal(frameGetterCalls, 0);
+
+  let jointGetterCalls = 0;
+  const accessorJointFrame = frame();
+  Object.defineProperty(accessorJointFrame.joints.left_elbow, "angleRad", {
+    enumerable: true, get() { jointGetterCalls += 1; return 0.25; },
+  });
+  assert.equal(mapMotorFrameToSemanticPose(accessorJointFrame, profile).reason, "invalid-motor-frame");
+  assert.equal(jointGetterCalls, 0);
+});
+
+test("rejects hostile proxy traps as invalid input instead of throwing", () => {
+  const hostileFrame = new Proxy(frame(), { getPrototypeOf() { throw new Error("trap"); } });
+  assert.equal(mapMotorFrameToSemanticPose(hostileFrame, profile).reason, "invalid-motor-frame");
+
+  const hostileJoints = new Proxy(frame().joints, { ownKeys() { throw new Error("trap"); } });
+  assert.equal(mapMotorFrameToSemanticPose(frame({ joints: hostileJoints }), profile).reason, "invalid-motor-frame");
+});
