@@ -436,6 +436,8 @@ async function route(req, res) {
             if (!runtimeReady)
                 return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
             const input = await body(req);
+            if (!input || typeof input !== 'object' || Array.isArray(input))
+                return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
             const action = input.action === 'correct' ? 'correct' : input.action === 'record' ? 'record' : '';
             if (!action)
                 return json(res, 400, { ok: false, error: 'action-must-be-record-or-correct' });
