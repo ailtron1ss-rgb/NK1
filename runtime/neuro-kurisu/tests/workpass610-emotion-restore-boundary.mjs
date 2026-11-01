@@ -36,6 +36,9 @@ const hostile = new Proxy({}, { ownKeys(){throw new Error('hostile proxy'); } })
 const fromProxy = new EmotionAppraisalEngine();
 assert.doesNotThrow(()=>fromProxy.restore(hostile),'hostile proxy must fail closed');
 assert.equal(fromProxy.snapshot().episodes,0);
+const revoked = Proxy.revocable({}, {});
+revoked.revoke();
+assert.doesNotThrow(()=>new EmotionAppraisalEngine().restore(revoked.proxy),'revoked proxy must fail closed');
 
 const sparse = { ...valid, history: new Array(2) };
 const fromSparse = new EmotionAppraisalEngine();
