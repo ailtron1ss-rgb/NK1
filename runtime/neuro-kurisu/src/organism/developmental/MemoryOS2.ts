@@ -882,16 +882,17 @@ export class MemoryOS2{
   return `source:${String(evidence.provenanceClass)}:${String(evidence.source??'').trim().normalize('NFKC').toLocaleLowerCase()}`;
  }
  private normalizeEvidenceSources(item:any):MemoryEvidenceSource[]{
+  const finite=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?value:fallback;
   const source=String(item?.source??'unknown').slice(0,240)||'unknown';
   const provenanceClass=this.provenanceClassFor(source,item?.provenanceClass);
-  const observedAt=Number.isFinite(Number(item?.observedAt))?Number(item.observedAt):Number(item?.createdAt??Date.now());
-  const evidenceFreshnessAt=Number.isFinite(Number(item?.evidenceFreshnessAt))?Number(item.evidenceFreshnessAt):observedAt;
-  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(Number(item?.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt};
+  const observedAt=finite(item?.observedAt,finite(item?.createdAt,Date.now()));
+  const evidenceFreshnessAt=finite(item?.evidenceFreshnessAt,observedAt);
+  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(finite(item?.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt};
   const raw=Array.isArray(item?.evidenceSources)?item.evidenceSources.slice(0,32):[];
   const normalizedRaw:MemoryEvidenceSource[]=raw.map((row:any)=>{
    const cls=this.provenanceClassFor(String(row?.source??source),row?.provenanceClass);
-   const obs=Number.isFinite(Number(row?.observedAt))?Number(row.observedAt):observedAt;
-   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:clamp(Number(row?.sourceAuthority01??this.sourceAuthorityDefault(cls))),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:Number.isFinite(Number(row?.evidenceFreshnessAt))?Number(row.evidenceFreshnessAt):obs};
+   const obs=finite(row?.observedAt,observedAt);
+   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:clamp(finite(row?.sourceAuthority01,this.sourceAuthorityDefault(cls))),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:finite(row?.evidenceFreshnessAt,obs)};
   });
   // When the serialized trail already contains the primary lineage, prefer its
   // publisher-bound source label to the generic owning subsystem label.
@@ -901,10 +902,8 @@ export class MemoryOS2{
   for(const row of rows){const key=this.evidenceKey(row);const previous=dedup.get(key);if(!previous){dedup.set(key,row);continue;}
    const useNew=row.evidenceFreshnessAt>previous.evidenceFreshnessAt || (row.evidenceFreshnessAt===previous.evidenceFreshnessAt&&row.sourceAuthority01>previous.sourceAuthority01);
    const chosen=useNew?row:previous;
-   dedup.set(key,{...chosen,sourceAuthority01:Math.max(previous.sourceAuthority01,row.sourceAuthority01),observedAt:Math.max(previous.observedAt,row.observedAt),evidenceFreshnessAt:Math.max(previous.evidenceFreshnessAt,row.evidenceFreshnessAt)});
+   dedup.set(key,{...chosen,sourceAuthority01:Math.max(row.sourceAuthority01,previous.sourceAuthority01)});
   }
-  // Keep the highest-quality/freshest independent lineages within the same
-  // byte-bounded canonical record. Replays of one lineage never multiply votes.
   return [...dedup.values()].sort((a,b)=>{
    const score=(x:MemoryEvidenceSource)=>x.sourceAuthority01*.65+clamp(1-Math.max(0,Date.now()-x.evidenceFreshnessAt)/(180*86400000))*.35;
    return score(b)-score(a)||b.observedAt-a.observedAt||this.evidenceKey(a).localeCompare(this.evidenceKey(b));
