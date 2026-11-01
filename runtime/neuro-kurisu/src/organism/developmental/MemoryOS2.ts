@@ -902,8 +902,10 @@ export class MemoryOS2{
   for(const row of rows){const key=this.evidenceKey(row);const previous=dedup.get(key);if(!previous){dedup.set(key,row);continue;}
    const useNew=row.evidenceFreshnessAt>previous.evidenceFreshnessAt || (row.evidenceFreshnessAt===previous.evidenceFreshnessAt&&row.sourceAuthority01>previous.sourceAuthority01);
    const chosen=useNew?row:previous;
-   dedup.set(key,{...chosen,sourceAuthority01:Math.max(row.sourceAuthority01,previous.sourceAuthority01)});
+   dedup.set(key,{...chosen,sourceAuthority01:Math.max(previous.sourceAuthority01,row.sourceAuthority01),observedAt:Math.max(previous.observedAt,row.observedAt),evidenceFreshnessAt:Math.max(previous.evidenceFreshnessAt,row.evidenceFreshnessAt)});
   }
+  // Keep the highest-quality/freshest independent lineages within the same
+  // byte-bounded canonical record. Replays of one lineage never multiply votes.
   return [...dedup.values()].sort((a,b)=>{
    const score=(x:MemoryEvidenceSource)=>x.sourceAuthority01*.65+clamp(1-Math.max(0,Date.now()-x.evidenceFreshnessAt)/(180*86400000))*.35;
    return score(b)-score(a)||b.observedAt-a.observedAt||this.evidenceKey(a).localeCompare(this.evidenceKey(b));
