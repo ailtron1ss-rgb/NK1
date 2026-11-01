@@ -1,3 +1,9 @@
+## [NK1][Memory] Wire independent retrieval evidence into integration gates (2026-11-01)
+
+- Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
+- Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
+- The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+
 ## [NK1][Memory] Require independent bilingual holdout clusters (2026-11-01)
 
 - Close a statistical evidence gap in MemoryOS2 retrieval promotion: raw per-language query counts no longer substitute for independent source episodes/documents.
