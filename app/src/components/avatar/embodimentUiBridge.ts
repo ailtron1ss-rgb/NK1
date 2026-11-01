@@ -34,11 +34,15 @@ export interface SemanticBodyProjectionInput {
   revision: number;
   monotonicMs: number;
   headTilt: number;
-  gaze: { x: number; y: number };
-  speechPhase: SpeechPhase;
-  speechEventId: string | null;
+  /** Optional because sensor providers may omit a sample during handoff/reconnect. */
+  gaze?: { x: number; y: number } | null;
+  /** Untrusted provider lifecycle data is normalized before entering semantic state. */
+  speechPhase: unknown;
+  /** Opaque external event identity; malformed values are dropped at the boundary. */
+  speechEventId: unknown;
   audioTimeMs: number;
-  mouth: MouthPose;
+  /** Optional because viseme/mouth samples can be absent between audio frames. */
+  mouth?: MouthPose | null;
 }
 
 const EXPRESSION_CHANNELS: readonly ExpressionChannel[] = [
@@ -93,8 +97,21 @@ const CAPABILITY_TABLE: Record<UiRenderMode, RendererCapabilities> = {
   },
 };
 
-const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
-const clampUnit = (value: number): number => Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0));
+const clamp01 = (value: number | null | undefined): number => Math.max(0, Math.min(1, typeof value === "number" && Number.isFinite(value) ? value : 0));
+const clampUnit = (value: number | null | undefined): number => Math.max(-1, Math.min(1, typeof value === "number" && Number.isFinite(value) ? value : 0));
+
+const SPEECH_PHASES = new Set<SpeechPhase>(["idle", "starting", "speaking", "ended", "cancelled", "unknown"]);
+
+/** Normalize lifecycle data at the renderer boundary; malformed phases never abort a body handoff. */
+const normalizeSpeechPhase = (value: unknown): SpeechPhase =>
+  typeof value === "string" && SPEECH_PHASES.has(value as SpeechPhase) ? value as SpeechPhase : "unknown";
+
+/** Event IDs are opaque identifiers, but blank, non-string and oversized values are not useful evidence. */
+const normalizeSpeechEventId = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 && normalized.length <= 128 ? normalized : null;
+};
 
 export function capabilitiesForMode(mode: UiRenderMode): RendererCapabilities {
   return CAPABILITY_TABLE[mode];
@@ -103,8 +120,9 @@ export function capabilitiesForMode(mode: UiRenderMode): RendererCapabilities {
 /** Project the canonical snapshot into a renderer-neutral semantic body state. */
 export function projectSemanticBodyState(input: SemanticBodyProjectionInput): SemanticBodyState {
   const label = input.snapshot.emotion.label;
-  const gazeX = clampUnit(input.gaze.x);
-  const gazeY = clampUnit(input.gaze.y);
+  const gazeX = clampUnit(input.gaze?.x);
+  const gazeY = clampUnit(input.gaze?.y);
+  const speechPhase = normalizeSpeechPhase(input.speechPhase);
   return {
     schemaVersion: 1,
     revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0,
@@ -114,11 +132,13 @@ export function projectSemanticBodyState(input: SemanticBodyProjectionInput): Se
     expression: EXPRESSION_TEXT[label] ?? "neutral",
     gaze: { x: gazeX, y: gazeY },
     speech: {
-      eventId: input.speechEventId && input.speechEventId.length <= 128 ? input.speechEventId : null,
-      phase: input.speechPhase,
+      eventId: normalizeSpeechEventId(input.speechEventId),
+      phase: speechPhase,
       audioTimeMs: Math.max(0, Number.isFinite(input.audioTimeMs) ? input.audioTimeMs : 0),
-      mouthOpen: clamp01(input.mouth.open),
-      mouthForm: clampUnit(input.mouth.form),
+      // Only active speech may drive mouth motion; terminal/unknown phases must not
+      // preserve a stale open-mouth sample after interruption or reconnect.
+      mouthOpen: speechPhase === "speaking" ? clamp01(input.mouth?.open) : 0,
+      mouthForm: speechPhase === "speaking" ? clampUnit(input.mouth?.form) : 0,
     },
     action: (typeof input.snapshot.lastOption === "string" && input.snapshot.lastOption.trim()) ? input.snapshot.lastOption.slice(0, 96) : "wait",
     intentId: null,
