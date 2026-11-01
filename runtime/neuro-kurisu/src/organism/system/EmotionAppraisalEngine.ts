@@ -68,7 +68,7 @@ function readOwnDataRecord(value:unknown):Record<string,any>|null{
     if(proto!==Object.prototype&&proto!==null)return null;
     const keys=Reflect.ownKeys(value);
     if(keys.some(k=>typeof k!=="string"))return null;
-    const out:Record<string,any>={};
+    const out:Record<string,any>=Object.create(null);
     for(const key of keys as string[]){
       const descriptor=Object.getOwnPropertyDescriptor(value,key);
       if(!descriptor||!("value" in descriptor))return null;
