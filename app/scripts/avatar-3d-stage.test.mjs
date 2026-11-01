@@ -42,6 +42,8 @@ test("procedural 3D fallback uses cel-shaded anime materials without flattening 
  const stage=await readFile(stagePath,"utf8");
  assert.ok(stage.includes("new THREE_TOON.MeshToonMaterial"));
  assert.ok(stage.includes("new THREE_TOON.DataTexture"));
+ assert.match(stage,/let sharedAnimeGradient:[^;]+\| null = null/);
+ assert.match(stage,/if\(sharedAnimeGradient\)return sharedAnimeGradient/);
  assert.ok(stage.includes("THREE_TOON.RedFormat"));
  assert.ok(stage.includes("THREE_TOON.NearestFilter"));
  assert.ok(stage.includes("new THREE.MeshStandardMaterial({color:0x2d8198"));
