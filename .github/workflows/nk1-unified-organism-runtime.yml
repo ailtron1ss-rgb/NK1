@@ -56,6 +56,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:world-perception
       - name: Cognitive planner restore integrity and execution boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass611:cognitive-planner-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass610:brain-fusion-strip-only && npm --prefix runtime/neuro-kurisu run test:cognitive-runtime-planner-execution-gate
+      - name: Emotion appraisal restore boundary and interoceptive affect integration
+        run: npm --prefix runtime/neuro-kurisu run test:workpass610:emotion-restore && node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-172-emotion-interoceptive-mind.mjs
       - name: Cognitive spine, world feedback and project-tool boundary
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-39
       - name: Continuity and organism integration
