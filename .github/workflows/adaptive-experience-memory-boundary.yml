@@ -1,0 +1,46 @@
+name: NK1 Adaptive Experience Memory Boundary
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - feature/adaptive-memory-consolidator-hardening-2026-11-01
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts'
+      - 'runtime/neuro-kurisu/tests/adaptive-experience-consolidator-boundary.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/adaptive-experience-memory-boundary.yml'
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts'
+      - 'runtime/neuro-kurisu/tests/adaptive-experience-consolidator-boundary.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/adaptive-experience-memory-boundary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adaptive-experience-memory-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Run boundary regressions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:adaptive-experience-consolidator
