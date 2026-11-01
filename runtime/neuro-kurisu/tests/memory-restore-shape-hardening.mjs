@@ -129,6 +129,40 @@ assert.equal(
   'a row with malformed expiry must not become current',
 );
 
+// Numeric-looking strings are not trusted numeric state. JSON snapshots emitted by
+// MemoryOS2 use JSON numbers; coercing strings here would let malformed data survive
+// as timestamps or authority-bearing confidence values.
+const numericStringRow = {
+  ...structuredClone(seedRow),
+  id: 'numeric-string-row',
+  createdAt: String(now - 8_000),
+  lastAccessAt: String(now - 7_000),
+  validFromAt: String(now - 6_000),
+  validUntilAt: String(now - 5_000),
+  salience: '0.99',
+  confidence: '0.99',
+  epistemicStatus: 'fact',
+};
+const numericStringMemory = new MemoryOS2({ embeddingProvider: null });
+numericStringMemory.restore({ ...structuredClone(base), items: [numericStringRow] });
+const numericStringRestored = numericStringMemory.snapshot().items[0];
+assert.ok(numericStringRestored);
+assert.equal(numericStringRestored.createdAt, numericStringRestored.observedAt,
+  'numeric-looking string timestamps must use the conservative timestamp fallback');
+assert.equal(numericStringRestored.lastAccessAt, numericStringRestored.createdAt,
+  'numeric-looking string access times must not be coerced');
+assert.equal(numericStringRestored.validFromAt, numericStringRestored.createdAt,
+  'numeric-looking string validity starts must not be coerced');
+assert.equal(numericStringRestored.validUntilAt, numericStringRestored.validFromAt,
+  'numeric-looking string expiry must close the validity interval');
+assert.equal(numericStringRestored.salience, .5,
+  'numeric-looking string salience must use the bounded fallback');
+assert.equal(numericStringRestored.confidence, .5);
+assert.equal(numericStringRestored.epistemicStatus, 'unknown',
+  'numeric-looking string confidence must not preserve fact authority');
+assert.equal(numericStringMemory.restoreDiagnostics().invalidExpiriesClosed, 1);
+assert.equal(numericStringMemory.restoreDiagnostics().factsDowngraded, 1);
+
 const diagnostics = restored.restoreDiagnostics();
 assert.equal(diagnostics.sourceRows, 7);
 assert.equal(diagnostics.acceptedRows, 2);
@@ -170,5 +204,6 @@ console.log('MEMORY_RESTORE_SHAPE_HARDENING=PASS', JSON.stringify({
   staleHashRebound: true,
   invalidVectorDiscarded: true,
   malformedStatusDowngraded: true,
+  numericStringsRejected: numericStringRestored.epistemicStatus === 'unknown' && numericStringRestored.validUntilAt === numericStringRestored.validFromAt,
   normalizedRowStillRetrievable: true,
 }));
