@@ -1,3 +1,8 @@
+## [NK1][CI] Make project-tool bridge fixture deterministic in operational mode (2026-11-01)
+- Configure the project bridge fixtures in operational cycle mode with immediate checkpoints so the test exercises execution rather than a default non-operational setup.
+- Explicitly bind the safe fixture plan to the built-in `organism.project.context` reader and the destructive fixture plan to its test-only destructive tool.
+- The test now proves the project tool-binding precondition, safe project read, and destructive-operation denial as separate assertions.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
