@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Fail closed on hostile motor-frame records (2026-11-01)
+- Require plain own-data records for frames, joint maps and joint samples; reject inherited records and accessor-backed properties without invoking getters.
+- Validate joint-ID arrays through own data descriptors, rejecting sparse/accessor arrays and non-standard array prototypes.
+- Catch hostile Proxy reflection traps at the frame validation boundary and return the normal invalid-frame result instead of throwing into the renderer pipeline.
+- Add regressions for root getters, nested joint getters, inherited objects and hostile proxies.
+- This hardens untrusted frame ingestion; it does not establish renderer readback, physical calibration or device soak.
+
 ## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
 - Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
 - Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
