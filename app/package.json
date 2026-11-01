@@ -37,7 +37,8 @@
     "test:vrm-rig-calibration-session": "node --experimental-strip-types --test scripts/vrm-rig-calibration-session.test.mjs",
     "test:avatar-model-fingerprint": "node --experimental-strip-types --test scripts/avatar-model-fingerprint.test.mjs",
     "test:three-toon-materials": "node --experimental-strip-types --test scripts/three-toon-materials.test.mjs",
-    "test:avatar-model-preflight": "node --experimental-strip-types --test scripts/avatar-model-preflight.test.mjs"
+    "test:avatar-model-preflight": "node --experimental-strip-types --test scripts/avatar-model-preflight.test.mjs",
+    "test:embodiment-ui-bridge": "node --experimental-strip-types --test scripts/embodiment-ui-bridge.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
