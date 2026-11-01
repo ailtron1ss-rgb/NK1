@@ -1,36 +1,39 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Рабочая ветка:** `workpass70-source`  
-**Проверенный PR HEAD:** `bd62202ca462af8e0e1647bedc978f6f17540394`  
-**Merge commit в `workpass70-source`:** `ef1ed6b078d4001f526c9c82c86d7d81b950507f`
+**Проверенный кодовый SHA:** `ccab4033b2e74efac2267a8e5d214d0abceece20`
 
-### Реальная работа в текущем проходе
-- **3D/GPU lifecycle:** добавлена очистка уникальных ресурсов Three.js (геометрии, материалы, текстуры, skeletons) с сохранением renderer-owned toon gradient.
-- **GLB material conversion:** после замены исходных MeshStandardMaterial/MeshPhysicalMaterial на toon-материалы теперь освобождаются исходные material/program resources; текстуры не уничтожаются, поскольку остаются подключёнными к новым материалам.
-- **Regression:** тесты используют реальные Three.js ресурсы и проверяют однократный dispose shared resources, сохранение текстур и освобождение заменённых исходных материалов.
-- **Renderer architecture:** toon-material pipeline вынесен из React-компонента в `threeToonMaterials.ts`; добавлены реальные тесты кэша, преобразования Standard/Physical материалов, неизменности non-PBR материалов, сохранения текстур и срока жизни общей gradient texture.
-- **CI:** отдельная команда `test:three-toon-materials` включена в `NK1 embodiment switch contract`.
-- **Release evidence:** обновлена фиксация текущего fail-closed license audit ранее; release-процесс не обходился и не ослаблялся.
+### Реальная работа в этом проходе
+- **Three.js lifecycle:** deduplicated disposal shared geometries/materials/textures/skeletons; renderer-owned toon gradient сохраняется при очистке импортированной модели.
+- **Renderer architecture:** toon material factory и non-VRM GLB conversion вынесены в `threeToonMaterials.ts`; source materials освобождаются без уничтожения текстур, используемых новыми материалами.
+- **Secure avatar intake:** добавлен GLB 2.0 preflight до `GLTFLoader.parse`: magic/version/declared length, JSON-first/BIN-second chunks, alignment/bounds, JSON и buffer metadata, VRM 0.x/1.0 identity, 90 MB cap.
+- **Local-only asset policy:** external buffer/image URLs отвергаются; новые upload и IndexedDB-restored модели проходят один и тот же preflight path.
+- **Regression/CI:** реальные Three.js disposal/material tests и отдельный GLB/VRM preflight test включены в embodiment CI.
 
-### Проверка exact code SHA
-- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277738534) на PR HEAD `bd62202ca462af8e0e1647bedc978f6f17540394`: app script regression, app typecheck, development build, runtime typecheck, Hexis, memory retrieval, recovered rebuild/Live2D/avatar, P23/EILS/cognitive spine, local LLM, tool governance, language HTTP и speech/persistence regressions — все завершились успешно.
-- [NK1 embodiment switch contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41277738546): renderer-neutral handoff, procedural/VRM avatar contract, новый реальный Three.js toon-material lifecycle test и app typecheck — SUCCESS.
-- Дополнительно прошли Aspect 02, Aspect 10, Hexis, MemoryOS2 lineage, cognitive planner, WorkPass79, WorkPass108 и WorkPass110. Всего **10/10 применимых workflow — SUCCESS** на PR HEAD.
+### Проверка exact source SHA
+- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41278360280) на `ccab4033b2e74efac2267a8e5d214d0abceece20`.
+- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41278360289) на том же SHA.
+- PR [#507](https://github.com/ailtron1ss-rgb/NK1/pull/507) — renderer refactor, squash-merged в `ef1ed6b` после 10/10 зелёных PR checks.
+- Дублирующие устаревшие PR [#508](https://github.com/ailtron1ss-rgb/NK1/pull/508) и [#509](https://github.com/ailtron1ss-rgb/NK1/pull/509) закрыты как superseded: preflight уже присутствует и проверен на canonical source branch.
 
 ### Что всё ещё НЕ доказано
-- Полноценный browser/WebGL E2E с реальным импортом, заменой, повторной загрузкой VRM/GLB и замером renderer.info/GPU residency.
-- Длительный Android/Termux audio soak и синхронизация на реальном телефоне.
-- Независимый лицензированный RU/EN holdout uplift; CI-эксперимент не заменяет независимую внешнюю выборку.
+- Browser/WebGL E2E: реальная загрузка/замена/reset/reload VRM/GLB и renderer.info/GPU residency soak.
+- Android/Termux audio sync, interruption и длительный real-device soak.
+- Независимый лицензированный RU/EN holdout uplift.
 - Production soak, полная автономная инициатива и субъективное сознание не заявляются как доказанные.
 
-### Release status
-Последний опубликованный GitHub Release подтверждён через Releases API: tag `Neuro` / **NeuroKurisu0.1**, опубликован 19 октября 2026. Единственный asset в API: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286` ([release](https://github.com/ailtron1ss-rgb/NK1/releases/tag/Neuro), [asset metadata](https://api.github.com/repos/ailtron1ss-rgb/NK1/releases/417371351/assets)). Предыдущая запись этого checkpoint про `WORKPASS70_HOTFIX1` и hash `9eff…` не совпадала с опубликованным asset и исправлена. Текущие изменения находятся в source branch; Release ZIP не пересобирался и не публиковался. Публикация остаётся под exact-SHA, provenance/SBOM и human license gates.
+### Release status — важно различать stable и prerelease
+GitHub `/releases/latest` возвращает **последний stable Release**: tag `Neuro` / NeuroKurisu0.1, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+
+Более поздний по времени **prerelease** — tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Поэтому для рабочего артефакта по правилу «последний ZIP, включая prerelease» использовать Hotfix 1; stable Neuro остаётся последним non-prerelease. Ни один из этих ZIP не содержит текущие изменения от 1 ноября.
+
+Новый Release ZIP не собран и не опубликован. Human license review, root/runtime license decisions, locked dependency review и source-archive decisions остаются release gates. Не обходить их и не объявлять Release обновлённым до появления проверенного нового asset.
 
 ### Следующие P0
-1. Browser/WebGL E2E: upload → convert → replace → reset → reload; assert no stale renderer resources and no disposed shared gradient.
+1. Browser/WebGL E2E: upload → preflight → parse → replace → reset → reload; проверить GPU resource counters и сохранность renderer-owned gradient.
 2. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и soak.
-3. Независимая RU/EN memory retrieval evaluation по source-clustered paired seeds.
-4. Закрыть license evidence и только затем сформировать новый полный Release ZIP.
+3. Независимая RU/EN retrieval evaluation по source-clustered paired seeds.
+4. Закрыть license evidence и только затем собрать новый полный Release ZIP.
 
 ---
 
