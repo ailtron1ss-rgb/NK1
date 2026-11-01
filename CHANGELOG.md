@@ -1,3 +1,15 @@
+## [NK1][Embodiment] Reject hostile motor-frame record boundaries (2026-11-01)
+- Require plain data records at the motor-frame, joint-map, joint-sample and calibration boundaries; accessor-backed fields are rejected without executing getters.
+- Snapshot own data properties before validation/mapping so later reads cannot re-enter caller-controlled Proxy traps.
+- Convert hostile Proxy traps and malformed record/array descriptors into a bounded `invalid-motor-frame` or `invalid-motor-mapping-profile` rejection rather than throwing through the runtime.
+- Add regressions for accessor-backed frame/joint fields and throwing Proxy traps.
+- Scope is input-boundary integrity; it does not claim motor control, IK, renderer readback or physical embodiment completion.
+
+## [NK1][CI] Align longitudinal memory holdout workflow with Node 24 (2026-11-01)
+- Replace checkout/setup-node v4 with the repository-approved v7 releases and resolve Node from `.nvmrc`.
+- Disable implicit npm caching because the focused holdout workflow does not install dependencies.
+- Remove a CI reliability-audit blocker discovered while validating the motor-frame boundary tests.
+
 ## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
 - Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
 - Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
