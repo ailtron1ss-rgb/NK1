@@ -152,6 +152,15 @@ export class FileStateStore<T> implements JsonStateStore<T> {
       try { await handle.sync(); this.stats.fsyncs += 1; } finally { await handle.close(); }
       crashInject('after-backup-file-fsync');
       await rename(tmp, this.backupPath);
+      if (this.strictDirectoryFsync) {
+        try {
+          // Make the previous primary durable as a backup before replacing primary.
+          await this.syncParentDirectory();
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          throw new Error('backup-directory-fsync-required:' + reason, { cause: error });
+        }
+      }
       crashInject('after-backup-rename');
       this.stats.backupCopies += 1;
     } finally {
