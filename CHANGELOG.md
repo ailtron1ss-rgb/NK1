@@ -1,3 +1,9 @@
+## [NK1][Memory] Reject numeric-string coercion during canonical restore (2026-11-01)
+- Treat canonical snapshot numeric fields as JSON numbers only; numeric-looking strings no longer become trusted timestamps, salience, confidence, revision history or nested evidence provenance.
+- Use conservative fallbacks for invalid values, close malformed validity expiries and downgrade facts with invalid confidence.
+- Add a real MemoryOS2 restore regression covering timestamps, validity, confidence, salience, revision history and nested evidence-source metadata.
+- No retrieval-ranking change, external storage write, learning uplift or Release publication is claimed.
+
 ## [NK1][Checkpoint] Record merged renderer refactor and verify Release asset metadata (2026-11-01)
 - Record PR #507 merge `ef1ed6b078d4001f526c9c82c86d7d81b950507f` and its 10/10 successful exact-PR-head workflows, including the new real Three.js toon-material lifecycle test.
 - Query the public GitHub Releases API and correct the README checkpoint to the actual latest asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
