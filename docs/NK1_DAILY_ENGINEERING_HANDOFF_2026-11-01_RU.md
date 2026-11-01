@@ -3,26 +3,23 @@
 **Снимок:** 2026-11-01  
 **Канонический репозиторий:** https://github.com/ailtron1ss-rgb/NK1  
 **Каноническая source-ветка:** `workpass70-source`  
-**Проверенный HEAD на момент снимка:** `b75a1c081661ea9ffaed87639a2d51a6f34fd8cd`  
+**Проверенный HEAD на момент обновления снимка:** `6952584f4e55c2b616d201618c392ac98902f044`  
 **Этот документ:** операционный handoff и очередь следующего цикла; он не является заявлением о выполнении перечисленных задач.
 
 ## 1. Что подтверждено на текущем source HEAD
 
 - `workpass70-source` указывает на `b75a1c081661ea9ffaed87639a2d51a6f34fd8cd`.
-- Последний WorkPass71 progress report указывает `b5800365979c3736e8b69b630396e1022c2d41d8`. GitHub compare показывает, что текущая ветка на **19 коммитов впереди**, без отставания. Поэтому WorkPass71 остаётся историческим baseline, а не описанием текущего HEAD.
+- Последний WorkPass71 progress report указывает `b5800365979c3736e8b69b630396e1022c2d41d8`. GitHub compare показывает, что текущая ветка на **25 коммитов впереди**, без отставания. Поэтому WorkPass71 остаётся историческим baseline, а не описанием текущего HEAD.
 - Официальный взвешенный scorecard последнего отчёта — **80.1%**, без повышения в этом handoff. Не пересчитывать score по количеству коммитов или workflow.
-- На точном HEAD `b75a1c...` наблюдались 10 успешных workflow и 3 отменённых workflow. Отменённые прогоны не считаются успешными:
-  - PASS: [Adaptive Experience Memory Boundary](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150956)
-  - PASS: [UserModel explicit-forget integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150981)
-  - PASS: [WorkPass287-288 cognitive contracts](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150957)
-  - PASS: [Action Gateway governance](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315151060)
-  - PASS: [Verified learning and skill lifecycle](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150963)
-  - PASS: [Hexis source lineage contract](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150890)
-  - PASS: [Memory integrity and retrieval gates](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150929)
-  - PASS: [World perception integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150949)
-  - PASS: [WorkPass72-73 independent evidence and memory evaluation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315150985)
-  - PASS: [Unified organism runtime](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41315151015)
-  - CANCELLED: browser affect snapshot coherence, NeuroCore core regression validation, WorkPass79 cognitive runtime regression.
+- На предыдущем HEAD `b75a1c...` завершились 10 успешных workflow и 3 отменённых; эти результаты остаются историческими и не подтверждают новый SHA.
+- На текущем HEAD `6952584...` при последней проверке 5 workflow ещё выполнялись, а новый longitudinal holdout workflow завершился ошибкой до запуска теста:
+  - RUNNING: [NeuroCore core regression validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41316407190)
+  - RUNNING: [WorkPass79 cognitive runtime regression](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41316407239)
+  - RUNNING: [NK1 browser affect snapshot coherence](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41316407180)
+  - RUNNING: [NK1 UserModel explicit-forget integrity](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41316407202)
+  - RUNNING: [NK1 Hexis source lineage contract](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41316407177)
+  - FAIL (setup only): [NK1 longitudinal memory holdout pairing](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41316407187). Job `holdout-pairing` failed in `actions/setup-node@v7` because it auto-enabled npm cache from root `packageManager`, but no root lockfile exists. The runtime lockfile is `runtime/neuro-kurisu/package-lock.json`; set `cache-dependency-path` to this file or disable package-manager cache. The test step was skipped, so the new behavior is **not yet tested by this workflow**.
+- Между `b75a1c...` и `6952584...` source получил 6 коммитов: motor-frame status reference integrity; November autonomy/embodiment checkpoint; phase-isolated replay holdout pairs; separate acquisition/holdout metrics; avatar preflight path filter; setup-node v7 workflow alignment.
 - Текущий GitHub Release: tag `Neuro`, release `NeuroKurisu0.1`, опубликован 2026-10-19. Asset: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, GitHub metadata digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Архив в этой сессии не скачан и не распакован: digest из метаданных не выдавать за независимую проверку ZIP.
 - Release gate [Issue #485](https://github.com/ailtron1ss-rgb/NK1/issues/485) остаётся human-only blocker: корневая лицензия отсутствует; runtime LICENSE помечает проект private / all rights reserved; review root/runtime/source archives и 477 locked npm components не утверждён. Не менять manifest на approved без решения человека.
 
@@ -32,15 +29,15 @@
 
 | PR | Тема | Состояние в снимке | Следующее действие |
 |---|---|---|---|
-| [#576](https://github.com/ailtron1ss-rgb/NK1/pull/576) | Восстановление verified backup при отсутствии primary | Open; head `cbd873ff...`; base SHA `c039f84c...`; GitHub сообщил dirty | Сверить конфликтующие изменения FileStateStore с актуальным HEAD; не переносить старый #569 повторно |
+| [#576](https://github.com/ailtron1ss-rgb/NK1/pull/576) | Восстановление verified backup при отсутствии primary | Open; head обновлён до `5f4c7e65...`; base SHA `c039f84c...`; mergeability ещё требуется перепроверить после последующих source commits | Сверить конфликтующие изменения FileStateStore с актуальным HEAD; не переносить старый #569 повторно |
 | [#569](https://github.com/ailtron1ss-rgb/NK1/pull/569) | Та же persistence recovery задача | Closed, superseded by #576 | Сохранить для истории, не возобновлять |
 | [#574](https://github.com/ailtron1ss-rgb/NK1/pull/574) | MotorFrame status-reference integrity | Merged | Изменение уже находится в source lineage; проверить дальнейшую регрессию, не дублировать |
-| [#563](https://github.com/ailtron1ss-rgb/NK1/pull/563) | MotorFrame outcome-reference integrity | Open, dirty; base старее текущего source | Проверить, не перекрывается ли #574; точечно rebase/перенос только уникального diff |
+| [#563](https://github.com/ailtron1ss-rgb/NK1/pull/563) | MotorFrame outcome-reference integrity | Open; base старее текущего source; проверить exact diff и path-filter behavior; mergeability/уникальный diff перепроверить | Проверить, не перекрывается ли #574; точечно rebase/перенос только уникального diff |
 | [#559](https://github.com/ailtron1ss-rgb/NK1/pull/559) | Предыдущая версия того же outcome-reference fix | Closed, not merged | Не считать интегрированным; сравнивать только если требуется найти уникальные изменения |
-| [#560](https://github.com/ailtron1ss-rgb/NK1/pull/560) | Нейтрализация mouth state вне speaking | Open, dirty; base старее текущего source | Перенести на свежую основу после проверки текущей реализации и сохранить тесты |
+| [#560](https://github.com/ailtron1ss-rgb/NK1/pull/560) | Нейтрализация mouth state вне speaking | Closed, not merged; сравнить изменения с merged #574 и текущим mapper, не переносить автоматически | Перенести на свежую основу после проверки текущей реализации и сохранить тесты |
 | [#557](https://github.com/ailtron1ss-rgb/NK1/pull/557) | Avatar preflight path filter | Open; base старее текущего source | Проверить, что parser implementation действительно запускает preflight на точном актуальном SHA |
-| [#570](https://github.com/ailtron1ss-rgb/NK1/pull/570) | Architecture scanner false positives | Open; base SHA старее текущего source | Проверить exact diff, актуальность дефекта и CI; не считать зелёный CI старой базы достаточным |
-| [#564](https://github.com/ailtron1ss-rgb/NK1/pull/564) | Durable UserModel forget tombstones | Open draft; base SHA старее текущего source | Проверить совместимость с уже влитым explicit-forget; сохранить уникальную защиту после 512-entry replay rollover |
+| [#570](https://github.com/ailtron1ss-rgb/NK1/pull/570) | Architecture scanner false positives | Open; base SHA старее текущего source; проверить актуальность scanner fix | Проверить exact diff, актуальность дефекта и CI; не считать зелёный CI старой базы достаточным |
+| [#564](https://github.com/ailtron1ss-rgb/NK1/pull/564) | Durable UserModel forget tombstones | Closed, not merged; проверить, куда перенесены tombstone semantics, прежде чем повторно открывать работу | Проверить совместимость с уже влитым explicit-forget; сохранить уникальную защиту после 512-entry replay rollover |
 
 Старые ветки не удалять автоматически. Не сливать PR без отдельного разрешения. Не объединять дублирующиеся реализации по названию: сначала сравнить tree, ancestry, diff и exact-SHA checks.
 
