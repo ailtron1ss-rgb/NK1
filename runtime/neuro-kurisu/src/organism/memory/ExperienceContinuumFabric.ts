@@ -515,7 +515,7 @@ export class ExperienceContinuumFabric {
   }
 
   createReplayExperimentProtocol(input:{id:string;taskId:string;sourceTaskId?:string;targetTaskId?:string;randomized?:boolean;balanced?:boolean;requiredPairs?:number;contextKeys:string[];at?:number}){
-    const protocol:ReplayExperimentProtocol={id:clean(input.id,64),taskId:clean(input.taskId,96),sourceTaskId:input.sourceTaskId?clean(input.sourceTaskId,96):undefined,targetTaskId:input.targetTaskId?clean(input.targetTaskId,96):undefined,randomized:Boolean(input.randomized),balanced:Boolean(input.balanced),requiredPairs:Math.max(2,Math.min(32,Math.floor(input.requiredPairs??MIN_CONFIRMATORY_REPLAY_PAIRS))),contextKeys:[...new Set(input.contextKeys.map(x=>clean(x,64)).filter(Boolean))].slice(0,64),generatedAt:input.at??Date.now()};
+    const protocol:ReplayExperimentProtocol={id:clean(input.id,64),taskId:clean(input.taskId,96),sourceTaskId:input.sourceTaskId?clean(input.sourceTaskId,96):undefined,targetTaskId:input.targetTaskId?clean(input.targetTaskId,96):undefined,randomized:Boolean(input.randomized),balanced:Boolean(input.balanced),requiredPairs:Math.max(MIN_CONFIRMATORY_REPLAY_PAIRS,Math.min(32,Math.floor(input.requiredPairs??MIN_CONFIRMATORY_REPLAY_PAIRS))),contextKeys:[...new Set(input.contextKeys.map(x=>clean(x,64)).filter(Boolean))].slice(0,64),generatedAt:input.at??Date.now()};
     this.state.replay.protocols.push(protocol); if(this.state.replay.protocols.length>24)this.state.replay.protocols=this.state.replay.protocols.slice(-24);
     return structuredClone(protocol);
   }
