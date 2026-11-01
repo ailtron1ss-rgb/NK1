@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { SelfSubsystemRuntime } from '../src/organism/core/SelfSubsystemRuntime.ts';
+import { buildCognitiveProposalPrompt } from '../src/organism/language/LanguageOrgan.ts';
 
 const first = new SelfSubsystemRuntime();
 const write = first.userModelEvidence.recordExplicit({
@@ -21,4 +22,48 @@ const changed = restored.userModelEvidence.recordExplicit({
 });
 assert.equal(changed.status, 'disputed');
 assert.equal(restored.userModelEvidence.snapshot().claims[0].value, 'concise');
+
+const candidate = restored.userModelEvidence.observeBehavior({
+  key: 'reply.detail', domain: 'interaction-style', value: 'bullet-heavy',
+  tick: 14, observationRef: 'behavior:14', sensitivity: 'low-risk',
+});
+assert.equal(candidate.accepted, true);
+assert.equal(restored.userModelPromptContext().includes('bullet-heavy'), false,
+  'behavioral candidates must not enter language prompts');
+
+const disputed = restored.userModelEvidence.recordExplicit({
+  key: 'response.style', domain: 'interaction-style', value: 'playful',
+  tick: 15, evidenceRef: 'runtime-turn:15', explicit: true, sensitivity: 'low-risk',
+});
+assert.equal(disputed.status, 'disputed');
+assert.equal(restored.userModelPromptContext().includes('response.style'), false,
+  'disputed preferences must not enter language prompts');
+
+const corrected = restored.userModelEvidence.correctExplicit({
+  key: 'response.style', domain: 'interaction-style', value: 'detailed',
+  tick: 16, evidenceRef: 'runtime-turn:16', explicit: true, sensitivity: 'low-risk',
+});
+assert.equal(corrected.status, 'confirmed');
+
+restored.userModelEvidence.recordExplicit({
+  key: 'api-key', domain: 'content-preference', value: 'sk-ABCDEFGHIJKLMNOPQRSTUVWX',
+  tick: 17, evidenceRef: 'runtime-turn:17', explicit: true, sensitivity: 'low-risk',
+});
+const userContext = restored.userModelPromptContext();
+assert.match(userContext, /reply\.detail|response\.style/);
+assert.match(userContext, /detailed/);
+assert.equal(userContext.includes('bullet-heavy'), false);
+assert.equal(userContext.includes('sk-ABCDEFGHIJKLMNOPQRSTUVWX'), false,
+  'credential-like values must be filtered before prompt construction');
+assert.equal(userContext.includes('runtime-turn:'), false,
+  'raw evidence references must never be disclosed to the language model');
+
+const prompt = buildCognitiveProposalPrompt({
+  state: { tick: 18, predictionError: 0.2, worldContextVersion: 3 },
+  decision: { selected: { action: 'respond' } },
+  workspace: { content: {} },
+}, 'A user asks for a technical explanation.', undefined, '', userContext);
+assert.ok(prompt.user.includes('EXPLICIT LOW-RISK USER PREFERENCES'));
+assert.ok(prompt.user.includes('detailed'));
+assert.ok(!prompt.user.includes('sk-ABCDEFGHIJKLMNOPQRSTUVWX'));
 console.log('UserModel SelfSubsystemRuntime persistence: all assertions passed');
