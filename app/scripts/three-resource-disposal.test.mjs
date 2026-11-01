@@ -58,3 +58,21 @@ test("renderer-owned shared textures are preserved during imported model cleanup
 
   assert.equal(protectedDisposals(), 0);
 });
+
+test("replaced source materials are disposed once without disposing textures", async () => {
+  const module = await import("../src/components/avatar/threeResourceDisposal.ts");
+  assert.equal(typeof module.disposeReplacedThreeMaterials, "function");
+
+  const texture = new Texture();
+  const first = new MeshStandardMaterial({ map: texture });
+  const second = new ShaderMaterial();
+  const firstDisposals = countDisposals(first);
+  const secondDisposals = countDisposals(second);
+  const textureDisposals = countDisposals(texture);
+
+  module.disposeReplacedThreeMaterials([first, first, second]);
+
+  assert.equal(firstDisposals(), 1);
+  assert.equal(secondDisposals(), 1);
+  assert.equal(textureDisposals(), 0);
+});
