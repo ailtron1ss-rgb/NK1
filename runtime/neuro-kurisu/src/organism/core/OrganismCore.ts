@@ -2759,6 +2759,17 @@ export class OrganismCore {
         }
         return result;
     }
+    /** Forget an explicitly confirmed preference through the canonical evidence owner. */
+    async forgetExplicitUserModelEvidence(input: Parameters<import('../cognition/UserModelEvidenceModel.ts').UserModelEvidenceModel['forgetExplicit']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('user-model-write-during-active-cycle');
+        const result = this.selfSubsystem.userModelEvidence.forgetExplicit(input);
+        if (result.accepted) {
+            this.markPersistenceDirty();
+            await this.checkpoint(true);
+        }
+        return result;
+    }
     /** Retrieve an internally generated, user-facing dialogue topic. This does not execute tools or contact external services. */
     autonomousSocialInitiativeForGeneration() {
         return this.organismSystems.agency.autonomousSocialInitiative.latestPlanned(Date.now());

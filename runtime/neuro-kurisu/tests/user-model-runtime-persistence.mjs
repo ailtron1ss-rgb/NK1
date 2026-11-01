@@ -146,13 +146,20 @@ try {
   });
   assert.equal(correction.status, 'confirmed');
   assert.match(runtime.core.userModelPromptContext(), /Prefer detailed explanations with useful context/);
+  const forgotten = await runtime.forgetExplicitUserPreference({
+    key: 'response.style', domain: 'interaction-style', tick: tick + 3,
+    evidenceRef: 'runtime-api:forget-1', explicit: true,
+  });
+  assert.equal(forgotten.accepted, true);
+  assert.equal(forgotten.removed, true);
+  assert.equal(runtime.core.userModelPromptContext(), '');
   await runtime.stop();
   runtime = null;
 
   restoredRuntime = new OrganismRuntime(runtimeConfig);
   await restoredRuntime.init();
-  assert.match(restoredRuntime.core.userModelPromptContext(), /Prefer detailed explanations with useful context/,
-    'explicit preference and correction must survive runtime restart');
+  assert.equal(restoredRuntime.core.userModelPromptContext(), '',
+    'explicit forgetting must survive runtime restart without resurrecting the preference');
 } finally {
   await runtime?.stop().catch(() => {});
   await restoredRuntime?.stop().catch(() => {});

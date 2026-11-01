@@ -1,3 +1,10 @@
+## [NK1][SelfModel] Wire explicit preference forgetting through Core, Runtime and HTTP (2026-11-01)
+- Expose the canonical UserModel forget operation through OrganismCore with the same readiness, active-cycle write guard and durable checkpoint policy as record/correct.
+- Serialize the operation through OrganismRuntime's command queue.
+- Extend the authenticated preferences endpoint with a caller-confirmed `forget` action; server continues to own the key, domain, tick, evidence reference and low-risk classification.
+- Add runtime restart-persistence and HTTP route regressions, including fresh explicit re-establishment after forgetting.
+- Scope remains the allowlisted response-style preference; no general arbitrary-key deletion endpoint is exposed.
+
 ## [NK1][SelfModel] Add explicit preference forgetting with replay protection (2026-11-01)
 - Add a caller-confirmed forget operation to the canonical UserModel evidence owner; remove the selected claim and matching behavioral candidates from the persisted projection.
 - Retain the forget evidence reference in the bounded replay ledger so the same delete command and the original explicit statement cannot be replayed immediately after restart.

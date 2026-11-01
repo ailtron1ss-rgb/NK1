@@ -1852,6 +1852,10 @@ export class OrganismRuntime {
   async correctExplicitUserPreference(input: Parameters<OrganismCore['correctExplicitUserModelEvidence']>[0]) {
     return this.enqueue(() => this.core.correctExplicitUserModelEvidence(input));
   }
+  /** Forget an explicit preference through the serialized organism command queue. */
+  async forgetExplicitUserPreference(input: Parameters<OrganismCore['forgetExplicitUserModelEvidence']>[0]) {
+    return this.enqueue(() => this.core.forgetExplicitUserModelEvidence(input));
+  }
 
   /** Pending self-initiated chat turn for the UI; no tool/device side effects occur here. */
   async autonomousDialogueReady() {

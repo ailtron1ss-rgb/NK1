@@ -100,6 +100,16 @@ try {
   assert.equal(corrected.body.preference.status, 'confirmed');
   assert.equal(corrected.body.preference.value, 'balanced');
 
+  const forgotten = await post({ action: 'forget', value: 'balanced', confirmed: true });
+  assert.equal(forgotten.response.status, 200);
+  assert.equal(forgotten.body.action, 'forget');
+  assert.equal(forgotten.body.forgotten, true);
+  assert.equal(forgotten.body.preference.present, false);
+
+  const reestablished = await post({ action: 'record', value: 'concise', confirmed: true });
+  assert.equal(reestablished.response.status, 200);
+  assert.equal(reestablished.body.preference.status, 'confirmed');
+
   console.log('USER_MODEL_HTTP_ROUTE=PASS', JSON.stringify({
     unauthenticated: unauthenticated.response.status,
     unconfirmed: unconfirmed.response.status,
@@ -107,6 +117,8 @@ try {
     record: recorded.body.preference.status,
     contradiction: conflict.body.preference.status,
     correction: corrected.body.preference.status,
+    forget: forgotten.body.forgotten,
+    reestablish: reestablished.body.preference.status,
     clientEvidenceIgnored: true,
   }));
 } finally {

@@ -438,9 +438,9 @@ async function route(req, res) {
             const input = await body(req);
             if (!input || typeof input !== 'object' || Array.isArray(input))
                 return json(res, 400, { ok: false, error: 'request-body-must-be-object' });
-            const action = input.action === 'correct' ? 'correct' : input.action === 'record' ? 'record' : '';
+            const action = ['record', 'correct', 'forget'].includes(input.action) ? input.action : '';
             if (!action)
-                return json(res, 400, { ok: false, error: 'action-must-be-record-or-correct' });
+                return json(res, 400, { ok: false, error: 'action-must-be-record-correct-or-forget' });
             if (input.confirmed !== true)
                 return json(res, 400, { ok: false, error: 'explicit-user-confirmation-required' });
             const value = typeof input.value === 'string' ? input.value : '';
@@ -459,10 +459,22 @@ async function route(req, res) {
             };
             const result = action === 'correct'
                 ? await runtime.correctExplicitUserPreference(evidence)
-                : await runtime.recordExplicitUserPreference(evidence);
+                : action === 'forget'
+                    ? await runtime.forgetExplicitUserPreference({
+                        key: evidence.key, domain: evidence.domain, tick: evidence.tick,
+                        evidenceRef: evidence.evidenceRef, explicit: true,
+                    })
+                    : await runtime.recordExplicitUserPreference(evidence);
             if (!result.accepted) {
                 const status = result.reason === 'duplicate-evidence' ? 409 : 400;
                 return json(res, status, { ok: false, error: result.reason || 'user-model-write-rejected' });
+            }
+            if (action === 'forget') {
+                return json(res, 200, {
+                    ok: true, action, forgotten: result.removed,
+                    preference: { key: 'response.style', domain: 'interaction-style', present: false },
+                    note: 'The explicitly confirmed response-style preference was removed from the canonical UserModel projection.',
+                });
             }
             return json(res, 200, {
                 ok: true,
