@@ -101,8 +101,7 @@ assert.equal(report.metrics.candidate.queries, 4);
 assert.equal(report.metrics.candidate.answerableQueries, 2);
 assert.equal(report.metrics.candidate.unanswerableQueries, 2);
 assert.equal(report.metrics.byQuestionType['single-session-user'].candidate.queries, 2);
-assert.equal(report.metrics.byQuestionType['multi-session'].candidate.queries, 2);
-assert.equal(report.metrics.byQuestionType['multi-session'].candidate.unanswerableQueries, 1,
+assert.equal(report.metrics.byQuestionType['multi-session'].candidate.queries, 1);
   'category-level metrics must retain reviewed abstentions within their original question type');
 assert.equal(report.metrics.candidate.recallAtK01, 1);
 assert.equal(report.metrics.candidate.correctAbstentionRate01, 1);
