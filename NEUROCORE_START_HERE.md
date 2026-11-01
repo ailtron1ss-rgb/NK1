@@ -3,8 +3,15 @@
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
 **Canonical source branch:** `workpass70-source`  
-**Source HEAD at this checkpoint:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b`  
+**Live source HEAD checked 2026-11-01:** `3de80c537b190a0ff8bffb8c2ad0870ed5daecd3`  
 **Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
+
+## Active code work — 2026-11-01
+
+- **Draft PR #630** (`workpass612-personality-restore`): fixes a revoked-Proxy escape in planner restore and replaces P2702 personality snapshot restore with own-data-only validation, fixed canonical vectors, finite counters/metrics and bounded action/trust maps. Adds WorkPass612 adversarial tests and CI wiring. Exact-head Actions pending; do not mark merged or released.
+- **Draft PR #619** (`workpass610-affect-restore`): protects EmotionAppraisalEngine snapshot restore. Its old branch head has a successful unified-organism workflow, but it is behind/diverged from the current source base and the WorkPass610 focused test was not independently confirmed. Rebase/update and run exact-head validation before merge.
+- No release archive was rebuilt or inspected during this pass. The October 19 ZIP remains historical and lacks November changes.
+
 
 ## Latest verified integrations — 2026-11-01
 

@@ -1,3 +1,12 @@
+## [NK1][Cognition] Harden planner and persistent personality snapshot restore (2026-11-01)
+- Move the planner's revoked-Proxy-sensitive Array.isArray check inside its fail-closed reflection boundary; keep the existing WorkPass611 root/nested revoked-Proxy regression in the active workflow.
+- Replace P2702 personality restore's pre-validation structuredClone and broad object spreads with own-data-only root/nested reads.
+- Enforce canonical trait/value name alignment, fixed vector dimensions, dense data-only arrays, safe counters, finite normalized metrics and supported schema version.
+- Bound relationship-trust entries, filter prototype-shaped keys, and restore only allowlisted numeric action preferences without implicit coercion.
+- Add WorkPass612 hostile-input regressions and wire them with P2702 dynamics and planner restore tests into the unified organism CI workflow.
+- Remove the duplicate WorkPass611 invocation from test:rebuild-recovered.
+- Draft PR #630 (https://github.com/ailtron1ss-rgb/NK1/pull/630) is open; exact-head CI is pending. This source-branch change is not merged or included in the published Release ZIP.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
