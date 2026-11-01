@@ -144,6 +144,10 @@ test("normalizes malformed speech lifecycle and missing sensory values without a
   assert.equal(state.speech.mouthOpen, 0);
   assert.equal(state.speech.mouthForm, 0);
   assert.equal(validateSemanticBodyState(state), true);
+  const handoff = beginBodySwitch("live2d", "3d", state);
+  assert.equal(handoff.plan.to, "vrm3d");
+  assert.equal(handoff.plan.requiresNeutralRebind, true);
+  assert.equal(handoff.progress.committed, false);
 });
 
 test("trims valid speech event identifiers and rejects non-string identifiers", () => {
