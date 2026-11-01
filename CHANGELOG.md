@@ -1,7 +1,3 @@
-## [NK1][Embodiment] Stabilize VRM adapter ownership regression (2026-11-01)
-- Assert exact adapter wiring with literal source contracts and verify that expression, normalized-bone and update behavior lives in `vrmRuntimeAdapter.ts`.
-- Avoid regex escaping brittleness while preserving all required integration assertions.
-
 ## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
 - Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
 - Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
