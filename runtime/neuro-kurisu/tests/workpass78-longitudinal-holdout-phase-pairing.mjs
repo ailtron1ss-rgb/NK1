@@ -52,5 +52,23 @@ const ambiguous=new ExperienceContinuumFabric();
 ambiguous.restore(ambiguousSnapshot);
 const ambiguousSummary=ambiguous.longitudinalReplaySummary('holdout-phase-isolation','memory-recall-ru-en');
 assert.equal(ambiguousSummary.holdoutMatchedPairs,1,'duplicate arm invalidates that pair');
+assert.equal(ambiguousSummary.holdoutDistinctDelays,1,'duplicate arm cannot inflate holdout delay coverage');
+assert.ok(Math.abs(ambiguousSummary.holdoutMeanRetentionOn01-.83)<1e-9,'ambiguous replay-on arm is excluded from holdout mean');
+assert.ok(Math.abs(ambiguousSummary.holdoutMeanRetentionOff01-.91)<1e-9,'only the clean holdout-off arm contributes');
+assert.ok(Math.abs(ambiguousSummary.holdoutConditionDifference01-(-.08))<1e-9,'only the remaining clean holdout pair contributes');
 assert.equal(ambiguousSummary.evidenceGrade,'exploratory-matched');
+
+// Unpaired holdout rows must not manufacture a second confirmatory delay.
+const delayCoverage=new ExperienceContinuumFabric();
+delayCoverage.createReplayExperimentProtocol({id:'holdout-delay-coverage',taskId:'memory-recall-ru-en',randomized:true,balanced:true,requiredPairs:2,contextKeys:['pair-a','pair-b','pair-c']});
+const addDelay=(mode,pairKey,delayMs,score01,at)=>delayCoverage.recordLongitudinalReplayTrial({experimentId:'holdout-delay-coverage',taskId:'memory-recall-ru-en',phase:'holdout',mode,contextKey:pairKey,pairKey,delayMs,baselineScore01:.5,score01,independentVerified:true,at});
+addDelay('replay-on','pair-a',day,.8,1);
+addDelay('replay-off','pair-a',day,.7,2);
+addDelay('replay-on','pair-b',day,.82,3);
+addDelay('replay-off','pair-b',day,.72,4);
+addDelay('replay-on','pair-c',2*day,.99,5);
+const delayCoverageSummary=delayCoverage.longitudinalReplaySummary('holdout-delay-coverage','memory-recall-ru-en');
+assert.equal(delayCoverageSummary.holdoutMatchedPairs,2);
+assert.equal(delayCoverageSummary.holdoutDistinctDelays,1,'only matched clean holdout pairs establish delay coverage');
+assert.equal(delayCoverageSummary.evidenceGrade,'exploratory-matched','an unpaired arm at another delay cannot make the experiment confirmatory');
 console.log(JSON.stringify({ok:true,status:'LONGITUDINAL_HOLDOUT_PHASE_PAIRING_PASS',summary},null,2));

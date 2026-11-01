@@ -3506,3 +3506,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Compute holdout difference only from complete, phase-isolated holdout pairs; acquisition gains can no longer mask a negative holdout result in the confirmatory-facing metric.
 - Extend the WorkPass78 regression with deliberately opposed acquisition and holdout outcomes to prove metric isolation.
 - This makes the evidence report more interpretable; no real-world retrieval uplift is claimed.
+
+
+## [NK1][Memory] Require clean holdout pairs for confirmatory eligibility (2026-11-01)
+- Derive holdout means, effect and distinct-delay coverage only from complete, non-ambiguous replay-on/off holdout pairs.
+- Require the configured number of holdout pairs across at least two paired holdout delays; acquisition pairs and unpaired holdout arms cannot satisfy the gate.
+- Add regressions for duplicate arms and unpaired holdout rows at a second delay.
+- This tightens evidence integrity; it does not claim positive recallDelta or publish a new Release ZIP.
