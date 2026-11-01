@@ -1,3 +1,7 @@
+## [NK1][Embodiment] Test the delegated VRM adapter contract (2026-11-01)
+- Move VRM expression-manager, normalized-bone and frame-update assertions to the extracted `vrmRuntimeAdapter.ts` owner; keep `Avatar3DStage` assertions on its loader configuration and adapter wiring.
+- Preserve behavioral coverage after the implementation was split into a dedicated adapter; do not weaken or skip the test.
+
 ## [NK1][Embodiment] Normalize VRM humanoid motor ownership (WorkPass76, 2026-11-01)
 - Replace the separate per-bone VRM write loop with one typed normalized humanoid adapter; configure `autoUpdateHumanBones`, split head/neck intent 35/65 and reset controlled proxies each frame to prevent drift.
 - Preserve the existing NK1 precomputed left/right arm intent (including affect/social modifiers), standard VRM expression and viseme mapping, bounded frame delta, and GLB fallback.
