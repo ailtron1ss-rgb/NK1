@@ -1,3 +1,10 @@
+## [NK1][SelfModel] Make explicit preference forgetting durable across replay-ledger eviction (2026-11-01)
+- Upgrade the canonical UserModel snapshot to version 2 with persistent per-key/domain forget tombstones and backward-compatible version-1 restore.
+- Reject stale explicit corrections and behavioral observations at or before the forget tick, even after the 512-reference replay ledger has evicted the original event.
+- Allow a fresh explicit statement with a later tick to re-establish the preference while retaining the deletion boundary.
+- Cap tombstones at 256 and fail closed on capacity exhaustion rather than silently evicting deletion history.
+- Extend the focused regression through 520 unrelated events, restart/restore, stale-event rejection, fresh re-consent and legacy snapshot migration.
+
 ## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
 - Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
 - Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
