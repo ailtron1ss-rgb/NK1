@@ -21,7 +21,7 @@ test("the 3D body consumes organism emotion, action, arousal/valence, gaze, slee
  assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/mouthPose=\{mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
 });
 test("renderer resources and animation loops are disposed and high-DPI rendering is capped",async()=>{
- const stage=await readFile(stagePath,"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/return clips\.find\(\(clip\)=>rules\[action\]\.test/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/disposeThreeObjectTree\(root,sharedAnimeGradient\?\[sharedAnimeGradient\]:\[\]\)/);
+ const stage=await readFile(stagePath,"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/return clips\.find\(\(clip\)=>rules\[action\]\.test/);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
 });
 test("Three.js lock metadata is pinned consistently",async()=>{
  const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));
@@ -38,33 +38,36 @@ test("GLB models retain the generic glTF fallback without pretending they are VR
 
 test("the official VRM runtime is pinned to the Three.js-compatible MIT release",async()=>{const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));assert.equal(pkg.dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages[""].dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].version,"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].license,"MIT");});
 
-test("procedural 3D fallback uses cel-shaded anime materials without flattening the scene",async()=>{
- const stage=await readFile(stagePath,"utf8");
- assert.ok(stage.includes("new THREE_TOON.MeshToonMaterial"));
- assert.ok(stage.includes("new THREE_TOON.DataTexture"));
- assert.match(stage,/let sharedAnimeGradient:\s*any\s*=\s*null/);
- assert.match(stage,/function createAnimeGradient\(\): any/);
- assert.match(stage,/if\(sharedAnimeGradient\)return sharedAnimeGradient/);
- assert.ok(stage.includes("THREE_TOON.RedFormat"));
- assert.ok(stage.includes("THREE_TOON.NearestFilter"));
+test("procedural 3D fallback uses the extracted shared cel-shading material adapter",async()=>{
+ const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
+ assert.ok(stage.includes("createProceduralToonMaterial"));
+ assert.ok(toon.includes("new THREE_TOON.MeshToonMaterial"));
+ assert.ok(toon.includes("new THREE_TOON.DataTexture"));
+ assert.match(toon,/let sharedAnimeGradient:\s*any\s*=\s*null/);
+ assert.match(toon,/function createAnimeGradient\(\): any/);
+ assert.match(toon,/if \(sharedAnimeGradient\) return sharedAnimeGradient/);
+ assert.ok(toon.includes("THREE_TOON.RedFormat"));
+ assert.ok(toon.includes("THREE_TOON.NearestFilter"));
  assert.ok(stage.includes("new THREE.MeshStandardMaterial({color:0x2d8198"));
 });
-test("non-VRM GLB imports receive anime toon shading while VRM materials remain native",async()=>{
- const stage=await readFile(stagePath,"utf8");
- assert.ok(stage.includes("function applyAnimeToon"));
- assert.ok(stage.includes("if(!vrm)applyAnimeToon(root)"));
- assert.ok(stage.includes("!source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial"));
- assert.ok(stage.includes("new THREE_TOON.MeshToonMaterial"));
- assert.ok(stage.includes("source.map"));
- assert.ok(stage.includes("source.normalMap"));
- assert.ok(stage.includes("source.emissiveMap"));
- assert.ok(stage.includes("toon.userData={...source.userData,nk1ToonConverted:true}"));
+test("non-VRM GLB imports use the extracted toon adapter while VRM materials remain native",async()=>{
+ const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
+ assert.ok(stage.includes("if(!vrm)applyAnimeToonMaterials(root)"));
+ assert.ok(toon.includes("source.isMeshStandardMaterial"));
+ assert.ok(toon.includes("source.isMeshPhysicalMaterial"));
+ assert.ok(toon.includes("new THREE_TOON.MeshToonMaterial"));
+ assert.ok(toon.includes("source.map"));
+ assert.ok(toon.includes("source.normalMap"));
+ assert.ok(toon.includes("source.emissiveMap"));
+ assert.ok(toon.includes("nk1ToonConverted: true"));
 });
 
-test("non-VRM material conversion disposes replaced source materials after copying references",async()=>{
- const stage=await readFile(stagePath,"utf8");
- assert.match(stage,/import \{ disposeReplacedThreeMaterials, disposeThreeObjectTree \}/);
- assert.match(stage,/const replaced=new Set<any>\(\)/);
- assert.match(stage,/replaced\.add\(source\)/);
- assert.match(stage,/disposeReplacedThreeMaterials\(replaced\)/);
+test("avatar stage delegates material conversion and renderer-owned texture preservation",async()=>{
+ const stage=await readFile(stagePath,"utf8"),toon=await readFile(path.join(root,"src/components/avatar/threeToonMaterials.ts"),"utf8");
+ assert.match(stage,/import \{ applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture \}/);
+ assert.match(stage,/if\(!vrm\)applyAnimeToonMaterials\(root\)/);
+ assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\)/);
+ assert.match(toon,/const replaced = new Set<any>\(\)/);
+ assert.match(toon,/replaced\.add\(source\)/);
+ assert.match(toon,/disposeReplacedThreeMaterials\(replaced\)/);
 });
