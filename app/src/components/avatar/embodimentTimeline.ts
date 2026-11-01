@@ -69,9 +69,11 @@ export function poseForGrapheme(grapheme: string): MouthPose {
   if (/^[.,!?;:…—–-]$/u.test(char)) return { ...CLOSED_MOUTH };
   if (/[мбп]/u.test(char) || /[bmp]/u.test(char)) return { open: 0.025, form: -0.05, viseme: "closed" };
   if (/[фв]/u.test(char) || /[fv]/u.test(char)) return { open: 0.14, form: 0.18, viseme: "teeth" };
-  if (/[оуёю]/u.test(char) || /[ouw]/u.test(char)) return { open: 0.34, form: -0.46, viseme: "round" };
+  if (/[оoё]/iu.test(char)) return { open: 0.38, form: -0.32, viseme: "round" };
+  if (/[ууюuw]/iu.test(char)) return { open: 0.30, form: -0.48, viseme: "round" };
   if (/[аяaæɑɒ]/iu.test(char)) return { open: 0.60, form: 0.10, viseme: "open" };
-  if (/[иыиеэ]/u.test(char) || /[eiy]/iu.test(char)) return { open: 0.25, form: 0.32, viseme: "wide" };
+  if (/[иiy]/iu.test(char)) return { open: 0.22, form: 0.22, viseme: "wide" };
+  if (/[ыэеe]/iu.test(char)) return { open: 0.26, form: 0.34, viseme: "wide" };
   if (/^[\p{L}\p{M}\p{N}]$/u.test(char)) return { open: 0.16, form: 0.02, viseme: "neutral" };
   return { ...CLOSED_MOUTH };
 }

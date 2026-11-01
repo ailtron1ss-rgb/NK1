@@ -5,11 +5,13 @@ on:
     branches: [workpass70-source]
     paths:
       - "app/src/components/avatar/embodimentSwitch.ts"
+      - "app/src/components/avatar/embodimentTimeline.ts"
       - "app/src/components/avatar/motorFrameMapper.ts"
       - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
       - "app/src/components/avatar/embodimentUiBridge.ts"
       - "app/scripts/embodiment-coordinator.test.mjs"
+      - "app/scripts/embodiment-timeline.test.mjs"
       - "app/scripts/embodiment-ui-bridge.test.mjs"
       - "app/scripts/live2d-intent-ack.test.mjs"
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
@@ -28,6 +30,8 @@ on:
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
+  workflow_dispatch:
+
   push:
     branches: [work/nk1-embodiment-ui-bridge-source-sync-2026-11-01]
 
@@ -53,6 +57,8 @@ jobs:
         run: npm ci --prefix app --ignore-scripts
       - name: Test renderer-neutral body handoff
         run: npm --prefix app run test:embodiment-switch
+      - name: Test shared grapheme-to-viseme articulation
+        run: npm --prefix app run test:embodiment-timeline
       - name: Test body-switch UI integration bridge
         run: npm --prefix app run test:embodiment-ui-bridge
       - name: Test GLB/VRM binary preflight

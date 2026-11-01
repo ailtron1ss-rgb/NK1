@@ -6,6 +6,7 @@ import test from "node:test";
 import vm from "node:vm";
 import {
   buildVisemeTimeline,
+  poseForGrapheme,
   CLOSED_MOUTH,
   isEmbodimentIntentV1,
   appendVisemeClockAnchor,
@@ -326,4 +327,16 @@ test("speech lifecycle rejects character-boundary regressions", () => {
   assert.equal(acceptsSpeechLifecycleEventV1(queued, started), true);
   assert.equal(acceptsSpeechLifecycleEventV1(started, boundary), true);
   assert.equal(acceptsSpeechLifecycleEventV1(boundary, stale), false);
+});
+test("maps Russian and Latin vowels to distinct five-target mouth articulations", () => {
+  assert.deepEqual(poseForGrapheme("а"), { open: 0.60, form: 0.10, viseme: "open" });
+  assert.deepEqual(poseForGrapheme("о"), { open: 0.38, form: -0.32, viseme: "round" });
+  assert.deepEqual(poseForGrapheme("у"), { open: 0.30, form: -0.48, viseme: "round" });
+  assert.deepEqual(poseForGrapheme("и"), { open: 0.22, form: 0.22, viseme: "wide" });
+  assert.deepEqual(poseForGrapheme("е"), { open: 0.26, form: 0.34, viseme: "wide" });
+  assert.deepEqual(poseForGrapheme("a"), { open: 0.60, form: 0.10, viseme: "open" });
+  assert.deepEqual(poseForGrapheme("o"), { open: 0.38, form: -0.32, viseme: "round" });
+  assert.deepEqual(poseForGrapheme("u"), { open: 0.30, form: -0.48, viseme: "round" });
+  assert.deepEqual(poseForGrapheme("i"), { open: 0.22, form: 0.22, viseme: "wide" });
+  assert.deepEqual(poseForGrapheme("e"), { open: 0.26, form: 0.34, viseme: "wide" });
 });
