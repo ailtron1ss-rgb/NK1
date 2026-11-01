@@ -80,6 +80,8 @@ export class FileStateStore<T> implements JsonStateStore<T> {
   // A single state store can be flushed by multiple concurrent runtime steps. Serialize saves
   // per store so each temp file survives until its own fsync/rename sequence completes.
   private saveTail: Promise<void> = Promise.resolve();
+  // Preserve the last verified backup when the primary file was missing or corrupt.
+  private skipNextBackupCopy = false;
   constructor(filePath: string, options: FileStateStoreOptions = {}) {
     this.filePath = filePath;
     this.backupPath = `${filePath}.bak`;
@@ -114,16 +116,27 @@ export class FileStateStore<T> implements JsonStateStore<T> {
       this.lastPayloadHash = createHash('sha256').update(payload).digest('hex');
       return this.decodePayload(payload);
     } catch (error: any) {
-      if (error?.code === 'ENOENT') return null;
+      const primaryMissing = error?.code === 'ENOENT';
       try {
-        const recovered = this.decodePayload(await readFile(this.backupPath));
-        console.warn(`[FileStateStore] recovered state from backup: ${this.backupPath}`);
+        const backupPayload = await readFile(this.backupPath);
+        const recovered = this.decodePayload(backupPayload);
+        // If the primary is missing, remember the backup hash so save() can recreate
+        // the primary even when the recovered value is unchanged. If it is corrupt,
+        // invalidate the old hash so a later save cannot silently skip the repair.
+        this.lastPayloadHash = primaryMissing
+          ? createHash('sha256').update(backupPayload).digest('hex')
+          : '';
+        // Never copy a corrupt primary over the only known-good backup on the first
+        // save after recovery. Once the repaired primary is written, normal rotation resumes.
+        this.skipNextBackupCopy = true;
+        console.warn(`[FileStateStore] recovered state from backup (${primaryMissing ? 'primary missing' : 'primary unreadable'}): ${this.backupPath}`);
         return recovered;
       } catch (backupError: any) {
+        if (primaryMissing && backupError?.code === 'ENOENT') return null;
         throw new StateCorruptionError(
           this.filePath,
           this.backupPath,
-          `Primary state is unreadable and backup recovery failed: ${error?.message || String(error)}; backup=${backupError?.message || String(backupError)}`,
+          `Primary state ${primaryMissing ? 'is missing' : 'is unreadable'} and backup recovery failed: ${error?.message || String(error)}; backup=${backupError?.message || String(backupError)}`,
         );
       }
     }
@@ -160,7 +173,9 @@ export class FileStateStore<T> implements JsonStateStore<T> {
 
     this.saveCount += 1;
     const shouldBackup = this.saveCount === 1 || (this.saveCount % this.backupEverySaves === 0);
-    if (shouldBackup) {
+    if (shouldBackup && this.skipNextBackupCopy) {
+      this.skipNextBackupCopy = false;
+    } else if (shouldBackup) {
       try {
         await access(this.filePath);
         await copyFile(this.filePath, this.backupPath);
