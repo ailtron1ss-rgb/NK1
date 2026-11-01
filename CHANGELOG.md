@@ -1,3 +1,8 @@
+## [NK1][Memory] Add category-level retrieval diagnostics and scope labels (WorkPass82, 2026-11-01)
+
+- Export baseline and MemoryOS2 metrics per LongMemEval question type, preserving corrected abstentions within their original categories.
+- Explicitly label the current candidate as the no-embedding retrieval path and the benchmark as retrieval-only, not end-to-end QA accuracy.
+
 ## [NK1][Memory] Require class-specific independent LongMemEval groups (WorkPass82, 2026-11-01)
 
 - Add separate minimum independent-group gates for answerable and abstention strata. Query counts and total group count alone can conceal a degenerate confidence interval when many questions share the same source sessions.
