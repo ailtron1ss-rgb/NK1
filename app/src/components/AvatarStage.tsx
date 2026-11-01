@@ -9,6 +9,12 @@ import {
 } from "./avatar/nativeSpeechProviderEvents";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { buildBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
+import {
+  advanceBodySwitch,
+  beginBodySwitch,
+  projectSemanticBodyState,
+} from "./avatar/embodimentUiBridge";
+import type { SwitchPlan } from "./avatar/embodimentSwitch";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
 import { KurisuOriginalStage } from "./KurisuOriginalStage";
@@ -127,6 +133,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const saved = readAvatarPreference("kurisu-avatar-mode");
     return saved === "legacy" || saved === "original" || saved === "3d" ? saved : "live2d";
   });
+  // Aspect 11: the last planned renderer handoff, kept for truthful UI reporting.
+  const [bodySwitch, setBodySwitch] = useState<{ from: ViewMode; to: ViewMode; plan: SwitchPlan } | null>(null);
+  const [switchOpacity, setSwitchOpacity] = useState(1);
+  const previousModeRef = useRef<ViewMode>(mode);
+  const bodyRevisionRef = useRef(0);
+  // Latest-value refs so the mode-change effect can stay independent of per-tick churn.
+  const latestSnapRef = useRef(snap);
+  const mouthPoseRef = useRef(mouthPose);
   const lastTurn = snap.chat[snap.chat.length - 1];
   const originalGazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
     explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
@@ -195,6 +209,58 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     writeAvatarPreference("kurisu-avatar-voice-enabled", String(voiceEnabled));
     writeAvatarPreference("kurisu-avatar-voice-name", voiceName);
   }, [mode, voiceEnabled, voiceName]);
+
+  useEffect(() => { latestSnapRef.current = snap; mouthPoseRef.current = mouthPose; }, [snap, mouthPose]);
+
+  // Plan a renderer handoff whenever the body changes. The projection is monotonic
+  // and derived from the canonical snapshot; it never mutates organism state.
+  // Only channels the destination declares are applied, and the fade-in is bounded.
+  //
+  // This effect depends on `mode` alone: the snapshot changes every tick, so binding the
+  // fade to it would cancel and restart the animation each frame. Latest values are
+  // read from refs instead.
+  useEffect(() => {
+    const from = previousModeRef.current;
+    if (from === mode) return;
+    previousModeRef.current = mode;
+    const revision = ++bodyRevisionRef.current;
+    const currentSnap = latestSnapRef.current;
+    const active = activeSpeechSessionRef.current;
+    const gaze = originalGazeByAction[currentSnap.lastOption] ?? originalGazeByAction.wait;
+    let plan: SwitchPlan;
+    try {
+      const state = projectSemanticBodyState({
+        snapshot: currentSnap,
+        revision,
+        monotonicMs: performance.now(),
+        headTilt: 0,
+        gaze,
+        speechPhase: speechPhaseRef.current,
+        speechEventId: active?.speechEventId ?? null,
+        audioTimeMs: Number(active?.lastAudioElapsedMs ?? 0),
+        mouth: mouthPoseRef.current,
+      });
+      plan = beginBodySwitch(from, mode, state).plan;
+    } catch {
+      // A rejected projection must not leave a half-applied handoff on screen.
+      setBodySwitch(null);
+      setSwitchOpacity(1);
+      return;
+    }
+    setBodySwitch({ from, to: mode, plan });
+    const durationMs = 220;
+    let progress = { progress: 0, committed: false };
+    let lastAt = performance.now();
+    setSwitchOpacity(0.35);
+    let raf = requestAnimationFrame(function tick(now: number) {
+      progress = advanceBodySwitch(progress, now - lastAt, durationMs);
+      lastAt = now;
+      setSwitchOpacity(0.35 + 0.65 * progress.progress);
+      if (!progress.committed) raf = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   useEffect(() => {
     if (!("speechSynthesis" in window)) { setVoiceStatus("unsupported"); return; }
@@ -465,6 +531,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         <button type="button" aria-pressed={voiceEnabled} onClick={() => { if (voiceEnabled) stopSpeech(); setVoiceEnabled((value) => !value); }} disabled={voiceStatus === "unsupported"} className={cn("rounded px-2 py-1 text-[10px] font-mono", voiceEnabled ? "bg-accent text-accent-fg" : "text-white/70")}>{voiceEnabled ? "Голос: вкл." : "Голос: выкл."}</button>
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
+      <div className="transition-opacity duration-200 ease-out" style={{ opacity: switchOpacity }}>
       {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
@@ -474,6 +541,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
           <span className="rounded-full border border-border bg-bg/70 px-2.5 py-1 text-xs uppercase tracking-wider text-muted">{live ? "live2d" : "live2d unavailable"}</span>
         </div>
       </>}
+      </div>
+      {bodySwitch ? (
+        <p className="pointer-events-none absolute bottom-1 left-3 z-30 text-[9px] text-muted tabular-nums">
+          body {bodySwitch.from}→{bodySwitch.to} · rev {bodySwitch.plan.stateRevision}
+          {bodySwitch.plan.requiresNeutralRebind ? " · rebind" : ""}
+          {bodySwitch.plan.unsupportedChannels.length > 0 ? ` · unsupported: ${bodySwitch.plan.unsupportedChannels.join(",")}` : ""}
+        </p>
+      ) : null}
     </div>
   );
 }
