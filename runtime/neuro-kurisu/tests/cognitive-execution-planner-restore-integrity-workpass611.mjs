@@ -48,6 +48,15 @@ const nestedProxy=new Proxy({}, {getOwnPropertyDescriptor(){throw new Error('des
 assert.doesNotThrow(()=>planner.restore({version:1,tick:7,run:nestedProxy}));
 assert.equal(planner.snapshot().tick,7);
 assert.equal(planner.snapshot().run.project,false);
+const revoked=Proxy.revocable({},{});revoked.revoke();
+assert.doesNotThrow(()=>planner.restore(revoked.proxy));
+assert.equal(planner.snapshot().tick,0,'revoked root proxies must fail closed');
+const revokedNested=Proxy.revocable({},{});revokedNested.revoke();
+assert.doesNotThrow(()=>planner.restore({version:1,tick:8,run:revokedNested.proxy}));
+assert.equal(planner.snapshot().tick,8);
+assert.equal(planner.snapshot().run.project,false,'revoked nested proxies must be ignored');
+planner.restore([]);
+assert.equal(planner.snapshot().tick,0,'array snapshots are not planner records');
 
 // Invalid versions, arrays and out-of-range metrics cannot poison future snapshots.
 planner.restore({version:9,tick:100,mode:'deep'});
