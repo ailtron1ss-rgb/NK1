@@ -1,3 +1,10 @@
+## [NK1][Cognition] Harden cognitive execution-plan restore integrity (2026-11-01)
+- Replace broad object spreads during CognitiveExecutionPlanner restore with allowlisted own-data reads for the version, tick, mode, operation maps, metabolism and statistics.
+- Ignore accessor-backed and inherited values without invoking getters; catch hostile and revoked Proxy reflection failures and fall back to the default planner state.
+- Clamp finite metrics, bound diagnostic strings, validate counters and reject unsupported snapshot versions.
+- Add regressions for valid restoration, root/nested getters, inherited values, hostile/revoked Proxy traps, invalid versions and malformed numeric fields.
+- This protects cognitive scheduling continuity across persistence boundaries; it does not claim improved reasoning quality or autonomy uplift.
+
 ## [NK1][CI] Run embodiment contracts on canonical source pushes (2026-11-01)
 - Trigger the existing embodiment contract workflow on `workpass70-source` pushes as well as pull requests, using the same path allowlist for renderer, motor-frame, avatar and speech bridge changes.
 - Preserve the existing Live2D/2.5D/3D timeline coverage and the full pull-request contract suite; this refresh deliberately avoids the older draft's narrower path list.
