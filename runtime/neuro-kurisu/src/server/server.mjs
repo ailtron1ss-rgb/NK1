@@ -432,6 +432,50 @@ async function route(req, res) {
             return json(res, 200, embodimentAssetStatus());
         if (req.method === 'GET' && url.pathname === '/api/organism/avatar')
             return json(res, 200, { ok: true, avatar: embodimentAssetStatus(), note: 'Read-only Live2D embodiment asset surface.' });
+        if (req.method === 'POST' && url.pathname === '/api/organism/user-model/preferences') {
+            if (!runtimeReady)
+                return json(res, 503, { ok: false, error: 'organism-runtime-not-ready' });
+            const input = await body(req);
+            const action = input.action === 'correct' ? 'correct' : input.action === 'record' ? 'record' : '';
+            if (!action)
+                return json(res, 400, { ok: false, error: 'action-must-be-record-or-correct' });
+            if (input.confirmed !== true)
+                return json(res, 400, { ok: false, error: 'explicit-user-confirmation-required' });
+            const value = typeof input.value === 'string' ? input.value : '';
+            if (!['concise', 'balanced', 'detailed'].includes(value))
+                return json(res, 400, { ok: false, error: 'unsupported-response-style' });
+            // The host owns provenance and classification. Never accept client-supplied
+            // evidence references, sensitivity labels, keys, domains, or tick counters.
+            const evidence = {
+                key: 'response.style',
+                domain: 'interaction-style',
+                value,
+                tick: runtime.core.operationalStatusSnapshot().tick,
+                evidenceRef: `http-user-preference:${randomUUID()}`,
+                explicit: true,
+                sensitivity: 'low-risk',
+            };
+            const result = action === 'correct'
+                ? await runtime.correctExplicitUserPreference(evidence)
+                : await runtime.recordExplicitUserPreference(evidence);
+            if (!result.accepted) {
+                const status = result.reason === 'duplicate-evidence' ? 409 : 400;
+                return json(res, status, { ok: false, error: result.reason || 'user-model-write-rejected' });
+            }
+            return json(res, 200, {
+                ok: true,
+                action,
+                requestedValue: value,
+                preference: {
+                    key: 'response.style',
+                    domain: 'interaction-style',
+                    value: result.claim.value,
+                    status: result.status,
+                    source: 'user-explicit',
+                },
+                note: 'Only an explicitly confirmed, allowlisted low-risk response style is stored.',
+            });
+        }
         if (req.method === 'GET' && url.pathname === '/api/organism/time') {
             const temporal = runtime.core.temporalContinuitySnapshot();
             return json(res, 200, { ok: true, current: runtime.core.temporalContext(), continuity: temporal, offlineSinceLastCheckpointMs: temporal.gapSincePreviousMs, lastSeenAt: temporal.lastCheckpointAt, lastSessionEndedAt: temporal.lastSessionEndedAt, sessionCount: temporal.sessionCount, interruptionCount: temporal.interruptionCount });

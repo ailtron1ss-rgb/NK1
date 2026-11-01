@@ -1,3 +1,10 @@
+## [NK1][SelfModel] Add authenticated HTTP host route for explicit response-style preferences (2026-11-01)
+- Expose a narrow `POST /api/organism/user-model/preferences` route behind the existing API authorization and rate-limit middleware.
+- Accept only caller-confirmed `concise`, `balanced`, or `detailed` response style values; server owns the fixed key/domain, low-risk classification, current tick and random evidence reference.
+- Delegate to the canonical serialized OrganismRuntime record/correction methods; no second store, client-controlled provenance, free-text extraction, or sensitive preference capture.
+- Add a real HTTP child-process regression for missing bearer auth, missing confirmation, hostile style values, record → dispute → correction, and ignored client evidence fields.
+- Document the host/UI confirmation contract. UI control wiring and browser E2E remain separate.
+
 ## [NK1][SelfModel] Add durable runtime APIs for explicit UserModel preferences (2026-11-01)
 - Expose explicit record and correction operations from OrganismCore through serialized OrganismRuntime methods; both delegate to the existing UserModel evidence owner and checkpoint accepted evidence/correction state.
 - Keep the current confirmed-only language projection on the existing proposal, response and autonomous-dialogue prompt paths; no duplicate preference model or full advanced-state clone is introduced.
