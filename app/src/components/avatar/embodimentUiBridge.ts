@@ -96,6 +96,19 @@ const CAPABILITY_TABLE: Record<UiRenderMode, RendererCapabilities> = {
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
 const clampUnit = (value: number): number => Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0));
 
+const SPEECH_PHASES = new Set<SpeechPhase>(["idle", "starting", "speaking", "ended", "cancelled", "unknown"]);
+
+/** Normalize lifecycle data at the renderer boundary; malformed phases never abort a body handoff. */
+const normalizeSpeechPhase = (value: unknown): SpeechPhase =>
+  typeof value === "string" && SPEECH_PHASES.has(value as SpeechPhase) ? value as SpeechPhase : "unknown";
+
+/** Event IDs are opaque identifiers, but blank, non-string and oversized values are not useful evidence. */
+const normalizeSpeechEventId = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 && normalized.length <= 128 ? normalized : null;
+};
+
 export function capabilitiesForMode(mode: UiRenderMode): RendererCapabilities {
   return CAPABILITY_TABLE[mode];
 }
@@ -103,8 +116,8 @@ export function capabilitiesForMode(mode: UiRenderMode): RendererCapabilities {
 /** Project the canonical snapshot into a renderer-neutral semantic body state. */
 export function projectSemanticBodyState(input: SemanticBodyProjectionInput): SemanticBodyState {
   const label = input.snapshot.emotion.label;
-  const gazeX = clampUnit(input.gaze.x);
-  const gazeY = clampUnit(input.gaze.y);
+  const gazeX = clampUnit(input.gaze?.x);
+  const gazeY = clampUnit(input.gaze?.y);
   return {
     schemaVersion: 1,
     revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0,
@@ -114,11 +127,11 @@ export function projectSemanticBodyState(input: SemanticBodyProjectionInput): Se
     expression: EXPRESSION_TEXT[label] ?? "neutral",
     gaze: { x: gazeX, y: gazeY },
     speech: {
-      eventId: input.speechEventId && input.speechEventId.length <= 128 ? input.speechEventId : null,
-      phase: input.speechPhase,
+      eventId: normalizeSpeechEventId(input.speechEventId),
+      phase: normalizeSpeechPhase(input.speechPhase),
       audioTimeMs: Math.max(0, Number.isFinite(input.audioTimeMs) ? input.audioTimeMs : 0),
-      mouthOpen: clamp01(input.mouth.open),
-      mouthForm: clampUnit(input.mouth.form),
+      mouthOpen: clamp01(input.mouth?.open),
+      mouthForm: clampUnit(input.mouth?.form),
     },
     action: (typeof input.snapshot.lastOption === "string" && input.snapshot.lastOption.trim()) ? input.snapshot.lastOption.slice(0, 96) : "wait",
     intentId: null,
