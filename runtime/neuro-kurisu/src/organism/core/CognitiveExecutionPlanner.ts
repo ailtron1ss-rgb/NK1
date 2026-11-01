@@ -46,8 +46,12 @@ const BASE_COST:Record<CognitiveExecutionOperation,number>={perception:.035,memo
 const DOMAIN:Record<CognitiveExecutionOperation,CognitiveDomain>={perception:'embodiment',memory:'memory','world-rollout':'world',research:'research',shadow:'self',project:'agency','slow-cognition':'governance'};
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const plainOwnRecord=(value:unknown):Record<string,unknown>|null=>{
-  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
-  try{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null?value as Record<string,unknown>:null;}catch{return null;}
+  if(value===null||typeof value!=='object')return null;
+  try{
+    if(Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    return prototype===Object.prototype||prototype===null?value as Record<string,unknown>:null;
+  }catch{return null;}
 };
 /** Read persisted planner fields through own data descriptors; never execute getters. */
 const ownData=(record:Record<string,unknown>,key:string):unknown=>{
