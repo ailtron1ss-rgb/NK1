@@ -4396,6 +4396,7 @@ export class OrganismCore {
             uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goalPressure: n.goalPressure,
             socialNeed: n.socialNeed, energy: n.energy, lastSuccess: state.lastActionSuccess, worldEvidenceQuality,
             affect: { emotionId: emotionEpisode.id, label: emotionEpisode.label, valence01: emotionEpisode.valence01, arousal01: emotionEpisode.arousal01, dominance01: emotionEpisode.dominance01, confidence01: emotionEpisode.confidence01 },
+            affectiveComponents: emotionEpisode.mixedAffect?.map(component => ({ label: component.label, intensity01: component.intensity01, confidence01: component.confidence01 })),
             homeostaticPressure01: p66Homeostasis.pressure01,
         });
         this.organismSystems.memory.causalLifeGraph.recordCycle({ tick: state.tick + 1, at: Date.now(), experience: { id: `obs:${state.tick + 1}`, label: String(observation.text ?? 'sensory-experience').slice(0, 120), confidence01: hasExternalSignal ? .8 : .5, external01: hasExternalSignal ? 1 : 0 }, emotion: { id: emotionEpisode.id, label: emotionEpisode.label, confidence01: emotionEpisode.confidence01, external01: hasExternalSignal ? 1 : 0 } }, { snapshot: false });
