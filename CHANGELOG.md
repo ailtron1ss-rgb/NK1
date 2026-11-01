@@ -1,3 +1,10 @@
+## [NK1][Memory] Harden adaptive experience consolidation boundaries (2026-11-01)
+- Validate experience records before ingestion and restore using own data properties only; reject accessors, hostile proxies, sparse tag arrays, malformed identifiers/timestamps and non-finite metrics without executing getters.
+- Clamp bounded salience metrics, cap the in-memory buffer at 10,000 entries, detach accepted data from callers, and make restore atomic with duplicate-ID suppression.
+- Make `consolidate(0)` and invalid limits return an empty result; add deterministic tie-breaking and detached output snapshots.
+- Add focused regressions and `npm run test:adaptive-experience-consolidator`.
+- This is memory-ingress and lifecycle integrity work; it does not claim retrieval uplift, semantic recall improvement, runtime-wide integration or Release ZIP publication.
+
 ## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
 - Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
 - Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
