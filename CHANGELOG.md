@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Reject hostile motor-frame record boundaries (2026-11-01)
+- Snapshot only plain own data properties at frame, joint, calibration, cursor and options boundaries; accessor-backed records are rejected without invoking getters.
+- Reject sparse/accessor-backed/non-standard arrays and malformed record shapes before pose mapping.
+- Convert hostile Proxy reflection traps into bounded invalid-input outcomes rather than allowing exceptions to escape the motor runtime.
+- Add regression tests for getter non-execution and hostile Proxy traps.
+- This is input-boundary integrity hardening; renderer readback, IK calibration and physical device soak remain separate gates.
+
 ## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
 - Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
 - Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
