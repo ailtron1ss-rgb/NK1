@@ -110,8 +110,8 @@ function snapshotDataRecord(value: unknown, maxKeys: number): Record<string, unk
 function snapshotDataArray(value: unknown, maxLength: number): unknown[] | null {
   try {
     if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
-    const descriptors = Object.getOwnPropertyDescriptors(value);
-    const lengthDescriptor = descriptors.length;
+    const descriptors = Object.getOwnPropertyDescriptors(value) as unknown as Record<string, PropertyDescriptor>;
+    const lengthDescriptor = descriptors["length"];
     const length = lengthDescriptor?.value;
     if (!lengthDescriptor || !("value" in lengthDescriptor) || !Number.isSafeInteger(length)
       || length < 0 || length > maxLength || Reflect.ownKeys(descriptors).length !== length + 1) return null;
