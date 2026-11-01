@@ -1,3 +1,10 @@
+## [NK1][SelfModel] Add explicit preference forgetting with replay protection (2026-11-01)
+- Add a caller-confirmed forget operation to the canonical UserModel evidence owner; remove the selected claim and matching behavioral candidates from the persisted projection.
+- Retain the forget evidence reference in the bounded replay ledger so the same delete command and the original explicit statement cannot be replayed immediately after restart.
+- Permit a fresh explicit statement with new evidence to re-establish a preference; no inferred behavior is promoted to a confirmed claim.
+- Add a focused regression for removal, snapshot restore, replay rejection, safe re-establishment and invalid/missing evidence.
+- Scope: model-level deletion API. HTTP/UI wiring and long-horizon tombstone retention beyond the existing bounded evidence ledger remain separate work.
+
 ## [NK1][SelfModel] Add authenticated HTTP host route for explicit response-style preferences (2026-11-01)
 - Expose a narrow `POST /api/organism/user-model/preferences` route behind the existing API authorization and rate-limit middleware.
 - Accept only caller-confirmed `concise`, `balanced`, or `detailed` response style values; server owns the fixed key/domain, low-risk classification, current tick and random evidence reference.
