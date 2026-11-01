@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Complete hosted Kurisu loader and asset verification (2026-11-01)
+- Verify the hosted model's content hash, exact size, GLB structure, humanoid skin, face morph targets and exported rig clip in the embodiment CI workflow.
+- Recognize the exported RIG_Kurisu clip as the generic GLB idle fallback while keeping action-specific clips preferred when present.
+- Keep the remote asset credential-free and content-addressed; the browser caches and stores the verified bytes locally for subsequent offline starts.
+- Remote asset reachability is now a CI dependency for this model catalog entry; the actual WebGL/Android visual soak is still pending.
+
 ## [NK1][Embodiment] Add integrity-checked hosted Kurisu hybrid model (2026-11-01)
 - Publish the generated GLB as a stable Higgsfield media asset instead of relying on expiring 15-minute scene-export URLs.
 - Pin exact byte length and SHA-256 in a source-controlled model catalog; the app verifies both before parsing the remote GLB.
