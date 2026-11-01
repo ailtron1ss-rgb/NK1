@@ -157,3 +157,15 @@ test("trims valid speech event identifiers and rejects non-string identifiers", 
   assert.equal(invalid.speech.eventId, null);
   assert.equal(validateSemanticBodyState(invalid), true);
 });
+
+test("accepts omitted sensor samples as a normal reconnect state", () => {
+  const input = baseInput();
+  delete input.gaze;
+  delete input.mouth;
+  const state = projectSemanticBodyState(input);
+  assert.equal(state.gaze.x, 0);
+  assert.equal(state.gaze.y, 0);
+  assert.equal(state.speech.mouthOpen, 0);
+  assert.equal(state.speech.mouthForm, 0);
+  assert.equal(validateSemanticBodyState(state), true);
+});
