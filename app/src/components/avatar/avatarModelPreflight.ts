@@ -87,6 +87,57 @@ export function preflightAvatarModel(
     return reject("gltf-asset-version-invalid");
   }
 
+  // Bound scene complexity independently of the 90 MB binary ceiling. Small
+  // compressed files can still expand into pathological scene graphs or GPU work.
+  const boundedArray = (key: string, limit: number): unknown[] => {
+    const value = document[key];
+    if (value === undefined) return [];
+    if (!Array.isArray(value)) return reject(`gltf-${key}-invalid`);
+    if (value.length > limit) return reject(`gltf-complexity-limit-${key}`);
+    return value;
+  };
+  const nodes = boundedArray("nodes", 2048);
+  const meshes = boundedArray("meshes", 1024);
+  boundedArray("materials", 256);
+  boundedArray("textures", 128);
+  boundedArray("images", 128);
+  boundedArray("animations", 64);
+  boundedArray("skins", 32);
+  boundedArray("scenes", 64);
+  boundedArray("bufferViews", 8192);
+  const accessors = boundedArray("accessors", 8192);
+
+  let accessorElements = 0;
+  for (const entry of accessors) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      return reject("gltf-accessor-invalid");
+    }
+    const count = (entry as Record<string, unknown>).count;
+    if (!Number.isSafeInteger(count) || Number(count) <= 0) {
+      return reject("gltf-accessor-count-invalid");
+    }
+    accessorElements += Number(count);
+    if (!Number.isSafeInteger(accessorElements) || accessorElements > 6_000_000) {
+      return reject("gltf-complexity-limit-accessors");
+    }
+  }
+
+  let primitiveCount = 0;
+  for (const entry of meshes) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      return reject("gltf-mesh-invalid");
+    }
+    const primitives = (entry as Record<string, unknown>).primitives;
+    if (!Array.isArray(primitives) || primitives.length === 0) {
+      return reject("gltf-mesh-primitives-invalid");
+    }
+    primitiveCount += primitives.length;
+    if (!Number.isSafeInteger(primitiveCount) || primitiveCount > 4096) {
+      return reject("gltf-complexity-limit-primitives");
+    }
+  }
+  // Keep the node array bounded even though it is not needed by later checks.
+  void nodes;
   const buffers = document.buffers;
   if (buffers !== undefined && !Array.isArray(buffers)) return reject("gltf-buffers-invalid");
   for (const entry of (Array.isArray(buffers) ? buffers : []) as unknown[]) {
