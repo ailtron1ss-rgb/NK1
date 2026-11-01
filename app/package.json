@@ -39,7 +39,8 @@
     "test:three-toon-materials": "node --experimental-strip-types --test scripts/three-toon-materials.test.mjs",
     "test:avatar-model-preflight": "node --experimental-strip-types --test scripts/avatar-model-preflight.test.mjs",
     "test:vrm-runtime-adapter": "node --experimental-strip-types --test scripts/vrm-runtime-adapter.test.mjs",
-    "test:vrm-normalized-humanoid": "node --experimental-strip-types --test scripts/vrm-normalized-humanoid.integration.test.mjs"
+    "test:vrm-normalized-humanoid": "node --experimental-strip-types --test scripts/vrm-normalized-humanoid.integration.test.mjs",
+    "test:avatar-3d-stage": "node --experimental-strip-types --test scripts/avatar-3d-stage.test.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
