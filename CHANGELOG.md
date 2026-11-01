@@ -1,3 +1,10 @@
+## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
+- Require finite JSON numbers for restored MemoryOS2 timestamps, expiry, salience, confidence, provenance scores, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
+- Reject numeric-string revision-history timestamps instead of treating them as trusted chronology.
+- Close malformed non-null validity expiries and downgrade facts whose confidence is not a finite number in [0, 1].
+- Compatibility boundary: canonical MemoryOS2 snapshots serialize numeric fields as JSON numbers; no string-number snapshot contract is documented.
+- Add real restore regression coverage for timestamp, expiry, salience, confidence, epistemic status and revision-history coercion.
+
 ## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
 - Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
 - Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.
