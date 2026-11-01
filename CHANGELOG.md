@@ -1,3 +1,9 @@
+## [NK1][Avatar] Add dependency-free GLB/VRM preflight CI (2026-11-01)
+- Add a focused GitHub Actions workflow for the existing upload preflight regression suite; it runs on source-branch pushes, pull requests targeting `workpass70-source`, and manual dispatch.
+- Run the Node 22.16 test directly without installing the app dependency tree, so parser-boundary regressions remain executable even when the npm registry is unavailable.
+- Limit workflow permissions to read-only repository contents, disable checkout credential persistence, cancel superseded runs, and cap execution at five minutes.
+- This validates the GLB/VRM container contract only; it is not a production app build, browser/WebGL E2E, Android soak, or release approval.
+
 ## [NK1][Integration] Repository branch convergence audit (2026-11-01)
 - Inventory the GitHub repository: 627 branches, 189 open PRs, 131 drafts and 439 branches without an open PR at the snapshot time.
 - Record canonical `main` and `workpass70-source` SHAs, PR base distribution, and a safe per-branch consolidation protocol.
