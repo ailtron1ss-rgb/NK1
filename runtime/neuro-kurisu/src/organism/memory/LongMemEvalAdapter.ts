@@ -258,24 +258,40 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
   question.sessions.length=0;question.query='';question.answerSessionIds.length=0;question.id='';question.type='';question.at=0;question.independenceGroupId='';
  }
  const baseline=aggregate(baselineOutcomes),candidate=aggregate(candidateOutcomes);
+ const questionTypes=[...new Set([...baselineOutcomes,...candidateOutcomes].map(row=>row.questionType))].sort();
+ const byQuestionType=Object.fromEntries(questionTypes.map(questionType=>{
+  const baselineCategory=aggregate(baselineOutcomes.filter(row=>row.questionType===questionType));
+  const candidateCategory=aggregate(candidateOutcomes.filter(row=>row.questionType===questionType));
+  return [questionType,{baseline:baselineCategory,candidate:candidateCategory,deltas:{
+   recallAtK01:Number((candidateCategory.recallAtK01-baselineCategory.recallAtK01).toFixed(6)),
+   mrr01:Number((candidateCategory.mrr01-baselineCategory.mrr01).toFixed(6)),
+   precisionAtK01:Number((candidateCategory.precisionAtK01-baselineCategory.precisionAtK01).toFixed(6)),
+   unsupportedRetrievalRate01:Number((candidateCategory.unsupportedRetrievalRate01-baselineCategory.unsupportedRetrievalRate01).toFixed(6)),
+   correctAbstentionRate01:Number((candidateCategory.correctAbstentionRate01-baselineCategory.correctAbstentionRate01).toFixed(6)),
+   falseAbstentionRate01:Number((candidateCategory.falseAbstentionRate01-baselineCategory.falseAbstentionRate01).toFixed(6)),
+  }}];
+ }));
  const confidence=pairedBootstrap(paired,seeds,bootstrapSamples);
  const minAnswerable=Math.floor(finiteOption(options.minAnswerableQueries,20,1,500));
  const minUnanswerable=Math.floor(finiteOption(options.minUnanswerableQueries,8,1,500));
  const minIndependentGroups=Math.floor(finiteOption(options.minIndependentGroups,20,1,500));
  const minAnswerableIndependentGroups=Math.floor(finiteOption(options.minAnswerableIndependentGroups,10,1,500));
  const minUnanswerableIndependentGroups=Math.floor(finiteOption(options.minUnanswerableIndependentGroups,4,1,500));
+ const datasetId=String(options.datasetId??LONGMEMEVAL_DATASET_ID);
+ const datasetFileName=String(options.datasetFileName??'longmemeval_s_cleaned.json');
+ const licenseId=String(options.licenseId??LONGMEMEVAL_LICENSE_ID);
  return {
   schemaVersion:1,evaluation:'longmemeval-s-memory-retrieval',generatedAt:new Date().toISOString(),
   mode:'offline-only; per-question isolated corpus; no-live-memory-mutation; no-auto-promotion',
   sourceDataset:{
-   datasetId:LONGMEMEVAL_DATASET_ID,datasetRevision:revision,
-   sourceRef:`https://huggingface.co/datasets/${LONGMEMEVAL_DATASET_ID}/resolve/${revision}/longmemeval_s_cleaned.json`,
-   licenseId:LONGMEMEVAL_LICENSE_ID,languages:['en'],questionCount:questions.length,sessionCount,
+   datasetId,datasetRevision:revision,
+   sourceRef:`https://huggingface.co/datasets/${datasetId}/resolve/${revision}/${datasetFileName}`,
+   datasetFileName,licenseId,languages:['en'],questionCount:questions.length,sessionCount,
    fileSha256:fileSha,datasetFingerprint,
   },
   experiment:{candidateMode:'canonical-memoryos2-no-embedding',baseline:'Okapi BM25 per question corpus',scope:'retrieval-only; does not score answer generation or LLM-as-judge accuracy',k,bootstrapSamples,seeds},
   sampleAdequacy:{answerableQueries:answerableCount,unanswerableQueries:unanswerableCount,independentGroups:confidence.independentGroupCount,answerableIndependentGroups:confidence.answerableIndependentGroups,unanswerableIndependentGroups:confidence.unanswerableIndependentGroups,minimumAnswerableQueries:minAnswerable,minimumUnanswerableQueries:minUnanswerable,minimumIndependentGroups:minIndependentGroups,minimumAnswerableIndependentGroups:minAnswerableIndependentGroups,minimumUnanswerableIndependentGroups:minUnanswerableIndependentGroups,enoughAnswerableQueries:answerableCount>=minAnswerable,enoughUnanswerableQueries:unanswerableCount>=minUnanswerable,enoughIndependentGroups:confidence.independentGroupCount>=minIndependentGroups,enoughAnswerableIndependentGroups:confidence.answerableIndependentGroups>=minAnswerableIndependentGroups,enoughUnanswerableIndependentGroups:confidence.unanswerableIndependentGroups>=minUnanswerableIndependentGroups},
-  metrics:{baseline,candidate,deltas:{
+  metrics:{baseline,candidate,byQuestionType,deltas:{
    recallAtK01:Number((candidate.recallAtK01-baseline.recallAtK01).toFixed(6)),
    mrr01:Number((candidate.mrr01-baseline.mrr01).toFixed(6)),
    precisionAtK01:Number((candidate.precisionAtK01-baseline.precisionAtK01).toFixed(6)),
