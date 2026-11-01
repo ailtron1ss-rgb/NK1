@@ -1,3 +1,9 @@
+## [NK1][Cognition] Protect NeuralExperienceBranch restore boundary (WorkPass613, 2026-11-01)
+- Reuse the bounded shared `snapshotPlainData` contract before NeuralExperienceBranch reads, spreads or clones any restored field.
+- Reject accessors, inherited/custom-prototype values, sparse arrays, cycles, oversized graphs and hostile/revoked Proxy traps before nested subsystems receive them; fail closed to canonical branch defaults.
+- Add WorkPass613 regressions for valid neural branch round-trip and root/nested accessor, hostile Proxy, revoked Proxy, inherited root and sparse-vector inputs.
+- Add WorkPass613 plus the existing 600-cycle B2522 neural-branch regression to the unified organism workflow. Exact-head Actions currently report failures without accessible step/log output; validation remains unresolved.
+
 ## [NK1][Cognition] Harden planner and persistent personality snapshot restore (2026-11-01)
 - Move the planner's revoked-Proxy-sensitive Array.isArray check inside its fail-closed reflection boundary; keep the existing WorkPass611 root/nested revoked-Proxy regression in the active workflow.
 - Replace P2702 personality restore's pre-validation structuredClone and broad object spreads with own-data-only root/nested reads.
