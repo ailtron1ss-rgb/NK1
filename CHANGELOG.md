@@ -1,3 +1,10 @@
+## [NK1][Autonomy] Correct autonomous runtime cadence and silence accounting (2026-11-01)
+- Fix the inverted cadence gate: silent/internal activity now waits until its scheduled wake, while external signals remain immediately reactive.
+- Stop counting skipped heartbeats as self-started activity; compare silence continuation against the previous activity timestamp rather than a timestamp overwritten at tick entry.
+- Extend the existing WorkPass224 regression with early-silence, external-bypass, due-wake and continuation-counter cases.
+- Wire WorkPass224 into the unified organism runtime workflow so this autonomous-life contract runs on every relevant runtime PR.
+- This validates scheduler semantics, not autonomous cognition quality, subjective consciousness, hour-long initiative soak or production deployment.
+
 ## [NK1][Embodiment] Auto-load the pinned Kurisu hybrid model safely (2026-11-01)
 - Restore an explicitly selected browser-local GLB/VRM first; when no local model exists, automatically fetch the pinned Kurisu v5 hybrid GLB instead of leaving the 3D renderer on the procedural placeholder.
 - Bound the hosted fetch with a 25-second timeout and validate the CDN media type, declared content length, actual byte length and SHA-256 before GLTFLoader receives the asset.
