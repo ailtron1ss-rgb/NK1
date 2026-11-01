@@ -60,7 +60,7 @@ const EXPRESSION_TEXT: Record<EmotionLabel, string> = {
  * limbs, hands and clothing layers are not driven by the current UI, so they are
  * reported as unsupported instead of being silently dropped.
  */
-const LIVE2D_CHANNELS: readonly BodyChannel[] = ["headYaw", "gazeX", "gazeY", "breath"];
+const LIVE2D_CHANNELS: readonly BodyChannel[] = ["headRoll", "gazeX", "gazeY", "breath"];
 const SVG_CHANNELS: readonly BodyChannel[] = ["gazeX", "gazeY"];
 const SPRITE_CHANNELS: readonly BodyChannel[] = [];
 const VRM3D_CHANNELS: readonly BodyChannel[] = ["gazeX", "gazeY"];
@@ -123,7 +123,7 @@ export function projectSemanticBodyState(input: SemanticBodyProjectionInput): Se
     action: (typeof input.snapshot.lastOption === "string" && input.snapshot.lastOption.trim()) ? input.snapshot.lastOption.slice(0, 96) : "wait",
     intentId: null,
     pose: {
-      headYaw: clampUnit(input.headTilt),
+      headRoll: clampUnit(input.headTilt),
       gazeX,
       gazeY,
     },
