@@ -1,3 +1,9 @@
+## [NK1][Cognition] Harden CognitiveEventFabric snapshot restoration (WorkPass641, 2026-11-01)
+- Read persisted event, receipt-index and payload fields through own data descriptors so accessor-backed snapshot fields are ignored rather than executed during restore.
+- Reject numeric-string causal ticks and receipt projection timestamps; do not truth-coerce string booleans or accept numeric-string confidence/counters as trusted state.
+- Add a focused restore-integrity regression and include it in the cognitive runtime CI workflow.
+- Scope is snapshot trust-boundary hardening. It does not claim a higher cognitive-cycle completion rate, autonomous initiative, or production soak.
+
 ## [NK1][SelfModel] Preserve claim evidence against partial-ledger replay (2026-11-01)
 - Reconcile every restored claim's current `evidenceRef` into the bounded processed-evidence ledger, even when a persisted snapshot has lost or omitted that ledger entry.
 - Add a regression proving a replayed claim reference remains rejected after restore from a partial snapshot; no evidence is silently re-consumed.
