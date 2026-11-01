@@ -8,7 +8,7 @@ import {
   type NativeSpeechProviderEvent,
 } from "./avatar/nativeSpeechProviderEvents";
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
-import { buildBrowserVoiceProsody } from "./avatar/browserVoiceProsody";
+import { buildBrowserVoiceProsody, resolveBrowserVoiceAffect } from "./avatar/browserVoiceProsody";
 import {
   advanceBodySwitch,
   beginBodySwitch,
@@ -286,13 +286,13 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       if (activeSpeechSessionRef.current) stopSpeech();
       if (voiceEnabled && lastTurn?.text?.trim()) {
         const text = lastTurn.text;
-        const utteranceEmotion = lastTurn.emotion ?? snap.emotion.label;
+        const voiceAffect = resolveBrowserVoiceAffect(snap.emotion);
         const prosody = buildBrowserVoiceProsody({
           text,
-          emotion: utteranceEmotion,
+          emotion: voiceAffect.emotion,
           action: snap.lastOption,
-          arousal: snap.emotion.arousal,
-          valence: snap.emotion.valence,
+          arousal: voiceAffect.arousal,
+          valence: voiceAffect.valence,
           cognitiveLoad: snap.needs.cognitiveLoad,
           uncertainty: snap.needs.uncertainty,
           socialNeed: snap.needs.socialNeed,

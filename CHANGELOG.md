@@ -1,8 +1,14 @@
 ## [NK1][Embodiment] Wire renderer handoff into the avatar UI (Aspect 11, 2026-11-01)
-- Add `embodimentUiBridge.ts` to project the canonical organism snapshot into the shared `SemanticBodyState`, validate/clamp the handoff input, and declare only the channels each current renderer actually supports.
+- Add `embodimentUiBridge.ts` to project the canonical organism snapshot into the shared `SemanticBodyState`, validate/clamp handoff input, and declare only channels each current renderer actually supports.
 - Connect `AvatarStage.tsx` mode changes to `planEmbodimentSwitch`, a bounded 220 ms crossfade and truthful diagnostics for unsupported channels. Keep the effect independent of per-tick snapshot churn by reading latest values through refs.
 - Add nine UI-bridge regressions and include them in the embodiment workflow. Renderer handoff is not an `AdapterApplyReceipt` and does not claim that a destination applied a pose or completed a frame.
-- 2.5D depth-rig remains outside the active render path; this stage wires existing 2D-class and Three.js 3D modes only. Browser/WebGL visual E2E and real-device soak remain pending.
+- 2.5D depth-rig remains outside the active render path; this stage wires existing 2D-class and Three.js 3D modes only. Browser/WebGL visual E2E and Android/device soak remain pending.
+
+## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
+- Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
+- Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
+- The snapshot workflow never writes repository contents, packages a ZIP, grants redistribution permission or creates a Release; pending human decisions remain explicit.
+- Add a regression contract proving the workflow is read-only and non-publishing.
 
 ## [NK1][Memory] Add isolated LongMemEval-S external retrieval benchmark (2026-11-01)
 - Add a pinned local-file adapter for the 500-question LongMemEval-S cleaned benchmark; validate dataset revision and SHA-256, normalize session chronology, and build a fresh isolated MemoryOS2 corpus for each question.
@@ -3315,3 +3321,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
 - Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
 - The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+
+## [NK1][Avatar] Keep browser voice prosody on one current affect snapshot (2026-11-01)
+- Prevent historical `lastTurn.emotion` from overriding current organism affect while arousal and valence come from a newer snapshot.
+- Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Bind browser TTS prosody to the same current affect snapshot used by the avatar; add focused regression coverage and CI.
+- This validates state coherence, not acoustic timing, voice quality or device synchronization.
