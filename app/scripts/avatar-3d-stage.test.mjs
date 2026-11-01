@@ -115,3 +115,10 @@ test("3D mode restores the user's local model first and auto-loads the pinned Ku
  assert.match(stage,/declaredLength!==KURISU_HYBRID_MODEL\.sizeBytes/);
  assert.match(stage,/loadToken\.current\+\+/);
 });
+test("generic GLB speech drives all available Kurisu viseme morph targets",async()=>{
+ const stage=await readFile(stagePath,"utf8"),adapter=await readFile(path.join(root,"src/components/avatar/glbMouthMorphAdapter.ts"),"utf8");
+ assert.match(stage,/resolveGlbMouthMorphWeights\(node\.morphTargetDictionary,p\.mouthPose,p\.speaking\)/);
+ for(const key of ["visemeaa","visemeih","visemeee","visemeoh","visemeou"])assert.ok(adapter.includes(key),"Missing GLB viseme target: "+key);
+ assert.match(adapter,/if \(!speaking\) return result/);
+ assert.match(adapter,/case "open"/);assert.match(adapter,/case "round"/);assert.match(adapter,/case "wide"/);assert.match(adapter,/case "teeth"/);
+});

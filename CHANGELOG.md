@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Drive all available hybrid GLB viseme targets (2026-11-01)
+- Replace the generic GLB two-shape mouth approximation with a dedicated morph adapter for `aa`, `ee`, `ih`, `oh`, and `ou` targets; refine Russian/Latin grapheme mapping so the shared timeline emits distinct form values for all five targets.
+- Preserve a strict neutral reset for all recognized mouth channels when speech is inactive, closed, resting or malformed; expression and blink targets remain independently controlled.
+- Add deterministic coverage for each viseme class, alias fallback, inactive-speech reset and malformed dictionaries; wire it into the normalized VRM/GLB workflow.
+- This improves renderer-side mouth-shape coverage but does not claim phoneme-level acoustic inference, lip-sync drift measurements or Android visual soak.
+
 ## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
 - Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
 - Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
