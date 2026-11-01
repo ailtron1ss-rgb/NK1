@@ -1,3 +1,10 @@
+## [NK1][Cognition] Harden cognitive spine scheduler restore integrity (2026-11-01)
+- Replace unsafe scheduler snapshot spreads with allowlisted own-data reads; persisted getters are ignored rather than executed.
+- Validate snapshot version and mode, restore only non-negative safe-integer counters, clamp finite metrics and bound diagnostic text.
+- Fall back to a clean default state for unsupported versions, malformed roots and hostile/revoked Proxy values.
+- Extend the WorkPass39 cognitive-spine regression with round-trip, accessor, counter, metric, version and revoked-Proxy cases.
+- This hardens persistence integrity and execution continuity; it does not claim improved reasoning quality or autonomy uplift.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
