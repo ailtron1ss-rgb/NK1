@@ -1,8 +1,15 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Live source HEAD, проверен 1 ноября:** `3de80c537b190a0ff8bffb8c2ad0870ed5daecd3` (обновляйте SHA по live branch перед каждым проходом).  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+### Активные инженерные PR — не считать интегрированными
+
+- [#630 — neural branch + personality + planner restore](https://github.com/ailtron1ss-rgb/NK1/pull/630): WorkPass612/613 добавляют own-data-only personality restore, защиту planner от revoked Proxy и входную проверку полного NeuralExperienceBranch snapshot через общий bounded `snapshotPlainData`. В CI добавлены adversarial restore tests и существующий 600-cycle B2522 regression. Первый runtime typecheck прошёл; ошибка ожидания в WorkPass612 test исправлена по логам. Последующие Actions для новых SHA отмечены failed, но GitHub не отдаёт steps/logs; итог focused validation неизвестен.
+- [#619 — EmotionAppraisalEngine restore](https://github.com/ailtron1ss-rgb/NK1/pull/619): отдельная защита эмоционального snapshot restore. Draft; ветка синхронизирована с live base (`f921007…`, ahead 9 / behind 0), WorkPass610 и interoceptive regression включены в unified workflow; точный успешный прогон ещё не подтверждён.
+- Изменения открытых PR не входят в workpass70-source, пока не объединены; в опубликованный Release ZIP они не входят до сборки и проверки нового архива.
+
 
 ### Реально интегрировано и проверено
 

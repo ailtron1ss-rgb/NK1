@@ -3,8 +3,15 @@
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
 **Canonical source branch:** `workpass70-source`  
-**Source HEAD at this checkpoint:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b`  
+**Live source HEAD checked 2026-11-01:** `3de80c537b190a0ff8bffb8c2ad0870ed5daecd3`  
 **Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
+
+## Active code work — 2026-11-01
+
+- **Draft PR #630** (`workpass612-personality-restore`): fixes a revoked-Proxy escape in planner restore; hardens P2702 personality restore; and validates the full NeuralExperienceBranch snapshot graph with shared bounded `snapshotPlainData` before any nested restore. Adds WorkPass612/613 adversarial tests plus B2522 neural-branch 600-cycle regression to unified CI. First exact-head runtime typecheck passed; one incorrect test expectation was corrected from observed logs. Follow-up Actions for newer SHAs returned failures without accessible steps/logs; final focused status remains UNKNOWN. Do not mark merged or released.
+- **Draft PR #619** (`workpass610-affect-restore`): protects EmotionAppraisalEngine snapshot restore. Rebased onto live source head `f921007…` (ahead 9 / behind 0); WorkPass610 focused test and WorkPass172 interoceptive regression are now wired into unified organism CI. Exact-head workflow results are not yet validated.
+- No release archive was rebuilt or inspected during this pass. The October 19 ZIP remains historical and lacks November changes.
+
 
 ## Latest verified integrations — 2026-11-01
 

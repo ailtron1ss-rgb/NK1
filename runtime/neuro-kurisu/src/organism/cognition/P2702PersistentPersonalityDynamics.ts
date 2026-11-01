@@ -31,22 +31,113 @@ const defaultState=():P2702PersonalityState=>{
   stability01:.86,coherence01:.78,identityContinuity01:.9,contradiction01:.08,plasticity01:.08,drift01:0,autobiographicalStrength01:.1,lastReward01:.5};
 };
 
+
+type OwnRecord=Record<string,unknown>;
+function readOwnDataRecord(value:unknown):OwnRecord|null{
+ if(value===null||typeof value!=="object")return null;
+ try{
+  if(Array.isArray(value))return null;
+  const prototype=Object.getPrototypeOf(value);
+  if(prototype!==Object.prototype&&prototype!==null)return null;
+  const keys=Reflect.ownKeys(value);
+  if(keys.length>128||keys.some(key=>typeof key!=="string"))return null;
+  const output:OwnRecord=Object.create(null);
+  for(const key of keys as string[]){
+   const descriptor=Object.getOwnPropertyDescriptor(value,key);
+   if(!descriptor||!("value" in descriptor))return null;
+   output[key]=descriptor.value;
+  }
+  return output;
+ }catch{return null;}
+}
+function readDenseArray(value:unknown,expectedLength:number):unknown[]|null{
+ try{
+  if(!Array.isArray(value))return null;
+  const lengthDescriptor=Object.getOwnPropertyDescriptor(value,"length");
+  if(!lengthDescriptor||!("value" in lengthDescriptor)||lengthDescriptor.value!==expectedLength)return null;
+  const output:unknown[]=[];
+  for(let index=0;index<expectedLength;index++){
+   const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+   if(!descriptor||!("value" in descriptor))return null;
+   output.push(descriptor.value);
+  }
+  return output;
+ }catch{return null;}
+}
+function hasCanonicalNames(value:unknown,fallback:string[]):boolean{
+ if(value===undefined)return true;
+ const input=readDenseArray(value,fallback.length);
+ return !!input&&input.every((item,index)=>item===fallback[index]);
+}
+function readMetricArray(value:unknown,fallback:number[],min=0,max=1):number[]{
+ const input=readDenseArray(value,fallback.length);
+ if(!input||input.some(item=>typeof item!=="number"||!Number.isFinite(item)))return fallback.slice();
+ return input.map(item=>clamp(item as number,min,max));
+}
+function readCounter(value:unknown,fallback:number):number{
+ return typeof value==="number"&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+}
+function readMetric(value:unknown,fallback:number,min=0,max=1):number{
+ return typeof value==="number"&&Number.isFinite(value)?clamp(value,min,max):fallback;
+}
+function readRelationshipTrust(value:unknown):Record<string,number>{
+ const input=readOwnDataRecord(value);
+ const output:Record<string,number>={};
+ if(!input)return output;
+ for(const key of Object.keys(input).slice(0,32)){
+  if(!key||key.length>128||key==="__proto__"||key==="prototype"||key==="constructor")continue;
+  const trust=input[key];
+  if(typeof trust==="number"&&Number.isFinite(trust))Object.defineProperty(output,key,{value:clamp(trust),enumerable:true,configurable:true,writable:true});
+ }
+ return output;
+}
+function readActionPreferences(value:unknown,fallback:Record<ActionKind,number>):Record<ActionKind,number>{
+ const input=readOwnDataRecord(value);
+ const output={...fallback};
+ if(!input)return output;
+ for(const action of ACTIONS){
+  const preference=input[action];
+  if(typeof preference==="number"&&Number.isFinite(preference))output[action]=clamp(preference,-1,1);
+ }
+ return output;
+}
+
 export class P2702PersistentPersonalityDynamics{
  private state=defaultState();
  snapshot(){return deep(this.state);}
  restore(raw?:Partial<P2702PersonalityState>|null){
-  const d=defaultState(),r:any=raw??{};this.state={...d,...deep(r),version:1,
-   invariantNames:Array.isArray(r.invariantNames)?r.invariantNames.slice(0,32):d.invariantNames,
-   invariantValues:Array.isArray(r.invariantValues)?r.invariantValues.slice(0,32).map((x:number)=>clamp(x)):d.invariantValues,
-   adaptiveNames:Array.isArray(r.adaptiveNames)?r.adaptiveNames.slice(0,32):d.adaptiveNames,
-   adaptiveValues:Array.isArray(r.adaptiveValues)?r.adaptiveValues.slice(0,32).map((x:number)=>clamp(x)):d.adaptiveValues,
-   valueNames:Array.isArray(r.valueNames)?r.valueNames.slice(0,32):d.valueNames,
-   valueWeights:Array.isArray(r.valueWeights)?r.valueWeights.slice(0,32).map((x:number)=>clamp(x)):d.valueWeights,
-   relationshipTrust:r.relationshipTrust&&typeof r.relationshipTrust==='object'?Object.fromEntries(Object.entries(r.relationshipTrust).slice(0,32).map(([k,v])=>[k,clamp(Number(v))])):d.relationshipTrust,
-   selfBeliefs:Array.isArray(r.selfBeliefs)?r.selfBeliefs.slice(0,16).map((x:number)=>clamp(x)):d.selfBeliefs,
-   selfUncertainty:Array.isArray(r.selfUncertainty)?r.selfUncertainty.slice(0,16).map((x:number)=>clamp(x,.03,.97)):d.selfUncertainty,
-   tensionState:Array.isArray(r.tensionState)?r.tensionState.slice(0,16).map((x:number)=>clamp(x)):d.tensionState,
-   actionPreference:{...d.actionPreference,...(r.actionPreference??{})}};
+  const defaults=defaultState();
+  const root=readOwnDataRecord(raw);
+  if(!root||(root.version!==undefined&&root.version!==1)){this.state=defaults;return;}
+  const invariantNamesValid=hasCanonicalNames(root.invariantNames,defaults.invariantNames);
+  const adaptiveNamesValid=hasCanonicalNames(root.adaptiveNames,defaults.adaptiveNames);
+  const valueNamesValid=hasCanonicalNames(root.valueNames,defaults.valueNames);
+  const candidate:P2702PersonalityState={
+   version:1,
+   tick:readCounter(root.tick,defaults.tick),
+   experienceCount:readCounter(root.experienceCount,defaults.experienceCount),
+   learningUpdates:readCounter(root.learningUpdates,defaults.learningUpdates),
+   invariantNames:defaults.invariantNames.slice(),
+   invariantValues:invariantNamesValid?readMetricArray(root.invariantValues,defaults.invariantValues):defaults.invariantValues.slice(),
+   adaptiveNames:defaults.adaptiveNames.slice(),
+   adaptiveValues:adaptiveNamesValid?readMetricArray(root.adaptiveValues,defaults.adaptiveValues):defaults.adaptiveValues.slice(),
+   valueNames:defaults.valueNames.slice(),
+   valueWeights:valueNamesValid?readMetricArray(root.valueWeights,defaults.valueWeights):defaults.valueWeights.slice(),
+   relationshipTrust:readRelationshipTrust(root.relationshipTrust),
+   selfBeliefs:readMetricArray(root.selfBeliefs,defaults.selfBeliefs),
+   selfUncertainty:readMetricArray(root.selfUncertainty,defaults.selfUncertainty,.03,.97),
+   tensionState:readMetricArray(root.tensionState,defaults.tensionState),
+   actionPreference:readActionPreferences(root.actionPreference,defaults.actionPreference),
+   stability01:readMetric(root.stability01,defaults.stability01),
+   coherence01:readMetric(root.coherence01,defaults.coherence01),
+   identityContinuity01:readMetric(root.identityContinuity01,defaults.identityContinuity01),
+   contradiction01:readMetric(root.contradiction01,defaults.contradiction01),
+   plasticity01:readMetric(root.plasticity01,defaults.plasticity01),
+   drift01:readMetric(root.drift01,defaults.drift01),
+   autobiographicalStrength01:readMetric(root.autobiographicalStrength01,defaults.autobiographicalStrength01),
+   lastReward01:readMetric(root.lastReward01,defaults.lastReward01),
+  };
+  this.state=candidate;
  }
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
   this.state.tick=args.tick;this.state.experienceCount++;this.state.lastReward01=clamp(args.reward01??.5);
