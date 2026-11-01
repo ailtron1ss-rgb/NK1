@@ -2,9 +2,9 @@
 
 ## Повторный аудит 2026-11-01 — актуальный статус
 
-- Source: `workpass70-source` @ `5b4a10c01b9dd70afc61e201b7a344c235cc80b0`.
-- Release workflow: [run 41284938747](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41284938747).
-- Текущий audit: `releaseRedistributionReady=false`, **115 ошибок**; freshness/provenance/SBOM checks прошли, fail-closed остановка произошла на человеческом license review.
+- Source: `workpass70-source` @ exact audited SHA `8cf8872ad6005007d1eb1a3b04e82c7f56105c4f`.
+- Release workflow: [non-publishing exact-SHA audit run 41286922912](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41286922912).
+- Точный audit artifact: `releaseRedistributionReady=false`, **115 ошибок**; freshness/provenance/SBOM checks и захват отчёта прошли, fail-closed остановка произошла на человеческом license review.
 - Инвентарь: 477 locked npm components; fingerprint `a10f75530eeac185de88cdf338b094c2cbd9bec7a4c16c9cee7b5d040cb92cd4`; 8 source archives; 11 repository LICENSE/NOTICE.
 - Error breakdown: global review 5; root 5; runtime 5; npm inventory 5; source archives 40; repository license files 55.
 - Все 11 repository LICENSE/NOTICE review records теперь существуют в manifest, но остаются `pending`; ни одна запись не получила human approval или redistribution grant.
