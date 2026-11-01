@@ -14,14 +14,17 @@ export interface UserModelCandidate {
   key:string; domain:UserModelDomain; value:string; observations:number;
   firstSeenTick:number; lastSeenTick:number; confidence01:number; status:'unconfirmed-candidate';
 }
+export interface UserModelForgetTombstone { key:string; domain:UserModelDomain; forgottenAtTick:number; evidenceRef:string; }
 export interface UserModelState {
-  version:1; claims:UserModelClaim[]; candidates:UserModelCandidate[];
-  processedEvidenceRefs:string[]; rejectedSensitiveCount:number; rejectedMalformedCount:number;
+  version:2; claims:UserModelClaim[]; candidates:UserModelCandidate[];
+  processedEvidenceRefs:string[]; forgetTombstones:UserModelForgetTombstone[];
+  rejectedSensitiveCount:number; rejectedMalformedCount:number;
 }
 export type UserModelResult =
  | {accepted:true;status:UserModelClaimStatus;claim:UserModelClaim}
- | {accepted:false;reason:'sensitive-or-unclassified'|'invalid-input'|'missing-evidence'|'duplicate-evidence'};
+ | {accepted:false;reason:'sensitive-or-unclassified'|'invalid-input'|'missing-evidence'|'duplicate-evidence'|'forgotten-before-event'|'tombstone-capacity-exhausted'};
 const DOMAINS:readonly UserModelDomain[]=['interaction-style','content-preference','accessibility-preference','explicit-boundary'];
+const MAX_FORGET_TOMBSTONES=256;
 const clamp01=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const boundedText=(v:unknown,max:number)=>typeof v==='string'?v.normalize('NFKC').replace(/[\u0000-\u001f\u007f]/g,'').trim().slice(0,max):'';
 const validTick=(n:number)=>Number.isSafeInteger(n)&&n>=0;
@@ -33,6 +36,20 @@ const ownData=(value:unknown,key:string):unknown=>{
  if(!value||typeof value!=='object')return undefined;
  const descriptor=Object.getOwnPropertyDescriptor(value,key);
  return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
+};
+const strictOwnArray=(value:unknown,max:number):unknown[]|null=>{
+ try {
+  if(!Array.isArray(value))return null;
+  const length=ownData(value,'length');
+  if(!Number.isSafeInteger(length)||Number(length)<0||Number(length)>max)return null;
+  const result:unknown[]=[];
+  for(let index=0;index<Number(length);index++){
+   const descriptor=Object.getOwnPropertyDescriptor(value,String(index));
+   if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value'))return null;
+   result.push(descriptor.value);
+  }
+  return result;
+ } catch { return null; }
 };
 const boundedOwnArray=(value:unknown,max:number):unknown[]=>{
  if(!Array.isArray(value))return [];
@@ -49,17 +66,36 @@ const boundedOwnArray=(value:unknown,max:number):unknown[]=>{
 
 /** Fail-closed minimization boundary; upstream privacy policy and receipt attestation remain required. */
 export class UserModelEvidenceModel {
- private state:UserModelState={version:1,claims:[],candidates:[],processedEvidenceRefs:[],rejectedSensitiveCount:0,rejectedMalformedCount:0};
+ private state:UserModelState={version:2,claims:[],candidates:[],processedEvidenceRefs:[],forgetTombstones:[],rejectedSensitiveCount:0,rejectedMalformedCount:0};
  snapshot(){return clone(this.state);}
  restore(raw?:Partial<UserModelState>|null){
-  if(ownData(raw,'version')!==1){this.state={version:1,claims:[],candidates:[],processedEvidenceRefs:[],rejectedSensitiveCount:0,rejectedMalformedCount:0};return;}
-  const claims=boundedOwnArray(ownData(raw,'claims'),128).map(x=>this.cleanClaim(x)).filter((x):x is UserModelClaim=>!!x);
-  const candidates=boundedOwnArray(ownData(raw,'candidates'),128).map(x=>this.cleanCandidate(x)).filter((x):x is UserModelCandidate=>!!x);
+  const version=ownData(raw,'version');
+  if(version!==1&&version!==2){this.reset();return;}
+  // A v2 snapshot must preserve every deletion boundary. Oversize, sparse,
+  // accessor-backed or malformed tombstone arrays invalidate the whole snapshot.
+  const rawTombstones=version===2?ownData(raw,'forgetTombstones'):[];
+  const tombstoneRows=version===2?strictOwnArray(rawTombstones,MAX_FORGET_TOMBSTONES):[];
+  if(!tombstoneRows){this.reset();return;}
+  const tombstones=tombstoneRows.map(row=>this.cleanTombstone(row));
+  if(tombstones.some(row=>row===null)){this.reset();return;}
+  const validTombstones=tombstones as UserModelForgetTombstone[];
+  const latestByKey=new Map<string,UserModelForgetTombstone>();
+  for(const tombstone of validTombstones){
+   const id=this.tombstoneId(tombstone.key,tombstone.domain);
+   const previous=latestByKey.get(id);
+   if(!previous||tombstone.forgottenAtTick>previous.forgottenAtTick)latestByKey.set(id,tombstone);
+  }
+  const canonicalTombstones=[...latestByKey.values()];
+  const claims=boundedOwnArray(ownData(raw,'claims'),128).map(x=>this.cleanClaim(x)).filter((x):x is UserModelClaim=>!!x)
+   .filter(claim=>!this.isAtOrBeforeTombstone(claim.key,claim.domain,claim.lastSeenTick,canonicalTombstones));
+  const candidates=boundedOwnArray(ownData(raw,'candidates'),128).map(x=>this.cleanCandidate(x)).filter((x):x is UserModelCandidate=>!!x)
+   .filter(candidate=>!this.isAtOrBeforeTombstone(candidate.key,candidate.domain,candidate.lastSeenTick,canonicalTombstones));
   const refs=boundedOwnArray(ownData(raw,'processedEvidenceRefs'),512)
    .filter((x):x is string=>typeof x==='string').map(x=>boundedText(x,180)).filter(Boolean);
   const sensitive=ownData(raw,'rejectedSensitiveCount');
   const malformed=ownData(raw,'rejectedMalformedCount');
-  this.state={version:1,claims,candidates,processedEvidenceRefs:[...new Set([...refs,...claims.map(claim=>claim.evidenceRef)])].slice(-512),
+  this.state={version:2,claims,candidates,processedEvidenceRefs:[...new Set([...refs,...claims.map(claim=>claim.evidenceRef),...canonicalTombstones.map(item=>item.evidenceRef)])].slice(-512),
+   forgetTombstones:canonicalTombstones,
    rejectedSensitiveCount:Number.isSafeInteger(sensitive)?Math.max(0,sensitive as number):0,
    rejectedMalformedCount:Number.isSafeInteger(malformed)?Math.max(0,malformed as number):0};
  }
@@ -69,6 +105,7 @@ export class UserModelEvidenceModel {
   if(!i.explicit||!key||!value||!isDomain(i.domain)||!validTick(i.tick)){this.state.rejectedMalformedCount++;return{accepted:false,reason:'invalid-input'};}
   if(!ref)return{accepted:false,reason:'missing-evidence'};
   if(this.state.processedEvidenceRefs.includes(ref))return{accepted:false,reason:'duplicate-evidence'};
+  if(this.isForgotten(key,i.domain,i.tick))return{accepted:false,reason:'forgotten-before-event'};
   this.remember(ref);
   const old=this.state.claims.find(c=>c.key===key&&c.domain===i.domain);
   if(old&&old.value!==value){old.status='disputed';old.contradictions++;old.lastSeenTick=i.tick;return{accepted:true,status:'disputed',claim:clone(old)};}
@@ -83,6 +120,7 @@ export class UserModelEvidenceModel {
   const key=normalizeKey(i.key),value=boundedText(i.value,120),ref=boundedText(i.observationRef,180);
   if(!key||!value||!isDomain(i.domain)||!validTick(i.tick)||!ref){this.state.rejectedMalformedCount++;return{accepted:false,reason:'invalid-input'};}
   if(this.state.processedEvidenceRefs.includes(ref))return{accepted:false,reason:'duplicate-evidence'};
+  if(this.isForgotten(key,i.domain,i.tick))return{accepted:false,reason:'forgotten-before-event'};
   this.remember(ref);
   const confirmed=this.state.claims.find(c=>c.key===key&&c.domain===i.domain&&c.status==='confirmed');
   if(confirmed)return{accepted:true};
@@ -97,6 +135,7 @@ export class UserModelEvidenceModel {
   if(!i.explicit||!key||!value||!isDomain(i.domain)||!validTick(i.tick)){this.state.rejectedMalformedCount++;return{accepted:false,reason:'invalid-input'};}
   if(!ref)return{accepted:false,reason:'missing-evidence'};
   if(this.state.processedEvidenceRefs.includes(ref))return{accepted:false,reason:'duplicate-evidence'};
+  if(this.isForgotten(key,i.domain,i.tick))return{accepted:false,reason:'forgotten-before-event'};
   const c=this.state.claims.find(x=>x.key===key&&x.domain===i.domain);
   if(!c)return this.recordExplicit(i);
   this.remember(ref);
@@ -118,11 +157,17 @@ export class UserModelEvidenceModel {
   }
   if(!ref)return{accepted:false,reason:'missing-evidence'};
   if(this.state.processedEvidenceRefs.includes(ref))return{accepted:false,reason:'duplicate-evidence'};
+  const tombstoneId=this.tombstoneId(key,i.domain);
+  const existing=this.state.forgetTombstones.find(item=>this.tombstoneId(item.key,item.domain)===tombstoneId);
+  if(existing&&i.tick<existing.forgottenAtTick)return{accepted:false,reason:'invalid-input'};
+  if(!existing&&this.state.forgetTombstones.length>=MAX_FORGET_TOMBSTONES)return{accepted:false,reason:'tombstone-capacity-exhausted'};
   this.remember(ref);
   const claimsBefore=this.state.claims.length;
   const candidatesBefore=this.state.candidates.length;
   this.state.claims=this.state.claims.filter(claim=>!(claim.key===key&&claim.domain===i.domain));
   this.state.candidates=this.state.candidates.filter(candidate=>!(candidate.key===key&&candidate.domain===i.domain));
+  this.state.forgetTombstones=this.state.forgetTombstones.filter(item=>this.tombstoneId(item.key,item.domain)!==tombstoneId);
+  this.state.forgetTombstones=[...this.state.forgetTombstones,{key,domain:i.domain,forgottenAtTick:i.tick,evidenceRef:ref}];
   return{accepted:true,removed:claimsBefore!==this.state.claims.length||candidatesBefore!==this.state.candidates.length,key,domain:i.domain};
  }
  /** Read-only decision view: disputed claims are excluded from confirmed facts. */
@@ -137,6 +182,15 @@ export class UserModelEvidenceModel {
   const normalized=normalizeKey(key);
   const claim=this.state.claims.find(c=>c.key===normalized&&c.domain===domain&&c.status==='confirmed');
   return claim?.value??null;
+ }
+ private reset(){this.state={version:2,claims:[],candidates:[],processedEvidenceRefs:[],forgetTombstones:[],rejectedSensitiveCount:0,rejectedMalformedCount:0};}
+ private tombstoneId(key:string,domain:UserModelDomain){return key+'\\u0000'+domain;}
+ private isForgotten(key:string,domain:UserModelDomain,tick:number){return this.isAtOrBeforeTombstone(key,domain,tick,this.state.forgetTombstones);}
+ private isAtOrBeforeTombstone(key:string,domain:UserModelDomain,tick:number,tombstones:UserModelForgetTombstone[]){const tombstone=tombstones.find(item=>item.key===key&&item.domain===domain);return!!tombstone&&tick<=tombstone.forgottenAtTick;}
+ private cleanTombstone(raw:unknown):UserModelForgetTombstone|null{
+  const key=normalizeKey(ownData(raw,'key')),domain=ownData(raw,'domain'),forgottenAtTick=ownData(raw,'forgottenAtTick'),evidenceRef=boundedText(ownData(raw,'evidenceRef'),180);
+  if(!key||!isDomain(domain)||!validTick(forgottenAtTick as number)||!evidenceRef)return null;
+  return{key,domain,forgottenAtTick:forgottenAtTick as number,evidenceRef};
  }
  private remember(ref:string){this.state.processedEvidenceRefs=[...this.state.processedEvidenceRefs,ref].slice(-512);}
  private cleanClaim(r:any):UserModelClaim|null{
