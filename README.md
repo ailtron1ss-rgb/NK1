@@ -1,47 +1,50 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
-**Рабочая ветка:** `workpass70-source`  
-**Проверенный кодовый SHA:** `7ff9947bc4642cceb25e0c951899aa6355f02b6e`
+**Каноническая рабочая ветка:** `workpass70-source`  
+**Текущий source SHA:** `eb82e918cfbcb6648baba641e0b845470faf6ef1`
 
-### Реальная работа и интеграции
-- **Three.js lifecycle:** deduplicated disposal shared geometries/materials/textures/skeletons; renderer-owned toon gradient сохраняется при очистке импортированной модели.
-- **Renderer architecture:** toon material factory и non-VRM GLB conversion вынесены в `threeToonMaterials.ts`; исходные GLB materials освобождаются без уничтожения текстур, используемых новыми материалами.
-- **Secure avatar intake:** GLB 2.0 preflight до `GLTFLoader.parse`: magic/version/declared length, JSON-first/BIN-second chunks, alignment/bounds, JSON и buffer metadata, VRM 0.x/1.0 identity, 90 MB cap; внешние buffer/image URI запрещены.
-- **Restore consistency:** новый upload и IndexedDB restore проходят один preflight path.
-- **Release evidence:** manifest теперь покрывает 477 npm components, 8 source archives, 11 repository LICENSE/NOTICE файлов и четыре vendor LICENSE hash. Все legal decisions остаются pending.
-- **Release audit automation:** read-only exact-SHA workflow обновляет SBOM/provenance, запускает fail-closed audit и сохраняет JSON artifact; он не имеет publish/write permissions.
-- **Memory/evaluation integrations on source line:** Inspect AI evidence evaluator (diagnostic-only, no memory promotion) и LongMemEval-S retrieval adapter (English benchmark only, promotion disabled) добавлены отдельными commits и прошли свои targeted suites.
+### Реально интегрировано и проверено
 
-### Проверка exact source SHA
-- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41279905546) на `7ff9947bc4642cceb25e0c951899aa6355f02b6e`.
-- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41279905550) на том же SHA.
-- [Non-publishing license audit snapshot — SUCCESS as a report job](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41279905494): exact SHA `7ff9947bc4642cceb25e0c951899aa6355f02b6e`, readiness **false**, 115 errors, 477 npm components, 8 archives, 11 repository license files.
-- Inspect AI integration commit `3f90ee6`: 4/4 associated checks passed.
-- LongMemEval-S integration commit `595f11b`: 9/9 associated checks passed.
-- PR [#507](https://github.com/ailtron1ss-rgb/NK1) — toon material module, squash-merged after 10/10 PR checks.
-- PR [#514](https://github.com/ailtron1ss-rgb/NK1/pull/514) — evidence-backed license inventory, merged with all review states pending.
-- PR [#523](https://github.com/ailtron1ss-rgb/NK1/pull/523) — non-publishing exact-SHA license audit workflow, merged after all 8 checks passed.
-- Stale duplicate PRs #495, #508, #509 and #521 closed after their changes were rebased or superseded.
+| PR | Что вошло в проект | Проверки на точном PR HEAD |
+|---|---|---:|
+| [#516](https://github.com/ailtron1ss-rgb/NK1/pull/516) | Read-only Inspect AI evaluator: 11 стадий причинной линии, receipts, privacy-reduced evidence, deterministic no-model scoring | 10/10 |
+| [#520](https://github.com/ailtron1ss-rgb/NK1/pull/520) | LongMemEval-S adapter: изолированный MemoryOS2 corpus на вопрос, сравнение canonical retrieval/BM25, source-session clustered metrics | 30/30 |
+| [#524](https://github.com/ailtron1ss-rgb/NK1/pull/524) | SemanticBodyState bridge, переключение существующих 2D/3D renderer modes, bounded 220 ms crossfade, diagnostics неподдерживаемых каналов | 14/14 |
+| [#533](https://github.com/ailtron1ss-rgb/NK1/pull/533) | Единый normalized VRM humanoid motor, expressions/visemes, bounded `vrm.update`, корректное освобождение ресурсов | 11/11 |
+
+- **VRM:** управление идёт через normalized humanoid proxy bones; включён `autoUpdateHumanBones`; существующий NK1 arm intent сохраняется; raw-targeted GLTF mixer не перезаписывает VRM pose. GLB fallback остаётся отдельным.
+- **Memory evaluation:** Inspect AI экспортирует только ограниченные доказательные записи, не сырые диалоги. LongMemEval-S — English-only benchmark; CI использует синтетическую фикстуру, а не реальный 500-вопросный датасет. Ни один из этих тестов пока не доказывает retrieval uplift.
+- **Embodiment UI:** переходы между существующими 2D-классом и Three.js 3D mode связаны с общим semantic handoff. **Отдельный 2.5D depth-rig ещё не подключён.**
+- **Live2D:** 21 asset manifest entries (16,690,663 bytes) имеют SHA-256 lock. `with-app-env.mjs` гидратирует их из канонического `runtime/neuro-kurisu/public` в app public до Vite dev/build. Модель и motions существуют в проекте; это не означает, что у NK1 уже есть лицензированная 3D VRM-модель Курису.
+- **3D assets:** в текущем дереве нет готового `.vrm` или `.glb` персонажа. Сейчас есть procedural fallback и локальная загрузка пользовательской модели с preflight; готовый лицензированный Kurisu 3D asset остаётся отдельной задачей.
+
+### Release и лицензирование
+
+- **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- **Новый Release ZIP на 1 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
+- `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
 
 ### Что всё ещё НЕ доказано
-- Browser/WebGL E2E: реальная загрузка/замена/reset/reload VRM/GLB и renderer.info/GPU residency soak.
-- Android/Termux audio sync, interruption и длительный real-device soak.
-- Независимый лицензированный RU/EN holdout uplift; LongMemEval-S English-only evaluation не заменяет такой holdout.
-- Production soak, полная автономная инициатива и субъективное сознание не заявляются как доказанные.
 
-### Release status — stable и prerelease
-GitHub `/releases/latest` возвращает последний stable Release: tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
-
-Более поздний по времени prerelease: tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Для рабочего артефакта по правилу «последний ZIP, включая prerelease» использовать Hotfix 1; stable Neuro остаётся последним non-prerelease. Ни один ZIP не содержит изменения от 1 ноября.
-
-**Новый Release ZIP не собран и не опубликован.** Для exact source SHA `7ff9947` core CI и source-lineage прошли, но отдельного publisher run на этом SHA не обнаружено; последний видимый main-sync publisher run — #89 на более старом commit `342d2ac` (31 октября). Требуется восстановить/проверить автоматический запуск publisher workflow. License audit readiness также остаётся false до человеческого решения по 115 пунктам.
+- Browser/WebGL E2E: реальная загрузка/замена/reset/reload VRM/GLB, visual pose validation, renderer.info/GPU residency и длительный soak.
+- Полная 2.5D depth-сцена, полноценная IK/VRMA locomotion и калибровка конкретной Kurisu-модели.
+- Android/Termux audio sync, speech interruption, viseme/audio drift и real-phone soak.
+- Независимый лицензированный bilingual RU/EN retrieval uplift на immutable holdout, минимум 5 paired seeds; критерий `recallDelta > 0` ещё не закрыт. LongMemEval-S не заменяет RU/EN gate.
+- Подтверждённая автономная инициатива из внутреннего состояния, а не только scripted/background scheduler. Субъективное сознание не заявляется как доказанный факт.
+- Human license decisions и безопасный exact-SHA Release publisher gate.
 
 ### Следующие P0
-1. Восстановить publisher workflow trigger и проверить, что он стартует только после exact-SHA core + lineage success и сохраняет fail-closed license gate.
-2. Browser/WebGL E2E: upload → preflight → parse → replace → reset → reload; проверить GPU resource counters и сохранность renderer-owned gradient.
-3. Закрыть human license review: глобальное/root/runtime решения, npm inventory fingerprint, 8 archives, 11 LICENSE/NOTICE records.
-4. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и soak.
-5. Независимая RU/EN retrieval evaluation по source-clustered paired seeds; не включать promotion без доказанного uplift.
+
+1. Закрыть human license review и проверить exact-SHA publisher trigger; не публиковать ZIP при readiness=false.
+2. Browser/WebGL E2E для VRM/GLB с повторной загрузкой, reset, заменой модели, GPU counters и memory soak.
+3. Реальный телефон: speech interruption, viseme/audio clock drift, background/foreground и длительный soak.
+4. Независимая RU/EN memory evaluation с source-clustered paired seeds; promotion запрещён без подтверждённого uplift.
+5. Довести 2.5D depth-rig и подключить лицензированную 3D-модель после отдельной проверки прав.
+6. Проверить инициативный цикл Perceive → Appraise → Plan → Act → Reflect → Consolidate на длительном soak с объяснимыми внутренними причинами действий.
+
+**Глобальный процент готовности не повышаю:** новые интеграции прошли targeted CI, но это не закрывает browser/device soak, bilingual retrieval uplift, 3D assets и legal release gates.
+
 
 ---
 
