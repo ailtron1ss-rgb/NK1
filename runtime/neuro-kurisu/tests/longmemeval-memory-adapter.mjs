@@ -56,6 +56,20 @@ const rows = [
     ],
     answer_session_ids: ['session-a'],
   },
+  {
+    question_id: 'lme-reviewed-abstention-004',
+    question_type: 'multi-session',
+    question: 'What is the exact private code mentioned in the reviewed history?',
+    answer: 'The information provided is not enough to answer this question.',
+    question_date: '2030-06-03T00:00:00.000Z',
+    haystack_session_ids: ['session-e'],
+    haystack_dates: ['2030-04-06T00:00:00.000Z'],
+    haystack_sessions: [[
+      { role: 'user', content: 'I enjoy walking beside the river in spring.' },
+      { role: 'assistant', content: 'That sounds peaceful.' },
+    ]],
+    answer_session_ids: [],
+  },
 ];
 
 const report = runLongMemEvalMemoryBenchmark(rows, {
@@ -77,27 +91,27 @@ assert.equal(report.sourceDataset.licenseId, 'MIT');
 assert.equal(report.sourceDataset.languages.join(','), 'en');
 assert.equal(report.sourceDataset.datasetRevision, '98d7416c24c778c2fee6e6f3006e7a073259d48f');
 assert.equal(report.sourceDataset.fileSha256, 'a'.repeat(64));
-assert.equal(report.metrics.baseline.queries, 3);
-assert.equal(report.metrics.candidate.queries, 3);
+assert.equal(report.metrics.baseline.queries, 4);
+assert.equal(report.metrics.candidate.queries, 4);
 assert.equal(report.metrics.candidate.answerableQueries, 2);
-assert.equal(report.metrics.candidate.unanswerableQueries, 1);
+assert.equal(report.metrics.candidate.unanswerableQueries, 2);
 assert.equal(report.metrics.candidate.recallAtK01, 1);
 assert.equal(report.metrics.candidate.correctAbstentionRate01, 1);
 assert.equal(report.metrics.candidate.unsupportedRetrievalCount, 0);
 assert.equal(report.confidence.seedCount, 3);
-assert.equal(report.confidence.independentGroupCount, 2,
+assert.equal(report.confidence.independentGroupCount, 3,
   'questions sharing a session ID must be one independent bootstrap group');
-assert.equal(report.sampleAdequacy.independentGroups, 2);
+assert.equal(report.sampleAdequacy.independentGroups, 3);
 assert.equal(report.sampleAdequacy.enoughIndependentGroups, true);
 assert.equal(report.sampleAdequacy.answerableIndependentGroups, 1);
 assert.equal(report.sampleAdequacy.unanswerableIndependentGroups, 1);
 assert.equal(report.sampleAdequacy.enoughAnswerableIndependentGroups, false,
   'answerable query count must not hide a single independent evidence group');
 assert.equal(report.sampleAdequacy.enoughUnanswerableIndependentGroups, true);
-assert.equal(new Set(report.perQuestion.map(row => row.independenceGroupDigest)).size, 2,
+assert.equal(new Set(report.perQuestion.map(row => row.independenceGroupDigest)).size, 3,
   'shared session IDs must collapse questions into the same independent group');
 assert.equal(report.confidence.answerableIndependentGroups, 1);
-assert.equal(report.confidence.unanswerableIndependentGroups, 1);
+assert.equal(report.confidence.unanswerableIndependentGroups, 2);
 assert.equal(report.confidence.runs.length, 3);
 assert.equal(report.promotion.allowed, false,
   'English-only external evidence cannot auto-promote a bilingual retrieval policy');
@@ -106,7 +120,9 @@ assert.equal(report.guardrails.rawSessionContentIncluded, false);
 assert.equal(report.guardrails.liveMemoryMutation, false);
 assert.equal(JSON.stringify(report).includes('Which vehicle is scheduled'), false);
 assert.equal(JSON.stringify(report).includes('Orion vehicle for its 2030 launch'), false);
-assert.equal(report.perQuestion.length, 3);
+assert.equal(report.perQuestion.length, 4);
+assert.equal(report.perQuestion.filter(row => !row.answerable).length, 2,
+  'reviewed corrected ground truth can mark non-_abs rows as abstention with empty evidence');
 assert.equal(report.perQuestion.every(row => row.queryDigest.length === 64), true);
 assert.equal(report.perQuestion.every(row => row.questionIdDigest.length === 64), true);
 
