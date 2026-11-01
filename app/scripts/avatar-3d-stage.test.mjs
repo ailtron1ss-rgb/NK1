@@ -44,7 +44,7 @@ test("VRM models use the official Pixiv runtime through the normalized adapter",
  assert.ok(adapter.includes("expressionManager"));
  assert.ok(adapter.includes("getNormalizedBoneNode"));
  assert.ok(adapter.includes("vrm.update("));
- assert.ok(stage.includes("VRM runtime · humanoid, expressions and spring bones"));
+ assert.ok(stage.includes("configureVrmForNk1NormalizedMotorDrive(vrm)"), "the loaded VRM must enter the normalized motor adapter");
 });
 test("GLB models retain the generic glTF fallback without pretending they are VRM",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/const root=vrm\?\.scene\s*\?\?\s*gltf\.scene/);assert.match(stage,/if \(fileName\.toLowerCase\(\)\.endsWith\("\.vrm"\) && !vrm\)/);});
 
