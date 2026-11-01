@@ -11,6 +11,7 @@ import { fingerprintAvatarModel } from "./avatar/avatarModelFingerprint";
 import { preflightAvatarModel } from "./avatar/avatarModelPreflight";
 import { disposeThreeObjectTree } from "./avatar/threeResourceDisposal";
 import { applyAnimeToonMaterials, createProceduralToonMaterial, getSharedAnimeGradientTexture } from "./avatar/threeToonMaterials";
+import { KURISU_HYBRID_MODEL } from "./avatar/avatarModelCatalog";
 
 type Props = { emotion: EmotionLabel; action: ActionKind; arousal: number; valence: number; dominance: number; energy: number; cognitiveLoad: number; uncertainty: number; socialNeed: number; novelty: number; goalPressure: number; curiosity: number; predictionError: number; traits: Record<string, number>; gazeX: number; gazeY: number; speaking: boolean; mouthPose: MouthPose; thinking: boolean; awake: boolean };
 type Bone = { node: any; name: string; x: number; y: number; z: number };
@@ -64,6 +65,26 @@ export function Avatar3DStage(props:Props){
   },()=>{if(token!==loadToken.current)return;setState("error");setMessage("Не прочитан бинарный VRM/GLB. Нужен самодостаточный файл с геометрией и текстурами внутри.");});
   }catch(e){setState("error");setMessage(e instanceof Error?e.message:"Ошибка чтения модели.");}
  },[]);
+ const loadBundledModel=useCallback(async()=>{
+  const token=++loadToken.current;
+  setState("loading");setMessage("Загрузка встроенной модели Курису и проверка SHA-256…");
+  try{
+   const response=await fetch(KURISU_HYBRID_MODEL.url,{mode:"cors",credentials:"omit",cache:"force-cache"});
+   if(token!==loadToken.current)return;
+   if(!response.ok)throw new Error(`Не удалось получить модель Курису (HTTP ${response.status}).`);
+   const blob=await response.blob();
+   if(token!==loadToken.current)return;
+   if(blob.size!==KURISU_HYBRID_MODEL.sizeBytes)throw new Error("Размер встроенной модели не совпадает с закреплённым манифестом.");
+   const data=await blob.arrayBuffer();
+   const fingerprint=await fingerprintAvatarModel(data);
+   if(token!==loadToken.current)return;
+   if(fingerprint!==KURISU_HYBRID_MODEL.sha256)throw new Error("SHA-256 модели не совпадает; загрузка заблокирована.");
+   await loadModel(blob,KURISU_HYBRID_MODEL.filename,true);
+  }catch(error){
+   if(token!==loadToken.current)return;
+   setState("error");setMessage(error instanceof Error?error.message:"Не удалось загрузить встроенную модель Курису.");
+  }
+ },[loadModel]);
  useEffect(()=>{
   const el=host.current;if(!el)return;let renderer:any;let raf=0;let observer:ResizeObserver|null=null;let disposed=false;
   try{
@@ -89,7 +110,7 @@ export function Avatar3DStage(props:Props){
  return <section className="relative min-h-[320px] overflow-hidden bg-[radial-gradient(ellipse_at_50%_23%,rgba(68,126,158,.22),transparent_48%),radial-gradient(ellipse_at_50%_88%,rgba(114,78,157,.16),transparent_44%),#070d16] md:min-h-[420px]" aria-label="3D-тело Neuro-Kurisu">
   <div ref={host} className="absolute inset-0"/>
   {state==="webgl-unavailable"?<div className="absolute inset-0 z-10 grid place-items-center p-6"><div className="max-w-sm rounded-xl border border-white/15 bg-black/70 p-4 text-center text-white"><p className="text-sm font-semibold">3D-рендерер недоступен</p><p className="mt-2 text-xs text-white/70">{message}</p></div></div>:null}
-  <div className="absolute right-3 top-3 z-20 flex max-w-[75%] flex-wrap justify-end gap-1.5"><button type="button" onClick={()=>fileInput.current?.click()} disabled={!ready} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>{modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}<input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/></div>
+  <div className="absolute right-3 top-3 z-20 flex max-w-[75%] flex-wrap justify-end gap-1.5"><button type="button" onClick={()=>void loadBundledModel()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить модель Курису v5</button><button type="button" onClick={()=>fileInput.current?.click()} disabled={!ready||state==="loading"} className="rounded-md border border-cyan-100/25 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-cyan-50 hover:border-cyan-100/55">Загрузить VRM/GLB</button>{modelName?<button type="button" onClick={()=>void reset()} className="rounded-md border border-white/15 bg-slate-950/75 px-2.5 py-1.5 text-[10px] font-mono text-white/80">Сбросить</button>:null}<input ref={fileInput} type="file" accept=".vrm,.glb,model/gltf-binary" onChange={onFile} className="hidden" aria-label="Выберите локальную VRM или GLB модель"/></div>
   <div className="pointer-events-none absolute inset-x-3 bottom-3 z-20 flex items-end justify-between gap-2"><div className="max-w-[80%] rounded-lg border border-white/10 bg-slate-950/70 px-2.5 py-2 backdrop-blur"><p className="text-[11px] font-semibold tracking-wide text-slate-100">{modelName||"NK1 · TRUE 3D BODY"}</p><p className="mt-0.5 text-[10px] leading-relaxed text-slate-300/80">{state==="loaded"?"3D-модель · эмоция, действие, взгляд и речь связаны с состоянием NK1":state==="loading"?"Подготовка модели…":state==="error"?"Модель не загружена · процедурное тело сохраняется":state==="webgl-unavailable"?"Требуется WebGL":"Процедурный 3D-концепт · эмоции и движение от состояния NK1"}</p></div><div className="rounded-full border border-cyan-200/20 bg-slate-950/70 px-2 py-1 text-[9px] uppercase tracking-wider text-cyan-100/80">{props.awake?(props.thinking?"thinking":props.speaking?"speaking":props.emotion):"sleep"}</div></div>
   {message?<p role="status" className="absolute bottom-[4.6rem] left-3 z-20 max-w-[78%] rounded bg-slate-950/80 px-2 py-1.5 text-[10px] text-amber-100/90">{message}</p>:null}
   <p className="absolute right-3 bottom-[4.6rem] z-20 max-w-[42%] text-right text-[9px] text-white/45">Потяните тело, чтобы повернуть. {modelFingerprint ? `SHA-256 ${modelFingerprint.slice(7, 23)}… · идентичность модели зафиксирована` : state === "loaded" ? "SHA-256 недоступен · калибровка этой модели заблокирована" : ""} {storageMessage}</p>
