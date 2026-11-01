@@ -80,7 +80,7 @@ function normalizeRecent(value: unknown): RecentEntry[] {
     if (typeof at !== "number" || !Number.isFinite(at) || at < 0) continue;
     entries.push({ tick: tick as number, mode: mode as AmbientMode, reason, autonomous, outcome01: clamp(outcome01), at });
   }
-  return entries.reverse();
+  return entries;
 }
 
 export const defaultAutonomousRuntimeLife = (): AutonomousRuntimeLifeState => ({
