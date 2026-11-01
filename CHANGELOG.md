@@ -4,6 +4,7 @@
 - Invalidate the prior hash when recovering from a corrupt primary and protect the known-good backup from being overwritten by corrupt bytes during the first repair save.
 - Add regressions for missing-primary recovery, primary recreation, empty-store behavior and corrupt-primary backup preservation.
 - Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace the broader organism recovery/soak tests.
+- Keep the backup-preservation guard active until the primary rename succeeds; remove temporary files after ordinary failed writes/renames and verify that a retry cannot rotate corrupt primary bytes over the verified backup.
 
 ## [NK1][SelfModel] Fail-closed durable preference forgetting (2026-11-01)
 - Upgrade UserModel snapshots to v2 while preserving v1 migration.

@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, open, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { deserialize, serialize } from 'node:v8';
@@ -160,29 +160,40 @@ export class FileStateStore<T> implements JsonStateStore<T> {
         // The state file disappeared externally; recreate it even though the payload is unchanged.
       }
     }
-    await writeFile(tmp, payload as unknown as string, 'utf8');
-    crashInject('after-tmp-write');
-    const handle = await open(tmp, 'r+');
-    try { await handle.sync(); this.stats.fsyncs += 1; } finally { await handle.close(); }
-    crashInject('after-file-fsync');
+    let renamed = false;
+    let shouldBackup = false;
+    try {
+      await writeFile(tmp, payload as unknown as string, 'utf8');
+      crashInject('after-tmp-write');
+      const handle = await open(tmp, 'r+');
+      try { await handle.sync(); this.stats.fsyncs += 1; } finally { await handle.close(); }
+      crashInject('after-file-fsync');
 
-    this.saveCount += 1;
-    const shouldBackup = this.saveCount === 1 || (this.saveCount % this.backupEverySaves === 0);
-    if (shouldBackup && this.skipNextBackupCopy) {
-      this.skipNextBackupCopy = false;
-    } else if (shouldBackup) {
-      try {
-        await access(this.filePath);
-        await copyFile(this.filePath, this.backupPath);
-        this.stats.backupCopies += 1;
-      } catch (error: any) {
-        if (error?.code !== 'ENOENT') throw error;
+      this.saveCount += 1;
+      shouldBackup = this.saveCount === 1 || (this.saveCount % this.backupEverySaves === 0);
+      // Consume the recovery guard only after the replacement rename commits. A failed
+      // rename must not make the next retry rotate a corrupt primary over the good backup.
+      const skipBackupForRecovery = shouldBackup && this.skipNextBackupCopy;
+      if (shouldBackup && !skipBackupForRecovery) {
+        try {
+          await access(this.filePath);
+          await copyFile(this.filePath, this.backupPath);
+          this.stats.backupCopies += 1;
+        } catch (error: any) {
+          if (error?.code !== 'ENOENT') throw error;
+        }
       }
-    }
-    crashInject('after-backup');
+      crashInject('after-backup');
 
-    crashInject('before-rename');
-    await rename(tmp, this.filePath);
+      crashInject('before-rename');
+      await rename(tmp, this.filePath);
+      renamed = true;
+      if (skipBackupForRecovery) this.skipNextBackupCopy = false;
+    } finally {
+      // Ordinary write/backup/rename failures must not accumulate orphaned temp files.
+      // SIGKILL crash-injection intentionally bypasses finally to model abrupt process death.
+      if (!renamed) await unlink(tmp).catch(() => {});
+    }
     crashInject('after-rename');
     if (this.strictDirectoryFsync || this.saveCount % this.directoryFsyncEverySaves === 0 || shouldBackup) {
       try {
