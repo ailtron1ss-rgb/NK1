@@ -1,3 +1,10 @@
+## [NK1][Audit] Prevent architecture scanner false positives (2026-11-01)
+- Add a byte-stable masker for comments, strings, templates and regex literals; import-like text in test assertions no longer becomes a false module edge.
+- Keep real static imports, dynamic imports and CommonJS require edges in the architecture graph.
+- Add dedicated masking regressions for comments, strings, templates, regex literals, dynamic imports, require calls and known false-positive fixtures.
+- Run the new regression from both the runtime package script and the full audit sequence.
+- Preserve the current scanner's cross-package source roots and research-boundary exception; port the focused fix rather than reverting to an older scanner implementation.
+
 ## [NK1][Embodiment] Auto-load the pinned Kurisu hybrid model safely (2026-11-01)
 - Restore an explicitly selected browser-local GLB/VRM first; when no local model exists, automatically fetch the pinned Kurisu v5 hybrid GLB instead of leaving the 3D renderer on the procedural placeholder.
 - Bound the hosted fetch with a 25-second timeout and validate the CDN media type, declared content length, actual byte length and SHA-256 before GLTFLoader receives the asset.
