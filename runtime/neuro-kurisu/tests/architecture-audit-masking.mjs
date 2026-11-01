@@ -19,7 +19,7 @@ const codeSpecifiers = source => {
     found.push(m[2]);
   }
   return found;
-};;
+};
 
 // Comments, strings and regex literals must be masked; real code must not be.
 assert.deepEqual(codeSpecifiers(`import x from './real.ts';\n`), ['./real.ts']);
@@ -34,8 +34,8 @@ assert.deepEqual(codeSpecifiers(`const re = /['"]/g;\n`), []);
 // Division is not a regex literal, so a following specifier-like string stays masked.
 assert.deepEqual(codeSpecifiers(`const q = a / b;\nconst s = "from './after-div.ts'";\n`), []);
 assert.deepEqual(codeSpecifiers(`const v = await import('./dynamic.ts');\n`), ['./dynamic.ts']);
-assert.deepEqual(codeSpecifiers(`const value = require('./required.cjs');\\n`), ['./required.cjs']);
-assert.deepEqual(codeSpecifiers(`import type { Shape } from './type-only.ts';\\n`), []);
+assert.deepEqual(codeSpecifiers(`const value = require('./required.cjs');\n`), ['./required.cjs']);
+assert.deepEqual(codeSpecifiers(`import type { Shape } from './type-only.ts';\n`), []);
 // A quote inside a comment must not open a phantom string that swallows real code.
 assert.deepEqual(codeSpecifiers(`// it's fine\nimport y from './after-comment.ts';\n`), ['./after-comment.ts']);
 
