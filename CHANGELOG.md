@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Normalize VRM humanoid motor ownership (WorkPass76, 2026-11-01)
+- Replace the separate per-bone VRM write loop with one typed normalized humanoid adapter; configure `autoUpdateHumanBones`, split head/neck intent 35/65 and reset controlled proxies each frame to prevent drift.
+- Preserve the existing NK1 precomputed left/right arm intent (including affect/social modifiers), standard VRM expression and viseme mapping, bounded frame delta, and GLB fallback.
+- Disable raw-targeted GLTF mixer for VRM until a VRMA/normalized retargeter exists; add deep VRM disposal on replacement, load failure, reset and teardown.
+- Add unit tests plus an integration test using the real `VRMHumanoid` implementation, and a focused CI workflow with typecheck/build. No spatial IK, full-body locomotion, visual browser E2E or phone soak is claimed.
+
 ## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
 - Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
 - Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
@@ -3315,3 +3321,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
 - Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
 - The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+
+## [NK1][Avatar] Keep browser voice prosody on one current affect snapshot (2026-11-01)
+- Prevent historical `lastTurn.emotion` from overriding current organism affect while arousal and valence come from a newer snapshot.
+- Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Bind browser TTS prosody to the same current affect snapshot used by the avatar; add focused regression coverage and CI.
+- This validates state coherence, not acoustic timing, voice quality or device synchronization.

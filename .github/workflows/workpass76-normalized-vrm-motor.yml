@@ -1,0 +1,45 @@
+name: NK1 normalized VRM humanoid motor
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
+      - "app/scripts/vrm-normalized-humanoid.integration.test.mjs"
+      - "app/package.json"
+      - "app/package-lock.json"
+      - ".github/workflows/workpass76-normalized-vrm-motor.yml"
+  push:
+    branches: [work/nk1-vrm-normalized-motor-source-sync-2026-11-01]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-vrm-normalized-motor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  normalized-vrm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts
+      - name: Test normalized VRM motor and expression adapter
+        run: npm --prefix app run test:vrm-runtime-adapter
+      - name: Verify actual three-vrm normalized humanoid transfer
+        run: npm --prefix app run test:vrm-normalized-humanoid
+      - name: App typecheck
+        run: npm --prefix app run typecheck
+      - name: App production build
+        run: npm --prefix app run build
