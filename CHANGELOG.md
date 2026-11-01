@@ -1,3 +1,11 @@
+## [NK1][Governance] Reconcile current progress dashboard with release manifests (2026-11-01)
+- Replace contradictory active release pointers with one manifest-backed status header.
+- Record source code baseline separately from the published Release tag and ZIP asset digest.
+- Explicitly mark ZIP content parity as unverified because the asset was not downloaded and independently inspected in this pass.
+- Separate implemented, integrated, CI-tested, released and device-verified states; remove unsupported global readiness percentages.
+- Preserve the previous progress history under a clearly marked historical archive.
+- Track current blockers for human license approval (#485), 3D asset promotion (#601), Android qualification and release artifact parity.
+
 ## [NK1][Cognition] Harden cognitive execution-plan restore integrity (2026-11-01)
 - Replace broad object spreads during CognitiveExecutionPlanner restore with allowlisted own-data reads for the version, tick, mode, operation maps, metabolism and statistics.
 - Ignore accessor-backed and inherited values without invoking getters; catch hostile and revoked Proxy reflection failures and fall back to the default planner state.

@@ -1,3 +1,88 @@
+# Neuro Kurisu / NK1 — актуальный статус проекта
+
+<sub>Снимок состояния на 2026-11-01. Этот блок — единственный активный статус. Весь прежний текст ниже сохранён как исторический архив и не является текущим release pointer.</sub>
+
+## Канонический источник и опубликованный артефакт
+
+| Поле | Подтверждённое значение |
+|---|---|
+| Рабочий репозиторий | `ailtron1ss-rgb/NK1` |
+| Рабочая ветка | `workpass70-source` |
+| Кодовый baseline до этого doc-only обновления | `795bb672fd3af0a5ec85cc7d783d00a9226fe083` |
+| Приложение | `35.90.0` |
+| Organism Core | `100.32.0-r26-hierarchical-lowrank-causal` |
+| State schema | `225` |
+| Phase | `WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline` |
+| Canonical root | `src/organism` |
+| Legacy isolation | `legacy-original/` |
+| Canonical files / source surface | `582 / 1,934` |
+| Runtime / build dependencies в manifest | `0 / 0` |
+
+Машинные контракты: `VERSION.json`, `RELEASE_MANIFEST.json`, `ARCHITECTURE_MANIFEST.json` и `src/organism/system/ReleaseContract.ts`. Их значения согласованы на указанном кодовом baseline.
+
+### Последний опубликованный GitHub Release
+
+| Поле | Значение |
+|---|---|
+| Release tag / name | `Neuro` / `NeuroKurisu0.1` |
+| Published | `2026-10-19T14:21:35Z` |
+| Primary asset | `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` |
+| Asset size | `135,290,615 bytes` |
+| GitHub asset digest | `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286` |
+| Download count at snapshot | `3` |
+
+**Release/source separation:** ZIP остаётся главным опубликованным артефактом. Указанный digest взят из метаданных GitHub Release; в этом проходе ZIP не скачивался и digest независимо не пересчитывался. Содержимое ZIP не сравнивалось с текущей исходной веткой. Поэтому parity / artifact-content verification = **NOT VERIFIED**. Новая публикация не выполнялась.
+
+## Последний подтверждённый инженерный результат
+
+**PR #622 — Cognitive execution planner restore integrity**  
+Merged: `2026-11-01` · merge commit `795bb672fd3af0a5ec85cc7d783d00a9226fe083`.
+
+- Planner restore перешёл с широкого object spread на allowlist own-data чтение.
+- Getter-функции не исполняются; наследуемые поля игнорируются.
+- Ошибки Proxy reflection и revoked Proxy приводят к безопасному default state.
+- Проверяются версия и режим; метрики ограничиваются диапазоном, счётчики валидируются, диагностические строки ограничены.
+- Добавлен regression test и подключён к `test:rebuild-recovered) и unified organism runtime workflow.
+
+**CI для точного PR head:** 36/36 workflow runs завершились success. Unified organism runtime также завершился success: runtime typecheck, unified cognitive cycle, автономная cadence, endogenous motivation, world perception, planner restore integrity, continuity integration и organism smoke — PASS. Это подтверждает указанные CI gates, но не заменяет Android soak, независимые holdout-эксперименты или Release ZIP verification.
+
+## Когнитивные и системные области
+
+Статусы ниже разделяют наличие кода, интеграцию, тестирование и выпуск. Проценты общей готовности не публикуются, пока нет единого подтверждённого release/device gate.
+
+| Область | Текущая реализация / доказательство | Что ещё не доказано |
+|---|---|---|
+| Когнитивный цикл и планирование | Unified cognitive cycle, execution planner; PR #622 merged; unified runtime CI PASS | Долгосрочная поведенческая эффективность и мобильный soak |
+| Эмоции и интероцепция | `EmotionAppraisalEngine`: appraisal episodes, action tendencies, feeling-access и homeostatic mismatch; WorkPass172 test source present | Новое причинное улучшение поведения и adversarial restore-boundary coverage |
+| Global workspace и метакогниция | Predictive workspace, recurrent workspace, metacognitive substrate; WorkPass187/188 tests present | Независимое подтверждение устойчивого влияния workspace на реальные действия; это функциональная модель, не доказательство феноменального сознания |
+| Self-model и личность | SelfModelV2, self/world predictive stack, personality coupling, self-authorship | Стабильность характера на независимых длительных сценариях и adversarial holdouts |
+| Воображение и counterfactuals | Sensorimotor imagination, future-self projection, counterfactual planner; WorkPass2518–2520 tests present | Связь внутренних симуляций с подтверждённым улучшением реальных действий и полноценным avatar/render loop |
+| Память и обучение | MemoryOS2, episodic/autobiographical/semantic retrieval, lineage и holdout gates; relevant CI workflows PASS | Подтверждённый положительный recall uplift на независимых multi-seed holdouts; CI PASS сам по себе не доказывает uplift |
+| Самостоятельность и цели | Intrinsic drives, endogenous goal genesis, autonomous goal lifecycle, agency gates; relevant CI workflows PASS | Физический/мобильный background initiative soak и независимая оценка полезности инициатив |
+| Аватар и embodiment | Существующий 2D/Live2D путь и проверяемый v5 fallback; candidate GLB v7 описан в issue #601 | v7 не promoted; браузерный и Android visual E2E, lip-sync drift и long soak не подтверждены |
+
+### Активные блокеры выпуска
+
+1. **License / redistribution — issue #485 OPEN.** Нужны человеческое одобрение корневой и runtime лицензий, review 462 locked npm components, SBOM/provenance и успешный exact-SHA release gate. Автоматически обходить gate нельзя.
+2. **3D asset promotion — issue #601 OPEN.** GLB revision 7 — кандидат, не canonical runtime asset. Нужны стабильная загрузка байтов, фактический SHA-256, structural/browser verification и Android E2E; v5 fallback сохраняется.
+3. **Android/device qualification — PENDING.** Реальный background/restart/resource/lip-sync soak не заменяется CI.
+4. **Release ZIP parity — NOT VERIFIED.** Требуется скачать опубликованный ZIP, независимо проверить digest и сравнить фактическое содержимое с исходным baseline.
+
+## Правило оценки
+
+- **Implemented** — код присутствует.
+- **Integrated** — подключён к canonical runtime/state owner.
+- **Tested** — соответствующий тест/CI gate прошёл на указанном SHA.
+- **Released** — изменение подтверждено внутри опубликованного ZIP.
+- **Device-verified** — подтверждено на реальном Android/browser target.
+
+Не переносить статус между колонками автоматически. Не выдавать synthetic tests, внутренние diagnostics или один успешный CI за доказательство сознания, общего интеллекта, автономной полезности или production readiness.
+
+---
+
+## Исторический архив
+
+Все release pointers, проценты готовности и статусы ниже сохранены для аудита истории. Они не являются текущими указателями релиза или текущей оценкой готовности.
 
 Канонический релиз: 35.40.0
 > **SOURCE OF TRUTH (VERSION.json):** Neuro-Kurisu **35.90.0** · organism core `100.32.0-r26-hierarchical-lowrank-causal` · state schema `225` · `WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline`.
