@@ -122,6 +122,7 @@ export function projectSemanticBodyState(input: SemanticBodyProjectionInput): Se
   const label = input.snapshot.emotion.label;
   const gazeX = clampUnit(input.gaze?.x);
   const gazeY = clampUnit(input.gaze?.y);
+  const speechPhase = normalizeSpeechPhase(input.speechPhase);
   return {
     schemaVersion: 1,
     revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0,
@@ -132,10 +133,12 @@ export function projectSemanticBodyState(input: SemanticBodyProjectionInput): Se
     gaze: { x: gazeX, y: gazeY },
     speech: {
       eventId: normalizeSpeechEventId(input.speechEventId),
-      phase: normalizeSpeechPhase(input.speechPhase),
+      phase: speechPhase,
       audioTimeMs: Math.max(0, Number.isFinite(input.audioTimeMs) ? input.audioTimeMs : 0),
-      mouthOpen: clamp01(input.mouth?.open),
-      mouthForm: clampUnit(input.mouth?.form),
+      // Only active speech may drive mouth motion; terminal/unknown phases must not
+      // preserve a stale open-mouth sample after interruption or reconnect.
+      mouthOpen: speechPhase === "speaking" ? clamp01(input.mouth?.open) : 0,
+      mouthForm: speechPhase === "speaking" ? clampUnit(input.mouth?.form) : 0,
     },
     action: (typeof input.snapshot.lastOption === "string" && input.snapshot.lastOption.trim()) ? input.snapshot.lastOption.slice(0, 96) : "wait",
     intentId: null,
