@@ -1,3 +1,7 @@
+## [NK1][Embodiment] Preserve shared toon texture during model disposal (2026-11-01)
+- Prevent imported VRM/GLB cleanup from disposing the renderer-owned shared anime gradient DataTexture. The texture is shared by procedural and converted GLB materials and must outlive any individual uploaded model.
+- Extend the avatar lifecycle regression to assert that model disposal excludes the shared gradient texture; this prevents a later model reset/reload from silently leaving the procedural renderer with a disposed gradient resource.
+
 ## [NK1][Embodiment] Reuse the anime toon gradient texture (2026-11-01)
 - Reuse one lazily-created 3-band DataTexture across procedural and imported GLB toon materials instead of allocating one GPU texture per material. This prevents avoidable GPU resource growth when avatar meshes/models are replaced or reloaded.
 - Add a source-contract regression for the shared texture cache. The texture remains module-scoped and immutable after initialization; VRM-authored MToon materials remain untouched.
