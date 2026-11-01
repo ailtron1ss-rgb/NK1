@@ -1,4 +1,4 @@
- # Mirrored on main as the default-branch workflow_run anchor for validated source release.
+# Mirrored on main as the default-branch workflow_run anchor for validated source release.
 name: NeuroCore core regression validation
 
 on:
