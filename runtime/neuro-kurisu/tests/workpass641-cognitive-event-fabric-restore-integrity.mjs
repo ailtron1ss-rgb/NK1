@@ -9,6 +9,14 @@ validRestore.restore(valid);
 assert.equal(validRestore.recent(1)[0]?.at, 100);
 assert.equal(validRestore.recent(1)[0]?.payload.label, 'safe');
 
+const appendCompatibility = new CognitiveEventFabric();
+appendCompatibility.append({
+  id: 'append:1', tick: 1, stage: 'observation', source: 'fixture',
+  payload: { rows: [{ nested: 'append-contract-preserved' }] },
+});
+assert.deepEqual(appendCompatibility.recent(1)[0].payload.rows, [{ nested: 'append-contract-preserved' }],
+  'restore hardening must not change the live append payload contract');
+
 let getterCalls = 0;
 const hostileEvent = {
   id: 'hostile:1',
