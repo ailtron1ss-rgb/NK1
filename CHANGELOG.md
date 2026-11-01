@@ -1,3 +1,10 @@
+## [NK1][Cognition] Harden cognitive execution-plan restore integrity (2026-11-01)
+- Replace broad object spreads during CognitiveExecutionPlanner restore with allowlisted own-data reads for the version, tick, mode, operation maps, metabolism and statistics.
+- Ignore accessor-backed and inherited values without invoking getters; catch hostile Proxy reflection failures and fall back to the default planner state.
+- Clamp persisted metrics, bound diagnostic strings, validate counters and reject unsupported snapshot versions.
+- Add regressions for valid round-trip, root/nested getters, inherited properties, hostile Proxy traps, invalid versions and malformed numeric fields.
+- This protects cognitive scheduling continuity across persistence boundaries; it does not claim improved reasoning quality or autonomy uplift.
+
 ## [NK1][Persistence] Write backup snapshots atomically before primary replacement (2026-11-01)
 - Copy the previous primary into a unique backup temp file rather than truncating the live `.bak` path.
 - Fsync the backup temp, then atomically rename it over the backup; a crash during copy/fsync leaves the previous verified backup untouched.
