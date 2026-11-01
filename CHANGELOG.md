@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Enforce motor-frame outcome reference integrity (2026-11-01)
+- Require reached/blocked joint outcome IDs to reference joints present in the same motor frame.
+- Reject contradictory frames that mark one joint as both reached and blocked; keep the mapping boundary fail-closed before any renderer receives the pose.
+- Add regressions for unknown references, contradictory outcomes and valid references to available/unavailable joints.
+- This validates frame consistency only; it does not claim physical IK accuracy, renderer readback or device calibration.
+
 ## [NK1][CI] Align avatar preflight workflow with the Node 24 toolchain (2026-11-01)
 - Replace legacy checkout/setup-node v4 actions with the repository-approved v7 releases.
 - Resolve Node from the canonical `.nvmrc` instead of pinning the avatar-only workflow to Node 22.16.0.
