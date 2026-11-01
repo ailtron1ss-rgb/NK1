@@ -28,6 +28,7 @@ const checks = [
   ['test:p11:migration','node --experimental-strip-types tests/p11-migration.mjs'],
   ['test:developmental','node --experimental-strip-types tests/developmental-integration.mjs'],
   ['test:developmental:migration','node --experimental-strip-types tests/developmental-migration.mjs'],
+  ['test:workpass-evidence-receipts','npm run test:workpass-evidence-receipts'],
   ['audit:integrity','node --experimental-strip-types scripts/audit-integrity.mjs'],
   ['audit:architecture','node scripts/audit-architecture.mjs'],
   ['audit:contract','node scripts/audit-release-contract.mjs'],
