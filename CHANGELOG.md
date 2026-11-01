@@ -1,3 +1,10 @@
+## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
+- Require finite JSON numbers for restored MemoryOS2 timestamps, validity bounds, salience, confidence, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
+- Reject numeric-string revision-history timestamps and nested evidence-source timestamps, freshness values and authority scores instead of treating them as trusted provenance.
+- Close malformed non-null validity expiries and downgrade facts whose confidence is not a finite number in [0, 1].
+- Preserve the existing JSON-number snapshot contract; no implicit string-to-number migration is performed.
+- Add a real MemoryOS2 restore regression for timestamps, expiry, salience, confidence, epistemic status, revision history and nested evidence provenance.
+
 ## [NK1][Embodiment] Validate imported GLB/VRM containers before parsing (2026-11-01)
 - Add a bounded GLB 2.0 preflight for magic, version, declared total length, JSON-first/BIN-second chunk ordering, chunk alignment/bounds, JSON structure, asset version, buffer metadata, and VRM 0.x/1.0 extension identity.
 - Reject external buffer/image URLs because NK1 stores the upload as one browser-local Blob and does not resolve remote subresources.
