@@ -60,7 +60,7 @@ test("rejects wrong magic, unsupported version and mismatched total length", () 
 test("rejects malformed chunk boundaries and malformed glTF JSON", () => {
   const truncated = glb(baseDocument()); new DataView(truncated.buffer).setUint32(12, 0xfffffff0, true);
   assert.throws(() => preflightAvatarModel(truncated, "bad.glb"), /glb-chunk-out-of-bounds/);
-  const invalidJson = glb(baseDocument()); invalidJson.fill(0x20, 20, invalidJson.length);
+  const invalidJson = glb(baseDocument()); const jsonLength = new DataView(invalidJson.buffer).getUint32(12, true); invalidJson.fill(0x20, 20, 20 + jsonLength);
   invalidJson.set(new TextEncoder().encode("{broken"), 20);
   assert.throws(() => preflightAvatarModel(invalidJson, "bad.glb"), /gltf-json-invalid/);
 });
