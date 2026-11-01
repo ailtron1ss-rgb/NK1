@@ -37,3 +37,23 @@ test("VRM models use the official Pixiv runtime for humanoid, expressions and sp
 test("GLB models retain the generic glTF fallback without pretending they are VRM",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/const root=vrm\?\.scene\s*\?\?\s*gltf\.scene/);assert.match(stage,/if \(fileName\.toLowerCase\(\)\.endsWith\("\.vrm"\) && !vrm\)/);});
 
 test("the official VRM runtime is pinned to the Three.js-compatible MIT release",async()=>{const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));assert.equal(pkg.dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages[""].dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].version,"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].license,"MIT");});
+
+test("procedural 3D fallback uses cel-shaded anime materials without flattening the scene",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.ok(stage.includes("new THREE_TOON.MeshToonMaterial"));
+ assert.ok(stage.includes("new THREE_TOON.DataTexture"));
+ assert.ok(stage.includes("THREE_TOON.RedFormat"));
+ assert.ok(stage.includes("THREE_TOON.NearestFilter"));
+ assert.ok(stage.includes("new THREE.MeshStandardMaterial({color:0x2d8198"));
+});
+test("non-VRM GLB imports receive anime toon shading while VRM materials remain native",async()=>{
+ const stage=await readFile(stagePath,"utf8");
+ assert.ok(stage.includes("function applyAnimeToon"));
+ assert.ok(stage.includes("if(!vrm)applyAnimeToon(root)"));
+ assert.ok(stage.includes("!source.isMeshStandardMaterial&&!source.isMeshPhysicalMaterial"));
+ assert.ok(stage.includes("new THREE_TOON.MeshToonMaterial"));
+ assert.ok(stage.includes("source.map"));
+ assert.ok(stage.includes("source.normalMap"));
+ assert.ok(stage.includes("source.emissiveMap"));
+ assert.ok(stage.includes("toon.userData={...source.userData,nk1ToonConverted:true}"));
+});
