@@ -1,4 +1,11 @@
-## [NK1][SelfModel] Correct P80 agency scoring and harden self-state restore (2026-11-01)\n- Fix the external-input agency branch so action quality and uncertainty influence agency instead of collapsing every externally triggered cycle to a fixed 0.55 prior.\n- Validate persisted counters, bounded ratios, modes, action labels and history arrays before restoring P80 self-state.\n- Reject sparse/accessor-backed history arrays and recover safely from hostile proxy traps without executing getters.\n- Add regressions for agency sensitivity, malformed state, accessors and hostile proxies.\n- This corrects a self-agency metric and snapshot integrity; it does not claim a measured autonomy-quality uplift.\n\n## [NK1][Persistence] Write backup snapshots atomically before primary replacement (2026-11-01)
+## [NK1][SelfModel] Correct P80 agency scoring and harden self-state restore (2026-11-01)
+- Fix the external-input agency branch so action quality and uncertainty influence agency instead of collapsing every externally triggered cycle to a fixed 0.55 prior.
+- Validate persisted counters, bounded ratios, modes, action labels and history arrays before restoring P80 self-state.
+- Reject sparse/accessor-backed history arrays and recover safely from hostile proxy traps without executing getters.
+- Add regressions for agency sensitivity, malformed state, accessors and hostile proxies.
+- This corrects a self-agency metric and snapshot integrity; it does not claim a measured autonomy-quality uplift.
+
+## [NK1][Persistence] Write backup snapshots atomically before primary replacement (2026-11-01)
 - Copy the previous primary into a unique backup temp file rather than truncating the live `.bak` path.
 - Fsync the backup temp, then atomically rename it over the backup; a crash during copy/fsync leaves the previous verified backup untouched.
 - Add crash injection after backup-temp fsync and a subprocess regression proving the old backup survives a SIGKILL before rename.
