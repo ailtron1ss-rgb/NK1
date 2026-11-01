@@ -1,3 +1,10 @@
+## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
+- Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
+- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
+- Invalidate the prior hash when recovering from a corrupt primary and protect the known-good backup from being overwritten by corrupt bytes during the first repair save.
+- Add regressions for missing-primary recovery, primary recreation, empty-store behavior and corrupt-primary backup preservation.
+- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace the broader organism recovery/soak tests.
+
 ## [NK1][Embodiment] Auto-load the pinned Kurisu hybrid model safely (2026-11-01)
 - Restore an explicitly selected browser-local GLB/VRM first; when no local model exists, automatically fetch the pinned Kurisu v5 hybrid GLB instead of leaving the 3D renderer on the procedural placeholder.
 - Bound the hosted fetch with a 25-second timeout and validate the CDN media type, declared content length, actual byte length and SHA-256 before GLTFLoader receives the asset.
