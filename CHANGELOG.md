@@ -1,3 +1,10 @@
+## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
+- Require finite JSON numbers for restored MemoryOS2 timestamps, expiry, salience, confidence, provenance scores, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
+- Reject numeric-string revision-history timestamps instead of treating them as trusted chronology.
+- Close malformed non-null validity expiries and downgrade facts whose confidence is not a finite number in [0, 1].
+- Compatibility boundary: canonical MemoryOS2 snapshots serialize numeric fields as JSON numbers; no string-number snapshot contract is documented.
+- Add isolated real MemoryOS2 restore regression coverage for timestamp, expiry, salience, confidence, epistemic status and revision-history coercion.
+
 ## [NK1][Memory] Require independent bilingual holdout clusters (2026-11-01)
 
 - Close a statistical evidence gap in MemoryOS2 retrieval promotion: raw per-language query counts no longer substitute for independent source episodes/documents.
