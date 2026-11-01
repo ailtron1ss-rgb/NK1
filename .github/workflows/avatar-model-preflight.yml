@@ -14,7 +14,7 @@ on:
       - workpass70-source
     paths:
       - "app/src/components/avatar/avatarModelLimits.ts"
-      - "app/src/components/avatar/avatarModelPreflight.test.mjs"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
       - "app/scripts/avatar-model-preflight.test.mjs"
       - ".github/workflows/avatar-model-preflight.yml"
   workflow_dispatch:
