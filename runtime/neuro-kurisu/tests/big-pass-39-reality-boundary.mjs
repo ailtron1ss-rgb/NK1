@@ -18,6 +18,14 @@ assert.throws(() => worldRuntime.observeActionOutcome({
 }), { name:'TypeError', message:'invalid-world-transition' });
 assert.deepEqual(worldRuntime.worldLearningSnapshot(),worldSnapshotBefore,
   'malformed feedback must be rejected before any world model is mutated');
+assert.throws(() => worldRuntime.observeActionOutcome({
+  action:'observe',
+  before:validContext(2),
+  after:validContext(1),
+  reward:.7,surprise:.1,at:Date.now(),
+}), { name:'TypeError', message:'invalid-world-transition' });
+assert.deepEqual(worldRuntime.worldLearningSnapshot(),worldSnapshotBefore,
+  'rewound world ticks must be rejected before any world model is mutated');
 
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64});
