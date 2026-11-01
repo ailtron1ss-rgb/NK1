@@ -1,3 +1,9 @@
+## [NK1][CI] Reject repeated child-test invocations in runtime test registry (2026-11-01)
+- Extend the static runtime test coverage audit to detect repeated `npm run test:*` child commands inside one composite `test:*` script.
+- Add focused regressions for repeated calls, shared calls across separate scripts, non-test release scripts and deterministic findings.
+- Register the regression in the root package and execute both the test and static audit in the unified organism runtime workflow.
+- This is test-registry reliability work; static references do not prove runtime behavior or full test-suite completion.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.

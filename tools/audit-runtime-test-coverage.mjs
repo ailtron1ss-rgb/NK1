@@ -4,6 +4,27 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+export function findDuplicateTestScriptInvocations(scripts) {
+  const duplicates = [];
+  const invocationPattern = /\bnpm(?:\s+--prefix\s+(?:"[^"]+"|'[^']+'|[^\s&|;]+))?\s+run\s+(test:[\w:.-]+)/g;
+
+  for (const [scriptName, command] of Object.entries(scripts ?? {})) {
+    if (!scriptName.startsWith('test:') || typeof command !== 'string') continue;
+
+    const counts = new Map();
+    for (const match of command.matchAll(invocationPattern)) {
+      const target = match[1];
+      counts.set(target, (counts.get(target) ?? 0) + 1);
+    }
+
+    for (const [target, count] of counts) {
+      if (count > 1) duplicates.push({ script: scriptName, target, count });
+    }
+  }
+
+  return duplicates.sort((a, b) => a.script.localeCompare(b.script) || a.target.localeCompare(b.target));
+}
 const runtimeRoot = path.join(root, 'runtime/neuro-kurisu');
 const testsRoot = path.join(runtimeRoot, 'tests');
 const workflowPath = path.join(root, '.github/workflows/workpass71-validation.yml');
@@ -19,6 +40,7 @@ async function walk(directory) {
   return nested.flat();
 }
 
+async function main() {
 const [workflow, packageJsonText] = await Promise.all([
   readFile(workflowPath, 'utf8'),
   readFile(packagePath, 'utf8'),
@@ -57,8 +79,9 @@ const requiredWorkflowTests = [
   'runtime/neuro-kurisu/tests/memory-revision-history-budget-workpass36.mjs',
 ];
 const missingRequired = requiredWorkflowTests.filter(file => !workflow.includes(file) && !workflow.includes(file.replace('runtime/neuro-kurisu/', '')));
+const duplicateTestScriptInvocations = findDuplicateTestScriptInvocations(packageJson.scripts ?? {});
 const report = {
-  status: missingReferences.length === 0 && missingRequired.length === 0 ? 'PASS' : 'FAIL',
+  status: missingReferences.length === 0 && missingRequired.length === 0 && duplicateTestScriptInvocations.length === 0 ? 'PASS' : 'FAIL',
   scope: 'static direct-reference inventory; not proof that every test is executed or behavior is correct',
   testFilesFound: runnableFiles.length,
   directlyReferencedRunnableFiles: referenced.size,
@@ -68,9 +91,19 @@ const report = {
   explicitReferenceCount: references.length,
   missingReferences,
   duplicateReferences,
+  duplicateTestScriptInvocations,
   requiredWorkflowTests,
   missingRequired,
 };
 console.log('RUNTIME_TEST_COVERAGE_AUDIT=' + JSON.stringify(report));
 assert.equal(missingReferences.length, 0, 'package/workflow test references must point to existing files');
 assert.equal(missingRequired.length, 0, 'required regression tests must remain wired into the active workflow');
+assert.deepEqual(duplicateTestScriptInvocations, [], 'composite test scripts must not invoke the same child test more than once');
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch(error => {
+    console.error('RUNTIME_TEST_COVERAGE_AUDIT=FAIL ' + String(error?.message || error));
+    process.exitCode = 1;
+  });
+}

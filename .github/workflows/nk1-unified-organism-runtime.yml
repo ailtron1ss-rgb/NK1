@@ -11,6 +11,9 @@ on:
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "package.json"
+      - "tools/audit-runtime-test-coverage.mjs"
+      - "tools/audit-runtime-test-coverage.test.mjs"
       - ".github/workflows/nk1-unified-organism-runtime.yml"
   pull_request:
     branches: [workpass70-source]
@@ -22,6 +25,9 @@ on:
       - "runtime/neuro-kurisu/tests/**"
       - "runtime/neuro-kurisu/package.json"
       - "runtime/neuro-kurisu/package-lock.json"
+      - "package.json"
+      - "tools/audit-runtime-test-coverage.mjs"
+      - "tools/audit-runtime-test-coverage.test.mjs"
       - ".github/workflows/nk1-unified-organism-runtime.yml"
 
 permissions:
@@ -42,6 +48,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Runtime test registry integrity
+        run: npm run test:runtime-test-coverage-audit && node tools/audit-runtime-test-coverage.mjs
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Runtime typecheck
