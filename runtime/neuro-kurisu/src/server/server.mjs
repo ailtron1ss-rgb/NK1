@@ -94,6 +94,9 @@ const WORLD_CHECKPOINT_MAX_CYCLES = PHONE_POLICY.worldCheckpointMaxDirtyCycles;
 const BACKUP_EVERY_SAVES = Math.max(1, Number(process.env.NEURO_BACKUP_EVERY_SAVES || (PHONE_MODE ? 4 : 1)));
 const VISION_ENABLED = /^(1|true|yes|on)$/i.test(String(process.env.GEMINI_VISION_ENABLED || '0'));
 let languageCallCount = 0;
+// UserModel event ticks represent ingress time, not the slower cognitive scheduler tick.
+// Keep them strictly increasing within the process; epoch milliseconds remain ordered across restarts.
+let lastUserModelPreferenceEventTick = 0;
 let lastLanguageBackend = 'none';
 let lastLanguageFailure = '';
 const RATE_WINDOW_MS = Math.max(10000, Number(process.env.NEURO_RATE_WINDOW_MS || 60000));
@@ -448,11 +451,12 @@ async function route(req, res) {
                 return json(res, 400, { ok: false, error: 'unsupported-response-style' });
             // The host owns provenance and classification. Never accept client-supplied
             // evidence references, sensitivity labels, keys, domains, or tick counters.
+            lastUserModelPreferenceEventTick = Math.max(Date.now(), lastUserModelPreferenceEventTick + 1);
             const evidence = {
                 key: 'response.style',
                 domain: 'interaction-style',
                 value,
-                tick: runtime.core.operationalStatusSnapshot().tick,
+                tick: lastUserModelPreferenceEventTick,
                 evidenceRef: `http-user-preference:${randomUUID()}`,
                 explicit: true,
                 sensitivity: 'low-risk',
