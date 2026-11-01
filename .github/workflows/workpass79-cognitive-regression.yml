@@ -3,6 +3,7 @@ name: WorkPass79 cognitive runtime regression
 on:
   push:
     branches:
+      - workpass70-source
       - workpass79-cognitive-rebuild
       - nk1-integration-workspace-2026-10-22
       - rebuild
