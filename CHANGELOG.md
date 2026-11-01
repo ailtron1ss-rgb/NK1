@@ -1,3 +1,8 @@
+## [NK1][CI] Run embodiment contracts on canonical source pushes (2026-11-01)
+- Trigger the existing embodiment contract workflow on `workpass70-source` pushes as well as pull requests, using the same path allowlist for renderer, motor-frame, avatar and speech bridge changes.
+- Preserve the existing Live2D/2.5D/3D timeline coverage and the full pull-request contract suite; this refresh deliberately avoids the older draft's narrower path list.
+- This closes a CI trigger gap only; it does not claim physical IK, renderer readback, visual E2E, audio drift or Android soak.
+
 ## [NK1][Persistence] Write backup snapshots atomically before primary replacement (2026-11-01)
 - Copy the previous primary into a unique backup temp file rather than truncating the live `.bak` path.
 - Fsync the backup temp, then atomically rename it over the backup; a crash during copy/fsync leaves the previous verified backup untouched.
