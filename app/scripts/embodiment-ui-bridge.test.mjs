@@ -129,3 +129,31 @@ test("crossfade progress is monotonic, bounded and robust to invalid timing", ()
   assert.equal(p.committed, true);
   assert.equal(advanceBodySwitch(p, Number.NaN, 0).progress, 1, "invalid timing keeps the high-water mark");
 });
+
+test("normalizes malformed speech lifecycle and missing sensory values without aborting handoff", () => {
+  const input = baseInput();
+  input.speechPhase = "unexpected-phase";
+  input.speechEventId = "   ";
+  input.gaze = null;
+  input.mouth = null;
+  const state = projectSemanticBodyState(input);
+  assert.equal(state.speech.phase, "unknown");
+  assert.equal(state.speech.eventId, null);
+  assert.equal(state.gaze.x, 0);
+  assert.equal(state.gaze.y, 0);
+  assert.equal(state.speech.mouthOpen, 0);
+  assert.equal(state.speech.mouthForm, 0);
+  assert.equal(validateSemanticBodyState(state), true);
+  const handoff = beginBodySwitch("live2d", "3d", state);
+  assert.equal(handoff.plan.to, "vrm3d");
+  assert.equal(handoff.plan.requiresNeutralRebind, true);
+  assert.equal(handoff.progress.committed, false);
+});
+
+test("trims valid speech event identifiers and rejects non-string identifiers", () => {
+  const trimmed = projectSemanticBodyState({ ...baseInput(), speechEventId: "  speech-2  " });
+  assert.equal(trimmed.speech.eventId, "speech-2");
+  const invalid = projectSemanticBodyState({ ...baseInput(), speechEventId: 42 });
+  assert.equal(invalid.speech.eventId, null);
+  assert.equal(validateSemanticBodyState(invalid), true);
+});
