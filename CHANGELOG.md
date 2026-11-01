@@ -1,3 +1,11 @@
+## [NK1][Avatar] Keep browser voice on one coherent affect snapshot (2026-11-01)
+
+- Fix a cross-channel state-mixing defect: browser TTS previously preferred `lastTurn.emotion` while reading arousal and valence from the current organism snapshot. A historical chat-turn label could therefore drive prosody against a different current affect and disagree with the avatar.
+- Add `resolveBrowserVoiceAffect` as a small boundary adapter: one current snapshot supplies emotion, arousal and valence; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Browser speech now builds prosody from that normalized snapshot. The current affect remains authoritative; historical turn metadata is not used to overwrite it.
+- Add regression coverage for coherent snapshot extraction, invalid-label fallback, bounded channels and the AvatarStage consumer.
+- Add an exact-path GitHub Actions gate for the browser voice/affect tests and app TypeScript check. This validates code contracts, not acoustic timing or GPU presentation.
+
 ## [NK1][Memory] Require independent bilingual holdout clusters (2026-11-01)
 
 - Close a statistical evidence gap in MemoryOS2 retrieval promotion: raw per-language query counts no longer substitute for independent source episodes/documents.
