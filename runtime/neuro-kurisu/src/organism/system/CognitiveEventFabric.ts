@@ -101,8 +101,9 @@ const ownArray=(value:unknown,max:number):unknown[]=>{
   }
   return result;
 };
+const cleanPayload=(value:unknown):Record<string,unknown>=>isRecord(value)?{...value}:{};
 /** Copy only own data properties; snapshot accessors are never evaluated. */
-const cleanPayload=(value:unknown,depth=0):Record<string,unknown>=>{
+const cleanRestoredPayload=(value:unknown,depth=0):Record<string,unknown>=>{
   if(!isRecord(value)||depth>=4)return {};
   const result:Record<string,unknown>={};
   for(const key of Object.keys(value).slice(0,128)){
@@ -111,7 +112,7 @@ const cleanPayload=(value:unknown,depth=0):Record<string,unknown>=>{
     if(item===undefined)continue;
     if(item===null||typeof item==='string'||typeof item==='boolean'||(typeof item==='number'&&Number.isFinite(item)))result[key]=item;
     else if(Array.isArray(item))result[key]=ownArray(item,64).filter(v=>v===null||typeof v==='string'||typeof v==='boolean'||(typeof v==='number'&&Number.isFinite(v)));
-    else if(isRecord(item))result[key]=cleanPayload(item,depth+1);
+    else if(isRecord(item))result[key]=cleanRestoredPayload(item,depth+1);
   }
   return result;
 };
@@ -150,7 +151,7 @@ export class CognitiveEventFabric {
         source:typeof rawSource==='string'?rawSource.slice(0,120):'restored-unknown',
         parentIds,external:typeof rawExternal==='boolean'?rawExternal:false,
         confidence01:clamp01(typeof rawConfidence==='number'&&Number.isFinite(rawConfidence)?rawConfidence:.5),
-        payload:cleanPayload(ownData(value,'payload')),
+        payload:cleanRestoredPayload(ownData(value,'payload')),
       });
       if(restored.length>=this.capacity)break;
     }
