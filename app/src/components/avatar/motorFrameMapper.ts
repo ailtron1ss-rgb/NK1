@@ -81,10 +81,31 @@ const rejected = (reason: string): MotorFrameMappingResult => ({
   unavailableJointIds: [], unmappedJointIds: [], rendererPoseVerified: false,
 });
 
-const validJointIdList = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.length <= 128
-    && value.every((id) => typeof id === "string" && /^[a-z][a-z0-9._-]{0,63}$/i.test(id))
-    && new Set(value).size === value.length;
+function hasOnlyOwnDataProperties(value: object): boolean {
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, "value")) return false;
+  }
+  return true;
+}
+function isPlainDataRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return (prototype === Object.prototype || prototype === null) && hasOnlyOwnDataProperties(value);
+}
+const validJointIdList = (value: unknown): value is string[] => {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype
+    || value.length > 128 || !hasOnlyOwnDataProperties(value)) return false;
+  const ids: string[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, "value")) return false;
+    const id: unknown = descriptor.value;
+    if (typeof id !== "string" || !/^[a-z][a-z0-9._-]{0,63}$/i.test(id)) return false;
+    ids.push(id);
+  }
+  return new Set(ids).size === ids.length;
+};
 
 function validProfile(profile: MotorFrameMappingProfile): boolean {
   if (!profile || profile.schemaVersion !== 1 || typeof profile.calibrationId !== "string"
@@ -106,7 +127,8 @@ function validProfile(profile: MotorFrameMappingProfile): boolean {
 }
 
 function validFrame(frame: MotorFrameSample): boolean {
-  if (!frame || frame.version !== 1 || !Number.isSafeInteger(frame.tick) || frame.tick < 0
+  try {
+  if (!isPlainDataRecord(frame) || frame.version !== 1 || !Number.isSafeInteger(frame.tick) || frame.tick < 0
     || !Number.isFinite(frame.atMs) || frame.atMs < 0
     || !(frame.goalId === null || (typeof frame.goalId === "string" && frame.goalId.length <= 128))
     || typeof frame.action !== "string" || frame.action.length > 160
@@ -114,11 +136,10 @@ function validFrame(frame: MotorFrameSample): boolean {
     || !Number.isFinite(frame.completion01) || frame.completion01 < 0 || frame.completion01 > 1
     || typeof frame.reason !== "string" || frame.reason.length > 256
     || !validJointIdList(frame.reachedJointIds) || !validJointIdList(frame.blockedJointIds)
-    || !frame.joints || typeof frame.joints !== "object"
-    || Array.isArray(frame.joints) || Object.keys(frame.joints).length > 128) return false;
+    || !isPlainDataRecord(frame.joints) || Object.keys(frame.joints).length > 128) return false;
   const jointIds = new Set(Object.keys(frame.joints));
   for (const [id, joint] of Object.entries(frame.joints)) {
-    if (!/^[a-z][a-z0-9._-]{0,63}$/i.test(id) || !joint || joint.id !== id
+    if (!/^[a-z][a-z0-9._-]{0,63}$/i.test(id) || !isPlainDataRecord(joint) || joint.id !== id
       || typeof joint.available !== "boolean"
       || ![joint.angleRad, joint.targetAngleRad, joint.velocityRadPerSec, joint.accelerationRadPerSec2].every(Number.isFinite)) return false;
   }
@@ -133,6 +154,9 @@ function validFrame(frame: MotorFrameSample): boolean {
     if (!jointIds.has(jointId)) return false;
   }
   return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
