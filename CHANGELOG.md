@@ -1,3 +1,9 @@
+## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
+- Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
+- Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
+- The snapshot workflow never writes repository contents, packages a ZIP, grants redistribution permission or creates a Release; pending human decisions remain explicit.
+- Add a regression contract proving the workflow is read-only and non-publishing.
+
 ## [NK1][Evaluation] Integrate independent Inspect AI evidence adapter (2026-11-01)
 - Port the WorkPass72 read-only CognitiveEventFabric exporter, privacy-reduced JSONL schema, independent Python validator and pinned Inspect AI 0.3.286 deterministic scoring harness onto the current `workpass70-source` checkpoint (`6f83e2e`).
 - Re-run the 11-stage causal lineage and action → outcome → evidence receipt checks outside the runtime; raw conversation, memory and postcondition text remain excluded from exported records.
