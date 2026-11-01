@@ -86,6 +86,8 @@ const report = runLongMemEvalMemoryBenchmark(rows, {
 
 assert.equal(report.schemaVersion, 1);
 assert.equal(report.evaluation, 'longmemeval-s-memory-retrieval');
+assert.equal(report.experiment.candidateMode, 'canonical-memoryos2-no-embedding');
+assert.match(report.experiment.scope, /retrieval-only/);
 assert.equal(report.sourceDataset.datasetId, 'xiaowu0162/longmemeval-cleaned');
 assert.equal(report.sourceDataset.licenseId, 'MIT');
 assert.equal(report.sourceDataset.languages.join(','), 'en');
