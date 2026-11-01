@@ -97,8 +97,8 @@ const CAPABILITY_TABLE: Record<UiRenderMode, RendererCapabilities> = {
   },
 };
 
-const clamp01 = (value: number): number => Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
-const clampUnit = (value: number): number => Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0));
+const clamp01 = (value: number | null | undefined): number => Math.max(0, Math.min(1, typeof value === "number" && Number.isFinite(value) ? value : 0));
+const clampUnit = (value: number | null | undefined): number => Math.max(-1, Math.min(1, typeof value === "number" && Number.isFinite(value) ? value : 0));
 
 const SPEECH_PHASES = new Set<SpeechPhase>(["idle", "starting", "speaking", "ended", "cancelled", "unknown"]);
 
