@@ -474,8 +474,16 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const evaluateLanguageSlice=(language:MemoryRetrievalLanguage)=>{
     const languageTrain=train.filter(row=>row.language===language);
     const languageHoldout=holdout.filter(row=>row.language===language);
-    const languageAnswerableHoldout=languageHoldout.filter(row=>row.answerable!==false).length;
-    const languageUnanswerableHoldout=languageHoldout.filter(row=>row.answerable===false).length;
+    const languageAnswerableRows=languageHoldout.filter(row=>row.answerable!==false);
+    const languageUnanswerableRows=languageHoldout.filter(row=>row.answerable===false);
+    const languageAnswerableHoldout=languageAnswerableRows.length;
+    const languageUnanswerableHoldout=languageUnanswerableRows.length;
+    // Query volume is not independent evidence when several prompts come from one
+    // source episode/document. The bootstrap already resamples these source clusters;
+    // promotion must enforce a matching minimum cluster count per language and label.
+    const independentGroupKey=(row:MemoryRetrievalBenchmarkExample)=>textField(row.independenceGroupId,120)||row.id;
+    const independentAnswerableHoldoutGroups=new Set(languageAnswerableRows.map(independentGroupKey)).size;
+    const independentUnanswerableHoldoutGroups=new Set(languageUnanswerableRows.map(independentGroupKey)).size;
     const languageBaseline=evaluate(languageHoldout,baseline,k,now);
     const languageCandidate=evaluate(languageHoldout,candidate,k,now);
     const languageSeed=((seed^(language==='en'?0x13579bdf:language==='ru'?0x2468ace0:0x9e3779b9))>>>0)||1;
@@ -496,6 +504,8 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
       sufficientTrainQueries:languageTrain.length>=minLanguageTrainQueries,
       sufficientAnswerableHoldoutQueries:languageAnswerableHoldout>=minLanguageAnswerableHoldoutQueries,
       sufficientUnanswerableHoldoutQueries:languageUnanswerableHoldout>=minLanguageUnanswerableHoldoutQueries,
+      sufficientIndependentAnswerableHoldoutGroups:independentAnswerableHoldoutGroups>=minLanguageAnswerableHoldoutQueries,
+      sufficientIndependentUnanswerableHoldoutGroups:independentUnanswerableHoldoutGroups>=minLanguageUnanswerableHoldoutQueries,
       minimumRecallUplift:languageRecallDelta>=minUplift,
       recallUpliftConfidenceSupported:languageConfidence.recallAtK01.lowerBound01>0,
       mrrPointEstimateNonInferior:languageMrrDelta>=-mrrTolerance,
@@ -510,6 +520,8 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
       holdoutQueries:languageHoldout.length,
       answerableHoldoutQueries:languageAnswerableHoldout,
       unanswerableHoldoutQueries:languageUnanswerableHoldout,
+      independentAnswerableHoldoutGroups,
+      independentUnanswerableHoldoutGroups,
       metrics:{baseline:languageBaseline.metrics,candidate:languageCandidate.metrics,train:{
         baseline:evaluate(languageTrain,baseline,k,now).metrics,
         candidate:evaluate(languageTrain,candidate,k,now).metrics,
@@ -534,14 +546,16 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const sufficientLanguageTrainQueriesPerLanguage=(languageSlices.en?.trainQueries??0)>=minLanguageTrainQueries&&(languageSlices.ru?.trainQueries??0)>=minLanguageTrainQueries;
   const sufficientLanguageAnswerableHoldoutPerLanguage=(languageSlices.en?.answerableHoldoutQueries??0)>=minLanguageAnswerableHoldoutQueries&&(languageSlices.ru?.answerableHoldoutQueries??0)>=minLanguageAnswerableHoldoutQueries;
   const sufficientLanguageUnanswerableHoldoutPerLanguage=(languageSlices.en?.unanswerableHoldoutQueries??0)>=minLanguageUnanswerableHoldoutQueries&&(languageSlices.ru?.unanswerableHoldoutQueries??0)>=minLanguageUnanswerableHoldoutQueries;
+  const sufficientLanguageIndependentAnswerableHoldoutGroupsPerLanguage=(languageSlices.en?.independentAnswerableHoldoutGroups??0)>=minLanguageAnswerableHoldoutQueries&&(languageSlices.ru?.independentAnswerableHoldoutGroups??0)>=minLanguageAnswerableHoldoutQueries;
+  const sufficientLanguageIndependentUnanswerableHoldoutGroupsPerLanguage=(languageSlices.en?.independentUnanswerableHoldoutGroups??0)>=minLanguageUnanswerableHoldoutQueries&&(languageSlices.ru?.independentUnanswerableHoldoutGroups??0)>=minLanguageUnanswerableHoldoutQueries;
   const languageQualitySupportedAcrossRequiredLanguages=languageSlices.en?.eligible===true&&languageSlices.ru?.eligible===true;
-  const languageStratifiedQualityEligible=languageAnnotationsUsed&&languageAnnotationsComplete&&bothRequiredLanguagesPresent&&sufficientLanguageTrainQueriesPerLanguage&&sufficientLanguageAnswerableHoldoutPerLanguage&&sufficientLanguageUnanswerableHoldoutPerLanguage&&languageQualitySupportedAcrossRequiredLanguages;
-  const languageStratificationReason=!languageAnnotationsUsed?'bilingual-language-annotations-required':!languageAnnotationsComplete?'language-annotations-incomplete':!bothRequiredLanguagesPresent?'english-and-russian-required':!sufficientLanguageTrainQueriesPerLanguage?'insufficient-language-train-evidence':!sufficientLanguageAnswerableHoldoutPerLanguage||!sufficientLanguageUnanswerableHoldoutPerLanguage?'insufficient-language-stratified-holdout':!languageQualitySupportedAcrossRequiredLanguages?'language-stratified-quality-not-supported':'language-stratified-quality-supported';
+  const languageStratifiedQualityEligible=languageAnnotationsUsed&&languageAnnotationsComplete&&bothRequiredLanguagesPresent&&sufficientLanguageTrainQueriesPerLanguage&&sufficientLanguageAnswerableHoldoutPerLanguage&&sufficientLanguageUnanswerableHoldoutPerLanguage&&sufficientLanguageIndependentAnswerableHoldoutGroupsPerLanguage&&sufficientLanguageIndependentUnanswerableHoldoutGroupsPerLanguage&&languageQualitySupportedAcrossRequiredLanguages;
+  const languageStratificationReason=!languageAnnotationsUsed?'bilingual-language-annotations-required':!languageAnnotationsComplete?'language-annotations-incomplete':!bothRequiredLanguagesPresent?'english-and-russian-required':!sufficientLanguageTrainQueriesPerLanguage?'insufficient-language-train-evidence':!sufficientLanguageAnswerableHoldoutPerLanguage||!sufficientLanguageUnanswerableHoldoutPerLanguage?'insufficient-language-stratified-holdout':!sufficientLanguageIndependentAnswerableHoldoutGroupsPerLanguage||!sufficientLanguageIndependentUnanswerableHoldoutGroupsPerLanguage?'insufficient-independent-language-holdout-groups':!languageQualitySupportedAcrossRequiredLanguages?'language-stratified-quality-not-supported':'language-stratified-quality-supported';
   const languageStratification={
     enabled:languageAnnotationsUsed,
     annotationsComplete:languageAnnotationsUsed&&languageAnnotationsComplete,
     requiredLanguages:['en','ru'] as const,
-    minimums:{trainQueriesPerLanguage:minLanguageTrainQueries,answerableHoldoutQueriesPerLanguage:minLanguageAnswerableHoldoutQueries,unanswerableHoldoutQueriesPerLanguage:minLanguageUnanswerableHoldoutQueries},
+    minimums:{trainQueriesPerLanguage:minLanguageTrainQueries,answerableHoldoutQueriesPerLanguage:minLanguageAnswerableHoldoutQueries,unanswerableHoldoutQueriesPerLanguage:minLanguageUnanswerableHoldoutQueries,independentAnswerableHoldoutGroupsPerLanguage:minLanguageAnswerableHoldoutQueries,independentUnanswerableHoldoutGroupsPerLanguage:minLanguageUnanswerableHoldoutQueries},
     slices:languageSlices,
     gates:{
       annotationsPresent:languageAnnotationsUsed,
@@ -550,6 +564,8 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
       sufficientTrainQueriesPerLanguage:sufficientLanguageTrainQueriesPerLanguage,
       sufficientAnswerableHoldoutPerLanguage:sufficientLanguageAnswerableHoldoutPerLanguage,
       sufficientUnanswerableHoldoutPerLanguage:sufficientLanguageUnanswerableHoldoutPerLanguage,
+      sufficientIndependentAnswerableHoldoutGroupsPerLanguage,
+      sufficientIndependentUnanswerableHoldoutGroupsPerLanguage,
       qualitySupportedAcrossRequiredLanguages:languageQualitySupportedAcrossRequiredLanguages,
       promotionEligible:languageStratifiedQualityEligible,
     },
@@ -632,6 +648,6 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
     languageStratification,
     ...(queryEvidence?{queryEvidence}:{}),
     promotion:{allowed:promotionAllowed,status:promotionAllowed?'candidate-eligible-for-separate-review':'not-promoted',reason,gates:promotionGates,minimumHoldoutQueries:minHoldout,minimumUnanswerableHoldoutQueries:minUnanswerableHoldout,minimumLanguageTrainQueries:minLanguageTrainQueries,minimumLanguageAnswerableHoldoutQueries:minLanguageAnswerableHoldoutQueries,minimumLanguageUnanswerableHoldoutQueries:minLanguageUnanswerableHoldoutQueries,requiredLanguages:['en','ru'],minimumRecallUplift01:minUplift,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance,mrrNonInferioritySupported,abstentionConfidenceNonInferioritySupported,mrrLowerBound01:confidence.mrr01.lowerBound01,requiresIndependentHumanOrCIReview:true},
-    guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,minimumLanguageStratifiedQualityRequired:true,bothEnglishAndRussianRequiredForPromotion:true,perLanguageConfidenceBoundsRequired:true,languageLabelsMustBeExplicit:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,candidateModeExplicit:true,candidateModeAutoPromoted:false,bootstrapSeed:seed},
+    guardrails:{minimumUnanswerableHoldoutQueriesRequired:true,minimumLanguageStratifiedQualityRequired:true,independentHoldoutGroupsRequired:true,bothEnglishAndRussianRequiredForPromotion:true,perLanguageConfidenceBoundsRequired:true,languageLabelsMustBeExplicit:true,liveMemoryMutated:false,identityOrPolicyChanged:false,labelsInferredFromPredictions:false,holdoutUsedForTraining:false,quarantinedMemoryMayPromote:false,staleEvidenceMayPromote:false,futureEvidenceMayPromote:false,dormantMemoryMayPromote:false,invalidEpistemicStatusMayPromote:false,corpusIntegrityBlocksPromotion:true,splitLeakageBlocksPromotion:true,unknownGroundTruthIdsBlockPromotion:true,unanswerableQueryLabelsRequired:true,unsupportedRetrievalRateMustNotRegress:true,provenanceRequiredForPromotion:true,invalidSeedMayPromote:false,mrrRegressionMustBeConfidenceBounded:true,unsupportedRetrievalRegressionMustBeConfidenceBounded:true,candidateModeExplicit:true,candidateModeAutoPromoted:false,bootstrapSeed:seed},
   };
 }
