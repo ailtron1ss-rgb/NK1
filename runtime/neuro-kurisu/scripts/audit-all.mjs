@@ -29,6 +29,7 @@ const checks = [
   ['test:developmental','node --experimental-strip-types tests/developmental-integration.mjs'],
   ['test:developmental:migration','node --experimental-strip-types tests/developmental-migration.mjs'],
   ['audit:integrity','node --experimental-strip-types scripts/audit-integrity.mjs'],
+  ['test:architecture-audit-masking','node tests/architecture-audit-masking.mjs'],
   ['audit:architecture','node scripts/audit-architecture.mjs'],
   ['audit:contract','node scripts/audit-release-contract.mjs'],
   ['audit:hygiene','node scripts/audit-source-hygiene.mjs'],
