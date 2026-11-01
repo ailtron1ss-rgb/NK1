@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
+- Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
+- Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
+- Treat missing gaze and mouth samples as neutral values before shared semantic-state validation, so malformed optional provider data cannot abort a body handoff.
+- Add regressions for malformed lifecycle data, identifiers, missing sensory samples and Live2D-to-VRM handoff continuity.
+- Scope is UI projection-boundary hardening; browser visual E2E, lip/audio synchronization and Android soak remain pending.
+
 ## [NK1][CI] Align avatar preflight workflow with the Node 24 toolchain (2026-11-01)
 - Replace legacy checkout/setup-node v4 actions with the repository-approved v7 releases.
 - Resolve Node from the canonical `.nvmrc` instead of pinning the avatar-only workflow to Node 22.16.0.
