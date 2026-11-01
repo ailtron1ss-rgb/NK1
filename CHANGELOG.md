@@ -1,5 +1,6 @@
 ## [NK1][SelfModel] Wire explicit user preferences into language context (WorkPass642, 2026-11-01)
 - SelfSubsystemRuntime now exposes a read-only prompt projection of confirmed, explicitly stated, low-risk user preferences.
+- Projection is capped at six claims, handles zero/non-finite budgets safely and applies the existing autonomous-dialogue privacy sanitizer.
 - Candidate observations, disputed claims and credential-like values are excluded; evidence references are never sent to the language model.
 - OrganismCore and OrganismRuntime pass the projection to cognitive-proposal, response and autonomous-dialogue prompt builders as fallible data, never instructions.
 - Added regression coverage for candidate suppression, dispute/correction, credential filtering and prompt inclusion. The existing cognitive regression workflow runs the runtime-persistence test.
