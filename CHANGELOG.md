@@ -3245,3 +3245,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Memory] Wire independent retrieval evidence into integration gates (2026-11-01)
+
+- Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
+- Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
+- The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
