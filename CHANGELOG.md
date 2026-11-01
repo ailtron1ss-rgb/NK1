@@ -1,3 +1,9 @@
+## [NK1][CI] Align avatar preflight workflow with the Node 24 toolchain (2026-11-01)
+- Replace legacy checkout/setup-node v4 actions with the repository-approved v7 releases.
+- Resolve Node from the canonical `.nvmrc` instead of pinning the avatar-only workflow to Node 22.16.0.
+- Disable implicit npm caching because this focused parser-contract workflow does not install npm dependencies.
+- Repair the CI reliability gate failure observed on PR #554; parser tests remain the workflow's scope.
+
 ## [NK1][Embodiment] Enforce normalized motor-frame calibration bounds (2026-11-01)
 - Reject motor mapping profiles whose calibrated channel limits extend outside the renderer-neutral `[-1, 1]` contract; downstream adapters cannot receive a mapper-approved out-of-contract pose.
 - Validate reached/blocked joint ID lists for shape, bounded size, identifier syntax and duplicates; reject oversized frame diagnostics and negative/invalid persisted cursors.
