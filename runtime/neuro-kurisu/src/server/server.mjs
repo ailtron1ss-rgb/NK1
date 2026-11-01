@@ -444,7 +444,7 @@ async function route(req, res) {
             if (input.confirmed !== true)
                 return json(res, 400, { ok: false, error: 'explicit-user-confirmation-required' });
             const value = typeof input.value === 'string' ? input.value : '';
-            if (!['concise', 'balanced', 'detailed'].includes(value))
+            if (action !== 'forget' && !['concise', 'balanced', 'detailed'].includes(value))
                 return json(res, 400, { ok: false, error: 'unsupported-response-style' });
             // The host owns provenance and classification. Never accept client-supplied
             // evidence references, sensitivity labels, keys, domains, or tick counters.

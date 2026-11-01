@@ -100,7 +100,7 @@ try {
   assert.equal(corrected.body.preference.status, 'confirmed');
   assert.equal(corrected.body.preference.value, 'balanced');
 
-  const forgotten = await post({ action: 'forget', value: 'balanced', confirmed: true });
+  const forgotten = await post({ action: 'forget', confirmed: true });
   assert.equal(forgotten.response.status, 200);
   assert.equal(forgotten.body.action, 'forget');
   assert.equal(forgotten.body.forgotten, true);

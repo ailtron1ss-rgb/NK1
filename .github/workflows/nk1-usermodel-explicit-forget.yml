@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/usermodel-explicit-forget-2026-11-01
+      - workpass70-source
   pull_request:
     branches:
       - main
@@ -32,3 +33,9 @@ jobs:
       - name: Verify explicit preference forgetting, restart persistence and replay protection
         working-directory: runtime/neuro-kurisu
         run: npm run test:user-model-explicit-forget
+      - name: Verify runtime checkpoint and restart semantics
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:user-model-runtime-persistence
+      - name: Verify authenticated HTTP record, correct and forget actions
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:user-model-http-route
