@@ -1,0 +1,60 @@
+name: NK1 Unified organism runtime
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/system/**"
+      - "runtime/neuro-kurisu/src/organism/cognition/**"
+      - "runtime/neuro-kurisu/src/organism/world/**"
+      - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/nk1-unified-organism-runtime.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/**"
+      - "runtime/neuro-kurisu/src/organism/system/**"
+      - "runtime/neuro-kurisu/src/organism/cognition/**"
+      - "runtime/neuro-kurisu/src/organism/world/**"
+      - "runtime/neuro-kurisu/tests/**"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/package-lock.json"
+      - ".github/workflows/nk1-unified-organism-runtime.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-unified-organism-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unified-organism:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Unified cognitive cycle and boundary
+        run: npm --prefix runtime/neuro-kurisu run test:workpass287:cognitive-cycle && npm --prefix runtime/neuro-kurisu run test:cognitive-cycle-boundary-runtime-wiring
+      - name: Endogenous motivation and goal genesis
+        run: npm --prefix runtime/neuro-kurisu run test:workpass292:motivation-to-goal && npm --prefix runtime/neuro-kurisu run test:workpass288:intrinsic-motivation
+      - name: World perception ingress and integrity
+        run: npm --prefix runtime/neuro-kurisu run test:world-perception
+      - name: Neural fusion and planner execution boundary
+        run: npm --prefix runtime/neuro-kurisu run test:workpass610:brain-fusion-strip-only && npm --prefix runtime/neuro-kurisu run test:cognitive-runtime-planner-execution-gate
+      - name: Continuity and organism integration
+        run: npm --prefix runtime/neuro-kurisu run test:b1701-b2200:continuity && npm --prefix runtime/neuro-kurisu run test:p29:core-integration && npm --prefix runtime/neuro-kurisu run test:pcontinuity:integration
+      - name: Organism runtime smoke
+        run: npm --prefix runtime/neuro-kurisu run test:organism-smoke
