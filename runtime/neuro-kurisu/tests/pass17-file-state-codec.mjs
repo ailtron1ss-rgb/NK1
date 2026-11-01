@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
@@ -35,5 +35,33 @@ try {
   const migratedRaw=await readFile(jsonPath);
   assert.doesNotThrow(()=>deserialize(migratedRaw));
   assert.equal((await migrateStore.load())?.tick,18);
+  // A missing primary file must still recover the last verified backup.
+  const recoveryPath=join(dir,'recoverable-state.json');
+  const recoveryWriter=new FileStateStore(recoveryPath,{backupEverySaves:1,encoding:'json'});
+  await recoveryWriter.save({tick:1,identity:'last-good'});
+  await recoveryWriter.save({tick:2,identity:'newer-primary'});
+  await unlink(recoveryPath);
+  const recoveryReader=new FileStateStore(recoveryPath,{backupEverySaves:1,encoding:'json'});
+  const recovered=await recoveryReader.load();
+  assert.deepEqual(recovered,{tick:1,identity:'last-good'},'missing primary must restore the last durable backup instead of reporting an empty organism');
+  await recoveryReader.save(recovered);
+  assert.deepEqual(JSON.parse(await readFile(recoveryPath,'utf8')),{tick:1,identity:'last-good'},'a recovered snapshot must be able to recreate the missing primary');
+  const emptyReader=new FileStateStore(join(dir,'never-created.json'),{encoding:'json'});
+  assert.equal(await emptyReader.load(),null,'a genuinely new store with no primary or backup remains empty');
+
+  // A corrupt primary must not overwrite the only verified backup during repair.
+  const corruptPath=join(dir,'corrupt-primary.json');
+  const corruptWriter=new FileStateStore(corruptPath,{backupEverySaves:1,encoding:'json'});
+  await corruptWriter.save({tick:10,identity:'verified-backup'});
+  await corruptWriter.save({tick:11,identity:'new-primary'});
+  await writeFile(corruptPath,'{broken','utf8');
+  const corruptReader=new FileStateStore(corruptPath,{backupEverySaves:1,encoding:'json'});
+  const recoveredCorrupt=await corruptReader.load();
+  assert.deepEqual(recoveredCorrupt,{tick:10,identity:'verified-backup'});
+  await corruptReader.save(recoveredCorrupt);
+  await unlink(corruptPath);
+  const secondRecovery=new FileStateStore(corruptPath,{encoding:'json'});
+  assert.deepEqual(await secondRecovery.load(),{tick:10,identity:'verified-backup'},'repair must preserve the verified backup instead of rotating corrupt bytes over it');
+
   console.log(JSON.stringify({pass:true,jsonBytes:(await readFile(jsonPath)).byteLength,v8Bytes:(await readFile(v8Path)).byteLength,migratedEncoding:'v8'}));
 } finally { await rm(dir,{recursive:true,force:true}); }
