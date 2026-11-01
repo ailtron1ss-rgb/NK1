@@ -168,7 +168,7 @@ OrganismCore → EmbodimentIntentV1 / MotorGoal → MotorFrame (#410) → render
 - проецирует snapshot в `SemanticBodyState` (ревизия монотонна, значения clamp-ятся, невалидная проекция не выпускается);
 - хранит статическую таблицу возможностей для четырёх UI-рендеров (`live2d`, `original`, `legacy` — 2D-класс; `3d` — 3D-класс), честно объявляя только реально применяемые каналы (`headYaw`, `gazeX`, `gazeY`, `breath` для Live2D; `gazeX/gazeY` для SVG/3D; спрайты не заявляют каналов);
 - планирует handoff через `planEmbodimentSwitch` и переопределяет `requiresNeutralRebind` по точной идентичности рендера (два разных 2D-рендера всё равно требуют rebind);
-- ведёт монотонный ограниченный crossfade (`advanceBodySwitch`, 220 ms, окно 150–350 ms).
+- ведёт монотонный ограниченный fade-in нового renderer (`advanceBodySwitch`, 220 ms, окно 150–350 ms); предыдущий renderer размонтируется, поэтому это не двусторонний crossfade.
 
 `AvatarStage.tsx` теперь реально использует мост: при смене тела планируется handoff, применяется ограниченный crossfade, а диагностика (`body from→to · rev · rebind · unsupported: ...`) честно показывает неподдержанные каналы. Эффект зависит только от `mode`; последние значения читаются из refs, поэтому обновления snapshot по тику не сбрасывают анимацию перехода.
 
