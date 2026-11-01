@@ -1,3 +1,8 @@
+## [NK1][CI] Bind project-tool bridge fixtures to the active plan tool (2026-11-01)
+- Replace the stale arbitrary `project.safe` invocation with the canonical `organism.project.evidence` tool required by the unresolved project step.
+- Exercise destructive-tool refusal in a separate fixture whose active project plan is explicitly bound to the destructive tool, so the test reaches the destructive guard instead of stopping earlier at the preferred-tool mismatch.
+- Preserve the real project-step tool-binding contract; do not weaken or bypass it to make a test pass.
+
 ## [NK1][CI] Give the second reality-boundary feedback its own cognitive tick (2026-11-01)
 - Advance the organism with a fresh observation before submitting the independent device feedback sample in WorkPass39.
 - Preserve B272's one-outcome-per-tick invariant instead of weakening duplicate-credit protection to accommodate a stale test.
