@@ -97,6 +97,38 @@ assert.equal(bilingualReport.languageStratification.slices.en.answerableHoldoutQ
 assert.equal(bilingualReport.languageStratification.slices.en.unanswerableHoldoutQueries, 2);
 assert.equal(bilingualReport.languageStratification.slices.ru.answerableHoldoutQueries, 8);
 assert.equal(bilingualReport.languageStratification.slices.ru.unanswerableHoldoutQueries, 2);
+
+assert.equal(bilingualReport.languageStratification.slices.en.independentAnswerableHoldoutGroups, 8,
+  "each English answerable holdout query must count only through its independent source group");
+assert.equal(bilingualReport.languageStratification.slices.en.independentUnanswerableHoldoutGroups, 2);
+assert.equal(bilingualReport.languageStratification.slices.ru.independentAnswerableHoldoutGroups, 8);
+assert.equal(bilingualReport.languageStratification.slices.ru.independentUnanswerableHoldoutGroups, 2);
+assert.equal(bilingualReport.languageStratification.slices.en.gates.sufficientIndependentAnswerableHoldoutGroups, true);
+assert.equal(bilingualReport.languageStratification.slices.ru.gates.sufficientIndependentUnanswerableHoldoutGroups, true);
+
+// Correlated prompts from one source episode must not masquerade as independent
+// evidence, even when the raw query counts meet every existing minimum.
+const correlatedHoldoutExamples = bilingualExamples.map(row => row.split === "holdout"
+  ? { ...row, independenceGroupId: `${row.language}-single-source` }
+  : row);
+const correlatedProvenance = {
+  ...provenance,
+  contentSha256: fingerprintMemoryRetrievalDataset(correlatedHoldoutExamples),
+};
+const correlatedReport = runMemoryOS2RetrievalBenchmark(snapshot, correlatedHoldoutExamples, {
+  now, k: 5, bootstrapSamples: 200, maxExamples: 512, datasetProvenance: correlatedProvenance,
+});
+assert.equal(correlatedReport.datasetIntegrity.validForPromotion, true,
+  "same-split clustering is valid data; it must fail the independent-evidence gate, not corrupt dataset integrity");
+assert.equal(correlatedReport.languageStratification.slices.en.independentAnswerableHoldoutGroups, 1);
+assert.equal(correlatedReport.languageStratification.slices.en.independentUnanswerableHoldoutGroups, 1);
+assert.equal(correlatedReport.languageStratification.slices.ru.independentAnswerableHoldoutGroups, 1);
+assert.equal(correlatedReport.languageStratification.slices.ru.independentUnanswerableHoldoutGroups, 1);
+assert.equal(correlatedReport.languageStratification.slices.en.gates.sufficientIndependentAnswerableHoldoutGroups, false);
+assert.equal(correlatedReport.languageStratification.slices.ru.gates.sufficientIndependentUnanswerableHoldoutGroups, false);
+assert.equal(correlatedReport.promotion.gates.languageStratifiedQuality, false);
+assert.equal(correlatedReport.promotion.allowed, false,
+  "one source episode per language cannot satisfy the bilingual independent holdout gate");
 assert.equal(bilingualReport.promotion.allowed, false, 'synthetic bilingual data cannot establish provenance or auto-promote retrieval');
 assert.equal(bilingualReport.languageStratification.gates.promotionEligible, false, 'synthetic fixtures must not satisfy language-specific real-uplift confidence gates');
 

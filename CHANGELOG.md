@@ -1,3 +1,10 @@
+## [NK1][Memory] Require independent bilingual holdout clusters (2026-11-01)
+
+- Close a statistical evidence gap in MemoryOS2 retrieval promotion: raw per-language query counts no longer substitute for independent source episodes/documents.
+- Report distinct independenceGroupId counts for answerable and unanswerable holdout queries in each language; omitted group IDs retain the existing per-example independence default.
+- Require at least the configured answerable/unanswerable minimum number of distinct groups per language. A correlated single-source fixture now fails the independent-evidence gate while remaining structurally valid dataset input.
+- Include cluster counts in multi-seed determinism signatures. This is an evaluation-gate correction; retrieval ranking and live memory state are unchanged.
+
 ## [NK1][Release] Gate publisher on completed core regression (2026-10-31)
 - Remove the immediate push trigger from the source-branch copy of the release publisher; only a successful `workflow_run` of `NeuroCore core regression validation` on `workpass70-source` can start packaging.
 - Add a regression test that protects this sequencing and keeps exact-SHA source-lineage, provenance/license, freshness and no-overwrite gates mandatory.

@@ -48,6 +48,8 @@ function qualitySignature(report: ReturnType<typeof runMemoryOS2RetrievalBenchma
       holdoutQueries: slice.holdoutQueries,
       answerableHoldoutQueries: slice.answerableHoldoutQueries,
       unanswerableHoldoutQueries: slice.unanswerableHoldoutQueries,
+      independentAnswerableHoldoutGroups: slice.independentAnswerableHoldoutGroups,
+      independentUnanswerableHoldoutGroups: slice.independentUnanswerableHoldoutGroups,
       baseline: metrics(slice.metrics.baseline),
       candidate: metrics(slice.metrics.candidate),
       trainBaseline: metrics(slice.metrics.train.baseline),
