@@ -16,6 +16,10 @@ on:
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/src/components/avatar/avatarModelStore.ts"
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/scripts/avatar-model-preflight.test.mjs"
       - "app/scripts/three-toon-materials.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/package.json"
@@ -45,6 +49,8 @@ jobs:
         run: npm ci --prefix app --ignore-scripts
       - name: Test renderer-neutral body handoff
         run: npm --prefix app run test:embodiment-switch
+      - name: Test GLB/VRM binary preflight
+        run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
       - name: Test real Three.js toon material lifecycle
