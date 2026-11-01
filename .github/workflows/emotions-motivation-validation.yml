@@ -63,6 +63,7 @@ jobs:
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types scripts/typecheck-runtime.mjs
       - name: Validate hostile and malformed emotion snapshot restore boundaries
+        working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/workpass610-emotion-restore-boundary.mjs
       - name: Validate appraisal, context-bound outcomes, snapshots and interoception
         working-directory: runtime/neuro-kurisu
