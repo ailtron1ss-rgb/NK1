@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, unlink } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
@@ -49,6 +49,20 @@ try {
   assert.deepEqual(JSON.parse(await readFile(recoveryPath,'utf8')),{tick:1,identity:'last-good'},'a recovered snapshot must be able to recreate the missing primary');
   const emptyReader=new FileStateStore(join(dir,'never-created.json'),{encoding:'json'});
   assert.equal(await emptyReader.load(),null,'a genuinely new store with no primary or backup remains empty');
+
+  // A corrupt primary must not overwrite the only verified backup during repair.
+  const corruptPath=join(dir,'corrupt-primary.json');
+  const corruptWriter=new FileStateStore(corruptPath,{backupEverySaves:1,encoding:'json'});
+  await corruptWriter.save({tick:10,identity:'verified-backup'});
+  await corruptWriter.save({tick:11,identity:'new-primary'});
+  await writeFile(corruptPath,'{broken','utf8');
+  const corruptReader=new FileStateStore(corruptPath,{backupEverySaves:1,encoding:'json'});
+  const recoveredCorrupt=await corruptReader.load();
+  assert.deepEqual(recoveredCorrupt,{tick:10,identity:'verified-backup'});
+  await corruptReader.save(recoveredCorrupt);
+  await unlink(corruptPath);
+  const secondRecovery=new FileStateStore(corruptPath,{encoding:'json'});
+  assert.deepEqual(await secondRecovery.load(),{tick:10,identity:'verified-backup'},'repair must preserve the verified backup instead of rotating corrupt bytes over it');
 
   console.log(JSON.stringify({pass:true,jsonBytes:(await readFile(jsonPath)).byteLength,v8Bytes:(await readFile(v8Path)).byteLength,migratedEncoding:'v8'}));
 } finally { await rm(dir,{recursive:true,force:true}); }
