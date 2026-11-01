@@ -1,3 +1,10 @@
+## [NK1][Avatar] Keep browser voice prosody on one current affect snapshot (2026-11-01)
+- Fix cross-channel state mixing: historical `lastTurn.emotion` could override the current organism emotion while arousal and valence came from the current snapshot.
+- Add `resolveBrowserVoiceAffect` to validate one current snapshot, fall back to calm for unknown labels and clamp numeric channels to [0, 1].
+- Browser TTS now derives emotion, arousal and valence from the same snapshot as the avatar; historical turn metadata cannot drive current prosody.
+- Add regression coverage for coherent snapshot extraction, invalid-label fallback, bounded channels and the AvatarStage consumer.
+- This validates state coherence, not acoustic timing, voice quality or physical-device synchronization.
+
 ## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
 - Require finite JSON numbers for restored MemoryOS2 timestamps, validity bounds, salience, confidence, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
 - Reject numeric-string revision-history timestamps and nested evidence-source timestamps, freshness values and authority scores instead of treating them as trusted provenance.
