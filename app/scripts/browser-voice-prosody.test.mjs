@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildBrowserVoiceProsody, inferBrowserVoiceLanguage } from "../src/components/avatar/browserVoiceProsody.ts";
+import { readFile } from "node:fs/promises";
+import { buildBrowserVoiceProsody, inferBrowserVoiceLanguage, resolveBrowserVoiceAffect } from "../src/components/avatar/browserVoiceProsody.ts";
 import { buildVoicePlan } from "../../runtime/neuro-kurisu/src/organism/body/VoiceEmbodiment.ts";
 
 test("browser language inference delegates to the organism voice planner",()=>{
@@ -52,4 +53,18 @@ test("cognitive load slows delivery and increases the canonical pause budget",()
   assert.ok(loaded.reason.includes("high-cognitive-load"));
   assert.ok(loaded.rate<rested.rate);
   assert.ok(loaded.pauseMs>rested.pauseMs);
+});
+
+test("browser voice affect is taken as one coherent current organism snapshot", async () => {
+  const current = { label: "joy", arousal: 0.82, valence: 0.91 };
+  assert.deepEqual(resolveBrowserVoiceAffect(current), {
+    emotion: "joy", arousal: 0.82, valence: 0.91,
+  });
+  assert.deepEqual(resolveBrowserVoiceAffect({ label: "unknown", arousal: 4, valence: -2 }), {
+    emotion: "calm", arousal: 1, valence: 0,
+  });
+  const component = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
+  assert.match(component, /resolveBrowserVoiceAffect\(snap\.emotion\)/);
+  assert.doesNotMatch(component, /lastTurn\.emotion\s*\?\?/,
+    "a saved turn emotion must not override the current affect snapshot");
 });
