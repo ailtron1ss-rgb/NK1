@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { maskNonCode } from './lib/source-mask.mjs';
 const root=process.cwd(); const files=[];
 async function walk(d){for(const e of await readdir(d,{withFileTypes:true})){const p=path.join(d,e.name); if(e.isDirectory()){if(['legacy-original','legacy','state','node_modules','history','.git','dist','coverage','.grok'].includes(e.name))continue; await walk(p)} else if(/\.(ts|tsx|mts|cts|mjs|cjs|js|jsx)$/.test(e.name)) files.push(p)}}
 // Runtime integration tests deliberately import a few canonical React/API source
@@ -17,38 +18,16 @@ const isIdChar=ch=>ch!==undefined&&/[A-Za-z0-9_$]/.test(ch);
 // text: string literals such as assert.ok(source.includes("from './X.ts'"))
 // are documentation strings, not imports, and must not enter the module graph.
 function extractRelativeSpecifiers(src){
-  const out=[]; const n=src.length; let i=0; let state='code';
-  const readStr=start=>{const q=src[start]; let j=start+1; let raw=''; while(j<n){const ch=src[j]; if(ch==='\\'){raw+=ch+(src[j+1]||'');j+=2;continue;} if(ch===q){j++;return{raw,end:j};} if(ch==='\n'&&q!=='`'){return{raw,end:j};} raw+=ch;j++;} return{raw,end:j};};
-  while(i<n){
-    const c=src[i], c2=src[i+1];
-    if(state==='code'){
-      if(c==='/'&&c2==='/'){state='line';i+=2;continue;}
-      if(c==='/'&&c2==='*'){state='block';i+=2;continue;}
-      if(c==="'"||c==='"'||c==='`'){const r=readStr(i); i=r.end; continue;}
-      if(c==='f'&&src.startsWith('from',i)&&!isIdChar(src[i-1])&&!isIdChar(src[i+4])){
-        let j=i+4; while(j<n&&/\s/.test(src[j]))j++;
-        if(src[j]==="'"||src[j]==='"'){const r=readStr(j); if(r.raw.startsWith('.'))out.push(r.raw); i=r.end; continue;}
-      }
-      if(c==='i'&&src.startsWith('import',i)&&!isIdChar(src[i-1])&&!isIdChar(src[i+6])){
-        let j=i+6; while(j<n&&/\s/.test(src[j]))j++;
-        if(src.startsWith('type',j)&&!isIdChar(src[j+4])){
-          // `import type` is erased at runtime and cannot create a real module
-          // edge, so it must not contribute to the graph (and never to cycles).
-          let k=j+4; while(k<n){ if(src.startsWith('from',k)&&!isIdChar(src[k-1])&&!isIdChar(src[k+4])){let s=k+4; while(s<n&&/\s/.test(src[s]))s++; if(src[s]==="'"||src[s]==='"'){const r=readStr(s); i=r.end; break;}} k++; }
-          if(k>=n) i=j+4;
-          continue;
-        }
-        if(src[j]==='('){j++; while(j<n&&/\s/.test(src[j]))j++; if(src[j]==="'"||src[j]==='"'){const r=readStr(j); if(r.raw.startsWith('.'))out.push(r.raw); i=r.end; continue;}}
-        else if(src[j]==="'"||src[j]==='"'){const r=readStr(j); if(r.raw.startsWith('.'))out.push(r.raw); i=r.end; continue;}
-      }
-      if(c==='r'&&src.startsWith('require',i)&&!isIdChar(src[i-1])&&!isIdChar(src[i+7])){
-        let j=i+7; while(j<n&&/\s/.test(src[j]))j++;
-        if(src[j]==='('){j++; while(j<n&&/\s/.test(src[j]))j++; if(src[j]==="'"||src[j]==='"'){const r=readStr(j); if(r.raw.startsWith('.'))out.push(r.raw); i=r.end; continue;}}
-      }
-      i++; continue;
-    }
-    if(state==='line'){if(c==='\n')state='code'; i++; continue;}
-    if(state==='block'){if(c==='*'&&c2==='/'){state='code';i+=2;continue;} i++; continue;}
+  const runtimeText=src.replace(/import\\s+type\\s+[^;\\n]+from\\s+['\\\"][^'\\\"]+['\\\"]\\s*;?/g,'');
+  const masked=maskNonCode(runtimeText);
+  const out=[];
+  const pat=/(?:from\\s*|import\\s*\\(|require\\s*\\()(['\\\"])(\\.\\.?\\/[^'\\\"]+)\\1/g;
+  let match;
+  while((match=pat.exec(runtimeText))){
+    // The introducer remains executable code in a real import; a match wholly
+    // blanked by the mask came from a comment, string/template or regex literal.
+    if(masked.slice(match.index,match.index+match[0].length).trim()==='')continue;
+    out.push(match[2]);
   }
   return out;
 }
