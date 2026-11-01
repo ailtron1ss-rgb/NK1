@@ -1,3 +1,8 @@
+## [NK1][CI] Bind project-tool bridge fixtures to the active plan tool (2026-11-01)
+- Replace the stale arbitrary `project.safe` invocation with the canonical `organism.project.evidence` tool required by the unresolved project step.
+- Exercise destructive-tool refusal in a separate fixture whose active project plan is explicitly bound to the destructive tool, so the test reaches the destructive guard instead of stopping earlier at the preferred-tool mismatch.
+- Preserve the real project-step tool-binding contract; do not weaken or bypass it to make a test pass.
+
 ## [NK1][Cognition] Harden cognitive execution-plan restore integrity (2026-11-01)
 - Replace broad object spreads during CognitiveExecutionPlanner restore with allowlisted own-data reads for the version, tick, mode, operation maps, metabolism and statistics.
 - Ignore accessor-backed and inherited values without invoking getters; catch hostile and revoked Proxy reflection failures and fall back to the default planner state.
