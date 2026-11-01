@@ -48,6 +48,21 @@ test("fails closed on invalid frames, terminal phases and malformed calibration"
   assert.equal(mapMotorFrameToSemanticPose(frame(), { ...profile, mappings: [{ ...profile.mappings[0], scale: 0 }] }).reason, "invalid-motor-mapping-profile");
 });
 
+test("rejects calibration ranges outside the renderer-neutral normalized contract", () => {
+  const tooHigh = { ...profile, mappings: [{ ...profile.mappings[0], max: 1.01 }] };
+  const tooLow = { ...profile, mappings: [{ ...profile.mappings[0], min: -1.01 }] };
+  assert.equal(mapMotorFrameToSemanticPose(frame(), tooHigh).reason, "invalid-motor-mapping-profile");
+  assert.equal(mapMotorFrameToSemanticPose(frame(), tooLow).reason, "invalid-motor-mapping-profile");
+});
+
+test("rejects malformed motor-frame joint indexes and invalid cursors", () => {
+  assert.equal(mapMotorFrameToSemanticPose(frame({ reachedJointIds: ["left_elbow", "left_elbow"] }), profile).reason, "invalid-motor-frame");
+  assert.equal(mapMotorFrameToSemanticPose(frame({ blockedJointIds: ["bad id"] }), profile).reason, "invalid-motor-frame");
+  assert.equal(mapMotorFrameToSemanticPose(frame({ reason: "x".repeat(257) }), profile).reason, "invalid-motor-frame");
+  assert.equal(mapMotorFrameToSemanticPose(frame(), profile, { previous: { tick: -1, atMs: 120 } }).reason, "invalid-motor-frame-cursor");
+  assert.equal(mapMotorFrameToSemanticPose(frame(), profile, { previous: { tick: 6, atMs: -1 } }).reason, "invalid-motor-frame-cursor");
+});
+
 test("a valid frame without a mapped joint is accepted as an empty, explicit sample", () => {
   const result = mapMotorFrameToSemanticPose(frame({ joints: {} }), profile);
   assert.equal(result.accepted, true);
