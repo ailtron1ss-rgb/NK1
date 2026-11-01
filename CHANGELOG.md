@@ -1,3 +1,10 @@
+## [NK1][SelfModel] Wire explicit user preferences into language context (WorkPass642, 2026-11-01)
+- SelfSubsystemRuntime now exposes a read-only prompt projection of confirmed, explicitly stated, low-risk user preferences.
+- Candidate observations, disputed claims and credential-like values are excluded; evidence references are never sent to the language model.
+- OrganismCore and OrganismRuntime pass the projection to cognitive-proposal, response and autonomous-dialogue prompt builders as fallible data, never instructions.
+- Added regression coverage for candidate suppression, dispute/correction, credential filtering and prompt inclusion. The existing cognitive regression workflow runs the runtime-persistence test.
+- This closes a previously disconnected UserModel-to-language-context seam; it does not grant the language model authority over memory or actions.
+
 ## [NK1][Cognition] Harden CognitiveEventFabric snapshot restoration (WorkPass641, 2026-11-01)
 - Read persisted event, receipt-index and payload fields through own data descriptors so accessor-backed snapshot fields are ignored rather than executed during restore.
 - Bound restored payload sanitization to four object levels, 128 keys per object and 64 primitive array entries to prevent adversarial nesting/size from exhausting the restore path.
