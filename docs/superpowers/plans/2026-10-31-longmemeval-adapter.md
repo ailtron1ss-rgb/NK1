@@ -9,7 +9,7 @@
 - PersonaMem-v2: CC-BY-4.0 and English-only in Hub metadata, but its schema contains highly sensitive persona attributes (health, politics, race/ethnicity, sexual orientation, sensitive_info). Do not import raw persona records into NK1.
 - LongMemEval-V2: Apache-2.0 but ~7.12 GB and oriented toward web/enterprise-agent trajectories rather than conversational chat memory; defer as a separate benchmark.
 
-**Architecture:** One isolated MemoryOS2 instance per LongMemEval question; session records remain scoped to their question, preventing cross-question retrieval leakage. Compare canonical MemoryOS2 retrieval against a deterministic BM25 baseline. Bootstrap paired deltas over connected components of shared session IDs, so repeated source sessions cannot inflate the independent sample count. Reports contain hashes and aggregate metrics only, never raw query/session text.
+**Architecture:** One isolated MemoryOS2 instance per LongMemEval question; session records remain scoped to their question, preventing cross-question retrieval leakage. Compare canonical MemoryOS2 retrieval against a deterministic BM25 baseline. Bootstrap paired deltas over connected components of shared session IDs, so repeated source sessions cannot inflate the independent sample count. Require separate minimum independent-group counts for answerable and abstention strata; a large count in one stratum must not hide a degenerate interval in the other. Reports contain hashes and aggregate metrics only, never raw query/session text.
 
 **Promotion boundary:** This benchmark is English-only. It can provide external EN retrieval evidence, but it cannot satisfy NK1's bilingual RU/EN holdout requirement and can never auto-promote a retrieval candidate.
 
