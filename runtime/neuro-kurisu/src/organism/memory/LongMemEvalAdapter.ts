@@ -90,7 +90,7 @@ function normalizeRows(rows:unknown):LongMemEvalQuestion[]{
  for(const row of sorted)for(const session of row.sessions){const owner=ownerBySession.get(session.id);if(owner)union(row.id,owner);else ownerBySession.set(session.id,row.id);}
  const membersByRoot=new Map<string,string[]>();
  for(const row of sorted){const root=find(row.id);const members=membersByRoot.get(root)??[];members.push(row.id);membersByRoot.set(root,members);}
- const digestByRoot=new Map([...membersByRoot].map(([root,members])=>[root,digest([...members].sort().join('\\0'))]));
+ const digestByRoot=new Map([...membersByRoot].map(([root,members])=>[root,digest([...members].sort().join('\0'))]));
  return sorted.map(row=>({...row,independenceGroupId:digestByRoot.get(find(row.id))!}));
 }
 function fingerprintQuestions(questions:LongMemEvalQuestion[]){
@@ -250,7 +250,7 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
   perQuestion.push({
    questionIdDigest:digest(fingerprintSalt+'\0question\0'+question.id),
    queryDigest:digest(fingerprintSalt+'\0query\0'+question.query),
-   questionType:question.type,answerable:question.answerable,independenceGroupDigest:digest(fingerprintSalt+'\\0group\\0'+question.independenceGroupId),relevantSessionCount:question.answerSessionIds.length,
+   questionType:question.type,answerable:question.answerable,independenceGroupDigest:digest(fingerprintSalt+'\0group\0'+question.independenceGroupId),relevantSessionCount:question.answerSessionIds.length,
    baseline:{recallAtK01:baselineScore.recallAtK01,mrr01:baselineScore.mrr01,precisionAtK01:baselineScore.precisionAtK01,retrievedCount:baselineScore.retrievedCount,unsupportedRetrieval:baselineScore.unsupportedRetrieval,rankedSessionDigests:baselineIds.map(id=>digest(fingerprintSalt+'\0session\0'+id))},
    candidate:{recallAtK01:candidateScore.recallAtK01,mrr01:candidateScore.mrr01,precisionAtK01:candidateScore.precisionAtK01,retrievedCount:candidateScore.retrievedCount,unsupportedRetrieval:candidateScore.unsupportedRetrieval,rankedSessionDigests:candidateIds.map(id=>digest(fingerprintSalt+'\0session\0'+id))},
   });
