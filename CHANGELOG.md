@@ -1,21 +1,7 @@
-## [NK1][Avatar] Keep browser voice on one coherent affect snapshot (2026-11-01)
-
-- Fix a cross-channel state-mixing defect: browser TTS previously preferred `lastTurn.emotion` while reading arousal and valence from the current organism snapshot. A historical chat-turn label could therefore drive prosody against a different current affect and disagree with the avatar.
-- Add `resolveBrowserVoiceAffect` as a small boundary adapter: one current snapshot supplies emotion, arousal and valence; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
-- Browser speech now builds prosody from that normalized snapshot. The current affect remains authoritative; historical turn metadata is not used to overwrite it.
-- Add regression coverage for coherent snapshot extraction, invalid-label fallback, bounded channels and the AvatarStage consumer.
-- Add an exact-path GitHub Actions gate for the browser voice/affect tests and app TypeScript check. This validates code contracts, not acoustic timing or GPU presentation.
-
-## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
-- Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
-- Keep VRM materials native so authored VRM MToon expressions remain intact; convert non-VRM GLB Standard/Physical materials to toon shading while preserving color, texture, normal, alpha and emissive channels.
-- Add regressions for toon material creation, imported non-VRM GLB conversion, preserved texture channels and the retained 3D platform.
-- This is a renderer/style improvement only; it is not a generated or production-ready Kurisu VRM asset. The independent Blender model project is tracked separately; no model binary is included in this PR.
-
 ## [NK1][Embodiment] Reuse the anime toon gradient texture (2026-11-01)
 - Reuse one lazily-created 3-band DataTexture across procedural and imported GLB toon materials instead of allocating one GPU texture per material. This prevents avoidable GPU resource growth when avatar meshes/models are replaced or reloaded.
 - Add a source-contract regression for the shared texture cache. The texture remains module-scoped and immutable after initialization; VRM-authored MToon materials remain untouched.
-- Validation is pending the exact-HEAD embodiment and core regression workflows; no browser/WebGL soak is claimed.
+- The first exact-HEAD core run caught a circular TypeScript return-type annotation in the cache; the annotation was corrected to an explicit return type and the regression was tightened. The corrected exact-HEAD workflow is pending; no browser/WebGL soak is claimed.
 
 ## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
 - Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
@@ -3259,3 +3245,28 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Avatar] Keep browser voice on one coherent affect snapshot (2026-11-01)
+
+- Fix a cross-channel state-mixing defect: browser TTS previously preferred `lastTurn.emotion` while reading arousal and valence from the current organism snapshot. A historical chat-turn label could therefore drive prosody against a different current affect and disagree with the avatar.
+- Add `resolveBrowserVoiceAffect` as a small boundary adapter: one current snapshot supplies emotion, arousal and valence; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Browser speech now builds prosody from that normalized snapshot. The current affect remains authoritative; historical turn metadata is not used to overwrite it.
+- Add regression coverage for coherent snapshot extraction, invalid-label fallback, bounded channels and the AvatarStage consumer.
+- Add an exact-path GitHub Actions gate for the browser voice/affect tests and app TypeScript check. This validates code contracts, not acoustic timing or GPU presentation.
+
+## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
+- Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
+- Keep VRM materials native so authored VRM MToon expressions remain intact; convert non-VRM GLB Standard/Physical materials to toon shading while preserving color, texture, normal, alpha and emissive channels.
+- Add regressions for toon material creation, imported non-VRM GLB conversion, preserved texture channels and the retained 3D platform.
+- This is a renderer/style improvement only; it is not a generated or production-ready Kurisu VRM asset. The independent Blender model project is tracked separately; no model binary is included in this PR.
+
+## [NK1][Embodiment] Reuse the anime toon gradient texture (2026-11-01)
+- Reuse one lazily-created 3-band DataTexture across procedural and imported GLB toon materials instead of allocating one GPU texture per material. This prevents avoidable GPU resource growth when avatar meshes/models are replaced or reloaded.
+- Add a source-contract regression for the shared texture cache. The texture remains module-scoped and immutable after initialization; VRM-authored MToon materials remain untouched.
+- Validation is pending the exact-HEAD embodiment and core regression workflows; no browser/WebGL soak is claimed.
+
+## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
+- Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
+- Keep VRM materials native so authored VRM MToon expressions remain intact; convert non-VRM GLB Standard/Physical materials to toon shading while preserving color, texture, normal, alpha and emissive channels.
+- Add regressions for toon material creation, imported non-VRM GLB conversion, preserved texture channels and the retained 3D platform.
+- This is a renderer/style improvement only; it is not a generated or production-ready Kurisu VRM asset. The independent Blender model project is tracked separately; no model binary is included in this PR.
