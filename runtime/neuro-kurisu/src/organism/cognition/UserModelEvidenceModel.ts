@@ -103,6 +103,28 @@ export class UserModelEvidenceModel {
   c.value=value;c.status='confirmed';c.evidenceRef=ref;c.lastSeenTick=i.tick;c.confirmations++;c.contradictions=0;
   return{accepted:true,status:c.status,claim:clone(c)};
  }
+ /**
+  * Forget one explicitly confirmed low-risk preference.
+  * The evidence reference is retained in the bounded replay ledger, while the value
+  * and matching behavioral candidates are removed from the persisted model.
+  */
+ forgetExplicit(i:{key:string;domain:UserModelDomain;tick:number;evidenceRef:string;explicit:boolean}):
+  | {accepted:true;removed:boolean;key:string;domain:UserModelDomain}
+  | {accepted:false;reason:'invalid-input'|'missing-evidence'|'duplicate-evidence'} {
+  const key=normalizeKey(i.key),ref=boundedText(i.evidenceRef,180);
+  if(!i.explicit||!key||!isDomain(i.domain)||!validTick(i.tick)){
+   this.state.rejectedMalformedCount++;
+   return{accepted:false,reason:'invalid-input'};
+  }
+  if(!ref)return{accepted:false,reason:'missing-evidence'};
+  if(this.state.processedEvidenceRefs.includes(ref))return{accepted:false,reason:'duplicate-evidence'};
+  this.remember(ref);
+  const claimsBefore=this.state.claims.length;
+  const candidatesBefore=this.state.candidates.length;
+  this.state.claims=this.state.claims.filter(claim=>!(claim.key===key&&claim.domain===i.domain));
+  this.state.candidates=this.state.candidates.filter(candidate=>!(candidate.key===key&&candidate.domain===i.domain));
+  return{accepted:true,removed:claimsBefore!==this.state.claims.length||candidatesBefore!==this.state.candidates.length,key,domain:i.domain};
+ }
  /** Read-only decision view: disputed claims are excluded from confirmed facts. */
  decisionContext(){
   return{
