@@ -1,4 +1,18 @@
-import { MAX_AVATAR_MODEL_BYTES } from "./avatarModelLimits.ts";
+import {
+  MAX_AVATAR_ACCESSOR_ELEMENTS,
+  MAX_AVATAR_ACCESSORS,
+  MAX_AVATAR_ANIMATIONS,
+  MAX_AVATAR_BUFFER_VIEWS,
+  MAX_AVATAR_IMAGES,
+  MAX_AVATAR_MATERIALS,
+  MAX_AVATAR_MESHES,
+  MAX_AVATAR_MESH_PRIMITIVES,
+  MAX_AVATAR_MODEL_BYTES,
+  MAX_AVATAR_NODES,
+  MAX_AVATAR_SCENES,
+  MAX_AVATAR_SKINS,
+  MAX_AVATAR_TEXTURES,
+} from "./avatarModelLimits.ts";
 
 export interface AvatarModelPreflightResult {
   readonly format: "glb" | "vrm";
@@ -87,6 +101,57 @@ export function preflightAvatarModel(
     return reject("gltf-asset-version-invalid");
   }
 
+  // Bound scene complexity independently of the 90 MB binary ceiling. Small
+  // compressed files can still expand into pathological scene graphs or GPU work.
+  const boundedArray = (key: string, limit: number): unknown[] => {
+    const value = document[key];
+    if (value === undefined) return [];
+    if (!Array.isArray(value)) return reject(`gltf-${key}-invalid`);
+    if (value.length > limit) return reject(`gltf-complexity-limit-${key}`);
+    return value;
+  };
+  const nodes = boundedArray("nodes", MAX_AVATAR_NODES);
+  const meshes = boundedArray("meshes", MAX_AVATAR_MESHES);
+  boundedArray("materials", MAX_AVATAR_MATERIALS);
+  boundedArray("textures", MAX_AVATAR_TEXTURES);
+  boundedArray("images", MAX_AVATAR_IMAGES);
+  boundedArray("animations", MAX_AVATAR_ANIMATIONS);
+  boundedArray("skins", MAX_AVATAR_SKINS);
+  boundedArray("scenes", MAX_AVATAR_SCENES);
+  boundedArray("bufferViews", MAX_AVATAR_BUFFER_VIEWS);
+  const accessors = boundedArray("accessors", MAX_AVATAR_ACCESSORS);
+
+  let accessorElements = 0;
+  for (const entry of accessors) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      return reject("gltf-accessor-invalid");
+    }
+    const count = (entry as Record<string, unknown>).count;
+    if (!Number.isSafeInteger(count) || Number(count) <= 0) {
+      return reject("gltf-accessor-count-invalid");
+    }
+    accessorElements += Number(count);
+    if (!Number.isSafeInteger(accessorElements) || accessorElements > MAX_AVATAR_ACCESSOR_ELEMENTS) {
+      return reject("gltf-complexity-limit-accessors");
+    }
+  }
+
+  let primitiveCount = 0;
+  for (const entry of meshes) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      return reject("gltf-mesh-invalid");
+    }
+    const primitives = (entry as Record<string, unknown>).primitives;
+    if (!Array.isArray(primitives) || primitives.length === 0) {
+      return reject("gltf-mesh-primitives-invalid");
+    }
+    primitiveCount += primitives.length;
+    if (!Number.isSafeInteger(primitiveCount) || primitiveCount > MAX_AVATAR_MESH_PRIMITIVES) {
+      return reject("gltf-complexity-limit-primitives");
+    }
+  }
+  // Keep the node array bounded even though it is not needed by later checks.
+  void nodes;
   const buffers = document.buffers;
   if (buffers !== undefined && !Array.isArray(buffers)) return reject("gltf-buffers-invalid");
   for (const entry of (Array.isArray(buffers) ? buffers : []) as unknown[]) {

@@ -1,9 +1,9 @@
-## [NK1][SelfModel] Wire explicit preference forgetting through Core, Runtime and HTTP (2026-11-01)
-- Expose the canonical UserModel forget operation through OrganismCore with the same readiness, active-cycle write guard and durable checkpoint policy as record/correct.
-- Serialize the operation through OrganismRuntime's command queue.
-- Extend the authenticated preferences endpoint with a caller-confirmed `forget` action; server continues to own the key, domain, tick, evidence reference and low-risk classification.
-- Add runtime restart-persistence and HTTP route regressions, including fresh explicit re-establishment after forgetting.
-- Scope remains the allowlisted response-style preference; no general arbitrary-key deletion endpoint is exposed.
+## [NK1][Embodiment] Bound GLB/VRM complexity before mobile parsing (2026-11-01)
+- Keep the existing 90 MB upload ceiling and add independent limits for scene nodes, meshes/primitives, accessors and aggregate accessor elements, materials, textures, images, animations, skins, scenes and buffer views.
+- Reject malformed accessor counts and malformed mesh primitive collections before passing untrusted bytes to Three.js GLTFLoader.
+- Centralize the mobile-safe limits so the upload preflight, tests and future device profiles share one policy source.
+- Add regressions for oversized scene graphs, geometry element budgets, invalid numeric types, primitive counts, image counts and animation counts.
+- No cloud upload, server-side persistence, model license grant or real-device performance claim is implied by this hardening pass.
 
 ## [NK1][SelfModel] Add explicit preference forgetting with replay protection (2026-11-01)
 - Add a caller-confirmed forget operation to the canonical UserModel evidence owner; remove the selected claim and matching behavioral candidates from the persisted projection.
