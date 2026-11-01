@@ -3476,3 +3476,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Make `consolidate(0)` and invalid limits return an empty result; add deterministic tie-breaking and detached output snapshots.
 - Add focused regressions and `npm run test:adaptive-experience-consolidator`.
 - This is memory-ingress and lifecycle integrity work; it does not claim retrieval uplift, semantic recall improvement, runtime-wide integration or Release ZIP publication.
+
+
+## [NK1][WorkPass78] Isolate longitudinal replay holdout pairs (2026-11-01)
+- Prevent acquisition/test replay-on and replay-off trials from completing a holdout pair; pairing now includes the experiment phase.
+- Require at least two complete, independently verified replay-on/off holdout pairs (and the protocol's total paired-trial threshold) before assigning `confirmatory-eligible`.
+- Duplicate trials for the same pair arm are treated as ambiguous and excluded instead of silently overwriting earlier evidence.
+- Add a deterministic regression for phase leakage, unpaired holdout rejection, duplicate-arm rejection and snapshot/restore parity.
+- This hardens the validity of memory-learning evidence; it does not itself demonstrate retrieval uplift or change the official readiness score.
