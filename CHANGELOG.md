@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Enforce GLB buffer cardinality and binary padding (2026-11-01)
+- Bound attacker-controlled glTF buffer metadata before iterating it, using a shared maximum of 32 buffers.
+- Enforce the GLB 2.0 URI-less buffer contract: at most one embedded buffer, at index zero, with a required BIN chunk.
+- Require the BIN chunk to match the declared embedded buffer length with only the specification's zero-to-three alignment bytes; reject unreferenced BIN chunks.
+- Add five regressions for valid padding, duplicate embedded buffers, oversized padding, orphan BIN chunks and excessive buffer metadata.
+- This is parser-boundary hardening only; it does not claim improved avatar rendering or target-device performance.
+
 ## [NK1][Embodiment] Complete hosted Kurisu loader and asset verification (2026-11-01)
 - Verify the hosted model's content hash, exact size, GLB structure, humanoid skin, face morph targets and exported rig clip in the embodiment CI workflow.
 - Recognize the exported RIG_Kurisu clip as the generic GLB idle fallback while keeping action-specific clips preferred when present.
