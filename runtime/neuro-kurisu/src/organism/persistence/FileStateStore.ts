@@ -161,6 +161,7 @@ export class FileStateStore<T> implements JsonStateStore<T> {
       }
     }
     let renamed = false;
+    let shouldBackup = false;
     try {
       await writeFile(tmp, payload as unknown as string, 'utf8');
       crashInject('after-tmp-write');
@@ -169,7 +170,7 @@ export class FileStateStore<T> implements JsonStateStore<T> {
       crashInject('after-file-fsync');
 
       this.saveCount += 1;
-      const shouldBackup = this.saveCount === 1 || (this.saveCount % this.backupEverySaves === 0);
+      shouldBackup = this.saveCount === 1 || (this.saveCount % this.backupEverySaves === 0);
       // Consume the recovery guard only after the replacement rename commits. A failed
       // rename must not make the next retry rotate a corrupt primary over the good backup.
       const skipBackupForRecovery = shouldBackup && this.skipNextBackupCopy;
