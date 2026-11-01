@@ -1,3 +1,10 @@
+## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
+- Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
+- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
+- Invalidate the prior hash when recovering from a corrupt primary and protect the known-good backup from being overwritten by corrupt bytes during the first repair save.
+- Add regressions for missing-primary recovery, primary recreation, empty-store behavior and corrupt-primary backup preservation.
+- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace the broader organism recovery/soak tests.
+
 ## [NK1][Autonomy] Correct autonomous runtime cadence and silence accounting (2026-11-01)
 - Fix the inverted cadence gate: silent/internal activity now waits until its scheduled wake, while external signals remain immediately reactive.
 - Stop counting skipped heartbeats as self-started activity; compare silence continuation against the previous activity timestamp rather than a timestamp overwritten at tick entry.
