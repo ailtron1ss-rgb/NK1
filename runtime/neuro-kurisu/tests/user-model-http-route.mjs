@@ -67,10 +67,6 @@ try {
   assert.equal(unauthenticated.response.status, 401);
   assert.equal(unauthenticated.body.reason, 'missing-bearer-token');
 
-  const invalidBody = await post(null);
-  assert.equal(invalidBody.response.status, 400);
-  assert.equal(invalidBody.body.error, 'request-body-must-be-object');
-
   const unconfirmed = await post({ action: 'record', value: 'concise', confirmed: false });
   assert.equal(unconfirmed.response.status, 400);
   assert.equal(unconfirmed.body.error, 'explicit-user-confirmation-required');

@@ -65,6 +65,9 @@ jobs:
       - name: Test UserModel SelfSubsystemRuntime snapshot and restore
         working-directory: runtime/neuro-kurisu
         run: npm run test:user-model-runtime-persistence
+      - name: Test authenticated HTTP UserModel preference host route
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:user-model-http-route
       - name: Verify CognitiveEventFabric snapshot restore rejects accessor and coercion payloads
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass641:cef-restore-integrity
