@@ -52,3 +52,9 @@ A later independent review by the ReMe team published `agentscope-ai/ReMe_longme
 - Compare the original and reviewed ground-truth reports separately. Do not combine them into one score or treat the reviewed labels as the original benchmark's official labels.
 
 Run it with the same CLI, using the reviewed filename `longmemeval_s_reme_cleaned.json`. The runner computes the exact local file SHA-256 and records it in the report. Preserve the generated-file SHA above for independent verification.
+
+## Interpretation limits
+
+The current adapter is a **retrieval-only lexical diagnostic**: it compares MemoryOS2's canonical no-embedding retrieval path against per-question Okapi BM25. It does not run an answer-generating model, LLM judge, or the full LongMemEval QA pipeline. The report breaks metrics down by all six question types (`metrics.byQuestionType`) so failures can be traced to temporal reasoning, multi-session recall, knowledge updates, preference, or other categories. Do not compare its retrieval recall/MRR directly with published end-to-end answer-accuracy scores (for example, ReMe's 89.4% agentic result).
+
+The current CI uses a small synthetic contract fixture only. A real 500-question report remains pending until a local dataset file is supplied and its exact SHA-256 is verified. No benchmark score or `recallDelta` improvement is claimed yet.
