@@ -177,6 +177,14 @@ const numericStringRow = {
   confidence: '0.99',
   epistemicStatus: 'fact',
   revisionHistory: [{ at: String(now - 500), from: 'belief', to: 'fact', reason: 'numeric timestamp' }],
+  evidenceSources: [{
+    source: 'external-feed',
+    provenanceClass: 'external',
+    sourceAuthority01: '0.999',
+    independenceKey: 'numeric-evidence',
+    observedAt: String(now - 100),
+    evidenceFreshnessAt: String(now - 50),
+  }],
 };
 const numericStringRestore = new MemoryOS2({ embeddingProvider: null });
 numericStringRestore.restore({ ...structuredClone(base), items: [numericStringRow] });
@@ -196,6 +204,14 @@ assert.equal(numericStringRestored.epistemicStatus, 'unknown',
   'a fact with numeric-string confidence must be downgraded');
 assert.equal(numericStringRestored.revisionHistory.length, 0,
   'numeric-string revision timestamps must not create trusted revision history');
+const nestedEvidence = numericStringRestored.evidenceSources?.find(item => item.source === 'external-feed');
+assert(nestedEvidence);
+assert.equal(nestedEvidence.sourceAuthority01, .9,
+  'numeric-string evidence authority must use the source-class fallback');
+assert.equal(nestedEvidence.observedAt, numericStringRestored.observedAt,
+  'numeric-string evidence timestamps must use the trusted parent observation time');
+assert.equal(nestedEvidence.evidenceFreshnessAt, nestedEvidence.observedAt,
+  'numeric-string evidence freshness must not be promoted into trusted chronology');
 const numericStringDiagnostics = numericStringRestore.restoreDiagnostics();
 assert.equal(numericStringDiagnostics.invalidExpiriesClosed, 1);
 assert.equal(numericStringDiagnostics.factsDowngraded, 1);
