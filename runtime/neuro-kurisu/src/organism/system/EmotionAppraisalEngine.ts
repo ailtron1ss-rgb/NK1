@@ -271,7 +271,10 @@ export class EmotionAppraisalEngine {
       outcomeReceipts[key]={fingerprint:value.fingerprint,emotionId:typeof value.emotionId==='string'?value.emotionId:null,calibration:{attempts:calibration.attempts,meanSuccess01:calibration.meanSuccess01,meanSurprise01:calibration.meanSurprise01,meanBenefit01:calibration.meanBenefit01}};
     }
     const history=Array.isArray(r.history)?r.history.map(normalizeEpisode).filter((row):row is EmotionEpisode=>row!==null).slice(0,128):[];
-    const feelings=Array.isArray(r.feelings)?r.feelings.map(normalizeFeeling).filter((row):row is FeelingEpisode=>row!==null).slice(0,128):[];
+    const restoredEmotionIds=new Set(history.map(episode=>episode.id));
+    // A feeling is a projection of one retained emotion episode, never a free-standing record.
+    // Drop orphan links during restore so stale/corrupt snapshots cannot invent body-state evidence.
+    const feelings=Array.isArray(r.feelings)?r.feelings.map(normalizeFeeling).filter((row):row is FeelingEpisode=>row!==null&&restoredEmotionIds.has(row.causeEmotionId)).slice(0,128):[];
     const dI=d.interoception;
     this.state={
       version:2,
