@@ -1,3 +1,10 @@
+## [NK1][Avatar] Keep browser voice prosody on one current affect snapshot (2026-11-01)
+- Prevent historical `lastTurn.emotion` from overriding current organism affect while arousal and valence come from a newer snapshot.
+- Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Bind browser TTS prosody to the same current affect snapshot used by the avatar.
+- Add focused regression coverage for coherent snapshot extraction, invalid-label fallback and bounded channels.
+- This validates state coherence, not acoustic timing, voice quality or device synchronization.
+
 ## [NK1][License] Add evidence-backed release inventory without approval (2026-11-01)
 - Correct locked npm component count to the measured 477 and add exact evidence references for root/runtime, all 8 source archives and all 11 repository LICENSE/NOTICE records.
 - Add evidence-only SPDX expressions and exact SHA-256 records for four vendor license files; clarify CleanRL's composite upstream license and Avalanche's whitespace-only local copy difference.
