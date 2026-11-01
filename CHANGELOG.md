@@ -3251,3 +3251,32 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
 - Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
 - The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+
+## [NK1][Memory] Pin dataset provenance and enforce checksum (WorkPass82, 2026-11-01)
+
+- Make dataset ID, file name and license metadata explicit in benchmark reports; reviewed ReMe data no longer inherits the original LongMemEval source URL or MIT license claim.
+- Require an exact ReMe dataset revision for reviewed input and verify the published source-file SHA-256 before parsing; preserve a separate original cleaned-S checksum.
+
+## [NK1][Memory] Add category-level retrieval diagnostics and scope labels (WorkPass82, 2026-11-01)
+
+- Export baseline and MemoryOS2 metrics per LongMemEval question type, preserving corrected abstentions within their original categories.
+- Explicitly label the current candidate as the no-embedding retrieval path and the benchmark as retrieval-only, not end-to-end QA accuracy.
+
+## [NK1][Memory] Require class-specific independent LongMemEval groups (WorkPass82, 2026-11-01)
+
+- Add separate minimum independent-group gates for answerable and abstention strata. Query counts and total group count alone can conceal a degenerate confidence interval when many questions share the same source sessions.
+- Regression fixture confirms two answerable questions sharing one session count as one independent answerable group, while abstention evidence remains independently counted.
+
+## [NK1][Memory] Support reviewed LongMemEval empty-evidence abstentions (WorkPass82, 2026-11-01)
+
+- Treat empty `answer_session_ids` as unanswerable even when the question ID has no `_abs` suffix and its category is not `abstention`; this supports corrected ground truth without misclassifying reviewed records.
+- Accept the reviewed cleaned-S filename in the local runner, document its separate ground-truth lineage, checksum and license caveat, and keep original and reviewed benchmark scores separate.
+
+## [NK1][Memory] Add isolated LongMemEval-S retrieval evaluation adapter (WorkPass82, 2026-10-31)
+
+- Add a pinned adapter for the MIT-licensed, English-only LongMemEval-S cleaned benchmark without bundling or downloading dataset contents in CI.
+- Build one isolated MemoryOS2 corpus per question so sessions from other questions cannot leak into retrieval.
+- Compare canonical MemoryOS2 retrieval with a deterministic per-question Okapi BM25 baseline; report recall@K, MRR, precision, abstention and unsupported retrieval.
+- Add paired bootstrap confidence intervals over shared-session independence groups, pin upstream revision and raw file SHA-256, and export only hashed IDs plus aggregate metrics.
+- Release raw transcript/query payloads as each question is scored to keep the local runner's memory footprint bounded.
+- Keep automatic promotion disabled because English-only evidence cannot satisfy NK1's independent RU/EN holdout requirement.
