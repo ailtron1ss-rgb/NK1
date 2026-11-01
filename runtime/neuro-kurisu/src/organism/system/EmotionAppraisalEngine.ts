@@ -58,15 +58,103 @@ const emptyInteroception=():InteroceptiveAffectState=>({
 });
 const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:0,lastLabel:'calm',meanArousal01:0.22,meanValence01:0.5,meanStress01:0.2,meanAttentionCapture01:0.2,history:[],feelings:[],interoception:emptyInteroception(),outcomes:{}});
 
+
+// Restore boundaries must never invoke caller-controlled accessors. Proxy traps are
+// treated as malformed persisted input and fail closed.
+function readOwnDataRecord(value:unknown):Record<string,any>|null{
+  if(value===null||typeof value!=="object"||Array.isArray(value))return null;
+  try{
+    const proto=Object.getPrototypeOf(value);
+    if(proto!==Object.prototype&&proto!==null)return null;
+    const keys=Reflect.ownKeys(value);
+    if(keys.some(k=>typeof k!=="string"))return null;
+    const out:Record<string,any>={};
+    for(const key of keys as string[]){
+      const descriptor=Object.getOwnPropertyDescriptor(value,key);
+      if(!descriptor||!("value" in descriptor))return null;
+      out[key]=descriptor.value;
+    }
+    return out;
+  }catch{return null;}
+}
+function safeDenseArray(value:unknown,limit:number):unknown[]{
+  if(!Array.isArray(value))return [];
+  try{
+    const lengthDescriptor=Object.getOwnPropertyDescriptor(value,"length");
+    if(!lengthDescriptor||!("value" in lengthDescriptor)||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0)return [];
+    const length=Math.min(lengthDescriptor.value,limit),out:unknown[]=[];
+    for(let i=0;i<length;i++){
+      const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+      if(!descriptor||!("value" in descriptor))return [];
+      out.push(descriptor.value);
+    }
+    return out;
+  }catch{return [];}
+}
+
 export class EmotionAppraisalEngine {
   private state=empty();
   restore(raw?:Partial<EmotionAppraisalState>|null){
-    const d=empty(); const r=raw as any ?? {};
-    this.state={...d,...r,version:2,episodes:Math.max(0,Number(r.episodes??0)),lastTick:Number(r.lastTick??-1),lastAt:Number(r.lastAt??0),
-      lastLabel:(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'] as string[]).includes(String(r.lastLabel))?r.lastLabel as EmotionLabel:d.lastLabel,
-      history:Array.isArray(r.history)?r.history.slice(0,128):[], feelings:Array.isArray(r.feelings)?r.feelings.slice(0,128):[],
-      interoception:{...d.interoception,...(r.interoception??{}),lastObserved:{...d.interoception.lastObserved,...(r.interoception?.lastObserved??{})},predicted:{...d.interoception.predicted,...(r.interoception?.predicted??{})}},
-      outcomes:{...d.outcomes,...(r.outcomes??{})}};
+    const defaults=empty();
+    const root=readOwnDataRecord(raw);
+    if(!root){this.state=defaults;return;}
+    const number=(value:unknown,fallback:number,min=-Number.MAX_VALUE,max=Number.MAX_VALUE)=>typeof value==="number"&&Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;
+    const unit=(value:unknown,fallback:number)=>number(value,fallback,0,1);
+    const integer=(value:unknown,fallback:number,min=0,max=Number.MAX_SAFE_INTEGER)=>typeof value==="number"&&Number.isSafeInteger(value)?Math.max(min,Math.min(max,value)):fallback;
+    const labels:EmotionLabel[]=['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'];
+    const tendencies:EmotionActionTendency[]=['explore','engage','verify','reflect','rest','protect','withdraw','approach'];
+    const label=(v:unknown):EmotionLabel=>typeof v==="string"&&labels.includes(v as EmotionLabel)?v as EmotionLabel:"calm";
+    const str=(v:unknown,fallback="",limit=512)=>typeof v==="string"?v.slice(0,limit):fallback;
+    const appraisal=(v:unknown)=>{
+      const r=readOwnDataRecord(v); if(!r)return null;
+      return {relevance01:unit(r.relevance01,NaN),goalCongruence01:unit(r.goalCongruence01,NaN),controllability01:unit(r.controllability01,NaN),novelty01:unit(r.novelty01,NaN),selfRelevance01:unit(r.selfRelevance01,NaN),socialMeaning01:unit(r.socialMeaning01,NaN),uncertainty01:unit(r.uncertainty01,NaN)};
+    };
+    const delta=(v:unknown)=>{
+      const r=readOwnDataRecord(v); if(!r)return null;
+      return {stress01:unit(r.stress01,NaN),energy01:unit(r.energy01,NaN),load01:unit(r.load01,NaN),attentionCapture01:unit(r.attentionCapture01,NaN)};
+    };
+    const history=safeDenseArray(root.history,128).map(item=>{
+      const r=readOwnDataRecord(item); if(!r)return null;
+      const a=appraisal(r.appraisal),d=delta(r.interoceptiveDelta);
+      if(!a||!d||Object.values(a).some(Number.isNaN)||Object.values(d).some(Number.isNaN))return null;
+      if(typeof r.id!=="string"||!r.id||typeof r.tick!=="number"||!Number.isSafeInteger(r.tick)||r.tick<0||typeof r.at!=="number"||!Number.isFinite(r.at))return null;
+      if(typeof r.actionTendency!=="string"||!tendencies.includes(r.actionTendency as EmotionActionTendency))return null;
+      return {id:r.id.slice(0,192),tick:r.tick,at:r.at,label:label(r.label),actionTendency:r.actionTendency as EmotionActionTendency,valence01:unit(r.valence01,NaN),arousal01:unit(r.arousal01,NaN),dominance01:unit(r.dominance01,NaN),appraisal:a,interoceptiveDelta:d,memorySalienceMultiplier01:unit(r.memorySalienceMultiplier01,NaN),confidence01:unit(r.confidence01,NaN),cause:str(r.cause,"restored",128)} as EmotionEpisode;
+    }).filter((x):x is EmotionEpisode=>!!x&&[x.valence01,x.arousal01,x.dominance01,x.memorySalienceMultiplier01,x.confidence01].every(Number.isFinite));
+    const ids=new Set(history.map(x=>x.id));
+    const feelings=safeDenseArray(root.feelings,128).map(item=>{
+      const r=readOwnDataRecord(item); if(!r||typeof r.id!=="string"||typeof r.causeEmotionId!=="string"||!ids.has(r.causeEmotionId))return null;
+      if(typeof r.tick!=="number"||!Number.isSafeInteger(r.tick)||r.tick<0||typeof r.at!=="number"||!Number.isFinite(r.at))return null;
+      return {id:r.id.slice(0,192),tick:r.tick,at:r.at,label:label(r.label),intensity01:unit(r.intensity01,NaN),interoceptiveMismatch01:unit(r.interoceptiveMismatch01,NaN),selfAccessConfidence01:unit(r.selfAccessConfidence01,NaN),bodilyFocus01:unit(r.bodilyFocus01,NaN),causeEmotionId:r.causeEmotionId.slice(0,192)} as FeelingEpisode;
+    }).filter((x):x is FeelingEpisode=>!!x&&[x.intensity01,x.interoceptiveMismatch01,x.selfAccessConfidence01,x.bodilyFocus01].every(Number.isFinite));
+    const ir=readOwnDataRecord(root.interoception);
+    const vector=(v:unknown,fallback:{energy01:number;thermal01:number;capacity01:number;load01:number})=>{
+      const r=readOwnDataRecord(v); if(!r)return fallback;
+      return {energy01:unit(r.energy01,fallback.energy01),thermal01:unit(r.thermal01,fallback.thermal01),capacity01:unit(r.capacity01,fallback.capacity01),load01:unit(r.load01,fallback.load01)};
+    };
+    const base=defaults.interoception;
+    const interoception:InteroceptiveAffectState=ir?{
+      cycles:integer(ir.cycles,0,0,Number.MAX_SAFE_INTEGER),meanMismatch01:unit(ir.meanMismatch01,base.meanMismatch01),lastMismatch01:unit(ir.lastMismatch01,base.lastMismatch01),regulationPressure01:unit(ir.regulationPressure01,base.regulationPressure01),stability01:unit(ir.stability01,base.stability01),recovery01:unit(ir.recovery01,base.recovery01),predictionCalibration01:unit(ir.predictionCalibration01,base.predictionCalibration01),lastObserved:vector(ir.lastObserved,base.lastObserved),predicted:vector(ir.predicted,base.predicted)
+    }:base;
+    const outcomes:Record<string,EmotionOutcomeCalibration>={};
+    const outcomeRecord=readOwnDataRecord(root.outcomes);
+    if(outcomeRecord){
+      for(const key of Object.keys(outcomeRecord).slice(0,64)){
+        if(!/^[a-z][a-z0-9:_-]{0,63}$/i.test(key))continue;
+        const row=readOwnDataRecord(outcomeRecord[key]); if(!row)continue;
+        const attempts=integer(row.attempts,-1,0,Number.MAX_SAFE_INTEGER);
+        const success=unit(row.meanSuccess01,NaN),surprise=unit(row.meanSurprise01,NaN),benefit=unit(row.meanBenefit01,NaN);
+        if(attempts>=0&&[success,surprise,benefit].every(Number.isFinite))outcomes[key]={attempts,meanSuccess01:success,meanSurprise01:surprise,meanBenefit01:benefit};
+      }
+    }
+    this.state={
+      version:2,episodes:integer(root.episodes,history.length,history.length,Number.MAX_SAFE_INTEGER),
+      lastTick:integer(root.lastTick,-1,-1,Number.MAX_SAFE_INTEGER),lastAt:number(root.lastAt,0),
+      lastLabel:label(root.lastLabel),meanArousal01:unit(root.meanArousal01,defaults.meanArousal01),
+      meanValence01:unit(root.meanValence01,defaults.meanValence01),meanStress01:unit(root.meanStress01,defaults.meanStress01),
+      meanAttentionCapture01:unit(root.meanAttentionCapture01,defaults.meanAttentionCapture01),
+      history,feelings,interoception,outcomes
+    };
   }
   snapshot(){return structuredClone(this.state);}
 
