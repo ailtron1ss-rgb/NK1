@@ -28,6 +28,28 @@ export interface CognitiveSpineDecision {
 }
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+const plainOwnRecord=(value:unknown):Record<string,unknown>|null=>{
+  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  try{
+    const prototype=Object.getPrototypeOf(value);
+    return prototype===Object.prototype||prototype===null?value as Record<string,unknown>:null;
+  }catch{return null;}
+};
+/** Read persisted fields from own data descriptors; never execute accessors. */
+const ownData=(record:Record<string,unknown>,key:string):unknown=>{
+  try{
+    const descriptor=Object.getOwnPropertyDescriptor(record,key);
+    return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
+  }catch{return undefined;}
+};
+const readCounter=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+const readMetric=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+const readBoundedText=(value:unknown,fallback:string,max:number):string=>typeof value==='string'?value.trim().slice(0,max):fallback;
+const readCounterMap=(value:unknown,fallback:Record<SpineOperation,number>):Record<SpineOperation,number>=>{
+  const source=plainOwnRecord(value),result={...fallback};
+  if(source)for(const operation of Object.keys(fallback) as SpineOperation[])result[operation]=readCounter(ownData(source,operation),fallback[operation]);
+  return result;
+};
 const DEFAULT_CADENCE:Record<SpineOperation,number> = { research:4, 'world-rollout':3, shadow:2, project:2 };
 
 export const defaultCognitiveSpineSchedule = ():CognitiveSpineScheduleState => ({
@@ -47,12 +69,21 @@ export class CognitiveSpineScheduler {
 
   restore(raw?:Partial<CognitiveSpineScheduleState>|null){
     const d=defaultCognitiveSpineSchedule();
+    const root=plainOwnRecord(raw);
+    if(!root){this.state=d;return;}
+    const version=ownData(root,'version');
+    if(version!==undefined&&version!==1){this.state=d;return;}
+    const mode=ownData(root,'mode');
     this.state={
-      ...d,
-      ...(raw??{}),
-      runs:{...d.runs,...(raw?.runs??{})},
-      skips:{...d.skips,...(raw?.skips??{})},
-      opportunities:{...d.opportunities,...(raw?.opportunities??{})},
+      version:1,
+      mode:mode==='reflex'||mode==='balanced'||mode==='deep'||mode==='protect'?mode:d.mode,
+      lastTick:readCounter(ownData(root,'lastTick'),d.lastTick),
+      lastDecisionAt:readCounter(ownData(root,'lastDecisionAt'),d.lastDecisionAt),
+      runs:readCounterMap(ownData(root,'runs'),d.runs),
+      skips:readCounterMap(ownData(root,'skips'),d.skips),
+      opportunities:readCounterMap(ownData(root,'opportunities'),d.opportunities),
+      savings01:readMetric(ownData(root,'savings01'),d.savings01),
+      lastReason:readBoundedText(ownData(root,'lastReason'),d.lastReason,180),
     };
   }
 
