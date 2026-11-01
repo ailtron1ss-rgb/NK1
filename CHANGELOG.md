@@ -1,3 +1,9 @@
+## [NK1][Persistence] Write backup snapshots atomically before primary replacement (2026-11-01)
+- Copy the previous primary into a unique backup temp file rather than truncating the live `.bak` path.
+- Fsync the backup temp, then atomically rename it over the backup; a crash during copy/fsync leaves the previous verified backup untouched.
+- Add crash injection after backup-temp fsync and a subprocess regression proving the old backup survives a SIGKILL before rename.
+- This strengthens file-backed backup replacement; it does not claim power-loss testing on every filesystem or external database durability.
+
 ## [NK1][Embodiment] Clear stale avatar mouth pose outside active speech (2026-11-01)
 - Drive semantic mouth-open/form channels only while the normalized speech lifecycle is `speaking`.
 - Force neutral mouth channels for idle, starting, ended, cancelled and unknown phases so a missing final audio frame or barge-in cannot leave the avatar visually speaking.
