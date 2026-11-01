@@ -12,3 +12,7 @@
 - Disable setup-node's implicit package-manager cache in the isolated preflight workflow because the repository intentionally has no root lockfile. Exact-head parser-preflight run passed after this correction.
 - Reviewed the subsequent source-branch MotorFrame calibration hardening commit: it changes separate motor-mapping files and the shared CHANGELOG; no file overlap with this PR's avatar speech projection boundary was found. The PR remains one commit behind the source branch, and its next merge-ref CI run must validate the combined base/head state before merge.
 - Exact app typecheck caught the expected strict-TypeScript consequence of optional sensor samples: four clamp call sites could receive `undefined`. Widen the clamp helpers to accept nullable/optional numeric values and default non-numeric/missing samples to neutral zero. The regression suite passed before typecheck; the corrected head is now queued for fresh typecheck.
+
+- Дополнительное исправление: semantic mouth channels теперь активны только при нормализованной фазе `speaking`. Фазы `idle/starting/ended/cancelled/unknown` принудительно сбрасывают рот в нейтральное положение, чтобы пропущенный последний audio frame или barge-in не оставлял аватар с застывшей артикуляцией.
+- Добавлены отдельные проверки всех terminal/unknown фаз и подтверждение, что активная артикуляция во время `speaking` сохраняется.
+- Это устраняет stale-state в проекции; фактический lip-sync drift и поведение на Android ещё требуют измерений на устройстве.
