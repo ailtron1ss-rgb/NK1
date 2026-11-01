@@ -33,13 +33,20 @@ assert.equal(summary.holdoutMatchedPairs,2);
 assert.equal(summary.matchedPairs,4);
 assert.equal(summary.evidenceGrade,'confirmatory-eligible');
 
-// Duplicate arms are ambiguous: they must not silently overwrite the prior trial.
-add('holdout','replay-on','holdout-a',day,.99,9);
-summary=fabric.longitudinalReplaySummary('holdout-phase-isolation','memory-recall-ru-en');
-assert.equal(summary.holdoutMatchedPairs,1,'duplicate arm invalidates that pair');
-assert.equal(summary.evidenceGrade,'exploratory-matched');
-
+const cleanSnapshot=fabric.snapshot();
 const restored=new ExperienceContinuumFabric();
-restored.restore(fabric.snapshot());
-assert.deepEqual(restored.longitudinalReplaySummary('holdout-phase-isolation','memory-recall-ru-en'),summary);
+restored.restore(cleanSnapshot);
+summary=restored.longitudinalReplaySummary('holdout-phase-isolation','memory-recall-ru-en');
+assert.deepEqual(summary,fabric.longitudinalReplaySummary('holdout-phase-isolation','memory-recall-ru-en'));
+
+// Corrupt/legacy restore data with duplicate arms must be treated as ambiguous,
+// rather than allowing the last row to overwrite the earlier evidence.
+const ambiguousSnapshot=structuredClone(cleanSnapshot);
+const duplicate={...ambiguousSnapshot.replay.longitudinal.find(row=>row.phase==='holdout'&&row.mode==='replay-on'&&row.pairKey==='holdout-a'),id:'duplicate-holdout-arm',at:9,score01:.99};
+ambiguousSnapshot.replay.longitudinal.push(duplicate);
+const ambiguous=new ExperienceContinuumFabric();
+ambiguous.restore(ambiguousSnapshot);
+const ambiguousSummary=ambiguous.longitudinalReplaySummary('holdout-phase-isolation','memory-recall-ru-en');
+assert.equal(ambiguousSummary.holdoutMatchedPairs,1,'duplicate arm invalidates that pair');
+assert.equal(ambiguousSummary.evidenceGrade,'exploratory-matched');
 console.log(JSON.stringify({ok:true,status:'LONGITUDINAL_HOLDOUT_PHASE_PAIRING_PASS',summary},null,2));
