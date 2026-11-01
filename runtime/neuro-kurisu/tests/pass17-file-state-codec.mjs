@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
@@ -63,5 +64,21 @@ try {
   const secondRecovery=new FileStateStore(corruptPath,{encoding:'json'});
   assert.deepEqual(await secondRecovery.load(),{tick:10,identity:'verified-backup'},'repair must preserve the verified backup instead of rotating corrupt bytes over it');
 
-  console.log(JSON.stringify({pass:true,jsonBytes:(await readFile(jsonPath)).byteLength,v8Bytes:(await readFile(v8Path)).byteLength,migratedEncoding:'v8'}));
+  // A process crash after backup-temp fsync must not truncate the last good backup.
+  const crashPath=join(dir,'backup-crash.json');
+  const crashWriter=new FileStateStore(crashPath,{backupEverySaves:1,encoding:'json'});
+  await crashWriter.save({tick:1,identity:'previous-known-good-backup'});
+  await crashWriter.save({tick:2,identity:'current-primary'});
+  const storeModuleUrl=new URL('../src/organism/persistence/FileStateStore.ts',import.meta.url).href;
+  const childSource=`import { FileStateStore } from ${JSON.stringify(storeModuleUrl)};
+const store = new FileStateStore(${JSON.stringify(crashPath)},{backupEverySaves:1,encoding:'json'});
+await store.save({tick:3,identity:'interrupted-next-primary'});`;
+  const interrupted=spawnSync(process.execPath,['--experimental-strip-types','--input-type=module','-e',childSource],{
+    env:{...process.env,NEURO_CRASH_INJECT:'after-backup-file-fsync'},
+    encoding:'utf8',timeout:10000,maxBuffer:1024*1024,
+  });
+  assert.equal(interrupted.signal,'SIGKILL','the child must stop at the backup-temp fsync crash point');
+  assert.deepEqual(JSON.parse(await readFile(crashPath,'utf8')),{tick:2,identity:'current-primary'});
+  assert.deepEqual(JSON.parse(await readFile(crashPath+'.bak','utf8')),{tick:1,identity:'previous-known-good-backup'},'an interrupted backup copy must leave the previous backup intact');
+  console.log(JSON.stringify({pass:true,backupAtomicCrash:true,jsonBytes:(await readFile(jsonPath)).byteLength,v8Bytes:(await readFile(v8Path)).byteLength,migratedEncoding:'v8'}));
 } finally { await rm(dir,{recursive:true,force:true}); }
