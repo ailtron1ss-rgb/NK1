@@ -1,3 +1,10 @@
+## [NK1][Persistence] Recover verified state backups when the primary file is missing (2026-11-01)
+- Attempt the durable backup when the primary state file is absent, not only when it is unreadable; a genuinely new store still returns `null` when neither file exists.
+- Restore the backup hash when the primary is missing so an unchanged recovered snapshot recreates the primary instead of being skipped.
+- Invalidate the prior hash when recovering from a corrupt primary and protect the known-good backup from being overwritten by corrupt bytes during the first repair save.
+- Add regressions for missing-primary recovery, primary recreation, empty-store behavior and corrupt-primary backup preservation.
+- Add an isolated, dependency-free Node 24 GitHub Actions workflow for the file-state recovery contract. This does not replace the broader organism recovery/soak tests.
+
 ## [NK1][SelfModel] Fail-closed durable preference forgetting (2026-11-01)
 - Upgrade UserModel snapshots to v2 while preserving v1 migration.
 - Persist per-key/domain deletion watermarks and reject stale explicit facts and inferred candidates.
