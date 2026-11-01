@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, open, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, copyFile, mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { deserialize, serialize } from 'node:v8';
@@ -143,6 +143,21 @@ export class FileStateStore<T> implements JsonStateStore<T> {
     return next;
   }
 
+  private async copyBackupAtomically(): Promise<void> {
+    const tmp = `${this.backupPath}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await copyFile(this.filePath, tmp);
+      crashInject('after-backup-tmp-write');
+      const handle = await open(tmp, 'r+');
+      try { await handle.sync(); this.stats.fsyncs += 1; } finally { await handle.close(); }
+      crashInject('after-backup-file-fsync');
+      await rename(tmp, this.backupPath);
+      crashInject('after-backup-rename');
+      this.stats.backupCopies += 1;
+    } finally {
+      try { await unlink(tmp); } catch (error: any) { if (error?.code !== 'ENOENT') throw error; }
+    }
+  }
   private async saveInternal(value: T): Promise<void> {
     const startedAt = now();
     await mkdir(dirname(this.filePath), { recursive: true });
@@ -173,8 +188,7 @@ export class FileStateStore<T> implements JsonStateStore<T> {
     } else if (shouldBackup) {
       try {
         await access(this.filePath);
-        await copyFile(this.filePath, this.backupPath);
-        this.stats.backupCopies += 1;
+        await this.copyBackupAtomically();
       } catch (error: any) {
         if (error?.code !== 'ENOENT') throw error;
       }
