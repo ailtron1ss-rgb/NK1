@@ -1,3 +1,8 @@
+## [NK1][Embodiment] Integrate normalized VRM humanoid motor and exact-head checks (WorkPass76, 2026-11-01)
+- Route VRM humanoid intent through one normalized proxy adapter; retain NK1 arm intent, 35/65 head/neck distribution, neutral-pose reset, standard expressions/visemes and bounded spring-bone updates.
+- Keep generic GLB behavior intact, deep-dispose VRM resources on replacement/reset/teardown, and verify the actual `VRMHumanoid` transfer in integration tests.
+- Repair stale source-contract assertions and include the Avatar3DStage contract in the focused workflow's path and push triggers. Browser visual E2E, model-specific calibration and Android soak remain pending.
+
 ## [NK1][Embodiment] Wire renderer handoff into the avatar UI (Aspect 11, 2026-11-01)
 - Add `embodimentUiBridge.ts` to project the canonical organism snapshot into the shared `SemanticBodyState`, validate/clamp handoff input, and declare only channels each current renderer actually supports.
 - Connect `AvatarStage.tsx` mode changes to `planEmbodimentSwitch`, a bounded 220 ms crossfade and truthful diagnostics for unsupported channels. Keep the effect independent of per-tick snapshot churn by reading latest values through refs.
