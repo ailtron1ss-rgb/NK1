@@ -1,3 +1,7 @@
+## [NK1][CI] Trigger avatar preflight on parser implementation changes (2026-11-01)
+- Add `app/src/components/avatar/avatarModelPreflight.ts` to the avatar-model-preflight pull-request path filter, matching the existing push filter.
+- Ensure parser implementation edits cannot bypass the dedicated GLB/VRM boundary regression workflow.
+
 ## [NK1][CI] Align avatar preflight workflow with the Node 24 toolchain (2026-11-01)
 - Replace legacy checkout/setup-node v4 actions with the repository-approved v7 releases.
 - Resolve Node from the canonical `.nvmrc` instead of pinning the avatar-only workflow to Node 22.16.0.
