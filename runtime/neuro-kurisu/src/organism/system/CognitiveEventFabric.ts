@@ -102,16 +102,16 @@ const ownArray=(value:unknown,max:number):unknown[]=>{
   return result;
 };
 /** Copy only own data properties; snapshot accessors are never evaluated. */
-const cleanPayload=(value:unknown):Record<string,unknown>=>{
-  if(!isRecord(value))return {};
+const cleanPayload=(value:unknown,depth=0):Record<string,unknown>=>{
+  if(!isRecord(value)||depth>=4)return {};
   const result:Record<string,unknown>={};
-  for(const key of Object.keys(value)){
-    if(key==='__proto__'||key==='prototype'||key==='constructor')continue;
+  for(const key of Object.keys(value).slice(0,128)){
+    if(key.length>128||key==='__proto__'||key==='prototype'||key==='constructor')continue;
     const item=ownData(value,key);
     if(item===undefined)continue;
     if(item===null||typeof item==='string'||typeof item==='boolean'||(typeof item==='number'&&Number.isFinite(item)))result[key]=item;
     else if(Array.isArray(item))result[key]=ownArray(item,64).filter(v=>v===null||typeof v==='string'||typeof v==='boolean'||(typeof v==='number'&&Number.isFinite(v)));
-    else if(isRecord(item))result[key]=cleanPayload(item);
+    else if(isRecord(item))result[key]=cleanPayload(item,depth+1);
   }
   return result;
 };
