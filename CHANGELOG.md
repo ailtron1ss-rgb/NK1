@@ -3251,3 +3251,12 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
 - Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
 - The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+
+## [NK1][Avatar] Keep browser voice on one coherent affect snapshot (2026-11-01)
+
+- Fix a cross-channel state-mixing defect: browser TTS previously preferred `lastTurn.emotion` while reading arousal and valence from the current organism snapshot. A historical chat-turn label could therefore drive prosody against a different current affect and disagree with the avatar.
+- Add `resolveBrowserVoiceAffect` as a boundary adapter: one current snapshot supplies emotion, arousal and valence; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Browser speech now builds prosody from that normalized snapshot; historical turn metadata cannot override current affect.
+- Add regression coverage for coherent snapshot extraction, invalid-label fallback, bounded channels and the AvatarStage consumer.
+- Add an exact-path GitHub Actions gate for the browser voice/affect test and app TypeScript check. This validates state contracts, not acoustic timing or GPU presentation.
+
