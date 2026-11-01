@@ -1,13 +1,10 @@
 # NeuroCore — repository working rules
 
-> **New-session entry point:** read [`NEUROCORE_START_HERE.md`](NEUROCORE_START_HERE.md) and [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md) and [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), then refresh the live branch head, stacked PR state, exact-head Actions status and open-work register. The active learning stack is WorkPass124 on top of WorkPass123; PR #12 is draft and unmerged. WorkPass126 hardens durable skill-store schema and payload-integrity validation; its tests and exact-head CI remain unverified. The release/metadata `main` branch is not the direct merge target for the source stack. The mission is persistent across chats; do not ask the user to restate it.
+> **New-session entry point:** read [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then [the current daily engineering handoff](docs/NK1_DAILY_ENGINEERING_HANDOFF_2026-11-01_RU.md), [the canonical work-unit backlog](docs/NEUROCORE_1000_WORK_UNIT_BACKLOG.md), and [the research intake ledger](docs/RESEARCH_INTAKE_LEDGER.md). Immediately refresh live GitHub Releases/ZIP metadata, `workpass70-source` HEAD, PR ancestry/state and exact-head Actions before acting; handoff files are dated snapshots, not live truth. Canonical code source is `workpass70-source`; `main` is primarily release/workflow/report material. Do not ask the user to restate the NK1 mission.
 
 ## Latest checkpoint
 
-Read [WorkPass127 proposal authenticity report](docs/WORKPASS127_PROMOTION_PROPOSAL_AUTHENTICITY_2026-10-21.md) first. The candidate store now rejects copied or fabricated proposal objects using a module-private same-process issuance registry; successful lifecycle fixtures use signed manifest-bound artifacts. Runtime test/typecheck/CI are not yet verified, and the broader activation call-graph audit remains open.
-
-
-Read [WorkPass126 skill-store integrity report](docs/WORKPASS126_SKILL_STORE_INTEGRITY_2026-10-21.md), then [WorkPass125 repository synchronization audit](docs/WORKPASS125_REPOSITORY_SYNC_AUDIT_2026-10-21.md), before resuming. Inspect the exact-head CI and run the owning tests. Active learning work is `workpass124-learning-evidence-hardening` (PR #12, draft/unmerged), stacked on `workpass123-authenticated-skill-lifecycle` (PR #11). The full source stack is based on `workpass70-source`; `main` is a separate release/metadata branch with no common ancestor reported by GitHub compare. Do not merge directly to `main`.
+The 2026-11-01 daily handoff records the verified source SHA, exact-head CI results, stale/superseded PRs, release-license blocker and 18-domain execution queue. Its scorecard reference is historical: do not carry the 80.1% value forward as a newly measured score. Update this checkpoint only with exact SHA, reproducible tests and verified evidence; never claim a Release change without inspecting the published ZIP.
 
 ## Project objective
 
