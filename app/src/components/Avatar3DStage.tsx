@@ -13,7 +13,16 @@ type Bone = { node: any; name: string; x: number; y: number; z: number };
 type VrmBone = { node:any; name:string; x:number; y:number; z:number };
 type Runtime = { scene:any; camera:any; renderer:any; body:any; loaded:any; vrm:any; vrmBones:VrmBone[]; mixer:any; clips:any[]; clipName:string; bones:Bone[]; yaw:number; dragX:number|null; mood:any; last:number };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,Number.isFinite(n)?n:0));
-const material=(color:number,roughness=0.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
+// Keep the small Three.js declaration surface explicit for constructors added by the pinned 0.180.0 runtime.
+type ThreeToonApi = typeof THREE & {
+ DataTexture: new (data: Uint8Array, width: number, height: number, format: number) => { magFilter: number; minFilter: number; generateMipmaps: boolean; needsUpdate: boolean };
+ RedFormat: number;
+ NearestFilter: number;
+ MeshToonMaterial: new (parameters: { color: number; gradientMap: unknown }) => any;
+};
+const THREE_TOON = THREE as ThreeToonApi;
+function createAnimeGradient(){const texture=new THREE_TOON.DataTexture(new Uint8Array([54,142,255]),3,1,THREE_TOON.RedFormat);texture.magFilter=THREE_TOON.NearestFilter;texture.minFilter=THREE_TOON.NearestFilter;texture.generateMipmaps=false;texture.needsUpdate=true;return texture;}
+const material=(color:number,roughness=0.7,metalness=0)=>{void roughness;void metalness;return new THREE_TOON.MeshToonMaterial({color,gradientMap:createAnimeGradient()});};
 function ellipsoid(parent:any,mat:any,pos:[number,number,number],scale:[number,number,number],name:string){
  const m=new THREE.Mesh(new THREE.SphereGeometry(1,24,18),mat);m.name=name;m.position.set(...pos);m.scale.set(...scale);parent.add(m);return m;
 }
