@@ -36,3 +36,40 @@ assert.equal(resumed.shouldAct,true,"internal initiative resumes once its cadenc
 assert.equal(resumed.autonomous,true);
 assert.equal(cadenceCtl.summary().selfStartedCycles,2);
 assert.equal(cadenceCtl.summary().continuedAfterSilence,1,"silence continuation compares against the prior activity timestamp");
+
+
+// Persisted autonomy snapshots are an untrusted boundary: never execute accessors
+// and never allow malformed counters, ratios or history rows into live state.
+const safeRestore = new AutonomousRuntimeLifeController();
+const malformedSnapshot = {
+  ...ctl.snapshot(),
+  ticks: -4,
+  selfAuthoredActivity01: Number.NaN,
+  lastMode: 'sleep',
+  recent: [
+    { tick: 7, mode: 'reflect', reason: 'valid-row', autonomous: true, outcome01: 2, at: 70000 },
+    { tick: 'bad', mode: 'reflect', reason: 'invalid-row', autonomous: true, outcome01: 0.5, at: 71000 },
+  ],
+};
+safeRestore.restore(malformedSnapshot);
+assert.equal(safeRestore.summary().ticks, 0, 'negative persisted counters fall back to safe defaults');
+assert.equal(safeRestore.summary().selfAuthoredActivity01, 0.35, 'non-finite persisted ratios fall back to defaults');
+assert.equal(safeRestore.summary().lastMode, 'idle', 'unknown persisted modes are rejected');
+assert.equal(safeRestore.snapshot().recent.length, 1, 'malformed history rows are skipped');
+assert.equal(safeRestore.snapshot().recent[0].outcome01, 1, 'persisted outcome values are clamped');
+
+let restoreGetterCalls = 0;
+const accessorSnapshot = ctl.snapshot();
+Object.defineProperty(accessorSnapshot, 'ticks', {
+  enumerable: true,
+  get() { restoreGetterCalls += 1; return 999; },
+});
+safeRestore.restore(accessorSnapshot);
+assert.equal(restoreGetterCalls, 0, 'restore must not execute snapshot getters');
+assert.equal(safeRestore.summary().ticks, 0, 'accessor-backed counters use safe defaults');
+
+const hostileSnapshot = new Proxy(ctl.snapshot(), {
+  getOwnPropertyDescriptor() { throw new Error('hostile snapshot trap'); },
+});
+assert.doesNotThrow(() => safeRestore.restore(hostileSnapshot));
+assert.equal(safeRestore.summary().ticks, 0, 'hostile snapshots reset to safe defaults');
