@@ -68,7 +68,9 @@ function ownDataRecord(value:unknown): EmotionSnapshotRecord | null {
     if (value===null || typeof value!=='object' || Array.isArray(value)) return null;
     const prototype=Object.getPrototypeOf(value);
     if (prototype!==Object.prototype && prototype!==null) return null;
-    for (const key of Reflect.ownKeys(value)) {
+    const keys=Reflect.ownKeys(value);
+    if (keys.length>256) return null;
+    for (const key of keys) {
       if (typeof key!=='string') return null;
       const descriptor=Object.getOwnPropertyDescriptor(value,key);
       if (!descriptor || !('value' in descriptor) || descriptor.enumerable!==true) return null;
@@ -135,7 +137,7 @@ function restoreEmotionEpisode(value:unknown):EmotionEpisode|null {
   const label=snapshotEnum(ownValue(record,'label'),EMOTION_LABELS);
   const actionTendency=snapshotEnum(ownValue(record,'actionTendency'),EMOTION_ACTIONS);
   const cause=snapshotString(ownValue(record,'cause'),128);
-  if (!id || typeof tick!=='number' || !Number.isSafeInteger(tick) || tick<0 || typeof at!=='number' || !Number.isFinite(at) || at<0 || !label || !actionTendency || !cause) return null;
+  if (!id || typeof tick!=='number' || !Number.isSafeInteger(tick) || tick<0 || typeof at!=='number' || !Number.isFinite(at) || at<0 || at>Number.MAX_SAFE_INTEGER || !label || !actionTendency || !cause) return null;
   const appraisalKeys=['relevance01','goalCongruence01','controllability01','novelty01','selfRelevance01','socialMeaning01','uncertainty01'] as const;
   const deltaKeys=['stress01','energy01','load01','attentionCapture01'] as const;
   const appraisalValues:Record<string,number>={};
