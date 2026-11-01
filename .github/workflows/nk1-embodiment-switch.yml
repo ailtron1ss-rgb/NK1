@@ -22,6 +22,8 @@ on:
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
       - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/scripts/verify-hosted-kurisu-model.mjs"
+      - "app/src/components/avatar/avatarModelCatalog.ts"
       - "app/scripts/three-toon-materials.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/package.json"
@@ -59,5 +61,7 @@ jobs:
         run: node --test app/scripts/avatar-3d-stage.test.mjs
       - name: Test real Three.js toon material lifecycle
         run: npm --prefix app run test:three-toon-materials
+      - name: Verify hosted Kurisu asset hash and GLB structure
+        run: npm --prefix app run verify:hosted-kurisu-model
       - name: App typecheck
         run: npm --prefix app run typecheck
