@@ -342,3 +342,13 @@ A “consciousness” claim is not a release gate that can be checked off by ord
 12. Start a 24–72h soak and target-device resource profile after core failure paths are stable.
 
 **Next-chat command contract:** if the user says “работай над проектом”, “продолжай NeuroCore”, “@GitHub продолжай” or equivalent, read the current charter, rules, live handover, open-work register and research ledger; inspect live branch/Actions; continue from the highest-impact unresolved item; make real code/test changes where possible; commit and update evidence. Do not ask the user to repeat the goal.
+
+## 12. Engineering checkpoint — durable UserModel forgetting (2026-11-01)
+
+**Merged source changes:** PR #580 / `efb7693df564512ed653f8bafc772d97e2c36e32` adds snapshot-v2 forget tombstones, v1 migration, strict tombstone-array validation, fail-closed handling of oversized/sparse/malformed deletion ledgers, restore-time reconciliation of claims and candidates, and replay protection beyond the 512-reference ledger. The 256-tombstone cap is explicit and does not silently discard old deletion boundaries. The HTTP preference route now issues monotonic ingress event ticks; client-supplied event metadata remains untrusted.
+
+**CI evidence:** exact PR HEAD `b824c8917a63815f7a4d91da2e9edadd22a42c7d` passed 12/12 workflows after PR #584 / `6952584f4e55c2b616d201618c392ac98902f044` upgraded the last v4 Actions workflow to v7. The targeted UserModel workflow includes the focused deletion regression, runtime persistence, and HTTP route roundtrip including re-consent after forget.
+
+**Remaining integration constraint:** the tick supplied by non-HTTP UserModel producers must represent the immutable source-event time/sequence, not replay-processing time. Audit every import, consolidation and restore producer before claiming system-wide no-resurrection. The current feature is limited to the explicit UserModel preference projection; it is not a universal physical purge of MemoryOS2, vector indexes, caches or external providers.
+
+**Release boundary:** source merged and CI-verified; no Release ZIP rebuilt or published. License review, exact-SHA packaging, real-device E2E, independent RU/EN retrieval uplift and long soak remain release blockers.
