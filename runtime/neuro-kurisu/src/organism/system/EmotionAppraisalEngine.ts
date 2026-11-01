@@ -62,8 +62,9 @@ const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:
 // Restore boundaries must never invoke caller-controlled accessors. Proxy traps are
 // treated as malformed persisted input and fail closed.
 function readOwnDataRecord(value:unknown):Record<string,any>|null{
-  if(value===null||typeof value!=="object"||Array.isArray(value))return null;
+  if(value===null||typeof value!=="object")return null;
   try{
+    if(Array.isArray(value))return null;
     const proto=Object.getPrototypeOf(value);
     if(proto!==Object.prototype&&proto!==null)return null;
     const keys=Reflect.ownKeys(value);
@@ -78,8 +79,8 @@ function readOwnDataRecord(value:unknown):Record<string,any>|null{
   }catch{return null;}
 }
 function safeDenseArray(value:unknown,limit:number):unknown[]{
-  if(!Array.isArray(value))return [];
   try{
+    if(!Array.isArray(value))return [];
     const lengthDescriptor=Object.getOwnPropertyDescriptor(value,"length");
     if(!lengthDescriptor||!("value" in lengthDescriptor)||!Number.isSafeInteger(lengthDescriptor.value)||lengthDescriptor.value<0)return [];
     const length=Math.min(lengthDescriptor.value,limit),out:unknown[]=[];
