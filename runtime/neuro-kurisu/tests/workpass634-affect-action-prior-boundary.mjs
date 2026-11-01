@@ -79,6 +79,11 @@ const workspaceWithoutAffect=affectWorkspaceActionBias({...workspace,selected:[]
 assert.ok(workspaceWait>0&&workspaceWait<=.035,'selected affect workspace prior must remain capped');
 assert.equal(workspaceWithoutAffect,0,'non-selected affect must not influence action ranking');
 assert.equal(affectWorkspaceActionBias(null,'withdraw','wait'),0,'absent workspace signal must preserve the baseline');
+const baselineUtility=.5;
+const zeroAffectUtility=baselineUtility+lowConfidence.engine.actionBias('respond')+affectWorkspaceActionBias(null,'engage','respond');
+assert.equal(zeroAffectUtility,baselineUtility,'zero-confidence/absent-affect ablation must restore the exact pre-affect utility');
+const selectedAffectUtility=baselineUtility+sadness.engine.actionBias('wait')+workspaceWait;
+assert.ok(selectedAffectUtility>baselineUtility,'valid confident appraisal plus selected workspace affect may alter candidate utility');
 assert.ok(Math.abs(sadness.engine.actionBias('wait')+workspaceWait)<=.08,'direct and workspace affect paths must remain jointly bounded');
 
 console.log(JSON.stringify({
