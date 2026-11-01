@@ -24,3 +24,31 @@ test('P82 never converts missing outcomes into reality evidence', () => {
   progress.observe({tick:2,capability01:.8,complexity01:.2,externalEvidence:true,identity01:.9,continuity01:.9});
   assert.equal(progress.snapshot().evidenceCount,1); assert.equal(progress.snapshot().lastExternalTick,2);
 });
+
+
+test('P80 agency score responds to action quality and uncertainty for external cycles', () => {
+  const make = (actionScore01:number, uncertainty01:number) => {
+    const self = new P80UnifiedSelfState();
+    self.update({tick:1,mode:'respond',identity01:.9,memoryContinuity01:.9,realityGap01:.1,predictionError01:.1,uncertainty01,energy01:.8,cognitiveCapacity01:.9,goalPressure01:.2,grounding01:.9,causal01:.9,workspace01:.9,action:'respond',actionScore01,externalInput:true,novelty01:.2});
+    return self.snapshot().agency01;
+  };
+  assert.ok(make(1,0)>make(0,1),'external agency must retain action-quality and uncertainty sensitivity');
+});
+
+test('P80 restore rejects malformed self-state and never executes accessors', () => {
+  const self = new P80UnifiedSelfState();
+  self.restore({...self.snapshot(),cycles:-1,agency01:Number.NaN,currentMode:'invented',recentModes:['reflect','invented'] as never});
+  assert.equal(self.snapshot().cycles,0);
+  assert.equal(self.snapshot().agency01,.5);
+  assert.equal(self.snapshot().currentMode,'wait');
+  assert.deepEqual(self.snapshot().recentModes,[]);
+  let getterCalls=0;
+  const accessor = self.snapshot() as unknown as Record<string,unknown>;
+  Object.defineProperty(accessor,'cycles',{enumerable:true,get(){getterCalls++;return 999;}});
+  self.restore(accessor);
+  assert.equal(getterCalls,0,'restore must not execute snapshot getters');
+  assert.equal(self.snapshot().cycles,0);
+  const hostile = new Proxy(self.snapshot(),{getOwnPropertyDescriptor(){throw new Error('hostile self snapshot');}});
+  assert.doesNotThrow(()=>self.restore(hostile));
+  assert.equal(self.snapshot().cycles,0);
+});
