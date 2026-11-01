@@ -52,3 +52,13 @@ test('P80 restore rejects malformed self-state and never executes accessors', ()
   assert.doesNotThrow(()=>self.restore(hostile));
   assert.equal(self.snapshot().cycles,0);
 });
+
+
+test('P80 restore keeps partial version-1 snapshot compatibility', () => {
+  const self = new P80UnifiedSelfState();
+  self.restore({version:1,cycles:4,agency01:.7} as never);
+  assert.equal(self.snapshot().cycles,4);
+  assert.equal(self.snapshot().agency01,.7);
+  assert.deepEqual(self.snapshot().recentModes,[]);
+  assert.deepEqual(self.snapshot().recentActions,[]);
+});
