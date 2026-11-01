@@ -1,3 +1,14 @@
+## [NK1][CI] Align longitudinal memory holdout workflow with Node 24 (2026-11-01)
+- Replace legacy checkout/setup-node v4 actions with the repository-approved v7 major and resolve Node from the canonical `.nvmrc`.
+- Disable unnecessary npm cache discovery for this focused script-only workflow; add read-only checkout, concurrency cancellation and a bounded timeout.
+- This repairs the repository-wide action-runtime audit failure surfaced by the autonomous runtime PR; holdout methodology and score claims are unchanged.
+
+## [NK1][Autonomy] Harden autonomous life-state restoration (2026-11-01)
+- Restore now reads own data properties only; accessor-backed fields are never invoked and hostile proxy/descriptor failures reset the snapshot atomically to safe defaults.
+- Validate and bound counters, timestamps, normalized ratios, activity/mode/reason fields and the 96-entry recent activity history; malformed rows are skipped and valid history remains newest-first.
+- Detach restored history from caller-owned data and add regressions for getters, hostile proxies, unsafe counters, NaN, invalid modes, sparse history, ratio clamping and mutation after restore.
+- This closes a persistence trust-boundary gap in autonomous runtime continuity; it does not prove background execution, initiative quality or device soak.
+
 ## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
 - Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
 - Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
