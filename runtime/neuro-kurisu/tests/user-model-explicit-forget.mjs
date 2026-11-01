@@ -32,7 +32,7 @@ assert.equal(restored.forgetExplicit({key:'__proto__',domain:'interaction-style'
 
 // Version-1 snapshots remain readable and are upgraded to version 2.
 const legacy=new UserModelEvidenceModel();
-legacy.restore({version:1,claims:[],candidates:[],processedEvidenceRefs:[],rejectedSensitiveCount:0,rejectedMalformedCount:0} as any);
+legacy.restore({version:1,claims:[],candidates:[],processedEvidenceRefs:[],rejectedSensitiveCount:0,rejectedMalformedCount:0});
 assert.equal(legacy.snapshot().version,2);
 assert.equal(legacy.snapshot().forgetTombstones.length,0);
 assert.equal(legacy.recordExplicit({key:'response.style',domain:'interaction-style',value:'balanced',tick:1,evidenceRef:'legacy:new:1',explicit:true,sensitivity:'low-risk'}).status,'confirmed');
