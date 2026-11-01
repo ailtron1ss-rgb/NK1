@@ -3581,3 +3581,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Keep two-to-four clean pairs exploratory, require paired coverage across at least two holdout delays, and exclude duplicate arms from confirmatory means/effects.
 - Expand deterministic regression coverage for the five-pair boundary, negative holdout effect despite positive acquisition aggregate, duplicate-arm downgrade, unpaired delay exclusion and snapshot/restore parity.
 - This strengthens evidence quality; it does not claim positive recall uplift or independent real-world dataset results.
+
+
+## [NK1][WorkPass82] Make MemoryOS2 normalization locale-neutral (2026-11-01)
+- Replace implicit host-locale lowercasing across query intent detection, tokenization, character-gram keys, source/evidence keys, context comparisons and cached query/content matching with deterministic Unicode `toLowerCase()` normalization.
+- Add a regression that simulates Turkish-style `I/İ` casing while indexing and retrieving an English identity memory; retrieval must remain stable without consulting the host locale.
+- Reuse the existing memory-integrity workflow path and `test:memoryos2-metadata-retrieval` command; no duplicate workflow or package script is introduced.
+- This closes a cross-device determinism defect; it does not claim positive recall uplift, independent holdout improvement or Release ZIP publication.

@@ -63,6 +63,29 @@ assert.equal(restored.indexDiagnostics().pass, true,
   'metadata postings must rebuild consistently after restore');
 assert.equal(restored.previewRetrieve('mycelium', 3)[0]?.id, 'm-hidden',
   'metadata recall should survive snapshot/restore');
+// Retrieval keys must not depend on the host's default locale (Turkish I/İ is a common trap).
+// Simulate a Turkish-style locale implementation so the test fails if MemoryOS2 calls
+// toLocaleLowerCase() without an explicit locale anywhere in its indexing/query path.
+const localeLowerCaseDescriptor = Object.getOwnPropertyDescriptor(String.prototype, 'toLocaleLowerCase');
+try {
+  Object.defineProperty(String.prototype, 'toLocaleLowerCase', {
+    configurable: true,
+    writable: true,
+    value: function () {
+      return String(this).replace(/I/g, 'ı').replace(/İ/g, 'i').toLowerCase();
+    },
+  });
+  const localeNeutral = new MemoryOS2({ embeddingProvider: null });
+  localeNeutral.encode(makeMemory('m-locale-neutral', 'Identity continuity must survive restart and cross-device retrieval.'));
+  const localeResult = localeNeutral.previewRetrieveWithDiagnostics('IDENTITY', 3);
+  assert.equal(localeResult.items[0]?.id, 'm-locale-neutral',
+    'English retrieval must remain stable when host locale applies Turkish I/İ casing');
+} finally {
+  if (localeLowerCaseDescriptor) {
+    Object.defineProperty(String.prototype, 'toLocaleLowerCase', localeLowerCaseDescriptor);
+  }
+}
+
 console.log('MEMORYOS2_METADATA_RETRIEVAL=PASS', JSON.stringify({
   baselineTop1: baselineResult.items[0]?.id ?? null,
   metadataTop1: candidateResult.items[0]?.id ?? null,

@@ -76,7 +76,7 @@ residencyTier?: MemoryResidencyTier;
 export type MemoryQueryIntent='episodic'|'procedural'|'identity'|'goal'|'causal'|'factual'|'general';
 /** Lightweight bilingual intent detection; type preference supplements, never replaces, evidence ranking. */
 export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
- const q=String(query??'').normalize('NFKC').toLocaleLowerCase();
+ const q=String(query??'').normalize('NFKC').toLowerCase();
  if(/\b(why|cause|causal|because|reason|effect|consequence)\b|почему|из-за чего|причин|последств|к чему привел|что повлиял/iu.test(q))return 'causal';
  // Explicit profile questions outrank broad recollection markers such as "remember".
  if(/\b(what do you remember about me|what do you remember about my (?:interests|preferences|personality|profile|goals)|what have you learned about me)\b|что ты помнишь (?:обо мне|про меня|о моих (?:интерес|предпочт|чертах|целях))|что ты запомнил[аи]? (?:обо мне|про меня)|что тебе известно обо мне/iu.test(q))return 'identity';
@@ -89,7 +89,7 @@ export function detectMemoryQueryIntent(query:string):MemoryQueryIntent{
 }
 export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):boolean{
  const context=item.context??{};
- const normalizeKey=(key:string)=>key.normalize('NFKC').replace(/[-_\s]/gu,'').toLocaleLowerCase();
+ const normalizeKey=(key:string)=>key.normalize('NFKC').replace(/[-_\s]/gu,'').toLowerCase();
  const hasValue=(value:unknown)=>typeof value==='string'&&value.trim().length>0&&!/^(?:0|false|no|off|none|unknown)$/iu.test(value.trim());
  // Stable lineage is strongest evidence. A relationship, speaker role, message index,
  // turn sequence or arbitrary context value must never impersonate a conversation ID.
@@ -103,7 +103,7 @@ export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):
  const classificationFields=new Set(['type','kind','memorytype','contenttype','sourcetype','recordtype','category','modality','entrytype']);
  const explicitHistoryLabel=(value:unknown)=>{
   if(typeof value!=='string')return false;
-  const normalized=value.normalize('NFKC').toLocaleLowerCase().trim().replace(/[_\s]+/gu,'-');
+  const normalized=value.normalize('NFKC').toLowerCase().trim().replace(/[_\s]+/gu,'-');
   return /^(?:(?:conversation|dialogue|chat|session|transcript|message|discussion)(?:-(?:history|summary|record|transcript|log|import|archive))?|история-(?:бесед|диалога|чата|сессии)|транскрипт(?:-(?:диалога|чата|сессии))?|сводка-разговора|запись-(?:диалога|беседы|чата))$/iu.test(normalized);
  };
  for(const [key,value] of Object.entries(context)){
@@ -114,7 +114,7 @@ export function isConversationMemory(item:Pick<MemoryItem2,'context'|'source'>):
  }
  // Source labels can identify a conversation-history import, but generic values from
  // unrelated context fields are not evidence of dialogue lineage.
- const source=String(item.source??'').normalize('NFKC').toLocaleLowerCase().replace(/[_\s]+/gu,'-');
+ const source=String(item.source??'').normalize('NFKC').toLowerCase().replace(/[_\s]+/gu,'-');
  return /(?:^|-)(?:conversation|dialogue|chat|session|transcript|message|discussion)-(?:history|summary|record|transcript|log|import|archive)(?:-|$)/u.test(source)||
   /(?:^|-)(?:история-бесед|история-диалога|история-чата|история-сессии|транскрипт-диалога|сводка-разговора)(?:-|$)/u.test(source);
 }
@@ -159,10 +159,10 @@ export interface MemoryEvictionWitness {
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 // Keep single-digit numeric tokens: status codes, ratings, short versions and measured values are meaningful retrieval terms. Single-letter words remain excluded.
-const tokenize=(text:string)=>text.toLocaleLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
+const tokenize=(text:string)=>text.toLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{2,}|\p{N}/gu)??[];
 const characterGramCache=new Map<string,Set<string>>();
 function charTrigrams(token:string):Set<string>{
- const key=String(token).toLocaleLowerCase().normalize('NFKC');
+ const key=String(token).toLowerCase().normalize('NFKC');
  const cached=characterGramCache.get(key);if(cached)return cached;
  const chars=[...key];const grams=new Set<string>();
  if(chars.length>=3){const padded=['^',...chars,'$'];for(let i=0;i+2<padded.length;i++)grams.add(padded.slice(i,i+3).join(''));}
@@ -672,7 +672,7 @@ export class MemoryOS2{
    }
   }catch(error){
    for(const item of candidates)failRow(item);
-   const message=String(error instanceof Error?error.message:'embedding-provider-error').toLocaleLowerCase();
+   const message=String(error instanceof Error?error.message:'embedding-provider-error').toLowerCase();
    errorCode=/timeout|deadline/.test(message)?'provider-timeout':/http \d+/.test(message)?'provider-http-error':/vector|dimension|response/.test(message)?'invalid-provider-response':'provider-error';
   }
   const duration=Math.max(0,Date.now()-started);this.lastSemanticIndexMaintenance={lastRunAt:now,lastDurationMs:duration,lastIndexed:indexed,lastFailed:failed,lastStaleSkipped:staleSkipped,lastErrorCode:errorCode};
@@ -872,14 +872,14 @@ export class MemoryOS2{
   for(const [key,value] of Object.entries(item.context??{}).slice(0,32))if(allowedContextKeys.test(key)&&typeof value==='string'&&value.trim())parts.push(value.trim().slice(0,160));
   return this.tokensFor(parts.join(' '));
  }
- private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLocaleLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
+ private lowerFor(id:string,text:string){const hit=this.lowerContentCache.get(id);if(hit!==undefined)return hit;const value=text.toLowerCase();if(this.lowerContentCache.size>=512){const first=this.lowerContentCache.keys().next().value as string|undefined;if(first)this.lowerContentCache.delete(first);}this.lowerContentCache.set(id,value);return value;}
  private provenanceStrength(m:MemoryItem2){const authority=clamp(Number(m.sourceAuthority01??.5));const reliability=clamp(Number(m.confidence??.5));const independence=m.independenceKey?1:0;const classBonus=m.provenanceClass==='device'?1:m.provenanceClass==='external'?.92:m.provenanceClass==='user'?.86:m.provenanceClass==='agent'?.68:m.provenanceClass==='derived'?.52:m.provenanceClass==='simulation'?.28:.5;const independentWitnesses=Math.max(0,this.independentEvidenceCount(m)-1);return clamp(authority*.50+reliability*.24+independence*.06+classBonus*.10+Math.min(.10,independentWitnesses*.025));}
  private provenanceClassFor(source:string,explicit?:MemoryProvenanceClass):MemoryProvenanceClass{if(explicit&&['device','external','user','agent','derived','simulation','unknown'].includes(explicit))return explicit;const s=String(source).toLowerCase();if(s.includes('device')||s.includes('android'))return 'device';if(s.includes('external')||s.includes('api')||s.includes('os'))return 'external';if(s.includes('user'))return 'user';if(s.includes('simulation')||s.includes('synthetic'))return 'simulation';if(s.includes('agent')||s.includes('model')||s.includes('llm'))return 'agent';if(s.includes('derived'))return 'derived';return 'unknown';}
  private sourceAuthorityDefault(provenanceClass:MemoryProvenanceClass){return ({device:.95,external:.9,user:.86,agent:.68,derived:.52,simulation:.28,unknown:.5} as Record<MemoryProvenanceClass,number>)[provenanceClass]??.5;}
  private evidenceKey(evidence:Pick<MemoryEvidenceSource,'source'|'provenanceClass'|'independenceKey'>){
-  const independent=String(evidence.independenceKey??'').trim().normalize('NFKC').toLocaleLowerCase();
+  const independent=String(evidence.independenceKey??'').trim().normalize('NFKC').toLowerCase();
   if(independent)return `lineage:${independent}`;
-  return `source:${String(evidence.provenanceClass)}:${String(evidence.source??'').trim().normalize('NFKC').toLocaleLowerCase()}`;
+  return `source:${String(evidence.provenanceClass)}:${String(evidence.source??'').trim().normalize('NFKC').toLowerCase()}`;
  }
  private normalizeEvidenceSources(item:any):MemoryEvidenceSource[]{
   const finite=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?value:fallback;
@@ -929,7 +929,7 @@ export class MemoryOS2{
   if(newer.id===older.id)return {score:0,contextConflict:false,polarityConflict:false,entityOverlap:0,semantic:0};
   const semantic=cosine(newer.semanticVector.length?newer.semanticVector:vectorize(newer.content),older.semanticVector.length?older.semanticVector:vectorize(older.content));
   const entityOverlap=overlap(newer.entities,older.entities); const newCtx=newer.context??{}; const oldCtx=older.context??{};
-  let contextConflict=false; for(const key of Object.keys(newCtx)){if(!(key in oldCtx))continue;const nv=String(newCtx[key]??'').trim().toLocaleLowerCase();const ov=String(oldCtx[key]??'').trim().toLocaleLowerCase();if(nv&&ov&&nv!==ov){contextConflict=true;break;}}
+  let contextConflict=false; for(const key of Object.keys(newCtx)){if(!(key in oldCtx))continue;const nv=String(newCtx[key]??'').trim().toLowerCase();const ov=String(oldCtx[key]??'').trim().toLowerCase();if(nv&&ov&&nv!==ov){contextConflict=true;break;}}
   const polarityConflict=sharedEntityCount(newer.entities,older.entities)>=2&&hasNegationPolarityDifference(newer.content,older.content);
   const identifierShift=identifierLike(newer.content)!==identifierLike(older.content)&&entityOverlap>=.18;
   const score=Math.max(contextConflict&&semantic>=.55?.90:0,polarityConflict&&semantic>=.64?.82:0,identifierShift&&semantic>=.70?.76:0);
@@ -1056,7 +1056,7 @@ export class MemoryOS2{
    // explicit `at` mode opts into historical time; `all` remains an archive view.
    const now=temporalMode==='at'&&requestedAsOf!==undefined?requestedAsOf:wallClockNow;
    const isValidAt=(m:MemoryItem2,at:number)=>{const from=Number(m.validFromAt??m.createdAt),until=m.validUntilAt==null?Number.POSITIVE_INFINITY:Number(m.validUntilAt);return from<=at&&at<until;};
-   const queryLower=query.toLocaleLowerCase();
+   const queryLower=query.toLowerCase();
    const queryIntentMode=detectMemoryQueryIntent(query);
    // Context belongs to the current query, not a lifetime counter. Using
    // linkUpdates/semanticQueries here made unrelated questions drift into causal
