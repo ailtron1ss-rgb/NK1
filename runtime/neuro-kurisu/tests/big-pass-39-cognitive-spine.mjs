@@ -38,6 +38,46 @@ const constrainedUrgent = constrainedScheduler.decide({
 assert.equal(constrainedUrgent.mode, 'protect');
 assert.ok(Object.values(constrainedUrgent.run).every(value => value === false));
 
+
+// Restore is a trust boundary: persisted counters are normalized and accessors are never executed.
+const scheduleSource = new CognitiveSpineScheduler();
+scheduleSource.decide({ tick: 4, surprise01: .1, predictionError01: .1, novelty01: .1, goalPressure01: .1, budgetMode: 'balanced', remainingBudget01: .9, externalInput: false, awake: false });
+const scheduleSnapshot = scheduleSource.snapshot();
+const scheduleRestored = new CognitiveSpineScheduler();
+scheduleRestored.restore(scheduleSnapshot);
+assert.deepEqual(scheduleRestored.snapshot(), scheduleSnapshot, 'valid scheduler snapshots must round-trip');
+
+let restoreGetterReads = 0;
+const accessorRuns = { 'world-rollout': 2, shadow: 3, project: 4 };
+Object.defineProperty(accessorRuns, 'research', { enumerable: true, get() { restoreGetterReads += 1; return 99; } });
+const accessorSchedule = { version: 1, mode: 'deep', lastDecisionAt: 12, runs: accessorRuns, skips: {}, opportunities: {}, savings01: 4, lastReason: 'x'.repeat(512) };
+Object.defineProperty(accessorSchedule, 'lastTick', { enumerable: true, get() { restoreGetterReads += 1; return 999; } });
+const accessorRestored = new CognitiveSpineScheduler();
+assert.doesNotThrow(() => accessorRestored.restore(accessorSchedule));
+const accessorState = accessorRestored.snapshot();
+assert.equal(restoreGetterReads, 0, 'restore must not execute root or nested getters');
+assert.equal(accessorState.mode, 'deep');
+assert.equal(accessorState.lastTick, 0, 'accessor-backed tick must use the safe default');
+assert.equal(accessorState.runs.research, 0, 'accessor-backed counter must use the safe default');
+assert.equal(accessorState.runs['world-rollout'], 2);
+assert.equal(accessorState.savings01, 1, 'finite metrics must be clamped');
+assert.equal(accessorState.lastReason.length, 180, 'restored diagnostic text must be bounded');
+
+const malformedSchedule = new CognitiveSpineScheduler();
+malformedSchedule.restore({ version: 99, mode: 'deep', lastTick: Number.MAX_SAFE_INTEGER + 1, runs: { research: -1 } });
+assert.deepEqual(malformedSchedule.snapshot(), {
+  version: 1, mode: 'balanced', lastTick: 0, lastDecisionAt: 0,
+  runs: { research: 0, 'world-rollout': 0, shadow: 0, project: 0 },
+  skips: { research: 0, 'world-rollout': 0, shadow: 0, project: 0 },
+  opportunities: { research: 0, 'world-rollout': 0, shadow: 0, project: 0 },
+  savings01: 0, lastReason: 'initial',
+}, 'unsupported scheduler snapshots must reset to a clean baseline');
+
+const revokedSchedule = Proxy.revocable({}, {});
+revokedSchedule.revoke();
+assert.doesNotThrow(() => malformedSchedule.restore(revokedSchedule.proxy), 'revoked proxies must not escape restore');
+assert.equal(malformedSchedule.snapshot().lastReason, 'initial');
+
 const self=new SelfPredictionBenchmark();
 self.seed({tick:1,predicted:'verify',confidence01:.8,horizon:1,at:1});
 assert.equal(self.snapshot().pending.length,1);
