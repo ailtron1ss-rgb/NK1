@@ -126,4 +126,15 @@ const replayedFirstCorrection = firstCorrectionModel.recordExplicit({
 });
 assert.deepEqual(replayedFirstCorrection, { accepted: false, reason: 'duplicate-evidence' });
 
+// A persisted claim is itself durable evidence: even a damaged or partial
+// replay ledger must not allow its current evidenceRef to be consumed again.
+const claimReplayGuard = new UserModelEvidenceModel();
+const claimSnapshotWithoutLedger = model.snapshot();
+claimSnapshotWithoutLedger.processedEvidenceRefs = [];
+claimReplayGuard.restore(claimSnapshotWithoutLedger);
+assert.ok(claimReplayGuard.snapshot().processedEvidenceRefs.includes('turn:8'));
+assert.deepEqual(claimReplayGuard.recordExplicit({
+  ...base, key: 'reply.detail', value: 'detailed', tick: 9, evidenceRef: 'turn:8',
+}), { accepted: false, reason: 'duplicate-evidence' });
+
 console.log('UserModelEvidenceModel: all assertions passed');
