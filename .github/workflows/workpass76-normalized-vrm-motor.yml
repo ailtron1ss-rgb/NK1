@@ -5,6 +5,7 @@ on:
     branches: [workpass70-source]
     paths:
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
       - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/scripts/vrm-normalized-humanoid.integration.test.mjs"
@@ -39,6 +40,8 @@ jobs:
         run: npm --prefix app run test:vrm-runtime-adapter
       - name: Verify actual three-vrm normalized humanoid transfer
         run: npm --prefix app run test:vrm-normalized-humanoid
+      - name: Verify native 3D stage integration contract
+        run: node --test app/scripts/avatar-3d-stage.test.mjs
       - name: App typecheck
         run: npm --prefix app run typecheck
       - name: App production build

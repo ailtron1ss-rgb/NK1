@@ -1,3 +1,15 @@
+## [NK1][Embodiment] Normalize VRM humanoid motor ownership (WorkPass76, 2026-11-01)
+- Replace the separate per-bone VRM write loop with one typed normalized humanoid adapter; configure `autoUpdateHumanBones`, split head/neck intent 35/65 and reset controlled proxies each frame to prevent drift.
+- Preserve the existing NK1 precomputed left/right arm intent (including affect/social modifiers), standard VRM expression and viseme mapping, bounded frame delta, and GLB fallback.
+- Disable raw-targeted GLTF mixer for VRM until a VRMA/normalized retargeter exists; add deep VRM disposal on replacement, load failure, reset and teardown.
+- Add unit tests plus an integration test using the real `VRMHumanoid` implementation, and a focused CI workflow with typecheck/build. No spatial IK, full-body locomotion, visual browser E2E or phone soak is claimed.
+
+## [NK1][Embodiment] Wire renderer handoff into the avatar UI (Aspect 11, 2026-11-01)
+- Add `embodimentUiBridge.ts` to project the canonical organism snapshot into the shared `SemanticBodyState`, validate/clamp handoff input, and declare only channels each current renderer actually supports.
+- Connect `AvatarStage.tsx` mode changes to `planEmbodimentSwitch`, a bounded 220 ms crossfade and truthful diagnostics for unsupported channels. Keep the effect independent of per-tick snapshot churn by reading latest values through refs.
+- Add nine UI-bridge regressions and include them in the embodiment workflow. Renderer handoff is not an `AdapterApplyReceipt` and does not claim that a destination applied a pose or completed a frame.
+- 2.5D depth-rig remains outside the active render path; this stage wires existing 2D-class and Three.js 3D modes only. Browser/WebGL visual E2E and Android/device soak remain pending.
+
 ## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
 - Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
 - Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
@@ -3329,8 +3341,3 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Wire snapshot/restore into SelfSubsystemRuntime and the critical persistence projection; add runtime and model regressions to WorkPass79.
 - This is a bounded preference model, not a complete Theory-of-Mind engine or automatic response-policy integration.
 
-## [NK1][Embodiment] Normalize VRM humanoid motor ownership (WorkPass76, 2026-11-01)
-- Replace the separate per-bone VRM write loop with one typed normalized humanoid adapter; configure `autoUpdateHumanBones`, split head/neck intent 35/65 and reset controlled proxies each frame to prevent drift.
-- Preserve the existing NK1 precomputed left/right arm intent (including affect/social modifiers), standard VRM expression and viseme mapping, bounded frame delta, and GLB fallback.
-- Disable raw-targeted GLTF mixer for VRM until a VRMA/normalized retargeter exists; add deep VRM disposal on replacement, load failure, reset and teardown.
-- Add unit tests plus an integration test using the real `VRMHumanoid` implementation, and a focused CI workflow with typecheck/build. No spatial IK, full-body locomotion, visual browser E2E or phone soak is claimed.
