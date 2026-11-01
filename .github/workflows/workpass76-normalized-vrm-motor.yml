@@ -6,13 +6,14 @@ on:
     paths:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/scripts/vrm-normalized-humanoid.integration.test.mjs"
       - "app/package.json"
       - "app/package-lock.json"
       - ".github/workflows/workpass76-normalized-vrm-motor.yml"
   push:
-    branches: [work/nk1-vrm-normalized-motor-source-sync-2026-11-01]
+    branches: [work/nk1-vrm-normalized-motor-source-sync-2026-11-01, work/nk1-vrm-normalized-motor-rebased-2026-11-01]
   workflow_dispatch:
 
 permissions:
