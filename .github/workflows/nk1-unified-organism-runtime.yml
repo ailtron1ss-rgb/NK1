@@ -56,6 +56,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:world-perception
       - name: Cognitive planner and persistent personality restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:workpass611:cognitive-planner-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass612:p2702-personality-restore && npm --prefix runtime/neuro-kurisu run test:p2702:personality && npm --prefix runtime/neuro-kurisu run test:workpass610:brain-fusion-strip-only && npm --prefix runtime/neuro-kurisu run test:cognitive-runtime-planner-execution-gate
+      - name: Neural experience branch restore boundary and learning round-trip
+        run: npm --prefix runtime/neuro-kurisu run test:workpass613:neural-branch-restore && npm --prefix runtime/neuro-kurisu run test:b2522:neural-branch
       - name: Cognitive spine, world feedback and project-tool boundary
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-39
       - name: Continuity and organism integration
