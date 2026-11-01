@@ -73,6 +73,19 @@ assert.deepEqual(malformedSchedule.snapshot(), {
   savings01: 0, lastReason: 'initial',
 }, 'unsupported scheduler snapshots must reset to a clean baseline');
 
+const malformedCounters = new CognitiveSpineScheduler();
+malformedCounters.restore({ version: 1, mode: 'unknown', lastTick: -1, lastDecisionAt: Number.MAX_SAFE_INTEGER + 1, runs: { research: -1, 'world-rollout': 2.5, shadow: Number.MAX_SAFE_INTEGER + 1, project: 2 }, skips: { research: 3 }, opportunities: {} });
+const normalizedCounters = malformedCounters.snapshot();
+assert.equal(normalizedCounters.mode, 'balanced', 'unknown modes must use the safe default');
+assert.equal(normalizedCounters.lastTick, 0);
+assert.equal(normalizedCounters.lastDecisionAt, 0);
+assert.deepEqual(normalizedCounters.runs, { research: 0, 'world-rollout': 0, shadow: 0, project: 2 });
+assert.equal(normalizedCounters.skips.research, 3);
+
+const hostileProxy = new Proxy({}, { getPrototypeOf() { throw new Error('hostile-reflection'); } });
+assert.doesNotThrow(() => malformedCounters.restore(hostileProxy), 'hostile Proxy reflection must not escape restore');
+assert.equal(malformedCounters.snapshot().lastReason, 'initial');
+
 const revokedSchedule = Proxy.revocable({}, {});
 revokedSchedule.revoke();
 assert.doesNotThrow(() => malformedSchedule.restore(revokedSchedule.proxy), 'revoked proxies must not escape restore');
