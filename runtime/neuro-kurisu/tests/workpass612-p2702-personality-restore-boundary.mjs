@@ -83,6 +83,9 @@ assert.equal(coercionGuard.snapshot().tick,defaults.tick);
 assert.equal(coercionGuard.snapshot().relationshipTrust['user:coercion'],undefined);
 assert.equal(coercionGuard.snapshot().actionPreference.explore,defaults.actionPreference.explore);
 
+const dangerousTrust={'user:good':.7,'user:bad':NaN};
+Object.defineProperty(dangerousTrust,'__proto__',{value:.99,enumerable:true});
+Object.defineProperty(dangerousTrust,'constructor',{value:.8,enumerable:true});
 const malformed={
   ...valid,
   version:1,
@@ -95,7 +98,7 @@ const malformed={
   stability01:Infinity,
   coherence01:-3,
   actionPreference:{explore:3,respond:-3,unknown:1},
-  relationshipTrust:{'user:good':.7,'user:bad':NaN,'__proto__':.99,constructor:.8},
+  relationshipTrust:dangerousTrust,
 };
 const sanitized=new P2702PersistentPersonalityDynamics();
 sanitized.restore(malformed);
