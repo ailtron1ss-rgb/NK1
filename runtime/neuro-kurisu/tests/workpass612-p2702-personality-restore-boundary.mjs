@@ -110,7 +110,7 @@ assert.deepEqual(snapshot.adaptiveValues,defaults.adaptiveValues,'mislabelled pe
 assert.deepEqual(snapshot.valueNames,defaults.valueNames);
 assert.deepEqual(snapshot.valueWeights,defaults.valueWeights);
 assert.equal(snapshot.selfUncertainty[0],.03,'finite metrics are clamped to their documented uncertainty floor');
-assert.deepEqual(snapshot.selfUncertainty.slice(1),defaults.selfUncertainty.slice(1));
+assert.deepEqual(snapshot.selfUncertainty.slice(1),valid.selfUncertainty.slice(1),'valid historical uncertainty entries must survive partial sanitization');
 assert.equal(snapshot.stability01,defaults.stability01);
 assert.equal(snapshot.coherence01,0);
 assert.equal(snapshot.actionPreference.explore,1);
