@@ -1,3 +1,10 @@
+## [NK1][Affect] Normalize outcome calibration to canonical actions (2026-11-01)
+- Normalize feedback action keys through the canonical seven-action map before recording calibration; eight appraisal tendencies are accepted as aliases (engage/approach→respond, protect→rest, withdraw→wait, etc.).
+- Reuse the same normalization for calibration lookups so feedback and future action priors read the same state key.
+- Reject unknown outcome-action keys with an explicit boundary error rather than storing unreachable calibration entries.
+- Add WorkPass634 regression for approach→respond calibration, alias lookup and unknown-key rejection.
+- Latest exact PR head `06add685631fc10e221c725ebebe21bfc61fc000` has unified workflow #41332558517 reported failure with no step list/log URL; test/typecheck execution remains unverified.
+
 ## [NK1][Affect] Record causal appraisal-to-action evidence — WorkPass635 (2026-11-01)
 - Add a typed, optional AffectDecisionEvidence record to canonical OrganismDecisionTrace with episode identity, emotional label/tendency, valence/arousal/dominance, appraisal confidence, attention capture, feeling intensity, interoceptive mismatch and regulation pressure.
 - Record separate direct action prior, selected Global Workspace affect prior and their bounded combined value for the final selected canonical action.
