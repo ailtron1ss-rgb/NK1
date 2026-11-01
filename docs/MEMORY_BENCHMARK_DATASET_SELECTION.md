@@ -51,7 +51,15 @@ A later independent review by the ReMe team published `agentscope-ai/ReMe_longme
 - The reviewed dataset card does not clearly declare a separate redistribution license. Keep it as a user-supplied local evaluation file pending license review; do not commit or mirror it in NK1.
 - Compare the original and reviewed ground-truth reports separately. Do not combine them into one score or treat the reviewed labels as the original benchmark's official labels.
 
-Run it with the same CLI, using the reviewed filename `longmemeval_s_reme_cleaned.json`. The runner computes the exact local file SHA-256 and records it in the report. Preserve the generated-file SHA above for independent verification.
+Run it with the reviewed filename `longmemeval_s_reme_cleaned.json` and an exact 40-character commit SHA from that dataset's Hugging Face history:
+
+```bash
+node --experimental-strip-types runtime/neuro-kurisu/tests/run-longmemeval-memory-benchmark.mjs \\
+  --dataset /path/to/longmemeval_s_reme_cleaned.json \\
+  --revision <40-character-ReMe-dataset-commit-sha>
+```
+
+The runner refuses to reuse the upstream dataset revision, defaults the reviewed source ID to `agentscope-ai/ReMe_longmemeval_clean_s_v2`, verifies the published generated-file SHA-256, and marks its license as `not-verified` unless an explicit reviewed license is supplied. The report's source URL uses the selected dataset ID, revision and filename.
 
 ## Interpretation limits
 
