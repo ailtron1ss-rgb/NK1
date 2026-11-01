@@ -1,3 +1,8 @@
+## [NK1][Checkpoint] Record merged renderer refactor and verify Release asset metadata (2026-11-01)
+- Record PR #507 merge `ef1ed6b078d4001f526c9c82c86d7d81b950507f` and its 10/10 successful exact-PR-head workflows, including the new real Three.js toon-material lifecycle test.
+- Query the public GitHub Releases API and correct the README checkpoint to the actual latest asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Preserve the release gate: no new ZIP was built or published; the global human license review, root/runtime license decisions, 462 locked dependency review and 8 source-archive decisions remain pending.
+
 ## [NK1][Embodiment] Extract and test the Three.js toon material adapter (2026-11-01)
 - Move procedural cel-shading material creation, non-VRM GLB material conversion, shared gradient ownership and source-material cleanup out of the React avatar stage into a renderer-focused module.
 - Add real Three.js tests for shared-material conversion, physical-material conversion, unchanged non-PBR materials, texture-reference preservation, source-material disposal and shared renderer-gradient lifetime.
