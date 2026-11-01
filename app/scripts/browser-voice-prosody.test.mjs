@@ -60,6 +60,6 @@ test("browser voice affect is taken as one coherent current organism snapshot", 
   assert.deepEqual(resolveBrowserVoiceAffect(current), { emotion: "joy", arousal: 0.82, valence: 0.91 });
   assert.deepEqual(resolveBrowserVoiceAffect({ label: "unknown", arousal: 4, valence: -2 }), { emotion: "calm", arousal: 1, valence: 0 });
   const component = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
-  assert.match(component, /resolveBrowserVoiceAffect\\(snap\\.emotion\\)/);
-  assert.doesNotMatch(component, /lastTurn\\.emotion\\s*\\?\\?/);
+  assert.match(component, /resolveBrowserVoiceAffect\(snap\.emotion\)/);
+  assert.doesNotMatch(component, /lastTurn\.emotion\s*\?\?/);
 });
