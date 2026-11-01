@@ -34,11 +34,15 @@ export interface SemanticBodyProjectionInput {
   revision: number;
   monotonicMs: number;
   headTilt: number;
-  gaze: { x: number; y: number };
-  speechPhase: SpeechPhase;
-  speechEventId: string | null;
+  /** Optional because sensor providers may omit a sample during handoff/reconnect. */
+  gaze?: { x: number; y: number } | null;
+  /** Untrusted provider lifecycle data is normalized before entering semantic state. */
+  speechPhase: unknown;
+  /** Opaque external event identity; malformed values are dropped at the boundary. */
+  speechEventId: unknown;
   audioTimeMs: number;
-  mouth: MouthPose;
+  /** Optional because viseme/mouth samples can be absent between audio frames. */
+  mouth?: MouthPose | null;
 }
 
 const EXPRESSION_CHANNELS: readonly ExpressionChannel[] = [
