@@ -163,7 +163,7 @@ export class EmotionAppraisalEngine {
     const learned=calibration
       ? (calibration.meanBenefit01-.5)*.035*calibrationReliability:0;
     const confidenceGate=c((c(e.confidence01)-.45)/.40);
-    const attentionGate=c(.35+c(e.interoceptiveDelta.attentionCapture01*.65);
+    const attentionGate=c(.35+c(e.interoceptiveDelta.attentionCapture01)*.65);
     const regulation=c(intero.regulationPressure01);
     const prior=(tendencyPrior[e.actionTendency]?.[action]??0)
       +regulation*regulationPrior[action]+learned;
