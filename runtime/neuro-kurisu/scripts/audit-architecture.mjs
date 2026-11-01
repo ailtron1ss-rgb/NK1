@@ -18,10 +18,10 @@ const isIdChar=ch=>ch!==undefined&&/[A-Za-z0-9_$]/.test(ch);
 // text: string literals such as assert.ok(source.includes("from './X.ts'"))
 // are documentation strings, not imports, and must not enter the module graph.
 function extractRelativeSpecifiers(src){
-  const runtimeText=src.replace(/import\\s+type\\s+[^;\\n]+from\\s+['\\\"][^'\\\"]+['\\\"]\\s*;?/g,'');
+  const runtimeText=src.replace(/import\s+type\s+[^;\n]+from\s+['"][^'"]+['"]\s*;?/g,'');
   const masked=maskNonCode(runtimeText);
   const out=[];
-  const pat=/(?:from\\s*|import\\s*\\(|require\\s*\\()(['\\\"])(\\.\\.?\\/[^'\\\"]+)\\1/g;
+  const pat=/(?:from\s*|import\s*\(|require\s*\()(['"])(\.{1,2}\/[^'"]+)\1/g;
   let match;
   while((match=pat.exec(runtimeText))){
     // The introducer remains executable code in a real import; a match wholly
