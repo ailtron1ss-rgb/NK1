@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
+- Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
+- Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
+- Add regressions for dangling references, cross-list contradictions and a valid disjoint status pair.
+- This closes a frame-integrity gap at the renderer-neutral mapping boundary; it does not claim renderer readback, visual E2E, physical calibration or device soak.
+
 ## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
 - Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
 - Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
