@@ -27,7 +27,7 @@ on:
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
   push:
-    branches: [work/nk1-embodiment-ui-bridge-source-sync-2026-11-01]
+    branches: [workpass70-source]
 
 permissions:
   contents: read
