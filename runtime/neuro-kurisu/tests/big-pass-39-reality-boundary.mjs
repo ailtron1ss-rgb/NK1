@@ -2,12 +2,28 @@ import assert from 'node:assert/strict';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { RELEASE_CONTRACT } from '../src/organism/system/ReleaseContract.ts';
+import { WorldSubsystemRuntime } from '../src/organism/core/WorldSubsystemRuntime.ts';
+
+const worldRuntime = new WorldSubsystemRuntime();
+const worldSnapshotBefore = worldRuntime.worldLearningSnapshot();
+const validContext = (tick) => ({
+  tick, location:'sim', energy:.8, attention:.7, uncertainty:.2,
+  facts:[], objects:[], events:[],
+});
+assert.throws(() => worldRuntime.observeActionOutcome({
+  action:'observe',
+  before:validContext(0),
+  after:{...validContext(1),objects:undefined},
+  reward:.7,surprise:.1,at:Date.now(),
+}), { name:'TypeError', message:'invalid-world-transition' });
+assert.deepEqual(worldRuntime.worldLearningSnapshot(),worldSnapshotBefore,
+  'malformed feedback must be rejected before any world model is mutated');
 
 const store=new MemoryStateStore();
 const core=new OrganismCore(store,{enableWorldModel:true,enableLanguage:false,enableSelfProjects:true,includeAdvancedCycleSnapshot:false,checkpointMinIntervalMs:60000,checkpointMaxDirtyCycles:64});
 await core.init();
 await core.observe({worldContext:{location:'sim',uncertainty:.2},embodiment:{bodyEnergy01:.82,cognitiveCapacity01:.9,thermalStrain01:.18,sensoryFreshness01:.9,awake:true}});
-await core.feedback({success:.8,reward:.7,evidenceSource:'simulator',surprise:.1,worldTransition:{action:'observe',before:{},after:{},reward:.7,surprise:.1,at:Date.now()}});
+await core.feedback({success:.8,reward:.7,evidenceSource:'simulator',surprise:.1,worldTransition:{action:'observe',before:validContext(0),after:validContext(1),reward:.7,surprise:.1,at:Date.now()}});
 let s=core.externalEvidenceSnapshot();
 const sim=s.records.at(-1);
 assert.ok(sim);
