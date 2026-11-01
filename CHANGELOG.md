@@ -3321,3 +3321,11 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
 - Bind browser TTS prosody to the same current affect snapshot used by the avatar; add focused regression coverage and CI.
 - This validates state coherence, not acoustic timing, voice quality or device synchronization.
+
+## [NK1][Aspect 05] Evidence-bounded UserModel integrated into SelfSubsystemRuntime (2026-11-01)
+- Add one canonical UserModelEvidenceModel owner for explicitly stated, low-risk interaction preferences; inferred behavior remains an unconfirmed hypothesis with confidence capped at 0.65.
+- Preserve contradiction and explicit correction states; expose a read-only decision context that excludes disputed claims from confirmed facts.
+- Reject sensitive/unclassified input, duplicate/missing evidence references, malformed values, unknown snapshot versions, invalid claim statuses, reversed chronology and accessor-backed restore data.
+- Wire snapshot/restore into SelfSubsystemRuntime and the critical persistence projection; add runtime and model regressions to WorkPass79.
+- This is a bounded preference model, not a complete Theory-of-Mind engine or automatic response-policy integration.
+
