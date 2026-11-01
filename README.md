@@ -1,3 +1,35 @@
+## Актуальный инженерный checkpoint — 1 ноября 2026
+
+**Рабочая ветка:** `workpass70-source`  
+**Проверенный кодовый HEAD:** `c6ab2f97e4922dc04d3d19ce2aae857824c21992`
+
+### Что изменено
+- **WorkPass608 / MemoryOS2:** продвижение bilingual retrieval теперь учитывает независимые группы исходных эпизодов/документов отдельно для RU и EN; повторные запросы из одного источника не должны искусственно увеличивать статистическую независимость holdout.
+- **Embodiment:** процедурная 3D-модель и non-VRM GLB получили anime cel-shading; VRM сохраняет собственные MToon-материалы.
+- **GPU lifecycle:** процедурные и импортированные toon-материалы повторно используют одну лениво создаваемую градиентную DataTexture вместо выделения отдельной GPU-текстуры на каждый материал.
+- **Regression:** добавлена проверка кэша общей градиентной текстуры.
+
+### Проверка exact HEAD
+- [NeuroCore core regression validation — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41275129040) для указанного HEAD: app script regression, app typecheck, app development build, runtime typecheck, memory retrieval experiment с unanswerable holdout, memory annotation pack, Live2D/avatar, EILS, P23 learning, cognitive spine, local LLM и speech regressions.
+- [Hexis source lineage contract — SUCCESS](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41275129009) для указанного HEAD: runtime typecheck, canonical evidence lineage, live server conflict/replay и belief/trust/adaptation contracts.
+
+### Что эти результаты НЕ доказывают
+- Независимый внешний RU/EN holdout ещё не даёт основания заявлять о доказанном retrieval uplift.
+- Успешный CI не заменяет browser/WebGL E2E, реальный Android/Termux audio soak или длительный production soak.
+- Cel-shading — улучшение renderer, а не готовая полноценная Kurisu VRM-модель.
+- Никаких выводов о субъективном сознании из этих проверок не делается.
+
+### Release status
+Последний подтверждённый полный Release ZIP по-прежнему **WorkPass70 Hotfix 1 от 19 октября 2026**. В этом проходе Release asset не пересобирался и не публиковался. Следующая публикация должна пройти exact-SHA regression, source freshness, provenance/SBOM и license gates; до подтверждения нового asset он не считается обновлённым.
+
+### Следующие приоритеты
+1. Получить и проверить независимый лицензированный RU/EN holdout, затем сравнить retrieval по paired seeds, recall, MRR, abstention, forgetting и стоимости.
+2. Провести browser/WebGL E2E для procedural/GLB/VRM и проверку повторной загрузки/освобождения GPU-ресурсов.
+3. Закрыть Android/Termux audio synchronization и длительный soak.
+4. Только после прохождения release gates собрать и проверить новый полный Release ZIP.
+
+---
+
 ## Current source-stack checkpoint — WorkPass272 (2026-10-22)
 
 - WorkPass272 hardens evaluator authority isolation: a shared predicate now requires both non-overlapping resolved paths and distinct device/inode filesystem identities for run/survive storage roots, including case-insensitive path comparisons on Windows.
