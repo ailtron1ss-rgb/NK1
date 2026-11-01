@@ -1,6 +1,6 @@
 ## [NK1][CI] Align avatar preflight workflow with repository Node 24 contract (2026-11-01)
 - Upgrade avatar-model-preflight workflow actions to the repository-approved v7 releases and derive Node from the root `.nvmrc` instead of pinning obsolete Node 22.16.0.
-- Add `avatarModelPreflight.ts` to the pull-request path filter so changes to the parser implementation actually trigger its dedicated contract suite.
+- Add `avatarModelPreflight.ts` to the pull-request path filter so changes to the parser implementation actually trigger its dedicated contract suite; disable setup-node's automatic npm cache because this workspace has no root lockfile.
 - This repairs a base-branch CI reliability audit failure discovered while validating the motor-frame boundary pass; no runtime behavior or external service configuration changes.
 
 ## [NK1][Embodiment] Enforce normalized motor-frame calibration bounds (2026-11-01)
