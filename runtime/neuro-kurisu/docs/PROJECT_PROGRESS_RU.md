@@ -8,7 +8,7 @@
 |---|---|
 | Рабочий репозиторий | `ailtron1ss-rgb/NK1` |
 | Рабочая ветка | `workpass70-source` |
-| Кодовый baseline до этого doc-only обновления | `795bb672fd3af0a5ec85cc7d783d00a9226fe083` |
+| Кодовый baseline на начало текущего инженерного прохода | `608435493b4af3b4a222d385f1b77d978d18583b` |
 | Приложение | `35.90.0` |
 | Organism Core | `100.32.0-r26-hierarchical-lowrank-causal` |
 | State schema | `225` |
@@ -45,6 +45,13 @@ Merged: `2026-11-01` · merge commit `795bb672fd3af0a5ec85cc7d783d00a9226fe083`.
 - Добавлен regression test и подключён к `test:rebuild-recovered) и unified organism runtime workflow.
 
 **CI для точного PR head:** 36/36 workflow runs завершились success. Unified organism runtime также завершился success: runtime typecheck, unified cognitive cycle, автономная cadence, endogenous motivation, world perception, planner restore integrity, continuity integration и organism smoke — PASS. Это подтверждает указанные CI gates, но не заменяет Android soak, независимые holdout-эксперименты или Release ZIP verification.
+
+## Реестр runtime-тестов — текущая доработка
+
+- База прохода: `workpass70-source` SHA `608435493b4af3b4a222d385f1b77d978d18583b`.
+- В базовом HEAD уже устранён повторный вызов `test:workpass611:cognitive-planner-restore-integrity` внутри `test:rebuild-recovered`; сама команда и тест сохранены.
+- В текущей feature-ветке аудит дополнен запретом повторного запуска одной и той же дочерней `test:*` команды внутри составного `test:*` script. Добавлены unit-регрессии и шаг unified organism CI.
+- Статус этой доработки: **implemented in feature branch; CI pending; not merged; not released**. Проверка реестра статическая и не доказывает прохождение всех тестов или качество поведения организма.
 
 ## Когнитивные и системные области
 

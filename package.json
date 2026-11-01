@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test:rebuild-recovered": "npm --prefix runtime/neuro-kurisu run test:rebuild-recovered && npm --prefix app run test:avatar-storage && npm --prefix app run test:live2d-expression-cache && npm run test:release-license-readiness && npm run test:avatar-motor-intent",
+    "test:runtime-test-coverage-audit": "node --test tools/audit-runtime-test-coverage.test.mjs",
     "dev": "node tools/super-dev.mjs",
     "start": "node tools/super-start.mjs",
     "build": "npm --prefix app run build",
