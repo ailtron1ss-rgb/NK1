@@ -78,3 +78,22 @@ test("rejects dangling and contradictory reached/blocked joint references", () =
   assert.equal(valid.accepted, true);
   assert.deepEqual(valid.mappedJointIds, ["left_elbow", "right_elbow"]);
 });
+
+test("fails closed on accessor-backed, inherited and proxy-backed frame records", () => {
+  let getterCalls = 0;
+  const getterFrame = frame();
+  Object.defineProperty(getterFrame, "tick", { enumerable: true, configurable: true, get() { getterCalls += 1; return 7; } });
+  assert.equal(mapMotorFrameToSemanticPose(getterFrame, profile).reason, "invalid-motor-frame");
+  assert.equal(getterCalls, 0);
+
+  const inheritedFrame = Object.assign(Object.create({ version: 1 }), frame());
+  assert.equal(mapMotorFrameToSemanticPose(inheritedFrame, profile).reason, "invalid-motor-frame");
+
+  const getterJoint = { ...frame().joints.left_elbow };
+  Object.defineProperty(getterJoint, "angleRad", { enumerable: true, configurable: true, get() { getterCalls += 1; return 0.25; } });
+  assert.equal(mapMotorFrameToSemanticPose(frame({ joints: { ...frame().joints, left_elbow: getterJoint } }), profile).reason, "invalid-motor-frame");
+  assert.equal(getterCalls, 0);
+
+  const hostileProxy = new Proxy(frame(), { getPrototypeOf() { throw new Error("hostile proxy"); } });
+  assert.equal(mapMotorFrameToSemanticPose(hostileProxy, profile).reason, "invalid-motor-frame");
+});
