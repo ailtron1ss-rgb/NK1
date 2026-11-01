@@ -7,10 +7,118 @@ continuedAfterSilence:number;selfAuthoredActivity01:number;temporalPersistence01
 lastMode:AmbientMode;lastReason:string;lastActivity:string|null;lastAt:number;nextWakeAt:number;sleepUntil:number;streak:number;longestStreak:number;recent:Array<{tick:number;
 mode:AmbientMode;reason:string;autonomous:boolean;outcome01:number;at:number}>}
 export const defaultAutonomousRuntimeLife=():AutonomousRuntimeLifeState=>({version:1,ticks:0,ambientCycles:0,selfStartedCycles:0,externallyTriggeredCycles:0,idleGapCycles:0,continuedAfterSilence:0,selfAuthoredActivity01:.35,temporalPersistence01:.28,environmentalAgency01:.3,meanAutonomy01:.4,meanOutcome01:.5,lastMode:'idle',lastReason:'initial',lastActivity:null,lastAt:0,nextWakeAt:0,sleepUntil:0,streak:0,longestStreak:0,recent:[]});
+
+type UnknownRecord = Record<string, unknown>;
+const AMBIENT_MODES: readonly AmbientMode[] = ['active', 'observe', 'reflect', 'recover', 'idle'];
+const ACTIVITIES = ['explore', 'verify', 'reflect', 'rest'] as const;
+
+function isPlainRecord(value: unknown): value is UnknownRecord {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function ownDataValue(record: UnknownRecord, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor && 'value' in descriptor ? descriptor.value : undefined;
+}
+
+function safeCounter(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : fallback;
+}
+
+function safeTimestamp(value: unknown, fallback: number): number {
+  return safeCounter(value, fallback);
+}
+
+function safeUnit(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
+}
+
+function safeText(value: unknown, fallback: string, maxLength = 160): string {
+  return typeof value === 'string' && value.trim().length > 0 && value.trim().length <= maxLength
+    ? value.trim()
+    : fallback;
+}
+
+function normalizeRecent(value: unknown): AutonomousRuntimeLifeState['recent'] {
+  if (!Array.isArray(value)) return [];
+  const result: AutonomousRuntimeLifeState['recent'] = [];
+  const start = Math.max(0, value.length - 96);
+  for (let index = start; index < value.length; index += 1) {
+    if (!Object.prototype.hasOwnProperty.call(value, index)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !('value' in descriptor) || !isPlainRecord(descriptor.value)) continue;
+    const row = descriptor.value;
+    const tick = ownDataValue(row, 'tick');
+    const mode = ownDataValue(row, 'mode');
+    const reason = ownDataValue(row, 'reason');
+    const autonomous = ownDataValue(row, 'autonomous');
+    const outcome01 = ownDataValue(row, 'outcome01');
+    const at = ownDataValue(row, 'at');
+    if (!Number.isSafeInteger(tick) || Number(tick) < 0
+      || typeof mode !== 'string' || !AMBIENT_MODES.includes(mode as AmbientMode)
+      || typeof reason !== 'string' || !reason.trim() || reason.length > 160
+      || typeof autonomous !== 'boolean'
+      || typeof outcome01 !== 'number' || !Number.isFinite(outcome01)
+      || !Number.isSafeInteger(at) || Number(at) < 0) continue;
+    result.push({
+      tick: Number(tick),
+      mode: mode as AmbientMode,
+      reason: reason.trim(),
+      autonomous,
+      outcome01: clamp(outcome01),
+      at: Number(at),
+    });
+  }
+  return result;
+}
+
 export class AutonomousRuntimeLifeController{
    private state=defaultAutonomousRuntimeLife();
 
-  restore(raw?:Partial<AutonomousRuntimeLifeState>|null){const d=defaultAutonomousRuntimeLife(),r=raw??{};this.state={...d,...r,recent:Array.isArray(r.recent)?structuredClone(r.recent).slice(0,96):[],version:1};}
+  restore(raw?:Partial<AutonomousRuntimeLifeState>|null){
+    const defaults = defaultAutonomousRuntimeLife();
+    try {
+      if (!isPlainRecord(raw)) {
+        this.state = defaults;
+        return;
+      }
+      const read = (key: string) => ownDataValue(raw, key);
+      const mode = read('lastMode');
+      const activity = read('lastActivity');
+      this.state = {
+        ...defaults,
+        ticks: safeCounter(read('ticks'), defaults.ticks),
+        ambientCycles: safeCounter(read('ambientCycles'), defaults.ambientCycles),
+        selfStartedCycles: safeCounter(read('selfStartedCycles'), defaults.selfStartedCycles),
+        externallyTriggeredCycles: safeCounter(read('externallyTriggeredCycles'), defaults.externallyTriggeredCycles),
+        idleGapCycles: safeCounter(read('idleGapCycles'), defaults.idleGapCycles),
+        continuedAfterSilence: safeCounter(read('continuedAfterSilence'), defaults.continuedAfterSilence),
+        selfAuthoredActivity01: safeUnit(read('selfAuthoredActivity01'), defaults.selfAuthoredActivity01),
+        temporalPersistence01: safeUnit(read('temporalPersistence01'), defaults.temporalPersistence01),
+        environmentalAgency01: safeUnit(read('environmentalAgency01'), defaults.environmentalAgency01),
+        meanAutonomy01: safeUnit(read('meanAutonomy01'), defaults.meanAutonomy01),
+        meanOutcome01: safeUnit(read('meanOutcome01'), defaults.meanOutcome01),
+        lastMode: typeof mode === 'string' && AMBIENT_MODES.includes(mode as AmbientMode) ? mode as AmbientMode : defaults.lastMode,
+        lastReason: safeText(read('lastReason'), defaults.lastReason),
+        lastActivity: activity === null ? null
+          : typeof activity === 'string' && ACTIVITIES.includes(activity as typeof ACTIVITIES[number])
+            ? activity as typeof ACTIVITIES[number]
+            : defaults.lastActivity,
+        lastAt: safeTimestamp(read('lastAt'), defaults.lastAt),
+        nextWakeAt: safeTimestamp(read('nextWakeAt'), defaults.nextWakeAt),
+        sleepUntil: safeTimestamp(read('sleepUntil'), defaults.sleepUntil),
+        streak: safeCounter(read('streak'), defaults.streak),
+        longestStreak: safeCounter(read('longestStreak'), defaults.longestStreak),
+        recent: normalizeRecent(read('recent')),
+        version: 1,
+      };
+    } catch {
+      // Malformed proxies or accessor-backed snapshots must not abort runtime startup.
+      this.state = defaults;
+    }
+  }
 
   snapshot(){return structuredClone(this.state);}
 

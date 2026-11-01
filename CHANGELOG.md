@@ -1,3 +1,10 @@
+## [NK1][Autonomy] Harden autonomous-life snapshot restoration (2026-11-01)
+- Validate persisted counters, timestamps, ratios, lifecycle modes and recent-history rows before restoring the autonomous runtime controller.
+- Read only own data properties; accessor-backed snapshots are never executed, and hostile proxy failures reset to safe defaults rather than aborting startup.
+- Clamp persisted outcome ratios, skip malformed history entries and preserve the existing bounded 96-entry history.
+- Extend the existing WorkPass224 regression, which is already run by the unified organism runtime workflow.
+- This hardens snapshot recovery only; it does not claim improved autonomous initiative quality, long-duration soak or release readiness.
+
 ## [NK1][SelfModel] Fail-closed durable preference forgetting (2026-11-01)
 - Upgrade UserModel snapshots to v2 while preserving v1 migration.
 - Persist per-key/domain deletion watermarks and reject stale explicit facts and inferred candidates.
