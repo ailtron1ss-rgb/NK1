@@ -89,7 +89,9 @@ export class SelfSubsystemRuntime {
   /** Read-only, privacy-filtered projection for language context; candidates and disputed claims are never presented as facts. */
   userModelPromptContext(maxClaims=6):string {
     const confirmed=this.userModelEvidence.decisionContext().confirmedClaims;
-    const rows=confirmed.slice(-Math.max(0,Math.min(6,Math.floor(maxClaims)))).flatMap(claim=>{
+    const limit=Number.isFinite(maxClaims)?Math.max(0,Math.min(6,Math.floor(maxClaims))):6;
+    const selected=limit>0?confirmed.slice(-limit):[];
+    const rows=selected.flatMap(claim=>{
       const key=sanitizeAutonomousDialogueMessage(claim.key,80);
       const value=sanitizeAutonomousDialogueMessage(claim.value,120);
       if(!key||!value)return [];
