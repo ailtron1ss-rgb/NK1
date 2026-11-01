@@ -237,8 +237,8 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
   const candidateLatency=Math.max(0,performance.now()-candidateStart);
   const candidateIds=candidateItems.map(item=>String(item.context?.sessionId??'')).filter(Boolean);
   const baselineScore=scoreResults(baselineIds,question,k),candidateScore=scoreResults(candidateIds,question,k);
-  baselineOutcomes.push({...baselineScore,answerable:question.answerable,latencyMs:baselineLatency});
-  candidateOutcomes.push({...candidateScore,answerable:question.answerable,latencyMs:candidateLatency});
+  baselineOutcomes.push({...baselineScore,answerable:question.answerable,questionType:question.type,latencyMs:baselineLatency});
+  candidateOutcomes.push({...candidateScore,answerable:question.answerable,questionType:question.type,latencyMs:candidateLatency});
   paired.push({answerable:question.answerable,groupId:question.independenceGroupId,baselineRecall:baselineScore.recallAtK01,candidateRecall:candidateScore.recallAtK01,baselineMrr:baselineScore.mrr01,candidateMrr:candidateScore.mrr01,baselineUnsupported:baselineScore.unsupportedRetrieval,candidateUnsupported:candidateScore.unsupportedRetrieval});
   const fingerprintSalt=revision+'\0'+fileSha;
   perQuestion.push({
