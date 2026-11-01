@@ -56,7 +56,7 @@ planner.restore({version:1,tick:4,mode:'invalid',cost01:{project:5},stats:{proje
 snapshot=planner.snapshot();
 assert.equal(snapshot.tick,4);
 assert.equal(snapshot.mode,'balanced');
-assert.equal(snapshot.cost01.project,0);
+assert.equal(snapshot.cost01.project,1,'finite out-of-range metrics are clamped into the normalized interval');
 assert.equal(snapshot.stats.project.runs,0);
 assert.ok(Object.values(snapshot.cost01).every(Number.isFinite));
 assert.ok(Object.values(snapshot.metabolism).every(row=>row.priority01>=0&&row.priority01<=1));
