@@ -2736,6 +2736,29 @@ export class OrganismCore {
     userModelPromptContext() {
         return this.selfSubsystem.userModelPromptContext();
     }
+
+    /** Persist a caller-confirmed, low-risk preference through the canonical self subsystem. */
+    async recordExplicitUserModelEvidence(input: Parameters<import('../cognition/UserModelEvidenceModel.ts').UserModelEvidenceModel['recordExplicit']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('user-model-write-during-active-cycle');
+        const result = this.selfSubsystem.userModelEvidence.recordExplicit(input);
+        if (result.accepted || result.reason === 'sensitive-or-unclassified' || result.reason === 'invalid-input') {
+            this.markPersistenceDirty();
+            await this.checkpoint(true);
+        }
+        return result;
+    }
+    /** Apply an explicit correction through the same evidence ledger and durable owner. */
+    async correctExplicitUserModelEvidence(input: Parameters<import('../cognition/UserModelEvidenceModel.ts').UserModelEvidenceModel['correctExplicit']>[0]) {
+        if (!this.ready) throw new Error('OrganismCore.init() must be called first');
+        if (this.persistence.persistenceDepth > 0) throw new Error('user-model-write-during-active-cycle');
+        const result = this.selfSubsystem.userModelEvidence.correctExplicit(input);
+        if (result.accepted || result.reason === 'sensitive-or-unclassified' || result.reason === 'invalid-input') {
+            this.markPersistenceDirty();
+            await this.checkpoint(true);
+        }
+        return result;
+    }
     /** Retrieve an internally generated, user-facing dialogue topic. This does not execute tools or contact external services. */
     autonomousSocialInitiativeForGeneration() {
         return this.organismSystems.agency.autonomousSocialInitiative.latestPlanned(Date.now());
