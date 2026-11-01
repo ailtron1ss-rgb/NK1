@@ -1,3 +1,13 @@
+## [NK1][Affect] Drop orphan feeling references on restore (2026-11-01)
+- Keep restored feeling records only when their `causeEmotionId` resolves to a retained, validated emotion episode; prevents orphaned body-state reports from surviving snapshot recovery.
+- The exact-head restore regression exposed this missing cross-record integrity check; the follow-up Actions run must confirm the fix.
+
+## [NK1][Affect] Connect appraisal, intrinsic drives, endogenous goals and causal outcome receipts (2026-11-01)
+- Port the affect-to-motivation causal path onto the current source lineage: canonical decision-time appraisal and mixed affect feed bounded exploration/regulation/engagement/connection projections; P66 pressure participates as an allostatic need signal.
+- Feed the six-channel intrinsic-drive profile into the existing B272 goal vector (no parallel planner), while preserving neutral-affect compatibility and confidence gating.
+- Attribute feedback to the pre-action emotion episode and stable trace-derived receipt; duplicate outcomes are idempotent and conflicting replays are rejected.
+- Add dedicated runtime causality and emotion-restore boundary regressions plus an Actions workflow. These are implementation claims only; quality uplift requires exact-head CI and paired-seed ablation, not inferred from wiring.
+
 ## [NK1][Governance] Reconcile current progress dashboard with release manifests (2026-11-01)
 - Replace contradictory active release pointers with one manifest-backed status header.
 - Record source code baseline separately from the published Release tag and ZIP asset digest.
