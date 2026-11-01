@@ -1,3 +1,10 @@
+## [NK1][SelfModel] Correct P80 agency scoring and harden self-state restore (2026-11-01)
+- Fix the external-input agency branch so action quality and uncertainty influence agency instead of collapsing every externally triggered cycle to a fixed 0.55 prior.
+- Validate persisted counters, bounded ratios, modes, action labels and history arrays before restoring P80 self-state.
+- Reject sparse/accessor-backed history arrays and recover safely from hostile proxy traps without executing getters.
+- Add regressions for agency sensitivity, malformed state, accessors and hostile proxies.
+- This corrects a self-agency metric and snapshot integrity; it does not claim a measured autonomy-quality uplift.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
