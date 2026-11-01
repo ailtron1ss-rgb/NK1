@@ -1,3 +1,6 @@
+## [NK1][CI] Include avatar-stage contract in normalized VRM workflow (2026-11-01)
+- Add `avatar-3d-stage.test.mjs` to the VRM workflow path filter and include the rebased source-sync branch in push triggers so changes to the integration contract receive exact-head CI.
+
 ## [NK1][Embodiment] Remove obsolete VRM presentation-label assertion (2026-11-01)
 - Replace the removed UI-label source assertion with a behavioral integration contract for the active VRM 0.x orientation path (`VRMUtils.rotateVRM0`).
 - Keep the test focused on actual runtime integration rather than a presentation string that no longer exists.
