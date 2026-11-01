@@ -1,4 +1,18 @@
-import { MAX_AVATAR_MODEL_BYTES } from "./avatarModelLimits.ts";
+import {
+  MAX_AVATAR_ACCESSOR_ELEMENTS,
+  MAX_AVATAR_ACCESSORS,
+  MAX_AVATAR_ANIMATIONS,
+  MAX_AVATAR_BUFFER_VIEWS,
+  MAX_AVATAR_IMAGES,
+  MAX_AVATAR_MATERIALS,
+  MAX_AVATAR_MESHES,
+  MAX_AVATAR_MESH_PRIMITIVES,
+  MAX_AVATAR_MODEL_BYTES,
+  MAX_AVATAR_NODES,
+  MAX_AVATAR_SCENES,
+  MAX_AVATAR_SKINS,
+  MAX_AVATAR_TEXTURES,
+} from "./avatarModelLimits.ts";
 
 export interface AvatarModelPreflightResult {
   readonly format: "glb" | "vrm";
@@ -96,16 +110,16 @@ export function preflightAvatarModel(
     if (value.length > limit) return reject(`gltf-complexity-limit-${key}`);
     return value;
   };
-  const nodes = boundedArray("nodes", 2048);
-  const meshes = boundedArray("meshes", 1024);
-  boundedArray("materials", 256);
-  boundedArray("textures", 128);
-  boundedArray("images", 128);
-  boundedArray("animations", 64);
-  boundedArray("skins", 32);
-  boundedArray("scenes", 64);
-  boundedArray("bufferViews", 8192);
-  const accessors = boundedArray("accessors", 8192);
+  const nodes = boundedArray("nodes", MAX_AVATAR_NODES);
+  const meshes = boundedArray("meshes", MAX_AVATAR_MESHES);
+  boundedArray("materials", MAX_AVATAR_MATERIALS);
+  boundedArray("textures", MAX_AVATAR_TEXTURES);
+  boundedArray("images", MAX_AVATAR_IMAGES);
+  boundedArray("animations", MAX_AVATAR_ANIMATIONS);
+  boundedArray("skins", MAX_AVATAR_SKINS);
+  boundedArray("scenes", MAX_AVATAR_SCENES);
+  boundedArray("bufferViews", MAX_AVATAR_BUFFER_VIEWS);
+  const accessors = boundedArray("accessors", MAX_AVATAR_ACCESSORS);
 
   let accessorElements = 0;
   for (const entry of accessors) {
@@ -117,7 +131,7 @@ export function preflightAvatarModel(
       return reject("gltf-accessor-count-invalid");
     }
     accessorElements += Number(count);
-    if (!Number.isSafeInteger(accessorElements) || accessorElements > 6_000_000) {
+    if (!Number.isSafeInteger(accessorElements) || accessorElements > MAX_AVATAR_ACCESSOR_ELEMENTS) {
       return reject("gltf-complexity-limit-accessors");
     }
   }
@@ -132,7 +146,7 @@ export function preflightAvatarModel(
       return reject("gltf-mesh-primitives-invalid");
     }
     primitiveCount += primitives.length;
-    if (!Number.isSafeInteger(primitiveCount) || primitiveCount > 4096) {
+    if (!Number.isSafeInteger(primitiveCount) || primitiveCount > MAX_AVATAR_MESH_PRIMITIVES) {
       return reject("gltf-complexity-limit-primitives");
     }
   }
