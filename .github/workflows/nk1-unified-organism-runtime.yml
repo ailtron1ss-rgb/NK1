@@ -54,6 +54,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass292:motivation-to-goal && npm --prefix runtime/neuro-kurisu run test:workpass288:intrinsic-motivation
       - name: World perception ingress and integrity
         run: npm --prefix runtime/neuro-kurisu run test:world-perception
+      - name: Exact same-action world prediction ticket closure
+        run: npm --prefix runtime/neuro-kurisu run test:p2698:world-closure
       - name: Cognitive planner restore integrity and execution boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass611:cognitive-planner-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass610:brain-fusion-strip-only && npm --prefix runtime/neuro-kurisu run test:cognitive-runtime-planner-execution-gate
       - name: Cognitive spine, world feedback and project-tool boundary

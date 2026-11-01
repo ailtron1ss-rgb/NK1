@@ -1,3 +1,10 @@
+## [NK1][World] Resolve ensemble outcomes by exact canonical prediction ticket (2026-11-01)
+- Keep the ensemble ticket ID inside each canonical prediction frame and resolve the corresponding ensemble ticket when its exact action outcome arrives.
+- Do not fall back to FIFO-by-action when a canonical prediction ID was supplied but its stored frame/ticket is unavailable; fail closed for ensemble calibration rather than teaching the wrong prediction.
+- Preserve the legacy action-only resolution path only for callers that do not provide a canonical prediction ID.
+- Add a P2698 regression with two outstanding same-action predictions completed in reverse order; assert the matching ticket is resolved and the other remains pending.
+- Align the P2698 object fixtures with the complete WorldContext contract and run this exact-ticket closure test in unified organism CI.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.

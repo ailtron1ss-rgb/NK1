@@ -87,12 +87,20 @@ export class WorldModelEnsembleController {
     this.state.lastDecision={action,selected,agreement01:agreement,uncertainty01:uncertainty,at:Date.now()};
     return {predictionId,prediction01:clamp(prediction),confidence01:confidence,agreement01:agreement,uncertainty01:uncertainty,selected,weights};
   }
+  resolvePredictionOutcome(predictionId:string,actual01:number){
+    this.pruneTickets();
+    const ticket=this.state.pendingPredictions[predictionId];
+    if(!ticket) return {resolved:false,predictionId:null,candidates:[] as EnsembleCandidate[]};
+    const candidates=structuredClone(ticket.candidates);
+    this.observeOutcome(predictionId,actual01);
+    return {resolved:true,predictionId,candidates};
+  }
+
   observeOutcomeForAction(action:string,actual01:number){
     this.pruneTickets();
     const ticket=Object.values(this.state.pendingPredictions).filter(t=>t.action===action).sort((a,b)=>a.createdAt-b.createdAt)[0];
     if(!ticket) return {resolved:false,predictionId:null,candidates:[] as EnsembleCandidate[]};
-    this.observeOutcome(ticket.predictionId,actual01);
-    return {resolved:true,predictionId:ticket.predictionId,candidates:structuredClone(ticket.candidates)};
+    return this.resolvePredictionOutcome(ticket.predictionId,actual01);
   }
   observeOutcome(candidatesOrPredictionId:EnsembleCandidate[]|string,actual01:number){
     this.pruneTickets();
