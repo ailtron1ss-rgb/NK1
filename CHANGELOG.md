@@ -1,3 +1,7 @@
+## [NK1][SelfModel] Preserve exact provenance for first explicit correction (2026-11-01)
+- Fix the no-existing-claim path in `correctExplicit`: delegate to the canonical explicit-record path with the original evidence reference instead of pre-consuming it and inventing a `correction:`-prefixed reference.
+- Add a regression proving the stored claim retains the exact caller reference, the reference is consumed once, and replay is rejected as a duplicate.
+
 ## [NK1][Embodiment] Integrate normalized VRM humanoid motor and exact-head checks (WorkPass76, 2026-11-01)
 - Route VRM humanoid intent through one normalized proxy adapter; retain NK1 arm intent, 35/65 head/neck distribution, neutral-pose reset, standard expressions/visemes and bounded spring-bone updates.
 - Keep generic GLB behavior intact, deep-dispose VRM resources on replacement/reset/teardown, and verify the actual `VRMHumanoid` transfer in integration tests.
