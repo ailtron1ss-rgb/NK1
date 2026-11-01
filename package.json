@@ -113,7 +113,7 @@
     "audit:workpass41": "npm run audit:release-metadata && npm run test:release-metadata-contract && npm run test:provenance-current && npm run test:cognitive-cycle-local-lineage-workpass41 && npm run test:memory-retention-net-value-workpass41 && node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-162-unified-cognitive-economy.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-164-large-cognitive-pass.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/p2894-memory-anti-collapse.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/p2888-adaptive-memory-economy.mjs && npm --prefix runtime/neuro-kurisu run test:memory-substrate-performance && npm --prefix runtime/neuro-kurisu run typecheck && npm run test:app:scripts && npm run test:browser-smoke-verdict && npm run test:memory-retrieval-benchmark && npm run audit:server-imports && npm run audit:ui-api-linkage && npm run audit:assets && npm run audit:release-metadata",
     "test:memory-retention-net-value-workpass41": "node --experimental-strip-types runtime/neuro-kurisu/tests/memory-retention-net-value-workpass41.mjs",
     "test:provenance-current": "node --test tools/super-sbom.test.mjs",
-    "test:release-license-readiness": "node --test tools/audit-release-license-readiness.test.mjs",
+    "test:release-license-readiness": "node --test tools/audit-release-license-readiness.test.mjs tools/release-license-audit-workflow.test.mjs",
     "audit:release-license-readiness": "node tools/audit-release-license-readiness.mjs",
     "assets:sync": "node app/scripts/sync-canonical-public-assets.mjs",
     "test:canonical-public-assets": "node --test app/scripts/sync-canonical-public-assets.test.mjs",
