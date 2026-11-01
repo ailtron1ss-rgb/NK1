@@ -1,3 +1,10 @@
+## [NK1][Embodiment] Bound GLB/VRM complexity before mobile parsing (2026-11-01)
+- Keep the existing 90 MB upload ceiling and add independent limits for scene nodes, meshes/primitives, accessors and aggregate accessor elements, materials, textures, images, animations, skins, scenes and buffer views.
+- Reject malformed accessor counts and malformed mesh primitive collections before passing untrusted bytes to Three.js GLTFLoader.
+- Centralize the mobile-safe limits so the upload preflight, tests and future device profiles share one policy source.
+- Add regressions for oversized scene graphs, geometry element budgets, invalid numeric types, primitive counts, image counts and animation counts.
+- No cloud upload, server-side persistence, model license grant or real-device performance claim is implied by this hardening pass.
+
 ## [NK1][SelfModel] Add explicit preference forgetting with replay protection (2026-11-01)
 - Add a caller-confirmed forget operation to the canonical UserModel evidence owner; remove the selected claim and matching behavioral candidates from the persisted projection.
 - Retain the forget evidence reference in the bounded replay ledger so the same delete command and the original explicit statement cannot be replayed immediately after restart.
