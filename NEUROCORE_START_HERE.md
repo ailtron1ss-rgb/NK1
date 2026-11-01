@@ -26,7 +26,7 @@
 
 ## Active cognition work — 2026-11-01
 
-- **Draft PR #636** (`workpass634-affect-action-priors`): signed, confidence-gated canonical action priors in EmotionAppraisalEngine; WorkPass634 tests plus existing WorkPass39/172 affect integration tests are wired into unified organism CI. Exact-head Actions pending.
+- **Draft PR #636** (`workpass634-affect-action-priors`): signed, confidence-gated canonical action priors in EmotionAppraisalEngine; WorkPass634 tests plus existing WorkPass39/172 integration tests are wired into unified organism CI. First unified run #41331040326 failed; rerun failed too. GitHub returned no step list and job logs 404; latest docs-only SHA has no separate run. No local test execution is claimed; status remains UNVERIFIED.
 - **Draft PR #630**: WorkPass612/613 persistence-boundary hardening for planner, P2702 personality and NeuralExperienceBranch. Typecheck passed on the first merge head; newer Actions were reported failed without accessible step logs, so validation is unresolved.
 - **Draft PR #619**: EmotionAppraisalEngine restore hardening; base synchronized, exact-head validation unresolved.
 - Issue #632 corrected: the affect→workspace→candidate-score path already exists; remaining gap is signed/confidence-gated priors, not absence of integration.
