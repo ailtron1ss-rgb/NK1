@@ -16,6 +16,9 @@ test("validates a complete semantic snapshot and rejects corrupt state", () => {
   assert.equal(validateSemanticBodyState(state), true);
   assert.equal(validateSemanticBodyState({ ...state, revision: -1 }), false);
   assert.equal(validateSemanticBodyState({ ...state, pose: { headYaw: Infinity } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, pose: { headYaw: 1.000001 } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, pose: { leftElbow: -1.000001 } }), false);
+  assert.equal(validateSemanticBodyState({ ...state, pose: { leftElbow: -1, rightElbow: 1 } }), true);
   assert.equal(validateSemanticBodyState({ ...state, speech: { ...state.speech, mouthOpen: 4 } }), false);
   assert.equal(validateSemanticBodyState({ ...state, expression: 42 }), false);
   assert.equal(validateSemanticBodyState({ ...state, gaze: { ...state.gaze, targetId: "   " } }), false);
