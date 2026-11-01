@@ -116,11 +116,15 @@ function validFrame(frame: MotorFrameSample): boolean {
     || !validJointIdList(frame.reachedJointIds) || !validJointIdList(frame.blockedJointIds)
     || !frame.joints || typeof frame.joints !== "object"
     || Array.isArray(frame.joints) || Object.keys(frame.joints).length > 128) return false;
+  const jointIds = new Set(Object.keys(frame.joints));
   for (const [id, joint] of Object.entries(frame.joints)) {
     if (!/^[a-z][a-z0-9._-]{0,63}$/i.test(id) || !joint || joint.id !== id
       || typeof joint.available !== "boolean"
       || ![joint.angleRad, joint.targetAngleRad, joint.velocityRadPerSec, joint.accelerationRadPerSec2].every(Number.isFinite)) return false;
   }
+  const blocked = new Set(frame.blockedJointIds);
+  if (frame.reachedJointIds.some(id => !jointIds.has(id) || blocked.has(id))
+    || frame.blockedJointIds.some(id => !jointIds.has(id))) return false;
   return true;
 }
 
