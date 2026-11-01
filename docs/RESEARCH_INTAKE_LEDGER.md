@@ -208,3 +208,25 @@ Do not count a reference as “used” until a source revision/paper protocol is
 - Research relationship: manifest-bound, controlled evaluation and signed-provenance principles; protocol adaptation only, no upstream code or dataset copied.
 - **Verification boundary:** code and tests committed; runtime execution, typecheck and exact-head Actions are still unverified. No learning uplift is claimed.
 - Report: `docs/WORKPASS134_MANIFEST_BOUND_OUTCOME_EVIDENCE_2026-10-21.md`.
+
+
+
+## WorkPass — agent memory, action grounding and continual-learning evaluation (2026-11-01)
+
+**Decision:** adapt the evaluation protocols, not upstream runtime code. The cited AgentCL, Evo-Memory and retrieval-reconsolidation papers are arXiv preprints; their reported results are research claims, not NK1 measurements. The existing [Mem2ActBench ACL 2026 entry](#) already records the memory-to-tool-argument task family; this section adds the cross-task and continual-learning controls without duplicating that benchmark entry.
+
+| Research candidate | What was inspected | NK1 adaptation | Status |
+|---|---|---|---|
+| [AgentCL: Toward Rigorous Evaluation of Continual Learning in Language Agents](https://arxiv.org/abs/2606.02461) (2026 preprint) | Separates compositional/dependent task streams from unrelated tasks and frozen read-only holdout; reports plasticity, stability and generalization separately. | Extend P26 with dependent vs unrelated task families and a frozen second-pass holdout. Report three gains separately; no score increase from acquisition-only improvement. | EVALUATION DESIGN INPUT |
+| [Evo-Memory: Benchmarking LLM Agent Test-time Learning with Self-Evolving Memory](https://arxiv.org/abs/2511.20857) (2025 preprint) | Studies sequential task streams where an agent retrieves, adapts and updates memory during deployment. | Compare memoryless baseline, canonical MemoryOS2 and any candidate policy on the same task stream and budget. Separate read/write learning from read-only evaluation. | RESEARCH-ONLY / ADAPT PROTOCOL |
+| [Retrieval-Driven Memory Reconsolidation for Long-Term LLM Agents](https://arxiv.org/abs/2609.16053) (2026 preprint) | Proposes retrieval-triggered local reconsolidation and memory graph reorganization. | Test as a reversible experiment only; measure downstream task utility, graph churn, retrieval latency, stale-memory interference and forgetting before any topology change. | RESEARCH-ONLY / NO PRODUCTION ADOPTION |
+
+### Proposed NK1 acceptance protocol
+
+1. Freeze the corpus, model/configuration, task manifest, budget and evaluator before the run. Split tasks into compositional/dependent acquisition, unrelated controls and a read-only independent holdout. Holdout data must never enter memory writes, consolidation, prompt tuning or policy selection.
+2. Include at least one memory-to-action case where a required tool argument is absent from the final request and exists only in a prior verified event; score exact tool+arguments, parameter F1, task success, correct abstention and stale/forgotten-fact misuse. Keep the leakage check independent.
+3. Compare memoryless baseline with canonical MemoryOS2 under equal token/storage/latency budgets. Use at least five paired seeds for each confirmatory holdout comparison; report per-seed outcomes, paired effect, uncertainty, plasticity, stability and generalization separately.
+4. Add explicit correction/forget, contradiction, delayed retrieval and unrelated-task negative controls. A forgotten or stale claim must not be reintroduced by consolidation or retrieval.
+5. Require positive independent holdout task utility, no material regression on unrelated controls, bounded latency/cost and reproducible results before promotion. Recall-only uplift or a synthetic fixture is not sufficient. Keep rollback available.
+
+**Evidence boundary:** this is a research-to-test translation, not an implemented continual-learning algorithm, not a real RU/EN retrieval uplift and not a license approval for upstream code/data. No external benchmark dataset or runtime dependency was imported.
