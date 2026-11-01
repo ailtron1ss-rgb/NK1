@@ -19,3 +19,9 @@ The unified organism runtime workflow now runs `npm run test:big-pass-39` on rel
 ## Limits
 
 This validates scheduler policy, not actual battery draw, thermal throttling on Android, or production background execution.
+
+## Дополнительное исправление, найденное расширенным WorkPass39 gate
+
+WorkPass39 обнаружил устаревший reality-boundary тест, который передавал пустые объекты `before`/`after` вместо обязательного `WorldContext`. Ранее runtime успевал обновить ensemble/world-model, а затем падал на чтении `transition.after.objects.length`, оставляя возможность частичного обучения.
+
+Теперь входной переход валидируется целиком до первого изменения модели. Тест использует полноценные контексты и проверяет, что malformed post-state отклоняется с `invalid-world-transition`, не меняя world-learning snapshot.
