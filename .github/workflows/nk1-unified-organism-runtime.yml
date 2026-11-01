@@ -56,6 +56,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:world-perception
       - name: Neural fusion and planner execution boundary
         run: npm --prefix runtime/neuro-kurisu run test:workpass610:brain-fusion-strip-only && npm --prefix runtime/neuro-kurisu run test:cognitive-runtime-planner-execution-gate
+      - name: Cognitive spine hard budget protection
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-39
       - name: Continuity and organism integration
         run: npm --prefix runtime/neuro-kurisu run test:b1701-b2200:continuity && npm --prefix runtime/neuro-kurisu run test:p29:core-integration && npm --prefix runtime/neuro-kurisu run test:pcontinuity:integration
       - name: Organism runtime smoke
