@@ -29,8 +29,9 @@ export interface CognitiveSpineDecision {
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const plainOwnRecord=(value:unknown):Record<string,unknown>|null=>{
-  if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+  if(value===null||typeof value!=='object')return null;
   try{
+    if(Array.isArray(value))return null;
     const prototype=Object.getPrototypeOf(value);
     return prototype===Object.prototype||prototype===null?value as Record<string,unknown>:null;
   }catch{return null;}
