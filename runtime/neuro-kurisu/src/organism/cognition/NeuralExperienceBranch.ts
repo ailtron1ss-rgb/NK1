@@ -1,4 +1,5 @@
 import type { ActionKind } from '../core/types.ts';
+import { snapshotPlainData } from '../core/PlainDataSnapshot.ts';
 import { normalizeNeuralSpaceFrame, validateNeuralSpaceContract, NEURAL_INPUT_DIM } from './NeuralSpaceContract.ts';
 import { AdaptiveNeuralContinuityController, defaultAdaptiveNeuralContinuity, type AdaptiveNeuralContinuityState } from './AdaptiveNeuralContinuityController.ts';
 import { AdaptiveCausalMemoryPlanner, defaultAdaptiveCausalMemoryPlanner, type AdaptiveCausalMemoryPlannerState } from './AdaptiveCausalMemoryPlanner.ts';
@@ -383,7 +384,20 @@ export class NeuralExperienceBranch {
   }
 
   restore(raw?:Partial<NeuralExperienceBranchState>|null){
-    const d=defaultNeuralExperienceBranch(),r:any=raw??{};
+    const d=defaultNeuralExperienceBranch();
+    // Snapshot restoration is a public subsystem boundary: sanitize the complete
+    // graph before any property read, spread or structuredClone can execute input
+    // accessors. The shared bounded snapshotter also rejects sparse arrays,
+    // inherited/custom-prototype objects, cycles and hostile Proxy reflection.
+    let r:any={};
+    try{
+      const safe=raw==null?{}:snapshotPlainData<Partial<NeuralExperienceBranchState>>(raw,{allowNonFiniteNumbers:true});
+      if(safe!==null&&typeof safe==='object'&&!Array.isArray(safe))r=safe;
+    }catch{
+      // A malformed root or nested payload restores the complete neural branch
+      // to its canonical defaults rather than partially mutating managed systems.
+      r={};
+    }
     const n=Math.max(32,Math.min(160,Math.floor(Number(r.neurons??d.neurons))));
     const arr=(v:any,len:number,fill=0)=>Array.isArray(v)?v.slice(0,len).concat(new Array(Math.max(0,len-v.length)).fill(fill)).slice(0,len):new Array(len).fill(fill);
     const matrix=(v:any,rows:number,cols:number,fill=0)=>Array.isArray(v)?Array.from({length:rows},(_,i)=>arr(v[i],cols,fill)):Array.from({length:rows},()=>new Array(cols).fill(fill));
