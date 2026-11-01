@@ -64,10 +64,10 @@ function readDenseArray(value:unknown,expectedLength:number):unknown[]|null{
   return output;
  }catch{return null;}
 }
-function readCanonicalNames(value:unknown,fallback:string[]):string[]{
+function hasCanonicalNames(value:unknown,fallback:string[]):boolean{
+ if(value===undefined)return true;
  const input=readDenseArray(value,fallback.length);
- if(!input||input.some((item,index)=>item!==fallback[index]))return fallback.slice();
- return fallback.slice();
+ return !!input&&input.every((item,index)=>item===fallback[index]);
 }
 function readMetricArray(value:unknown,fallback:number[],min=0,max=1):number[]{
  const input=readDenseArray(value,fallback.length);
@@ -109,20 +109,20 @@ export class P2702PersistentPersonalityDynamics{
   const defaults=defaultState();
   const root=readOwnDataRecord(raw);
   if(!root||(root.version!==undefined&&root.version!==1)){this.state=defaults;return;}
-  const invariantNames=readCanonicalNames(root.invariantNames,defaults.invariantNames);
-  const adaptiveNames=readCanonicalNames(root.adaptiveNames,defaults.adaptiveNames);
-  const valueNames=readCanonicalNames(root.valueNames,defaults.valueNames);
+  const invariantNamesValid=hasCanonicalNames(root.invariantNames,defaults.invariantNames);
+  const adaptiveNamesValid=hasCanonicalNames(root.adaptiveNames,defaults.adaptiveNames);
+  const valueNamesValid=hasCanonicalNames(root.valueNames,defaults.valueNames);
   const candidate:P2702PersonalityState={
    version:1,
    tick:readCounter(root.tick,defaults.tick),
    experienceCount:readCounter(root.experienceCount,defaults.experienceCount),
    learningUpdates:readCounter(root.learningUpdates,defaults.learningUpdates),
-   invariantNames,
-   invariantValues:readMetricArray(root.invariantValues,defaults.invariantValues),
-   adaptiveNames,
-   adaptiveValues:readMetricArray(root.adaptiveValues,defaults.adaptiveValues),
-   valueNames,
-   valueWeights:readMetricArray(root.valueWeights,defaults.valueWeights),
+   invariantNames:defaults.invariantNames.slice(),
+   invariantValues:invariantNamesValid?readMetricArray(root.invariantValues,defaults.invariantValues):defaults.invariantValues.slice(),
+   adaptiveNames:defaults.adaptiveNames.slice(),
+   adaptiveValues:adaptiveNamesValid?readMetricArray(root.adaptiveValues,defaults.adaptiveValues):defaults.adaptiveValues.slice(),
+   valueNames:defaults.valueNames.slice(),
+   valueWeights:valueNamesValid?readMetricArray(root.valueWeights,defaults.valueWeights):defaults.valueWeights.slice(),
    relationshipTrust:readRelationshipTrust(root.relationshipTrust),
    selfBeliefs:readMetricArray(root.selfBeliefs,defaults.selfBeliefs),
    selfUncertainty:readMetricArray(root.selfUncertainty,defaults.selfUncertainty,.03,.97),
@@ -137,10 +137,6 @@ export class P2702PersistentPersonalityDynamics{
    autobiographicalStrength01:readMetric(root.autobiographicalStrength01,defaults.autobiographicalStrength01),
    lastReward01:readMetric(root.lastReward01,defaults.lastReward01),
   };
-  // Canonical names and their numeric vectors must retain the same dimensions.
-  if(invariantNames.length!==candidate.invariantValues.length)candidate.invariantValues=defaults.invariantValues.slice();
-  if(adaptiveNames.length!==candidate.adaptiveValues.length)candidate.adaptiveValues=defaults.adaptiveValues.slice();
-  if(valueNames.length!==candidate.valueWeights.length)candidate.valueWeights=defaults.valueWeights.slice();
   this.state=candidate;
  }
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
