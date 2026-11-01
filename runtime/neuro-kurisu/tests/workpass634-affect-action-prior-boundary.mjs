@@ -77,7 +77,14 @@ for(let i=0;i<12;i++){
 }
 assert.ok(learnedGood.engine.actionBias('respond')>learnedBad.engine.actionBias('respond'),'calibrated verified benefit must increase and poor outcomes must reduce the matching action prior');
 
-for(const candidate of [curiosity,anxiety,frustration,protective,joy,sadness,lowConfidence,highRegulation,lowRegulation,learnedGood,learnedBad]){
+const tendencyCalibration=make({...base,goalCongruence01:.95,success01:.95});
+for(let i=0;i<6;i++)tendencyCalibration.engine.recordOutcome({action:'approach',success01:.95,surprise01:.05,regulationCost01:.05});
+assert.equal(tendencyCalibration.engine.outcomeCalibration('respond')?.attempts,6,'approach outcome tendency must normalize to canonical respond calibration');
+assert.equal(tendencyCalibration.engine.outcomeCalibration('approach')?.attempts,6,'outcome lookup must normalize the same tendency alias');
+assert.ok(tendencyCalibration.engine.actionBias('respond')>0,'tendency-key feedback must influence the canonical action prior');
+assert.throws(()=>tendencyCalibration.engine.recordOutcome({action:'not-an-action',success01:.9,surprise01:.1}),/unsupported-affect-outcome-action/,'unknown feedback keys must not create unreadable calibration records');
+
+for(const candidate of [curiosity,anxiety,frustration,protective,joy,sadness,lowConfidence,highRegulation,lowRegulation,learnedGood,learnedBad,tendencyCalibration]){
   for(const action of ACTIONS){
     const bias=candidate.engine.actionBias(action);
     assert.ok(Number.isFinite(bias)&&bias>=-.045&&bias<=.045,'direct action prior out of cap: '+action+'='+bias);
