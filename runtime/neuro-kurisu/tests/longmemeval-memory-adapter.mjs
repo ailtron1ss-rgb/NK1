@@ -91,6 +91,8 @@ assert.equal(report.experiment.candidateMode, 'canonical-memoryos2-no-embedding'
 assert.match(report.experiment.scope, /retrieval-only/);
 assert.equal(report.sourceDataset.datasetId, 'xiaowu0162/longmemeval-cleaned');
 assert.equal(report.sourceDataset.licenseId, 'MIT');
+assert.equal(report.sourceDataset.sourceRef, 'https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/98d7416c24c778c2fee6e6f3006e7a073259d48f/longmemeval_s_cleaned.json');
+assert.equal(report.sourceDataset.licenseId, 'MIT');
 assert.equal(report.sourceDataset.languages.join(','), 'en');
 assert.equal(report.sourceDataset.datasetRevision, '98d7416c24c778c2fee6e6f3006e7a073259d48f');
 assert.equal(report.sourceDataset.fileSha256, 'a'.repeat(64));
