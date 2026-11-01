@@ -129,3 +129,68 @@ test("crossfade progress is monotonic, bounded and robust to invalid timing", ()
   assert.equal(p.committed, true);
   assert.equal(advanceBodySwitch(p, Number.NaN, 0).progress, 1, "invalid timing keeps the high-water mark");
 });
+
+test("normalizes malformed speech lifecycle and missing sensory values without aborting handoff", () => {
+  const input = baseInput();
+  input.speechPhase = "unexpected-phase";
+  input.speechEventId = "   ";
+  input.gaze = null;
+  input.mouth = null;
+  const state = projectSemanticBodyState(input);
+  assert.equal(state.speech.phase, "unknown");
+  assert.equal(state.speech.eventId, null);
+  assert.equal(state.gaze.x, 0);
+  assert.equal(state.gaze.y, 0);
+  assert.equal(state.speech.mouthOpen, 0);
+  assert.equal(state.speech.mouthForm, 0);
+  assert.equal(validateSemanticBodyState(state), true);
+  const handoff = beginBodySwitch("live2d", "3d", state);
+  assert.equal(handoff.plan.to, "vrm3d");
+  assert.equal(handoff.plan.requiresNeutralRebind, true);
+  assert.equal(handoff.progress.committed, false);
+});
+
+test("trims valid speech event identifiers and rejects non-string identifiers", () => {
+  const trimmed = projectSemanticBodyState({ ...baseInput(), speechEventId: "  speech-2  " });
+  assert.equal(trimmed.speech.eventId, "speech-2");
+  const invalid = projectSemanticBodyState({ ...baseInput(), speechEventId: 42 });
+  assert.equal(invalid.speech.eventId, null);
+  assert.equal(validateSemanticBodyState(invalid), true);
+});
+
+test("accepts omitted sensor samples as a normal reconnect state", () => {
+  const input = baseInput();
+  delete input.gaze;
+  delete input.mouth;
+  const state = projectSemanticBodyState(input);
+  assert.equal(state.gaze.x, 0);
+  assert.equal(state.gaze.y, 0);
+  assert.equal(state.speech.mouthOpen, 0);
+  assert.equal(state.speech.mouthForm, 0);
+  assert.equal(validateSemanticBodyState(state), true);
+});
+
+
+test("clears stale mouth motion for non-speaking lifecycle phases", () => {
+  for (const phase of ["idle", "starting", "ended", "cancelled", "unknown", "provider-glitch"]) {
+    const state = projectSemanticBodyState({
+      ...baseInput(),
+      speechPhase: phase,
+      mouth: { open: 0.92, form: -0.75, viseme: "open" },
+    });
+    assert.equal(state.speech.phase, phase === "provider-glitch" ? "unknown" : phase);
+    assert.equal(state.speech.mouthOpen, 0, phase + " must not retain an active mouth pose");
+    assert.equal(state.speech.mouthForm, 0, phase + " must not retain an active mouth form");
+    assert.equal(validateSemanticBodyState(state), true);
+  }
+});
+
+test("preserves mouth motion while speech is actively speaking", () => {
+  const state = projectSemanticBodyState({
+    ...baseInput(),
+    speechPhase: "speaking",
+    mouth: { open: 0.72, form: 0.31, viseme: "wide" },
+  });
+  assert.equal(state.speech.mouthOpen, 0.72);
+  assert.equal(state.speech.mouthForm, 0.31);
+});
