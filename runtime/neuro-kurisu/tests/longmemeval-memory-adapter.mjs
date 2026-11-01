@@ -172,4 +172,14 @@ const cliUsage = spawnSync(process.execPath, [
 assert.equal(cliUsage.status, 2, 'CLI without required dataset path must exit with usage status 2');
 assert.match(cliUsage.stderr, /Usage: node .*run-longmemeval-memory-benchmark\.mjs/);
 
+const reviewedWithoutRevision = spawnSync(process.execPath, [
+  '--experimental-strip-types',
+  'runtime/neuro-kurisu/tests/run-longmemeval-memory-benchmark.mjs',
+  '--dataset',
+  '/tmp/longmemeval_s_reme_cleaned.json',
+], { encoding: 'utf8' });
+assert.equal(reviewedWithoutRevision.status, 2,
+  'reviewed dataset must not silently inherit the upstream dataset revision');
+assert.match(reviewedWithoutRevision.stderr, /--revision.*required|revision.*40-character/i);
+
 console.log('LONGMEMEVAL_MEMORY_ADAPTER=PASS');
