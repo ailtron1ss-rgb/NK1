@@ -55,6 +55,18 @@ assert.equal(restored[0].confidence01, 0.5, 'numeric-string confidence must not 
 assert.equal(restored[0].source, 'restored-unknown', 'accessor-backed source must be ignored');
 assert.deepEqual(restored[0].payload, {}, 'accessor-backed payload fields must be omitted');
 
+let deeplyNested = { leaf: 'bounded' };
+for (let index = 0; index < 1000; index++) deeplyNested = { child: deeplyNested };
+const boundedPayload = new CognitiveEventFabric();
+boundedPayload.restore({
+  total: 1,
+  recent: [{ id: 'deep:1', tick: 1, stage: 'observation', at: 1, parentIds: [], payload: deeplyNested }],
+  receiptEvents: [],
+  receiptProjectionIndex: [],
+});
+assert.equal(boundedPayload.recent(1).length, 1, 'deep but valid event should restore without recursive overflow');
+assert.doesNotThrow(() => boundedPayload.snapshot(), 'payload sanitization must remain depth-bounded');
+
 const receiptSource = new CognitiveEventFabric();
 receiptSource.appendToolReceiptTrace({
   tick: 7, executionId: 'exec:7', toolId: 'test-tool', ok: true, verified: true,
