@@ -7,10 +7,12 @@ on:
       - "app/src/components/Avatar3DStage.tsx"
       - "app/src/components/avatar/vrmRuntimeAdapter.ts"
       - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/src/components/avatar/motorFrameMapper.ts"
       - "app/src/components/avatar/glbMouthMorphAdapter.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
       - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/scripts/glb-mouth-morph-adapter.test.mjs"
       - "app/scripts/vrm-normalized-humanoid.integration.test.mjs"
       - "app/package.json"
@@ -46,6 +48,8 @@ jobs:
         run: npm --prefix app run test:glb-mouth-morph-adapter
       - name: Test shared speech-to-viseme timeline
         run: npm --prefix app run test:embodiment-timeline
+      - name: Test calibrated motor-frame mapping
+        run: npm --prefix app run test:motor-frame-mapper
       - name: Test 3D stage and GLB/VRM integration contract
         run: node --experimental-strip-types --test app/scripts/avatar-3d-stage.test.mjs
       - name: Verify actual three-vrm normalized humanoid transfer
