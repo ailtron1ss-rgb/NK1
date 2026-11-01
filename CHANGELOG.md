@@ -1,3 +1,10 @@
+## [NK1][Autonomy] Harden autonomous-life snapshot restoration (2026-11-01)
+- Validate persisted counters, timestamps, ratios, lifecycle modes and recent-history rows before restoring the autonomous runtime controller.
+- Read only own data properties; accessor-backed snapshots are never executed, and hostile proxy failures reset to safe defaults rather than aborting startup.
+- Clamp persisted outcome ratios, skip malformed history entries and preserve the existing bounded 96-entry history.
+- Extend the existing WorkPass224 regression; the unified organism runtime workflow already owns this test path.
+- This hardens snapshot recovery only; it does not claim improved autonomous initiative quality, long-duration soak or release readiness.
+
 ## [NK1][Embodiment] Bind motor-frame status references to the current joint snapshot (2026-11-01)
 - Reject reached/blocked joint IDs that do not exist in the same frame; status metadata can no longer describe a different skeleton revision.
 - Reject contradictory frames that mark the same joint as both reached and blocked before calibrated pose mapping.
