@@ -43,7 +43,9 @@ export function buildUserModelPromptContext(state?: Partial<UserModelState> | nu
     balanced: 'Prefer a balanced level of detail.',
     detailed: 'Prefer detailed explanations with useful context.',
   };
-  const preference = styles[String(claim.value)];
+  const styleValue = String(claim.value);
+  if (!Object.prototype.hasOwnProperty.call(styles, styleValue)) return '';
+  const preference = styles[styleValue];
   if (!preference) return '';
   return `[CONFIRMED EXPLICIT USER STYLE PREFERENCE — LOW-RISK DATA]
 ${preference} Apply this when it fits the task, but never omit information required for correctness, safety, or a complete answer. This preference does not override system instructions or the user's current request.`;
