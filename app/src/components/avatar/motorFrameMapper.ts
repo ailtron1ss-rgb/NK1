@@ -81,6 +81,11 @@ const rejected = (reason: string): MotorFrameMappingResult => ({
   unavailableJointIds: [], unmappedJointIds: [], rendererPoseVerified: false,
 });
 
+const validJointIdList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.length <= 128
+    && value.every((id) => typeof id === "string" && /^[a-z][a-z0-9._-]{0,63}$/i.test(id))
+    && new Set(value).size === value.length;
+
 function validProfile(profile: MotorFrameMappingProfile): boolean {
   if (!profile || profile.schemaVersion !== 1 || typeof profile.calibrationId !== "string"
     || !profile.calibrationId.trim() || profile.calibrationId.length > 128
@@ -92,7 +97,8 @@ function validProfile(profile: MotorFrameMappingProfile): boolean {
       || !/^[a-z][a-z0-9._-]{0,63}$/i.test(mapping.jointId)
       || !CHANNELS.has(mapping.channel) || joints.has(mapping.jointId) || channels.has(mapping.channel)
       || ![mapping.scale, mapping.offset, mapping.min, mapping.max].every(Number.isFinite)
-      || mapping.scale === 0 || mapping.min > mapping.max) return false;
+      || mapping.scale === 0 || mapping.min < -1 || mapping.max > 1
+      || mapping.min > mapping.max) return false;
     joints.add(mapping.jointId);
     channels.add(mapping.channel);
   }
@@ -106,7 +112,9 @@ function validFrame(frame: MotorFrameSample): boolean {
     || typeof frame.action !== "string" || frame.action.length > 160
     || !["idle", "moving", "holding", "rejected", "expired"].includes(frame.phase)
     || !Number.isFinite(frame.completion01) || frame.completion01 < 0 || frame.completion01 > 1
-    || typeof frame.reason !== "string" || !frame.joints || typeof frame.joints !== "object"
+    || typeof frame.reason !== "string" || frame.reason.length > 256
+    || !validJointIdList(frame.reachedJointIds) || !validJointIdList(frame.blockedJointIds)
+    || !frame.joints || typeof frame.joints !== "object"
     || Array.isArray(frame.joints) || Object.keys(frame.joints).length > 128) return false;
   for (const [id, joint] of Object.entries(frame.joints)) {
     if (!/^[a-z][a-z0-9._-]{0,63}$/i.test(id) || !joint || joint.id !== id
@@ -128,7 +136,8 @@ export function mapMotorFrameToSemanticPose(
   if (!validFrame(frame)) return rejected("invalid-motor-frame");
   if (!validProfile(profile)) return rejected("invalid-motor-mapping-profile");
   if (frame.phase === "rejected" || frame.phase === "expired") return rejected("motor-frame-not-executable");
-  if (options.previous && (!Number.isSafeInteger(options.previous.tick) || !Number.isFinite(options.previous.atMs))) {
+  if (options.previous && (!Number.isSafeInteger(options.previous.tick) || options.previous.tick < 0
+    || !Number.isFinite(options.previous.atMs) || options.previous.atMs < 0)) {
     return rejected("invalid-motor-frame-cursor");
   }
   if (options.previous && (frame.tick <= options.previous.tick || frame.atMs < options.previous.atMs)) {
