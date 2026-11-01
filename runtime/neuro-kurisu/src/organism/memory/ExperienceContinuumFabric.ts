@@ -174,6 +174,9 @@ export interface LongitudinalReplaySummary {
   meanRetentionOn01:number;
   meanRetentionOff01:number;
   conditionDifference01:number|null;
+  holdoutMeanRetentionOn01:number;
+  holdoutMeanRetentionOff01:number;
+  holdoutConditionDifference01:number|null;
   holdoutTrials:number;
   evidenceGrade:'confirmatory-eligible'|'exploratory-matched'|'insufficient';
 }
@@ -370,14 +373,17 @@ export class ExperienceContinuumFabric {
     const cleanPairs=[...pairs.values()].filter(x=>x.on&&x.off&&!x.duplicateOn&&!x.duplicateOff) as Array<{on:LongitudinalReplayTrial;off:LongitudinalReplayTrial}>;
     const matched=cleanPairs;
     const holdoutMatchedPairs=cleanPairs.filter(pair=>pair.on.phase==='holdout'&&pair.off.phase==='holdout').length;
-    const holdoutDistinctDelays=new Set(rows.filter(x=>x.phase==='holdout').map(x=>Math.round(x.delayMs/86400000))).size;
+    const holdoutRows=rows.filter(x=>x.phase==='holdout');
+    const holdoutOn=holdoutRows.filter(x=>x.mode==='replay-on'),holdoutOff=holdoutRows.filter(x=>x.mode==='replay-off');
+    const holdoutDistinctDelays=new Set(holdoutRows.map(x=>Math.round(x.delayMs/86400000))).size;
     const mean=(xs:LongitudinalReplayTrial[])=>xs.length?xs.reduce((a,x)=>a+x.score01,0)/xs.length:0;
     const diff=matched.length?matched.reduce((a,p)=>a+(p.on.score01-p.off.score01),0)/matched.length:null;
-    const holdout=rows.filter(x=>x.phase==='holdout').length;
+    const holdoutDiff=holdoutMatchedPairs?cleanPairs.filter(pair=>pair.on.phase==='holdout'&&pair.off.phase==='holdout').reduce((a,p)=>a+(p.on.score01-p.off.score01),0)/holdoutMatchedPairs:null;
+    const holdout=holdoutRows.length;
     const comparable=matched.length>=2;
     const protocol=this.state.replay.protocols.find(p=>p.id===experimentId&&p.taskId===taskId);
     const eligible=Boolean(protocol?.randomized&&protocol?.balanced&&comparable&&matched.length>=Math.max(2,protocol.requiredPairs)&&holdout>=4&&holdoutMatchedPairs>=2&&holdoutDistinctDelays>=2&&delays.size>=2);
-    return {experimentId,taskId,totalTrials:this.state.replay.longitudinal.filter(x=>x.experimentId===experimentId&&x.taskId===taskId).length,verifiedTrials:rows.length,distinctDelays:delays.size,matchedPairs:matched.length,holdoutMatchedPairs,holdoutDistinctDelays,pairedComparable:comparable,meanRetentionOn01:mean(on),meanRetentionOff01:mean(off),conditionDifference01:diff,holdoutTrials:holdout,evidenceGrade:eligible?'confirmatory-eligible':comparable?'exploratory-matched':'insufficient'};
+    return {experimentId,taskId,totalTrials:this.state.replay.longitudinal.filter(x=>x.experimentId===experimentId&&x.taskId===taskId).length,verifiedTrials:rows.length,distinctDelays:delays.size,matchedPairs:matched.length,holdoutMatchedPairs,holdoutDistinctDelays,pairedComparable:comparable,meanRetentionOn01:mean(on),meanRetentionOff01:mean(off),conditionDifference01:diff,holdoutMeanRetentionOn01:mean(holdoutOn),holdoutMeanRetentionOff01:mean(holdoutOff),holdoutConditionDifference01:holdoutDiff,holdoutTrials:holdout,evidenceGrade:eligible?'confirmatory-eligible':comparable?'exploratory-matched':'insufficient'};
   }
 
     summary(){return {version:7,cycles:this.state.cycles,observations:this.state.observations,hotCount:this.state.hotCount,warmCount:this.state.warmCount,coldCount:this.state.coldCount,graphNodes:this.state.graphNodes.length,graphEdges:this.state.graphEdges.length,clusters:this.state.clusters.length,identityGravity:this.state.identityGravity,identityGravityHistory:this.state.identityGravityHistory.slice(-8),integrity:this.state.integrity,compression:this.state.compression,replay:this.state.replay,retention:this.state.retention,memorySkillBindings:this.state.memorySkillBindings.length,adaptiveReplayGovernor:this.replayGovernor.diagnostics(),causalReplayCredit:this.causalReplayCredit.diagnostics()};}
