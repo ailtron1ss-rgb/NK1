@@ -1,8 +1,13 @@
-## [NK1][Memory] Wire independent retrieval evidence into integration gates (2026-11-01)
+## [NK1][Embodiment] Reuse the anime toon gradient texture (2026-11-01)
+- Reuse one lazily-created 3-band DataTexture across procedural and imported GLB toon materials instead of allocating one GPU texture per material. This prevents avoidable GPU resource growth when avatar meshes/models are replaced or reloaded.
+- Add a source-contract regression for the shared texture cache. The texture remains module-scoped and immutable after initialization; VRM-authored MToon materials remain untouched.
+- The first exact-HEAD core run caught a circular TypeScript return-type annotation in the cache; the annotation was corrected to an explicit return type and the regression was tightened. The corrected exact-HEAD workflow is pending; no browser/WebGL soak is claimed.
 
-- Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
-- Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
-- The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
+## [NK1][Embodiment] Add anime cel shading to the procedural 3D body (2026-11-01)
+- Replace physically smooth procedural fallback materials with Three.js MeshToonMaterial and a compact three-band nearest-filter gradient, preserving lit 3D geometry and depth.
+- Keep VRM materials native so authored VRM MToon expressions remain intact; convert non-VRM GLB Standard/Physical materials to toon shading while preserving color, texture, normal, alpha and emissive channels.
+- Add regressions for toon material creation, imported non-VRM GLB conversion, preserved texture channels and the retained 3D platform.
+- This is a renderer/style improvement only; it is not a generated or production-ready Kurisu VRM asset. The independent Blender model project is tracked separately; no model binary is included in this PR.
 
 ## [NK1][Memory] Require independent bilingual holdout clusters (2026-11-01)
 
@@ -3240,3 +3245,9 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Use the plan snapshot once per runtime step: only run full `PlanEngine.build(..., 4, 4)` when `run.project` is enabled and the planning budget is accepted; otherwise use a pure one-step `buildBudgetFallback()` projection.
 - Honor `run['slow-cognition']`, `run['world-rollout']`, and `run.shadow`: gated work is skipped without spending its associated planning/simulation budget, and alternative action projections are omitted when shadow evaluation is disabled. The single selected-action environment transition remains the base result needed by the runtime loop.
 - Added a runtime execution-gate regression with a deterministic one-step fallback purity test and source-contract checks proving each expensive path is tied to its planner/budget decision. Extended the planner CI workflow to run it.
+
+## [NK1][Memory] Wire independent retrieval evidence into integration gates (2026-11-01)
+
+- Add the WorkPass73 privacy-preserving Inspect evidence regression, WorkPass76 MemoryOS2 revision-lineage restore integrity regression, and WorkPass77 source-cluster bootstrap / bilingual holdout regression to both the recovered-runtime gate and the NK1 integration-closure gate.
+- Keep the checks in their existing runtime package scripts; no duplicate evaluator or memory implementation is introduced.
+- The integration gates now fail when these independent memory-evidence contracts regress. This is validation wiring only: it does not claim retrieval uplift, external human-labelled evidence, production database integration, or automatic memory promotion.
