@@ -1,4 +1,15 @@
-# Release license review — рабочий список 2026-10-31
+# Release license review — рабочий список
+
+## Повторный точный аудит 2026-11-01
+
+- Проверенная исходная ветка: `workpass70-source`, SHA `5b4a10c01b9dd70afc61e201b7a344c235cc80b0`.
+- Release workflow: [run 41284938747](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41284938747); source freshness и SBOM/provenance inventory прошли, публикация остановлена только на fail-closed license review.
+- Текущий результат: `releaseRedistributionReady=false`, **115 ошибок**.
+- Актуальная инвентаризация: 477 locked npm-компонентов; fingerprint `a10f75530eeac185de88cdf338b094c2cbd9bec7a4c16c9cee7b5d040cb92cd4`; 8 source archives; 11 repository LICENSE/NOTICE.
+- Разбивка 115 ошибок: global review — 5; root project — 5; runtime project — 5; locked npm inventory — 5; 8 архивов — 40; 11 repository LICENSE/NOTICE — 55.
+- Все review-записи остаются `pending`; `redistributionApproved=false`; reviewerType/reviewer/reviewedAt не заполнены. Никаких человеческих одобрений не подставлялось.
+- Важное решение владельца: `runtime/neuro-kurisu/LICENSE` содержит private / all rights reserved. Публичное распространение полного runtime нельзя считать разрешённым без явного решения правообладателя.
+
 
 ## Текущий проверенный снимок
 
@@ -11,16 +22,16 @@
 - В manifest добавлены evidenceRef и licenseExpression для root/runtime, locked inventory, 8 archives и всех 11 repository LICENSE/NOTICE файлов. Четыре vendor LICENSE получили строки с вычисленными SHA-256.
 - Все статусы остаются pending, `redistributionApproved=false`, reviewer-поля пусты. Повторный аудит после этих evidence-only изменений ещё не завершён.
 
-## Сводка блокировок последнего аудита до evidence-only обновления manifest
+## Историческая сводка аудита 2026-10-31 до evidence-only обновления manifest
 
 | Область | Ошибок | Причина |
 |---|---:|---|
-| Global release review | 6 | Нет human approval, reviewer, даты и evidenceRef |
-| Root project | 7 | Нет утверждённого license expression и redistribution permission |
-| Runtime project | 7 | LICENSE private / all rights reserved; human approval отсутствует |
-| Locked npm inventory | 7 до исправления count | 5 полей review + fingerprint + mismatch count; после count=477 mismatch должен исчезнуть, fingerprint остаётся pending |
-| Source archives | 56 | 8 архивов × 7 обязательных полей review |
-| Repository LICENSE/NOTICE | 53 | В последнем аудите было 7 записей × 7 полей + 4 отсутствующие vendor records; после evidence-only обновления все 11 строк существуют, но review всё ещё pending |
+| Global release review | 5 | Нет human approval, reviewer и даты |
+| Root project | 5 | Нет human approval, reviewer, даты и redistribution permission; licenseExpression/evidenceRef уже заданы |
+| Runtime project | 5 | LICENSE private / all rights reserved; human approval и redistribution permission отсутствуют |
+| Locked npm inventory | 5 | Human review отсутствует; fingerprint не утверждён и требует сверки после review |
+| Source archives | 40 | 8 архивов × 5 отсутствующих approval-полей |
+| Repository LICENSE/NOTICE | 55 | 11 записей × 5 отсутствующих approval-полей; все 11 строк есть в manifest, но остаются pending |
 | **Всего** | **136** | До повторного аудита после factual count correction |
 
 ## Порядок закрытия
@@ -28,14 +39,14 @@
 1. Владелец проекта принимает решение по root/runtime лицензии и публичному распространению.
 2. Проверить 477 locked npm компонентов; после human review записать точный fingerprint и evidenceRef.
 3. Для восьми архивов проверить полный состав, вложенные LICENSE/NOTICE, upstream и commit; неизвестные архивы не включать в публичный Release без разрешения.
-4. Разобрать 11 repository LICENSE/NOTICE: 7 pending, 4 vendor записи отсутствуют.
+4. Рассмотреть все 11 repository LICENSE/NOTICE: записи уже присутствуют в manifest, но все остаются pending без human approval.
 5. Заполнить review-поля только после реального решения человека.
 6. Запустить release audit на актуальном source SHA; публиковать ZIP только при полном успехе всех gates.
 
-Эти числа относятся к аудиту до evidence-only обновления manifest; новый точный error count будет зафиксирован только после повторного CI-аудита.
+Числа выше — исторический снимок 2026-10-31. Точный повторный аудит 2026-11-01 зафиксировал 115 ошибок; см. актуальный блок в начале документа.
 
 Подробные upstream-свидетельства и нерешённые вопросы: [RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md](RELEASE_LICENSE_VENDOR_EVIDENCE_2026-10-31_RU.md).
 
 ## Release
 
-Последний подтверждённый Release остаётся `NeuroKurisu0.1` / `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip` (135,290,615 bytes). Новый asset не создан и существующий не заменён.
+Последний подтверждённый Release остаётся `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (136,354,713 bytes). Новый asset не создан и существующий не заменён.

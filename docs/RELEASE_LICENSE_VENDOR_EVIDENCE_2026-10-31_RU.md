@@ -1,14 +1,25 @@
 # Пакет доказательств лицензирования Neuro Kurisu / NK1
 
+## Повторный аудит 2026-11-01 — актуальный статус
+
+- Source: `workpass70-source` @ `5b4a10c01b9dd70afc61e201b7a344c235cc80b0`.
+- Release workflow: [run 41284938747](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41284938747).
+- Текущий audit: `releaseRedistributionReady=false`, **115 ошибок**; freshness/provenance/SBOM checks прошли, fail-closed остановка произошла на человеческом license review.
+- Инвентарь: 477 locked npm components; fingerprint `a10f75530eeac185de88cdf338b094c2cbd9bec7a4c16c9cee7b5d040cb92cd4`; 8 source archives; 11 repository LICENSE/NOTICE.
+- Error breakdown: global review 5; root 5; runtime 5; npm inventory 5; source archives 40; repository license files 55.
+- Все 11 repository LICENSE/NOTICE review records теперь существуют в manifest, но остаются `pending`; ни одна запись не получила human approval или redistribution grant.
+- `runtime/neuro-kurisu/LICENSE` явно обозначает private / all rights reserved. Для публичного ZIP это отдельное решение правообладателя, а не техническая формальность.
+
+
 **Срез:** 2026-10-31  
 **Назначение:** фактическая инвентаризация для человеческой проверки. Это не юридическое заключение и не разрешение на распространение.
 
 ## Последний подтверждённый аудит
 
-- Исходный SHA: `7dc96bd0dfa612f6b47c37b6add2bc6ba82a33d2`.
-- Workflow run: [41234198086](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41234198086).
+- Исторический исходный SHA аудита 2026-10-31: `7dc96bd0dfa612f6b47c37b6add2bc6ba82a33d2`.
+- Исторический workflow run: [41234198086](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41234198086).
 - Аудит завершился fail-closed: `releaseRedistributionReady=false`, **136 ошибок**.
-- Зафиксировано 8 исходных архивов и 11 файлов LICENSE/NOTICE в репозитории.
+- На историческом срезе было зафиксировано 8 исходных архивов и 11 файлов LICENSE/NOTICE в репозитории.
 - В locked npm inventory обнаружено **477 компонентов**.
 - Измеренный fingerprint: `a10f75530eeac185de88cdf338b094c2cbd9bec7a4c16c9cee7b5d040cb92cd4`.
 - В `RELEASE_LICENSE_REVIEW.json` исправлен только фактический `componentCount: 462 → 477`. Поле fingerprint оставлено `null`, статусы и поля человеческого одобрения не заполнены.
@@ -67,7 +78,7 @@
 2. Разрешить распространение runtime: текущий LICENSE указывает private / all rights reserved.
 3. Просмотреть полный список 477 locked npm components и принять решение о redistribution; fingerprint остаётся неутверждённым.
 4. Для каждого из 8 архивов установить владельца, upstream/commit, license expression и право включения в публичный Release ZIP.
-5. Рассмотреть 11 repository LICENSE/NOTICE: 7 записей уже есть, но pending; 4 vendor LICENSE пока не имеют review records.
+5. Рассмотреть все 11 repository LICENSE/NOTICE: все записи уже есть в manifest, но остаются pending без human approval.
 6. Только после этого заполнить human reviewer, дату, evidenceRef и redistributionApproved, затем повторить release audit.
 
 **Ничего не помечено как approved. Новый Release не опубликован.**
