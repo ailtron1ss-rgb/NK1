@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Enforce normalized motor-frame calibration bounds (2026-11-01)
+- Reject motor mapping profiles whose calibrated channel limits extend outside the renderer-neutral `[-1, 1]` contract; downstream adapters can no longer receive a mapper-approved out-of-contract pose.
+- Validate reached/blocked joint ID lists for shape, bounded size, identifier syntax and duplicates, and require persisted frame cursors to remain non-negative and monotonic.
+- Add regressions for both normalized-bound violations, malformed joint indexes and negative cursors. Existing embodiment-switch workflow already runs the motor-frame mapper regression.
+- Scope is input-contract hardening only; no claim of improved physical IK, renderer readback, browser E2E or device calibration.
+
 ## [NK1][Embodiment] Enforce GLB buffer cardinality and binary padding (2026-11-01)
 - Bound attacker-controlled glTF buffer metadata before iterating it, using a shared maximum of 32 buffers.
 - Enforce the GLB 2.0 URI-less buffer contract: at most one embedded buffer, at index zero, with a required BIN chunk.
