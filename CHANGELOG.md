@@ -3514,7 +3514,7 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 
 ## [NK1][WorkPass78] Isolate longitudinal replay holdout pairs (2026-11-01)
 - Prevent acquisition/test replay-on and replay-off trials from completing a holdout pair; pairing now includes the experiment phase.
-- Require at least two complete, independently verified replay-on/off holdout pairs (and the protocol's total paired-trial threshold) before assigning `confirmatory-eligible`.
+- Require at least five complete, independently verified replay-on/off holdout pairs, across at least two paired holdout delays, before assigning `confirmatory-eligible`; legacy/caller protocols cannot lower the floor.
 - Duplicate trials for the same pair arm are treated as ambiguous and excluded instead of silently overwriting earlier evidence.
 - Add a deterministic regression for phase leakage, unpaired holdout rejection, duplicate-arm rejection and snapshot/restore parity.
 - This hardens the validity of memory-learning evidence; it does not itself demonstrate retrieval uplift or change the official readiness score.
@@ -3532,3 +3532,10 @@ Added an optional local embedding provider (Ollama and llama.cpp/OpenAI-compatib
 - Require the configured number of holdout pairs across at least two paired holdout delays; acquisition pairs and unpaired holdout arms cannot satisfy the gate.
 - Add regressions for duplicate arms and unpaired holdout rows at a second delay.
 - This tightens evidence integrity; it does not claim positive recallDelta or publish a new Release ZIP.
+
+
+## [NK1][Memory] Enforce five-pair confirmatory holdout floor (2026-11-01)
+- Apply a hard five-pair minimum at protocol creation, generic replay eligibility and longitudinal holdout eligibility; restored or caller-supplied lower thresholds cannot bypass it.
+- Keep two-to-four clean pairs exploratory, require paired coverage across at least two holdout delays, and exclude duplicate arms from confirmatory means/effects.
+- Expand deterministic regression coverage for the five-pair boundary, negative holdout effect despite positive acquisition aggregate, duplicate-arm downgrade, unpaired delay exclusion and snapshot/restore parity.
+- This strengthens evidence quality; it does not claim positive recall uplift or independent real-world dataset results.
