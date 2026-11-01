@@ -8,7 +8,7 @@
 
 - [#619 — EmotionAppraisalEngine restore](https://github.com/ailtron1ss-rgb/NK1/pull/619): snapshot hardening и WorkPass610 regression. Ветка синхронизирована с base; точный CI не подтверждён.
 - [#630 — neural branch/personality/planner restore](https://github.com/ailtron1ss-rgb/NK1/pull/630): WorkPass612/613; внешний NeuralExperienceBranch restore boundary теперь использует общий bounded snapshotPlainData. Первый runtime typecheck был успешен; повторные Actions для более новых SHA завершились failed без доступных step/logs.
-- [#636 — signed affect action priors](https://github.com/ailtron1ss-rgb/NK1/pull/636): исправляет signed/confidence-gated действие эмоционального appraisal; exact-head unified workflow ожидает завершения. Issue [#632](https://github.com/ailtron1ss-rgb/NK1/issues/632) уточнён по фактической интеграции affect в OrganismCore.
+- [#636 — signed affect action priors](https://github.com/ailtron1ss-rgb/NK1/pull/636): исправляет signed/confidence-gated влияние эмоционального appraisal. Первый unified workflow завершился failure, rerun — также failure; шаги/логи GitHub недоступны (job logs 404), а docs-only SHA ещё не запускался. Проверка остаётся неподтверждённой. Issue [#632](https://github.com/ailtron1ss-rgb/NK1/issues/632) уточнён по фактической интеграции affect в OrganismCore.
 - Изменения этих PR не входят в `workpass70-source`, пока не объединены; ни одно не включено в опубликованный Release ZIP.
 
 
