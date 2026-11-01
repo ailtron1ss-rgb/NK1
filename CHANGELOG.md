@@ -1,3 +1,8 @@
+## [NK1][Validation] Record WorkPass634 exact-head CI limitation (2026-11-01)
+- Unified organism workflow #41331040326 failed on the original WorkPass634 code head; the failed job was re-run and the retry also failed.
+- GitHub returned no step list for the job; downloading job logs returned 404. The docs-only latest head has no separate Actions run yet.
+- No local runtime execution is claimed because the working container cannot reach GitHub to materialize the branch files. Treat WorkPass634 behavior as implemented but test status unverified until actionable exact-head checks are available.
+
 ## [NK1][Affect] Bound signed emotion priors in canonical action selection — WorkPass634 (2026-11-01)
 - Correct the direct affect action prior: preserve bounded negative regulatory influence instead of clamping every value to non-negative.
 - Map explore/engage/verify/reflect/rest/protect/withdraw/approach tendencies to the seven canonical ActionKind values; affect tendencies are never executable actions.
