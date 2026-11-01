@@ -2,6 +2,7 @@
 - Extract parent-directory syncing into a single helper after primary/backup rename.
 - Preserve best-effort behavior when strict mode is disabled.
 - In strict mode, propagate directory open/fsync/close failures as `directory-fsync-required`; a rename may already be visible, but the save is not counted as durability-confirmed.
+- In strict mode, fsync the backup directory entry before replacing the primary file, preserving a durable recovery point across the primary rename window.
 - Add regressions for strict failure propagation and non-strict fallback. This is a contract test, not a physical power-loss or filesystem hardware test.
 
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
