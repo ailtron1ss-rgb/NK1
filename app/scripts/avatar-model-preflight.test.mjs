@@ -102,3 +102,36 @@ test("rejects malformed buffer metadata and unsatisfied required extensions", ()
   assert.throws(() => preflightAvatarModel(invalidUriType, "bad.glb"), /gltf-buffer-uri-invalid/);
   assert.throws(() => preflightAvatarModel(requiredMissing, "bad.glb"), /gltf-required-extension-missing/);
 });
+
+test("rejects models with node counts above the mobile-safe complexity budget", () => {
+  const overloaded = glb({ ...baseDocument(), nodes: Array.from({ length: 2049 }, () => ({})) });
+  assert.throws(() => preflightAvatarModel(overloaded, "overloaded.glb"), /gltf-complexity-limit-nodes/);
+});
+
+test("rejects excessive aggregate accessor elements before allocating geometry", () => {
+  const overloaded = glb({
+    ...baseDocument(),
+    accessors: [{ count: 3_000_001 }, { count: 3_000_000 }],
+  });
+  assert.throws(() => preflightAvatarModel(overloaded, "overloaded.glb"), /gltf-complexity-limit-accessors/);
+});
+
+test("rejects invalid accessor counts instead of allowing parser coercion", () => {
+  const invalid = glb({ ...baseDocument(), accessors: [{ count: "120000" }] });
+  assert.throws(() => preflightAvatarModel(invalid, "invalid.glb"), /gltf-accessor-count-invalid/);
+});
+
+test("rejects excessive aggregate mesh primitive counts", () => {
+  const overloaded = glb({
+    ...baseDocument(),
+    meshes: [{ primitives: Array.from({ length: 4097 }, () => ({ attributes: {} })) }],
+  });
+  assert.throws(() => preflightAvatarModel(overloaded, "overloaded.glb"), /gltf-complexity-limit-primitives/);
+});
+
+test("rejects excessive image and animation counts before renderer setup", () => {
+  const images = glb({ ...baseDocument(), images: Array.from({ length: 129 }, () => ({ uri: "data:image/png;base64,AA==" })) });
+  const animations = glb({ ...baseDocument(), animations: Array.from({ length: 65 }, () => ({ channels: [], samplers: [] })) });
+  assert.throws(() => preflightAvatarModel(images, "images.glb"), /gltf-complexity-limit-images/);
+  assert.throws(() => preflightAvatarModel(animations, "animations.glb"), /gltf-complexity-limit-animations/);
+});
