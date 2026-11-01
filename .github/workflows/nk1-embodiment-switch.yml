@@ -33,7 +33,37 @@ on:
   workflow_dispatch:
 
   push:
-    branches: [work/nk1-embodiment-ui-bridge-source-sync-2026-11-01]
+    branches:
+      - workpass70-source
+      - work/nk1-embodiment-ui-bridge-source-sync-2026-11-01
+    paths:
+      - "app/src/components/avatar/embodimentSwitch.ts"
+      - "app/src/components/avatar/embodimentTimeline.ts"
+      - "app/src/components/avatar/motorFrameMapper.ts"
+      - "app/scripts/motor-frame-mapper.test.mjs"
+      - "app/src/components/avatar/embodimentCoordinator.ts"
+      - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "app/scripts/embodiment-coordinator.test.mjs"
+      - "app/scripts/embodiment-timeline.test.mjs"
+      - "app/scripts/embodiment-ui-bridge.test.mjs"
+      - "app/scripts/live2d-intent-ack.test.mjs"
+      - "runtime/neuro-kurisu/public/live2d/viewer.html"
+      - "app/src/components/AvatarStage.tsx"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/threeToonMaterials.ts"
+      - "app/src/types/three.d.ts"
+      - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/src/components/avatar/avatarModelStore.ts"
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/scripts/avatar-model-preflight.test.mjs"
+      - "app/scripts/verify-hosted-kurisu-model.mjs"
+      - "app/src/components/avatar/avatarModelCatalog.ts"
+      - "app/scripts/three-toon-materials.test.mjs"
+      - "app/scripts/embodiment-switch.test.mjs"
+      - "app/package.json"
+      - ".github/workflows/nk1-embodiment-switch.yml"
+
 
 permissions:
   contents: read
