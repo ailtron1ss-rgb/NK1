@@ -1,0 +1,44 @@
+name: NK1 Avatar Model Preflight
+
+on:
+  push:
+    branches:
+      - workpass70-source
+    paths:
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.ts"
+      - "app/scripts/avatar-model-preflight.test.mjs"
+      - ".github/workflows/avatar-model-preflight.yml"
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - "app/src/components/avatar/avatarModelLimits.ts"
+      - "app/src/components/avatar/avatarModelPreflight.test.mjs"
+      - "app/scripts/avatar-model-preflight.test.mjs"
+      - ".github/workflows/avatar-model-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-avatar-model-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preflight-contract:
+    name: GLB / VRM preflight contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+      - name: Run parser boundary regressions
+        run: node --experimental-strip-types --test app/scripts/avatar-model-preflight.test.mjs
