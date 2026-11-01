@@ -1,3 +1,10 @@
+## [NK1][Avatar] Keep browser voice prosody on one current affect snapshot (2026-11-01)
+- Prevent historical `lastTurn.emotion` from overriding current organism affect while arousal and valence come from a newer snapshot.
+- Normalize emotion, arousal and valence together; unknown labels fall back to calm and numeric channels are finite/clamped to [0, 1].
+- Bind browser TTS prosody to the same current affect snapshot used by the avatar.
+- Add focused regression coverage for coherent snapshot extraction, invalid-label fallback and bounded channels.
+- This validates state coherence, not acoustic timing, voice quality or device synchronization.
+
 ## [NK1][Evaluation] Integrate independent Inspect AI evidence adapter (2026-11-01)
 - Port the WorkPass72 read-only CognitiveEventFabric exporter, privacy-reduced JSONL schema, independent Python validator and pinned Inspect AI 0.3.286 deterministic scoring harness onto the current `workpass70-source` checkpoint (`6f83e2e`).
 - Re-run the 11-stage causal lineage and action → outcome → evidence receipt checks outside the runtime; raw conversation, memory and postcondition text remain excluded from exported records.
