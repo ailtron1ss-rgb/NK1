@@ -25,7 +25,7 @@ const hostileEvent = {
   parentIds: [],
   external: 'true',
   confidence01: '0.99',
-  payload: {},
+  payload: { rows: [{ label: 'safe nested row' }] },
 };
 Object.defineProperty(hostileEvent, 'at', { enumerable: true, get() { getterCalls++; return 999; } });
 Object.defineProperty(hostileEvent, 'source', { enumerable: true, get() { getterCalls++; return 'getter-source'; } });
@@ -61,7 +61,7 @@ assert.equal(restored[0].at, 0, 'numeric-string timestamps must use the conserva
 assert.equal(restored[0].external, false, 'string booleans must not be truth-coerced');
 assert.equal(restored[0].confidence01, 0.5, 'numeric-string confidence must not be trusted');
 assert.equal(restored[0].source, 'restored-unknown', 'accessor-backed source must be ignored');
-assert.deepEqual(restored[0].payload, {}, 'accessor-backed payload fields must be omitted');
+assert.deepEqual(restored[0].payload, { rows: [{ label: 'safe nested row' }] }, 'accessor-backed fields must be omitted while bounded nested data survives');
 
 let deeplyNested = { leaf: 'bounded' };
 for (let index = 0; index < 1000; index++) deeplyNested = { child: deeplyNested };
