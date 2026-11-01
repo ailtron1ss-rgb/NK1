@@ -16,14 +16,14 @@ assert.deepEqual(restored.snapshot(),valid,'valid v2 snapshots must round-trip w
 let rootGetterCalls=0;
 const rootGetter=Object.defineProperty({},'version',{enumerable:true,get(){rootGetterCalls++;return 2;}});
 const rootGetterRestore=new EmotionAppraisalEngine();
-assert.doesNotThrow(()=>rootGetterRestore.restore(rootGetter as any));
+assert.doesNotThrow(()=>rootGetterRestore.restore(rootGetter));
 assert.equal(rootGetterCalls,0);
 assert.deepEqual(rootGetterRestore.snapshot(),defaultEmotionAppraisalState());
 
 // Nested accessors are rejected without invoking user code; unaffected state survives.
 let nestedGetterCalls=0;
 const nestedGetter=Object.defineProperty({},'cycles',{enumerable:true,get(){nestedGetterCalls++;return 99;}});
-const nestedSnapshot=structuredClone(valid) as any;
+const nestedSnapshot=structuredClone(valid);
 nestedSnapshot.interoception=nestedGetter;
 const nestedRestore=new EmotionAppraisalEngine();
 nestedRestore.restore(nestedSnapshot);
@@ -37,12 +37,12 @@ const inheritedRestore=new EmotionAppraisalEngine();
 assert.doesNotThrow(()=>inheritedRestore.restore(inherited));
 assert.equal(inheritedRestore.snapshot().episodes,0);
 const hostileRoot=new Proxy({}, {getPrototypeOf(){throw new Error('hostile getPrototypeOf');}});
-assert.doesNotThrow(()=>new EmotionAppraisalEngine().restore(hostileRoot as any));
+assert.doesNotThrow(()=>new EmotionAppraisalEngine().restore(hostileRoot));
 const revokedRoot=Proxy.revocable({},{}); revokedRoot.revoke();
-assert.doesNotThrow(()=>new EmotionAppraisalEngine().restore(revokedRoot.proxy as any));
+assert.doesNotThrow(()=>new EmotionAppraisalEngine().restore(revokedRoot.proxy));
 
 // Sparse and accessor-backed arrays are rejected without evaluating indices.
-const sparseSnapshot=structuredClone(valid) as any;
+const sparseSnapshot=structuredClone(valid);
 sparseSnapshot.history=new Array(2);
 const sparseRestore=new EmotionAppraisalEngine();
 sparseRestore.restore(sparseSnapshot);
@@ -50,19 +50,19 @@ assert.equal(sparseRestore.snapshot().history.length,0);
 let arrayGetterCalls=0;
 const accessorArray=[valid.history[0]];
 Object.defineProperty(accessorArray,'0',{enumerable:true,configurable:true,get(){arrayGetterCalls++;return valid.history[0];}});
-const accessorSnapshot=structuredClone(valid) as any;
+const accessorSnapshot=structuredClone(valid);
 accessorSnapshot.history=accessorArray;
 const accessorRestore=new EmotionAppraisalEngine();
 accessorRestore.restore(accessorSnapshot);
 assert.equal(arrayGetterCalls,0);
 assert.equal(accessorRestore.snapshot().history.length,0);
 const revokedArray=Proxy.revocable([],{}); revokedArray.revoke();
-const revokedArraySnapshot=structuredClone(valid) as any;
+const revokedArraySnapshot=structuredClone(valid);
 revokedArraySnapshot.history=revokedArray.proxy;
 assert.doesNotThrow(()=>new EmotionAppraisalEngine().restore(revokedArraySnapshot));
 
 // Numeric counters cannot become negative/non-finite; finite normalized metrics are clamped.
-const numericSnapshot=structuredClone(valid) as any;
+const numericSnapshot=structuredClone(valid);
 numericSnapshot.episodes=-3;
 numericSnapshot.lastTick=Infinity;
 numericSnapshot.lastAt=NaN;
@@ -87,7 +87,7 @@ for(const value of [numeric.meanArousal01,numeric.meanValence01,numeric.meanStre
 }
 
 // Unknown labels/actions, duplicate identities and broken feeling links are not activated.
-const invalidSnapshot=structuredClone(valid) as any;
+const invalidSnapshot=structuredClone(valid);
 invalidSnapshot.history.unshift({...invalidSnapshot.history[0],label:'transcendent'});
 invalidSnapshot.history.unshift({...invalidSnapshot.history[0],actionTendency:'launch_shell'});
 invalidSnapshot.history.unshift({...invalidSnapshot.history[0],id:invalidSnapshot.history[0].id});
@@ -104,17 +104,17 @@ assert.deepEqual(Object.keys(invalidRestore.snapshot().outcomes),['rest']);
 const replayA=new EmotionAppraisalEngine(); replayA.restore(valid);
 const replayB=new EmotionAppraisalEngine(); replayB.restore(replayA.snapshot());
 assert.deepEqual(replayB.snapshot(),replayA.snapshot());
-const oversized=structuredClone(valid) as any;
+const oversized=structuredClone(valid);
 oversized.history=Array.from({length:600},(_,i)=>({...valid.history[0],id:`emo:bounded:${i}`}));
 const boundedRestore=new EmotionAppraisalEngine();
 boundedRestore.restore(oversized);
 assert.equal(boundedRestore.snapshot().history.length,0,'oversized untrusted arrays fail closed rather than being traversed');
-const manyHistory=structuredClone(valid) as any;
+const manyHistory=structuredClone(valid);
 manyHistory.history=Array.from({length:128},(_,i)=>({...valid.history[0],id:`emo:bounded:${i}`,tick:i}));
 const cappedRestore=new EmotionAppraisalEngine(); cappedRestore.restore(manyHistory);
 assert.equal(cappedRestore.snapshot().history.length,128);
 const manyOutcomes=Object.fromEntries(Array.from({length:80},(_,i)=>[['rest','explore','verify','reflect','protect','withdraw','approach','engage'][i%8]+(i<8?'':String(i)),{attempts:1,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5}]));
-const outcomeSnapshot=structuredClone(valid) as any; outcomeSnapshot.outcomes=manyOutcomes;
+const outcomeSnapshot=structuredClone(valid); outcomeSnapshot.outcomes=manyOutcomes;
 const outcomeRestore=new EmotionAppraisalEngine(); outcomeRestore.restore(outcomeSnapshot);
 assert.ok(Object.keys(outcomeRestore.snapshot().outcomes).length<=8,'only registered action keys are restored');
 
