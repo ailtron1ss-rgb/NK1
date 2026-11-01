@@ -297,7 +297,7 @@ function normalizeRevisionHistory(value:unknown):MemoryItem2['revisionHistory']{
  if(!Array.isArray(value))return [];
  return value.slice(0,MAX_MEMORY_REVISION_HISTORY).flatMap((row:any)=>{
   if(!row||typeof row!=='object')return [];
-  const at=Number(row.at);if(!Number.isFinite(at)||!EPISTEMIC_STATUSES.has(row.from)||!EPISTEMIC_STATUSES.has(row.to))return [];
+  const at=typeof row.at==='number'?row.at:Number.NaN;if(!Number.isFinite(at)||!EPISTEMIC_STATUSES.has(row.from)||!EPISTEMIC_STATUSES.has(row.to))return [];
   return [{at,from:row.from as EpistemicStatus,to:row.to as EpistemicStatus,reason:String(row.reason??'').slice(0,240)}];
  });
 }
@@ -472,7 +472,7 @@ export class MemoryOS2{
    const content=typeof row.content==='string'?row.content.trim():'';
    const kinds=new Set(['sensory','working','episodic','semantic','autobiographical','procedural','social','identity','dream']);
    if(!id||id.length>160||!content||content.length>32768||!kinds.has(String(row.kind)))return null;
-   const finite=(value:unknown,fallback:number)=>{const n=Number(value);return Number.isFinite(n)?n:fallback;};
+   const finite=(value:unknown,fallback:number)=>{return typeof value==='number'&&Number.isFinite(value)?value:fallback;};
    const boundedStrings=(value:unknown,maxItems:number,maxChars:number)=>{
     if(!Array.isArray(value))return [];
     return [...new Set(value.filter((item):item is string=>typeof item==='string').map(item=>item.trim().slice(0,maxChars)).filter(Boolean))].slice(0,maxItems);
@@ -492,7 +492,7 @@ export class MemoryOS2{
    const provenanceClass=this.provenanceClassFor(source,explicitProvenance);
    const statusValues=new Set(['fact','belief','hypothesis','unknown','quarantined']);
    const statusIsValid=statusValues.has(String(row.epistemicStatus));
-   const rawConfidence=Number(row.confidence);
+   const rawConfidence=typeof row.confidence==='number'?row.confidence:Number.NaN;
    const confidenceIsValid=Number.isFinite(rawConfidence)&&rawConfidence>=0&&rawConfidence<=1;
    const epistemicStatus=statusIsValid&&sourceIsValid&&(row.epistemicStatus!=='fact'||confidenceIsValid)
     ?row.epistemicStatus as EpistemicStatus:'unknown';
@@ -882,16 +882,17 @@ export class MemoryOS2{
   return `source:${String(evidence.provenanceClass)}:${String(evidence.source??'').trim().normalize('NFKC').toLocaleLowerCase()}`;
  }
  private normalizeEvidenceSources(item:any):MemoryEvidenceSource[]{
+  const finite=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?value:fallback;
   const source=String(item?.source??'unknown').slice(0,240)||'unknown';
   const provenanceClass=this.provenanceClassFor(source,item?.provenanceClass);
-  const observedAt=Number.isFinite(Number(item?.observedAt))?Number(item.observedAt):Number(item?.createdAt??Date.now());
-  const evidenceFreshnessAt=Number.isFinite(Number(item?.evidenceFreshnessAt))?Number(item.evidenceFreshnessAt):observedAt;
-  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(Number(item?.sourceAuthority01??this.sourceAuthorityDefault(provenanceClass))),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt};
+  const observedAt=finite(item?.observedAt,finite(item?.createdAt,Date.now()));
+  const evidenceFreshnessAt=finite(item?.evidenceFreshnessAt,observedAt);
+  const primary:MemoryEvidenceSource={source,provenanceClass,sourceAuthority01:clamp(finite(item?.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),independenceKey:item?.independenceKey==null?undefined:String(item.independenceKey).trim().slice(0,96)||undefined,observedAt,evidenceFreshnessAt};
   const raw=Array.isArray(item?.evidenceSources)?item.evidenceSources.slice(0,32):[];
   const normalizedRaw:MemoryEvidenceSource[]=raw.map((row:any)=>{
    const cls=this.provenanceClassFor(String(row?.source??source),row?.provenanceClass);
-   const obs=Number.isFinite(Number(row?.observedAt))?Number(row.observedAt):observedAt;
-   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:clamp(Number(row?.sourceAuthority01??this.sourceAuthorityDefault(cls))),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:Number.isFinite(Number(row?.evidenceFreshnessAt))?Number(row.evidenceFreshnessAt):obs};
+   const obs=finite(row?.observedAt,observedAt);
+   return {source:String(row?.source??source).slice(0,240)||source,provenanceClass:cls,sourceAuthority01:clamp(finite(row?.sourceAuthority01,this.sourceAuthorityDefault(cls))),independenceKey:row?.independenceKey==null?undefined:String(row.independenceKey).trim().slice(0,96)||undefined,observedAt:obs,evidenceFreshnessAt:finite(row?.evidenceFreshnessAt,obs)};
   });
   // When the serialized trail already contains the primary lineage, prefer its
   // publisher-bound source label to the generic owning subsystem label.
