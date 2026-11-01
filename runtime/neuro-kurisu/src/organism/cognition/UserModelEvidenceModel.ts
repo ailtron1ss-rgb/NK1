@@ -15,6 +15,10 @@ export interface UserModelCandidate {
   firstSeenTick:number; lastSeenTick:number; confidence01:number; status:'unconfirmed-candidate';
 }
 export interface UserModelForgetTombstone { key:string; domain:UserModelDomain; forgottenAtTick:number; evidenceRef:string; }
+export interface UserModelStateV1 {
+  version:1; claims:UserModelClaim[]; candidates:UserModelCandidate[];
+  processedEvidenceRefs:string[]; rejectedSensitiveCount:number; rejectedMalformedCount:number;
+}
 export interface UserModelState {
   version:2; claims:UserModelClaim[]; candidates:UserModelCandidate[];
   processedEvidenceRefs:string[]; forgetTombstones:UserModelForgetTombstone[];
@@ -68,7 +72,7 @@ const boundedOwnArray=(value:unknown,max:number):unknown[]=>{
 export class UserModelEvidenceModel {
  private state:UserModelState={version:2,claims:[],candidates:[],processedEvidenceRefs:[],forgetTombstones:[],rejectedSensitiveCount:0,rejectedMalformedCount:0};
  snapshot(){return clone(this.state);}
- restore(raw?:Partial<UserModelState>|null){
+ restore(raw?:Partial<UserModelState>|UserModelStateV1|null){
   const version=ownData(raw,'version');
   if(version!==1&&version!==2){this.reset();return;}
   // A v2 snapshot must preserve every deletion boundary. Oversize, sparse,
@@ -144,8 +148,9 @@ export class UserModelEvidenceModel {
  }
  /**
   * Forget one explicitly confirmed low-risk preference.
-  * The evidence reference is retained in the bounded replay ledger, while the value
-  * and matching behavioral candidates are removed from the persisted model.
+  * The persisted tombstone retains only the key/domain, source-event watermark and evidence reference;
+  * the value and matching behavioral candidates are removed from the decision state.
+  * `tick` must be the immutable source-event tick, not the time a replay/import was processed.
   */
  forgetExplicit(i:{key:string;domain:UserModelDomain;tick:number;evidenceRef:string;explicit:boolean}):
   | {accepted:true;removed:boolean;key:string;domain:UserModelDomain}
@@ -188,9 +193,11 @@ export class UserModelEvidenceModel {
  private isForgotten(key:string,domain:UserModelDomain,tick:number){return this.isAtOrBeforeTombstone(key,domain,tick,this.state.forgetTombstones);}
  private isAtOrBeforeTombstone(key:string,domain:UserModelDomain,tick:number,tombstones:UserModelForgetTombstone[]){const tombstone=tombstones.find(item=>item.key===key&&item.domain===domain);return!!tombstone&&tick<=tombstone.forgottenAtTick;}
  private cleanTombstone(raw:unknown):UserModelForgetTombstone|null{
-  const key=normalizeKey(ownData(raw,'key')),domain=ownData(raw,'domain'),forgottenAtTick=ownData(raw,'forgottenAtTick'),evidenceRef=boundedText(ownData(raw,'evidenceRef'),180);
-  if(!key||!isDomain(domain)||!validTick(forgottenAtTick as number)||!evidenceRef)return null;
-  return{key,domain,forgottenAtTick:forgottenAtTick as number,evidenceRef};
+  try {
+   const key=normalizeKey(ownData(raw,'key')),domain=ownData(raw,'domain'),forgottenAtTick=ownData(raw,'forgottenAtTick'),evidenceRef=boundedText(ownData(raw,'evidenceRef'),180);
+   if(!key||!isDomain(domain)||!validTick(forgottenAtTick as number)||!evidenceRef)return null;
+   return{key,domain,forgottenAtTick:forgottenAtTick as number,evidenceRef};
+  } catch { return null; }
  }
  private remember(ref:string){this.state.processedEvidenceRefs=[...this.state.processedEvidenceRefs,ref].slice(-512);}
  private cleanClaim(r:any):UserModelClaim|null{
