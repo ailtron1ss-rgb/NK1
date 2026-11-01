@@ -1,3 +1,8 @@
+## [NK1][SelfModel] Apply confirmed UserModel preferences to language generation (2026-11-01)
+- Project only the explicit, confirmed, low-risk `response.style` claim into cognitive replies and self-initiated dialogue; never expose candidates, disputed claims, arbitrary values or evidence identifiers.
+- Keep the preference subordinate to the current request, correctness and safety, and read it through the canonical advanced-development snapshot with a per-tick cache.
+- Extend the existing UserModel runtime-persistence test command with focused prompt-projection regressions. This is a read-side integration; production preference capture and full end-to-end behavioral validation remain separate gates.
+
 ## [NK1][SelfModel] Preserve claim evidence against partial-ledger replay (2026-11-01)
 - Reconcile every restored claim's current `evidenceRef` into the bounded processed-evidence ledger, even when a persisted snapshot has lost or omitted that ledger entry.
 - Add a regression proving a replayed claim reference remains rejected after restore from a partial snapshot; no evidence is silently re-consumed.
