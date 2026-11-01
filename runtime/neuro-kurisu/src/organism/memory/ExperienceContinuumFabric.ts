@@ -202,6 +202,8 @@ export interface ExperienceContinuumState {
   causalReplayCredit:CausalReplayCreditState;
 }
 
+// Confirmatory replay claims require at least five independently verified matched pairs.
+const MIN_CONFIRMATORY_REPLAY_PAIRS=5;
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clean=(x:unknown,n=140)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
 const uniq=(xs:string[],limit:number)=>[...new Set(xs.map(x=>clean(x,32)).filter(Boolean))].slice(0,limit);
@@ -384,7 +386,8 @@ export class ExperienceContinuumFabric {
     const holdout=holdoutRows.length;
     const comparable=matched.length>=2;
     const protocol=this.state.replay.protocols.find(p=>p.id===experimentId&&p.taskId===taskId);
-    const eligible=Boolean(protocol?.randomized&&protocol?.balanced&&holdout>=4&&holdoutMatchedPairs>=Math.max(2,protocol.requiredPairs)&&holdoutDistinctDelays>=2);
+    const requiredPairs=Math.max(MIN_CONFIRMATORY_REPLAY_PAIRS,protocol?.requiredPairs??MIN_CONFIRMATORY_REPLAY_PAIRS);
+    const eligible=Boolean(protocol?.randomized&&protocol?.balanced&&holdoutMatchedPairs>=requiredPairs&&holdoutDistinctDelays>=2);
     return {experimentId,taskId,totalTrials:this.state.replay.longitudinal.filter(x=>x.experimentId===experimentId&&x.taskId===taskId).length,verifiedTrials:rows.length,distinctDelays:delays.size,matchedPairs:matched.length,holdoutMatchedPairs,holdoutDistinctDelays,pairedComparable:comparable,meanRetentionOn01:mean(on),meanRetentionOff01:mean(off),conditionDifference01:diff,holdoutMeanRetentionOn01:mean(holdoutOn),holdoutMeanRetentionOff01:mean(holdoutOff),holdoutConditionDifference01:holdoutDiff,holdoutTrials:holdout,evidenceGrade:eligible?'confirmatory-eligible':(comparable||holdoutMatchedPairs>0)?'exploratory-matched':'insufficient'};
   }
 
@@ -512,7 +515,7 @@ export class ExperienceContinuumFabric {
   }
 
   createReplayExperimentProtocol(input:{id:string;taskId:string;sourceTaskId?:string;targetTaskId?:string;randomized?:boolean;balanced?:boolean;requiredPairs?:number;contextKeys:string[];at?:number}){
-    const protocol:ReplayExperimentProtocol={id:clean(input.id,64),taskId:clean(input.taskId,96),sourceTaskId:input.sourceTaskId?clean(input.sourceTaskId,96):undefined,targetTaskId:input.targetTaskId?clean(input.targetTaskId,96):undefined,randomized:Boolean(input.randomized),balanced:Boolean(input.balanced),requiredPairs:Math.max(2,Math.min(32,Math.floor(input.requiredPairs??4))),contextKeys:[...new Set(input.contextKeys.map(x=>clean(x,64)).filter(Boolean))].slice(0,64),generatedAt:input.at??Date.now()};
+    const protocol:ReplayExperimentProtocol={id:clean(input.id,64),taskId:clean(input.taskId,96),sourceTaskId:input.sourceTaskId?clean(input.sourceTaskId,96):undefined,targetTaskId:input.targetTaskId?clean(input.targetTaskId,96):undefined,randomized:Boolean(input.randomized),balanced:Boolean(input.balanced),requiredPairs:Math.max(MIN_CONFIRMATORY_REPLAY_PAIRS,Math.min(32,Math.floor(input.requiredPairs??MIN_CONFIRMATORY_REPLAY_PAIRS))),contextKeys:[...new Set(input.contextKeys.map(x=>clean(x,64)).filter(Boolean))].slice(0,64),generatedAt:input.at??Date.now()};
     this.state.replay.protocols.push(protocol); if(this.state.replay.protocols.length>24)this.state.replay.protocols=this.state.replay.protocols.slice(-24);
     return structuredClone(protocol);
   }
@@ -525,7 +528,7 @@ export class ExperienceContinuumFabric {
     const balanced=rows.length>0 && on.length===off.length && on.every(x=>keys.has(x.contextKey)) && off.every(x=>keys.has(x.contextKey));
     const randomized=rows.length>0 && rows.every(x=>x.randomized);
     const matched=this.replayExperimentSummary(experimentId,taskId).matchedPairs;
-    const required=protocol?.requiredPairs??2;
+    const required=Math.max(MIN_CONFIRMATORY_REPLAY_PAIRS,protocol?.requiredPairs??MIN_CONFIRMATORY_REPLAY_PAIRS);
     return {experimentId,taskId:taskId??null,protocolDefined:Boolean(protocol),randomized,balanced,matchedPairs:matched,requiredPairs:required,eligibleForConfirmatoryInference:Boolean(protocol&&protocol.randomized&&protocol.balanced&&randomized&&balanced&&matched>=required),reason:!protocol?'missing-protocol':!protocol.randomized?'protocol-not-randomized':!protocol.balanced?'protocol-not-balanced':!randomized?'trials-not-randomized':!balanced?'trial-count/context-imbalance':matched<required?'insufficient-matched-pairs':'eligible'};
   }
 
