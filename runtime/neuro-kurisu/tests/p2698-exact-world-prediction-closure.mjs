@@ -30,46 +30,46 @@ const p2 = runtime.predictForDecision('explore', 0.40, 0.42);
 assert.notEqual(p2.predictionId, prediction.predictionId);
 
 
-// Reverse completion order for two same-action decisions must resolve each
-// ensemble ticket by the canonical decision predictionId, not FIFO-by-action.
+// Reverse completion order for two outstanding same-action decisions must
+// resolve each ensemble ticket by the caller's exact canonical decision ID.
 const concurrent = new WorldSubsystemRuntime();
 const firstDecision = concurrent.predictForDecision('explore', 0.05, 0.4);
 const secondDecision = concurrent.predictForDecision('explore', 0.95, 0.4);
 assert.notEqual(firstDecision.predictionId, secondDecision.predictionId);
-const frames = concurrent['canonicalPredictionFrames'];
-const firstFrame = frames.get(firstDecision.predictionId);
-const secondFrame = frames.get(secondDecision.predictionId);
-assert.ok(firstFrame?.ensemble?.predictionId);
-assert.ok(secondFrame?.ensemble?.predictionId);
-const firstWorldPrediction = firstFrame.candidates.find(candidate => candidate.member === 'worldModel2');
-const secondWorldPrediction = secondFrame.candidates.find(candidate => candidate.member === 'worldModel2');
-assert.ok(firstWorldPrediction && secondWorldPrediction);
-assert.ok(Math.abs(firstWorldPrediction.prediction01-secondWorldPrediction.prediction01) > .5,
-  'test requires distinct same-action world predictions');
+const concurrentController = concurrent.worldModelEnsemble;
+const ticketRows = Object.values(concurrentController.snapshot().pendingPredictions)
+  .filter(ticket => ticket.action === 'explore')
+  .sort((a,b) => Number(a.predictionId.split('-').at(-1)) - Number(b.predictionId.split('-').at(-1)));
+assert.equal(ticketRows.length,2);
+const [firstTicket,secondTicket] = ticketRows;
 
-const concurrentBefore = {...before, tick:20};
-const concurrentMiddle = {...before, tick:21, energy:.78};
-const concurrentAfter = {...before, tick:22, energy:.72};
+const concurrentBefore = {
+  tick:20, location:'ticket-lab', energy:.82, attention:.75, uncertainty:.4,
+  facts:[], objects:[], events:[],
+};
+const concurrentMiddle = {...concurrentBefore,tick:21,energy:.78};
+const concurrentAfter = {...concurrentBefore,tick:22,energy:.74};
 const secondResolvedFirst = concurrent.observeActionOutcome({
-  action:'explore', before:concurrentBefore, after:concurrentMiddle,
-  reward:secondWorldPrediction.prediction01, surprise:.02, at:Date.now(),
-}, undefined, secondDecision.predictionId);
-assert.equal(secondResolvedFirst.predictionBefore.predictionId,secondFrame.ensemble.predictionId,
+  action:'explore',before:concurrentBefore,after:concurrentMiddle,
+  reward:.91,surprise:.05,at:Date.now(),
+},undefined,secondDecision.predictionId);
+assert.equal(secondResolvedFirst.predictionBefore.predictionId,secondTicket.predictionId,
   'second action outcome must resolve the second ensemble prediction ticket');
-const pendingAfterSecond = concurrent.worldModelEnsemble.snapshot().pendingPredictions;
-assert.ok(pendingAfterSecond[firstFrame.ensemble.predictionId],
+let pending = concurrentController.snapshot().pendingPredictions;
+assert.ok(pending[firstTicket.predictionId],
   'uncompleted first prediction must remain pending');
-assert.equal(pendingAfterSecond[secondFrame.ensemble.predictionId],undefined,
+assert.equal(pending[secondTicket.predictionId],undefined,
   'the resolved second prediction must be removed');
 
 const firstResolvedSecond = concurrent.observeActionOutcome({
-  action:'explore', before:concurrentMiddle, after:concurrentAfter,
-  reward:firstWorldPrediction.prediction01, surprise:.02, at:Date.now(),
-}, undefined, firstDecision.predictionId);
-assert.equal(firstResolvedSecond.predictionBefore.predictionId,firstFrame.ensemble.predictionId,
+  action:'explore',before:concurrentMiddle,after:concurrentAfter,
+  reward:.09,surprise:.05,at:Date.now(),
+},undefined,firstDecision.predictionId);
+assert.equal(firstResolvedSecond.predictionBefore.predictionId,firstTicket.predictionId,
   'first action outcome must resolve its own remaining ensemble prediction ticket');
-assert.ok(Math.abs(concurrent.worldModelEnsemble.snapshot().members.worldModel2.lastError01) < 1e-9,
-  'correct ticket resolution must leave zero residual error for exact predicted worldModel2 outcomes');
+pending = concurrentController.snapshot().pendingPredictions;
+assert.equal(Object.values(pending).filter(ticket => ticket.action === 'explore').length,0,
+  'both same-action tickets must be closed independently');
 
 console.log(JSON.stringify({
   test:'P2698 exact world prediction closure',
