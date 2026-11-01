@@ -135,6 +135,27 @@ export interface DecisionAgencyEvidence {
   };
 }
 
+/** Read-only causal evidence explaining the bounded affect contribution to one canonical decision. */
+export interface AffectDecisionEvidence {
+  version: 1;
+  episodeId: string;
+  label: string;
+  actionTendency: string;
+  selectedAction: ActionKind | null;
+  valence01: number;
+  arousal01: number;
+  dominance01: number;
+  appraisalConfidence01: number;
+  attentionCapture01: number;
+  feelingIntensity01: number;
+  interoceptiveMismatch01: number;
+  regulationPressure01: number;
+  affectWorkspaceSelected: boolean;
+  directActionBias01: number;
+  workspaceActionBias01: number;
+  combinedActionBias01: number;
+}
+
 export interface OrganismDecisionTrace {
   id: string;
   tick: number;
@@ -145,6 +166,8 @@ export interface OrganismDecisionTrace {
   /** State immediately after the associated outcome. This makes replay counterfactual/temporal learning explicit instead of inferring it from the old state. */
   stateAfter?: OrganismState;
   reasoningSignals: Record<string, number>;
+  /** Immutable appraisal and bounded affect-prior evidence for post-hoc explanation. */
+  affectEvidence?: AffectDecisionEvidence;
   worldContextKey?: string;
   /** R19 operation-level semantic proof: hashes + invariant checks for the selected decision. */
   semanticEvidence?: import('../system/DecisionSemanticEvidence.ts').DecisionSemanticEvidence;

@@ -51,6 +51,35 @@ export interface EmotionAppraisalState {
 
 
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const signedActionPrior=(x:number)=>Math.max(-.045,Math.min(.045,Number.isFinite(x)?x:0));
+type CanonicalAffectAction='respond'|'explore'|'verify'|'rest'|'reflect'|'wait'|'defer';
+const ACTION_PRIOR_KEYS:ReadonlySet<CanonicalAffectAction>=new Set<CanonicalAffectAction>([
+  'respond','explore','verify','rest','reflect','wait','defer',
+]);
+// Immutable priors are module-level: actionBias is called once per candidate,
+// so rebuilding these maps in the hot path caused avoidable per-candidate allocations.
+const TENDENCY_ACTION_PRIORS:Record<EmotionActionTendency,Partial<Record<CanonicalAffectAction,number>>>={
+  explore:{explore:.045,verify:.006,rest:-.010,respond:-.008,wait:-.008,defer:-.008},
+  engage:{respond:.040,explore:.008,wait:-.012,defer:-.012},
+  verify:{verify:.042,explore:-.025,respond:-.010},
+  reflect:{reflect:.042,explore:-.018,respond:-.006},
+  rest:{rest:.045,explore:-.035,respond:-.014},
+  protect:{rest:.038,verify:.018,explore:-.040,respond:-.025},
+  withdraw:{wait:.038,defer:.038,rest:.016,respond:-.038,explore:-.024},
+  approach:{respond:.042,explore:.014,wait:-.018,defer:-.018},
+};
+const INTEROCEPTIVE_REGULATION_PRIORS:Record<CanonicalAffectAction,number>={
+  respond:-.018,explore:-.045,verify:.024,rest:.050,reflect:.018,wait:.012,defer:.018,
+};
+const TENDENCY_CALIBRATION_ACTION:Record<EmotionActionTendency,CanonicalAffectAction>={
+  explore:'explore',engage:'respond',verify:'verify',reflect:'reflect',
+  rest:'rest',protect:'rest',withdraw:'wait',approach:'respond',
+};
+function canonicalAffectAction(action:string):CanonicalAffectAction|null{
+  if(ACTION_PRIOR_KEYS.has(action as CanonicalAffectAction))return action as CanonicalAffectAction;
+  return Object.prototype.hasOwnProperty.call(TENDENCY_CALIBRATION_ACTION,action)
+    ? TENDENCY_CALIBRATION_ACTION[action as EmotionActionTendency] : null;
+}
 const emptyInteroception=():InteroceptiveAffectState=>({
   cycles:0, meanMismatch01:.18, lastMismatch01:.18, regulationPressure01:.18, stability01:.72, recovery01:.5, predictionCalibration01:.5,
   lastObserved:{energy01:.68,thermal01:.2,capacity01:.72,load01:.38},
@@ -90,13 +119,19 @@ export class EmotionAppraisalEngine {
   }
 
   recordOutcome(input:{emotionId?:string;action:string;success01:number;surprise01:number;regulationCost01?:number}):EmotionOutcomeCalibration{
-    const key=String(input.action); const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
+    const key=canonicalAffectAction(String(input.action));
+    if(!key)throw new RangeError('unsupported-affect-outcome-action');
+    const prev=this.state.outcomes[key]??{attempts:0,meanSuccess01:.5,meanSurprise01:.5,meanBenefit01:.5};
     const benefit=c(input.success01*.62+(1-input.surprise01)*.24+(1-c(input.regulationCost01??0))*.14);
     const n=prev.attempts+1; const row={attempts:n,meanSuccess01:c(prev.meanSuccess01*(n-1)/n+c(input.success01)/n),meanSurprise01:c(prev.meanSurprise01*(n-1)/n+c(input.surprise01)/n),meanBenefit01:c(prev.meanBenefit01*(n-1)/n+benefit/n)};
     this.state.outcomes={...this.state.outcomes,[key]:row}; return structuredClone(row);
   }
 
-  outcomeCalibration(action:string):EmotionOutcomeCalibration|null{return this.state.outcomes[String(action)]?structuredClone(this.state.outcomes[String(action)]):null;}
+  outcomeCalibration(action:string):EmotionOutcomeCalibration|null{
+    const key=canonicalAffectAction(String(action));
+    const row=key&&Object.prototype.hasOwnProperty.call(this.state.outcomes,key)?this.state.outcomes[key]:null;
+    return row?structuredClone(row):null;
+  }
   appraise(input:{tick:number;at?:number;goalPressure01?:number;goalCongruence01?:number;controllability01?:number;novelty01?:number;selfRelevance01?:number;socialMeaning01?:number;uncertainty01?:number;predictionError01?:number;homeostaticPressure01?:number;energy01?:number;success01?:number;external?:boolean}):EmotionEpisode{
     const a={relevance01:c(Math.max(input.goalPressure01??0,input.predictionError01??0,input.homeostaticPressure01??0)),goalCongruence01:c(input.goalCongruence01??(input.success01??.5)),controllability01:c(input.controllability01??(1-(input.uncertainty01??.35))),novelty01:c(input.novelty01??.35),selfRelevance01:c(input.selfRelevance01??.5),socialMeaning01:c(input.socialMeaning01??0),uncertainty01:c(input.uncertainty01??.35)};
     const arousal=c(a.relevance01*.20+a.novelty01*.19+a.uncertainty01*.20+(input.predictionError01??0)*.17+(input.homeostaticPressure01??0)*.15+this.state.interoception.regulationPressure01*.09);
@@ -135,13 +170,21 @@ export class EmotionAppraisalEngine {
   regulationPressure01():number{return this.state.interoception.regulationPressure01;}
 
   actionBias(action:string):number{
-    const e=this.state.history[0]; if(!e)return 0;
-    const match:Record<string,number>={explore:e.label==='curiosity'?0.08:0,verify:e.label==='anxiety'||e.label==='frustration'?0.06:0,reflect:e.label==='frustration'?0.055:0,rest:e.label==='protective'||e.label==='sadness'?0.04:0,protect:e.label==='protective'||e.label==='anger'?0.07:0,approach:e.label==='joy'?0.05:0,withdraw:e.label==='sadness'?0.06:0,engage:e.label==='calm'||e.label==='joy'?0.025:0};
+    const e=this.state.history[0];
+    if(!e||!ACTION_PRIOR_KEYS.has(action as CanonicalAffectAction))return 0;
+    const canonicalAction=action as CanonicalAffectAction;
     const intero=this.state.interoception;
-    const regulation:Record<string,number>={rest:intero.regulationPressure01*.075,protect:intero.regulationPressure01*.055,verify:intero.regulationPressure01*.025,reflect:intero.regulationPressure01*.015,explore:-intero.regulationPressure01*.055,approach:-intero.regulationPressure01*.02,engage:-intero.regulationPressure01*.015,withdraw:intero.regulationPressure01*.01};
-    const calibration=this.state.outcomes[action];
-    const learned=calibration&&calibration.attempts>=3 ? (calibration.meanBenefit01-.5)*.045 : 0;
-    return c(Math.max(0,(match[action]??0)+regulation[action]+learned))*c(.55+e.interoceptiveDelta.attentionCapture01*.45);
+    const calibration=this.state.outcomes[canonicalAction];
+    const calibrationReliability=calibration&&calibration.attempts>=3
+      ? c((calibration.attempts-2)/4):0;
+    const learned=calibration
+      ? (calibration.meanBenefit01-.5)*.035*calibrationReliability:0;
+    const confidenceGate=c((c(e.confidence01)-.45)/.40);
+    const attentionGate=c(.35+c(e.interoceptiveDelta.attentionCapture01)*.65);
+    const regulation=c(intero.regulationPressure01);
+    const prior=(TENDENCY_ACTION_PRIORS[e.actionTendency]?.[canonicalAction]??0)
+      +regulation*INTEROCEPTIVE_REGULATION_PRIORS[canonicalAction]+learned;
+    return signedActionPrior(prior*confidenceGate*attentionGate);
   }
 
   summary(){return {episodes:this.state.episodes,lastLabel:this.state.lastLabel,meanArousal01:this.state.meanArousal01,meanValence01:this.state.meanValence01,meanStress01:this.state.meanStress01,meanAttentionCapture01:this.state.meanAttentionCapture01,interoception:structuredClone(this.state.interoception),outcomes:structuredClone(this.state.outcomes)};}

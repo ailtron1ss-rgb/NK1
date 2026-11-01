@@ -43,9 +43,15 @@ async function run(name, lowEnergy) {
     await core.feedback({ success: lowEnergy ? 0.08 : 0.96, reward: lowEnergy ? -0.25 : 0.65, surprise: lowEnergy ? 0.9 : 0.08, evidenceSource: 'device' });
   }
   const state = core.snapshot();
-  const episode = core.emotionAppraisalSnapshot().history?.[0];
+  const appraisal = core.emotionAppraisalSnapshot();
+  const episode = appraisal.history?.[0];
+  const decision = state.traces?.[0];
+  const affectEvidence = decision?.affectEvidence;
+  const decisionEpisode = affectEvidence
+    ? appraisal.history?.find(item => item.id === affectEvidence.episodeId)
+    : undefined;
   const broadcast = state.facets?.evolution?.network?.lastBroadcast;
-  return { core, episode, broadcast };
+  return { core, episode, decision, affectEvidence, decisionEpisode, broadcast };
 }
 
 const stressed = await run('affect-workspace', true);
@@ -58,6 +64,20 @@ assert.ok(affect.evidence.some((item) => item.startsWith('tendency=')), 'action 
 assert.ok(affect.evidence.some((item) => item.startsWith('stress=')), 'interoceptive stress must be included in evidence');
 assert.ok(affect.evidence.some((item) => item.startsWith('feeling-intensity=')) && affect.evidence.some((item) => item.startsWith('body-focus=')), 'feeling access must contribute body-linked intensity and focus to the workspace evidence');
 assert.ok(Number.isFinite(affect.score) && affect.score >= 0 && affect.score <= 1);
+assert.ok(stressed.affectEvidence, 'canonical decision trace must carry the appraisal-to-action evidence');
+assert.ok(stressed.decisionEpisode, 'decision trace affect ID must resolve to the stored appraisal episode');
+assert.equal(stressed.affectEvidence.episodeId, stressed.decisionEpisode.id);
+assert.equal(stressed.affectEvidence.label, stressed.decisionEpisode.label);
+assert.equal(stressed.affectEvidence.actionTendency, stressed.decisionEpisode.actionTendency);
+assert.equal(stressed.affectEvidence.selectedAction, stressed.decision?.selected?.action ?? null);
+assert.equal(stressed.affectEvidence.affectWorkspaceSelected, Boolean(affect), 'decision evidence must match actual workspace affect selection');
+assert.ok(Math.abs(stressed.affectEvidence.directActionBias01) <= .045);
+assert.ok(Math.abs(stressed.affectEvidence.workspaceActionBias01) <= .035);
+assert.ok(Math.abs(stressed.affectEvidence.combinedActionBias01) <= .08);
+assert.ok(Math.abs(stressed.affectEvidence.combinedActionBias01
+  - stressed.affectEvidence.directActionBias01
+  - stressed.affectEvidence.workspaceActionBias01) < 1e-12);
+assert.equal(stressed.decision.reasoningSignals.affectCombinedPrior01, stressed.affectEvidence.combinedActionBias01);
 const salience = stressed.broadcast.selected.find((item) => item.specialist === 'salience');
 assert.ok(salience, 'real perceptual salience should remain represented in the broadcast');
 assert.ok(salience.evidence.some((item) => item.startsWith('surprise=')) && salience.evidence.some((item) => item.startsWith('perception=')), 'merged salience signal must preserve internal and perception evidence instead of dropping one duplicate');

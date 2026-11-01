@@ -1,8 +1,16 @@
 ## Актуальный инженерный checkpoint — 1 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Live source HEAD, проверен 1 ноября:** `608435493b4af3b4a222d385f1b77d978d18583b` (перед каждым новым проходом обновляйте SHA по live branch).  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+### Открытые когнитивные PR — не считать интегрированными
+
+- [#619 — EmotionAppraisalEngine restore](https://github.com/ailtron1ss-rgb/NK1/pull/619): snapshot hardening и WorkPass610 regression. Ветка синхронизирована с base; точный CI не подтверждён.
+- [#630 — neural branch/personality/planner restore](https://github.com/ailtron1ss-rgb/NK1/pull/630): WorkPass612/613; внешний NeuralExperienceBranch restore boundary теперь использует общий bounded snapshotPlainData. Первый runtime typecheck был успешен; повторные Actions для более новых SHA завершились failed без доступных step/logs.
+- [#636 — signed affect priors + causal affect trace](https://github.com/ailtron1ss-rgb/NK1/pull/636): WorkPass634 добавляет signed/confidence-gated влияние эмоций, типизированную карту tendency→canonical action и нормализацию feedback calibration; WorkPass635 записывает точный appraisal ID, tendency, телесно-эмоциональные признаки и direct/workspace contribution в OrganismDecisionTrace и CognitiveEventFabric. Последний exact-head unified run #41332558517 завершился failure без шагов/логов (logs URL отсутствует); проверки типа и focused tests остаются неподтверждёнными. Issue [#632](https://github.com/ailtron1ss-rgb/NK1/issues/632) отражает проверенный путь интеграции affect.
+- Изменения этих PR не входят в `workpass70-source`, пока не объединены; ни одно не включено в опубликованный Release ZIP.
+
 
 ### Реально интегрировано и проверено
 
