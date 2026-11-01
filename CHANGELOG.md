@@ -1,3 +1,8 @@
+## [NK1][Embodiment] Deduplicate Three.js resource disposal (2026-11-01)
+- Replace per-mesh cleanup with an ownership-aware object-tree disposer that deduplicates shared geometries, materials, textures and skeletons before releasing GPU resources.
+- Traverse direct material texture properties and ShaderMaterial uniform values (including texture arrays); preserve the renderer-owned anime gradient texture when disposing an uploaded VRM/GLB.
+- Add runtime regressions using real Three.js resources to verify each shared resource is disposed once and renderer-owned textures survive imported-model cleanup.
+
 ## [NK1][Embodiment] Preserve shared toon texture during model disposal (2026-11-01)
 - Prevent imported VRM/GLB cleanup from disposing the renderer-owned shared anime gradient DataTexture. The texture is shared by procedural and converted GLB materials and must outlive any individual uploaded model.
 - Extend the avatar lifecycle regression to assert that model disposal excludes the shared gradient texture; this prevents a later model reset/reload from silently leaving the procedural renderer with a disposed gradient resource.
