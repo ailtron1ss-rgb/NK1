@@ -1,0 +1,37 @@
+name: NK1 browser affect snapshot coherence
+
+on:
+  push:
+    branches: [workpass70-source]
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - app/src/components/AvatarStage.tsx
+      - app/src/components/avatar/browserVoiceProsody.ts
+      - app/scripts/browser-voice-prosody.test.mjs
+      - .github/workflows/nk1-browser-affect-snapshot.yml
+
+permissions:
+  contents: read
+concurrency:
+  group: nk1-browser-affect-snapshot-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  browser-affect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked app dependencies
+        working-directory: app
+        run: npm ci
+      - name: Verify browser voice and affect coherence
+        working-directory: app
+        run: npm run test:browser-voice-prosody
+      - name: Typecheck app
+        working-directory: app
+        run: npm run typecheck
