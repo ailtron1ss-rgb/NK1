@@ -119,6 +119,10 @@ assert.equal(durableRestore.observeBehavior({
   key: 'response.style', domain: 'interaction-style', value: 'concise',
   tick: 12, observationRef: 'behavior:stale:12', sensitivity: 'low-risk',
 }).reason, 'forgotten-before-event');
+assert.equal(durableRestore.correctExplicit({
+  key: 'response.style', domain: 'interaction-style', value: 'detailed',
+  tick: 12, evidenceRef: 'correction:stale:12', explicit: true, sensitivity: 'low-risk',
+}).reason, 'forgotten-before-event');
 assert.equal(durableRestore.recordExplicit({
   key: 'response.style', domain: 'interaction-style', value: 'concise',
   tick: 16, evidenceRef: 'user-explicit:style:16', explicit: true, sensitivity: 'low-risk',
@@ -130,6 +134,10 @@ reconciliationSnapshot.claims.push({
   key: 'stale.claim', domain: 'interaction-style', value: 'old', status: 'confirmed',
   source: 'user-explicit', evidenceRef: 'stale:claim', firstSeenTick: 2, lastSeenTick: 9,
   confirmations: 1, contradictions: 0,
+});
+reconciliationSnapshot.candidates.push({
+  key: 'stale.candidate', domain: 'content-preference', value: 'old', observations: 2,
+  firstSeenTick: 3, lastSeenTick: 9, confidence01: 0.2, status: 'unconfirmed-candidate',
 });
 reconciliationSnapshot.claims.push({
   key: 'fresh.claim', domain: 'interaction-style', value: 'new', status: 'confirmed',
@@ -143,6 +151,7 @@ const reconciled = new UserModelEvidenceModel();
 reconciled.restore(reconciliationSnapshot);
 assert.equal(reconciled.confirmedValue('stale.claim', 'interaction-style'), null);
 assert.equal(reconciled.confirmedValue('fresh.claim', 'interaction-style'), 'new');
+assert.equal(reconciled.snapshot().candidates.some(candidate => candidate.key === 'stale.candidate'), false);
 
 // Oversized, sparse and malformed deletion ledgers invalidate the whole snapshot.
 const oversized = durableRestore.snapshot();
