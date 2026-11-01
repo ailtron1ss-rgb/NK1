@@ -15,3 +15,24 @@ const core=new OrganismCore(store,cfg);await core.init();await core.autonomousHe
 const s1=core.systemSnapshot().autonomousRuntimeLife;assert.ok((s1?.ambientCycles??0)>=1);assert.ok((s1?.selfStartedCycles??0)>=1);assert.ok((s1?.selfAuthoredActivity01??0)>.35);
 const core2=new OrganismCore(store,cfg);await core2.init();const s2=core2.systemSnapshot().autonomousRuntimeLife;assert.equal(s2?.selfStartedCycles,s1?.selfStartedCycles);assert.equal(s2?.ambientCycles,s1?.ambientCycles);
 console.log(JSON.stringify({pass:'BIG_PASS_224_AUTONOMOUS_RUNTIME_LIFE',controller:{selfStartedCycles:ctl.summary().selfStartedCycles,idleGapCycles:ctl.summary().idleGapCycles,temporalPersistence01:ctl.summary().temporalPersistence01,environmentalAgency01:ctl.summary().environmentalAgency01,longestStreak:ctl.summary().longestStreak},core:{ambientCycles:s1?.ambientCycles,selfStartedCycles:s1?.selfStartedCycles,selfAuthoredActivity01:s1?.selfAuthoredActivity01,temporalPersistence01:s1?.temporalPersistence01,persistedSelfStartedCycles:s2?.selfStartedCycles},verified:true},null,2));
+
+const cadenceCtl=new AutonomousRuntimeLifeController();
+const cadenceInput={energy01:.82,uncertainty01:.52,novelty01:.72,goalPressure01:.61,homeostaticPressure01:.18,initiative01:.79,predictionError01:.31,resourcePressure01:.2};
+const firstAmbient=cadenceCtl.tick({tick:1,at:10000,externalSignal:false,...cadenceInput});
+assert.equal(firstAmbient.shouldAct,true);
+assert.equal(firstAmbient.autonomous,true);
+const earlyAmbient=cadenceCtl.tick({tick:2,at:11000,externalSignal:false,...cadenceInput});
+assert.equal(earlyAmbient.shouldAct,false,"silent work must wait for the next internal cadence");
+assert.equal(earlyAmbient.reason,"waiting-for-cadence");
+assert.equal(cadenceCtl.summary().selfStartedCycles,1,"a skipped heartbeat is not a self-started action");
+const reactive=cadenceCtl.tick({tick:3,at:12000,externalSignal:true,...cadenceInput});
+assert.equal(reactive.shouldAct,true,"external input must bypass the ambient cadence");
+assert.equal(reactive.autonomous,false);
+assert.equal(cadenceCtl.summary().externallyTriggeredCycles,1);
+const stillEarly=cadenceCtl.tick({tick:4,at:13000,externalSignal:false,...cadenceInput});
+assert.equal(stillEarly.shouldAct,false);
+const resumed=cadenceCtl.tick({tick:5,at:30000,externalSignal:false,...cadenceInput});
+assert.equal(resumed.shouldAct,true,"internal initiative resumes once its cadence is due");
+assert.equal(resumed.autonomous,true);
+assert.equal(cadenceCtl.summary().selfStartedCycles,2);
+assert.equal(cadenceCtl.summary().continuedAfterSilence,1,"silence continuation compares against the prior activity timestamp");
