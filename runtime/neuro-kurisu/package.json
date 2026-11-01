@@ -1844,6 +1844,6 @@
     "test:workpass74:agency-deliberation-integrity": "node --experimental-strip-types tests/agency-deliberation-engine-contract.mjs",
     "test:longmemeval-adapter": "node --experimental-strip-types tests/longmemeval-memory-adapter.mjs",
     "test:user-model-evidence": "node --experimental-strip-types tests/user-model-evidence-model.mjs",
-    "test:user-model-runtime-persistence": "node --experimental-strip-types tests/user-model-runtime-persistence.mjs"
+    "test:user-model-runtime-persistence": "node --experimental-strip-types tests/user-model-runtime-persistence.mjs && node --experimental-strip-types tests/user-model-prompt-context.mjs"
   }
 }
