@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Enforce normalized semantic motor bounds (2026-11-01)
+- Reject any body-joint channel outside the shared normalized range [-1, 1] at the renderer-neutral state boundary; adapters remain responsible for converting normalized values into native rig units.
+- Add regressions for positive/negative overflow and exact boundary acceptance. This prevents malformed finite values from reaching Live2D/2.5D/VRM adapters as extreme joint targets.
+- The focused `nk1-embodiment-switch` workflow already watches this contract and runs the switch regression plus app typecheck on a PR targeting `workpass70-source`.
+- No claim is made for browser/WebGL pose correctness, device soak, full 2.5D rendering, or Release ZIP refresh.
+
 ## [NK1][SelfModel] Add authenticated HTTP host route for explicit response-style preferences (2026-11-01)
 - Expose a narrow `POST /api/organism/user-model/preferences` route behind the existing API authorization and rate-limit middleware.
 - Accept only caller-confirmed `concise`, `balanced`, or `detailed` response style values; server owns the fixed key/domain, low-risk classification, current tick and random evidence reference.
