@@ -33,7 +33,19 @@ test("existing sprite and Live2D files remain available",async()=>{
  assert.ok((await stat(path.join(repoRoot,"runtime/neuro-kurisu/public/live2d/Kurisu/Kurisu.model3.json"))).size>0);
 });
 
-test("VRM models use the official Pixiv runtime for humanoid, expressions and spring-bone updates",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/import \{ VRMLoaderPlugin, VRMUtils \} from "@pixiv\/three-vrm"/);assert.match(stage,/new VRMLoaderPlugin\(parser\)/);assert.match(stage,/gltf\.userData\?\.vrm/);assert.match(stage,/expressionManager/);assert.match(stage,/getNormalizedBoneNode/);assert.match(stage,/vrm\.update\(dt\)/);assert.match(stage,/VRM runtime · humanoid, expressions and spring bones/);});
+test("VRM models use the official Pixiv runtime through the normalized adapter",async()=>{
+ const stage=await readFile(stagePath,"utf8"),adapter=await readFile(path.join(root,"src/components/avatar/vrmRuntimeAdapter.ts"),"utf8");
+ assert.ok(stage.includes('import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm"'));
+ assert.ok(stage.includes("new VRMLoaderPlugin(parser, { autoUpdateHumanBones: true })"));
+ assert.ok(stage.includes("gltf.userData?.vrm"));
+ assert.ok(stage.includes("applyVrmExpressionFrame"));
+ assert.ok(stage.includes("applyVrmNormalizedMotorFrame"));
+ assert.ok(stage.includes("updateVrmForNk1Frame"));
+ assert.ok(adapter.includes("expressionManager"));
+ assert.ok(adapter.includes("getNormalizedBoneNode"));
+ assert.ok(adapter.includes("vrm.update("));
+ assert.ok(stage.includes("VRM runtime · humanoid, expressions and spring bones"));
+});
 test("GLB models retain the generic glTF fallback without pretending they are VRM",async()=>{const stage=await readFile(stagePath,"utf8");assert.match(stage,/const root=vrm\?\.scene\s*\?\?\s*gltf\.scene/);assert.match(stage,/if \(fileName\.toLowerCase\(\)\.endsWith\("\.vrm"\) && !vrm\)/);});
 
 test("the official VRM runtime is pinned to the Three.js-compatible MIT release",async()=>{const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));assert.equal(pkg.dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages[""].dependencies["@pixiv/three-vrm"],"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].version,"3.5.5");assert.equal(lock.packages["node_modules/@pixiv/three-vrm"].license,"MIT");});
