@@ -1,0 +1,52 @@
+name: NK1 learning integration gates
+
+on:
+  push:
+    branches: [workpass-learning-integration-2026-10-30]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/PairedSeedConfidence.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningRobustMetrics.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningFitnessJournal.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/LearningLifecycleJournal.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CorrectionRuleMemory.ts'
+      - 'runtime/neuro-kurisu/tests/workpass404-paired-seed-confidence.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass405-learning-fitness-journal.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass406-learning-robust-metrics.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass407-learning-lifecycle-journal.mjs'
+      - 'runtime/neuro-kurisu/tests/workpass408-lifecycle-store-reconciliation.mjs'
+      - 'runtime/neuro-kurisu/tests/hexis-correction-memory.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass-learning-integration.yml'
+  pull_request:
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/**'
+      - 'runtime/neuro-kurisu/tests/workpass40*.mjs'
+      - 'runtime/neuro-kurisu/tests/hexis-correction-memory.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - '.github/workflows/workpass-learning-integration.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-learning-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  learning-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned TypeScript toolchain
+        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Run learning integration regressions
+        run: npm --prefix runtime/neuro-kurisu run test:learning-integration

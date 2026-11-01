@@ -9,6 +9,13 @@
     "npm": ">=10.8.0"
   },
   "scripts": {
+    "test:workpass404:paired-seed-confidence": "node --experimental-strip-types tests/workpass404-paired-seed-confidence.mjs",
+    "test:workpass405:learning-fitness-journal": "node --experimental-strip-types tests/workpass405-learning-fitness-journal.mjs",
+    "test:workpass406:learning-robust-metrics": "node --experimental-strip-types tests/workpass406-learning-robust-metrics.mjs",
+    "test:workpass407:learning-lifecycle-journal": "node --experimental-strip-types tests/workpass407-learning-lifecycle-journal.mjs",
+    "test:workpass408:lifecycle-store-reconciliation": "node --experimental-strip-types tests/workpass408-lifecycle-store-reconciliation.mjs",
+    "test:hexis:correction-memory": "node --experimental-strip-types tests/hexis-correction-memory.mjs",
+    "test:learning-integration": "npm run test:workpass404:paired-seed-confidence && npm run test:workpass405:learning-fitness-journal && npm run test:workpass406:learning-robust-metrics && npm run test:workpass407:learning-lifecycle-journal && npm run test:workpass408:lifecycle-store-reconciliation && npm run test:hexis:correction-memory",
     "test:cognitive-cycle-boundary": "node --experimental-strip-types tests/cognitive-cycle-boundary.mjs",
     "test:workpass95:receipt-integrity": "node --experimental-strip-types tests/workpass95-restored-action-receipt-integrity.mjs",
     "test:workpass96:finalizer-boundary": "node --experimental-strip-types tests/workpass96-action-finalizer-boundary.mjs",
