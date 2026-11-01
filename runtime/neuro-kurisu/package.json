@@ -1809,7 +1809,6 @@
     "test:memoryos2-metadata-retrieval": "node --experimental-strip-types tests/memoryos2-metadata-retrieval.mjs",
     "test:memory-fabric-semantic-retrieval": "node --experimental-strip-types tests/memory-fabric-semantic-retrieval.mjs",
     "test:workpass611:cognitive-planner-restore-integrity": "node --experimental-strip-types tests/cognitive-execution-planner-restore-integrity-workpass611.mjs",
-    "test:workpass611:cognitive-planner-restore-integrity": "node --experimental-strip-types tests/cognitive-execution-planner-restore-integrity-workpass611.mjs",
     "test:workpass610:brain-fusion-strip-only": "node --experimental-strip-types tests/workpass610-brain-fusion-strip-only-runtime-load.mjs",
     "test:perception-engine-signal-integrity": "node --experimental-strip-types tests/perception-engine-signal-integrity.mjs",
     "test:world-context-normalizer-integrity": "node --experimental-strip-types tests/world-context-normalizer-integrity.mjs",
@@ -1852,6 +1851,7 @@
     "test:user-model-runtime-persistence": "node --experimental-strip-types tests/user-model-runtime-persistence.mjs",
     "test:workpass641:cef-restore-integrity": "node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs",
     "test:user-model-http-route": "node tests/user-model-http-route.mjs",
-    "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs"
+    "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs",
+    "test:workpass613:neural-branch-restore": "node --experimental-strip-types tests/workpass613-neural-branch-restore-boundary.mjs"
   }
 }
