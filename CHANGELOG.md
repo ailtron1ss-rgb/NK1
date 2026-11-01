@@ -1,3 +1,10 @@
+## [NK1][Audit] Prevent architecture scanner false positives (2026-11-01)
+- Add a byte-stable masker for comments, strings, templates and regex literals; import-like text in test assertions no longer becomes a false module edge.
+- Keep real static imports, dynamic imports and CommonJS require edges in the architecture graph.
+- Add dedicated masking regressions for comments, strings, templates, regex literals, dynamic imports, require calls and known false-positive fixtures.
+- Run the new regression from both the runtime package script and the full audit sequence.
+- Preserve the current scanner's cross-package source roots and research-boundary exception; this ports the focused fix rather than reverting to the older stale scanner implementation.
+
 ## [NK1][Embodiment] Normalize renderer-facing speech state (2026-11-01)
 - Normalize speech lifecycle phases through a closed allowlist; unknown provider values become the explicit `unknown` state rather than invalid renderer state.
 - Trim opaque speech event IDs and reject blank, non-string and over-128-character identifiers.
