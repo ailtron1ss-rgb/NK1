@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
@@ -35,5 +35,20 @@ try {
   const migratedRaw=await readFile(jsonPath);
   assert.doesNotThrow(()=>deserialize(migratedRaw));
   assert.equal((await migrateStore.load())?.tick,18);
+
+  // A missing primary file must still recover the last verified backup.
+  const recoveryPath=join(dir,'recoverable-state.json');
+  const recoveryWriter=new FileStateStore(recoveryPath,{backupEverySaves:1,encoding:'json'});
+  await recoveryWriter.save({tick:1,identity:'last-good'});
+  await recoveryWriter.save({tick:2,identity:'newer-primary'});
+  await unlink(recoveryPath);
+  const recoveryReader=new FileStateStore(recoveryPath,{backupEverySaves:1,encoding:'json'});
+  const recovered=await recoveryReader.load();
+  assert.deepEqual(recovered,{tick:1,identity:'last-good'},'missing primary must restore the last durable backup instead of reporting an empty organism');
+  await recoveryReader.save(recovered);
+  assert.deepEqual(JSON.parse(await readFile(recoveryPath,'utf8')),{tick:1,identity:'last-good'},'a recovered snapshot must be able to recreate the missing primary');
+  const emptyReader=new FileStateStore(join(dir,'never-created.json'),{encoding:'json'});
+  assert.equal(await emptyReader.load(),null,'a genuinely new store with no primary or backup remains empty');
+
   console.log(JSON.stringify({pass:true,jsonBytes:(await readFile(jsonPath)).byteLength,v8Bytes:(await readFile(v8Path)).byteLength,migratedEncoding:'v8'}));
 } finally { await rm(dir,{recursive:true,force:true}); }
