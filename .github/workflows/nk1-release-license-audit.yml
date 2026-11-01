@@ -1,0 +1,109 @@
+name: NK1 release-license audit snapshot (non-publishing)
+
+on:
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "contracts/RELEASE_LICENSE_REVIEW.json"
+      - "contracts/SBOM.final.json"
+      - "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS*.json"
+      - "SUPER_VERSION.json"
+      - "package-lock.json"
+      - "app/package-lock.json"
+      - "tools/audit-release-license-readiness.mjs"
+      - "tools/super-sbom.mjs"
+      - "docs/RELEASE_LICENSE_*.md"
+      - "runtime/**/LICENSE"
+      - "legacy/input-archives/**"
+      - ".github/workflows/nk1-release-license-audit.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "contracts/RELEASE_LICENSE_REVIEW.json"
+      - "contracts/SBOM.final.json"
+      - "contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS*.json"
+      - "SUPER_VERSION.json"
+      - "package-lock.json"
+      - "app/package-lock.json"
+      - "tools/audit-release-license-readiness.mjs"
+      - "tools/super-sbom.mjs"
+      - "docs/RELEASE_LICENSE_*.md"
+      - "runtime/**/LICENSE"
+      - "legacy/input-archives/**"
+      - ".github/workflows/nk1-release-license-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-release-license-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    name: Generate exact-SHA non-publishing license audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@v7
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Refresh exact-source SBOM and provenance
+        run: npm run test:provenance-current
+
+      - name: Test fail-closed license audit and non-publishing workflow contract
+        run: npm run test:release-license-readiness
+
+      - name: Capture license readiness report without granting permission
+        id: audit
+        shell: bash
+        run: |
+          set -uo pipefail
+          report="$RUNNER_TEMP/release-license-audit.json"
+          set +e
+          node tools/audit-release-license-readiness.mjs > "$report"
+          audit_exit=$?
+          set -e
+          if [ ! -s "$report" ]; then
+            echo "Audit produced no report (exit=$audit_exit)." >&2
+            exit 1
+          fi
+          REPORT_PATH="$report" AUDIT_EXIT="$audit_exit" node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from "node:fs";
+          const report = JSON.parse(readFileSync(process.env.REPORT_PATH, "utf8"));
+          if (!report || typeof report !== "object") throw new Error("Audit report is not an object");
+          const ready = report.releaseRedistributionReady === true;
+          const errorCount = Number.isSafeInteger(report.errorCount) ? report.errorCount : -1;
+          const summary = [
+            "# NK1 release-license audit snapshot",
+            `- Exact source SHA: ${process.env.GITHUB_SHA}`,
+            `- Release redistribution ready: **${ready}**`,
+            `- Audit errors: **${errorCount}**`,
+            `- Locked npm components: ${report.dependencyComponentCount ?? "unknown"}`,
+            `- Source archives: ${report.archiveCount ?? "unknown"}`,
+            `- Repository license files: ${report.repositoryLicenseFileCount ?? "unknown"}`,
+            "",
+            "This workflow only generates an evidence report. It does not approve licenses, grant redistribution rights, package a ZIP, or publish a Release."
+          ].join("\n") + "\n";
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+          appendFileSync(process.env.GITHUB_OUTPUT, `release_ready=${ready}\nerror_count=${errorCount}\n`);
+          console.log(summary);
+          if (!ready) console.log("::warning::Release remains blocked by pending or invalid human license decisions.");
+          if (errorCount < 0 || process.env.AUDIT_EXIT === "2") throw new Error("Audit execution failed before a valid readiness report was produced");
+          NODE
+
+      - name: Upload exact-SHA license audit artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nk1-release-license-audit-${{ github.sha }}
+          path: ${{ runner.temp }}/release-license-audit.json
+          if-no-files-found: error
+          retention-days: 14

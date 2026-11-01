@@ -1,3 +1,9 @@
+## [NK1][Release] Add exact-SHA non-publishing license audit snapshot (2026-11-01)
+- Add a read-only workflow for source-branch and PR changes to the release license manifest, SBOM, provenance, source archives and license notices.
+- Refresh the exact-SHA SBOM/provenance, run the fail-closed license audit, publish an artifact and a step summary with error count and readiness.
+- The snapshot workflow never writes repository contents, packages a ZIP, grants redistribution permission or creates a Release; pending human decisions remain explicit.
+- Add a regression contract proving the workflow is read-only and non-publishing.
+
 ## [NK1][Memory] Add isolated LongMemEval-S external retrieval benchmark (2026-11-01)
 - Add a pinned local-file adapter for the 500-question LongMemEval-S cleaned benchmark; validate dataset revision and SHA-256, normalize session chronology, and build a fresh isolated MemoryOS2 corpus for each question.
 - Compare canonical no-embedding MemoryOS2 retrieval with deterministic per-question BM25; report recall@K, MRR, precision, abstention, unsupported retrieval and session-clustered paired confidence intervals.
