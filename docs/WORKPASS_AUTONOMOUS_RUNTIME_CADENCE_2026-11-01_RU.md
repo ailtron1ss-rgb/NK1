@@ -26,3 +26,13 @@ The unified organism runtime workflow now executes `test:big-pass-224` for chang
 ## Boundaries
 
 This fix corrects cadence and counters. It does not prove autonomous thought quality, persistent self-generated goals, an hourly initiative rate, real-device background execution, or subjective consciousness.
+
+## Snapshot restoration hardening (2026-11-01)
+
+The autonomous-life controller now treats persisted state as untrusted input. It reads own data descriptors instead of invoking getters, validates finite timestamps and safe integer counters, clamps normalized metrics, allowlists lifecycle modes and activities, and filters malformed recent-history rows. Hostile proxy/descriptor failures reset the import atomically to defaults. Valid recent entries preserve their newest-first ordering and are detached from the caller's objects.
+
+The existing unified organism runtime workflow already executes `test:big-pass-224`; the expanded regression now exercises the restore boundary as part of that same CI path.
+
+This is a persistence-integrity improvement, not evidence of hour-long autonomous initiative, browser/mobile background execution or subjective consciousness.
+
+
