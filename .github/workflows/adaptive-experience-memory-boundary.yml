@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - workpass70-source
-      - feature/adaptive-memory-consolidator-hardening-2026-11-01
+      - feature/adaptive-memory-consolidator-current-source-2026-11-01
     paths:
       - 'runtime/neuro-kurisu/src/organism/memory/AdaptiveExperienceConsolidator.ts'
       - 'runtime/neuro-kurisu/tests/adaptive-experience-consolidator-boundary.mjs'
