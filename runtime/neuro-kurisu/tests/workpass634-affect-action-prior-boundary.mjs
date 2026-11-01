@@ -11,6 +11,18 @@ const make=(input,interoception=[])=>{
 };
 const base={goalPressure01:.2,goalCongruence01:.8,controllability01:.8,novelty01:.2,selfRelevance01:.7,socialMeaning01:.1,uncertainty01:.2,predictionError01:.1,homeostaticPressure01:.1,energy01:.8,success01:.8};
 
+const calm=make({...base,goalPressure01:.2,goalCongruence01:.8,controllability01:.8,novelty01:.2,socialMeaning01:.1,uncertainty01:.2,predictionError01:.1,homeostaticPressure01:.1,success01:.8});
+assert.equal(calm.episode.label,'calm');
+assert.equal(calm.episode.actionTendency,'engage');
+assert.ok(calm.engine.actionBias('respond')>0,'engage must map to canonical respond');
+
+const restTendencySnapshot=calm.engine.snapshot();
+restTendencySnapshot.history[0].actionTendency='rest';
+const restTendency=new EmotionAppraisalEngine();
+restTendency.restore(restTendencySnapshot);
+assert.ok(restTendency.actionBias('rest')>0,'rest tendency must map to canonical rest');
+assert.ok(restTendency.actionBias('explore')<0,'rest tendency must suppress exploration');
+
 const curiosity=make({...base,novelty01:.9,uncertainty01:.55,goalPressure01:.25,predictionError01:.1});
 assert.equal(curiosity.episode.label,'curiosity');
 assert.ok(curiosity.engine.actionBias('explore')>0,'curiosity should support explore');
