@@ -168,6 +168,7 @@ export interface LongitudinalReplaySummary {
   verifiedTrials:number;
   distinctDelays:number;
   matchedPairs:number;
+  holdoutMatchedPairs:number;
   pairedComparable:boolean;
   meanRetentionOn01:number;
   meanRetentionOff01:number;
@@ -353,16 +354,28 @@ export class ExperienceContinuumFabric {
     const rows=this.state.replay.longitudinal.filter(x=>x.experimentId===experimentId&&x.taskId===taskId&&x.independentVerified);
     const delays=new Set(rows.map(x=>Math.round(x.delayMs/86400000)));
     const on=rows.filter(x=>x.mode==='replay-on'),off=rows.filter(x=>x.mode==='replay-off');
-    const pairs=new Map<string,{on?:LongitudinalReplayTrial;off?:LongitudinalReplayTrial}>();
-    for(const x of rows){if(!x.pairKey)continue;const key=`${x.pairKey}|${x.contextKey}|${Math.round(x.delayMs/86400000)}`;const pair=pairs.get(key)??{};pair[x.mode==='replay-on'?'on':'off']=x;pairs.set(key,pair);}
-    const matched=[...pairs.values()].filter(x=>x.on&&x.off) as Array<{on:LongitudinalReplayTrial;off:LongitudinalReplayTrial}>;
+    // Pair within the same phase: acquisition/test evidence must never complete a
+    // holdout pair. Duplicate rows for one arm are ambiguous and fail closed.
+    const pairs=new Map<string,{on?:LongitudinalReplayTrial;off?:LongitudinalReplayTrial;duplicateOn?:boolean;duplicateOff?:boolean}>();
+    for(const x of rows){
+      if(!x.pairKey)continue;
+      const key=`${x.phase}|${x.pairKey}|${x.contextKey}|${Math.round(x.delayMs/86400000)}`;
+      const pair=pairs.get(key)??{};
+      const arm=x.mode==='replay-on'?'on':'off';
+      if(pair[arm]){if(arm==='on')pair.duplicateOn=true;else pair.duplicateOff=true;}
+      else pair[arm]=x;
+      pairs.set(key,pair);
+    }
+    const cleanPairs=[...pairs.values()].filter(x=>x.on&&x.off&&!x.duplicateOn&&!x.duplicateOff) as Array<{on:LongitudinalReplayTrial;off:LongitudinalReplayTrial}>;
+    const matched=cleanPairs;
+    const holdoutMatchedPairs=cleanPairs.filter(pair=>pair.on.phase==='holdout'&&pair.off.phase==='holdout').length;
     const mean=(xs:LongitudinalReplayTrial[])=>xs.length?xs.reduce((a,x)=>a+x.score01,0)/xs.length:0;
     const diff=matched.length?matched.reduce((a,p)=>a+(p.on.score01-p.off.score01),0)/matched.length:null;
     const holdout=rows.filter(x=>x.phase==='holdout').length;
     const comparable=matched.length>=2;
     const protocol=this.state.replay.protocols.find(p=>p.id===experimentId&&p.taskId===taskId);
-    const eligible=Boolean(protocol?.randomized&&protocol?.balanced&&comparable&&matched.length>=Math.max(2,protocol.requiredPairs)&&holdout>=2&&delays.size>=2);
-    return {experimentId,taskId,totalTrials:this.state.replay.longitudinal.filter(x=>x.experimentId===experimentId&&x.taskId===taskId).length,verifiedTrials:rows.length,distinctDelays:delays.size,matchedPairs:matched.length,pairedComparable:comparable,meanRetentionOn01:mean(on),meanRetentionOff01:mean(off),conditionDifference01:diff,holdoutTrials:holdout,evidenceGrade:eligible?'confirmatory-eligible':comparable?'exploratory-matched':'insufficient'};
+    const eligible=Boolean(protocol?.randomized&&protocol?.balanced&&comparable&&matched.length>=Math.max(2,protocol.requiredPairs)&&holdout>=4&&holdoutMatchedPairs>=2&&delays.size>=2);
+    return {experimentId,taskId,totalTrials:this.state.replay.longitudinal.filter(x=>x.experimentId===experimentId&&x.taskId===taskId).length,verifiedTrials:rows.length,distinctDelays:delays.size,matchedPairs:matched.length,holdoutMatchedPairs,pairedComparable:comparable,meanRetentionOn01:mean(on),meanRetentionOff01:mean(off),conditionDifference01:diff,holdoutTrials:holdout,evidenceGrade:eligible?'confirmatory-eligible':comparable?'exploratory-matched':'insufficient'};
   }
 
     summary(){return {version:7,cycles:this.state.cycles,observations:this.state.observations,hotCount:this.state.hotCount,warmCount:this.state.warmCount,coldCount:this.state.coldCount,graphNodes:this.state.graphNodes.length,graphEdges:this.state.graphEdges.length,clusters:this.state.clusters.length,identityGravity:this.state.identityGravity,identityGravityHistory:this.state.identityGravityHistory.slice(-8),integrity:this.state.integrity,compression:this.state.compression,replay:this.state.replay,retention:this.state.retention,memorySkillBindings:this.state.memorySkillBindings.length,adaptiveReplayGovernor:this.replayGovernor.diagnostics(),causalReplayCredit:this.causalReplayCredit.diagnostics()};}
