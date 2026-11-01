@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nk1-inspect-evidence-evaluator"
+version = "0.1.0"
+description = "Independent Inspect AI structural evaluator for privacy-reduced NK1 cognitive evidence exports"
+requires-python = ">=3.11"
+dependencies = ["inspect-ai==0.3.286"]
+
+[tool.setuptools]
+py-modules = ["nk1_evidence", "nk1_inspect_task", "run_eval"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

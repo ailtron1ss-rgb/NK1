@@ -1,3 +1,14 @@
+## [NK1][Evaluation] Integrate independent Inspect AI evidence adapter (2026-11-01)
+- Port the WorkPass72 read-only CognitiveEventFabric exporter, privacy-reduced JSONL schema, independent Python validator and pinned Inspect AI 0.3.286 deterministic scoring harness onto the current `workpass70-source` checkpoint (`6f83e2e`).
+- Re-run the 11-stage causal lineage and action → outcome → evidence receipt checks outside the runtime; raw conversation, memory and postcondition text remain excluded from exported records.
+- Add Node/Python regression suites and an exact-source GitHub Actions workflow; the workflow now follows the source-sync branch instead of the stale original feature branch.
+- This is diagnostic evidence only: no runtime behavior, MemoryOS2 state, P23 promotion authority, or Release ZIP is changed; no autonomy, recall uplift, consciousness, or production readiness is claimed.
+
+## [NK1][License] Add evidence-backed release inventory without approval (2026-11-01)
+- Correct locked npm component count to the measured 477 and add exact evidence references for root/runtime, all 8 source archives and all 11 repository LICENSE/NOTICE records.
+- Add evidence-only SPDX expressions and exact SHA-256 records for four vendor license files; clarify CleanRL's composite upstream license and Avalanche's whitespace-only local copy difference.
+- Keep every review status pending, every redistribution approval false, and all human reviewer/date fields empty. This records evidence, not legal permission.
+
 ## [NK1][Memory] Reject numeric-string snapshot coercion (2026-11-01)
 - Require finite JSON numbers for restored MemoryOS2 timestamps, validity bounds, salience, confidence, revision sequence and retrieval counters; numeric-looking strings now use conservative fallbacks.
 - Reject numeric-string revision-history timestamps and nested evidence-source timestamps, freshness values and authority scores instead of treating them as trusted provenance.
