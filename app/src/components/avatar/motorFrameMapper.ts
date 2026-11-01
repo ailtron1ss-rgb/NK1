@@ -116,10 +116,21 @@ function validFrame(frame: MotorFrameSample): boolean {
     || !validJointIdList(frame.reachedJointIds) || !validJointIdList(frame.blockedJointIds)
     || !frame.joints || typeof frame.joints !== "object"
     || Array.isArray(frame.joints) || Object.keys(frame.joints).length > 128) return false;
+  const jointIds = new Set(Object.keys(frame.joints));
   for (const [id, joint] of Object.entries(frame.joints)) {
     if (!/^[a-z][a-z0-9._-]{0,63}$/i.test(id) || !joint || joint.id !== id
       || typeof joint.available !== "boolean"
       || ![joint.angleRad, joint.targetAngleRad, joint.velocityRadPerSec, joint.accelerationRadPerSec2].every(Number.isFinite)) return false;
+  }
+
+  // Status lists are references into this exact frame, not free-form diagnostics.
+  // Reject dangling references and contradictory reached+blocked state before any pose is emitted.
+  const reached = new Set(frame.reachedJointIds);
+  for (const jointId of reached) {
+    if (!jointIds.has(jointId) || frame.blockedJointIds.includes(jointId)) return false;
+  }
+  for (const jointId of frame.blockedJointIds) {
+    if (!jointIds.has(jointId)) return false;
   }
   return true;
 }
