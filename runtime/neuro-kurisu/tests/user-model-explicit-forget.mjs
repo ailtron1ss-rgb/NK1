@@ -144,9 +144,10 @@ reconciliationSnapshot.claims.push({
   source: 'user-explicit', evidenceRef: 'fresh:claim', firstSeenTick: 14, lastSeenTick: 14,
   confirmations: 1, contradictions: 0,
 });
-reconciliationSnapshot.forgetTombstones.push({
-  key: 'stale.claim', domain: 'interaction-style', forgottenAtTick: 10, evidenceRef: 'forget:stale',
-});
+reconciliationSnapshot.forgetTombstones.push(
+  { key: 'stale.claim', domain: 'interaction-style', forgottenAtTick: 10, evidenceRef: 'forget:stale' },
+  { key: 'stale.candidate', domain: 'content-preference', forgottenAtTick: 10, evidenceRef: 'forget:candidate' },
+);
 const reconciled = new UserModelEvidenceModel();
 reconciled.restore(reconciliationSnapshot);
 assert.equal(reconciled.confirmedValue('stale.claim', 'interaction-style'), null);
