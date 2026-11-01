@@ -267,7 +267,7 @@ export function runLongMemEvalMemoryBenchmark(rawRows:unknown,options:LongMemEva
    licenseId:LONGMEMEVAL_LICENSE_ID,languages:['en'],questionCount:questions.length,sessionCount,
    fileSha256:fileSha,datasetFingerprint,
   },
-  experiment:{candidateMode:'canonical-memoryos2',baseline:'Okapi BM25 per question corpus',k,bootstrapSamples,seeds},
+  experiment:{candidateMode:'canonical-memoryos2-no-embedding',baseline:'Okapi BM25 per question corpus',scope:'retrieval-only; does not score answer generation or LLM-as-judge accuracy',k,bootstrapSamples,seeds},
   sampleAdequacy:{answerableQueries:answerableCount,unanswerableQueries:unanswerableCount,independentGroups:confidence.independentGroupCount,answerableIndependentGroups:confidence.answerableIndependentGroups,unanswerableIndependentGroups:confidence.unanswerableIndependentGroups,minimumAnswerableQueries:minAnswerable,minimumUnanswerableQueries:minUnanswerable,minimumIndependentGroups:minIndependentGroups,minimumAnswerableIndependentGroups:minAnswerableIndependentGroups,minimumUnanswerableIndependentGroups:minUnanswerableIndependentGroups,enoughAnswerableQueries:answerableCount>=minAnswerable,enoughUnanswerableQueries:unanswerableCount>=minUnanswerable,enoughIndependentGroups:confidence.independentGroupCount>=minIndependentGroups,enoughAnswerableIndependentGroups:confidence.answerableIndependentGroups>=minAnswerableIndependentGroups,enoughUnanswerableIndependentGroups:confidence.unanswerableIndependentGroups>=minUnanswerableIndependentGroups},
   metrics:{baseline,candidate,deltas:{
    recallAtK01:Number((candidate.recallAtK01-baseline.recallAtK01).toFixed(6)),
