@@ -1,3 +1,8 @@
+## [NK1][CI] Align longitudinal memory holdout workflow with Node 24 (2026-11-01)
+- Upgrade checkout and setup-node actions from v4 to the repository-required Node 24-compatible v7 major.
+- Resolve the Node version from the canonical .nvmrc while keeping dependency caching disabled for this focused test-only workflow.
+- Fixes the exact action-runtime audit failure observed during PR #579 validation; the longitudinal holdout pairing regression remains the workflow's scope.
+
 ## [NK1][Autonomy] Harden autonomous-life snapshot restoration (2026-11-01)
 - Validate persisted counters, timestamps, ratios, lifecycle modes and recent-history rows before restoring the autonomous runtime controller.
 - Read only own data properties; accessor-backed snapshots are never executed, and hostile proxy failures reset to safe defaults rather than aborting startup.
