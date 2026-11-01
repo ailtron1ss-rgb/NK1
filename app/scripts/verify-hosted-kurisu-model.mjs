@@ -29,6 +29,7 @@ const morphTargets = (document.meshes ?? []).reduce((sum, mesh) =>
 assert.ok((document.nodes?.length ?? 0) > 0, "Hosted model must contain scene nodes");
 assert.ok((document.skins?.length ?? 0) > 0, "Hosted model must contain a humanoid skin");
 assert.ok(morphTargets >= 10, "Hosted model must retain face and blink morph targets");
+assert.ok((document.animations ?? []).some((animation) => /rig_kurisu/i.test(animation.name ?? "")), "Hosted model must retain the named Kurisu humanoid clip");
 
 console.log("HOSTED_KURISU_ASSET=PASS", JSON.stringify({
   id: KURISU_HYBRID_MODEL.id,
