@@ -1,3 +1,8 @@
+## [NK1][Memory] Require class-specific independent LongMemEval groups (WorkPass82, 2026-11-01)
+
+- Add separate minimum independent-group gates for answerable and abstention strata. Query counts and total group count alone can conceal a degenerate confidence interval when many questions share the same source sessions.
+- Regression fixture confirms two answerable questions sharing one session count as one independent answerable group, while abstention evidence remains independently counted.
+
 ## [NK1][Memory] Support reviewed LongMemEval empty-evidence abstentions (WorkPass82, 2026-11-01)
 
 - Treat empty `answer_session_ids` as unanswerable even when the question ID has no `_abs` suffix and its category is not `abstention`; this supports corrected ground truth without misclassifying reviewed records.
