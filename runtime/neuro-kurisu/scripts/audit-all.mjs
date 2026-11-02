@@ -31,6 +31,8 @@ const checks = [
   ['test:developmental:migration','node --experimental-strip-types tests/developmental-migration.mjs'],
   ['audit:integrity','node --experimental-strip-types scripts/audit-integrity.mjs'],
   ['audit:architecture','node scripts/audit-architecture.mjs'],
+  ['audit:subsystem-boundary','node scripts/audit-subsystem-boundary.mjs'],
+  ['test:subsystem-boundary-rules','node tests/subsystem-boundary-rules.mjs'],
   ['test:architecture-audit-masking','node tests/architecture-audit-masking.mjs'],
   ['audit:contract','node scripts/audit-release-contract.mjs'],
   ['audit:hygiene','node scripts/audit-source-hygiene.mjs'],
