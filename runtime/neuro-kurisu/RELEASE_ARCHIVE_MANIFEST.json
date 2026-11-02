@@ -3,7 +3,7 @@
   "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
   "stateSchema": 225,
   "phase": "WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline",
-  "generatedAt": "2026-11-02T18:13:13.100Z",
+  "generatedAt": "2026-11-02T18:16:41.434Z",
   "selfExcluded": true,
   "fileCount": 4576,
   "files": [
@@ -3300,7 +3300,7 @@
     {
       "path": "R22_ANTI_DECORATION_AUDIT.json",
       "bytes": 185,
-      "sha256": "d695a3d9dbf8d11ca6c7125cd3b269f6600b3c00760b329393f455eb2c576fbb"
+      "sha256": "d24be39c1adb17f6b7a479c60f3c85226d4b31eb04a736575e6c73dbb3c56807"
     },
     {
       "path": "README.md",
