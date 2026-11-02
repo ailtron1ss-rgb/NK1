@@ -9,6 +9,7 @@
 - PR #607 merged: backup temp + fsync + atomic rename, with SIGKILL-before-rename regression; 11/11 exact-head checks.
 - UserModel v2 durable forgetting is already integrated at `efb7693`; motor-frame integrity is integrated at `c039f84`.
 - Latest published Release ZIP is still the 2026-10-19 WorkPass70 Hotfix prerelease. November source commits are not in the ZIP; license review and exact-SHA release gate remain blocking.
+- In progress (not merged): branch `workpass-memoryos-retrieval-stem`, PR #690 (base `workpass70-source`). MemoryOS2 integrity pass — eleven live-vs-restore defects fixed (write-path NaN/invariant guards, revision-tip reachability, orphan supersession edges, `attachEvidenceSource` durable byte double-count). Regression tests `tests/memory-revision-tip-reachability.mjs`, `tests/memory-evidence-lineage-bytes.mjs` and the deterministic `tests/memory-live-restore-oracle-fuzz.mjs` (5-seed differential fuzz against `restore()`/`indexDiagnostics()`/`doctor()`) are wired into `nk1-memory-integrity.yml`.
 
 ## Non-negotiable engineering workflow
 
