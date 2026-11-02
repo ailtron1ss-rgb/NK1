@@ -1,0 +1,26 @@
+name: NK1 Personality Restore Integrity
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts'
+      - 'runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs'
+      - '.github/workflows/nk1-personality-restore-integrity.yml'
+  push:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts'
+      - 'runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs'
+      - '.github/workflows/nk1-personality-restore-integrity.yml'
+jobs:
+  personality-restore-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Run personality restore and integration tests
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2702-persistent-personality-dynamics.mjs
