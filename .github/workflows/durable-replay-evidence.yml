@@ -1,0 +1,42 @@
+name: NK1 durable replay evidence artifact
+
+on:
+  pull_request:
+    branches: [workpass70-source, fix/experience-continuum-proof-authority-2026-11-02]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/SignedReplayEvidenceArtifact.ts'
+      - 'runtime/neuro-kurisu/tests/durable-replay-evidence-artifact.mjs'
+      - '.github/workflows/durable-replay-evidence.yml'
+  push:
+    branches: [workpass70-source, fix/experience-continuum-proof-authority-2026-11-02]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/learning/SignedReplayEvidenceArtifact.ts'
+      - 'runtime/neuro-kurisu/tests/durable-replay-evidence-artifact.mjs'
+      - '.github/workflows/durable-replay-evidence.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-durable-replay-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  durable-replay-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Durable signed replay artifact regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/durable-replay-evidence-artifact.mjs
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
