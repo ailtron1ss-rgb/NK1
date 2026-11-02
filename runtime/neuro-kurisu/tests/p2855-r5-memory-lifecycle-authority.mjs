@@ -19,6 +19,8 @@ const snap=memory.snapshot();
 const restored = new MemorySubsystemRuntime();
 restored.restoreFromPersisted({memory:snap,advanced:snap});
 assert.equal(restored.memoryLifecycleAuthority.snapshot().cycles,1);
+assert.equal(restored.consolidationController.snapshot().lastBatch.length,1,'valid consolidation decisions survive restore');
+assert.equal(restored.memoryLifecycleAuthority.snapshot().lastConsolidation.length,1,'valid lifecycle decisions survive restore');
 assert.ok(restored.fabric.retrieve('rare calibration event',4,0,0,{emitEvent:false}).length>=1);
 console.log(JSON.stringify({ok:true,canonicalItems:restored.memoryOS.size(),maintenanceRuns:restored.memoryLifecycleAuthority.snapshot().maintenanceRuns,consolidationRuns:restored.memoryLifecycleAuthority.snapshot().consolidationRuns}));
 
@@ -61,3 +63,15 @@ lifecycle.restore({version:1,cycles:5,meanPressure01:.42});
 assert.equal(lifecycle.snapshot().cycles,5);
 assert.equal(lifecycle.snapshot().meanPressure01,.42);
 assert.equal(lifecycle.snapshot().lastPlan,undefined,'diagnostic plans are regenerated after restore');
+const sparseBatch = new Array(1);
+consolidation.restore({version:1,runs:9,lastBatch:sparseBatch});
+assert.equal(consolidation.snapshot().runs,0,'sparse decision history must be rejected');
+lifecycle.restore({version:1,cycles:9,lastConsolidation:sparseBatch});
+assert.equal(lifecycle.snapshot().cycles,0,'sparse lifecycle history must be rejected');
+let feedbackGetterCalls=0;
+const feedbackAccessor={};
+Object.defineProperty(feedbackAccessor,'action',{enumerable:true,get(){feedbackGetterCalls++;return 'recalled-action';}});
+consolidation.restore({version:1,runs:9,lastFeedback:feedbackAccessor});
+assert.equal(feedbackGetterCalls,0,'feedback restore must not invoke accessors');
+assert.equal(consolidation.snapshot().runs,0);
+
