@@ -162,6 +162,75 @@ assert.equal(normalized.confidence, .2);
 assert.deepEqual(normalized.inhibited, ['keep']);
 
 
+// --- Section 2: calibration, contradictions, cancellation --------------------
+// 2a. Outcome calibration: a source that keeps proving irrelevant must lose
+//     reliability and stop winning ties, and its claimed confidence must drop.
+const calibrated = new AttentionAllocator();
+const badSource = { target: 'sensor:noise', source: 'world', taskRelevance01: .5, urgency01: .4, predictedValue01: .5 };
+const goodSource = { target: 'goal:work', source: 'goal', taskRelevance01: .5, urgency01: .4, predictedValue01: .5 };
+for (let tick = 1; tick <= 40; tick++) {
+  calibrated.allocate({ tick, candidates: [badSource, goodSource], attentionBudget01: .8 });
+  calibrated.recordOutcome({ source: 'world', realizedValue01: .02 });
+  calibrated.recordOutcome({ source: 'goal', realizedValue01: .98 });
+}
+const reliability = calibrated.snapshot().sourceReliability;
+assert.ok(reliability.world.reliability01 < .2, `an unusable source must lose reliability (got ${reliability.world.reliability01})`);
+assert.ok(reliability.goal.reliability01 > .8, 'a useful source must keep reliability');
+assert.equal(reliability.world.samples, 40);
+const laterDecision = calibrated.allocate({ tick: 41, candidates: [badSource, goodSource], attentionBudget01: .8 });
+assert.equal(laterDecision.target, 'goal:work', 'calibration must reorder otherwise-equal candidates');
+assert.ok(laterDecision.decision.sourceReliability01 > .8);
+assert.ok(Number.isFinite(calibrated.snapshot().calibrationError01));
+// Reliability survives restart (learned calibration must not be silently reset).
+const calibratedRestored = new AttentionAllocator();
+calibratedRestored.restore(structuredClone(calibrated.snapshot()));
+assert.deepEqual(calibratedRestored.snapshot().sourceReliability, calibrated.snapshot().sourceReliability);
+// A corrupt reliability table cannot inject NaN or unbounded entries.
+const corruptReliability = new AttentionAllocator();
+corruptReliability.restore({ sourceReliability: { ok: { samples: 3, reliability01: 'x' }, bad: { samples: -1 } } });
+assert.deepEqual(corruptReliability.snapshot().sourceReliability, { ok: { samples: 3, reliability01: .5 } });
+
+// 2b. Contradictions: the same target from two senders with different claims is
+//     recorded as a contradiction rather than silently merged into one signal.
+const contradictory = new AttentionAllocator().allocate({
+  tick: 1,
+  candidates: [
+    { target: 'world:door', source: 'sensor', taskRelevance01: .6, predictedValue01: .9 },
+    { target: 'world:door', source: 'memory', taskRelevance01: .6, predictedValue01: .1 },
+    { target: 'goal:stay-safe', source: 'goal', goalRelevance01: .5 },
+  ],
+  attentionBudget01: .8,
+});
+assert.deepEqual(contradictory.decision.contradictions, ['world:door']);
+assert.equal(contradictory.decision.considered, 3, 'contradictory claims are distinct senders, not duplicates');
+
+// 2c. Workspace contradictions: the same id re-offered with new content is
+//     recorded and updated in place, never admitted twice.
+const conflictWs = new RecurrentWorkspaceV2();
+conflictWs.compete([{ id: 'x', source: 's', content: { value: 1 }, salience: .6, createdAt: 1 }], 1);
+const conflicted = conflictWs.compete([{ id: 'x', source: 's', content: { value: 2 }, salience: .6, createdAt: 1 }], 2);
+assert.deepEqual(conflicted.lastDecision.conflicted, ['x']);
+assert.equal(conflicted.conflicts, 1);
+assert.equal(conflicted.items.filter(item => item.id === 'x').length, 1);
+assert.equal(conflicted.items.find(item => item.id === 'x').content.value, 2, 'the newer claim must replace the stale one');
+
+// 2d. Cancellation: reset/clear drop commitment without losing learned state.
+const cancelWs = new RecurrentWorkspaceV2();
+cancelWs.compete(items(6), 1);
+const cleared = cancelWs.clear('abort');
+assert.equal(cleared.cleared, 5);
+assert.equal(cancelWs.snapshot().items.length, 0);
+assert.equal(cancelWs.snapshot().suppressed.length, 0);
+const cancelAllocator = new AttentionAllocator();
+cancelAllocator.allocate({ tick: 1, candidates: [{ target: 'a', source: 's', taskRelevance01: .5 }], attentionBudget01: .8 });
+cancelAllocator.recordOutcome({ source: 's', realizedValue01: .9 });
+const cancelled = cancelAllocator.reset('user-cancel');
+assert.equal(cancelled.cancelled, true);
+assert.equal(cancelled.previousTarget, 'a');
+assert.equal(cancelAllocator.snapshot().target, null);
+assert.equal(cancelAllocator.snapshot().cancellations, 1);
+assert.ok(cancelAllocator.snapshot().sourceReliability.s.samples > 0, 'cancellation must not erase calibration');
+
 // --- Section 3: bounded working workspace -----------------------------------
 function items(n, salienceScale = 1, createdAt = 1) {
   return Array.from({ length: n }, (_, i) => ({ id: `i${i}`, source: i % 2 ? 'memory' : 'decision', content: { i }, salience: ((n - i) / n) * salienceScale, createdAt }));
@@ -413,4 +482,27 @@ assert.deepEqual(p81.snapshot().recentFocus, ['ok']);
 assert.ok(Number.isFinite(p81.actionBias('verify')));
 
 
-console.log(JSON.stringify({ pass: true, sections: 3, allocations: traceA.length + 6, workspace: { capacity: bounded.capacity, competitors: bounded.competitors } }));
+// --- Section 6: bounded cost (mobile-relevant) ------------------------------
+// Measured, not assumed: the allocator and workspace are per-cycle hot paths, so
+// their cost must stay small and bounded as the candidate list grows.
+const perfCandidates = Array.from({ length: 8 }, (_, i) => ({ target: `t${i}`, source: i % 2 ? 'world' : 'goal', taskRelevance01: .5, urgency01: .5, novelty01: .4 }));
+const perfAllocator = new AttentionAllocator();
+const allocateStartedAt = performance.now();
+for (let tick = 1; tick <= 2000; tick++) perfAllocator.allocate({ tick, candidates: perfCandidates, attentionBudget01: .8 });
+const allocateMs = performance.now() - allocateStartedAt;
+const perfWs = new RecurrentWorkspaceV2();
+const perfItems = items(12);
+const competeStartedAt = performance.now();
+for (let tick = 1; tick <= 2000; tick++) perfWs.compete(perfItems, tick, { minSources: 2 });
+const competeMs = performance.now() - competeStartedAt;
+assert.ok(allocateMs < 2000, `attention allocation too slow: ${allocateMs.toFixed(0)}ms / 2000 cycles`);
+assert.ok(competeMs < 2000, `workspace competition too slow: ${competeMs.toFixed(0)}ms / 2000 cycles`);
+// Bounded growth under a hostile caller: cost must not scale with history.
+const growthWs = new RecurrentWorkspaceV2();
+for (let tick = 1; tick <= 300; tick++) growthWs.compete(Array.from({ length: 40 }, (_, i) => ({ id: `g${tick}-${i}`, source: 's', content: {}, salience: .5, createdAt: tick })), tick);
+const growthState = growthWs.snapshot();
+assert.equal(growthState.items.length, 5);
+assert.ok(growthState.suppressed.length <= 8);
+assert.ok(JSON.stringify(growthState).length < 20000, 'persisted workspace state must stay small');
+
+console.log(JSON.stringify({ pass: true, sections: 6, allocations: traceA.length + 6, perf: { allocateMsPerCycle: Number((allocateMs / 2000).toFixed(4)), competeMsPerCycle: Number((competeMs / 2000).toFixed(4)) }, workspace: { capacity: bounded.capacity, competitors: bounded.competitors } }));

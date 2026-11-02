@@ -39,6 +39,8 @@ export interface WorkspaceLastDecision {
   retained: string[];
   suppressed: string[];
   removed: string[];
+  /** Ids re-offered with changed content (contradictory evidence, updated in place). */
+  conflicted?: string[];
 }
 
 export interface WorkspaceStateV2 {
@@ -57,6 +59,8 @@ export interface WorkspaceStateV2 {
   lastDecision?: WorkspaceLastDecision | null;
   admissions?: number;
   evictions?: number;
+  /** Cumulative same-id/different-content updates (contradiction handling). */
+  conflicts?: number;
 }
 
 const DEFAULT_CAPACITY = 5;
@@ -82,6 +86,13 @@ const cleanId = (raw: unknown): string | null => {
   if (/[\u0000-\u001f\u007f-\u009f]/u.test(trimmed)) return null;
   return trimmed;
 };
+
+/** Stable hash of an item's content, used to detect contradictory re-offers. */
+function contentSignature(content: Record<string, unknown>): string {
+  const keys = Object.keys(content).sort();
+  const flat = keys.map(key => `${key}=${JSON.stringify(content[key]) ?? 'undefined'}`).join('&');
+  return stableHash(flat);
+}
 
 function sanitizeItem(raw: unknown): OrganismWorkspaceItem | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -118,7 +129,7 @@ export function defaultWorkspaceStateV2(): WorkspaceStateV2 {
   return {
     capacity: DEFAULT_CAPACITY, items: [], broadcastId: '', recurrence: 0, lastCompetition: 0,
     ignition01: 0, sourceDiversity01: 0, coalitionStability01: 0,
-    competitors: 0, suppressed: [], lastDecision: null, admissions: 0, evictions: 0,
+    competitors: 0, suppressed: [], lastDecision: null, admissions: 0, evictions: 0, conflicts: 0,
   };
 }
 
@@ -154,10 +165,23 @@ export class RecurrentWorkspaceV2 {
       lastDecision: null,
       admissions: clampInt(typeof raw.admissions === 'number' ? raw.admissions : 0, 0, Number.MAX_SAFE_INTEGER),
       evictions: clampInt(typeof raw.evictions === 'number' ? raw.evictions : 0, 0, Number.MAX_SAFE_INTEGER),
+      conflicts: clampInt(typeof raw.conflicts === 'number' ? raw.conflicts : 0, 0, Number.MAX_SAFE_INTEGER),
     };
   }
 
   snapshot(): WorkspaceStateV2 { return structuredClone(this.state); }
+
+  /** Graceful cancellation: empties the coalition and clears suppression while
+   *  keeping lifetime counters, so a cancelled cycle cannot leak stale content. */
+  clear(reason = 'cancelled'): { cleared: number; reason: string } {
+    const cleared = this.state.items.length;
+    this.state.items = [];
+    this.state.suppressed = [];
+    this.state.lastDecision = { tick: this.state.lastDecision?.tick ?? 0, admitted: [], retained: [], suppressed: [], removed: [], conflicted: [] };
+    this.state.ignition01 = 0;
+    this.state.recurrence = 0;
+    return { cleared, reason };
+  }
 
   /** Explicit caller-driven removal (e.g. a revoked goal). */
   remove(id: string): boolean {
@@ -205,6 +229,16 @@ export class RecurrentWorkspaceV2 {
     //    item that stops being re-observed loses ground instead of holding a
     //    slot forever. Ranking is a total order for determinism.
     const resident = new Map(previous.map(item => [item.id, item] as const));
+    // Contradiction handling: the same identity re-offered with different content
+    // is contradictory evidence about one item, not a second item. It is
+    // recorded, the newer content replaces the stale one in place, and the
+    // identity cannot occupy two slots.
+    const conflicted: string[] = [];
+    for (const [id, item] of candidates) {
+      const prior = resident.get(id);
+      if (prior && contentSignature(prior.content) !== contentSignature(item.content)) conflicted.push(id);
+    }
+
     const ranked = [...candidates.values()]
       .filter(item => !suppressedIds.has(item.id))
       .map(item => {
@@ -275,9 +309,10 @@ export class RecurrentWorkspaceV2 {
       broadcastId: `gws-${tick || coalition[0]?.createdAt || 0}-${stableHash(signature)}`,
       competitors: candidates.size,
       suppressed: suppressionNext,
-      lastDecision: { tick, admitted, retained: retainedIds, suppressed: suppressedNow.map(x => x.id), removed },
+      lastDecision: { tick, admitted, retained: retainedIds, suppressed: suppressedNow.map(x => x.id), removed, conflicted },
       admissions: previousAdmissions + admitted.length,
       evictions: previousEvictions + removed.length,
+      conflicts: (this.state.conflicts ?? 0) + conflicted.length,
     };
     return this.snapshot();
   }

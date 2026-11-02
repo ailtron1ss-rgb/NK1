@@ -7807,6 +7807,23 @@ export class OrganismCore {
         state.lastPredictionConfidence = nextPrediction?.confidence ?? 0;
         state.lastAction = selectedIntent?.action ?? 'wait';
         state.lastActionSuccess = success;
+        // Attention calibration: fold the cycle's realized outcome back into the
+        // reliability of the source that won attention. The realized value is the
+        // metric that source is supposed to improve, not a self-report.
+        const attendedSourceForCalibration = this.persisted.facets.memory.attention.decision?.source;
+        if (attendedSourceForCalibration && attendedSourceForCalibration !== 'carried' && attendedSourceForCalibration !== 'fallback') {
+            const realizedBySource: Record<string, number> = {
+                goal: clamp(success ?? .5),
+                prediction: clamp(1 - state.predictionError),
+                interoception: clamp(1 - n.cognitiveLoad),
+                social: clamp(observation.socialSignal ?? .5),
+                world: clamp(1 - (normalizedObservation.worldContext?.uncertainty ?? n.uncertainty)),
+                memory: clamp(0.5 + ((success ?? .5) - .5) * .5),
+            };
+            const realized = realizedBySource[attendedSourceForCalibration];
+            if (typeof realized === 'number') this.memorySubsystem.attentionAllocator.recordOutcome({ source: attendedSourceForCalibration, realizedValue01: realized });
+            this.persisted.facets.memory.attentionAllocator = this.memorySubsystem.attentionAllocator.snapshot();
+        }
         state.autonomyScore = clamp(state.autonomyScore * 0.97 +
             (autonomousOverride ? 0.18 : 0) +
             (active?.source === 'intrinsic' || active?.source === 'homeostatic' ? 0.06 : 0) +

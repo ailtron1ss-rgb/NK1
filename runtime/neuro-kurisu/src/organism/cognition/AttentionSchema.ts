@@ -58,6 +58,10 @@ export interface AttentionDecision {
   inhibited: string[];
   considered: number;
   eligible: number;
+  /** Historical reliability of the winning source (0.5 until outcomes arrive). */
+  sourceReliability01?: number;
+  /** Competing candidates that claimed the same target with a different value. */
+  contradictions?: string[];
 }
 
 export interface OrganismAttentionState {
@@ -85,6 +89,12 @@ export interface AttentionAllocatorState {
   lastTick: number;
   /** Factor breakdown of the most recent real decision (for carried holds). */
   lastFactors?: AttentionFactors;
+  /** Outcome-calibrated reliability per source (bounded). */
+  sourceReliability?: Record<string, { samples: number; reliability01: number }>;
+  /** Absolute calibration error of the confidence claim (EMA). */
+  calibrationError01?: number;
+  /** Times attention was explicitly cancelled/reset. */
+  cancellations?: number;
 }
 
 const FACTOR_WEIGHTS: Readonly<AttentionFactors> = { goal: .22, relevance: .16, urgency: .18, novelty: .10, uncertainty: .12, predictedValue: .12, emotion: .10, resource: .10, habituation: -.08, inhibition: -.20 };
@@ -135,8 +145,24 @@ function sanitizeFactors(raw: unknown): AttentionFactors | null {
   return out as AttentionFactors;
 }
 
+const MAX_SOURCES = 8;
+/** Validates a persisted per-source reliability table (bounded, finite). */
+function sanitizeReliability(raw: unknown): Record<string, { samples: number; reliability01: number }> {
+  const out: Record<string, { samples: number; reliability01: number }> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [source, entry] of Object.entries(raw as Record<string, unknown>).slice(0, MAX_SOURCES)) {
+    const name = cleanTarget(source);
+    if (!name || !entry || typeof entry !== 'object') continue;
+    const row = entry as Record<string, unknown>;
+    const samples = typeof row.samples === 'number' && Number.isSafeInteger(row.samples) && row.samples >= 0 ? row.samples : 0;
+    if (samples === 0) continue;
+    out[name] = { samples: Math.min(1e6, samples), reliability01: finite01(row.reliability01, .5) };
+  }
+  return out;
+}
+
 export function defaultAttentionAllocatorState(): AttentionAllocatorState {
-  return { version: 1, target: null, targetScore: 0, dwell: 0, inhibition: {}, switches: 0, allocations: 0, lastTick: -1 };
+  return { version: 1, target: null, targetScore: 0, dwell: 0, inhibition: {}, switches: 0, allocations: 0, lastTick: -1, sourceReliability: {}, calibrationError01: .5, cancellations: 0 };
 }
 
 /**
@@ -214,6 +240,9 @@ export class AttentionAllocator {
       allocations: typeof r.allocations === 'number' && Number.isSafeInteger(r.allocations) && r.allocations >= 0 ? r.allocations : 0,
       lastTick: typeof r.lastTick === 'number' && Number.isSafeInteger(r.lastTick) && r.lastTick >= -1 ? r.lastTick : -1,
       ...(sanitizeFactors(r.lastFactors) ? { lastFactors: sanitizeFactors(r.lastFactors) as AttentionFactors } : {}),
+      sourceReliability: sanitizeReliability(r.sourceReliability),
+      calibrationError01: finite01(r.calibrationError01, .5),
+      cancellations: typeof r.cancellations === 'number' && Number.isSafeInteger(r.cancellations) && r.cancellations >= 0 ? r.cancellations : 0,
     };
   }
 
@@ -250,6 +279,17 @@ export class AttentionAllocator {
       const prior = seen.get(key);
       if (!prior || finite01(normalized.predictedValue01) > finite01(prior.predictedValue01)) seen.set(key, normalized);
     }
+    // Contradiction handling: two senders claiming the same target with different
+    // predicted value are a conflict, not a stronger signal. The conflict is
+    // recorded (traceable) and the higher-value claim wins the comparison.
+    const claimByTarget = new Map<string, Set<number>>();
+    for (const candidate of seen.values()) {
+      const key = candidate.target as string;
+      const claims = claimByTarget.get(key) ?? new Set<number>();
+      claims.add(Math.round(finite01(candidate.predictedValue01) * 1000));
+      claimByTarget.set(key, claims);
+    }
+    const contradictions = [...claimByTarget.entries()].filter(([, claims]) => claims.size > 1).map(([target]) => target).slice(0, MAX_INHIBITED);
     const suppressedTargets = new Set([...seen.values()].filter(c => c.suppressed === true).map(c => c.target as string));
     const considered = seen.size;
     const eligible = [...seen.values()].filter(c => c.suppressed !== true);
@@ -283,6 +323,11 @@ export class AttentionAllocator {
       // Under minimal resources a non-urgent target cannot win attention at all;
       // degradation must be observable, not cosmetic.
       if (resourceMode === 'minimal' && factors.urgency < .55) score = 0;
+      // Outcome-calibrated reliability: a source that has repeatedly produced
+      // irrelevant targets is down-weighted (never below 85% of its raw score, so
+      // it can still recover when outcomes improve).
+      const reliability = this.state.sourceReliability?.[candidate.source as string]?.reliability01 ?? .5;
+      score *= .85 + .15 * reliability;
       return { candidate, score: clamp01(score), factors };
     }).sort((a, b) => b.score - a.score || (a.candidate.target! < b.candidate.target! ? -1 : a.candidate.target! > b.candidate.target! ? 1 : 0));
 
@@ -373,6 +418,8 @@ export class AttentionAllocator {
       inhibited: inhibitedTargets,
       considered,
       eligible: eligible.length,
+      sourceReliability01: this.state.sourceReliability?.[chosen?.candidate.source as string]?.reliability01 ?? .5,
+      contradictions,
     };
     const switchedAt = decision.switched || incumbent === null ? input.tick : Math.min(this.state.lastTick, input.tick);
     this.state = {
@@ -385,6 +432,9 @@ export class AttentionAllocator {
       allocations: this.state.allocations + 1,
       lastTick: input.tick,
       lastFactors: carried ? previousFactors : decision.factors,
+      sourceReliability: this.state.sourceReliability ?? {},
+      calibrationError01: this.state.calibrationError01 ?? .5,
+      cancellations: this.state.cancellations ?? 0,
     };
 
     // `confidence` is the evidence-backed strength of the selection, `salience`
@@ -392,8 +442,12 @@ export class AttentionAllocator {
     // "how loud" from "how justified". `capacity` bounds how many inhibited
     // targets a resource-limited recipient is told to suppress.
     const salience = decision.score;
+    // Confidence is a *calibrated* claim: it mixes the decision strength with the
+    // historical reliability of the winning source, so a confident source that is
+    // regularly wrong ends up reporting lower confidence.
+    const winnerReliability = decision.sourceReliability01 ?? .5;
     const confidence = chosen
-      ? clamp01(salience * .72 + (1 - decision.margin) * .28) * (resourceMode === 'minimal' ? .85 : 1)
+      ? clamp01(salience * .55 + (1 - decision.margin) * .20 + winnerReliability * .25) * (resourceMode === 'minimal' ? .85 : 1)
       : 0;
     return {
       target,
@@ -405,6 +459,46 @@ export class AttentionAllocator {
       switchedAt,
       decision,
     };
+  }
+
+  /**
+   * Folds a realized outcome back into the reliability of the source that won
+   * attention. `realizedValue01` is the caller's measured usefulness of having
+   * attended that source (e.g. 1 - prediction error after the cycle). The
+   * confidence claim is scored against it, so calibration is measured rather than
+   * asserted. Unknown sources start at 0.5 (uninformative) and the table is bounded.
+   */
+  recordOutcome(input: { source: string; realizedValue01: number }): { accepted: boolean; reliability01: number; calibrationError01: number } {
+    const source = cleanTarget(input.source);
+    if (!source) return { accepted: false, reliability01: .5, calibrationError01: this.state.calibrationError01 ?? .5 };
+    const realized = finite01(input.realizedValue01, .5);
+    const prior = this.state.sourceReliability?.[source] ?? { samples: 0, reliability01: .5 };
+    const samples = Math.min(1e6, prior.samples + 1);
+    // Early samples move fast, later ones are stable (1/n style learning rate).
+    const rate = Math.max(.05, 1 / Math.min(20, samples));
+    const reliability01 = clamp01(prior.reliability01 * (1 - rate) + realized * rate);
+    const table = { ...(this.state.sourceReliability ?? {}) };
+    table[source] = { samples, reliability01 };
+    const trimmed = Object.entries(table).sort((a, b) => b[1].samples - a[1].samples).slice(0, MAX_SOURCES);
+    this.state.sourceReliability = Object.fromEntries(trimmed);
+    if (this.state.target && this.state.lastFactors) {
+      // The confidence that was claimed for this outcome, scored against reality.
+      const claimed = clamp01((this.state.targetScore ?? 0) * .55 + reliability01 * .25 + .20 * .5);
+      this.state.calibrationError01 = clamp01((this.state.calibrationError01 ?? .5) * .9 + Math.abs(claimed - realized) * .1);
+    }
+    return { accepted: true, reliability01, calibrationError01: this.state.calibrationError01 ?? .5 };
+  }
+
+  /** Graceful cancellation: drops commitment/inhibition but keeps learned
+   *  reliability so a restart of attention does not lose calibration. */
+  reset(reason = 'cancelled'): { cancelled: boolean; reason: string; previousTarget: string | null } {
+    const previousTarget = this.state.target;
+    this.state.target = null;
+    this.state.targetScore = 0;
+    this.state.dwell = 0;
+    this.state.inhibition = {};
+    this.state.cancellations = (this.state.cancellations ?? 0) + 1;
+    return { cancelled: Boolean(previousTarget), reason, previousTarget };
   }
 
   /** Deterministic trace handle for the cognitive event fabric. */
