@@ -5,6 +5,7 @@ const valid = {
   version: 1,
   id: 'meta-cycle:41',
   cycleId: 'cycle:41',
+  cognitiveEventId: 'cef:metacognitive:41',
   tick: 41,
   at: 1_798_000_000_000,
   parentEventIds: ['observation:41','prediction:41','appraisal:41','attention:41','memory:41','goal:41','plan:41','action:41','outcome:41','learning:41','self-update:41'],
