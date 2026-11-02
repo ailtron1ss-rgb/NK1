@@ -1,3 +1,10 @@
+## [NK1][Code Assimilation] Add source-bound intake and guarded lifecycle contracts (2026-11-02)
+- Add a typed metadata contract for immutable external source revisions, source/tree digests, component manifests and exact base-runtime binding.
+- Add a deterministic candidate identity and evidence-linked transition graph from discovery through quarantine, independent verification, shadow, approval, activation and rollback.
+- Reject mutable source references, floating package versions, malformed digests, accessor-backed/cyclic/sparse snapshots, invalid state histories, skipped transitions and unauthorized actor classes.
+- Add an isolated Node 24 workflow and adversarial lifecycle regressions.
+- This is metadata/lifecycle groundwork only: no external source is fetched or executed; no sandbox, SBOM generator, signature verifier, durable store, runtime registry or automatic promotion is claimed.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
