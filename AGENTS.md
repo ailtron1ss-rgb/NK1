@@ -1,6 +1,6 @@
 # NeuroCore — repository working rules
 
-> **Current continuation checkpoint — 2026-11-01:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions. The source baseline at this checkpoint is `735b83d525c0d53c91e2e5a6587fb3529a08d13b`; never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass126/127 and PR #11/#12 notes formerly below were stale and have been removed from the active entry point; older WorkPass records later in the repository remain archival.
+> **Current continuation checkpoint — 2026-11-02:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions. Verified source HEAD: `608435493b4af3b4a222d385f1b77d978d18583b`; `main`: `48dffbf4f5c9b5474c8baff61f40b8bf0c5828e8`. `main` is release/metadata and is not the direct source merge target. The historical WorkPass126/127 and PR #11/#12 notes formerly below were stale and have been removed from the active entry point; older WorkPass records later in the repository remain archival.
 
 ## Current checkpoint
 
@@ -8,7 +8,15 @@
 - PR #603 merged: terminal/unknown speech lifecycle clears stale mouth channels; 9/9 exact-head checks.
 - PR #607 merged: backup temp + fsync + atomic rename, with SIGKILL-before-rename regression; 11/11 exact-head checks.
 - UserModel v2 durable forgetting is already integrated at `efb7693`; motor-frame integrity is integrated at `c039f84`.
-- Latest published Release ZIP is still the 2026-10-19 WorkPass70 Hotfix prerelease. November source commits are not in the ZIP; license review and exact-SHA release gate remain blocking.
+- Latest published ZIP including prereleases: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip` (tag `workpass70-hotfix1-2026-10-19`), 136,354,713 bytes, GitHub asset digest `sha256:9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Stable tag `Neuro` ZIP is older: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. These are Release API digests, not locally recomputed checksums. November 1 source commits are not in either archive; the hotfix ZIP has not been locally extracted/compared. License review and exact-SHA release gate remain blocking.
+
+## Live CI / release gate — 2026-11-02
+
+- On exact source HEAD `608435493b4af3b4a222d385f1b77d978d18583b`, 14/14 GitHub Actions workflow runs completed as `failure` before runner assignment: `runner_id=0`, empty runner name, zero steps; all 14 job-log requests returned `BlobNotFound`.
+- Parent SHA `f921007a74a7a6124d274885354009dd3a3ef33c` had 7 successful workflow runs; the core regression control job ran 45 steps on a real GitHub-hosted runner. The only source commit between the SHAs changed `runtime/neuro-kurisu/package.json` (+1/−2), removing a duplicate test invocation. No workflow YAML changed.
+- These failures are pre-runner startup failures, not failing NK1 test assertions. Exact platform/account cause is **unknown**. Billing/Actions account restriction remains a hypothesis pending owner-side Billing & Licensing evidence or GitHub Support response.
+- Branch API snapshot: `workpass70-source` has no branch protection and no required status checks. See [PR #652](https://github.com/ailtron1ss-rgb/NK1/pull/652) (Draft; documentation-only) and `docs/engineering/NK1_RELEASE_INTEGRITY_AND_CI_RECOVERY_2026-11-02_RU.md` for exact run/job IDs and evidence.
+- Do not interpret the red runs as source test failures; do not bulk-rerun until runner startup is restored. Do not merge PR #652 as a runtime fix.
 
 ## Non-negotiable engineering workflow
 
