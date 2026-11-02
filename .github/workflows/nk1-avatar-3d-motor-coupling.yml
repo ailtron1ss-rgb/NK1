@@ -1,0 +1,37 @@
+name: NK1 3D cognitive motor coupling
+on:
+  push:
+    branches: [aspect/avatar-3d-cognitive-motor-coupling-20261102]
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - app/src/components/AvatarStage.tsx
+      - app/src/components/Avatar3DStage.tsx
+      - app/src/components/avatar/avatarMotorProjection.ts
+      - app/scripts/avatar-3d-motor-coupling.test.mjs
+      - .github/workflows/nk1-avatar-3d-motor-coupling.yml
+permissions:
+  contents: read
+concurrency:
+  group: nk1-avatar-3d-motor-coupling-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  avatar-3d-motor-coupling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up repository-pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked app dependencies
+        working-directory: app
+        run: npm ci
+      - name: Verify 3D cognitive motor coupling contract
+        working-directory: app
+        run: node --experimental-strip-types --test scripts/avatar-3d-motor-coupling.test.mjs
+      - name: Typecheck app
+        working-directory: app
+        run: npm run typecheck
