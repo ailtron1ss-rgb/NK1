@@ -3,7 +3,7 @@
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
 **Canonical source branch:** `workpass70-source`  
-**Source HEAD at this checkpoint:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b`  
+**Source HEAD at this checkpoint:** `fa2793914c3260256e30c3eee9f7182e503d8ea2`  
 **Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
 
 ## Latest verified integrations — 2026-11-01
@@ -13,6 +13,7 @@
 | [#594](https://github.com/ailtron1ss-rgb/NK1/pull/594) | `619ec5dc22f4559cb915281c46de23d1c369bf50` | FileStateStore missing/corrupt-primary recovery; primary recreation; verified-backup preservation | 11/11 |
 | [#603](https://github.com/ailtron1ss-rgb/NK1/pull/603) | `9b36efb3793730550b6d7fb6d2f028472651d3b4` | Speech lifecycle resets semantic mouth channels outside active speaking; missing sensor samples normalized | 9/9 |
 | [#607](https://github.com/ailtron1ss-rgb/NK1/pull/607) | `735b83d525c0d53c91e2e5a6587fb3529a08d13b` | Atomic backup rotation via temp + fsync + rename; deterministic SIGKILL regression | 11/11 |
+| [#612](https://github.com/ailtron1ss-rgb/NK1/pull/612) | `fa2793914c3260256e30c3eee9f7182e503d8ea2` | Five-pair minimum for confirmatory replay, paired-delay coverage, legacy threshold floor, duplicate-arm and negative-holdout regressions | 12/12 |
 
 **Already present in the source baseline:** [`efb7693`](https://github.com/ailtron1ss-rgb/NK1/commit/efb7693df564512ed653f8bafc772d97e2c36e32) upgrades UserModel to v2 durable forgetting with tombstones, strict fail-closed restore, source-event replay protection and v1 migration. The motor-frame integrity guard from `c039f84` is also integrated.
 
@@ -29,7 +30,7 @@
 1. Complete human license review and exact-SHA release publisher gate.
 2. Run browser/WebGL E2E for VRM/GLB replacement, reload, reset, GPU/resource counters and soak.
 3. Run real Android/Termux audio interruption, viseme/audio drift and background/foreground soak.
-4. Prove bilingual RU/EN retrieval uplift on immutable, source-clustered holdout pairs with at least five paired seeds; no promotion on synthetic fixtures alone.
+4. Prove bilingual RU/EN retrieval uplift on immutable, source-clustered holdout pairs with at least five paired seeds; the new five-pair gate protects confirmatory eligibility but does not itself prove positive uplift.
 5. Complete 2.5D depth-rig and acquire a separately licensed Kurisu-compatible 3D asset.
 6. Validate self-initiated Perceive → Appraise → Plan → Act → Reflect → Consolidate behavior over soak with explainable internal causes; do not claim consciousness as a measured result.
 7. Continue persistence hardening with filesystem/power-loss testing beyond deterministic process SIGKILL tests.
