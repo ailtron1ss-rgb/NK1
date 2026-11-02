@@ -1850,6 +1850,7 @@
     "test:user-model-runtime-persistence": "node --experimental-strip-types tests/user-model-runtime-persistence.mjs",
     "test:workpass641:cef-restore-integrity": "node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs",
     "test:user-model-http-route": "node tests/user-model-http-route.mjs",
-    "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs"
+    "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs",
+    "test:emotion-appraisal-restore-integrity": "node --experimental-strip-types tests/emotion-appraisal-restore-integrity.mjs"
   }
 }
