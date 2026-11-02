@@ -1026,10 +1026,30 @@ export class MemoryOS2{
   // policy, so a live write and a reloaded snapshot agree on the window.
   const requestedValidUntilAt=input.validUntilAt==null?null:(Number.isFinite(Number(input.validUntilAt))?Number(input.validUntilAt):null);
   const materializedValidUntilAt=requestedValidUntilAt==null?null:Math.max(requestedValidUntilAt,materializedValidFromAt);
+  // A live write must satisfy the same invariants restore enforces, otherwise a
+  // record that doctor() rejects in memory is silently repaired on reload and the
+  // two owners disagree. An omitted or out-of-range confidence becomes .5 and an
+  // omitted/unsupported status becomes 'unknown'; a 'fact' without a valid source
+  // or confidence is downgraded, matching the restore policy.
+  const rawConfidence=typeof input.confidence==='number'?input.confidence:Number.NaN;
+  const confidenceIsValid=Number.isFinite(rawConfidence)&&rawConfidence>=0&&rawConfidence<=1;
+  const sourceIsValid=typeof input.source==='string'&&input.source.trim().length>0;
+  const statusIsValid=EPISTEMIC_STATUSES.has(input.epistemicStatus);
+  const epistemicStatus:EpistemicStatus=statusIsValid&&sourceIsValid&&(input.epistemicStatus!=='fact'||confidenceIsValid)?input.epistemicStatus as EpistemicStatus:'unknown';
   return {
     ...input,
     id:input.id??identity.stableId,
     contentHash:input.contentHash??identity.contentHash,
+    confidence:confidenceIsValid?clamp(rawConfidence):.5,
+    epistemicStatus,
+    // Missing signals must fall back to the same neutral defaults restore uses,
+    // never to NaN/undefined, which would silently zero a merged record's value.
+    salience:clamp(Number(input.salience??.5)),
+    emotionalWeight:clamp(Number(input.emotionalWeight??0)),
+    identityRelevance:clamp(Number(input.identityRelevance??0)),
+    goalRelevance:clamp(Number(input.goalRelevance??0)),
+    socialRelevance:clamp(Number(input.socialRelevance??0)),
+    predictionError:clamp(Number(input.predictionError??0)),
     entities,
     createdAt:now,lastAccessAt:now,retrievalCount:0,revisionHistory:[],dormant:false,
     semanticVector,temperature01:0,residencyTier:'hot',
@@ -1062,12 +1082,18 @@ export class MemoryOS2{
    if(existing){
     const priorBytes=estimateMemoryBytes(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
+    // A merge must not read an omitted input signal as NaN: `x*.8 + NaN*.2`
+    // collapses the existing record's value to 0. Normalize incoming signals to
+    // the same neutral defaults restore uses before blending.
+    const inSalience=clamp(Number(input.salience??.5));
+    const inConfidence=Number.isFinite(Number(input.confidence))?clamp(Number(input.confidence)):.5;
+    const inPredictionError=clamp(Number(input.predictionError??0));
     existing.lastAccessAt=now;
-    existing.salience=clamp(existing.salience*.8+input.salience*.2);
+    existing.salience=clamp(existing.salience*.8+inSalience*.2);
     // A repeated import from the same source/lineage is not independent evidence
     // and must not drive confidence towards 1 by replaying the same observation.
-    if(evidenceMerge.addedIndependentSource)existing.confidence=clamp(existing.confidence*.82+input.confidence*.18);
-    existing.predictionError=clamp(existing.predictionError*.75+input.predictionError*.25);
+    if(evidenceMerge.addedIndependentSource)existing.confidence=clamp(existing.confidence*.82+inConfidence*.18);
+    existing.predictionError=clamp(existing.predictionError*.75+inPredictionError*.25);
     existing.temperature01=memoryTemperature(existing);
     existing.temperature01=clamp(existing.temperature01*.82+memoryTemperature({...existing,...input,lastAccessAt:now} as MemoryItem2,now)*.18);
     existing.residencyTier='hot';
@@ -1087,8 +1113,12 @@ export class MemoryOS2{
    // If canonical content already exists only as an expired/quarantined record,
    // a fresh observation gets its own stable-in-process identity rather than
    // mutating history or overwriting the historical item's map entry.
+   // An explicit id that already exists with *different* content is the same
+   // hazard: trusting it verbatim creates two rows sharing one id, which makes
+   // itemIndex ambiguous and makes restore drop both payloads. Re-observation
+   // therefore gets a distinct id too (same-content re-encode is merged above).
    const collision=this.itemIndex.has(input.id??identity.stableId);
-   const materializedInput:MemoryEncodeInput=options.forceDistinct||input.id||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
+   const materializedInput:MemoryEncodeInput=options.forceDistinct||!collision?input:{...input,id:stableMemoryId(`${canonicalContent}\0reobserved:${now}:${this.state.items.length}:${this.state.reconsolidations}`,input.kind,input.source)};
    const item=this.buildMemoryItem(materializedInput,identity,entities,semanticVector,now);
    if(collision&&!input.id&&!options.forceDistinct&&!materializedInput.revisionGroupId)item.revisionGroupId=item.id;
    item.temperature01=memoryTemperature(item,now);
