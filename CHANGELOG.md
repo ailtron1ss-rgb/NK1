@@ -1,3 +1,9 @@
+## [NK1][Mobile] Preserve truthful Android sensor provenance (2026-11-02)
+- Reject null, blank and non-finite Termux sensor readings instead of coercing them to zero; require a complete three-axis accelerometer sample before deriving motion.
+- Mark telemetry as Android/Termux only when a valid battery, sensor or Wi-Fi payload is observed, including valid sensor-only operation when battery data is unavailable.
+- Preserve previous battery, temperature, network and motion values when the corresponding provider payload is invalid; expose diagnostics from the parsed payload rather than stale fallback state.
+- Add a dependency-free behavioral regression and dedicated exact-path CI workflow. This does not claim physical-device calibration, audio synchronization or phone soak.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
