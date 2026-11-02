@@ -73,14 +73,27 @@
 | **W1-012: ratchet границ подсистем** | `audit:subsystem-boundary` (`scripts/lib/subsystem-boundary-rules.mjs`) замораживает 43 существующих ребра между 14 доменами `src/organism/*` и валит `exit=1` на любом новом. Ловит `from`/`import()`/side-effect `import`, игнорирует `import type`/комментарии/строки. Регрессия `test:subsystem-boundary-rules` |
 | **W0-008: честность `ARCHITECTURE_MANIFEST`** | Манифест заявлял 582 канонических файла при фактических 650, и ни один гейт это не ловил. Теперь `scripts/lib/manifest-counts.mjs` — единый владелец правил счёта; `audit-project-state` пересчитывает и падает на расхождении. Манифест перегенерирован (582→650, 1934→2223) |
 
-Всё выше проверено на неизменяемом дереве: `audit:forensics`, `audit:architecture`, `audit:subsystem-boundary`, `audit:source-truth`, `audit:hygiene`, `audit:integrity`, `audit:contract`, `audit:project-state`, `typecheck` — **PASS**; новые регрессии (`test:forensics-rules`, `test:subsystem-boundary-rules`, `test:manifest-counts`) — PASS. Журнал с командами и результатами: `docs/NK1_WAVE_PROGRESS_2026-10-31_RU.md`.
+#### Вторая часть прохода (2026-10-31): цепочка `audit:all` доведена до зелёного
+
+| Что | Свидетельство |
+|---|---|
+| **Квитанция исхода (pre-action tick)** | Guard-коммит `c0753bbdd` отвергал легитимные исходы в `CausalExperienceStream.recordOutcome` (`trace.tick !== trace.stateBefore.tick`), из-за чего `p30-integration` падал на `assert.ok(cx.outcomes>=1)`. Восстановлена семантика `decision.tick === stateBefore.tick`; `agencyEvidence.tick` выровнен на `state.tick`. Коммит `ed61ffed0`. p30-* и big-pass-90/115/124 — PASS |
+| **Версия схемы p36 — единый источник** | `p36-integration`/`p36-migration` фиксировали `version === 4`, миграция пинила тот же литерал, а движок отдаёт `6` — загрузка v6-снимка откатывала его к v4. Введена `P36_SELF_DEVELOPMENT_VERSION`; тип, дефолты, миграция и тесты читают её. `P36_INTEGRATION=PASS`, `P36_MIGRATION=PASS` |
+| **`audit:hygiene` и runtime `state/`** | Гигиена обходила gitignored `state/` (сиблинги `generate-archive-manifest`/`audit-forensics` его уже пропускают), поэтому повторный `audit:all` падал на артефактах прошлого прогона. `state` добавлен в SKIP |
+| **`audit:archive` — регенерация в цепочке** | Стадии зонтика перезаписывают трекнутые артефакты с новым `generatedAt`, а манифест проверялся без пересборки. Добавлена стадия `manifest:archive` перед `audit:archive`. Манифест регенерирован (4261→4576 файлов) |
+| **Итог** | `AUDIT_ALL=PASS` — 168 стадий, `EXIT=0`. Цепочка проходит целиком, а не упирается в test-rot |
+
+Всё выше проверено на неизменяемом дереве: `audit:forensics`, `audit:architecture`, `audit:subsystem-boundary`, `audit:source-truth`, `audit:hygiene`, `audit:integrity`, `audit:contract`, `audit:project-state`, `typecheck`, `audit:all` — **PASS**; новые регрессии (`test:forensics-rules`, `test:subsystem-boundary-rules`, `test:manifest-counts`) — PASS. Журнал с командами и результатами: `docs/NK1_WAVE_PROGRESS_2026-10-31_RU.md`.
 
 ### 2.2 Что осталось в W0 (не закрыто в этом проходе)
 
 - **Baseline SHA с зелёным `release:final`** — цепочка упирается в аппаратный p95-гейт на этом железе; нужен прогон на целевом устройстве.
 - **Soak-harness (24–72 ч)** — не построен; требуется длительный прогон на актуальном SHA.
 - **Переоценка 12 аспектов по raw-данным** — проценты в §1 остаются инженерной оценкой и требуют замены на метрики из артефактов.
-- **`RELEASE_ARCHIVE_MANIFEST.json`** — устаревает (сотни расхождений хешей) уже на baseline; регенерируется `manifest:archive`/`audit:pass108`, но этот прогон не выполнен.
+- **Независимый holdout-реестр** — отдельный от runtime-телеметрии, с защитой от contamination; пока отсутствует.
+- **`recallDelta > 0`** — не достигнут; кандидат `not-promoted`.
+
+_Закрыто во второй части прохода:_ `RELEASE_ARCHIVE_MANIFEST.json` регенерирован и теперь пересобирается внутри `audit:all`; гигиена больше не зависит от порядка прогона; версия схемы p36 и квитанция исхода восстановлены.
 
 ---
 
@@ -145,7 +158,7 @@
 
 ## 4. Порядок ближайших действий (следующий проход)
 
-Сделано в проходе 2026-10-31 (см. §2.1): гигиена `audit:forensics` (long-line + duplicate-name) закрыта и регрессионно закреплена; `audit:pass108` разблокирован; введён ratchet границ подсистем (W1-012); `ARCHITECTURE_MANIFEST` перестал врать о числе файлов.
+Сделано в проходе 2026-10-31 (см. §2.1): гигиена `audit:forensics` (long-line + duplicate-name) закрыта и регрессионно закреплена; `audit:pass108` разблокирован; введён ratchet границ подсистем (W1-012); `ARCHITECTURE_MANIFEST` перестал врать о числе файлов. Во второй части прохода восстановлена квитанция исхода (pre-action tick, `ed61ffed0`), версия схемы p36 сведена к единому живому источнику, гигиена отвязана от порядка прогона, `RELEASE_ARCHIVE_MANIFEST` регенерируется внутри цепочки — **`audit:all` проходит целиком (`AUDIT_ALL=PASS`, 168 стадий)**.
 
 Следующие шаги, по приоритету:
 
