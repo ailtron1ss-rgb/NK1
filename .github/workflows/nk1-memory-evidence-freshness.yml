@@ -1,0 +1,40 @@
+name: NK1 memory evidence freshness
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemorySignalFusion.ts"
+      - "runtime/neuro-kurisu/tests/memoryos2-evidence-freshness.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-memory-evidence-freshness.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nk1-memory-evidence-freshness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    name: Temporal freshness and retrieval regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Evidence freshness regression
+        run: npm --prefix runtime/neuro-kurisu run test:memoryos2-evidence-freshness
+      - name: Existing metadata retrieval regression
+        run: npm --prefix runtime/neuro-kurisu run test:memoryos2-metadata-retrieval
+      - name: Existing temporal memory regression
+        run: npm --prefix runtime/neuro-kurisu run test:r15:memory
