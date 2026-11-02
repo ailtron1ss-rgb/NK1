@@ -12,6 +12,8 @@ export interface MemorySignalInput {
   goal01:number;
   predictionError01:number;
   temperature01:number;
+  /** Evidence quality over time, distinct from how recently the memory was accessed. */
+  evidenceFreshness01?:number;
 }
 
 export interface MemorySignalBreakdown extends MemorySignalInput {
@@ -24,7 +26,7 @@ const sanitize=(input:MemorySignalInput):MemorySignalInput=>({
   semantic01:clamp(input.semantic01),lexical01:clamp(input.lexical01),entity01:clamp(input.entity01),
   temporal01:clamp(input.temporal01),causal01:clamp(input.causal01),recency01:clamp(input.recency01),
   salience01:clamp(input.salience01),identity01:clamp(input.identity01),goal01:clamp(input.goal01),
-  predictionError01:clamp(input.predictionError01),temperature01:clamp(input.temperature01),
+  predictionError01:clamp(input.predictionError01),temperature01:clamp(input.temperature01),evidenceFreshness01:clamp(input.evidenceFreshness01??1),
 });
 
 /**
@@ -55,7 +57,8 @@ export class MemorySignalFusion {
       weights.identity*x.identity01+
       weights.goal*x.goal01+
       weights.prediction*x.predictionError01+
-      weights.temperature*x.temperature01
+      weights.temperature*x.temperature01+
+      weights.evidenceFreshness*x.evidenceFreshness01!
     );
     return {...x,score01,profile:this.profile};
   }
@@ -82,10 +85,10 @@ export class MemorySignalFusion {
     // Keep the historical profile name accepted for compatibility, but when no
     // true embedding provider exists its only evidence channel is actual lexical
     // match quality—not the old hashed-token pseudo-semantic vector.
-    if(this.profile==='semantic-only') return {semantic:0,lexical:1,entity:0,temporal:0,causal:0,recency:0,salience:0,identity:0,goal:0,prediction:0,temperature:0};
-    if(this.profile==='quality') return {semantic:0,lexical:.42,entity:.14,temporal:.11,causal:.11,recency:.05,salience:.06,identity:.04,goal:.04,prediction:.02,temperature:.01};
-    if(this.profile==='mobile') return {semantic:0,lexical:.46,entity:.14,temporal:.10,causal:.09,recency:.07,salience:.05,identity:.04,goal:.03,prediction:.01,temperature:.01};
-    return {semantic:0,lexical:.46,entity:.14,temporal:.10,causal:.10,recency:.06,salience:.06,identity:.04,goal:.03,prediction:.01,temperature:0};
+    if(this.profile==='semantic-only') return {semantic:0,lexical:1,entity:0,temporal:0,causal:0,recency:0,evidenceFreshness:0,salience:0,identity:0,goal:0,prediction:0,temperature:0};
+    if(this.profile==='quality') return {semantic:0,lexical:.42,entity:.14,temporal:.11,causal:.11,recency:.035,evidenceFreshness:.015,salience:.06,identity:.04,goal:.04,prediction:.02,temperature:.01};
+    if(this.profile==='mobile') return {semantic:0,lexical:.46,entity:.14,temporal:.10,causal:.09,recency:.05,evidenceFreshness:.02,salience:.05,identity:.04,goal:.03,prediction:.01,temperature:.01};
+    return {semantic:0,lexical:.46,entity:.14,temporal:.10,causal:.10,recency:.04,evidenceFreshness:.02,salience:.06,identity:.04,goal:.03,prediction:.01,temperature:0};
   }
 }
 
