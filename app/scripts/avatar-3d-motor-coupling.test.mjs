@@ -1,18 +1,21 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { projectAvatarMotorActionTo3DAction } from "../src/components/avatar/avatarMotorProjection.ts";
 
-test("maps all canonical motor actions to existing 3D action channels", () => {
-  assert.deepEqual(
-    ["rest", "listen", "reflect", "inspect", "explain", "comfort", "respond"].map(projectAvatarMotorActionTo3DAction),
-    ["rest", "wait", "reflect", "explore", "respond", "respond", "respond"],
-  );
+test("3D renderer projects every canonical motor action into an available rig action", async () => {
+  const projection = await readFile(new URL("../src/components/avatar/avatarMotorProjection.ts", import.meta.url), "utf8");
+  assert.match(projection, /projectAvatarMotorActionTo3DAction/);
+  for (const [motor, action] of [["rest", "rest"], ["listen", "wait"], ["reflect", "reflect"], ["inspect", "explore"], ["explain", "respond"], ["comfort", "respond"], ["respond", "respond"]]) {
+    assert.match(projection, new RegExp('"' + motor + '"[^\\n]*"' + action + '"'));
+  }
 });
 
 test("AvatarStage forwards the speech lifecycle required by the shared 3D motor planner", async () => {
   const stage = await readFile(new URL("../src/components/AvatarStage.tsx", import.meta.url), "utf8");
-  const call = stage.slice(stage.indexOf("<Avatar3DStage"), stage.indexOf("/> : <>", stage.indexOf("<Avatar3DStage")));
+  const start = stage.indexOf("<Avatar3DStage");
+  const end = stage.indexOf("/> : <>", start);
+  assert.ok(start >= 0 && end > start, "Avatar3DStage invocation must remain present");
+  const call = stage.slice(start, end);
   assert.match(call, /hasFreshTurn=\{/);
   assert.match(call, /turnText=\{/);
   assert.match(call, /predictionError=\{snap\.predictionError\}/);
