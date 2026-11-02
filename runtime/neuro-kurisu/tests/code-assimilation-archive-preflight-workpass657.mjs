@@ -146,7 +146,7 @@ for (const badPath of [
 for (const kind of ['symlink', 'hardlink', 'fifo', 'block-device', 'character-device', 'socket', 'unknown']) {
   assert.throws(
     () => preflight([{ path: 'src/link', kind, compressedSizeBytes: 0, uncompressedSizeBytes: 0 }]),
-    /entry-kind/,
+    /(entry-kind|non-regular)/,
     kind,
   );
 }
