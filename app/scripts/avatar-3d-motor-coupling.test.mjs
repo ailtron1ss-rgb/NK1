@@ -28,5 +28,6 @@ test("3D renderer consumes the shared motor plan for action selection, head tilt
   assert.match(stage, /projectAvatarMotorActionTo3DAction/);
   assert.match(stage, /motorIntent\.headTilt/);
   assert.match(stage, /motorIntent\.gesture/);
+  assert.match(stage, /headTilt: motorIntent.headTilt/);
   assert.match(stage, /latestMotorIntent/);
 });
