@@ -90,14 +90,19 @@ function poseForMotorPlan(motorPlan: AvatarMotorIntentPlan, energy01: number, co
   };
 }
 
-export type KurisuOriginalMotorSignals = Pick<AvatarMotorIntentInput,
-  "energy" | "cognitiveLoad" | "uncertainty" | "socialNeed" | "novelty"
-  | "goalPressure" | "predictionError" | "traits"
-> & {
+export interface KurisuOriginalMotorSignals {
+  energy: number;
+  cognitiveLoad: number;
+  uncertainty: number;
+  socialNeed: number;
+  novelty: number;
+  goalPressure: number;
+  predictionError: number;
+  traits: Readonly<Record<string, number>>;
   hasFreshTurn: boolean;
   turnText: string;
   awake: boolean;
-};
+}
 
 export interface KurisuOriginalStageProps {
   emotion: EmotionLabel;
