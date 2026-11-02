@@ -77,6 +77,8 @@ corruptedRestore.restore({
   lastReward01: 3,
   relationshipTrust: { trusted: 0.8, malformed: Number.NaN, numericString: "0.7" },
   actionPreference: { respond: Number.NaN, explore: 0.9, unknownAction: 1 },
+  adaptiveValues: [Number.NaN, 2],
+  selfUncertainty: [Number.NaN, 2],
 });
 const restoredSafe = corruptedRestore.snapshot();
 assert.equal(restoredSafe.tick, 0, 'restored tick must be a non-negative integer');
@@ -94,6 +96,17 @@ assert.equal(restoredSafe.actionPreference.explore, 0.9,
   'finite action preferences must be retained');
 assert.equal(Object.keys(restoredSafe.actionPreference).length, Object.keys(actions).length,
   'restore must not retain unknown action keys');
+const defaultPersonalityState = new P2702PersistentPersonalityDynamics().snapshot();
+assert.equal(restoredSafe.adaptiveValues.length, defaultPersonalityState.adaptiveValues.length,
+  'restore must preserve the canonical adaptive vector width');
+assert.equal(restoredSafe.adaptiveValues[0], defaultPersonalityState.adaptiveValues[0],
+  'non-finite vector entries must fall back to their canonical prior');
+assert.equal(restoredSafe.adaptiveValues[1], 1,
+  'out-of-range vector entries must be clamped');
+assert.equal(restoredSafe.selfUncertainty[0], defaultPersonalityState.selfUncertainty[0],
+  'invalid uncertainty entries must fall back to the prior uncertainty');
+assert.equal(restoredSafe.selfUncertainty[1], 0.97,
+  'restored uncertainty must respect its narrower safety range');
 
 const b=new NeuralExperienceBranch();
 let s=defaultNeuralExperienceBranch();b.restore(s);
