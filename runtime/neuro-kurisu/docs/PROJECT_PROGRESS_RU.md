@@ -42,8 +42,9 @@
 - Restore строит новый ledger и permission state до изменения текущего состояния; ошибочный snapshot не должен частично заменить живой state.
 - Валидный v1 receipt сохраняет idempotent replay; unsupported version отклоняется.
 - Добавлен regression-файл `tests/action-gateway-restore-boundary-workpass647.mjs`; workflow `nk1-action-gateway-governance.yml` запускает его.
-- RED evidence: изолированное воспроизведение текущего ingress-кода на Node 22.16 вызвало getter дважды (ожидалось 0), что подтверждает первопричину. Полный тест репозитория пока не исполнен: GitHub Actions job #125148014736 завершился до runner allocation (`steps=null`, `logs_url=null`).
-- Статус: **Implemented on PR branch / CI not executed / not merged / not released**.
+- RED evidence: изолированное воспроизведение текущего ingress-кода на Node 22.16 вызвало getter дважды (ожидалось 0), что подтверждает первопричину.
+- GREEN evidence: точный PR-head `74be80d4f731a594529bf5a3aecf100e390b852f` прошёл все 12 pull-request workflows. Включая Action Gateway governance #41407817320 (15/15 steps; новый restore-boundary regression), memory integrity #41407817092 (12/12), unified organism runtime #41407817108 (16/16), NeuroCore core regression, planner cadence, Hexis, UserModel, WorkPass79/110 и embodiment contract.
+- Статус: **Implemented / exact-head CI 12/12 PASS / review pending / not merged / not released**.
 
 **Параллельные aspect PRs остаются отдельными:** #637 planner cadence, #640 test-registry duplicate guard, #642 P80 self-state, #644 memory lifecycle, #646 locale-neutral ActionGateway classification. Их не объединять в одну ветку и не объявлять merged до отдельной проверки.
 
