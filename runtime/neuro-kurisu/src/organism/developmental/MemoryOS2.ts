@@ -1109,7 +1109,7 @@ export class MemoryOS2{
    }).slice(0,6).map(x=>x.id);
    item.causalLinks=this.state.items.slice(0,256).filter(x=>x.causalLinks.includes(item.id)).slice(0,3).map(x=>x.id);
    item.contradictionLinks=best.filter(x=>x.sim>=.64&&sharedEntityCount(entities,x.x.entities)>=2&&hasNegationPolarityDifference(item.content,x.x.content)).map(x=>x.x.id).slice(0,4);
-   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;if(this.state.items.length>1600){const removed=this.state.items.pop();if(removed){this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-estimateMemoryBytes(removed));this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
+   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;this.evictOldestOverCap();this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
    for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){const beforeLinkedBytes=estimateMemoryBytes(linked);linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeLinkedBytes+estimateMemoryBytes(linked));this.state.linkUpdates++;}}
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
@@ -1572,6 +1572,19 @@ export class MemoryOS2{
    void reason;
    return true;
  }
+  // The encode fast-path used to pop the oldest row directly. That silently
+  // evicted protected memories (identity/autobiographical) and left dangling
+  // links behind, because it skipped forgetById's guards and link pruning.
+  // Prefer the oldest evictable row so unprotected corpora keep the same
+  // oldest-first capacity semantics.
+  private evictOldestOverCap(){
+   const cap=1600;
+   if(this.state.items.length<=cap)return;
+   const protectedRow=(m:MemoryItem2)=>m.epistemicStatus==='quarantined'||m.kind==='identity'||m.kind==='autobiographical';
+   const victim=[...this.state.items].reverse().find(m=>!protectedRow(m));
+   if(victim)this.forgetById(victim.id,'capacity');
+   else if(this.state.items.length>cap){const removed=this.state.items.pop();if(removed){this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-estimateMemoryBytes(removed));this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}
+  }
   enforceByteBudget(options:{maxBytes?:number;tick?:number;protectedIds?:string[];reason?:string}={}){
    const budget=Math.max(16384,Math.floor(Number(options.maxBytes??this.state.byteBudget??524288)));
    this.state.byteBudget=budget;
