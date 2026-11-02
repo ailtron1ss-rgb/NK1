@@ -26,6 +26,33 @@ assert.ok((e.outcomeCalibration('rest')?.attempts??0)===4);
 assert.ok(e.actionBias('rest')>e.actionBias('explore'),'high interoceptive pressure plus good rest outcomes should favor regulation');
 const es=e.snapshot(); const er=new EmotionAppraisalEngine(); er.restore(es); assert.deepEqual(er.snapshot(),es);
 
+// Restore must fail closed on malformed, accessor-backed and revoked-proxy snapshots.
+const corrupt = Object.create(null);
+Object.defineProperty(corrupt, 'episodes', { enumerable: true, get() { throw new Error('getter-must-not-run'); } });
+corrupt.lastTick = Infinity;
+corrupt.interoception = { cycles: -4, regulationPressure01: NaN, predicted: { energy01: 9, thermal01: -2, capacity01: Infinity, load01: 0.4 } };
+corrupt.outcomes = { rest: { attempts: -1, meanSuccess01: 4, meanSurprise01: NaN, meanBenefit01: -2 }, '__proto__': { attempts: 99 } };
+const hostileEpisode = { id: 'hostile', tick: 1, at: 1, actionTendency: 'engage', appraisal: {}, interoceptiveDelta: {} };
+Object.defineProperty(hostileEpisode, 'label', { enumerable: true, get() { throw new Error('episode-getter-must-not-run'); } });
+corrupt.history = [hostileEpisode, null];
+const hardened = new EmotionAppraisalEngine();
+hardened.restore(corrupt);
+const hardenedState = hardened.snapshot();
+assert.equal(hardenedState.episodes, 0);
+assert.equal(hardenedState.lastTick, -1);
+assert.equal(hardenedState.interoception.cycles, 0);
+assert.equal(hardenedState.interoception.regulationPressure01, 0.18);
+assert.equal(hardenedState.interoception.predicted.energy01, 1);
+assert.equal(hardenedState.interoception.predicted.thermal01, 0);
+assert.equal(hardenedState.history.length, 1);
+assert.equal(hardenedState.history[0].label, 'calm');
+assert.equal(hardenedState.outcomes.rest.attempts, 0);
+assert.equal(hardenedState.outcomes.rest.meanSuccess01, 1);
+assert.equal(hardenedState.outcomes.rest.meanBenefit01, 0);
+const revoked = Proxy.revocable({}, {}); revoked.revoke();
+const revokedRestore = new EmotionAppraisalEngine(); revokedRestore.restore(revoked.proxy);
+assert.deepEqual(revokedRestore.snapshot(), new EmotionAppraisalEngine().snapshot());
+
 const h = new P66InteroceptiveHomeostasis();
 const high = h.observe({tick:1,at:1,energy01:.2,thermal01:.9,capacity01:.25,load01:.9,awake:true,uncertainty01:.8,predictionError01:.8,novelty01:.2});
 assert.equal(high.mode,'recover'); assert.ok(high.pressure01>.5);
