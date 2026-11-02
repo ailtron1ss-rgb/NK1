@@ -143,6 +143,16 @@ class ReleaseManifestCliTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("present exactly once in ZIP", result.stderr)
 
+    def test_cli_rejects_embedded_evidence_as_a_symlink_member(self):
+        info = zipfile.ZipInfo("contracts/SBOM.final.json")
+        info.create_system = 3
+        info.external_attr = 0o120777 << 16
+        with zipfile.ZipFile(self.zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr(info, self.sbom_path.read_bytes())
+        result = self.run_cli()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must be a regular file", result.stderr)
+
     def test_cli_rejects_embedded_evidence_with_different_bytes(self):
         with zipfile.ZipFile(self.zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             archive.writestr("contracts/SBOM.final.json", b'{"name":"OLD"}\n')
