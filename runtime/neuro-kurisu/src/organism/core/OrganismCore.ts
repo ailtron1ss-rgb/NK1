@@ -2393,7 +2393,6 @@ export class OrganismCore {
                 observedAt: episode.at,
                 evidenceFreshnessAt: episode.at,
             }],
-            dormant: false,
         }, {
             tick: episode.tick,
             commandId: eventId,
