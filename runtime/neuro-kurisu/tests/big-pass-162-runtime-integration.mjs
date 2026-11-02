@@ -32,6 +32,7 @@ const economy=rt.cognitiveResourceEconomySnapshot();
 const spine=rt.cognitiveSpineSchedulerSnapshot();
 assert.equal(spine.lastTick,step.cycle.state.tick,'runtime must drive the cognitive-spine scheduler on every cycle');
 assert.equal(Object.values(spine.opportunities).reduce((sum,value)=>sum+value,0),4,'one cycle must account for all four optional operations');
+assert.ok(rt.evidenceSnapshot().recent.some(event=>event.source==='cognitive-spine-scheduler'),'scheduler decisions must be visible in the runtime evidence bus');
 const evidence=rt.realityEvidenceLedgerSnapshot();
 const cycle=rt.unifiedCognitiveCycleSnapshot();
 assert.ok(step?.cycle?.state?.tick>=1);
