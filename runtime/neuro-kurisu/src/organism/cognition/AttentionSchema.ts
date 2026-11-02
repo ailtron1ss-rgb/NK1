@@ -83,6 +83,8 @@ export interface AttentionAllocatorState {
   switches: number;
   allocations: number;
   lastTick: number;
+  /** Factor breakdown of the most recent real decision (for carried holds). */
+  lastFactors?: AttentionFactors;
 }
 
 const FACTOR_WEIGHTS: Readonly<AttentionFactors> = { goal: .22, relevance: .16, urgency: .18, novelty: .10, uncertainty: .12, predictedValue: .12, emotion: .10, resource: .10, habituation: -.08, inhibition: -.20 };
@@ -90,7 +92,21 @@ const MAX_INHIBITED = 8;
 const MAX_TARGET_LEN = 160;
 const INHIBITION_AFTER_SWITCH = 3;
 /** A challenger must beat the incumbent by this margin to take attention. */
-const SWITCH_MARGIN = .035;
+const SWITCH_MARGIN = .05;
+/** Even a stronger challenger waits until the incumbent has had this long. */
+const MIN_DWELL = 2;
+/** After this many cycles the incumbent is re-evaluated on merit alone. */
+const MAX_DWELL = 12;
+/** A challenger at or above this priority pre-empts immediately (threat). */
+const URGENT_BREAKTHROUGH = .5;
+/** ...or whose urgency reaches this level pre-empts immediately. */
+const URGENT_PREEMPTION_URGENCY = .9;
+/** A carried (not re-offered) incumbent's priority decays this fast per cycle. */
+const CARRY_DECAY = .02;
+/** ...and never drops below this fraction of its last observed priority. */
+const CARRY_FLOOR = .5;
+/** A carried incumbent is re-evaluated on merit after this many cycles. */
+const MAX_CARRY = 6;
 /** Repeated identical winners lose weight (habituation) but never below this. */
 const MIN_HABITUATION = .55;
 
@@ -104,6 +120,20 @@ const cleanTarget = (raw: unknown): string | null => {
   return trimmed;
 };
 function stableHash(text: string) { let h = 2166136261 >>> 0; for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0; return h >>> 0; }
+
+const FACTOR_KEYS: Array<keyof AttentionFactors> = ['goal','relevance','urgency','novelty','uncertainty','predictedValue','emotion','resource','habituation','inhibition'];
+/** Validates a persisted factor breakdown; partial or garbage factors are dropped. */
+function sanitizeFactors(raw: unknown): AttentionFactors | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const source = raw as Record<string, unknown>;
+  const out: Partial<AttentionFactors> = {};
+  for (const key of FACTOR_KEYS) {
+    const value = source[key];
+    if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+    out[key] = clamp01(value);
+  }
+  return out as AttentionFactors;
+}
 
 export function defaultAttentionAllocatorState(): AttentionAllocatorState {
   return { version: 1, target: null, targetScore: 0, dwell: 0, inhibition: {}, switches: 0, allocations: 0, lastTick: -1 };
@@ -183,6 +213,7 @@ export class AttentionAllocator {
       switches: typeof r.switches === 'number' && Number.isSafeInteger(r.switches) && r.switches >= 0 ? r.switches : 0,
       allocations: typeof r.allocations === 'number' && Number.isSafeInteger(r.allocations) && r.allocations >= 0 ? r.allocations : 0,
       lastTick: typeof r.lastTick === 'number' && Number.isSafeInteger(r.lastTick) && r.lastTick >= -1 ? r.lastTick : -1,
+      ...(sanitizeFactors(r.lastFactors) ? { lastFactors: sanitizeFactors(r.lastFactors) as AttentionFactors } : {}),
     };
   }
 
@@ -229,6 +260,7 @@ export class AttentionAllocator {
 
     // 3. Score every candidate from the named factors. Inhibition-of-return
     //    applies to targets that were recently out-competed.
+    const previousFactors = this.state.lastFactors;
     const inhibitionRow = this.state.inhibition[String(input.tick)] ?? {};
     const scored = eligible.map(candidate => {
       const factors: AttentionFactors = {
@@ -259,16 +291,43 @@ export class AttentionAllocator {
     const incumbent = this.state.target;
     const incumbentEntry = incumbent ? scored.find(x => x.candidate.target === incumbent) : undefined;
 
-    // 4. Hysteresis: keep the incumbent unless the leader wins by a margin. This
-    //    is what prevents attention thrash between near-equal targets.
+    // 4. Hysteresis: keep the incumbent unless the leader wins by a margin and
+    //    the incumbent has had a minimum dwell. Once MAX_DWELL cycles pass the
+    //    incumbent is re-evaluated on merit, so commitment is bounded and cannot
+    //    become lock-in.
     let chosen = leader;
     let switched = false;
+    let carried = false;
     if (incumbent && incumbentEntry && leader) {
-      const beatsIncumbent = leader.candidate.target !== incumbent && leader.score - incumbentEntry.score >= SWITCH_MARGIN;
-      if (!beatsIncumbent) chosen = incumbentEntry;
+      const incumbentAhead = leader.candidate.target === incumbent;
+      const margin = leader.score - incumbentEntry.score;
+      const dwellSatisfied = this.state.dwell >= (margin >= SWITCH_MARGIN * 2 ? MIN_DWELL : MAX_DWELL);
+      // Priority pre-emption: an already-dominant or highly urgent challenger
+      // (threat / unexpected error) does not wait out the dwell. This is what
+      // makes urgency a real factor rather than a tie-breaker.
+      const priorityBreakthrough = margin >= SWITCH_MARGIN && leader.score >= URGENT_BREAKTHROUGH;
+      const urgencyPreemption = leader.factors.urgency >= URGENT_PREEMPTION_URGENCY && leader.score >= incumbentEntry.score;
+      const takeOver = urgencyPreemption || (margin >= SWITCH_MARGIN && (dwellSatisfied || priorityBreakthrough));
+      if (!incumbentAhead && takeOver) chosen = leader;
+      else chosen = incumbentEntry;
       switched = chosen.candidate.target !== incumbent;
     } else if (incumbent && leader) {
-      switched = leader.candidate.target !== incumbent;
+      // The incumbent was not re-offered this cycle. Absence is not evidence that
+      // it lost importance (callers mediate their candidate list), so it is
+      // carried with a decayed priority until a challenger clearly beats it or
+      // its bounded hold expires. Without this a caller whose candidate identity
+      // alternates produced a switch every cycle.
+      const carryScore = clamp01(this.state.targetScore * Math.max(CARRY_FLOOR, 1 - this.state.dwell * CARRY_DECAY));
+      // Under a minimal budget the organism must re-scope to what is urgent
+      // rather than carry a target that is no longer being offered.
+      const carryExpired = this.state.dwell >= MAX_CARRY || resourceMode === 'minimal';
+      if (!carryExpired && leader.score - carryScore < SWITCH_MARGIN) {
+        chosen = { candidate: { target: incumbent, source: 'carried' }, score: carryScore, factors: previousFactors ?? { goal: 0, relevance: 0, urgency: 0, novelty: 0, uncertainty: 0, predictedValue: 0, emotion: 0, resource: 0, habituation: 1, inhibition: 0 } };
+        carried = true;
+        switched = false;
+      } else {
+        switched = leader.candidate.target !== incumbent;
+      }
     }
 
     const previousTarget = incumbent;
@@ -293,6 +352,7 @@ export class AttentionAllocator {
 
     const target = chosen?.candidate.target ?? 'internal-state';
     const reason = !leader ? 'fallback:no-eligible-candidate'
+      : carried ? 'hold:incumbent-not-offered'
       : resourceMode === 'minimal' ? 'resource:minimal-budget'
         : switched ? 'switch:challenger-margin'
           : incumbent && chosen?.candidate.target === incumbent ? 'hold:incumbent-within-margin'
@@ -324,6 +384,7 @@ export class AttentionAllocator {
       switches: this.state.switches + (decision.switched ? 1 : 0),
       allocations: this.state.allocations + 1,
       lastTick: input.tick,
+      lastFactors: carried ? previousFactors : decision.factors,
     };
 
     // `confidence` is the evidence-backed strength of the selection, `salience`

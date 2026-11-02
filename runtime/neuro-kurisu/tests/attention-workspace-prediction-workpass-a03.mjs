@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { AttentionAllocator, attend, normalizeAttentionState } from '../src/organism/cognition/AttentionSchema.ts';
 import { RecurrentWorkspaceV2, defaultWorkspaceStateV2 } from '../src/organism/cognition/RecurrentWorkspaceV2.ts';
 import { updateWorkspaceIgnition, defaultWorkspaceIgnition } from '../src/organism/cognition/WorkspaceIgnitionMetrics.ts';
+import { WorldModelEvidenceGate } from '../src/organism/cognition/WorldModelEvidenceGate.ts';
+import { B283CompetingPredictiveHypotheses } from '../src/organism/cognition/B283CompetingPredictiveHypotheses.ts';
+import { P81PredictiveAttention } from '../src/organism/cognition/P81PredictiveAttention.ts';
 
 // --- Section 1: attention allocation over competing targets ------------------
 const allocator = new AttentionAllocator();
@@ -124,7 +127,31 @@ assert.deepEqual(corruptSnapshot.inhibition, { 5: { good: 2 } });
 // 1i. Tick monotonicity is enforced: replay cannot merge two cycles.
 assert.throws(() => allocator.allocate({ tick: 4, candidates: [], attentionBudget01: .9 }), /strictly increase/);
 
-// --- Section 2: legacy attention record compatibility -----------------------
+// 1j. Thrash resistance: when a caller's candidate identity alternates (the
+//     world location flickered between two values), attention must not switch
+//     every cycle. The bounded carry also expires, so this is not lock-in.
+const thrash = new AttentionAllocator();
+let thrashSwitches = 0;
+for (let tick = 1; tick <= 20; tick++) {
+  const location = tick % 2 ? 'home' : 'lab';
+  const state = thrash.allocate({
+    tick,
+    candidates: [{ target: `world:${location}`, source: 'world', taskRelevance01: .55, urgency01: .3, predictedValue01: .5 }],
+    attentionBudget01: .8,
+  });
+  if (state.decision.switched) thrashSwitches++;
+}
+assert.ok(thrashSwitches <= 6, `alternating candidate identity caused thrash (${thrashSwitches} switches in 20 cycles)`);
+// ...and an absent incumbent does not hold forever: after the carry window the
+// only available target takes over.
+const expiry = new AttentionAllocator();
+expiry.allocate({ tick: 1, candidates: [{ target: 'a', source: 's', taskRelevance01: .5 }], attentionBudget01: .8 });
+let expiryTarget = 'a';
+for (let tick = 2; tick <= 12; tick++) {
+  expiryTarget = expiry.allocate({ tick, candidates: [{ target: 'b', source: 's', taskRelevance01: .5 }], attentionBudget01: .8 }).target;
+}
+assert.equal(expiryTarget, 'b', 'a carried incumbent must expire so attention can move on');
+
 const legacy = attend({ target: 'none', reason: 'migration', salience: 0, confidence: .2, budget: .82 });
 assert.equal(legacy.switchedAt, 0, 'legacy constructor must not read the wall clock');
 assert.equal(legacy.target, 'none');
@@ -168,18 +195,19 @@ for (let tick = 3; tick <= 400; tick++) decayed = retainWs.compete(items(3).map(
 assert.ok(!decayed.items.some(x => x.id === 'i0'), 'tenure must be bounded, not permanent');
 assert.ok(retained.lastDecision.admitted.length >= 0);
 
-// 3d. Suppression: an item that loses a contested slot cannot immediately
-//     re-enter, which prevents single-cycle thrash.
+// 3d. Suppression: an item that loses a contested slot stays out for its window
+//     even when it later out-ranks the incumbents, then expires and returns.
 const suppWs = new RecurrentWorkspaceV2();
 suppWs.compete(items(8), 1);
 const suppressedIds = suppWs.snapshot().lastDecision.suppressed;
-assert.ok(suppressedIds.length > 0, 'losing competitors must be recorded as suppressed');
-for (let tick = 2; tick <= 3; tick++) {
-  const windowed = suppWs.compete(items(8), tick);
-  assert.ok(windowed.items.every(item => !suppressedIds.includes(item.id)), 'suppressed ids must not re-enter during their window');
+assert.equal(suppressedIds.length, 3, 'the losers of a contested cycle must be recorded as suppressed');
+const boosted = items(8).map(x => ({ ...x, salience: suppressedIds.includes(x.id) ? 1 : .1 }));
+for (let tick = 2; tick <= 4; tick++) {
+  const windowed = suppWs.compete(boosted, tick);
+  if (tick <= 3) assert.ok(windowed.items.every(item => !suppressedIds.includes(item.id)), 'suppressed ids must not re-enter during their window');
 }
-const afterWindow = suppWs.compete(items(8), 5);
-assert.ok(afterWindow.items.some(item => suppressedIds.includes(item.id)), 'suppression must expire so useful content can return');
+const afterWindow = suppWs.compete(boosted, 5);
+assert.ok(afterWindow.items.some(item => suppressedIds.includes(item.id)), 'suppression must expire so a winning item can return');
 
 // 3e. Removal: explicit removal drops the item and is counted.
 const removeWs = new RecurrentWorkspaceV2();
@@ -233,6 +261,128 @@ assert.ok(oneOfFive.competitionIntensity < .5, 'a single competitor must not rea
 assert.ok(fiveOfFive.competitionIntensity > oneOfFive.competitionIntensity, 'more competition must raise the metric');
 assert.ok(oneOfFive.limitedCapacity < .05, 'an under-filled workspace must not read as capacity limited');
 assert.ok(fiveOfFive.limitedCapacity > .95, 'a full workspace must read as capacity limited');
+
+
+// 3j. Source access guarantee: senders use different salience scales, so a raw
+//     salience sort let one source occupy every slot. With minSources>1 the
+//     strongest item per source is admitted first, bounded by capacity.
+const decisions = Array.from({ length: 6 }, (_, i) => ({ id: `d${i}`, source: 'decision', content: {}, salience: .9 - i * .01, createdAt: 1 }));
+const weakSignal = { id: 'a1', source: 'attention', content: {}, salience: .2, createdAt: 1 };
+const noQuota = new RecurrentWorkspaceV2().compete([...decisions, weakSignal], 1).items.map(i => i.source);
+assert.deepEqual([...new Set(noQuota)], ['decision'], 'without a quota a strong source may monopolise the workspace');
+const withQuota = new RecurrentWorkspaceV2().compete([...decisions, weakSignal], 1, { minSources: 2 }).items;
+assert.ok(withQuota.some(i => i.source === 'attention'), 'a reserved source must reach the coalition');
+assert.equal(withQuota.length, 5, 'the quota must not exceed capacity');
+assert.equal(new Set(withQuota.map(i => i.id)).size, withQuota.length);
+
+// --- Section 4: predictive processing / competing hypotheses ----------------
+const ACTIONS = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'];
+const util = () => Object.fromEntries(ACTIONS.map(a => [a, .5]));
+const gateArgs = (tick, over = {}) => ({
+  tick, baseUtilities: util(),
+  continuityReward01: .6, continuityConfidence01: .8, continuityDisagreement01: .2,
+  embodiedReward01: .6, embodiedConfidence01: .8, embodiedConsistency01: .8,
+  causalSensitivity01: .5, epistemicValue01: .4, computeBudget01: .7,
+  continuityActionRewards01: ACTIONS.map(() => .55), embodiedActionRewards01: ACTIONS.map(() => .55),
+  embodiedActionConfidence01: ACTIONS.map(() => .6), ...over,
+});
+
+// 4a. Realized error must reorder priorities. Both models stay *confident*, but
+//     the continuity model keeps being wrong: its outcome-grounded weight must
+//     fall. Before the fix the recorded errors never reached arbitration.
+const learningGate = new WorldModelEvidenceGate();
+for (let tick = 0; tick < 120; tick++) {
+  learningGate.arbitrate(gateArgs(tick));
+  learningGate.afterOutcome({ reward01: .8, continuityPred01: .1, embodiedPred01: .78, verified01: 1, causalGain01: .2, transfer01: .5 });
+}
+const learned = learningGate.metrics();
+assert.ok(learned.continuityWeight01 < learned.embodiedWeight01,
+  `the repeatedly-wrong model must lose authority (continuity=${learned.continuityWeight01}, embodied=${learned.embodiedWeight01})`);
+assert.ok(learned.embodiedWeight01 > .6, 'the accurate model must win the majority of the weight');
+assert.ok(Math.abs(learned.continuityWeight01 + learned.embodiedWeight01 - 1) < .02, 'the weight pair must stay normalized');
+
+// 4b. Contradiction handling: if the evidence then reverses, priorities must
+//     follow the new evidence rather than staying latched.
+for (let tick = 120; tick < 260; tick++) {
+  learningGate.arbitrate(gateArgs(tick));
+  learningGate.afterOutcome({ reward01: .8, continuityPred01: .78, embodiedPred01: .12, verified01: 1, causalGain01: .2, transfer01: .5 });
+}
+const recovered = learningGate.metrics();
+assert.ok(recovered.continuityWeight01 > learned.continuityWeight01,
+  'a model that becomes accurate again must regain weight');
+
+// 4c. Determinism: identical outcome sequences produce identical gate state.
+function replayGate() {
+  const gate = new WorldModelEvidenceGate();
+  for (let tick = 0; tick < 60; tick++) {
+    gate.arbitrate(gateArgs(tick));
+    gate.afterOutcome({ reward01: .7, continuityPred01: .3, embodiedPred01: .68, verified01: 1, causalGain01: .1, transfer01: .5 });
+  }
+  return gate.metrics();
+}
+assert.deepEqual(replayGate(), replayGate(), 'gate arbitration must be deterministic');
+
+// 4d. A hostile snapshot cannot inject non-finite weights or an unknown model.
+const hostileGate = new WorldModelEvidenceGate();
+hostileGate.restore({ continuityWeight01: Number.NaN, embodiedWeight01: 9, modelErrors01: [Number.POSITIVE_INFINITY, -3], actionAdvantage01: [Number.NaN, 99], selectedModel: 'gpt' });
+const hostileMetrics = hostileGate.metrics();
+assert.ok(Number.isFinite(hostileMetrics.continuityWeight01) && hostileMetrics.continuityWeight01 >= 0 && hostileMetrics.continuityWeight01 <= 1);
+assert.ok(hostileMetrics.embodiedWeight01 <= 1);
+assert.equal(hostileMetrics.modelErrors01.length, 2);
+assert.ok(hostileMetrics.modelErrors01.every(v => Number.isFinite(v) && v >= 0 && v <= 1));
+assert.equal(hostileMetrics.actionAdvantage01.length, ACTIONS.length);
+assert.ok(hostileMetrics.actionAdvantage01.every(v => Number.isFinite(v) && Math.abs(v) <= .2));
+assert.equal(hostileMetrics.selectedModel, 'blend');
+
+
+// 4e. Competing hypotheses: rejection is binding, not advisory.
+const hypo = new B283CompetingPredictiveHypotheses();
+const latent = Array.from({ length: 16 }, (_, i) => Math.sin(i * .3));
+const hypoInput = (tick) => ({ tick, globalLatent: latent, selfLatent: latent, worldLatent: latent, goalVector: latent, memoryLatent: latent, reward01: .5, predictionError01: .2, uncertainty01: .3, autonomy01: .6, learningEnabled: true });
+for (let tick = 1; tick <= 20; tick++) hypo.step(hypoInput(tick));
+const rejected = hypo.rejectActive();
+assert.equal(rejected.rejected, true);
+const rejectedId = rejected.hypothesisId;
+assert.equal(hypo.snapshot().hypotheses[rejectedId].status, 'rejected');
+assert.notEqual(hypo.snapshot().activeHypothesisId, rejectedId, 'the active pointer must move off a rejected hypothesis');
+for (let tick = 21; tick <= 40; tick++) {
+  const out = hypo.step(hypoInput(tick));
+  assert.notEqual(out.hypothesisId, rejectedId, 'a rejected hypothesis must not win the next step');
+}
+assert.notEqual(hypo.commitActive().reason, 'evidence-gated-commit', 'a rejected hypothesis must not be committable');
+
+// 4f. Recovery: an explicitly re-opened hypothesis may compete again.
+const reopened = hypo.reopenHypothesis(rejectedId);
+assert.equal(reopened.reopened, true);
+assert.equal(hypo.snapshot().hypotheses[rejectedId].status, 'active');
+
+// 4g. A hostile hypothesis snapshot cannot crash or smuggle an out-of-range pointer.
+const hostileHypo = new B283CompetingPredictiveHypotheses();
+hostileHypo.restore({
+  hypotheses: Array.from({ length: 40 }, () => ({ latent: [1, 2], predictor: 'x', status: 'garbage', posterior01: Number.NaN })),
+  activeHypothesisId: 999, committedHypothesisId: -5, previousCommittedHypothesisId: 7.5,
+  globalLatent: [Number.NaN], plannedSequence: ['explode'], plannedReturn01: 9,
+});
+const hostileHypoState = hostileHypo.snapshot();
+assert.equal(hostileHypoState.hypotheses.length, 4);
+assert.ok(hostileHypoState.activeHypothesisId >= 0 && hostileHypoState.activeHypothesisId < 4);
+assert.equal(hostileHypoState.committedHypothesisId, null);
+assert.equal(hostileHypoState.previousCommittedHypothesisId, null);
+assert.deepEqual(hostileHypoState.plannedSequence, []);
+assert.ok(Number.isFinite(hostileHypo.actionBias('explore')), 'action bias must stay finite after a corrupt restore');
+
+// 4h. P81 attention must not crash or emit NaN on malformed candidates.
+const p81 = new P81PredictiveAttention();
+const p81Out = p81.evaluate({ tick: 1, candidates: [{ action: 'explore', score: Number.NaN, predictedUtility: 1, confidence: 1 }, null, { score: 1 }], uncertainty01: Number.NaN, predictionError01: -4, goalPressure01: Number.NaN, noveltyPressure01: 2, attentionBudget01: Number.NaN, externalInput: false });
+assert.equal(p81Out.selectedAction, 'explore');
+assert.ok(Number.isFinite(p81Out.expectedInformationGain01));
+const emptyP81 = new P81PredictiveAttention().evaluate({ tick: 1, candidates: undefined, uncertainty01: .5, predictionError01: .5, goalPressure01: .5, noveltyPressure01: .5, attentionBudget01: .5, externalInput: false });
+assert.equal(emptyP81.selectedAction, 'wait');
+p81.restore({ cycles: -3, selectedAction: 7, uncertainty01: Number.NaN, recentFocus: ['ok', 5, null] });
+assert.equal(p81.snapshot().cycles, 0);
+assert.equal(p81.snapshot().selectedAction, 'wait');
+assert.deepEqual(p81.snapshot().recentFocus, ['ok']);
+assert.ok(Number.isFinite(p81.actionBias('verify')));
 
 
 console.log(JSON.stringify({ pass: true, sections: 3, allocations: traceA.length + 6, workspace: { capacity: bounded.capacity, competitors: bounded.competitors } }));

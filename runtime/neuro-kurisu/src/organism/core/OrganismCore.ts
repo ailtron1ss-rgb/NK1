@@ -4314,7 +4314,7 @@ export class OrganismCore {
         if (attentionTarget) attentionCandidates.push({ target: `world:${attentionTarget}`, source: 'world', taskRelevance01: clamp(0.35 + (hasExternalSignal ? 0.35 : 0) + (normalizedObservation.worldContext?.uncertainty ?? 0) * 0.2), urgency01: clamp(effectiveSurprise * 0.6 + (observation.text ? 0.2 : 0)), novelty01: novelty, uncertainty01: clamp(normalizedObservation.worldContext?.uncertainty ?? n.uncertainty), predictedValue01: clamp(0.35 + (hasExternalSignal ? 0.3 : 0)), resourceCost01: clamp(n.cognitiveLoad * 0.35) });
         if (activeGoalForAttention) attentionCandidates.push({ target: `goal:${activeGoalForAttention.id}`, source: 'goal', goalRelevance01: clamp(0.55 + n.goalPressure * 0.4), taskRelevance01: 0.45, urgency01: clamp(n.goalPressure * 0.85), uncertainty01: n.uncertainty, predictedValue01: clamp(0.4 + n.goalPressure * 0.35), emotionalSalience01: clamp(Math.abs((this.persisted.system.emotionAppraisal?.meanValence01 ?? 0.5) - 0.5) * 0.9), resourceCost01: clamp(n.cognitiveLoad * 0.3) });
         if (state.predictionError > 0.28) attentionCandidates.push({ target: 'prediction:model-error', source: 'prediction', goalRelevance01: clamp(n.goalPressure * 0.5), taskRelevance01: clamp(state.predictionError * 0.9), urgency01: clamp(state.predictionError * 0.75), novelty01: novelty, uncertainty01: n.uncertainty, predictedValue01: clamp(0.45 + state.predictionError * 0.3), resourceCost01: clamp((1 - n.energy) * 0.4) });
-        if (lastMemoryForAttention) attentionCandidates.push({ target: `memory:${lastMemoryForAttention}`, source: 'memory', taskRelevance01: clamp(0.3 + (observation.text ? 0.35 : 0)), urgency01: 0.2, uncertainty01: n.uncertainty, predictedValue01: 0.4, emotionalSalience01: clamp((this.persisted.system.emotionAppraisal?.meanAttentionCapture01 ?? 0.2) * 0.6), resourceCost01: 0.2 });
+        if (lastMemoryForAttention) attentionCandidates.push({ target: 'memory:leading-retrieval', source: 'memory', taskRelevance01: clamp(0.3 + (observation.text ? 0.35 : 0)), urgency01: 0.2, uncertainty01: n.uncertainty, predictedValue01: 0.4, emotionalSalience01: clamp((this.persisted.system.emotionAppraisal?.meanAttentionCapture01 ?? 0.2) * 0.6), resourceCost01: 0.2 });
         if (n.energy < 0.35 || n.cognitiveLoad > 0.72) attentionCandidates.push({ target: 'interoception:resource-pressure', source: 'interoception', taskRelevance01: clamp(1 - n.energy), urgency01: clamp(1 - n.energy + n.cognitiveLoad * 0.4), uncertainty01: 0.3, predictedValue01: 0.5, emotionalSalience01: clamp((this.persisted.system.emotionAppraisal?.meanStress01 ?? 0.2)), resourceCost01: clamp(n.cognitiveLoad) });
         if (observation.text?.trim()) attentionCandidates.push({ target: 'social:utterance', source: 'social', taskRelevance01: 0.8, urgency01: 0.55, novelty01: novelty, predictedValue01: 0.7, emotionalSalience01: clamp(social), resourceCost01: 0.15 });
         // A stale allocator clock (restored snapshot ahead of the current tick)
@@ -7686,7 +7686,10 @@ export class OrganismCore {
         if (state.predictionError > 0.3) {
             wsItems.push({ id: 'prediction:model-error', source: 'prediction', content: { predictionError01: state.predictionError }, salience: clamp(state.predictionError * 0.95), createdAt: state.tick });
         }
-        const ws2 = this.memorySubsystem.workspaceV2.compete(wsItems, state.tick);
+        // Reserve workspace access for at least two distinct sources so that
+        // attention/prediction/memory content can actually claim a slot instead
+        // of being crowded out by same-scale decision utilities.
+        const ws2 = this.memorySubsystem.workspaceV2.compete(wsItems, state.tick, { minSources: 2 });
         this.persisted.facets.memory.workspace = ws2;
         const globalWorkspace = this.cognitiveRuntime.globalWorkspace.compete(candidates.slice(0, 8).map(c => ({
             id: c.id, source: 'decision', salience: clamp(c.score),

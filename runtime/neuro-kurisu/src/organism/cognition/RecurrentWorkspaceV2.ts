@@ -64,6 +64,8 @@ const DEFAULT_CAPACITY = 5;
 const MAX_CAPACITY = 24;
 const MAX_INPUT_ITEMS = 64;
 const MAX_SUPPRESSED = 8;
+/** Upper bound on the number of sources that may reserve a slot. */
+const MAX_SOURCES = 4;
 const MAX_BROADCAST_ID = 160;
 /** An incumbent keeps its slot if it stays within this fraction of a challenger. */
 const INCUMBENCY_MARGIN = .08;
@@ -171,8 +173,9 @@ export class RecurrentWorkspaceV2 {
    * the organism's logical tick: it feeds the deterministic broadcast id and the
    * retention age, never a wall clock.
    */
-  compete(items: OrganismWorkspaceItem[], tickHint = 0): WorkspaceStateV2 {
+  compete(items: OrganismWorkspaceItem[], tickHint = 0, options: { minSources?: number } = {}): WorkspaceStateV2 {
     const tick = Number.isFinite(tickHint) && tickHint >= 0 ? Math.floor(tickHint) : 0;
+    const minSources = Math.max(1, Math.min(MAX_SOURCES, Math.floor(Number(options.minSources ?? 1)) || 1));
     const capacity = clampInt(this.state.capacity, 1, MAX_CAPACITY);
     const previous = this.state.items;
     const previousAdmissions = this.state.admissions ?? 0;
@@ -197,36 +200,45 @@ export class RecurrentWorkspaceV2 {
     const suppressedIds = new Set(suppressed.map(entry => entry.id));
 
 
-    // 3. Rank by salience (the original calibration metric) with a total-order
-    //    tiebreak. Resident items additionally carry an age-decayed priority so
-    //    an item that stops being re-observed loses ground instead of holding a
-    //    slot forever.
+    // 3. Rank by an incumbency-aware priority. A resident keeps a bounded
+    //    advantage (INCUMBENCY_MARGIN) but its priority decays with age, so an
+    //    item that stops being re-observed loses ground instead of holding a
+    //    slot forever. Ranking is a total order for determinism.
     const resident = new Map(previous.map(item => [item.id, item] as const));
     const ranked = [...candidates.values()]
       .filter(item => !suppressedIds.has(item.id))
       .map(item => {
         const prior = resident.get(item.id);
         const age = prior ? Math.max(0, tick - prior.createdAt) : 0;
-        return { item, prior, effective: clamp(item.salience * (prior ? Math.max(.25, 1 - age * .015) : 1)) };
+        const decayed = clamp(item.salience * (prior ? Math.max(.25, 1 - age * .015) : 1));
+        return { item, prior, effective: prior ? clamp(decayed * (1 + INCUMBENCY_MARGIN)) : decayed };
       })
-      .sort((a, b) => b.item.salience - a.item.salience || (a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : 0));
+      .sort((a, b) => b.effective - a.effective || (a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : 0));
 
-    // 4. Incumbency: challengers take the best slots in rank order; after the
-    //    challenger pass, a resident is re-admitted only while its age-decayed
-    //    priority is within INCUMBENCY_MARGIN of the best challenger that lost.
-    //    That bounds tenure: an unrefreshed resident stops defending its slot.
-    const challengers = ranked.filter(entry => !entry.prior);
-    const lowestAdmitted = challengers.length > capacity ? challengers[capacity - 1]!.effective : 0;
-    const selected: typeof ranked = challengers.slice(0, capacity);
-    const admitted: string[] = selected.map(entry => entry.item.id);
-    const retainedIds: string[] = [];
-    if (selected.length < capacity) {
-      const pool = selected.length ? lowestAdmitted : challengers[0]?.effective ?? 0;
-      for (const entry of ranked) {
-        if (selected.length >= capacity) break;
-        if (!entry.prior) continue;
-        if (entry.effective >= pool * (1 - INCUMBENCY_MARGIN)) { selected.push(entry); retainedIds.push(entry.item.id); }
+    // 4. Selection. Senders do not share a common salience scale (a decision
+    //    utility and an interoceptive pressure are different units), so relying
+    //    on raw salience let one source monopolise every slot. When minSources>1
+    //    the strongest item of each source is guaranteed access first (bounded by
+    //    capacity), then remaining slots are filled in rank order. This is a
+    //    fairness guarantee across cognitive sources, not a quality claim.
+    const reserved: typeof ranked = [];
+    if (minSources > 1) {
+      const bestPerSource = new Map<string, (typeof ranked)[number]>();
+      for (const entry of ranked) if (!bestPerSource.has(entry.item.source)) bestPerSource.set(entry.item.source, entry);
+      for (const entry of bestPerSource.values()) {
+        if (reserved.length >= Math.min(capacity, minSources)) break;
+        reserved.push(entry);
       }
+    }
+    const selected: typeof ranked = [...reserved];
+    const admitted: string[] = [];
+    const retainedIds: string[] = [];
+    for (const entry of selected) (entry.prior ? retainedIds : admitted).push(entry.item.id);
+    for (const entry of ranked) {
+      if (selected.length >= capacity) break;
+      if (selected.includes(entry)) continue;
+      selected.push(entry);
+      (entry.prior ? retainedIds : admitted).push(entry.item.id);
     }
 
     const coalition = selected
