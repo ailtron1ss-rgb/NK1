@@ -7870,7 +7870,7 @@ export class OrganismCore {
         });
         const decision: OrganismDecisionTrace = {
             id: randomUUID(),
-            tick: state.tick,
+            tick: previous.tick,
             createdAt: state.at,
             candidates: governedCandidates.slice(0, 7),
             selected: selectedIntent ?? null,
@@ -7905,7 +7905,7 @@ export class OrganismCore {
             }),
         };
         decision.agencyEvidence = projectDecisionAgencyEvidence({
-            tick: state.tick,
+            tick: previous.tick,
             candidates: governedCandidates,
             selected: selectedIntent,
             predictedOutcomes: decision.predictedOutcomes,
@@ -9992,7 +9992,7 @@ export class OrganismCore {
             p44Actual[12] = clamp(state.needs.identityCoherence);
             this.worldSubsystem.p44PredictiveWorld.observe(currentP42Vector, trace.selected.action, p44Actual, gatedReward01);
             this.persisted.facets.learning.p44PredictiveWorld = this.worldSubsystem.p44PredictiveWorld.snapshot();
-            const causalRecord = this.developmentalNeural.causalExperience.recordOutcome(trace, state, { reward01: gatedReward01, success01: gatedSuccess01, surprise01: gatedSurprise01, novelty01: state.needs.novelty });
+            const causalRecord = this.developmentalNeural.causalExperience.recordOutcome(trace, state, { reward01: gatedReward01, success01: success, surprise01: gatedSurprise01, novelty01: state.needs.novelty });
             const causalPacket = this.developmentalNeural.causalExperience.learningPacket(32);
             const p26Metrics = this.developmentalNeural.p26TrueLearning.metrics();
             const worldConfOn = clamp(trace.selected.confidence);
