@@ -131,7 +131,9 @@ assert.equal(candidate.stage, 'discovered');
   assert.equal(result.evidenceKind, 'source-provenance');
   assert.equal(result.receipt.candidateFingerprint, candidate.candidateFingerprint);
   assert.equal(evidence.isAuthenticatedCodeAssimilationEvidenceReceipt(result.receipt), true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute'), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', candidate.candidateFingerprint), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', 'f'.repeat(64)), false,
+    'a license receipt for another candidate must not authorize this candidate');
 }
 {
   const payload = payloadFor(candidate, 'source');
@@ -200,10 +202,10 @@ assert.equal(candidate.stage, 'discovered');
 {
   const result = verify(candidate, payloadFor(candidate, 'license'), 'license');
   assert.equal(result.accepted, true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'study'), true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute'), true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'modify'), false);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute'), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'study', candidate.candidateFingerprint), true);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', candidate.candidateFingerprint), true);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'modify', candidate.candidateFingerprint), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute', candidate.candidateFingerprint), false);
 }
 {
   const payload = payloadFor(candidate, 'license', {
@@ -218,9 +220,14 @@ assert.equal(candidate.stage, 'discovered');
   });
   const result = verify(candidate, payload, 'license');
   assert.equal(result.accepted, true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'study'), true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute'), false);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute'), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'study', candidate.candidateFingerprint), true);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', candidate.candidateFingerprint), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute', candidate.candidateFingerprint), false);
+  let nestedMutationRejected = false;
+  try { result.receipt.licenseDecision.permittedUses.push('execute'); }
+  catch { nestedMutationRejected = true; }
+  assert.equal(nestedMutationRejected, true, 'authenticated receipt permissions must be deeply immutable');
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', candidate.candidateFingerprint), false);
 }
 {
   const payload = payloadFor(candidate, 'license', {
@@ -235,7 +242,7 @@ assert.equal(candidate.stage, 'discovered');
   });
   const result = verify(candidate, payload, 'license');
   assert.equal(result.accepted, true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute'), true);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute', candidate.candidateFingerprint), true);
 }
 {
   const payload = payloadFor(candidate, 'license', {
@@ -250,8 +257,8 @@ assert.equal(candidate.stage, 'discovered');
   });
   const result = verify(candidate, payload, 'license');
   assert.equal(result.accepted, true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute'), true);
-  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute'), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute', candidate.candidateFingerprint), true);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', candidate.candidateFingerprint), false);
 }
 {
   const payload = payloadFor(candidate, 'license', {
