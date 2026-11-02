@@ -50,6 +50,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass54-approval-center && npm --prefix runtime/neuro-kurisu run test:workpass57-action-idempotency-policy
       - name: Outcome and uncertainty firewall
         run: npm --prefix runtime/neuro-kurisu run test:workpass57-outcome-hardening && npm --prefix runtime/neuro-kurisu run test:workpass59-preexecution-outcome-firewall && npm --prefix runtime/neuro-kurisu run test:workpass59-nonexecution-learning-firewall && npm --prefix runtime/neuro-kurisu run test:workpass63:action-uncertainty-skill-firewall
+      - name: Tool input/output contracts and risk classification
+        run: npm --prefix runtime/neuro-kurisu run test:tool-input-contracts-workpass624
       - name: Receipt recovery and reconciliation
         run: npm --prefix runtime/neuro-kurisu run test:workpass64:archived-receipt-reconciliation && npm --prefix runtime/neuro-kurisu run test:workpass95:receipt-integrity && npm --prefix runtime/neuro-kurisu run test:workpass96:finalizer-boundary
       - name: Core planner and project routing

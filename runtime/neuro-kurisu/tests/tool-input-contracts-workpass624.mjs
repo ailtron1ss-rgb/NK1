@@ -205,6 +205,37 @@ assert.ok(mutatingTool.gaps.includes("outputContract"));
 assert.ok(mutatingTool.gaps.includes("independentVerifier"));
 assert.ok(governance.totals.withGaps >= 1);
 
+
+ // Tool identifiers and capability names are machine tokens, not natural-language text.
+ // Their risk classification must not depend on the process locale or locale APIs.
+ const originalLocaleLowerCase = String.prototype.toLocaleLowerCase;
+ String.prototype.toLocaleLowerCase = function () {
+   throw new Error("tool risk classification must use locale-neutral normalization");
+ };
+ try {
+   const localeGateway = new ActionGateway();
+   localeGateway.registerTool({
+     id: "FILESYSTEM.WRITE",
+     capability: "FILESYSTEM.WRITE",
+     destructive: false,
+     execute: async () => ({ ok: true }),
+   });
+   const localeRow = localeGateway.toolGovernanceReport().tools.find(row => row.id === "FILESYSTEM.WRITE");
+   assert.ok(localeRow);
+   assert.equal(localeRow.permissionClass, "filesystem");
+   assert.equal(localeRow.riskTier, "elevated");
+   assert.equal(localeRow.required.inputContract, true);
+   assert.equal(localeRow.required.outputContract, true);
+   assert.equal(localeRow.required.durableReceipt, true);
+   assert.equal(localeRow.required.providerReconciliation, true);
+   assert.ok(localeRow.gaps.includes("inputContract"));
+   assert.ok(localeRow.gaps.includes("outputContract"));
+   assert.ok(localeRow.gaps.includes("durableReceipt"));
+   assert.ok(localeRow.gaps.includes("providerReconciliation"));
+ } finally {
+   String.prototype.toLocaleLowerCase = originalLocaleLowerCase;
+ }
+
 console.log("TOOL_INPUT_CONTRACTS_WORKPASS624_PASS");
 console.log("TOOL_INPUT_BOUNDARY_HARDENING_WORKPASS632_PASS");
 console.log("TOOL_GOVERNANCE_COVERAGE_WORKPASS633_PASS");

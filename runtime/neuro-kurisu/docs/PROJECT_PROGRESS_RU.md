@@ -8,7 +8,7 @@
 |---|---|
 | Рабочий репозиторий | `ailtron1ss-rgb/NK1` |
 | Рабочая ветка | `workpass70-source` |
-| Кодовый baseline до этого doc-only обновления | `795bb672fd3af0a5ec85cc7d783d00a9226fe083` |
+| Кодовый baseline до этого инженерного прохода | `608435493b4af3b4a222d385f1b77d978d18583b` |
 | Приложение | `35.90.0` |
 | Organism Core | `100.32.0-r26-hierarchical-lowrank-causal` |
 | State schema | `225` |
@@ -32,6 +32,14 @@
 | Download count at snapshot | `3` |
 
 **Release/source separation:** ZIP остаётся главным опубликованным артефактом. Указанный digest взят из метаданных GitHub Release; в этом проходе ZIP не скачивался и digest независимо не пересчитывался. Содержимое ZIP не сравнивалось с текущей исходной веткой. Поэтому parity / artifact-content verification = **NOT VERIFIED**. Новая публикация не выполнялась.
+
+## Дополнение 2026-11-02 — классификация полномочий ActionGateway
+
+- Базовый source SHA: `608435493b4af3b4a222d385f1b77d978d18583b`.
+- Locale-sensitive нормализация ID/capability заменяется на независимую от локали: машинные идентификаторы не должны зависеть от языка процесса.
+- Регрессия проверяет реальный `ActionGateway.toolGovernanceReport()`: uppercase `FILESYSTEM.WRITE` обязан классифицироваться как `filesystem` / `elevated` и требовать input/output contracts, durable receipt и provider reconciliation.
+- Существующий suite `test:tool-input-contracts-workpass624` включается в профильный `nk1-action-gateway-governance.yml`, где раньше этот тестовый файл не запускался отдельным шагом.
+- Статус этой ветки: **implemented in feature branch; CI pending; not merged; not released**. Локально подтверждён только изолированный RED/GREEN тест нормализации; полный runtime test и typecheck требуют исполняемого CI.
 
 ## Последний подтверждённый инженерный результат
 

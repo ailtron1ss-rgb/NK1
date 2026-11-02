@@ -218,14 +218,14 @@ function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerificat
 const defaultActionToolPermissions=():ActionToolPermissionSnapshot=>({version:1,requests:[],created:0,approved:0,declined:0,consumed:0,expired:0,lastChangeAt:0});
 const DIRECT_PERMISSION_ACTIONS = new Set(['http.voice.speak','http.voice.listen','http.voice.turn','http.voice.speak-reply']);
 function inferPermissionClass(id:string, capability=''):ActionToolPermissionClass|null {
-  const normalizedId=String(id||'').toLocaleLowerCase();
+  const normalizedId=String(id||'').toLowerCase();
   // Synthesized conversational audio is an output channel, not a privileged device
   // command. It still requires durable idempotency; the adapter is not allowed to
   // bypass ActionGateway. Listening, camera, and other device operations remain gated.
   if (normalizedId==='organism.device.speak' || normalizedId==='android.speak' || normalizedId==='organism.device.speech.interrupt') return null;
   if (DIRECT_PERMISSION_ACTIONS.has(normalizedId) || /^http\.voice\./.test(normalizedId)) return 'device';
   if (/^http\.(research|integration\.(web|outbound))\./.test(normalizedId)) return 'web';
-  const text=`${id} ${capability}`.toLocaleLowerCase();
+  const text=`${id} ${capability}`.toLowerCase();
   if (/self[._ -]?modif|self[._ -]?improv|hot[._ -]?patch|identity[._ -]?change|code[._ -]?mutation/.test(text)) return 'self-modification';
   if (/(^|[ ._-])(web|internet|browser|http|external[ ._-]?research|search[ ._-]?web)([ ._-]|$)/.test(text) || /project\.external\.research/.test(text)) return 'web';
   if (/(^|[ ._-])(device|phone|camera|microphone|mic|audio|speech|sensor|termux)([ ._-]|$)/.test(text) || /http\.voice\./.test(text)) return 'device';
@@ -248,7 +248,7 @@ const READ_ONLY_ACTION_TOKENS = new Set([
 function requiresDurableIdempotency(tool:ToolDefinition|undefined):boolean {
   if (!tool) return false;
   if (tool.requiresIdempotencyKey === true || tool.destructive === true) return true;
-  const text=`${tool.id} ${tool.capability}`.toLocaleLowerCase();
+  const text=`${tool.id} ${tool.capability}`.toLowerCase();
   const tokens=text.split(/[^a-z0-9]+/).filter(Boolean);
   if (tokens.some(token=>MUTATING_ACTION_TOKENS.has(token))) return true;
   const permission=tool.permissionClass??inferPermissionClass(tool.id,tool.capability);
