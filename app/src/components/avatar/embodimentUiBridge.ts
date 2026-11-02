@@ -8,6 +8,11 @@
  * renderer executed a channel it does not support.
  */
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
+import {
+  projectAvatarBrainState,
+  type AvatarBrainProjection,
+  type AvatarRenderProfile,
+} from "../../../../runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts";
 import { advanceSwitchProgress, planEmbodimentSwitch } from "./embodimentSwitch.ts";
 import type {
   BodyChannel,
@@ -99,6 +104,55 @@ const CAPABILITY_TABLE: Record<UiRenderMode, RendererCapabilities> = {
 
 const clamp01 = (value: number | null | undefined): number => Math.max(0, Math.min(1, typeof value === "number" && Number.isFinite(value) ? value : 0));
 const clampUnit = (value: number | null | undefined): number => Math.max(-1, Math.min(1, typeof value === "number" && Number.isFinite(value) ? value : 0));
+
+export interface AvatarBrainProjectionOptions {
+  profile?: AvatarRenderProfile;
+  now?: number;
+  previous?: AvatarBrainProjection;
+}
+
+/** Adapt the canonical snapshot without creating a second personality model.
+ * Only scalar channels leave cognition; memory text, IDs, chat and thoughts stay internal. */
+export function projectOrganismSnapshotToAvatarBrain(
+  snapshot: OrganismSnapshot,
+  options: AvatarBrainProjectionOptions = {},
+): AvatarBrainProjection {
+  const now = typeof options.now === "number" && Number.isFinite(options.now) ? options.now : Date.now();
+  const sampledAt = typeof snapshot.at === "number" && Number.isFinite(snapshot.at) && snapshot.at > 0
+    ? snapshot.at
+    : now;
+  const retrievedIds = new Set(snapshot.lastDecision?.retrievedIds ?? []);
+  const memoryRecall01 = snapshot.memories.reduce((highest, memory) =>
+    retrievedIds.has(memory.id) ? Math.max(highest, clamp01(memory.salience)) : highest, 0);
+  const traits = Object.entries(snapshot.identity.traits ?? {});
+  return projectAvatarBrainState({
+    state: {
+      needs: snapshot.needs,
+      predictionError: snapshot.predictionError,
+      // Not present in this public snapshot: never infer these from trust or reward.
+      lastActionSuccess: null,
+      lastPredictionConfidence: snapshot.canonicalWorld.latentConfidence01,
+      autonomyScore: 0.5,
+    },
+    awake: snapshot.awake,
+    affect: {
+      valence01: snapshot.emotion.valence,
+      arousal01: snapshot.emotion.arousal,
+      dominance01: snapshot.emotion.dominance,
+      curiosity01: snapshot.curiosity,
+      confidence01: snapshot.canonicalWorld.latentConfidence01,
+      memoryRecall01,
+      sampledAt,
+    },
+    personality: {
+      adaptiveNames: traits.map(([name]) => name),
+      adaptiveValues: traits.map(([, value]) => value),
+    },
+    previous: options.previous,
+    now,
+    profile: options.profile ?? "2d",
+  });
+}
 
 const SPEECH_PHASES = new Set<SpeechPhase>(["idle", "starting", "speaking", "ended", "cancelled", "unknown"]);
 

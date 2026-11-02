@@ -2,7 +2,7 @@ name: NK1 embodiment switch contract
 
 on:
   pull_request:
-    branches: [workpass70-source]
+    branches: [workpass70-source, aspect/avatar-cognitive-affect-coupling-20261102]
     paths:
       - "app/src/components/avatar/embodimentSwitch.ts"
       - "app/src/components/avatar/embodimentTimeline.ts"
@@ -20,6 +20,7 @@ on:
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/src/components/avatar/avatarModelStore.ts"
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
@@ -53,6 +54,7 @@ on:
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/src/components/avatar/avatarModelStore.ts"
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
@@ -95,6 +97,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test VRM affect expression adapter
+        run: node --experimental-strip-types --test app/scripts/vrm-runtime-adapter.test.mjs
       - name: Test real Three.js toon material lifecycle
         run: npm --prefix app run test:three-toon-materials
       - name: Verify hosted Kurisu asset hash and GLB structure

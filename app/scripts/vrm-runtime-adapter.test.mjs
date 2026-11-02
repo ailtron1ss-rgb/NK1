@@ -186,3 +186,18 @@ test("Avatar3DStage registers the native plugin and updates/disposes VRM runtime
   assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
   assert.match(stage, /applyVrmExpressionFrame\(rt\.vrm/);
 });
+
+
+test("VRM preset expression amplitude follows bounded cognitive projection", () => {
+  const vrm = createFakeVrm();
+  applyVrmExpressionFrame(vrm, {
+    emotion: "joy", expressionWeight: 0.22, speaking: false,
+    mouthOpen: 0, mouthForm: 0, blink: false,
+  });
+  assert.equal(vrm.values.get("happy"), 0.22);
+  applyVrmExpressionFrame(vrm, {
+    emotion: "joy", expressionWeight: 4, speaking: false,
+    mouthOpen: 0, mouthForm: 0, blink: false,
+  });
+  assert.equal(vrm.values.get("happy"), 1);
+});

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EmotionLabel, OrganismSnapshot } from "@/organism/types";
 import { neuroApiUrl } from "@/neuro-kurisu/api";
 import {
@@ -13,6 +13,7 @@ import {
   advanceBodySwitch,
   beginBodySwitch,
   projectSemanticBodyState,
+  projectOrganismSnapshotToAvatarBrain,
 } from "./avatar/embodimentUiBridge";
 import type { SwitchPlan } from "./avatar/embodimentSwitch";
 import { cn } from "@/lib/utils";
@@ -148,6 +149,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   };
   const originalGaze = originalGazeByAction[snap.lastOption] ?? originalGazeByAction.wait;
   const turnKey = lastTurn?.role === "kurisu" ? `${String(lastTurn.id ?? lastTurn.at)}:${String(lastTurn.at)}:${lastTurn.text}` : "";
+
+  // One canonical projection feeds every renderer; no second affect or identity owner.
+  const avatarBrainProjectionRef = useRef<ReturnType<typeof projectOrganismSnapshotToAvatarBrain> | undefined>(undefined);
+  const avatarBrainProjection = useMemo(() => projectOrganismSnapshotToAvatarBrain(snap, {
+    profile: mode === "3d" ? "3d" : "2d",
+    previous: avatarBrainProjectionRef.current,
+  }), [snap, mode]);
+  useEffect(() => { avatarBrainProjectionRef.current = avatarBrainProjection; }, [avatarBrainProjection]);
 
   const stopSpeech = () => {
     const active = activeSpeechSessionRef.current;
@@ -485,9 +494,9 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       predictionError: snap.predictionError,
       traits: snap.identity.traits,
     });
-    const bodyGestureActive = motorPlan.gesture;
-    const motionGroup = motorPlan.motionGroup;
-    const motionIndex = motorPlan.motionIndex;
+    const bodyGestureActive = !avatarBrainProjection.reducedMotion && motorPlan.gesture;
+    const motionGroup = avatarBrainProjection.reducedMotion ? "Idle" : motorPlan.motionGroup;
+    const motionIndex = avatarBrainProjection.reducedMotion ? 0 : motorPlan.motionIndex;
     // Increment only when the semantic motor goal changes. Snapshot ticks and mouth frames
     // must not continually restart the same motion clip.
     const motionIdentity = freshTextTurn ? (session?.speechEventId ?? turnKey) : `state:${motorPlan.action}`;
@@ -513,11 +522,15 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       priority: speechPhaseRef.current === "cancelled" ? 100 : activeUtterance ? 70 : thinking ? 45 : 30,
       cancellationToken: session ? `cancel:${session.speechEventId}` : null,
       expression,
-      expressionIntensity: snap.emotion.arousal,
+      expressionIntensity: avatarBrainProjection.expressionWeight,
       mouth: activeUtterance ? mouthPose : CLOSED_MOUTH,
-      gaze: { x: Math.max(-0.4, Math.min(0.4, gaze.x + valenceOffset)), y: gaze.y, driven: true },
+      gaze: {
+        x: Math.max(-0.4, Math.min(0.4, gaze.x * 0.6 + avatarBrainProjection.channels.gazeX * 0.4 + valenceOffset)),
+        y: Math.max(-0.4, Math.min(0.4, gaze.y * 0.6 + avatarBrainProjection.channels.gazeY * 0.4)),
+        driven: true,
+      },
       body: {
-        headTilt: motorPlan.headTilt,
+        headTilt: Math.max(-0.15, Math.min(0.15, motorPlan.headTilt * 0.55 + avatarBrainProjection.channels.headTilt * 0.45)),
         gesture: bodyGestureActive,
         motionGroup,
         motionIndex: motionGroup === "Special" ? motionIndex : 0,
@@ -527,7 +540,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     };
     latestIntentStateVersionRef.current = intent.stateVersion;
     win.postMessage(intent, window.location.origin);
-  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey]);
+  }, [snap.emotion, snap.lastOption, snap.chat, snap.tick, snap.awake, thinking, live, viewerReadyRevision, mode, voiceStatus, mouthPose, turnKey, avatarBrainProjection]);
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-elevated">
@@ -540,7 +553,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
       <div className="transition-opacity duration-200 ease-out" style={{ opacity: switchOpacity }}>
-      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
+      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={avatarBrainProjection.channels.gazeX} gazeY={avatarBrainProjection.channels.gazeY} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={avatarBrainProjection.channels.gazeX} gazeY={avatarBrainProjection.channels.gazeY} expressionWeight={avatarBrainProjection.expressionWeight} reducedMotion={avatarBrainProjection.reducedMotion} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}
