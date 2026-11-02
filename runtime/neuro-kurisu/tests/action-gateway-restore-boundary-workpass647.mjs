@@ -64,6 +64,9 @@ assert.deepEqual(target.snapshotExecutionLedger(), before);
 assert.throws(() => target.restoreExecutionLedger({ ...validSnapshot, permissions: 42 }), /action-ledger-permissions-snapshot-invalid/);
 assert.deepEqual(target.snapshotExecutionLedger(), before, 'invalid permission state must not partially replace the execution ledger');
 
+assert.throws(() => target.restoreExecutionLedger({ ...validSnapshot, permissions: { ...validSnapshot.permissions, version: 2 } }), /action-ledger-permissions-snapshot-version-unsupported/);
+assert.deepEqual(target.snapshotExecutionLedger(), before, 'unsupported permission snapshot versions must be rejected atomically');
+
 const malformedCounter = {
   ...validSnapshot,
   permissions: { ...validSnapshot.permissions, created: {} },
