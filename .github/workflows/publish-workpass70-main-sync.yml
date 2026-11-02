@@ -172,17 +172,10 @@ jobs:
           TAG: ${{ steps.guard.outputs.tag }}
           RELEASE_DATE: ${{ steps.guard.outputs.release_date }}
           SHORT_SHA: ${{ steps.guard.outputs.short_sha }}
+          GH_TOKEN: ${{ github.token }}
           VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
           REQUIRED_CHECKS_JSON: ${{ steps.required_checks.outputs.checks_json }}
           VALIDATION_RUN_ID: ${{ github.event.workflow_run.id }}
-          VALIDATION_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
-          VALIDATION_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          VALIDATION_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
-          VALIDATION_EVENT: ${{ github.event.workflow_run.event }}
-          VALIDATION_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          VALIDATION_RUN_URL: ${{ github.event.workflow_run.html_url }}
-          VALIDATION_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          VALIDATION_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
           ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}.zip"
@@ -258,12 +251,15 @@ jobs:
           EOF
           export NODE_VERSION="$(node --version)"
           export PYTHON_VERSION="$(python3 --version)"
+          VALIDATION_RUN_JSON="$(gh api -H "Accept: application/vnd.github+json" "repos/$GITHUB_REPOSITORY/actions/runs/$VALIDATION_RUN_ID")"
+          export VALIDATION_RUN_JSON
           python3 - "$RUNNER_TEMP/release-manifest-metadata.json" <<'PYMETA'
           import json
           import os
           import pathlib
           import sys
 
+          validation_run = json.loads(os.environ["VALIDATION_RUN_JSON"])
           metadata = {
               "repository": os.environ["GITHUB_REPOSITORY"],
               "release": {
@@ -277,15 +273,15 @@ jobs:
               },
               "validation": {
                   "workflow_run": {
-                      "id": int(os.environ["VALIDATION_RUN_ID"]),
-                      "run_number": int(os.environ["VALIDATION_RUN_NUMBER"]),
-                      "run_attempt": int(os.environ["VALIDATION_RUN_ATTEMPT"]),
-                      "name": os.environ["VALIDATION_WORKFLOW_NAME"],
-                      "event": os.environ["VALIDATION_EVENT"],
-                      "conclusion": os.environ["VALIDATION_CONCLUSION"],
-                      "url": os.environ["VALIDATION_RUN_URL"],
-                      "head_sha": os.environ["VALIDATION_HEAD_SHA"],
-                      "head_branch": os.environ["VALIDATION_HEAD_BRANCH"],
+                      "id": int(validation_run["id"]),
+                      "run_number": int(validation_run["run_number"]),
+                      "run_attempt": int(validation_run["run_attempt"]),
+                      "name": validation_run["name"],
+                      "event": validation_run["event"],
+                      "conclusion": validation_run["conclusion"],
+                      "url": validation_run["html_url"],
+                      "head_sha": validation_run["head_sha"],
+                      "head_branch": validation_run["head_branch"],
                   },
                   "required_checks": json.loads(
                       pathlib.Path(os.environ["REQUIRED_CHECKS_JSON"]).read_text(encoding="utf-8")
