@@ -1,6 +1,6 @@
 # Aspect 03 — журнал изменений, 30.10.2026
 
-Ветка: `aspect03-world-perception-truthful-grounding-2026-10-30`  
+Ветка: `aspect03-world-perception-truthful-grounding-2026-10-30`
 База: `workpass70-source`
 
 Каждая запись соответствует отдельному GitHub commit с сообщением `[NK1][восприятие] ...`.

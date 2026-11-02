@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { isLongLine, isDuplicateNameGroup } from './lib/forensics-rules.mjs';
 const root=process.cwd();
 const currentVersion = (() => { try { return JSON.parse(fs.readFileSync(path.join(root,'VERSION.json'),'utf8')); } catch { return {}; } })();
 const skipDirs=new Set(['legacy-original','node_modules','state','.git']);
@@ -21,10 +22,10 @@ const nameGroups=new Map();
 for(const f of active){const name=path.basename(f).toLowerCase(); const a=nameGroups.get(name)||[]; a.push(rel(f)); nameGroups.set(name,a)}
 for(const group of nameGroups.values()){
   if(group.length<2) continue;
-  if(group.every(p=>path.basename(p).toLowerCase()==='index.ts')) continue;
-  const researchNotesOnly=group.length>1 && group.every(p=>path.basename(p).toLowerCase()==='research_notes.md' && /^research\/\d{4}-\d{2}-\d{2}\//.test(p));
+  const researchNotesOnly=group.every(p=>path.basename(p).toLowerCase()==='research_notes.md' && /^research\/\d{4}-\d{2}-\d{2}\//.test(p));
   if (researchNotesOnly) continue;
-  problems.push(`duplicate-name:${group.join('|')}`);
+  const readFile=p=>fs.readFileSync(path.join(root,p));
+  if (isDuplicateNameGroup(group, readFile)) problems.push(`duplicate-name:${group.join('|')}`);
 }
 for(const f of active){
   const r=rel(f); if(r==='scripts/audit-forensics.mjs'||r==='scripts/audit-integrity.mjs') continue;
@@ -37,7 +38,11 @@ for(const f of active){
   if(!versionFiles.has(r) && legacyVersionPattern.test(s)) problems.push(`stale-version-marker:${r}`);
   const lines=s.split('\n');
   const longLineExempt = r==='docs/brain/SEMANTIC_COVERAGE_AUDIT_B291.json';
-  for(let i=0;i<lines.length;i++){if(/[ \t]+$/.test(lines[i])) problems.push(`trailing-whitespace:${r}:${i+1}`); if(!longLineExempt && lines[i].length>800) problems.push(`very-long-line:${r}:${i+1}:${lines[i].length}`)}
+  for(let i=0;i<lines.length;i++){
+    if(/[ \t]+$/.test(lines[i])) problems.push(`trailing-whitespace:${r}:${i+1}`);
+    if(longLineExempt) continue;
+    if(isLongLine(r,lines[i])) problems.push(`very-long-line:${r}:${i+1}`);
+  }
 }
 for(const p of active.filter(p=>p.endsWith('.json'))){try{JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){problems.push(`invalid-json:${rel(p)}:${e.message}`)}}
 if(problems.length){console.error(problems.join('\n')); process.exit(1)}

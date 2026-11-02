@@ -5,6 +5,7 @@ const checks = [
   ['doctor','node scripts/project-doctor.mjs'],
   ['audit:syntax','node scripts/audit-executable-syntax.mjs'],
   ['audit:forensics','node scripts/audit-forensics.mjs'],
+  ['test:forensics-rules','node tests/forensics-rules.mjs'],
   ['audit:full','node scripts/audit-full-project.mjs'],
   ['typecheck','node scripts/typecheck-runtime.mjs'],
   ['test:smoke','node --experimental-strip-types tests/organism-smoke.mjs'],

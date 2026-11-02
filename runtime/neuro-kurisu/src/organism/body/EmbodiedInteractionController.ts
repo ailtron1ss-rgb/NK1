@@ -77,7 +77,18 @@ export class EmbodiedInteractionController {
   constructor(policy:Partial<InteractionPolicy>={},verifySafetyAuthorization?:InteractionSafetyAuthorizationVerifier,verifyPostconditionEvidence?:InteractionPostconditionEvidenceVerifier) {
     this.verifySafetyAuthorization=typeof verifySafetyAuthorization==='function'?verifySafetyAuthorization:null;
     this.verifyPostconditionEvidence=typeof verifyPostconditionEvidence==='function'?verifyPostconditionEvidence:null;
-    this.policy={allowReach:policy.allowReach===true,allowContact:policy.allowContact===true,allowManipulation:policy.allowManipulation===true,maxObservationAgeMs:bounded(policy.maxObservationAgeMs,defaults.maxObservationAgeMs,0,60_000),planTtlMs:bounded(policy.planTtlMs,defaults.planTtlMs,1_000,120_000),minLookConfidence01:bounded(policy.minLookConfidence01,defaults.minLookConfidence01,0,1),minContactConfidence01:bounded(policy.minContactConfidence01,defaults.minContactConfidence01,0,1),minManipulationConfidence01:bounded(policy.minManipulationConfidence01,defaults.minManipulationConfidence01,0,1),minPostconditionConfidence01:bounded(policy.minPostconditionConfidence01,defaults.minPostconditionConfidence01,0,1),maxTargetDistanceM:bounded(policy.maxTargetDistanceM,defaults.maxTargetDistanceM,.1,10)};
+    this.policy={
+      allowReach:policy.allowReach===true,
+      allowContact:policy.allowContact===true,
+      allowManipulation:policy.allowManipulation===true,
+      maxObservationAgeMs:bounded(policy.maxObservationAgeMs,defaults.maxObservationAgeMs,0,60_000),
+      planTtlMs:bounded(policy.planTtlMs,defaults.planTtlMs,1_000,120_000),
+      minLookConfidence01:bounded(policy.minLookConfidence01,defaults.minLookConfidence01,0,1),
+      minContactConfidence01:bounded(policy.minContactConfidence01,defaults.minContactConfidence01,0,1),
+      minManipulationConfidence01:bounded(policy.minManipulationConfidence01,defaults.minManipulationConfidence01,0,1),
+      minPostconditionConfidence01:bounded(policy.minPostconditionConfidence01,defaults.minPostconditionConfidence01,0,1),
+      maxTargetDistanceM:bounded(policy.maxTargetDistanceM,defaults.maxTargetDistanceM,.1,10)
+    };
   }
   snapshot():InteractionPlan|null{return this.active?structuredClone(this.active):null;}
   clear():void{this.active=null;}

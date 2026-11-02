@@ -37,7 +37,14 @@ NK_MEM0_MAX_RESPONSE_BYTES=262144
 NK_MEM0_ALLOW_WRITES=1
 ~~~
 
-Keep MEM0_API_KEY out of source control, browser code, client-visible config, logs, query strings, and diagnostic responses. Use a separate stable NK_MEM0_USER_ID per data owner; the HTTP request body cannot choose the user scope. This first pass is a **single-owner-per-server** integration, not multi-tenant isolation: do not serve unrelated owners from the same Mem0 scope. A multi-tenant deployment needs a trusted authenticated-identity-to-user-ID resolver, never a client-supplied user ID. The base URL must be HTTPS; plain HTTP endpoints are rejected. The adapter has a bounded timeout and response-byte ceiling. `NK_MEM0_COGNITIVE_RECALL=1` is a second, independent gate: without both `NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1`, ordinary conversation turns do not query Mem0 for prompt context.
+Keep MEM0_API_KEY out of source control, browser code, client-visible config, logs, query strings, and diagnostic
+responses. Use a separate stable NK_MEM0_USER_ID per data owner; the HTTP request body cannot choose the user scope.
+This first pass is a **single-owner-per-server** integration, not multi-tenant isolation: do not serve unrelated
+owners from the same Mem0 scope. A multi-tenant deployment needs a trusted authenticated-identity-to-user-ID resolver,
+never a client-supplied user ID. The base URL must be HTTPS; plain HTTP endpoints are rejected. The adapter has a
+bounded timeout and response-byte ceiling. `NK_MEM0_COGNITIVE_RECALL=1` is a second, independent gate: without both
+`NK_MEM0_ENABLED=1` and `NK_MEM0_COGNITIVE_RECALL=1`, ordinary conversation turns do not query Mem0 for prompt
+context.
 
 ## Optional live Mem0 API contract check (read-only)
 
@@ -91,7 +98,15 @@ Deletion is fail-closed: it requires the write gate and per-operation approval, 
 
 ## Validation and remaining work
 
-tests/mem0-platform-adapter-workpass1.mjs covers disabled-by-default behavior, fixed per-user scoping, result provenance, sensitive-text minimization, explicit write approval, HTTPS enforcement, HTTP error redaction, bounded response parsing, the prompt boundary for remote candidates, and consent/scope-bound deletion. `tests/server-language-http-fake-provider.mjs` also exercises the actual server diagnostics/search routes with Mem0 disabled, confirms local MemoryOS2 remains available, and confirms no remote recall enters the prompt even if the second gate is set. It runs the server in non-loopback mode with a test-only bearer token: unauthenticated diagnostics/search/chat requests must be denied with 401, the unauthenticated chat must not reach the fake LLM, and authenticated chat must reach it exactly once. `.github/workflows/mem0-platform-adapter.yml` runs the adapter suite, server syntax check, and this disabled-provider HTTP smoke separately from the broader repository suite.
+tests/mem0-platform-adapter-workpass1.mjs covers disabled-by-default behavior, fixed per-user scoping, result
+provenance, sensitive-text minimization, explicit write approval, HTTPS enforcement, HTTP error redaction, bounded
+response parsing, the prompt boundary for remote candidates, and consent/scope-bound deletion.
+`tests/server-language-http-fake-provider.mjs` also exercises the actual server diagnostics/search routes with Mem0
+disabled, confirms local MemoryOS2 remains available, and confirms no remote recall enters the prompt even if the
+second gate is set. It runs the server in non-loopback mode with a test-only bearer token: unauthenticated
+diagnostics/search/chat requests must be denied with 401, the unauthenticated chat must not reach the fake LLM, and
+authenticated chat must reach it exactly once. `.github/workflows/mem0-platform-adapter.yml` runs the adapter suite,
+server syntax check, and this disabled-provider HTTP smoke separately from the broader repository suite.
 
 Run from runtime/neuro-kurisu:
 
@@ -102,4 +117,15 @@ node --experimental-transform-types tests/server-language-http-fake-provider.mjs
 npm run server:smoke
 ~~~
 
-This pass adds a gated path into the live language context. The latest exact-head targeted run [40162530757](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162530757) passed on `447724c940722d063923c5861d59a6e6b0d5aa4c`: Node 24, server syntax, **14/14 adapter tests**, default-off live-canary safety, and the disabled-provider HTTP smoke. The smoke runs with a non-loopback host and a test bearer token; unauthenticated Mem0 diagnostics/search and chat are denied, unauthorized chat does not reach the LLM, and the valid token path returns HTTP 200 with exactly one fake local-provider response. Disabled Mem0 still does not enter the prompt. The read-only live canary's normal CI path correctly skips without a network request; real Mem0 API behavior remains unvalidated until a disposable test scope and API key are provided. The broader runtime typecheck remains red ([run 40161840799](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161840799)) with diagnostics elsewhere in the wider codebase; this does not establish a clean repository build. Remaining: live provider contract check, retention/deletion policy alignment, and independent RU/EN retrieval-quality holdout comparison. Keep cognitive recall disabled by default until provider/privacy and quality gates pass.
+This pass adds a gated path into the live language context. The latest exact-head targeted run
+[40162530757](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40162530757) passed on
+`447724c940722d063923c5861d59a6e6b0d5aa4c`: Node 24, server syntax, **14/14 adapter tests**, default-off live-canary
+safety, and the disabled-provider HTTP smoke. The smoke runs with a non-loopback host and a test bearer token;
+unauthenticated Mem0 diagnostics/search and chat are denied, unauthorized chat does not reach the LLM, and the valid
+token path returns HTTP 200 with exactly one fake local-provider response. Disabled Mem0 still does not enter the
+prompt. The read-only live canary's normal CI path correctly skips without a network request; real Mem0 API behavior
+remains unvalidated until a disposable test scope and API key are provided. The broader runtime typecheck remains red
+([run 40161840799](https://github.com/ailtron1ss-rgb/NK1/actions/runs/40161840799)) with diagnostics elsewhere in the
+wider codebase; this does not establish a clean repository build. Remaining: live provider contract check,
+retention/deletion policy alignment, and independent RU/EN retrieval-quality holdout comparison. Keep cognitive recall
+disabled by default until provider/privacy and quality gates pass.
