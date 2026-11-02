@@ -85,8 +85,8 @@ export function resolveAvatarAnimationClip(
 ): ResolveAvatarAnimationResult {
   const requestedAction = typeof action === "string" ? action : "wait";
   const normalizedAction = normalize(requestedAction);
-  const preferences = ACTION_PREFERENCES[normalizedAction] ?? ACTION_PREFERENCES.wait;
-  const preferred = matchPreferred(clips, preferences);
+  const preferences = ACTION_PREFERENCES[normalizedAction];
+  const preferred = preferences ? matchPreferred(clips, preferences) : null;
 
   if (preferred) {
     const resolvedAction = normalizedAction === "verify" || normalizedAction === "reflect"
@@ -104,7 +104,7 @@ export function resolveAvatarAnimationClip(
   }
 
   const semanticPatterns: Readonly<Record<string, RegExp>> = {
-    respond: /talk|speak|gesture|explain|wave/i,
+    respond: /talk|speak|gesture|explan|wave/i,
     explore: /explore|turn|walk|look|inspect/i,
     verify: /think|ponder|inspect|focus|work|write/i,
     reflect: /think|ponder|reflect/i,
