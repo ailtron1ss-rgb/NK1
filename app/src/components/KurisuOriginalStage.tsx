@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from "react";
 import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
-import { planAvatarMotorIntent, type AvatarMotorIntentInput, type AvatarMotorIntentPlan } from "./avatar/motorIntent";
+import { planAvatarMotorIntent, type AvatarMotorIntentPlan } from "./avatar/motorIntent";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
