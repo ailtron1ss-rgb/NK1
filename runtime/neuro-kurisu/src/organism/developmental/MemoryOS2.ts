@@ -1485,9 +1485,16 @@ export class MemoryOS2{
    const requested=this.itemIndex.get(id); if(!requested||!String(newContent).trim())return null;
    const group=requested.revisionGroupId??requested.id;
    // A correction against a historical ID revises the current tip of that same
-   // chain, avoiding a fork that would make point-in-time recall ambiguous.
+   // chain, avoiding a fork that would make point-in-time recall ambiguous. The
+   // tip is the node with no successor (`supersededById==null`), not the node with
+   // an open window: forgetting a successor clears `supersededById` but can leave
+   // the predecessor's `validUntilAt` set, so `validUntilAt==null` misses the real
+   // tip and the `?? requested` fallback then revises an arbitrary node, clobbering
+   // its existing `supersededById` and orphaning the live successor (a
+   // non-reciprocal edge restore later reports as `invalid-supersedes-edge`).
    const chain=[...(this.revisionGroupIndex.get(group)??new Set([requested.id]))].map(itemId=>this.itemIndex.get(itemId)).filter((x):x is MemoryItem2=>Boolean(x));
-   const parent=chain.filter(x=>x.validUntilAt==null).sort((a,b)=>Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt))[0]??requested;
+   const tips=chain.filter(x=>x.supersededById==null);
+   const parent=(tips.length?tips:chain).slice().sort((a,b)=>Number(b.revisionSequence??1)-Number(a.revisionSequence??1)||Number(b.observedAt??b.createdAt)-Number(a.observedAt??a.createdAt)||a.id.localeCompare(b.id))[0]??requested;
    const canonicalContent=canonicalizeMemoryContent(newContent);
    if(canonicalizeMemoryContent(parent.content)===canonicalContent)return structuredClone(parent);
    const requestedAt=Number.isFinite(Number(options.validAt))?Number(options.validAt):Date.now();
@@ -1591,7 +1598,14 @@ export class MemoryOS2{
      if(x.semanticLinks?.includes(id)){x.semanticLinks=x.semanticLinks.filter(v=>v!==id);changed=true;}
      if(x.causalLinks?.includes(id)){x.causalLinks=x.causalLinks.filter(v=>v!==id);changed=true;}
      if(x.supersedesId===id){x.supersedesId=null;changed=true;}
-     if(x.supersededById===id){x.supersededById=null;changed=true;}
+     if(x.supersededById===id){
+       x.supersededById=null;changed=true;
+       // x was the predecessor of the forgotten row, so its window was closed at
+       // the successor's start. With the successor gone x is the tip again; leaving
+       // `validUntilAt` set would make x unreachable in every temporal mode for the
+       // whole gap since that closure, silently losing the fact it still expresses.
+       if(x.validUntilAt!=null){x.validUntilAt=null;}
+     }
      // Removing a link shrinks a surviving record; the durable byte budget must
      // track that shrink, otherwise forgetting many linked memories leaves
      // estimatedBytes permanently inflated and the eviction budget drifts.
