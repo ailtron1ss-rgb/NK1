@@ -28,7 +28,7 @@ const trustedKeys = new Map(
   ]),
 );
 
-const createCandidate = () => createCodeAssimilationCandidate({
+const createCandidate = (declaredLicenseExpression = 'MIT') => createCodeAssimilationCandidate({
   baseRuntimeSha: 'a'.repeat(40),
   createdAt: fixedNow - 10_000,
   manifest: {
@@ -49,7 +49,7 @@ const createCandidate = () => createCodeAssimilationCandidate({
     },
     dependencyLockFingerprint: '3'.repeat(64),
     sbomFingerprint: '4'.repeat(64),
-    declaredLicenseExpression: 'MIT',
+    declaredLicenseExpression,
   },
 });
 
@@ -292,8 +292,7 @@ assert.equal(candidate.stage, 'discovered');
 
 // Unknown declared license plus a null reviewer expression cannot authorize execution or redistribution.
 {
-  const unlicensed = structuredClone(candidate);
-  unlicensed.manifest.declaredLicenseExpression = null;
+  const unlicensed = createCandidate(null);
   const payload = payloadFor(unlicensed, 'license', {
     licenseDecision: {
       outcome: 'approved',
