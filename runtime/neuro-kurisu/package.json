@@ -1606,6 +1606,7 @@
     "test:memory-write-defaults-integrity": "node --experimental-strip-types tests/memory-write-defaults-integrity.mjs",
     "test:memory-revision-tip-reachability": "node --experimental-strip-types tests/memory-revision-tip-reachability.mjs",
     "test:memory-evidence-lineage-bytes": "node --experimental-strip-types tests/memory-evidence-lineage-bytes.mjs",
+    "test:memory-live-restore-oracle-fuzz": "node --experimental-strip-types tests/memory-live-restore-oracle-fuzz.mjs",
     "audit:workpass30": "npm run typecheck && npm run test:memory-provenance-lineage-workpass30 && npm run test:memory-source-integration-workpass29 && npm run test:memory-temporal-inspector-closure && npm run test:memory-retrieval-candidate-coverage && npm run test:memory-retrieval-numeric-terms && npm run test:r15:memory && npm run test:r16:memory && npm run test:memory-retrieval-benchmark && npm run test:memory-retrieval-experiment && node --experimental-strip-types tests/server-smoke.mjs",
     "test:memory-lifecycle-command-workpass31": "node --experimental-strip-types tests/memory-lifecycle-command-workpass31.mjs",
     "audit:workpass31": "npm run typecheck && npm run test:memory-lifecycle-command-workpass31 && npm run test:memory-provenance-lineage-workpass30 && npm run test:memory-source-integration-workpass29 && npm run test:memory-temporal-inspector-closure && npm run test:memory-retrieval-candidate-coverage && npm run test:memory-retrieval-numeric-terms && npm run test:r16:memory && node --experimental-strip-types tests/server-smoke.mjs",
