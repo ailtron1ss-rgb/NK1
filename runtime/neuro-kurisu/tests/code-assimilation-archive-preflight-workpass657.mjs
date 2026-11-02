@@ -142,6 +142,7 @@ for (const badPath of [
   'src/with?wildcard.ts',
   'src/with*wildcard.ts',
   'src/with\\backslash.ts',
+  'src/sub/..＼..＼escape.ts',
 ]) {
   assert.throws(
     () => preflight([{ path: badPath, kind: 'file', compressedSizeBytes: 1, uncompressedSizeBytes: 1 }]),
