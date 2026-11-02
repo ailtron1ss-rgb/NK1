@@ -1,5 +1,6 @@
 import type { ActionKind } from '../core/types.ts';
 import { randomUUID } from 'node:crypto';
+import { types as nodeUtilTypes } from 'node:util';
 import {
   OutcomeVerificationService,
   assessExternalPostcondition,
@@ -216,6 +217,91 @@ function classifyVerifiedExecution(toolOk:boolean, verification:OutcomeVerificat
   return {ok,verified,outcomeClass,contradicted};
 }
 const defaultActionToolPermissions=():ActionToolPermissionSnapshot=>({version:1,requests:[],created:0,approved:0,declined:0,consumed:0,expired:0,lastChangeAt:0});
+
+const MAX_ACTION_GATEWAY_SNAPSHOT_DEPTH = 12;
+const MAX_ACTION_GATEWAY_SNAPSHOT_NODES = 100_000;
+const MAX_ACTION_GATEWAY_SNAPSHOT_ARRAY_ITEMS = 16_384;
+const MAX_ACTION_GATEWAY_SNAPSHOT_BYTES = 32 * 1024 * 1024;
+
+/**
+ * Persisted action receipts and approval tickets are untrusted input.
+ * Clone only bounded JSON-like own data before any property reads or state mutation.
+ */
+function cloneActionGatewaySnapshot(snapshot: unknown): ActionExecutionLedgerSnapshot {
+  let nodes = 0;
+  const active = new WeakSet<object>();
+
+  const clone = (value: unknown, depth: number): unknown => {
+    if (value === null || typeof value === 'string' || typeof value === 'boolean' || typeof value === 'undefined') {
+      if (typeof value === 'string' && value.length > 65_536) throw new Error('snapshot-string-too-large');
+      return value;
+    }
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value)) throw new Error('snapshot-number-not-finite');
+      return value;
+    }
+    if (typeof value !== 'object') throw new Error('snapshot-value-not-json-like');
+    if (nodeUtilTypes.isProxy(value)) throw new Error('snapshot-proxy-rejected');
+    if (depth > MAX_ACTION_GATEWAY_SNAPSHOT_DEPTH) throw new Error('snapshot-too-deep');
+    nodes += 1;
+    if (nodes > MAX_ACTION_GATEWAY_SNAPSHOT_NODES) throw new Error('snapshot-node-budget-exceeded');
+    if (active.has(value)) throw new Error('snapshot-cycle-detected');
+    active.add(value);
+
+    try {
+      if (Array.isArray(value)) {
+        if (Object.getPrototypeOf(value) !== Array.prototype || value.length > MAX_ACTION_GATEWAY_SNAPSHOT_ARRAY_ITEMS) {
+          throw new Error('snapshot-array-invalid');
+        }
+        for (const key of Reflect.ownKeys(value)) {
+          if (key === 'length') continue;
+          if (typeof key !== 'string' || !/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= value.length) {
+            throw new Error('snapshot-array-extra-property');
+          }
+        }
+        const output: unknown[] = [];
+        for (let index = 0; index < value.length; index += 1) {
+          const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+          if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) {
+            throw new Error('snapshot-array-item-unsafe');
+          }
+          output.push(clone(descriptor.value, depth + 1));
+        }
+        return output;
+      }
+
+      const prototype = Object.getPrototypeOf(value);
+      if (prototype !== Object.prototype && prototype !== null) throw new Error('snapshot-object-prototype-invalid');
+      const output: Record<string, unknown> = {};
+      for (const key of Reflect.ownKeys(value)) {
+        if (typeof key !== 'string' || key.length > 256) throw new Error('snapshot-object-key-invalid');
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) {
+          throw new Error('snapshot-object-property-unsafe');
+        }
+        Object.defineProperty(output, key, {
+          value: clone(descriptor.value, depth + 1),
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        });
+      }
+      return output;
+    } finally {
+      active.delete(value);
+    }
+  };
+
+  try {
+    const safe = clone(snapshot, 0);
+    if (!safe || typeof safe !== 'object' || Array.isArray(safe)) throw new Error('snapshot-root-invalid');
+    const bytes = new TextEncoder().encode(stableJson(safe)).byteLength;
+    if (bytes > MAX_ACTION_GATEWAY_SNAPSHOT_BYTES) throw new Error('snapshot-byte-budget-exceeded');
+    return safe as ActionExecutionLedgerSnapshot;
+  } catch {
+    throw new Error('action-ledger-snapshot-invalid');
+  }
+}
 const DIRECT_PERMISSION_ACTIONS = new Set(['http.voice.speak','http.voice.listen','http.voice.turn','http.voice.speak-reply']);
 function inferPermissionClass(id:string, capability=''):ActionToolPermissionClass|null {
   const normalizedId=String(id||'').toLocaleLowerCase();
@@ -491,7 +577,9 @@ export class ActionGateway {
 
 
   restoreExecutionLedger(snapshot:unknown):void {
-    const raw=snapshot && typeof snapshot==='object' ? snapshot as Partial<ActionExecutionLedgerSnapshot> : {};
+    const raw=(snapshot===undefined||snapshot===null?{version:1,records:[]}:cloneActionGatewaySnapshot(snapshot)) as Partial<ActionExecutionLedgerSnapshot>;
+    if(raw.version!==undefined&&raw.version!==1) throw new Error('action-ledger-snapshot-version-unsupported');
+    if(raw.records!==undefined&&!Array.isArray(raw.records)) throw new Error('action-ledger-snapshot-invalid');
     const rows=Array.isArray(raw.records)?raw.records:[];
     const restored=new Map<string,ActionExecutionLedgerEntry>();
     for(const value of rows) {
@@ -542,6 +630,8 @@ export class ActionGateway {
     this.executionLedger.clear();
     for(const row of [...restored.values()].sort((a,b)=>a.recordedAt-b.recordedAt)) this.executionLedger.set(row.keyHash,row);
     const permissions=raw.permissions as Partial<ActionToolPermissionSnapshot>|undefined;
+    if(permissions!==undefined&&(!permissions||typeof permissions!=='object'||Array.isArray(permissions))) throw new Error('action-ledger-permissions-snapshot-invalid');
+    if(permissions?.requests!==undefined&&!Array.isArray(permissions.requests)) throw new Error('action-ledger-permissions-snapshot-invalid');
     const cleanRequests:Array<ActionToolApprovalRecord>=[];
     if(Array.isArray(permissions?.requests)) for(const item of permissions!.requests.slice(-128)) {
       if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.startsWith('approval-')||!['web','device','filesystem','code','system','self-modification'].includes(item.permissionClass)||!['execute','reconcile','direct'].includes(item.operation)||!['pending','approved','declined','consumed','expired'].includes(item.status)||!/^[a-f0-9]{64}$/i.test(String(item.requestHash??''))) continue;
