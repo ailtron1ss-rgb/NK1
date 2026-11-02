@@ -122,8 +122,9 @@ export function resolveDepthRigPoseFromMotorFrame(
       throw new Error("Invalid depth-rig joint calibration.");
     }
     const joint = frame.joints[binding.jointId];
-    if (!joint || joint.id !== binding.jointId || joint.available !== true || !Number.isFinite(joint.targetAngleRad)) continue;
-    const delta = clamp((joint.targetAngleRad - rest) * degreesPerRadian, -maxAbs, maxAbs);
+    if (!joint || joint.id !== binding.jointId || joint.available !== true || !Number.isFinite(joint.angleRad)) continue;
+    // Render observed motion, not the controller target: the puppet must not lead the motor.
+    const delta = clamp((joint.angleRad - rest) * degreesPerRadian, -maxAbs, maxAbs);
     deltas[binding.nodeId] = { rotation: delta };
   }
   return { rigId: rig.id, deltas };
