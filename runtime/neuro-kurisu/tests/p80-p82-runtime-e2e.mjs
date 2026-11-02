@@ -13,6 +13,8 @@ for(let i=0;i<160;i++){
 const snap=core.snapshot();
 assert.equal(snap.schemaVersion,RELEASE_CONTRACT.stateSchema);
 assert.equal(snap.facets.advanced.p80UnifiedSelfState.cycles,160);
+assert.equal(snap.facets.advanced.p80UnifiedSelfState.lastAction,snap.state.lastAction,'P80 selected action must match the final organism action');
+assert.equal(snap.facets.advanced.p80UnifiedSelfState.recentActions.at(-1),snap.state.lastAction,'P80 action history must end with the final organism action');
 assert.equal(snap.facets.advanced.p81PredictiveAttention.cycles,160);
 assert.equal(snap.facets.advanced.p82RealityProgress.observations,160);
 const hashBefore=JSON.stringify({p80:snap.facets.advanced.p80UnifiedSelfState,p81:snap.facets.advanced.p81PredictiveAttention,p82:snap.facets.advanced.p82RealityProgress});

@@ -3,7 +3,7 @@
 - Validate persisted P80 counters, bounded ratios, modes, labels and bounded histories; reject sparse/accessor-backed arrays and recover safely from hostile Proxy traps without executing getters.
 - Preserve partial version-1 snapshot compatibility.
 - Add a post-arbitration selected-action reconciliation so P80's recent-action history records the action that survives constitutional, policy and program overrides rather than the provisional top candidate.
-- Persist the reconciled P80 snapshot in the same cognitive tick and add focused regressions.
+- Persist the reconciled P80 snapshot in the same cognitive tick; verify the final selected action against OrganismCore state in the 160-cycle runtime persistence E2E.
 - No measured autonomy-quality uplift or release readiness change is claimed.
 
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
