@@ -193,7 +193,7 @@ function canonicalJson(value: unknown): string {
 }
 
 function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 function normalizeSource(raw: unknown): CodeSourceArtifact {
