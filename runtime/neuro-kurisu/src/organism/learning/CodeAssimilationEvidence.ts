@@ -31,7 +31,7 @@ export interface CodeAssimilationLicenseDecision {
   outcome: 'approved' | 'research-only' | 'rejected';
   licenseExpression: string | null;
   licenseEvidenceFingerprint: string;
-  permittedUses: CodeAssimilationPermittedUse[];
+  permittedUses: readonly CodeAssimilationPermittedUse[];
   reviewScope: string;
   reviewerBasis: 'human-review' | 'legal-counsel';
 }
@@ -400,6 +400,12 @@ export function verifyCodeAssimilationEvidence(
     signatureValid = false;
   }
   if (!signatureValid) return reject('invalid-signature', fingerprint);
+  const immutableLicenseDecision = payload.licenseDecision
+    ? Object.freeze({
+        ...payload.licenseDecision,
+        permittedUses: Object.freeze([...payload.licenseDecision.permittedUses]),
+      })
+    : undefined;
   const receipt: CodeAssimilationEvidenceReceipt = Object.freeze({
     schemaVersion: 1,
     evidenceFingerprint: fingerprint,
@@ -411,7 +417,7 @@ export function verifyCodeAssimilationEvidence(
     issuerRole: payload.issuerRole,
     issuedAt: payload.issuedAt,
     subjectFingerprint: payload.subjectFingerprint,
-    ...(payload.licenseDecision ? { licenseDecision: payload.licenseDecision } : {}),
+    ...(immutableLicenseDecision ? { licenseDecision: immutableLicenseDecision } : {}),
   });
   authenticatedReceipts.add(receipt);
   return {
@@ -431,10 +437,14 @@ export function isAuthenticatedCodeAssimilationEvidenceReceipt(raw: unknown): ra
 export function isCodeAssimilationUseAllowed(
   rawReceipt: unknown,
   use: CodeAssimilationPermittedUse,
+  expectedCandidateFingerprint: string,
 ): boolean {
   if (!isAuthenticatedCodeAssimilationEvidenceReceipt(rawReceipt) ||
       rawReceipt.evidenceKind !== 'license-decision' ||
-      !USES.has(use)) return false;
+      !USES.has(use) ||
+      typeof expectedCandidateFingerprint !== 'string' ||
+      !SHA256.test(expectedCandidateFingerprint) ||
+      rawReceipt.candidateFingerprint !== expectedCandidateFingerprint) return false;
   const decision = rawReceipt.licenseDecision;
   if (!decision || !decision.permittedUses.includes(use)) return false;
   if (decision.outcome === 'rejected') return false;
