@@ -6,14 +6,28 @@ on:
     paths:
       - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/system/CausalReplayCreditAssigner.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/replay-evidence-authority-boundary.mjs'
+      - 'runtime/neuro-kurisu/tests/p2688-causal-replay-credit.mjs'
+      - 'runtime/neuro-kurisu/tests/p2688-long-horizon-replay-transfer.mjs'
+      - 'runtime/neuro-kurisu/tests/p2688-migration.mjs'
+      - 'runtime/neuro-kurisu/tests/p2687-replay-policy-ablation.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
       - '.github/workflows/replay-evidence-authority-boundary.yml'
   push:
     branches: [workpass70-source]
     paths:
       - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
       - 'runtime/neuro-kurisu/src/organism/system/CausalReplayCreditAssigner.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/replay-evidence-authority-boundary.mjs'
+      - 'runtime/neuro-kurisu/tests/p2688-causal-replay-credit.mjs'
+      - 'runtime/neuro-kurisu/tests/p2688-long-horizon-replay-transfer.mjs'
+      - 'runtime/neuro-kurisu/tests/p2688-migration.mjs'
+      - 'runtime/neuro-kurisu/tests/p2687-replay-policy-ablation.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+      - 'runtime/neuro-kurisu/package-lock.json'
       - '.github/workflows/replay-evidence-authority-boundary.yml'
 
 permissions:
@@ -42,3 +56,5 @@ jobs:
         run: node --experimental-strip-types tests/replay-evidence-authority-boundary.mjs
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: P2688 causal replay credit, long-horizon transfer, and migration gates
+        run: npm --prefix runtime/neuro-kurisu run audit:p2688
