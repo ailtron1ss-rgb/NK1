@@ -3,7 +3,7 @@
   "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
   "stateSchema": 225,
   "phase": "WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline",
-  "generatedAt": "2026-11-02T18:07:03.043Z",
+  "generatedAt": "2026-11-02T18:13:13.100Z",
   "selfExcluded": true,
   "fileCount": 4576,
   "files": [
@@ -3300,7 +3300,7 @@
     {
       "path": "R22_ANTI_DECORATION_AUDIT.json",
       "bytes": 185,
-      "sha256": "fd5ed7e4a1a2a91ebee8ba178f3bf438d006a740dee9320bc1ab328a1c35724a"
+      "sha256": "d695a3d9dbf8d11ca6c7125cd3b269f6600b3c00760b329393f455eb2c576fbb"
     },
     {
       "path": "README.md",
@@ -11729,8 +11729,8 @@
     },
     {
       "path": "scripts/audit-all.mjs",
-      "bytes": 14227,
-      "sha256": "a4a1cf826d7b67b6eeaf07fb77c3414253453a8b19d0ab40699f7e0913828f91"
+      "bytes": 14296,
+      "sha256": "4a6358cef2b5ad1173a6113a91aeb1a1176c660dab1acbab3207c877c124c9d3"
     },
     {
       "path": "scripts/audit-analysis-alignment.mjs",
@@ -12099,8 +12099,8 @@
     },
     {
       "path": "scripts/audit-source-hygiene.mjs",
-      "bytes": 2363,
-      "sha256": "b6a886374d18fa084860ce07a1c2ee77793e00e84710484353bb2c8532e9520d"
+      "bytes": 2342,
+      "sha256": "dd12a0f2cf8186e5b0841adc399f7dfe70691a0f5131945bd287d17ccf3e0916"
     },
     {
       "path": "scripts/audit-source-truth.mjs",

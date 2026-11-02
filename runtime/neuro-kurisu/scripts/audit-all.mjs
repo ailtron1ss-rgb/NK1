@@ -167,6 +167,7 @@ const checks = [
   ['test:p41:truthfulness','node --experimental-strip-types tests/p41-truthfulness.mjs'],
   ['test:p41:temporal','node --experimental-strip-types tests/p41-temporal.mjs'],
   ['test:p41:server','node --experimental-strip-types tests/p41-server-smoke.mjs'],
+  ['manifest:archive','node scripts/generate-archive-manifest.mjs'],
   ['audit:archive','node scripts/verify-archive-manifest.mjs'],
 ];
 
