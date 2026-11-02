@@ -5,9 +5,11 @@ on:
     branches: [workpass70-source]
     paths:
       - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts'
       - 'runtime/neuro-kurisu/src/organism/system/CausalReplayCreditAssigner.ts'
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/replay-evidence-authority-boundary.mjs'
+      - 'runtime/neuro-kurisu/tests/p2687-adaptive-replay-feedback-authority.mjs'
       - 'runtime/neuro-kurisu/tests/p2688-causal-replay-credit.mjs'
       - 'runtime/neuro-kurisu/tests/p2688-long-horizon-replay-transfer.mjs'
       - 'runtime/neuro-kurisu/tests/p2688-migration.mjs'
@@ -19,9 +21,11 @@ on:
     branches: [workpass70-source]
     paths:
       - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts'
       - 'runtime/neuro-kurisu/src/organism/system/CausalReplayCreditAssigner.ts'
       - 'runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts'
       - 'runtime/neuro-kurisu/tests/replay-evidence-authority-boundary.mjs'
+      - 'runtime/neuro-kurisu/tests/p2687-adaptive-replay-feedback-authority.mjs'
       - 'runtime/neuro-kurisu/tests/p2688-causal-replay-credit.mjs'
       - 'runtime/neuro-kurisu/tests/p2688-long-horizon-replay-transfer.mjs'
       - 'runtime/neuro-kurisu/tests/p2688-migration.mjs'
@@ -54,6 +58,9 @@ jobs:
       - name: Replay evidence authority boundary regression
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/replay-evidence-authority-boundary.mjs
+      - name: Adaptive replay feedback authority regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2687-adaptive-replay-feedback-authority.mjs
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: P2688 causal replay credit, long-horizon transfer, and migration gates
