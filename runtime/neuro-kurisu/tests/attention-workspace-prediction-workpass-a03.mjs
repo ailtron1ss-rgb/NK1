@@ -349,7 +349,9 @@ for (let tick = 21; tick <= 40; tick++) {
   const out = hypo.step(hypoInput(tick));
   assert.notEqual(out.hypothesisId, rejectedId, 'a rejected hypothesis must not win the next step');
 }
-assert.notEqual(hypo.commitActive().reason, 'evidence-gated-commit', 'a rejected hypothesis must not be committable');
+const commitAttempt = hypo.commitActive();
+if (commitAttempt.committed) assert.notEqual(commitAttempt.hypothesisId, rejectedId, 'a rejected hypothesis must never be committed');
+else assert.ok(['insufficient-evidence', 'hypothesis-not-active'].includes(commitAttempt.reason));
 
 // 4f. Recovery: an explicitly re-opened hypothesis may compete again.
 const reopened = hypo.reopenHypothesis(rejectedId);
@@ -370,6 +372,32 @@ assert.equal(hostileHypoState.committedHypothesisId, null);
 assert.equal(hostileHypoState.previousCommittedHypothesisId, null);
 assert.deepEqual(hostileHypoState.plannedSequence, []);
 assert.ok(Number.isFinite(hostileHypo.actionBias('explore')), 'action bias must stay finite after a corrupt restore');
+
+// 4i. Prediction-vs-observation: the competitor must score its own forecast
+//     against the next observation (previously `predictedNext` was write-only).
+const predictor = new B283CompetingPredictiveHypotheses();
+const stableLatent = Array.from({ length: 16 }, (_, i) => Math.sin(i * .3));
+let firstObservationError = null;
+let lastObservationError = null;
+for (let tick = 1; tick <= 80; tick++) {
+  const out = predictor.step({ tick, globalLatent: stableLatent, selfLatent: stableLatent, worldLatent: stableLatent, goalVector: stableLatent, memoryLatent: stableLatent, reward01: .6, predictionError01: .2, uncertainty01: .3, autonomy01: .6, learningEnabled: true });
+  if (tick === 3) firstObservationError = out.observationError01;
+  if (tick === 80) lastObservationError = out.observationError01;
+  assert.ok(Number.isFinite(out.observationError01) && out.observationError01 >= 0 && out.observationError01 <= 1);
+}
+assert.ok(firstObservationError !== null && lastObservationError !== null);
+assert.ok(predictor.snapshot().predictionComparisons >= 78, 'every step after the first must compare a forecast');
+assert.ok(lastObservationError <= firstObservationError, 'a stable observation must not increase forecast error');
+const perHypothesis = predictor.snapshot().hypotheses.map(h => h.lastError01);
+assert.ok(Math.max(...perHypothesis) - Math.min(...perHypothesis) > .1, 'hypotheses must be scored individually');
+assert.ok(Number.isFinite(predictor.snapshot().calibrationError01));
+// Forecasts + counters survive a restart.
+const predictorRestored = new B283CompetingPredictiveHypotheses();
+predictorRestored.restore(structuredClone(predictor.snapshot()));
+assert.deepEqual(predictorRestored.snapshot().pendingPredictions, predictor.snapshot().pendingPredictions);
+assert.equal(predictorRestored.snapshot().predictionComparisons, predictor.snapshot().predictionComparisons);
+const resumed = predictorRestored.step({ tick: 81, globalLatent: stableLatent, selfLatent: stableLatent, worldLatent: stableLatent, goalVector: stableLatent, memoryLatent: stableLatent, reward01: .6, predictionError01: .2, uncertainty01: .3, autonomy01: .6, learningEnabled: true });
+assert.ok(resumed.predictionComparisons > predictor.snapshot().predictionComparisons, 'comparison must resume after restart');
 
 // 4h. P81 attention must not crash or emit NaN on malformed candidates.
 const p81 = new P81PredictiveAttention();

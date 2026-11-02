@@ -24,6 +24,10 @@ export interface B283State{
   hypotheses:B283HypothesisRecord[]; activeHypothesisId:number; committedHypothesisId:number|null; previousCommittedHypothesisId:number|null; globalLatent:number[]; predictedNext:number[];
   lastOutcomeReward01:number; lastPredictionError01:number; lastEvidence01:number; diversity01:number; posteriorEntropy01:number;
   selfAlignment01:number; personalityFit01:number; memoryContinuity01:number; actionInfluence01:number; lesionDrop01:number; plannedSequence:ActionKind[]; plannedReturn01:number; planningSteps:number; planningUpdates:number; history:Array<{tick:number;active:number;posterior:number;error:number;status:string}>;
+  /** WorkPass-A03: realized prediction-vs-observation comparison. */
+  lastObservationError01?:number; predictionComparisons?:number; calibrationError01?:number;
+  /** Predictions issued last step, compared against this step's observation. */
+  pendingPredictions?:Array<{hypothesisId:number;predicted:number[];confidence01:number;tick:number}>;
 }
 
 export interface B283StepInput{
@@ -36,7 +40,7 @@ export function defaultB283State():B283State{
     id:h,latent:Array.from({length:DIM},(_,i)=>rand(280000+h*1000+i,.025)),predictor:matrix(DIM,DIM,281000+h*1000,.035),actionTransition:matrix(ACTIONS.length,DIM,283000+h*1000,.035),posterior01:1/HYPOTHESES,confidence01:.42,evidence01:.5,lastError01:.5,age:0,dwell:0,
     actionWeights:matrix(ACTIONS.length,DIM,282000+h*1000,.035),status:'active',switches:0
   }));
-  return {version:1,tick:0,steps:0,learningUpdates:0,predictionUpdates:0,hypothesisSwitches:0,commits:0,rejects:0,rollbacks:0,hypotheses,activeHypothesisId:0,committedHypothesisId:null,previousCommittedHypothesisId:null,globalLatent:new Array(DIM).fill(0),predictedNext:new Array(DIM).fill(0),lastOutcomeReward01:.5,lastPredictionError01:.5,lastEvidence01:.5,diversity01:.5,posteriorEntropy01:1,selfAlignment01:.5,personalityFit01:.5,memoryContinuity01:.5,actionInfluence01:.5,lesionDrop01:0,plannedSequence:[],plannedReturn01:.5,planningSteps:0,planningUpdates:0,history:[]};
+  return {version:1,tick:0,steps:0,learningUpdates:0,predictionUpdates:0,hypothesisSwitches:0,commits:0,rejects:0,rollbacks:0,hypotheses,activeHypothesisId:0,committedHypothesisId:null,previousCommittedHypothesisId:null,globalLatent:new Array(DIM).fill(0),predictedNext:new Array(DIM).fill(0),lastOutcomeReward01:.5,lastPredictionError01:.5,lastEvidence01:.5,diversity01:.5,posteriorEntropy01:1,selfAlignment01:.5,personalityFit01:.5,memoryContinuity01:.5,actionInfluence01:.5,lesionDrop01:0,plannedSequence:[],plannedReturn01:.5,planningSteps:0,planningUpdates:0,history:[],lastObservationError01:.5,predictionComparisons:0,calibrationError01:.5,pendingPredictions:[]};
 }
 
 export class B283CompetingPredictiveHypotheses{
@@ -72,6 +76,8 @@ export class B283CompetingPredictiveHypotheses{
     this.state={...base,...r,activeHypothesisId,committedHypothesisId,previousCommittedHypothesisId,
     hypotheses,
     globalLatent:Array.isArray(r.globalLatent)?r.globalLatent.slice(0,DIM):base.globalLatent,predictedNext:Array.isArray(r.predictedNext)?r.predictedNext.slice(0,DIM):base.predictedNext,
+    lastObservationError01:clamp01(Number(r.lastObservationError01??base.lastObservationError01)),predictionComparisons:Math.max(0,Math.floor(Number(r.predictionComparisons??0))),calibrationError01:clamp01(Number(r.calibrationError01??base.calibrationError01)),
+    pendingPredictions:Array.isArray(r.pendingPredictions)?r.pendingPredictions.slice(0,HYPOTHESES).map(p=>({hypothesisId:Math.max(0,Math.min(HYPOTHESES-1,Math.floor(Number(p?.hypothesisId??0)))),predicted:Array.isArray(p?.predicted)?p.predicted.slice(0,DIM).map(v=>clamp11(Number(v))):new Array(DIM).fill(0),confidence01:clamp01(Number(p?.confidence01??.5)),tick:Math.max(0,Math.floor(Number(p?.tick??0)))})):[],
     plannedSequence:Array.isArray(r.plannedSequence)?r.plannedSequence.filter((x): x is ActionKind => ACTIONS.includes(x as ActionKind)).slice(0,5):base.plannedSequence,plannedReturn01:clamp01(Number(r.plannedReturn01??base.plannedReturn01)),planningSteps:Math.max(0,Math.floor(Number(r.planningSteps??base.planningSteps))),planningUpdates:Math.max(0,Math.floor(Number(r.planningUpdates??base.planningUpdates))),
     history:Array.isArray(r.history)?r.history.slice(-240):[]
   };}
@@ -84,10 +90,43 @@ export class B283CompetingPredictiveHypotheses{
       const selfFit=cosine01(pred,input.selfLatent?.slice(0,DIM)??new Array(DIM).fill(0));
       const goalFit=cosine01(pred,input.goalVector?.slice(0,DIM)??new Array(DIM).fill(0));
       const memoryFit=cosine01(pred,input.memoryLatent?.slice(0,DIM)??new Array(DIM).fill(0));
-      const evidence=clamp01(.34*fit+.20*selfFit+.18*goalFit+.14*memoryFit+.08*(1-(input.uncertainty01??.5))+.06*(input.autonomy01??.5));
+      // Realized forecast accuracy (updated by the previous step's comparison)
+      // now weighs on the posterior, so a hypothesis that keeps mispredicting
+      // loses the competition instead of only losing a bookkeeping statistic.
+      const reliability=clamp01(1-(h.lastError01??.5));
+      const evidence=clamp01(.30*fit+.18*selfFit+.16*goalFit+.12*memoryFit+.08*(1-(input.uncertainty01??.5))+.06*(input.autonomy01??.5)+.10*reliability);
       const error=1-evidence;
       return {h,pred,evidence,error,prior};
     });
+    // Prediction-vs-observation comparison. `predictedNext` was previously written
+    // and never read back, so the module could not tell whether its own forecast
+    // was right. Every hypothesis' last forecast is now scored against this
+    // step's actual latent, which is the only observation-grounded evidence the
+    // competitors receive.
+    const actual=input.globalLatent?.slice(0,DIM)??new Array(DIM).fill(0);
+    const pending=Array.isArray(this.state.pendingPredictions)?this.state.pendingPredictions:[];
+    let observationError01=this.state.lastObservationError01??.5;
+    if(pending.length&&pending.every(p=>p.tick<input.tick)){
+      let worstError=0,sumError=0;
+      for(const forecast of pending){
+        const h=this.state.hypotheses[forecast.hypothesisId];
+        const realizedError=clamp01(1-cosine01(forecast.predicted,actual));
+        sumError+=realizedError;worstError=Math.max(worstError,realizedError);
+        if(h){
+          h.lastError01=realizedError;
+          // Evidence follows realized accuracy, so a hypothesis that keeps
+          // mispredicting loses ground even when it fits the current input well.
+          h.evidence01=clamp01(h.evidence01*.90+(1-realizedError)*.10);
+          h.confidence01=clamp01(h.confidence01*.94+(1-Math.min(1,realizedError*1.4))*.06);
+        }
+        const accuracy01=1-realizedError;
+        this.state.calibrationError01=clamp01((this.state.calibrationError01??.5)*.90+Math.abs(forecast.confidence01-accuracy01)*.10);
+      }
+      observationError01=clamp01(sumError/Math.max(1,pending.length));
+      this.state.predictionComparisons=(this.state.predictionComparisons??0)+1;
+      this.state.lastObservationError01=observationError01;
+      this.state.lastPredictionError01=Math.max(this.state.lastPredictionError01,worstError);
+    }
     const temperature=.55+((input.uncertainty01??.5)*.35);
     // Only live hypotheses compete. A rejected or superseded hypothesis used to
     // keep its posterior weight and could win the next step and even be
@@ -112,7 +151,9 @@ export class B283CompetingPredictiveHypotheses{
     const action=this.readAction(best.h,context);
     this.state.steps++;this.state.history.push({tick:input.tick,active:best.h.id,posterior:best.h.posterior01,error:best.error,status:best.h.status});if(this.state.history.length>240)this.state.history.shift();
     if(input.learningEnabled!==false)this.learnFromPrediction({input,context,prediction:best.pred,evidence:best.evidence,action});
-    return {hypothesisId:best.h.id,posterior01:best.h.posterior01,evidence01:best.evidence,error01:best.error,action,globalLatent:best.pred.slice(),posteriorEntropy01:posteriorEntropy,diversity01:diversity,selfAlignment01:this.state.selfAlignment01,personalityFit01:this.state.personalityFit01,memoryContinuity01:this.state.memoryContinuity01};
+    // Keep every live hypothesis' forecast so the next step can score them all.
+    this.state.pendingPredictions=competing.map(x=>({hypothesisId:x.h.id,predicted:x.pred.slice(0,DIM),confidence01:clamp01(x.h.posterior01),tick:input.tick}));
+    return {hypothesisId:best.h.id,posterior01:best.h.posterior01,evidence01:best.evidence,error01:best.error,action,globalLatent:best.pred.slice(),posteriorEntropy01:posteriorEntropy,diversity01:diversity,selfAlignment01:this.state.selfAlignment01,personalityFit01:this.state.personalityFit01,memoryContinuity01:this.state.memoryContinuity01,observationError01,calibrationError01:this.state.calibrationError01??.5,predictionComparisons:this.state.predictionComparisons??0};
   }
   private learnFromPrediction(args:{input:B283StepInput;context:number[];prediction:number[];evidence:number;action:ActionKind}){
     const h=this.state.hypotheses[this.state.activeHypothesisId]!; const target=args.input.globalLatent?.slice(0,DIM)??new Array(DIM).fill(0); const actionIndex=ACTIONS.indexOf(args.action); const reward=clamp01(args.input.reward01??.5); const third=clamp11((reward-.5)*.8-(1-args.evidence)*.3);
