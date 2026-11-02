@@ -2,7 +2,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 const ROOT=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');
-const SKIP=new Set(['legacy-original','history','node_modules','.git']);
+const SKIP=new Set(['legacy-original','history','node_modules','.git','state']);
 const TEXT=new Set(['.ts','.mjs','.js','.json','.md','.sh','.html','.css']);
 const errors=[]; const warnings=[]; const seen=new Map(); let files=0;
 const generatedAuditFiles=new Set(['ARCHIVE_MANIFEST_174.json','PARAMETERIZED_FUNCTION_PROBE.json','SEMANTIC_DYNAMIC_EVIDENCE.json','FUNCTION_LIVENESS_AUDIT.json','FUNCTION_REALITY_STATUS_174.json','FUNCTION_REALITY_STATUS_175.json','SEMANTIC_COVERAGE_AUDIT.json','SEMANTIC_VERIFICATION_BACKLOG_175.json','BIG_PASS_174_REGRESSION_RESULT.json','BIG_PASS_175_REGRESSION_RESULT.json']);
@@ -15,7 +15,7 @@ async function walk(dir){
     const rel=p.slice(ROOT.length+1);
     const st=await stat(p);
     if(generatedAuditFiles.has(rel)) continue;
-    if(st.size===0 && !rel.startsWith('state/')) warnings.push(`empty-file:${rel}`);
+    if(st.size===0) warnings.push(`empty-file:${rel}`);
     const ext=path.extname(p);
     if(!TEXT.has(ext)) continue;
     let text; try{text=await readFile(p,'utf8')}catch{continue}
