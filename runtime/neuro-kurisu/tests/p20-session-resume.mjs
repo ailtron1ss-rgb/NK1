@@ -11,7 +11,7 @@ try {
   await first.init();
   await first.step('Запомни, что сессия была сегодня.');
   await first.core.endTemporalSession('test-shutdown',true);
-  first.stop();
+  await first.stop();
   const saved=JSON.parse(await readFile(sf,'utf8'));
   const original=saved.facets.advanced.temporalContinuity.lastCheckpointAt;
   saved.facets.advanced.temporalContinuity.lastCheckpointAt=original-2*60*60*1000;
@@ -22,6 +22,6 @@ try {
   assert.equal(temporal.gapSincePreviousClass,'hours');
   assert.ok(temporal.gapSincePreviousMs>=2*60*60*1000);
   assert.equal(second.core.snapshot().state.tick,1);
-  await second.core.endTemporalSession('test-finish',true); second.stop();
+  await second.core.endTemporalSession('test-finish',true); await second.stop();
   console.log(`P20_SESSION_RESUME=PASS gapClass=${temporal.gapSincePreviousClass} gapMs=${temporal.gapSincePreviousMs} tick=1`);
 } finally { await rm(dir,{recursive:true,force:true}); }
