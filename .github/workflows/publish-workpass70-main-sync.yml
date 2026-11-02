@@ -181,12 +181,13 @@ jobs:
           ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}.zip"
           REPORT="WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}_REPORT_RU.md"
           MANIFEST="NK1_RELEASE_MANIFEST_${RELEASE_DATE}_${SHORT_SHA}.json"
-          git archive --format=zip --prefix="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}/" "$VALIDATED_SHA" > "$RUNNER_TEMP/$ZIP"
+          ARCHIVE_PREFIX="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}"
+          git archive --format=zip --prefix="$ARCHIVE_PREFIX/" "$VALIDATED_SHA" > "$RUNNER_TEMP/$ZIP"
           WORKPASS="$(node -e 'const fs=require("node:fs"); const b=JSON.parse(fs.readFileSync("SUPER_VERSION.json","utf8")).build; const m=String(b??"").match(/WORKPASS(\d+)/i); if(!m) process.exit(2); console.log(m[1]);')"
           PROVENANCE="contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS${WORKPASS}.json"
           test -s contracts/SBOM.final.json
           test -s "$PROVENANCE"
-          python - "$RUNNER_TEMP/$ZIP" "$PWD/contracts/SBOM.final.json" "$PWD/$PROVENANCE" "Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}" <<'PY'
+          python - "$RUNNER_TEMP/$ZIP" "$PWD/contracts/SBOM.final.json" "$PWD/$PROVENANCE" "$ARCHIVE_PREFIX" <<'PY'
           import pathlib, sys, zipfile
           archive = pathlib.Path(sys.argv[1])
           inputs = [pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])]
@@ -317,8 +318,8 @@ jobs:
             --metadata "$RUNNER_TEMP/release-manifest-metadata.json" \
             --artifact "zip=$RUNNER_TEMP/$ZIP" \
             --artifact "report=$RUNNER_TEMP/$REPORT" \
-            --embedded-evidence "contracts/SBOM.final.json=$PWD/contracts/SBOM.final.json" \
-            --embedded-evidence "$PROVENANCE=$PWD/$PROVENANCE" \
+            --embedded-evidence "$ARCHIVE_PREFIX/contracts/SBOM.final.json=$PWD/contracts/SBOM.final.json" \
+            --embedded-evidence "$ARCHIVE_PREFIX/$PROVENANCE=$PWD/$PROVENANCE" \
             --output "$RUNNER_TEMP/$MANIFEST"
           sha256sum "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/$MANIFEST" > "$RUNNER_TEMP/SHA256SUMS.txt"
           cat "$RUNNER_TEMP/SHA256SUMS.txt"
