@@ -180,13 +180,15 @@ export class SignedReplayEvidenceAuthority {
   private readonly artifacts = new Map<string, SignedReplayEvidenceArtifact>();
   private readonly fingerprints = new Map<string, string>();
   private readonly receipts = new Map<string, ReplayEvidenceReceipt>();
+  private readonly trustedVerifierKeys: ReadonlyMap<string, string>;
   private readonly revokedVerifierIds: ReadonlySet<string>;
   private readonly maxArtifacts: number;
 
   constructor(
-    private readonly trustedVerifierKeys: ReadonlyMap<string, string>,
+    trustedVerifierKeys: ReadonlyMap<string, string>,
     options: ReplayEvidenceAuthorityOptions = {},
   ) {
+    this.trustedVerifierKeys = new Map(trustedVerifierKeys);
     this.revokedVerifierIds = options.revokedVerifierIds ?? new Set<string>();
     this.maxArtifacts = Math.max(1, Math.min(4096, Math.floor(options.maxArtifacts ?? 1024)));
   }
