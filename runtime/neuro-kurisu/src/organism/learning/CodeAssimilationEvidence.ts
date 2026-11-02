@@ -393,7 +393,7 @@ export function verifyCodeAssimilationEvidence(
     signatureValid = verifySignature(
       null,
       Buffer.from(canonicalCodeAssimilationEvidencePayload(payload), 'utf8'),
-      publicKey,
+      keyPem,
       signatureBytes,
     );
   } catch {
