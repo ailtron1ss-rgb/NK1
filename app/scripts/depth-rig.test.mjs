@@ -184,6 +184,17 @@ test("maps measured motor joint angles, never target intent, through bounded rig
     "measured 1.5 rad still obeys the explicit 30 degree safety envelope");
 });
 
+test("does not animate from a finite target when the measured motor sample is non-finite", () => {
+  const pose = resolveDepthRigPoseFromMotorFrame(rig, {
+    version: 1, goalId: "goal.unobserved.01", phase: "moving",
+    joints: {
+      headYaw: { id: "headYaw", angleRad: Number.NaN, targetAngleRad: 0.9, velocityRadPerSec: 0, available: true },
+    },
+  }, [{ nodeId: "head", jointId: "headYaw" }]);
+  assert.deepEqual(pose.deltas, {},
+    "a target is not evidence of observed movement when the measured sample is invalid");
+});
+
 test("idle motor frames do not animate and duplicate or unsafe bindings fail closed", () => {
   const idle = resolveDepthRigPoseFromMotorFrame(rig, {
     version: 1, goalId: null, phase: "idle", joints: {},
