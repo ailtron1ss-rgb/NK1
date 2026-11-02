@@ -6,8 +6,10 @@ import test from "node:test";
 
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const componentPath = join(appRoot, "src/components/KurisuOriginalStage.tsx");
+const avatarStagePath = join(appRoot, "src/components/AvatarStage.tsx");
 const contractPath = join(appRoot, "public/kurisu-original/character-art-contract.json");
 const source = await readFile(componentPath, "utf8");
+const avatarStageSource = await readFile(avatarStagePath, "utf8");
 const contract = JSON.parse(await readFile(contractPath, "utf8"));
 
 test("Original 2D paint-server IDs are unique per mounted component instance", () => {
@@ -92,6 +94,6 @@ test("Original SVG face receives projected warmth/mouth-shape and organism reduc
   assert.match(source, /affectSmile \* 10/);
   assert.match(source, /nk-reduced-motion/);
   assert.match(source, /animation: none !important/);
-  assert.match(source, /mouthSmile=\{avatarBrainProjection\.channels\.mouthSmile\}/);
-  assert.match(source, /reducedMotion=\{avatarBrainProjection\.reducedMotion\}/);
+  assert.match(avatarStageSource, /mouthSmile=\{avatarBrainProjection\.channels\.mouthSmile\}/);
+  assert.match(avatarStageSource, /reducedMotion=\{avatarBrainProjection\.reducedMotion\}/);
 });
