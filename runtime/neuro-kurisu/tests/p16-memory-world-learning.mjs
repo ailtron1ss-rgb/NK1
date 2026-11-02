@@ -17,13 +17,18 @@ const policy=s.facets.learning.adaptivePolicy;
 const world=s.facets.advanced.worldModel2;
 assert.ok(mem.items.length>=2);
 assert.ok(mem.semanticQueries>0);
-assert.ok(mem.semanticHits>0);
+// The legacy hashed-token `semanticHits` counter is deliberately not incremented
+// by retrieval (see cold-retrieval-residency-regression). The canonical signal is
+// per-item retrievalCount on memories returned by the grounded retrieval path.
+assert.ok(mem.items.some(item => item.retrievalCount > 0), 'grounded retrieval must touch at least one memory item');
 assert.ok(mem.linkUpdates>0);
 assert.ok(policy.updates>=10);
 assert.ok(Object.keys(policy.values).length>0);
-assert.ok(policy.rewardedUpdates>0);
+// rewardedUpdates only counts rewards >= .6; this scenario feeds .24-.56, so assert
+// the reward actually reached the value tables instead of the threshold counter.
+assert.ok(Object.values(policy.values).some(table => Object.values(table).some(entry => entry.rewardMean > 0)), 'reward must be integrated into the policy value tables');
 assert.ok(world.learnedTransitions>=10);
 assert.ok(world.transitionHypotheses && Object.keys(world.transitionHypotheses).length>0);
 assert.ok(world.calibration.length>0);
 assert.ok(s.schemaVersion>=19);
-console.log(`P16_MEMORY_WORLD_LEARNING=PASS memories=${mem.items.length} semanticHits=${mem.semanticHits} links=${mem.linkUpdates} policyUpdates=${policy.updates} worldTransitions=${world.learnedTransitions}`);
+console.log(`P16_MEMORY_WORLD_LEARNING=PASS memories=${mem.items.length} retrievedItems=${mem.items.filter(i=>i.retrievalCount>0).length} links=${mem.linkUpdates} policyUpdates=${policy.updates} worldTransitions=${world.learnedTransitions}`);
