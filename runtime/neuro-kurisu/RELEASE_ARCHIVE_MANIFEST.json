@@ -3,9 +3,9 @@
   "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
   "stateSchema": 225,
   "phase": "WorkPass70/Unified-Embodiment-Intent-Audio-Clock-and-Viseme-Timeline",
-  "generatedAt": "2026-10-19T06:42:57.245Z",
+  "generatedAt": "2026-11-02T18:07:03.043Z",
   "selfExcluded": true,
-  "fileCount": 4261,
+  "fileCount": 4576,
   "files": [
     {
       "path": "ACTIVE_ROADMAP_35.6.34_B400_RU.md",
@@ -165,7 +165,7 @@
     {
       "path": "ARCHITECTURE_MANIFEST.json",
       "bytes": 913,
-      "sha256": "d588064d5aafae0f1f60fb61b6df00bfcab5e056c0712eaf88f9b128c23efce6"
+      "sha256": "8c934501bd5b59b8aaed685b8d80544f4099280517309f1bebacb56bb344f831"
     },
     {
       "path": "AUDIT_NEURO_KURISU_35.6.10_B357_RECHECK_2026-09-14.md",
@@ -3300,12 +3300,12 @@
     {
       "path": "R22_ANTI_DECORATION_AUDIT.json",
       "bytes": 185,
-      "sha256": "902d9b117c14606c584cca16015905a7d0ac1d03e69be4dc228b749f98f57b4e"
+      "sha256": "fd5ed7e4a1a2a91ebee8ba178f3bf438d006a740dee9320bc1ab328a1c35724a"
     },
     {
       "path": "README.md",
-      "bytes": 12327,
-      "sha256": "d7eebb2756815c17a75b514636cb2f7a60d2dab816a7a966f8b87f7ed6c23768"
+      "bytes": 13589,
+      "sha256": "39e35ba0e408ca909ec358bfe353a7c46df52f29e647c8cb83546f5c440d0668"
     },
     {
       "path": "README_FIRST_STEP_11_RU.md",
@@ -3364,8 +3364,8 @@
     },
     {
       "path": "README_RU.md",
-      "bytes": 15999,
-      "sha256": "3fd4978ad7744fd9f14dd1d00350197f4c543a665ff0f5908ba9881ee371906f"
+      "bytes": 16153,
+      "sha256": "c38965e58f235abe21461072c2f3db164a7782f57375af5ea643f095cfd20d29"
     },
     {
       "path": "RELEASE_35.6.61_B2522.txt",
@@ -5194,8 +5194,8 @@
     },
     {
       "path": "docs/00_MASTER_PERSONHOOD_CONSTITUTION_RU.md",
-      "bytes": 6524,
-      "sha256": "3c0965ae87711da3a57fda5e0e38bc1abca6525c511083c49e57be50fc4c41e8"
+      "bytes": 6678,
+      "sha256": "c78304f6e55661297258a95a097e5656a158f5df8e60fbad7e52b90d8744ba0d"
     },
     {
       "path": "docs/02_INTEGRATIONS/02_PASS_03_WORLD_NEURAL_MEMORY_AGENCY/PASS_03_IMPLEMENTATION_RU.md",
@@ -5284,8 +5284,18 @@
     },
     {
       "path": "docs/ARCHITECTURE_RU.md",
-      "bytes": 7794,
-      "sha256": "569752eb2c8c6cb14758445e060062e69189f1be7dcf7ce4148445376260fe57"
+      "bytes": 7948,
+      "sha256": "6a57dbe729dc7959f1d3c60abe9160e81e2055143d76bc92ddcbc82a21c6ae46"
+    },
+    {
+      "path": "docs/ASPECT03_WORLD_PERCEPTION_CHANGELOG_2026-10-30_RU.md",
+      "bytes": 8092,
+      "sha256": "5846b8b12c0bea24c803dd391ced75ef74b823b78e1b72ab591af5ba48d26048"
+    },
+    {
+      "path": "docs/ASPECT03_WORLD_PERCEPTION_PASS2_2026-10-30_RU.md",
+      "bytes": 22979,
+      "sha256": "60d222419267c96c4ec1083d6f53d8aa5fc183f0bf567c8d26fb89920a89618d"
     },
     {
       "path": "docs/B2502_B2503_INTEGRATION_MAP_RU.md",
@@ -6814,8 +6824,8 @@
     },
     {
       "path": "docs/EVOLUTION_HANDOFF_RU.md",
-      "bytes": 7737,
-      "sha256": "d4d2374015aaef8bbdcf72339a1e06adb5db7c7398713ff138c90e00c1295433"
+      "bytes": 7891,
+      "sha256": "e514d865e5923de03c7cf790a1b616621f1c592e9155751e1e04589bbae1374a"
     },
     {
       "path": "docs/FINAL_RELEASE_STATUS_B287_RU.md",
@@ -7045,7 +7055,7 @@
     {
       "path": "docs/LOCAL_SEMANTIC_MEMORY.md",
       "bytes": 2884,
-      "sha256": "61e1f5b976f97ca6e3c0cc0c98985d90a9fa61d180a2799ac26a9c1b4f205057"
+      "sha256": "6b8a7a75df0728e3f1ef9390561ea7e2c729160c9dccc9c49a8f5e5903ae67e4"
     },
     {
       "path": "docs/MASTER_ARCHITECTURE_COVERAGE_RU.md",
@@ -7054,8 +7064,8 @@
     },
     {
       "path": "docs/MASTER_ROADMAP_5_STAGES_RU.md",
-      "bytes": 8766,
-      "sha256": "843c7105aadf44829eece647bd2cea149426e1683103d47912a4863690dc108f"
+      "bytes": 8920,
+      "sha256": "3f658258a74309788546d2118ca16a582a93a9be6912581719b5d5e9fd352868"
     },
     {
       "path": "docs/MEGA_PROGRESS_RU.md",
@@ -7071,6 +7081,11 @@
       "path": "docs/MEGA_ROADMAP_CURRENT_RU.md",
       "bytes": 3184,
       "sha256": "647d7296510de4ffa93143dc9ee064a54f48cf3a1a7fc981f0c930d846dd99a2"
+    },
+    {
+      "path": "docs/MEM0_INTEGRATION_WORKPASS1.md",
+      "bytes": 10408,
+      "sha256": "42d1307efde875ed666724485b20787a9edad21e85e6afb50e33280f00865250"
     },
     {
       "path": "docs/MEMORY_TRANSFER_R14_2026-09-25.md",
@@ -7091,6 +7106,11 @@
       "path": "docs/NEURO_KURISU_UNIVERSAL_WORK_PROMPT_v3.0_RU.md",
       "bytes": 15203,
       "sha256": "3db7d094745c555c858e6abb3d82f28395c3a5c81f864c6144236a68811eaa5e"
+    },
+    {
+      "path": "docs/PERCEPTION_DEEP_PASS_2026-10-30.md",
+      "bytes": 9137,
+      "sha256": "32e8370ff1db72b43e0921858b17452355471ffb0d6b681babd79c2ab1c1eebb"
     },
     {
       "path": "docs/PORTABLE_SUBJECT_BOUNDARY_34.1.0_RU.md",
@@ -7189,8 +7209,8 @@
     },
     {
       "path": "docs/PROJECT_PROGRESS_RU.md",
-      "bytes": 14707,
-      "sha256": "eca1131aab5bbae45d69cc4d299cc80fda7a96a52d8083dbf1ab0b0cce6dd6ca"
+      "bytes": 14861,
+      "sha256": "2c37ccf8abfea1f59abfd7a81fccce86c6ae952c5ee018b8f8b3e0ae0ac14691"
     },
     {
       "path": "docs/PROJECT_STATE_INDEX_V34.47.0_RU.md",
@@ -7429,8 +7449,8 @@
     },
     {
       "path": "docs/SYSTEM_OF_RECORD_RU.md",
-      "bytes": 8845,
-      "sha256": "8a58ded9f16dae217665e137c732978289e7e13778234b0b67edbb69bf2648b1"
+      "bytes": 8999,
+      "sha256": "5e9bd8d5452dc9c58663d14e55cdff2b418bafba2741ebffb66f400288bfa5a2"
     },
     {
       "path": "docs/TERMUX_SESSION_CONTINUITY_RU.md",
@@ -7529,8 +7549,68 @@
     },
     {
       "path": "docs/WORKING_PROMPT_RU.md",
-      "bytes": 1977,
-      "sha256": "910e937d1d0e3a51e67dd7d312719dfe10134631bcf26ac9733c0b8e5d662ef8"
+      "bytes": 2131,
+      "sha256": "73a632dd2eecdcae450421f6cf4cc59134ddf6a01262f8b9880b6a631483ce95"
+    },
+    {
+      "path": "docs/WORKPASS507_COGNITIVE_MEMORY_BUDGET_GATE_RU.md",
+      "bytes": 3388,
+      "sha256": "0dfeae2c79c5754f78724b653623dfa63543a8ed02ba0c1119be6ce70ce321ce"
+    },
+    {
+      "path": "docs/WORKPASS568_BILINGUAL_AUTOBIOGRAPHICAL_RECALL_RU.md",
+      "bytes": 2851,
+      "sha256": "58e9a7586bc7854159c75d83906fcac723cc935196b6b13a148496530f464b58"
+    },
+    {
+      "path": "docs/WORKPASS569_SESSION_LINEAGE_METADATA_GUARD_RU.md",
+      "bytes": 2595,
+      "sha256": "deb108e85831852c2b9d8c9221c33d034e2d501ab98c8a09801244ba815bec37"
+    },
+    {
+      "path": "docs/WORKPASS573_MEMORY_QUERY_CONTEXT_STABILITY_RU.md",
+      "bytes": 3688,
+      "sha256": "fdae58d6a6c5c591d3b442d896e953cf9205a5871110b07fbc825341c78292f4"
+    },
+    {
+      "path": "docs/WORKPASS575_VOICE_LANGUAGE_AND_BREATH_RU.md",
+      "bytes": 2364,
+      "sha256": "7849f6db783a2f811da640974efede59832b64bae74121cf027fac6c44ac5ee3"
+    },
+    {
+      "path": "docs/WORKPASS577_EMOTION_TO_VOICE_COHERENCE_RU.md",
+      "bytes": 3262,
+      "sha256": "7923bb18361880acaee13cdfd0fe37a0e36be2035a1f1cfab3a09d416777c173"
+    },
+    {
+      "path": "docs/WORKPASS578_BILINGUAL_CUE_BOUNDARIES_RU.md",
+      "bytes": 1903,
+      "sha256": "480458a1a370f470638914da4b92808c8ccd1d16a7a965c00abf67ab1b68da7b"
+    },
+    {
+      "path": "docs/WORKPASS592_INTRINSIC_EXPERIMENT_EPISTEMICS_RU.md",
+      "bytes": 2619,
+      "sha256": "4beb7f4a32ca47c14b804e66e55be66f9192324a8f28f2e980c0834e2f236e76"
+    },
+    {
+      "path": "docs/WORKPASS595_VERIFIED_EXPERIMENT_CLOSURE_RU.md",
+      "bytes": 2517,
+      "sha256": "0e7de3f739c12da81b2420e681d094e6251f2cd4fbc04c3501235e74a1ef7083"
+    },
+    {
+      "path": "docs/WORKPASS596_SCIENTIFIC_EVIDENCE_IDEMPOTENCY_RU.md",
+      "bytes": 1997,
+      "sha256": "ddaf246d654cdbab3d4a1bf8aa8779458659513a1ad3b8ea166f0004320b8a8b"
+    },
+    {
+      "path": "docs/WORKPASS630_NATIVE_SPEECH_UI_TRANSPORT_RU.md",
+      "bytes": 4813,
+      "sha256": "78f72f347f59a90b6993dd2207ea7fb48670803094776d6b3e1618e2b0a72afa"
+    },
+    {
+      "path": "docs/WORLD_PERCEPTION_INTEGRATION_PASS_2026-10-29.md",
+      "bytes": 3939,
+      "sha256": "8728b5572f4224b1a43a495be35e16d86e16cc3f17d33d078fd946a97e98bff6"
     },
     {
       "path": "docs/audits/AUDIT_B2501_DEEP_NEURAL_CAUSAL_2026-09-17_RU.md",
@@ -10764,8 +10844,8 @@
     },
     {
       "path": "package.json",
-      "bytes": 256719,
-      "sha256": "8009940299a86e50f72dd1ba79f18e4d7957cceda42d90df62b64ff25fc08fb2"
+      "bytes": 285051,
+      "sha256": "1547b30fd6d2c2cad89c1419ea8e0b564601592d4ca599c6ab2cd7a1c1e33961"
     },
     {
       "path": "patch_r14.py",
@@ -10903,9 +10983,14 @@
       "sha256": "c09b01f86a03fdb05b1795a8136df7ce154c38a09adadd32d19977227b4976ee"
     },
     {
+      "path": "public/live2d/embodiment-intent.mjs",
+      "bytes": 4560,
+      "sha256": "d904509eccbfdffaccae7c36619ec4e83d1d27e2efb40173854c896cfb1b3abc"
+    },
+    {
       "path": "public/live2d/viewer.html",
-      "bytes": 7229,
-      "sha256": "1a92903e8a5b534500af2b4bc472abf39bb87ca47e51a2e0bc8a3500e868ddd0"
+      "bytes": 12904,
+      "sha256": "cbd483094560f25aea2f668cacb6a5557ec762907c21cfcbe13fc9d14cdbbc0e"
     },
     {
       "path": "public/style.css",
@@ -11573,6 +11658,51 @@
       "sha256": "a3c15840b589878d116df223e58dd4452e9daf48c828dcf40d266f410b3dd8c2"
     },
     {
+      "path": "research/vendor/CleanRL/LICENSE",
+      "bytes": 1075,
+      "sha256": "34ad40e40ee9d274d4bfcbcd1b56f2a1f8a22b5eb71e42094e78151b76377a85"
+    },
+    {
+      "path": "research/vendor/CleanRL/UPSTREAM_INTAKE.md",
+      "bytes": 819,
+      "sha256": "99ed0a6792ddf19c9fd67e083ce0fdb427eadc26de10bc1ed609974cb96dce0a"
+    },
+    {
+      "path": "research/vendor/ContinualAI-Avalanche/LICENSE",
+      "bytes": 1056,
+      "sha256": "81a826c503145d79c454c6e49fce9f7bea17d8c1dacff93fe0dbc92283c8bbe5"
+    },
+    {
+      "path": "research/vendor/ContinualAI-Avalanche/UPSTREAM_INTAKE.md",
+      "bytes": 1446,
+      "sha256": "b70397ada53ed3cb6c1fb87e320d68c28dfa379e691070cde1f230b5e0ab65f4"
+    },
+    {
+      "path": "research/vendor/OpenAI-Baselines/LICENSE",
+      "bytes": 1087,
+      "sha256": "fd85a61f2f086d9da85b5d3cbb1a5f49665fc7fe9fed5f799cb5753ad766f710"
+    },
+    {
+      "path": "research/vendor/OpenAI-Baselines/UPSTREAM_INTAKE.md",
+      "bytes": 1030,
+      "sha256": "43b7b4e42270a78d0076684b976dc673b7a3e5de5cb1e762c6f2df96b1e86100"
+    },
+    {
+      "path": "research/vendor/SkillLearnBench/BASELINES.md",
+      "bytes": 1975,
+      "sha256": "10c3672b199286931748bd926ec6b3ee17b41d77a088bd8e66825174f2115e55"
+    },
+    {
+      "path": "research/vendor/SkillLearnBench/LICENSE",
+      "bytes": 1064,
+      "sha256": "d4a5e863f521c0fe405a0d94271be34740539f9dfa973c99ab883a771f7fa622"
+    },
+    {
+      "path": "research/vendor/SkillLearnBench/UPSTREAM_INTAKE.md",
+      "bytes": 1343,
+      "sha256": "e01cc28d28b71403172244c550dd3b02bee8242dffe1b60de125e8222ac8c038"
+    },
+    {
       "path": "rr.continuity.jsonl",
       "bytes": 5700,
       "sha256": "6630fca59dc9f2f2d300952fd6a581ad6bf1d4a366908466fec57814296b151c"
@@ -11593,9 +11723,14 @@
       "sha256": "76af1f110883871aad47a2783a32be4a0b95be8b0610fa7fe9e7f40137b75ca7"
     },
     {
+      "path": "scripts/audit-actions-runtime.mjs",
+      "bytes": 2254,
+      "sha256": "6d4f4248d1861bc2a6a33a407ff288971fcef6bd177d61e0b94293817e321e6c"
+    },
+    {
       "path": "scripts/audit-all.mjs",
-      "bytes": 12826,
-      "sha256": "dfe3455c7a553102734cbe0191e9db2b9d43046f95c45092fd06a06084bba9a3"
+      "bytes": 14227,
+      "sha256": "a4a1cf826d7b67b6eeaf07fb77c3414253453a8b19d0ab40699f7e0913828f91"
     },
     {
       "path": "scripts/audit-analysis-alignment.mjs",
@@ -11609,8 +11744,8 @@
     },
     {
       "path": "scripts/audit-architecture.mjs",
-      "bytes": 3171,
-      "sha256": "9a19eb3e9e19ef1d89c8bdd5f2e831a09b1b30e47aea838d8bbaef45318d4062"
+      "bytes": 3602,
+      "sha256": "bc7ad9e83f216e91683983675f469d1252e9adb54820830a0bc6beb13b9d00a3"
     },
     {
       "path": "scripts/audit-b292-reality-closure.mjs",
@@ -11744,8 +11879,8 @@
     },
     {
       "path": "scripts/audit-core-ownership.mjs",
-      "bytes": 9526,
-      "sha256": "215a8aadaf77b3eef5ddfcf7dc061c95a4d56809d1a2e6380372da6acb88f14b"
+      "bytes": 10896,
+      "sha256": "a8752955a734970d07cc4844e25678d259b03e559eb05f36c7c7076e2e1aaa5a"
     },
     {
       "path": "scripts/audit-core-physical-ownership.mjs",
@@ -11754,8 +11889,8 @@
     },
     {
       "path": "scripts/audit-executable-syntax.mjs",
-      "bytes": 1721,
-      "sha256": "86bd0ce72f62417ce9578f564246d09b98852ab9896a2def010bfe04e4a78d7f"
+      "bytes": 1676,
+      "sha256": "fa535cc7088e3632546bfa8b950c97a9e97b3b2f10cbc88b1e46b853f9a85f26"
     },
     {
       "path": "scripts/audit-facade-dependency.mjs",
@@ -11764,8 +11899,8 @@
     },
     {
       "path": "scripts/audit-forensics.mjs",
-      "bytes": 4078,
-      "sha256": "c4360f56b7e72e10667a1d24ee9d523074e3290201f58df8058953c4c67251b7"
+      "bytes": 4172,
+      "sha256": "553d4b2fe3bc5f015e5be6eda830e620fa1e1acdd404de94ed76dd47552dba9a"
     },
     {
       "path": "scripts/audit-full-project.mjs",
@@ -11774,8 +11909,8 @@
     },
     {
       "path": "scripts/audit-function-liveness.mjs",
-      "bytes": 3278,
-      "sha256": "5bcdfef6843fa4f3f05178f505555c398be4ee888fe7de0be3e9fe2b7b08a4d3"
+      "bytes": 3139,
+      "sha256": "e2f4cd699544bd9a08a34c5312f5c1b01165ae5ffba3fcac011ef7f0b904b7e1"
     },
     {
       "path": "scripts/audit-function-reality-171.mjs",
@@ -11880,7 +12015,7 @@
     {
       "path": "scripts/audit-pass104.mjs",
       "bytes": 1305,
-      "sha256": "3920be6a1bdd897a873d278fe82f02b446ea4b7a7e7439fce256e386280ff039"
+      "sha256": "b8b261a909a018001d5e0fc4a857f67d81e43ea089e8c3c9f105bcb14e0cfa6f"
     },
     {
       "path": "scripts/audit-pass106.mjs",
@@ -11899,8 +12034,8 @@
     },
     {
       "path": "scripts/audit-project-state.mjs",
-      "bytes": 1553,
-      "sha256": "1ec414228ebb3ac8d7faf6a8f6b19401385288aaa8de4395807a92f8372fc4b2"
+      "bytes": 2221,
+      "sha256": "69a921632eb3bff0397833082c38424e5d8105a1d3629a0babd80b92faec1bea"
     },
     {
       "path": "scripts/audit-r11-learning-provenance.mjs",
@@ -11939,8 +12074,8 @@
     },
     {
       "path": "scripts/audit-semantic-coverage-177.mjs",
-      "bytes": 10254,
-      "sha256": "513c35aec9cfe40f85b1bb7d2b4df6fe4cfc2495f249b28c65af7d99645fd85e"
+      "bytes": 10115,
+      "sha256": "b492c298f97abd72f3af58964362ac972ca7fb2a3da04b05acdd90fcb96a0da3"
     },
     {
       "path": "scripts/audit-semantic-coverage-179.mjs",
@@ -11949,13 +12084,13 @@
     },
     {
       "path": "scripts/audit-semantic-coverage-181.mjs",
-      "bytes": 10254,
-      "sha256": "454eab7e8e37693f50a3139454af2a6bd6f46f5db4ec51cb4f1c616128ac0c54"
+      "bytes": 10115,
+      "sha256": "d0f06ace70087939327bf2a2380612104cf5a2be2d541860af37c04aa0040ec3"
     },
     {
       "path": "scripts/audit-semantic-coverage.mjs",
-      "bytes": 11543,
-      "sha256": "c6521a0700d7449e223773a0951a634b928c7a8c5c9e10e3c787f1a0ceff1555"
+      "bytes": 11404,
+      "sha256": "9491a1ce56ead26fc84a5303a522456731c1833435851bd2b365c2187e4eaaf8"
     },
     {
       "path": "scripts/audit-server-imports.mjs",
@@ -11983,6 +12118,11 @@
       "sha256": "9ef2500d4e6e8a21d2f651527bd7cf46e9844ec585629c2dbd1ab42230bcc679"
     },
     {
+      "path": "scripts/audit-subsystem-boundary.mjs",
+      "bytes": 2172,
+      "sha256": "c929924548f197b15b8f01094a067fb11efcf049ecbd3e2eec2073783dda3dd9"
+    },
+    {
       "path": "scripts/audit-ui-api-linkage.mjs",
       "bytes": 6184,
       "sha256": "d801992026759ea1557c9fa6d9842159e15fd0efcc433893e7a4798744d6edb3"
@@ -11999,13 +12139,13 @@
     },
     {
       "path": "scripts/build-function-passports.mjs",
-      "bytes": 11811,
-      "sha256": "243d7c58bd845f71e400fb5184266783b3de2f63d53e4d42766af64ce15ad546"
+      "bytes": 11672,
+      "sha256": "f59bbf1743ad94298bd88aa565267f28e90f7d184b0b14c97808f2be0e74fe7a"
     },
     {
       "path": "scripts/build-function-reality-graph.mjs",
-      "bytes": 12441,
-      "sha256": "38b4504eee310064e3e9664384d7f9524b25dad07328b9df01c54b128ac8d29a"
+      "bytes": 12302,
+      "sha256": "0d63cf0e58321c1b39798524a501a8567a0bc1e13951ab65b638369ee08ab2d9"
     },
     {
       "path": "scripts/build-function-reality-master-188.mjs",
@@ -12016,6 +12156,21 @@
       "path": "scripts/build-release-freeze-180.mjs",
       "bytes": 1842,
       "sha256": "870fcea57fcef633c9cde63e066dfe450d04adf052fd8652e0e7310492ea0fee"
+    },
+    {
+      "path": "scripts/core-ownership-policy.mjs",
+      "bytes": 820,
+      "sha256": "cd70f68dd05da443ace820f2b4795c44c8ba45aab721d986f23df501e4e7bfc5"
+    },
+    {
+      "path": "scripts/create-learning-experiment-plan.mjs",
+      "bytes": 3047,
+      "sha256": "7e894f6e2dcef68833908b7a909a247f0ab58c51181e0d04ad9821e005972072"
+    },
+    {
+      "path": "scripts/create-skill-promotion-approval-request.mjs",
+      "bytes": 7010,
+      "sha256": "744542c89f17dbff81ca23382de765bcd1bf4709be114b14b4d134b4e708b6ff"
     },
     {
       "path": "scripts/device-long-run.mjs",
@@ -12033,6 +12188,16 @@
       "sha256": "d2fe7b5d7e06bac2c3e8922dec46a05bfb966c5797468435840e97b26a16f65e"
     },
     {
+      "path": "scripts/evaluate-learning-history-workpass74.mjs",
+      "bytes": 1472,
+      "sha256": "72ca29eb176a1aa9c90e2a948a87464c245be9a3a3040e1e05337c16363adf1d"
+    },
+    {
+      "path": "scripts/evaluate-learning-holdout-workpass72.mjs",
+      "bytes": 1350,
+      "sha256": "b5871356a40fdb362675e673099070f2620d664d3d7e401f96f74717af69b6c8"
+    },
+    {
       "path": "scripts/export-portable-subject.mjs",
       "bytes": 758,
       "sha256": "4a24e968060e89d035c14254551e296b98f2e493fbeade128ad4080536e4d516"
@@ -12044,8 +12209,8 @@
     },
     {
       "path": "scripts/generate-manifests.mjs",
-      "bytes": 2989,
-      "sha256": "262b58d64aeb57a29022e1145fc14f28301fe4d98a366c7d86b809ec5aed89be"
+      "bytes": 2597,
+      "sha256": "e4282b3852a2518bb4239a86c16dae6461affd5c491202cae4a763d260517631"
     },
     {
       "path": "scripts/history/p5-release-audit.mjs",
@@ -12056,6 +12221,41 @@
       "path": "scripts/history/release-audit-legacy.mjs",
       "bytes": 422,
       "sha256": "7a137c235e0cfeaa2795433b8a736696ccc972eb72b66312ffbeba644f6635fb"
+    },
+    {
+      "path": "scripts/lib/forensics-rules.mjs",
+      "bytes": 1974,
+      "sha256": "2660c16596aa14a9a6572d43e813a3ab4c4436e8373d3f999844390e71dd4535"
+    },
+    {
+      "path": "scripts/lib/manifest-counts.mjs",
+      "bytes": 1017,
+      "sha256": "7590c828da609338a4431dbab5743ee27acec11c7dc70c23cadb80ac0d29cc50"
+    },
+    {
+      "path": "scripts/lib/resolve-typescript.mjs",
+      "bytes": 929,
+      "sha256": "0f04ffb370d06458e986b85fe3c37659ad09c2511024de67f11e04c9e3840b15"
+    },
+    {
+      "path": "scripts/lib/source-mask.mjs",
+      "bytes": 3038,
+      "sha256": "8cd34fa1565ec20762f3c3596350118f6577cd8ff2bb02c1660ca13f810071d5"
+    },
+    {
+      "path": "scripts/lib/subsystem-boundary-rules.mjs",
+      "bytes": 2548,
+      "sha256": "7da22d46e0a7f7266b7c5799e0361d87f8a2b4126ed186c733566b7f7fbe328a"
+    },
+    {
+      "path": "scripts/memory-doctor.mjs",
+      "bytes": 2415,
+      "sha256": "158f5aa0ae06c46cb478a1e9649d3296443f29c4addea222f49423da20f73e4d"
+    },
+    {
+      "path": "scripts/memory-retrieval-annotation-pack.mjs",
+      "bytes": 25077,
+      "sha256": "e7e020f8396c6292bd72eaa5bfe94014c95c7800c6e36d970f1463f8b495f78b"
     },
     {
       "path": "scripts/p2750-release-check.mjs",
@@ -12284,8 +12484,8 @@
     },
     {
       "path": "scripts/run-memory-retrieval-experiment.mjs",
-      "bytes": 7848,
-      "sha256": "785f90f0ed19eabfe6f961daca0db24660d2783b0d01d22bcbfb5df3f9269d4c"
+      "bytes": 8983,
+      "sha256": "9f3852b6371ff999436c0f5a4be7088180768c1b3ea46fe43dd986c78f5e009c"
     },
     {
       "path": "scripts/run-spine-termux.sh",
@@ -12296,6 +12496,11 @@
       "path": "scripts/server-smoke-poll.mjs",
       "bytes": 2078,
       "sha256": "5a71ba1fc1c2bd68526a512a6cee7b970d539154280a829e0d377ffc05133eb9"
+    },
+    {
+      "path": "scripts/stage-verified-skill-candidate.mjs",
+      "bytes": 7732,
+      "sha256": "85a05ea014fe6cb60ff7d8200e5e0fe5c1a25eb57eeb5b5c0000951c2dfe7a93"
     },
     {
       "path": "scripts/termux/install-from-download.sh",
@@ -12314,8 +12519,8 @@
     },
     {
       "path": "scripts/typecheck-runtime.mjs",
-      "bytes": 2147,
-      "sha256": "e460337fc6f9b0c4a8d99a11eab0ba313dd8865e4cee4597bcd7320cfb798ad1"
+      "bytes": 2797,
+      "sha256": "0e3985d2e25792036ea20965f16ea2d5f1b61011df5e548c95437c4754d3b8b0"
     },
     {
       "path": "scripts/verify-archive-manifest.mjs",
@@ -12338,9 +12543,39 @@
       "sha256": "7bcd8cc1eac0da6d68a96030a8e7ab073b379796458662f931d5ba5abf56791e"
     },
     {
+      "path": "src/learning/bounded-experience-replay-workpass76.mjs",
+      "bytes": 11372,
+      "sha256": "79000f806feb5492c6986dbea4c673a5a93395164dc2817a5264b83794b862e7"
+    },
+    {
+      "path": "src/learning/continual-learning-history-workpass74.mjs",
+      "bytes": 4692,
+      "sha256": "c4af7a729633a9a2fc7a19684f92ef8a745a862a9607d726417b50db96867b0c"
+    },
+    {
+      "path": "src/learning/continual-replay-ablation-workpass78.mjs",
+      "bytes": 6352,
+      "sha256": "977248f0c6f866e7652607cd1e9c66749807297a22f011a1518c18c9fb4b0dd9"
+    },
+    {
+      "path": "src/learning/learning-evaluation-document-workpass72.mjs",
+      "bytes": 1274,
+      "sha256": "4f06fb28e22333791d99880c5094cd0e669355735eef5b64c4e3522b4ea921a1"
+    },
+    {
+      "path": "src/learning/paired-holdout-evaluation-workpass71.mjs",
+      "bytes": 8959,
+      "sha256": "6cec1073e67f874fc3ed156e76c17ac3d02f88eda8abdd99df510e9065e7cfb7"
+    },
+    {
+      "path": "src/learning/replay-strategy-comparison-workpass75.mjs",
+      "bytes": 6505,
+      "sha256": "7976f02ff475b8862ddbec85cf60f29d132c73888ef75fe0f9f04a812d5769a2"
+    },
+    {
       "path": "src/node-shims.d.ts",
-      "bytes": 3401,
-      "sha256": "24b8426259b874dd542a5612ef87939e41b6a0a0414d08ccde3c4d817f5c0cc9"
+      "bytes": 6017,
+      "sha256": "34a576a8911d481c0e80560112a52106318d1eba745d73aa18486ea80ad6d150"
     },
     {
       "path": "src/node-sqlite-shim.d.ts",
@@ -12349,8 +12584,8 @@
     },
     {
       "path": "src/organism/body/AndroidEmbodimentBridge.ts",
-      "bytes": 27713,
-      "sha256": "0f37800f649c4354f20c70f96aa2f77ab9af74ef6cacd93aa663740b8efa91cb"
+      "bytes": 28504,
+      "sha256": "b08cc79f1815c88f16e3bf4f56924285224dc4dfbd428c06044c957fa0a1d20f"
     },
     {
       "path": "src/organism/body/CameraEvidenceProcessor.ts",
@@ -12373,19 +12608,29 @@
       "sha256": "8e0e9e26c3341dd85f3e03c737acd2aaa4aaa6e0fb1c5cff6dc7205fe26f3bf4"
     },
     {
+      "path": "src/organism/body/EmbodiedInteractionController.ts",
+      "bytes": 19064,
+      "sha256": "5e59484ddae1afd84763ea7b9da427eb28753345a2a62ac39e01b482ad59c5a9"
+    },
+    {
       "path": "src/organism/body/EmbodiedRecoveryController.ts",
       "bytes": 8286,
       "sha256": "0159ece32ee35353f938ea406640de18789e69f8a9e77a5d63a48100e3b9d266"
     },
     {
       "path": "src/organism/body/EmbodimentRuntime.ts",
-      "bytes": 12989,
-      "sha256": "6f43c7adc45d71cfdf20c7ca1a6b864212c03543915e0bf7045155049c468035"
+      "bytes": 13516,
+      "sha256": "dfc6f27ab5666ba3c999f4fc154d208b8bc5c1904e0a30682dec4066c7679997"
     },
     {
       "path": "src/organism/body/GeminiVisionSemanticBackend.ts",
-      "bytes": 4987,
-      "sha256": "dd3c1886fc39097bf060fdb4651b79bd9d4ec307d99ddd2a288522bff618bd63"
+      "bytes": 6490,
+      "sha256": "5fa01634f9123b3288c7a120c9a6928af96c4ff19ba14a0cdd03762e187b3a57"
+    },
+    {
+      "path": "src/organism/body/GroundedInteractionBridge.ts",
+      "bytes": 4978,
+      "sha256": "51a5840d4e91436d87b1ecd736a10fdca71d91859efca4b9374d0b8b290ed622"
     },
     {
       "path": "src/organism/body/MultimodalPerception.ts",
@@ -12396,6 +12641,16 @@
       "path": "src/organism/body/MultimodalSituationModel.ts",
       "bytes": 2995,
       "sha256": "107137caf3aa9b6629af4f11c4df7e4c3dce36f06d233fd1bb1accab75290197"
+    },
+    {
+      "path": "src/organism/body/NativeSpeechEventChannel.ts",
+      "bytes": 4620,
+      "sha256": "64376f71acfe5a6d2c1311372c05f487bd2bf57758148d10d4056a2974a60fbb"
+    },
+    {
+      "path": "src/organism/body/NativeSpeechHostRouter.ts",
+      "bytes": 3858,
+      "sha256": "64209d8aa3a4a46c3615d0c099a2d447a12ee25315873b578faed8e0e0e50904"
     },
     {
       "path": "src/organism/body/P35SemanticWorldBody.ts",
@@ -12414,18 +12669,23 @@
     },
     {
       "path": "src/organism/body/PerceptualEvidenceCompiler.ts",
-      "bytes": 8328,
-      "sha256": "8e9978bb857abf04ff58d59922df6e02db46f9ce1711024e44c3d2d8a06d75e4"
+      "bytes": 9398,
+      "sha256": "66379faf09674e3f6d7d07ecbf38159158c0d3f0b152f468a8862f29922486a2"
+    },
+    {
+      "path": "src/organism/body/TemporalObjectTracker.ts",
+      "bytes": 19198,
+      "sha256": "be306a496001fb446a1d1f7be988dd837db7f95e682787df65ba89533d69c8d8"
     },
     {
       "path": "src/organism/body/VisionSemanticBackend.ts",
-      "bytes": 837,
-      "sha256": "456bd2db7db64c2745a616687688ea75e68b03a87809412c10d4b9fd4cd0c3c0"
+      "bytes": 1265,
+      "sha256": "5318c8fb01b48cba5f40d2d2822381af579c66eaa4f57a9b8e8e6ec592f96bd2"
     },
     {
       "path": "src/organism/body/VoiceEmbodiment.ts",
-      "bytes": 4933,
-      "sha256": "82aa83ef2d0e3d8a2019a7f41e696459c7783fa7a9262a9d02611d1e1a017ee0"
+      "bytes": 7304,
+      "sha256": "08fe3666154b04d7405a76d34323190326db1ff20f2ac4e90aa47ab92c3d822b"
     },
     {
       "path": "src/organism/brain_fusion/BehaviourChangeEvaluator.ts",
@@ -12439,13 +12699,13 @@
     },
     {
       "path": "src/organism/brain_fusion/BrainRuntimeBridge.ts",
-      "bytes": 1518,
-      "sha256": "026a5436d282eaf64bba316d319f2662fafa1b3bc489c15fa49168f7f4673b4c"
+      "bytes": 1563,
+      "sha256": "3cf6138a45e621003ae21a5bec94cfb2887a0f87ff7d3fe2338a6a27216e5043"
     },
     {
       "path": "src/organism/brain_fusion/ClosedLoopRuntimeOrchestrator.ts",
-      "bytes": 1492,
-      "sha256": "4eb0faac09dfcfb8cd5e31f86ffe11f02f25dcb3d1dfb0d1972bc4977bc5cd94"
+      "bytes": 1718,
+      "sha256": "72bf11461cf948fc96035223e479640f137bf10dda00357c787a9d1b5ed8bf51"
     },
     {
       "path": "src/organism/brain_fusion/CognitiveDevelopmentBenchmark.ts",
@@ -12459,8 +12719,8 @@
     },
     {
       "path": "src/organism/brain_fusion/CognitiveRuntimeBridge.ts",
-      "bytes": 1007,
-      "sha256": "0b89b10ebddf7a2439cd65f51951eb6a319c02a3aed252bd6231d3475fd5c05d"
+      "bytes": 1061,
+      "sha256": "1650533e3d0e21ece74574d0f8d0b338d1b4133ff76b4159d9603bd244d25597"
     },
     {
       "path": "src/organism/brain_fusion/ContinuityVerificationSuite.ts",
@@ -12474,8 +12734,8 @@
     },
     {
       "path": "src/organism/brain_fusion/FullCognitiveOrganismLoop.ts",
-      "bytes": 1520,
-      "sha256": "b72e479761bf20dc355647cac20aa2c990c0fc9cf9ffe1628ea226c8b2056323"
+      "bytes": 1564,
+      "sha256": "15e179e2743dfcba2ae9ff609032be90ff661e046e39dc41a5c71bfb0b3672ea"
     },
     {
       "path": "src/organism/brain_fusion/HierarchicalMemoryCoordinator.ts",
@@ -12494,8 +12754,8 @@
     },
     {
       "path": "src/organism/brain_fusion/MobileCognitiveResourceGuard.ts",
-      "bytes": 818,
-      "sha256": "04dd742e052d8fd08102f232eee17b52029361406bc40eae998e1f2c430f51e3"
+      "bytes": 882,
+      "sha256": "0eee1bc750562e2f09cbd94b22901c059f5282278453b10abe0655e060f52c4a"
     },
     {
       "path": "src/organism/brain_fusion/OrganismCoreBrainCoordinator.ts",
@@ -12509,8 +12769,8 @@
     },
     {
       "path": "src/organism/brain_fusion/UnifiedCognitiveLoop.ts",
-      "bytes": 1519,
-      "sha256": "ee64893332c0765666779315ffb52ce44997336628b9a19b0550b78af10672ff"
+      "bytes": 1578,
+      "sha256": "7830b0d3bc681e871d88b4576e42f39680d955bfcc2c95a41f5b132c7cf020b5"
     },
     {
       "path": "src/organism/cognition/ActiveInformationGainController.ts",
@@ -12749,8 +13009,8 @@
     },
     {
       "path": "src/organism/cognition/B272EndogenousGoalGenesis.ts",
-      "bytes": 17278,
-      "sha256": "7a47404fa533c6d8e1a30d0e580a01320055e5fac6ec70789e910cfadb102820"
+      "bytes": 27069,
+      "sha256": "f8d3a9567b50a553aa948db51f9550304b7b235d2a9b7675f2e8469753bd8687"
     },
     {
       "path": "src/organism/cognition/B273AutonomousGoalLifecycle.ts",
@@ -12769,8 +13029,8 @@
     },
     {
       "path": "src/organism/cognition/B276LatentActionProgramSynthesizer.ts",
-      "bytes": 20752,
-      "sha256": "8d5e9c79868d49df7f0b1c24dcc73d29aea2caad68b1530e45af6b2f9565c955"
+      "bytes": 21306,
+      "sha256": "41e31c220d8211ea532de6448cd14e525f3e75555dd7c4e8f3bdd73dfadd89f3"
     },
     {
       "path": "src/organism/cognition/B277NeuralOperatorGenesis.ts",
@@ -12959,13 +13219,13 @@
     },
     {
       "path": "src/organism/cognition/IntrinsicExperimentGenerator.ts",
-      "bytes": 1315,
-      "sha256": "dace2e792e7afdbaba570f0f446de6744223b042e997eba740b2cc7f8911aa1b"
+      "bytes": 5070,
+      "sha256": "9a70c02d556ed36deb197f4920b113fed90b69ee24d6c1492c77a2c67ac07603"
     },
     {
       "path": "src/organism/cognition/IntrinsicMotivationEngine.ts",
-      "bytes": 4088,
-      "sha256": "8abfbcec765eb98ad4928bacbe7548b8c1aa9487375c10fbd2a92089fc982253"
+      "bytes": 5881,
+      "sha256": "c56208925f9183b149323addf715b0a9aafcd33af190f2421b4bb759cca4daee"
     },
     {
       "path": "src/organism/cognition/MLSTMNeuralSubstrate.ts",
@@ -13159,8 +13419,8 @@
     },
     {
       "path": "src/organism/cognition/P41SemanticPerception.ts",
-      "bytes": 18253,
-      "sha256": "da109f426ec7e1db56f727f25b53d2f9e918ee701fd34b739cbf9b81548a1b1a"
+      "bytes": 35707,
+      "sha256": "9537a3aa6237fb512e4cfa37decf2688251152456e65f77d2a7d47b30083120f"
     },
     {
       "path": "src/organism/cognition/P41TemporalPerceptionModel.ts",
@@ -13229,8 +13489,8 @@
     },
     {
       "path": "src/organism/cognition/PerceptionEngine.ts",
-      "bytes": 8636,
-      "sha256": "17a67a7108ae6f281f3892a1e91c350bac0c764bd2c483c25837ae74c3d59b6a"
+      "bytes": 16469,
+      "sha256": "a7425a8b3b432868a444e55f9662f1ecf3a747e26ead9326d5a7f5f9735633d5"
     },
     {
       "path": "src/organism/cognition/PerceptualContinuityModel.ts",
@@ -13239,8 +13499,8 @@
     },
     {
       "path": "src/organism/cognition/PerceptualEpistemicGraph.ts",
-      "bytes": 2378,
-      "sha256": "64292323c106b9163952cca02465f25f9ca5419425acaaaff1e68293704c5583"
+      "bytes": 3042,
+      "sha256": "2e975fd234ba8a80126f32f2f1ae5002579de7ecc3d1ae27166fd598be689ca1"
     },
     {
       "path": "src/organism/cognition/PredictiveAllostasisSubstrate.ts",
@@ -13274,8 +13534,8 @@
     },
     {
       "path": "src/organism/cognition/SelfModelV2.ts",
-      "bytes": 4902,
-      "sha256": "405d06ed3c4db98145c84c8c6667306af4358a45d35a83fd10b0c0414df5cfdc"
+      "bytes": 7477,
+      "sha256": "85854a4a6de200566a23f49bc2b29100b4324428d4ab748274c3accd40518e1e"
     },
     {
       "path": "src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts",
@@ -13289,8 +13549,8 @@
     },
     {
       "path": "src/organism/cognition/SocialMindKernel.ts",
-      "bytes": 18777,
-      "sha256": "37b30caab218639edfb9a9770c4d0dcaba3918d1d753c46fe8c94814651b6f26"
+      "bytes": 30728,
+      "sha256": "e902e174fb27ef64539441d9379a9dd546e365aab779590b18ab54bebb77eabb"
     },
     {
       "path": "src/organism/cognition/SocialPredictiveNeuralSubstrate.ts",
@@ -13394,8 +13654,8 @@
     },
     {
       "path": "src/organism/cognition/evolution/MotiveEcologyFabric.ts",
-      "bytes": 5321,
-      "sha256": "240d0526558971ac96e1d1bcd2807580aee46eb7dd07130b8752872ae6ba41e4"
+      "bytes": 6873,
+      "sha256": "c1fb59f39e8c45290fd6e8635f24276505edb3411350b3f34b6173713338c91e"
     },
     {
       "path": "src/organism/cognition/evolution/SelfGovernanceEngine.ts",
@@ -13434,23 +13694,28 @@
     },
     {
       "path": "src/organism/core/CognitiveArchitectureMap.ts",
-      "bytes": 17044,
-      "sha256": "e01424201670ac92854ffea1da8cac283108ad348d8e81afdaf2eb7ab7395db5"
+      "bytes": 17925,
+      "sha256": "c865ebbd0cded240b40ea69c7c5fa86925a5c028f5215fd590751801b798544a"
+    },
+    {
+      "path": "src/organism/core/CognitiveCycleBoundary.ts",
+      "bytes": 687,
+      "sha256": "7a17e7ac875b89510d4cae56597ee3129a52edb983f84384be2a1724b308d076"
     },
     {
       "path": "src/organism/core/CognitiveDependencyGraph.ts",
-      "bytes": 2525,
-      "sha256": "08b9bc4f5225991da57bea19958796c5ff8a1ebdb3172ca66b2f0ed3a6be1783"
+      "bytes": 5895,
+      "sha256": "4cea4fbb43c7b009e423c5cba07fa88eef49c289a153318f77869d8555f8d090"
     },
     {
       "path": "src/organism/core/CognitiveExecutionPlanner.ts",
-      "bytes": 12050,
-      "sha256": "6c6472fb710d3d71a680d5b8dd4b6d8aa4367efffeedf7bb7af86330cc5e1acd"
+      "bytes": 12938,
+      "sha256": "5e504eb76379e5f9b45722c5aaa43140b9cd821bbbf2be59bc065b9e1d3bd638"
     },
     {
       "path": "src/organism/core/CognitiveFrame.ts",
-      "bytes": 6735,
-      "sha256": "2d2874e02bded2c705ee104e0061de5e59bf97bc8ab3224c0bc18ffd8f09d096"
+      "bytes": 6803,
+      "sha256": "9b0e597a7939736d86906460ec33e1ea3be604414778236463cc20862f8cf780"
     },
     {
       "path": "src/organism/core/CognitiveKernelCoordinator.ts",
@@ -13459,8 +13724,8 @@
     },
     {
       "path": "src/organism/core/CognitiveRuntimeCluster.ts",
-      "bytes": 14135,
-      "sha256": "8e6541fce5e01527b39650619ded6ab27818d0eff4230a3356403ab343ecd26f"
+      "bytes": 14273,
+      "sha256": "52f60a67ebcc62631c974b151b474b1b59cde7bd88b1844e68c3ea93df6efa4a"
     },
     {
       "path": "src/organism/core/CognitiveSubsystemFacade.ts",
@@ -13509,8 +13774,8 @@
     },
     {
       "path": "src/organism/core/MemorySubsystemRuntime.ts",
-      "bytes": 7307,
-      "sha256": "2c4ff58ab7c0128680f7277c7265529bbbab2672613248df627b29a7579205ca"
+      "bytes": 8891,
+      "sha256": "7d50a74ccaf0f4ee2218bf3cfb29701827e03b93917f147af124780d85b015bb"
     },
     {
       "path": "src/organism/core/NumericPrimitives.ts",
@@ -13524,23 +13789,23 @@
     },
     {
       "path": "src/organism/core/ObservationPlanningStage.ts",
-      "bytes": 6498,
-      "sha256": "dee72c8066f1130e731dfce289ab77894c4f2bf9e87478d0032ca4a10b05463e"
+      "bytes": 6695,
+      "sha256": "75d599e81544dd77d5c9c5cd5c7170a8ac43ace4f39f0b6cddd4d0f1c0beff82"
     },
     {
       "path": "src/organism/core/OperationalMicroCycleRuntime.ts",
-      "bytes": 8391,
-      "sha256": "9ed3377b4bb9d7964fd4c71458cf17e504052555d790edce4a2d8f15f959f2d3"
+      "bytes": 9306,
+      "sha256": "347638478582613712ddb040389fe094b4b3b124f380ec104f1e664d86c2478c"
     },
     {
       "path": "src/organism/core/OrganismCore.ts",
-      "bytes": 1294866,
-      "sha256": "64b86eb33b30263df45a8da1dde75b89a53aab372e72af7edc7b987ce2184908"
+      "bytes": 1321288,
+      "sha256": "8d56266e548b711e9176ea8109d8acdd55a1e441f8fbeabb95bda57ca784ebaa"
     },
     {
       "path": "src/organism/core/OrganismRuntime.ts",
-      "bytes": 97737,
-      "sha256": "6b77d29ad4a87978c5a0c51b15a7f627b29b8b9a298e42b9a56f834c6ac9a19b"
+      "bytes": 135401,
+      "sha256": "1e6c49941c3fc627e2ee7c75452528a6c8cf44d89ed74844e652ba3e5e428c14"
     },
     {
       "path": "src/organism/core/OrganismSystemContract.ts",
@@ -13561,6 +13826,11 @@
       "path": "src/organism/core/PersistenceRuntime.ts",
       "bytes": 2253,
       "sha256": "6d81e60f5a6dd327f46bc72abdbcd9d4eb140ea55d60efa8e60d9da8ea28335d"
+    },
+    {
+      "path": "src/organism/core/PlainDataSnapshot.ts",
+      "bytes": 5337,
+      "sha256": "d407dc6aa3352a1f32d3f645a533023ea18b0183151be4dfe2e8225010fdd179"
     },
     {
       "path": "src/organism/core/SelfSubsystemRuntime.ts",
@@ -13594,8 +13864,8 @@
     },
     {
       "path": "src/organism/core/WorldContextNormalizer.ts",
-      "bytes": 1858,
-      "sha256": "c22bed2525489343c287c5759bf6d00e15d404bbd94dc07afef77a820d414641"
+      "bytes": 6103,
+      "sha256": "93c3687324c576f534f385277b42fefe292ba9f95e61ccf126b2b01cff52c88a"
     },
     {
       "path": "src/organism/core/WorldSubsystemRuntime.ts",
@@ -13609,8 +13879,8 @@
     },
     {
       "path": "src/organism/core/types.ts",
-      "bytes": 24747,
-      "sha256": "9e6702aa74bd146ed084015a46cf7262bd44ab816f7cc37429f3663ddf2ae536"
+      "bytes": 25173,
+      "sha256": "a6e77ab95b2f40eb7c67508fa39b75c8fcc86cabcbbef6c4f9d3fb523e00093b"
     },
     {
       "path": "src/organism/developmental/AdaptiveMemoryPolicy.ts",
@@ -13659,8 +13929,8 @@
     },
     {
       "path": "src/organism/developmental/MemoryOS2.ts",
-      "bytes": 111930,
-      "sha256": "868edb97f55f91c9bea332b8b9babc7e030b912f3aa74ee39dc823f4d530de09"
+      "bytes": 138028,
+      "sha256": "2765bc2e88548d42f494c10c07ddfb1a9a8b096e79a941bf89593be51b074cbf"
     },
     {
       "path": "src/organism/developmental/MemoryResidencyGovernor.ts",
@@ -13679,8 +13949,8 @@
     },
     {
       "path": "src/organism/developmental/MicroDreamEngine.ts",
-      "bytes": 1678,
-      "sha256": "127ab1ff0aa71be7224d40b1ab29cb70a5ac8028df12c08208500163cbb5f720"
+      "bytes": 9998,
+      "sha256": "ca9848c5f36563bd43d87808a6966e4b236074601ec6abb604828d3ac8853db8"
     },
     {
       "path": "src/organism/developmental/ModelSwitchContinuity.ts",
@@ -13809,8 +14079,8 @@
     },
     {
       "path": "src/organism/index.ts",
-      "bytes": 3104,
-      "sha256": "36969f7f77bc64a6c0d286118350019be858a3274549a5d02b2615a63c175d19"
+      "bytes": 3492,
+      "sha256": "29c241cd5a756c944c243c03351064ca2bc4172f1d1cacfb9b496a313fff1846"
     },
     {
       "path": "src/organism/integration/conscio/ConscioAdaptationFabric.ts",
@@ -13823,19 +14093,34 @@
       "sha256": "582e81fb438e3090a6c22944cf61821d7380cad7a55d7a232fd983dbc572313d"
     },
     {
+      "path": "src/organism/integration/hexis/HexisCanonicalEvidenceBridge.ts",
+      "bytes": 9338,
+      "sha256": "038b09ad378304f61918617af64c6f3bc47fbe2b37acc6ff4c6720c7424ffe62"
+    },
+    {
       "path": "src/organism/integration/letta/LettaGovernanceAdaptationFabric.ts",
       "bytes": 8102,
       "sha256": "8292b2b4d1d24ae64553dd2cdf25be17497644923a62d2b7e2185afdc9a3ad9e"
     },
     {
       "path": "src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts",
-      "bytes": 4376,
-      "sha256": "255937211a79e324a6de3ffef13598ce314292d9c98a08de1af9ee27ca1cd7af"
+      "bytes": 6572,
+      "sha256": "b6f7c0dc5102e9abce2b9a4297cc62c658413e75729cd2dfe98d88e15bf3fe4f"
     },
     {
       "path": "src/organism/integration/lumina/LuminaAdaptationFabric.ts",
       "bytes": 11920,
       "sha256": "1ac49162b785cbbfd428c3536f58629c1f8add04830ebae80b4dff0fdb4a511c"
+    },
+    {
+      "path": "src/organism/integration/mem0/Mem0PlatformAdapter.ts",
+      "bytes": 21031,
+      "sha256": "be265df6a2abc3790a7fcc074101792365d390232f27ead1169f27162764511c"
+    },
+    {
+      "path": "src/organism/integration/mem0/index.ts",
+      "bytes": 42,
+      "sha256": "d86a6c7b7ee2f08d7eb25a0678d58f0b0d8d475f2a5b6604d5a32d0f9b42ef65"
     },
     {
       "path": "src/organism/integration/will/WillChannelAdapter.ts",
@@ -13879,8 +14164,8 @@
     },
     {
       "path": "src/organism/language/LanguageOrgan.ts",
-      "bytes": 18459,
-      "sha256": "bb1395d631ab1daaf74a92146e9906f574c55a9c63056e4d3a57a7b6aa14ee79"
+      "bytes": 20740,
+      "sha256": "9132fedda4ad146702a970ca1a708d4b0efde2148391a754406103806c24f44a"
     },
     {
       "path": "src/organism/learning/AdaptiveDevelopmentEngine.ts",
@@ -13898,9 +14183,24 @@
       "sha256": "a7d69fb343f180e8c839bb64747986630241009d89390f9285ac5b7fb86eed00"
     },
     {
+      "path": "src/organism/learning/AdaptiveWindowDriftDetector.ts",
+      "bytes": 6866,
+      "sha256": "2f27462e86df896f9f1f2914a6fed7f966f11d0a195cf0dc9c467ffd3028da2c"
+    },
+    {
       "path": "src/organism/learning/AdvancedResilienceEngine.ts",
       "bytes": 14096,
       "sha256": "d8b6054c2466b58e9ab01a9ed5a9d52189384af462a04e79b440aea76ddd2528"
+    },
+    {
+      "path": "src/organism/learning/AtomicFileSkillStorePersistence.ts",
+      "bytes": 13995,
+      "sha256": "b2fbced9a51aaabfe94238060a22ac34ddea3875bde66376e8cf0fc6cc5e6376"
+    },
+    {
+      "path": "src/organism/learning/AuthenticatedSkillPromotionApproval.ts",
+      "bytes": 14882,
+      "sha256": "dc423455beb57a0c6b76d01b57d38d87aec893e2544986ec5badd19526699f7e"
     },
     {
       "path": "src/organism/learning/AutonomousCognitiveLifeEngine.ts",
@@ -13934,8 +14234,13 @@
     },
     {
       "path": "src/organism/learning/CausalExperienceStream.ts",
-      "bytes": 13735,
-      "sha256": "ae61c823f1c77de6fa3bf20f8bf96173e59a314e6a8efd2434b06eeae9220236"
+      "bytes": 29226,
+      "sha256": "2d865b3f1e7a93a66885646ff571c8ce05b3ddcda3f4616b5d56efa4f78562f1"
+    },
+    {
+      "path": "src/organism/learning/CausalReplaySampler.ts",
+      "bytes": 3883,
+      "sha256": "52d0246a6e0ae2793fdd2a083bac9360fef178e052b4ac566c67c9b813c372a5"
     },
     {
       "path": "src/organism/learning/CognitiveOrganismContinuityEngine.ts",
@@ -13946,6 +14251,41 @@
       "path": "src/organism/learning/CognitiveResearchBattery.ts",
       "bytes": 23580,
       "sha256": "bdd2f0d547be0ee0db25fc49e9febee5ed9363928b20d8b162fd1dae224bb0cf"
+    },
+    {
+      "path": "src/organism/learning/ContinualBenchmarkComparison.ts",
+      "bytes": 6033,
+      "sha256": "7faebbe647778c9029b9e5fe0ef8c439ae12942c71f210ba0a24f2983a445ec5"
+    },
+    {
+      "path": "src/organism/learning/ContinualForgettingTracker.ts",
+      "bytes": 3692,
+      "sha256": "6cd1426298325b66045e0cc3d9664d3e13d326b90e1e979e181a41a364c18f2e"
+    },
+    {
+      "path": "src/organism/learning/ContinualLearningMetrics.ts",
+      "bytes": 3609,
+      "sha256": "20fabcf7e4cf9eb8450f372c6c0d7ee30d65666a435be9e181cc557992d6bffd"
+    },
+    {
+      "path": "src/organism/learning/ContinualOutcomeMatrix.ts",
+      "bytes": 14470,
+      "sha256": "bdecd153b7785034ad386684ef75f94163af926ff7c4f9a7bff19e1dc7646791"
+    },
+    {
+      "path": "src/organism/learning/ContinualReplayBuffer.ts",
+      "bytes": 9344,
+      "sha256": "723f105e616bea92a8855d82f4fd3c91cbbdad7d3eb19f00455d858ac9c1bab6"
+    },
+    {
+      "path": "src/organism/learning/ContinualTransferTracker.ts",
+      "bytes": 8354,
+      "sha256": "30e1ed7be51e6301e8242584a8149499a00f76b38f69dd4278b002de482d4488"
+    },
+    {
+      "path": "src/organism/learning/CorrectionRuleMemory.ts",
+      "bytes": 12752,
+      "sha256": "539d32dc824e725fb0fa4a0ec941b119706f8c858d596a3932622323664685b4"
     },
     {
       "path": "src/organism/learning/DevelopmentalExecutiveEngine.ts",
@@ -13963,9 +14303,74 @@
       "sha256": "81abfdd931ef4746a2a4f25baab8bf40260f74d85014b9a2d6ff804ad0bc36ae"
     },
     {
+      "path": "src/organism/learning/DriftAwareLearningController.ts",
+      "bytes": 6569,
+      "sha256": "ee01abe4097b2fff843e69b7bd8dffaed81b5539b270a88d72367c492e133e2d"
+    },
+    {
+      "path": "src/organism/learning/HermesVerifiedEvidenceBinding.ts",
+      "bytes": 14710,
+      "sha256": "299dd144bf24cbf16b3405b7751a657edc7069c493945cb9f3ba66c981bba550"
+    },
+    {
+      "path": "src/organism/learning/HostOwnedIndependentEvaluationServices.ts",
+      "bytes": 22630,
+      "sha256": "78f66f021188ecd374fa7cbf769e5b291bb099520cc3b1ab5195a90b9605ea75"
+    },
+    {
+      "path": "src/organism/learning/IndependentSkillCandidateEvaluator.ts",
+      "bytes": 56232,
+      "sha256": "d821ae91d572db6bee1024e98b3336fc5a69112050d31e31d646cd52bc0f2c3d"
+    },
+    {
       "path": "src/organism/learning/IntegratedLifeTrajectoryEngine.ts",
       "bytes": 17586,
       "sha256": "b6ded27cdbbb3a0ce1c85c730f918fd6995eb50b00a60aef1025bec644b5118a"
+    },
+    {
+      "path": "src/organism/learning/LearningExecutionAudit.ts",
+      "bytes": 5382,
+      "sha256": "4925aa1b1deb6fad7606edb6d3defebe260666ecb55eefd21cf667930e1bf965"
+    },
+    {
+      "path": "src/organism/learning/LearningExecutionEvidence.ts",
+      "bytes": 2737,
+      "sha256": "85ee37318e7be25b93343914189c1e9084f566d63009923a165efd4f0b5d3756"
+    },
+    {
+      "path": "src/organism/learning/LearningExperimentPlan.ts",
+      "bytes": 13702,
+      "sha256": "353bd6607f10ced42e6447cebaa975730d8edb7810ecb6fc93f9d7f5de169881"
+    },
+    {
+      "path": "src/organism/learning/LearningFitnessJournal.ts",
+      "bytes": 19018,
+      "sha256": "98d1b4330b6102f7852ce7e685d25ada4350c5be7bdf2c3bc5864998c9cec8d5"
+    },
+    {
+      "path": "src/organism/learning/LearningJournalBootstrap.ts",
+      "bytes": 2088,
+      "sha256": "25b2062cc3a9b20a5466dfdc0d2f447c1f350785bd1d4a0a06ecf93ac0ec1d77"
+    },
+    {
+      "path": "src/organism/learning/LearningLifecycleJournal.ts",
+      "bytes": 19099,
+      "sha256": "77c6a77d200aec57314436fa847886abed0ef4f0de523e765717d3cf68662c9b"
+    },
+    {
+      "path": "src/organism/learning/LearningProcessSupervisor.ts",
+      "bytes": 14596,
+      "sha256": "bb1958492ff9baeadd153eb40cb25da0efe4a7e7e971ee71e7a929fbbfd1b227"
+    },
+    {
+      "path": "src/organism/learning/LearningRobustMetrics.ts",
+      "bytes": 11677,
+      "sha256": "88aaab892cf2080ecf311bce5b1af7ee7ae5b0f02c241f96c38aa33cf6f5cdb6"
+    },
+    {
+      "path": "src/organism/learning/LearningTrustBoundary.ts",
+      "bytes": 2677,
+      "sha256": "3459a12e83cda399c66ec30e7cb970fac8ff39183c14aaf7d82272d479566b7c"
     },
     {
       "path": "src/organism/learning/LifeCourseNavigator.ts",
@@ -13993,14 +14398,44 @@
       "sha256": "0c46699c38347ebcac39d64ca500551ca81ec585f90cba149549ddba00f15171"
     },
     {
+      "path": "src/organism/learning/MultiSourceLearningMechanisms.ts",
+      "bytes": 8407,
+      "sha256": "e6ea839ae969c249056e7152e0b7dbf348a5e40952587afa0b55f30ad9fa9446"
+    },
+    {
       "path": "src/organism/learning/OperationalLifeEngine.ts",
       "bytes": 25408,
       "sha256": "a984365b960d0e29ee9867aa92011a606887e43fbfb962cb0658afac3a6b028d"
     },
     {
+      "path": "src/organism/learning/OutcomeReflectionCurriculum.ts",
+      "bytes": 22471,
+      "sha256": "59242e59033f33d49bc37d2ea97341557654ac219ac4578be3c06d9f5bc4519c"
+    },
+    {
+      "path": "src/organism/learning/P23CompoundRepairRevisionCoordinator.ts",
+      "bytes": 22259,
+      "sha256": "2ae5c22c2239daef94d838f8a9be4a31443c649c54c57f5776d0935cda3e4f5d"
+    },
+    {
+      "path": "src/organism/learning/P23IndependentEvaluationProvider.ts",
+      "bytes": 3566,
+      "sha256": "c09a46855a72d61f85b66d4758ee7c962a066d29a21c2f7b71e7ac63ec183606"
+    },
+    {
       "path": "src/organism/learning/P23LearningEngine.ts",
-      "bytes": 20798,
-      "sha256": "cd098ad5d0b64f5a25b0a5c46d33fa210b105c93eedde85a3602994c00bff35b"
+      "bytes": 108434,
+      "sha256": "2332ff8ac4e65e8f284bcd4ae9ba85c5547c2b356d0bff25bacfe2c00f5731cc"
+    },
+    {
+      "path": "src/organism/learning/P23LocalModelSkillRevisionGenerator.ts",
+      "bytes": 8039,
+      "sha256": "a6e6e29df2d28c6d9aebe5081bdbfdadfbae87a082f8a10830837b6d9c4daf23"
+    },
+    {
+      "path": "src/organism/learning/P23TrustedShadowLearningScheduler.ts",
+      "bytes": 15657,
+      "sha256": "a2abd12d3844aa54adfd2a61fe52f569ab6eebeddc44d8f9592d181266661a90"
     },
     {
       "path": "src/organism/learning/P25ScientificDevelopmentEngine.ts",
@@ -14009,13 +14444,13 @@
     },
     {
       "path": "src/organism/learning/P26TrueLearningEngine.ts",
-      "bytes": 7004,
-      "sha256": "122600a3939da109f8cae11f0da570ecea18be65378bec222fcc06a0ed3303e3"
+      "bytes": 18226,
+      "sha256": "ec18fc25b53bf0387e7393b044fead63be6e50b831770102b4fbdcab1325fd5f"
     },
     {
       "path": "src/organism/learning/P28PlasticitySubstrate.ts",
-      "bytes": 12044,
-      "sha256": "3b04716cd8cff99018954c5424a750be0cbea6bd93666a953380aeeb7bd1601a"
+      "bytes": 12844,
+      "sha256": "2c4f204907314aa3d7b2fa2c29717eff081fd40702355962cd125828aceee3d4"
     },
     {
       "path": "src/organism/learning/P29LearningGovernance.ts",
@@ -14029,8 +14464,18 @@
     },
     {
       "path": "src/organism/learning/P36AutonomousSelfDevelopment.ts",
-      "bytes": 35539,
-      "sha256": "9ef68f5f7b2782bb546533436b01c2a620fd0ed9b665c69690a3fcb76e6a4b0d"
+      "bytes": 54975,
+      "sha256": "eca55ee3e375f9e391b8ea9c234af35168cb32265ffdd583d5f6bc88771b9224"
+    },
+    {
+      "path": "src/organism/learning/P36HostEvaluatorBootstrap.ts",
+      "bytes": 11829,
+      "sha256": "4724b7d136d9ee29c6c3df40763820e398f306ca7344612801a835ab3d53e64b"
+    },
+    {
+      "path": "src/organism/learning/P36VerifiedOutcomeLedgerEvaluator.ts",
+      "bytes": 13234,
+      "sha256": "1c19eb9f3ab351750680200f14bf66ef0cfda045a4667882e16f516722242e94"
     },
     {
       "path": "src/organism/learning/P38AutonomousCausalResearch.ts",
@@ -14048,9 +14493,19 @@
       "sha256": "bff8f1aaad4b9d602baa94ee814bcd9c502abe70c378abfc8de2ad634bc1d7da"
     },
     {
+      "path": "src/organism/learning/PageHinkleyDriftDetector.ts",
+      "bytes": 6730,
+      "sha256": "7b8f7e127924338a18cba60f13c20818fa5d2908db66c83f9e1ce99d6efc7f8b"
+    },
+    {
+      "path": "src/organism/learning/PairedSeedConfidence.ts",
+      "bytes": 6681,
+      "sha256": "ae6fa5f83931da3d443dfc2e25409854f14d298b8caa519e85f332a484b0271e"
+    },
+    {
       "path": "src/organism/learning/ParametricPolicyLearner.ts",
-      "bytes": 8857,
-      "sha256": "481a6b21d776699fe62cdcb4dda9005009a49ee6f28e6e4d0f766d11180746c0"
+      "bytes": 14751,
+      "sha256": "22ee11114a364ff043fc557d2c935281162e993e308fc36ad99d43958828f13c"
     },
     {
       "path": "src/organism/learning/PersonalCurriculumEngine.ts",
@@ -14068,9 +14523,19 @@
       "sha256": "83574d43a54f5f4d3a8365e0e1b5d14ec66f1e9f604948f3e98c86e55c3b29be"
     },
     {
+      "path": "src/organism/learning/PrioritizedReplaySampler.ts",
+      "bytes": 4154,
+      "sha256": "a314106028ab66c7cfc131af7beeb8a2f1d045bffda643c1692b350b9a95f9f1"
+    },
+    {
       "path": "src/organism/learning/ProceduralSkillLibrary.ts",
-      "bytes": 38916,
-      "sha256": "d359d81d6544d9f4fccdf731ee02e6ff8da25832ca284bb7b97275e70d034f87"
+      "bytes": 48818,
+      "sha256": "a39704c0ea9d0d516ee0814bee78d89a03447ca104677c2fe1b7caca9921a6a6"
+    },
+    {
+      "path": "src/organism/learning/ReplaySelectionPolicy.ts",
+      "bytes": 5940,
+      "sha256": "1a1368b27a22f84c2537459586d3f558c3c042a1c10b0d79f75518dbe4e905d6"
     },
     {
       "path": "src/organism/learning/ResearchGradeOrganismEngine.ts",
@@ -14078,9 +14543,44 @@
       "sha256": "9aa5f80d989a82774eafb2f543b9db886dfa006b7affea074a7869f990d8179b"
     },
     {
+      "path": "src/organism/learning/ReservoirReplayPolicy.ts",
+      "bytes": 2293,
+      "sha256": "b0405feec4ad493d7699e7813dad45bf27c7b289c803ccbccfbd3a4bbede349d"
+    },
+    {
+      "path": "src/organism/learning/ResetRetentionEvaluation.ts",
+      "bytes": 11775,
+      "sha256": "feda960c9d02534c794c95c29ea2db53e6f2eab517c96557226c1458a5d8b709"
+    },
+    {
       "path": "src/organism/learning/ScientificMethodEngine.ts",
-      "bytes": 2740,
-      "sha256": "5a55391fcefb083c088280162b0b711f86c7ff0bca87ca9d0897c760302794fb"
+      "bytes": 3256,
+      "sha256": "643049cffeacbefda8b184e353bed19ded2687229f630a1e4b8d92276f403bf1"
+    },
+    {
+      "path": "src/organism/learning/SkillEvaluationReport.ts",
+      "bytes": 4992,
+      "sha256": "2bcd824d1ec90e568153f9788d2936db07cbd84879eb8f63576f52012c7aaf78"
+    },
+    {
+      "path": "src/organism/learning/SkillLearnBenchAdapter.ts",
+      "bytes": 35908,
+      "sha256": "6d0837fa16b8120fb8ba7d410ec1f1f1327ca8ad87d6ac0abfeaaf9ac02cbb48"
+    },
+    {
+      "path": "src/organism/learning/SkillRetrievalAugmentation.ts",
+      "bytes": 4956,
+      "sha256": "f3bc2934881e9c124a8ce17188e46493f869e503811c2d2c706b66576e4d6a10"
+    },
+    {
+      "path": "src/organism/learning/SkillRevisionGate.ts",
+      "bytes": 5332,
+      "sha256": "699511185b89ea93c03a0f7de43eb790c7b31280d73b4299ef10a30b16be02f4"
+    },
+    {
+      "path": "src/organism/learning/SkillRevisionPlan.ts",
+      "bytes": 7632,
+      "sha256": "ff173e00f56ad7573d2aef65a15cb02126b2f94f00ec5c0903414e53c2bd2719"
     },
     {
       "path": "src/organism/learning/TemporalContinuityEngine.ts",
@@ -14088,14 +14588,79 @@
       "sha256": "4520c0a1157e37a9c0bd670341cb0792267e9c66804847015a9364ba23a89caa"
     },
     {
+      "path": "src/organism/learning/TrustedShadowLearningRunCoordinator.ts",
+      "bytes": 2143,
+      "sha256": "c46f6b3cf73ed3c64cfcca7bfa564a9766bf8a9f95fc7a17cb6c15c58eedf980"
+    },
+    {
+      "path": "src/organism/learning/TrustedSkillShadowRunRegistry.ts",
+      "bytes": 10946,
+      "sha256": "8b7a4566e21c040f007f3ec8cd90f371d1ed19486e3fb9d08aeb7e002a8440b2"
+    },
+    {
       "path": "src/organism/learning/UnifiedLearningSubstrate.ts",
-      "bytes": 19443,
-      "sha256": "bf7c23bef1ee0f610a4a0ead2bde609bd7efbf98c9bd24f189864634a3d3ba5f"
+      "bytes": 30193,
+      "sha256": "9ae656bc165f52513139bfdb86347666f27135c3877614ce70d68ac589c00a00"
     },
     {
       "path": "src/organism/learning/VerifiedAutonomousLifeEngine.ts",
       "bytes": 12527,
       "sha256": "f4e14823c28c2aa8781fb401740c8c7d76f49702f5680aa7d458732317ae3716"
+    },
+    {
+      "path": "src/organism/learning/VerifiedOutcomeArtifact.ts",
+      "bytes": 7582,
+      "sha256": "1dcd41cb8f3d90b19409f5edefd28bdf022576d6aeeb097d94588fd3a63bdc13"
+    },
+    {
+      "path": "src/organism/learning/VerifiedOutcomeLedger.ts",
+      "bytes": 23296,
+      "sha256": "d0ad08daa4157d4ae13aae7ac5428df96b9d1c477c043783a15301d6a42e7ff7"
+    },
+    {
+      "path": "src/organism/learning/VerifiedOutcomeLedgerFileStore.ts",
+      "bytes": 2697,
+      "sha256": "ee8db418a38f3a5cad7ae9a6caa104e4c85cb1306783d65b50d8c5c934393165"
+    },
+    {
+      "path": "src/organism/learning/VerifiedOutcomeLedgerStore.ts",
+      "bytes": 2187,
+      "sha256": "7a8678c274ec36d648533d69c8355e4145c5bd8e8932df3c33a7ead8a27ca7cb"
+    },
+    {
+      "path": "src/organism/learning/VerifiedOutcomePromotionGate.ts",
+      "bytes": 3793,
+      "sha256": "baebe0d7261a9dec985b200e182ba07958cadffbcc65db9e751ec62526cee2e1"
+    },
+    {
+      "path": "src/organism/learning/VerifiedReplayAdmission.ts",
+      "bytes": 8142,
+      "sha256": "25d28aa761d31a69900552f3d04e3e6472295062f7cb667fcec48d92a21d1667"
+    },
+    {
+      "path": "src/organism/learning/VerifiedSessionDataset.ts",
+      "bytes": 5692,
+      "sha256": "3a6336196734cb74f5c51809d7db0252e3f9ff5f0f2bc22356ef9bf37c82b6d5"
+    },
+    {
+      "path": "src/organism/learning/VerifiedSkillLifecycleBootstrap.ts",
+      "bytes": 4038,
+      "sha256": "129e75f16942c2ee28102fb8346298f6a85361e269d43c4ac18050d08c885fe6"
+    },
+    {
+      "path": "src/organism/learning/VerifiedSkillPromotion.ts",
+      "bytes": 10636,
+      "sha256": "c5e36bb2ff0ff196489889dbd46efbde18c6064859aed92ee5634b80bc8961b9"
+    },
+    {
+      "path": "src/organism/learning/VerifiedSkillShadowEvidence.ts",
+      "bytes": 5770,
+      "sha256": "2f4eaaff597c0c3bbd606a81717b8d6d173c74a2e537af3995e8bab8c3ffe4e8"
+    },
+    {
+      "path": "src/organism/learning/VersionedSkillCandidateStore.ts",
+      "bytes": 25192,
+      "sha256": "a1624691f8f209635bc593403a1c2ea49f8c4238480d918d0632ea963b84462b"
     },
     {
       "path": "src/organism/memory/AdaptiveExperienceConsolidator.ts",
@@ -14118,9 +14683,14 @@
       "sha256": "673f5bf2c112e91b6142b6da6da13db1b1a405dfd6d964efc9776f8b68865a2c"
     },
     {
+      "path": "src/organism/memory/EvidenceLineageProvenance.ts",
+      "bytes": 2740,
+      "sha256": "e996c0b9c81e4139089e94af0bce3ada76930a76675fac8d09b2cff871804196"
+    },
+    {
       "path": "src/organism/memory/ExperienceContinuumFabric.ts",
-      "bytes": 43470,
-      "sha256": "5642c42a68618efff1f4d86574b05d9f2426a3394274795c961f283b89de0ac6"
+      "bytes": 44634,
+      "sha256": "6a00726dfe644c9a5f326511e6a35eb9cdcb25f8b068e5cdb39fa362679eae87"
     },
     {
       "path": "src/organism/memory/HippocampalFormationCircuit.ts",
@@ -14139,23 +14709,23 @@
     },
     {
       "path": "src/organism/memory/MemoryConsolidationController.ts",
-      "bytes": 5094,
-      "sha256": "36fc11c8ac9da9696a5e038ecf22eaed12a71b00086e0b2bf027f0bee79cc959"
+      "bytes": 5731,
+      "sha256": "14ea53cfaf8d6b7d7f14b4a12d0909b5a3c7f6eb8ae86c75f08e464928aa7baa"
     },
     {
       "path": "src/organism/memory/MemoryFabric.ts",
-      "bytes": 35003,
-      "sha256": "675ec2f7afa33a6844ffb9036061506e6066ae2c6c3365c7f28451f44ef06a75"
+      "bytes": 38566,
+      "sha256": "86ab7b3585f8522dac424691175cb854d0e8d4109ef630778d3ec2a246ccffbf"
     },
     {
       "path": "src/organism/memory/MemoryRetrievalBenchmark.ts",
-      "bytes": 24664,
-      "sha256": "27a94c229900a2859a21568db941fad173d96099eb3ac80e4c9493b778dac575"
+      "bytes": 41210,
+      "sha256": "1869fde0b61d6c4502b1ac2af05ae8b8b0c2d31c13154e42481ccb981a3bb5d6"
     },
     {
       "path": "src/organism/memory/MemoryRetrievalExperiment.ts",
-      "bytes": 8092,
-      "sha256": "cd98c9718926dc07a4a7e5ca670aef60ab800e68b4fd5788d13b64d654d8e3d1"
+      "bytes": 9435,
+      "sha256": "5cb71ed368974fe2afaaa5bff1e49e209acd2cc520177132f5b74302d8b46258"
     },
     {
       "path": "src/organism/memory/MultiTimescaleMemory.ts",
@@ -14169,8 +14739,8 @@
     },
     {
       "path": "src/organism/memory/P65EpistemicLedger.ts",
-      "bytes": 6959,
-      "sha256": "bd2d9dceac88508877edb899be427615fce2770f16ec5a1a0f52eef2f66b2d56"
+      "bytes": 7303,
+      "sha256": "9cd2788510e7712b4ad65531436e070a9d74af3b4acb230a544523ccd9ed6450"
     },
     {
       "path": "src/organism/memory/SemanticMemoryGraph.ts",
@@ -14179,8 +14749,8 @@
     },
     {
       "path": "src/organism/memory/SourceMonitor.ts",
-      "bytes": 1172,
-      "sha256": "57503c43fd5ac90266cb65817f3791b38a834fa948dafc4c546f48e10a7a73ce"
+      "bytes": 4104,
+      "sha256": "edc0e4a517eeb3808b78ff44e0474079ba8e49c56aa36f19b40327a4fa209c7e"
     },
     {
       "path": "src/organism/memory/index.ts",
@@ -14269,8 +14839,8 @@
     },
     {
       "path": "src/organism/persistence/StateMigrations.ts",
-      "bytes": 138375,
-      "sha256": "5fcc8a59e5e7ad45f80bd8ec2a35927e764059ef2ffae6993730d34d2981383b"
+      "bytes": 140166,
+      "sha256": "632d695f63e0366845e2c2d9e7eaac323e7e9764b2a87b3d14b954933caa4886"
     },
     {
       "path": "src/organism/research/BrainWideCausalBattery.ts",
@@ -14299,8 +14869,8 @@
     },
     {
       "path": "src/organism/system/ActionGateway.ts",
-      "bytes": 77282,
-      "sha256": "262237370af6c5e50ceccbce4bd32d3ae4f858c0d68d737c52a808340d4b8762"
+      "bytes": 87616,
+      "sha256": "7baa3850edfc62777c6e7613f502db90f137a0370de1f8e3fb59329f48967190"
     },
     {
       "path": "src/organism/system/ActionOwnershipGraph.ts",
@@ -14549,8 +15119,8 @@
     },
     {
       "path": "src/organism/system/B401B420AdaptiveCognitiveResearchCore.ts",
-      "bytes": 16387,
-      "sha256": "8d1985b74371aee9b5e7d8c30c556a73873a27dc426408f7f2a7eaa6a1c0f646"
+      "bytes": 16395,
+      "sha256": "0a0522ed39eae32427c400cd0baf9f7887f6d951ff1e62c78e800a079784450b"
     },
     {
       "path": "src/organism/system/B421B450ResearchAccelerationCore.ts",
@@ -14629,13 +15199,13 @@
     },
     {
       "path": "src/organism/system/CausalLifeGraph.ts",
-      "bytes": 14212,
-      "sha256": "83015c5595704bdd3cfd78ba1bf91287f1a95b0371c2e0a5a9d281d21fbbd48b"
+      "bytes": 14365,
+      "sha256": "4b5499da8c2f0af038e6305e6d410b717bf6cf508672dffc5b6016affb1a0520"
     },
     {
       "path": "src/organism/system/CausalReplayCreditAssigner.ts",
-      "bytes": 6361,
-      "sha256": "538ac6f86572618018cbf1b7ca8db4503866b4a9372644664234dcf435eec703"
+      "bytes": 7552,
+      "sha256": "8138c01111d9806d38212c68424c5580cc93a6d6b68944c7ebc907b8a632ee24"
     },
     {
       "path": "src/organism/system/CausalSelfExperimentLab.ts",
@@ -14659,8 +15229,8 @@
     },
     {
       "path": "src/organism/system/CognitiveEventFabric.ts",
-      "bytes": 35462,
-      "sha256": "4c87140e2e1f831d40d0f2905f45d302e86a89083b2b0701330f3ed50c43bd16"
+      "bytes": 38889,
+      "sha256": "60a17416e4b77a5257e6121f308b3ea434e07ff66f49a8203abeb9640f895dea"
     },
     {
       "path": "src/organism/system/CognitiveQuorum.ts",
@@ -14669,8 +15239,8 @@
     },
     {
       "path": "src/organism/system/CognitiveResourceEconomy.ts",
-      "bytes": 5979,
-      "sha256": "8510aa386896b95a22d39511ae001d99f7ee306b7bcaefa9e5bb72f58d3ccacd"
+      "bytes": 6873,
+      "sha256": "0a7c3b6327e49f575e8635cd1a2b50e6c6ced3bf0ef8fae9fdf11e95e5f2fb50"
     },
     {
       "path": "src/organism/system/CognitiveSpineScheduler.ts",
@@ -14834,8 +15404,8 @@
     },
     {
       "path": "src/organism/system/MemoryPolicyOutcomeLedger.ts",
-      "bytes": 5716,
-      "sha256": "5c2ee51d25b3f77203645c060d5b1869f28131b4b887be9ae0b376028f15f74f"
+      "bytes": 7958,
+      "sha256": "cb8cc3ddcf80696d5fe669358be049f61b5df0e5e529ac2d63f461bef0d789c3"
     },
     {
       "path": "src/organism/system/MemoryRetentionEconomy.ts",
@@ -14934,13 +15504,13 @@
     },
     {
       "path": "src/organism/system/OutcomeCognitionFabric.ts",
-      "bytes": 29130,
-      "sha256": "d6a106c63f28674fed2ea090c636dc008d62b78fe35ff03a06f6cf3c3f21f546"
+      "bytes": 29201,
+      "sha256": "e9709bc466f2012f5cf0095be108352d752272061af665c546c9fc1f0f383f08"
     },
     {
       "path": "src/organism/system/OutcomeVerificationService.ts",
-      "bytes": 9001,
-      "sha256": "d57b46accfaa98a99b19ed9a2426fc6de8a07179d98f0b9b4338d2647dd8d56f"
+      "bytes": 12344,
+      "sha256": "b51b818d5daf7a7a07ba6ae18d079eaf084789a5882f40163569c5ebd12cbaee"
     },
     {
       "path": "src/organism/system/P57RealityFirstObservatory.ts",
@@ -15014,8 +15584,8 @@
     },
     {
       "path": "src/organism/system/RealityEvidenceLedger.ts",
-      "bytes": 3974,
-      "sha256": "1f6e5952bf0e4c7722bc6a1f841f7d4af89c6c14212dff04ef20cb2a9be7a7a2"
+      "bytes": 8273,
+      "sha256": "3c9bde51e6fcf924686ca62fdfaf069255ac6ffb140561711a98c3e703e62049"
     },
     {
       "path": "src/organism/system/RealityGroundingController.ts",
@@ -15059,8 +15629,8 @@
     },
     {
       "path": "src/organism/system/RuntimeClockScheduler.ts",
-      "bytes": 4344,
-      "sha256": "810e249839f9d99137cf3e91b8fe1585c7277102e7b6d64ff1b469e49d03da9f"
+      "bytes": 9840,
+      "sha256": "878cdd4900d9f94da2ed04b009cc238c3dd056f7b5d2ff6ad6d7d787c790afa3"
     },
     {
       "path": "src/organism/system/RuntimeClosureLedger.ts",
@@ -15114,8 +15684,8 @@
     },
     {
       "path": "src/organism/system/SkillAcquisitionBenchmark.ts",
-      "bytes": 2334,
-      "sha256": "2be3c81319e9664b0035fca8c97d76a73fcbdab946d51e09942501f02a7e3423"
+      "bytes": 15719,
+      "sha256": "09a5e245c9397422685f8cf1a4df29d9c0494648492b4e6733453ab9318e91a4"
     },
     {
       "path": "src/organism/system/SparsePredictiveGraph.ts",
@@ -15133,9 +15703,14 @@
       "sha256": "c8728078a84dde2d23524840cec9eaf747eb124e683a815830a10470757f2cf0"
     },
     {
+      "path": "src/organism/system/ToolInputContract.ts",
+      "bytes": 19457,
+      "sha256": "0480c404e3e2fd1f6394ad8b26756e7e2f4256cafdd38f70647f383170750cfa"
+    },
+    {
       "path": "src/organism/system/UnifiedCognitiveCycle.ts",
-      "bytes": 3329,
-      "sha256": "3ff612e0728fd0139263555ab3ebe59235cb9196588a5e07e2da83cfd968ad77"
+      "bytes": 7070,
+      "sha256": "ec60a3aa9127488e07d7c99e4a53d480e550fef5d16266089661d510ad33c205"
     },
     {
       "path": "src/organism/system/UnifiedDevelopmentalCompiler.ts",
@@ -15189,8 +15764,8 @@
     },
     {
       "path": "src/organism/world/GroundedWorldState.ts",
-      "bytes": 11407,
-      "sha256": "07e8dbd41fea7d323a7aa5c85e1486ddb29ea19b5587ec5773e2a65f5b7d5e1a"
+      "bytes": 24770,
+      "sha256": "7cb3405245b0c2ca31e956ae3b18f148d7490f45802abaecf69d8a46d70e466e"
     },
     {
       "path": "src/organism/world/LearnedResidualWorldModel.ts",
@@ -15234,8 +15809,8 @@
     },
     {
       "path": "src/organism/world/PlanEngine.ts",
-      "bytes": 4764,
-      "sha256": "d59399e520fe4316b44686607877d13fa4e0e0f2000c1dc04d08c5b76009f250"
+      "bytes": 6066,
+      "sha256": "56e1dd62912c2de003ae1c67fb05149f4405970a33d4a239ff39f289b6ed336c"
     },
     {
       "path": "src/organism/world/UnifiedLatentWorldState.ts",
@@ -15258,19 +15833,39 @@
       "sha256": "f826bb9cd38eae9dd994817d3ea74bc2aab719222eb396c5c0d045d7f81e740e"
     },
     {
+      "path": "src/server/hexis-evidence-http-status.mjs",
+      "bytes": 431,
+      "sha256": "d26de056a9fe0082498a41410e92c8de0e481e58d01dbc2e46c31520525261dd"
+    },
+    {
       "path": "src/server/idempotency-response.mjs",
       "bytes": 598,
       "sha256": "64fe6ac44dc8115aabb5822ba63e9c85a66823eb33aaa3a3e978c93afdcc9ea2"
     },
     {
+      "path": "src/server/local-language-backend-policy.mjs",
+      "bytes": 1631,
+      "sha256": "2577c85cb159e6ddbbaa0bc65f308cde1df7a381d0a2f789d5df24cf2379f0ae"
+    },
+    {
+      "path": "src/server/native-speech-sse.mjs",
+      "bytes": 4798,
+      "sha256": "d2ad32101452176ec3a4e7ebdc8e1fdbc885930840f40dab06e62c141965114e"
+    },
+    {
       "path": "src/server/server.mjs",
-      "bytes": 160176,
-      "sha256": "9133288d2ee7de0e00d616832d5b7e253094ad134941d4fd1edd089db1ca78f9"
+      "bytes": 178185,
+      "sha256": "305e81ad2de301fc129299d219f6a23366f6a44db56c345805e2be7817cb2446"
     },
     {
       "path": "sz.continuity.jsonl",
       "bytes": 44464,
       "sha256": "d20d5ea1fef7686f59dccb3f8788460f0ff4c99bff80d603d88e5b05527710b2"
+    },
+    {
+      "path": "tests/INDEPENDENT_BILINGUAL_HOLDOUT.md",
+      "bytes": 3756,
+      "sha256": "88a862dc7764ab59f2874118e5768ccc5d86b37184513bbbfeb34b1bb79009d0"
     },
     {
       "path": "tests/P80_P82_INTEGRATION.test.ts",
@@ -15311,6 +15906,21 @@
       "path": "tests/api-security-policy.mjs",
       "bytes": 811,
       "sha256": "91fa45d36f61f9642e7117d25a99093ffb0bc1eb9f389ebfafb6399e19e7b159"
+    },
+    {
+      "path": "tests/architecture-audit-masking.mjs",
+      "bytes": 3461,
+      "sha256": "bf9d6fa6ea74e6af9af570463eb4a3bb550a328754e7d4213e613208cf1479f3"
+    },
+    {
+      "path": "tests/aspect10-embodied-interaction.mjs",
+      "bytes": 13902,
+      "sha256": "fb85a5e5394efb51103aba665ebd4fdfcc64cb2e0be7528d97e6ce1ca4daa1e8"
+    },
+    {
+      "path": "tests/aspect10-grounded-bridge.mjs",
+      "bytes": 3464,
+      "sha256": "5d3e193b9cb55ec4ab168dc845aab0ee4133a84abb8f264ca848e3668385e904"
     },
     {
       "path": "tests/audit-big-pass-124.mjs",
@@ -15524,8 +16134,8 @@
     },
     {
       "path": "tests/big-pass-101-skill-ecology.mjs",
-      "bytes": 2555,
-      "sha256": "30d5eb762b4fbd82db43ff52a1677efcf0bdc54e4d0169a2f3ff3e1a87d7afe5"
+      "bytes": 18524,
+      "sha256": "1f334ae501654a3e3e0fe3b653c9cd8af89547d98b08aed84070d6d151c714b1"
     },
     {
       "path": "tests/big-pass-102-memory-replay.mjs",
@@ -15534,8 +16144,8 @@
     },
     {
       "path": "tests/big-pass-103-memory-transfer.mjs",
-      "bytes": 4544,
-      "sha256": "ead5cc7a9eea5bfd5e7215c36144bc84b2fd6904ff42fe6f68870bdb3e512ab8"
+      "bytes": 10826,
+      "sha256": "b03f91b0b37df76adc5e257bb2e029f34c522aa74bff47558bbf5a602e995398"
     },
     {
       "path": "tests/big-pass-103-migration.mjs",
@@ -15544,18 +16154,18 @@
     },
     {
       "path": "tests/big-pass-104-evidence-gated-retention.mjs",
-      "bytes": 3535,
-      "sha256": "8e334c6aa264e483a688d3acdfbdc0523cfcf702a107b4a411f49f6ae185b3cc"
+      "bytes": 4595,
+      "sha256": "f9a17257c731e6e6e7cb008a72a3fdf43d9a6ce9e5d8180e68df8e210fe4b8eb"
     },
     {
       "path": "tests/big-pass-104-migration.mjs",
       "bytes": 1186,
-      "sha256": "bb6b10f0aa113a5cdf53a943fff654cf6d37ab2cedf40b15e0100ef4deb38033"
+      "sha256": "8aa78fa746cbfd7d0a4c6c15c58fa6770759fde784b04bf55f552a7e9d882d46"
     },
     {
       "path": "tests/big-pass-105-experimental-protocol.mjs",
-      "bytes": 2664,
-      "sha256": "74873a8b0d40f3f1ea57b00f699e4caa84d8740b54720248ff96d52f711b5c7e"
+      "bytes": 3437,
+      "sha256": "e97841edd74a81a7efe4a00e8115bccedff52a90690b8e48983d5c687a14e0de"
     },
     {
       "path": "tests/big-pass-105-migration.mjs",
@@ -15564,13 +16174,13 @@
     },
     {
       "path": "tests/big-pass-106-longitudinal-evidence.mjs",
-      "bytes": 3295,
-      "sha256": "01ecd1f8e8bc426e2180067b395800c661bf9b82a8f3e1daf8ce4e0d7dd74247"
+      "bytes": 4016,
+      "sha256": "de521db3cfdf6e610da112955007df72dd3e20630442c603e51224c0cebdebf0"
     },
     {
       "path": "tests/big-pass-106-migration.mjs",
       "bytes": 699,
-      "sha256": "9a0900062bed6c1c0221c9e575104b1513a236364790a3774c9be4e095cc7e10"
+      "sha256": "409213c295fa8a76e47581b23fef277b89d25539b7e53acec93df1480c6e9d09"
     },
     {
       "path": "tests/big-pass-107-cognitive-research-battery.mjs",
@@ -15664,8 +16274,8 @@
     },
     {
       "path": "tests/big-pass-115-causal-replay.mjs",
-      "bytes": 1556,
-      "sha256": "23b83f76bc70beec5c6e714c0da140e3c7fbeb45b0234df944d67434eec24680"
+      "bytes": 1838,
+      "sha256": "addfcc27578db84ab71ff96277f9b5f53ea6dc862f558324d9dc5daaaf00f815"
     },
     {
       "path": "tests/big-pass-116-predictive-transfer.mjs",
@@ -15839,8 +16449,8 @@
     },
     {
       "path": "tests/big-pass-126-memory-retrieval-benchmark.mjs",
-      "bytes": 12645,
-      "sha256": "b87b4c49d18f18b16c29784d2f011e405192554b0ac68043eeb8bc6c2a87004d"
+      "bytes": 12983,
+      "sha256": "040a6c9f0aa90ed2cfd3cb816654cd0d8801adcee1741b9ad85c75fbd68a7c50"
     },
     {
       "path": "tests/big-pass-126-server-smoke.mjs",
@@ -15929,8 +16539,8 @@
     },
     {
       "path": "tests/big-pass-160-semantic-coverage.mjs",
-      "bytes": 6133,
-      "sha256": "707f9a69ed60835a60795d54f6717995e756a841a4692477a3aa5bd016400d54"
+      "bytes": 6101,
+      "sha256": "e911c3b7efc49527a82d7b35108fe944ad999cb08e3608c2ca35c3f61a1c8cd1"
     },
     {
       "path": "tests/big-pass-161-cognitive-event-fabric.mjs",
@@ -15939,8 +16549,8 @@
     },
     {
       "path": "tests/big-pass-161-function-sweep.mjs",
-      "bytes": 4161,
-      "sha256": "5d08e1dd15065248794da86035518519733ec6bf9f1a85470f14763de401c4ac"
+      "bytes": 4129,
+      "sha256": "e209f55983510b95fdf902fce77e396110ec23632aec955db1d414169cb9794d"
     },
     {
       "path": "tests/big-pass-162-runtime-integration.mjs",
@@ -16031,6 +16641,11 @@
       "path": "tests/big-pass-168-core-integration.mjs",
       "bytes": 1682,
       "sha256": "b197fe114ca8c300487af397d30888957ef5dcf3fe86efad20c8e5d859fc705a"
+    },
+    {
+      "path": "tests/big-pass-168-runtime-compound-skills.mjs",
+      "bytes": 7290,
+      "sha256": "d2a5df9e9c70363afa0a67f9347ebd47e82f7f279e21e7c9956e6038ca7dbd11"
     },
     {
       "path": "tests/big-pass-169-cognitive-integration.mjs",
@@ -16859,8 +17474,8 @@
     },
     {
       "path": "tests/big-pass-272-endogenous-goal-genesis.mjs",
-      "bytes": 2486,
-      "sha256": "285a3d7f4d16b0d56da018164fa95413c9b2f156ee375aaf66c9f3182fa7b58e"
+      "bytes": 9887,
+      "sha256": "d4e41b0d37265457f63dbf0d93186b4e4bbf29e6ef38619a87df0d1bce777f95"
     },
     {
       "path": "tests/big-pass-272-independent-goal-evaluation.mjs",
@@ -18279,8 +18894,8 @@
     },
     {
       "path": "tests/big-pass-47-integration.mjs",
-      "bytes": 1895,
-      "sha256": "c1b9dae347ba335aafddabe64c05435f563c34087deafbcd7044daa0a167a90d"
+      "bytes": 2437,
+      "sha256": "903f601d140ad6d9a82722496c43b9db07220ccf18b59d3b30a848323c726643"
     },
     {
       "path": "tests/big-pass-48-firewall.mjs",
@@ -18569,8 +19184,8 @@
     },
     {
       "path": "tests/big-pass-90-causal-learning-stream.mjs",
-      "bytes": 1535,
-      "sha256": "5cfc513175e93031240eb96b3c72b7b4335b68cd1009f5c1c6cf5ec7b3b76225"
+      "bytes": 22134,
+      "sha256": "807b1ff7b4950ed1ae49dcb45889e8575015346d6d628aad5d61a90984f53621"
     },
     {
       "path": "tests/big-pass-91-unified-learning.mjs",
@@ -18643,6 +19258,11 @@
       "sha256": "4ef805167c5f71dc3935ee5b762b1d9480c356a55be9b144f5fe06008dfd2e36"
     },
     {
+      "path": "tests/bounded-experience-replay-workpass76.mjs",
+      "bytes": 6355,
+      "sha256": "fed9b4726b96a3d73dcb7d4f1df5baa8c0bd7477ef4c16987324fcd28b737c3c"
+    },
+    {
       "path": "tests/canonical-action-policy-arbiter.mjs",
       "bytes": 1238,
       "sha256": "88265d77363b8985e2bda701d612d74320506a216a926798de68512cbb8c9d2d"
@@ -18663,6 +19283,21 @@
       "sha256": "c79f00f7525eeea68dda6b961c27c38e383d6066c4a2d9af64a9a774b12fd75e"
     },
     {
+      "path": "tests/causal-replay-runtime-wiring.mjs",
+      "bytes": 3328,
+      "sha256": "48ac2822a100e9152e50d2fab73cb76afaca2d17805bc0ee8c756a4cff179491"
+    },
+    {
+      "path": "tests/causal-replay-sampler-benchmark.mjs",
+      "bytes": 2117,
+      "sha256": "2af9fcee6988d6901be0f7d726a0729eb76196be756fd17fcc1ee1b6f0a34f46"
+    },
+    {
+      "path": "tests/causal-replay-sampler.mjs",
+      "bytes": 2309,
+      "sha256": "31bc93a7771b2bcdb0b1a1a7eb5bb3c6e9ffa19ae51cfccb8016cb4266675484"
+    },
+    {
       "path": "tests/checkpoint-hotpath.mjs",
       "bytes": 860,
       "sha256": "8ac3db9badcfe0bd1edd448e6e81e7fc7cd690a23a7e5019982898d3a9289dd0"
@@ -18678,9 +19313,49 @@
       "sha256": "1793f1e028a0e4521dad25053eec1106971aca6350864f32a81487c5c518ee14"
     },
     {
+      "path": "tests/cognitive-camera-perception-budget-workpass595.mjs",
+      "bytes": 4789,
+      "sha256": "7ec20ce24e4d70714efab0f19d7bdc4f015f6115403a573f54b63997c0f49896"
+    },
+    {
+      "path": "tests/cognitive-cycle-boundary-runtime-wiring.mjs",
+      "bytes": 2057,
+      "sha256": "7dfe403795155a57b4868313faf907ae67b6c1e00e9be33117c7149a5aa80d7d"
+    },
+    {
+      "path": "tests/cognitive-cycle-boundary.mjs",
+      "bytes": 1353,
+      "sha256": "cf0147d38f35687a77cd9634bca7f9cbd07690e8e6f49ca4aa3112e1542b38f4"
+    },
+    {
       "path": "tests/cognitive-cycle-local-lineage-workpass41.mjs",
       "bytes": 3911,
       "sha256": "e3f663c4a8b30e3ac917fc4701ef26f541f7bc6f881661f56469d0a191e977c6"
+    },
+    {
+      "path": "tests/cognitive-dependency-graph-workpass320.mjs",
+      "bytes": 3271,
+      "sha256": "704651de512a9027b4740147ef745ef95e3ea65d13036959c433eb551e81c616"
+    },
+    {
+      "path": "tests/cognitive-dependency-interrupt-episode-workpass324.mjs",
+      "bytes": 1778,
+      "sha256": "9bdba45add8c4c41994d9709620f9420fa4c6116f2f7eb8f25a29a4f0caca2f4"
+    },
+    {
+      "path": "tests/cognitive-execution-planner-budget-workpass587.mjs",
+      "bytes": 3302,
+      "sha256": "626e536f6a5e49099de539701c0f774a360e7e6f7133c9f1a1522e45e30bd8de"
+    },
+    {
+      "path": "tests/cognitive-execution-planner-cadence-workpass586.mjs",
+      "bytes": 2453,
+      "sha256": "093aa83a7468b88786a3fd7d6dff629b93b738d4dac89d2f6823c76d72d38b51"
+    },
+    {
+      "path": "tests/cognitive-execution-planner-stage-workpass591.mjs",
+      "bytes": 4521,
+      "sha256": "80e921f48bbcd009d2d390a880d67f35acc8b034dac918def0d1cf91d8dbfe41"
     },
     {
       "path": "tests/cognitive-integrity-gate.mjs",
@@ -18693,9 +19368,39 @@
       "sha256": "537c2627710dbb227133997e36c34e766b67ec8894f471af2dd667da4f634294"
     },
     {
+      "path": "tests/cognitive-resource-economy-workpass322.mjs",
+      "bytes": 3136,
+      "sha256": "d502cef5177599a7584fed11a7e923f2b90ce3464c613b394213fda07f8a9ffa"
+    },
+    {
+      "path": "tests/cognitive-runtime-planner-execution-gate-workpass603.mjs",
+      "bytes": 3928,
+      "sha256": "685da14f617b9655dba56187bca704e64af16382569c3078c4fe3277466681e7"
+    },
+    {
+      "path": "tests/cold-retrieval-residency-regression.mjs",
+      "bytes": 2252,
+      "sha256": "a98c657654db60a7687a1fbd09e9c0b93ccaa39221e42f3a6ac8388f20706aaf"
+    },
+    {
       "path": "tests/concurrency.mjs",
       "bytes": 701,
       "sha256": "8897156f8f46a0cd30cea056cae99e6223a1f7affd5938fb1b5d56bbeec64431"
+    },
+    {
+      "path": "tests/continual-learning-history-workpass74.mjs",
+      "bytes": 5148,
+      "sha256": "1665f52ee57e88c0b92a40f65bc243d7179b7616d7647e8a2111c6e1c46f4cad"
+    },
+    {
+      "path": "tests/continual-learning-policy-sequence-workpass74.mjs",
+      "bytes": 3413,
+      "sha256": "5ce2f5ebc3798a2f391e2669b4625ca4e95557092156f736d04b19abaf23408d"
+    },
+    {
+      "path": "tests/continual-replay-ablation-workpass78.mjs",
+      "bytes": 1761,
+      "sha256": "e28333d734f8dd3a33297c552a9f464fa445a104c7e4eeb4f2b3cca3b1dcfbea"
     },
     {
       "path": "tests/core-zero-arg-surface.mjs",
@@ -18738,6 +19443,11 @@
       "sha256": "9a7e77b67a2ee8ec04c2b0e20fe76404954d5fa83e37d192cae4bb303d0a3850"
     },
     {
+      "path": "tests/forensics-rules.mjs",
+      "bytes": 2893,
+      "sha256": "bf7dbd5294230bf0f856e5f6fef1a0d750c2edefc2470e2e8905c94d81c1a736"
+    },
+    {
       "path": "tests/function-contract-public-utilities.mjs",
       "bytes": 1682,
       "sha256": "ea1fc227beabe8f0fd9215173d54928e313ecf081c226fbfd2b7683af8e83ce8"
@@ -18753,6 +19463,11 @@
       "sha256": "49ba045315a43278bcce40889d473173989cac79f13eb10deb51b7211fc453de"
     },
     {
+      "path": "tests/gemini-vision-mime-integrity.mjs",
+      "bytes": 3112,
+      "sha256": "0e890fbd70fd32a52185564a8ee6513e0b1d031aa06a316551636b2ee6a543c4"
+    },
+    {
       "path": "tests/giant-25-long-run.mjs",
       "bytes": 2823,
       "sha256": "f50f276521ed086a9af02dd7da339a2687a45684c020ccce54e591adb4941238"
@@ -18761,6 +19476,11 @@
       "path": "tests/graded-trait-salience-workpass47.mjs",
       "bytes": 2336,
       "sha256": "a24facd0eea859c509fdc2ecdee5fdc0d27e4b3535aaab244d887171955aa61a"
+    },
+    {
+      "path": "tests/hexis-correction-memory.mjs",
+      "bytes": 6893,
+      "sha256": "0cd6729e964753239f15875a9c1de20949af4fad697d7fd0f946a7a7590e7adc"
     },
     {
       "path": "tests/history/P4-P5/organism-p5-smoke.mjs",
@@ -18791,6 +19511,11 @@
       "path": "tests/history/P6/p6-migration.mjs",
       "bytes": 1270,
       "sha256": "c8702ad530766804304cbcbfd84516cba76f389ce230e5a57ac7e2cf1854181e"
+    },
+    {
+      "path": "tests/holdout-normalization.mjs",
+      "bytes": 967,
+      "sha256": "6884d890ab3575d79e479b6bcb35d8231af10ef31a37aac3cdaf89a87cc44b41"
     },
     {
       "path": "tests/horizon-profile.mjs",
@@ -18833,9 +19558,14 @@
       "sha256": "8d2711916049456290ab5a5f6fa60453b6a5797fe45c21a9dbcaf7a318972417"
     },
     {
+      "path": "tests/integration/hexis-canonical-evidence-bridge.mjs",
+      "bytes": 10507,
+      "sha256": "99dd13e9d298646cc13715dce790ef6a3266a6300bf9b1f17fa8ba7542a90871"
+    },
+    {
       "path": "tests/integration/hexis-server-smoke.mjs",
-      "bytes": 7342,
-      "sha256": "daadc0ed7a2ad84008c8e6d9d5c1825624e33a0bf95de0fea5e6d737e417c64a"
+      "bytes": 14468,
+      "sha256": "c4af811de04dfaf8f82f95cb3e9ca49a57838d9dcefc41666656de89c0ab4005"
     },
     {
       "path": "tests/integration/letta-governance-adaptation.mjs",
@@ -18888,19 +19618,39 @@
       "sha256": "9eab534e374338583dfd541c4080e6d008578b5c342a02f5c6b1c7dbd06eff33"
     },
     {
+      "path": "tests/language-invoke-order-regression.mjs",
+      "bytes": 1534,
+      "sha256": "2fc8720a8e76b8eedeb9eb575c45be52e016c5ab42ecde681a496248bb7329e4"
+    },
+    {
+      "path": "tests/learning-evaluation-document-workpass72.mjs",
+      "bytes": 1937,
+      "sha256": "fa491417ed8da2a66ebe7f6b612dd3db5ff540a07d4098ed4b4f26c8298f46cc"
+    },
+    {
       "path": "tests/live2d-integrity.mjs",
-      "bytes": 2538,
-      "sha256": "15c88cb43bb73229117ee997c5e34c3a114798b2980c38901d58720d3bcb45c9"
+      "bytes": 2779,
+      "sha256": "ae965b69283d91f42391392016a85a4ad2578d6b08e25c6c50fa97f1d2d91ba1"
     },
     {
       "path": "tests/local-chat-provider-workpass40.mjs",
-      "bytes": 4692,
-      "sha256": "3528c14b3129a952ceb2e331988e273fd2e551b69d793a9776f146b43ae643c5"
+      "bytes": 5667,
+      "sha256": "579a28e693c3d1ec8f8525809d704d57945694473b06d104a16cced767fe3472"
     },
     {
       "path": "tests/local-embedding-privacy-workpass56.mjs",
       "bytes": 1874,
       "sha256": "66993c3720d515575ffc6e2788d6f7a62f5d1f1fac4fc182fe0646e62e94216b"
+    },
+    {
+      "path": "tests/local-llm-live-smoke.mjs",
+      "bytes": 2500,
+      "sha256": "97098db520ee5dbc8f05f0cbd8b012774cdd3f1fbf0b2513cbb0b6fa75b43170"
+    },
+    {
+      "path": "tests/local-llm-selection-workpass74.mjs",
+      "bytes": 3054,
+      "sha256": "c7efdf646e754a490f91790a122c17dec7bc9950cfa7efb490fc5f33fbe6482b"
     },
     {
       "path": "tests/long-horizon-memory.mjs",
@@ -18948,6 +19698,36 @@
       "sha256": "4e967325b3edc1f05b84fad8ec588354fd2dc240b8ee90b9469e318a77091f3c"
     },
     {
+      "path": "tests/manifest-counts.mjs",
+      "bytes": 1445,
+      "sha256": "544ced0e21493d884a63e84ae989acc0b3bea24b57fa9041ff34563fa502b166"
+    },
+    {
+      "path": "tests/mem0-live-contract-check.mjs",
+      "bytes": 2927,
+      "sha256": "fcbabce6ce808397139e3033f87de9db11e88da7ecb20e1324e8eb5d1d711b28"
+    },
+    {
+      "path": "tests/mem0-oss-adapter-workpass2.mjs",
+      "bytes": 4277,
+      "sha256": "e41da108dafdfab98e8e010db907ccd513ea98cc553069546ccd5703b5018935"
+    },
+    {
+      "path": "tests/mem0-platform-adapter-workpass1.mjs",
+      "bytes": 14296,
+      "sha256": "22b1377220a9eb57256978efd30f1b9ec903e407e2ae157e6793c9faafbb8221"
+    },
+    {
+      "path": "tests/mem0-runtime-wiring.mjs",
+      "bytes": 3217,
+      "sha256": "f0bd3c929f5a2352e40e5e20b13ea8fe06c7b532328bb4996c6903c34fd217f2"
+    },
+    {
+      "path": "tests/memory-autobiographical-recall-goldset-workpass568.mjs",
+      "bytes": 8828,
+      "sha256": "c2b8de297f7a4a4f46c9bdfa69bf46e23beb52d1eae8f34936c86d985722b6d7"
+    },
+    {
       "path": "tests/memory-background-index-workpass56.mjs",
       "bytes": 8429,
       "sha256": "f03ba824133de284d313010fe899cdcb46127f6fba497da2bd1e0e9847e9f1f9"
@@ -18968,9 +19748,29 @@
       "sha256": "cceed06186508542632c7c8365d7d934d3c44412a244ff89d48d2248631f9ece"
     },
     {
+      "path": "tests/memory-doctor-cli-workpass318.mjs",
+      "bytes": 4212,
+      "sha256": "c0ee0efe5cfc5c37d567da56310f046e6f2b77892273306ea6d3d5b5eb681f6a"
+    },
+    {
+      "path": "tests/memory-doctor-workpass314.mjs",
+      "bytes": 2889,
+      "sha256": "df789f13c9f05db433717943c95b0f6af0a9c11458e6b5ea5495e6a2b87d6d92"
+    },
+    {
+      "path": "tests/memory-fabric-semantic-retrieval.mjs",
+      "bytes": 5428,
+      "sha256": "f72c75d7212712eaf57a534ddb564b262f9f1915a5e5c41cceacdb717217f469"
+    },
+    {
       "path": "tests/memory-lifecycle-command-workpass31.mjs",
       "bytes": 9922,
       "sha256": "09c92c74a9785f377381eb8605c34a0d1a4dc0bd3efc106f14469ed378900033"
+    },
+    {
+      "path": "tests/memory-policy-outcome-verification-gate-workpass72.mjs",
+      "bytes": 7712,
+      "sha256": "cb6f3c5888a948f68419e98538454641d4263138af310af6387910f06e4dab1f"
     },
     {
       "path": "tests/memory-provenance-lineage-workpass30.mjs",
@@ -18978,14 +19778,24 @@
       "sha256": "65dce370c624d1e23a29ff98840850d8886bc2e450026374557e27ec02cb6076"
     },
     {
+      "path": "tests/memory-query-context-stability-workpass573.mjs",
+      "bytes": 1627,
+      "sha256": "afb74b8c7bac616f21e0e117d0c5bcaf40d0e3277ca0b28f654af021e3f17e83"
+    },
+    {
       "path": "tests/memory-query-intent-workpass51.mjs",
-      "bytes": 4742,
-      "sha256": "8e6efbb5bb04cbd941c48a4b9cd38bb0bd86ce7ded8a6d44d672a5e3483edb11"
+      "bytes": 11410,
+      "sha256": "7e68222b316bd304393f87cdb2288583f51e2e65a2016e6c16dc6280dd1421fe"
     },
     {
       "path": "tests/memory-retention-net-value-workpass41.mjs",
       "bytes": 2017,
       "sha256": "e119f6a3b049e3a7bec57e22ec5fbab5f3e646e39ff0938160a17fdce4fbfbd4"
+    },
+    {
+      "path": "tests/memory-retrieval-annotation-pack.mjs",
+      "bytes": 8131,
+      "sha256": "acb3f07821535fa23af1422dcbf5754318bc98802bd8e619c3df4930a50c567b"
     },
     {
       "path": "tests/memory-retrieval-candidate-coverage.mjs",
@@ -18994,18 +19804,23 @@
     },
     {
       "path": "tests/memory-retrieval-experiment.mjs",
-      "bytes": 8144,
-      "sha256": "e0bb95417c1923a4369a1cadd74c650b2d50c80f7b99f75005d647c05ba9f42b"
+      "bytes": 24774,
+      "sha256": "019d4a2db74269fa020fd6867237f7bf1f4a91428e60a08e84f284ca71af3325"
     },
     {
       "path": "tests/memory-retrieval-fuzzy-workpass32.mjs",
-      "bytes": 3085,
-      "sha256": "411153f687be64458b02e99a804acd26442ab3ab17c444abaa3299e7c53b33e4"
+      "bytes": 3065,
+      "sha256": "0cdd1c12c54b830f1ab2d06a2d63afd934e49c06012cc8cb38c502bcc6fd31be"
+    },
+    {
+      "path": "tests/memory-retrieval-grounded-abstention-workpass574.mjs",
+      "bytes": 5227,
+      "sha256": "6f0fb190bc32530cce455b5399a4f0ea90b910fefa273b9cf96cfac1332a399a"
     },
     {
       "path": "tests/memory-retrieval-numeric-terms.mjs",
-      "bytes": 2172,
-      "sha256": "2b71221325c6108665d7068cc6f2aaf0dd81d04cbc8b688492e4dd2795d9b772"
+      "bytes": 2157,
+      "sha256": "4947b2a6890d1c6bb6bbe364dee59fd84b4fdda5b268e19e73746eaef054f670"
     },
     {
       "path": "tests/memory-revision-history-budget-workpass36.mjs",
@@ -19016,6 +19831,11 @@
       "path": "tests/memory-semantic-embeddings-workpass33.mjs",
       "bytes": 5187,
       "sha256": "66ab7d8b6fe4d1e6b5f75d0bb1d790e5ac67fd39950a90a3f0ef773cdbf1e52e"
+    },
+    {
+      "path": "tests/memory-semantic-vector-integrity.mjs",
+      "bytes": 5361,
+      "sha256": "f91de3a594d38029c0c244598f12f4c295f7d72897f32fb1ddf18f6469fa6659"
     },
     {
       "path": "tests/memory-source-integration-workpass29.mjs",
@@ -19033,9 +19853,24 @@
       "sha256": "53884776b231098f6a602414f857f5303bbc0462a1f62281ad381970b4c16bc3"
     },
     {
+      "path": "tests/memory-subsystem-state-roundtrip-workpass570.mjs",
+      "bytes": 3965,
+      "sha256": "aff6ab710a621379e26841ba332f70b559456e959ef6dac771ba57494d0f6994"
+    },
+    {
       "path": "tests/memory-temporal-inspector-closure.mjs",
       "bytes": 4243,
       "sha256": "b8fdf1aa2b28b27abb98615b435fd605c0b70fd51a5d9fb8e49caf12bc2a1431"
+    },
+    {
+      "path": "tests/memoryos2-metadata-retrieval.mjs",
+      "bytes": 3749,
+      "sha256": "51e7dab15ca0d9e4a5a84400fa4ad657701b2b518df9a3265b14ae77ad2b20ee"
+    },
+    {
+      "path": "tests/micro-dream-associations-workpass317.mjs",
+      "bytes": 7886,
+      "sha256": "9db929d1eb77e2d4f9d3ee47f34185e090b7f5b40b93ccef5e294684509202b8"
     },
     {
       "path": "tests/mobile-horizon-1000.mjs",
@@ -19088,9 +19923,34 @@
       "sha256": "f5df61b3444a42d4b548c1da94bfb8baf6f02f92796daae616be597c350baab5"
     },
     {
+      "path": "tests/native-speech-event-channel-workpass628.mjs",
+      "bytes": 5441,
+      "sha256": "27f9297a9947c58014cb04ed25a52206bd7b22c57da999608c48911fe119334f"
+    },
+    {
+      "path": "tests/native-speech-host-router-workpass629.mjs",
+      "bytes": 2819,
+      "sha256": "0b130f5334352af15b3d1f133764f8dbe783eccf871e96314a01cc0f7c9135c1"
+    },
+    {
+      "path": "tests/native-speech-sse-workpass630.mjs",
+      "bytes": 5909,
+      "sha256": "6131ca226399d65adddf54cb5a537cb7d4a7ebc53d2664215eedb8433e98aeb0"
+    },
+    {
+      "path": "tests/nk1-cognitive-unified-ownership-regression.mjs",
+      "bytes": 8264,
+      "sha256": "145c93433631f008c5ef7ebe553f850f889d41be1c35c1b4b533de583753a861"
+    },
+    {
       "path": "tests/operational-hardening.mjs",
       "bytes": 1185,
       "sha256": "17f2280d1975c21bb936e8f5c3bb9f4a945b1b5a45194b825ef3ed9bcf70c071"
+    },
+    {
+      "path": "tests/operational-microcycle-finite-input.mjs",
+      "bytes": 1785,
+      "sha256": "50bc49b7c8f6daeb45aaeffe72a629353446fd97b730c1e2f259ef7e65babb0f"
     },
     {
       "path": "tests/organism-autonomy.mjs",
@@ -19179,8 +20039,8 @@
     },
     {
       "path": "tests/p16-memory-world-learning.mjs",
-      "bytes": 1996,
-      "sha256": "c0c88125657a098d07ef24ddc22378559059cad1ea51b125188b14c4d663b007"
+      "bytes": 2661,
+      "sha256": "8b3f089a6df9ab089eff3e5dd3ec9c10142f87cb50425a472e8517e843add650"
     },
     {
       "path": "tests/p16-migration.mjs",
@@ -19219,8 +20079,8 @@
     },
     {
       "path": "tests/p20-session-resume.mjs",
-      "bytes": 1643,
-      "sha256": "5df0982d5ba63f3463f0821b3de6b7203f5d51acf9cf1453cf7035f1923953a9"
+      "bytes": 1655,
+      "sha256": "749f384de0bf2a3d6dbe94328def0f7c4ff2733956790ac94c79d9442b555fb3"
     },
     {
       "path": "tests/p20-temporal-continuity.mjs",
@@ -19248,9 +20108,94 @@
       "sha256": "26f130d9d78d6d59c93cc5805c61ef850a2a01ce6ec0ba3b61f2ad97c0c69a5b"
     },
     {
+      "path": "tests/p23-continual-benchmark-comparison.mjs",
+      "bytes": 2648,
+      "sha256": "3bf0a6ff124743e9c5bcef44a5887979565d91ca290031c5e1ca295d0995d776"
+    },
+    {
+      "path": "tests/p23-continual-learning-metrics.mjs",
+      "bytes": 1613,
+      "sha256": "a2b8b45e4a8dbe5813d596180c4d284ef46c0ae7376b1ca023230aa7758b5b32"
+    },
+    {
+      "path": "tests/p23-continual-outcome-matrix.mjs",
+      "bytes": 8208,
+      "sha256": "086cc7a8f029a94565bed40a6f319000c19d13cd54c9da4e7f2013359a97c3f6"
+    },
+    {
+      "path": "tests/p23-core-trusted-shadow-entry.mjs",
+      "bytes": 4531,
+      "sha256": "fc0e74f94ba7b31617f1b7899798bf742ed01db17cb7e59c62da3753f296f139"
+    },
+    {
+      "path": "tests/p23-create-skill-promotion-approval-request.mjs",
+      "bytes": 5943,
+      "sha256": "bf7e5ca0aaeccd8b98d9c330b956181b32cc6573d20787811614223397450218"
+    },
+    {
+      "path": "tests/p23-hermes-production-promotion-gate.mjs",
+      "bytes": 7038,
+      "sha256": "36389bd46de16d78d21cf365a95d2e83b9291f69b1b93dc983d565433e171c9f"
+    },
+    {
+      "path": "tests/p23-hermes-reflective-diagnostics.mjs",
+      "bytes": 2150,
+      "sha256": "081f61cf40a073f4941a9057c3cb8e16a6d66494e887339b00cabc0a445e2a7e"
+    },
+    {
+      "path": "tests/p23-hermes-verified-evidence-binding.mjs",
+      "bytes": 10716,
+      "sha256": "7344df4eab0b2bc8955ecab4a8f0546f78e1bf1357e937f8b2816c210a0de19e"
+    },
+    {
       "path": "tests/p23-integration.mjs",
       "bytes": 2223,
       "sha256": "d38b42d2c5931069a17b435dd0a0b528de273822e0323747f72abd9cbdfa0bf2"
+    },
+    {
+      "path": "tests/p23-learning-attempt-diagnosis.mjs",
+      "bytes": 6483,
+      "sha256": "20230b7185ff2b4fc38e61ae0530d8e869abcc1e37f7e4c0f10eed3f15a7aa26"
+    },
+    {
+      "path": "tests/p23-learning-engine-verified-skill-lifecycle.mjs",
+      "bytes": 1864,
+      "sha256": "2ec3051b8dd0109650ed7ef8c7881e9d0d5bd0b570e9fe6c4887605cdcfd6619"
+    },
+    {
+      "path": "tests/p23-learning-execution-audit.mjs",
+      "bytes": 2680,
+      "sha256": "02db005712a25ca04da38e404f7388eac6391d51729bd06d8427e63a5cde4bd4"
+    },
+    {
+      "path": "tests/p23-learning-execution-evidence.mjs",
+      "bytes": 3069,
+      "sha256": "ac606cf0a37a40be3ff37b430529b9c610b8f833ee5e3499bf7359583c4d15fe"
+    },
+    {
+      "path": "tests/p23-learning-experiment-plan-cli.mjs",
+      "bytes": 2533,
+      "sha256": "b587d7939f99d6d01af0b9970543286e6e4c79b00054e92ec2c3e0c3d253db97"
+    },
+    {
+      "path": "tests/p23-learning-experiment-plan.mjs",
+      "bytes": 6133,
+      "sha256": "aacef7e66a53a5426cc4e4265fa44c7150c552d21c78705851b242d9d5648d1a"
+    },
+    {
+      "path": "tests/p23-learning-process-supervisor.mjs",
+      "bytes": 8177,
+      "sha256": "7430d36da5329d4946aea114bb3d4ba121f8839dad90b644188c692f1b387e87"
+    },
+    {
+      "path": "tests/p23-local-model-skill-revision-generator.mjs",
+      "bytes": 3958,
+      "sha256": "cf5f74fa36fe498ab67e09a6d80db5e6d4aa3ea856d09b8e3b81250ca0595e6d"
+    },
+    {
+      "path": "tests/p23-local-model-skill-revision-integration.mjs",
+      "bytes": 2824,
+      "sha256": "7895f2b4bcfbdfea32dbbdfe3978604e1119370f98d57b54e3f5aae07c99f5a7"
     },
     {
       "path": "tests/p23-migration.mjs",
@@ -19258,14 +20203,189 @@
       "sha256": "a0f92e29e4141455cd8d077a185b6f3b1ff71dab8b3aa2906fcb724a104eca13"
     },
     {
+      "path": "tests/p23-multi-source-learning-mechanisms.mjs",
+      "bytes": 3711,
+      "sha256": "0612863618018cbef349f1fbd245a23ff00639b5d4ff48da9411f691f59c07aa"
+    },
+    {
+      "path": "tests/p23-outcome-promotion-integration.mjs",
+      "bytes": 2606,
+      "sha256": "9c87a53fe8e386934af8196b05f9ba1a6ca681d990ad1ef0ee7c6f73451b6230"
+    },
+    {
+      "path": "tests/p23-paired-outcome-identity.mjs",
+      "bytes": 1627,
+      "sha256": "e88bc1318a0bf4a051ded5a7b7e6b70c0383f416892254a709b98c7fe8ca6972"
+    },
+    {
+      "path": "tests/p23-reflection-reason-runtime-wiring.mjs",
+      "bytes": 915,
+      "sha256": "3f2980b9a15fc1d84e323abe6f5bae86ff1eaca4ce3535d4042b2149108389b1"
+    },
+    {
+      "path": "tests/p23-replay-runtime-config.mjs",
+      "bytes": 2517,
+      "sha256": "5a87a98c8a339cbcece4b75c167d4269cb7ce26e49526904c9a9c81faba08dc0"
+    },
+    {
+      "path": "tests/p23-replay-selection-policy.mjs",
+      "bytes": 6665,
+      "sha256": "36dc7d4b9a6c5fd171b95c15f067b7949dcec05dae0b71903177ac4f7eadb2db"
+    },
+    {
+      "path": "tests/p23-replay-strategy-benchmark.mjs",
+      "bytes": 5532,
+      "sha256": "55461e4957b8d94e37dd1a598fd9cee9867242a4338e0ec1671713c7df32990e"
+    },
+    {
+      "path": "tests/p23-reservoir-replay-policy.mjs",
+      "bytes": 3178,
+      "sha256": "35881c75f874fe39d7c35d82e07a69062bd70e8a502082c0f32817f1b55bc020"
+    },
+    {
+      "path": "tests/p23-reset-retention-evaluation.mjs",
+      "bytes": 5252,
+      "sha256": "e0bf8e20d071afafa999051428d042f3444228b14f8773bcb9ffbe671ca19a82"
+    },
+    {
+      "path": "tests/p23-revision-plan-holdout-isolation.mjs",
+      "bytes": 3067,
+      "sha256": "aee775815385769f6b45c549236c94cee311b02afd52b89be6d4a5537171e9b2"
+    },
+    {
+      "path": "tests/p23-runtime-signed-shadow-observation.mjs",
+      "bytes": 8756,
+      "sha256": "8f52ac64e51160d999b95e4b4170e29fdcf19d69a2e8db0782401fcabc6d8665"
+    },
+    {
+      "path": "tests/p23-runtime-trusted-shadow-scheduler.mjs",
+      "bytes": 10472,
+      "sha256": "7d6fe4394dbd6d5e0f7e8267b955bb3e07d64c577851dbcc33624933807ccfc9"
+    },
+    {
+      "path": "tests/p23-seed-clustered-outcome-comparison.mjs",
+      "bytes": 6907,
+      "sha256": "2cd33e384b8ec58f90b488e72543dabbbf76b0738dec6a14f20a2ed9f38bbd3c"
+    },
+    {
       "path": "tests/p23-server-truth.mjs",
-      "bytes": 818,
-      "sha256": "418cc7fdd85397aa3c6050130462c6ca66c687efe79afad7afd82c019f120a22"
+      "bytes": 827,
+      "sha256": "390e6701a22f92544e382eebd5d0db163ae312b5f50238c2202a65e3f8d2235b"
+    },
+    {
+      "path": "tests/p23-signed-outcome-artifact.mjs",
+      "bytes": 3738,
+      "sha256": "4e2f8a0fa9daadd3a8baaed123cadbe11384a4a6a9d25bf61a9830edbc12e3bd"
+    },
+    {
+      "path": "tests/p23-skill-evaluation-report.mjs",
+      "bytes": 2455,
+      "sha256": "7e4fd69b244e05800cc74a48cdd885d571f81999acb626b4023e9c96afcd4963"
+    },
+    {
+      "path": "tests/p23-skill-retrieval-reflection-curriculum.mjs",
+      "bytes": 3341,
+      "sha256": "abe6f70f94c3d84771cad7ad97bc13814d334f561b6a992f865a23fd45dcee90"
+    },
+    {
+      "path": "tests/p23-skill-store-failure-boundaries.mjs",
+      "bytes": 4164,
+      "sha256": "4d80d94d62e8c4e51d42e039bfc17a6e2c1ee11fa9ab9f772cf4fe635e50fb98"
+    },
+    {
+      "path": "tests/p23-stage-verified-skill-candidate.mjs",
+      "bytes": 5388,
+      "sha256": "2150748dfa11bfbcb0971c0fb9945087d27ec39b7ff8c937aa147795e1d03db0"
+    },
+    {
+      "path": "tests/p23-task-manifest-fingerprint.mjs",
+      "bytes": 1551,
+      "sha256": "995e8fd6969a94fca334d6bf8a9835ba7ad778de3d62bbff89f705083de36e00"
     },
     {
       "path": "tests/p23-true-learning.mjs",
-      "bytes": 3702,
-      "sha256": "5bb80a2b6743b3dc30ad7e58e1c4dd5a3259e38901bcaaab76d4a2938b9a1b92"
+      "bytes": 18271,
+      "sha256": "60c39d340c1e7e50d5ac9727b76913bd6a2f5c97ed9fc21b73d60f0f6ba2ee12"
+    },
+    {
+      "path": "tests/p23-trusted-shadow-run-coordinator.mjs",
+      "bytes": 3027,
+      "sha256": "54b06b7734a4943ac4cd178b9a2e89e98eb9b747412fdfbce4fa65bd311e9343"
+    },
+    {
+      "path": "tests/p23-trusted-shadow-runtime-config.mjs",
+      "bytes": 2133,
+      "sha256": "3d017d9b1d34d4af0c58581367f4d3748dfc9ada6f31670103b799323c6ec915"
+    },
+    {
+      "path": "tests/p23-trusted-shadow-supervisor-registration.mjs",
+      "bytes": 2851,
+      "sha256": "8371ce220a45c05b3f20103da1d79c01228c1a6b7932e8faccd385c243a96cc6"
+    },
+    {
+      "path": "tests/p23-trusted-skill-shadow-run-registry.mjs",
+      "bytes": 5044,
+      "sha256": "4dee925bea3b3cb7bc7df1f5a4d7c5bb3634b0bbbc6854b2f6f533c59b8b9058"
+    },
+    {
+      "path": "tests/p23-verified-outcome-artifact-authentication.mjs",
+      "bytes": 4873,
+      "sha256": "88280ed2f2053371afa0e6484540d77c4375f2dcdb7c46952dfcfc1f5dc33578"
+    },
+    {
+      "path": "tests/p23-verified-outcome-ledger-file-store.mjs",
+      "bytes": 2166,
+      "sha256": "4a564b095ab6ec776ee897dbbc585bd755c1b1812a4fd5c3b904f31a0c772090"
+    },
+    {
+      "path": "tests/p23-verified-outcome-ledger-persistence.mjs",
+      "bytes": 3699,
+      "sha256": "f3f2b29b67a9f3c35e260f076720a0ca99c47108f8cf60c9f632eb7fc8f1fe4d"
+    },
+    {
+      "path": "tests/p23-verified-outcome-ledger.mjs",
+      "bytes": 4357,
+      "sha256": "345c397d8d3c26c87b9a9e63fbefa625c86cf0e3dca2f62280d30beeff46693a"
+    },
+    {
+      "path": "tests/p23-verified-outcome-promotion-gate.mjs",
+      "bytes": 3439,
+      "sha256": "c8e066a7b356bd313aea202ec8e09f1ac6d41a5c18e186ee0db664e9178fc852"
+    },
+    {
+      "path": "tests/p23-verified-replay-admission.mjs",
+      "bytes": 7640,
+      "sha256": "a2144331d01e8bea7b8acfd9b986dc76477151bd732d46d11a1a2ee7421f9a9e"
+    },
+    {
+      "path": "tests/p23-verified-session-dataset.mjs",
+      "bytes": 5454,
+      "sha256": "171b22a364eaeddb2fd1b37b1de2b54338eb8126d58a795448ecf62a128b97d9"
+    },
+    {
+      "path": "tests/p23-verified-skill-lifecycle-bootstrap.mjs",
+      "bytes": 3509,
+      "sha256": "ea25a4d0235f11bd2671407955207fb5387e57469b860533644c9bfed25723b1"
+    },
+    {
+      "path": "tests/p23-verified-skill-promotion-proposal.mjs",
+      "bytes": 7975,
+      "sha256": "93781bf5b4220412b31cb4f902cba0591b1461b2b3f663791c116f249b3dba78"
+    },
+    {
+      "path": "tests/p23-verified-skill-revision-gate.mjs",
+      "bytes": 2796,
+      "sha256": "31ade5b5c4d31fc96a7fff781767789246225f9b486e1b1b2761ed34e76f7f8c"
+    },
+    {
+      "path": "tests/p23-verified-skill-shadow-evidence.mjs",
+      "bytes": 2589,
+      "sha256": "877c2f23c592b833d21176ce58d8a0b880f3c5ef56d5e4ab4ae69e3cd99f6fbe"
+    },
+    {
+      "path": "tests/p23-versioned-skill-candidate-store.mjs",
+      "bytes": 19035,
+      "sha256": "5cf188c8aaeb7639be2467b34e34ffa5fc89499930dd630f97caceca63374527"
     },
     {
       "path": "tests/p24-migration.mjs",
@@ -19293,9 +20413,59 @@
       "sha256": "fb9a48ad4fed1dfde01195d39ae3649f4cadaaa683c5fe51cdf51c97d5b3b460"
     },
     {
+      "path": "tests/p26-adaptive-window-drift-detector.mjs",
+      "bytes": 2037,
+      "sha256": "855284ea27d1ab745ef73349abdc38009ac968f60f1aa56ea482cce9662faeae"
+    },
+    {
       "path": "tests/p26-contextual-world.mjs",
       "bytes": 1221,
       "sha256": "aacd6445f491d2313a8a9f05dfdc5f04cb3b28a539d5af25c7b4aa64841627d1"
+    },
+    {
+      "path": "tests/p26-continual-forgetting-tracker.mjs",
+      "bytes": 1790,
+      "sha256": "2eb7f91b826615ec3ebb440a9a6bcb44e204d41c34ff51e925aa329a737b9bef"
+    },
+    {
+      "path": "tests/p26-continual-replay-buffer.mjs",
+      "bytes": 3350,
+      "sha256": "7b88958eea6a6d6f9e3b80b8f248de25648a23ff08dbf62da0507e147647e688"
+    },
+    {
+      "path": "tests/p26-continual-transfer-tracker.mjs",
+      "bytes": 2995,
+      "sha256": "d181cf15d4176764133811f88c4973ee2cb229e723ed9d8f35e025330770f735"
+    },
+    {
+      "path": "tests/p26-drift-aware-learning-controller.mjs",
+      "bytes": 2596,
+      "sha256": "1070032af51f49edb8d1931028b46f2f3a23500089112956e0d1fb2ccfa28ccc"
+    },
+    {
+      "path": "tests/p26-feature-schema-migration.mjs",
+      "bytes": 1390,
+      "sha256": "cb2edcf61cbf6842b463f5bf033c7d1668d27caf1dde4e5da139dad16df13efa"
+    },
+    {
+      "path": "tests/p26-holdout-provenance.mjs",
+      "bytes": 2525,
+      "sha256": "9d762f3287b1c361fc07814a065bd5f7013897d9aafd4e982342447dbe416ccf"
+    },
+    {
+      "path": "tests/p26-learning-continual-matrix.mjs",
+      "bytes": 3765,
+      "sha256": "d3659f856e585e8d09d3dea04f00b815acaf2b9dcd59bee167d06c94292b7bc0"
+    },
+    {
+      "path": "tests/p26-learning-input-integrity.mjs",
+      "bytes": 4443,
+      "sha256": "236878e1d769555b8992d6c9a994ef5d3af80c8ed8331bdf6e6512e2f022be1d"
+    },
+    {
+      "path": "tests/p26-learning-recovery-benchmark.mjs",
+      "bytes": 2942,
+      "sha256": "0a8e6ad2833e00417369b7d635240296de2f98c8c9ad01e48fe7b1b6d55c56be"
     },
     {
       "path": "tests/p26-migration.mjs",
@@ -19303,9 +20473,34 @@
       "sha256": "99e626b3dd3a153dfc38dd6beafc104d5ac65b006c88d32a7883b814ae712894"
     },
     {
+      "path": "tests/p26-prioritized-replay-sampler.mjs",
+      "bytes": 1880,
+      "sha256": "9ce8275f33e31dd819129db4d9d5b6b8ed689fe055e735a5183911e09e47e00d"
+    },
+    {
+      "path": "tests/p26-replay-ablation-benchmark.mjs",
+      "bytes": 3209,
+      "sha256": "7224d7f52fc95b76c8b6fa79c04f9264680626a0332a9975f4b926f03821b1fb"
+    },
+    {
+      "path": "tests/p26-replay-policy-sweep.mjs",
+      "bytes": 6976,
+      "sha256": "c41d799be7241d723d0970a117121cece5f3334ab69d975a7b386f83f6110068"
+    },
+    {
+      "path": "tests/p26-sequential-learning-benchmark.mjs",
+      "bytes": 9254,
+      "sha256": "0f565db3e346e971f08720b49d67439345c8cc0d71b5ce37292e36dfaf13b918"
+    },
+    {
+      "path": "tests/p26-skilllearnbench-adapter.mjs",
+      "bytes": 3059,
+      "sha256": "990b012ee6e949652db12991ee8831ad3f66fe74956e238dc38bb540fc02c181"
+    },
+    {
       "path": "tests/p26-true-learning.mjs",
-      "bytes": 2008,
-      "sha256": "5eef240a8f5f4b5387ef98a60a2d0362246ab22d719b1c4049f5681ff7b0b903"
+      "bytes": 4058,
+      "sha256": "2490e7a63d2980c78cdd8c6d851a9c7fdd21c016d21376b018b66dcdd32c40bf"
     },
     {
       "path": "tests/p2659-cross-layer-adaptive-arbiter.mjs",
@@ -19349,8 +20544,8 @@
     },
     {
       "path": "tests/p2684-memory-residency.mjs",
-      "bytes": 2028,
-      "sha256": "22db9b46518e2d5f9b502c85150f49c418174ac11696fdc86ec564bc88fa347a"
+      "bytes": 2596,
+      "sha256": "2d31ff0ad17aea6d84d4c4a8eb77c7aaa4c3ce0171e2cc5c02a7b6b30b4bc5ff"
     },
     {
       "path": "tests/p2684-mobile-soak.mjs",
@@ -19369,13 +20564,13 @@
     },
     {
       "path": "tests/p2687-experience-continuum-integration.mjs",
-      "bytes": 2604,
-      "sha256": "e16ed0603849e6e1e0a1d56bd7228e0c419e2db16395d8e8bbbe05bd5495a662"
+      "bytes": 3299,
+      "sha256": "ee29b863523644f243c9e03933f62cab116e337bd3f7e157ffb64586cd7c3946"
     },
     {
       "path": "tests/p2687-migration.mjs",
-      "bytes": 1609,
-      "sha256": "063c45a2f2fb7273482a20741c1ca8769669492f0704c751eeea4d307e4ac753"
+      "bytes": 1681,
+      "sha256": "f10ff3eb877dfea88181c23c63f48c197142e4c081da521da961c55b17c60414"
     },
     {
       "path": "tests/p2687-replay-policy-ablation.mjs",
@@ -19394,18 +20589,18 @@
     },
     {
       "path": "tests/p2688-causal-replay-credit.mjs",
-      "bytes": 3140,
-      "sha256": "2905088b6256aaff41c4c6d709d5b686e705b299238b743a36bae5d4843fc051"
+      "bytes": 3787,
+      "sha256": "4cf3670e4be2fbc4a5aed65285965be819eb9b1ad11869bdd7bf87175a8c2d73"
     },
     {
       "path": "tests/p2688-long-horizon-replay-transfer.mjs",
-      "bytes": 2438,
-      "sha256": "c9fe5dc3057ecde605be1f3d5eabbe29b2b6f7130da0c71074902745f334cbeb"
+      "bytes": 3147,
+      "sha256": "09f4e0024770fbb630ad81692d20f37644d5247972e9ac5a1b58d36e1b100eaa"
     },
     {
       "path": "tests/p2688-migration.mjs",
-      "bytes": 1662,
-      "sha256": "73cca153653ff6be0f8406a403fb375c8f15312d4af630947693e5b95702add6"
+      "bytes": 1736,
+      "sha256": "916727d654d93d37d8c183430ef2e467faddb3490eb9f82cbf428d0fff4cdea6"
     },
     {
       "path": "tests/p2689-file-mobile30.mjs",
@@ -19444,8 +20639,8 @@
     },
     {
       "path": "tests/p2695-organism-policy-decision-flow.mjs",
-      "bytes": 2871,
-      "sha256": "ee477266279cebc9d2971a693591f32d9d06739a9f81591bac195c43b93ceee7"
+      "bytes": 3780,
+      "sha256": "dc3bacea2a24ef3014ecf8023b61ff6007ff7ce91e105b7430c0d019d7a465bc"
     },
     {
       "path": "tests/p2696-contextual-policy-learning.mjs",
@@ -19454,8 +20649,8 @@
     },
     {
       "path": "tests/p2697-mobile-residency.mjs",
-      "bytes": 1862,
-      "sha256": "0c7e23e62b917d4ad297d23c41c832e334f7cd4dad354f641f2de4b56a8d1750"
+      "bytes": 2134,
+      "sha256": "974b68acd265323f9d5940a3a07a448f0575f4bbf5af7a9762948e1d3eaa1a41"
     },
     {
       "path": "tests/p2698-exact-world-prediction-closure.mjs",
@@ -19483,9 +20678,14 @@
       "sha256": "ece0dc00e45c4bf61d9dc6c1030df2a02383b3ca87da132aa2d862414c430618"
     },
     {
+      "path": "tests/p27-page-hinkley-drift-detector.mjs",
+      "bytes": 3434,
+      "sha256": "6f110b21614413db692776186b383c40e92f2f51edb5768086e20c283b99b0f5"
+    },
+    {
       "path": "tests/p2700-unified-learning-loop.mjs",
       "bytes": 1420,
-      "sha256": "d7c9a5f4d2ff1ca16ba5631760dcd41ee11799549a943d8f677b7c720244b643"
+      "sha256": "f5bb835f926ea2679abbcfc58061cc7f5980a681af60430ef29b5e2980a89253"
     },
     {
       "path": "tests/p2701-neural-temporal-substrate.mjs",
@@ -19621,6 +20821,11 @@
       "path": "tests/p2774-model-time-replay.mjs",
       "bytes": 3338,
       "sha256": "5ae91a265a87e8302f5a0722888dce9af3b4c16ba2d1ea8dda6e0524e2d593f0"
+    },
+    {
+      "path": "tests/p28-drift-detector-benchmark.mjs",
+      "bytes": 4807,
+      "sha256": "592b6426d7a6002a3e4ea1566f63deae7986bfd8bdda9f9a433bd5566ec528b9"
     },
     {
       "path": "tests/p28-integration.mjs",
@@ -20008,6 +21213,11 @@
       "sha256": "ecaf1d5a201c89f89d7b96990e612f9a612fa7d55b98d5f0e7d50eb45b89767c"
     },
     {
+      "path": "tests/p29-hermes-reflective-candidate-gate.mjs",
+      "bytes": 23325,
+      "sha256": "4631cd1b377f257de960402f0aa4828a0505c1dcd05a7fd1b7cc213b97b319b4"
+    },
+    {
       "path": "tests/p29-integration.mjs",
       "bytes": 1035,
       "sha256": "b8c6e2e04f797a79d8bc4d32e263946bfe7746a6e9a319a9a8a8684e30fb3b42"
@@ -20243,14 +21453,19 @@
       "sha256": "d10dcdc0fdab782a14ec69f7da3edee1273a443527b1cd2dcdba8dff59b45ddb"
     },
     {
+      "path": "tests/p36-host-evaluator-bootstrap.mjs",
+      "bytes": 9021,
+      "sha256": "2614cf94477169c6d3c7c3e330e8edfdf0901b2c1fd49535185597bfe3fbf5d0"
+    },
+    {
       "path": "tests/p36-integration.mjs",
-      "bytes": 1232,
-      "sha256": "c43eb9986f659644a88c32cec8ae672d6f19114fe8f391922a8871e637a81517"
+      "bytes": 1364,
+      "sha256": "e9321e46c8dd8d5332ad278a57e356c6a5c4862ab28be77d1118dbde67965845"
     },
     {
       "path": "tests/p36-migration.mjs",
-      "bytes": 675,
-      "sha256": "5c855e6b5efe488aa46c05562bf717801e256b97990422745e4a13edfdef14c4"
+      "bytes": 807,
+      "sha256": "24803ef68a54e5130ac38cc2f50c5e4b32291bb0de45147f5563d7fef5d41e05"
     },
     {
       "path": "tests/p36-performance.mjs",
@@ -20266,6 +21481,11 @@
       "path": "tests/p36-server-smoke.mjs",
       "bytes": 577,
       "sha256": "31166fbedffc9641ead300f19f8bc61a6973da7831c968db70294eea43e27276"
+    },
+    {
+      "path": "tests/p36-verified-outcome-ledger-evaluator.mjs",
+      "bytes": 9144,
+      "sha256": "61f55e4829e7c4d8e1621b80c9b16defaff0d851bf1678eea8b5bdfa24a23b49"
     },
     {
       "path": "tests/p37-cross-modal-agreement.mjs",
@@ -20374,8 +21594,8 @@
     },
     {
       "path": "tests/p41-integration.mjs",
-      "bytes": 2502,
-      "sha256": "703d410947532bf3a63b10d90891b02e4b09ba0b565907266b3f79e5b3713710"
+      "bytes": 4983,
+      "sha256": "b86995cd783341c39315b2c8828f145ad6c5122c19985484785e8050fc30b01b"
     },
     {
       "path": "tests/p41-migration.mjs",
@@ -20393,14 +21613,19 @@
       "sha256": "898b0bf5860177b8a5b85006eabdcd35ba8cb05cbacde5fe4f60a20a22028d77"
     },
     {
+      "path": "tests/p41-perceptual-integrity-deep-pass.mjs",
+      "bytes": 14008,
+      "sha256": "9d9a536b979cf11978bcd2fb9b85a6d20bc69fa65c3a16ddfbcf9a501aef0602"
+    },
+    {
       "path": "tests/p41-performance.mjs",
       "bytes": 611,
       "sha256": "2d670256a040d0f6b6986d6a7b8c657cf12d5a8c9b18382c0a09576490554ee8"
     },
     {
       "path": "tests/p41-semantic-perception.mjs",
-      "bytes": 2133,
-      "sha256": "32ace69c43501aebb2cecd09b1ebd4c757e4a8e9ee10a1a7e4b7093beebe8913"
+      "bytes": 2431,
+      "sha256": "da31ee0ac93046df21ffa255227a883f8829ebb40923f2b11c3576e0b060adbd"
     },
     {
       "path": "tests/p41-server-smoke.mjs",
@@ -20623,6 +21848,11 @@
       "sha256": "79438ab8276d093e2f667ab5c6d1bed0283e829c058f7f212b3d62aafe3df312"
     },
     {
+      "path": "tests/paired-holdout-evaluation-workpass71.mjs",
+      "bytes": 3888,
+      "sha256": "6e3d769d361208802c1ee267643ec6c001cc6adffc9465ae7bdf21517f5cee1a"
+    },
+    {
       "path": "tests/pass17-file-state-codec.mjs",
       "bytes": 1895,
       "sha256": "42634ee3eb87a193b2ee88c986be3e6ace61aef7a43f6d7278d56689e058e987"
@@ -20646,6 +21876,11 @@
       "path": "tests/pass20-persistence-restore-continuity.mjs",
       "bytes": 3848,
       "sha256": "50afae35bcb9e000590a88f55ddaf73b159fdf81bf8f7e43408c9633917e4198"
+    },
+    {
+      "path": "tests/perception-engine-signal-integrity.mjs",
+      "bytes": 4292,
+      "sha256": "9a24f4a050c59c57862b91a421d6c1e865504eb8126d426179f7684a51198a02"
     },
     {
       "path": "tests/persistence-branch-budget.mjs",
@@ -20913,6 +22148,11 @@
       "sha256": "d5dababd8fe064ed25a4a00969ce5647aff84c1ac2b172226f01114fa1c0da21"
     },
     {
+      "path": "tests/relational-tether-workpass316.mjs",
+      "bytes": 5226,
+      "sha256": "d5ca209ef0f00b578b6abc2d3cc0b28b2d4a05b253bc280dcabe57cae05a6dd2"
+    },
+    {
       "path": "tests/release-contract-alignment-workpass36.mjs",
       "bytes": 1457,
       "sha256": "e6ff681ec860caa9e30114ede9cbfa961b0a688acb6bc73c8be2b1414ac58d49"
@@ -20921,6 +22161,11 @@
       "path": "tests/release-contract-alignment-workpass37.mjs",
       "bytes": 3126,
       "sha256": "af30d4d22cc0a068e670ccb21c693a85d2543fda0a56b57398804f0c25596a05"
+    },
+    {
+      "path": "tests/replay-strategy-comparison-workpass75.mjs",
+      "bytes": 2805,
+      "sha256": "3acd74e67fe533cde3f5d6088b92b40d3913a3a64146fbb6ccbee028dd0a685e"
     },
     {
       "path": "tests/replay.mjs",
@@ -21018,6 +22263,11 @@
       "sha256": "9bcd0cf61ea66c3a904a7a4e5798ba15f5abbf92b416ce9f7cc8b5bf18bf8526"
     },
     {
+      "path": "tests/run-independent-bilingual-memory-holdout.mjs",
+      "bytes": 6018,
+      "sha256": "fda6606d6ca20d081ffcf89018927fe6472441276344e13220202cfb1a631222"
+    },
+    {
       "path": "tests/runtime-clocks.mjs",
       "bytes": 912,
       "sha256": "be128fb5f9a40c323d5f38a8c519c653798b3c151506e93edd09509e99fb57f0"
@@ -21026,6 +22276,21 @@
       "path": "tests/runtime-long-200.mjs",
       "bytes": 1154,
       "sha256": "d3af40c88f1958a4f9c9789f45abd9f4d2a9c9cb8b83f5e7ee3e7ad9318bdbdf"
+    },
+    {
+      "path": "tests/scientific-method-verification-gate-workpass595.mjs",
+      "bytes": 2779,
+      "sha256": "7c6191fbfed5a51ad749b25f908609549efcbc9c8aa52fa30d412cedf7ae90f8"
+    },
+    {
+      "path": "tests/self-model-evidence-write-gate-workpass315.mjs",
+      "bytes": 4579,
+      "sha256": "e20f64f69f77a1b326591f388d6a4f649ae568dcf9a4e8050728cb1c45783741"
+    },
+    {
+      "path": "tests/server-language-http-fake-provider.mjs",
+      "bytes": 8819,
+      "sha256": "da1e58b3e65748fdee87539e0c0f72c2cf332a51fed369bb5ccd416085d3d1ce"
     },
     {
       "path": "tests/server-security-smoke.mjs",
@@ -21039,13 +22304,18 @@
     },
     {
       "path": "tests/server-smoke.mjs",
-      "bytes": 24947,
-      "sha256": "3298342df90a6084f847c2f496bc591cff4f6b04702d5f71ef831feeca1436fe"
+      "bytes": 25598,
+      "sha256": "9ec664e304412e14656fafbaf53f47f7aa9f420a7a4b5abf12d75ff0553baa65"
     },
     {
       "path": "tests/shared-runtime-primitives.mjs",
       "bytes": 2063,
       "sha256": "dba63278ca8f178a4223b9fc0af2d1f1ac51738de6d8c72364753eb9dbc93315"
+    },
+    {
+      "path": "tests/skill-acquisition-split-integrity.mjs",
+      "bytes": 8391,
+      "sha256": "d6f7a8b801625717381430c3218d6f499edc6d3f0692494ba107d2fa1664a8e0"
     },
     {
       "path": "tests/stable-serialization-workpass36.mjs",
@@ -21068,9 +22338,19 @@
       "sha256": "56a6ab224b05c63191bf9db23939dcc1222c592e00ebefcbde7e581c01d5389d"
     },
     {
+      "path": "tests/subsystem-boundary-rules.mjs",
+      "bytes": 1298,
+      "sha256": "71051a3e8cd13bf68a9e3c0cf634fea8ff098d180d1d60f7d7381de980a9e9d6"
+    },
+    {
       "path": "tests/subsystem-registry.mjs",
       "bytes": 835,
       "sha256": "cd4ff25e23c9b8cc5cf33ca2bbcec6b1a5ddcc37d9c3ace79ed4c27a306734fe"
+    },
+    {
+      "path": "tests/temporal-object-tracker.mjs",
+      "bytes": 14578,
+      "sha256": "53fb2a40124312a97de5215c02ac6ffe5c904c20f149079bcca6666e1e596747"
     },
     {
       "path": "tests/termux-tts-concurrency-workpass69.mjs",
@@ -21081,6 +22361,11 @@
       "path": "tests/termux-tts-outcome-workpass68.mjs",
       "bytes": 2988,
       "sha256": "b9e7796ef02a86d67e7b05c175199417ba79fd72a7941280e7b16dafe7b48dd1"
+    },
+    {
+      "path": "tests/tool-input-contracts-workpass624.mjs",
+      "bytes": 12653,
+      "sha256": "fb7a4299b87bca2601a6a304ee4afa58dbdfa2a54c548ebcd95e7ee28f1c9a41"
     },
     {
       "path": "tests/typecheck-runtime-compiler-selection.mjs",
@@ -21103,6 +22388,11 @@
       "sha256": "e7779d3ef662f34dc2074aa8a47bf3ca435ce12250c8da354d43b70be0edc84a"
     },
     {
+      "path": "tests/user-mind-reconstruction-workpass313.mjs",
+      "bytes": 8871,
+      "sha256": "ce69281a2edeb813a9373625b6022172302c30fa55d650c930fd4c00bc7ed9ff"
+    },
+    {
       "path": "tests/vision-backend-contract.mjs",
       "bytes": 384,
       "sha256": "671f9f084c611cc923df07177e9edb35107d4a3ec9f79b7b14c1f2407a555efb"
@@ -21123,9 +22413,174 @@
       "sha256": "4500965a69e51d2c7c505b020fd3133d361d0c7f86fd85f5bb3bb8c53cf79e5e"
     },
     {
+      "path": "tests/workpass172-compound-revision-coordinator.mjs",
+      "bytes": 13086,
+      "sha256": "f8c5fdb3f592ed67a44e54fcd48ccc1967c3294a70e1776d9d28eb19e80b06ea"
+    },
+    {
+      "path": "tests/workpass197-skill-transfer-safety.mjs",
+      "bytes": 2235,
+      "sha256": "5ac15fa9a877daf2e0ebfd580406fe7f769e34c05ea05054db9d0708a8695be3"
+    },
+    {
+      "path": "tests/workpass203-independent-candidate-evaluator.mjs",
+      "bytes": 34507,
+      "sha256": "e426fa8739b36ca92595c1e4762a6742dd630f098c57e180c58886f3daea8052"
+    },
+    {
+      "path": "tests/workpass206-independent-evaluation-provider.mjs",
+      "bytes": 4313,
+      "sha256": "787317d6ec5afc12ff576bb8739f6481fb9e54c342fad8afde2c461f8edfeaf0"
+    },
+    {
+      "path": "tests/workpass224-production-independent-evaluation-required.mjs",
+      "bytes": 2521,
+      "sha256": "cd8e70cbc887efe8eb8952d266c8b7ba8bca89a1eb6349e24ea8973ef82699d6"
+    },
+    {
+      "path": "tests/workpass225-matched-independent-evaluation.mjs",
+      "bytes": 13110,
+      "sha256": "484b45bd47f269d7c952c479f543946ec4156af916d01c9637c921653d445c02"
+    },
+    {
+      "path": "tests/workpass227-bounded-independent-evaluation.mjs",
+      "bytes": 4745,
+      "sha256": "394205afa946b739bedd1fd79bf80052ce54e3c8f6cdd539dc684e0eea64daff"
+    },
+    {
+      "path": "tests/workpass239-durable-signed-promotion-e2e.mjs",
+      "bytes": 7709,
+      "sha256": "fffa8caf9ef048036b79986f96c3793a483f506fb26fff0d6e43b28ac5748cdc"
+    },
+    {
+      "path": "tests/workpass243-host-owned-independent-evaluation-services.mjs",
+      "bytes": 9852,
+      "sha256": "e3e5dcb29f1d72c165da9c31a2873d2189b33cbca48ff0b0c378cec960f1d0ae"
+    },
+    {
+      "path": "tests/workpass287-cognitive-architecture-contract.mjs",
+      "bytes": 3541,
+      "sha256": "0ebd84a776b1385d35d3943a3ae6b954a5e61664c1e61a568c593bc9dc38ac58"
+    },
+    {
+      "path": "tests/workpass287-unified-cycle-contract.mjs",
+      "bytes": 6411,
+      "sha256": "d20e2105875d13a975e57ef00b6725d613a8b2f93727d70681a194cc262690aa"
+    },
+    {
+      "path": "tests/workpass288-intrinsic-motivation-contract.mjs",
+      "bytes": 1594,
+      "sha256": "768eee57d369fac900328e7360d125b21e0bff47ae595c5e8848ae48b78e5ab3"
+    },
+    {
+      "path": "tests/workpass291-reflective-payload-budget.mjs",
+      "bytes": 1377,
+      "sha256": "b1384551f48db1367b9874de533a508640c19d0774874ddf7b9d3f005f821241"
+    },
+    {
+      "path": "tests/workpass292-evidence-lanes.mjs",
+      "bytes": 11502,
+      "sha256": "78debc1b5f192db1ad48101067ba8b05ecf2ce4eada2096d6c28d178e9be844d"
+    },
+    {
+      "path": "tests/workpass293-autonomous-p23-revision.mjs",
+      "bytes": 9386,
+      "sha256": "e62078136fd13a2a311a569add1591fbe99a4b023919cc9f8eb299dfaf0118ef"
+    },
+    {
+      "path": "tests/workpass294-correlated-postcondition.mjs",
+      "bytes": 5671,
+      "sha256": "abea210b684fde4276882062a2e3aa15f3348e656b1752d39374e3aba22be6f3"
+    },
+    {
+      "path": "tests/workpass296-microcycle-action-attribution.mjs",
+      "bytes": 1110,
+      "sha256": "78f3bf1577abd09436981b117f3a96ffad8c92e3e23045a8fa483d3703776d84"
+    },
+    {
+      "path": "tests/workpass310-p23-learning-restore-integrity.mjs",
+      "bytes": 5907,
+      "sha256": "c2fc426a4bb5eabcb4d126a93be95ef5d2ed10338c7ce6ac45e9fd51d4b9451f"
+    },
+    {
+      "path": "tests/workpass319-cycle-order.mjs",
+      "bytes": 3202,
+      "sha256": "bdcd3b534b3abd30512cc5a105eec5c885026b0ceb53297c712817a2fec45acd"
+    },
+    {
+      "path": "tests/workpass321-expanded-cognitive-phase-spine.mjs",
+      "bytes": 5096,
+      "sha256": "976ecf222c63738ed2b3d88ab58cd2feb05d8ba2f59acc8d8dceed1ff308095c"
+    },
+    {
+      "path": "tests/workpass323-cognitive-loop-persistence-separation.mjs",
+      "bytes": 2902,
+      "sha256": "381af18c17d324ac1e3de348256ed7259ca015677df66c85ef70b278c69d5ba9"
+    },
+    {
+      "path": "tests/workpass325-core-eleven-phase-causal-loop.mjs",
+      "bytes": 3339,
+      "sha256": "fde79266c584580c02b72a97293ddf4dd4da4f5917ae28705243404f082536e5"
+    },
+    {
+      "path": "tests/workpass383-p23-revision-generator-boundary.mjs",
+      "bytes": 7502,
+      "sha256": "7a34742b947a95516e36398dda893abc8230d37e77bcf95ae7548902cc4888a0"
+    },
+    {
+      "path": "tests/workpass402-production-promotion-family-gate.mjs",
+      "bytes": 11959,
+      "sha256": "dcbcbc1da7f82f75b1972e2b22411c4a6f8ee3f4071fae2bb67be15e1c4741a3"
+    },
+    {
+      "path": "tests/workpass404-paired-seed-confidence.mjs",
+      "bytes": 3786,
+      "sha256": "727231754885e953df03ca4a2c3182b3cea917b1949563881d4e20994eb72daa"
+    },
+    {
+      "path": "tests/workpass405-learning-fitness-journal.mjs",
+      "bytes": 7286,
+      "sha256": "0d7e2b5c918bc6606be32a07883d4fa696aa894fd3d06036aba5f5e737380e41"
+    },
+    {
+      "path": "tests/workpass406-learning-robust-metrics.mjs",
+      "bytes": 8322,
+      "sha256": "9e71783dead59eae84cd3bf9132cdb39c046cdb06cb3b4fb8135f5ef101e41f3"
+    },
+    {
+      "path": "tests/workpass407-learning-lifecycle-journal.mjs",
+      "bytes": 8489,
+      "sha256": "c803ef68aee111944bf4c131feb7ddc1e1306cb4f67e1108c9d55e200068485a"
+    },
+    {
+      "path": "tests/workpass408-lifecycle-store-reconciliation.mjs",
+      "bytes": 6192,
+      "sha256": "94d7c0716fbbd878e57a803313b0ce41feec21b464d9519b977412148e3d8f35"
+    },
+    {
+      "path": "tests/workpass419-p23-retry-backoff-store.mjs",
+      "bytes": 3502,
+      "sha256": "c6c37d26c5b0cfda30ad1896e52fc46531209f0b683f9aa9b1b4234b2dc40901"
+    },
+    {
+      "path": "tests/workpass421-learning-journal-bootstrap.mjs",
+      "bytes": 3712,
+      "sha256": "0f7330acb82f8f7e87ecea7ca23de5794b21ca0d8833aae695f3487941132b72"
+    },
+    {
+      "path": "tests/workpass461-node24-strip-only-shadow-registry.mjs",
+      "bytes": 761,
+      "sha256": "4ee688cf94e7009935a385bb6a12f21809d87e47000a1452af529d757b72d3aa"
+    },
+    {
       "path": "tests/workpass49-core-persistence-privacy.mjs",
       "bytes": 3022,
       "sha256": "4cb91a882cbee19658680f134674e5e794c44653fb82a159099f32c1ad593b21"
+    },
+    {
+      "path": "tests/workpass490-intrinsic-experiment-boundaries.mjs",
+      "bytes": 2507,
+      "sha256": "6169b8ef77308ad06f1e43879dd7a6f3ad4b5f1de3876e9c43db78cf231ef9f9"
     },
     {
       "path": "tests/workpass50-autonomous-background-clock.mjs",
@@ -21136,6 +22591,16 @@
       "path": "tests/workpass50-autonomous-runtime-loop.mjs",
       "bytes": 6347,
       "sha256": "8728f974145169be8aa6554d87b25ac621b6da069bee899eafee2a10a7b2e852"
+    },
+    {
+      "path": "tests/workpass507-bilingual-holdout-runner-contract.mjs",
+      "bytes": 3491,
+      "sha256": "cb2b8ff86b53734d4fcc73db85d50a8dbd70b8be9b4ad10047de932dec15f3aa"
+    },
+    {
+      "path": "tests/workpass507-planner-memory-gate.mjs",
+      "bytes": 2862,
+      "sha256": "1831d0a8b98d704290c90a0e65cb78698a9327efcd9cb46b0c1890f96cc00596"
     },
     {
       "path": "tests/workpass52-project-quality-gates.mjs",
@@ -21223,6 +22688,11 @@
       "sha256": "b173a6b9edb7fcd8721fba520e9d680df418d159a0755c386375edf50d2b47e8"
     },
     {
+      "path": "tests/workpass610-brain-fusion-strip-only-runtime-load.mjs",
+      "bytes": 4678,
+      "sha256": "32d25a13677c912e069468acfab50aed2bfc6a92cd752749c43cd942d37cb17f"
+    },
+    {
       "path": "tests/workpass62-process-kill-reconciliation.mjs",
       "bytes": 15690,
       "sha256": "cdf0852afd33a3d6aa3ca9740ed44ae1a69747cdfe59b4e483e880b3d17fe5d2"
@@ -21251,6 +22721,111 @@
       "path": "tests/workpass69-speech-interruption-gateway.mjs",
       "bytes": 6383,
       "sha256": "105bb16156014aea3eb22e8feb1788cbc87d694151d0842e7ff489fdef4367d6"
+    },
+    {
+      "path": "tests/workpass71-continuum-timescale.mjs",
+      "bytes": 1246,
+      "sha256": "ce07551de222c82e122d139bb45bfcc6cb1dbd41d40a919158419066ff2e8aef"
+    },
+    {
+      "path": "tests/workpass72-verification-provenance-boundary.mjs",
+      "bytes": 4679,
+      "sha256": "2ae3a626bfbec4705b6288266ac6e8c875b184a2e261cdc4d26150d59b37baf8"
+    },
+    {
+      "path": "tests/workpass79-local-language-backend-policy.mjs",
+      "bytes": 2651,
+      "sha256": "a76d33a54d87f1814a40f03579471506c7f875aac8792b2e210a6ff23ae346e9"
+    },
+    {
+      "path": "tests/workpass79-local-provider-boundary.mjs",
+      "bytes": 5931,
+      "sha256": "c78c6492e1ca6b8bb862c6130a8869b62c3b6f26cf2fe7e7473232a438feafc8"
+    },
+    {
+      "path": "tests/workpass80-memory-residency-retrieval.mjs",
+      "bytes": 4091,
+      "sha256": "4148af2f5d3f8c077fe2cf1a7d90aa69ea76f6e28d09d86d48e8cfe0f4118d0d"
+    },
+    {
+      "path": "tests/workpass82-server-language-cancellation.mjs",
+      "bytes": 4783,
+      "sha256": "c9c6478ebf6e3016cbab428ac5740987ab7a930845a4273295c1c7fb0fe7813c"
+    },
+    {
+      "path": "tests/workpass83-retrieval-benchmark-truth.mjs",
+      "bytes": 11251,
+      "sha256": "aad533a03b50efa91cc75f2e2c4e4f6eea1062f4b140bb27df7f93c80fba9edd"
+    },
+    {
+      "path": "tests/workpass84-script-integrity.mjs",
+      "bytes": 3408,
+      "sha256": "15387ef29fe6b78ff64b19ca6d5cffd348817bc7500a8b8e15ae17cc21c756e2"
+    },
+    {
+      "path": "tests/workpass87-superseded-current-retrieval.mjs",
+      "bytes": 2874,
+      "sha256": "4bb6bdc30b55e5e73994d2ed90b89d84a60d7f192d51b67b2efc04d7069fc090"
+    },
+    {
+      "path": "tests/workpass91-memory-to-action.mjs",
+      "bytes": 6585,
+      "sha256": "b8f554c3936480a172f694fab384903c9fb998c6c44747409db911592b40a1e4"
+    },
+    {
+      "path": "tests/workpass94-verification-input-binding.mjs",
+      "bytes": 2363,
+      "sha256": "de9544b312d5fabf0d1aed50d5b936ca65150e5839ff470275cf2fcdb077bebb"
+    },
+    {
+      "path": "tests/workpass95-restored-action-receipt-integrity.mjs",
+      "bytes": 2715,
+      "sha256": "75c68f887d8321686bc01a467bb725d3b70aa00dcc3f2f98bbb4a12b0ac024cc"
+    },
+    {
+      "path": "tests/workpass96-action-finalizer-boundary.mjs",
+      "bytes": 2804,
+      "sha256": "d50df54ce0ad0a3cf9df44cedd57d7608329c4c78396d826defb375bc350deb2"
+    },
+    {
+      "path": "tests/workpass97-autonomous-planner-gateway-route.mjs",
+      "bytes": 4580,
+      "sha256": "c5dadef9ced6e743e224f44328268603b312352d40e355b8dec82cddc6794435"
+    },
+    {
+      "path": "tests/workpass98-project-reconciliation-route.mjs",
+      "bytes": 1951,
+      "sha256": "4517b9952ee6ac48e4caf3cf8da7058565702c9c7e545680bcb2e65c3a3f87d6"
+    },
+    {
+      "path": "tests/world-context-normalizer-integrity.mjs",
+      "bytes": 2737,
+      "sha256": "e4277020442801dc1b9907a64cb1bb388e0f806d7693c719774139d320eabfc7"
+    },
+    {
+      "path": "tests/world-perception-camera-runtime-tracking.mjs",
+      "bytes": 4230,
+      "sha256": "ff34d17a4a91f8fa75909c3a5940e51427eaae7042d8bbbfe1b7475df21069ce"
+    },
+    {
+      "path": "tests/world-perception-delta-integrity.mjs",
+      "bytes": 4580,
+      "sha256": "7e77e9a22e3b8f3846b02f5eb6a14180b27aeaefe5608303e87b40dcd126f611"
+    },
+    {
+      "path": "tests/world-perception-grounded-identity-provenance.mjs",
+      "bytes": 12792,
+      "sha256": "8494bff23a0c1e01f58a675614cb73350fa462d1f522538d46b91ce408ccd94d"
+    },
+    {
+      "path": "tests/world-perception-runtime-ingress.mjs",
+      "bytes": 2240,
+      "sha256": "0e37c9bffe2ed472e40c7fb3b5a7b12b247bbb409459915412b03adaeff9c2f0"
+    },
+    {
+      "path": "tests/world-perception-runtime-wiring.mjs",
+      "bytes": 2531,
+      "sha256": "44f9ae7f831cec1706e680c1fde2b9a50dbe676ac0625bdc388052043c055674"
     },
     {
       "path": "tests/world-reward-semantics.mjs",
