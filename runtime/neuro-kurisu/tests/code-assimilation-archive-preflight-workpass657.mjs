@@ -162,7 +162,7 @@ for (const path of ['vendor/deps.zip', 'vendor/data.tar.gz', 'vendor/packed.whl'
 
 // Resource limits reject bombs, excessive entries, excessive depth and oversized files.
 assert.throws(
-  () => preflight([{ path: 'large.bin', kind: 'file', compressedSizeBytes: 10, uncompressedSizeBytes: 100_000_000 }]),
+  () => preflight([{ path: 'large.bin', kind: 'file', compressedSizeBytes: 10, uncompressedSizeBytes: 1_000_000 }]),
   /compression-ratio/,
 );
 assert.throws(
