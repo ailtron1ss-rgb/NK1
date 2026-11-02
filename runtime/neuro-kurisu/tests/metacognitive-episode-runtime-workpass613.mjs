@@ -98,6 +98,25 @@ try {
   await second.step();
   assert.equal(second.core.metacognitiveEpisodeDiagnostics(4).bufferedCount, 2,
     'a post-restart full cycle appends one new episode without duplicating the prior tick');
+
+  // A secondary metacognitive-memory failure must not abort the canonical organism tick.
+  const originalRecorder = second.core.recordMetacognitiveEpisode.bind(second.core);
+  second.core.recordMetacognitiveEpisode = async () => {
+    throw new Error('injected-metacognitive-memory-failure');
+  };
+  const degradedTick = durableTick + 2;
+  const degradedStep = await second.step();
+  assert.equal(degradedStep.cycle.state.tick, degradedTick,
+    'the organism must finish its cycle when optional metacognitive memory persistence fails');
+  const degradedSnapshot = second.core.snapshot();
+  assert.equal(degradedSnapshot.state.tick, degradedTick,
+    'the canonical tick must advance despite a metacognitive persistence failure');
+  assert.equal(degradedSnapshot.facets.memory.eventLog.filter(row => row.type === 'metacognitive-episode').length, 2,
+    'a failed secondary persistence attempt must not fabricate a canonical memory event');
+  assert.ok(degradedSnapshot.system.runtimeCognitiveEventFabric.recent.some(node => node.id === `cef:metacognitive:${degradedTick}`),
+    'the completed cycle must retain its metacognitive diagnostic node even if canonical memory persistence fails');
+  second.core.recordMetacognitiveEpisode = originalRecorder;
+
   console.log('metacognitive-episode-runtime: PASS');
 } finally {
   if (first) await first.stop();
