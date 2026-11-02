@@ -958,13 +958,26 @@ export class MemoryOS2{
   let candidates=0,resolved=0,pairs=0; const pairBudget=Math.max(16,Math.min(512,Math.floor(input.pairBudget??192)));
   for(let ni=0;ni<newerRows.length&&pairs<pairBudget;ni++){const newer=newerRows[ni]!;const newerAt=Number(newer.observedAt??newer.createdAt);
    for(let oi=ni+1;oi<this.state.items.length&&pairs<pairBudget;oi++){const older=this.state.items[oi]!;if(older.id===newer.id||older.validUntilAt!=null||older.epistemicStatus==='quarantined')continue;const olderAt=Number(older.observedAt??older.createdAt);if(!(olderAt<newerAt))continue;if(newer.revisionGroupId&&older.revisionGroupId&&newer.revisionGroupId===older.revisionGroupId)continue;pairs++;const signal=this.implicitConflictSignals(newer,older);if(signal.score<.75)continue;candidates++;
+    // A row that already carries a supersession edge (in either direction) is
+    // part of a resolved chain; reusing it as the newer tip would clobber the
+    // existing edge and orphan its partner, leaving a non-reciprocal link that
+    // restore normalizes away.
+    if(newer.supersedesId||newer.supersededById)continue;
     const newerProv=this.provenanceStrength(newer),olderProv=this.provenanceStrength(older);
     if(olderProv-newerProv>.18){
       newer.epistemicStatus='quarantined'; this.recordRevision(newer,{at:newerAt,from:'fact',to:'quarantined',reason:'implicit-conflict-provenance-protection'});
       this.state.implicitConflictsDeferred++; this.state.provenanceProtected++; this.state.quarantined++; continue;
     }
-    const group=older.revisionGroupId??older.id; const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id); if(previousNewGroup)previousNewGroup.delete(newer.id); newer.revisionGroupId=group; newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1)); let groupSet=this.revisionGroupIndex.get(group); if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);} groupSet.add(older.id);groupSet.add(newer.id);
-    older.validUntilAt=newerAt;older.supersededById=newer.id;this.recordRevision(older,{at:newerAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;const olderBeforeLinks=estimateMemoryBytes(older),newerBeforeLinks=estimateMemoryBytes(newer);older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderBeforeLinks+estimateMemoryBytes(older));this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-newerBeforeLinks+estimateMemoryBytes(newer));this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
+    const group=older.revisionGroupId??older.id; const previousNewGroup=this.revisionGroupIndex.get(newer.revisionGroupId??newer.id); if(previousNewGroup)previousNewGroup.delete(newer.id); older.revisionGroupId=group; newer.revisionGroupId=group; newer.revisionSequence=Math.max(Number(older.revisionSequence??1)+1,Number(newer.revisionSequence??1)); let groupSet=this.revisionGroupIndex.get(group); if(!groupSet){groupSet=new Set<string>();this.revisionGroupIndex.set(group,groupSet);} groupSet.add(older.id);groupSet.add(newer.id);
+    // The supersession edge is ordered by observedAt, but the revision-graph
+    // invariant requires a strictly later validFromAt in the same lineage and a
+    // parent validUntilAt that does not exceed the child's validFromAt. Without
+    // a shared edge time, restore's normalizer drops the edge and rewrites the
+    // interval, so the live graph diverges from a reloaded one.
+    const olderValidFrom=Number(older.validFromAt??older.createdAt);
+    const edgeAt=Math.max(newerAt,olderValidFrom+1,Number(newer.validFromAt??newerAt));
+    newer.validFromAt=edgeAt;
+    older.validUntilAt=edgeAt;older.supersededById=newer.id;this.recordRevision(older,{at:newerAt,from:older.epistemicStatus,to:older.epistemicStatus,reason:signal.contextConflict?'implicit-state-conflict-context':'implicit-state-conflict'});newer.supersedesId=older.id;const olderBeforeLinks=estimateMemoryBytes(older),newerBeforeLinks=estimateMemoryBytes(newer);older.contradictionLinks=[...new Set([...(older.contradictionLinks??[]),newer.id])].slice(0,6);newer.contradictionLinks=[...new Set([...(newer.contradictionLinks??[]),older.id])].slice(0,6);this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-olderBeforeLinks+estimateMemoryBytes(older));this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-newerBeforeLinks+estimateMemoryBytes(newer));this.state.implicitConflictsResolved++;this.state.reconsolidations++;resolved++;
    }
   }
   this.state.implicitConflictCandidates+=candidates;this.state.lastConflictScanAt=at;return {candidates,resolved,at};
