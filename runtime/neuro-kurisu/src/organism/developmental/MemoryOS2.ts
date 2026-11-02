@@ -1020,9 +1020,13 @@ export class MemoryOS2{
     const priorBytes=estimateMemoryBytes(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
     if(input.freshnessHalfLifeMs!==undefined)existing.freshnessHalfLifeMs=normalizeFreshnessHalfLife(input.freshnessHalfLifeMs);
-    if(evidenceMerge.addedIndependentSource){
-     const incomingFreshnessAt=Number(input.evidenceFreshnessAt??input.observedAt??now);
-     if(Number.isFinite(incomingFreshnessAt))existing.evidenceFreshnessAt=Math.max(Number(existing.evidenceFreshnessAt??0),incomingFreshnessAt);
+    // A later observation can refresh evidence quality even when it comes
+    // from the same lineage. Replayed older observations must never move the
+    // freshness watermark backwards or count as independent evidence.
+    const incomingFreshnessAt=Number(input.evidenceFreshnessAt??input.observedAt??now);
+    const previousFreshnessAt=Number(existing.evidenceFreshnessAt??0);
+    if(Number.isFinite(incomingFreshnessAt)&&incomingFreshnessAt>previousFreshnessAt){
+     existing.evidenceFreshnessAt=incomingFreshnessAt;
     }
     existing.lastAccessAt=now;
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
