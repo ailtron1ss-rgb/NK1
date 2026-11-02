@@ -24,3 +24,53 @@ test('P82 never converts missing outcomes into reality evidence', () => {
   progress.observe({tick:2,capability01:.8,complexity01:.2,externalEvidence:true,identity01:.9,continuity01:.9});
   assert.equal(progress.snapshot().evidenceCount,1); assert.equal(progress.snapshot().lastExternalTick,2);
 });
+
+
+test('P80 external agency responds to action quality and uncertainty', () => {
+  const score = (actionScore01:number, uncertainty01:number) => {
+    const self = new P80UnifiedSelfState();
+    self.update({tick:1,mode:'respond',identity01:.9,memoryContinuity01:.9,realityGap01:.1,predictionError01:.1,uncertainty01,energy01:.8,cognitiveCapacity01:.9,goalPressure01:.2,grounding01:.9,causal01:.9,workspace01:.9,action:'respond',actionScore01,externalInput:true,novelty01:.2});
+    return self.snapshot().agency01;
+  };
+  assert.ok(score(1,0)>score(0,1),'external-input agency must retain action-quality and uncertainty sensitivity');
+});
+
+test('P80 records the action selected after final arbitration, not the provisional candidate', () => {
+  const self = new P80UnifiedSelfState();
+  self.update({tick:7,mode:'explore',identity01:.9,memoryContinuity01:.9,realityGap01:.1,predictionError01:.1,uncertainty01:.2,energy01:.8,cognitiveCapacity01:.9,goalPressure01:.2,grounding01:.9,causal01:.9,workspace01:.9,action:'explore',actionScore01:.7,externalInput:false,novelty01:.6});
+  self.recordSelectedAction(7,'verify');
+  assert.equal(self.snapshot().lastAction,'verify');
+  assert.equal(self.snapshot().recentActions.at(-1),'verify');
+  self.recordSelectedAction(6,'respond');
+  assert.equal(self.snapshot().lastAction,'verify','stale ticks must not rewrite selected-action history');
+});
+
+test('P80 restore validates untrusted snapshots without executing accessors', () => {
+  const self = new P80UnifiedSelfState();
+  self.restore({...self.snapshot(),cycles:-1,agency01:Number.NaN,currentMode:'invented' as never,recentModes:['reflect','invented'] as never});
+  assert.equal(self.snapshot().cycles,0);
+  assert.equal(self.snapshot().agency01,.5);
+  assert.equal(self.snapshot().currentMode,'wait');
+  assert.deepEqual(self.snapshot().recentModes,[]);
+  let getterCalls=0;
+  const accessor=self.snapshot() as unknown as Record<string,unknown>;
+  Object.defineProperty(accessor,'cycles',{enumerable:true,get(){getterCalls++;return 999;}});
+  self.restore(accessor);
+  assert.equal(getterCalls,0);
+  assert.equal(self.snapshot().cycles,0);
+  const hostile=new Proxy(self.snapshot(),{getOwnPropertyDescriptor(){throw new Error('hostile snapshot');}});
+  assert.doesNotThrow(()=>self.restore(hostile));
+  assert.equal(self.snapshot().cycles,0);
+  const sparseModes = new Array(1);
+  self.restore({...self.snapshot(),recentModes:sparseModes as never});
+  assert.deepEqual(self.snapshot().recentModes,[],'sparse history must be rejected');
+});
+
+test('P80 restore preserves partial version-1 snapshots', () => {
+  const self = new P80UnifiedSelfState();
+  self.restore({version:1,cycles:4,agency01:.7});
+  assert.equal(self.snapshot().cycles,4);
+  assert.equal(self.snapshot().agency01,.7);
+  assert.deepEqual(self.snapshot().recentModes,[]);
+  assert.deepEqual(self.snapshot().recentActions,[]);
+});

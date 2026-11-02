@@ -1,3 +1,11 @@
+## [NK1][SelfModel] Reconcile P80 agency and final selected-action history (2026-11-02)
+- Correct the external-input agency formula so action quality and uncertainty affect every cycle.
+- Validate persisted P80 counters, bounded ratios, modes, labels and bounded histories; reject sparse/accessor-backed arrays and recover safely from hostile Proxy traps without executing getters.
+- Preserve partial version-1 snapshot compatibility.
+- Add a post-arbitration selected-action reconciliation so P80's recent-action history records the action that survives constitutional, policy and program overrides rather than the provisional top candidate.
+- Persist the reconciled P80 snapshot in the same cognitive tick; verify the final selected action against OrganismCore state in the 160-cycle runtime persistence E2E.
+- No measured autonomy-quality uplift or release readiness change is claimed.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
