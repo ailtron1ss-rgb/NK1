@@ -165,7 +165,7 @@ test("the pinned v7 GLB preserves viseme, emotion and blink morph targets after 
   );
   assert.ok(mouthTargets, "GLTFLoader must retain all mouth visemes and three emotion morphs");
 
-  for (const eye of ["MESH_EYE_white_L", "MESH_EYE_white_R"]) {
+  for (const eye of ["EYE_white_L", "EYE_white_R"]) {
     assert.ok(morphsByMesh.get(eye)?.includes("blink"), `${eye} must retain its blink target`);
   }
 });
