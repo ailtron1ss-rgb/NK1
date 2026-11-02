@@ -71,6 +71,17 @@ assert.deepEqual(valid.entries.map(x => x.path), ['README.md', 'src', 'src/index
 assert.match(valid.reportFingerprint, /^[a-f0-9]{64}$/);
 assert.match(valid.treeFingerprint, /^[a-f0-9]{64}$/);
 
+// A verified report is evidence: callers must not mutate data after its fingerprint is computed.
+assert.equal(Object.isFrozen(valid), true);
+assert.equal(Object.isFrozen(valid.limits), true);
+assert.equal(Object.isFrozen(valid.entries), true);
+assert.ok(valid.entries.every(entry => Object.isFrozen(entry)));
+assert.throws(() => { valid.entries[0].path = 'tampered.ts'; }, TypeError);
+assert.throws(() => { valid.entries.push({ path: 'extra.ts', kind: 'file', compressedSizeBytes: 1, uncompressedSizeBytes: 1 }); }, TypeError);
+assert.throws(() => { valid.limits.maxArchiveBytes = 1; }, TypeError);
+assert.equal(valid.entries[0].path, 'README.md');
+assert.equal(valid.reportFingerprint, preflight(validEntries(), { candidate }).reportFingerprint);
+
 // Large manifests must use bounded hierarchy work, not a full scan per file.
 {
   const count = 1_200;
