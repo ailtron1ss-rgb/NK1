@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { ExperienceContinuumFabric } from '../src/organism/memory/ExperienceContinuumFabric.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const mem=(i,now)=>({
   id:`m-${i}`,content:`causal replay experience ${i} topic ${i%4}`,kind:i%7===0?'identity':i%5===0?'autobiographical':'episodic',
@@ -17,10 +18,23 @@ for(let tick=1;tick<=64;tick++) fabric.tick({tick,at:now+tick*1000,pressure01:ti
 const firstEvent=fabric.snapshot().replay.events.at(-1);
 assert(firstEvent,'expected at least one replay event');
 const validationAt=firstEvent.at+3*86400000;
+const evidence={
+  memoryId:firstEvent.memoryId,evidenceKey:'p2688-causal-credit',taskId:'task-A',contextKey:'ctx-A',
+  delayMs:3*86400000,retentionScore01:.88,baselineScore01:.61,transferPotential01:.79,interferenceRisk01:.08
+};
+const verifier=new OutcomeVerificationService();
+const verification=await verifier.verify({
+  toolId:'p2688-independent-replay-verifier',
+  input:evidence,
+  result:{ok:true,measurementId:'p2688-causal-credit'},
+},()=>({
+  verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,
+  observationId:'p2688-causal-credit-observation',
+  expectedPostcondition:'delayed replay outcome independently measured',
+  observedPostcondition:'delayed replay outcome independently measured'
+}));
 const validation=fabric.recordReplayValidation({
-  memoryId:firstEvent.memoryId,retentionScore01:.88,baselineScore01:.61,delayMs:3*86400000,
-  transferPotential01:.79,interferenceRisk01:.08,independentVerified:true,evidenceKey:'p2688-causal-credit',
-  taskId:'task-A',contextKey:'ctx-A',replayEventId:firstEvent.id,at:validationAt
+  ...evidence,verification,replayEventId:firstEvent.id,at:validationAt
 });
 assert.equal(validation.independentVerified,true);
 const summary=fabric.summary();
@@ -38,8 +52,10 @@ const restored=new ExperienceContinuumFabric();
 restored.restore(snapshot);
 const restoredDiag=restored.summary().causalReplayCredit;
 assert.equal(restoredDiag.assignments,summary.causalReplayCredit.assignments);
-assert.equal(restoredDiag.verifiedAssignments,summary.causalReplayCredit.verifiedAssignments);
-assert(restored.causalReplayCreditLedger(16).length>=1);
+assert.equal(restoredDiag.verifiedAssignments,0,'serialized verified count is a claim, not authority');
+assert.equal(restoredDiag.meanCredit01,0,'proof-derived credit aggregate must be recomputed after reauthentication');
+assert(restoredDiag.recentCount>=1,'unverified historical rows remain available for diagnostics');
+assert.equal(restored.causalReplayCreditLedger(16).length,0,'historical rows must not re-enter the verified ledger without a new receipt');
 
 console.log(JSON.stringify({
   pass:true,status:'P2688_CAUSAL_REPLAY_CREDIT_PASS',
