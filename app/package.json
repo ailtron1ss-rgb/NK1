@@ -29,7 +29,7 @@
     "test:native-speech-provider-events": "node --experimental-strip-types --test scripts/native-speech-provider-events.test.mjs",
     "validate:original-2d-assets": "node scripts/validate-original-2d-assets.mjs",
     "validate:2p5d-assets": "node --experimental-strip-types scripts/validate-depth-rig-assets.mjs",
-    "test:2p5d-asset-inventory": "node --test scripts/depth-rig-asset-inventory.test.mjs",
+    "test:2p5d-asset-inventory": "node --experimental-strip-types --test scripts/depth-rig-asset-inventory.test.mjs",
     "test:original-2d-existing-assets": "node --test scripts/original-2d-existing-assets.test.mjs",
     "test:embodiment-switch": "node --experimental-strip-types --test scripts/embodiment-switch.test.mjs scripts/embodiment-coordinator.test.mjs scripts/live2d-intent-ack.test.mjs scripts/motor-frame-mapper.test.mjs",
     "test:motor-frame-mapper": "node --experimental-strip-types --test scripts/motor-frame-mapper.test.mjs",
