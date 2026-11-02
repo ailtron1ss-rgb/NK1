@@ -172,3 +172,68 @@ test("fade duration is bounded for hostile or accidental caller values", () => {
   });
   assert.ok(tooLong.activeAction.calls.some((call) => call[0] === "fadeIn" && call[1] === 0.8));
 });
+
+
+test("real Three.js AnimationMixer advances a v7 idle clip and cross-fades into a talk gesture", async () => {
+  const THREE = await import("three");
+  const root = new THREE.Group();
+  const chest = new THREE.Object3D();
+  chest.name = "chest";
+  const rightUpperArm = new THREE.Object3D();
+  rightUpperArm.name = "rightUpperArm";
+  root.add(chest, rightUpperArm);
+
+  const clips = [
+    new THREE.AnimationClip("idle_breathing", 1, [
+      new THREE.NumberKeyframeTrack("chest.rotation[z]", [0, 1], [0, 0.6]),
+    ]),
+    new THREE.AnimationClip("talk_gesture", 1, [
+      new THREE.NumberKeyframeTrack("rightUpperArm.rotation[z]", [0, 1], [0, 0.8]),
+    ]),
+  ];
+  const mixer = new THREE.AnimationMixer(root);
+  const idle = applyAvatarAnimationFrame({
+    mixer,
+    clips,
+    action: "rest",
+    previousAction: null,
+    previousClipName: "",
+    awake: true,
+    energy: 0.5,
+  });
+  mixer.update(0.25);
+  assert.ok(chest.rotation.z > 0.05, "the actual idle clip must change the chest transform");
+
+  const activeTime = idle.activeAction.time;
+  const repeated = applyAvatarAnimationFrame({
+    mixer,
+    clips,
+    action: "rest",
+    previousAction: idle.activeAction,
+    previousClipName: idle.clipName,
+    awake: true,
+    energy: 0.5,
+  });
+  assert.equal(repeated.activeAction, idle.activeAction);
+  assert.equal(repeated.changed, false);
+  assert.equal(repeated.activeAction.time, activeTime, "a repeated semantic tick must not restart the real Three.js action");
+
+  const talk = applyAvatarAnimationFrame({
+    mixer,
+    clips,
+    action: "respond",
+    previousAction: repeated.activeAction,
+    previousClipName: repeated.clipName,
+    awake: true,
+    energy: 0.7,
+    fadeSeconds: 0.24,
+  });
+  mixer.update(0.12);
+  assert.equal(talk.clipName, "talk_gesture");
+  assert.ok(chest.rotation.z > 0.02, "the outgoing idle clip must remain visible during the cross-fade");
+  assert.ok(rightUpperArm.rotation.z > 0.02, "the incoming talk gesture must start moving the upper arm");
+
+  mixer.update(0.3);
+  assert.ok(chest.rotation.z < 0.02, "the outgoing idle clip must finish fading out");
+  assert.ok(rightUpperArm.rotation.z > 0.15, "the incoming talk gesture must become the active body motion");
+});
