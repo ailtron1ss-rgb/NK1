@@ -245,10 +245,6 @@ function validateHierarchy(entries: readonly CodeAssimilationCanonicalArchiveEnt
       const parent = segments.slice(0, depth).join('/');
       if (byPath.get(parent) === 'file') fail('file-parent-conflict');
     }
-    if (entry.kind === 'file') {
-      const prefix = `${entry.path}/`;
-      if (entries.some(other => other.path.startsWith(prefix))) fail('file-parent-conflict');
-    }
   }
 }
 
