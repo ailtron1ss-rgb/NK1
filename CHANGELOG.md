@@ -1,3 +1,10 @@
+## [NK1][Memory] Harden canonical consolidation and lifecycle restore (2026-11-02)
+- Validate MemoryConsolidationController counters, ratios, feedback and bounded decision history before restoring persisted state.
+- Validate CanonicalMemoryLifecycleAuthority counters, tick and bounded consolidation history; regenerate its diagnostic plan after restore instead of reviving opaque nested state.
+- Reject sparse/accessor-backed histories and recover safely from hostile Proxy traps without executing getters.
+- Add regressions for malformed state, getters, proxies and partial version-1 compatibility; wire the lifecycle test into NK1 memory-integrity CI.
+- Keep MemoryFabric/MemoryOS2 as the canonical memory owner; no parallel store or automatic rewrite policy is introduced.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.

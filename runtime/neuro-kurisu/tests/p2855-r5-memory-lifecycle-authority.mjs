@@ -21,3 +21,43 @@ restored.restoreFromPersisted({memory:snap,advanced:snap});
 assert.equal(restored.memoryLifecycleAuthority.snapshot().cycles,1);
 assert.ok(restored.fabric.retrieve('rare calibration event',4,0,0,{emitEvent:false}).length>=1);
 console.log(JSON.stringify({ok:true,canonicalItems:restored.memoryOS.size(),maintenanceRuns:restored.memoryLifecycleAuthority.snapshot().maintenanceRuns,consolidationRuns:restored.memoryLifecycleAuthority.snapshot().consolidationRuns}));
+
+
+// Restore is a trust boundary for both the canonical consolidation controller and its lifecycle authority.
+const restoreProbe = new MemorySubsystemRuntime();
+const consolidation = restoreProbe.consolidationController;
+consolidation.restore({version:1,runs:-1,meanPriority01:Number.NaN,lastBatch:[{id:'bad',route:'invalid',priority01:1}]});
+assert.equal(consolidation.snapshot().runs,0);
+assert.equal(consolidation.snapshot().meanPriority01,0);
+assert.deepEqual(consolidation.snapshot().lastBatch,[]);
+let consolidationGetterCalls=0;
+const consolidationAccessor=consolidation.snapshot();
+Object.defineProperty(consolidationAccessor,'runs',{enumerable:true,get(){consolidationGetterCalls++;return 99;}});
+consolidation.restore(consolidationAccessor);
+assert.equal(consolidationGetterCalls,0);
+assert.equal(consolidation.snapshot().runs,0);
+const hostileConsolidation=new Proxy(consolidation.snapshot(),{getOwnPropertyDescriptor(){throw new Error('hostile consolidation snapshot');}});
+assert.doesNotThrow(()=>consolidation.restore(hostileConsolidation));
+assert.equal(consolidation.snapshot().runs,0);
+consolidation.restore({version:1,runs:3,meanPriority01:.4});
+assert.equal(consolidation.snapshot().runs,3);
+assert.equal(consolidation.snapshot().meanPriority01,.4);
+
+const lifecycle=restoreProbe.memoryLifecycleAuthority;
+lifecycle.restore({version:1,cycles:-1,meanPressure01:Number.NaN,lastConsolidation:[{id:'bad',route:'invalid',priority01:1}]});
+assert.equal(lifecycle.snapshot().cycles,0);
+assert.equal(lifecycle.snapshot().meanPressure01,.18);
+assert.deepEqual(lifecycle.snapshot().lastConsolidation,[]);
+let lifecycleGetterCalls=0;
+const lifecycleAccessor=lifecycle.snapshot();
+Object.defineProperty(lifecycleAccessor,'cycles',{enumerable:true,get(){lifecycleGetterCalls++;return 99;}});
+lifecycle.restore(lifecycleAccessor);
+assert.equal(lifecycleGetterCalls,0);
+assert.equal(lifecycle.snapshot().cycles,0);
+const hostileLifecycle=new Proxy(lifecycle.snapshot(),{getOwnPropertyDescriptor(){throw new Error('hostile lifecycle snapshot');}});
+assert.doesNotThrow(()=>lifecycle.restore(hostileLifecycle));
+assert.equal(lifecycle.snapshot().cycles,0);
+lifecycle.restore({version:1,cycles:5,meanPressure01:.42});
+assert.equal(lifecycle.snapshot().cycles,5);
+assert.equal(lifecycle.snapshot().meanPressure01,.42);
+assert.equal(lifecycle.snapshot().lastPlan,undefined,'diagnostic plans are regenerated after restore');
