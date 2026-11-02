@@ -123,7 +123,8 @@ assert.throws(() => transitionCodeAssimilationCandidate(initial, {
   to: 'researched', actor: 'agent', occurredAt: initial.updatedAt + 1,
   reason: 'missing evidence', evidenceFingerprint: '',
 }), /fingerprint-invalid/);
-assert.throws(() => step(initial, 'quarantined', 'agent', initial.updatedAt + 1), /system-actor/);
+const researchedForActorGate = step(initial, 'researched', 'agent', initial.updatedAt + 1, 8);
+assert.throws(() => step(researchedForActorGate, 'quarantined', 'agent', researchedForActorGate.updatedAt + 1), /system-actor/);
 assert.throws(() => step(initial, 'approved', 'agent', initial.updatedAt + 1), /not-allowed/);
 
 let candidate = initial;
