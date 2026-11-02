@@ -1,8 +1,15 @@
-## Актуальный инженерный checkpoint — 1 ноября 2026
+## Актуальный инженерный checkpoint — 2 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Source HEAD:** `608435493b4af3b4a222d385f1b77d978d18583b` (live branch, 2026-11-02; последний commit удалил дублирующий вызов одного planner-restore теста из `test:rebuild-recovered`).
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+### CI на текущем source HEAD — инфраструктурный блокер
+
+- На точном SHA `608435493b4af3b4a222d385f1b77d978d18583b` GitHub Actions вернул 14/14 failed workflow runs. Все 14 jobs завершились до выделения runner (`runner_id=0`, пустое имя runner, 0 steps; 2 секунды); логи недоступны (`BlobNotFound`). Это **не** означает, что 14 тестовых наборов выполнились и провалились.
+- Непосредственный parent `f921007a74a7a6124d274885354009dd3a3ef33c` имел 7 успешных workflow runs; базовый regression job прошёл 45 steps на назначенном runner. Между этими SHA изменён только `runtime/neuro-kurisu/package.json` (+1/−2), без изменений workflow YAML.
+- Точная причина startup failure не подтверждена; account-level billing/Actions restriction — гипотеза, которую должен проверить владелец аккаунта или GitHub Support. На `workpass70-source` отключена branch protection и не заданы required status checks.
+- Подробности и все IDs: [Draft PR #652](https://github.com/ailtron1ss-rgb/NK1/pull/652), `docs/engineering/NK1_RELEASE_INTEGRITY_AND_CI_RECOVERY_2026-11-02_RU.md`. Никакой runtime green status на текущем SHA не заявляется.
 
 ### Реально интегрировано и проверено
 
