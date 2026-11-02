@@ -1,9 +1,9 @@
-# CURRENT HANDOFF — 2026-11-01
+# CURRENT HANDOFF — 2026-11-02
 
 > **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
 
 **Canonical source branch:** `workpass70-source`  
-**Source HEAD at this checkpoint:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b`  
+**Source HEAD at this checkpoint:** `608435493b4af3b4a222d385f1b77d978d18583b` (live branch HEAD verified 2026-11-02).
 **Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
 
 ## Latest verified integrations — 2026-11-01
@@ -16,9 +16,18 @@
 
 **Already present in the source baseline:** [`efb7693`](https://github.com/ailtron1ss-rgb/NK1/commit/efb7693df564512ed653f8bafc772d97e2c36e32) upgrades UserModel to v2 durable forgetting with tombstones, strict fail-closed restore, source-event replay protection and v1 migration. The motor-frame integrity guard from `c039f84` is also integrated.
 
+## CI startup state — 2026-11-02
+
+- Exact `workpass70-source` HEAD `608435493b4af3b4a222d385f1b77d978d18583b`: 14/14 Actions runs failed before runner assignment. Every job has `runner_id=0`, empty runner name, `steps=[]`, and a two-second lifetime; all 14 job logs return `BlobNotFound`.
+- Parent `f921007a74a7a6124d274885354009dd3a3ef33c`: 7 successful workflow runs; the core regression job ran 45 steps on a real runner. The only intervening change is `runtime/neuro-kurisu/package.json` (+1/−2), removing a duplicate planner-restore test call; workflow YAML did not change.
+- This is a runner-startup blocker, not evidence of failing NK1 assertions. Root cause is not confirmed. Account-level Billing & Licensing / Actions restriction is a hypothesis only; owner-side billing view or GitHub Support evidence is required.
+- `workpass70-source` currently has branch protection disabled and no required status checks configured. PR [#652](https://github.com/ailtron1ss-rgb/NK1/pull/652) remains Draft and documentation-only; its evidence ledger is `docs/engineering/NK1_RELEASE_INTEGRITY_AND_CI_RECOVERY_2026-11-02_RU.md`.
+- Do not rerun all 14 jobs before the runner-startup restriction is resolved. Do not classify them as test failures and do not raise quality/readiness scores from these statuses.
+
 ## Release and external services
 
-- Latest published ZIP including prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Stable `Neuro` ZIP is older; neither contains the November 1 integrations.
+- Latest published ZIP including prerelease: tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, GitHub asset digest `sha256:9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Stable tag `Neuro` ZIP: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, GitHub asset digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Digests above are Release API metadata; neither ZIP was locally downloaded, hashed, extracted or compared in the 2026-11-02 pass. Neither archive contains the November 1 source integrations.
 - No new Release ZIP has been assembled, inspected internally or published. Do not claim release parity from source-branch CI.
 - License review remains pending; redistribution approval is false. Do not publish until human license review and exact-SHA publisher gate pass.
 - MongoDB Atlas read-only inspection: Project 0 / Cluster0 is reachable, but only `sample_mflix` exists; no NK1 database or runtime adapter.
