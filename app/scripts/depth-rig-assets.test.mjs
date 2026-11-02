@@ -182,3 +182,27 @@ test("rejects sparse inventory arrays and duplicate mask references", () => {
   const duplicateResult = inspect(candidate);
   assert.ok(duplicateResult.diagnostics.some((item) => item.code === "invalid-manifest" && item.nodeId === "head"));
 });
+
+test("rejects traversal in occlusion mask paths even when the file is inventoried", () => {
+  const candidate = {
+    ...manifest,
+    assets: manifest.assets.map((asset) => asset.nodeId === "head"
+      ? { ...asset, occlusionMaskPaths: ["../outside/head-mask.png"] }
+      : asset),
+  };
+  const files = [...inventory, { path: "../outside/head-mask.png", kind: "mask", width: 2048, height: 2048, hasAlpha: true, byteLength: 128 }];
+  const result = inspect(candidate, files);
+  assert.ok(result.diagnostics.some((item) => item.code === "unsafe-path" && item.nodeId === "head"));
+  assert.equal(result.status, "blocked");
+});
+
+test("fails closed on proxy-backed manifest records", () => {
+  const hostile = new Proxy(manifest, {
+    getPrototypeOf() {
+      throw new Error("proxy trap must be contained");
+    },
+  });
+  const result = inspect(hostile);
+  assert.equal(result.status, "blocked");
+  assert.ok(result.diagnostics.some((item) => item.code === "invalid-manifest"));
+});
