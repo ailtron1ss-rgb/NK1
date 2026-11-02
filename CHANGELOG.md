@@ -1,3 +1,11 @@
+## [NK1][Governance] Reject unsafe ActionGateway restore snapshots atomically (2026-11-02)
+- Treat persisted execution-ledger and permission snapshots as untrusted input; reject Proxy objects, accessors, inherited/exotic prototypes, sparse arrays, cycles, non-finite numbers, excessive depth/size and non-data properties before reading values.
+- Clone a bounded JSON-like snapshot before parsing it, so restore never invokes persisted getters or Proxy traps.
+- Build the next execution ledger and permission state before mutating the live gateway; invalid snapshots cannot partially replace either state.
+- Preserve valid version-1 snapshots and idempotent receipt replay; reject unsupported snapshot versions.
+- Add adversarial regressions for root/row getters, Proxy ingress, sparse arrays, cycles, atomicity and valid replay; wire them into the dedicated Action Gateway governance workflow.
+- This hardens persistence integrity only; it does not claim broader tool-adapter coverage, CI success, autonomy improvement or release readiness.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.

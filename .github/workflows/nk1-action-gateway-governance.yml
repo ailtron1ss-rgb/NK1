@@ -56,3 +56,5 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:workpass97:planner-route && npm --prefix runtime/neuro-kurisu run test:workpass98:project-reconciliation-route
       - name: Decision-linked external postconditions
         run: npm --prefix runtime/neuro-kurisu run test:workpass294:correlated-postcondition
+      - name: Action Gateway restore snapshot boundary
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/action-gateway-restore-boundary-workpass647.mjs
