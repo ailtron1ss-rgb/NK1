@@ -180,3 +180,14 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /lastIntentStateVersion/);
   assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
 });
+
+
+test("stale respond action does not count as an active conversation or suppress homeostatic rest", () => {
+  const plan = planAvatarMotorIntent({
+    emotion: "calm", valence: 0.5, arousal: 0.2, action: "respond", thinking: false,
+    speaking: false, hasFreshTurn: false, turnText: "", awake: true, energy: 0.08,
+  });
+  assert.equal(plan.action, "rest");
+  assert.equal(plan.motionGroup, "Idle");
+  assert.equal(plan.gesture, false);
+});
