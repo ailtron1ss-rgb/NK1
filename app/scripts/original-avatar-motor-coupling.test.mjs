@@ -19,8 +19,8 @@ test("Original 2D projects the shared motor planner instead of re-deriving emoti
   for (const signal of ["energy", "cognitiveLoad", "uncertainty", "socialNeed", "novelty", "goalPressure", "predictionError", "traits"]) {
     assert.match(original, new RegExp(signal + ":\\s*motorSignals\\."));
   }
-  assert.match(original, /motorPlan\\.headTilt/);
-  assert.match(original, /motorPlan\\.action/);
+  assert.match(original, /motorPlan\.headTilt/);
+  assert.match(original, /motorPlan\.action/);
 });
 
 test("manual Original 2D pose override remains authoritative over automatic motor pose", async () => {
