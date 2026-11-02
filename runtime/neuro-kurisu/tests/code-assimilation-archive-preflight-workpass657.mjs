@@ -143,6 +143,9 @@ for (const badPath of [
   'src/with*wildcard.ts',
   'src/with\\backslash.ts',
   'src/sub/..＼..＼escape.ts',
+  'src／sub／..／..／escape.ts',
+  'src/COM¹.txt',
+  'src/LPT³.log',
 ]) {
   assert.throws(
     () => preflight([{ path: badPath, kind: 'file', compressedSizeBytes: 1, uncompressedSizeBytes: 1 }]),
@@ -216,6 +219,33 @@ assert.throws(
 assert.throws(
   () => preflight(validEntries(), { limits: { maxEntries: 2 } }),
   /entry-count-limit/,
+);
+assert.throws(
+  () => preflight(validEntries(), { limits: { maxFiles: 1 } }),
+  /file-count-limit/,
+);
+assert.throws(
+  () => preflight([
+    { path: 'src', kind: 'directory', compressedSizeBytes: 0, uncompressedSizeBytes: 0 },
+    { path: 'tests', kind: 'directory', compressedSizeBytes: 0, uncompressedSizeBytes: 0 },
+  ], { limits: { maxDirectories: 1 } }),
+  /directory-count-limit/,
+);
+assert.throws(
+  () => preflight([{ path: 'longer-than-five.ts', kind: 'file', compressedSizeBytes: 1, uncompressedSizeBytes: 1 }], { limits: { maxPathLength: 5 } }),
+  /path-shape-invalid/,
+);
+assert.throws(
+  () => preflight(validEntries(), { limits: { maxEntries: 25_001 } }),
+  /limit-maxEntries-invalid-or-weakened/,
+);
+assert.doesNotThrow(
+  () => preflight(validEntries(), { limits: { maxNestedArchives: 0 } }),
+  'explicit zero must be accepted when the host default is zero',
+);
+assert.throws(
+  () => preflight(validEntries(), { limits: { maxNestedArchives: 1 } }),
+  /limit-maxNestedArchives-invalid-or-weakened/,
 );
 assert.throws(
   () => preflight(validEntries(), { limits: { maxTotalExpandedBytes: 100 } }),
