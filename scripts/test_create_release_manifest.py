@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 
@@ -76,9 +77,10 @@ class ReleaseManifestCliTests(unittest.TestCase):
         self.zip_path = self.root / "release.zip"
         self.report_path = self.root / "report.md"
         self.sbom_path = self.root / "sbom.json"
-        self.zip_path.write_bytes(b"NK1 release archive bytes")
         self.report_path.write_text("# NK1 release report\n", encoding="utf-8")
         self.sbom_path.write_text('{"name":"NK1"}\n', encoding="utf-8")
+        with zipfile.ZipFile(self.zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("contracts/SBOM.final.json", self.sbom_path.read_bytes())
         self.metadata = make_metadata()
         self.write_metadata()
 
@@ -136,6 +138,24 @@ class ReleaseManifestCliTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("source-lineage-contract", result.stderr)
 
+    def test_cli_rejects_embedded_evidence_missing_from_the_zip(self):
+        result = self.run_cli("contracts/not-in-archive.json")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("present exactly once in ZIP", result.stderr)
+
+    def test_cli_rejects_embedded_evidence_with_different_bytes(self):
+        with zipfile.ZipFile(self.zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("contracts/SBOM.final.json", b'{"name":"OLD"}\n')
+        result = self.run_cli()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("bytes do not match", result.stderr)
+
+    def test_cli_rejects_a_non_zip_artifact(self):
+        self.zip_path.write_bytes(b"not a zip archive")
+        result = self.run_cli()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("release ZIP is invalid", result.stderr)
+
     def test_cli_rejects_validation_for_a_different_source_sha(self):
         self.metadata["validation"]["workflow_run"]["head_sha"] = "b" * 40
         self.write_metadata()
@@ -144,9 +164,19 @@ class ReleaseManifestCliTests(unittest.TestCase):
         self.assertIn("head SHA", result.stderr)
 
     def test_cli_rejects_unsafe_embedded_archive_paths(self):
-        result = self.run_cli("../outside.json")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("safe relative archive path", result.stderr)
+        for unsafe_path in (
+            "../outside.json",
+            "/absolute.json",
+            ".",
+            "a//b.json",
+            "a/./b.json",
+            "a/../b.json",
+            "a\\\\b.json",
+        ):
+            with self.subTest(path=unsafe_path):
+                result = self.run_cli(unsafe_path)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("safe relative archive path", result.stderr)
 
 
 if __name__ == "__main__":
