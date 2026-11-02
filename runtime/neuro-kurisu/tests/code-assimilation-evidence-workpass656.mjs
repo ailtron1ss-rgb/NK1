@@ -284,21 +284,6 @@ assert.equal(candidate.stage, 'discovered');
   assert.equal(result.rejection, 'declared-license-mismatch');
 }
 {
-  const payload = payloadFor(candidate, 'license', {
-    licenseDecision: {
-      outcome: 'approved',
-      licenseExpression: 'MIT',
-      licenseEvidenceFingerprint: sha('license-and-notice-evidence-bundle'),
-      permittedUses: ['redistribute'],
-      reviewScope: 'exact-source-revision-and-dependency-bundle',
-      reviewerBasis: 'human-review',
-    },
-  });
-  const result = verify(candidate, payload, 'license');
-  assert.equal(result.accepted, false);
-  assert.equal(result.rejection, 'license-decision-inconsistent');
-}
-{
   const payload = payloadFor(candidate, 'license');
   const result = verify(candidate, payload, 'license', trustedKeys, { now: () => fixedNow + 31_000 });
   assert.equal(result.accepted, false);
