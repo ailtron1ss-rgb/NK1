@@ -75,8 +75,9 @@ export class MemoryConsolidationController {
       const batchRaw=ownData(raw,'lastBatch');
       const lastBatch=batchRaw===undefined?[]:sanitizeConsolidationDecisionArray(batchRaw,32);
       const feedbackRaw=ownData(raw,'lastFeedback');
-      const lastFeedback=feedbackRaw===undefined?undefined:sanitizeFeedback(feedbackRaw);
-      if(lastBatch===null||(feedbackRaw!==undefined&&lastFeedback===null)){this.state=d;return;}
+      const sanitizedFeedback=feedbackRaw===undefined?undefined:sanitizeFeedback(feedbackRaw);
+      if(lastBatch===null||(feedbackRaw!==undefined&&sanitizedFeedback===null)){this.state=d;return;}
+      const lastFeedback=sanitizedFeedback??undefined;
       this.state={
         version:1,
         runs:safeCounter(ownData(raw,'runs'),d.runs),
