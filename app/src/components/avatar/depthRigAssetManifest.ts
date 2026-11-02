@@ -31,6 +31,7 @@ export interface DepthRigAssetManifestV1 {
     canvasRect: { x: number; y: number; width: number; height: number };
     deforms: boolean;
     hiddenAreaPaint: "complete" | "partial" | "not-required" | "missing";
+    occlusionMode: "mask" | "painted-overlap" | "none";
     occlusionMaskPaths: readonly string[];
   }[];
 }
@@ -51,7 +52,7 @@ export interface DepthRigAssetDiagnostic {
     | "unknown-required-node" | "duplicate-required-node" | "missing-required-layer"
     | "unknown-node" | "duplicate-node-layer" | "unsafe-path" | "asset-not-found"
     | "asset-kind-mismatch" | "asset-metadata-mismatch" | "asset-without-alpha"
-    | "invalid-rect" | "missing-hidden-paint" | "missing-mask" | "mask-not-found"
+    | "invalid-rect" | "missing-hidden-paint" | "missing-occlusion-strategy" | "missing-mask" | "mask-not-found"
     | "invalid-provenance" | "license-not-approved" | "license-evidence-missing"
     | "duplicate-inventory-path" | "invalid-inventory-entry";
   nodeId?: string;
@@ -262,17 +263,24 @@ export function validateDepthRigAssetManifest(
 
       const deforms = own(candidate, "deforms");
       const hiddenAreaPaint = own(candidate, "hiddenAreaPaint");
-      if (typeof deforms !== "boolean" || !["complete", "partial", "not-required", "missing"].includes(String(hiddenAreaPaint))) {
-        diagnostics.push(diagnostic("invalid-manifest", "Layer deformation and hiddenAreaPaint declarations are required.", { nodeId }));
-      } else if (deforms && hiddenAreaPaint !== "complete") {
-        diagnostics.push(diagnostic("missing-hidden-paint", "A deforming layer requires complete hidden-area paint to prevent gaps during motion.", { nodeId }));
+      const occlusionMode = own(candidate, "occlusionMode");
+      if (typeof deforms !== "boolean" || !["complete", "partial", "not-required", "missing"].includes(String(hiddenAreaPaint))
+        || !["mask", "painted-overlap", "none"].includes(String(occlusionMode))) {
+        diagnostics.push(diagnostic("invalid-manifest", "Layer deformation, hiddenAreaPaint and occlusionMode declarations are required.", { nodeId }));
+      } else {
+        if (deforms && hiddenAreaPaint !== "complete") {
+          diagnostics.push(diagnostic("missing-hidden-paint", "A deforming layer requires complete hidden-area paint to prevent gaps during motion.", { nodeId }));
+        }
+        if (deforms && occlusionMode === "none") {
+          diagnostics.push(diagnostic("missing-occlusion-strategy", "A deforming layer must declare mask or painted-overlap occlusion.", { nodeId }));
+        }
       }
 
       const masks = values(own(candidate, "occlusionMaskPaths"), 128);
       if (!masks) {
         diagnostics.push(diagnostic("invalid-manifest", "occlusionMaskPaths must be a dense array.", { nodeId }));
       } else {
-        if (deforms && masks.length === 0) diagnostics.push(diagnostic("missing-mask", "A deforming layer requires at least one authored occlusion mask.", { nodeId }));
+        if (occlusionMode === "mask" && masks.length === 0) diagnostics.push(diagnostic("missing-mask", "Mask-driven occlusion requires at least one authored mask.", { nodeId }));
         const seenMasks = new Set<string>();
         for (const maskPath of masks) {
           if (!safeRelativePath(maskPath)) {
