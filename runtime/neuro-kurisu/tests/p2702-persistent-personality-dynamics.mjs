@@ -40,7 +40,7 @@ const d=b.beforeDecision({tick:1,input:new Array(64).fill(.15),baseUtilities:act
 b.commitAction('explore',actions);
 b.afterOutcome({tick:1,action:'explore',reward01:.9,predictionError01:.1,verified01:1,nextInput:new Array(64).fill(.25),identityGap01:.15,goalPressure01:.7,identityVector:new Array(24).fill(.4)});
 const snap=b.snapshot();
-assert.equal(snap. version,25);
+assert.equal(snap.version,32,'the current persistent personality schema is version 32');
 assert(snap.persistentPersonality.learningUpdates>0);
 const b2=new NeuralExperienceBranch();b2.restore(snap);assert.deepEqual(b2.snapshot().persistentPersonality,snap.persistentPersonality);
 console.log(JSON.stringify({pass:true,learningUpdates:snap.persistentPersonality.learningUpdates,drift01:snap.persistentPersonality.drift01,coherence01:snap.persistentPersonality.coherence01,identityContinuity01:snap.persistentPersonality.identityContinuity01}));
