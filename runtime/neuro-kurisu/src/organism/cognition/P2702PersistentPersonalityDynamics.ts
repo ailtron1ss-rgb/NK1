@@ -74,7 +74,7 @@ export class P2702PersistentPersonalityDynamics{
     return typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
    };
    const trustRaw=ownData(raw,'relationshipTrust');
-   const relationshipTrust:Record<string,number>=Object.create(null);
+   const relationshipTrust:Record<string,number>={};
    if(trustRaw!==undefined){
     if(!isPlainRecord(trustRaw)){this.state=d;return;}
     const keys=Object.keys(trustRaw);
@@ -83,7 +83,7 @@ export class P2702PersistentPersonalityDynamics{
      if(!key.trim()||key.length>120){this.state=d;return;}
      const descriptor=Object.getOwnPropertyDescriptor(trustRaw,key);
      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||typeof descriptor.value!=='number'||!Number.isFinite(descriptor.value)){this.state=d;return;}
-     relationshipTrust[key]=clamp(descriptor.value);
+     Object.defineProperty(relationshipTrust,key,{value:clamp(descriptor.value),enumerable:true,writable:true,configurable:true});
     }
    }
    const preferenceRaw=ownData(raw,'actionPreference');
