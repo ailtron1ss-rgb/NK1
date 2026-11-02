@@ -71,7 +71,7 @@ const MAX_KEYS = 128;
 const MAX_STRING = 4096;
 
 function sha256(value: string): string {
-  return createHash('sha256').update(value, 'utf8').digest('hex');
+  return createHash('sha256').update(value).digest('hex');
 }
 
 function stable(value: unknown): string {
