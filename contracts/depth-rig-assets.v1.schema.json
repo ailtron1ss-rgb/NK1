@@ -45,7 +45,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["nodeId", "assetPath", "pixelSize", "canvasRect", "deforms", "hiddenAreaPaint", "occlusionMaskPaths"],
+        "required": ["nodeId", "assetPath", "pixelSize", "canvasRect", "deforms", "hiddenAreaPaint", "occlusionMode", "occlusionMaskPaths"],
         "properties": {
           "nodeId": { "type": "string", "minLength": 1, "maxLength": 192 },
           "assetPath": { "type": "string", "minLength": 1, "maxLength": 1024 },
@@ -71,6 +71,7 @@
           },
           "deforms": { "type": "boolean" },
           "hiddenAreaPaint": { "enum": ["complete", "partial", "not-required", "missing"] },
+          "occlusionMode": { "enum": ["mask", "painted-overlap", "none"] },
           "occlusionMaskPaths": {
             "type": "array",
             "maxItems": 128,
