@@ -180,7 +180,7 @@ assert.throws(() => step(candidate, 'active', 'human', at + 1000), /not-allowed/
   const source = createCodeAssimilationCandidate(validInput());
   const tampered = structuredClone(source);
   tampered.manifest.source.contentSha256 = sha(9);
-  assert.throws(() => normalizeCodeAssimilationCandidate(tampered), /fingerprint-mismatch/);
+  assert.throws(() => normalizeCodeAssimilationCandidate(tampered), /candidateId-mismatch/);
 }
 {
   const source = createCodeAssimilationCandidate(validInput());
