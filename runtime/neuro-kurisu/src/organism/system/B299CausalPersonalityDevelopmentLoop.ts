@@ -1,7 +1,7 @@
 import type { ActionKind } from '../core/types.ts';
 import { types } from 'node:util';
 
-const ACTION_SET = new Set<string>(ACTIONS);
+const ACTION_SET = new Set<string>(['respond','explore','verify','rest','reflect','wait','defer']);
 const DEVELOPMENT_STAGES = new Set<B299State['developmentalStage']>([
   'nascent','learning','calibrating','consolidating','generalizing',
 ]);
