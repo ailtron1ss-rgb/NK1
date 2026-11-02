@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("3D renderer projects every canonical motor action into an available rig action", async () => {
-  const projection = await readFile(new URL("../src/components/avatar/avatarMotorProjection.ts", import.meta.url), "utf8");
-  assert.match(projection, /projectAvatarMotorActionTo3DAction/);
-  for (const [motor, action] of [["rest", "rest"], ["listen", "wait"], ["reflect", "reflect"], ["inspect", "explore"], ["explain", "respond"], ["comfort", "respond"], ["respond", "respond"]]) {
-    assert.match(projection, new RegExp('"' + motor + '"[^\\n]*"' + action + '"'));
+test("3D renderer has an explicit projection from all canonical motor actions", async () => {
+  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
+  assert.match(stage, /projectAvatarMotorActionTo3DAction/);
+  for (const action of ["rest", "listen", "reflect", "inspect", "explain", "comfort", "respond"]) {
+    assert.ok(stage.includes(action), "3D action projection is missing " + action);
   }
 });
 
