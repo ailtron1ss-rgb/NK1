@@ -28,6 +28,7 @@
 
 - Latest published ZIP including prerelease: tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, GitHub asset digest `sha256:9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Stable tag `Neuro` ZIP: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, GitHub asset digest `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - Digests above are Release API metadata; neither ZIP was locally downloaded, hashed, extracted or compared in the 2026-11-02 pass. Neither archive contains the November 1 source integrations.
+- The hotfix publisher workflow is anchored on the release metadata/tag branch but explicitly checks out `workpass70-source`, rejects a stale `workflow_run.head_sha`, archives tracked `HEAD`, runs `unzip -t` and generates a SHA256 sidecar. It does not include a separate release manifest that pins `source_commit_sha` and the validation run ID. The workflow definition is inspected; old run log and ZIP bytes are not locally verified. See the CI/release evidence document linked above.
 - No new Release ZIP has been assembled, inspected internally or published. Do not claim release parity from source-branch CI.
 - License review remains pending; redistribution approval is false. Do not publish until human license review and exact-SHA publisher gate pass.
 - MongoDB Atlas read-only inspection: Project 0 / Cluster0 is reachable, but only `sample_mflix` exists; no NK1 database or runtime adapter.
