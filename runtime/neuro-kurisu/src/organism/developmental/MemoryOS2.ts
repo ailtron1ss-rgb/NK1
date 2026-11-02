@@ -3,6 +3,7 @@ import { MemorySignalFusion, type MemoryFusionProfile } from './MemorySignalFusi
 import { AdaptiveMemoryPolicy, type MemoryPolicyName } from './AdaptiveMemoryPolicy.ts';
 import { canonicalizeMemoryContent, deriveMemoryIdentity, mergeMemoContext, mergeMemoTags, memoContentHash, stableMemoryId } from './MemoInspiredMemoryPrimitives.ts';
 import { LocalEmbeddingProvider, type TextEmbeddingProvider } from './LocalEmbeddingProvider.ts';
+import { rerankSemanticCandidates } from './MemorySemanticReranker.ts';
 import { cosineSimilarity, fnv1a32 } from '../core/NumericPrimitives.ts';
 function normalizeValidatedEmbeddingVector(value:unknown,expectedDimensions?:number):number[]|null{
  if(!Array.isArray(value)||value.length===0||value.length>4096||
@@ -771,12 +772,16 @@ export class MemoryOS2{
        const score=clamp(.68*similarity+.20*lexicalScore+.06*coverage+.03*entity+.02*temporalHint+.01*clamp(item.salience));
        cached.lastUsedAt=now;semanticRows.push({item,score,similarity,lexicalRank:rank??Number.MAX_SAFE_INTEGER});
      }
-     semanticRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||a.lexicalRank-b.lexicalRank||a.item.id.localeCompare(b.item.id));
      if(!semanticRows.length){
        const diag=provider.diagnostics();
        return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:'no-valid-semantic-candidates',cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
      }
-     const items=semanticRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
+     // Semantic relevance selects the candidate pool first; affect, identity and goal
+     // signals only rerank that pool and cannot inject unrelated memories.
+     const rerankedRows=rerankSemanticCandidates(semanticRows,{
+       limit:safeLimit,goalRelevance,identityRelevance,
+     });
+     const items=rerankedRows.map(row=>structuredClone(row.item));
      const diag=provider.diagnostics();
      return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
    }catch(error){

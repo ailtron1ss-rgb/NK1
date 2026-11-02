@@ -1,0 +1,63 @@
+# NK1 — Эмоционально-контекстное ранжирование семантической памяти
+
+**Дата:** 2026-11-02  
+**Ветка:** `aspect/memory-affect-context-reranking-20261102`  
+**PR:** #672 (Draft)  
+**Базовая линия:** `workpass70-source` — `608435493b4af3b4a222d385f1b77d978d18583b`  
+**Последний коммит:** `1708d4950622d141eab3e458b1864c026d7eb62b`
+
+## Найденный разрыв
+
+В `MemoryOS2.previewRetrieveWithEmbeddings()` исходная семантическая оценка учитывала embedding similarity, lexical rank, token coverage, entity overlap, temporal hint и небольшой salience-сигнал. Эмоциональная значимость, личностная релевантность, связь с текущими целями, социальная значимость и prediction error не участвовали в финальном семантическом ранжировании.
+
+## Реализация
+
+Добавлен чистый модуль `MemorySemanticReranker.ts` и подключён непосредственно к существующему `MemoryOS2` retrieval path. Новая память, schema, embedding provider или параллельный retrieval owner не создаются.
+
+1. **Semantic preselection.** Сначала сортировка по исходному semantic/lexical score. Для выдачи N рассматривается ограниченный пул до `min(64, 4×N)`, но не меньше N.
+2. **Contextual reranking.** Внутри пула используются salience (22%), emotionalWeight (26%), identityRelevance (18%), goalRelevance (18%), socialRelevance (8%) и predictionError (8%).
+3. **Confidence semantics.** Confidence больше не является самостоятельным бонусом релевантности. Он работает как reliability gate для контекстных сигналов: низкая уверенность уменьшает влияние metadata, высокая не продвигает память сама по себе.
+4. **Context gating.** Identity и goal relevance усиливаются только при соответствующем demand из текущего запроса; без него сохраняется ограниченный baseline.
+5. **Semantic dominance.** Финальная оценка сохраняет 88% базовой semantic relevance и допускает не более 12% контекстного rerank.
+6. **Input normalization.** Семантические оценки и similarity ограничиваются `[0,1]`; отрицательные/нечисловые lexical rank приводятся к детерминированному худшему рангу; пустые и чрезмерно длинные ID исключаются; повторяющиеся ID схлопываются с сохранением сильнейшего semantic кандидата.
+7. **Determinism.** Стабильные tie-breakers по base score, similarity, lexical rank и ID.
+
+## Проверки
+
+Новый тест `tests/memory-semantic-affect-reranking.mjs` покрывает affective rerank, identity/goal demand, semantic preselection, защиту сильного semantic match, malformed values, confidence-only input, duplicate IDs, invalid lexical rank, score clamping и повторяемость порядка.
+
+- **Exact-head GitHub CI:** все 35 видимых workflow завершились успешно на `1708d4950622d141eab3e458b1864c026d7eb62b`.
+- **Focused reranker contract:** PASS.
+- **MemoryFabric semantic retrieval regression:** PASS.
+- **Runtime typecheck:** PASS.
+- **10k performance gate:** PASS; отдельный профиль приведён ниже.
+
+## CPU latency benchmark — 10 000 кандидатов
+
+Добавлен `tests/memory-semantic-affect-reranker-benchmark.mjs` и команда `npm run benchmark:memory-semantic-affect-reranking`. CI выполнил 8 warm-up и 60 измеряемых прогонов с фиксированным детерминированным набором из 10 000 кандидатов и top-K=8.
+
+| Прогон | SHA | p50 | p95 | max |
+|---|---|---:|---:|---:|
+| A | `1708d495` | 2.602 ms | 4.266 ms | 12.089 ms |
+| B (повторный) | `7a107e7d` | 3.425 ms | 6.766 ms | 13.355 ms |
+
+Оба GitHub Actions прогона прошли порог **p95 ≤ 30 ms**. Наблюдаемый диапазон p95 на двух прогонах: **4.266–6.766 ms**. Это не оценка производительности на телефоне и не гарантия отсутствия jitter на другом runner.
+
+Граница измерения: CPU-only normalization + semantic preselection + contextual reranking. Не включены embedding generation, vector-index I/O, MemoryFabric fetch и cloning. Это доказательство скорости одного компонента, не полного retrieval path и не recall-uplift.
+
+## Исследовательское основание
+
+- [PsychoAgent: An Affect-Sensitive Cognitive Architecture for Conflict-Aware Memory in LLM Agents](https://arxiv.org/html/2608.07438v2) — узкая идея semantic preselection с последующим affective salience reranking.
+- [Selective Memory for Artificial Intelligence](https://arxiv.org/html/2603.15994v1) — novelty, emotional salience и goal relevance для отбора/консолидации.
+- [Synapse: Empowering LLM Agents with Episodic-Semantic Memory via Spreading Activation](https://arxiv.org/html/2601.02744v3) — источник идей о распространении релевантности; graph spreading здесь не внедряется, чтобы не дублировать существующий SemanticMemoryGraph.
+
+Публикации — исследовательские основания, не доказательство улучшения NK1. Фактический uplift должен подтверждаться RU/EN holdout, парными запросами и независимыми seed.
+
+## Остаточные ограничения и следующие ворота
+
+1. Выполнить paired-seed RU/EN holdout на representative corpus и показать `recallDelta > 0` без ухудшения semantic precision. Синтетический 10k benchmark не заменяет этот тест.
+2. Проверить полный provenance: EmotionAppraisal → memory encoding/MemoryFabric → MemoryOS2 persistence → contextual retrieval. Текущий PR ранжирует канонические сохранённые поля, но не заявляет полного закрытия appraisal-ingress.
+3. Измерить end-to-end retrieval latency с embeddings и vector I/O.
+4. Только после независимых holdout-проверок и code review рассматривать merge.
+
+`main`, `workpass70-source`, production DB и опубликованный Release ZIP не изменялись.
