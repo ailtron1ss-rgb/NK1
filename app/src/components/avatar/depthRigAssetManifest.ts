@@ -249,7 +249,7 @@ export function validateDepthRigAssetManifest(
         diagnostics.push(diagnostic("asset-metadata-mismatch", "Declared pixelSize differs from the filesystem inventory.", { nodeId, path: safeAssetPath }));
       }
       if (file && own(file, "hasAlpha") !== true) {
-        diagnostics.push(diagnostic("asset-without-alpha", "Layer images must contain an alpha channel for cutout compositing.", { nodeId, path: assetPath }));
+        diagnostics.push(diagnostic("asset-without-alpha", "Layer images must contain an alpha channel for cutout compositing.", { nodeId, path: safeAssetPath }));
       }
 
       const rect = own(candidate, "canvasRect");
