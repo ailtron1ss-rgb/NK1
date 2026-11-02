@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, writeFile, symlink, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { buildDepthRigAssetInventory, parsePngMetadata } from "./lib/depth-rig-asset-inventory.mjs";
+import { validateDepthRigAssetManifest } from "../src/components/avatar/depthRigAssetManifest.ts";
 
 const png = (width, height, colorType = 6, includeTransparency = false) => {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -113,5 +114,61 @@ test("rejects a symlink as the asset root and an invalid root path", async () =>
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(link, { force: true });
+  }
+});
+
+test("feeds real filesystem inventory into the manifest validator and blocks opaque art", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "nk1-depth-integration-"));
+  try {
+    await mkdir(path.join(root, "layers"));
+    await mkdir(path.join(root, "provenance"));
+    await writeFile(path.join(root, "layers", "torso.png"), png(256, 256, 6));
+    await writeFile(path.join(root, "provenance", "license.md"), "Reviewed asset provenance");
+    const rig = {
+      version: 1,
+      id: "filesystem-integration-rig",
+      coordinateSystem: "normalized-y-down",
+      nodes: [
+        { id: "root", role: "root", parentId: null, depthOrder: 0, pivot: { x: 0.5, y: 0.5 }, rest: { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1 } },
+        { id: "torso", role: "torso", parentId: "root", depthOrder: 1, pivot: { x: 0.5, y: 0.5 }, rest: { x: 0, y: 0, z: 0, rotation: 0, scaleX: 1, scaleY: 1 } },
+      ],
+    };
+    const manifest = {
+      version: 1,
+      id: "filesystem-integration-manifest",
+      rigId: rig.id,
+      canvas: { width: 256, height: 256 },
+      requiredNodeIds: ["torso"],
+      provenance: {
+        creator: "test",
+        licenseId: "LicenseRef-test",
+        reviewStatus: "approved",
+        reviewedBy: "test-reviewer",
+        reviewedAt: "2026-11-02T10:00:00.000Z",
+        evidencePath: "provenance/license.md",
+      },
+      assets: [{
+        nodeId: "torso",
+        assetPath: "layers/torso.png",
+        pixelSize: { width: 256, height: 256 },
+        canvasRect: { x: 0, y: 0, width: 256, height: 256 },
+        deforms: true,
+        hiddenAreaPaint: "complete",
+        occlusionMode: "painted-overlap",
+        occlusionMaskPaths: [],
+      }],
+    };
+
+    const transparentScan = await buildDepthRigAssetInventory(root);
+    assert.deepEqual(transparentScan.diagnostics, []);
+    assert.equal(validateDepthRigAssetManifest(rig, manifest, transparentScan.inventory).status, "asset-preflight-pass");
+
+    await writeFile(path.join(root, "layers", "torso.png"), png(256, 256, 2));
+    const opaqueScan = await buildDepthRigAssetInventory(root);
+    const blocked = validateDepthRigAssetManifest(rig, manifest, opaqueScan.inventory);
+    assert.equal(blocked.status, "blocked");
+    assert.ok(blocked.diagnostics.some((item) => item.code === "asset-without-alpha"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
