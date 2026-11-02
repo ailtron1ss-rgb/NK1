@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import sys
 import zipfile
 from datetime import date, datetime, timezone
@@ -106,7 +107,12 @@ def _verify_embedded_evidence_in_zip(
                         f"embedded evidence {member} must be present exactly once in ZIP"
                     )
                 info = archive.getinfo(member)
-                if info.is_dir() or info.file_size != record["size_bytes"]:
+                member_mode = (info.external_attr >> 16) & 0xFFFF
+                if info.is_dir() or stat.S_ISLNK(member_mode):
+                    raise ManifestError(
+                        f"embedded evidence {member} must be a regular file, not a directory or symlink"
+                    )
+                if info.file_size != record["size_bytes"]:
                     raise ManifestError(
                         f"embedded evidence {member} size does not match the local evidence file"
                     )
