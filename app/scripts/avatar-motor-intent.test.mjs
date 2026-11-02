@@ -55,6 +55,66 @@ test("explanatory language produces an inspectable body-level gesture intention"
   assert.equal(plan.gesture, true);
 });
 
+test("homeostatic pressure changes idle embodiment into quiet reflection", () => {
+  const plan = planAvatarMotorIntent({
+    emotion: "calm", valence: 0.5, arousal: 0.4, action: "wait", thinking: false,
+    speaking: false, hasFreshTurn: false, turnText: "", awake: true,
+    energy: 0.7, cognitiveLoad: 0.94, uncertainty: 0.88, predictionError: 0.2,
+  });
+  assert.equal(plan.action, "reflect");
+  assert.equal(plan.motionGroup, "TapHead");
+  assert.equal(plan.gesture, false, "high cognitive load must suppress an expansive gesture");
+  assert.equal(plan.reason, "high-cognitive-load-or-uncertainty");
+});
+
+test("novelty and persistent curiosity trait produce an inspect gesture", () => {
+  const plan = planAvatarMotorIntent({
+    emotion: "curiosity", valence: 0.6, arousal: 0.55, action: "wait", thinking: false,
+    speaking: false, hasFreshTurn: false, turnText: "", awake: true,
+    novelty: 0.95, cognitiveLoad: 0.2, uncertainty: 0.3, traits: { curiosity: 0.96, composure: 0.8 },
+  });
+  assert.equal(plan.action, "inspect");
+  assert.equal(plan.motionGroup, "TapBody");
+  assert.equal(plan.gesture, true);
+  assert.equal(plan.reason, "novelty-and-curiosity-trait");
+});
+
+test("social need and warmth trait soften the active conversational gesture", () => {
+  const plan = planAvatarMotorIntent({
+    emotion: "calm", valence: 0.58, arousal: 0.3, action: "respond", thinking: false,
+    speaking: true, hasFreshTurn: true, turnText: "Я слушаю.", awake: true,
+    socialNeed: 0.94, traits: { warmth: 0.9, composure: 0.8 },
+  });
+  assert.equal(plan.action, "comfort");
+  assert.equal(plan.reason, "social-need-and-warmth-trait");
+  assert.equal(plan.gesture, true);
+});
+
+test("low energy suppresses active idle motion while goal pressure favors explanation", () => {
+  const resting = planAvatarMotorIntent({
+    emotion: "calm", valence: 0.5, arousal: 0.2, action: "wait", thinking: false,
+    speaking: false, hasFreshTurn: false, turnText: "", awake: true, energy: 0.08,
+  });
+  assert.equal(resting.action, "rest");
+  assert.equal(resting.motionGroup, "Idle");
+  const explaining = planAvatarMotorIntent({
+    emotion: "calm", valence: 0.6, arousal: 0.4, action: "respond", thinking: false,
+    speaking: true, hasFreshTurn: true, turnText: "Сейчас разберём.", awake: true, goalPressure: 0.95,
+  });
+  assert.equal(explaining.action, "explain");
+  assert.equal(explaining.reason, "high-goal-pressure-explanatory-intent");
+});
+
+test("composure trait damps otherwise identical head motion", () => {
+  const base = {
+    emotion: "anxiety", valence: 0.3, arousal: 0.7, action: "wait", thinking: false,
+    speaking: false, hasFreshTurn: false, turnText: "", awake: true, uncertainty: 0.7,
+  };
+  const expressive = planAvatarMotorIntent({ ...base, traits: { composure: 0.1 } });
+  const composed = planAvatarMotorIntent({ ...base, traits: { composure: 0.95 } });
+  assert.ok(Math.abs(composed.headTilt) < Math.abs(expressive.headTilt));
+});
+
 test("planner output is deterministic and remains within available asset ranges", () => {
   const input = {
     emotion: "joy", valence: 0.95, arousal: 0.9, action: "respond", thinking: false,
@@ -119,4 +179,15 @@ test("the app-served viewer applies intent parameters after Cubism motion and ph
   assert.match(viewer, /MOTION_COUNTS/);
   assert.match(viewer, /lastIntentStateVersion/);
   assert.ok(viewer.includes("lipTarget=bodySignal.speaking?mouth:0.015"));
+});
+
+
+test("stale respond action does not count as an active conversation or suppress homeostatic rest", () => {
+  const plan = planAvatarMotorIntent({
+    emotion: "calm", valence: 0.5, arousal: 0.2, action: "respond", thinking: false,
+    speaking: false, hasFreshTurn: false, turnText: "", awake: true, energy: 0.08,
+  });
+  assert.equal(plan.action, "rest");
+  assert.equal(plan.motionGroup, "Idle");
+  assert.equal(plan.gesture, false);
 });
