@@ -674,6 +674,20 @@ export class OrganismRuntime {
       externalInput: Boolean(externalText),
       awake: body.awake,
     });
+    this.evidenceBus.publish({
+      tick: cycle.state.tick,
+      kind: 'resource',
+      source: 'cognitive-spine-scheduler',
+      confidence01: .95,
+      payload: {
+        mode: spineDecision.mode,
+        reason: spineDecision.reason,
+        run: spineDecision.run,
+        cadence: spineDecision.cadence,
+        remainingBudget01: clamp01(resourceAllocation.totalBudget01),
+        externalInput: Boolean(externalText),
+      },
+    });
     // Persist only on meaningful boundaries: external input, mode transition, or every 8 ticks.
     // The small sidecar avoids rewriting the multi-megabyte canonical OrganismCore snapshot.
     if (Boolean(externalText) || priorSpineMode !== spineDecision.mode || cycle.state.tick % 8 === 0) {
