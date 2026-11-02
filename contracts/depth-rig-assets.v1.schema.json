@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nk1.dev/contracts/depth-rig-assets.v1.schema.json",
+  "title": "NK1 Depth Rig Asset Manifest v1",
+  "description": "Preflight contract for authored layered 2.5D avatar artwork. Passing this schema is not a visual QA or legal approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "rigId", "canvas", "requiredNodeIds", "provenance", "assets"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "rigId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 256, "maximum": 8192 },
+        "height": { "type": "integer", "minimum": 256, "maximum": 8192 }
+      }
+    },
+    "requiredNodeIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1, "maxLength": 192 }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["creator", "licenseId", "reviewStatus", "reviewedBy", "reviewedAt", "evidencePath"],
+      "properties": {
+        "creator": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "licenseId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reviewStatus": { "enum": ["approved", "review-required", "restricted"] },
+        "reviewedBy": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "evidencePath": { "type": "string", "minLength": 1, "maxLength": 1024 }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["nodeId", "assetPath", "pixelSize", "canvasRect", "deforms", "hiddenAreaPaint", "occlusionMaskPaths"],
+        "properties": {
+          "nodeId": { "type": "string", "minLength": 1, "maxLength": 192 },
+          "assetPath": { "type": "string", "minLength": 1, "maxLength": 1024 },
+          "pixelSize": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["width", "height"],
+            "properties": {
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "canvasRect": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": { "type": "integer", "minimum": 0 },
+              "y": { "type": "integer", "minimum": 0 },
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "deforms": { "type": "boolean" },
+          "hiddenAreaPaint": { "enum": ["complete", "partial", "not-required", "missing"] },
+          "occlusionMaskPaths": {
+            "type": "array",
+            "maxItems": 128,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 1024 }
+          }
+        }
+      }
+    }
+  }
+}
