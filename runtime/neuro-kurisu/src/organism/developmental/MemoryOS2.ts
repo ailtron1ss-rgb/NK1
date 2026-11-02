@@ -64,6 +64,8 @@ provenanceClass?: MemoryProvenanceClass;
 sourceAuthority01?: number;
 independenceKey?: string;
 evidenceFreshnessAt?: number;
+/** Optional evidence half-life. Missing/null means durable; never hard-expires a fact. */
+freshnessHalfLifeMs?: number | null;
 /** Bounded independent provenance trail; canonical MemoryOS2 remains the sole writable owner. */
 evidenceSources?:MemoryEvidenceSource[];
 /** Compact replay guard for lineages trimmed from the visible eight-source trail. */
@@ -275,6 +277,27 @@ function memoryTemperature(item:Pick<MemoryItem2,'salience'|'emotionalWeight'|'i
   const recency=Math.exp(-Math.min(age,14*86400000)/(18*3600000));
   return clamp(.24*item.salience+.16*item.emotionalWeight+.18*item.identityRelevance+.16*item.goalRelevance+.10*item.socialRelevance+.10*item.predictionError+.16*recency);
 }
+
+const MEMORY_FRESHNESS_MIN_HALF_LIFE_MS=60_000;
+const MEMORY_FRESHNESS_MAX_HALF_LIFE_MS=10*365*86400000;
+function normalizeFreshnessHalfLife(value:unknown):number|null|undefined{
+  if(value===undefined)return undefined;
+  if(value===null)return null;
+  if(typeof value!=='number'||!Number.isFinite(value)||value<=0)return undefined;
+  return Math.max(MEMORY_FRESHNESS_MIN_HALF_LIFE_MS,Math.min(MEMORY_FRESHNESS_MAX_HALF_LIFE_MS,value));
+}
+/** Evidence freshness is independent of lastAccessAt. No horizon means durable/legacy. */
+export function memoryEvidenceFreshness01(
+  item:Pick<MemoryItem2,'evidenceFreshnessAt'|'observedAt'|'createdAt'|'freshnessHalfLifeMs'>,
+  now=Date.now()
+):number{
+  const halfLife=normalizeFreshnessHalfLife(item.freshnessHalfLifeMs);
+  if(halfLife==null||halfLife===undefined)return 1;
+  const evidenceAt=Number(item.evidenceFreshnessAt??item.observedAt??item.createdAt);
+  if(!Number.isFinite(evidenceAt))return 1;
+  const at=Number.isFinite(now)?now:Date.now();
+  return clamp(Math.pow(.5,Math.max(0,at-evidenceAt)/halfLife));
+}
 function extractEntities(text:string){return [...new Set(tokenize(text).filter(t=>t.length>=4).slice(0,12))];}
 const NEGATION_TOKENS=new Set(['not','no','never','without','cannot','cant','cannot','isnt','doesnt','dont','не','нет','никогда','без','нельзя','невозможно']);
 function negationSignature(text:string){const tokens=tokenize(text);let hits=0;for(const t of tokens)if(NEGATION_TOKENS.has(t))hits++;return hits%2?1:0;}
@@ -414,8 +437,8 @@ function normalizeMemoryRevisionGraph(items:MemoryItem2[],onDuplicate?:(id:strin
  }
  return unique;
 }
-type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'>>;
-const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
+type MemoryEstimateShape=Pick<MemoryItem2,'content'|'tags'|'context'|'semanticLinks'|'temporalLinks'|'causalLinks'|'contradictionLinks'|'evidenceSources'|'evidenceLineageKeys'|'revisionIntegrityIssues'> & Partial<Pick<MemoryItem2,'revisionHistory'|'freshnessHalfLifeMs'>>;
+const estimateMemoryBytes=(m:MemoryEstimateShape)=>Math.max(96,new TextEncoder().encode(JSON.stringify({content:m.content,tags:m.tags,context:m.context,s:m.semanticLinks,t:m.temporalLinks,c:m.causalLinks,k:m.contradictionLinks,e:m.evidenceSources,ek:m.evidenceLineageKeys,ri:m.revisionIntegrityIssues,fh:m.freshnessHalfLifeMs,r:normalizeRevisionHistory(m.revisionHistory)})).byteLength);
 export type MemoryTemporalMode='current'|'at'|'all';
 export interface MemoryTemporalQueryOptions { temporalMode?:MemoryTemporalMode; asOfAt?:number; }
 export interface SemanticMemoryPreview { items:MemoryItem2[]; semantic:{enabled:boolean;provider:string;model:string;indexedItems:number;corpusItems:number;coverage01:number;newlyIndexed:number;fallbackReason:string|null;cacheEntries:number;requests:number;failures:number;lastLatencyMs:number}; }
@@ -558,6 +581,7 @@ export class MemoryOS2{
     sourceAuthority01:clamp(finite(row.sourceAuthority01,this.sourceAuthorityDefault(provenanceClass))),
     independenceKey:evidenceSeed.independenceKey,
     evidenceFreshnessAt:finite(row.evidenceFreshnessAt,observedAt),
+    freshnessHalfLifeMs:normalizeFreshnessHalfLife(row.freshnessHalfLifeMs),
     evidenceSources,
     evidenceLineageKeys,
     dormant:row.dormant===true,
@@ -768,7 +792,8 @@ export class MemoryOS2{
        const itemTokens=this.tokensFor(item.content);let covered=0;for(const token of queryTokens)if(itemTokens.has(token))covered++;
        const coverage=queryTokens.size?covered/queryTokens.size:0;const entity=overlap(queryEntities,item.entities);
        const temporalHint=this.signalFusion.temporalHint(query,item.validFromAt??item.createdAt,now);
-       const score=clamp(.68*similarity+.20*lexicalScore+.06*coverage+.03*entity+.02*temporalHint+.01*clamp(item.salience));
+       const evidenceFreshness=memoryEvidenceFreshness01(item,now);
+       const score=clamp(.66*similarity+.19*lexicalScore+.06*coverage+.03*entity+.02*temporalHint+.01*clamp(item.salience)+.03*evidenceFreshness);
        cached.lastUsedAt=now;semanticRows.push({item,score,similarity,lexicalRank:rank??Number.MAX_SAFE_INTEGER});
      }
      semanticRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||a.lexicalRank-b.lexicalRank||a.item.id.localeCompare(b.item.id));
@@ -806,7 +831,7 @@ export class MemoryOS2{
    semanticLinks:item.semanticLinks??[],temporalLinks:item.temporalLinks??[],
    causalLinks:item.causalLinks??[],contradictionLinks:item.contradictionLinks??[],
    evidenceSources:item.evidenceSources,evidenceLineageKeys:item.evidenceLineageKeys,
-   revisionIntegrityIssues:item.revisionIntegrityIssues,revisionHistory:item.revisionHistory,
+   revisionIntegrityIssues:item.revisionIntegrityIssues,revisionHistory:item.revisionHistory,freshnessHalfLifeMs:item.freshnessHalfLifeMs,
   }),0);
   const savedEstimate=Math.max(0,Math.floor(Number((s as any)?.estimatedBytes??legacyEstimate)));
   this.state={
@@ -974,6 +999,7 @@ export class MemoryOS2{
     sourceAuthority01:clamp(Number(input.sourceAuthority01??defaults[provenanceClass]??.5)),
     independenceKey:input.independenceKey?.slice(0,96),
     evidenceFreshnessAt:Number.isFinite(Number(input.evidenceFreshnessAt))?Number(input.evidenceFreshnessAt):Number(input.observedAt??now),
+    freshnessHalfLifeMs:normalizeFreshnessHalfLife(input.freshnessHalfLifeMs),
     evidenceSources, evidenceLineageKeys,
   };
  }
@@ -993,6 +1019,11 @@ export class MemoryOS2{
    if(existing){
     const priorBytes=estimateMemoryBytes(existing);
     const evidenceMerge=this.mergeIncomingEvidence(existing,input,now);
+    if(input.freshnessHalfLifeMs!==undefined)existing.freshnessHalfLifeMs=normalizeFreshnessHalfLife(input.freshnessHalfLifeMs);
+    if(evidenceMerge.addedIndependentSource){
+     const incomingFreshnessAt=Number(input.evidenceFreshnessAt??input.observedAt??now);
+     if(Number.isFinite(incomingFreshnessAt))existing.evidenceFreshnessAt=Math.max(Number(existing.evidenceFreshnessAt??0),incomingFreshnessAt);
+    }
     existing.lastAccessAt=now;
     existing.salience=clamp(existing.salience*.8+input.salience*.2);
     // A repeated import from the same source/lineage is not independent evidence
@@ -1175,7 +1206,7 @@ export class MemoryOS2{
    if(candidateIds.size>192)throw new Error(`memory retrieval candidate budget exceeded: ${candidateIds.size}/192`);
    this.lastCandidateCount=candidateIds.size;
    const identifierBias=identifierLike(query);
-   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number}> = [];
+   const rawRows:Array<{m:MemoryItem2;bm25:number;entity:number;lexical:number;coverage:number;fuzzy:number;metadata:number;conceptCoverage:number;temporal:number;causal:number;identity:number;goal:number;recency:number;evidenceFreshness:number}> = [];
    for(const id of candidateIds){
      const m=this.itemIndex.get(id);
      if(!m||m.dormant||m.epistemicStatus==='quarantined')continue;
@@ -1197,11 +1228,12 @@ export class MemoryOS2{
      const entity=overlap(queryEntities,m.entities);
      const conceptCoverage=conceptGroupCoverage(conceptQuery.groups,lexicalTokens);
      const recency=clamp(1-(now-m.lastAccessAt)/(1000*60*60*24*21));
+     const evidenceFreshness=memoryEvidenceFreshness01(m,now);
      const causal=clamp(linkSupport?.get(m.id)||0);
      const temporalBase=this.signalFusion.temporalHint(query,m.validFromAt??m.createdAt,now); const validity=temporalMode==='all'?1:(isValidAt(m,now)?1:0); const temporal=clamp(.72*validity+.28*temporalBase);
      const identity=clamp(m.identityRelevance*clamp(identityRelevance));
      const goal=clamp(m.goalRelevance*clamp(goalRelevance));
-     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency});
+     rawRows.push({m,bm25,entity,lexical,coverage,fuzzy,metadata,conceptCoverage,temporal,causal,identity,goal,recency,evidenceFreshness});
    }
    const rrfK=60;
    const rankBy=(score:(row:typeof rawRows[number])=>number)=>new Map(rawRows.filter(row=>score(row)>0).sort((a,b)=>score(b)-score(a)||a.m.id.localeCompare(b.m.id)).map((row,index)=>[row.m.id,index+1]));
@@ -1223,7 +1255,7 @@ export class MemoryOS2{
      const rrfNorm=clamp((rrfWeights.bm25/(rrfK+(bm25Rank.get(row.m.id)??rawRows.length+1))+rrfWeights.coverage/(rrfK+(coverageRank.get(row.m.id)??rawRows.length+1))+rrfWeights.fuzzy/(rrfK+(fuzzyRank.get(row.m.id)??rawRows.length+1))+rrfWeights.metadata/(rrfK+(metadataRank.get(row.m.id)??rawRows.length+1))+rrfWeights.entity/(rrfK+(entityRank.get(row.m.id)??rawRows.length+1))+rrfWeights.relationship/(rrfK+(relationshipRank.get(row.m.id)??rawRows.length+1)))/maxRrf);
      const bm25Norm=maxBm25>0?normalizeBm25(row.bm25,maxBm25):0;
      const lexical=this.metadataRecallEnabled?clamp(.18*row.lexical+.40*bm25Norm+.21*row.coverage+.16*row.fuzzy+.08*rrfNorm+.07*row.metadata):clamp(.18*row.lexical+.43*bm25Norm+.22*row.coverage+.17*row.fuzzy+.10*rrfNorm);
-     const fused=this.signalFusion.score({semantic01:0,lexical01:identifierBias?clamp(lexical+.10*row.lexical):lexical,entity01:row.entity,temporal01:row.temporal,causal01:row.causal,recency01:row.recency,salience01:row.m.salience,identity01:row.identity,goal01:row.goal,predictionError01:row.m.predictionError,temperature01:row.m.temperature01});
+     const fused=this.signalFusion.score({semantic01:0,lexical01:identifierBias?clamp(lexical+.10*row.lexical):lexical,entity01:row.entity,temporal01:row.temporal,causal01:row.causal,recency01:row.recency,evidenceFreshness01:row.evidenceFreshness,salience01:row.m.salience,identity01:row.identity,goal01:row.goal,predictionError01:row.m.predictionError,temperature01:row.m.temperature01});
      const policyBias=this.activePolicy==='semantic'?(row.fuzzy*.04+row.coverage*.04):this.activePolicy==='causal'?row.causal*.10:this.activePolicy==='temporal'?row.temporal*.10:this.activePolicy==='hybrid'?(rrfNorm+row.entity)*.06:(row.identity+row.goal)*.04;
      // Intent adds a bounded preference for the memory system that answers the
      // question being asked (event, procedure, self, goal, cause, or fact). It is
