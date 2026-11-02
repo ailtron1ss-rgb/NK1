@@ -12,11 +12,11 @@
 
 ## Live CI / release gate — 2026-11-02
 
-- On exact source HEAD `608435493b4af3b4a222d385f1b77d978d18583b`, 14/14 GitHub Actions workflow runs completed as `failure` before runner assignment: `runner_id=0`, empty runner name, zero steps; all 14 job-log requests returned `BlobNotFound`.
+- On exact source HEAD `608435493b4af3b4a222d385f1b77d978d18583b`, the original push attempt had 14/14 workflow failures before runner assignment: `runner_id=0`, empty runner name, zero steps; all 14 job-log requests returned `BlobNotFound`. A targeted retry of the original core regression job later succeeded: run `41331728115`, attempt 2, job `125206033710`, 45 steps. Four separate PR-triggered workflows on PR #664 also passed.
 - Parent SHA `f921007a74a7a6124d274885354009dd3a3ef33c` had 7 successful workflow runs; the core regression control job ran 45 steps on a real GitHub-hosted runner. The only source commit between the SHAs changed `runtime/neuro-kurisu/package.json` (+1/−2), removing a duplicate test invocation. No workflow YAML changed.
-- These failures are pre-runner startup failures, not failing NK1 test assertions. Exact platform/account cause is **unknown**. Billing/Actions account restriction remains a hypothesis pending owner-side Billing & Licensing evidence or GitHub Support response.
+- The first attempt's failures were pre-runner startup failures, not failing NK1 test assertions. Exact first-attempt cause is **unknown**; a persistent account-wide Actions restriction is less likely because a targeted retry and four PR-triggered workflows subsequently received runners and passed.
 - Branch API snapshot: `workpass70-source` has no branch protection and no required status checks. See [PR #652](https://github.com/ailtron1ss-rgb/NK1/pull/652) (Draft; documentation-only) and `docs/engineering/NK1_RELEASE_INTEGRITY_AND_CI_RECOVERY_2026-11-02_RU.md` for exact run/job IDs and evidence.
-- Do not interpret the red runs as source test failures; do not bulk-rerun until runner startup is restored. Do not merge PR #652 as a runtime fix.
+- Do not interpret the original red runs as source test failures. A single targeted retry succeeded, but the full source validation matrix still needs a fresh complete run. Do not merge PR #652 as a runtime fix.
 
 ## Non-negotiable engineering workflow
 
