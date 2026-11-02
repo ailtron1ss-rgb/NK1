@@ -359,6 +359,7 @@
     "audit:big-pass-progress": "node scripts/audit-big-pass-progress.mjs",
     "audit:release": "npm run release:audit",
     "test:big-pass-39": "node --experimental-strip-types tests/big-pass-39-cognitive-spine.mjs && node --experimental-strip-types tests/big-pass-39-reality-boundary.mjs",
+    "test:workpass637:cognitive-spine-runtime": "node --experimental-strip-types tests/big-pass-162-runtime-integration.mjs",
     "test:big-pass-40": "node --experimental-strip-types tests/big-pass-40-cognitive-spine.mjs",
     "test:big-pass-41": "node --experimental-strip-types tests/big-pass-41-performance-spine.mjs",
     "test:big-pass-42:project": "node --experimental-strip-types tests/big-pass-42-project-executor.mjs",
