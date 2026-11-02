@@ -450,3 +450,24 @@ Threat model должен включать:
 ---
 
 **Ограничение статуса:** этот документ задаёт архитектуру и фазы реализации. Он не утверждает, что Code Assimilation Layer, sandbox runner, SBOM pipeline или production promotion уже существуют. Следующий инженерный этап — реализовать A1 (contracts + manifest + state-machine tests), затем A2; sandbox должен появиться до запуска первого недоверенного внешнего build или test.
+
+
+## 15. Реальный статус реализации на 2026-11-02
+
+Статусы ниже относятся к отдельным aspect PR и их exact-head CI, а не к включению в канонический `workpass70-source` или опубликованный Release.
+
+| Слой | Артефакт | Фактический статус | Evidence |
+|---|---|---|---|
+| Архитектурный дизайн | PR #655, этот документ | `IMPLEMENTED / DOCUMENTED`, `NOT MERGED` | [PR #655](https://github.com/ailtron1ss-rgb/NK1/pull/655) |
+| A1 — immutable intake/contracts | `CodeAssimilationContracts.ts`, lifecycle state machine, adversarial tests и отдельный workflow | `IMPLEMENTED / TESTED`, `NOT MERGED` | PR #657 exact HEAD `09050535e2ad2445c63e90b77a7b83f505e9a1a3`; 12/12 checks success: [PR #657](https://github.com/ailtron1ss-rgb/NK1/pull/657) |
+| A2 — signed evidence | `CodeAssimilationEvidence.ts`: Ed25519 evidence, issuer roles, exact source/material binding, scoped license decisions и process-local receipts | `IMPLEMENTED / TESTED`, `NOT MERGED` | PR #659 exact HEAD `36d2a23bb7040c0432da28d72a68ac93d4dcb943`; 3/3 checks success: [PR #659](https://github.com/ailtron1ss-rgb/NK1/pull/659) |
+| A2 — runtime typecheck | Pinned app compiler + `runtime typecheck` в dedicated workflow | `TESTED` | PR #659 workflow `NK1 code assimilation signed evidence` завершился success |
+| A2 — P23/Hermes compatibility | WorkPass110 continual-learning and verified-skill lifecycle regression | `TESTED` | PR #659 workflow `WorkPass110 continual learning metrics` завершился success |
+| A3 — quarantine/sandbox | Isolated execution/build runner, secrets/network/resource boundary | `PLANNED / NOT IMPLEMENTED` | No runtime runner or sandbox is claimed |
+| A4 — adapter SDK/registry | Component registration and canonical owner integration | `PLANNED / NOT IMPLEMENTED` | No component registry is claimed |
+| A5 — independent code evaluation | Contract/differential/hidden holdout and security evaluation | `PLANNED / NOT IMPLEMENTED` | Current A2 verifier validates signed attestations; it does not independently run or assess code quality |
+| A6–A9 — shadow, promotion, rollback and autonomous loop | Candidate execution, host approval, release, cognitive discovery and long-soak | `PLANNED / NOT IMPLEMENTED` | Skill promotion from P23 is not yet general code-component promotion |
+
+**Important:** PR #659 is stacked on the A1 PR branch, whose base is the A1 exact-head SHA. PR #657 and PR #659 are both still open draft PRs and neither has been merged into `workpass70-source`. No code-assimilation feature is part of a published ZIP on the basis of these PRs. A1/A2 are tested development artifacts, not yet canonical production capability.
+
+The A2 trust boundary is deliberately narrow: an Ed25519 signature establishes that a trusted key signed a particular source/evidence envelope. It does not prove that the SBOM scanner is correct, that a build is free of malware, or that a human license review is legally correct. Active production use still requires independent key management, signed attestations, SBOM generation, vulnerability evaluation, the A3 sandbox, independent A5 evaluation and the A6 approval gate.
