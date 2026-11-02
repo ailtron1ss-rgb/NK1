@@ -272,7 +272,7 @@ function cloneActionGatewaySnapshot(snapshot: unknown): ActionExecutionLedgerSna
 
       const prototype = Object.getPrototypeOf(value);
       if (prototype !== Object.prototype && prototype !== null) throw new Error('snapshot-object-prototype-invalid');
-      const output: Record<string, unknown> = {};
+      const output: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
       for (const key of Reflect.ownKeys(value)) {
         if (typeof key !== 'string' || key.length > 256) throw new Error('snapshot-object-key-invalid');
         const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -587,7 +587,7 @@ export class ActionGateway {
       const row=value as ActionExecutionLedgerEntry;
       if(!/^[a-f0-9]{64}$/i.test(String(row.keyHash??'')) || !/^[a-f0-9]{64}$/i.test(String(row.requestHash??''))) continue;
       if(row.status!=='pending' && row.status!=='completed') continue;
-      const recordedAt=Number(row.recordedAt); if(!Number.isFinite(recordedAt)||recordedAt<0) continue;
+      const recordedAt=typeof row.recordedAt==='number'?row.recordedAt:NaN; if(!Number.isFinite(recordedAt)||recordedAt<0) continue;
       const safe:ActionExecutionLedgerEntry={keyHash:row.keyHash.toLowerCase(),requestHash:row.requestHash.toLowerCase(),status:row.status,recordedAt,
         ...(typeof row.executionId==='string'&&/^exec-[a-z0-9-]{8,80}$/i.test(row.executionId)?{executionId:row.executionId}:{}),
         ...(typeof row.toolId==='string'&&row.toolId.length<=64?{toolId:row.toolId}:{}),
@@ -633,10 +633,12 @@ export class ActionGateway {
     const cleanRequests:Array<ActionToolApprovalRecord>=[];
     if(Array.isArray(permissions?.requests)) for(const item of permissions!.requests.slice(-128)) {
       if(!item||typeof item!=='object'||typeof item.id!=='string'||!item.id.startsWith('approval-')||!['web','device','filesystem','code','system','self-modification'].includes(item.permissionClass)||!['execute','reconcile','direct'].includes(item.operation)||!['pending','approved','declined','consumed','expired'].includes(item.status)||!/^[a-f0-9]{64}$/i.test(String(item.requestHash??''))) continue;
-      const createdAt=Number(item.createdAt),expiresAt=Number(item.expiresAt); if(!Number.isFinite(createdAt)||!Number.isFinite(expiresAt)||expiresAt<createdAt||expiresAt-createdAt>5*60_000+1000) continue;
+      const createdAt=typeof item.createdAt==='number'?item.createdAt:NaN,expiresAt=typeof item.expiresAt==='number'?item.expiresAt:NaN; if(!Number.isFinite(createdAt)||!Number.isFinite(expiresAt)||expiresAt<createdAt||expiresAt-createdAt>5*60_000+1000) continue;
       cleanRequests.push({...structuredClone(item),requestHash:item.requestHash.toLowerCase(),createdAt,expiresAt,inputKeys:Array.isArray(item.inputKeys)?item.inputKeys.slice(0,24).map(x=>String(x).slice(0,80)):[],inputPreview:item.inputPreview&&typeof item.inputPreview==='object'?structuredClone(item.inputPreview):{},autonomous:Boolean(item.autonomous)});
     }
-    const nextPermissionState:ActionToolPermissionSnapshot={version:1,requests:cleanRequests,created:Math.max(0,Math.floor(Number(permissions?.created??cleanRequests.length))),approved:Math.max(0,Math.floor(Number(permissions?.approved??0))),declined:Math.max(0,Math.floor(Number(permissions?.declined??0))),consumed:Math.max(0,Math.floor(Number(permissions?.consumed??0))),expired:Math.max(0,Math.floor(Number(permissions?.expired??0))),lastChangeAt:Math.max(0,Number(permissions?.lastChangeAt??0))};
+    const safeCounter=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000_000):fallback;
+    const safeTimestamp=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)&&value>=0?value:0;
+    const nextPermissionState:ActionToolPermissionSnapshot={version:1,requests:cleanRequests,created:safeCounter(permissions?.created,cleanRequests.length),approved:safeCounter(permissions?.approved),declined:safeCounter(permissions?.declined),consumed:safeCounter(permissions?.consumed),expired:safeCounter(permissions?.expired),lastChangeAt:safeTimestamp(permissions?.lastChangeAt)};
     this.executionLedger.clear();
     for(const row of [...restored.values()].sort((a,b)=>a.recordedAt-b.recordedAt)) this.executionLedger.set(row.keyHash,row);
     this.permissionState=nextPermissionState;
