@@ -498,7 +498,12 @@ export class ExperienceContinuumFabric {
   }
 
   causalReplayCreditLedger(limit=32){
-    const rows=this.causalReplayCredit.snapshot().recent.slice(-Math.max(1,Math.min(128,Math.floor(limit))));
+    // This is the verified credit ledger, not the diagnostic event journal.
+    // Legacy/unverified rows remain in diagnostics but must not be exposed as
+    // attributable credit.
+    const rows=this.causalReplayCredit.snapshot().recent
+      .filter(row=>row.independentVerified)
+      .slice(-Math.max(1,Math.min(128,Math.floor(limit))));
     return structuredClone(rows);
   }
 
