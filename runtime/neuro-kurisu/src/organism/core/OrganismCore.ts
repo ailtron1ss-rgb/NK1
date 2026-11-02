@@ -2339,6 +2339,8 @@ export class OrganismCore {
                 throw new Error('metacognitive-episode-id-conflict');
             return { status: 'replayed', episodeId: episode.id, memoryId };
         }
+        if (episode.tick !== this.persisted.state.tick)
+            throw new Error('metacognitive-episode-stale-tick');
         const encoded = this.memorySubsystem.fabric.encode({
             id: memoryId,
             content: metacognitiveEpisodeSummary(episode),
