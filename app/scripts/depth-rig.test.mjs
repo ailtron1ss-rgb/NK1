@@ -167,19 +167,21 @@ test("rejects malformed EmbodimentIntent v1 adapter payloads", () => {
   }), /Invalid EmbodimentIntent/);
 });
 
-test("maps active motor joint targets through explicit bounded rig bindings", () => {
+test("maps measured motor joint angles, never target intent, through bounded rig bindings", () => {
   const pose = resolveDepthRigPoseFromMotorFrame(rig, {
     version: 1, goalId: "goal.explain.01", phase: "moving",
     joints: {
-      headYaw: { id: "headYaw", angleRad: 0.1, targetAngleRad: 0.5, velocityRadPerSec: 0.2, available: true },
-      leftShoulder: { id: "leftShoulder", angleRad: 0, targetAngleRad: 2, velocityRadPerSec: 0, available: true },
+      headYaw: { id: "headYaw", angleRad: 0.35, targetAngleRad: 0.5, velocityRadPerSec: 0.2, available: true },
+      leftShoulder: { id: "leftShoulder", angleRad: 1.5, targetAngleRad: 2, velocityRadPerSec: 0, available: true },
     },
   }, [
     { nodeId: "head", jointId: "headYaw", restAngleRad: 0.1 },
     { nodeId: "arm-left", jointId: "leftShoulder", maxAbsDegrees: 30 },
   ]);
-  assert.ok(Math.abs(pose.deltas.head.rotation - (0.4 * 180 / Math.PI)) < 1e-12);
-  assert.equal(pose.deltas["arm-left"].rotation, 30);
+  assert.ok(Math.abs(pose.deltas.head.rotation - (0.25 * 180 / Math.PI)) < 1e-12,
+    "the visual pose must follow the measured 0.35 rad angle, not the 0.5 rad target");
+  assert.equal(pose.deltas["arm-left"].rotation, 30,
+    "measured 1.5 rad still obeys the explicit 30 degree safety envelope");
 });
 
 test("idle motor frames do not animate and duplicate or unsafe bindings fail closed", () => {
