@@ -25,7 +25,7 @@
 
 ## Реальный filesystem preflight
 
-Добавлен scanner app/scripts/lib/depth-rig-asset-inventory.mjs: он обходит layers/, masks/ и provenance/, сортирует пути детерминированно, не следует по symlink, ограничивает глубину/число/размер файлов, читает PNG IHDR, проверяет размеры и наличие alpha. Добавлен CLI app/scripts/validate-depth-rig-assets.mjs и команды npm validate:2p5d-assets / test:2p5d-asset-inventory. Сейчас поддерживаются PNG для слоёв и масок; PSD/WEBP автоматически не декодируются. Скрипт не заявляет наличие производственного каталога — его нужно передать явно.
+Добавлен scanner app/scripts/lib/depth-rig-asset-inventory.mjs: он обходит layers/, masks/ и provenance/, сортирует пути детерминированно, не следует по symlink, ограничивает глубину/число/размер файлов, читает ограниченное окно PNG-заголовка (1 MiB), проверяет IHDR, размеры и наличие alpha без загрузки полного изображения в память. Добавлен CLI app/scripts/validate-depth-rig-assets.mjs и команды npm validate:2p5d-assets / test:2p5d-asset-inventory. Сейчас поддерживаются PNG для слоёв и масок; PSD/WEBP автоматически не декодируются. Скрипт не заявляет наличие производственного каталога — его нужно передать явно.
 
 Запуск: npm run validate:2p5d-assets -- <rig.json> <manifest.json> <asset-root>.
 
