@@ -1,9 +1,8 @@
 /**
  * Bounded second-stage reranking for semantic memory retrieval.
  *
- * The semantic score remains the primary evidence. Contextual metadata can
- * reorder only a small semantically preselected pool; it cannot inject a
- * high-salience but unrelated memory into the result set.
+ * Semantic evidence chooses the candidate pool first. Affective and contextual
+ * metadata can only reorder that pool; it cannot inject unrelated memories.
  */
 export interface SemanticRerankMetadata {
   id: string;
@@ -52,21 +51,76 @@ function metadataRelevance(
   goalDemand: number,
   identityDemand: number,
 ): number {
-  // Query context amplifies relevant lanes without erasing their baseline
-  // importance to autobiographical continuity and ongoing commitments.
+  // Query context amplifies identity/goal matches without making either lane
+  // dominate unrelated queries. Confidence is reliability, not relevance:
+  // it gates metadata influence instead of rewarding confidence by itself.
   const identityGate = 0.25 + 0.75 * identityDemand;
   const goalGate = 0.25 + 0.75 * goalDemand;
+  const reliability = 0.4 + 0.6 * clamp01(item.confidence);
 
-  return clamp01(
-    0.20 * clamp01(item.salience) +
-    0.22 * clamp01(item.emotionalWeight) +
+  const contextualSignal =
+    0.22 * clamp01(item.salience) +
+    0.26 * clamp01(item.emotionalWeight) +
     0.18 * clamp01(item.identityRelevance) * identityGate +
     0.18 * clamp01(item.goalRelevance) * goalGate +
     0.08 * clamp01(item.socialRelevance) +
-    0.07 * clamp01(item.predictionError) +
-    0.07 * clamp01(item.confidence),
-  );
+    0.08 * clamp01(item.predictionError);
+
+  return clamp01(contextualSignal * reliability);
 }
+
+interface NormalizedCandidate<T extends SemanticRerankMetadata>
+  extends SemanticRerankCandidate<T> {
+  normalizedId: string;
+}
+
+function normalizeCandidates<T extends SemanticRerankMetadata>(
+  candidates: readonly SemanticRerankCandidate<T>[],
+): NormalizedCandidate<T>[] {
+  const byId = new Map<string, NormalizedCandidate<T>>();
+
+  for (const candidate of candidates) {
+    if (
+      !candidate ||
+      !candidate.item ||
+      typeof candidate.item.id !== 'string' ||
+      !candidate.item.id.trim() ||
+      candidate.item.id.length > 256 ||
+      !Number.isFinite(candidate.score) ||
+      !Number.isFinite(candidate.similarity)
+    ) continue;
+
+    const normalized: NormalizedCandidate<T> = {
+      ...candidate,
+      normalizedId: candidate.item.id.trim(),
+      score: clamp01(candidate.score),
+      similarity: clamp01(candidate.similarity),
+      lexicalRank: Number.isFinite(candidate.lexicalRank) && candidate.lexicalRank >= 0
+        ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(candidate.lexicalRank))
+        : Number.MAX_SAFE_INTEGER,
+    };
+    const previous = byId.get(normalized.normalizedId);
+    if (
+      !previous ||
+      normalized.score > previous.score ||
+      (normalized.score === previous.score && normalized.similarity > previous.similarity) ||
+      (normalized.score === previous.score &&
+        normalized.similarity === previous.similarity &&
+        normalized.lexicalRank < previous.lexicalRank)
+    ) byId.set(normalized.normalizedId, normalized);
+  }
+
+  return [...byId.values()];
+}
+
+const semanticOrder = <T extends SemanticRerankMetadata>(
+  a: NormalizedCandidate<T>,
+  b: NormalizedCandidate<T>,
+): number =>
+  b.score - a.score ||
+  b.similarity - a.similarity ||
+  a.lexicalRank - b.lexicalRank ||
+  a.normalizedId.localeCompare(b.normalizedId);
 
 /**
  * Preserve semantic recall as the first gate, then modestly rerank by the
@@ -82,30 +136,20 @@ export function rerankSemanticCandidates<T extends SemanticRerankMetadata>(
   const goalDemand = clamp01(options.goalRelevance);
   const identityDemand = clamp01(options.identityRelevance);
 
-  const preselected = [...candidates]
-    .filter((candidate) =>
-      candidate &&
-      candidate.item &&
-      typeof candidate.item.id === 'string' &&
-      Number.isFinite(candidate.score) &&
-      Number.isFinite(candidate.similarity),
-    )
-    .sort((a, b) =>
-      b.score - a.score ||
-      b.similarity - a.similarity ||
-      a.lexicalRank - b.lexicalRank ||
-      a.item.id.localeCompare(b.item.id),
-    )
+  const preselected = normalizeCandidates(candidates)
+    .sort(semanticOrder)
     .slice(0, poolLimit);
 
   return preselected
     .map((candidate) => {
-      const baseScore = clamp01(candidate.score);
+      const baseScore = candidate.score;
       const metadataScore = metadataRelevance(candidate.item, goalDemand, identityDemand);
       return {
-        ...candidate,
+        item: candidate.item,
         baseScore,
         metadataScore,
+        similarity: candidate.similarity,
+        lexicalRank: candidate.lexicalRank,
         score: clamp01(0.88 * baseScore + 0.12 * metadataScore),
       };
     })
