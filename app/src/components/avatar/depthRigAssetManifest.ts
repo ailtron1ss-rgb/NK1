@@ -112,8 +112,9 @@ const positiveInteger = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
 const safeRelativePath = (value: unknown): value is string => {
-  if (!nonEmptyString(value, 1024) || value.startsWith("/") || value.includes("\\\\")
-    || /[\\u0000-\\u001f?#:]/.test(value)) return false;
+  if (!nonEmptyString(value, 1024) || value.startsWith("/") || value.includes(String.fromCharCode(92))
+    || value.includes("?") || value.includes("#") || value.includes(":")
+    || Array.from(value).some((character) => character.charCodeAt(0) < 32)) return false;
   const segments = value.split("/");
   return segments.every((segment) => segment.length > 0 && segment !== "." && segment !== "..");
 };
