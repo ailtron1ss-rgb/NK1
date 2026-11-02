@@ -294,6 +294,7 @@ assert.equal(candidate.stage, 'discovered');
 {
   const unlicensed = createCandidate(null);
   const payload = payloadFor(unlicensed, 'license', {
+    subjectFingerprint: sha('unresolved-license-evidence'),
     licenseDecision: {
       outcome: 'approved',
       licenseExpression: null,
