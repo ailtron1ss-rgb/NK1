@@ -14,6 +14,26 @@ assert(after.autobiographicalStrength01>before.autobiographicalStrength01);
 assert(after.adaptiveValues.some((v,i)=>Math.abs(v-(before.adaptiveValues[i]??v))>1e-6));
 const restored=new P2702PersistentPersonalityDynamics();restored.restore(after);assert.deepEqual(restored.snapshot(),after);
 
+// Hostile persisted snapshots are a trust boundary: restore must not execute getters or retain malformed vectors.
+const safeRestore=new P2702PersistentPersonalityDynamics();
+const defaults=safeRestore.snapshot();
+let getterCalls=0;
+const accessorSnapshot={...after};
+Object.defineProperty(accessorSnapshot,'tick',{enumerable:true,get(){getterCalls++;return 999;}});
+safeRestore.restore(accessorSnapshot);
+assert.equal(getterCalls,0,'restore never invokes accessor-backed snapshot fields');
+assert.equal(safeRestore.snapshot().tick,defaults.tick,'accessor-backed counters fall back safely');
+const hostileSnapshot=new Proxy(after,{getOwnPropertyDescriptor(){throw new Error('hostile personality restore');}});
+assert.doesNotThrow(()=>safeRestore.restore(hostileSnapshot),'hostile proxies cannot abort organism restore');
+assert.equal(safeRestore.snapshot().tick,defaults.tick);
+const sparseValues=after.adaptiveValues.slice();
+sparseValues[1]=undefined;
+safeRestore.restore({...after,adaptiveValues:sparseValues});
+assert.deepEqual(safeRestore.snapshot().adaptiveValues,defaults.adaptiveValues,'sparse trait vectors reset to canonical defaults');
+safeRestore.restore({...after,tick:-1,learningUpdates:Number.MAX_SAFE_INTEGER+1});
+assert.equal(safeRestore.snapshot().tick,defaults.tick,'negative ticks are rejected');
+assert.equal(safeRestore.snapshot().learningUpdates,defaults.learningUpdates,'unsafe counters are rejected');
+
 const b=new NeuralExperienceBranch();
 let s=defaultNeuralExperienceBranch();b.restore(s);
 const d=b.beforeDecision({tick:1,input:new Array(64).fill(.15),baseUtilities:actions,predictionError01:.3,novelty01:.8,uncertainty01:.5,homeostasis01:.2,identityGap01:.2,goalPressure01:.7,reward01:.5,identityVector:new Array(24).fill(.3)});
