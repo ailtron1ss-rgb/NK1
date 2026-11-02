@@ -126,9 +126,10 @@ export interface VoiceEmotionContext {
 }
 
 /** Project the canonical affect snapshot into the voice subsystem's bounded context. */
-export function projectVoiceEmotionContext(snapshot:unknown):VoiceEmotionContext {
+export function projectVoiceEmotionContext(snapshot:unknown, appraisalSnapshot?:unknown):VoiceEmotionContext {
   const record=(value:unknown):Record<string,unknown> => value!==null && typeof value==='object' && !Array.isArray(value) ? value as Record<string,unknown> : {};
   const field=record(record(record(snapshot).facets).cognition).cognitiveField;
+  const latestEpisode=record(record(appraisalSnapshot).history instanceof Array ? (record(appraisalSnapshot).history as unknown[])[0] : null);
   const finite=(value:unknown,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
   const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
   const rawLabel=String(field.dominantEmotion??'calm').toLocaleLowerCase();
@@ -137,7 +138,7 @@ export function projectVoiceEmotionContext(snapshot:unknown):VoiceEmotionContext
     valence01:Math.max(0,Math.min(1,finite(field.valence01,.5))),
     arousal01:Math.max(0,Math.min(1,finite(field.arousal01,.22))),
     // Dominance is perceived control/agency, not identity or workspace coherence.
-    dominance01:Math.max(0,Math.min(1,finite(field.dominance01,.5))),
+    dominance01:Math.max(0,Math.min(1,finite(latestEpisode.dominance01,finite(field.dominance01,.5)))),
   };
 }
 
@@ -1491,7 +1492,7 @@ export class OrganismRuntime {
   }
   /** Read the current affective appraisal from the canonical cognitive snapshot. */
   private voiceEmotionContext(): VoiceEmotionContext {
-    return projectVoiceEmotionContext(this.core.snapshot());
+    return projectVoiceEmotionContext(this.core.snapshot(), this.core.emotionAppraisalSnapshot());
   }
 
   async speak(text: string): Promise<boolean> {
