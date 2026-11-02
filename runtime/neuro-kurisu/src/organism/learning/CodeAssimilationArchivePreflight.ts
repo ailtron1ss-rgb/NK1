@@ -136,8 +136,9 @@ function safeBytes(value: unknown, label: string): number {
 
 function safeLimit(value: unknown, key: keyof CodeAssimilationArchivePreflightLimits): number {
   const baseline = DEFAULT_LIMITS[key];
+  const minimum = key === 'maxNestedArchives' ? 0 : Number.MIN_VALUE;
   if (typeof value !== 'number' || !Number.isSafeInteger(value) && key !== 'maxCompressionRatio' ||
-      !Number.isFinite(value) || value <= 0 || value > baseline) {
+      !Number.isFinite(value) || value < minimum || value > baseline) {
     fail(`limit-${key}-invalid-or-weakened`);
   }
   return value;
