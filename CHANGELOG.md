@@ -1,3 +1,10 @@
+## [NK1][Code Assimilation] Harden authenticated license receipt immutability and candidate scoping (2026-11-02)
+- Deep-freeze the nested license decision and its permitted-use array before registering an authenticated process-local receipt, preventing post-verification permission mutation.
+- Require every `isCodeAssimilationUseAllowed` check to supply the expected exact candidate fingerprint; receipts cannot authorize a different component even when the signer is trusted.
+- Add adversarial regressions for nested permission mutation, wrong-candidate reuse and the positive same-candidate allow path.
+- Re-run the Node 24 signed-evidence workflow, semantic runtime typecheck, cadence regression and full WorkPass110 verified-learning suite on exact candidate head; all 3 PR checks pass.
+- This remains evidence verification only. It does not create a production component registry or execute untrusted code.
+
 ## [NK1][Code Assimilation] Verify signed provenance, SBOM, build and license evidence (2026-11-02)
 - Add a typed Ed25519 evidence envelope for source provenance, SBOM, build output and license decisions, each bound to the immutable candidate ID/fingerprint, source fingerprint and exact material digests.
 - Require role-specific trusted issuers (source verifier, SBOM scanner, builder and license reviewer); the host supplies the public-key trust map and private signing keys remain outside NK1.
