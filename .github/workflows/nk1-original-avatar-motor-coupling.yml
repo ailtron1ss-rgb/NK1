@@ -3,7 +3,9 @@ on:
   push:
     branches: [aspect/avatar-original-2d-cognitive-coupling-stack-20261102]
   pull_request:
-    branches: [workpass70-source]
+    # The Original 2D work is intentionally stacked on the cognitive-affect
+    # bridge PR until its parent is integrated into the canonical source branch.
+    branches: [workpass70-source, aspect/avatar-cognitive-affect-coupling-20261102]
     paths:
       - app/src/components/AvatarStage.tsx
       - app/src/components/KurisuOriginalStage.tsx
