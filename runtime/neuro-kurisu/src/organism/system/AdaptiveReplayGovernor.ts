@@ -13,7 +13,7 @@ function captureReceiptInput(raw:unknown):Record<string,unknown>|null{
     for(const [key,descriptor] of Object.entries(descriptors)){
       if(!('value' in descriptor)||key==='__proto__'||key==='prototype'||key==='constructor')return null;
       const value=descriptor.value;
-      if(value!==null&&typeof value!=='string'&&typeof value!=='boolean'&&
+      if(value!==undefined&&value!==null&&typeof value!=='string'&&typeof value!=='boolean'&&
         !(typeof value==='number'&&Number.isFinite(value)))return null;
       Object.defineProperty(captured,key,{value,enumerable:true,writable:false,configurable:false});
     }
