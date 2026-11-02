@@ -7,8 +7,10 @@ on:
     paths:
       - app/src/components/AvatarStage.tsx
       - app/src/components/Avatar3DStage.tsx
+      - app/src/components/avatar/vrmRuntimeAdapter.ts
       - app/src/components/avatar/avatarMotorProjection.ts
       - app/scripts/avatar-3d-motor-coupling.test.mjs
+      - app/scripts/vrm-runtime-adapter.test.mjs
       - .github/workflows/nk1-avatar-3d-motor-coupling.yml
 permissions:
   contents: read
@@ -31,7 +33,7 @@ jobs:
         run: npm ci
       - name: Verify 3D cognitive motor coupling contract
         working-directory: app
-        run: node --experimental-strip-types --test scripts/avatar-3d-motor-coupling.test.mjs
+        run: node --experimental-strip-types --test scripts/avatar-3d-motor-coupling.test.mjs scripts/vrm-runtime-adapter.test.mjs
       - name: Typecheck app
         working-directory: app
         run: npm run typecheck
