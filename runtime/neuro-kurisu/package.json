@@ -126,6 +126,7 @@
     "audit:subsystem-boundary": "node scripts/audit-subsystem-boundary.mjs",
     "test:architecture-audit-masking": "node tests/architecture-audit-masking.mjs",
     "test:subsystem-boundary-rules": "node tests/subsystem-boundary-rules.mjs",
+    "test:manifest-counts": "node tests/manifest-counts.mjs",
     "test:forensics-rules": "node tests/forensics-rules.mjs",
     "audit:contract": "node scripts/audit-release-contract.mjs",
     "audit:hygiene": "node scripts/audit-source-hygiene.mjs",

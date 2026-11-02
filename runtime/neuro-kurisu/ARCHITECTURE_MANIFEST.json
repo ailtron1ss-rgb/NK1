@@ -2,8 +2,8 @@
   "release": "35.90.0",
   "organismCore": "100.32.0-r26-hierarchical-lowrank-causal",
   "canonicalRoot": "src/organism",
-  "canonicalFiles": 582,
-  "sourceSurfaceFiles": 1934,
+  "canonicalFiles": 650,
+  "sourceSurfaceFiles": 2223,
   "canonicalDomainRoots": [
     "src/organism/core",
     "src/organism/cognition",
