@@ -32,20 +32,32 @@ try {
   assert.ok(causalNode, 'episode also exists in the unified causal fabric');
   assert.equal(causalNode.stage, 'metacognitive-episode');
   assert.deepEqual(causalNode.parentIds, episode.parentEventIds);
+  const parentStages = episode.parentEventIds.map(parentId => causalFabric.recent.find(node => node.id === parentId)?.stage).sort();
+  assert.deepEqual(parentStages, ['action','appraisal','attention','goal','learning','memory','observation','outcome','plan','prediction','self-update'].sort(),
+    'the metacognitive node is causally attached to exactly the eleven operational stages');
+  assert.equal(causalFabric.cycleCoverage01, 1, 'metacognitive nodes do not dilute core cycle coverage');
+  assert.equal(causalFabric.fullCycleCoverage01, 1, 'metacognitive nodes do not inflate the eleven-stage cycle denominator');
   for (const parentId of episode.parentEventIds) {
     assert.ok(causalFabric.recent.some(node => node.id === parentId), `causal parent ${parentId} is retained`);
   }
 
   const memoryId = `metacognitive-cycle-${episode.tick}`;
-  assert.ok(first.core.memorySubstrateCanonicalItems(32).some(item => item.id === memoryId),
-    'the episode is encoded in canonical MemoryOS2 through MemoryFabric');
+  const canonicalMemory = first.core.memorySubstrateCanonicalItems(32).find(item => item.id === memoryId);
+  assert.ok(canonicalMemory, 'the episode is encoded in canonical MemoryOS2 through MemoryFabric');
+  assert.equal(canonicalMemory.kind, 'episodic');
+  assert.ok(canonicalMemory.content.includes('error'), 'canonical episodic content exposes calibration outcome');
 
   const replay = await first.core.recordMetacognitiveEpisode(episode);
   assert.equal(replay.status, 'replayed', 'replaying a committed episode does not create another memory/event');
   const afterReplay = first.core.snapshot().facets.memory.eventLog.filter(row => row.type === 'metacognitive-episode');
   assert.equal(afterReplay.length, 1, 'replay does not duplicate the canonical event');
 
-  const conflicting = { ...episode, prediction: { ...episode.prediction, expectedOutcome01: Math.max(0, episode.prediction.expectedOutcome01 - 0.2) } };
+  const conflictingExpected = Math.max(0, episode.prediction.expectedOutcome01 - 0.2);
+  const conflicting = {
+    ...episode,
+    prediction: { ...episode.prediction, expectedOutcome01: conflictingExpected },
+    outcome: { ...episode.outcome, predictionError01: Math.abs(conflictingExpected - episode.outcome.observedOutcome01) },
+  };
   await assert.rejects(() => first.core.recordMetacognitiveEpisode(conflicting), /metacognitive-episode-id-conflict/,
     'reusing the cycle identity with changed evidence is rejected');
 
