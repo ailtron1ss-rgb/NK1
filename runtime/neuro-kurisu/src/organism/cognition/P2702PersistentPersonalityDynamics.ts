@@ -29,6 +29,16 @@ function applyNamedLearning(names:string[],values:number[],targets:readonly Name
  }
 }
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const finite01=(value:unknown,fallback:number,min=0,max=1)=>
+ typeof value==='number'&&Number.isFinite(value)?clamp(value,min,max):fallback;
+const nonNegativeInteger=(value:unknown,fallback:number)=>
+ typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.floor(value)):fallback;
+const boundedNumberArray=(value:unknown,fallback:number[],limit:number,min=0,max=1)=>{
+ if(!Array.isArray(value))return fallback.slice();
+ return value.slice(0,limit).map((entry,index)=>finite01(entry,fallback[index]??.5,min,max));
+};
+const isRecord=(value:unknown):value is Record<string,unknown> =>
+ value!==null&&typeof value==='object'&&!Array.isArray(value);
 const deep=<T>(x:T):T=>structuredClone(x);
 
 /** P2702: persistent personality dynamics. Canon is an initialization prior; experience changes
@@ -61,18 +71,31 @@ export class P2702PersistentPersonalityDynamics{
  private state=defaultState();
  snapshot(){return deep(this.state);}
  restore(raw?:Partial<P2702PersonalityState>|null){
-  const d=defaultState(),r:any=raw??{};this.state={...d,...deep(r),version:1,
-   invariantNames:Array.isArray(r.invariantNames)?r.invariantNames.slice(0,32):d.invariantNames,
-   invariantValues:Array.isArray(r.invariantValues)?r.invariantValues.slice(0,32).map((x:number)=>clamp(x)):d.invariantValues,
-   adaptiveNames:Array.isArray(r.adaptiveNames)?r.adaptiveNames.slice(0,32):d.adaptiveNames,
-   adaptiveValues:Array.isArray(r.adaptiveValues)?r.adaptiveValues.slice(0,32).map((x:number)=>clamp(x)):d.adaptiveValues,
-   valueNames:Array.isArray(r.valueNames)?r.valueNames.slice(0,32):d.valueNames,
-   valueWeights:Array.isArray(r.valueWeights)?r.valueWeights.slice(0,32).map((x:number)=>clamp(x)):d.valueWeights,
-   relationshipTrust:r.relationshipTrust&&typeof r.relationshipTrust==='object'?Object.fromEntries(Object.entries(r.relationshipTrust).slice(0,32).map(([k,v])=>[k,clamp(Number(v))])):d.relationshipTrust,
-   selfBeliefs:Array.isArray(r.selfBeliefs)?r.selfBeliefs.slice(0,16).map((x:number)=>clamp(x)):d.selfBeliefs,
-   selfUncertainty:Array.isArray(r.selfUncertainty)?r.selfUncertainty.slice(0,16).map((x:number)=>clamp(x,.03,.97)):d.selfUncertainty,
-   tensionState:Array.isArray(r.tensionState)?r.tensionState.slice(0,16).map((x:number)=>clamp(x)):d.tensionState,
-   actionPreference:{...d.actionPreference,...(r.actionPreference??{})}};
+  const d=defaultState(),r:any=raw??{};
+  const rawTrust=isRecord(r.relationshipTrust)?Object.entries(r.relationshipTrust):[];
+  const relationshipTrust=Object.fromEntries(rawTrust
+   .filter(([key,value])=>typeof key==='string'&&key.trim().length>0&&key.length<=96&&typeof value==='number'&&Number.isFinite(value))
+   .slice(0,32).map(([key,value])=>[key,clamp(value as number)]));
+  const rawPreferences=isRecord(r.actionPreference)?r.actionPreference:{};
+  this.state={...d,...deep(r),version:1,
+   tick:nonNegativeInteger(r.tick,d.tick),
+   experienceCount:nonNegativeInteger(r.experienceCount,d.experienceCount),
+   learningUpdates:nonNegativeInteger(r.learningUpdates,d.learningUpdates),
+   invariantNames:Array.isArray(r.invariantNames)?r.invariantNames.filter((x:unknown)=>typeof x==='string').slice(0,32):d.invariantNames,
+   invariantValues:boundedNumberArray(r.invariantValues,d.invariantValues,32),
+   adaptiveNames:Array.isArray(r.adaptiveNames)?r.adaptiveNames.filter((x:unknown)=>typeof x==='string').slice(0,32):d.adaptiveNames,
+   adaptiveValues:boundedNumberArray(r.adaptiveValues,d.adaptiveValues,32),
+   valueNames:Array.isArray(r.valueNames)?r.valueNames.filter((x:unknown)=>typeof x==='string').slice(0,32):d.valueNames,
+   valueWeights:boundedNumberArray(r.valueWeights,d.valueWeights,32),
+   relationshipTrust,
+   selfBeliefs:boundedNumberArray(r.selfBeliefs,d.selfBeliefs,16),
+   selfUncertainty:boundedNumberArray(r.selfUncertainty,d.selfUncertainty,16,.03,.97),
+   tensionState:boundedNumberArray(r.tensionState,d.tensionState,16),
+   actionPreference:Object.fromEntries(ACTIONS.map(action=>[action,finite01(rawPreferences[action],d.actionPreference[action])]))
+  };
+  for(const key of ['stability01','coherence01','identityContinuity01','contradiction01','plasticity01','drift01','autobiographicalStrength01','lastReward01'] as const){
+   this.state[key]=finite01(r[key],d[key]);
+  }
  }
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
   this.state.tick=args.tick;this.state.experienceCount++;this.state.lastReward01=clamp(args.reward01??.5);
