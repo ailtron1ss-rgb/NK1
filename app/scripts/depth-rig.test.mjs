@@ -247,3 +247,20 @@ test("renderer adapter rejects duplicate bindings and non-finite pivots", () => 
     { nodeId: "head", target: target(), pivotOffset: { x: Number.NaN, y: 0 } },
   ]), /pivot/);
 });
+
+
+test("rejects accessor-backed motor joint samples without invoking getters", () => {
+  let getterCalls = 0;
+  const joints = {};
+  Object.defineProperty(joints, "headYaw", {
+    enumerable: true,
+    get() {
+      getterCalls += 1;
+      return { id: "headYaw", angleRad: 0.2, targetAngleRad: 0.3, velocityRadPerSec: 0, available: true };
+    },
+  });
+  assert.throws(() => resolveDepthRigPoseFromMotorFrame(rig, {
+    version: 1, goalId: "goal.hostile.01", phase: "moving", joints,
+  }, [{ nodeId: "head", jointId: "headYaw" }]), /Invalid motor frame/);
+  assert.equal(getterCalls, 0);
+});
