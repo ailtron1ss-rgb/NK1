@@ -20,6 +20,7 @@ import { RecoveryWatchdog, type RecoveryWatchdogState } from '../persistence/Rec
 import { WorldModel, type PredictedOutcome, type InternalWorldState, type WorldModelSnapshot } from '../world/WorldModel.ts';
 import { migratePersistedOrganism, ORGANISM_STATE_SCHEMA } from '../persistence/StateMigrations.ts';
 import { makeEvent } from '../memory/EventSourcing.ts';
+import { normalizeMetacognitiveEpisode, metacognitiveEpisodeFingerprint, metacognitiveEpisodeSummary } from '../cognition/MetacognitiveEpisode.ts';
 import { MultiTimescaleMemory } from '../memory/MultiTimescaleMemory.ts';
 import { AutobiographicalMemory } from '../memory/AutobiographicalMemory.ts';
 import { defaultSelfModel } from '../cognition/SelfModelV2.ts';
@@ -2318,6 +2319,116 @@ export class OrganismCore {
     derivedWorldPreviewSnapshot() { return this.organismSystems.world.derivedWorldPreviewCache.snapshot(); }
     cognitiveKernelSnapshot() { return this.cognitiveRuntime.cognitiveKernelCoordinator.snapshot(); }
     async flush(): Promise<void> { await this.checkpoint(true); }
+    /**
+     * Persist one completed cognitive-cycle episode through the canonical MemoryOS2 owner.
+     * Deterministic IDs and MemoryFabric receipts make retries idempotent across restart.
+     */
+    async recordMetacognitiveEpisode(input: unknown): Promise<{ status: 'recorded' | 'replayed'; episodeId: string; memoryId: string }> {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        const episode = normalizeMetacognitiveEpisode(input);
+        if (!episode)
+            throw new Error('invalid-metacognitive-episode');
+        const fingerprint = metacognitiveEpisodeFingerprint(episode);
+        const eventId = `metacognitive-episode:${episode.id}`;
+        const memoryId = `metacognitive-cycle-${episode.tick}`;
+        const prior = this.memorySubsystem.events.recent(320, false).find(event => event.id === eventId);
+        if (prior) {
+            if (prior.type !== 'metacognitive-episode' || prior.tick !== episode.tick ||
+                prior.payload.fingerprint !== fingerprint || prior.payload.memoryId !== memoryId)
+                throw new Error('metacognitive-episode-id-conflict');
+            return { status: 'replayed', episodeId: episode.id, memoryId };
+        }
+        const encoded = this.memorySubsystem.fabric.encode({
+            id: memoryId,
+            content: metacognitiveEpisodeSummary(episode),
+            tags: ['metacognition', 'cognitive-cycle', 'prediction-error'],
+            context: {
+                episodeId: episode.id,
+                cycleId: episode.cycleId,
+                sourceTick: String(episode.tick),
+                selectedAction: episode.selection.action,
+                selectedGoalId: episode.selection.goalId ?? '',
+                parentEventIds: episode.parentEventIds.join(','),
+                reflectionStatus: episode.reflection.status,
+                outcomeProvenance: episode.outcome.provenance,
+                verified: String(episode.outcome.verified),
+                independent: String(episode.outcome.independent),
+                contradictionCount: String(episode.contradictions.length),
+                limitationCount: String(episode.limitations.length),
+            },
+            kind: 'episodic',
+            salience: Math.max(0.1, Math.min(1, 0.18 + episode.outcome.predictionError01 * 0.58 + episode.belief.confidence01 * 0.24)),
+            emotionalWeight: 0,
+            identityRelevance: 0.12,
+            goalRelevance: episode.selection.goalId ? 0.45 : 0.18,
+            socialRelevance: 0,
+            predictionError: episode.outcome.predictionError01,
+            confidence: episode.prediction.confidence01,
+            epistemicStatus: 'hypothesis',
+            source: 'nk1.metacognitive-cycle',
+            entities: [],
+            semanticLinks: [],
+            temporalLinks: [],
+            causalLinks: [],
+            evidenceSources: [{
+                source: 'runtime-cognitive-cycle-outcome',
+                provenanceClass: episode.outcome.provenance === 'observed' ? 'external' : 'simulation',
+                sourceAuthority01: episode.outcome.provenance === 'observed' && episode.outcome.verified ? 0.72 : 0.18,
+                independenceKey: episode.outcome.independent ? `metacognitive-cycle:${episode.tick}` : undefined,
+                observedAt: episode.at,
+                evidenceFreshnessAt: episode.at,
+            }],
+            dormant: false,
+        }, {
+            tick: episode.tick,
+            commandId: eventId,
+            emitEvent: false,
+            syncCompatibility: false,
+        });
+        if (!encoded || typeof encoded !== 'object' || (encoded as any).id !== memoryId)
+            throw new Error('metacognitive-memory-recovery-required');
+        this.memorySubsystem.events.append({
+            id: eventId,
+            tick: episode.tick,
+            at: episode.at,
+            type: 'metacognitive-episode',
+            payload: { episode, fingerprint, memoryId },
+        });
+        this.persisted.facets.memory.eventLog = this.memorySubsystem.events.recent(320);
+        // The existing checkpoint projection owns the canonical MemoryOS2/Fabric snapshots.
+        // Do not serialize the entire memory store on every hot cycle.
+        await this.checkpoint(false);
+        return { status: 'recorded', episodeId: episode.id, memoryId };
+    }
+    /** Bounded, content-minimized diagnostics for calibration and causal lineage. */
+    metacognitiveEpisodeDiagnostics(limit = 12) {
+        const rows = this.memorySubsystem.events.recent(320, false).filter(event => event.type === 'metacognitive-episode');
+        const safeLimit = Math.max(1, Math.min(32, Math.floor(Number.isFinite(limit) ? limit : 12)));
+        const episodes = rows.slice(-safeLimit).reverse().map(event => {
+            const episode = (event.payload as any)?.episode ?? {};
+            return {
+                episodeId: event.id,
+                tick: event.tick,
+                action: episode.selection?.action ?? 'unknown',
+                goalPresent: Boolean(episode.selection?.goalId),
+                predictionConfidence01: Number(episode.prediction?.confidence01 ?? 0),
+                expectedOutcome01: Number(episode.prediction?.expectedOutcome01 ?? 0),
+                observedOutcome01: Number(episode.outcome?.observedOutcome01 ?? 0),
+                predictionError01: Number(episode.outcome?.predictionError01 ?? 0),
+                outcomeProvenance: episode.outcome?.provenance ?? 'unknown',
+                verified: episode.outcome?.verified === true,
+                independent: episode.outcome?.independent === true,
+                reflectionStatus: episode.reflection?.status ?? 'unknown',
+                proposalPresent: Boolean(episode.reflection?.proposalId),
+                parentCount: Array.isArray(episode.parentEventIds) ? episode.parentEventIds.length : 0,
+            };
+        });
+        const meanPredictionError01 = episodes.length
+            ? episodes.reduce((sum, row) => sum + row.predictionError01, 0) / episodes.length
+            : 0;
+        return { bufferedCount: rows.length, returnedCount: episodes.length, meanPredictionError01, episodes };
+    }
     forgetMemoryById(id: string, reason = 'memory-knockout'): boolean { const removed = this.memorySubsystem.fabric.forgetById(String(id), reason); if (removed) {
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
         this.persisted.facets.memory.autobiographicalMemories = this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(this.memorySubsystem.memoryOS.snapshot({ clone: false }), 48);
