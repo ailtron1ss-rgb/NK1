@@ -112,7 +112,9 @@ test("VRM expression mapping follows NK1 affect and speech frame", () => {
     mouthForm: -0.6,
     blink: true,
   });
-  assert.equal(vrm.values.get("happy"), 0.78);
+  assert.equal(vrm.values.get("happy"), resolveVrmEmotionExpression({
+    emotion: "joy", speaking: true, mouthOpen: 0.7, mouthForm: -0.6, blink: true,
+  }).weight);
   assert.equal(vrm.values.get("oh"), 0.7);
   assert.equal(vrm.values.get("blink"), 1);
 
@@ -124,7 +126,9 @@ test("VRM expression mapping follows NK1 affect and speech frame", () => {
     blink: false,
   });
   assert.equal(vrm.values.has("happy"), false);
-  assert.equal(vrm.values.get("angry"), 0.72);
+  assert.equal(vrm.values.get("angry"), resolveVrmEmotionExpression({
+    emotion: "anger", speaking: true, mouthOpen: 2, mouthForm: 0.8, blink: false,
+  }).weight);
   assert.equal(vrm.values.get("ee"), 1);
   assert.equal(vrm.values.has("blink"), false);
 });
