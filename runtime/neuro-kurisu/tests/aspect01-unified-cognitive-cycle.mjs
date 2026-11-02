@@ -5,6 +5,7 @@ import path from 'node:path';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
+import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
 import { BoundedOperationalJournal } from '../src/organism/persistence/BoundedOperationalJournal.ts';
 
 /**
@@ -69,6 +70,7 @@ const captureAfterFirst = {
   grounding: runtime.core.realityGroundingSnapshot(),
   predictions: runtime.core.predictionLedgerSnapshot(),
   consciousness: runtime.core.consciousnessSnapshot(),
+  reconciliation: runtime.core.runtimeCycleReconciliationSnapshot(),
 };
 const second = await runtime.step(EXTERNAL_TEXT);
 const captureAfterSecond = {
@@ -76,6 +78,7 @@ const captureAfterSecond = {
   grounding: runtime.core.realityGroundingSnapshot(),
   predictions: runtime.core.predictionLedgerSnapshot(),
   consciousness: runtime.core.consciousnessSnapshot(),
+  reconciliation: runtime.core.runtimeCycleReconciliationSnapshot(),
 };
 const steps = [first, second];
 const captures = [captureAfterFirst, captureAfterSecond];
@@ -126,6 +129,13 @@ for (const [index, step] of steps.entries()) {
   assert.equal(memory.payload.exposedCount, step.cycle.memories.length, 'exposedCount must match the memory context returned to consumers');
   assert.deepEqual(memory.payload.exposedMemoryIds, step.cycle.memories.map(item => item.id).slice(0, 12), 'the exposed memory ids must match the cycle memory context');
   assert.equal(envelope[4].payload.cycleMemoryCount, step.cycle.memories.length, 'the runtime envelope must record the same cycle memory context');
+  // The retrieval set the cycle exposes and the retrieval evidence must be the same set.
+  assert.deepEqual(memory.payload.retrievedMemoryIds, (step.cycle.retrievedMemories ?? []).map(item => item.id), 'the memory stage must cite exactly the retrieval the cycle result exposes');
+  for (const retrieved of step.cycle.retrievedMemories ?? []) {
+    assert.equal(typeof retrieved.id, 'string', 'a retrieved memory must expose a stable id');
+    assert.ok(retrieved.summary.length <= 280, 'a retrieved memory summary must stay bounded');
+    assert.equal(Number.isFinite(retrieved.confidence01), true, 'a retrieved memory must expose bounded confidence');
+  }
 
   // MOTIVATION -> GOAL: the selected goal is a real external goal, not an empty slot.
   const goal = chain[5];
@@ -178,6 +188,14 @@ for (const [index, step] of steps.entries()) {
   assert.equal(Number.isFinite(Number(selfUpdate.payload.identityCoherence)), true, 'self-update must carry identity coherence');
   assert.equal(Number(selfUpdate.payload.identityCoherence), Number(step.cycle.state.needs.identityCoherence), 'self-update must record the live identity coherence value');
   assert.equal(Number.isFinite(Number(envelope[10].payload.identityContinuity01)), true, 'the runtime envelope must record identity continuity');
+  // REFERENCE VERDICT: the outer operational envelope may not claim a complete cycle
+  // that the canonical core cycle did not prove for the same tick.
+  assert.ok(captured.reconciliation, 'each runtime tick must persist a cycle-verdict reconciliation');
+  assert.equal(captured.reconciliation.tick, tick, 'the reconciliation must describe this tick');
+  assert.equal(captured.reconciliation.envelopeComplete, true, 'the runtime envelope must verify its own cycle');
+  assert.equal(captured.reconciliation.coreComplete, true, 'the canonical core cycle must prove the same cycle');
+  assert.equal(captured.reconciliation.agreed, true, `both cycle owners must agree: ${JSON.stringify(captured.reconciliation)}`);
+  assert.equal(captured.reconciliation.reason, 'envelope-and-core-agree', 'an agreeing cycle must say so explicitly');
 }
 
 // The runtime operational envelope and the core cycle must agree about how many
@@ -205,8 +223,10 @@ assert.ok(p47.compressions >= 1, 'reflection must compact the temporal memory gr
 const afterReflection = await runtime.step(FOLLOW_UP_TEXT);
 const afterTick = afterReflection.cycle.state.tick;
 assert.ok(afterReflection.cycle.memories.length >= 1, 'after reflection the next cycle must retrieve consolidated experience');
+assert.ok((afterReflection.cycle.retrievedMemories ?? []).length >= 1, 'after reflection the cycle must expose the retrieved experience it used');
 const afterMemoryEvent = eventsForTick(runtime.core.cognitiveEventFabricSnapshot(), afterTick).find(event => event.stage === 'memory');
 assert.ok(afterMemoryEvent.payload.retrievedCount >= 1, 'the memory stage must report the retrieved experience it passed forward');
+assert.deepEqual(afterMemoryEvent.payload.retrievedMemoryIds, afterReflection.cycle.retrievedMemories.map(item => item.id), 'reflection-fed retrieval must be identical in evidence and result');
 assert.ok(afterReflection.cycle.memories.length >= beforeReflectionMemory, 'reflection must not reduce the cycle memory context');
 
 // ------------------------------------------------------------ single ledger owner
@@ -218,6 +238,11 @@ assert.ok(observationRows.every(row => row.realityClass === 'user-reported'), 'u
 assert.ok(canonicalLedger.recent.some(row => row.claim.startsWith('action-consequence:')), 'the runtime consequence must be recorded in the same ledger');
 assert.ok(canonicalLedger.recent.some(row => row.claim === 'cognitive-cycle-completeness'), 'cycle completeness evidence must be recorded in the same ledger');
 assert.ok(canonicalLedger.externalCount >= 1, 'external/user evidence must not be dropped from the canonical ledger');
+for (const tick of [1, 2]) {
+  const completeness = canonicalLedger.recent.find(row => row.claim === 'cognitive-cycle-completeness' && row.tick === tick);
+  assert.ok(completeness, `the reconciled cycle at tick ${tick} must record completeness evidence`);
+  assert.equal(completeness.confidence01, .95, 'a cycle both owners proved complete must carry full completeness confidence');
+}
 
 await runtime.stop();
 
@@ -272,6 +297,30 @@ assert.equal(resumedCore.unifiedCognitiveCycleSnapshot().cycles, resumedCycles.c
 assert.equal(resumedCore.b365UnifiedNeuroCausalDiagnostics().learningUpdates, learningBefore, 'a duplicate outcome must not run the learning path twice');
 assert.equal(resumedCore.predictionLedgerSnapshot().resolved.length, resolvedBefore, 'a duplicate outcome must not resolve another prediction');
 assert.ok(resumedCore.snapshot().facets.memory.eventLog.some(event => event.type === 'feedback-duplicate-ignored'), 'a duplicate outcome must be recorded as an explicitly ignored delivery');
+
+// ------------------------------- lifecycle: restart mid-step through the real file store
+// The in-memory proof above can hide a missing flush: the file store is what actually
+// survives a process death. This block writes a real state file between perception and
+// outcome verification and resumes from that file only.
+const fileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'nk-aspect01-file-'));
+const statePath = path.join(fileRoot, 'organism.json');
+const persistentStore = () => new FileStateStore(statePath, { backupEverySaves: 100, directoryFsyncEverySaves: 100 });
+const durablyOpened = new OrganismCore(persistentStore(), { performanceProfile: 'balanced', cycleResultMode: 'full', checkpointMinIntervalMs: 0, checkpointMaxDirtyCycles: 1 });
+await durablyOpened.init();
+const durableCycle = await durablyOpened.observe({ text: EXTERNAL_TEXT, novelty: .42, surprise: .28 }, 'full');
+const durableTick = durableCycle.state.tick;
+await durablyOpened.flush();
+assert.equal(fs.existsSync(statePath), true, 'observation must reach the durable state file before the outcome exists');
+
+const durablyResumed = new OrganismCore(persistentStore(), { performanceProfile: 'balanced', cycleResultMode: 'full', checkpointMinIntervalMs: 0, checkpointMaxDirtyCycles: 1 });
+await durablyResumed.init();
+assert.equal(durablyResumed.operationalStatusSnapshot().tick, durableTick, 'the resumed process must restore the interrupted tick from disk');
+await durablyResumed.feedback({ success: 1, reward: .7, surprise: .2, evidenceSource: 'user' });
+const durableVerdict = durablyResumed.unifiedCognitiveCycleSnapshot();
+assert.equal(durableVerdict.completeCycles, 1, `a disk-restored open cycle must close: ${JSON.stringify(durableVerdict)}`);
+assert.equal(durableVerdict.brokenLineages, 0, 'a disk restart must not break the causal lineage');
+const durableOutcome = durablyResumed.cognitiveEventFabricSnapshot().recent.find(event => event.tick === durableTick && event.stage === 'outcome');
+assert.equal(durableOutcome.parentIds.length, 2, 'a disk-restored outcome must cite the recovered action and prediction');
 
 console.log(JSON.stringify({
   pass: true,

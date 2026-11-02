@@ -994,7 +994,21 @@ export class OrganismRuntime {
     const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.complete ? cycleLineage.integrity01 : 0});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
-    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
+    // Two owners verify the same cycle. The outer operational envelope must never claim
+    // completeness that the canonical core cycle did not prove, so the per-tick verdicts
+    // are reconciled and the disagreement is persisted instead of being averaged away.
+    const coreCycleVerdict = this.core.unifiedCognitiveCycleSnapshot();
+    const coreCycleTick = coreCycleVerdict && Number.isSafeInteger(coreCycleVerdict.lastTick) ? Number(coreCycleVerdict.lastTick) : null;
+    const coreProvedCycle = coreCycleTick === cycle.state.tick && coreCycleVerdict?.lastComplete === true;
+    const envelopeComplete = cycleVerification.complete === true;
+    const cycleAgreed = envelopeComplete === coreProvedCycle;
+    this.core.setRuntimeCycleReconciliation({
+      version:1, tick:cycle.state.tick, envelopeComplete, coreTick:coreCycleTick, coreComplete:coreProvedCycle, agreed:cycleAgreed,
+      reason: cycleAgreed ? 'envelope-and-core-agree' : envelopeComplete ? 'envelope-complete-but-core-unproven' : coreProvedCycle ? 'core-complete-but-envelope-incomplete' : 'both-incomplete',
+      at:Date.now(),
+    });
+    if(!cycleAgreed) this.core.markRuntimeAnomaly(`cycle-verdict-divergence:${cycle.state.tick}:${envelopeComplete?'envelope':'core'}`);
+    this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:envelopeComplete && coreProvedCycle ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
 
 
     // B364: severe embodied resource pressure is now a real durability event, not only a

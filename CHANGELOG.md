@@ -1,3 +1,13 @@
+## [NK1][Aspect01b] Fix the reward contract and make cycle/memory evidence provably consistent (2026-10-30)
+
+- Unify the `feedback()` reward contract on the signed `[-1, 1]` scale already implied by `success = .5 + reward * .5`. The old `(reward ?? success + .5) / 1.5` mapping turned a strong positive reward (`0.75`) into an exactly neutral learning signal, clamped every negative reward to `0`, and could never reach `1.0`. Applied to the full path, the spine-only path and the neural reward gate. The production runtime is numerically unchanged because it already supplies an explicit `learning.reward01`.
+- This makes `tests/big-pass-270-full-cycle-integration.mjs` pass for the right reason: it had been failing since the WorkPass70 import because twelve cycles of `reward: .75` produced no B270 trait movement. The test was not weakened.
+- Stop publishing a previous cycle's retrieval as this cycle's memory evidence: `lastRetrievedMemoryIds` is now always replaced, including with an empty set.
+- Add `OrganismCycleResult.retrievedMemories` (bounded `RetrievedMemoryRef[]`) so "what recall produced now" is no longer conflated with the compatibility `memories` context; the memory stage records exactly those ids and the language organ narrates the retrieved set, falling back to the compatibility context when absent.
+- Reconcile the two cycle verdict owners every tick: persist `system.runtimeCycleReconciliation` (`envelopeComplete`, `coreComplete`, `agreed`, `reason`) and refuse full completeness confidence (`.95`) unless both owners proved the same tick complete; divergence raises a runtime anomaly instead of being averaged away.
+- Extend `tests/aspect01-unified-cognitive-cycle.mjs` with per-tick verdict reconciliation, retrieval/exposure reconciliation, completeness-confidence checks and a real `FileStateStore` restart-mid-step proof (reopen from disk only, interrupted cycle still closes with `brokenLineages: 0`).
+- Record two pre-existing, unrelated failures verified on the unmodified head: `big-pass-91-unified-learning` (fixture omits `lastAction`) and `big-pass-92-sensorium` (runtime `captureCamera` does not return `semanticVision`).
+
 ## [NK1][Aspect01] Repair the unified cognitive core execution path and prove one complete cycle (2026-10-30)
 
 - Make `OrganismCore` the single owner of reality/simulation evidence: the runtime no longer constructs, restores or persists a second `RealityEvidenceLedger`. The shadow ledger silently erased the core's `observation:*`/`outcome:*` rows, so user perception (`user-reported`) and independent evidence never reached the canonical ledger (`tests/big-pass-162-runtime-integration.mjs` failed on `externalCount`).

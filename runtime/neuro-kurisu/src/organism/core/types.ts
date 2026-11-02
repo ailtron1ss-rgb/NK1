@@ -450,8 +450,25 @@ export interface OrganismCycleResult {
   cognitiveProposal?: CognitiveProposal | null;
   state: OrganismState;
   goals: OrganismGoal[];
+  /** Compatibility memory context (recent consolidated records) used for narration. */
   memories: ConsolidatedMemory[];
+  /**
+   * Bounded projection of the memory items this cycle actually retrieved for the
+   * decision. `memories` and `retrievedMemories` are different sets; consumers that
+   * want "what recall produced now" must use this field.
+   */
+  retrievedMemories?: RetrievedMemoryRef[];
   workspace: WorkspaceFrame;
   decision: OrganismDecisionTrace;
   advanced?: AdvancedDevelopmentFacet;
+}
+
+/** Bounded, non-authoritative projection of a retrieved memory item. */
+export interface RetrievedMemoryRef {
+  id: string;
+  summary: string;
+  kind: string;
+  confidence01: number;
+  goalRelevance01: number;
+  epistemicStatus: string;
 }

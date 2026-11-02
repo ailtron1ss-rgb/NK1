@@ -71,7 +71,9 @@ export function buildCognitivePrompt(cycle: OrganismCycleResult, worldFacts: str
   const date = new Date(at);
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const calendar = `${date.toISOString()} local=${date.toLocaleString()} timezone=${timezone}`;
-  const safeRecentMemories = safeRecalledSummaries(cycle.memories, 4);
+  // Prefer the items this cycle actually retrieved; fall back to the compatibility
+  // context when the cycle result predates `retrievedMemories`.
+  const safeRecentMemories = safeRecalledSummaries(cycle.retrievedMemories?.length ? cycle.retrievedMemories : cycle.memories, 4);
   const safeEntityFacts = safeKnownEntityFacts(entityContext);
   const sanitizedWorldFacts = safeWorldFacts(worldFacts, 12);
   const mem0Notes = safeMem0RecallNotes(externalMem0Memories, 3);
@@ -118,7 +120,7 @@ export function buildAutonomousDialoguePrompt(
 ): LanguageRequest {
   const selected = cycle.decision.selected;
   const localTime = new Date().toLocaleString();
-  const safeRecentMemories = safeRecalledSummaries(cycle.memories, 3);
+  const safeRecentMemories = safeRecalledSummaries(cycle.retrievedMemories?.length ? cycle.retrievedMemories : cycle.memories, 3);
   const safeTopic = sanitizeAutonomousTopicText(initiative.topic, 360);
   if (!safeTopic) throw new Error('Autonomous dialogue topic failed the privacy gate');
   const safeReason = sanitizeAutonomousTopicText(initiative.reason, 240) ?? 'self-directed conversation';

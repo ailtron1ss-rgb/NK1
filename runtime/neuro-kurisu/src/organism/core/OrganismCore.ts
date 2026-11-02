@@ -683,6 +683,21 @@ export interface OrganismSystemState {
     runtimeCognitiveEventFabric?: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot;
     runtimeCognitiveResourceEconomy?: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState;
     runtimeUnifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
+    /**
+     * Per-tick reconciliation between the runtime operational envelope and the core
+     * cognitive cycle. The envelope may not claim a complete cycle that the core did
+     * not prove; divergence is persisted instead of being averaged away.
+     */
+    runtimeCycleReconciliation?: {
+        version: 1;
+        tick: number;
+        envelopeComplete: boolean;
+        coreTick: number | null;
+        coreComplete: boolean;
+        agreed: boolean;
+        reason: string;
+        at: number;
+    };
     runtimePerformance?: import('../system/RuntimePerformanceGovernor.ts').RuntimePerformanceGovernorState;
     realityEvidenceLedger?: import('../system/RealityEvidenceLedger.ts').RealityEvidenceLedgerState;
     unifiedCognitiveCycle?: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState;
@@ -2358,6 +2373,9 @@ export class OrganismCore {
     setRuntimeCognitiveEventFabric(snapshot: import('../system/CognitiveEventFabric.ts').CognitiveEventFabricSnapshot): void { this.persisted.system.runtimeCognitiveEventFabric = snapshot; }
     setRuntimeCognitiveResourceEconomy(snapshot: import('../system/CognitiveResourceEconomy.ts').CognitiveResourceEconomyState): void { this.persisted.system.runtimeCognitiveResourceEconomy = snapshot; }
     setRuntimeUnifiedCognitiveCycle(snapshot: import('../system/UnifiedCognitiveCycle.ts').UnifiedCognitiveCycleState): void { this.persisted.system.runtimeUnifiedCognitiveCycle = snapshot; }
+    /** Record the per-tick agreement between the runtime envelope and the core cycle. */
+    setRuntimeCycleReconciliation(snapshot: NonNullable<PersistedOrganism['system']['runtimeCycleReconciliation']>): void { this.persisted.system.runtimeCycleReconciliation = { ...snapshot }; }
+    runtimeCycleReconciliationSnapshot() { return this.persisted.system.runtimeCycleReconciliation ? { ...this.persisted.system.runtimeCycleReconciliation } : null; }
     cognitiveEventFabricSnapshot() { return structuredClone(this.persisted.system.cognitiveEventFabric); }
     cognitiveResourceEconomySnapshot() { return structuredClone(this.persisted.system.cognitiveResourceEconomy); }
     runtimePerformanceSnapshot() { return structuredClone(this.persisted.system.runtimePerformance); }
@@ -3977,7 +3995,9 @@ export class OrganismCore {
         state.lastActionSuccess = success;
         state.predictionError = clamp(state.predictionError * .62 + surprise * .38);
         state.needs.uncertainty = clamp(state.needs.uncertainty * .82 + surprise * .18);
-        const reward01 = clamp(outcome.reward ?? success);
+        // Same signed reward contract as the full feedback path: `reward` is [-1, 1]
+        // and an absent reward falls back to the reported success.
+        const reward01 = clamp(outcome.reward == null ? success : 0.5 + clamp(outcome.reward, -1, 1) * 0.5);
         const verified = Boolean(outcome.worldTransition) || Boolean(outcome.evidenceSource && ['os', 'device', 'user', 'external-api'].includes(String(outcome.evidenceSource).toLowerCase()));
         const b269AfterPrediction = this.developmentalNeural.spikingPlasticNeuralB269.snapshot().lastPrediction01;
         const neuralPredictionError = clamp(Math.abs(reward01 - b269AfterPrediction));
@@ -4958,9 +4978,19 @@ export class OrganismCore {
             : observation.text && memoryQuery === observation.text
                 ? cognitionMemoryItems.slice(0, 4)
                 : (await this.memorySubsystem.fabric.retrieveForCognition(memoryQuery, 8, n.goalPressure, 1 - state.needs.identityCoherence, { tick: state.tick })).slice(0, 4);
+        // The retrieval ids must describe *this* cycle. Leaving the previous cycle's ids in
+        // place when recall returns nothing made the memory stage (and feedback
+        // reconsolidation) cite context that the cycle never retrieved.
+        this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(memory => memory.id);
+        const retrievedMemoryRefs: import('./types.ts').RetrievedMemoryRef[] = advancedRetrieved.slice(0, 4).map(memory => ({
+            id: String(memory.id),
+            summary: String(memory.content ?? '').slice(0, 280),
+            kind: String(memory.kind ?? 'episodic'),
+            confidence01: clamp(Number(memory.confidence ?? .5)),
+            goalRelevance01: clamp(Number(memory.goalRelevance ?? 0)),
+            epistemicStatus: String(memory.epistemicStatus ?? 'unknown'),
+        }));
         const adaptiveMemoryStrategyFrame = this.adaptiveMemoryStrategyReadout.prepare({ items: advancedRetrieved as unknown as import('../developmental/MemoryOS2.ts').MemoryItem2[], query: memoryQuery, tick: state.tick, at: state.at });
-        if (advancedRetrieved.length)
-            this.persisted.facets.memory.lastRetrievedMemoryIds = advancedRetrieved.map(m => m.id);
         let memoryWorldApplication: {
             strength01: number;
             applied: boolean;
@@ -7947,7 +7977,7 @@ export class OrganismCore {
         const predictionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'prediction', source: 'core.predictive-selection', parentIds: [observationEvent.id], confidence01: clamp(Number(selectedIntent?.confidence ?? .5)), payload: { predictedUtility: clamp(Number(selectedIntent?.predictedUtility ?? .5)), action: selectedAction } });
         const appraisalEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'appraisal', source: 'core.homeostatic-appraisal', parentIds: [observationEvent.id, predictionEvent.id], confidence01: clamp(1 - state.predictionError), payload: { energy01: state.needs.energy, cognitiveLoad01: state.needs.cognitiveLoad, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, socialNeed01: state.needs.socialNeed, goalPressure01: state.needs.goalPressure, identityCoherence01: state.needs.identityCoherence, predictionError01: state.predictionError } });
         const attentionEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'attention', source: 'core.global-workspace', parentIds: [appraisalEvent.id, predictionEvent.id], confidence01: clamp(workspaceSnapshotNow.items.length / Math.max(1, workspaceSnapshotNow.capacity)), payload: { broadcastId: workspace.broadcastId, selectedCandidateIds: [...workspace.selected], workspaceItemIds: workspaceSnapshotNow.items.slice(-12).map(item => item.id), workspaceCapacity: workspaceSnapshotNow.capacity, attentionBudget01: state.attentionBudget, recurrence01: this.persisted.facets.memory.workspace.recurrence } });
-        const retrievedMemoryIds = (this.persisted.facets.memory.lastRetrievedMemoryIds ?? []).slice(-12);
+        const retrievedMemoryIds = retrievedMemoryRefs.map(memory => memory.id).slice(-12);
         // Two distinct sets must stay distinguishable in the evidence: the retrieval
         // hits the decision consumed, and the memory context exposed to consumers in
         // OrganismCycleResult.memories. Recording only one of them made the causal
@@ -8288,6 +8318,7 @@ export class OrganismCore {
                     ...memory,
                     evidence: memory.evidence?.slice(-4),
                 })),
+                retrievedMemories: retrievedMemoryRefs,
                 workspace: { ...workspace, content: { ...workspace.content, advanced: lightAdvancedCycle } },
                 decision: structuredClone(decision),
                 advanced: undefined,
@@ -8297,6 +8328,7 @@ export class OrganismCore {
             state: structuredClone(state),
             goals: structuredClone(this.persisted.goals),
             memories: structuredClone(this.persisted.memories),
+            retrievedMemories: retrievedMemoryRefs.map(memory => ({ ...memory })),
             workspace: { ...workspace, content: { ...workspace.content, advanced: advancedCycle ?? lightAdvancedCycle } },
             decision,
             advanced: advancedCycle,
@@ -8541,7 +8573,11 @@ export class OrganismCore {
             consequence01: clamp(outcome.learning?.consequence01 ?? inferredLearningDefaults.consequence01),
             neuralUpdateScale01: clamp(outcome.learning?.neuralUpdateScale01 ?? inferredLearningDefaults.neuralUpdateScale01),
         };
-        const rawReward01 = clamp((outcome.reward ?? success + 0.5) / 1.5);
+        // Canonical reward contract: `reward` is signed in [-1, 1] (`success` is already
+        // derived as .5 + reward * .5). The previous `reward / 1.5` mapping used a third,
+        // undocumented scale: it treated a strong positive reward (.75) as neutral, clamped
+        // every negative reward to zero, and could never reach 1.0.
+        const rawReward01 = clamp(outcome.reward == null ? success : 0.5 + clamp(outcome.reward, -1, 1) * 0.5);
         const gatedReward01 = clamp(outcome.learning?.reward01 ?? (0.5 + (rawReward01 - 0.5) * learning.learningScale01));
         const gatedSuccess01 = clamp(outcome.learning?.success01 ?? (0.5 + (success - 0.5) * learning.learningScale01));
         const gatedSurprise01 = clamp(outcome.learning?.surprise01 ?? (surprise * (.45 + .55 * learning.learningScale01)));
@@ -8730,7 +8766,7 @@ export class OrganismCore {
         this.persisted.facets.consciousness.activeInference = this.worldSubsystem.activeInference.snapshot();
         const selectedGoalTitle = trace?.selected?.goalId ? this.persisted.goals.find(g => g.id === trace?.selected?.goalId)?.title ?? null : null;
         if (trace?.selected) {
-            const rawOutcomeReward01 = clamp((outcome.reward ?? success + 0.5) / 1.5);
+            const rawOutcomeReward01 = rawReward01;
             const gatedNeuralReward01 = clamp(.5 + (rawOutcomeReward01 - .5) * learning.neuralUpdateScale01);
             const gatedLearningReward01 = gatedReward01;
             const gatedPredictionError01 = clamp(.5 + (state.predictionError - .5) * learning.neuralUpdateScale01);
