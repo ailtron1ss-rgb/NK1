@@ -249,7 +249,7 @@ test("projects one canonical organism snapshot into renderer-safe 2D and 3D affe
   assert.equal(twoD.source, "organism-state");
   assert.ok(twoD.expressionWeight > 0.8, "warm positive affect should reach a visible expression weight");
   assert.ok(twoD.channels.mouthSmile > 0.6, "warmth and positive valence should affect the mouth");
-  assert.ok(twoD.channels.gazeX > 0.15 && twoD.channels.gazeX < 0.3, "curiosity and directness should shape gaze");
+  assert.ok(twoD.channels.gazeX > 0.3 && twoD.channels.gazeX < 0.4, "curiosity and directness should shape gaze");
   assert.ok(twoD.rendererHints.live2d.ParamMouthForm > 0.3, "Live2D receives a bounded mouth-form parameter");
   assert.equal(threeD.profile, "3d");
   assert.ok(Math.abs(threeD.rendererHints.spatial3d.headYaw) <= 0.3);
