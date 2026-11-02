@@ -1,8 +1,15 @@
-## Актуальный инженерный checkpoint — 1 ноября 2026
+## Актуальный инженерный checkpoint — 2 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Source HEAD:** `608435493b4af3b4a222d385f1b77d978d18583b` (live branch, 2026-11-02; последний commit удалил дублирующий вызов одного planner-restore теста из `test:rebuild-recovered`).
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+### CI на текущем source HEAD — инфраструктурный блокер
+
+- На точном SHA `608435493b4af3b4a222d385f1b77d978d18583b` первоначальная push-волна дала 14/14 pre-runner failures (`runner_id=0`, пустое имя, 0 steps). 2 ноября выбранный core regression job был rerun-нут: attempt 2 назначил runner, исполнил 45 steps и завершился success. Четыре PR-triggered workflows на #664 также прошли. Полная актуальная source matrix ещё требует отдельной проверки.
+- Непосредственный parent `f921007a74a7a6124d274885354009dd3a3ef33c` имел 7 успешных workflow runs; базовый regression job прошёл 45 steps на назначенном runner. Между этими SHA изменён только `runtime/neuro-kurisu/package.json` (+1/−2), без изменений workflow YAML.
+- Точная причина startup failure не подтверждена; account-level billing/Actions restriction — гипотеза, которую должен проверить владелец аккаунта или GitHub Support. На `workpass70-source` отключена branch protection и не заданы required status checks.
+- Подробности и все IDs: [Draft PR #652](https://github.com/ailtron1ss-rgb/NK1/pull/652), `docs/engineering/NK1_RELEASE_INTEGRITY_AND_CI_RECOVERY_2026-11-02_RU.md`. Никакой runtime green status на текущем SHA не заявляется.
 
 ### Реально интегрировано и проверено
 
@@ -24,6 +31,7 @@
 - **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
 - **Новый Release ZIP на 1 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
+- Publisher workflow hotfix-тега checkout-ит `workpass70-source`, сверяет `workflow_run.head_sha` с текущим tip, архивирует tracked `HEAD`, проверяет ZIP и формирует SHA256 sidecar. Отдельный release manifest с `source_commit_sha` и validation run ID в наборе assets не формируется. Локальная проверка ZIP/sidecar на 2 ноября не выполнена.
 - `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
 
 ### Что всё ещё НЕ доказано
