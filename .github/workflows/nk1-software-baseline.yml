@@ -32,6 +32,6 @@ jobs:
       - name: Install locked runtime dependencies
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Install locked app dependencies
-        run: npm ci --prefix app --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefix app --no-audit --no-fund
       - name: Run integrated software baseline
         run: bash scripts/verify-organism-software-baseline.sh
