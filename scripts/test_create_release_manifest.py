@@ -9,6 +9,10 @@ import zipfile
 from pathlib import Path
 
 
+ARCHIVE_PREFIX = "Neuro_Kurisu_WORKPASS70_MAIN_SYNC_2026-11-02_aaaaaaaaaaaa"
+SBOM_ARCHIVE_PATH = f"{ARCHIVE_PREFIX}/contracts/SBOM.final.json"
+
+
 def make_metadata():
     source_sha = "a" * 40
     return {
@@ -80,7 +84,7 @@ class ReleaseManifestCliTests(unittest.TestCase):
         self.report_path.write_text("# NK1 release report\n", encoding="utf-8")
         self.sbom_path.write_text('{"name":"NK1"}\n', encoding="utf-8")
         with zipfile.ZipFile(self.zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("contracts/SBOM.final.json", self.sbom_path.read_bytes())
+            archive.writestr(SBOM_ARCHIVE_PATH, self.sbom_path.read_bytes())
         self.metadata = make_metadata()
         self.write_metadata()
 
@@ -90,7 +94,7 @@ class ReleaseManifestCliTests(unittest.TestCase):
     def write_metadata(self):
         self.metadata_path.write_text(json.dumps(self.metadata), encoding="utf-8")
 
-    def run_cli(self, evidence_path="contracts/SBOM.final.json"):
+    def run_cli(self, evidence_path=SBOM_ARCHIVE_PATH):
         return subprocess.run(
             [
                 sys.executable,
@@ -125,6 +129,7 @@ class ReleaseManifestCliTests(unittest.TestCase):
         zip_record = next(item for item in manifest["artifacts"] if item["role"] == "zip")
         self.assertEqual(zip_record["sha256"], hashlib.sha256(self.zip_path.read_bytes()).hexdigest())
         self.assertEqual(zip_record["size_bytes"], len(self.zip_path.read_bytes()))
+        self.assertEqual(manifest["embedded_evidence"][0]["archive_path"], SBOM_ARCHIVE_PATH)
         self.assertEqual(
             manifest["embedded_evidence"][0]["sha256"],
             hashlib.sha256(self.sbom_path.read_bytes()).hexdigest(),
@@ -139,12 +144,12 @@ class ReleaseManifestCliTests(unittest.TestCase):
         self.assertIn("source-lineage-contract", result.stderr)
 
     def test_cli_rejects_embedded_evidence_missing_from_the_zip(self):
-        result = self.run_cli("contracts/not-in-archive.json")
+        result = self.run_cli(f"{ARCHIVE_PREFIX}/contracts/not-in-archive.json")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("present exactly once in ZIP", result.stderr)
 
     def test_cli_rejects_embedded_evidence_as_a_symlink_member(self):
-        info = zipfile.ZipInfo("contracts/SBOM.final.json")
+        info = zipfile.ZipInfo(SBOM_ARCHIVE_PATH)
         info.create_system = 3
         info.external_attr = 0o120777 << 16
         with zipfile.ZipFile(self.zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -155,7 +160,7 @@ class ReleaseManifestCliTests(unittest.TestCase):
 
     def test_cli_rejects_embedded_evidence_with_different_bytes(self):
         with zipfile.ZipFile(self.zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("contracts/SBOM.final.json", b'{"name":"OLD"}\n')
+            archive.writestr(SBOM_ARCHIVE_PATH, b'{"name":"OLD"}\n')
         result = self.run_cli()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("bytes do not match", result.stderr)
