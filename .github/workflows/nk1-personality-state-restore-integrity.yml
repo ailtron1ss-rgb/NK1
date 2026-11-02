@@ -1,0 +1,34 @@
+name: NK1 personality state restore integrity
+on:
+  push:
+    branches: [workpass70-source]
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts
+      - runtime/neuro-kurisu/tests/p2702-personality-restore-integrity.mjs
+      - .github/workflows/nk1-personality-state-restore-integrity.yml
+permissions:
+  contents: read
+concurrency:
+  group: nk1-personality-restore-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  personality-state-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Verify persistent personality restoration
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/p2702-personality-restore-integrity.mjs
+      - name: Typecheck runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

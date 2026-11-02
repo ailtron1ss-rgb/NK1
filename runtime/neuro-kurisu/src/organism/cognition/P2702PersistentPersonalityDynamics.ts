@@ -35,18 +35,62 @@ export class P2702PersistentPersonalityDynamics{
  private state=defaultState();
  snapshot(){return deep(this.state);}
  restore(raw?:Partial<P2702PersonalityState>|null){
-  const d=defaultState(),r:any=raw??{};this.state={...d,...deep(r),version:1,
-   invariantNames:Array.isArray(r.invariantNames)?r.invariantNames.slice(0,32):d.invariantNames,
-   invariantValues:Array.isArray(r.invariantValues)?r.invariantValues.slice(0,32).map((x:number)=>clamp(x)):d.invariantValues,
-   adaptiveNames:Array.isArray(r.adaptiveNames)?r.adaptiveNames.slice(0,32):d.adaptiveNames,
-   adaptiveValues:Array.isArray(r.adaptiveValues)?r.adaptiveValues.slice(0,32).map((x:number)=>clamp(x)):d.adaptiveValues,
-   valueNames:Array.isArray(r.valueNames)?r.valueNames.slice(0,32):d.valueNames,
-   valueWeights:Array.isArray(r.valueWeights)?r.valueWeights.slice(0,32).map((x:number)=>clamp(x)):d.valueWeights,
-   relationshipTrust:r.relationshipTrust&&typeof r.relationshipTrust==='object'?Object.fromEntries(Object.entries(r.relationshipTrust).slice(0,32).map(([k,v])=>[k,clamp(Number(v))])):d.relationshipTrust,
-   selfBeliefs:Array.isArray(r.selfBeliefs)?r.selfBeliefs.slice(0,16).map((x:number)=>clamp(x)):d.selfBeliefs,
-   selfUncertainty:Array.isArray(r.selfUncertainty)?r.selfUncertainty.slice(0,16).map((x:number)=>clamp(x,.03,.97)):d.selfUncertainty,
-   tensionState:Array.isArray(r.tensionState)?r.tensionState.slice(0,16).map((x:number)=>clamp(x)):d.tensionState,
-   actionPreference:{...d.actionPreference,...(r.actionPreference??{})}};
+  // Personality snapshots cross a persistence boundary. Rebuild only known fields;
+  // never structuredClone/spread caller-owned objects or invoke accessor properties.
+  const record=(value:unknown):Record<string,unknown>|null=>{
+   try{if(!value||typeof value!=='object'||Array.isArray(value))return null;const proto=Object.getPrototypeOf(value);return proto===Object.prototype||proto===null?value as Record<string,unknown>:null;}catch{return null;}
+  };
+  const own=(value:unknown,key:string):unknown=>{
+   const row=record(value);if(!row)return undefined;
+   try{const descriptor=Object.getOwnPropertyDescriptor(row,key);return descriptor&&'value'in descriptor?descriptor.value:undefined;}catch{return undefined;}
+  };
+  const finite=(value:unknown,fallback:number,min=0,max=1):number=>
+   typeof value==='number'&&Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;
+  const count=(value:unknown,fallback:number):number=>
+   typeof value==='number'&&Number.isSafeInteger(value)?Math.max(0,Math.min(1_000_000_000,value)):fallback;
+  const d=defaultState(),r=record(raw)??{};
+  const sameNames=(value:unknown,expected:string[]):boolean=>{
+   try{return Array.isArray(value)&&value.length===expected.length&&expected.every((name,index)=>value[index]===name);}catch{return false;}
+  };
+  const vector=(value:unknown,fallback:number[],min=0,max=1):number[]=>{
+   try{
+    if(!Array.isArray(value)||value.length!==fallback.length)return fallback.slice();
+    const result:number[]=[];
+    for(let i=0;i<fallback.length;i++){const item=value[i];if(typeof item!=='number'||!Number.isFinite(item))return fallback.slice();result.push(Math.max(min,Math.min(max,item)));}
+    return result;
+   }catch{return fallback.slice();}
+  };
+  const namedVector=(namesValue:unknown,valuesValue:unknown,names:string[],fallback:number[]):number[]=>
+   sameNames(namesValue,names)?vector(valuesValue,fallback):fallback.slice();
+  const relationshipTrust:Record<string,number>={};
+  const trustSource=record(own(r,'relationshipTrust'));
+  if(trustSource){
+   try{for(const key of Object.keys(trustSource).slice(0,32)){
+    if(!/^[a-zA-Z0-9:_-]{1,96}$/.test(key))continue;
+    const value=own(trustSource,key);
+    if(typeof value==='number'&&Number.isFinite(value))relationshipTrust[key]=finite(value,.5);
+   }}catch{/* hostile map enumeration restores as empty */}
+  }
+  const actionPreference={...d.actionPreference};
+  const actionSource=record(own(r,'actionPreference'));
+  if(actionSource){
+   for(const action of ACTIONS){const value=own(actionSource,action);if(typeof value==='number'&&Number.isFinite(value))actionPreference[action]=finite(value,0);}
+  }
+  this.state={
+   version:1,tick:count(own(r,'tick'),d.tick),experienceCount:count(own(r,'experienceCount'),d.experienceCount),
+   learningUpdates:count(own(r,'learningUpdates'),d.learningUpdates),
+   invariantNames:d.invariantNames.slice(),invariantValues:namedVector(own(r,'invariantNames'),own(r,'invariantValues'),d.invariantNames,d.invariantValues),
+   adaptiveNames:d.adaptiveNames.slice(),adaptiveValues:namedVector(own(r,'adaptiveNames'),own(r,'adaptiveValues'),d.adaptiveNames,d.adaptiveValues),
+   valueNames:d.valueNames.slice(),valueWeights:namedVector(own(r,'valueNames'),own(r,'valueWeights'),d.valueNames,d.valueWeights),
+   relationshipTrust,selfBeliefs:vector(own(r,'selfBeliefs'),d.selfBeliefs),
+   selfUncertainty:vector(own(r,'selfUncertainty'),d.selfUncertainty,.03,.97),
+   tensionState:vector(own(r,'tensionState'),d.tensionState),actionPreference,
+   stability01:finite(own(r,'stability01'),d.stability01),coherence01:finite(own(r,'coherence01'),d.coherence01),
+   identityContinuity01:finite(own(r,'identityContinuity01'),d.identityContinuity01),
+   contradiction01:finite(own(r,'contradiction01'),d.contradiction01),plasticity01:finite(own(r,'plasticity01'),d.plasticity01),
+   drift01:finite(own(r,'drift01'),d.drift01),autobiographicalStrength01:finite(own(r,'autobiographicalStrength01'),d.autobiographicalStrength01),
+   lastReward01:finite(own(r,'lastReward01'),d.lastReward01),
+  };
  }
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
   this.state.tick=args.tick;this.state.experienceCount++;this.state.lastReward01=clamp(args.reward01??.5);
