@@ -333,7 +333,7 @@ export function preflightCodeAssimilationArchive(
   };
   const treeFingerprint = sha256(canonicalJson(treeMaterial));
   const reportMaterial = {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     accepted: true as const,
     candidateId: candidate.candidateId,
     candidateFingerprint: candidate.candidateFingerprint,
