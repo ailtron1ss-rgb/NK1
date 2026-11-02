@@ -36,11 +36,16 @@ SHA-256 полного архива:
 
 Эта сборка — **implementation hotfix, не production-approved**. Не подтверждены production build вместе с миграцией БД, настоящий browser/Live2D E2E, синхронизация реального Android/Termux audio, независимый multi-seed retrieval uplift (текущий benchmark всё ещё показывает `recallDelta=0`), длительный soak и полный license review. Никаких выводов о субъективном сознании или общей интеллектуальной эффективности из этих тестов не делается.
 
-## Стратегический мастер-план и трекер прогресса
+## Стратегический мастер-план и архитектурные спецификации
 
+- **Архитектура Единого Цифрового Мозга (биомиметика и нейрокогнитивное картирование):** [docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_RU.md](docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_RU.md)
 - **Мастер-план (10 жизненно важных этапов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md)
-- **Реестр статусов и отслеживание прогресса:** [docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md)
+- **Стратегическая дорожная карта развития (приоритеты 2 → 4 → 3 → 1):** [docs/NK1_STRATEGIC_DEVELOPMENT_ROADMAP_RU.md](docs/NK1_STRATEGIC_DEVELOPMENT_ROADMAP_RU.md)
+- **Анализ экосистемы проектов и адаптеров (Letta, Hermes, MCP, CleanRL, River):** [docs/NK1_ECOSYSTEM_ANALYSIS_AND_ADAPTATION_RU.md](docs/NK1_ECOSYSTEM_ANALYSIS_AND_ADAPTATION_RU.md)
+- **Спецификация соматического 3D/2.5D/Live2D воплощения:** [docs/NK1_KURISU_EMBODIMENT_SPECIFICATION_RU.md](docs/NK1_KURISU_EMBODIMENT_SPECIFICATION_RU.md)
+- **Комплексный трекер прогресса (процентная шкала и матрица ветвей):** [docs/PROJECT_PROGRESS_TRACKER_2026-11-01_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-11-01_RU.md)
 - **Протокол продвижения статусов:** `PLANNED` → `IMPLEMENTED` → `TESTED` → `INTEGRATED` → `MEASURED` → `RELEASED`
+- **Проверка готовности архитектуры организма:** `bash scripts/verify-organism-readiness.sh`
 - **Проверка воспроизводимости релизов (Этап 1):** `bash scripts/verify-release-reproducibility.sh`
 
 ## Следующий этап
