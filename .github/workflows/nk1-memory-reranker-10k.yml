@@ -7,6 +7,7 @@ on:
       - 'runtime/neuro-kurisu/tests/memory-semantic-affect-reranking.mjs'
       - 'runtime/neuro-kurisu/tests/memory-semantic-affect-reranker-benchmark.mjs'
       - 'runtime/neuro-kurisu/package.json'
+      - 'docs/WORKPASS_MEMORY_AFFECT_CONTEXT_RERANKING_2026-11-02_RU.md'
       - '.github/workflows/nk1-memory-reranker-10k.yml'
   push:
     branches: [workpass70-source]
@@ -15,6 +16,7 @@ on:
       - 'runtime/neuro-kurisu/tests/memory-semantic-affect-reranking.mjs'
       - 'runtime/neuro-kurisu/tests/memory-semantic-affect-reranker-benchmark.mjs'
       - 'runtime/neuro-kurisu/package.json'
+      - 'docs/WORKPASS_MEMORY_AFFECT_CONTEXT_RERANKING_2026-11-02_RU.md'
       - '.github/workflows/nk1-memory-reranker-10k.yml'
 permissions:
   contents: read
