@@ -55,6 +55,7 @@ export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null
   const emotionLabel=String(input.emotion?.label??'').trim().toLocaleLowerCase();
   const valence=clamp(input.emotion?.valence01??.5);
   const arousal=clamp(input.emotion?.arousal01??.22);
+  const dominance=clamp(input.emotion?.dominance01??.5);
   const reason:string[]=[];
 
   let tone:VoiceTone='neutral';
@@ -87,6 +88,9 @@ export function buildVoicePlan(input:{text:string;action?:ActionKind|string|null
   if(body.circadian01<.4){ rate-=.035; volume-=.03; reason.push('circadian-rest'); }
   if(grounding<.45){ emphasis-=.04; reason.push('low-grounding'); }
   if(continuity<.5){ pauseMs+=30; reason.push('continuity-uncertainty'); }
+  // Low appraisal control calls for measured, less emphatic delivery; it must not sound forceful.
+  if(dominance<.30){ rate-=.025; pauseMs+=25; emphasis-=.025; reason.push('low-appraisal-control'); }
+  else if(dominance>.72){ rate+=.005; emphasis+=.02; reason.push('high-appraisal-control'); }
 
   switch(breath){
     case 'ping': rate+=.04; pauseMs=65; emphasis+=.04; reason.push('ping-breath'); break;
