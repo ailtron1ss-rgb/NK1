@@ -1067,7 +1067,8 @@ export class OrganismRuntime {
     consumedFeatures.predictedCost = selectedDecision?.predictedCost ?? 0;
     consumedFeatures.confidence = selectedDecision?.confidence ?? .5;
     const observedOutcome01 = clamp01(grounded.reward01);
-    const cyclePredictionError01 = clamp01(Math.abs(expectedReward - observedOutcome01));
+    const predictedOutcome01 = clamp01(expectedReward);
+    const cyclePredictionError01 = Math.abs(predictedOutcome01 - observedOutcome01);
     const outcomeVerified = grounded.source === 'external' && grounded.verified01 >= .5;
     const outcomeIndependent = outcomeVerified && grounded.independent01 >= .5;
     const episodeParentIds = Object.values(cycleStageIds).filter((value): value is string => typeof value === 'string');
@@ -1087,7 +1088,7 @@ export class OrganismRuntime {
       },
       prediction: {
         summary: `The planned world action ${worldAction} was assigned expected outcome ${expectedReward.toFixed(3)}.`,
-        expectedOutcome01: clamp01(expectedReward),
+        expectedOutcome01: predictedOutcome01,
         confidence01: clamp01(plan.steps[0]?.confidence ?? selectedDecision?.confidence ?? .5),
         provenance: 'inferred',
       },
