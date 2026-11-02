@@ -84,8 +84,8 @@ export class SelfModelEngine {
         for(let i=0;i<count;i++){
           const descriptor=Object.getOwnPropertyDescriptor(strategiesRaw,String(i));
           if(!descriptor || !('value' in descriptor) || typeof descriptor.value!=='string') continue;
-          const item=descriptor.value.trim().slice(0,80);
-          if(item && !strategies.includes(item)) strategies.push(item);
+          const item=descriptor.value.trim();
+          if(item && item.length<=80 && !strategies.includes(item)) strategies.push(item);
           if(strategies.length>=8) break;
         }
       }
