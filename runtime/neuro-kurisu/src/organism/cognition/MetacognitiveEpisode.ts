@@ -106,7 +106,7 @@ export function normalizeMetacognitiveEpisode(value: unknown): MetacognitiveEpis
         typeof raw.at !== 'number' || !Number.isFinite(raw.at) || raw.at < 0) return null;
     const id = stringValue(raw.id, 180), cycleId = stringValue(raw.cycleId, 180);
     const parentEventIds = stringArray(raw.parentEventIds, 11, 11);
-    if (!id || !cycleId || !parentEventIds || new Set(parentEventIds).size !== 11) return null;
+    if (!id || !cycleId || id !== `meta-cycle:${raw.tick}` || cycleId !== `cycle:${raw.tick}` || !parentEventIds || new Set(parentEventIds).size !== 11) return null;
 
     const belief = record(raw.belief, ['summary','confidence01','uncertainty01','provenance']);
     const prediction = record(raw.prediction, ['summary','expectedOutcome01','confidence01','provenance']);
