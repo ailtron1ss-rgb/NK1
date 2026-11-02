@@ -7596,6 +7596,12 @@ export class OrganismCore {
             p71Consistency.repairPressure01 <= .62 && p69Quorum.accepted) {
             selectedIntent = b276ProgramCandidate;
         }
+        // P80 appraises before arbitration; reconcile its provisional action history only
+        // after every final policy, constitutional, and program override has settled.
+        if (selectedIntent) {
+            this.selfSubsystem.p80UnifiedSelfState.recordSelectedAction(state.tick, selectedIntent.action);
+            this.persisted.facets.advanced.p80UnifiedSelfState = this.selfSubsystem.p80UnifiedSelfState.snapshot();
+        }
         this.persisted.system.b312ExecutiveDecisionHandoff = this.developmentalNeural.b312ExecutiveDecisionHandoff.snapshot();
         this.developmentalNeural.actionOwnershipGraphB298.checkpoint(state.tick, 'p64-post', governedCandidates, selectedIntent?.action ?? null);
         this.developmentalNeural.actionOwnershipGraphB298.checkpoint(state.tick, 'governance-post', governedCandidates, selectedIntent?.action ?? null);
