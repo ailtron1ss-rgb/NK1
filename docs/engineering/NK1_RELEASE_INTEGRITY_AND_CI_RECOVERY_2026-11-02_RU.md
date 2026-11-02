@@ -23,7 +23,7 @@
 - Получение логов для всех 14 job вернуло HTTP 404 `BlobNotFound`; endpoint логов workflow также вернул пустое содержимое. Это фиксирует недоступность логов, но не раскрывает аннотацию check run с точной причиной отказа.
 - Родительский SHA `f921007a74a7a6124d274885354009dd3a3ef33c` имел 7 успешных workflow runs. Контрольный job `targeted-and-regression` на этом SHA использовал runner `1000079583`, выполнил 45 шагов и завершился `success` в `15:36:32Z`.
 - `compare_commits(f921007…, 6084354…)` показывает ровно один изменённый файл: `runtime/neuro-kurisu/package.json` (+1/−2). В агрегаторе `test:rebuild-recovered` устранён повторный вызов `test:workpass611:cognitive-planner-restore-integrity`; workflow YAML и runtime исходники в этом commit не менялись. Поскольку runner не был назначен, этот diff не объясняет отсутствие выполнения job.
-- Ранее в `docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md` и `docs/CI_RELIABILITY_RUNBOOK_RU.md` уже описан тот же runner-startup blocker. Там account-level Billing & Licensing / Actions restriction названа приоритетной гипотезой, но не подтверждённым диагнозом. Текущая сессия не имеет доступа к личному экрану Billing & Licensing или аннотации check run.
+- Ранее в `docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md` и `docs/CI_RELIABILITY_RUNBOOK_RU.md` уже описан тот же runner-startup symptom. Billing & Licensing / Actions account restriction остаётся лишь одной из возможных гипотез; повторный запуск ниже показывает, что постоянная account-wide блокировка не наблюдалась на 2 ноября. Точная причина первой попытки не установлена.
 - Публичная история GitHub Status не содержит зарегистрированного инцидента за 1 ноября 2026 года; это снижает вероятность публичного глобального инцидента, но не исключает ограничение конкретного аккаунта.
 - В API-снимке ветки `workpass70-source` указано `protected=false`, `protection.enabled=false`, `enforcement_level=off`, `contexts=[]`, `checks=[]`. То есть обязательные status checks на ветке не настроены; красные Actions не блокируются настройкой branch protection.
 - Документы `AGENTS.md` и `NEUROCORE_START_HERE.md` содержат базовую точку, не совпадающую с текущим HEAD.
@@ -179,7 +179,7 @@
 
 1. Владелец аккаунта проверяет GitHub → Settings → Billing & Licensing и доступность GitHub Actions / hosted runners. Не считать гипотезу Billing подтверждённой до просмотра собственного уведомления или ответа GitHub Support.
 2. Если в Billing & Licensing нет ограничений, отправить GitHub Support run IDs из таблицы и приложить сигнатуру `runner_id=0`, `steps=[]`, `BlobNotFound`; запросить account-level Actions restriction / runner assignment diagnosis.
-3. После устранения блокировки повторить точные SHA-проверки на актуальном HEAD; только job с назначенным runner и реально выполненными шагами позволяет судить о тестах.
+3. На 2026-11-02 один выбранный core regression job успешно rerun-нут (45 steps); теперь запустить/проверить полный актуальный source validation matrix и сравнить с четырьмя успешными PR-triggered runs. Не считать один rerun полным восстановлением CI.
 4. Настроить repository ruleset / branch protection для `workpass70-source`: обязательные regression/contract checks, запрет обхода required checks и merge только после свежих результатов. Текущий API-снимок подтверждает, что таких правил сейчас нет. Изменение требует административной настройки GitHub; workflow YAML сам по себе не включает защиту ветки.
 5. Отдельно получить бинарный Release ZIP, сверить его локальный SHA-256 с asset digest, извлечь в чистую директорию и построить file manifest перед выводами о расхождении runtime/release.
 
@@ -193,3 +193,16 @@
 - Сам tag commit не следует принимать за source SHA; для этого релиза связь должна подтверждаться publisher workflow и build provenance. Текущий тег / архив датирован 19 октября 2026 года, поэтому он заведомо предшествует интеграциям 1 ноября.
 
 **Статус проверки release provenance:** workflow definition inspected; release asset metadata inspected; actual ZIP bytes / sidecar contents / local SHA-256 / unpacked tree comparison not inspected. Отметка «source commit equals tag commit» не делается.
+
+## 9.6. Контрольный rerun исходного failed job — 2026-11-02
+
+После того как на PR #664 четыре PR-triggered workflow успешно выделили hosted runners, был повторно запущен только один контрольный job из первого набора failures — без массового rerun всех 14 workflow.
+
+- Original run: [41331728115 — NeuroCore core regression validation](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41331728115).
+- Job first attempt: `124923079245`, `runner_id=0`, пустое имя runner, 0 steps; завершился в первоначальной волне pre-runner failures.
+- Retry: `run_attempt=2`; новый job [125206033710](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41331728115) получил runner и выполнил 45 steps.
+- Retry conclusion: `success`; completed at `2026-11-02T09:52:22Z`.
+- Поэтому initial startup failure был воспроизведён как факт, но не остался постоянной блокировкой: тот же Actions run/job успешно выполнился при retry. Это не доказывает, была ли причина transient GitHub runner issue, workflow event/queue issue или иное временное состояние; точная первопричина всё ещё неизвестна.
+- На актуальном PR head #664 `313f5d5dbc650c64be072ce7ea9c0e7a3f9c56f5` повторно запустились ещё четыре PR-triggered workflows, все 4/4 `success`. Это подтверждает доступность runner в данном временном окне, но не равнозначно прохождению полного source workflow matrix.
+- Следующее действие: использовать fresh push/PR validation на актуальном source commit и проверить весь набор обязательных checks; не объявлять общий CI полностью восстановленным после одного контрольного rerun.
+
