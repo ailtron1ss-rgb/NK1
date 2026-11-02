@@ -60,5 +60,7 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:big-pass-39
       - name: Continuity and organism integration
         run: npm --prefix runtime/neuro-kurisu run test:b1701-b2200:continuity && npm --prefix runtime/neuro-kurisu run test:p29:core-integration && npm --prefix runtime/neuro-kurisu run test:pcontinuity:integration
+      - name: Governed tool input contracts and risk classification
+        run: npm --prefix runtime/neuro-kurisu run test:tool-input-contracts-workpass624
       - name: Organism runtime smoke
         run: npm --prefix runtime/neuro-kurisu run test:organism-smoke
