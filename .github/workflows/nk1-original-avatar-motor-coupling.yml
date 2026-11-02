@@ -1,0 +1,37 @@
+name: NK1 Original 2D cognitive motor coupling
+on:
+  push:
+    branches: [aspect/avatar-original-2d-cognitive-coupling-stack-20261102]
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - app/src/components/AvatarStage.tsx
+      - app/src/components/KurisuOriginalStage.tsx
+      - app/src/components/avatar/motorIntent.ts
+      - app/scripts/original-avatar-motor-coupling.test.mjs
+      - .github/workflows/nk1-original-avatar-motor-coupling.yml
+permissions:
+  contents: read
+concurrency:
+  group: nk1-original-avatar-motor-coupling-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  original-avatar-motor-coupling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up repository-pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked app dependencies
+        working-directory: app
+        run: npm ci
+      - name: Verify Original 2D cognitive motor coupling contract
+        working-directory: app
+        run: node --experimental-strip-types --test scripts/original-avatar-motor-coupling.test.mjs
+      - name: Typecheck app
+        working-directory: app
+        run: npm run typecheck
