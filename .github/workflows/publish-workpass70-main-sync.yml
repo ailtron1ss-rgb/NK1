@@ -252,7 +252,7 @@ jobs:
           - Код архива создан через git archive для точного проверенного SHA.
           - Свежие contracts/SBOM.final.json и SOURCE_PROVENANCE_LICENSES_WORKPASSN.json поверх архива заменены результатами provenance gate и проверены на совпадение байтов.
           - ZIP integrity и безопасные пути проверены после overlay в CI.
-          - SHA-256 для ZIP и отчёта включён в SHA256SUMS.txt.
+          - Машиночитаемый release-manifest.json фиксирует source SHA, validation run/check IDs, build run, toolchain, gate outcomes и SHA-256/размер ZIP, отчёта, SBOM и source-provenance evidence.\n          - SHA-256 для ZIP, отчёта и release-manifest.json включён в SHA256SUMS.txt.
 
           Это технический prerelease, не подтверждение production-ready. Положительный прирост качества recall на независимом RU/EN holdout здесь не заявляется; он требует отдельной оценки.
           EOF
