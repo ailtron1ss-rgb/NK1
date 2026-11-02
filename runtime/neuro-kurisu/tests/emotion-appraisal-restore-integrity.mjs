@@ -89,7 +89,8 @@ const corrupt = {
   },
   outcomes: {
     rest: { attempts: 1.5, meanSuccess01: .8, meanSurprise01: .1, meanBenefit01: .9 },
-    explore: { attempts: 2, meanSuccess01: '0.99', meanSurprise01: 1.2, meanBenefit01: .8 },
+    explore: { attempts: 2, meanSuccess01: .8, meanSurprise01: 1.2, meanBenefit01: .8 },
+    numericString: { attempts: 3, meanSuccess01: '0.99', meanSurprise01: .1, meanBenefit01: .8 },
     broken: null,
   },
 };
@@ -123,7 +124,8 @@ assert.equal(state.interoception.predicted.capacity01, .72);
 assert.equal(state.interoception.predicted.load01, 1);
 assert.deepEqual(Object.keys(state.outcomes), ['explore'], 'invalid outcome calibration rows must be dropped');
 assert.equal(state.outcomes.explore.attempts, 2);
-assert.equal(state.outcomes.explore.meanSuccess01, .5, 'numeric strings must not create trusted calibration');
+assert.equal(state.outcomes.explore.meanSuccess01, .8);
+assert.equal(state.outcomes.numericString, undefined, 'numeric strings must not create trusted calibration');
 assert.equal(state.outcomes.explore.meanSurprise01, 1);
 assert.equal(state.outcomes.explore.meanBenefit01, .8);
 assert.equal(accessorInvoked, false, 'restore must inspect own data descriptors without invoking getters');
@@ -144,7 +146,7 @@ assert.equal(bounded.snapshot().history[0].id, 'emo:bounded:0');
 for (const invalidRoot of [null, [], 'snapshot', 42, new Proxy({}, {})]) {
   const engine = new EmotionAppraisalEngine();
   engine.restore(invalidRoot);
-  assert.deepEqual(engine.snapshot(), source.snapshot() && {
+  assert.deepEqual(engine.snapshot(), {
     version: 2, episodes: 0, lastTick: -1, lastAt: 0, lastLabel: 'calm',
     meanArousal01: .22, meanValence01: .5, meanStress01: .2, meanAttentionCapture01: .2,
     history: [], feelings: [],
