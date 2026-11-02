@@ -476,6 +476,14 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
       hasFreshTurn: freshTextTurn,
       turnText: lastTurn?.role === "kurisu" ? lastTurn.text : "",
       awake: snap.awake,
+      energy: snap.needs.energy,
+      cognitiveLoad: snap.needs.cognitiveLoad,
+      uncertainty: snap.needs.uncertainty,
+      socialNeed: snap.needs.socialNeed,
+      novelty: snap.needs.novelty,
+      goalPressure: snap.needs.goalPressure,
+      predictionError: snap.predictionError,
+      traits: snap.identity.traits,
     });
     const bodyGestureActive = motorPlan.gesture;
     const motionGroup = motorPlan.motionGroup;
