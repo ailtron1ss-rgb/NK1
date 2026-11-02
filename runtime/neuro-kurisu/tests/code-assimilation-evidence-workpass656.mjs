@@ -206,6 +206,8 @@ assert.equal(candidate.stage, 'discovered');
   assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', candidate.candidateFingerprint), true);
   assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'modify', candidate.candidateFingerprint), false);
   assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute', candidate.candidateFingerprint), false);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute', 'f'.repeat(64)), false,
+    'an otherwise valid license receipt must not authorize a different candidate fingerprint');
 }
 {
   const payload = payloadFor(candidate, 'license', {
