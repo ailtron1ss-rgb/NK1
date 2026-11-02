@@ -1,4 +1,25 @@
+import { isTrustedExternalPostconditionVerification, type OutcomeVerification } from './OutcomeVerificationService.ts';
+
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+
+/** Capture an exact, inert verifier input without invoking accessors or accepting hostile prototypes. */
+function captureReceiptInput(raw:unknown):Record<string,unknown>|null{
+  try{
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+    const proto=Object.getPrototypeOf(raw);
+    if(proto!==Object.prototype&&proto!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(raw);
+    const captured:Record<string,unknown>={};
+    for(const [key,descriptor] of Object.entries(descriptors)){
+      if(!('value' in descriptor)||key==='__proto__'||key==='prototype'||key==='constructor')return null;
+      const value=descriptor.value;
+      if(value!==null&&typeof value!=='string'&&typeof value!=='boolean'&&
+        !(typeof value==='number'&&Number.isFinite(value)))return null;
+      Object.defineProperty(captured,key,{value,enumerable:true,writable:false,configurable:false});
+    }
+    return captured;
+  }catch{return null;}
+}
 const boundedInt=(x:number,min:number,max:number)=>Math.max(min,Math.min(max,Math.floor(Number(x)||0)));
 
 type ReplayLane='fast'|'medium'|'slow';
@@ -182,13 +203,32 @@ export class AdaptiveReplayGovernor {
     return {lane,budget,candidates:structuredClone(chosen),due:true,policyWeights:{...this.state.policyWeights},diagnostics:{pressure01:pressure,energy01:energy,memoryPressure01:memoryPressure,mobile,halfLifeDays}};
   }
 
-  feedback(input:{memoryId:string;retentionGain01:number;transferPotential01:number;interferenceRisk01:number;independentVerified?:boolean;delayMs?:number}){
+  feedback(input:{memoryId:string;retentionGain01:number;transferPotential01:number;interferenceRisk01:number;/** Deprecated; never grants authority. */ independentVerified?:boolean;delayMs?:number;verification?:OutcomeVerification;verificationInput?:Record<string,unknown>}){
     const gain=clamp(input.retentionGain01),transfer=clamp(input.transferPotential01),risk=clamp(input.interferenceRisk01);
-    if(!input.independentVerified) return {updated:false,utility01:clamp(.45*gain+.30*transfer-.25*risk),policyWeights:{...this.state.policyWeights}};
+    const delayMs=Math.max(0,Number(input.delayMs??0));
+    const receiptInput=captureReceiptInput(input.verificationInput);
+    const boundGain=receiptInput&&typeof receiptInput.retentionGain01==='number'
+      ? clamp(receiptInput.retentionGain01)
+      : receiptInput&&typeof receiptInput.retentionScore01==='number'&&typeof receiptInput.baselineScore01==='number'
+        ? clamp(receiptInput.retentionScore01-receiptInput.baselineScore01)
+        : Number.NaN;
+    const boundMemory=receiptInput?.memoryId;
+    const boundDelay=receiptInput?.delayMs;
+    const boundTransfer=receiptInput?.transferPotential01;
+    const boundRisk=receiptInput?.interferenceRisk01;
+    const exactMeasurement=typeof boundMemory==='string'&&boundMemory===String(input.memoryId)&&
+      Number.isFinite(boundGain)&&Math.abs(boundGain-gain)<1e-12&&
+      typeof boundTransfer==='number'&&Math.abs(clamp(boundTransfer)-transfer)<1e-12&&
+      typeof boundRisk==='number'&&Math.abs(clamp(boundRisk)-risk)<1e-12&&
+      typeof boundDelay==='number'&&Math.max(0,boundDelay)===delayMs;
+    const independentlyVerified=exactMeasurement&&
+      isTrustedExternalPostconditionVerification(input.verification,receiptInput??undefined);
+    const utilityObserved=clamp(.45*gain+.30*transfer-.25*risk);
+    if(!independentlyVerified) return {updated:false,utility01:utilityObserved,policyWeights:{...this.state.policyWeights}};
     const row=this.decisionById.get(String(input.memoryId));
-    if(!row) return {updated:false,utility01:clamp(.45*gain+.30*transfer-.25*risk),policyWeights:{...this.state.policyWeights}};
+    if(!row) return {updated:false,utility01:utilityObserved,policyWeights:{...this.state.policyWeights}};
     const utility=Math.max(-1,Math.min(1,(gain-.5)*.9+(transfer-.5)*.55-(risk-.5)*.65));
-    const lr=0.012+Math.min(.008,(Math.max(0,Number(input.delayMs??0))/86400000)*.0015);
+    const lr=0.012+Math.min(.008,(delayMs/86400000)*.0015);
     const next={...this.state.policyWeights};
     for(const key of Object.keys(DEFAULT_WEIGHTS) as FeatureKey[]){
       const feature=row.features[key];

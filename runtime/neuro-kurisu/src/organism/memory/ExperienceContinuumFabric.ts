@@ -480,7 +480,7 @@ export class ExperienceContinuumFabric {
     this.state.retention.observations++;
     if(validation.independentVerified){
       this.state.replay.validated++;
-    this.replayGovernor.feedback({memoryId:validation.memoryId,retentionGain01:validation.retentionGain01,transferPotential01:validation.transferPotential01,interferenceRisk01:validation.interferenceRisk01,independentVerified:validation.independentVerified,delayMs:validation.delayMs});
+    this.replayGovernor.feedback({memoryId:validation.memoryId,retentionGain01:validation.retentionGain01,transferPotential01:validation.transferPotential01,interferenceRisk01:validation.interferenceRisk01,verification:input.verification,verificationInput,delayMs:validation.delayMs});
     this.state.adaptiveReplayGovernor=this.replayGovernor.snapshot();
       this.state.retention.validated++;
       this.state.retention.meanRetention01=clamp(this.state.retention.meanRetention01*.9+retentionScore01*.1);
