@@ -1,3 +1,5 @@
+import { isTrustedExternalPostconditionVerification, type OutcomeVerification } from './OutcomeVerificationService.ts';
+
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
 export interface ReplayCreditRecord {
@@ -48,19 +50,21 @@ export class CausalReplayCreditAssigner {
   private state=defaultState();
 
   restore(raw?:Partial<CausalReplayCreditState>|null){
-    const d=defaultState();
+    // Serialized verification bits and aggregates are claims, not authority.
+    // Preserve attempt history for diagnostics; proof-derived values are rebuilt
+    // only from verifier receipts that are authenticated in the current process.
     const r=raw??{};
     this.state={
-      ...d,...r,version:1,
-      assignments:Math.max(0,Number(r.assignments??0)),
-      verifiedAssignments:Math.max(0,Number(r.verifiedAssignments??0)),
-      meanCredit01:clamp(Number(r.meanCredit01??0)),
-      meanEligibility01:clamp(Number(r.meanEligibility01??0)),
-      meanOutcome01:clamp(Number(r.meanOutcome01??0)),
-      meanDelayAttenuation01:clamp(Number(r.meanDelayAttenuation01??0)),
-      lastCredit01:clamp(Number(r.lastCredit01??0)),
-      lastAt:Math.max(0,Number(r.lastAt??0)),
-      recent:Array.isArray(r.recent)?r.recent.slice(-128).map(x=>this.cleanRecord(x)):[]
+      ...defaultState(),version:1,
+      assignments:Math.max(0,Number.isSafeInteger(r.assignments)?Number(r.assignments):0),
+      verifiedAssignments:0,
+      meanCredit01:0,
+      meanEligibility01:0,
+      meanOutcome01:0,
+      meanDelayAttenuation01:0,
+      lastCredit01:0,
+      lastAt:0,
+      recent:Array.isArray(r.recent)?r.recent.slice(-128).map(x=>({...this.cleanRecord(x),independentVerified:false,credit01:0})):[]
     };
   }
 
@@ -93,7 +97,8 @@ export class CausalReplayCreditAssigner {
     interferenceRisk01:number;
     learningOpportunity01:number;
     priorityAfter01:number;
-    independentVerified:boolean;
+    verification?:OutcomeVerification;
+    verificationInput?:Record<string,unknown>;
   }){
     const delayMs=Math.max(0,Number(input.delayMs)||0);
     const replayAt=Number.isFinite(input.replayAt)?Number(input.replayAt):0;
@@ -119,7 +124,7 @@ export class CausalReplayCreditAssigner {
       .18*clamp(input.learningOpportunity01)+
       .14*clamp(input.priorityAfter01)
     );
-    const independentVerified=Boolean(input.independentVerified);
+    const independentVerified=isTrustedExternalPostconditionVerification(input.verification,input.verificationInput);
     // Unverified replay is observable, but it is not a credit assignment. Keep
     // the record for diagnosis with zero credit until the verifier accepts it.
     const candidateCredit01=clamp(outcome01*eligibility01*(independentVerified?.96:.42));
@@ -165,7 +170,7 @@ export class CausalReplayCreditAssigner {
       validationId:String(raw?.validationId??''),delayMs:Math.max(0,Number(raw?.delayMs??0)),
       delayAttenuation01:clamp(Number(raw?.delayAttenuation01??0)),cascadeShort01:clamp(Number(raw?.cascadeShort01??raw?.delayAttenuation01??0)),cascadeMedium01:clamp(Number(raw?.cascadeMedium01??raw?.delayAttenuation01??0)),cascadeLong01:clamp(Number(raw?.cascadeLong01??raw?.delayAttenuation01??0)),temporalMatch01:clamp(Number(raw?.temporalMatch01??0)),
       eligibility01:clamp(Number(raw?.eligibility01??0)),outcome01:clamp(Number(raw?.outcome01??0)),
-      credit01:clamp(Number(raw?.credit01??0)),independentVerified:Boolean(raw?.independentVerified),at:Math.max(0,Number(raw?.at??0))
+      credit01:0,independentVerified:false,at:Math.max(0,Number(raw?.at??0))
     };
   }
 }
