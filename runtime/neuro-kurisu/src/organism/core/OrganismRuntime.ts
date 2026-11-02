@@ -1118,36 +1118,65 @@ export class OrganismRuntime {
         summary: 'No governed self-repair proposal was emitted by this cycle.',
       },
     });
-    if (!episodeCandidate)
-      throw new Error(`Metacognitive episode failed bounded validation at tick ${cycle.state.tick}`);
-    const episodeEvent = this.cognitiveEventFabric.append({
-      id: episodeCandidate.cognitiveEventId,
-      tick: cycle.state.tick,
-      at: cycle.state.at,
-      stage: 'metacognitive-episode',
-      source: 'runtime.metacognitive-episode',
-      parentIds: episodeCandidate.parentEventIds,
-      external: episodeCandidate.outcome.provenance === 'observed',
-      confidence01: episodeCandidate.prediction.confidence01,
-      payload: {
-        episodeId: episodeCandidate.id,
-        cycleId: episodeCandidate.cycleId,
-        memoryOwner: 'MemoryOS2',
-        predictionError01: episodeCandidate.outcome.predictionError01,
-        outcomeProvenance: episodeCandidate.outcome.provenance,
-        reflectionStatus: episodeCandidate.reflection.status,
-      },
-    });
-    const episodeMemory = await this.core.recordMetacognitiveEpisode(episodeCandidate);
-    this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
-    this.core.recordRealityEvidence({
-      tick: cycle.state.tick,
-      realityClass: 'derived',
-      claim: 'metacognitive-episode-persisted',
-      confidence01: episodeMemory.status === 'recorded' || episodeMemory.status === 'replayed' ? .9 : .35,
-      independenceKey: `metacognitive-episode:${cycle.state.tick}`,
-      parentIds: [episodeEvent.id, ...episodeCandidate.parentEventIds],
-    });
+    const cycleEvidenceParents = episodeCandidate
+      ? [`cef:metacognitive:${cycle.state.tick}`, ...episodeCandidate.parentEventIds]
+      : Object.values(cycleStageIds).filter((value): value is string => typeof value === 'string');
+    if (!episodeCandidate) {
+      // Metacognitive journaling is supplemental: malformed diagnostics must not abort a valid core tick.
+      await this.journal.write('warn', 'runtime.metacognitive-episode.validation-failed', {
+        tick: cycle.state.tick,
+      }).catch(() => {});
+      this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+      this.core.recordRealityEvidence({
+        tick: cycle.state.tick,
+        realityClass: 'derived',
+        claim: 'metacognitive-episode-validation-failed',
+        confidence01: .1,
+        independenceKey: `metacognitive-episode:${cycle.state.tick}`,
+        parentIds: cycleEvidenceParents,
+      });
+    } else {
+      const episodeEvent = this.cognitiveEventFabric.append({
+        id: episodeCandidate.cognitiveEventId,
+        tick: cycle.state.tick,
+        at: cycle.state.at,
+        stage: 'metacognitive-episode',
+        source: 'runtime.metacognitive-episode',
+        parentIds: episodeCandidate.parentEventIds,
+        external: episodeCandidate.outcome.provenance === 'observed',
+        confidence01: episodeCandidate.prediction.confidence01,
+        payload: {
+          episodeId: episodeCandidate.id,
+          cycleId: episodeCandidate.cycleId,
+          memoryOwner: 'MemoryOS2',
+          predictionError01: episodeCandidate.outcome.predictionError01,
+          outcomeProvenance: episodeCandidate.outcome.provenance,
+          reflectionStatus: episodeCandidate.reflection.status,
+        },
+      });
+      let episodePersisted = false;
+      try {
+        const episodeMemory = await this.core.recordMetacognitiveEpisode(episodeCandidate);
+        episodePersisted = episodeMemory.status === 'recorded' || episodeMemory.status === 'replayed';
+      } catch (error) {
+        // Keep the operational cycle alive; the causal node and failure evidence remain inspectable.
+        await this.journal.write('warn', 'runtime.metacognitive-episode.persistence-failed', {
+          tick: cycle.state.tick,
+          message: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      }
+      this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+      this.core.recordRealityEvidence({
+        tick: cycle.state.tick,
+        realityClass: 'derived',
+        claim: episodePersisted
+          ? 'metacognitive-episode-persisted'
+          : 'metacognitive-episode-persistence-failed',
+        confidence01: episodePersisted ? .9 : .1,
+        independenceKey: `metacognitive-episode:${cycle.state.tick}`,
+        parentIds: [episodeEvent.id, ...episodeCandidate.parentEventIds],
+      });
+    }
 
 
     // B364: severe embodied resource pressure is now a real durability event, not only a
