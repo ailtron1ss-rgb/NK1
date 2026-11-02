@@ -10029,7 +10029,7 @@ export class OrganismCore {
             p44Actual[12] = clamp(state.needs.identityCoherence);
             this.worldSubsystem.p44PredictiveWorld.observe(currentP42Vector, trace.selected.action, p44Actual, gatedReward01);
             this.persisted.facets.learning.p44PredictiveWorld = this.worldSubsystem.p44PredictiveWorld.snapshot();
-            const causalRecord = this.developmentalNeural.causalExperience.recordOutcome(trace, state, { reward01: gatedReward01, success01: gatedSuccess01, surprise01: gatedSurprise01, novelty01: state.needs.novelty });
+            const causalRecord = this.developmentalNeural.causalExperience.recordOutcome(trace, state, { reward01: gatedReward01, success01: gatedSuccess01, surprise01: gatedSurprise01, novelty01: state.needs.novelty, observedSuccess01: success });
             const causalPacket = this.developmentalNeural.causalExperience.learningPacket(32);
             const p26Metrics = this.developmentalNeural.p26TrueLearning.metrics();
             const worldConfOn = clamp(trace.selected.confidence);
@@ -11983,8 +11983,14 @@ export class OrganismCore {
         gatewayDecisionLinkedExternalPostcondition?: boolean,
     ): Promise<void> {
         const suppliedDecisionId = typeof options.decisionId === 'string' ? options.decisionId.trim() : '';
+        // The decision must belong to the action's own world transition. The live
+        // cycle increments the world tick before recording its trace, so the trace
+        // tick is the produced state's tick while the pre-action snapshot keeps the
+        // prior tick; replayed fixtures stamp both as the pre-action tick. Accept a
+        // trace whose tick is the pre-action tick or the tick it produced, and
+        // reject a tick that matches neither.
         const matchingDecisionTrace = suppliedDecisionId
-            ? this.persisted.traces.find(trace => trace.id === suppliedDecisionId && trace.selected !== null && trace.tick === trace.stateBefore.tick)
+            ? this.persisted.traces.find(trace => trace.id === suppliedDecisionId && trace.selected !== null && (trace.tick === trace.stateBefore.tick || trace.tick === trace.stateBefore.tick + 1))
             : undefined;
         const verifierBound = gatewayDecisionLinkedExternalPostcondition === true ||
             (Boolean(suppliedDecisionId) && isTrustedDecisionLinkedExternalPostcondition(result.verification, {

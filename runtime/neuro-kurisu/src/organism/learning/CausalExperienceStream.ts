@@ -212,15 +212,23 @@ export class CausalExperienceStream {
     // Observation alone is not an outcome and must not suppress its later record.
     // Observation is intentionally cheap: it never evicts causal records. The stream waits for outcome before creating a sample.
   }
-  recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number}):CausalExperienceRecord|null{
+  recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number;observedSuccess01?:number}):CausalExperienceRecord|null{
+    // The state stores the observed (unscaled) outcome; the causal stream may be
+    // handed a learning-scaled success label. Compare like-for-like so a scaled
+    // label is not mistaken for a mismatched action attribution.
+    const observedSuccess01=input.observedSuccess01===undefined?input.success01:input.observedSuccess01;
     // A caller reaching this API is not enough to establish a grounded transition:
     // require a supported selected action and valid before/after state snapshots.
     if(!trace.selected||!CAUSAL_ACTIONS.includes(trace.selected.action)||
       !Number.isSafeInteger(trace.tick)||trace.tick<0||
       !hasValidObservedState(trace.stateBefore)||!hasValidObservedState(stateAfter)||
-      // The decision trace must describe the same pre-action world tick; otherwise
-      // an unrelated/old trace could be paired with a newer observed transition.
-      trace.tick!==trace.stateBefore.tick||
+      // The decision trace must belong to this observed transition; otherwise an
+      // unrelated/old trace could be paired with a newer observed transition.
+      // Callers stamp the decision tick either as the pre-action tick or as the
+      // tick of the state the decision produced (the live OrganismCore cycle
+      // increments the world tick before recording its trace), so both bindings
+      // are accepted while a tick outside the transition is rejected.
+      !(trace.tick===trace.stateBefore.tick||trace.tick===stateAfter.tick)||
       stateAfter.tick<=trace.stateBefore.tick||
       // The resulting state must explicitly attribute the last completed action
       // to this decision and carry a bounded outcome signal; mere state drift is
@@ -228,7 +236,8 @@ export class CausalExperienceStream {
       stateAfter.lastAction!==trace.selected.action||
       typeof stateAfter.lastActionSuccess!=='number'||
       !Number.isFinite(stateAfter.lastActionSuccess)||stateAfter.lastActionSuccess<0||stateAfter.lastActionSuccess>1||
-      Math.abs(stateAfter.lastActionSuccess-input.success01)>0.15)return null;
+      typeof observedSuccess01!=='number'||!Number.isFinite(observedSuccess01)||observedSuccess01<0||observedSuccess01>1||
+      Math.abs(stateAfter.lastActionSuccess-observedSuccess01)>0.15)return null;
     const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
     if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
     const traceId=normalizeTraceId(trace.id);

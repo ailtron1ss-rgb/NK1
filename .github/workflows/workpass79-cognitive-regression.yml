@@ -71,6 +71,9 @@ jobs:
       - name: Verify CognitiveEventFabric snapshot restore rejects accessor and coercion payloads
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass641:cef-restore-integrity
+      - name: Verify live causal outcomes bind to the observed action transition
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass667:causal-live-binding
       - name: Test cold-memory retrieval and residency invariants
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass80:memory-residency
