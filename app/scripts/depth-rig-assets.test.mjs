@@ -149,3 +149,36 @@ test("rejects canvas rectangles outside the shared artwork canvas", () => {
   const result = inspect(candidate);
   assert.ok(result.diagnostics.some((item) => item.code === "invalid-rect" && item.nodeId === "hair-front"));
 });
+
+test("rejects getter-backed manifest data without executing accessors", () => {
+  let getterExecuted = false;
+  const hostile = { ...manifest };
+  Object.defineProperty(hostile, "id", {
+    enumerable: true,
+    get() {
+      getterExecuted = true;
+      throw new Error("getter must not run");
+    },
+  });
+  const result = inspect(hostile);
+  assert.equal(result.status, "blocked");
+  assert.equal(getterExecuted, false);
+  assert.ok(result.diagnostics.some((item) => item.code === "invalid-manifest"));
+});
+
+test("rejects sparse inventory arrays and duplicate mask references", () => {
+  const sparse = [...inventory];
+  delete sparse[0];
+  const sparseResult = inspect(manifest, sparse);
+  assert.equal(sparseResult.status, "blocked");
+  assert.ok(sparseResult.diagnostics.some((item) => item.code === "invalid-manifest"));
+
+  const candidate = {
+    ...manifest,
+    assets: manifest.assets.map((asset) => asset.nodeId === "head"
+      ? { ...asset, occlusionMaskPaths: ["masks/head.png", "masks/head.png"] }
+      : asset),
+  };
+  const duplicateResult = inspect(candidate);
+  assert.ok(duplicateResult.diagnostics.some((item) => item.code === "invalid-manifest" && item.nodeId === "head"));
+});
