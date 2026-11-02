@@ -26,6 +26,20 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      - name: Checkout release manifest tooling from this publisher revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: release-tools
+          sparse-checkout: |
+            scripts/create_release_manifest.py
+            scripts/test_create_release_manifest.py
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Test release manifest generator
+        run: python3 -m unittest discover -s release-tools/scripts -p 'test_create_release_manifest.py' -v
+
       - name: Refuse stale source and existing release tag
         id: guard
         shell: bash
@@ -93,6 +107,14 @@ jobs:
               fi
             done
             if [ "$ALL_SUCCEEDED" = true ]; then
+              CHECKS_SUMMARY="$(jq -c '[.check_runs[] | select(.name == "targeted-and-regression" or .name == "source-lineage-contract")] | group_by(.name) | map(max_by(.started_at // .created_at)) | map({id, name, status, conclusion, details_url, started_at, completed_at})' <<< "$CHECKS_JSON")"
+              CHECKS_COUNT="$(jq 'length' <<< "$CHECKS_SUMMARY")"
+              if [ "$CHECKS_COUNT" -ne 2 ]; then
+                echo "Expected exactly two required check records, got $CHECKS_COUNT"
+                exit 1
+              fi
+              printf '%s\n' "$CHECKS_SUMMARY" > "$RUNNER_TEMP/required-checks.json"
+              echo "checks_json=$RUNNER_TEMP/required-checks.json" >> "$GITHUB_OUTPUT"
               echo "validated=true" >> "$GITHUB_OUTPUT"
               echo "Exact-SHA regression checks passed for $VALIDATED_SHA"
               exit 0
@@ -151,10 +173,21 @@ jobs:
           RELEASE_DATE: ${{ steps.guard.outputs.release_date }}
           SHORT_SHA: ${{ steps.guard.outputs.short_sha }}
           VALIDATED_SHA: ${{ steps.guard.outputs.validated_sha }}
+          REQUIRED_CHECKS_JSON: ${{ steps.required_checks.outputs.checks_json }}
+          VALIDATION_RUN_ID: ${{ github.event.workflow_run.id }}
+          VALIDATION_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          VALIDATION_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          VALIDATION_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          VALIDATION_EVENT: ${{ github.event.workflow_run.event }}
+          VALIDATION_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          VALIDATION_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          VALIDATION_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          VALIDATION_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
           ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}.zip"
           REPORT="WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}_REPORT_RU.md"
+          MANIFEST="NK1_RELEASE_MANIFEST_${RELEASE_DATE}_${SHORT_SHA}.json"
           git archive --format=zip --prefix="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}/" "$VALIDATED_SHA" > "$RUNNER_TEMP/$ZIP"
           WORKPASS="$(node -e 'const fs=require("node:fs"); const b=JSON.parse(fs.readFileSync("SUPER_VERSION.json","utf8")).build; const m=String(b??"").match(/WORKPASS(\d+)/i); if(!m) process.exit(2); console.log(m[1]);')"
           PROVENANCE="contracts/SOURCE_PROVENANCE_LICENSES_WORKPASS${WORKPASS}.json"
@@ -223,9 +256,77 @@ jobs:
 
           Это технический prerelease, не подтверждение production-ready. Положительный прирост качества recall на независимом RU/EN holdout здесь не заявляется; он требует отдельной оценки.
           EOF
-          sha256sum "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" > "$RUNNER_TEMP/SHA256SUMS.txt"
+          export NODE_VERSION="$(node --version)"
+          export PYTHON_VERSION="$(python3 --version)"
+          python3 - "$RUNNER_TEMP/release-manifest-metadata.json" <<'PYMETA'
+          import json
+          import os
+          import pathlib
+          import sys
+
+          metadata = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "release": {
+                  "tag": os.environ["TAG"],
+                  "date": os.environ["RELEASE_DATE"],
+                  "prerelease": True,
+              },
+              "source": {
+                  "branch": "workpass70-source",
+                  "commit_sha": os.environ["VALIDATED_SHA"],
+              },
+              "validation": {
+                  "workflow_run": {
+                      "id": int(os.environ["VALIDATION_RUN_ID"]),
+                      "run_number": int(os.environ["VALIDATION_RUN_NUMBER"]),
+                      "run_attempt": int(os.environ["VALIDATION_RUN_ATTEMPT"]),
+                      "name": os.environ["VALIDATION_WORKFLOW_NAME"],
+                      "event": os.environ["VALIDATION_EVENT"],
+                      "conclusion": os.environ["VALIDATION_CONCLUSION"],
+                      "url": os.environ["VALIDATION_RUN_URL"],
+                      "head_sha": os.environ["VALIDATION_HEAD_SHA"],
+                      "head_branch": os.environ["VALIDATION_HEAD_BRANCH"],
+                  },
+                  "required_checks": json.loads(
+                      pathlib.Path(os.environ["REQUIRED_CHECKS_JSON"]).read_text(encoding="utf-8")
+                  ),
+              },
+              "build": {
+                  "workflow_name": os.environ["GITHUB_WORKFLOW"],
+                  "run_id": int(os.environ["GITHUB_RUN_ID"]),
+                  "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+                  "run_url": (
+                      os.environ["GITHUB_SERVER_URL"]
+                      + "/"
+                      + os.environ["GITHUB_REPOSITORY"]
+                      + "/actions/runs/"
+                      + os.environ["GITHUB_RUN_ID"]
+                  ),
+                  "node_version": os.environ["NODE_VERSION"],
+                  "python_version": os.environ["PYTHON_VERSION"],
+              },
+              "gates": {
+                  "exact_source_checks": "passed",
+                  "source_freshness": "passed",
+                  "provenance_and_license": "passed",
+                  "archive_integrity": "passed",
+              },
+          }
+          pathlib.Path(sys.argv[1]).write_text(
+              json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PYMETA
+          python3 release-tools/scripts/create_release_manifest.py \
+            --metadata "$RUNNER_TEMP/release-manifest-metadata.json" \
+            --artifact "zip=$RUNNER_TEMP/$ZIP" \
+            --artifact "report=$RUNNER_TEMP/$REPORT" \
+            --embedded-evidence "contracts/SBOM.final.json=$PWD/contracts/SBOM.final.json" \
+            --embedded-evidence "$PROVENANCE=$PWD/$PROVENANCE" \
+            --output "$RUNNER_TEMP/$MANIFEST"
+          sha256sum "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/$MANIFEST" > "$RUNNER_TEMP/SHA256SUMS.txt"
           cat "$RUNNER_TEMP/SHA256SUMS.txt"
-          ls -lh "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/SHA256SUMS.txt"
+          ls -lh "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/$MANIFEST" "$RUNNER_TEMP/SHA256SUMS.txt"
           echo "publish=true" >> "$GITHUB_OUTPUT"
 
       - name: Final freshness check before release publication
@@ -257,4 +358,5 @@ jobs:
           set -euo pipefail
           ZIP="Neuro_Kurisu_WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}.zip"
           REPORT="WORKPASS70_MAIN_SYNC_${RELEASE_DATE}_${SHORT_SHA}_REPORT_RU.md"
-          gh release create "$TAG" "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/SHA256SUMS.txt" --repo "$GITHUB_REPOSITORY" --target "$VALIDATED_SHA" --title "NeuroCore WorkPass70 Main Sync ($RELEASE_DATE)" --notes "Validated source snapshot for $VALIDATED_SHA. Exact-SHA core regression and source-lineage checks passed; ZIP integrity verified; report and SHA-256 manifest attached. This prerelease is not production approval." --prerelease
+          MANIFEST="NK1_RELEASE_MANIFEST_${RELEASE_DATE}_${SHORT_SHA}.json"
+          gh release create "$TAG" "$RUNNER_TEMP/$ZIP" "$RUNNER_TEMP/$REPORT" "$RUNNER_TEMP/$MANIFEST" "$RUNNER_TEMP/SHA256SUMS.txt" --repo "$GITHUB_REPOSITORY" --target "$VALIDATED_SHA" --title "NeuroCore WorkPass70 Main Sync ($RELEASE_DATE)" --notes "Validated source snapshot for $VALIDATED_SHA. Exact-SHA core regression and source-lineage checks passed; ZIP integrity verified; report, machine-readable release manifest and SHA-256 manifest attached. This prerelease is not production approval." --prerelease
