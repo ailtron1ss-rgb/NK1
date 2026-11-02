@@ -128,7 +128,7 @@ export interface VoiceEmotionContext {
 /** Project the canonical affect snapshot into the voice subsystem's bounded context. */
 export function projectVoiceEmotionContext(snapshot:unknown, appraisalSnapshot?:unknown):VoiceEmotionContext {
   const record=(value:unknown):Record<string,unknown> => value!==null && typeof value==='object' && !Array.isArray(value) ? value as Record<string,unknown> : {};
-  const field=record(record(record(snapshot).facets).cognition).cognitiveField;
+  const field=record(record(record(record(snapshot).facets).cognition).cognitiveField);
   const latestEpisode=record(record(appraisalSnapshot).history instanceof Array ? (record(appraisalSnapshot).history as unknown[])[0] : null);
   const finite=(value:unknown,fallback:number)=>Number.isFinite(Number(value))?Number(value):fallback;
   const known=new Set(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective']);
