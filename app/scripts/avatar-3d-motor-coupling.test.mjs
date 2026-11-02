@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { projectAvatarMotorActionTo3DAction } from "../src/components/avatar/avatarMotorProjection.ts";
 
-test("3D renderer has an explicit projection from all canonical motor actions", async () => {
-  const stage = await readFile(new URL("../src/components/Avatar3DStage.tsx", import.meta.url), "utf8");
-  assert.match(stage, /projectAvatarMotorActionTo3DAction/);
-  for (const action of ["rest", "listen", "reflect", "inspect", "explain", "comfort", "respond"]) {
-    assert.ok(stage.includes(action), "3D action projection is missing " + action);
-  }
+test("projects every canonical motor action into a supported 3D rig action", () => {
+  assert.deepEqual(
+    ["rest", "listen", "reflect", "inspect", "explain", "comfort", "respond"].map(projectAvatarMotorActionTo3DAction),
+    ["rest", "wait", "reflect", "explore", "respond", "respond", "respond"],
+  );
 });
 
 test("AvatarStage forwards the speech lifecycle required by the shared 3D motor planner", async () => {
