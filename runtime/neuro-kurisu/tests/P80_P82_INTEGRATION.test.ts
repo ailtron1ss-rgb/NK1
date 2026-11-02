@@ -61,6 +61,9 @@ test('P80 restore validates untrusted snapshots without executing accessors', ()
   const hostile=new Proxy(self.snapshot(),{getOwnPropertyDescriptor(){throw new Error('hostile snapshot');}});
   assert.doesNotThrow(()=>self.restore(hostile));
   assert.equal(self.snapshot().cycles,0);
+  const sparseModes = new Array(1);
+  self.restore({...self.snapshot(),recentModes:sparseModes as never});
+  assert.deepEqual(self.snapshot().recentModes,[],'sparse history must be rejected');
 });
 
 test('P80 restore preserves partial version-1 snapshots', () => {
