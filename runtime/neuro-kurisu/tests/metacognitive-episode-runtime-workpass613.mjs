@@ -45,6 +45,7 @@ try {
   const canonicalMemory = first.core.memorySubstrateCanonicalItems(32).find(item => item.id === memoryId);
   assert.ok(canonicalMemory, 'the episode is encoded in canonical MemoryOS2 through MemoryFabric');
   assert.equal(canonicalMemory.kind, 'episodic');
+  assert.equal(canonicalMemory.epistemicStatus, 'hypothesis', 'a generated reflection cannot silently become a confirmed fact');
   assert.ok(canonicalMemory.content.includes('error'), 'canonical episodic content exposes calibration outcome');
 
   const replay = await first.core.recordMetacognitiveEpisode(episode);
@@ -60,6 +61,19 @@ try {
   };
   await assert.rejects(() => first.core.recordMetacognitiveEpisode(conflicting), /metacognitive-episode-id-conflict/,
     'reusing the cycle identity with changed evidence is rejected');
+
+  const staleTick = episode.tick - 1;
+  const staleEpisode = {
+    ...episode,
+    id: `meta-cycle:${staleTick}`,
+    cycleId: `cycle:${staleTick}`,
+    cognitiveEventId: `cef:metacognitive:${staleTick}`,
+    tick: staleTick,
+  };
+  await assert.rejects(() => first.core.recordMetacognitiveEpisode(staleEpisode), /metacognitive-episode-stale-tick/,
+    'a new stale episode is rejected before memory/event mutation');
+  assert.equal(first.core.snapshot().facets.memory.eventLog.filter(row => row.type === 'metacognitive-episode').length, 1,
+    'a rejected stale tick leaves no partial event');
 
   const diagnostics = first.core.metacognitiveEpisodeDiagnostics(4);
   assert.equal(diagnostics.bufferedCount, 1);
