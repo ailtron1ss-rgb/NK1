@@ -2,6 +2,32 @@ import type { ActionKind } from '../core/types.ts';
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+type NamedLearningTarget=readonly [name:string,weight:number];
+const ACTION_TRAIT_TARGETS:Record<ActionKind,readonly NamedLearningTarget[]>={
+ respond:[['warmth',.45],['tenderness',.30],['directness',.25]],
+ explore:[['playfulness',.75],['directness',.15],['sarcasm',.10]],
+ verify:[['composure',.55],['guardedness',.20],['directness',.25]],
+ rest:[['composure',.55],['tenderness',.25],['warmth',.20]],
+ reflect:[['composure',.40],['guardedness',.30],['directness',.30]],
+ wait:[['composure',.65],['guardedness',.35]],
+ defer:[['composure',.50],['guardedness',.50]],
+};
+const ACTION_VALUE_TARGETS:Record<ActionKind,readonly NamedLearningTarget[]>={
+ respond:[['relationship',.55],['loyalty',.25],['responsibility',.20]],
+ explore:[['curiosity',.50],['science',.30],['autonomy',.20]],
+ verify:[['truth',.50],['science',.40],['responsibility',.10]],
+ rest:[['responsibility',.55],['privacy',.25],['autonomy',.20]],
+ reflect:[['autonomy',.35],['science',.35],['truth',.20],['privacy',.10]],
+ wait:[['responsibility',.50],['privacy',.30],['autonomy',.20]],
+ defer:[['responsibility',.50],['privacy',.25],['autonomy',.25]],
+};
+function applyNamedLearning(names:string[],values:number[],targets:readonly NamedLearningTarget[],delta:number,rate:number){
+ for(const [name,weight] of targets){
+  const index=names.indexOf(name);
+  if(index<0||index>=values.length)continue;
+  values[index]=clamp(values[index]!+delta*rate*weight);
+ }
+}
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 const deep=<T>(x:T):T=>structuredClone(x);
 
@@ -75,16 +101,33 @@ export class P2702PersistentPersonalityDynamics{
  }
  afterOutcome(args:{tick?:number;reward01:number;verified01:number;predictionError01:number;identityGap01:number;action:ActionKind;identityVector?:number[];relationshipId?:string}){
   const reward=clamp(args.reward01),verified=clamp(args.verified01),error=clamp(args.predictionError01);
-  const signal=clamp(reward*.55+verified*.25+(1-error)*.20);const eta=this.state.plasticity01*(.55+Math.abs(reward-.5));
-  const actionIndex=ACTIONS.indexOf(args.action);const ai=actionIndex<0?0:actionIndex%this.state.adaptiveValues.length;
-  this.state.adaptiveValues[ai]=clamp((this.state.adaptiveValues[ai]??.5)+(signal-.5)*eta);
-  const valueEta=eta*.22;for(let i=0;i<this.state.valueWeights.length;i++)this.state.valueWeights[i]=clamp(this.state.valueWeights[i]!+(signal-.5)*valueEta*(i<2?.35:1));
-  if(args.relationshipId){const prior=this.state.relationshipTrust[args.relationshipId]??.5;const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);this.state.relationshipTrust[args.relationshipId]=clamp(prior*.94+trustSignal*.06);}
+  // Plasticity is earned by verified, low-error feedback. An unverified reward
+  // cannot rewrite enduring traits or values, while uncertainty can still rise.
+  const signal=clamp(.5+verified*((reward-.5)*.55+(.5-error)*.45));
+  const evidenceReliability=verified*(1-error*.5);
+  const eta=this.state.plasticity01*(.55+Math.abs(reward-.5))*evidenceReliability;
+  applyNamedLearning(this.state.adaptiveNames,this.state.adaptiveValues,ACTION_TRAIT_TARGETS[args.action],signal-.5,eta);
+  applyNamedLearning(this.state.valueNames,this.state.valueWeights,ACTION_VALUE_TARGETS[args.action],signal-.5,eta*.22);
+  if(args.relationshipId&&verified>0){
+    const prior=this.state.relationshipTrust[args.relationshipId]??.5;
+    const trustSignal=clamp(reward*.55+verified*.3+(1-args.identityGap01)*.15);
+    const trustRate=.06*evidenceReliability;
+    this.state.relationshipTrust[args.relationshipId]=clamp(prior+(trustSignal-prior)*trustRate);
+  }
+  // The first identity latent is the anchor already compared in beforeDecision.
+  // Update only that aligned belief, and only when an outcome actually verified it.
+  const identityAnchor=args.identityVector?.[0];
+  if(verified>0&&typeof identityAnchor==='number'&&Number.isFinite(identityAnchor)){
+    const prior=this.state.selfBeliefs[0]??.5;
+    const beliefRate=eta*.35*(1-clamp(args.identityGap01)*.5);
+    this.state.selfBeliefs[0]=clamp(prior+(clamp(identityAnchor)-prior)*beliefRate);
+  }
   const uncertaintyShift=clamp(error*.35+(1-verified)*.3);
   for(let i=0;i<this.state.selfUncertainty.length;i++)this.state.selfUncertainty[i]=clamp(this.state.selfUncertainty[i]!*.97+uncertaintyShift*.03,.03,.97);
-  const drift=this.state.adaptiveValues.reduce((s,x)=>s+(x-(this.state.adaptiveValues.reduce((a,b)=>a+b,0)/Math.max(1,this.state.adaptiveValues.length)))**2,0)/Math.max(1,this.state.adaptiveValues.length);
+  const meanAdaptive=this.state.adaptiveValues.reduce((a,b)=>a+b,0)/Math.max(1,this.state.adaptiveValues.length);
+  const drift=this.state.adaptiveValues.reduce((sum,value)=>sum+(value-meanAdaptive)**2,0)/Math.max(1,this.state.adaptiveValues.length);
   this.state.drift01=clamp(Math.sqrt(drift)*1.7);this.state.contradiction01=clamp(this.state.contradiction01*.92+Math.abs(.5-reward)*.08);
-  this.state.autobiographicalStrength01=clamp(this.state.autobiographicalStrength01*.995+.005*(.5+verified*.5));
+  this.state.autobiographicalStrength01=clamp(this.state.autobiographicalStrength01*.995+.005*verified);
   this.state.stability01=clamp(this.state.stability01*.97+(1-this.state.drift01)*.03);this.state.coherence01=clamp(this.state.coherence01*.94+(signal*(1-this.state.contradiction01))*.06);
   this.state.learningUpdates++;
  }
