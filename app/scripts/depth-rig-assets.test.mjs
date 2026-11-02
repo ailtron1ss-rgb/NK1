@@ -206,3 +206,15 @@ test("fails closed on proxy-backed manifest records", () => {
   assert.equal(result.status, "blocked");
   assert.ok(result.diagnostics.some((item) => item.code === "invalid-manifest"));
 });
+
+test("allows non-deforming layers to omit occlusion masks and hidden-area paint", () => {
+  const candidate = {
+    ...manifest,
+    assets: manifest.assets.map((asset) => asset.nodeId === "arm-left"
+      ? { ...asset, deforms: false, hiddenAreaPaint: "not-required", occlusionMode: "none", occlusionMaskPaths: [] }
+      : asset),
+  };
+  const result = inspect(candidate);
+  assert.equal(result.status, "asset-preflight-pass");
+  assert.deepEqual(result.diagnostics, []);
+});
