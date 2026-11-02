@@ -64,8 +64,9 @@ function number01(value: unknown): number | null {
 
 function stringArray(value: unknown, max: number, exact?: number): string[] | null {
   if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+  const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value') ? lengthDescriptor.value : undefined;
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  const length = descriptors.length?.value;
   if (!Number.isSafeInteger(length) || length < 0 || length > max || (exact !== undefined && length !== exact)) return null;
   const keys = Object.keys(descriptors).filter(key => key !== 'length');
   if (keys.length !== length) return null;
