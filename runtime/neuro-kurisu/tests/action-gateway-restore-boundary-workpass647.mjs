@@ -3,6 +3,7 @@ import { ActionGateway } from '../src/organism/system/ActionGateway.ts';
 
 const key = 'workpass647:restore-boundary:v1';
 const options = { idempotencyKey: key };
+let executions = 0;
 const makeGateway = () => {
   const gateway = new ActionGateway();
   gateway.setExecutionLedgerPersister(async () => {});
@@ -11,7 +12,7 @@ const makeGateway = () => {
     capability: 'catalog.write',
     destructive: false,
     requiresIdempotencyKey: true,
-    execute: async input => ({ ok: true, key: input.key }),
+    execute: async input => { executions += 1; return { ok: true, key: input.key }; },
   });
   return gateway;
 };
@@ -19,6 +20,7 @@ const makeGateway = () => {
 const source = makeGateway();
 const executed = await source.executeTool('catalog.update', { key: 'safe-key' }, 'restore-boundary', options);
 assert.equal(executed.ok, true);
+assert.equal(executions, 1);
 const validSnapshot = source.snapshotExecutionLedger();
 assert.equal(validSnapshot.records.length, 1);
 
