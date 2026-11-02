@@ -61,12 +61,77 @@ const empty=():EmotionAppraisalState=>({version:2,episodes:0,lastTick:-1,lastAt:
 export class EmotionAppraisalEngine {
   private state=empty();
   restore(raw?:Partial<EmotionAppraisalState>|null){
-    const d=empty(); const r=raw as any ?? {};
-    this.state={...d,...r,version:2,episodes:Math.max(0,Number(r.episodes??0)),lastTick:Number(r.lastTick??-1),lastAt:Number(r.lastAt??0),
-      lastLabel:(['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'] as string[]).includes(String(r.lastLabel))?r.lastLabel as EmotionLabel:d.lastLabel,
-      history:Array.isArray(r.history)?r.history.slice(0,128):[], feelings:Array.isArray(r.feelings)?r.feelings.slice(0,128):[],
-      interoception:{...d.interoception,...(r.interoception??{}),lastObserved:{...d.interoception.lastObserved,...(r.interoception?.lastObserved??{})},predicted:{...d.interoception.predicted,...(r.interoception?.predicted??{})}},
-      outcomes:{...d.outcomes,...(r.outcomes??{})}};
+    // Persisted state is untrusted input: never spread it, invoke getters, or trust nested prototypes.
+    const record=(value:unknown):Record<string,unknown>|null=>{
+      try { if(!value || typeof value!=='object' || Array.isArray(value)) return null; const proto=Object.getPrototypeOf(value); return proto===Object.prototype || proto===null ? value as Record<string,unknown> : null; }
+      catch { return null; }
+    };
+    const own=(value:unknown,key:string):unknown=>{
+      const row=record(value); if(!row) return undefined;
+      try { const descriptor=Object.getOwnPropertyDescriptor(row,key); return descriptor && 'value' in descriptor ? descriptor.value : undefined; }
+      catch { return undefined; }
+    };
+    const bounded=(value:unknown,fallback:number,min=0,max=1):number=>
+      typeof value==='number' && Number.isFinite(value) ? Math.max(min,Math.min(max,value)) : fallback;
+    const count=(value:unknown,fallback=0,max=1_000_000_000):number=>
+      typeof value==='number' && Number.isSafeInteger(value) ? Math.max(0,Math.min(max,value)) : fallback;
+    const labels:EmotionLabel[]=['curiosity','calm','joy','anxiety','frustration','sadness','anger','protective'];
+    const tendencies:EmotionActionTendency[]=['explore','engage','verify','reflect','rest','protect','withdraw','approach'];
+    const d=empty(), r=record(raw) ?? {};
+    const emotion=(value:unknown):EmotionLabel=>labels.includes(value as EmotionLabel)?value as EmotionLabel:'calm';
+    const sanitizeEpisode=(value:unknown):EmotionEpisode|null=>{
+      const e=record(value); if(!e) return null;
+      const appraisal=record(own(e,'appraisal')), delta=record(own(e,'interoceptiveDelta'));
+      const id=own(e,'id'), tick=own(e,'tick'), at=own(e,'at'), tendency=own(e,'actionTendency');
+      if(typeof id!=='string' || !id.trim() || id.length>192 || typeof tick!=='number' || !Number.isSafeInteger(tick) || tick<0
+        || typeof at!=='number' || !Number.isFinite(at) || !tendencies.includes(tendency as EmotionActionTendency) || !appraisal || !delta) return null;
+      const n=(row:Record<string,unknown>,key:string)=>bounded(own(row,key),0);
+      return {id,tick,at,label:emotion(own(e,'label')),actionTendency:tendency as EmotionActionTendency,
+        valence01:bounded(own(e,'valence01'),.5),arousal01:bounded(own(e,'arousal01'),0),dominance01:bounded(own(e,'dominance01'),.5),
+        appraisal:{relevance01:n(appraisal,'relevance01'),goalCongruence01:n(appraisal,'goalCongruence01'),controllability01:n(appraisal,'controllability01'),novelty01:n(appraisal,'novelty01'),selfRelevance01:n(appraisal,'selfRelevance01'),socialMeaning01:n(appraisal,'socialMeaning01'),uncertainty01:n(appraisal,'uncertainty01')},
+        interoceptiveDelta:{stress01:n(delta,'stress01'),energy01:n(delta,'energy01'),load01:n(delta,'load01'),attentionCapture01:n(delta,'attentionCapture01')},
+        memorySalienceMultiplier01:bounded(own(e,'memorySalienceMultiplier01'),1),confidence01:bounded(own(e,'confidence01'),.5),
+        cause:typeof own(e,'cause')==='string'?String(own(e,'cause')).slice(0,96):'restored'};
+    };
+    const sanitizeFeeling=(value:unknown):FeelingEpisode|null=>{
+      const e=record(value); if(!e) return null;
+      const id=own(e,'id'),cause=own(e,'causeEmotionId'),tick=own(e,'tick'),at=own(e,'at');
+      if(typeof id!=='string' || !id.trim() || id.length>224 || typeof cause!=='string' || cause.length>192
+        || typeof tick!=='number' || !Number.isSafeInteger(tick) || tick<0 || typeof at!=='number' || !Number.isFinite(at)) return null;
+      return {id,tick,at,label:emotion(own(e,'label')),intensity01:bounded(own(e,'intensity01'),0),
+        interoceptiveMismatch01:bounded(own(e,'interoceptiveMismatch01'),0),selfAccessConfidence01:bounded(own(e,'selfAccessConfidence01'),.5),
+        bodilyFocus01:bounded(own(e,'bodilyFocus01'),.5),causeEmotionId:cause};
+    };
+    const intero=record(own(r,'interoception')) ?? {};
+    const vector=(value:unknown,fallback:InteroceptiveAffectState['lastObserved'])=>({
+      energy01:bounded(own(value,'energy01'),fallback.energy01),thermal01:bounded(own(value,'thermal01'),fallback.thermal01),
+      capacity01:bounded(own(value,'capacity01'),fallback.capacity01),load01:bounded(own(value,'load01'),fallback.load01)});
+    const outcomeSource=record(own(r,'outcomes')) ?? {};
+    const outcomes:Record<string,EmotionOutcomeCalibration>={};
+    try {
+      for(const key of Object.keys(outcomeSource).slice(0,64)){
+        if(!/^[a-zA-Z0-9:_-]{1,64}$/.test(key)) continue;
+        const row=record(own(outcomeSource,key)); if(!row) continue;
+        outcomes[key]={attempts:count(own(row,'attempts')),meanSuccess01:bounded(own(row,'meanSuccess01'),.5),
+          meanSurprise01:bounded(own(row,'meanSurprise01'),.5),meanBenefit01:bounded(own(row,'meanBenefit01'),.5)};
+      }
+    } catch { /* malformed proxy-backed outcome maps restore as empty */ }
+    const historyRaw=own(r,'history'), feelingsRaw=own(r,'feelings');
+    const history:EmotionEpisode[]=[];
+    const feelings:FeelingEpisode[]=[];
+    try { if(Array.isArray(historyRaw)) for(let i=0;i<Math.min(historyRaw.length,128);i++){const item=historyRaw[i];const clean=sanitizeEpisode(item);if(clean)history.push(clean);} } catch {}
+    try { if(Array.isArray(feelingsRaw)) for(let i=0;i<Math.min(feelingsRaw.length,128);i++){const item=feelingsRaw[i];const clean=sanitizeFeeling(item);if(clean)feelings.push(clean);} } catch {}
+    this.state={...d,version:2,episodes:count(own(r,'episodes')),lastTick:bounded(own(r,'lastTick'),-1,-1,Number.MAX_SAFE_INTEGER),
+      lastAt:bounded(own(r,'lastAt'),0,-Number.MAX_VALUE,Number.MAX_VALUE),lastLabel:emotion(own(r,'lastLabel')),
+      meanArousal01:bounded(own(r,'meanArousal01'),d.meanArousal01),meanValence01:bounded(own(r,'meanValence01'),d.meanValence01),
+      meanStress01:bounded(own(r,'meanStress01'),d.meanStress01),meanAttentionCapture01:bounded(own(r,'meanAttentionCapture01'),d.meanAttentionCapture01),
+      history,feelings,outcomes,
+      interoception:{cycles:count(own(intero,'cycles')),meanMismatch01:bounded(own(intero,'meanMismatch01'),d.interoception.meanMismatch01),
+        lastMismatch01:bounded(own(intero,'lastMismatch01'),d.interoception.lastMismatch01),
+        regulationPressure01:bounded(own(intero,'regulationPressure01'),d.interoception.regulationPressure01),
+        stability01:bounded(own(intero,'stability01'),d.interoception.stability01),recovery01:bounded(own(intero,'recovery01'),d.interoception.recovery01),
+        predictionCalibration01:bounded(own(intero,'predictionCalibration01'),d.interoception.predictionCalibration01),
+        lastObserved:vector(own(intero,'lastObserved'),d.interoception.lastObserved),predicted:vector(own(intero,'predicted'),d.interoception.predicted)}};
   }
   snapshot(){return structuredClone(this.state);}
 
