@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import zipfile
 from datetime import date, datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Mapping, Sequence
@@ -64,11 +65,14 @@ def _sha(value: object, field: str) -> str:
 def _safe_archive_path(value: object) -> str:
     raw = _nonempty(value, "embedded evidence archive path")
     path = PurePosixPath(raw)
+    raw_parts = raw.split("/")
     if (
         path.is_absolute()
         or raw.startswith("/")
         or "\\" in raw
-        or any(part in ("", ".", "..") for part in path.parts)
+        or re.match(r"^[A-Za-z]:", raw) is not None
+        or any(part in ("", ".", "..") for part in raw_parts)
+        or any(ord(character) < 32 or ord(character) == 127 for character in raw)
     ):
         raise ManifestError(f"embedded evidence must use a safe relative archive path: {raw}")
     return path.as_posix()
@@ -86,6 +90,40 @@ def _file_digest(path_value: Path, field: str) -> tuple[int, str]:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return size, digest.hexdigest()
+
+
+def _verify_embedded_evidence_in_zip(
+    archive_path: Path,
+    evidence_records: Sequence[Mapping[str, object]],
+) -> None:
+    try:
+        with zipfile.ZipFile(archive_path, "r") as archive:
+            names = archive.namelist()
+            for record in evidence_records:
+                member = str(record["archive_path"])
+                if names.count(member) != 1:
+                    raise ManifestError(
+                        f"embedded evidence {member} must be present exactly once in ZIP"
+                    )
+                info = archive.getinfo(member)
+                if info.is_dir() or info.file_size != record["size_bytes"]:
+                    raise ManifestError(
+                        f"embedded evidence {member} size does not match the local evidence file"
+                    )
+                digest = hashlib.sha256()
+                actual_size = 0
+                with archive.open(info, "r") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        actual_size += len(chunk)
+                        digest.update(chunk)
+                if actual_size != record["size_bytes"] or digest.hexdigest() != record["sha256"]:
+                    raise ManifestError(
+                        f"embedded evidence {member} bytes do not match the local evidence file"
+                    )
+    except zipfile.BadZipFile as error:
+        raise ManifestError(f"release ZIP is invalid: {error}") from error
+    except (OSError, RuntimeError, zipfile.LargeZipFile) as error:
+        raise ManifestError(f"could not verify embedded evidence in release ZIP: {error}") from error
 
 
 def _parse_pairs(values: Sequence[str], field: str) -> dict[str, Path]:
@@ -221,6 +259,7 @@ def build_release_manifest(
         )
     if not evidence_records:
         raise ManifestError("at least one embedded SBOM/provenance evidence file is required")
+    _verify_embedded_evidence_in_zip(Path(artifacts["zip"]), evidence_records)
 
     timestamp = generated_at or datetime.now(timezone.utc)
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
