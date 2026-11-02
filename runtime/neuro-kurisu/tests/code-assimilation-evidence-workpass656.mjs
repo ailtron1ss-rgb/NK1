@@ -266,7 +266,7 @@ assert.equal(candidate.stage, 'discovered');
   });
   const result = verify(candidate, payload, 'license');
   assert.equal(result.accepted, false);
-  assert.equal(result.rejection, 'license-decision-inconsistent');
+  assert.equal(result.rejection, 'code-assimilation-evidence-license-decision-inconsistent');
 }
 {
   const payload = payloadFor(candidate, 'license', {
