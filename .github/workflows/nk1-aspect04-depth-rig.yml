@@ -5,16 +5,21 @@ on:
       - "app/src/components/avatar/depthRig.ts"
       - "app/src/components/avatar/embodimentIntentAdapter.ts"
       - "app/src/components/avatar/depthRigRendererAdapter.ts"
+      - "app/src/components/avatar/depthRigAssetManifest.ts"
       - "app/scripts/depth-rig.test.mjs"
+      - "app/scripts/depth-rig-assets.test.mjs"
       - ".github/workflows/nk1-aspect04-depth-rig.yml"
   push:
     branches:
       - "work/nk1-aspect04-depth-rig-2026-10-30"
+      - "aspect/embodiment-semantic-state-e2e-20261102"
     paths:
       - "app/src/components/avatar/depthRig.ts"
       - "app/src/components/avatar/embodimentIntentAdapter.ts"
       - "app/src/components/avatar/depthRigRendererAdapter.ts"
+      - "app/src/components/avatar/depthRigAssetManifest.ts"
       - "app/scripts/depth-rig.test.mjs"
+      - "app/scripts/depth-rig-assets.test.mjs"
       - ".github/workflows/nk1-aspect04-depth-rig.yml"
   workflow_dispatch:
 permissions:
@@ -31,3 +36,6 @@ jobs:
       - name: Validate layered rig contract
         working-directory: app
         run: node --experimental-strip-types --test scripts/depth-rig.test.mjs
+      - name: Validate 2.5D authored asset manifest and provenance
+        working-directory: app
+        run: node --experimental-strip-types --test scripts/depth-rig-assets.test.mjs
