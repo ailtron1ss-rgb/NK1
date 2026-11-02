@@ -2,6 +2,7 @@
 - Connect the event/budget-aware scheduler to the actual OrganismRuntime cycle instead of leaving it as an isolated utility.
 - Compose its research/project/world-rollout/shadow decisions with the existing CognitiveExecutionPlanner gates; external user input retains the responsive slow-cognition path while protected resource states stop optional secondary work.
 - Persist scheduler counters and cadence mode in a small injectable sidecar store, restore it during runtime initialization, and flush it at shutdown plus external-input/mode-change/every-eight-tick boundaries.
+- Treat an unreadable optional sidecar as a recoverable degradation: reset cadence state, record a warning and keep canonical organism startup available.
 - Add a real OrganismRuntime restart regression and make the unified-organism CI workflow execute it.
 - This establishes production wiring and persistence; it does not claim measured autonomy, memory-recall or reasoning-quality uplift.
 
