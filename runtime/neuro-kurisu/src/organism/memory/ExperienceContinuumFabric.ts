@@ -349,8 +349,14 @@ export class ExperienceContinuumFabric {
       .sort((a,b)=>b.score-a.score).slice(0,Math.max(1,Math.min(16,Math.floor(limit)))).map(x=>structuredClone(x.cluster));
   }
 
-  recordLongitudinalReplayTrial(input:{experimentId:string;taskId:string;phase:ReplayExperimentPhase;mode:'replay-on'|'replay-off';contextKey:string;pairKey?:string;delayMs:number;baselineScore01:number;score01:number;independentVerified?:boolean;at?:number}){
-    const row:LongitudinalReplayTrial={id:`lrt:${clean(input.experimentId,48)}:${clean(input.taskId,48)}:${input.phase}:${input.at??Date.now()}:${this.state.replay.longitudinal.length}`,experimentId:clean(input.experimentId,64),taskId:clean(input.taskId,96),phase:input.phase,mode:input.mode,contextKey:clean(input.contextKey,64),pairKey:input.pairKey?clean(input.pairKey,64):undefined,delayMs:Math.max(0,Number(input.delayMs)||0),baselineScore01:clamp(input.baselineScore01),score01:clamp(input.score01),independentVerified:false,at:input.at??Date.now()};
+  recordLongitudinalReplayTrial(input:{experimentId:string;taskId:string;phase:ReplayExperimentPhase;mode:'replay-on'|'replay-off';contextKey:string;pairKey?:string;delayMs:number;baselineScore01:number;score01:number;/** Deprecated; never grants authority. */ independentVerified?:boolean;verification?:OutcomeVerification;at?:number}){
+    const experimentId=clean(input.experimentId,64),taskId=clean(input.taskId,96);
+    const contextKey=clean(input.contextKey,64),pairKey=input.pairKey?clean(input.pairKey,64):undefined;
+    const delayMs=Math.max(0,Number(input.delayMs)||0),baselineScore01=clamp(input.baselineScore01),score01=clamp(input.score01);
+    const protocol=this.state.replay.protocols.find(x=>x.id===experimentId&&x.taskId===taskId);
+    const verificationInput={experimentId,taskId,phase:input.phase,mode:input.mode,contextKey,...(pairKey?{pairKey}:{}),delayMs,baselineScore01,score01};
+    const independentlyVerified=Boolean(protocol?.randomized&&protocol?.balanced)&&isTrustedExternalPostconditionVerification(input.verification,verificationInput);
+    const row:LongitudinalReplayTrial={id:`lrt:${experimentId}:${taskId}:${input.phase}:${input.at??Date.now()}:${this.state.replay.longitudinal.length}`,experimentId,taskId,phase:input.phase,mode:input.mode,contextKey,pairKey,delayMs,baselineScore01,score01,independentVerified:independentlyVerified,at:input.at??Date.now()};
     const duplicate=this.state.replay.longitudinal.some(x=>x.experimentId===row.experimentId&&x.taskId===row.taskId&&x.phase===row.phase&&x.mode===row.mode&&x.contextKey===row.contextKey&&x.pairKey===row.pairKey&&x.delayMs===row.delayMs);
     if(!duplicate){this.state.replay.longitudinal.push(row);if(this.state.replay.longitudinal.length>192)this.state.replay.longitudinal=this.state.replay.longitudinal.slice(-192);}
     return structuredClone(duplicate?this.state.replay.longitudinal.find(x=>x.experimentId===row.experimentId&&x.taskId===row.taskId&&x.phase===row.phase&&x.mode===row.mode&&x.contextKey===row.contextKey&&x.pairKey===row.pairKey&&x.delayMs===row.delayMs)!:row);
@@ -503,8 +509,13 @@ export class ExperienceContinuumFabric {
   }
 
 
-  bindMemoryToSkill(input:{memoryId:string;skillId:string;variantId?:string;confidence01:number;independentVerified?:boolean;evidenceKey:string;at?:number}){
-    const row:MemorySkillEvidence={id:`mse:${input.memoryId}:${input.skillId}:${input.at??Date.now()}`,memoryId:String(input.memoryId).slice(0,120),skillId:String(input.skillId).slice(0,120),variantId:input.variantId?String(input.variantId).slice(0,120):undefined,confidence01:clamp(input.confidence01),independentVerified:false,evidenceKey:clean(input.evidenceKey,96),at:input.at??Date.now()};
+  bindMemoryToSkill(input:{memoryId:string;skillId:string;variantId?:string;confidence01:number;/** Deprecated; never grants authority. */ independentVerified?:boolean;evidenceKey:string;verification?:OutcomeVerification;at?:number}){
+    const memoryId=String(input.memoryId).slice(0,120),skillId=String(input.skillId).slice(0,120);
+    const variantId=input.variantId?String(input.variantId).slice(0,120):undefined;
+    const confidence01=clamp(input.confidence01),evidenceKey=clean(input.evidenceKey,96);
+    const verificationInput={memoryId,skillId,...(variantId?{variantId}:{}),confidence01,evidenceKey};
+    const independentlyVerified=isTrustedExternalPostconditionVerification(input.verification,verificationInput);
+    const row:MemorySkillEvidence={id:`mse:${memoryId}:${skillId}:${input.at??Date.now()}`,memoryId,skillId,variantId,confidence01,independentVerified:independentlyVerified,evidenceKey,at:input.at??Date.now()};
     this.state.memorySkillBindings.push(row); if(this.state.memorySkillBindings.length>96)this.state.memorySkillBindings=this.state.memorySkillBindings.slice(-96); return structuredClone(row);
   }
 
@@ -522,8 +533,16 @@ export class ExperienceContinuumFabric {
     this.state.retention.curve={base01:clamp(intercept),slope01:Math.max(-1,Math.min(1,slope)),fit01:fit,distinctDelays:points.length};
   }
 
-  createReplayExperimentProtocol(input:{id:string;taskId:string;sourceTaskId?:string;targetTaskId?:string;randomized?:boolean;balanced?:boolean;requiredPairs?:number;contextKeys:string[];at?:number}){
-    const protocol:ReplayExperimentProtocol={id:clean(input.id,64),taskId:clean(input.taskId,96),sourceTaskId:input.sourceTaskId?clean(input.sourceTaskId,96):undefined,targetTaskId:input.targetTaskId?clean(input.targetTaskId,96):undefined,randomized:false,balanced:false,requiredPairs:Math.max(MIN_CONFIRMATORY_REPLAY_PAIRS,Math.min(32,Math.floor(input.requiredPairs??MIN_CONFIRMATORY_REPLAY_PAIRS))),contextKeys:[...new Set(input.contextKeys.map(x=>clean(x,64)).filter(Boolean))].slice(0,64),generatedAt:input.at??Date.now()};
+  createReplayExperimentProtocol(input:{id:string;taskId:string;sourceTaskId?:string;targetTaskId?:string;randomized?:boolean;balanced?:boolean;requiredPairs?:number;contextKeys:string[];/** Exact process-local verifier receipt for the assignment manifest. */ verification?:OutcomeVerification;at?:number}){
+    const id=clean(input.id,64),taskId=clean(input.taskId,96);
+    const sourceTaskId=input.sourceTaskId?clean(input.sourceTaskId,96):undefined;
+    const targetTaskId=input.targetTaskId?clean(input.targetTaskId,96):undefined;
+    const requiredPairs=Math.max(MIN_CONFIRMATORY_REPLAY_PAIRS,Math.min(32,Math.floor(input.requiredPairs??MIN_CONFIRMATORY_REPLAY_PAIRS)));
+    const contextKeys=[...new Set(input.contextKeys.map(x=>clean(x,64)).filter(Boolean))].slice(0,64);
+    const randomized=Boolean(input.randomized),balanced=Boolean(input.balanced);
+    const verificationInput={id,taskId,...(sourceTaskId?{sourceTaskId}:{}),...(targetTaskId?{targetTaskId}:{}),randomized,balanced,requiredPairs,contextKeys};
+    const authorized=isTrustedExternalPostconditionVerification(input.verification,verificationInput);
+    const protocol:ReplayExperimentProtocol={id,taskId,sourceTaskId,targetTaskId,randomized:authorized&&randomized,balanced:authorized&&balanced,requiredPairs,contextKeys,generatedAt:input.at??Date.now()};
     this.state.replay.protocols.push(protocol); if(this.state.replay.protocols.length>24)this.state.replay.protocols=this.state.replay.protocols.slice(-24);
     return structuredClone(protocol);
   }
@@ -540,8 +559,14 @@ export class ExperienceContinuumFabric {
     return {experimentId,taskId:taskId??null,protocolDefined:Boolean(protocol),randomized,balanced,matchedPairs:matched,requiredPairs:required,eligibleForConfirmatoryInference:Boolean(protocol&&protocol.randomized&&protocol.balanced&&randomized&&balanced&&matched>=required),reason:!protocol?'missing-protocol':!protocol.randomized?'protocol-not-randomized':!protocol.balanced?'protocol-not-balanced':!randomized?'trials-not-randomized':!balanced?'trial-count/context-imbalance':matched<required?'insufficient-matched-pairs':'eligible'};
   }
 
-  recordReplayExperimentTrial(input:{experimentId:string;taskId:string;mode:'replay-on'|'replay-off';preScore01:number;postScore01:number;independentVerified:boolean;randomized?:boolean;contextKey:string;pairKey?:string;at?:number}){
-    const trial:ReplayExperimentTrial={id:`rx:${input.experimentId}:${input.taskId}:${Date.now()}`,experimentId:clean(input.experimentId,64),taskId:clean(input.taskId,96),mode:input.mode,preScore01:clamp(input.preScore01),postScore01:clamp(input.postScore01),delta01:clamp(input.postScore01)-clamp(input.preScore01),independentVerified:false,randomized:false,contextKey:clean(input.contextKey,96),pairKey:input.pairKey?clean(input.pairKey,96):undefined,at:input.at??Date.now()};
+  recordReplayExperimentTrial(input:{experimentId:string;taskId:string;mode:'replay-on'|'replay-off';preScore01:number;postScore01:number;/** Deprecated; never grants authority. */ independentVerified?:boolean;randomized?:boolean;contextKey:string;pairKey?:string;verification?:OutcomeVerification;at?:number}){
+    const experimentId=clean(input.experimentId,64),taskId=clean(input.taskId,96),contextKey=clean(input.contextKey,96);
+    const pairKey=input.pairKey?clean(input.pairKey,96):undefined;
+    const preScore01=clamp(input.preScore01),postScore01=clamp(input.postScore01),randomized=Boolean(input.randomized);
+    const protocol=this.state.replay.protocols.find(x=>x.id===experimentId&&x.taskId===taskId);
+    const verificationInput={experimentId,taskId,mode:input.mode,preScore01,postScore01,randomized,contextKey,...(pairKey?{pairKey}:{})};
+    const authorized=Boolean(protocol?.randomized&&protocol?.balanced)&&isTrustedExternalPostconditionVerification(input.verification,verificationInput);
+    const trial:ReplayExperimentTrial={id:`rx:${experimentId}:${taskId}:${input.at??Date.now()}`,experimentId,taskId,mode:input.mode,preScore01,postScore01,delta01:postScore01-preScore01,independentVerified:authorized,randomized:authorized&&randomized,contextKey,pairKey,at:input.at??Date.now()};
     this.state.replay.experiments.push(trial); if(this.state.replay.experiments.length>128)this.state.replay.experiments=this.state.replay.experiments.slice(-128);
     return this.replayExperimentSummary(trial.experimentId,trial.taskId);
   }
