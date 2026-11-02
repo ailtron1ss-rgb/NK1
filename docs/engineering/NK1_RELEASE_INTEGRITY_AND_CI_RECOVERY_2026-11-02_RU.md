@@ -17,9 +17,15 @@
 - HEAD этой ветки: `608435493b4af3b4a222d385f1b77d978d18583b`.
 - `main` — отдельная ветка публикационных/документальных материалов; её нельзя считать полным деревом runtime.
 - Последний опубликованный GitHub Release, найденный при аудите: `NeuroKurisu0.1`, дата публикации 2026-10-19.
-- ZIP релиза: 135,290,615 байт; опубликованный SHA-256: `c5cf6a…224286` (сокращённое значение из интерфейса аудита; перед проверкой файла необходимо получить полное значение из Release API).
-- На HEAD `6084354…` GitHub отобразил 14 завершившихся с ошибкой workflow. На более раннем SHA `f921007…` соответствующие проверки проходили.
-- Для одного из неуспешных запусков список job не содержал доступных шагов/логов. Причина отказа поэтому остаётся **неустановленной**; нельзя объявлять её регрессией исходного кода без диагностических данных.
+- Release asset: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 байт; GitHub Release API возвращает `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`. Это digest из метаданных GitHub, а не самостоятельно пересчитанный локальный хеш.
+- На точном HEAD `608435493b4af3b4a222d385f1b77d978d18583b` GitHub Actions API вернул 14 workflow runs, и все 14 завершились `failure`.
+- Для всех 14 job подтверждена одинаковая сигнатура: `runner_id=0`, `runner_name=""`, `runner_group_id=0`, `steps=[]`; каждый job стартовал в `2026-11-01T17:29:33Z` и завершился в `17:29:35Z`. Это отказ до выполнения первого шага, а не подтверждённое падение тестов NK1.
+- Получение логов для всех 14 job вернуло HTTP 404 `BlobNotFound`; endpoint логов workflow также вернул пустое содержимое. Это фиксирует недоступность логов, но не раскрывает аннотацию check run с точной причиной отказа.
+- Родительский SHA `f921007a74a7a6124d274885354009dd3a3ef33c` имел 7 успешных workflow runs. Контрольный job `targeted-and-regression` на этом SHA использовал runner `1000079583`, выполнил 45 шагов и завершился `success` в `15:36:32Z`.
+- `compare_commits(f921007…, 6084354…)` показывает ровно один изменённый файл: `runtime/neuro-kurisu/package.json` (+1/−2). В агрегаторе `test:rebuild-recovered` устранён повторный вызов `test:workpass611:cognitive-planner-restore-integrity`; workflow YAML и runtime исходники в этом commit не менялись. Поскольку runner не был назначен, этот diff не объясняет отсутствие выполнения job.
+- Ранее в `docs/WORKPASS327_ACTIONS_STARTUP_DIAGNOSIS_RU.md` и `docs/CI_RELIABILITY_RUNBOOK_RU.md` уже описан тот же runner-startup blocker. Там account-level Billing & Licensing / Actions restriction названа приоритетной гипотезой, но не подтверждённым диагнозом. Текущая сессия не имеет доступа к личному экрану Billing & Licensing или аннотации check run.
+- Публичная история GitHub Status не содержит зарегистрированного инцидента за 1 ноября 2026 года; это снижает вероятность публичного глобального инцидента, но не исключает ограничение конкретного аккаунта.
+- В API-снимке ветки `workpass70-source` указано `protected=false`, `protection.enabled=false`, `enforcement_level=off`, `contexts=[]`, `checks=[]`. То есть обязательные status checks на ветке не настроены; красные Actions не блокируются настройкой branch protection.
 - Документы `AGENTS.md` и `NEUROCORE_START_HERE.md` содержат базовую точку, не совпадающую с текущим HEAD.
 - В репозитории обнаружено более 200 веток. Это подтверждает необходимость явной маршрутизации изменений по аспектам, но само по себе не доказывает, что все ветки лишние или должны быть удалены.
 
@@ -36,10 +42,11 @@
 
 ### A. Восстановить достоверность CI (P0)
 
-- [ ] Получить полный список workflow runs для точного HEAD и сгруппировать по workflow, event, job, conclusion.
-- [ ] Для каждого доступного job получить steps и логи; для недоступных логов зафиксировать HTTP/permission/retention причину.
-- [ ] Сравнить failed HEAD с последним успешным SHA: workflow YAML, package manifests/lockfiles, scripts, test selection, runner image и cache keys.
-- [ ] Выделить ошибки конфигурации, ошибки запуска/инфраструктуры и реальные failing assertions в отдельные классы.
+- [x] Получить полный список 14 workflow runs для точного HEAD и сгруппировать по workflow, event, job, conclusion.
+- [x] Получить API-снимки всех 14 job: ни один runner не назначен, steps отсутствуют; получить logs для всех jobs — GitHub вернул `BlobNotFound`.
+- [x] Сравнить failed HEAD с непосредственным родителем: изменён только `runtime/neuro-kurisu/package.json`; последний успешный parent SHA подтверждён отдельным run.
+- [x] Классифицировать текущий исход как pre-runner startup failure; конкретная account/platform причина и настоящие test assertions пока не доступны.
+
 - [ ] Повторить только диагностически оправданные failed jobs на том же SHA; не менять код до получения причины.
 - [ ] Создать один обязательный aggregate gate для PR в рабочую ветку, который проверяет завершение всех required suites и не допускает пропуск из-за неверного path filter.
 - [ ] Ввести timeout, concurrency cancellation и единый формат артефактов (JUnit/JSON + logs + commit SHA).
@@ -126,3 +133,54 @@
 - Не объявляется новый релиз и не меняется Release ZIP.
 
 Этот PR создаёт безопасную и проверяемую основу для следующего кодового прохода: сначала восстановить CI и происхождение артефакта, затем выполнять когнитивные интеграции с достоверным регрессионным контуром.
+
+
+## 9. Дополнительная трассировка и решения (2026-11-02)
+
+### 9.1. Все 14 failed workflow runs на SHA 6084354…
+
+Каждый run содержит один job. Для всех job API возвратил `runner_id=0`, пустой `runner_name`, `runner_group_id=0`, ноль шагов; временное окно каждого job — две секунды. Для всех 14 отдельных запросов логов GitHub вернул `BlobNotFound`.
+
+| Workflow | Run ID | Job ID |
+|---|---:|---:|
+| NK1 world perception integrity | 41331728125 | 124923078983 |
+| NK1 Hexis source lineage contract | 41331728121 | 124923079098 |
+| NeuroCore core regression validation | 41331728115 | 124923079245 |
+| NK1 Verified learning and skill lifecycle | 41331728123 | 124923079133 |
+| NK1 longitudinal memory holdout pairing | 41331728182 | 124923079547 |
+| NK1 UserModel explicit-forget integrity | 41331728193 | 124923079301 |
+| NK1 Memory integrity and retrieval gates | 41331728100 | 124923079049 |
+| NK1 Action Gateway governance | 41331728131 | 124923079128 |
+| NK1 Adaptive Experience Memory Boundary | 41331728086 | 124923079001 |
+| WorkPass287-288 cognitive contracts | 41331728076 | 124923079060 |
+| NK1 browser affect snapshot coherence | 41331728098 | 124923079151 |
+| NK1 Unified organism runtime | 41331728091 | 124923079011 |
+| WorkPass72-73 independent evidence and memory evaluation | 41331728231 | 124923079220 |
+| WorkPass79 cognitive runtime regression | 41331728072 | 124923078985 |
+
+Примеры: [Core regression run](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41331728115), [Memory integrity run](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41331728100), [Unified organism run](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41331728091).
+
+### 9.2. Сравнение с последним успешным состоянием
+
+- Parent SHA: `f921007a74a7a6124d274885354009dd3a3ef33c`.
+- Failed HEAD: `608435493b4af3b4a222d385f1b77d978d18583b`.
+- Между ними один commit и один изменённый файл — `runtime/neuro-kurisu/package.json`.
+- На parent SHA есть 7 успешных workflow runs; в job `targeted-and-regression` runner был назначен и выполнено 45 шагов.
+- Изменение агрегатора устранило двойное выполнение одного теста. Оно не меняло workflow-файлы, настройки runner или CI permissions.
+
+### 9.3. Release asset: точные метаданные, но не локально проверенное содержимое
+
+- Release name: `NeuroKurisu0.1`; tag: `Neuro`; опубликован 2026-10-19.
+- Asset: `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`; size: `135290615` bytes.
+- GitHub asset digest: `sha256:c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
+- Бинарный ZIP не удалось получить в текущей среде: GitHub content fetch поддерживает только UTF-8, а рабочий контейнер не разрешил DNS для `github.com`. Поэтому локальный SHA-256, распаковка, manifest и сравнение с `workpass70-source` **не выполнены**. Этот asset остаётся первичным объектом проверки, но пока не считается локально верифицированным.
+
+### 9.4. Следующие обязательные действия вне кода
+
+1. Владелец аккаунта проверяет GitHub → Settings → Billing & Licensing и доступность GitHub Actions / hosted runners. Не считать гипотезу Billing подтверждённой до просмотра собственного уведомления или ответа GitHub Support.
+2. Если в Billing & Licensing нет ограничений, отправить GitHub Support run IDs из таблицы и приложить сигнатуру `runner_id=0`, `steps=[]`, `BlobNotFound`; запросить account-level Actions restriction / runner assignment diagnosis.
+3. После устранения блокировки повторить точные SHA-проверки на актуальном HEAD; только job с назначенным runner и реально выполненными шагами позволяет судить о тестах.
+4. Настроить repository ruleset / branch protection для `workpass70-source`: обязательные regression/contract checks, запрет обхода required checks и merge только после свежих результатов. Текущий API-снимок подтверждает, что таких правил сейчас нет. Изменение требует административной настройки GitHub; workflow YAML сам по себе не включает защиту ветки.
+5. Отдельно получить бинарный Release ZIP, сверить его локальный SHA-256 с asset digest, извлечь в чистую директорию и построить file manifest перед выводами о расхождении runtime/release.
+
+**Не делалось:** не выполнялись массовые повторные запуски 14 jobs (они не дадут тестовых данных до устранения startup blocker); не менялся runtime; не менялась конфигурация Actions; не менялся Release asset; не настраивалась branch protection.
