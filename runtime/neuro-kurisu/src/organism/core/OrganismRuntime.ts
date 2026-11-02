@@ -1123,7 +1123,7 @@ export class OrganismRuntime {
       this.pendingEmergencyCheckpointTick = cycle.state.tick;
     }
 
-    if(cycle.state.tick % 8 === 0 || Boolean(externalText)) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
+    if(cycle.state.tick % 8 === 0 || Boolean(externalText) || priorSpineMode !== spineDecision.mode) this.core.setRuntimeEvidence(this.evidenceBus.snapshot());
     this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
     this.core.setRuntimeCognitiveResourceEconomy(this.resourceEconomy.snapshot());
     this.core.setRealityEvidenceLedger(this.core.realityEvidenceLedgerSnapshot());
