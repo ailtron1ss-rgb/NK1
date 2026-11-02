@@ -1,3 +1,9 @@
+## [NK1][Memory] Narrow sanitized feedback restore type without weakening rejection (2026-11-02)
+- Keep the distinction between an absent feedback record and a malformed feedback record explicit during consolidation restore.
+- Normalize the sanitized nullable result to undefined only after the invalid-snapshot guard, satisfying the declared persisted-state type without accepting malformed feedback.
+- Add a regression proving malformed feedback still resets to the safe default state.
+- Root cause was confirmed by the exact PR #644 typecheck log: TS2322 at MemoryConsolidationController.ts(93,9).
+
 ## [NK1][Memory] Harden canonical consolidation and lifecycle restore (2026-11-02)
 - Validate MemoryConsolidationController counters, ratios, feedback and bounded decision history before restoring persisted state.
 - Validate CanonicalMemoryLifecycleAuthority counters, tick and bounded consolidation history; regenerate its diagnostic plan after restore instead of reviving opaque nested state.
