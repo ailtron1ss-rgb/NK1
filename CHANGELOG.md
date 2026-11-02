@@ -1,3 +1,8 @@
+## [NK1][Mobile] Parse the canonical Termux SensorAPI wire shape (2026-11-02)
+- Support the documented object-keyed sensor payload (`{"Accelerometer":{"values":[x,y,z]}}`) while retaining array-based adapter compatibility.
+- Change the sensor-only regression to use the official object-keyed shape, so a host-side mock cannot hide a real Termux integration gap.
+- Context7 documentation and the Termux wiki were checked; this is protocol compatibility, not physical-device calibration.
+
 ## [NK1][Mobile] Preserve truthful Android sensor provenance (2026-11-02)
 - Reject null, blank and non-finite Termux sensor readings instead of coercing them to zero; require a complete three-axis accelerometer sample before deriving motion.
 - Mark telemetry as Android/Termux only when a valid battery, sensor or Wi-Fi payload is observed, including valid sensor-only operation when battery data is unavailable.

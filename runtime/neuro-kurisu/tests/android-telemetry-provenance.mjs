@@ -49,11 +49,11 @@ try {
   assert.equal(malformed.telemetry.cpuLoad01, previous.cpuLoad01, 'host CPU diagnostics must not leak into embodied state without fresh Android data');
   assert.equal(malformed.telemetry.ramPressure01, previous.ramPressure01, 'host RAM diagnostics must not leak into embodied state without fresh Android data');
 
-  await writeCommand('termux-sensor', [
-    { name: 'Light', values: [420] },
-    { name: 'Proximity', values: [3] },
-    { name: 'Accelerometer', values: [12, 0, 0] },
-  ]);
+  await writeCommand('termux-sensor', {
+    Light: { values: [420] },
+    Proximity: { values: [3] },
+    Accelerometer: { values: [12, 0, 0] },
+  });
   invalidateTermuxCapabilityCache();
   const sensorOnly = await sampleAndroidTelemetryDetailed(previous);
   assert.equal(sensorOnly.telemetry.source, 'android-termux', 'valid sensor-only observations must retain Android provenance when battery data is invalid');

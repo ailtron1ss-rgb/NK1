@@ -68,7 +68,19 @@ function hasWifiTelemetry(value: unknown): value is Record<string, unknown> {
 
 function parseSensorPayload(value: any): Pick<BodyTelemetry, 'ambientLight01'|'proximity01'|'motion01'> {
   const out: Pick<BodyTelemetry, 'ambientLight01'|'proximity01'|'motion01'> = { ambientLight01: null, proximity01: null, motion01: null };
-  const rows = Array.isArray(value) ? value : (Array.isArray(value?.sensors) ? value.sensors : []);
+  const rows: Array<{ name: string; payload: any }> = [];
+  if (Array.isArray(value)) {
+    for (const row of value) rows.push({ name: String(row?.name ?? row?.type ?? ''), payload: row });
+  } else if (Array.isArray(value?.sensors)) {
+    for (const row of value.sensors) rows.push({ name: String(row?.name ?? row?.type ?? ''), payload: row });
+  } else if (value && typeof value === 'object') {
+    // Termux SensorAPI's documented wire shape is keyed by sensor name:
+    // { "Accelerometer": { "values": [x, y, z] }, "Light": { "values": [lux] } }.
+    // Keep array forms supported for older adapters and test fixtures.
+    for (const [name, payload] of Object.entries(value)) {
+      if (payload && typeof payload === 'object' && !Array.isArray(payload)) rows.push({ name, payload });
+    }
+  }
   const flat: Record<string, number> = {};
   const visit = (name: string, payload: any) => {
     for (const values of [payload?.values, payload?.data]) {
@@ -79,7 +91,7 @@ function parseSensorPayload(value: any): Pick<BodyTelemetry, 'ambientLight01'|'p
       });
     }
   };
-  for (const row of rows) visit(String(row?.name ?? row?.type ?? ''), row);
+  for (const row of rows) visit(row.name, row.payload);
   const light = Object.entries(flat).find(([key]) => /light/i.test(key));
   const proximity = Object.entries(flat).find(([key]) => /proximity/i.test(key));
   const accel = Object.entries(flat).filter(([key]) => /accelerometer|accel/i.test(key));
