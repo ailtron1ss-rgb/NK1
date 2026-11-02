@@ -4,6 +4,16 @@ import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 const deep=<T>(x:T):T=>structuredClone(x);
+const isPlainRecord=(value:unknown):value is Record<string,unknown>=>{
+ if(value===null||typeof value!=='object'||Array.isArray(value))return false;
+ const prototype=Object.getPrototypeOf(value);
+ return prototype===Object.prototype||prototype===null;
+};
+const ownData=(value:unknown,key:string):unknown=>{
+ if(value===null||typeof value!=='object')return undefined;
+ const descriptor=Object.getOwnPropertyDescriptor(value,key);
+ return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;
+};
 
 /** P2702: persistent personality dynamics. Canon is an initialization prior; experience changes
  * adaptive traits, values, relationship trust and autobiographical self-beliefs while protected
@@ -34,19 +44,87 @@ const defaultState=():P2702PersonalityState=>{
 export class P2702PersistentPersonalityDynamics{
  private state=defaultState();
  snapshot(){return deep(this.state);}
- restore(raw?:Partial<P2702PersonalityState>|null){
-  const d=defaultState(),r:any=raw??{};this.state={...d,...deep(r),version:1,
-   invariantNames:Array.isArray(r.invariantNames)?r.invariantNames.slice(0,32):d.invariantNames,
-   invariantValues:Array.isArray(r.invariantValues)?r.invariantValues.slice(0,32).map((x:number)=>clamp(x)):d.invariantValues,
-   adaptiveNames:Array.isArray(r.adaptiveNames)?r.adaptiveNames.slice(0,32):d.adaptiveNames,
-   adaptiveValues:Array.isArray(r.adaptiveValues)?r.adaptiveValues.slice(0,32).map((x:number)=>clamp(x)):d.adaptiveValues,
-   valueNames:Array.isArray(r.valueNames)?r.valueNames.slice(0,32):d.valueNames,
-   valueWeights:Array.isArray(r.valueWeights)?r.valueWeights.slice(0,32).map((x:number)=>clamp(x)):d.valueWeights,
-   relationshipTrust:r.relationshipTrust&&typeof r.relationshipTrust==='object'?Object.fromEntries(Object.entries(r.relationshipTrust).slice(0,32).map(([k,v])=>[k,clamp(Number(v))])):d.relationshipTrust,
-   selfBeliefs:Array.isArray(r.selfBeliefs)?r.selfBeliefs.slice(0,16).map((x:number)=>clamp(x)):d.selfBeliefs,
-   selfUncertainty:Array.isArray(r.selfUncertainty)?r.selfUncertainty.slice(0,16).map((x:number)=>clamp(x,.03,.97)):d.selfUncertainty,
-   tensionState:Array.isArray(r.tensionState)?r.tensionState.slice(0,16).map((x:number)=>clamp(x)):d.tensionState,
-   actionPreference:{...d.actionPreference,...(r.actionPreference??{})}};
+ restore(raw?:unknown|null){
+  const d=defaultState();
+  try{
+   if(raw===undefined||raw===null){this.state=d;return;}
+   if(!isPlainRecord(raw)){this.state=d;return;}
+   const version=ownData(raw,'version');
+   if(version!==undefined&&version!==1){this.state=d;return;}
+   const readArray=(key:string,fallback:number[],min:number,max:number):number[]=>{
+    const value=ownData(raw,key);
+    if(value===undefined)return fallback.slice();
+    if(!Array.isArray(value)||value.length!==fallback.length)return fallback.slice();
+    const result:number[]=[];
+    for(let i=0;i<value.length;i++){
+     const descriptor=Object.getOwnPropertyDescriptor(value,String(i));
+     if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value'))return fallback.slice();
+     const item=descriptor.value;
+     if(typeof item!=='number'||!Number.isFinite(item))return fallback.slice();
+     result.push(clamp(item,min,max));
+    }
+    return result;
+   };
+   const readCount=(key:string,fallback:number):number=>{
+    const value=ownData(raw,key);
+    return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
+   };
+   const readRatio=(key:string,fallback:number):number=>{
+    const value=ownData(raw,key);
+    return typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
+   };
+   const trustRaw=ownData(raw,'relationshipTrust');
+   const relationshipTrust:Record<string,number>={};
+   if(trustRaw!==undefined){
+    if(!isPlainRecord(trustRaw)){this.state=d;return;}
+    const keys=Object.keys(trustRaw);
+    if(keys.length>32){this.state=d;return;}
+    for(const key of keys){
+     if(!key.trim()||key.length>120){this.state=d;return;}
+     const descriptor=Object.getOwnPropertyDescriptor(trustRaw,key);
+     if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||typeof descriptor.value!=='number'||!Number.isFinite(descriptor.value)){this.state=d;return;}
+     Object.defineProperty(relationshipTrust,key,{value:clamp(descriptor.value),enumerable:true,writable:true,configurable:true});
+    }
+   }
+   const preferenceRaw=ownData(raw,'actionPreference');
+   const actionPreference={...d.actionPreference};
+   if(preferenceRaw!==undefined){
+    if(!isPlainRecord(preferenceRaw)){this.state=d;return;}
+    for(const action of ACTIONS){
+     const value=ownData(preferenceRaw,action);
+     if(value!==undefined){
+      if(typeof value!=='number'||!Number.isFinite(value)){this.state=d;return;}
+      actionPreference[action]=Math.max(-1,Math.min(1,value));
+     }
+    }
+   }
+   this.state={
+    version:1,
+    tick:readCount('tick',d.tick),
+    experienceCount:readCount('experienceCount',d.experienceCount),
+    learningUpdates:readCount('learningUpdates',d.learningUpdates),
+    // Trait names are canon-owned identifiers; snapshots may update values, never remap identities.
+    invariantNames:d.invariantNames.slice(),invariantValues:readArray('invariantValues',d.invariantValues,0,1),
+    adaptiveNames:d.adaptiveNames.slice(),adaptiveValues:readArray('adaptiveValues',d.adaptiveValues,0,1),
+    valueNames:d.valueNames.slice(),valueWeights:readArray('valueWeights',d.valueWeights,0,1),
+    relationshipTrust,
+    selfBeliefs:readArray('selfBeliefs',d.selfBeliefs,0,1),
+    selfUncertainty:readArray('selfUncertainty',d.selfUncertainty,.03,.97),
+    tensionState:readArray('tensionState',d.tensionState,0,1),
+    actionPreference,
+    stability01:readRatio('stability01',d.stability01),
+    coherence01:readRatio('coherence01',d.coherence01),
+    identityContinuity01:readRatio('identityContinuity01',d.identityContinuity01),
+    contradiction01:readRatio('contradiction01',d.contradiction01),
+    plasticity01:readRatio('plasticity01',d.plasticity01),
+    drift01:readRatio('drift01',d.drift01),
+    autobiographicalStrength01:readRatio('autobiographicalStrength01',d.autobiographicalStrength01),
+    lastReward01:readRatio('lastReward01',d.lastReward01),
+   };
+  }catch{
+   // A hostile persisted personality snapshot must never execute accessors or break startup.
+   this.state=d;
+  }
  }
  beforeDecision(args:{tick:number;novelty01:number;uncertainty01:number;goalPressure01:number;identityGap01:number;reward01?:number;actionUtilities:Record<ActionKind,number>;identityVector?:number[];relationshipId?:string}){
   this.state.tick=args.tick;this.state.experienceCount++;this.state.lastReward01=clamp(args.reward01??.5);
