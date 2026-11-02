@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Neuro Kurisu - 3D VRM & Live2D Embodiment Studio</title>
+<style>
+  body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #0c0e17; color: #eceff4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #container { display: flex; width: 100%; height: 100%; }
+  #stage-panel { flex: 1; position: relative; display: flex; flex-direction: column; }
+  #ui-overlay { position: absolute; top: 20px; left: 24px; pointer-events: none; z-index: 10; background: rgba(14, 17, 27, 0.88); backdrop-filter: blur(12px); padding: 16px 20px; border-radius: 14px; border: 1px solid rgba(136, 192, 208, 0.3); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+  #ui-overlay h1 { margin: 0 0 4px 0; font-size: 20px; color: #88c0d0; letter-spacing: 0.5px; font-weight: 700; }
+  #ui-overlay .sub { font-size: 13px; color: #d8dee9; margin-bottom: 8px; font-weight: 500; }
+  #ui-overlay .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; background: #242938; color: #a3be8c; border: 1px solid #a3be8c; }
+  #ui-overlay .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #a3be8c; box-shadow: 0 0 8px #a3be8c; }
+  #ui-overlay p { margin: 8px 0 0 0; font-size: 12px; color: #b0b9c9; line-height: 1.45; }
+  #controls-panel { width: 360px; background: #121522; border-left: 1px solid rgba(136, 192, 208, 0.15); padding: 22px; box-sizing: border-box; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .control-group { background: #181c2e; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
+  .control-group label { display: block; font-size: 11px; font-weight: 700; color: #81a1c1; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button { background: #22273d; color: #eceff4; border: 1px solid #353c54; padding: 9px 12px; border-radius: 7px; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+  button:hover { background: #2d3450; border-color: #88c0d0; color: #fff; }
+  button.active { background: #5e81ac; color: #ffffff; font-weight: 700; border-color: #88c0d0; box-shadow: 0 0 12px rgba(136, 192, 208, 0.3); }
+  .state-readout { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; color: #d8dee9; line-height: 1.6; }
+  .state-val { color: #ebcb8b; font-weight: 600; }
+  .badge-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; background: rgba(136, 192, 208, 0.15); color: #88c0d0; margin-right: 4px; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<div id="container">
+  <div id="stage-panel">
+    <div id="ui-overlay">
+      <h1>Макисэ Курису / Makise Kurisu (NK1)</h1>
+      <div class="sub">Внешность 1-в-1 Steins;Gate • Полный эмоциональный спектр • Собственная воля</div>
+      <div class="status-badge"><span class="status-dot"></span> 3D Humanoid IK Rig: Online</div>
+      <p>
+        <span class="badge-tag">MotorFrame v1</span>
+        <span class="badge-tag">Cognitive Substrate</span>
+        <span class="badge-tag">Adaptive Outfits</span>
+        <span class="badge-tag">Dynamic Affect</span>
+      </p>
+    </div>
+    <div id="canvas-container" style="width: 100%; height: 100%;"></div>
+  </div>
+  <div id="controls-panel">
+    <div class="control-group">
+      <label>Гардероб / Сменная одежда</label>
+      <div class="btn-grid">
+        <button id="btn-coat" class="active" onclick="setOutfit('lab_coat')">Белый халат лабы</button>
+        <button id="btn-casual" onclick="setOutfit('casual')">Повседневный кардиган</button>
+        <button id="btn-hoodie" onclick="setOutfit('hoodie')">Ночное худи</button>
+        <button id="btn-formal" onclick="setOutfit('formal')">Строгий костюм</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>Эмоции и внутреннее состояние</label>
+      <div class="btn-grid">
+        <button id="btn-curiosity" class="active" onclick="setEmotion('curiosity')">Любопытство</button>
+        <button id="btn-tsundere" onclick="setEmotion('tsundere')">Смущение / Цундэрэ</button>
+        <button id="btn-focus" onclick="setEmotion('focus')">Научный фокус</button>
+        <button id="btn-joy" onclick="setEmotion('joy')">Радость открытию</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>Моторные паттерны и позы (IK)</label>
+      <div class="btn-grid">
+        <button id="btn-thinking" class="active" onclick="setGesture('thinking')">Рука у подбородка</button>
+        <button id="btn-crossed" onclick="setGesture('arms_crossed')">Скрестить руки</button>
+        <button id="btn-explain" onclick="setGesture('explaining')">Жест объяснения</button>
+        <button id="btn-neutral" onclick="setGesture('neutral')">Спокойная поза</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <label>Телеметрия цифрового организма</label>
+      <div class="state-readout">
+        Гомеостаз: <span class="state-val" id="val-energy">Энергия 94% • Нагрузка 68%</span><br>
+        Внутренний аффект: <span class="state-val" id="val-val">+0.62 (Интерес)</span><br>
+        Моторный канал: <span class="state-val">Bilateral 3D IK Stream</span><br>
+        Автономный драйв: <span class="state-val">Научный эксперимент</span><br>
+        Связь с памятью: <span class="state-val">HeXis / MemoryOS2 active</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0c0e17);
+
+const camera = new THREE.PerspectiveCamera(26, container.clientWidth / container.clientHeight, 0.1, 100);
+camera.position.set(0, 1.42, 3.2);
+camera.lookAt(0, 1.34, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+container.appendChild(renderer.domElement);
+
+// Lighting
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x333344, 1.0);
+scene.add(hemiLight);
+
+const mainKey = new THREE.DirectionalLight(0xffeedd, 1.2);
+mainKey.position.set(-2, 3, 3);
+scene.add(mainKey);
+
+const fillLight = new THREE.DirectionalLight(0xaaccff, 0.6);
+fillLight.position.set(2.5, 1.8, 2);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+rimLight.position.set(0, 2.5, -3);
+scene.add(rimLight);
+
+// Pedestal
+const platform = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.8, 0.9, 0.03, 36),
+  new THREE.MeshStandardMaterial({ color: 0x161a29, metalness: 0.5, roughness: 0.4 })
+);
+platform.position.y = 0.015;
+scene.add(platform);
+
+const glowRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.72, 0.76, 36),
+  new THREE.MeshBasicMaterial({ color: 0x88c0d0, side: THREE.DoubleSide, transparent: true, opacity: 0.4 })
+);
+glowRing.rotation.x = -Math.PI / 2;
+glowRing.position.y = 0.035;
+scene.add(glowRing);
+
+// Palette - Exact Steins;Gate Anime Makise Kurisu Colors
+const matSkin = new THREE.MeshStandardMaterial({ color: 0xffdfd2, roughness: 0.45 });
+const matBlush = new THREE.MeshStandardMaterial({ color: 0xf5a596, roughness: 0.55 });
+const matHairAuburn = new THREE.MeshStandardMaterial({ color: 0x7a221c, roughness: 0.38 }); // Vibrant anime auburn/chestnut
+const matHairHighlight = new THREE.MeshStandardMaterial({ color: 0xaa3528, roughness: 0.35 });
+const matHairDark = new THREE.MeshStandardMaterial({ color: 0x501512, roughness: 0.48 });
+const matShirtWhite = new THREE.MeshStandardMaterial({ color: 0xdae2ec, roughness: 0.7 });
+const matCardiganKhaki = new THREE.MeshStandardMaterial({ color: 0xc4a377, roughness: 0.75 }); // Iconic loose cardigan
+const matCoatWhite = new THREE.MeshStandardMaterial({ color: 0xf2f5fa, roughness: 0.85 }); // Lab coat
+const matTieRed = new THREE.MeshStandardMaterial({ color: 0xa81c2f, roughness: 0.4, metalness: 0.1 });
+const matShortsBlack = new THREE.MeshStandardMaterial({ color: 0x1b1c24, roughness: 0.65 });
+const matTightsBlack = new THREE.MeshStandardMaterial({ color: 0x1e1c24, roughness: 0.8 });
+const matBoots = new THREE.MeshStandardMaterial({ color: 0x24222a, roughness: 0.35, metalness: 0.2 });
+const matIrisPurple = new THREE.MeshStandardMaterial({ color: 0x624e96, roughness: 0.2 }); // Steins;Gate deep violet eyes
+const matIrisShade = new THREE.MeshStandardMaterial({ color: 0x3d2c6e, roughness: 0.25 });
+const matEyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15 });
+const matPupil = new THREE.MeshStandardMaterial({ color: 0x140e24, roughness: 0.1 });
+const matMouth = new THREE.MeshStandardMaterial({ color: 0x8a2640, roughness: 0.4 });
+const matEyebrow = new THREE.MeshStandardMaterial({ color: 0x6e1f1b, roughness: 0.5 });
+const matHairClip = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0.2 });
+
+const kurisuRoot = new THREE.Group();
+scene.add(kurisuRoot);
+
+// Legs & Tights
+for (const side of [-1, 1]) {
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.048, 0.75, 16), matTightsBlack);
+  leg.position.set(side * 0.11, 0.48, 0);
+  kurisuRoot.add(leg);
+
+  const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.072, 0.32, 16), matBoots);
+  boot.position.set(side * 0.11, 0.18, 0.02);
+  kurisuRoot.add(boot);
+
+  const foot = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.07, 0.2), matBoots);
+  foot.position.set(side * 0.11, 0.045, 0.05);
+  kurisuRoot.add(foot);
+}
+
+// High-waisted black shorts with belt
+const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.165, 0.22, 20), matShortsBlack);
+shorts.position.set(0, 0.95, 0);
+kurisuRoot.add(shorts);
+
+// Buttoned white shirt
+const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.15, 0.42, 20), matShirtWhite);
+shirt.position.set(0, 1.24, 0);
+kurisuRoot.add(shirt);
+
+// Cardigan draped over torso
+const cardigan = new THREE.Mesh(new THREE.CylinderGeometry(0.175, 0.165, 0.43, 20), matCardiganKhaki);
+cardigan.position.set(0, 1.24, 0.005);
+cardigan.scale.set(1.02, 1, 0.95);
+kurisuRoot.add(cardigan);
+
+// Makise Kurisu's iconic loose red necktie
+const tieKnot = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, 0.025), matTieRed);
+tieKnot.position.set(0, 1.42, 0.17);
+kurisuRoot.add(tieKnot);
+
+const tieBody = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.26, 0.015), matTieRed);
+tieBody.position.set(0, 1.28, 0.175);
+tieBody.rotation.z = -0.04;
+kurisuRoot.add(tieBody);
+
+// White Lab Coat (Well-fitted, open in front)
+const coatGroup = new THREE.Group();
+coatGroup.name = "lab_coat_layer";
+const coatBack = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.24, 0.72, 24, 1, true, -Math.PI * 0.6, Math.PI * 1.2), matCoatWhite);
+coatBack.position.set(0, 1.16, 0.01);
+coatGroup.add(coatBack);
+
+const lapelL = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.38, 0.02), matCoatWhite);
+lapelL.position.set(-0.14, 1.28, 0.14);
+lapelL.rotation.z = -0.15;
+coatGroup.add(lapelL);
+
+const lapelR = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.38, 0.02), matCoatWhite);
+lapelR.position.set(0.14, 1.28, 0.14);
+lapelR.rotation.z = 0.15;
+coatGroup.add(lapelR);
+kurisuRoot.add(coatGroup);
+
+// Neck
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.13, 16), matSkin);
+neck.position.set(0, 1.52, 0);
+kurisuRoot.add(neck);
+
+// Head & Face Group
+const headGroup = new THREE.Group();
+headGroup.position.set(0, 1.67, 0);
+kurisuRoot.add(headGroup);
+
+// Anime Face Contour
+const faceGeo = new THREE.SphereGeometry(0.175, 32, 24);
+faceGeo.scale(0.9, 1.05, 0.95);
+const face = new THREE.Mesh(faceGeo, matSkin);
+headGroup.add(face);
+
+// Anime Violet Eyes
+const eyeGroup = new THREE.Group();
+headGroup.add(eyeGroup);
+
+const eyeBrows = [];
+
+for (const side of [-1, 1]) {
+  // White
+  const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.042, 20, 16), matEyeWhite);
+  eyeWhite.position.set(side * 0.072, 0.02, 0.148);
+  eyeWhite.scale.set(1.05, 0.78, 0.3);
+  eyeGroup.add(eyeWhite);
+
+  // Purple Iris
+  const iris = new THREE.Mesh(new THREE.SphereGeometry(0.030, 20, 16), matIrisPurple);
+  iris.position.set(side * 0.072, 0.02, 0.165);
+  iris.scale.set(0.85, 1.08, 0.25);
+  eyeGroup.add(iris);
+
+  // Iris shade
+  const irisShade = new THREE.Mesh(new THREE.SphereGeometry(0.022, 16, 12), matIrisShade);
+  irisShade.position.set(side * 0.072, 0.028, 0.170);
+  irisShade.scale.set(0.8, 0.8, 0.2);
+  eyeGroup.add(irisShade);
+
+  // Pupil
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.013, 12, 12), matPupil);
+  pupil.position.set(side * 0.072, 0.02, 0.174);
+  pupil.scale.set(0.8, 0.95, 0.2);
+  eyeGroup.add(pupil);
+
+  // Catchlight
+  const spark = new THREE.Mesh(new THREE.SphereGeometry(0.007, 8, 8), matEyeWhite);
+  spark.position.set(side * 0.072 - 0.008, 0.032, 0.178);
+  eyeGroup.add(spark);
+
+  // Eyebrow
+  const brow = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.008, 0.01), matEyebrow);
+  brow.position.set(side * 0.072, 0.072, 0.160);
+  brow.rotation.z = side * 0.06;
+  headGroup.add(brow);
+  eyeBrows.push(brow);
+
+  // Blush
+  const blush = new THREE.Mesh(new THREE.SphereGeometry(0.032, 16, 12), matBlush);
+  blush.position.set(side * 0.108, -0.015, 0.140);
+  blush.scale.set(1, 0.45, 0.2);
+  headGroup.add(blush);
+}
+
+// Nose & Mouth
+const nose = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.022, 8), matBlush);
+nose.position.set(0, -0.016, 0.180);
+nose.rotation.x = 0.25;
+headGroup.add(nose);
+
+const mouth = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.006, 16), matMouth);
+mouth.position.set(0, -0.060, 0.165);
+mouth.scale.set(1, 0.45, 0.4);
+headGroup.add(mouth);
+
+// Hair Group - Natural Anime Bangs & Flowing Auburn Hair
+const hairGroup = new THREE.Group();
+headGroup.add(hairGroup);
+
+// Hair Cap
+const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.192, 24, 20), matHairAuburn);
+hairCap.position.set(0, 0.04, -0.02);
+hairCap.scale.set(0.96, 1.04, 1.04);
+hairGroup.add(hairCap);
+
+// Stylized anime bangs covering the forehead naturally without occluding eyes
+const bangsMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.195, 0.14, 24, 1, true, -Math.PI * 0.48, Math.PI * 0.96), matHairAuburn);
+bangsMesh.position.set(0, 0.09, 0.01);
+hairGroup.add(bangsMesh);
+
+// Center bangs tufts
+for (let i = -3; i <= 3; i++) {
+  const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.12, 8), (i % 2 === 0) ? matHairAuburn : matHairHighlight);
+  tuft.position.set(i * 0.03, 0.065, 0.170);
+  tuft.rotation.z = -i * 0.05;
+  tuft.rotation.x = 0.12;
+  hairGroup.add(tuft);
+}
+
+// Long Side Locks framing the face
+for (const side of [-1, 1]) {
+  const lock = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.016, 0.52, 12), matHairAuburn);
+  lock.position.set(side * 0.15, -0.15, 0.06);
+  lock.rotation.z = side * -0.06;
+  hairGroup.add(lock);
+
+  // White X-hairpins on Kurisu's right side (viewer's left side)
+  if (side === 1) {
+    const clip1 = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.006, 0.01), matHairClip);
+    clip1.position.set(0.16, 0.075, 0.135);
+    clip1.rotation.z = 0.78;
+    hairGroup.add(clip1);
+
+    const clip2 = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.006, 0.01), matHairClip);
+    clip2.position.set(0.16, 0.075, 0.135);
+    clip2.rotation.z = -0.78;
+    hairGroup.add(clip2);
+  }
+}
+
+// Long Back Hair reaching below waist
+const backHair = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 0.74, 18), matHairDark);
+backHair.position.set(0, -0.27, -0.11);
+backHair.rotation.x = -0.06;
+hairGroup.add(backHair);
+
+// Arms & Bilateral Kinematic Joint Hierarchy
+const leftArmGroup = new THREE.Group();
+leftArmGroup.position.set(-0.24, 1.42, 0);
+kurisuRoot.add(leftArmGroup);
+
+const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.038, 0.3, 12), matCoatWhite);
+leftUpperArm.position.set(0, -0.15, 0);
+leftArmGroup.add(leftUpperArm);
+
+const leftElbow = new THREE.Group();
+leftElbow.position.set(0, -0.3, 0);
+leftArmGroup.add(leftElbow);
+
+const leftForeArm = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.034, 0.28, 12), matCoatWhite);
+leftForeArm.position.set(0, -0.14, 0);
+leftElbow.add(leftForeArm);
+
+const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.034, 12, 12), matSkin);
+leftHand.position.set(0, -0.3, 0);
+leftElbow.add(leftHand);
+
+// Right Arm
+const rightArmGroup = new THREE.Group();
+rightArmGroup.position.set(0.24, 1.42, 0);
+kurisuRoot.add(rightArmGroup);
+
+const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.038, 0.3, 12), matCoatWhite);
+rightUpperArm.position.set(0, -0.15, 0);
+rightArmGroup.add(rightUpperArm);
+
+const rightElbow = new THREE.Group();
+rightElbow.position.set(0, -0.3, 0);
+rightArmGroup.add(rightElbow);
+
+const rightForeArm = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.034, 0.28, 12), matCoatWhite);
+rightForeArm.position.set(0, -0.14, 0);
+rightElbow.add(rightForeArm);
+
+const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.034, 12, 12), matSkin);
+rightHand.position.set(0, -0.3, 0);
+rightElbow.add(rightHand);
+
+// Default pose: Iconic Makise Kurisu researcher gesture (Hand resting gracefully under chin)
+function applyPoseThinking() {
+  rightArmGroup.rotation.set(-0.85, 0.22, -0.35);
+  rightElbow.rotation.set(-1.45, 0, 0.48);
+  rightHand.position.set(0, -0.3, 0.02);
+
+  leftArmGroup.rotation.set(-0.35, -0.15, 0.28);
+  leftElbow.rotation.set(-0.58, 0, -0.18);
+
+  headGroup.rotation.set(0.03, -0.08, 0.05);
+}
+applyPoseThinking();
+
+// Interactive Controls and Motor Execution
+window.setOutfit = function(outfitId) {
+  document.querySelectorAll('#controls-panel .control-group:first-child button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + (outfitId === 'lab_coat' ? 'coat' : outfitId))?.classList.add('active');
+
+  if (outfitId === 'lab_coat') {
+    coatGroup.visible = true;
+    leftUpperArm.material = matCoatWhite;
+    leftForeArm.material = matCoatWhite;
+    rightUpperArm.material = matCoatWhite;
+    rightForeArm.material = matCoatWhite;
+    cardigan.visible = true;
+  } else if (outfitId === 'casual') {
+    coatGroup.visible = false;
+    leftUpperArm.material = matCardiganKhaki;
+    leftForeArm.material = matCardiganKhaki;
+    rightUpperArm.material = matCardiganKhaki;
+    rightForeArm.material = matCardiganKhaki;
+    cardigan.visible = true;
+  } else if (outfitId === 'hoodie') {
+    coatGroup.visible = false;
+    const hoodieMat = new THREE.MeshStandardMaterial({ color: 0x3b4252, roughness: 0.8 });
+    leftUpperArm.material = hoodieMat;
+    leftForeArm.material = hoodieMat;
+    rightUpperArm.material = hoodieMat;
+    rightForeArm.material = hoodieMat;
+    cardigan.visible = false;
+  } else if (outfitId === 'formal') {
+    coatGroup.visible = false;
+    const formalMat = new THREE.MeshStandardMaterial({ color: 0x242838, roughness: 0.5 });
+    leftUpperArm.material = formalMat;
+    leftForeArm.material = formalMat;
+    rightUpperArm.material = formalMat;
+    rightForeArm.material = formalMat;
+    cardigan.visible = false;
+  }
+};
+
+window.setEmotion = function(emotionId) {
+  document.querySelectorAll('#controls-panel .control-group:nth-child(2) button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + emotionId)?.classList.add('active');
+
+  if (emotionId === 'tsundere') {
+    document.getElementById('val-val').textContent = "-0.18 (Защитная реакция / Смущение)";
+    headGroup.rotation.set(0.04, 0.22, -0.06);
+    eyeBrows[0].rotation.z = -0.15;
+    eyeBrows[1].rotation.z = 0.25;
+    window.setGesture('arms_crossed');
+  } else if (emotionId === 'curiosity') {
+    document.getElementById('val-val').textContent = "+0.62 (Научное любопытство)";
+    headGroup.rotation.set(-0.05, -0.08, 0.07);
+    eyeBrows[0].rotation.z = -0.08;
+    eyeBrows[1].rotation.z = 0.08;
+    window.setGesture('thinking');
+  } else if (emotionId === 'focus') {
+    document.getElementById('val-val').textContent = "+0.25 (Концентрация гипотезы)";
+    headGroup.rotation.set(0.05, 0, 0);
+    eyeBrows[0].rotation.z = 0.12;
+    eyeBrows[1].rotation.z = -0.12;
+    window.setGesture('explaining');
+  } else if (emotionId === 'joy') {
+    document.getElementById('val-val').textContent = "+0.88 (Эврика! Успех теста)";
+    headGroup.rotation.set(-0.03, 0.04, 0.02);
+    eyeBrows[0].rotation.z = -0.05;
+    eyeBrows[1].rotation.z = 0.05;
+    window.setGesture('neutral');
+  }
+};
+
+window.setGesture = function(gestureId) {
+  document.querySelectorAll('#controls-panel .control-group:nth-child(3) button').forEach(b => b.classList.remove('active'));
+  const btnId = gestureId === 'thinking' ? 'btn-thinking' : gestureId === 'arms_crossed' ? 'btn-crossed' : gestureId === 'explaining' ? 'btn-explain' : 'btn-neutral';
+  document.getElementById(btnId)?.classList.add('active');
+
+  if (gestureId === 'thinking') {
+    applyPoseThinking();
+  } else if (gestureId === 'arms_crossed') {
+    leftArmGroup.rotation.set(-0.68, 0.38, 0.58);
+    leftElbow.rotation.set(-1.55, 0, -0.28);
+    rightArmGroup.rotation.set(-0.62, -0.32, -0.58);
+    rightElbow.rotation.set(-1.55, 0, 0.28);
+  } else if (gestureId === 'explaining') {
+    rightArmGroup.rotation.set(-0.42, 0.22, -0.48);
+    rightElbow.rotation.set(-0.75, 0, 0.38);
+    leftArmGroup.rotation.set(-0.18, -0.1, 0.18);
+    leftElbow.rotation.set(-0.28, 0, -0.08);
+  } else if (gestureId === 'neutral') {
+    rightArmGroup.rotation.set(0, 0, -0.08);
+    rightElbow.rotation.set(-0.08, 0, 0);
+    leftArmGroup.rotation.set(0, 0, 0.08);
+    leftElbow.rotation.set(-0.08, 0, 0);
+  }
+};
+
+// Natural Life Simulation: Idle breathing, hair motion
+let clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  const breath = Math.sin(t * 1.6);
+  shirt.scale.set(1 + breath * 0.012, 1, 1 + breath * 0.018);
+  kurisuRoot.position.y = breath * 0.004;
+
+  backHair.rotation.z = Math.sin(t * 1.1) * 0.015;
+  hairGroup.position.y = breath * 0.002;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+});
+</script>
+</body>
+</html>
