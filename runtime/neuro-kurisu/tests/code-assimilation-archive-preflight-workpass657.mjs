@@ -233,7 +233,7 @@ assert.throws(
 );
 assert.throws(
   () => preflight([{ path: 'longer-than-five.ts', kind: 'file', compressedSizeBytes: 1, uncompressedSizeBytes: 1 }], { limits: { maxPathLength: 5 } }),
-  /path-shape-invalid/,
+  /path-invalid/,
 );
 assert.throws(
   () => preflight(validEntries(), { limits: { maxEntries: 25_001 } }),
