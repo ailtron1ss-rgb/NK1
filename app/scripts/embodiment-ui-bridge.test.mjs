@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { emptySnapshot } from "../src/organism/types.ts";
 import { validateSemanticBodyState } from "../src/components/avatar/embodimentSwitch.ts";
+import * as uiBridge from "../src/components/avatar/embodimentUiBridge.ts";
 import {
   advanceBodySwitch,
   beginBodySwitch,
@@ -193,4 +194,91 @@ test("preserves mouth motion while speech is actively speaking", () => {
   });
   assert.equal(state.speech.mouthOpen, 0.72);
   assert.equal(state.speech.mouthForm, 0.31);
+});
+
+
+const projectAvatarSnapshot = (snapshot, profile = "2d", now = 10_500) => {
+  const project = uiBridge.projectOrganismSnapshotToAvatarBrain;
+  assert.equal(typeof project, "function", "the UI bridge must expose the canonical snapshot -> brain projection adapter");
+  if (typeof project !== "function") return null;
+  return project(snapshot, { profile, now });
+};
+
+const affectSnapshot = () => {
+  const snapshot = emptySnapshot();
+  snapshot.at = 10_000;
+  snapshot.needs = {
+    ...snapshot.needs,
+    energy: 0.8,
+    cognitiveLoad: 0.2,
+    uncertainty: 0.1,
+    socialNeed: 0.7,
+    novelty: 0.9,
+    identityCoherence: 0.9,
+    goalPressure: 0.3,
+  };
+  snapshot.emotion = {
+    ...snapshot.emotion,
+    label: "joy",
+    valence: 0.9,
+    arousal: 0.8,
+    dominance: 0.7,
+    cause: "verified-positive-outcome",
+  };
+  snapshot.curiosity = 0.95;
+  snapshot.predictionError = 0.15;
+  snapshot.canonicalWorld.latentConfidence01 = 0.85;
+  snapshot.identity.traits = {
+    curiosity: 0.95,
+    warmth: 0.9,
+    composure: 0.8,
+    playfulness: 0.6,
+    directness: 0.7,
+  };
+  snapshot.memories = [{ id: "recalled-secret", kind: "episode", text: "private memory must never leave cognition", salience: 0.95 }];
+  snapshot.lastDecision = { retrievedIds: ["recalled-secret"] };
+  return snapshot;
+};
+
+test("projects one canonical organism snapshot into renderer-safe 2D and 3D affect channels", () => {
+  const snapshot = affectSnapshot();
+  const twoD = projectAvatarSnapshot(snapshot, "2d");
+  const threeD = projectAvatarSnapshot(snapshot, "3d");
+  assert.ok(twoD, "projection must exist");
+  assert.equal(twoD.profile, "2d");
+  assert.equal(twoD.source, "organism-state");
+  assert.ok(twoD.expressionWeight > 0.8, "warm positive affect should reach a visible expression weight");
+  assert.ok(twoD.channels.mouthSmile > 0.6, "warmth and positive valence should affect the mouth");
+  assert.ok(twoD.channels.gazeX > 0.3 && twoD.channels.gazeX < 0.4, "curiosity and directness should shape gaze");
+  assert.ok(twoD.rendererHints.live2d.ParamMouthForm > 0.3, "Live2D receives a bounded mouth-form parameter");
+  assert.equal(threeD.profile, "3d");
+  assert.ok(Math.abs(threeD.rendererHints.spatial3d.headYaw) <= 0.3);
+  assert.equal(twoD.freshness01, 1 - 500 / 30_000);
+  assert.ok(twoD.affect.memoryRecall01 > 0.9, "retrieved memory contributes only a bounded salience signal");
+  assert.equal(JSON.stringify(twoD).includes("private memory"), false, "memory text never enters renderer state");
+  for (const forbidden of ["memories", "chat", "thoughts", "adaptiveNames", "adaptiveValues"]) {
+    assert.equal(forbidden in twoD, false, "renderer projection must not expose " + forbidden);
+  }
+});
+
+test("projects layered 2.5D hints without claiming that a 2.5D renderer exists", () => {
+  const projection = projectAvatarSnapshot(affectSnapshot(), "2.5d");
+  assert.equal(projection.profile, "2.5d");
+  assert.ok(projection.rendererHints.layered2d.parallax01 > 0);
+  assert.ok(projection.rendererHints.layered2d.depthBreath01 > 0);
+});
+
+test("sleep and critical energy suppress avatar idle motion and lip-sync gain", () => {
+  const snapshot = affectSnapshot();
+  snapshot.awake = false;
+  const projection = projectAvatarSnapshot(snapshot, "3d");
+  assert.equal(projection.reducedMotion, true);
+  assert.equal(projection.channels.idleMotion, 0);
+  assert.equal(projection.channels.lipSyncGain, 0);
+
+  snapshot.awake = true;
+  snapshot.needs.energy = 0.05;
+  const exhausted = projectAvatarSnapshot(snapshot, "2d");
+  assert.equal(exhausted.reducedMotion, true);
+  assert.equal(exhausted.channels.idleMotion, 0);
 });

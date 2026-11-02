@@ -2,7 +2,7 @@ name: NK1 embodiment switch contract
 
 on:
   pull_request:
-    branches: [workpass70-source]
+    branches: [workpass70-source, aspect/avatar-cognitive-affect-coupling-20261102]
     paths:
       - "app/src/components/avatar/embodimentSwitch.ts"
       - "app/src/components/avatar/embodimentTimeline.ts"
@@ -10,6 +10,7 @@ on:
       - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
       - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts"
       - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/embodiment-timeline.test.mjs"
       - "app/scripts/embodiment-ui-bridge.test.mjs"
@@ -17,9 +18,12 @@ on:
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/scripts/original-2d-art-contract.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/src/components/avatar/avatarModelStore.ts"
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
@@ -43,6 +47,7 @@ on:
       - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
       - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts"
       - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/embodiment-timeline.test.mjs"
       - "app/scripts/embodiment-ui-bridge.test.mjs"
@@ -50,9 +55,12 @@ on:
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/scripts/original-2d-art-contract.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
       - "app/src/components/avatar/avatarModelStore.ts"
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
@@ -75,7 +83,7 @@ concurrency:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -95,9 +103,15 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test original 2D affect handoff and art contract
+        run: node --test app/scripts/original-2d-art-contract.test.mjs
+      - name: Test VRM affect expression adapter
+        run: node --experimental-strip-types --test app/scripts/vrm-runtime-adapter.test.mjs
       - name: Test real Three.js toon material lifecycle
         run: npm --prefix app run test:three-toon-materials
       - name: Verify hosted Kurisu asset hash and GLB structure
         run: npm --prefix app run verify:hosted-kurisu-model
       - name: App typecheck
         run: npm --prefix app run typecheck
+      - name: App Vite bundle build without database migration
+        run: npm --prefix app run build:dev

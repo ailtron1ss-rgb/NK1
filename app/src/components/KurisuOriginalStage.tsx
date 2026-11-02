@@ -92,6 +92,10 @@ export interface KurisuOriginalStageProps {
   speaking: boolean;
   mouthPose: MouthPose;
   thinking: boolean;
+  /** Scalar projected from canonical affect; omitted callers preserve the authored emotion mouth. */
+  mouthSmile?: number;
+  /** Suppresses continuous decorative motion when the organism sleeps or is depleted. */
+  reducedMotion?: boolean;
 }
 
 /**
@@ -100,7 +104,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking, mouthSmile, reducedMotion = false }: KurisuOriginalStageProps) {
   // SVG paint-server IDs must be unique when multiple avatar previews are mounted.
   const instanceId = useId().replace(/:/g, "");
   const svgIds = {
@@ -131,6 +135,12 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const pupilOffsetX = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeX) ? gazeX : 0)) * 15;
   const pupilOffsetY = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeY) ? gazeY : 0)) * 10;
   const browLift = EMOTION_BROW[emotion];
+  const affectSmile = typeof mouthSmile === "number" && Number.isFinite(mouthSmile)
+    ? Math.max(0, Math.min(1, mouthSmile))
+    : null;
+  const projectedMouthPath = affectSmile === null || emotion === "anxiety" || emotion === "sadness" || emotion === "anger" || emotion === "frustration"
+    ? EMOTION_MOUTH[emotion]
+    : `M196 160 Q210 ${164 + affectSmile * 10} 224 160`;
   const moodLabel: Record<EmotionLabel, string> = {
     curiosity: "интерес", calm: "спокойствие", joy: "радость", anxiety: "тревога",
     frustration: "раздражение", sadness: "грусть", anger: "злость", protective: "забота",
@@ -155,7 +165,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const motionDuration = motion === "soft" ? "5.2s" : "3.1s";
 
   return (
-    <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-border bg-[#07131b] md:min-h-[420px]" data-testid="kurisu-original-stage">
+    <div className={`relative min-h-[320px] overflow-hidden rounded-xl border border-border bg-[#07131b] md:min-h-[420px]${reducedMotion ? " nk-reduced-motion" : ""}`} data-testid="kurisu-original-stage">
       <style>{`
         @keyframes nk-float { 0%,100% { transform: translateY(0px) } 50% { transform: translateY(-3.5px) } }
         @keyframes nk-hair { 0%,100% { transform: rotate(-.45deg) } 50% { transform: rotate(.65deg) } }
@@ -168,6 +178,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         .nk-hair { animation: nk-hair 6.2s ease-in-out infinite; transform-origin: 210px 110px; }
         .nk-breath { animation: nk-breath ${pose.breathMs}s ease-in-out infinite; transform-origin: 210px 240px; }
         .nk-scanner { animation: nk-scanner 8s linear infinite; }
+        .nk-reduced-motion .nk-float,.nk-reduced-motion .nk-hair,.nk-reduced-motion .nk-breath,.nk-reduced-motion .nk-scanner,.nk-reduced-motion .nk-eye { animation: none !important; }
         @media (prefers-reduced-motion: reduce) { .nk-float,.nk-hair,.nk-breath,.nk-scanner,.nk-eye { animation: none !important; } }
       `}</style>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_36%,rgba(38,113,133,.35),transparent_47%),linear-gradient(180deg,#0a1b25,#050b12)]" />
@@ -275,7 +286,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             {speaking ? <g>
               <ellipse cx="210" cy="160" rx={5 + Math.abs(mouthPose.form) * 4} ry={mouthHeight} fill="#5d2038" stroke="#8b4559" strokeWidth="1.2"/>
               <ellipse cx="210" cy={160 + mouthHeight * .45} rx="5" ry={Math.max(1, mouthHeight*.28)} fill="#e97d95" opacity=".92"/>
-            </g> : <path d={EMOTION_MOUTH[emotion]} fill="none" stroke="#914657" strokeWidth="2.1" strokeLinecap="round"/>}
+            </g> : <path d={projectedMouthPath} fill="none" stroke="#914657" strokeWidth="2.1" strokeLinecap="round"/>}
             {(emotion === "joy" || emotion === "anxiety" || emotion === "protective") ? <g fill="#ec8998" opacity=".32"><ellipse cx="170" cy="143" rx="10" ry="4"/><ellipse cx="250" cy="143" rx="10" ry="4"/></g> : null}
             {effectivePose === "thinking" ? <g>
               <path d="M236 179 Q230 173 234 166 L245 156 Q251 153 256 158 L252 170 L246 184Z" fill={`url(#${svgIds.skin})`} stroke="#b77e7b" strokeWidth="1.4"/>

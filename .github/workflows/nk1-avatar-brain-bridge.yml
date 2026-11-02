@@ -1,0 +1,39 @@
+name: NK1 Avatar Brain Bridge
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts'
+      - 'runtime/neuro-kurisu/src/organism/body/AvatarRendererAdapter.ts'
+      - 'runtime/neuro-kurisu/tests/avatar-renderer-adapter.mjs'
+      - 'runtime/neuro-kurisu/tests/avatar-brain-affect-bridge.mjs'
+      - 'app/src/components/avatar/embodimentUiBridge.ts'
+      - 'app/scripts/embodiment-ui-bridge.test.mjs'
+      - 'app/src/components/avatar/vrmRuntimeAdapter.ts'
+      - 'app/scripts/vrm-runtime-adapter.test.mjs'
+      - '.github/workflows/nk1-avatar-brain-bridge.yml'
+  push:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts'
+      - 'runtime/neuro-kurisu/tests/avatar-brain-affect-bridge.mjs'
+      - 'app/src/components/avatar/embodimentUiBridge.ts'
+      - 'app/scripts/embodiment-ui-bridge.test.mjs'
+      - 'app/src/components/avatar/vrmRuntimeAdapter.ts'
+      - 'app/scripts/vrm-runtime-adapter.test.mjs'
+      - '.github/workflows/nk1-avatar-brain-bridge.yml'
+jobs:
+  avatar-brain-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Run renderer-neutral brain-to-avatar contract tests
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/avatar-brain-affect-bridge.mjs && node --experimental-strip-types tests/avatar-renderer-adapter.mjs
+      - name: Run canonical app snapshot and VRM adapter tests
+        working-directory: .
+        run: node --experimental-strip-types --test app/scripts/embodiment-ui-bridge.test.mjs app/scripts/vrm-runtime-adapter.test.mjs

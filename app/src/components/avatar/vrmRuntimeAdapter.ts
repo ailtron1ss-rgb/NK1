@@ -2,6 +2,8 @@ import type { VRM, VRMMeta } from "@pixiv/three-vrm";
 
 export interface VrmExpressionFrame {
   emotion: string;
+  /** Optional affect projection intensity; omitted callers retain the named preset. */
+  expressionWeight?: number;
   speaking: boolean;
   mouthOpen: number;
   mouthForm: number;
@@ -171,7 +173,12 @@ export function applyVrmExpressionFrame(vrm: VRM, frame: VrmExpressionFrame): vo
   manager.resetValues();
 
   const preset = EMOTION_PRESETS[frame.emotion];
-  if (preset) manager.setValue(preset.expression, preset.weight);
+  if (preset) {
+    const weight = typeof frame.expressionWeight === "number" && Number.isFinite(frame.expressionWeight)
+      ? clamp01(frame.expressionWeight)
+      : preset.weight;
+    manager.setValue(preset.expression, weight);
+  }
 
   if (frame.speaking) {
     const form = Number.isFinite(frame.mouthForm) ? frame.mouthForm : 0;

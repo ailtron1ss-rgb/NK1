@@ -5,6 +5,8 @@ import { defaultBodyState, synthesizeBody, type OrganismBodyEvent, type Organism
 import type { OrganismState } from '../core/types.ts';
 import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './NativeSpeechEventChannel.ts';
+import { projectAvatarBrainState, type AvatarBrainProjection, type AvatarAffectInput, type AvatarRenderProfile, type AvatarPersonalityVector } from './AvatarBrainAffectBridge.ts';
+import { mapAvatarProjectionToRenderer, type AvatarRendererCapabilities, type AvatarRendererMapping } from './AvatarRendererAdapter.ts';
 
 type OrganismNeedsLike = { energy:number; cognitiveLoad:number; uncertainty:number; socialNeed:number; novelty:number; identityCoherence:number; goalPressure:number; };
 export type SpeechGatewayResult = { ok:boolean; uncertain?:boolean; outcomeClass?:string; reason?:string };
@@ -24,6 +26,7 @@ export class EmbodimentRuntime {
   private speechGatewayDispatcher:SpeechGatewayDispatcher|null=null;
   private speechInterruptGatewayDispatcher:SpeechInterruptGatewayDispatcher|null=null;
   private activeSpeechEventId:string|null=null;
+  private lastAvatarProjection:AvatarBrainProjection|null=null;
 
   /** The only permitted routes to physical TTS and interruption are ActionGateway-backed dispatchers. */
   setSpeechGatewayDispatcher(dispatcher:SpeechGatewayDispatcher|null):void { this.speechGatewayDispatcher=dispatcher; }
@@ -40,6 +43,31 @@ export class EmbodimentRuntime {
   }
 
   snapshot(): OrganismBodyState { return structuredClone(this.body); }
+  /** Project canonical brain/body signals into a renderer-neutral avatar frame. */
+  avatarProjection(state:OrganismState, options?:{affect?:AvatarAffectInput;personality?:AvatarPersonalityVector;profile?:AvatarRenderProfile;now?:number}):AvatarBrainProjection {
+    this.lastAvatarProjection=projectAvatarBrainState({
+      state,
+      body:this.body,
+      affect:options?.affect,
+      personality:options?.personality,
+      profile:options?.profile,
+      now:options?.now,
+      previous:this.lastAvatarProjection??undefined,
+    });
+    return structuredClone(this.lastAvatarProjection);
+  }
+
+  /** Project canonical brain/body state and map it to the selected renderer's declared capabilities. */
+  avatarRendererMapping(state:OrganismState, capabilities:AvatarRendererCapabilities, options?:{affect?:AvatarAffectInput;personality?:AvatarPersonalityVector;now?:number}):AvatarRendererMapping {
+    const projection=this.avatarProjection(state,{
+      affect:options?.affect,
+      personality:options?.personality,
+      profile:capabilities.profile,
+      now:options?.now,
+    });
+    return mapAvatarProjectionToRenderer(projection,capabilities);
+  }
+
   eventLog(): OrganismBodyEvent[] { return structuredClone(this.events.slice(0, 200)); }
   capabilitiesSnapshot(): TermuxCapabilities { return { ...this.capabilities }; }
   voiceSnapshot(): { state: VoiceRuntimeState; plan: VoicePlan | null } { return { state: structuredClone(this.voice), plan: structuredClone(this.lastVoicePlan) }; }
