@@ -69,7 +69,7 @@ function automaticPoseForMotorPlan(plan: AvatarMotorIntentPlan, emotion: Emotion
 }
 
 /** Keep renderer styling local while taking the semantic decision from the shared organism motor planner. */
-function poseForMotorPlan(plan: AvatarMotorIntentPlan, energy01: number, cognitiveLoad01: number, motion: MotionStyle) {
+function poseForMotorPlan(motorPlan: AvatarMotorIntentPlan, energy01: number, cognitiveLoad01: number, motion: MotionStyle) {
   const multiplier = motion === "soft" ? 0.55 : 1;
   const bodyTiltByAction: Record<AvatarMotorIntentPlan["action"], number> = {
     rest: -1.2,
@@ -82,10 +82,10 @@ function poseForMotorPlan(plan: AvatarMotorIntentPlan, energy01: number, cogniti
   };
   const energy = Math.max(0, Math.min(1, Number.isFinite(energy01) ? energy01 : 0.25));
   const load = Math.max(0, Math.min(1, Number.isFinite(cognitiveLoad01) ? cognitiveLoad01 : 0));
-  const headTiltDegrees = Math.max(-8.6, Math.min(8.6, plan.headTilt * (180 / Math.PI)));
+  const headTiltDegrees = Math.max(-8.6, Math.min(8.6, motorPlan.headTilt * (180 / Math.PI)));
   return {
     head: headTiltDegrees * multiplier,
-    body: (bodyTiltByAction[plan.action] + (load - 0.35) * -1.2 + (energy - 0.5) * 0.8) * multiplier,
+    body: (bodyTiltByAction[motorPlan.action] + (load - 0.35) * -1.2 + (energy - 0.5) * 0.8) * multiplier,
     breathMs: Math.max(2.8, Math.min(5.5, 4.6 - energy * 1.1 + load * 0.5)),
   };
 }
