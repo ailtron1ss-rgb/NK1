@@ -32,20 +32,26 @@ export class SelfModelEngine {
     // Saved self-state is untrusted input. Rebuild only known fields and never
     // spread/read arbitrary objects, because getters and Proxy traps may execute.
     const defaults=defaultSelfModel();
-    const record=(value:unknown):Record<string,unknown>|null=>{
+    const container=(value:unknown):Record<string,unknown>|null=>{
       try {
         if(!value || typeof value!=='object' || Array.isArray(value)) return null;
         const proto=Object.getPrototypeOf(value);
-        if(proto!==Object.prototype && proto!==null) return null;
-        for(const key of Reflect.ownKeys(value)){
-          const descriptor=Object.getOwnPropertyDescriptor(value,key);
+        return proto===Object.prototype || proto===null ? value as Record<string,unknown> : null;
+      } catch { return null; }
+    };
+    const record=(value:unknown):Record<string,unknown>|null=>{
+      const row=container(value);
+      if(!row) return null;
+      try {
+        for(const key of Reflect.ownKeys(row)){
+          const descriptor=Object.getOwnPropertyDescriptor(row,key);
           if(!descriptor || !('value' in descriptor)) return null;
         }
-        return value as Record<string,unknown>;
+        return row;
       } catch { return null; }
     };
     const read=(value:unknown,key:string):unknown=>{
-      const row=record(value);
+      const row=container(value);
       if(!row) return undefined;
       try {
         const descriptor=Object.getOwnPropertyDescriptor(row,key);
@@ -92,7 +98,7 @@ export class SelfModelEngine {
     } catch { /* malformed strategy arrays restore empty */ }
     const scoresRaw=read(root,'selfConsistentAction11');
     const scores:Record<string,number>={};
-    const scoreRecord=record(scoresRaw);
+    const scoreRecord=container(scoresRaw);
     if(scoreRecord){
       for(const action of actionKinds){
         const value=read(scoreRecord,action);
@@ -101,7 +107,7 @@ export class SelfModelEngine {
       }
     }
     const gateRaw=read(root,'lastIdentityGate');
-    const gateRecord=record(gateRaw);
+    const gateRecord=container(gateRaw);
     let lastIdentityGate:SelfModelV2['lastIdentityGate']=null;
     if(gateRecord){
       const accepted=read(gateRecord,'accepted'),reason=read(gateRecord,'reason'),at=read(gateRecord,'at'),evidenceRef=read(gateRecord,'evidenceRef');
