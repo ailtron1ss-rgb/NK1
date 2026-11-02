@@ -230,14 +230,15 @@ export function validateDepthRigAssetManifest(
       mapped.add(nodeId);
       checkedLayers += 1;
 
-      if (!safeRelativePath(assetPath)) {
+      const safeAssetPath = safeRelativePath(assetPath) ? assetPath : undefined;
+      if (!safeAssetPath) {
         diagnostics.push(diagnostic("unsafe-path", "Asset paths must be safe relative paths without traversal or URL syntax.", {
           nodeId, path: typeof assetPath === "string" ? assetPath : undefined,
         }));
       }
-      const file = safeRelativePath(assetPath) ? files.get(assetPath) : undefined;
+      const file = safeAssetPath ? files.get(safeAssetPath) : undefined;
       if (!file) diagnostics.push(diagnostic("asset-not-found", "Primary layer is absent from the filesystem inventory.", { nodeId, path: typeof assetPath === "string" ? assetPath : undefined }));
-      else if (own(file, "kind") !== "image") diagnostics.push(diagnostic("asset-kind-mismatch", "Primary layer path must resolve to an image asset.", { nodeId, path: assetPath }));
+      else if (own(file, "kind") !== "image") diagnostics.push(diagnostic("asset-kind-mismatch", "Primary layer path must resolve to an image asset.", { nodeId, path: safeAssetPath }));
 
       const pixelSize = own(candidate, "pixelSize");
       const declaredWidth = own(pixelSize, "width");
@@ -245,7 +246,7 @@ export function validateDepthRigAssetManifest(
       if (!isPlainRecord(pixelSize) || !positiveInteger(declaredWidth) || !positiveInteger(declaredHeight)) {
         diagnostics.push(diagnostic("asset-metadata-mismatch", "pixelSize must contain positive integer width and height.", { nodeId }));
       } else if (file && (own(file, "width") !== declaredWidth || own(file, "height") !== declaredHeight)) {
-        diagnostics.push(diagnostic("asset-metadata-mismatch", "Declared pixelSize differs from the filesystem inventory.", { nodeId, path: assetPath }));
+        diagnostics.push(diagnostic("asset-metadata-mismatch", "Declared pixelSize differs from the filesystem inventory.", { nodeId, path: safeAssetPath }));
       }
       if (file && own(file, "hasAlpha") !== true) {
         diagnostics.push(diagnostic("asset-without-alpha", "Layer images must contain an alpha channel for cutout compositing.", { nodeId, path: assetPath }));
