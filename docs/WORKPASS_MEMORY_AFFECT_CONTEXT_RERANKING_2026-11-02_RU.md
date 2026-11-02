@@ -4,7 +4,7 @@
 **Ветка:** `aspect/memory-affect-context-reranking-20261102`  
 **PR:** #672 (Draft)  
 **Базовая линия:** `workpass70-source` — `608435493b4af3b4a222d385f1b77d978d18583b`  
-**Последний коммит:** `8cbf045a4498060d68d28d62e1afbdf77de3e1b7`
+**Последний коммит:** `1708d4950622d141eab3e458b1864c026d7eb62b`
 
 ## Найденный разрыв
 
@@ -26,10 +26,24 @@
 
 Новый тест `tests/memory-semantic-affect-reranking.mjs` покрывает affective rerank, identity/goal demand, semantic preselection, защиту сильного semantic match, malformed values, confidence-only input, duplicate IDs, invalid lexical rank, score clamping и повторяемость порядка.
 
-- **Локальный точечный прогон:** PASS на Node `v22.16.0`, `node --experimental-strip-types --test .../memory-semantic-affect-reranking.mjs` — 1 suite passed, 0 failed.
-- **GitHub exact-head checks:** пока не возвращены для `8cbf045a4498060d68d28d62e1afbdf77de3e1b7`; CI остаётся PENDING / NOT VERIFIED.
-- **Полный runtime typecheck и MemoryFabric semantic retrieval integration:** ожидают exact-head CI; локально в этом проходе не выполнялись.
-- **Recall uplift / precision regression / 10k latency:** не измерялись; улучшение качества пока не заявляется.
+- **Exact-head GitHub CI:** все 35 видимых workflow завершились успешно на `1708d4950622d141eab3e458b1864c026d7eb62b`.
+- **Focused reranker contract:** PASS.
+- **MemoryFabric semantic retrieval regression:** PASS.
+- **Runtime typecheck:** PASS.
+- **10k performance gate:** PASS; отдельный профиль приведён ниже.
+
+## CPU latency benchmark — 10 000 кандидатов
+
+Добавлен `tests/memory-semantic-affect-reranker-benchmark.mjs` и команда `npm run benchmark:memory-semantic-affect-reranking`. CI выполнил 8 warm-up и 60 измеряемых прогонов с фиксированным детерминированным набором из 10 000 кандидатов и top-K=8.
+
+| Метрика | Результат |
+|---|---:|
+| p50 | 2.602 ms |
+| p95 | 4.266 ms |
+| max | 12.089 ms |
+| p95 budget | 30 ms |
+
+Граница измерения: CPU-only normalization + semantic preselection + contextual reranking. Не включены embedding generation, vector-index I/O, MemoryFabric fetch и cloning. Это доказательство скорости одного компонента, не полного retrieval path и не recall-uplift.
 
 ## Исследовательское основание
 
@@ -41,10 +55,9 @@
 
 ## Остаточные ограничения и следующие ворота
 
-1. Получить зелёный exact-head CI: focused reranker, MemoryFabric semantic retrieval и runtime typecheck.
-2. Проверить реальный путь provenance: EmotionAppraisal → memory encoding/MemoryFabric → MemoryOS2 persistence → contextual retrieval. Текущий PR использует уже сохранённые канонические поля и не заявляет закрытие всего appraisal-ingress пути.
-3. Выполнить paired-seed RU/EN holdout и показать `recallDelta > 0` без ухудшения precision.
-4. Измерить p50/p95 latency и ограничение top-K на корпусе 10k.
-5. Только после независимых проверок рассматривать merge.
+1. Выполнить paired-seed RU/EN holdout на representative corpus и показать `recallDelta > 0` без ухудшения semantic precision. Синтетический 10k benchmark не заменяет этот тест.
+2. Проверить полный provenance: EmotionAppraisal → memory encoding/MemoryFabric → MemoryOS2 persistence → contextual retrieval. Текущий PR ранжирует канонические сохранённые поля, но не заявляет полного закрытия appraisal-ingress.
+3. Измерить end-to-end retrieval latency с embeddings и vector I/O.
+4. Только после независимых holdout-проверок и code review рассматривать merge.
 
 `main`, `workpass70-source`, production DB и опубликованный Release ZIP не изменялись.
