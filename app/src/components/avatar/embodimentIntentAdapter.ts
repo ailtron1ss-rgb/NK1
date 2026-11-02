@@ -141,13 +141,15 @@ export function resolveDepthRigPoseFromMotorFrame(
   for (const [key, rawJoint] of Object.entries(jointRows)) {
     const joint = snapshotOwnDataRecord(rawJoint);
     if (!joint || joint.id !== key || typeof joint.available !== "boolean"
-      || ![joint.angleRad, joint.targetAngleRad, joint.velocityRadPerSec].every(
-        (value) => typeof value === "number" && Number.isFinite(value),
-      )) {
+      || typeof joint.angleRad !== "number"
+      || typeof joint.targetAngleRad !== "number" || !Number.isFinite(joint.targetAngleRad)
+      || typeof joint.velocityRadPerSec !== "number" || !Number.isFinite(joint.velocityRadPerSec)) {
       return invalid();
     }
     joints[key] = {
       id: key,
+      // A non-finite measured angle is a missing observation, not a malformed
+      // frame: preserve it so the application pass safely skips this joint.
       angleRad: joint.angleRad as number,
       targetAngleRad: joint.targetAngleRad as number,
       velocityRadPerSec: joint.velocityRadPerSec as number,
@@ -186,7 +188,7 @@ export function resolveDepthRigPoseFromMotorFrame(
 
   for (const binding of safeBindings) {
     const joint = joints[binding.jointId];
-    if (!joint || joint.available !== true) continue;
+    if (!joint || joint.available !== true || !Number.isFinite(joint.angleRad)) continue;
     // Render observed motion, not the controller target: the puppet must not lead the motor.
     const delta = clamp((joint.angleRad - (binding.restAngleRad ?? 0))
       * (binding.degreesPerRadian ?? (180 / Math.PI)),
