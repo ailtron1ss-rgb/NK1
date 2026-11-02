@@ -54,7 +54,13 @@ assert.ok(verifyAfter.valueWeights[valueIndex(verifyAfter, 'science')] > verifyB
 
 const unverifiedLearner = new P2702PersistentPersonalityDynamics();
 const unverifiedBefore = unverifiedLearner.snapshot();
-unverifiedLearner.afterOutcome({ reward01: .95, verified01: 0, predictionError01: .05, identityGap01: .1, action: 'respond', identityVector: new Array(24).fill(.99) });
+unverifiedLearner.afterOutcome({ reward01: .95, verified01: 0, predictionError01: .05, identityGap01: .1, action: 'respond', identityVector: new Array(24).fill(.99), relationshipId: 'unverified-relationship' });
+assert.deepEqual(unverifiedLearner.snapshot().adaptiveValues, unverifiedBefore.adaptiveValues,
+  'unverified rewards must not rewrite adaptive character traits');
+assert.deepEqual(unverifiedLearner.snapshot().valueWeights, unverifiedBefore.valueWeights,
+  'unverified rewards must not rewrite enduring values');
+assert.equal(unverifiedLearner.snapshot().relationshipTrust['unverified-relationship'], undefined,
+  'unverified observations must not create relationship-trust evidence');
 assert.equal(unverifiedLearner.snapshot().selfBeliefs[0], unverifiedBefore.selfBeliefs[0],
   'unverified latent identity hints must not rewrite autobiographical self-belief');
 assert.ok(unverifiedLearner.snapshot().selfUncertainty[0] > unverifiedBefore.selfUncertainty[0],
@@ -79,6 +85,7 @@ corruptedRestore.restore({
   actionPreference: { respond: Number.NaN, explore: 0.9, unknownAction: 1 },
   adaptiveValues: [Number.NaN, 2],
   selfUncertainty: [Number.NaN, 2],
+  tensionState: new Array(2),
 });
 const restoredSafe = corruptedRestore.snapshot();
 assert.equal(restoredSafe.tick, 0, 'restored tick must be a non-negative integer');
@@ -107,6 +114,10 @@ assert.equal(restoredSafe.selfUncertainty[0], defaultPersonalityState.selfUncert
   'invalid uncertainty entries must fall back to the prior uncertainty');
 assert.equal(restoredSafe.selfUncertainty[1], 0.97,
   'restored uncertainty must respect its narrower safety range');
+assert.equal(restoredSafe.tensionState.length, defaultPersonalityState.tensionState.length,
+  'sparse restored vectors must be padded to the canonical tension width');
+assert.deepEqual(restoredSafe.tensionState, defaultPersonalityState.tensionState,
+  'holes in restored vectors must use canonical prior values rather than remain sparse');
 
 const b=new NeuralExperienceBranch();
 let s=defaultNeuralExperienceBranch();b.restore(s);
