@@ -186,3 +186,27 @@ test("Avatar3DStage registers the native plugin and updates/disposes VRM runtime
   assert.match(stage, /VRMUtils\.deepDispose\(rt\.loaded\)/);
   assert.match(stage, /applyVrmExpressionFrame\(rt\.vrm/);
 });
+
+
+test("VRM normalized motor applies the shared bounded cognitive head tilt to the humanoid rig", () => {
+  const vrm = createFakeVrm();
+  const result = applyVrmNormalizedMotorFrame(vrm, {
+    action: "reflect", emotion: "calm", gazeX: 0, gazeY: 0,
+    cognitiveLoad: 0.2, energy: 0.8, socialNeed: 0.2, uncertainty: 0.1,
+    speaking: false, headTilt: 0.12,
+  });
+  assert.equal(result.applied, true);
+  assert.ok(Math.abs(vrm.bones.get("neck").rotation.z - 0.042) < 1e-12);
+  assert.ok(Math.abs(vrm.bones.get("head").rotation.z - 0.078) < 1e-12);
+});
+
+test("VRM normalized motor clamps hostile head tilt to the planner safety envelope", () => {
+  const vrm = createFakeVrm();
+  applyVrmNormalizedMotorFrame(vrm, {
+    action: "reflect", emotion: "calm", gazeX: 0, gazeY: 0,
+    cognitiveLoad: 0, energy: 1, socialNeed: 0, uncertainty: 0,
+    speaking: false, headTilt: 9,
+  });
+  assert.equal(vrm.bones.get("neck").rotation.z, 0.0525);
+  assert.equal(vrm.bones.get("head").rotation.z, 0.0975);
+});
