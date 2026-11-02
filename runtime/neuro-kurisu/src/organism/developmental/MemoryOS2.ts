@@ -266,6 +266,23 @@ function fuzzyTokenCoverage(queryTokens:string[],documentTokens:Set<string>):num
  }
  return clamp(total/queryTokens.length);
 }
+// Deterministic word-root match for the answerability gate. A shared prefix is
+// evidence only when it covers most of the shorter token and is at least four
+// characters, so a 4-char stem ("live" → "lives") still grounds a memory while
+// unrelated short words do not collide. The fixed 5-char rule previously missed
+// these stems and let a legitimate question abstain.
+const WORD_ROOT_MIN_PREFIX=4;
+function sharesWordRoot(a:string,b:string):boolean{
+ if(a===b)return false;
+ const ca=Array.from(a),cb=Array.from(b);
+ const lenA=ca.length,lenB=cb.length;
+ const shorter=Math.min(lenA,lenB);
+ if(shorter<WORD_ROOT_MIN_PREFIX)return false;
+ const limit=Math.min(lenA,lenB,8);
+ let common=0;
+ while(common<limit&&ca[common]===cb[common])common++;
+ return common>=WORD_ROOT_MIN_PREFIX&&common>=Math.ceil(shorter*.60);
+}
 const hashToken = fnv1a32;
 function vectorize(text:string,dim=48){const v=Array(dim).fill(0);for(const tok of tokenize(text)){const h=hashToken(tok);const i=h%dim;const j=(h>>>8)%dim;v[i]+=1;v[j]-=.35;}const norm=Math.sqrt(v.reduce((a:number,x:number)=>a+x*x,0))||1;return v.map(x=>x/norm);}
 const cosine = (a:number[],b:number[]) => clamp(cosineSimilarity(a,b)); // Retrieval scores are non-negative; zero similarity is not evidence.
@@ -1259,9 +1276,8 @@ export class MemoryOS2{
      // provider timeout even when long natural-language queries dilute average fuzzy coverage.
      const queryTokenArray=[...qTokens];
      const memoryTokens=this.tokensFor(m.content);
-     const morphologyEvidence=queryTokenArray.some(queryToken=>queryToken.length>=5&&
-       [...memoryTokens].some(memoryToken=>memoryToken.length>=5&&memoryToken!==queryToken&&
-         (queryToken.startsWith(memoryToken.slice(0,5))||memoryToken.startsWith(queryToken.slice(0,5)))));
+     const morphologyEvidence=queryTokenArray.some(queryToken=>
+       [...memoryTokens].some(memoryToken=>sharesWordRoot(queryToken,memoryToken)));
      const metadataEvidence=this.metadataRecallEnabled&&evidence.metadata>=.66;
      const lexicalEvidence=identifierEvidence||exactPhrase||morphologyEvidence||metadataEvidence||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45)||
