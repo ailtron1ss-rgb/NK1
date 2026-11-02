@@ -1851,6 +1851,7 @@
     "test:workpass641:cef-restore-integrity": "node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs",
     "test:user-model-http-route": "node tests/user-model-http-route.mjs",
     "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs",
-    "test:memory-semantic-affect-reranking": "node --experimental-strip-types tests/memory-semantic-affect-reranking.mjs"
+    "test:memory-semantic-affect-reranking": "node --experimental-strip-types tests/memory-semantic-affect-reranking.mjs",
+    "benchmark:memory-semantic-affect-reranking": "node --experimental-strip-types tests/memory-semantic-affect-reranker-benchmark.mjs"
   }
 }
