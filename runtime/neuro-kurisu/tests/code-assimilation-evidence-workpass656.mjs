@@ -290,6 +290,25 @@ assert.equal(candidate.stage, 'discovered');
   assert.equal(result.rejection, 'issued-at-in-future');
 }
 
+// Unknown declared license plus a null reviewer expression cannot authorize execution or redistribution.
+{
+  const unlicensed = structuredClone(candidate);
+  unlicensed.manifest.declaredLicenseExpression = null;
+  const payload = payloadFor(unlicensed, 'license', {
+    licenseDecision: {
+      outcome: 'approved',
+      licenseExpression: null,
+      licenseEvidenceFingerprint: sha('unresolved-license-evidence'),
+      permittedUses: ['execute', 'redistribute'],
+      reviewScope: 'exact-source-revision-and-dependency-bundle',
+      reviewerBasis: 'human-review',
+    },
+  });
+  const result = verify(unlicensed, payload, 'license');
+  assert.equal(result.accepted, false);
+  assert.equal(result.rejection, 'code-assimilation-evidence-license-expression-required');
+}
+
 // Authentication is process-local; a serialized receipt must be verified again after restart.
 {
   const result = verify(candidate, payloadFor(candidate, 'license'), 'license');
