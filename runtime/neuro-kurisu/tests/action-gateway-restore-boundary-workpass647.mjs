@@ -61,6 +61,16 @@ const sparseRecords = new Array(1);
 assert.throws(() => target.restoreExecutionLedger({ version: 1, records: sparseRecords }), /action-ledger-snapshot-invalid/);
 assert.deepEqual(target.snapshotExecutionLedger(), before);
 
+assert.throws(() => target.restoreExecutionLedger({ ...validSnapshot, permissions: 42 }), /action-ledger-permissions-snapshot-invalid/);
+assert.deepEqual(target.snapshotExecutionLedger(), before, 'invalid permission state must not partially replace the execution ledger');
+
+const malformedCounter = {
+  ...validSnapshot,
+  permissions: { ...validSnapshot.permissions, created: {} },
+};
+target.restoreExecutionLedger(malformedCounter);
+assert.equal(target.snapshotExecutionLedger().permissions.created, 0, 'non-numeric restored counters fall back to a finite safe default');
+
 const cyclicSnapshot = { version: 1, records: [] };
 cyclicSnapshot.self = cyclicSnapshot;
 assert.throws(() => target.restoreExecutionLedger(cyclicSnapshot), /action-ledger-snapshot-invalid/);
