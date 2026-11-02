@@ -51,4 +51,25 @@ assert.equal(rt2.realityEvidenceLedgerSnapshot().total,evidence.total);
 const status=rt2.core.operationalStatusSnapshot();
 assert.equal(status.tick,step.cycle.state.tick);
 await rt2.stop(); await rt.stop();
+
+const corruptSpineStore = {
+  async load() { throw new Error('corrupt-cognitive-spine-sidecar'); },
+  async save() {},
+};
+const degradedRuntime = new OrganismRuntime({
+  stateFile:path.join(root,'degraded-organism.json'),
+  intervalMs:60_000,
+  enableLanguage:false,
+  autoRun:false,
+  stateStore:new MemoryStateStore(),
+  worldStateStore:new MemoryStateStore(),
+  cognitiveSpineStore:corruptSpineStore,
+  journal:new BoundedOperationalJournal(),
+  checkpointMinIntervalMs:0,
+  checkpointMaxDirtyCycles:1,
+  performanceProfile:'mobile',
+});
+await assert.doesNotReject(()=>degradedRuntime.init(),'corrupt optional cadence sidecar must not block organism startup');
+assert.equal(degradedRuntime.cognitiveSpineSchedulerSnapshot().lastReason,'initial');
+await degradedRuntime.stop();
 console.log(JSON.stringify({pass:162,status:'PASS',tick:status.tick,cycle, economy,evidence:{total:evidence.total,externalCount:evidence.externalCount,simulatorCount:evidence.simulatorCount}},null,2));
