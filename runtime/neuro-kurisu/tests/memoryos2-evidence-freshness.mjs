@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
+import { MemoryOS2, memoryEvidenceFreshness01 } from '../src/organism/developmental/MemoryOS2.ts';
 
 const day = 86_400_000;
 const base = Date.now();
@@ -58,6 +58,55 @@ assert.equal(rows.find(row => row.id === 'a-volatile')?.freshnessHalfLifeMs, day
   'explicit freshness half-life must survive snapshot/restore');
 assert.equal(rows.find(row => row.id === 'z-durable')?.freshnessHalfLifeMs, undefined,
   'legacy/durable memories must not receive an invented decay horizon');
+
+
+assert.equal(memoryEvidenceFreshness01({
+  evidenceFreshnessAt: base - 2 * day,
+  freshnessHalfLifeMs: day,
+  createdAt: base - 30 * day,
+  observedAt: base - 2 * day,
+}, base), 0.25, 'two evidence half-lives should leave one quarter of freshness');
+assert.equal(memoryEvidenceFreshness01({
+  evidenceFreshnessAt: base - 365 * day,
+  freshnessHalfLifeMs: null,
+  createdAt: base - 365 * day,
+  observedAt: base - 365 * day,
+}, base), 1, 'explicitly durable memories must not decay');
+assert.equal(memoryEvidenceFreshness01({
+  evidenceFreshnessAt: base - 365 * day,
+  createdAt: base - 365 * day,
+  observedAt: base - 365 * day,
+}, base), 1, 'legacy memories without a horizon must remain durable');
+
+// A renewed observation from the same independent source is still fresher
+// evidence. Re-ingestion must advance evidenceFreshnessAt, not only access time.
+const refreshMemory = new MemoryOS2({ embeddingProvider: null });
+const refreshContent = 'A temporary service endpoint remains healthy after a new device probe.';
+refreshMemory.encode({
+  id: 'refresh-same-lineage',
+  content: refreshContent,
+  kind: 'semantic',
+  source: 'device-health-probe',
+  observedAt: base - 10 * day,
+  evidenceFreshnessAt: base - 10 * day,
+  freshnessHalfLifeMs: day,
+  salience: 0.5,
+  confidence: 0.8,
+  epistemicStatus: 'fact',
+});
+const refreshed = refreshMemory.encode({
+  content: refreshContent,
+  kind: 'semantic',
+  source: 'device-health-probe',
+  observedAt: base,
+  evidenceFreshnessAt: base,
+  freshnessHalfLifeMs: day,
+  salience: 0.5,
+  confidence: 0.8,
+  epistemicStatus: 'fact',
+});
+assert.equal(refreshed.evidenceFreshnessAt, base,
+  'same-lineage new evidence must refresh evidenceFreshnessAt');
 
 const diagnostics = restored.indexDiagnostics();
 assert.equal(diagnostics.pass, true, 'freshness metadata must not desynchronize canonical indexes');
