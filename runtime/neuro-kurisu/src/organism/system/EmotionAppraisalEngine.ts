@@ -90,7 +90,7 @@ function ownDataRecord(value: unknown): RestoreRecord | null {
 }
 
 function boundedArray(value: unknown, limit: number): unknown[] {
-  if (!Array.isArray(value) || types.isProxy(value)) return [];
+  if (types.isProxy(value) || !Array.isArray(value)) return [];
   try {
     const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     const length = lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : 0;
