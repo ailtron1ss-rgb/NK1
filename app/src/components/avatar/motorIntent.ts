@@ -77,7 +77,9 @@ export function planAvatarMotorIntent(input: AvatarMotorIntentInput): AvatarMoto
   const composureTrait = trait("composure", 0.7);
   const guardednessTrait = trait("guardedness", 0.5);
   const text = (typeof input.turnText === "string" ? input.turnText : "").normalize("NFKC").trim();
-  const activeConversation = input.speaking || input.hasFreshTurn || action === "respond";
+  // `action` is the last selected organism option, not a conversation lifecycle signal.
+  // A stale `respond` must not keep an exhausted, silent avatar in the active turn.
+  const activeConversation = input.speaking || input.hasFreshTurn;
   const cognitivePressure = cognitiveLoad >= 0.82 || uncertainty >= 0.84 || predictionError >= 0.84;
 
   let intent: AvatarMotorAction;
