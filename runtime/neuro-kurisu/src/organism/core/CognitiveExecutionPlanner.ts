@@ -78,7 +78,7 @@ export class CognitiveExecutionPlanner{
     for(const op of OPS)this.plan.stats[op]={...d.stats[op],...(raw?.stats?.[op]??{})};
   }
 
-  compile(frame:CognitiveFrame, spine:CognitiveSpineDecision, remainingBudget01:number, pressure?:CognitivePressureFieldState, contracts?:ReadonlyArray<Pick<OrganismSystemContract,'name'|'estimatedCost01'|'cadenceCycles'|'phase'|'executionRank'>>):CognitiveExecutionPlan{
+  compile(frame:CognitiveFrame, spine:CognitiveSpineDecision, remainingBudget01:number, pressure?:CognitivePressureFieldState, contracts?:ReadonlyArray<Pick<OrganismSystemContract,'name'|'estimatedCost01'|'cadenceCycles'|'phase'|'executionRank'>>, deliberate = false):CognitiveExecutionPlan{
     const budget=clamp(remainingBudget01);
     const plan=defaultCognitiveExecutionPlanner() as CognitiveExecutionPlan;
     plan.tick=frame.tick;plan.mode=spine.mode;plan.reason=`${frame.reason};spine=${spine.reason};interrupt=${frame.interrupt?.type??'none'}:${(frame.interrupt?.priority01??0).toFixed(2)}`;
@@ -88,7 +88,9 @@ export class CognitiveExecutionPlanner{
     // External input wakes perception/memory, but does not automatically force
     // expensive warm/cold cognition. Deep work must earn its compute budget.
     const interruptForced=Boolean(frame.interrupt?.active && (frame.interrupt?.priority01??0)>.78);
-    const forced = (highDemand || interruptForced) && !lowResource;
+    // An explicit deliberate turn is the operator asking for slow cognition. It
+    // earns priority like an interrupt, but never bypasses the resource guards.
+    const forced = (deliberate || highDemand || interruptForced) && !lowResource;
 
     const domainList: CognitiveDomain[]=['self','world','memory','agency','embodiment','research','governance'];
     const contractByDomain = new Map((contracts ?? []).map(c=>[c.name,c]));
@@ -146,7 +148,7 @@ export class CognitiveExecutionPlanner{
       let run=false;
       if(op==='perception') run=domain && (frame.externalInput||frame.tick%4===0||spine.mode==='deep');
       else if(op==='memory') run=domain && (frame.externalInput||frame.predictionError01>.20||frame.tick%4===0);
-      else if(op==='slow-cognition') run=domain && (spine.mode==='deep'||shadowEscalation||frame.tick % Math.max(8,organCadence)===0) && !lowResource;
+      else if(op==='slow-cognition') run=domain && (deliberate||spine.mode==='deep'||shadowEscalation||frame.tick % Math.max(8,organCadence)===0) && !lowResource;
       else run=domain && spineRun && (forced || (pressureAllows && (expectedValue>=valueThreshold || pressureBoost>.34 || spine.mode==='deep')));
 
       // Hard safety rule: governance does not disappear under pressure; slow work does.

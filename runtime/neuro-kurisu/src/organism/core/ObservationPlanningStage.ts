@@ -44,14 +44,14 @@ export interface ObservationPlanningResult {
   perceptionRefresh:boolean;
 }
 
-export function compileObservationPlan(input:{state:OrganismState;observation:OrganismObservation;host:ObservationPlanningHost}):ObservationPlanningResult {
-  const {state,observation,host}=input;
+export function compileObservationPlan(input:{state:OrganismState;observation:OrganismObservation;host:ObservationPlanningHost;deliberate?:boolean}):ObservationPlanningResult {
+  const {state,observation,host,deliberate=false}=input;
   // All scheduler decisions in this stage must share one immutable view of the remaining budget.
   const budgetSnapshot=host.getBudget();
   const normalizedObservation:OrganismObservation = observation.worldContext
     ? { ...observation, worldContext: normalizeWorldContext(observation.worldContext,{tick:state.tick+1,at:state.at}) }
     : observation;
-  const cognitiveFrame=buildCognitiveFrame(state,normalizedObservation);
+  const cognitiveFrame=buildCognitiveFrame(state,normalizedObservation,deliberate);
   const n=state.needs;
   const predictionDebtForPressure=host.snapshotPredictionDebt();
   const groundedSummaryForPressure=host.snapshotGroundedWorld();
@@ -115,6 +115,7 @@ export function compileObservationPlan(input:{state:OrganismState;observation:Or
     Math.min(budgetSnapshot.remaining01,cognitiveResourceAllocation.totalBudget01),
     cognitivePressure,
     host.contracts,
+    deliberate,
   );
   host.writeExecutionPlan(cognitiveExecutionPlan);
   return {

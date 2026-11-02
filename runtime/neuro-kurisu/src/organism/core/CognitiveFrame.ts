@@ -36,7 +36,7 @@ const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
  * normalized signals, not module snapshots. This lets schedulers make decisions
  * without cloning or traversing the organism state tree.
  */
-export function buildCognitiveFrame(state: OrganismState, observation: OrganismObservation): CognitiveFrame {
+export function buildCognitiveFrame(state: OrganismState, observation: OrganismObservation, deliberate = false): CognitiveFrame {
   const hasText=Boolean(observation.text);
   const hasVision=Boolean(observation.vision);
   const hasAudio=Boolean(observation.audio);
@@ -86,7 +86,7 @@ export function buildCognitiveFrame(state: OrganismState, observation: OrganismO
     agency:Boolean(hasText||hasGoal||goalPressure01>.35||predictionError01>.35),
     embodiment:Boolean(hasEmbodiment||hasVision||hasAudio),
     research:Boolean(hasWorld||hasText||predictionError01>.42||uncertainty01>.62),
-    governance:Boolean(hasOutcome||thermal01>.65||ramPressure01>.72||energy01<.28),
+    governance:Boolean(deliberate||hasOutcome||thermal01>.65||ramPressure01>.72||energy01<.28),
   };
   const dirtyDomains:Record<CognitiveDomain,boolean>={
     ...domains,
@@ -104,6 +104,7 @@ export function buildCognitiveFrame(state: OrganismState, observation: OrganismO
   const attentionBudget01=clamp(.18 + cognitiveCapacity01*.42 + energy01*.18 + (1-thermal01)*.12 + (1-ramPressure01)*.10);
   const reason=[
     externalInput?'external':'internal',
+    deliberate?'deliberate':'auto',
     `mask=${signalMask}`,
     `ig=${expectedInformationGain01.toFixed(2)}`,
     `deep=${deepDemand01.toFixed(2)}`,

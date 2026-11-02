@@ -4073,7 +4073,7 @@ export class OrganismCore {
             expected.push('agency');
         return [...new Set(expected)];
     }
-    async observe(observation: OrganismObservation = {}, resultMode: 'full' | 'operational' | undefined = this.config.cycleResultMode): Promise<OrganismCycleResult> {
+    async observe(observation: OrganismObservation = {}, resultMode: 'full' | 'operational' | undefined = this.config.cycleResultMode, deliberate = false): Promise<OrganismCycleResult> {
         if (this.config.spineOnly)
             return this.observeSpineOnly(observation, (resultMode ?? 'operational') as 'full' | 'operational');
         if (!this.ready)
@@ -4096,6 +4096,7 @@ export class OrganismCore {
         const planning = compileObservationPlan({
             state,
             observation,
+            deliberate,
             host: {
                 resourceAllocator: this.developmentalNeural.resourceAllocator,
                 cognitiveResourceEconomy: this.cognitiveRuntime.cognitiveResourceEconomy,

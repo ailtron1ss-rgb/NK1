@@ -677,7 +677,7 @@ export class OrganismRuntime {
       text: externalText,
       externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
-    });
+    }, undefined, Boolean(options.deliberate));
     const perceptionAfter = this.core.perceptionSnapshot();
     const canonicalPerceptionEvent = perceptionAfter.eventCount > perceptionBefore.eventCount
       ? perceptionAfter.lastEvent
