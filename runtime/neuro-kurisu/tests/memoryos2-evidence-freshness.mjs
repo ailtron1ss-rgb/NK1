@@ -107,6 +107,19 @@ const refreshed = refreshMemory.encode({
 });
 assert.equal(refreshed.evidenceFreshnessAt, base,
   'same-lineage new evidence must refresh evidenceFreshnessAt');
+const replayedOlder = refreshMemory.encode({
+  content: refreshContent,
+  kind: 'semantic',
+  source: 'device-health-probe',
+  observedAt: base - 5 * day,
+  evidenceFreshnessAt: base - 5 * day,
+  freshnessHalfLifeMs: day,
+  salience: 0.5,
+  confidence: 0.8,
+  epistemicStatus: 'fact',
+});
+assert.equal(replayedOlder.evidenceFreshnessAt, base,
+  'replayed older evidence must never move the freshness watermark backwards');
 
 const diagnostics = restored.indexDiagnostics();
 assert.equal(diagnostics.pass, true, 'freshness metadata must not desynchronize canonical indexes');
