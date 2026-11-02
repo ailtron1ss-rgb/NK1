@@ -6,6 +6,9 @@ on:
       - "app/src/components/avatar/embodimentIntentAdapter.ts"
       - "app/src/components/avatar/depthRigRendererAdapter.ts"
       - "app/src/components/avatar/depthRigAssetManifest.ts"
+      - "app/scripts/lib/depth-rig-asset-inventory.mjs"
+      - "app/scripts/validate-depth-rig-assets.mjs"
+      - "app/scripts/depth-rig-asset-inventory.test.mjs"
       - "app/scripts/depth-rig.test.mjs"
       - "app/scripts/depth-rig-assets.test.mjs"
       - ".github/workflows/nk1-aspect04-depth-rig.yml"
@@ -39,3 +42,6 @@ jobs:
       - name: Validate 2.5D authored asset manifest and provenance
         working-directory: app
         run: node --experimental-strip-types --test scripts/depth-rig-assets.test.mjs
+      - name: Validate filesystem-derived 2.5D inventory
+        working-directory: app
+        run: npm run test:2p5d-asset-inventory
