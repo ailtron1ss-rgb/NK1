@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
+import { planAvatarMotorIntent, type AvatarMotorIntentPlan } from "./avatar/motorIntent";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -60,38 +61,60 @@ const EMOTION_BROW: Record<EmotionLabel, number> = {
   curiosity: -5, calm: 0, joy: 2, anxiety: 4, frustration: 8, sadness: 6, anger: 10, protective: -2,
 };
 
-function automaticPoseFor(action: ActionKind, emotion: EmotionLabel, thinking: boolean): PoseOverride {
-  if (thinking || action === "reflect" || emotion === "curiosity" || action === "verify") return "thinking";
-  if (action === "explore" || (action === "respond" && (emotion === "joy" || emotion === "protective"))) return "explain";
+function automaticPoseForMotorPlan(plan: AvatarMotorIntentPlan, emotion: EmotionLabel): PoseOverride {
+  if (plan.action === "reflect") return "thinking";
+  if (plan.action === "inspect" || plan.action === "explain") return "explain";
   if (emotion === "anger" || emotion === "frustration") return "crossed";
   return "auto";
 }
 
-function poseFor(action: ActionKind, emotion: EmotionLabel, arousal: number, motion: MotionStyle) {
+/** Keep renderer styling local while taking the semantic decision from the shared organism motor planner. */
+function poseForMotorPlan(motorPlan: AvatarMotorIntentPlan, energy01: number, cognitiveLoad01: number, motion: MotionStyle) {
   const multiplier = motion === "soft" ? 0.55 : 1;
-  const actionTilt: Record<ActionKind, number> = {
-    respond: 0, explore: 5, verify: 2, rest: -4, reflect: -7, wait: -1,
+  const bodyTiltByAction: Record<AvatarMotorIntentPlan["action"], number> = {
+    rest: -1.2,
+    listen: -0.4,
+    reflect: -3.2,
+    inspect: -1.7,
+    explain: 3.2,
+    comfort: 1.2,
+    respond: 1.4,
   };
-  const emotionTilt: Record<EmotionLabel, number> = {
-    curiosity: -3, calm: 0, joy: 2, anxiety: -2, frustration: 2, sadness: 4, anger: 1, protective: -1,
-  };
-  const energy = Math.max(0, Math.min(1, Number.isFinite(arousal) ? arousal : 0.25));
+  const energy = Math.max(0, Math.min(1, Number.isFinite(energy01) ? energy01 : 0.25));
+  const load = Math.max(0, Math.min(1, Number.isFinite(cognitiveLoad01) ? cognitiveLoad01 : 0));
+  const headTiltDegrees = Math.max(-8.6, Math.min(8.6, motorPlan.headTilt * (180 / Math.PI)));
   return {
-    head: (actionTilt[action] + emotionTilt[emotion]) * multiplier,
-    body: (actionTilt[action] * 0.22 + (energy - 0.4) * 1.5) * multiplier,
-    breathMs: Math.max(2.8, 4.6 - energy * 1.3),
+    head: headTiltDegrees * multiplier,
+    body: (bodyTiltByAction[motorPlan.action] + (load - 0.35) * -1.2 + (energy - 0.5) * 0.8) * multiplier,
+    breathMs: Math.max(2.8, Math.min(5.5, 4.6 - energy * 1.1 + load * 0.5)),
   };
+}
+
+export interface KurisuOriginalMotorSignals {
+  energy: number;
+  cognitiveLoad: number;
+  uncertainty: number;
+  socialNeed: number;
+  novelty: number;
+  goalPressure: number;
+  predictionError: number;
+  traits: Readonly<Record<string, number>>;
+  hasFreshTurn: boolean;
+  turnText: string;
+  awake: boolean;
 }
 
 export interface KurisuOriginalStageProps {
   emotion: EmotionLabel;
   action: ActionKind;
+  valence: number;
   arousal: number;
   gazeX: number;
   gazeY: number;
   speaking: boolean;
   mouthPose: MouthPose;
   thinking: boolean;
+  motorSignals: KurisuOriginalMotorSignals;
 }
 
 /**
@@ -100,7 +123,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, valence, arousal, gazeX, gazeY, speaking, mouthPose, thinking, motorSignals }: KurisuOriginalStageProps) {
   // SVG paint-server IDs must be unique when multiple avatar previews are mounted.
   const instanceId = useId().replace(/:/g, "");
   const svgIds = {
@@ -125,8 +148,27 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const hair = HAIR.find((choice) => choice.id === hairTone) ?? HAIR[0];
   const eyes = EYES.find((choice) => choice.id === eyeTone) ?? EYES[0];
   const accent = ACCENTS.find((choice) => choice.id === accentTone) ?? ACCENTS[0];
-  const pose = poseFor(action, emotion, arousal, motion);
-  const effectivePose = poseOverride === "auto" ? automaticPoseFor(action, emotion, thinking) : poseOverride;
+  const motorPlan = planAvatarMotorIntent({
+    emotion,
+    valence,
+    arousal,
+    action,
+    thinking,
+    speaking,
+    hasFreshTurn: motorSignals.hasFreshTurn,
+    turnText: motorSignals.turnText,
+    awake: motorSignals.awake,
+    energy: motorSignals.energy,
+    cognitiveLoad: motorSignals.cognitiveLoad,
+    uncertainty: motorSignals.uncertainty,
+    socialNeed: motorSignals.socialNeed,
+    novelty: motorSignals.novelty,
+    goalPressure: motorSignals.goalPressure,
+    predictionError: motorSignals.predictionError,
+    traits: motorSignals.traits,
+  });
+  const pose = poseForMotorPlan(motorPlan, motorSignals.energy, motorSignals.cognitiveLoad, motion);
+  const effectivePose = poseOverride === "auto" ? automaticPoseForMotorPlan(motorPlan, emotion) : poseOverride;
   const mouthHeight = speaking ? Math.max(2, Math.min(14, mouthPose.open * 18)) : 2.5;
   const pupilOffsetX = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeX) ? gazeX : 0)) * 15;
   const pupilOffsetY = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeY) ? gazeY : 0)) * 10;
@@ -186,7 +228,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         <g opacity=".48" fill={accent.color} fontFamily="monospace" fontSize="8">
           <text x="22" y="45">NK1 / EMBODIMENT</text><text x="22" y="57">AFFECTIVE RIG v1</text>
           <text x="310" y="45">MODE 2D</text><text x="310" y="57">STATE: {emotion.toUpperCase()}</text>
-          <text x="22" y="510">POSE / {action.toUpperCase()}</text><text x="310" y="510">AROUSAL {(Math.max(0, Math.min(1, arousal)) * 100).toFixed(0)}%</text>
+          <text x="22" y="510">POSE / {motorPlan.action.toUpperCase()}</text><text x="310" y="510">AROUSAL {(Math.max(0, Math.min(1, arousal)) * 100).toFixed(0)}%</text>
         </g>
         <path className="nk-scanner" d="M20 80H400" stroke={accent.color} strokeOpacity=".42" strokeWidth="1"/>
         <ellipse cx="210" cy="505" rx="78" ry="9" fill={accent.color} opacity=".12" filter={`url(#${svgIds.glow})`}/>
