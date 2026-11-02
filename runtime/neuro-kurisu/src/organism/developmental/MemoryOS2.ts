@@ -251,6 +251,34 @@ function conceptGroupCoverage(groups:ReadonlyArray<number>,documentTokens:Set<st
  }
  return clamp(hits/groups.length);
 }
+// Tip-of-tongue: a concept the query activates but that no current memory carries.
+// Adapted from Hexis's find_partial_activations (MIT, db/18_functions_tip_of_tongue.sql),
+// which reports a cluster whose centroid matches the query while no member memory does.
+// Here the "cluster" is a compact bilingual concept group and the "member" test is
+// lexical presence in a stored memory, so it stays embedding-free and cannot invent
+// recall: it only names a topic the organism recognizes but cannot answer from.
+export interface MemoryPartialActivation {conceptGroupIndex:number;conceptTerms:string[];queryTermMatches:string[];bestLexicalSupport01:number;}
+function memoryPartialActivations(groups:ReadonlyArray<number>,queryTerms:Set<string>,memories:ReadonlyArray<{tokens:Set<string>}>,limit=4):MemoryPartialActivation[]{
+ if(!groups.length||!memories.length)return [];
+ const results:MemoryPartialActivation[]=[];
+ for(const groupIndex of groups){
+  const aliases=MEMORY_RETRIEVAL_CONCEPT_TERM_GROUPS[groupIndex]??[];
+  const groupTerms=[...new Set(aliases.flat())];
+  const queryTermMatches=groupTerms.filter(term=>queryTerms.has(term));
+  if(!queryTermMatches.length)continue;
+  let bestLexicalSupport01=0;
+  for(const memory of memories){
+   let hits=0;
+   for(const alias of aliases)if(alias.some(token=>memory.tokens.has(token)))hits++;
+   if(hits)bestLexicalSupport01=Math.max(bestLexicalSupport01,clamp(hits/aliases.length));
+  }
+  // A group with a stored memory is not a partial activation; it grounded recall.
+  if(bestLexicalSupport01>0)continue;
+  results.push({conceptGroupIndex:groupIndex,conceptTerms:groupTerms.slice(0,12),queryTermMatches:queryTermMatches.slice(0,6),bestLexicalSupport01:0});
+  if(results.length>=Math.max(1,Math.min(8,limit)))break;
+ }
+ return results;
+}
 function fuzzyTokenCoverage(queryTokens:string[],documentTokens:Set<string>):number{
  if(!queryTokens.length||!documentTokens.size)return 0;
  let total=0;
@@ -461,7 +489,7 @@ export class MemoryOS2{
  private readonly itemMetadataTokens=new Map<string,Set<string>>();
  private totalTokenLength=0;
  private lastCandidateCount=0;
- private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null};
+ private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;partialActivations:MemoryPartialActivation[]}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,partialActivations:[]};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
  private readonly residencyGovernor=new MemoryResidencyGovernor();
@@ -1314,7 +1342,7 @@ export class MemoryOS2{
      return lexicalEvidence||causalConceptEvidence||typedRecall;
    });
    rows.push(...groundedRows);
-   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null};
+   this.lastHybridDiagnostics={...this.lastHybridDiagnostics,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null,partialActivations:groundedRows.length===0?memoryPartialActivations(conceptQuery.groups,qTokens,this.state.items.map(m=>({tokens:this.tokensFor(m.content)})),4):[]};
    // semanticHits is retained only for persisted-state compatibility. It is not
    // incremented by retrieval: the legacy hashed token projection is not a semantic
    // retrieval channel, and its previous calculation silently warmed cold memories.
