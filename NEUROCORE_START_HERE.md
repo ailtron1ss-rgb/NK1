@@ -18,11 +18,11 @@
 
 ## CI startup state — 2026-11-02
 
-- Exact `workpass70-source` HEAD `608435493b4af3b4a222d385f1b77d978d18583b`: 14/14 Actions runs failed before runner assignment. Every job has `runner_id=0`, empty runner name, `steps=[]`, and a two-second lifetime; all 14 job logs return `BlobNotFound`.
+- Exact `workpass70-source` HEAD `608435493b4af3b4a222d385f1b77d978d18583b`: the original push wave had 14/14 Actions failures before runner assignment (`runner_id=0`, empty runner, zero steps; logs return `BlobNotFound`). On 2026-11-02 the same core run was retried: attempt 2 assigned a runner, executed 45 steps and succeeded. Four additional PR-triggered workflows on PR #664 also succeeded.
 - Parent `f921007a74a7a6124d274885354009dd3a3ef33c`: 7 successful workflow runs; the core regression job ran 45 steps on a real runner. The only intervening change is `runtime/neuro-kurisu/package.json` (+1/−2), removing a duplicate planner-restore test call; workflow YAML did not change.
-- This is a runner-startup blocker, not evidence of failing NK1 assertions. Root cause is not confirmed. Account-level Billing & Licensing / Actions restriction is a hypothesis only; owner-side billing view or GitHub Support evidence is required.
+- Initial failure was pre-runner startup, not a failed test assertion. Its exact cause remains unknown; successful same-run retry and four PR-triggered workflows make a persistent account-wide restriction less likely.
 - `workpass70-source` currently has branch protection disabled and no required status checks configured. PR [#652](https://github.com/ailtron1ss-rgb/NK1/pull/652) remains Draft and documentation-only; its evidence ledger is `docs/engineering/NK1_RELEASE_INTEGRITY_AND_CI_RECOVERY_2026-11-02_RU.md`.
-- Do not rerun all 14 jobs before the runner-startup restriction is resolved. Do not classify them as test failures and do not raise quality/readiness scores from these statuses.
+- Do not classify the initial failures as test failures. One targeted rerun passed; the full current source validation matrix remains to be checked. Do not raise readiness scores from these results alone.
 
 ## Release and external services
 
