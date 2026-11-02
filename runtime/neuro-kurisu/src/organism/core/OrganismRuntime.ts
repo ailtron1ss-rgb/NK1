@@ -343,7 +343,15 @@ export class OrganismRuntime {
       await this.compoundRepairRevisionCoordinator?.restoreRetryBackoff();
       this.proceduralSkillLibrary.restore(await this.proceduralSkillStore.load() ?? undefined);
       const systemSnapshot = this.core.systemSnapshot();
-      this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined);
+      try {
+        this.cognitiveSpineScheduler.restore(await this.cognitiveSpineStore.load() ?? undefined);
+      } catch (error) {
+        // The optional cadence sidecar must never prevent the canonical organism from booting.
+        this.cognitiveSpineScheduler.restore();
+        await this.journal.write('warn', 'runtime.cognitive-spine.restore-failed', {
+          message: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      }
       this.evidenceBus.restore(systemSnapshot.runtimeEvidence ?? undefined);
       this.cognitiveEventFabric.restore(systemSnapshot.runtimeCognitiveEventFabric ?? systemSnapshot.cognitiveEventFabric ?? undefined);
       this.resourceEconomy.restore(systemSnapshot.runtimeCognitiveResourceEconomy ?? systemSnapshot.cognitiveResourceEconomy ?? undefined);
