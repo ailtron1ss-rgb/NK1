@@ -1,4 +1,117 @@
 import type { ActionKind } from '../core/types.ts';
+import { types } from 'node:util';
+
+const ACTION_SET = new Set<string>(['respond','explore','verify','rest','reflect','wait','defer']);
+const DEVELOPMENT_STAGES = new Set<B299State['developmentalStage']>([
+  'nascent','learning','calibrating','consolidating','generalizing',
+]);
+
+type RestoreRecord = Record<string, unknown>;
+
+function ownDataRecord(value: unknown): RestoreRecord | null {
+  if (value === null || typeof value !== 'object' || types.isProxy(value) || Array.isArray(value)) return null;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const record: RestoreRecord = Object.create(null);
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== 'string') return null;
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !('value' in descriptor)) return null;
+      if (descriptor.enumerable) record[key] = descriptor.value;
+    }
+    return record;
+  } catch {
+    return null;
+  }
+}
+
+function ownDataArray(value: unknown, limit: number): unknown[] {
+  if (types.isProxy(value) || !Array.isArray(value)) return [];
+  try {
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    const length = lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : 0;
+    if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0) return [];
+    const rows: unknown[] = [];
+    for (let index = Math.max(0, length - limit); index < length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (descriptor && 'value' in descriptor) rows.push(descriptor.value);
+    }
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+function restoredUnit(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? clamp01(value) : fallback;
+}
+
+function restoredSigned(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? clamp11(value) : fallback;
+}
+
+function restoredCount(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : fallback;
+}
+
+function restoredTime(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value
+    : fallback;
+}
+
+function restoredAction(value: unknown): ActionKind | null {
+  return typeof value === 'string' && ACTION_SET.has(value) ? value as ActionKind : null;
+}
+
+function restoredHistory(value: unknown): B299State['history'] {
+  const result: B299State['history'] = [];
+  for (const item of ownDataArray(value, 192)) {
+    const row = ownDataRecord(item);
+    if (!row) continue;
+    const tick = restoredCount(row.tick, -1);
+    const action = restoredAction(row.action);
+    if (tick < 0 || !action ||
+        typeof row.verified !== 'boolean' ||
+        typeof row.independent !== 'boolean' ||
+        typeof row.autonomous !== 'boolean' ||
+        typeof row.reward01 !== 'number' || !Number.isFinite(row.reward01) ||
+        typeof row.predictionError01 !== 'number' || !Number.isFinite(row.predictionError01) ||
+        typeof row.bias11 !== 'number' || !Number.isFinite(row.bias11) ||
+        typeof row.learningRate01 !== 'number' || !Number.isFinite(row.learningRate01)) continue;
+    result.push({
+      tick,
+      action,
+      reward01: clamp01(row.reward01),
+      predictionError01: clamp01(row.predictionError01),
+      verified: row.verified,
+      independent: row.independent,
+      autonomous: row.autonomous,
+      bias11: clamp11(row.bias11),
+      learningRate01: clamp01(row.learningRate01),
+    });
+  }
+  return result;
+}
+
+function restoredTraitVector(
+  value: unknown,
+  fallback: Record<B299TraitName, number>,
+  min: number,
+  max: number,
+): Record<B299TraitName, number> {
+  const source = ownDataRecord(value);
+  return Object.fromEntries(TRAITS.map((trait) => {
+    const raw = source?.[trait];
+    const valid = typeof raw === 'number' && Number.isFinite(raw);
+    const normalized = valid ? Math.max(min, Math.min(max, raw)) : fallback[trait];
+    return [trait, normalized];
+  })) as Record<B299TraitName, number>;
+}
+
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp01=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
@@ -122,52 +235,86 @@ export const defaultB299State=():B299State=>({
 export class B299CausalPersonalityDevelopmentLoop {
   private state=B299CausalPersonalityDevelopmentLoop.normalize(defaultB299State());
 
-  private static normalize(raw?:Partial<B299State>|null):B299State{
-    const d=defaultB299State(); const r:any=raw??{};
-    const byAction=new Set<string>(ACTIONS);
-    const phen=Array.isArray(r.actionPhenotypes)?r.actionPhenotypes:[];
-    const normalized=ACTIONS.map(action=>{
-      const p=phen.find((x:any)=>byAction.has(String(x?.action))&&String(x.action)===action)??{};
+  private static normalize(raw?:unknown):B299State{
+    const defaults=defaultB299State();
+    const source=ownDataRecord(raw);
+    if(!source) return defaults;
+
+    const phenotypeRows=ownDataArray(source.actionPhenotypes,ACTIONS.length*4)
+      .map(ownDataRecord)
+      .filter((row):row is RestoreRecord=>row!==null);
+    const phenotypeByAction=new Map<ActionKind,RestoreRecord>();
+    for(const row of phenotypeRows){
+      const action=restoredAction(row.action);
+      if(action && !phenotypeByAction.has(action)) phenotypeByAction.set(action,row);
+    }
+    const actionPhenotypes=defaults.actionPhenotypes.map((base)=>{
+      const row=phenotypeByAction.get(base.action);
+      if(!row) return base;
       return {
-        action,
-        value01:clamp01(p.value01??.5),
-        preference11:clamp11(p.preference11??0),
-        consolidatedPreference11:clamp11(p.consolidatedPreference11??p.preference11??0),
-        consolidationEvidence01:clamp01(p.consolidationEvidence01??0),
-        evidence01:clamp01(p.evidence01??0),
-        causalConfidence01:clamp01(p.causalConfidence01??.45),
-        stability01:clamp01(p.stability01??.45),
-        samples:Math.max(0,Math.floor(Number(p.samples??0))),
-        verifiedSamples:Math.max(0,Math.floor(Number(p.verifiedSamples??0))),
-        predictionErrorEMA01:clamp01(p.predictionErrorEMA01??.3),
-        lastPredictedReward01:clamp01(p.lastPredictedReward01??.5),
-        calibrationErrorEMA01:clamp01(p.calibrationErrorEMA01??.25),
-        calibrationBias11:clamp11(p.calibrationBias11??0),
-        calibrationCount:Math.max(0,Math.floor(Number(p.calibrationCount??0))),
-        lastReward01:clamp01(p.lastReward01??.5),
-        lastAt:Math.max(0,Number(p.lastAt??0)),
-        contextPreference11:normalizeContext11(p.contextPreference11 as any) as B299ContextVector,
-        contextEvidence01:normalizeContext(p.contextEvidence01 as any) as B299ContextVector,
+        action:base.action,
+        value01:restoredUnit(row.value01,base.value01),
+        preference11:restoredSigned(row.preference11,base.preference11),
+        consolidatedPreference11:restoredSigned(row.consolidatedPreference11,base.consolidatedPreference11),
+        consolidationEvidence01:restoredUnit(row.consolidationEvidence01,base.consolidationEvidence01),
+        evidence01:restoredUnit(row.evidence01,base.evidence01),
+        causalConfidence01:restoredUnit(row.causalConfidence01,base.causalConfidence01),
+        stability01:restoredUnit(row.stability01,base.stability01),
+        samples:restoredCount(row.samples,base.samples),
+        verifiedSamples:restoredCount(row.verifiedSamples,base.verifiedSamples),
+        predictionErrorEMA01:restoredUnit(row.predictionErrorEMA01,base.predictionErrorEMA01),
+        lastPredictedReward01:restoredUnit(row.lastPredictedReward01,base.lastPredictedReward01),
+        calibrationErrorEMA01:restoredUnit(row.calibrationErrorEMA01,base.calibrationErrorEMA01),
+        calibrationBias11:restoredSigned(row.calibrationBias11,base.calibrationBias11),
+        calibrationCount:restoredCount(row.calibrationCount,base.calibrationCount),
+        lastReward01:restoredUnit(row.lastReward01,base.lastReward01),
+        lastAt:restoredTime(row.lastAt,base.lastAt),
+        contextPreference11:normalizeContext11(
+          ownDataRecord(row.contextPreference11) as Partial<B299ContextVector>|null,
+        ) as B299ContextVector,
+        contextEvidence01:normalizeContext(
+          ownDataRecord(row.contextEvidence01) as Partial<B299ContextVector>|null,
+        ) as B299ContextVector,
       };
     });
-    return {...d,...r,version:1,
-      cycles:Math.max(0,Math.floor(Number(r.cycles??0))),learningUpdates:Math.max(0,Math.floor(Number(r.learningUpdates??0))),
-      verifiedUpdates:Math.max(0,Math.floor(Number(r.verifiedUpdates??0))),independentUpdates:Math.max(0,Math.floor(Number(r.independentUpdates??0))),
-      autonomousUpdates:Math.max(0,Math.floor(Number(r.autonomousUpdates??0))),lastAction:r.lastAction??null,
-      lastPredictionError01:clamp01(r.lastPredictionError01??d.lastPredictionError01),lastLearningRate01:clamp01(r.lastLearningRate01??0),
-      personalityInfluence01:clamp01(r.personalityInfluence01??0),personalityStability01:clamp01(r.personalityStability01??d.personalityStability01),
-      selfAuthoredDevelopment01:clamp01(r.selfAuthoredDevelopment01??0),causalIntegrity01:clamp01(r.causalIntegrity01??d.causalIntegrity01),
-      actionPhenotypes:normalized,history:Array.isArray(r.history)?r.history.slice(-192):[],lesion01:clamp01(r.lesion01??0),
-      currentContext:normalizeContext(r.currentContext as any),
-      currentContextLabel:CONTEXTS.includes(r.currentContextLabel)?r.currentContextLabel:'mixed',
-      contextCreditAssignments:Math.max(0,Math.floor(Number(r.contextCreditAssignments??0))),
-      traitFast11:Object.fromEntries(TRAITS.map(t=>[t,clamp11(Number((r.traitFast11 as any)?.[t]??0))])) as Record<B299TraitName,number>,
-      traitSlow11:Object.fromEntries(TRAITS.map(t=>[t,clamp11(Number((r.traitSlow11 as any)?.[t]??0))])) as Record<B299TraitName,number>,
-      traitEvidence01:Object.fromEntries(TRAITS.map(t=>[t,clamp01(Number((r.traitEvidence01 as any)?.[t]??0))])) as Record<B299TraitName,number>,
-      maturity01:clamp01(r.maturity01??0),
-      developmentalStage:['nascent','learning','calibrating','consolidating','generalizing'].includes(r.developmentalStage)?r.developmentalStage:'nascent',
-      developmentalEvidence01:clamp01(r.developmentalEvidence01??0),
-      developmentalDiversity01:clamp01(r.developmentalDiversity01??0),
+
+    const context=ownDataRecord(source.currentContext) as Partial<B299ContextVector>|null;
+    const contextLabel=typeof source.currentContextLabel==='string' &&
+      (CONTEXTS as readonly string[]).includes(source.currentContextLabel)
+      ? source.currentContextLabel as B299ContextName|'mixed'
+      : 'mixed';
+    const stage=typeof source.developmentalStage==='string' &&
+      DEVELOPMENT_STAGES.has(source.developmentalStage as B299State['developmentalStage'])
+      ? source.developmentalStage as B299State['developmentalStage']
+      : defaults.developmentalStage;
+
+    return {
+      version:1,
+      cycles:restoredCount(source.cycles,defaults.cycles),
+      learningUpdates:restoredCount(source.learningUpdates,defaults.learningUpdates),
+      verifiedUpdates:restoredCount(source.verifiedUpdates,defaults.verifiedUpdates),
+      independentUpdates:restoredCount(source.independentUpdates,defaults.independentUpdates),
+      autonomousUpdates:restoredCount(source.autonomousUpdates,defaults.autonomousUpdates),
+      lastAction:restoredAction(source.lastAction),
+      lastPredictionError01:restoredUnit(source.lastPredictionError01,defaults.lastPredictionError01),
+      lastLearningRate01:restoredUnit(source.lastLearningRate01,defaults.lastLearningRate01),
+      personalityInfluence01:restoredUnit(source.personalityInfluence01,defaults.personalityInfluence01),
+      personalityStability01:restoredUnit(source.personalityStability01,defaults.personalityStability01),
+      selfAuthoredDevelopment01:restoredUnit(source.selfAuthoredDevelopment01,defaults.selfAuthoredDevelopment01),
+      causalIntegrity01:restoredUnit(source.causalIntegrity01,defaults.causalIntegrity01),
+      actionPhenotypes,
+      history:restoredHistory(source.history),
+      lesion01:restoredUnit(source.lesion01,defaults.lesion01),
+      currentContext:normalizeContext(context),
+      currentContextLabel:contextLabel,
+      contextCreditAssignments:restoredCount(source.contextCreditAssignments,defaults.contextCreditAssignments),
+      traitFast11:restoredTraitVector(source.traitFast11,defaults.traitFast11,-1,1),
+      traitSlow11:restoredTraitVector(source.traitSlow11,defaults.traitSlow11,-1,1),
+      traitEvidence01:restoredTraitVector(source.traitEvidence01,defaults.traitEvidence01,0,1),
+      maturity01:restoredUnit(source.maturity01,defaults.maturity01),
+      developmentalStage:stage,
+      developmentalEvidence01:restoredUnit(source.developmentalEvidence01,defaults.developmentalEvidence01),
+      developmentalDiversity01:restoredUnit(source.developmentalDiversity01,defaults.developmentalDiversity01),
     };
   }
 
