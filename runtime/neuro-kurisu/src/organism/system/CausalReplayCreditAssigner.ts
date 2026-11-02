@@ -2,6 +2,26 @@ import { isTrustedExternalPostconditionVerification, type OutcomeVerification } 
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 
+/** Capture a flat verifier tuple without invoking accessors or accepting hostile prototypes. */
+function captureReceiptInput(raw:unknown):Record<string,unknown>|null{
+  try{
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+    const proto=Object.getPrototypeOf(raw);
+    if(proto!==Object.prototype&&proto!==null)return null;
+    const captured:Record<string,unknown>={};
+    for(const key of Reflect.ownKeys(raw)){
+      if(typeof key!=='string'||key==='__proto__'||key==='prototype'||key==='constructor')return null;
+      const descriptor=Object.getOwnPropertyDescriptor(raw,key);
+      if(!descriptor||!('value' in descriptor))return null;
+      const value=descriptor.value;
+      if(value!==undefined&&value!==null&&typeof value!=='string'&&typeof value!=='boolean'&&
+        !(typeof value==='number'&&Number.isFinite(value)))return null;
+      Object.defineProperty(captured,key,{value,enumerable:true,writable:false,configurable:false});
+    }
+    return captured;
+  }catch{return null;}
+}
+
 export interface ReplayCreditRecord {
   id:string;
   memoryId:string;
@@ -124,7 +144,26 @@ export class CausalReplayCreditAssigner {
       .18*clamp(input.learningOpportunity01)+
       .14*clamp(input.priorityAfter01)
     );
-    const independentVerified=isTrustedExternalPostconditionVerification(input.verification,input.verificationInput);
+    // A valid receipt is not enough on its own: bind it to this exact credit
+    // measurement. Otherwise a caller could pair a receipt for another memory,
+    // delay, or outcome with a different credit assignment.
+    const receiptInput=captureReceiptInput(input.verificationInput);
+    const boundGain=receiptInput&&typeof receiptInput.retentionGain01==='number'
+      ? clamp(receiptInput.retentionGain01)
+      : receiptInput&&typeof receiptInput.retentionScore01==='number'&&typeof receiptInput.baselineScore01==='number'
+        ? clamp(receiptInput.retentionScore01-receiptInput.baselineScore01)
+        : Number.NaN;
+    const boundMemory=receiptInput?.memoryId;
+    const boundDelay=receiptInput?.delayMs;
+    const boundTransfer=receiptInput?.transferPotential01;
+    const boundRisk=receiptInput?.interferenceRisk01;
+    const exactMeasurement=typeof boundMemory==='string'&&boundMemory.length>0&&boundMemory===String(input.memoryId)&&
+      Number.isFinite(boundGain)&&Math.abs(boundGain-clamp(input.retentionGain01))<1e-12&&
+      typeof boundTransfer==='number'&&Math.abs(clamp(boundTransfer)-clamp(input.transferPotential01))<1e-12&&
+      typeof boundRisk==='number'&&Math.abs(clamp(boundRisk)-clamp(input.interferenceRisk01))<1e-12&&
+      typeof boundDelay==='number'&&Number.isFinite(boundDelay)&&Math.max(0,boundDelay)===delayMs;
+    const independentVerified=exactMeasurement&&
+      isTrustedExternalPostconditionVerification(input.verification,receiptInput??undefined);
     // Unverified replay is observable, but it is not a credit assignment. Keep
     // the record for diagnosis with zero credit until the verifier accepts it.
     const candidateCredit01=clamp(outcome01*eligibility01*(independentVerified?.96:.42));

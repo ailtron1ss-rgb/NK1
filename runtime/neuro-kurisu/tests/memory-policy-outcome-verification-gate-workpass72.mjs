@@ -8,6 +8,7 @@ import { UnifiedMemorySystem } from '../src/organism/developmental/UnifiedMemory
 import { P62MemoryFabric } from '../src/organism/memory/P62MemoryFabric.ts';
 import { SemanticMemoryGraph } from '../src/organism/memory/SemanticMemoryGraph.ts';
 import { CausalReplayCreditAssigner } from '../src/organism/system/CausalReplayCreditAssigner.ts';
+import { OutcomeVerificationService } from '../src/organism/system/OutcomeVerificationService.ts';
 
 const now=Date.now();
 const memory=new MemoryOS2({signalFusionProfile:'balanced',embeddingProvider:null});
@@ -87,7 +88,7 @@ const creditAssigner=new CausalReplayCreditAssigner();
 const unverifiedCredit=creditAssigner.assign({
   memoryId:'policy-evidence-memory',replayEventId:'replay-unverified',validationId:'validation-unverified',
   replayAt:now,validationAt:now+10_000,delayMs:10_000,retentionGain01:.95,transferPotential01:.95,
-  interferenceRisk01:.02,learningOpportunity01:.95,priorityAfter01:.95,independentVerified:false,
+  interferenceRisk01:.02,learningOpportunity01:.95,priorityAfter01:.95,independentVerified:true,
 });
 assert.equal(unverifiedCredit.independentVerified,false);
 assert.equal(unverifiedCredit.credit01,0,'unverified replay cannot publish causal credit');
@@ -101,11 +102,31 @@ assert.equal(unverifiedCreditDiag.meanDelayAttenuation01,0);
 assert.equal(unverifiedCreditDiag.lastCredit01,0);
 assert.equal(unverifiedCreditDiag.recentCount,1,'unverified attempt remains observable in bounded recent history');
 
+const verifiedCreditInput={
+  memoryId:'policy-evidence-memory',
+  retentionGain01:.95,
+  transferPotential01:.95,
+  interferenceRisk01:.02,
+  delayMs:10_000,
+};
+const verifier=new OutcomeVerificationService();
+const verification=await verifier.verify({
+  toolId:'workpass72-causal-credit-verifier',
+  input:verifiedCreditInput,
+  result:{ok:true,measurementId:'workpass72-policy-outcome'},
+},()=>({
+  verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,
+  observationId:'workpass72-policy-outcome-observation',
+  expectedPostcondition:'delayed replay outcome independently measured',
+  observedPostcondition:'delayed replay outcome independently measured',
+}));
 const verifiedCredit=creditAssigner.assign({
   memoryId:'policy-evidence-memory',replayEventId:'replay-verified',validationId:'validation-verified',
   replayAt:now,validationAt:now+10_000,delayMs:10_000,retentionGain01:.95,transferPotential01:.95,
-  interferenceRisk01:.02,learningOpportunity01:.95,priorityAfter01:.95,independentVerified:true,
+  interferenceRisk01:.02,learningOpportunity01:.95,priorityAfter01:.95,
+  verification,verificationInput:verifiedCreditInput,
 });
+assert.equal(verifiedCredit.independentVerified,true);
 assert.ok(verifiedCredit.credit01>0);
 const verifiedCreditDiag=creditAssigner.diagnostics();
 assert.equal(verifiedCreditDiag.assignments,2);
@@ -114,4 +135,26 @@ assert.ok(verifiedCreditDiag.meanCredit01>0);
 assert.ok(verifiedCreditDiag.meanEligibility01>0);
 assert.ok(verifiedCreditDiag.meanOutcome01>0);
 assert.ok(verifiedCreditDiag.meanDelayAttenuation01>0);
+
+// A genuine receipt for a different measured gain cannot be rebound to this assignment.
+const mismatchedInput={...verifiedCreditInput,retentionGain01:.25};
+const mismatchedVerification=await verifier.verify({
+  toolId:'workpass72-causal-credit-verifier',
+  input:mismatchedInput,
+  result:{ok:true,measurementId:'workpass72-policy-outcome-mismatch'},
+},()=>({
+  verified:true,basis:'external-postcondition',confidence01:1,externalObservation:true,
+  observationId:'workpass72-policy-outcome-mismatch-observation',
+  expectedPostcondition:'delayed replay outcome independently measured',
+  observedPostcondition:'delayed replay outcome independently measured',
+}));
+const mismatchedCredit=creditAssigner.assign({
+  memoryId:'policy-evidence-memory',replayEventId:'replay-mismatched',validationId:'validation-mismatched',
+  replayAt:now,validationAt:now+10_000,delayMs:10_000,retentionGain01:.95,transferPotential01:.95,
+  interferenceRisk01:.02,learningOpportunity01:.95,priorityAfter01:.95,
+  verification:mismatchedVerification,verificationInput:mismatchedInput,
+});
+assert.equal(mismatchedCredit.independentVerified,false);
+assert.equal(mismatchedCredit.credit01,0,'a valid receipt for a different measured gain must not be rebound');
+assert.equal(creditAssigner.diagnostics().verifiedAssignments,1);
 console.log('WORKPASS72_POLICY_VERIFICATION_GATE=PASS',JSON.stringify({unverifiedPolicyStateUnchanged:true,verifiedRewardUpdated:true,ledger:finalDiag}));
