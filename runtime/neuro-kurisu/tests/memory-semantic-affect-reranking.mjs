@@ -29,12 +29,12 @@ const affective = candidate('affectively-salient', .905, {
   goalRelevance: .1, socialRelevance: .22, predictionError: .8, confidence: .9,
 });
 const identity = candidate('identity-relevant', .904, {
-  salience: .72, emotionalWeight: .25, identityRelevance: .99,
-  goalRelevance: .08, socialRelevance: .1, predictionError: .12, confidence: .94,
+  salience: .12, emotionalWeight: .05, identityRelevance: .99,
+  goalRelevance: .08, socialRelevance: .05, predictionError: .08, confidence: .72,
 });
 const goal = candidate('goal-relevant', .903, {
-  salience: .7, emotionalWeight: .2, identityRelevance: .08,
-  goalRelevance: .99, socialRelevance: .08, predictionError: .16, confidence: .9,
+  salience: .12, emotionalWeight: .05, identityRelevance: .08,
+  goalRelevance: .99, socialRelevance: .05, predictionError: .08, confidence: .72,
 });
 
 const affectRanked = rerankSemanticCandidates([neutral, affective, identity, goal], {
