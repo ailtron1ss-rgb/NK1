@@ -25,6 +25,16 @@
 | # | Этап | Статус | Свидетельство |
 |---:|---|---|---|
 | 012 | Запретить новые прямые импорты между подсистемами | ✅ | `scripts/audit-subsystem-boundary.mjs` (`audit:subsystem-boundary`) + `scripts/lib/subsystem-boundary-rules.mjs`. 14 доменов `src/organism/*`; 43 существующих ребра заморожены, любое новое — FAIL. Регрессия `tests/subsystem-boundary-rules.mjs` (`test:subsystem-boundary-rules`) |
+| 019 | Ownership-проверка «двух владельцев сущности» | ✅ (аудит был, теперь enforced) | `audit:core-ownership` = `CORE_OWNERSHIP=PASS`; добавлен в `audit:all` вместе с ещё 7 структурными аудитами |
+| 018 | Уменьшить монолит `OrganismCore.ts` | ❌ открыт (pre-existing) | `audit:core-physical-ownership` = `FAIL core-line-regression:12834>10353`. `OrganismCore.ts` = 12833 строки против потолка 10353 (baseline 35.40.0 = 10225 + 128). На импортированном baseline `ba37a660a` уже было 12546 строк → это **предсуществующий** разрыв, не регрессия. Ядро проблемы — метод `observe` в 4222 строки с сильно связанным мутабельным состоянием; безопасное извлечение — многосессионная работа |
+
+### Структурные аудиты теперь enforced (2026-10-31)
+
+Восемь структурных аудитов существовали и проходили, но **никогда не запускались** зонтичным `audit:all` — поэтому охраняемые ими инварианты могли тихо деградировать (именно так `OrganismCore` перерос потолок). Добавлены в `scripts/audit-all.mjs` (каждый предварительно прогнан зелёным):
+
+`audit:core-ownership`, `audit:component-conflicts`, `audit:facade-dependency`, `audit:subject-boundary`, `audit:subsystems`, `audit:server-imports`, `audit:api-routes`, `audit:ui-api-linkage`.
+
+Сознательно **не** добавлен `audit:core-physical-ownership` — он честно падает (см. этап 018); красный гейт сделал бы зонтик бесполезным.
 
 ### Как работает ratchet (012)
 
