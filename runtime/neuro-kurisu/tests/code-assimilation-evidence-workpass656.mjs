@@ -240,6 +240,22 @@ assert.equal(candidate.stage, 'discovered');
 {
   const payload = payloadFor(candidate, 'license', {
     licenseDecision: {
+      outcome: 'approved',
+      licenseExpression: 'MIT',
+      licenseEvidenceFingerprint: sha('license-and-notice-evidence-bundle'),
+      permittedUses: ['redistribute'],
+      reviewScope: 'exact-source-revision-and-dependency-bundle',
+      reviewerBasis: 'human-review',
+    },
+  });
+  const result = verify(candidate, payload, 'license');
+  assert.equal(result.accepted, true);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'redistribute'), true);
+  assert.equal(evidence.isCodeAssimilationUseAllowed(result.receipt, 'execute'), false);
+}
+{
+  const payload = payloadFor(candidate, 'license', {
+    licenseDecision: {
       outcome: 'rejected',
       licenseExpression: 'MIT',
       licenseEvidenceFingerprint: sha('license-and-notice-evidence-bundle'),
