@@ -79,6 +79,14 @@ cyclicSnapshot.self = cyclicSnapshot;
 assert.throws(() => target.restoreExecutionLedger(cyclicSnapshot), /action-ledger-snapshot-invalid/);
 assert.deepEqual(target.snapshotExecutionLedger(), before);
 
+const oversizedSnapshot = structuredClone(validSnapshot);
+oversizedSnapshot.records[0].response.result.large = new Array(30_000).fill(0);
+const tombstoneTarget = makeGateway();
+tombstoneTarget.restoreExecutionLedger(oversizedSnapshot);
+const tombstoneReplay = await tombstoneTarget.executeTool('catalog.update', { key: 'safe-key' }, 'oversized-replay', options);
+assert.equal(tombstoneReplay.outcomeClass, 'idempotency-recovery-required', 'oversized receipts retain a recovery tombstone instead of becoming executable again');
+assert.equal(executions, 1, 'oversized receipt recovery must never repeat the original side effect');
+
 const replay = await target.executeTool('catalog.update', { key: 'safe-key' }, 'valid-replay', options);
 assert.equal(replay.idempotentReplay, true, 'valid restored receipts remain replayable');
 assert.equal(replay.ok, true);
