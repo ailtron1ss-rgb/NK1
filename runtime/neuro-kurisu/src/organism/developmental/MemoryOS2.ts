@@ -1553,9 +1553,14 @@ export class MemoryOS2{
    if(!changed)return structuredClone(item);
    item.lastAccessAt=now;
    item.temperature01=memoryTemperature(item);
+   // mergeIncomingEvidence is a pure mutation, so the evidence delta it just added
+   // to the record must be reconciled here. This correction has to run *before*
+   // recordRevision, because recordRevision self-accounts its own revision-history
+   // delta; correcting afterwards would subtract `beforeBytes` twice and inflate
+   // estimatedBytes relative to what restore recomputes from the item set.
+   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
    this.recordRevision(item,{at:now,from:item.epistemicStatus,to:item.epistemicStatus,reason:String(reason||'evidence-lineage').slice(0,240)});
    this.state.reconsolidations++;
-   this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(item));
    return structuredClone(item);
  }
 
