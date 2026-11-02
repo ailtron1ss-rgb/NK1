@@ -37,7 +37,7 @@ corrupt.relationshipTrust = Object.create(null);
 corrupt.relationshipTrust['user:primary'] = 1.4;
 Object.defineProperty(corrupt.relationshipTrust, '__proto__', { enumerable: true, value: 1 });
 corrupt.relationshipTrust['bad key!'] = .9;
-corrupt.actionPreference = { explore: 9, respond: '1', __proto__: { verify: 1 } };
+corrupt.actionPreference = Object.create(null);\ncorrupt.actionPreference.explore = 9;\ncorrupt.actionPreference.respond = '1';\nObject.defineProperty(corrupt.actionPreference, '__proto__', { enumerable: true, value: { verify: 1 } });
 
 const hardened = new P2702PersistentPersonalityDynamics();
 hardened.restore(corrupt);
