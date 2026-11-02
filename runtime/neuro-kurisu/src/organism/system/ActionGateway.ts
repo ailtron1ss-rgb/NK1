@@ -221,6 +221,7 @@ const defaultActionToolPermissions=():ActionToolPermissionSnapshot=>({version:1,
 const MAX_ACTION_GATEWAY_SNAPSHOT_DEPTH = 12;
 const MAX_ACTION_GATEWAY_SNAPSHOT_NODES = 100_000;
 const MAX_ACTION_GATEWAY_SNAPSHOT_ARRAY_ITEMS = 16_384;
+const MAX_ACTION_GATEWAY_SNAPSHOT_OBJECT_PROPERTIES = 4_096;
 const MAX_ACTION_GATEWAY_SNAPSHOT_BYTES = 32 * 1024 * 1024;
 
 /**
@@ -272,8 +273,10 @@ function cloneActionGatewaySnapshot(snapshot: unknown): ActionExecutionLedgerSna
 
       const prototype = Object.getPrototypeOf(value);
       if (prototype !== Object.prototype && prototype !== null) throw new Error('snapshot-object-prototype-invalid');
+      const keys = Reflect.ownKeys(value);
+      if (keys.length > MAX_ACTION_GATEWAY_SNAPSHOT_OBJECT_PROPERTIES) throw new Error('snapshot-object-property-budget-exceeded');
       const output: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-      for (const key of Reflect.ownKeys(value)) {
+      for (const key of keys) {
         if (typeof key !== 'string' || key.length > 256) throw new Error('snapshot-object-key-invalid');
         const descriptor = Object.getOwnPropertyDescriptor(value, key);
         if (!descriptor || !('value' in descriptor) || descriptor.get || descriptor.set || !descriptor.enumerable) {
@@ -629,6 +632,7 @@ export class ActionGateway {
     }
     const permissions=raw.permissions as Partial<ActionToolPermissionSnapshot>|undefined;
     if(permissions!==undefined&&(!permissions||typeof permissions!=='object'||Array.isArray(permissions))) throw new Error('action-ledger-permissions-snapshot-invalid');
+    if(permissions?.version!==undefined&&permissions.version!==1) throw new Error('action-ledger-permissions-snapshot-version-unsupported');
     if(permissions?.requests!==undefined&&!Array.isArray(permissions.requests)) throw new Error('action-ledger-permissions-snapshot-invalid');
     const cleanRequests:Array<ActionToolApprovalRecord>=[];
     if(Array.isArray(permissions?.requests)) for(const item of permissions!.requests.slice(-128)) {
