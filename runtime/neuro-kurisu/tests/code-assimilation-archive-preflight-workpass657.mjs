@@ -24,7 +24,7 @@ function candidateFor(sourceKind = 'archive') {
           ? `user-upload://sha256/${archiveDigest}`
           : 'https://github.com/example/memory-adapter/archive/abc123.tar.gz',
         publisher: 'example-org',
-        immutableRevision: sourceKind === 'git' ? 'b'.repeat(40) : 'sha256:' + archiveDigest,
+        immutableRevision: sourceKind === 'git' ? 'b'.repeat(40) : sourceKind === 'package' ? '1.2.3' : 'sha256:' + archiveDigest,
         contentSha256: archiveDigest,
         treeSha256: sha('expected extracted tree'),
         retrievedAt: now - 1000,
