@@ -21,7 +21,7 @@ test("the 3D body consumes organism emotion, action, arousal/valence, gaze, slee
  assert.match(parent,/emotion=\{snap\.emotion\.label\} action=\{snap\.lastOption\}/);assert.match(parent,/arousal=\{snap\.emotion\.arousal\} valence=\{snap\.emotion\.valence\}/);assert.match(parent,/cognitiveLoad=\{snap\.needs\.cognitiveLoad\}/);assert.match(parent,/traits=\{snap\.identity\.traits\}/);assert.match(parent,/predictionError=\{snap\.predictionError\}/);assert.match(parent,/mouthPose=\{mouthPose\} thinking=\{thinking\} awake=\{snap\.awake\}/);
 });
 test("renderer resources and animation loops are disposed and high-DPI rendering is capped",async()=>{
- const stage=await readFile(stagePath,"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/applyAvatarAnimationFrame/);assert.doesNotMatch(stage,/rt\.mixer\.stopAllAction\(\);const a=rt\.mixer\.clipAction/);assert.match(await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8"),/rig[_-]?kurisu/i);assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
+ const stage=await readFile(stagePath,"utf8");assert.match(stage,/setPixelRatio\(Math\.min\(window\.devicePixelRatio\|\|1,2\)\)/);assert.match(stage,/cancelAnimationFrame\(raf\)/);assert.match(stage,/Reset to bind pose before the mixer/);assert.match(stage,/applyAvatarAnimationFrame/);assert.doesNotMatch(stage,/rt\.mixer\.stopAllAction\(\);const a=rt\.mixer\.clipAction/);assert.ok((await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8")).includes("rig[_-]?kurisu"));assert.doesNotMatch(stage,/\|\|clips\[0\]\|\|null/);assert.match(stage,/observer\?\.disconnect\(\)/);assert.match(stage,/renderer\.dispose\(\)/);assert.match(stage,/disposeTree\(rt\.loaded\)/);assert.match(stage,/const gradient=getSharedAnimeGradientTexture\(\);disposeThreeObjectTree\(root,gradient\?\[gradient\]:\[\]\)/);
 });
 test("Three.js lock metadata is pinned consistently",async()=>{
  const pkg=JSON.parse(await readFile(path.join(root,"package.json"),"utf8")),lock=JSON.parse(await readFile(path.join(root,"package-lock.json"),"utf8"));
@@ -102,7 +102,7 @@ test("a pinned hosted Kurisu hybrid GLB can be loaded without a manual file down
  assert.match(stage,/KURISU_HYBRID_MODEL\.sha256/);
  assert.match(stage,/loadModel\(blob,KURISU_HYBRID_MODEL\.filename,true\)/);
  assert.match(stage,/Загрузить модель Курису v5/);
- assert.match(await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8"),/rig[_-]?kurisu/i);
+ assert.ok((await readFile(path.join(root,"src/components/avatar/avatarAnimationRuntime.ts"),"utf8")).includes("rig[_-]?kurisu"));
 });
 
 test("3D mode restores the user's local model first and auto-loads the pinned Kurisu model otherwise",async()=>{
