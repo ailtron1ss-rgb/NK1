@@ -529,8 +529,11 @@ export class MemoryOS2{
    const validUntilProvided=row.validUntilAt!=null;
    const validUntilCandidate=validUntilProvided?finite(row.validUntilAt,Number.NaN):null;
    // A malformed expiry must never turn an expiring memory into a timeless fact.
-   const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:validUntilCandidate;
-   if(validUntilProvided&&!Number.isFinite(validUntilCandidate))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
+   // An inverted window (expiry before start) is likewise malformed: it would make
+   // the row unreachable in every temporal mode, so it is closed at the start.
+   const invertedExpiry=Number.isFinite(validUntilCandidate)&&Number(validUntilCandidate)<validFromAt;
+   const validUntilAt=validUntilProvided&&!Number.isFinite(validUntilCandidate)?validFromAt:invertedExpiry?validFromAt:validUntilCandidate;
+   if(validUntilProvided&&(!Number.isFinite(validUntilCandidate)||invertedExpiry))this.incrementRestoreDiagnostic('invalidExpiriesClosed');
    const provenanceClasses=new Set(['device','external','user','agent','derived','simulation','unknown']);
    const explicitProvenance=provenanceClasses.has(String(row.provenanceClass))?row.provenanceClass as MemoryProvenanceClass:undefined;
    const sourceIsValid=typeof row.source==='string'&&Boolean(row.source.trim());
@@ -1016,6 +1019,13 @@ export class MemoryOS2{
   const defaults={device:.95,external:.9,user:.86,agent:.68,derived:.52,simulation:.28,unknown:.5} as Record<MemoryProvenanceClass,number>;
   const evidenceSources=this.normalizeEvidenceSources({...input,sourceAuthority01:input.sourceAuthority01??defaults[provenanceClass],provenanceClass,observedAt:input.observedAt??now,evidenceFreshnessAt:input.evidenceFreshnessAt??input.observedAt??now});
   const evidenceLineageKeys=[...new Set([...(Array.isArray(input.evidenceLineageKeys)?input.evidenceLineageKeys:[]),...evidenceSources.map(row=>this.evidenceKey(row))])].slice(-32);
+  const materializedValidFromAt=Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now;
+  // An inverted expiry (validUntilAt before validFromAt) is a malformed window:
+  // every temporal guard uses `at < validUntilAt`, so the row would be silently
+  // unreachable in every mode. Close it at validFromAt, matching the restore
+  // policy, so a live write and a reloaded snapshot agree on the window.
+  const requestedValidUntilAt=input.validUntilAt==null?null:(Number.isFinite(Number(input.validUntilAt))?Number(input.validUntilAt):null);
+  const materializedValidUntilAt=requestedValidUntilAt==null?null:Math.max(requestedValidUntilAt,materializedValidFromAt);
   return {
     ...input,
     id:input.id??identity.stableId,
@@ -1024,7 +1034,7 @@ export class MemoryOS2{
     createdAt:now,lastAccessAt:now,retrievalCount:0,revisionHistory:[],dormant:false,
     semanticVector,temperature01:0,residencyTier:'hot',
     validFromAt:Number.isFinite(Number(input.validFromAt))?Number(input.validFromAt):now,
-    validUntilAt:input.validUntilAt==null?null:(Number.isFinite(Number(input.validUntilAt))?Number(input.validUntilAt):null),
+    validUntilAt:materializedValidUntilAt,
     observedAt:Number.isFinite(Number(input.observedAt))?Number(input.observedAt):now,
     supersedesId:input.supersedesId??null,supersededById:input.supersededById??null,
     revisionGroupId:String(input.revisionGroupId??(input.id??identity.stableId)),
