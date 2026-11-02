@@ -98,6 +98,35 @@ const malformed = rerankSemanticCandidates([
 assert.equal(malformed.length, 1);
 assert.ok(Number.isFinite(malformed[0].score) && malformed[0].score >= 0 && malformed[0].score <= 1);
 
+// Confidence is an evidence-quality gate, not an independent relevance reward.
+const confidenceOnly = candidate('confidence-only', .9, {
+  salience: 0, emotionalWeight: 0, identityRelevance: 0,
+  goalRelevance: 0, socialRelevance: 0, predictionError: 0, confidence: 1,
+});
+const confidenceOnlyRanked = rerankSemanticCandidates([confidenceOnly], { limit: 1 });
+assert.equal(confidenceOnlyRanked[0].metadataScore, 0,
+  'confidence alone must not make an otherwise irrelevant memory more relevant');
+
+// Invalid ordering metadata and duplicate IDs must not create unstable ranking.
+const duplicateLow = candidate('duplicate-memory', .7);
+const duplicateHigh = { ...candidate('duplicate-memory', .95), lexicalRank: Number.NaN };
+const invalidId = candidate('   ', 1);
+const normalized = rerankSemanticCandidates([
+  duplicateLow, duplicateHigh, invalidId,
+], { limit: 8 });
+assert.equal(normalized.length, 1, 'duplicate memory IDs collapse to one candidate');
+assert.equal(normalized[0].baseScore, .95, 'the strongest semantic representation wins');
+assert.equal(normalized[0].lexicalRank, Number.MAX_SAFE_INTEGER,
+  'non-finite lexical rank is normalized to a deterministic worst rank');
+
+const outOfRange = rerankSemanticCandidates([
+  candidate('over-range', 8, {}, 9),
+  candidate('bounded', 1, {}, 1),
+], { limit: 2 });
+assert.equal(outOfRange[0].baseScore, 1);
+assert.equal(outOfRange[0].similarity, 1);
+assert.ok(outOfRange.every((row) => row.score >= 0 && row.score <= 1));
+
 const deterministicA = rerankSemanticCandidates([neutral, affective, identity, goal], {
   limit: 4, goalRelevance: .4, identityRelevance: .7,
 }).map((row) => row.item.id);
@@ -113,5 +142,7 @@ console.log(JSON.stringify({
   identityWinnerWithDemand: identityHot[0].item.id,
   goalWinnerWithDemand: goalHot[0].item.id,
   semanticGuard: protectedRanked[0].item.id,
+  confidenceIsGate: confidenceOnlyRanked[0].metadataScore === 0,
+  duplicateIdsCollapsed: normalized.length === 1,
   poolGuarded: true,
 }));
