@@ -5,7 +5,7 @@ const chatStart = source.indexOf("url.pathname === '/api/organism/chat'");
 const nextRoute = source.indexOf("url.pathname === '/api/organism/adaptive-development'", chatStart);
 assert.ok(chatStart >= 0);
 const chatBlock = source.slice(chatStart, nextRoute > chatStart ? nextRoute : chatStart + 5000);
-assert.match(chatBlock, /const step = await runtime\.step\(message, \{ deliberate \}\);/);
+assert.match(chatBlock, /(?:const )?step = await runtime\.step\(message, \{ deliberate[^}]*\}\);/);
 assert.match(chatBlock, /const language = step\.language;/);
 assert.doesNotMatch(chatBlock, /generateLanguage\(/);
 assert.doesNotMatch(chatBlock, /buildCognitivePrompt\(/);
