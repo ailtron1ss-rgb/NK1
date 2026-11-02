@@ -6,10 +6,31 @@ export interface VrmExpressionFrame {
   mouthOpen: number;
   mouthForm: number;
   blink: boolean;
+  /** Canonical organism affect signals; optional for legacy callers. */
+  arousal?: number;
+  valence?: number;
+  dominance?: number;
+  energy?: number;
+  cognitiveLoad?: number;
+  uncertainty?: number;
+  socialNeed?: number;
+  novelty?: number;
+  curiosity?: number;
+  warmth?: number;
+  composure?: number;
+  guardedness?: number;
+}
+
+export interface VrmEmotionExpression {
+  expression: string;
+  weight: number;
 }
 
 const clamp01 = (value: number): number =>
   Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+
+const readUnit = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) ? clamp01(value) : fallback;
 
 const EMOTION_PRESETS: Record<string, { expression: string; weight: number }> = {
   joy: { expression: "happy", weight: 0.78 },
@@ -19,7 +40,66 @@ const EMOTION_PRESETS: Record<string, { expression: string; weight: number }> = 
   anxiety: { expression: "sad", weight: 0.34 },
   calm: { expression: "relaxed", weight: 0.24 },
   protective: { expression: "relaxed", weight: 0.28 },
+  curiosity: { expression: "surprised", weight: 0.36 },
 };
+
+ /**
+  * Resolve the VRM face from the same affect/trait snapshot used by the
+  * procedural 3D face. Emotion selects the semantic preset; appraisal and
+  * personality modulate its intensity without introducing a second emotion
+  * owner. Values are bounded and optional for backwards compatibility.
+  */
+export function resolveVrmEmotionExpression(
+  frame: VrmExpressionFrame,
+): VrmEmotionExpression | null {
+  const preset = EMOTION_PRESETS[frame.emotion];
+  if (!preset) return null;
+
+  const arousal = readUnit(frame.arousal, 0.35);
+  const valence = readUnit(frame.valence, 0.5);
+  const dominance = readUnit(frame.dominance, 0.5);
+  const uncertainty = readUnit(frame.uncertainty, 0.25);
+  const socialNeed = readUnit(frame.socialNeed, 0.3);
+  const novelty = readUnit(frame.novelty, 0.3);
+  const curiosity = readUnit(frame.curiosity, 0.5);
+  const warmth = readUnit(frame.warmth, 0.5);
+  const composure = readUnit(frame.composure, 0.5);
+  const guardedness = readUnit(frame.guardedness, 0.5);
+
+  const activation = 0.55 + 0.45 * arousal;
+  let multiplier = activation;
+  switch (frame.emotion) {
+    case "joy":
+      multiplier *= (0.72 + 0.28 * valence) * (0.9 + 0.1 * warmth);
+      break;
+    case "anger":
+      multiplier *= (0.78 + 0.22 * dominance) * (0.9 + 0.1 * guardedness);
+      break;
+    case "frustration":
+      multiplier *= (0.78 + 0.22 * (1 - dominance)) * (0.9 + 0.1 * guardedness);
+      break;
+    case "sadness":
+      multiplier = (0.55 + 0.45 * (1 - arousal)) * (0.65 + 0.35 * (1 - valence));
+      break;
+    case "anxiety":
+      multiplier *= 0.6 + 0.4 * uncertainty;
+      break;
+    case "calm":
+      multiplier = (0.6 + 0.4 * composure) * (1 - 0.35 * arousal);
+      break;
+    case "protective":
+      multiplier = (0.7 + 0.3 * warmth) * (0.7 + 0.3 * socialNeed);
+      break;
+    case "curiosity":
+      multiplier = (0.55 + 0.25 * curiosity + 0.2 * novelty) * (0.85 + 0.15 * uncertainty);
+      break;
+  }
+
+  return {
+    expression: preset.expression,
+    weight: clamp01(preset.weight * multiplier),
+  };
+}
 
 const MOUTH_PRESETS = ["aa", "ih", "ou", "ee", "oh"] as const;
 
@@ -170,7 +250,7 @@ export function applyVrmExpressionFrame(vrm: VRM, frame: VrmExpressionFrame): vo
 
   manager.resetValues();
 
-  const preset = EMOTION_PRESETS[frame.emotion];
+  const preset = resolveVrmEmotionExpression(frame);
   if (preset) manager.setValue(preset.expression, preset.weight);
 
   if (frame.speaking) {
