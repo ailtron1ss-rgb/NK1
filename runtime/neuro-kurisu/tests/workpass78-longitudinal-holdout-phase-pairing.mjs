@@ -29,7 +29,7 @@ const protocolInput={
   requiredPairs:2,
   contextKeys:['ru-holdout-a','ru-holdout-b','ru-holdout-c','ru-holdout-d','ru-holdout-e'],
 };
-const protocolVerification=await verifyExact(protocolInput,'workpass78-protocol');
+const protocolVerification=await verifyExact({...protocolInput,requiredPairs:5},'workpass78-protocol');
 const protocol=fabric.createReplayExperimentProtocol({
   ...protocolInput,
   verification:protocolVerification,
@@ -129,7 +129,7 @@ const delayProtocolInput={
   requiredPairs:2,
   contextKeys:['pair-a','pair-b','pair-c','pair-d','pair-e'],
 };
-const delayProtocolVerification=await verifyExact(delayProtocolInput,'workpass78-delay-protocol');
+const delayProtocolVerification=await verifyExact({...delayProtocolInput,requiredPairs:5},'workpass78-delay-protocol');
 const delayProtocol=delayCoverage.createReplayExperimentProtocol({
   ...delayProtocolInput,
   verification:delayProtocolVerification,
