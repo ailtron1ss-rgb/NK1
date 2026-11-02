@@ -36,12 +36,12 @@
 
 Добавлен `tests/memory-semantic-affect-reranker-benchmark.mjs` и команда `npm run benchmark:memory-semantic-affect-reranking`. CI выполнил 8 warm-up и 60 измеряемых прогонов с фиксированным детерминированным набором из 10 000 кандидатов и top-K=8.
 
-| Метрика | Результат |
-|---|---:|
-| p50 | 2.602 ms |
-| p95 | 4.266 ms |
-| max | 12.089 ms |
-| p95 budget | 30 ms |
+| Прогон | SHA | p50 | p95 | max |
+|---|---|---:|---:|---:|
+| A | `1708d495` | 2.602 ms | 4.266 ms | 12.089 ms |
+| B (повторный) | `7a107e7d` | 3.425 ms | 6.766 ms | 13.355 ms |
+
+Оба GitHub Actions прогона прошли порог **p95 ≤ 30 ms**. Наблюдаемый диапазон p95 на двух прогонах: **4.266–6.766 ms**. Это не оценка производительности на телефоне и не гарантия отсутствия jitter на другом runner.
 
 Граница измерения: CPU-only normalization + semantic preselection + contextual reranking. Не включены embedding generation, vector-index I/O, MemoryFabric fetch и cloning. Это доказательство скорости одного компонента, не полного retrieval path и не recall-uplift.
 
