@@ -108,12 +108,14 @@ export class EmotionAppraisalEngine {
       capacity01:bounded(own(value,'capacity01'),fallback.capacity01),load01:bounded(own(value,'load01'),fallback.load01)});
     const outcomeSource=record(own(r,'outcomes')) ?? {};
     const outcomes:Record<string,EmotionOutcomeCalibration>={};
-    for(const key of Object.keys(outcomeSource).slice(0,64)){
-      if(!/^[a-zA-Z0-9:_-]{1,64}$/.test(key)) continue;
-      const row=record(own(outcomeSource,key)); if(!row) continue;
-      outcomes[key]={attempts:count(own(row,'attempts')),meanSuccess01:bounded(own(row,'meanSuccess01'),.5),
-        meanSurprise01:bounded(own(row,'meanSurprise01'),.5),meanBenefit01:bounded(own(row,'meanBenefit01'),.5)};
-    }
+    try {
+      for(const key of Object.keys(outcomeSource).slice(0,64)){
+        if(!/^[a-zA-Z0-9:_-]{1,64}$/.test(key)) continue;
+        const row=record(own(outcomeSource,key)); if(!row) continue;
+        outcomes[key]={attempts:count(own(row,'attempts')),meanSuccess01:bounded(own(row,'meanSuccess01'),.5),
+          meanSurprise01:bounded(own(row,'meanSurprise01'),.5),meanBenefit01:bounded(own(row,'meanBenefit01'),.5)};
+      }
+    } catch { /* malformed proxy-backed outcome maps restore as empty */ }
     const historyRaw=own(r,'history'), feelingsRaw=own(r,'feelings');
     const history:EmotionEpisode[]=[];
     const feelings:FeelingEpisode[]=[];
