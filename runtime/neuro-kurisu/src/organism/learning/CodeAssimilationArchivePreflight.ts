@@ -32,10 +32,10 @@ export interface CodeAssimilationArchivePreflightLimits {
 }
 
 export interface CodeAssimilationCanonicalArchiveEntry {
-  path: string;
-  kind: 'file' | 'directory';
-  compressedSizeBytes: number;
-  uncompressedSizeBytes: number;
+  readonly path: string;
+  readonly kind: 'file' | 'directory';
+  readonly compressedSizeBytes: number;
+  readonly uncompressedSizeBytes: number;
 }
 
 export interface CodeAssimilationArchivePreflightInput {
@@ -52,25 +52,25 @@ export interface CodeAssimilationArchivePreflightInput {
 }
 
 export interface CodeAssimilationArchivePreflightReport {
-  schemaVersion: 1;
-  accepted: true;
-  candidateId: string;
-  candidateFingerprint: string;
-  sourceFingerprint: string;
-  archiveSha256: string;
-  archiveBytes: number;
-  parserId: string;
-  parserVersion: string;
-  limits: CodeAssimilationArchivePreflightLimits;
-  entryCount: number;
-  fileCount: number;
-  directoryCount: number;
-  nestedArchiveCount: number;
-  totalCompressedBytes: number;
-  totalUncompressedBytes: number;
-  entries: CodeAssimilationCanonicalArchiveEntry[];
-  treeFingerprint: string;
-  reportFingerprint: string;
+  readonly schemaVersion: 1;
+  readonly accepted: true;
+  readonly candidateId: string;
+  readonly candidateFingerprint: string;
+  readonly sourceFingerprint: string;
+  readonly archiveSha256: string;
+  readonly archiveBytes: number;
+  readonly parserId: string;
+  readonly parserVersion: string;
+  readonly limits: Readonly<CodeAssimilationArchivePreflightLimits>;
+  readonly entryCount: number;
+  readonly fileCount: number;
+  readonly directoryCount: number;
+  readonly nestedArchiveCount: number;
+  readonly totalCompressedBytes: number;
+  readonly totalUncompressedBytes: number;
+  readonly entries: readonly CodeAssimilationCanonicalArchiveEntry[];
+  readonly treeFingerprint: string;
+  readonly reportFingerprint: string;
 }
 
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -323,12 +323,18 @@ export function preflightCodeAssimilationArchive(
   validateHierarchy(normalized);
   normalized.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 
+  // Freeze all nested report data before calculating its fingerprint. A consumer must not
+  // be able to mutate accepted paths or limits while retaining a stale report fingerprint.
+  const immutableEntries = Object.freeze(
+    normalized.map(entry => Object.freeze({ ...entry })),
+  );
+  const immutableLimits = Object.freeze({ ...limits });
   const treeMaterial = {
     archiveSha256,
-    entries: normalized,
+    entries: immutableEntries,
   };
   const treeFingerprint = sha256(canonicalJson(treeMaterial));
-  const reportMaterial = {
+  const reportMaterial = Object.freeze({
     schemaVersion: 1 as const,
     accepted: true as const,
     candidateId: candidate.candidateId,
@@ -338,18 +344,18 @@ export function preflightCodeAssimilationArchive(
     archiveBytes,
     parserId,
     parserVersion,
-    limits,
-    entryCount: normalized.length,
+    limits: immutableLimits,
+    entryCount: immutableEntries.length,
     fileCount,
     directoryCount,
     nestedArchiveCount,
     totalCompressedBytes,
     totalUncompressedBytes,
-    entries: normalized,
+    entries: immutableEntries,
     treeFingerprint,
-  };
-  return {
+  });
+  return Object.freeze({
     ...reportMaterial,
     reportFingerprint: sha256(canonicalJson(reportMaterial)),
-  };
+  });
 }
