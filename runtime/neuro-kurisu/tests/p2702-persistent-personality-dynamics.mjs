@@ -62,6 +62,39 @@ assert.ok(unverifiedLearner.snapshot().selfUncertainty[0] > unverifiedBefore.sel
 
 const restored=new P2702PersistentPersonalityDynamics();restored.restore(after);assert.deepEqual(restored.snapshot(),after);
 
+const corruptedRestore = new P2702PersistentPersonalityDynamics();
+corruptedRestore.restore({
+  tick: -4,
+  experienceCount: -2,
+  learningUpdates: 2.5,
+  stability01: Number.NaN,
+  coherence01: 4,
+  identityContinuity01: -1,
+  contradiction01: Number.POSITIVE_INFINITY,
+  plasticity01: Number.NaN,
+  drift01: -1,
+  autobiographicalStrength01: Number.NaN,
+  lastReward01: 3,
+  relationshipTrust: { trusted: 0.8, malformed: Number.NaN, numericString: "0.7" },
+  actionPreference: { respond: Number.NaN, explore: 0.9, unknownAction: 1 },
+});
+const restoredSafe = corruptedRestore.snapshot();
+assert.equal(restoredSafe.tick, 0, 'restored tick must be a non-negative integer');
+assert.equal(restoredSafe.experienceCount, 0, 'restored experience count must be a non-negative integer');
+assert.equal(restoredSafe.learningUpdates, 2, 'restored update count must be floored and non-negative');
+for (const metric of ['stability01', 'coherence01', 'identityContinuity01', 'contradiction01', 'plasticity01', 'drift01', 'autobiographicalStrength01', 'lastReward01']) {
+  assert.ok(Number.isFinite(restoredSafe[metric]) && restoredSafe[metric] >= 0 && restoredSafe[metric] <= 1,
+    'restored ' + metric + ' must be finite and bounded');
+}
+assert.deepEqual(restoredSafe.relationshipTrust, { trusted: 0.8 },
+  'restore must discard non-finite and non-numeric relationship trust entries');
+assert.equal(restoredSafe.actionPreference.respond, 0,
+  'malformed action preferences must fall back to the canonical default');
+assert.equal(restoredSafe.actionPreference.explore, 0.9,
+  'finite action preferences must be retained');
+assert.equal(Object.keys(restoredSafe.actionPreference).length, Object.keys(actions).length,
+  'restore must not retain unknown action keys');
+
 const b=new NeuralExperienceBranch();
 let s=defaultNeuralExperienceBranch();b.restore(s);
 const d=b.beforeDecision({tick:1,input:new Array(64).fill(.15),baseUtilities:actions,predictionError01:.3,novelty01:.8,uncertainty01:.5,homeostasis01:.2,identityGap01:.2,goalPressure01:.7,reward01:.5,identityVector:new Array(24).fill(.3)});
