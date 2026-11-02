@@ -1,0 +1,44 @@
+name: NK1 replay evidence authority boundary
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/CausalReplayCreditAssigner.ts'
+      - 'runtime/neuro-kurisu/tests/replay-evidence-authority-boundary.mjs'
+      - '.github/workflows/replay-evidence-authority-boundary.yml'
+  push:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts'
+      - 'runtime/neuro-kurisu/src/organism/system/CausalReplayCreditAssigner.ts'
+      - 'runtime/neuro-kurisu/tests/replay-evidence-authority-boundary.mjs'
+      - '.github/workflows/replay-evidence-authority-boundary.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-replay-evidence-authority-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  replay-evidence-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Replay evidence authority boundary regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/replay-evidence-authority-boundary.mjs
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
