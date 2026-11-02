@@ -191,10 +191,16 @@ assert.throws(
 );
 
 // Invalid numeric metadata and directory/file size confusion fail closed.
-for (const value of [-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1]) {
+for (const value of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
   assert.throws(
     () => preflight([{ path: 'bad.bin', kind: 'file', compressedSizeBytes: value, uncompressedSizeBytes: 1 }]),
     /size-invalid/,
+  );
+}
+for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+  assert.throws(
+    () => preflight([{ path: 'bad.bin', kind: 'file', compressedSizeBytes: value, uncompressedSizeBytes: 1 }]),
+    /input-untrusted/,
   );
 }
 assert.throws(
