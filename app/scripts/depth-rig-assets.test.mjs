@@ -35,10 +35,10 @@ const manifest = {
     evidencePath: "provenance/license-evidence.md",
   },
   assets: [
-    { nodeId: "torso", assetPath: "layers/torso.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMaskPaths: ["masks/torso.png"] },
-    { nodeId: "head", assetPath: "layers/head.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMaskPaths: ["masks/head.png"] },
-    { nodeId: "hair-front", assetPath: "layers/hair-front.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMaskPaths: ["masks/hair-front.png"] },
-    { nodeId: "arm-left", assetPath: "layers/arm-left.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMaskPaths: ["masks/arm-left.png"] },
+    { nodeId: "torso", assetPath: "layers/torso.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMode: "mask", occlusionMaskPaths: ["masks/torso.png"] },
+    { nodeId: "head", assetPath: "layers/head.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMode: "mask", occlusionMaskPaths: ["masks/head.png"] },
+    { nodeId: "hair-front", assetPath: "layers/hair-front.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMode: "mask", occlusionMaskPaths: ["masks/hair-front.png"] },
+    { nodeId: "arm-left", assetPath: "layers/arm-left.png", pixelSize: { width: 2048, height: 2048 }, canvasRect: { x: 0, y: 0, width: 2048, height: 2048 }, deforms: true, hiddenAreaPaint: "complete", occlusionMode: "painted-overlap", occlusionMaskPaths: [] },
   ],
 };
 const inventory = [
@@ -55,7 +55,7 @@ test("accepts a complete, rights-reviewed layered 2.5D asset pack", () => {
   assert.equal(result.status, "asset-preflight-pass");
   assert.deepEqual(result.diagnostics, []);
   assert.equal(result.checkedLayers, 4);
-  assert.equal(result.checkedMasks, 4);
+  assert.equal(result.checkedMasks, 3);
 });
 
 test("blocks promotion when a required rig node has no authored layer", () => {
@@ -86,16 +86,34 @@ test("checks real asset dimensions, alpha channel and file presence", () => {
   assert.ok(result.diagnostics.some((item) => item.code === "asset-without-alpha" && item.nodeId === "torso"));
 });
 
-test("requires hidden-area paint and at least one occlusion mask for deforming layers", () => {
+test("requires hidden-area paint and masks only when mask-driven occlusion is selected", () => {
   const candidate = {
     ...manifest,
     assets: manifest.assets.map((asset) => asset.nodeId === "arm-left"
-      ? { ...asset, hiddenAreaPaint: "partial", occlusionMaskPaths: [] }
+      ? { ...asset, hiddenAreaPaint: "partial", occlusionMode: "mask", occlusionMaskPaths: [] }
       : asset),
   };
   const result = inspect(candidate);
   assert.ok(result.diagnostics.some((item) => item.code === "missing-hidden-paint" && item.nodeId === "arm-left"));
   assert.ok(result.diagnostics.some((item) => item.code === "missing-mask" && item.nodeId === "arm-left"));
+});
+
+
+test("allows painted-overlap occlusion without a redundant clipping mask", () => {
+  const result = inspect();
+  assert.equal(result.status, "asset-preflight-pass");
+  assert.ok(!result.diagnostics.some((item) => item.code === "missing-mask"));
+});
+
+test("blocks a deforming layer that declares no occlusion strategy", () => {
+  const candidate = {
+    ...manifest,
+    assets: manifest.assets.map((asset) => asset.nodeId === "arm-left"
+      ? { ...asset, occlusionMode: "none", occlusionMaskPaths: [] }
+      : asset),
+  };
+  const result = inspect(candidate);
+  assert.ok(result.diagnostics.some((item) => item.code === "missing-occlusion-strategy" && item.nodeId === "arm-left"));
 });
 
 test("blocks unreviewed licensing and missing provenance evidence", () => {
