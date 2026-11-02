@@ -7,6 +7,7 @@ export interface MetacognitiveEpisode {
   version: 1;
   id: string;
   cycleId: string;
+  cognitiveEventId: string;
   tick: number;
   at: number;
   parentEventIds: string[];
@@ -101,12 +102,12 @@ function featureMap(value: unknown): Record<string, number> | null {
  */
 export function normalizeMetacognitiveEpisode(value: unknown): MetacognitiveEpisode | null {
   try {
-    const raw = record(value, ['version','id','cycleId','tick','at','parentEventIds','belief','prediction','selection','outcome','contradictions','limitations','reflection']);
+    const raw = record(value, ['version','id','cycleId','cognitiveEventId','tick','at','parentEventIds','belief','prediction','selection','outcome','contradictions','limitations','reflection']);
     if (!raw || raw.version !== 1 || typeof raw.tick !== 'number' || !Number.isSafeInteger(raw.tick) || raw.tick < 0 ||
         typeof raw.at !== 'number' || !Number.isFinite(raw.at) || raw.at < 0) return null;
-    const id = stringValue(raw.id, 180), cycleId = stringValue(raw.cycleId, 180);
+    const id = stringValue(raw.id, 180), cycleId = stringValue(raw.cycleId, 180), cognitiveEventId = stringValue(raw.cognitiveEventId, 180);
     const parentEventIds = stringArray(raw.parentEventIds, 11, 11);
-    if (!id || !cycleId || id !== `meta-cycle:${raw.tick}` || cycleId !== `cycle:${raw.tick}` || !parentEventIds || new Set(parentEventIds).size !== 11) return null;
+    if (!id || !cycleId || !cognitiveEventId || id !== `meta-cycle:${raw.tick}` || cycleId !== `cycle:${raw.tick}` || cognitiveEventId !== `cef:metacognitive:${raw.tick}` || !parentEventIds || new Set(parentEventIds).size !== 11) return null;
 
     const belief = record(raw.belief, ['summary','confidence01','uncertainty01','provenance']);
     const prediction = record(raw.prediction, ['summary','expectedOutcome01','confidence01','provenance']);
@@ -144,7 +145,7 @@ export function normalizeMetacognitiveEpisode(value: unknown): MetacognitiveEpis
     if (outcomeProvenance === 'simulated' && (verified || independent)) return null;
 
     return {
-      version: 1, id, cycleId, tick: raw.tick, at: raw.at, parentEventIds,
+      version: 1, id, cycleId, cognitiveEventId, tick: raw.tick, at: raw.at, parentEventIds,
       belief: { summary: beliefSummary, confidence01: beliefConfidence, uncertainty01: beliefUncertainty, provenance: 'inferred' },
       prediction: { summary: predictionSummary, expectedOutcome01: expectedOutcome, confidence01: predictionConfidence, provenance: 'inferred' },
       selection: { goalId: goalId || null, action: action as ActionKind, rationale, consumedFeatures },
