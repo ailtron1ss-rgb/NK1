@@ -20,6 +20,7 @@ import { RuntimeClockScheduler, type RuntimeClockDecision } from '../system/Runt
 import { ContinuityLedger } from '../system/ContinuityLedger.ts';
 import { RuntimeEvidenceBus } from '../system/RuntimeEvidenceBus.ts';
 import { CognitiveEventFabric } from '../system/CognitiveEventFabric.ts';
+import { normalizeMetacognitiveEpisode } from '../cognition/MetacognitiveEpisode.ts';
 import { buildIndependentEvaluationEvidenceBundle } from '../system/IndependentEvaluationEvidence.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { UnifiedCognitiveCycle } from '../system/UnifiedCognitiveCycle.ts';
@@ -1053,6 +1054,129 @@ export class OrganismRuntime {
     const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete,fullIntegrity01:cycleLineage.fullIntegrity01});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
+    // One metacognitive record is emitted per completed eleven-stage cycle, never per substep.
+    const selectedDecision = cycle.decision.selected;
+    const selectedOutcome = cycle.decision.predictedOutcomes.find(candidate => candidate.action === internalAction);
+    const decisionFeatures = Object.entries(cycle.decision.reasoningSignals ?? {})
+      .filter((entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isFinite(entry[1]))
+      .slice(0, 16);
+    const consumedFeatures: Record<string, number> = Object.fromEntries(decisionFeatures);
+    consumedFeatures.candidateScore = selectedDecision?.score ?? 0;
+    consumedFeatures.predictedUtility = selectedDecision?.predictedUtility ?? expectedReward;
+    consumedFeatures.predictedNeedRelief = selectedDecision?.predictedNeedRelief ?? 0;
+    consumedFeatures.predictedCost = selectedDecision?.predictedCost ?? 0;
+    consumedFeatures.confidence = selectedDecision?.confidence ?? .5;
+    const observedOutcome01 = clamp01(grounded.reward01);
+    const predictedOutcome01 = clamp01(expectedReward);
+    const cyclePredictionError01 = Math.abs(predictedOutcome01 - observedOutcome01);
+    const outcomeVerified = grounded.source === 'external' && grounded.verified01 >= .5;
+    const outcomeIndependent = outcomeVerified && grounded.independent01 >= .5;
+    const episodeParentIds = Object.values(cycleStageIds).filter((value): value is string => typeof value === 'string');
+    const episodeCandidate = normalizeMetacognitiveEpisode({
+      version: 1,
+      id: `meta-cycle:${cycle.state.tick}`,
+      cycleId: `cycle:${cycle.state.tick}`,
+      cognitiveEventId: `cef:metacognitive:${cycle.state.tick}`,
+      tick: cycle.state.tick,
+      at: cycle.state.at,
+      parentEventIds: episodeParentIds,
+      belief: {
+        summary: `Canonical selection chose ${internalAction}; model uncertainty was ${cycle.state.needs.uncertainty.toFixed(3)}.`,
+        confidence01: clamp01(selectedDecision?.confidence ?? .5),
+        uncertainty01: clamp01(cycle.state.needs.uncertainty),
+        provenance: 'inferred',
+      },
+      prediction: {
+        summary: `The planned world action ${worldAction} was assigned expected outcome ${expectedReward.toFixed(3)}.`,
+        expectedOutcome01: predictedOutcome01,
+        confidence01: clamp01(plan.steps[0]?.confidence ?? selectedDecision?.confidence ?? .5),
+        provenance: 'inferred',
+      },
+      selection: {
+        goalId: selectedDecision?.goalId ?? null,
+        action: internalAction,
+        rationale: Array.isArray(selectedOutcome?.reasons) ? selectedOutcome.reasons.slice(0, 8).map(reason => String(reason).slice(0, 240)) : [],
+        consumedFeatures,
+      },
+      outcome: {
+        observedOutcome01,
+        predictionError01: cyclePredictionError01,
+        provenance: grounded.source === 'external' ? 'observed' : 'simulated',
+        verified: outcomeVerified,
+        independent: outcomeIndependent,
+      },
+      contradictions: cyclePredictionError01 >= .35 ? ['predicted-observed-outcome-divergence'] : [],
+      limitations: [
+        ...(grounded.source !== 'external' ? ['world outcome is simulated and is not independent external evidence'] : []),
+        ...(grounded.source === 'external' && !outcomeIndependent ? ['external outcome lacks independent verification'] : []),
+        ...(!cycleVerification.complete ? ['eleven-stage operational lineage was not complete'] : []),
+      ].slice(0, 8),
+      reflection: {
+        status: 'not-evaluated',
+        proposalId: null,
+        disposition: 'none',
+        summary: 'No governed self-repair proposal was emitted by this cycle.',
+      },
+    });
+    const cycleEvidenceParents = episodeCandidate
+      ? [`cef:metacognitive:${cycle.state.tick}`, ...episodeCandidate.parentEventIds]
+      : Object.values(cycleStageIds).filter((value): value is string => typeof value === 'string');
+    if (!episodeCandidate) {
+      // Metacognitive journaling is supplemental: malformed diagnostics must not abort a valid core tick.
+      await this.journal.write('warn', 'runtime.metacognitive-episode.validation-failed', {
+        tick: cycle.state.tick,
+      }).catch(() => {});
+      this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+      this.core.recordRealityEvidence({
+        tick: cycle.state.tick,
+        realityClass: 'derived',
+        claim: 'metacognitive-episode-validation-failed',
+        confidence01: .1,
+        independenceKey: `metacognitive-episode:${cycle.state.tick}`,
+        parentIds: cycleEvidenceParents,
+      });
+    } else {
+      const episodeEvent = this.cognitiveEventFabric.append({
+        id: episodeCandidate.cognitiveEventId,
+        tick: cycle.state.tick,
+        at: cycle.state.at,
+        stage: 'metacognitive-episode',
+        source: 'runtime.metacognitive-episode',
+        parentIds: episodeCandidate.parentEventIds,
+        external: episodeCandidate.outcome.provenance === 'observed',
+        confidence01: episodeCandidate.prediction.confidence01,
+        payload: {
+          episodeId: episodeCandidate.id,
+          cycleId: episodeCandidate.cycleId,
+          memoryOwner: 'MemoryOS2',
+          predictionError01: episodeCandidate.outcome.predictionError01,
+          outcomeProvenance: episodeCandidate.outcome.provenance,
+          reflectionStatus: episodeCandidate.reflection.status,
+        },
+      });
+      let episodePersisted = false;
+      try {
+        const episodeMemory = await this.core.recordMetacognitiveEpisode(episodeCandidate);
+        episodePersisted = episodeMemory.status === 'recorded' || episodeMemory.status === 'replayed';
+      } catch (error) {
+        // Keep the operational cycle alive; the causal node and failure evidence remain inspectable.
+        await this.journal.write('warn', 'runtime.metacognitive-episode.persistence-failed', {
+          tick: cycle.state.tick,
+          message: String((error as any)?.message ?? error).slice(0, 180),
+        }).catch(() => {});
+      }
+      this.core.setRuntimeCognitiveEventFabric(this.cognitiveEventFabric.snapshot());
+      this.core.recordRealityEvidence({
+        tick: cycle.state.tick,
+        realityClass: 'derived',
+        claim: episodePersisted
+          ? 'metacognitive-episode-persisted'
+          : 'metacognitive-episode-persistence-failed',
+        confidence01: episodePersisted ? .9 : .1,
+        independenceKey: `metacognitive-episode:${cycle.state.tick}`,
+        parentIds: [episodeEvent.id, ...episodeCandidate.parentEventIds],
+      });
+    }
 
 
     // B364: severe embodied resource pressure is now a real durability event, not only a
