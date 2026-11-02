@@ -285,7 +285,7 @@ assert.equal(candidate.stage, 'discovered');
 }
 {
   const payload = payloadFor(candidate, 'license');
-  const result = verify(candidate, payload, 'license', trustedKeys, { now: () => fixedNow + 31_000 });
+  const result = verify(candidate, payload, 'license', trustedKeys, { now: () => fixedNow - 31_000 });
   assert.equal(result.accepted, false);
   assert.equal(result.rejection, 'issued-at-in-future');
 }
