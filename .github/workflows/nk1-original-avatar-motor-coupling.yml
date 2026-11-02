@@ -34,6 +34,9 @@ jobs:
       - name: Verify Original 2D cognitive motor coupling contract
         working-directory: app
         run: node --experimental-strip-types --test scripts/original-avatar-motor-coupling.test.mjs
+      - name: Verify canonical avatar motor planner behavior
+        working-directory: app
+        run: npm run test:avatar-motor-intent
       - name: Typecheck app
         working-directory: app
         run: npm run typecheck
