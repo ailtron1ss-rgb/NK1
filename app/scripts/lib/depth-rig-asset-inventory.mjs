@@ -1,4 +1,4 @@
-import { lstat, readdir, readFile } from "node:fs/promises";
+import { lstat, readdir, open } from "node:fs/promises";
 import path from "node:path";
 
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -124,7 +124,15 @@ export async function buildDepthRigAssetInventory(rootPath, options = {}) {
           item.hasAlpha = false;
           diagnostics.push(diagnostic("invalid-image", "Layer and mask assets must currently be PNG files with inspectable dimensions.", relativePath));
         } else {
-          const metadata = parsePngMetadata(await readFile(absolutePath));
+          const handle = await open(absolutePath, "r");
+          let metadata;
+          try {
+            const header = Buffer.alloc(1024 * 1024);
+            const { bytesRead } = await handle.read(header, 0, header.length, 0);
+            metadata = parsePngMetadata(header.subarray(0, bytesRead));
+          } finally {
+            await handle.close();
+          }
           if (!metadata) {
             item.hasAlpha = false;
             diagnostics.push(diagnostic("invalid-image", "PNG signature or IHDR metadata is invalid.", relativePath));
