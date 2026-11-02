@@ -169,6 +169,9 @@ function canonicalArchivePath(raw: unknown, kind: 'file' | 'directory', limits: 
   })) fail('path-control-character-invalid');
 
   let normalized = raw.normalize('NFKC');
+  // NFKC can turn compatibility characters (for example U+FF3C FULLWIDTH REVERSE SOLIDUS)
+  // into a Windows path separator. Recheck after normalization, not only on raw input.
+  if (normalized.includes('\\')) fail('path-backslash-invalid');
   if (kind === 'directory' && normalized.endsWith('/')) normalized = normalized.slice(0, -1);
   if (normalized.length === 0 || normalized.length > limits.maxPathLength ||
       normalized.startsWith('/') || normalized.endsWith('/') || normalized.includes('//')) {
