@@ -1055,9 +1055,9 @@ export class MemoryOS2{
    }).slice(0,6).map(x=>x.id);
    item.causalLinks=this.state.items.slice(0,256).filter(x=>x.causalLinks.includes(item.id)).slice(0,3).map(x=>x.id);
    item.contradictionLinks=best.filter(x=>x.sim>=.64&&sharedEntityCount(entities,x.x.entities)>=2&&hasNegationPolarityDifference(item.content,x.x.content)).map(x=>x.x.id).slice(0,4);
-   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;if(this.state.items.length>1600){const removed=this.state.items.pop();if(removed){this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
+   this.state.items.unshift(item as MemoryItem2);this.state.estimatedBytes+=estimateMemoryBytes(item as MemoryItem2);this.itemIndex.set(item.id,item as MemoryItem2);this.linkSupportCache=null;if(this.state.items.length>1600){const removed=this.state.items.pop();if(removed){this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-estimateMemoryBytes(removed));this.removeIndexedId(removed.id);this.itemIndex.delete(removed.id);this.rebuildDedupIndexesFor(removed);}}this.exactIndex.set(`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`,item.id);
    this.contentIndex.set(`${item.kind}|${canonicalizeMemoryContent(item.content)}`,item.id);this.indexItem(item);this.lowerContentCache.delete(item.id);
-   for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.linkUpdates++;}}
+   for(const linkedId of item.contradictionLinks??[]){const linked=this.itemIndex.get(linkedId);if(linked){const beforeLinkedBytes=estimateMemoryBytes(linked);linked.contradictionLinks=[...new Set([...(linked.contradictionLinks??[]),item.id])].slice(0,6);this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeLinkedBytes+estimateMemoryBytes(linked));this.state.linkUpdates++;}}
    this.state.linkUpdates+=item.semanticLinks.length+item.temporalLinks.length;
    if(item.epistemicStatus==='quarantined')this.state.quarantined++;return options.clone===false?(item as MemoryItem2):structuredClone(item as MemoryItem2);
  }
@@ -1497,12 +1497,18 @@ export class MemoryOS2{
    this.rebuildDedupIndexesFor(m);
    this.lowerContentCache.delete(id);
    for(const x of this.state.items){
-     if(x.contradictionLinks?.includes(id))x.contradictionLinks=x.contradictionLinks.filter(v=>v!==id);
-     if(x.temporalLinks?.includes(id))x.temporalLinks=x.temporalLinks.filter(v=>v!==id);
-     if(x.semanticLinks?.includes(id))x.semanticLinks=x.semanticLinks.filter(v=>v!==id);
-     if(x.causalLinks?.includes(id))x.causalLinks=x.causalLinks.filter(v=>v!==id);
-     if(x.supersedesId===id)x.supersedesId=null;
-     if(x.supersededById===id)x.supersededById=null;
+     const beforeBytes=estimateMemoryBytes(x);
+     let changed=false;
+     if(x.contradictionLinks?.includes(id)){x.contradictionLinks=x.contradictionLinks.filter(v=>v!==id);changed=true;}
+     if(x.temporalLinks?.includes(id)){x.temporalLinks=x.temporalLinks.filter(v=>v!==id);changed=true;}
+     if(x.semanticLinks?.includes(id)){x.semanticLinks=x.semanticLinks.filter(v=>v!==id);changed=true;}
+     if(x.causalLinks?.includes(id)){x.causalLinks=x.causalLinks.filter(v=>v!==id);changed=true;}
+     if(x.supersedesId===id){x.supersedesId=null;changed=true;}
+     if(x.supersededById===id){x.supersededById=null;changed=true;}
+     // Removing a link shrinks a surviving record; the durable byte budget must
+     // track that shrink, otherwise forgetting many linked memories leaves
+     // estimatedBytes permanently inflated and the eviction budget drifts.
+     if(changed)this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-beforeBytes+estimateMemoryBytes(x));
    }
    this.state.forgetCount++;
    this.state.reconsolidations++;
