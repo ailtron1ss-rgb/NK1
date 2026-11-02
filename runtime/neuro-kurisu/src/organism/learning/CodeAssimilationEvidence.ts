@@ -207,6 +207,9 @@ function normalizeLicenseDecision(raw: unknown): CodeAssimilationLicenseDecision
   if (outcome === 'research-only' && permittedUses.some(use => use !== 'study')) {
     throw new Error('code-assimilation-evidence-license-decision-inconsistent');
   }
+  if (outcome === 'approved' && licenseExpression === null) {
+    throw new Error('code-assimilation-evidence-license-expression-required');
+  }
   if (outcome === 'approved' && permittedUses.length === 0) {
     throw new Error('code-assimilation-evidence-license-decision-inconsistent');
   }
