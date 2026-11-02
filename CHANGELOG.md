@@ -1,7 +1,7 @@
 ## [NK1][Governance] Make tool risk classification locale-neutral and gate it in unified runtime CI (2026-11-02)
 - Normalize machine tool IDs and capability identifiers with locale-independent lowercase conversion.
 - Add a real ActionGateway regression that makes locale-aware lowercase conversion throw, then proves uppercase `FILESYSTEM.WRITE` still receives filesystem permission classification and elevated-risk governance requirements.
-- Run the existing tool input/output contract and governance regression suite in the unified organism runtime workflow.
+- Run the existing tool input/output contract and governance regression suite in the dedicated Action Gateway governance workflow.
 - The regression proves classification and required-gate reporting; it does not migrate production adapters or prove that every registered tool has completed its governance gates.
 
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)

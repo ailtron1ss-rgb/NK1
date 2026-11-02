@@ -38,7 +38,7 @@
 - Базовый source SHA: `608435493b4af3b4a222d385f1b77d978d18583b`.
 - Locale-sensitive нормализация ID/capability заменяется на независимую от локали: машинные идентификаторы не должны зависеть от языка процесса.
 - Регрессия проверяет реальный `ActionGateway.toolGovernanceReport()`: uppercase `FILESYSTEM.WRITE` обязан классифицироваться как `filesystem` / `elevated` и требовать input/output contracts, durable receipt и provider reconciliation.
-- Существующий suite `test:tool-input-contracts-workpass624` включается в unified organism runtime CI, где раньше этот тестовый файл не запускался отдельным шагом.
+- Существующий suite `test:tool-input-contracts-workpass624` включается в профильный `nk1-action-gateway-governance.yml`, где раньше этот тестовый файл не запускался отдельным шагом.
 - Статус этой ветки: **implemented in feature branch; CI pending; not merged; not released**. Локально подтверждён только изолированный RED/GREEN тест нормализации; полный runtime test и typecheck требуют исполняемого CI.
 
 ## Последний подтверждённый инженерный результат
