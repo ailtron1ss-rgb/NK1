@@ -31,6 +31,7 @@
 - **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
 - **Новый Release ZIP на 1 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
+- Publisher workflow hotfix-тега checkout-ит `workpass70-source`, сверяет `workflow_run.head_sha` с текущим tip, архивирует tracked `HEAD`, проверяет ZIP и формирует SHA256 sidecar. Отдельный release manifest с `source_commit_sha` и validation run ID в наборе assets не формируется. Локальная проверка ZIP/sidecar на 2 ноября не выполнена.
 - `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
 
 ### Что всё ещё НЕ доказано
