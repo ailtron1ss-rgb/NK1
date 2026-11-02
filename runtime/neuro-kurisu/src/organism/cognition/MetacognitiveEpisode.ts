@@ -140,6 +140,7 @@ export function normalizeMetacognitiveEpisode(value: unknown): MetacognitiveEpis
         !['not-evaluated','staged','accepted','rejected','rolled-back'].includes(String(status)) ||
         !['none','staged','accepted','rejected','rolled-back'].includes(String(disposition)) || !reflectionSummary) return null;
 
+    if (Math.abs(predictionError - Math.abs(expectedOutcome - observedOutcome)) > 0.015) return null;
     if (status === 'not-evaluated' && (proposalId !== '' || disposition !== 'none')) return null;
     if (status !== 'not-evaluated' && (!proposalId || disposition !== status)) return null;
     if (outcomeProvenance === 'simulated' && (verified || independent)) return null;
