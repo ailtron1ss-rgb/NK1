@@ -627,8 +627,6 @@ export class ActionGateway {
       if(prior && (prior.requestHash!==safe.requestHash || stableJson(prior)!==stableJson(safe))) throw new Error('action-ledger-snapshot-key-conflict');
       restored.set(safe.keyHash,safe);
     }
-    this.executionLedger.clear();
-    for(const row of [...restored.values()].sort((a,b)=>a.recordedAt-b.recordedAt)) this.executionLedger.set(row.keyHash,row);
     const permissions=raw.permissions as Partial<ActionToolPermissionSnapshot>|undefined;
     if(permissions!==undefined&&(!permissions||typeof permissions!=='object'||Array.isArray(permissions))) throw new Error('action-ledger-permissions-snapshot-invalid');
     if(permissions?.requests!==undefined&&!Array.isArray(permissions.requests)) throw new Error('action-ledger-permissions-snapshot-invalid');
@@ -638,7 +636,10 @@ export class ActionGateway {
       const createdAt=Number(item.createdAt),expiresAt=Number(item.expiresAt); if(!Number.isFinite(createdAt)||!Number.isFinite(expiresAt)||expiresAt<createdAt||expiresAt-createdAt>5*60_000+1000) continue;
       cleanRequests.push({...structuredClone(item),requestHash:item.requestHash.toLowerCase(),createdAt,expiresAt,inputKeys:Array.isArray(item.inputKeys)?item.inputKeys.slice(0,24).map(x=>String(x).slice(0,80)):[],inputPreview:item.inputPreview&&typeof item.inputPreview==='object'?structuredClone(item.inputPreview):{},autonomous:Boolean(item.autonomous)});
     }
-    this.permissionState={version:1,requests:cleanRequests,created:Math.max(0,Math.floor(Number(permissions?.created??cleanRequests.length))),approved:Math.max(0,Math.floor(Number(permissions?.approved??0))),declined:Math.max(0,Math.floor(Number(permissions?.declined??0))),consumed:Math.max(0,Math.floor(Number(permissions?.consumed??0))),expired:Math.max(0,Math.floor(Number(permissions?.expired??0))),lastChangeAt:Math.max(0,Number(permissions?.lastChangeAt??0))};
+    const nextPermissionState:ActionToolPermissionSnapshot={version:1,requests:cleanRequests,created:Math.max(0,Math.floor(Number(permissions?.created??cleanRequests.length))),approved:Math.max(0,Math.floor(Number(permissions?.approved??0))),declined:Math.max(0,Math.floor(Number(permissions?.declined??0))),consumed:Math.max(0,Math.floor(Number(permissions?.consumed??0))),expired:Math.max(0,Math.floor(Number(permissions?.expired??0))),lastChangeAt:Math.max(0,Number(permissions?.lastChangeAt??0))};
+    this.executionLedger.clear();
+    for(const row of [...restored.values()].sort((a,b)=>a.recordedAt-b.recordedAt)) this.executionLedger.set(row.keyHash,row);
+    this.permissionState=nextPermissionState;
     this.expirePermissionRequests();
   }
 
