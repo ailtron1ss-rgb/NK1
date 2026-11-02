@@ -6,7 +6,7 @@
 
 ### CI на текущем source HEAD — инфраструктурный блокер
 
-- На точном SHA `608435493b4af3b4a222d385f1b77d978d18583b` GitHub Actions вернул 14/14 failed workflow runs. Все 14 jobs завершились до выделения runner (`runner_id=0`, пустое имя runner, 0 steps; 2 секунды); логи недоступны (`BlobNotFound`). Это **не** означает, что 14 тестовых наборов выполнились и провалились.
+- На точном SHA `608435493b4af3b4a222d385f1b77d978d18583b` первоначальная push-волна дала 14/14 pre-runner failures (`runner_id=0`, пустое имя, 0 steps). 2 ноября выбранный core regression job был rerun-нут: attempt 2 назначил runner, исполнил 45 steps и завершился success. Четыре PR-triggered workflows на #664 также прошли. Полная актуальная source matrix ещё требует отдельной проверки.
 - Непосредственный parent `f921007a74a7a6124d274885354009dd3a3ef33c` имел 7 успешных workflow runs; базовый regression job прошёл 45 steps на назначенном runner. Между этими SHA изменён только `runtime/neuro-kurisu/package.json` (+1/−2), без изменений workflow YAML.
 - Точная причина startup failure не подтверждена; account-level billing/Actions restriction — гипотеза, которую должен проверить владелец аккаунта или GitHub Support. На `workpass70-source` отключена branch protection и не заданы required status checks.
 - Подробности и все IDs: [Draft PR #652](https://github.com/ailtron1ss-rgb/NK1/pull/652), `docs/engineering/NK1_RELEASE_INTEGRITY_AND_CI_RECOVERY_2026-11-02_RU.md`. Никакой runtime green status на текущем SHA не заявляется.
