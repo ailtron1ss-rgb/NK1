@@ -74,4 +74,7 @@ Object.defineProperty(feedbackAccessor,'action',{enumerable:true,get(){feedbackG
 consolidation.restore({version:1,runs:9,lastFeedback:feedbackAccessor});
 assert.equal(feedbackGetterCalls,0,'feedback restore must not invoke accessors');
 assert.equal(consolidation.snapshot().runs,0);
+consolidation.restore({version:1,runs:9,lastFeedback:{action:42,delta01:.4,retention01:.6}});
+assert.equal(consolidation.snapshot().runs,0,'malformed feedback must still fail closed after the type narrowing');
+assert.equal(consolidation.snapshot().lastFeedback,undefined);
 
