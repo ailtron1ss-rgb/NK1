@@ -87,3 +87,16 @@ This smoke confirms archive assembly and evidence binding only. It is not a publ
 6. Only a human reviewer may set `status=approved`, `reviewerType=human`, reviewer, timestamp, evidenceRef and `redistributionApproved=true` where rights are actually established.
 
 **No human approval was created or inferred in this pass. No Release was published.**
+
+
+## GitHub Actions artifact verification — 2026-11-02
+
+The same diagnostic was executed by GitHub Actions for the PR head:
+
+- Workflow run: [41423518349 — NK1 release-license audit snapshot (non-publishing)](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41423518349), conclusion `success`.
+- Job: `125204488475`, `Generate exact-SHA non-publishing license audit`; it executed 10 reported steps (including setup, checkout, Node pin, SBOM/provenance regeneration, audit/workflow tests, report capture and artifact upload).
+- Artifact ID: `13129649591`; artifact name `nk1-release-license-audit-7b0b826d39dd186a8e6cc8d5bf532a110b95ee10`; metadata digest `sha256:1c252f03c103c0741ea2a7553df7ddd2d61af334c94c456fd3f69c6d5b26a735`.
+- Downloaded artifact ZIP was independently hashed in the analysis container; actual SHA-256 equals the GitHub artifact digest above. ZIP size: 1,912 bytes. It contains exactly one `release-license-audit.json` file (26,083 uncompressed bytes).
+- The downloaded report states `ok=false`, `releaseRedistributionReady=false`, 477 dependencies, 8 archives, 11 repository license files and 115 errors. Its `generatedAt`, dependency fingerprint and all six scope counts exactly match the local source audit in this report.
+
+This proves the new grouped error summary is emitted by a real GitHub Actions run and preserved in the uploaded artifact. The workflow run succeeded because it is a non-publishing snapshot/report job; the licensing audit result inside the artifact remains **blocked** and does not grant rights or authorize release publication.
