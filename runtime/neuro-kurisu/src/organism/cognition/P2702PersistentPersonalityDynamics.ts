@@ -35,7 +35,8 @@ const nonNegativeInteger=(value:unknown,fallback:number)=>
  typeof value==='number'&&Number.isFinite(value)?Math.max(0,Math.floor(value)):fallback;
 const boundedNumberArray=(value:unknown,fallback:number[],limit:number,min=0,max=1)=>{
  if(!Array.isArray(value))return fallback.slice();
- return value.slice(0,limit).map((entry,index)=>finite01(entry,fallback[index]??.5,min,max));
+ const length=Math.min(limit,Math.max(fallback.length,value.length));
+ return Array.from({length},(_,index)=>finite01(value[index],fallback[index]??.5,min,max));
 };
 const isRecord=(value:unknown):value is Record<string,unknown> =>
  value!==null&&typeof value==='object'&&!Array.isArray(value);
