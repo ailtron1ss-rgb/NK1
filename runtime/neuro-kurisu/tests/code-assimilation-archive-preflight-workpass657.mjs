@@ -71,6 +71,34 @@ assert.deepEqual(valid.entries.map(x => x.path), ['README.md', 'src', 'src/index
 assert.match(valid.reportFingerprint, /^[a-f0-9]{64}$/);
 assert.match(valid.treeFingerprint, /^[a-f0-9]{64}$/);
 
+// Large manifests must use bounded hierarchy work, not a full scan per file.
+{
+  const count = 1_200;
+  const entries = Array.from({ length: count }, (_, index) => ({
+    path: `assimilation-complexity/${String(index).padStart(4, '0')}.ts`,
+    kind: 'file',
+    compressedSizeBytes: 1,
+    uncompressedSizeBytes: 1,
+  }));
+  const originalStartsWith = String.prototype.startsWith;
+  let hierarchyPrefixComparisons = 0;
+  String.prototype.startsWith = function (search, position) {
+    if (typeof search === 'string' && originalStartsWith.call(search, 'assimilation-complexity/')) {
+      hierarchyPrefixComparisons += 1;
+    }
+    return originalStartsWith.call(this, search, position);
+  };
+  try {
+    preflight(entries, { archiveBytes: 2048 });
+  } finally {
+    String.prototype.startsWith = originalStartsWith;
+  }
+  assert.ok(
+    hierarchyPrefixComparisons <= count * 32,
+    `archive hierarchy validation exceeded its bounded parent-depth work: ${hierarchyPrefixComparisons} comparisons for ${count} files`,
+  );
+}
+
 // Order does not change normalized tree identity.
 {
   const a = preflight(validEntries(), { candidate });
@@ -224,13 +252,13 @@ assert.throws(
     enumerable: true,
     get() { getterCalls += 1; return 'safe.txt'; },
   });
-  assert.throws(() => preflight([entry]), /accessor-invalid/);
+  assert.throws(() => preflight([entry]), /input-untrusted/);
   assert.equal(getterCalls, 0);
 }
 {
   const entries = new Array(2);
   entries[1] = { path: 'safe.txt', kind: 'file', compressedSizeBytes: 1, uncompressedSizeBytes: 1 };
-  assert.throws(() => preflight(entries), /array-shape-invalid/);
+  assert.throws(() => preflight(entries), /input-untrusted/);
 }
 {
   const entries = new Proxy(validEntries(), {
