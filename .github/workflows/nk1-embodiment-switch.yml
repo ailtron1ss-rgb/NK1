@@ -10,6 +10,7 @@ on:
       - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
       - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts"
       - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/embodiment-timeline.test.mjs"
       - "app/scripts/embodiment-ui-bridge.test.mjs"
@@ -46,6 +47,7 @@ on:
       - "app/scripts/motor-frame-mapper.test.mjs"
       - "app/src/components/avatar/embodimentCoordinator.ts"
       - "app/src/components/avatar/embodimentUiBridge.ts"
+      - "runtime/neuro-kurisu/src/organism/body/AvatarBrainAffectBridge.ts"
       - "app/scripts/embodiment-coordinator.test.mjs"
       - "app/scripts/embodiment-timeline.test.mjs"
       - "app/scripts/embodiment-ui-bridge.test.mjs"
@@ -81,7 +83,7 @@ concurrency:
 jobs:
   contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -111,3 +113,5 @@ jobs:
         run: npm --prefix app run verify:hosted-kurisu-model
       - name: App typecheck
         run: npm --prefix app run typecheck
+      - name: App Vite bundle build without database migration
+        run: npm --prefix app run build:dev
