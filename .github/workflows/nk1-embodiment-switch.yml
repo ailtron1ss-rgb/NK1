@@ -17,6 +17,8 @@ on:
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/scripts/original-2d-art-contract.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
@@ -51,6 +53,8 @@ on:
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/KurisuOriginalStage.tsx"
+      - "app/scripts/original-2d-art-contract.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
@@ -97,6 +101,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test original 2D affect handoff and art contract
+        run: node --test app/scripts/original-2d-art-contract.test.mjs
       - name: Test VRM affect expression adapter
         run: node --experimental-strip-types --test app/scripts/vrm-runtime-adapter.test.mjs
       - name: Test real Three.js toon material lifecycle
