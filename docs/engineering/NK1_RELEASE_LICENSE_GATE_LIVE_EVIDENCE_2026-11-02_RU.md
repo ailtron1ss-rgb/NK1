@@ -100,3 +100,23 @@ The same diagnostic was executed by GitHub Actions for the PR head:
 - The downloaded report states `ok=false`, `releaseRedistributionReady=false`, 477 dependencies, 8 archives, 11 repository license files and 115 errors. Its `generatedAt`, dependency fingerprint and all six scope counts exactly match the local source audit in this report.
 
 This proves the new grouped error summary is emitted by a real GitHub Actions run and preserved in the uploaded artifact. The workflow run succeeded because it is a non-publishing snapshot/report job; the licensing audit result inside the artifact remains **blocked** and does not grant rights or authorize release publication.
+
+
+### Revalidation on final PR head `313f5d5dbc650c64be072ce7ea9c0e7a3f9c56f5`
+
+After the evidence report was added, the four PR workflows ran again against the final PR head (not just the earlier implementation commit). All four runs concluded `success`:
+
+| Workflow | Run ID | Job ID | Steps reported |
+|---|---:|---:|---:|
+| NK1 UserModel explicit-forget integrity | 41423913080 | 125205780067 | 10 |
+| Aspect 02 original 2D asset contract | 41423913014 | 125205779864 | 10 |
+| NK1 release-license audit snapshot (non-publishing) | 41423913026 | 125205779142 | 10 |
+| WorkPass79 cognitive runtime regression | 41423913027 | 125205780102 | 26 |
+
+Latest license-audit artifact:
+- Artifact ID: `13130519033`, size 1,911 bytes.
+- GitHub digest: `sha256:59d59c304b9e231a855a4788a12d5efdc9de2b9b897a4f5b365eb56b30ca2d85`.
+- Downloaded file was independently hashed; local SHA-256 matched exactly.
+- Report `generatedAt=2026-11-02T09:50:41.143Z`, source dependency fingerprint unchanged, `errorCount=115`, `releaseRedistributionReady=false`, and scope counts remain 5/5/5/5/40/55.
+
+The final PR head therefore has successful execution for the four selected PR workflows, while the report itself correctly remains a failed redistribution-readiness audit. These are distinct results.
