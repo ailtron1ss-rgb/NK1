@@ -55,7 +55,15 @@ assertConsistent(revising, 'status revision');
 revising.updateSignals(tip, { salience: .9, confidence: .2 }, 'reconsolidation');
 assertConsistent(revising, 'signal update');
 
-// 5. A mixed workload must still reconcile exactly.
+// 5. Adjudicating an implicit conflict grows contradictionLinks on both records.
+const conflicting = new MemoryOS2();
+const conflictBase = 1_000_000;
+conflicting.encode({ content: 'Alice lives in Berlin', kind: 'semantic', source: 'user', tags: [], context: { subject: 'alice', attribute: 'city', value: 'berlin' }, salience: .7, confidence: .85, epistemicStatus: 'fact', entities: ['alice', 'berlin'], semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [], validFromAt: conflictBase, validUntilAt: null, observedAt: conflictBase, supersedesId: null, supersededById: null, revisionGroupId: 'g:alice-city', revisionSequence: 1 });
+conflicting.encode({ content: 'Alice lives in Paris', kind: 'semantic', source: 'user', tags: [], context: { subject: 'alice', attribute: 'city', value: 'paris' }, salience: .75, confidence: .9, epistemicStatus: 'fact', entities: ['alice', 'paris'], semanticLinks: [], temporalLinks: [], causalLinks: [], contradictionLinks: [], validFromAt: conflictBase + 10_000, validUntilAt: null, observedAt: conflictBase + 10_000, supersedesId: null, supersededById: null, revisionGroupId: 'g:new', revisionSequence: 1 });
+assert.equal(conflicting.adjudicateImplicitConflicts({ at: conflictBase + 10_001, limit: 16, pairBudget: 64 }).resolved, 1, 'the contradictory pair must resolve');
+assertConsistent(conflicting, 'implicit conflict adjudication');
+
+// 6. A mixed workload must still reconcile exactly.
 const mixed = new MemoryOS2({ embeddingProvider: null });
 const mixedIds = [];
 for (let i = 0; i < 400; i += 1) {
