@@ -1,0 +1,39 @@
+name: NK1 VRM affect expression contract
+
+on:
+  pull_request:
+    branches:
+      - feat/avatar-v7-action-crossfade-20261102
+    paths:
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/vrm-runtime-adapter.test.mjs"
+      - "app/src/components/Avatar3DStage.tsx"
+      - "app/package.json"
+      - ".github/workflows/nk1-vrm-affect-expression.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-vrm-affect-expression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  expression-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install pinned app dependencies
+        run: npm ci --prefix app --ignore-scripts
+      - name: Test VRM affect-aware expression projection
+        run: npm --prefix app run test:vrm-runtime-adapter
+      - name: Test deterministic v7 animation transitions
+        run: npm --prefix app run test:avatar-animation-runtime
+      - name: App typecheck
+        run: npm --prefix app run typecheck

@@ -17,6 +17,9 @@ on:
       - "runtime/neuro-kurisu/public/live2d/viewer.html"
       - "app/src/components/AvatarStage.tsx"
       - "app/src/components/Avatar3DStage.tsx"
+      - "app/src/components/avatar/avatarAnimationRuntime.ts"
+      - "app/scripts/avatar-animation-runtime.test.mjs"
+      - "app/scripts/avatar-v7-three-playback.integration.test.mjs"
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
@@ -53,6 +56,8 @@ on:
       - "app/src/components/avatar/threeToonMaterials.ts"
       - "app/src/types/three.d.ts"
       - "app/scripts/avatar-3d-stage.test.mjs"
+      - "app/scripts/avatar-animation-runtime.test.mjs"
+      - "app/scripts/avatar-v7-three-playback.integration.test.mjs"
       - "app/src/components/avatar/avatarModelStore.ts"
       - "app/src/components/avatar/avatarModelLimits.ts"
       - "app/src/components/avatar/avatarModelPreflight.ts"
@@ -95,6 +100,8 @@ jobs:
         run: npm --prefix app run test:avatar-model-preflight
       - name: Test procedural and VRM 3D avatar contract
         run: node --test app/scripts/avatar-3d-stage.test.mjs
+      - name: Test deterministic v7 animation mapping and clip crossfades
+        run: npm --prefix app run test:avatar-animation-runtime
       - name: Test real Three.js toon material lifecycle
         run: npm --prefix app run test:three-toon-materials
       - name: Verify hosted Kurisu asset hash and GLB structure
