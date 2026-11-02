@@ -40,7 +40,7 @@ import { defaultAdaptiveDevelopment } from '../learning/AdaptiveDevelopmentEngin
 import { defaultTemporalContinuity } from '../learning/TemporalContinuityEngine.ts';
 import { defaultP35SemanticWorldBody } from '../body/P35SemanticWorldBody.ts';
 import { defaultP37EmbodiedSensorium } from '../body/P37EmbodiedSensorium.ts';
-import { defaultP36SelfDevelopment } from '../learning/P36AutonomousSelfDevelopment.ts';
+import { defaultP36SelfDevelopment, P36_SELF_DEVELOPMENT_VERSION } from '../learning/P36AutonomousSelfDevelopment.ts';
 
 import { defaultMemoryOS2 } from '../developmental/MemoryOS2.ts';
 import { defaultWorldModel2 } from '../developmental/WorldModel2.ts';
@@ -662,7 +662,7 @@ export function migratePersistedOrganism(input: unknown): PersistedShapeCurrent 
   };
   const p36Default = defaultP36SelfDevelopment();
   const p36Raw = (raw.facets as any)?.learning?.p36 ?? raw.p36?.selfDevelopment ?? {};
-  learning.p36 = { ...p36Default, ...p36Raw, version:4, agenda:{...p36Default.agenda,...(p36Raw.agenda??{})}, hypotheses:Array.isArray(p36Raw.hypotheses)?p36Raw.hypotheses.slice(-96):[], experiments:Array.isArray(p36Raw.experiments)?p36Raw.experiments.slice(-128):[], developmentCycles:Array.isArray(p36Raw.developmentCycles)?p36Raw.developmentCycles.slice(-64):[], externalEvidence:Array.isArray(p36Raw.externalEvidence)?p36Raw.externalEvidence.slice(-512):[], investmentDecisions:Array.isArray(p36Raw.investmentDecisions)?p36Raw.investmentDecisions.slice(-96):[], metrics:{...p36Default.metrics,...(p36Raw.metrics??{})}, curriculum:{...p36Default.curriculum,...(p36Raw.curriculum??{}),mastery:{...p36Default.curriculum.mastery,...(p36Raw.curriculum?.mastery??{})}} };
+  learning.p36 = { ...p36Default, ...p36Raw, version:P36_SELF_DEVELOPMENT_VERSION, agenda:{...p36Default.agenda,...(p36Raw.agenda??{})}, hypotheses:Array.isArray(p36Raw.hypotheses)?p36Raw.hypotheses.slice(-96):[], experiments:Array.isArray(p36Raw.experiments)?p36Raw.experiments.slice(-128):[], developmentCycles:Array.isArray(p36Raw.developmentCycles)?p36Raw.developmentCycles.slice(-64):[], externalEvidence:Array.isArray(p36Raw.externalEvidence)?p36Raw.externalEvidence.slice(-512):[], investmentDecisions:Array.isArray(p36Raw.investmentDecisions)?p36Raw.investmentDecisions.slice(-96):[], metrics:{...p36Default.metrics,...(p36Raw.metrics??{})}, curriculum:{...p36Default.curriculum,...(p36Raw.curriculum??{}),mastery:{...p36Default.curriculum.mastery,...(p36Raw.curriculum?.mastery??{})}} };
   const p38Default = defaultP38Research();
   const p38Raw = (raw.facets as any)?.learning?.p38 ?? (raw as any).p38?.autonomousCausalResearch ?? {};
   learning.p38 = { ...p38Default, ...p38Raw, version:1, hypotheses:Array.isArray(p38Raw.hypotheses)?p38Raw.hypotheses.slice(-96):[], trials:Array.isArray(p38Raw.trials)?p38Raw.trials.slice(-192):[], evidence:Array.isArray(p38Raw.evidence)?p38Raw.evidence.slice(-192):[], actionBias:{...p38Default.actionBias,...(p38Raw.actionBias??{})}, metrics:{...p38Default.metrics,...(p38Raw.metrics??{})} };

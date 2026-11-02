@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { P36_SELF_DEVELOPMENT_VERSION } from '../src/organism/learning/P36AutonomousSelfDevelopment.ts';
 import { MemoryStateStore } from '../src/organism/persistence/MemoryStateStore.ts';
 import { OrganismCore } from '../src/organism/core/OrganismCore.ts';
 
@@ -16,5 +17,5 @@ assert.ok(step.decision.selected);
 await core.flush();
 const saved=await store.load();
 assert.ok(saved.facets.learning.p36);
-assert.equal(saved.facets.learning.p36.version,4);
+assert.equal(saved.facets.learning.p36.version,P36_SELF_DEVELOPMENT_VERSION);
 console.log('P36_INTEGRATION=PASS',JSON.stringify({action:step.decision.selected.action,hypotheses:after.hypotheses.length,experiments:after.experiments.length,completedSteps:after.curriculum.completedSteps}));

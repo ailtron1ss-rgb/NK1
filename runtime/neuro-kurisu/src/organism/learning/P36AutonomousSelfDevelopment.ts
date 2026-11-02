@@ -238,7 +238,7 @@ export interface DevelopmentalMaturityRecord {
 }
 
 export interface SelfDevelopmentState {
-  version:6;
+  version:typeof P36_SELF_DEVELOPMENT_VERSION;
   cycles:number;
   lastCycleAt:number;
   agenda:DevelopmentAgendaRecord;
@@ -288,7 +288,7 @@ export interface SelfDevelopmentState {
 }
 
 const defaultState=():SelfDevelopmentState=>({
-  version:6,
+  version:P36_SELF_DEVELOPMENT_VERSION,
   cycles:0,
   lastCycleAt:0,
   agenda:{version:1,selectedArea:null,selectedHypothesisId:null,score01:0,expectedGain01:0,estimatedCost01:0,reason:'no-development-decision',lastSelectedAt:0,selectionCount:0,lastDecisionTick:0},
@@ -352,6 +352,7 @@ function focusFromState(state:OrganismState, extras:{worldError01?:number; selfE
 export const P36_EXTERNAL_EVIDENCE_TOOL_ID = 'organism.learning.p36.evaluate-evidence';
 /** Separate host authority for longitudinal maturity/retention observations. */
 export const P36_DEVELOPMENTAL_OUTCOME_TOOL_ID = 'organism.learning.p36.evaluate-maturity';
+export const P36_SELF_DEVELOPMENT_VERSION = 6 as const;
 
 export class P36AutonomousSelfDevelopmentEngine{
   private state=defaultState();
@@ -415,7 +416,7 @@ export class P36AutonomousSelfDevelopmentEngine{
         verifiedEvidenceCount:0,lastEvidenceAt:0,
       } as DevelopmentCycleRecord;
     }).filter((cycle:DevelopmentCycleRecord|null):cycle is DevelopmentCycleRecord=>cycle!==null):[];
-    this.state={...d,...r,version:6,
+    this.state={...d,...r,version:P36_SELF_DEVELOPMENT_VERSION,
       currentHypothesisId:typeof r.currentHypothesisId==='string'&&restoredHypotheses.some(hypothesis=>
         hypothesis.id===r.currentHypothesisId&&['proposed','running','awaiting-evidence'].includes(hypothesis.status))
         ?r.currentHypothesisId:null,
