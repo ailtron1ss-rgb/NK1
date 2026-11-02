@@ -458,6 +458,7 @@ export class MemoryOS2{
  private readonly documentFrequency=new Map<string,number>();
  private readonly itemTokenLength=new Map<string,number>();
  private readonly revisionGroupIndex=new Map<string,Set<string>>();
+ private readonly itemMetadataTokens=new Map<string,Set<string>>();
  private totalTokenLength=0;
  private lastCandidateCount=0;
  private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null};
@@ -864,7 +865,7 @@ export class MemoryOS2{
   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
-  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
+  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.itemMetadataTokens.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
   for(const item of this.state.items){
    const exactKey=`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`;
@@ -1025,6 +1026,8 @@ export class MemoryOS2{
     existing.context=mergeMemoContext(existing.context,input.context);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
     this.state.reconsolidations++;
+    // tags/context just merged in; refresh this item's metadata postings.
+    this.reindexMetadataFor(existing);
     this.exactIndex.set(`${existing.kind}|${existing.source}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     this.contentIndex.set(`${existing.kind}|${canonicalizeMemoryContent(existing.content)}`,existing.id);
     return options.clone===false?existing:structuredClone(existing);
@@ -1435,6 +1438,9 @@ export class MemoryOS2{
    const before=estimateMemoryBytes(m);
    m.context=mergeMemoContext(m.context,patch);
    this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-before+estimateMemoryBytes(m));
+   // context is a metadata source; the metadata postings must follow the edit or
+   // recall silently keeps matching the old topic and never sees the new one.
+   this.reindexMetadataFor(m);
    return structuredClone(m.context??{});
  }
  /** Merge one independently attributed evidence source through the canonical MemoryOS2 owner. */
@@ -1608,11 +1614,31 @@ export class MemoryOS2{
      if(!ids.has(item.id))ids.add(item.id);
      if(previousDf===0)for(const gram of charTrigrams(token)){let posting=this.characterGramIndex.get(gram);if(!posting){posting=new Set<string>();this.characterGramIndex.set(gram,posting);}posting.add(token);}
    }
-   for(const token of this.metadataTokens(item)){
+   const metadataTokens=this.metadataTokens(item);
+   for(const token of metadataTokens){
      let ids=this.metadataTokenIndex.get(token);
      if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}
      ids.add(item.id);
    }
+   this.itemMetadataTokens.set(item.id,metadataTokens);
+ }
+ // context/tags are metadata postings sources; refresh just this item's postings
+ // after an in-place edit so retrieval cannot match stale metadata tokens.
+ private reindexMetadataFor(item:MemoryItem2){
+   const next=this.metadataTokens(item);
+   const previous=this.itemMetadataTokens.get(item.id);
+   if(previous){
+     for(const token of previous)if(!next.has(token)){
+       const ids=this.metadataTokenIndex.get(token);
+       if(ids){ids.delete(item.id);if(ids.size===0)this.metadataTokenIndex.delete(token);}
+     }
+   }
+   for(const token of next){
+     let ids=this.metadataTokenIndex.get(token);
+     if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}
+     ids.add(item.id);
+   }
+   this.itemMetadataTokens.set(item.id,next);
  }
  private removeIndexedId(id:string){
    const item=this.itemIndex.get(id);
@@ -1637,6 +1663,7 @@ export class MemoryOS2{
    for(const [token,ids] of this.metadataTokenIndex){
      if(ids.delete(id)&&ids.size===0)this.metadataTokenIndex.delete(token);
    }
+   this.itemMetadataTokens.delete(id);
  }
 
  /** Point-in-time lookup from the canonical revision chain; this is read-only. */
