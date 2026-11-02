@@ -213,7 +213,13 @@ export class B299CausalPersonalityDevelopmentLoop {
       if(weight<=0) continue;
       const fast=clamp11(this.state.traitFast11[trait]??0);
       const slow=clamp11(this.state.traitSlow11[trait]??0);
-      traitSignal += weight*clamp11(fast*.35+slow*.65);
+      // A trait is a learned disposition only to the extent that its own outcome
+      // evidence supports it. Mature action phenotypes cannot substitute for
+      // missing trait evidence: this keeps one noisy action history from silently
+      // becoming a global personality bias.
+      const evidence01=clamp01(this.state.traitEvidence01[trait]??0);
+      const evidenceGate=clamp01(evidence01/.32);
+      traitSignal += weight*evidenceGate*clamp11(fast*.35+slow*.65);
       traitMass += weight;
     }
     const normalizedTrait=traitMass>1e-6?traitSignal/traitMass:0;
