@@ -261,14 +261,21 @@ export function buildSourceGraph(files: SourceFileInput[]): SourceGraph {
     nodes.push(...result.symbols);
   }
 
-  const knownFiles = new Set(files.map((file) => normalizeRepoPath(file.path)).filter((path): path is string => path !== null));
+  const modulePathByNormalizedPath = new Map<string, string>();
+  for (const file of files) {
+    const normalized = normalizeRepoPath(file.path);
+    if (normalized) modulePathByNormalizedPath.set(normalized, file.path);
+  }
+  const knownFiles = new Set(modulePathByNormalizedPath.keys());
 
   for (const file of files) {
     const result = parsed.get(file.path);
     if (!result) continue;
     const moduleId = `${file.path}#__module__`;
     for (const spec of result.imports) {
-      const target = resolveRelativeModule(file.path, spec, knownFiles);
+      const resolvedTarget = resolveRelativeModule(file.path, spec, knownFiles);
+      if (!resolvedTarget) continue;
+      const target = modulePathByNormalizedPath.get(resolvedTarget);
       if (!target || target === file.path) continue;
       edges.push({ from: moduleId, to: `${target}#__module__`, kind: 'imports', provenance: 'EXTRACTED' });
       for (const symbol of parsed.get(target)?.symbols ?? []) {
