@@ -3,28 +3,30 @@
 ## Ground truth and scoring
 
 - Canonical repository: ailtron1ss-rgb/NK1.
-- Working source baseline: workpass70-source @ eaf653d2229b8c032fe542ffb3215ff25ba69a93.
+- Working source baseline: workpass70-source @ 36e576da622c0eb3d55759bb086657048c0243c1.
 - Parent Engineering OS branch: aspect/neurok-engineering-os-20261103 @ 8fa7bf8023ed260a42ef6dd7815f7209617bf7a1.
 - Published release: Neuro / NeuroKurisu0.1, 2026-10-19, asset Neuro_Kurisu_WORKPASS70_2026-10-19.zip, 135,290,615 bytes, GitHub-reported SHA-256 c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286.
 
-The weighted functional engineering maturity remains **46%** and release readiness remains **25%**. These are baseline estimates, not consciousness scores. None of the feature PRs below has been merged into workpass70-source or verified in the published ZIP. PR #723 is merged only into the parent Engineering OS branch.
+The weighted functional engineering maturity remains **46%** and release readiness remains **25%**. These are baseline estimates, not consciousness scores. The current source already contains the spatial MemoryOS2 index/holdout and interoceptive precision allocator, but none of the open bridge/engineering-admission/estimator-hardening PRs below has been merged or verified in the published ZIP. PR #723 is merged only into the parent Engineering OS branch.
 
 ## Parallel branch ledger
 
 | Stream | PR / branch | Implementation progress | Exact-head evidence | Remaining gate |
 |---|---|---:|---|---|
-| Engineering OS control plane | #716 / aspect/neurok-engineering-os-20261103 | 75% | Parent SHA 8fa7bf8023ed…; 10 workflows completed successfully | Independent review; child-stack reconciliation; canonical merge |
-| Manifest safety | #717 / aspect/engineering-os-manifest-validation-20261103 | 85% | Exact head d7c3ad89f0fa…; Engineering OS workflow success | Rebase/stack verification against latest parent; adversarial review |
-| Coordinator lock safety | #718 / aspect/neurok-os-lock-integrity-20261103 | 80% | Exact head 27f360e68d3b…; Engineering OS workflow success | Concurrent lease/restart stress tests; parent integration |
-| Emotion restore integrity | #719 / aspect/affect-restore-integrity-20261103-v3 | 90% | Exact head ecaedf58569c…; 8/8 visible workflow runs success | Review and canonical merge; longer-term affect behaviour evaluation |
-| Interoceptive precision | #720 / aspect/interoceptive-precision-allocation-20261103 | 70% | Exact head b97b4434d92b…; 15 visible workflows success, including Will/Hexis/perception and learning contracts | Wire allocator into the live cognitive cycle; paired baseline/variant evaluation |
-| Donor provenance and integration plan | #721 / research/donor-source-intake-20261103 | 80% | Archive digests, 22 nested ZIP snapshots / 21 unique sources recorded; current doc CI green | Path-level license/SBOM checks and mechanism-by-mechanism integration decisions |
-| Read-set freshness | #722 / aspect/neurok-os-readset-freshness-20261103 | 80% | Exact head f27b1bc46cdb…; focused read-set workflow and parent OS workflow success | Wire into mandatory patch admission; signed receipts or trusted provenance; independent review |
-| Patch provenance / policy preflight | #723 / aspect/neurok-os-patch-sandbox-20261103 | 100% for parent-branch scope | Merged 2026-11-03 into parent branch as 8fa7bf8023ed…; 3/3 exact-head checks success | Not in canonical source; actual isolated patch apply, test sandbox and rollback remain unimplemented |
-| Spatial MemoryOS2 recall | #730 / aspect/memory-spatial-recall-20261103 | 85% | Parent head 421621fbb92c…; 10k spatial-index stress p95 1.195 ms over 60 top-64 queries; #738 five-seed exact-head holdout at 2444de57fb13…: mean recall@10 0.00→1.00, delta +1.00 on all five seeds, zero cross-frame/radius false positives; #735 bridge integration and 9 unique broad workflows green at 1e454ea31b09… | Real P41 camera/world holdout, full retrieval latency, coordinate calibration/unit audit, avatar/world-model action coupling |
-| Grounded P41→MemoryOS2 bridge | #735 / aspect/grounded-spatial-memory-bridge-20261103 | 80% | Exact head 1e454ea31b09…; focused bridge test + runtime typecheck and 9 unique broad workflows green; merges only fresh observed visible vision positions through MemoryFabric | Independent P41 external holdout, runtime soak, source attribution and review |
-| Spatial retrieval quality gate | #738 / aspect/memory-spatial-holdout-20261103 | 100% for synthetic test scope | Exact head 2444de57fb13…; five seeds passed recall@10 0.00→1.00; zero cross-frame and out-of-radius false positives; typecheck green | Replace synthetic-only evidence with calibrated real-world perception holdout and ensure no regressions in temporal/semantic retrieval |
+| Engineering OS control plane | #716 / aspect/neurok-engineering-os-20261103 | 75% | Parent SHA 8fa7bf8023ed…; parent registry/coordinator workflows green | Independent review; reconcile child branches; canonical source integration |
+| Manifest safety | #717 / aspect/engineering-os-manifest-validation-20261103 | 85% | Exact head d7c3ad89f0fa…; parent Engineering OS workflow passed when checked | Rebase/reconcile against latest parent; adversarial review |
+| Coordinator lock safety | #718 / aspect/neurok-os-lock-integrity-20261103 | 80% | Exact head 27f360e68d3b…; parent Engineering OS workflow passed when checked | Concurrent lease/restart stress tests; parent integration |
+| Emotion restore integrity | #719 / aspect/affect-restore-integrity-20261103-v3 | Closed, not merged | Previous head ecaedf58569c…; 8/8 workflows were green before the branch was closed | Reopen/reconcile only if this work is still needed beyond the integrated source |
+| Interoceptive precision allocator | Merged PR #720 / source commit 36e576da622c… | Integrated | Exact source head 36e576da622c…; safe own-data input parsing, getter non-execution and Proxy fail-closed regression; 7 source workflows green | Paired adaptive-vs-fixed behavioural evaluation and real-device thermal/energy soak |
+| Donor provenance and integration plan | #721 / research/donor-source-intake-20261103 | 80% | Archive digests: 22 nested ZIP snapshots / 21 unique sources; updated inventory/scorecard | Path-level license/SBOM checks and mechanism-by-mechanism integration decisions |
+| Read-set freshness child | #722 / aspect/neurok-os-readset-freshness-20261103 | Superseded | Earlier child head f27b1bc… was validated; replaced by fresh parent-based PR #753 | Do not integrate stale child; use #753 |
+| Patch provenance / policy preflight | #723 / aspect/neurok-os-patch-sandbox-20261103 | Merged to parent only | Merged 2026-11-03 into parent branch 8fa7bf8023ed…; exact-head checks passed | Still not in workpass70-source; sandboxed apply/test, rollback and source integration remain |
+| Spatial MemoryOS2 index + holdout | Integrated in workpass70-source @ 36e576da622c… | Implemented and tested | Current source includes frame-aware grid, map-consistency diagnostics, 10k stress and five-seed holdout tests; historical measured holdout was recall@10 0.00→1.00 on the earlier exact test head | Rerun diversified seed geometry on latest source; real P41/camera calibration holdout, full retrieval p95, temporal/semantic no-regression |
+| Grounded P41→MemoryOS2 bridge | #746 / aspect/grounded-spatial-memory-source-20261103 | 90% | Exact head c588f54a361e…; focused bridge/Core tick + typecheck and 25 unique broad workflows green | Base is one source commit behind; revalidate against 36e576…; authenticated sensor provenance, unit/calibration validation, real-device soak and review |
+| Patch read-set admission | #753 / aspect/neurok-os-readset-admission-20261103 | 90% | Exact head f019606e15b2…; admission 11/11, full neurok-os contract suite, CLI fresh-receipt allow + outside-symlink rejection, Engineering OS workflow green | Mandatory apply-hook integration, signed receipts/agent identity, sandboxed apply/test, post-apply verification and rollback |
+| Interoceptive estimator input integrity | #756 / aspect/interoceptive-estimator-input-boundary-20261103 | 90% | Exact head 7d7a4c6895af…; 11/11 tests, runtime typecheck, allocator and estimator focused workflows plus unified runtime, WorkPass79 and NeuroCore checks green | Paired behaviour evaluation; test calibrated sensor coverage/partial-data weighting; real-device soak and independent review |
 
+Branch percentages describe delivery of each isolated engineering task, not intelligence or readiness of the whole system. They do not alter the 46% weighted baseline until integration gates are passed.
 Branch percentages describe delivery of each isolated engineering task, not intelligence or the readiness of the whole system. They do not alter the 46% weighted baseline until integration gates are passed.
 
 ## Implemented mechanisms in this pass
@@ -74,6 +76,14 @@ License rules: archive ZIP hashes are recorded, but ZIP branch names do not prov
 - PR #735, child of #730: grounded P41 vision observation → MemoryFabric → canonical MemoryOS2 integration; only fresh, visible, explicitly observed vision positions are admitted; 90-second freshness window; exact-head focused bridge tests and runtime typecheck passed at `1e454ea31b09a4a8086b599dc1071c2a5026e10c`.
 - PR #738, sibling of #730: five-seed spatial-vs-text synthetic holdout passed at `2444de57fb13d6cbc406e9ef6a20ba804364b865`; baseline recall@10 0.00, spatial recall@10 1.00, +1.00 delta on every seed, no cross-frame or out-of-radius false positives; runtime typecheck passed.
 - Both remain open draft PRs stacked on #730. These tests establish retrieval and integration contracts, not calibrated real-world spatial understanding or general intelligence.
+
+### Pass 3 evidence update — 2026-11-03
+
+- Source baseline advanced to `36e576da622c0eb3d55759bb086657048c0243c1`. This source commit hardened `InteroceptivePrecisionAllocator` against getter/proxy input. Its 7 latest source workflows completed successfully.
+- PR #756 extends that boundary upstream into `InteroceptiveStateEstimator.observe()`: only plain own-data observations are read; missing/accessor-backed channels fall back to the last prediction; untrusted Proxy input gets zero attention budget and an explicit diagnostic reason. Exact head `7d7a4c6895afb403ba136078d39b1383f5a549c6`: 11/11 tests, runtime typecheck, allocator/estimator focused workflows, Unified Organism Runtime, WorkPass79 and NeuroCore Core Regression all passed.
+- PR #753 adds a fail-closed patch admission preflight. Exact head `f019606e15b2dd1b49765287e3442f926111eae0`: 11/11 admission tests, complete Engineering OS test suite, CLI syntax and symlink-containment smoke all passed.
+- PR #746 connects producer-marked observed spatial positions to canonical MemoryOS2 at the live Core tick. Exact head `c588f54a361e8b4bcec78a0d1c1a1ddceefe4363`: 25 unique broader workflows passed. Its base SHA is now one source commit behind; do not merge it without fresh comparison/revalidation against `36e576...`.
+- The spatial index and its stress/holdout tests are already present in the current source baseline. Earlier controlled five-seed results showed recall@10 0.00→1.00 on each seed; the current source holdout has since been strengthened with distinct 3D seed geometry, so those historical numbers must not be treated as a measurement of the new geometry until rerun.
 
 ## Next engineering passes
 
