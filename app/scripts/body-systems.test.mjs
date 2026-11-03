@@ -296,6 +296,24 @@ test("full-body channels drive normalized leg/arm/spine bones and report what th
   assert.ok(vrm.bones.get("spine").rotation.x > 0);
 });
 
+test("full-body apply is idempotent across frames and returns bones to rest", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const channels = { torsoPitch: 0.1, leftKnee: 0.1 };
+  applyVrmFullBodyChannels(vrm, channels);
+  const spineAfterOne = vrm.bones.get("spine").rotation.x;
+  const kneeAfterOne = vrm.bones.get("leftLowerLeg").rotation.z;
+  assert.ok(spineAfterOne > 0 && kneeAfterOne > 0);
+  // Re-applying the same channels must not accumulate (the head/arm pass resets every frame).
+  applyVrmFullBodyChannels(vrm, channels);
+  applyVrmFullBodyChannels(vrm, channels);
+  assert.equal(vrm.bones.get("spine").rotation.x, spineAfterOne);
+  assert.equal(vrm.bones.get("leftLowerLeg").rotation.z, kneeAfterOne);
+  // A channel that stops being emitted must return the bone to rest, not freeze it.
+  applyVrmFullBodyChannels(vrm, {});
+  assert.equal(vrm.bones.get("spine").rotation.x, 0);
+  assert.equal(vrm.bones.get("leftLowerLeg").rotation.z, 0);
+});
+
 test("full-body apply ignores channels it cannot map and reports none written", () => {
   const vrm = createFakeVrm(FULL_BODY_NAMES);
   const result = applyVrmFullBodyChannels(vrm, { gazeX: 0.4, breath: 0.6, leftShoulder: -0.3 });
