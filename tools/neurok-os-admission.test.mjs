@@ -33,10 +33,8 @@ async function fixture(run){
   execFileSync('git',['config','user.name','NK1 admission test'],{cwd:root});
   execFileSync('git',['config','user.email','nk1-admission@example.invalid'],{cwd:root});
   await mkdir(path.join(root,'src'),{recursive:true});
-  await writeFile(path.join(root,'src/core.mjs'),'export const value = 1;
-');
-  await writeFile(path.join(root,'docs.md'),'task context
-');
+  await writeFile(path.join(root,'src/core.mjs'),'export const value = 1;'+String.fromCharCode(10));
+  await writeFile(path.join(root,'docs.md'),'task context'+String.fromCharCode(10));
   const baseSha=commit(root,'base');
   await run({root,baseSha});
  }finally{
@@ -82,8 +80,7 @@ test('blocks a patch when a modified source file is absent from the declared rea
 
 test('blocks a patch when a declared source dependency changed after the task read it',async()=>fixture(async({root,baseSha})=>{
  const receipt=captureReadSet(['src/core.mjs'],{root,baseSha});
- await writeFile(path.join(root,'src/core.mjs'),'export const value = 99;
-');
+ await writeFile(path.join(root,'src/core.mjs'),'export const value = 99;'+String.fromCharCode(10));
  const currentSha=commit(root,'change read dependency');
  const result=admission(inspectUnifiedDiff(PATCH),receipt,{
   root,currentSha,expectedBaseSha:baseSha,policy:POLICY,
@@ -95,8 +92,7 @@ test('blocks a patch when a declared source dependency changed after the task re
 
 test('blocks a receipt captured against a different task base SHA',async()=>fixture(async({root,baseSha})=>{
  const receipt=captureReadSet(['src/core.mjs'],{root,baseSha});
- await writeFile(path.join(root,'docs.md'),'later context
-');
+ await writeFile(path.join(root,'docs.md'),'later context'+String.fromCharCode(10));
  const laterSha=commit(root,'later unrelated commit');
  const result=admission(inspectUnifiedDiff(PATCH),receipt,{
   root,currentSha:laterSha,expectedBaseSha:laterSha,policy:POLICY,
