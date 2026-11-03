@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from nk1_memory_evidence import build_ci_fixture_report, score_memory_holdout, samples_from_memory_report, export_memory_report
+from nk1_memory_evidence import _cluster_interval, build_ci_fixture_report, score_memory_holdout, samples_from_memory_report, export_memory_report
 
 
 def digest(value: str) -> str:
@@ -110,6 +110,17 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
 
 
 class MemoryHoldoutScoringTests(unittest.TestCase):
+    def test_bootstrap_resamples_whole_independence_groups(self):
+        values = [0.0, 0.0, 1.0, 1.0]
+        groups = [digest("source-a"), digest("source-a"), digest("source-b"), digest("source-b")]
+        first = _cluster_interval(values, groups, 2000, 73)
+        replay = _cluster_interval(values, groups, 2000, 73)
+        self.assertEqual(first, replay)
+        self.assertEqual(first["samples"], 2000)
+        self.assertEqual(first["clusterCount"], 2)
+        self.assertEqual(first["resamplingUnit"], "independenceGroupDigest")
+        self.assertEqual(first["medianDelta01"], 0.5)
+
     def test_independent_scorer_recomputes_bilingual_recall_mrr_and_abstention(self):
         result = score_memory_holdout(make_record())
         self.assertTrue(result["valid"], result)
