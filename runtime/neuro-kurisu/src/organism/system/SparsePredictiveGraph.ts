@@ -1,4 +1,6 @@
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(value:unknown,fallback:number):number=>{const n=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;return Number.isFinite(n)?n:(Number.isFinite(fallback)?fallback:0);};
+const cnt=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(fin(value,fallback)));
 
 export interface SparsePredictiveState{version:1;
 cycles:number;
@@ -12,7 +14,8 @@ lastNovelty01:number;
 const d=():SparsePredictiveState=>({version:1,cycles:0,nodes:0,edges:0,activeEdges:0,meanError01:.5,prediction01:.5,lastNovelty01:0});
 
 export class SparsePredictiveGraph{private s=d();
-restore(r?:Partial<SparsePredictiveState>|null){this.s={...d(),...(r??{}),version:1};
+/** Restore without trusting the snapshot: error/prediction feed EMAs (NaN poisons the predictive signal), counts are bounded to the graph caps, and activeEdges can never exceed edges. */
+restore(r?:Partial<SparsePredictiveState>|null){const base=d();const src:Record<string,unknown>=(r&&typeof r==='object')?r:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const edges=Math.min(16384,cnt(read('edges'),base.edges));this.s={version:1,cycles:cnt(read('cycles'),base.cycles),nodes:Math.min(4096,cnt(read('nodes'),base.nodes)),edges,activeEdges:Math.min(edges,cnt(read('activeEdges'),base.activeEdges)),meanError01:c(fin(read('meanError01'),base.meanError01)),prediction01:c(fin(read('prediction01'),base.prediction01)),lastNovelty01:c(fin(read('lastNovelty01'),base.lastNovelty01))};
 }snapshot(){return structuredClone(this.s);
 }step(i:{novelty01:number;
 predictionError01:number;

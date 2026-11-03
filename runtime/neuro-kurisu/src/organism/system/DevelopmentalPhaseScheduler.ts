@@ -1,4 +1,7 @@
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(value:unknown,fallback:number):number=>{const n=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;return Number.isFinite(n)?n:(Number.isFinite(fallback)?fallback:0);};
+const cnt=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(fin(value,fallback)));
+const PHASES:readonly DevelopmentalPhaseState['phase'][]=['stabilize','experiment','learn','consolidate','expand'];
 
 export interface DevelopmentalPhaseState{version:1;
 cycles:number;
@@ -10,7 +13,8 @@ phaseFitness01:number;
 const d=():DevelopmentalPhaseState=>({version:1,cycles:0,phase:'stabilize',transitions:0,freeze01:.2,phaseFitness01:.5});
 
 export class DevelopmentalPhaseScheduler{private s=d();
-restore(r?:Partial<DevelopmentalPhaseState>|null){this.s={...d(),...(r??{}),version:1};
+/** Restore without trusting the snapshot: `phase` must be a known phase (an arbitrary string would force a spurious transition on the next decide) and freeze/fitness feed state; counts are non-negative. */
+restore(r?:Partial<DevelopmentalPhaseState>|null){const base=d();const src:Record<string,unknown>=(r&&typeof r==='object')?r:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const phase=PHASES.includes(read('phase') as DevelopmentalPhaseState['phase'])?read('phase') as DevelopmentalPhaseState['phase']:base.phase;this.s={version:1,cycles:cnt(read('cycles'),base.cycles),phase,transitions:cnt(read('transitions'),base.transitions),freeze01:c(fin(read('freeze01'),base.freeze01)),phaseFitness01:c(fin(read('phaseFitness01'),base.phaseFitness01))};
 }snapshot(){return structuredClone(this.s);
 }decide(i:{stability01:number;
 causalConfidence01:number;

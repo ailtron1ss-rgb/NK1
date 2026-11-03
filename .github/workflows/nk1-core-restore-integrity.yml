@@ -81,5 +81,10 @@ jobs:
           node --experimental-strip-types tests/p26-contextual-world.mjs
           node --experimental-strip-types tests/p47-temporal-memory.mjs
           node --experimental-strip-types tests/action-cost-unification-workpass36.mjs
+      - name: Run decision/learning owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-49-subsystem-extraction.mjs
+          node --experimental-strip-types tests/big-pass-206-world-agency-learning.mjs
+          node --experimental-strip-types tests/big-pass-38-autonomous-spine.mjs
       - name: Typecheck runtime
         run: npm run typecheck
