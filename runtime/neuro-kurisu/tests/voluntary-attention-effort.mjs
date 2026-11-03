@@ -11,6 +11,10 @@ test('rest action reduces only the attention envelope and persists the effort se
  assert.equal(rested.attentionEffort01,.4);
  assert.ok(rested.attention01 < baseline.attention01);
  assert.equal(rested.totalBudget01,baseline.totalBudget01);
+ assert.equal(rested.simulation01,baseline.simulation01);
+ assert.equal(rested.learning01,baseline.learning01);
+ assert.equal(rested.memory01,baseline.memory01);
+ assert.equal(rested.externalInteraction01,baseline.externalInteraction01);
  assert.equal(economy.snapshot().attentionEffort01,.4);
 });
 
