@@ -82,6 +82,30 @@ assert.ok(graph.edges.every((e) => e.provenance === 'EXTRACTED' || e.provenance 
 const impacted = impactOf(graph, 'src/Thing.ts#__module__');
 assert.ok(impacted.includes('src/Use.ts#__module__'), 'Use.ts depends on Thing.ts and must be impacted');
 assert.ok(!impacted.includes('src/Thing.ts#__module__'), 'impact must not include the node itself');
+ 
+// --- 3a. relative import resolution must be directory-aware and TS-ESM aware ---
+const pathGraph = buildSourceGraph([
+  // Deliberately put b/util.ts first so basename overwrite cannot accidentally
+  // make the a/consumer.ts assertion pass.
+  { path: 'src/b/util.ts', text: 'export class BOnly {}\\n' },
+  { path: 'src/a/util.ts', text: 'export class AOnly {}\\n' },
+  { path: 'src/a/consumer.ts', text: "import { AOnly } from './util.js';\\nexport class AConsumer { value = new AOnly(); }\\n" },
+  { path: 'src/b/consumer.ts', text: "import { BOnly } from './util.js';\\nexport class BConsumer { value = new BOnly(); }\\n" },
+  { path: 'src/a/features/index.ts', text: 'export class AFeature {}\\n' },
+  { path: 'src/a/feature-consumer.ts', text: "import { AFeature } from './features';\\nexport class AFeatureConsumer { value = new AFeature(); }\\n" },
+]);
+const hasImport = (from, to) => pathGraph.edges.some((edge) =>
+  edge.kind === 'imports' && edge.from === from && edge.to === to,
+);
+assert.ok(hasImport('src/a/consumer.ts#__module__', 'src/a/util.ts#__module__'),
+  'relative .js import must resolve to the sibling TypeScript source');
+assert.ok(!hasImport('src/a/consumer.ts#__module__', 'src/b/util.ts#__module__'),
+  'same-basename module in another directory must never capture the import');
+assert.ok(hasImport('src/b/consumer.ts#__module__', 'src/b/util.ts#__module__'),
+  'each importer must resolve its own directory-local module');
+assert.ok(hasImport('src/a/feature-consumer.ts#__module__', 'src/a/features/index.ts#__module__'),
+  'extensionless directory import must resolve its index.ts module');
+
 
 // --- 4. duplicate definition and dead-symbol detection ---
 const dupGraph = buildSourceGraph([
