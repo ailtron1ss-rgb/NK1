@@ -7,6 +7,7 @@ on:
       - "tools/neurok-os-readset.test.mjs"
       - "tools/neurok-os-patch.mjs"
       - "tools/neurok-os-admission.test.mjs"
+      - "docs/engineering/NEUROK_OS_PATCH_ADMISSION_2026-11-03.md"
       - ".github/workflows/neurok-os-admission.yml"
   push:
     branches:
@@ -16,6 +17,7 @@ on:
       - "tools/neurok-os-readset.test.mjs"
       - "tools/neurok-os-patch.mjs"
       - "tools/neurok-os-admission.test.mjs"
+      - "docs/engineering/NEUROK_OS_PATCH_ADMISSION_2026-11-03.md"
       - ".github/workflows/neurok-os-admission.yml"
 
 permissions:
