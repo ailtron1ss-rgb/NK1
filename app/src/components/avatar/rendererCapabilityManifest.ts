@@ -95,7 +95,7 @@ export function validateRendererCapabilityManifest(manifest: BodyRendererCapabil
   if (manifest.assetKind === "none" && manifest.productionReady) {
     issues.push({ code: "inconsistent-production-ready", message: "a renderer with no asset cannot be productionReady" });
   }
-  if (manifest.supportsClothingLayers && manifest.channels.length === 0) {
+  if (manifest.supportsClothingLayers && Array.isArray(manifest.channels) && manifest.channels.length === 0) {
     issues.push({ code: "inconsistent-clothing", message: "clothing layers require at least one driven channel" });
   }
   return issues;
