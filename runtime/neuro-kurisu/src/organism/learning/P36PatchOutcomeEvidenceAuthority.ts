@@ -87,7 +87,7 @@ export function patchTreatmentMethod(baseSha: string, patchSha256: string): stri
  * verifier identity is accepted from candidate input.
  *
  * The host must provision signed P36 outcome artifacts whose treatment method is
- * patchTreatmentMethod(exactPatchSha256). P36 rechecks the artifact receipts,
+ * patchTreatmentMethod(hostBaseSha, exactPatchSha256). P36 rechecks the artifact receipts,
  * fixed manifest, holdout split, task family and paired seed coverage.
  */
 export function measureP36PatchOutcomeEvidence(
