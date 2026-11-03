@@ -1,6 +1,5 @@
 # NeuroCore — repository working rules
 
-# NeuroCore — repository working rules
 
 > **Current continuation checkpoint — 2026-11-03:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before every change. Verified live source HEAD at this checkpoint: `a3b3f4b00fcffe5bcb02161d5ac18d57dab50516`, 22 commits ahead of `54d2d35176faf774e3402fdd2ac4dd7b8d01b467` and 0 behind. Never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass records later in this repository are archival unless a current status page explicitly links them.
 
