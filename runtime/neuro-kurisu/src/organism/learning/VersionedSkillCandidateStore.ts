@@ -194,12 +194,23 @@ function activeFor(snapshot: VersionedSkillStoreSnapshot, skillId: string): Acti
  * This store is deliberately separate from the live runtime skill resolver.
  */
 export class VersionedSkillCandidateStore {
+  private readonly persistence: SkillStorePersistence;
+  private readonly verifyApproval: SkillPromotionApprovalVerifier;
+  private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier;
+  private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier;
+
+  // Explicit field assignment (not constructor parameter properties) so the
+  // canonical runtime graph stays loadable under Node strip-only type stripping.
   constructor(
-    private readonly persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
-    private readonly verifyApproval: SkillPromotionApprovalVerifier = () => false,
-    private readonly verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
-    private readonly verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
+    persistence: SkillStorePersistence = new InMemorySkillStorePersistence(),
+    verifyApproval: SkillPromotionApprovalVerifier = () => false,
+    verifyShadowEvidence: SkillShadowEvidenceVerifier = () => false,
+    verifyRollbackApproval: SkillRollbackApprovalVerifier = () => false,
   ) {
+    this.persistence = persistence;
+    this.verifyApproval = verifyApproval;
+    this.verifyShadowEvidence = verifyShadowEvidence;
+    this.verifyRollbackApproval = verifyRollbackApproval;
     const initial = persistence.read();
     if (initial.schemaVersion !== 1 || !Number.isSafeInteger(initial.revision) ||
         initial.revision < 0 || !Array.isArray(initial.active) || !Array.isArray(initial.candidates)) {

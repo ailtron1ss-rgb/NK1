@@ -51,6 +51,14 @@ export interface B272State {
   acceptedGoals:number;
   rejectedGoals:number;
   rollbackCount:number;
+  /**
+   * Credited outcomes whose executed action equalled the endogenous proposal.
+   * The proposal is advisory: the canonical action pipeline owns execution, so a
+   * divergence is evidence about the *proposal*, never a reason to drop the outcome.
+   */
+  proposalFollowed:number;
+  /** Credited outcomes where the action pipeline executed a different action. */
+  proposalDiverged:number;
   currentGoal:number[];
   currentGoalId:string;
   currentAction:ActionKind;
@@ -64,8 +72,8 @@ export interface B272State {
   goalWeights:number[][];
   selfProjectionWeights:number[][];
   worldProjectionWeights:number[][];
-  goalHistory:Array<{tick:number;id:string;vector:number[];action:ActionKind;reward01:number;predictionError01:number;accepted:boolean}>;
-  outcomeHistory:Array<{tick:number;goalId:string;action:ActionKind;reward01:number;predictionError01:number}>;
+  goalHistory:Array<{tick:number;id:string;vector:number[];action:ActionKind;reward01:number;predictionError01:number;accepted:boolean;executedAction?:ActionKind;proposalFollowed?:boolean}>;
+  outcomeHistory:Array<{tick:number;goalId:string;action:ActionKind;reward01:number;predictionError01:number;proposalFollowed?:boolean}>;
   goalOutcomeMemory:Record<string,{vector:number[];meanReward01:number;meanPredictionError01:number;updates:number;lastTick:number}>;
 }
 
@@ -75,7 +83,7 @@ export function defaultB272State():B272State{
   const selfProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.sin((i+2)*(j+1)*.19)*.06)));
   const worldProjectionWeights=GOAL_DIMS.map((_,i)=>Array.from({length:16},(_,j)=>clamp11(Math.cos((i+3)*(j+2)*.17)*.06)));
   const g=defaultGoal(3);
-  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
+  return {version:1,tick:0,lastOutcomeTick:-1,steps:0,learningUpdates:0,generatedGoals:0,acceptedGoals:0,rejectedGoals:0,rollbackCount:0,proposalFollowed:0,proposalDiverged:0,currentGoal:g,currentGoalId:`g-${hashVector(g)}`,currentAction:'reflect',currentConfidence01:.35,goalPressure01:.2,goalNovelty01:.25,selfConflict01:.2,internalCoherence01:.7,agency01:.4,actionPrototypeWeights,goalWeights,selfProjectionWeights,worldProjectionWeights,goalHistory:[],outcomeHistory:[],goalOutcomeMemory:{}};
 }
 
 export interface B272StepInput {
@@ -120,6 +128,10 @@ export class B272EndogenousGoalGenesis {
     const acceptedGoals=Math.min(learningUpdates,safeCounter(r.acceptedGoals,d.acceptedGoals));
     const rejectedGoals=learningUpdates-acceptedGoals;
     const rollbackCount=Math.min(learningUpdates,safeCounter(r.rollbackCount,d.rollbackCount));
+    // Proposal-agreement counters are individually clamped and then reconciled so
+    // they can never exceed the number of credited outcomes they describe.
+    const proposalFollowed=Math.min(learningUpdates,safeCounter(r.proposalFollowed,d.proposalFollowed));
+    const proposalDiverged=Math.min(learningUpdates-proposalFollowed,safeCounter(r.proposalDiverged,d.proposalDiverged));
     const currentGoal=strictVector(r.currentGoal,GOAL_DIMS.length)??d.currentGoal.slice();
     const currentGoalId=`g-${hashVector(currentGoal)}`;
 
@@ -131,7 +143,7 @@ export class B272EndogenousGoalGenesis {
       if(!vector||!isSafeId(item.id)||item.id!==`g-${hashVector(vector)}`)continue;
       if(!Number.isSafeInteger(item.tick)||typeof item.tick!=='number'||item.tick<0||item.tick>tick)continue;
       if(!isAction(item.action)||!isUnit(item.reward01)||!isUnit(item.predictionError01)||typeof item.accepted!=='boolean')continue;
-      goalHistory.push({tick:item.tick,id:item.id,vector,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01,accepted:item.accepted});
+      goalHistory.push({tick:item.tick,id:item.id,vector,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01,accepted:item.accepted,...(isAction(item.executedAction)?{executedAction:item.executedAction}:{}),...(typeof item.proposalFollowed==='boolean'?{proposalFollowed:item.proposalFollowed}:{})});
     }
     goalHistory.sort((a,b)=>a.tick-b.tick);
 
@@ -142,7 +154,7 @@ export class B272EndogenousGoalGenesis {
       if(!Number.isSafeInteger(item.tick)||typeof item.tick!=='number'||item.tick<0||item.tick>tick)continue;
       if(!isSafeId(item.goalId)||!/^g-[0-9a-f]{8}$/u.test(item.goalId)||!isAction(item.action))continue;
       if(!isUnit(item.reward01)||!isUnit(item.predictionError01))continue;
-      outcomeHistory.push({tick:item.tick,goalId:item.goalId,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01});
+      outcomeHistory.push({tick:item.tick,goalId:item.goalId,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01,...(typeof item.proposalFollowed==='boolean'?{proposalFollowed:item.proposalFollowed}:{})});
     }
     outcomeHistory.sort((a,b)=>a.tick-b.tick);
     // A single cognitive tick can yield at most one credited outcome. If a
@@ -170,7 +182,7 @@ export class B272EndogenousGoalGenesis {
 
     this.state={
       version:1,
-      tick,lastOutcomeTick,steps,learningUpdates,generatedGoals,acceptedGoals,rejectedGoals,rollbackCount,
+      tick,lastOutcomeTick,steps,learningUpdates,generatedGoals,acceptedGoals,rejectedGoals,rollbackCount,proposalFollowed,proposalDiverged,
       currentGoal,currentGoalId,
       currentAction:isAction(r.currentAction)?r.currentAction:d.currentAction,
       currentConfidence01:isUnit(r.currentConfidence01)?r.currentConfidence01:d.currentConfidence01,
@@ -189,7 +201,7 @@ export class B272EndogenousGoalGenesis {
     };
   }
   snapshot(){return structuredClone(this.state);}
-  diagnostics(){return {...structuredClone(this.state),goalEntropy01:this.goalEntropy(),prototypeDiversity01:this.prototypeDiversity(),goalVectorDiversity01:this.goalVectorDiversity(),actionDiversity01:this.actionDiversity(),endogenousGoalRate01:this.endogenousGoalRate(),goalOutcomeMemoryEntries:Object.keys(this.state.goalOutcomeMemory).length,learnedGoalClosure01:this.learnedGoalClosure01(),externalGoalDependency01:0};}
+  diagnostics(){return {...structuredClone(this.state),goalEntropy01:this.goalEntropy(),prototypeDiversity01:this.prototypeDiversity(),goalVectorDiversity01:this.goalVectorDiversity(),actionDiversity01:this.actionDiversity(),endogenousGoalRate01:this.endogenousGoalRate(),goalOutcomeMemoryEntries:Object.keys(this.state.goalOutcomeMemory).length,learnedGoalClosure01:this.learnedGoalClosure01(),proposalAgreementRate01:this.state.learningUpdates?this.state.proposalFollowed/this.state.learningUpdates:0,externalGoalDependency01:0};}
   private goalEntropy(){
     const hist=this.state.goalHistory.slice(-32); if(!hist.length)return 0;
     const counts=new Map<string,number>(); for(const g of hist)counts.set(g.id,(counts.get(g.id)??0)+1); const n=hist.length; let h=0; for(const c of counts.values()){const p=c/n;h-=p*Math.log(Math.max(1e-9,p));} return clamp01(h/Math.log(Math.max(2,Math.min(32,n))));
@@ -262,7 +274,18 @@ export class B272EndogenousGoalGenesis {
       const actionScores=this.state.actionPrototypeWeights.map(row=>clamp11(dot(row,v)/Math.max(1,norm(row)*norm(v))));
 const learned=this.learnedGoalValue(v,input.tick);
       const learnedClosure=(learned.reward01-.5)*.20 + (learned.evidence01*(.52-learned.predictionError01))*.10;
-      const predictedFutureValue=clamp01(.5+.32*dot(v,base)+.18*intrinsic+.16*(1-conflict)+.08*k+learnedClosure);
+      // Bounded convex goal value: every term is normalised to [0,1] and the weights
+      // sum to one. The previous additive form saturated at 1.0, which made
+      // independent goals score identically and silently removed internal need
+      // and intrinsic drive from candidate selection.
+      const predictedFutureValue=clamp01(
+        .38*clamp01((dot(v,base)+1)*.5)
+        +.24*intrinsic
+        +.16*clamp01(1-conflict)
+        +.10*clamp01(k/3)
+        +.07*learned.reward01
+        +.05*clamp01(.5+learnedClosure)
+      );
       const coherence=clamp01(.5+.25*cosine(v,base)+.25*(1-conflict));
       const novelty01=clamp01(.25+.45*(1-Math.abs(cosine(v,this.state.currentGoal)))+.30*(k/3));
       const internalNeed=clamp01(.5+.35*Math.abs(dot(v,base))+.15*conflict);
@@ -297,13 +320,18 @@ const learned=this.learnedGoalValue(v,input.tick);
   learnFromOutcome(input:{tick:number;action:ActionKind;reward01:number;predictionError01:number;externalEvidence01:number;independentEvaluatorGain01?:number;acceptedExternalGoal?:boolean}){
     if(!isRecord(input))throw new TypeError('B272 outcome must be an object');
     if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B272 outcome tick must match the current goal tick');
-    if(!isAction(input.action)||input.action!==this.state.currentAction)throw new RangeError('B272 outcome action must match the generated action');
+    // The generated action is a *proposal*. The canonical action pipeline owns
+    // execution, so the credited outcome must describe the action that actually
+    // ran; an unexecuted proposal is not evidence of anything.
+    if(!isAction(input.action))throw new RangeError('B272 executed action must be a known action');
     if(!isUnit(input.reward01)||!isUnit(input.predictionError01)||!isUnit(input.externalEvidence01))throw new RangeError('B272 outcome signals must be finite values in [0,1]');
     if(input.independentEvaluatorGain01!==undefined&&(typeof input.independentEvaluatorGain01!=='number'||!Number.isFinite(input.independentEvaluatorGain01)||input.independentEvaluatorGain01< -1||input.independentEvaluatorGain01>1))throw new RangeError('B272 independent evaluator gain must be finite and in [-1,1]');
     if(input.acceptedExternalGoal!==undefined&&typeof input.acceptedExternalGoal!=='boolean')throw new TypeError('B272 acceptedExternalGoal must be boolean');
     if(input.tick<=this.state.lastOutcomeTick)throw new Error('B272 outcome for this tick has already been credited');
     const latest=this.state.goalHistory[this.state.goalHistory.length-1];
-    if(!latest||latest.tick!==input.tick||latest.id!==this.state.currentGoalId||latest.action!==input.action)throw new Error('B272 outcome has no matching generated-goal evidence');
+    if(!latest||latest.tick!==input.tick||latest.id!==this.state.currentGoalId)throw new Error('B272 outcome has no matching generated-goal evidence');
+    const proposedAction=this.state.currentAction;
+    const proposalFollowed=input.action===proposedAction;
     if(this.state.learningUpdates>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 learning counter reached its safe integer limit');
     const existingMemory=this.state.goalOutcomeMemory[this.state.currentGoalId];
     if(existingMemory&&existingMemory.updates>=Number.MAX_SAFE_INTEGER)throw new RangeError('B272 goal outcome memory counter reached its safe integer limit');
@@ -311,6 +339,8 @@ const learned=this.learnedGoalValue(v,input.tick);
     const gain=clamp11((input.reward01-.5)*.9+(0.5-input.predictionError01)*.35+(input.independentEvaluatorGain01??0)*.6+externalEvidenceBonus);
     const accepted=input.acceptedExternalGoal===true&&gain>=-.02;
     const goal=this.state.currentGoal.length?this.state.currentGoal:zeroGoal();
+    // Learn only from the executed action prototype. Previously the proposal was
+    // learned from even when it never ran, which attributed unexecuted behaviour.
     const ai=ACTIONS.indexOf(input.action); const lr=.012+.018*this.state.agency01+.012*this.state.goalNovelty01;
     if(ai>=0){for(let j=0;j<8;j++){const target=goal[j]??0; const delta=lr*gain*target; this.state.actionPrototypeWeights[ai]![j]=clamp11(this.state.actionPrototypeWeights[ai]![j]+delta);}}
     for(let i=0;i<8;i++){
@@ -327,7 +357,7 @@ const learned=this.learnedGoalValue(v,input.tick);
         }
       }
     }
-    const last=this.state.goalHistory[this.state.goalHistory.length-1]; if(last){last.reward01=input.reward01;last.predictionError01=input.predictionError01;last.accepted=accepted;}
+    const last=this.state.goalHistory[this.state.goalHistory.length-1]; if(last){last.reward01=input.reward01;last.predictionError01=input.predictionError01;last.accepted=accepted;last.executedAction=input.action;last.proposalFollowed=proposalFollowed;}
     const memory=this.state.goalOutcomeMemory[this.state.currentGoalId]??{vector:goal.slice(0,8),meanReward01:.5,meanPredictionError01:.5,updates:0,lastTick:0};
     // Keep the online outcome memory bounded just like its restored snapshot.
     // Evict the oldest evidence record only when a new goal identity arrives.
@@ -342,11 +372,12 @@ const learned=this.learnedGoalValue(v,input.tick);
       meanPredictionError01:clamp01(memory.meanPredictionError01+(clamp01(input.predictionError01)-memory.meanPredictionError01)*memoryAlpha),
       updates:memory.updates+1,lastTick:input.tick,
     };
-    this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:this.state.currentGoalId,action:input.action,reward01:input.reward01,predictionError01:input.predictionError01}].slice(-256);
+    this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:this.state.currentGoalId,action:input.action,reward01:input.reward01,predictionError01:input.predictionError01,proposalFollowed}].slice(-256);
     this.state.lastOutcomeTick=input.tick;
+    if(proposalFollowed)this.state.proposalFollowed++; else this.state.proposalDiverged++;
     if(accepted)this.state.acceptedGoals++; else this.state.rejectedGoals++; if(input.independentEvaluatorGain01!=null&&input.independentEvaluatorGain01<-.04)this.state.rollbackCount++;
     this.state.learningUpdates++;
-    return {learningRate:lr,gain11:gain,accepted,goalId:this.state.currentGoalId,agency01:this.state.agency01,goalNovelty01:this.state.goalNovelty01,goalPressure01:this.state.goalPressure01};
+    return {learningRate:lr,gain11:gain,accepted,goalId:this.state.currentGoalId,agency01:this.state.agency01,goalNovelty01:this.state.goalNovelty01,goalPressure01:this.state.goalPressure01,proposedAction,executedAction:input.action,proposalFollowed};
   }
   learnedGoalBias(vector:number[], currentTick=this.state.tick){
     const learned=this.learnedGoalValue(vector.slice(0,8),currentTick);

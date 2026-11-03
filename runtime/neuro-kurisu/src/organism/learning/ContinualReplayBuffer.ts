@@ -43,14 +43,19 @@ export class ContinualReplayBuffer {
   private seen = 0;
   private readonly random: () => number;
   private readonly actions: Set<string>;
+  readonly capacity: number;
 
+  // Declared fields instead of constructor parameter properties: Node's
+  // strip-only type stripping (used by every runtime test/workflow) rejects
+  // parameter properties, and this class sits on the canonical loader path.
   constructor(
-    readonly capacity: number,
+    capacity: number,
     actions: readonly ActionKind[] = ['respond', 'explore', 'verify', 'rest', 'reflect', 'wait', 'defer'],
     random: () => number = Math.random,
   ) {
     if (!Number.isSafeInteger(capacity) || capacity < 1) throw new RangeError('replay-capacity-must-be-positive-integer');
     if (typeof random !== 'function') throw new TypeError('replay-random-must-be-function');
+    this.capacity = capacity;
     this.actions = new Set(actions);
     if (this.actions.size === 0) throw new TypeError('replay-actions-required');
     this.random = () => {

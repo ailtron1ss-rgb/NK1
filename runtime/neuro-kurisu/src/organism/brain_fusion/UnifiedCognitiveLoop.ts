@@ -27,8 +27,11 @@ export interface CognitiveLoopResult {
  */
 export class UnifiedCognitiveLoop {
   private history: CognitiveEvent[] = [];
+  private readonly maxHistory: number;
 
-  constructor(private readonly maxHistory = 256) {}
+  constructor(maxHistory = 256) {
+    this.maxHistory = maxHistory;
+  }
 
   process(event: CognitiveEvent): CognitiveLoopResult {
     this.history.push(event);
