@@ -1,3 +1,12 @@
+## 2026-11-03 — NeuroK Engineering OS foundation (PR #716)
+
+- Added a fail-closed catalog for requested engineering tools and their adapter boundaries.
+- Added offline status/validation/planning commands and root npm script aliases.
+- Added a local lease-based single-writer coordinator with exact base-SHA binding, safe path validation, expiry, conflict detection and owner-only release.
+- Added tests and dedicated GitHub Actions validation.
+- Added research intake for STORM, Co-Coder, CooperBench and OpenCollab.
+- This is an engineering workflow foundation, not a deployed multi-device agent platform. External providers remain unverified/disabled; Release ZIP unchanged.
+
 ## [NK1][Learning] Bind live causal outcomes to the producing action (2026-11-03)
 - Correct the production OrganismCore handoff: pass the observed state success separately from the learning-scaled success label so action attribution compares like-for-like values.
 - Accept a trace stamped at either the pre-action or resulting tick, while requiring the resulting state to be exactly one tick after the pre-action state; reject stale and skipped-tick matches.
