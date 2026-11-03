@@ -55,6 +55,6 @@ jobs:
       - name: Consolidation and canonical lifecycle restore integrity
         run: npm --prefix runtime/neuro-kurisu run test:r5:memory-lifecycle
       - name: Retrieval safety and metadata contracts
-        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-grounded-abstention-workpass574 && npm --prefix runtime/neuro-kurisu run test:memoryos2-metadata-retrieval && npm --prefix runtime/neuro-kurisu run test:memory-fabric-semantic-retrieval
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-grounded-abstention-workpass574 && npm --prefix runtime/neuro-kurisu run test:memoryos2-metadata-retrieval && npm --prefix runtime/neuro-kurisu run test:memory-fabric-semantic-retrieval && npm --prefix runtime/neuro-kurisu run test:memory-retrieval-cross-lingual-bridge
       - name: Retrieval benchmark and seed sensitivity
         run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-benchmark && npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
