@@ -101,6 +101,16 @@ const hasImport = (from, to) => pathGraph.edges.some((edge) =>
 );
 assert.ok(hasImport('src/a/consumer.ts#__module__', 'src/a/util.ts#__module__'),
   'relative .js import must resolve to the sibling TypeScript source');
+const parentSegmentGraph = buildSourceGraph([
+  { path: 'src/a/util.ts', text: 'export class ParentSegmentOnly {}\\n' },
+  { path: 'src/a/nested/consumer.ts', text: "import { ParentSegmentOnly } from '../util.js';\\nexport class ParentSegmentConsumer { value = new ParentSegmentOnly(); }\\n" },
+]);
+assert.ok(parentSegmentGraph.edges.some((edge) =>
+  edge.kind === 'imports' &&
+  edge.from === 'src/a/nested/consumer.ts#__module__' &&
+  edge.to === 'src/a/util.ts#__module__',
+), 'relative parent segments must resolve from the importer directory without basename aliasing');
+
 assert.ok(!hasImport('src/a/consumer.ts#__module__', 'src/b/util.ts#__module__'),
   'same-basename module in another directory must never capture the import');
 assert.ok(hasImport('src/b/consumer.ts#__module__', 'src/b/util.ts#__module__'),
