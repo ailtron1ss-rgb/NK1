@@ -104,6 +104,27 @@ export const FORBIDDEN_PATH_FRAGMENTS: readonly string[] = [
   '/tools/audit-release-license-readiness',
 ];
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
+}
+
+function ownData(value: Record<string, unknown>, key: string): unknown {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+      ? descriptor.value
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function findProtectedFiles(graph: SourceGraph): string[] {
   const hits = new Set<string>();
   for (const file of graph.files) {
@@ -116,14 +137,46 @@ export function findProtectedFiles(graph: SourceGraph): string[] {
 
 export function evaluateModification(proposal: ModificationProposal, graph: SourceGraph): GuardResult {
   const refusals: GuardRefusal[] = [];
-  const candidateId = String(proposal?.candidateId ?? '');
-  const targets = Array.isArray(proposal?.targetFiles) ? proposal.targetFiles.filter((f) => typeof f === 'string') : [];
+  const proposalRecord = isPlainRecord(proposal) ? proposal : null;
+  const candidateValue = proposalRecord ? ownData(proposalRecord, 'candidateId') : undefined;
+  const candidateId = typeof candidateValue === 'string' ? candidateValue.trim() : '';
+  if (!candidateId || candidateId.length > 128) {
+    refusals.push({ reason: 'candidate-id-missing-or-invalid', files: [] });
+  }
 
-  if (!candidateId) {
-    refusals.push({ reason: 'candidate-id-missing', files: [] });
+  const rawTargets = proposalRecord ? ownData(proposalRecord, 'targetFiles') : undefined;
+  const targets: string[] = [];
+  let malformedTargets = 0;
+  try {
+    if (!Array.isArray(rawTargets)) {
+      malformedTargets += 1;
+    } else {
+      const lengthDescriptor = Object.getOwnPropertyDescriptor(rawTargets, 'length');
+      const length = lengthDescriptor && 'value' in lengthDescriptor ? lengthDescriptor.value : Number.NaN;
+      if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0 || length > 256) {
+        malformedTargets += 1;
+      } else {
+        for (let index = 0; index < length; index += 1) {
+          const descriptor = Object.getOwnPropertyDescriptor(rawTargets, String(index));
+          const target = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value')
+            ? descriptor.value
+            : undefined;
+          if (typeof target !== 'string' || !target.trim() || target.length > 512) {
+            malformedTargets += 1;
+            continue;
+          }
+          targets.push(target);
+        }
+      }
+    }
+  } catch {
+    malformedTargets += 1;
+  }
+  if (malformedTargets > 0) {
+    refusals.push({ reason: 'malformed-target-files', files: [] });
   }
   if (targets.length === 0) {
-    refusals.push({ reason: 'no-target-files', files: [] });
+    refusals.push({ reason: 'no-valid-target-files', files: [] });
   }
 
   const protectedHits: string[] = [];
