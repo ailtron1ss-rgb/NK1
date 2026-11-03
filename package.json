@@ -195,7 +195,8 @@
     "neurok-os:validate": "node tools/neurok-os.mjs validate",
     "neurok-os:plan": "node tools/neurok-os.mjs plan",
     "neurok-os:test": "node --test tools/neurok-os*.test.mjs",
-    "neurok-os:claims": "node tools/neurok-os-coordinator.mjs"
+    "neurok-os:claims": "node tools/neurok-os-coordinator.mjs",
+    "neurok-os:evidence": "node tools/neurok-os-evidence.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",
