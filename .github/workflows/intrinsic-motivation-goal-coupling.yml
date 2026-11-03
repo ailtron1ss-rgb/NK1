@@ -30,4 +30,5 @@ jobs:
       - name: Run intrinsic motivation and endogenous goal coupling regressions
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs
       - name: Typecheck runtime
-        run: node runtime/neuro-kurisu/scripts/typecheck-runtime.mjs
+        working-directory: runtime/neuro-kurisu
+        run: node scripts/typecheck-runtime.mjs
