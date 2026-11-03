@@ -58,3 +58,10 @@ test('same task cannot be rebound to another source SHA or scope', async () => f
   await claimTask(request('TASK-1', 'agent-a', ['src/a.ts']), { stateDir });
   await assert.rejects(() => claimTask(request('TASK-1', 'agent-a', ['src/b.ts']), { stateDir }), /different contract/);
 }));
+
+test('base SHA comparison is case-normalized for idempotent renewal', async () => fixture(async stateDir => {
+  await claimTask(request('TASK-CASE', 'agent-a', ['src/a.ts'], { baseSha: sha.toUpperCase() }), { stateDir });
+  const renewed = await claimTask(request('TASK-CASE', 'agent-a', ['src/a.ts'], { baseSha: sha }), { stateDir });
+  assert.equal(renewed.renewed, true);
+  assert.equal(renewed.baseSha, sha);
+}));
