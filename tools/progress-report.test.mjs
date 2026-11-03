@@ -83,4 +83,45 @@ try {
   rmSync(outsideDir, { recursive: true, force: true });
 }
 
+// Evidence recorded at an older commit is kept valid only while it declares the paths
+// it covers and none of them changed. This must not become a way to resurrect stale
+// proof: an artifact with no declared coverage, or one whose SHA is not an ancestor of
+// HEAD, must still fail even when it says verified:true.
+const evidenceDir = mkdtempSync(join(root, 'runtime/neuro-kurisu/tests/.progress-report-evidence-'));
+try {
+  const rel = (value) => relative(root, value).split(sep).join('/');
+  const writeArtifact = (name, body) => { const p = join(evidenceDir, name); writeFileSync(p, JSON.stringify(body)); return rel(p); };
+  const staleNoCoverage = writeArtifact('stale-no-coverage.json', { verified: true, sha: '0'.repeat(40), metrics: { x: 1 } });
+  const staleWithCoverage = writeArtifact('stale-with-coverage.json', { verified: true, sha: '0'.repeat(40), coversPaths: ['runtime/neuro-kurisu'], metrics: { x: 1 } });
+  const exactHead = writeArtifact('exact-head.json', { verified: true, sha: report.currentSha, metrics: { x: 1 } });
+  // A genuine ancestor SHA whose covered paths did not change must count: this is the
+  // positive half of the contract, without which the change would just be stricter.
+  const parentSha = spawnSync('git', ['rev-parse', 'HEAD~1'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+  const ancestorCovered = writeArtifact('ancestor-covered.json', { verified: true, sha: parentSha, coversPaths: ['runtime/neuro-kurisu/src/organism/analysis/DangerModel.ts'], metrics: { x: 1 } });
+  const contractPath = join(evidenceDir, 'evidence-contract.json');
+  writeFileSync(contractPath, JSON.stringify({
+    schema: 'nk1.progress-workstreams.v1',
+    workstreams: [{
+      id: 'evidence-validity',
+      title: 'Evidence validity regression',
+      weight: 1,
+      probes: [],
+      evidenceProbes: [
+        { id: 'stale-no-coverage', kind: 'evidence-json', path: staleNoCoverage, requirements: [{ path: 'metrics.x', op: 'gte', value: 1 }] },
+        { id: 'stale-with-coverage', kind: 'evidence-json', path: staleWithCoverage, requirements: [{ path: 'metrics.x', op: 'gte', value: 1 }] },
+        { id: 'exact-head', kind: 'evidence-json', path: exactHead, requirements: [{ path: 'metrics.x', op: 'gte', value: 1 }] },
+        { id: 'ancestor-covered', kind: 'evidence-json', path: ancestorCovered, requirements: [{ path: 'metrics.x', op: 'gte', value: 1 }] },
+      ],
+    }],
+  }));
+  const evidenceRun = spawnSync(process.execPath, ['tools/progress-report.mjs', '--json', '--contract', rel(contractPath)], { cwd: root, encoding: 'utf8' });
+  assert.equal(evidenceRun.status, 0, 'evidence-validity contract must not crash the report: ' + evidenceRun.stderr);
+  const evidenceReport = JSON.parse(evidenceRun.stdout);
+  assert.equal(evidenceReport.workstreams[0].evidencePassed, 2,
+    'only evidence matching the current head may count: stale SHA without coverage and non-ancestor SHA must both fail, while exact-head and covered-ancestor evidence pass');
+  assert.equal(evidenceReport.workstreams[0].evidenceTotal, 4);
+} finally {
+  rmSync(evidenceDir, { recursive: true, force: true });
+}
+
 console.log('NK1_PROGRESS_REPORT=PASS artifactCoverage=' + report.artifactCoveragePercent + '% verifiedEfficacy=' + report.verifiedEfficacyPercent + '% sha=' + report.currentSha.slice(0, 12));

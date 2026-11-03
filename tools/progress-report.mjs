@@ -96,7 +96,9 @@ function globMatch(pattern, currentSha) {
       const candidatePath = resolveRepoPath(`${dirname(pattern)}/${name}`);
       if (!candidatePath) return false;
       const artifact = JSON.parse(readFileSync(candidatePath, 'utf8'));
-      return artifact.verified === true && evidenceCoversCurrentTree(artifact, currentSha);
+      // The local-gate glob is intentionally head-exact: a gate run is a statement about
+      // the commit it ran on, so it must not be satisfied by an artifact from another SHA.
+      return artifact.verified === true && artifact.sha === currentSha;
     } catch {
       return false;
     }
