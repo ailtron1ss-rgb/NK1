@@ -3,14 +3,14 @@
 Date: 2026-11-03  
 Baseline: `workpass70-source` @ `eaf653d2229b8c032fe542ffb3215ff25ba69a93`
 
-> These percentages are provisional engineering-maturity estimates, not measured intelligence, not proof of consciousness, and not release certification. They are deliberately conservative and are not derived from code volume or number of modules. Current work on PRs #716–#723 and #730 is tracked separately and is not counted as merged baseline capability. PR #723 is merged only into the parent Engineering OS branch, not into workpass70-source.
+> These percentages are provisional engineering-maturity estimates, not measured intelligence, not proof of consciousness, and not release certification. They are deliberately conservative and are not derived from code volume or number of modules. Current work on PRs #716–#723, #730, #735 and #738 is tracked separately and is not counted as merged baseline capability. PR #723 is merged only into the parent Engineering OS branch, not into workpass70-source.
 
 ## Scorecard
 
 | Area | Maturity | Evidence already present | Main gap before increasing score |
 |---|---:|---|---|
 | Core cognitive cycle / planning | 60% | Unified cognitive cycle, planner, causal event fabric, exact-head CI gates | Long-horizon behavioural reliability, integrated end-to-end causal traces and mobile soak |
-| Memory / learning | 45% | MemoryOS2, episodic/semantic retrieval, revision lineage, holdout-pairing and restore integrity | Positive recall uplift on independent multi-seed holdouts; measured latency at 10k entries |
+| Memory / learning | 45% | MemoryOS2, episodic/semantic retrieval, revision lineage, restore integrity; five-seed synthetic spatial holdout passed with recall@10 0.00→1.00; 10k spatial-index microbenchmark p95 1.195 ms | Real P41/world-calibrated holdout, full MemoryOS2 p95 at 10k entries, transfer and no-regression evidence |
 | Motivation / autonomy / agency | 40% | Intrinsic drives, endogenous goal lifecycle, action gateway and self-agency gates | Background initiative usefulness, restart/pause behaviour and long-duration independent soak |
 | Self-model / personality continuity | 45% | SelfModelV2, personality coupling, identity continuity and self-agency evidence | Longitudinal trait stability, calibrated self-beliefs and adversarial identity-continuity evaluation |
 | Affect / interoception / attention | 40% | Emotion appraisal, interoceptive estimator, brainstem arousal/sleep scheduler, predictive attention | Causal attention-to-action wiring and independent paired evidence that precision allocation improves behaviour; PR #720 implementation and exact-head CI are green, but its paired behavioural gate is still open |
@@ -67,4 +67,6 @@ This is a weighted estimate of engineering maturity across the whole system, not
 - PR #721 — donor-source provenance and archive inventory; documentation-only PR, not merged.
 - PR #722 — hash-bound read-set freshness; dedicated contract and parent OS workflows green, not yet wired into mandatory patch admission.
 - PR #723 — patch diff provenance and policy preflight; merged into the parent Engineering OS branch only.
-- PR #730 — frame-aware spatial recall; focused spatial regressions and runtime typecheck green, broader exact-head workflows partly still running.
+- PR #730 — frame-aware spatial recall; 10k spatial-index microbenchmark p95 1.195 ms, parent implementation and regressions green.
+- PR #735 — P41 grounded-world to MemoryOS2 bridge; exact head 1e454ea31b09…; focused bridge tests, runtime typecheck and nine unique broader workflows green; open stacked child PR.
+- PR #738 — five-seed synthetic spatial-vs-text holdout; exact head 2444de57fb13…; recall@10 0.00→1.00 on all five seeds, zero cross-frame/out-of-radius false positives, runtime typecheck green; open stacked child PR.
