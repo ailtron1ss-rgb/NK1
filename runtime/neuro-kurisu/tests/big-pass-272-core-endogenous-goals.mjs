@@ -22,6 +22,16 @@ assert.ok(d.generatedGoals>=90,'B272 did not generate goals in core');
 assert.ok(d.goalEntropy01>.20,'core goal diversity collapsed');
 assert.ok(d.prototypeDiversity01>.04,'core action prototypes did not differentiate');
 assert.ok(d.agency01>.20,'core agency remained inert');
+// A real observe/feedback cycle must carry the exact canonical authorship
+// decision across the trace boundary; feedback must not guess it from intent.
+const traceCore=new OrganismCore(new MemoryStateStore(),{performanceProfile:'mobile'}); await traceCore.init();
+await traceCore.observe({});
+const authoredTrace=traceCore.snapshot().traces[0];
+assert.equal(typeof authoredTrace.goalAuthorshipAdmitted,'boolean','decision trace omitted canonical B272 authorship admission');
+await traceCore.feedback({success:.7,reward:.7});
+const feedbackUpdates=traceCore.b272EndogenousGoalDiagnostics().learningUpdates;
+assert.equal(feedbackUpdates,authoredTrace.goalAuthorshipAdmitted?1:0,'feedback did not respect the recorded canonical goal-authorship decision');
+
 const snap=core.snapshot();
 const core2=new OrganismCore(new MemoryStateStore({initial:snap}),{performanceProfile:'mobile'}); await core2.init();
 assert.deepEqual(core2.b272EndogenousGoalDiagnostics(),d,'B272 state did not survive Core restart');
