@@ -87,6 +87,21 @@ test("rejects unknown channels and duplicate channel entries", () => {
   assert.ok(unknown.includes("invalid-channels"));
 });
 
+test("rejects sparse channel, expression and joint arrays", () => {
+  const sparseChannels = new Array(1);
+  const sparseExpressions = new Array(1);
+  const sparseJoints = new Array(1);
+  const issues = validateRendererCapabilityManifest({
+    ...baseManifest(),
+    channels: sparseChannels,
+    expressions: sparseExpressions,
+    joints: sparseJoints,
+  }).map((issue) => issue.code);
+  assert.ok(issues.includes("invalid-channels"));
+  assert.ok(issues.includes("invalid-expressions"));
+  assert.ok(issues.includes("invalid-joints"));
+});
+
 test("registry fails closed on invalid or duplicate renderers", () => {
   const registry = new BodyRendererRegistry();
   registry.register(baseManifest());
