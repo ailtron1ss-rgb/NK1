@@ -6,6 +6,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/voluntary-attention-effort.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
       - ".github/workflows/voluntary-attention-effort.yml"
   push:
     branches:
@@ -29,3 +30,5 @@ jobs:
           package-manager-cache: false
       - name: Run voluntary attention effort regressions
         run: npm run test:voluntary-attention-effort --prefix runtime/neuro-kurisu
+      - name: Run runtime typecheck
+        run: npm run typecheck --prefix runtime/neuro-kurisu
