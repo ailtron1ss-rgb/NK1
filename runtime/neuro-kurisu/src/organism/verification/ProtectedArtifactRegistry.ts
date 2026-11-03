@@ -51,13 +51,43 @@ export const PROTECTED_ARTIFACT_RULES: readonly ProtectedArtifactRule[] = [
   },
   {
     class: 'verifier',
-    match: { prefix: 'runtime/neuro-kurisu/src/organism/verification/' },
+    match: { includes: 'src/organism/verification/' },
     reason: 'verification subsystem defines how the organism judges itself',
   },
   {
     class: 'verifier',
-    match: { includes: 'IndependentEvaluator' },
-    reason: 'independent evaluators must remain outside the self-edit surface',
+    match: { includes: 'OutcomeVerificationService' },
+    reason: 'the verifier that mints outcome receipts cannot be rewritten by the thing it verifies',
+  },
+  {
+    class: 'verifier',
+    match: { includes: 'SkillRevisionGate' },
+    reason: 'the skill-revision gate authorises learning promotions',
+  },
+  {
+    class: 'verifier',
+    match: { includes: 'LearningTrustBoundary' },
+    reason: 'the learning trust boundary decides which experience may train the organism',
+  },
+  {
+    class: 'verifier',
+    match: { includes: 'ConstitutionalArbiter' },
+    reason: 'the constitutional arbiter adjudicates organism-versus-invariant conflicts',
+  },
+  {
+    class: 'verifier',
+    match: { includes: 'CriticalFunctionPassport' },
+    reason: 'critical-function passports gate privileged capabilities',
+  },
+  {
+    class: 'verifier',
+    match: { includes: 'CanonicalSelfAgencyAuthority' },
+    reason: 'the self-agency authority is the gate this guard is attached to',
+  },
+  {
+    class: 'verifier',
+    match: { includes: 'Independent' },
+    reason: 'independent evaluation providers must remain outside the self-edit surface',
   },
   {
     class: 'holdout',
@@ -86,13 +116,13 @@ export const PROTECTED_ARTIFACT_RULES: readonly ProtectedArtifactRule[] = [
   },
   {
     class: 'verification-ci',
-    match: { prefix: '.github/workflows/workpass' },
-    reason: 'verification CI workflows are the exact-head evidence gate',
+    match: { includes: 'tests/workpass72-' },
+    reason: 'the restore-integrity and guard regressions must not be weakened by a self-edit',
   },
   {
     class: 'verification-ci',
-    match: { prefix: '.github/workflows/nk1-' },
-    reason: 'NK1 integrity workflows must not be weakened by a self-edit',
+    match: { prefix: '.github/workflows/' },
+    reason: 'CI workflows are the exact-head evidence gate and must not be weakened by a self-edit',
   },
 ];
 
@@ -128,11 +158,13 @@ export function classifyProtectedArtifact(rawPath: unknown): ProtectedArtifactVe
   if (path === null) {
     return { protected: true, path: String(rawPath ?? ''), artifactClass: null, reason: 'unparseable-path-fails-closed' };
   }
+  const pathLower = path.toLowerCase();
   for (const rule of PROTECTED_ARTIFACT_RULES) {
     const { prefix, suffix, includes } = rule.match;
     const matched = (prefix !== undefined && path.startsWith(prefix))
       || (suffix !== undefined && path.endsWith(suffix))
-      || (includes !== undefined && path.includes(includes));
+      // Case-insensitive: identifiers vary in casing (e.g. `holdout` vs `Holdout`).
+      || (includes !== undefined && pathLower.includes(includes.toLowerCase()));
     if (matched) return { protected: true, path, artifactClass: rule.class, reason: rule.reason };
   }
   return { protected: false, path, artifactClass: null, reason: 'not-protected' };

@@ -21,9 +21,20 @@ assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/verifi
 assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/verification/FunctionPassport.ts').artifactClass,'verifier');
 assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/tests/holdout-dataset.json').artifactClass,'holdout');
 assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts').artifactClass,'evaluation-harness');
-assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedger.ts').artifactClass,'evidence-ledger');
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomeLedgerStore.ts').artifactClass,'evidence-ledger');
 assert.equal(classifyProtectedArtifact('.github/workflows/workpass-ci.yml').artifactClass,'verification-ci');
 assert.equal(classifyProtectedArtifact('.github/workflows/nk1-unified-cognitive-cycle.yml').artifactClass,'verification-ci');
+
+// 2b. Rules must reference real canonical owners, including capitalized holdout paths.
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/system/B303HoldoutGeneralizationLedger.ts').artifactClass,'holdout','capitalized Holdout path must be protected');
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/system/OutcomeVerificationService.ts').artifactClass,'verifier');
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/learning/IndependentSkillCandidateEvaluator.ts').artifactClass,'verifier');
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/learning/LearningTrustBoundary.ts').artifactClass,'verifier');
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/cognition/P69ConstitutionalArbiter.ts').artifactClass,'verifier');
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts').artifactClass,'verifier');
+// The guard's own regression suite is protected so the self-edit loop cannot weaken its checker.
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/tests/workpass72-protected-artifact-guard.mjs').artifactClass,'verification-ci');
+assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/tests/workpass72-world-memory-restore-integrity.mjs').artifactClass,'verification-ci');
 assert.equal(classifyProtectedArtifact('runtime/neuro-kurisu/src/organism/memory/MemoryOS2.ts').protected,false);
 
 // 3. Unparseable paths fail closed (protected).
