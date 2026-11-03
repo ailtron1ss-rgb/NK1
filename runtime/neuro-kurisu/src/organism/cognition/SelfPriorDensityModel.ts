@@ -23,6 +23,7 @@ const MIN_VARIANCE = 0.02;
 const MAX_VARIANCE = 16;
 const MAX_DIMENSIONS = 64;
 const MAX_SAMPLES = 1_000_000;
+const MAX_EFFECTIVE_SAMPLES = 64;
 
 export function defaultSelfPriorDensityState(dimensions = 16): SelfPriorDensityState {
   const size = Number.isSafeInteger(dimensions) && dimensions > 0 && dimensions <= MAX_DIMENSIONS ? dimensions : 16;
@@ -59,10 +60,18 @@ export class SelfPriorDensityModel {
 
   restore(value: Partial<SelfPriorDensityState> | undefined): void {
     const fallback = defaultSelfPriorDensityState(this.state.dimensions);
+    const sampleCount = value?.sampleCount;
+    const effectiveSamples = value?.effectiveSamples;
+    const lastAt = value?.lastAt;
     if (!value || value.version !== 1 || value.dimensions !== fallback.dimensions
-      || !Number.isSafeInteger(value.sampleCount) || (value.sampleCount as number) < 0
-      || (value.sampleCount as number) > MAX_SAMPLES
-      || !Number.isFinite(value.effectiveSamples) || (value.effectiveSamples as number) < 0
+      || !Number.isSafeInteger(sampleCount) || (sampleCount as number) < 0
+      || (sampleCount as number) > MAX_SAMPLES
+      || !Number.isSafeInteger(effectiveSamples) || (effectiveSamples as number) < 0
+      || (effectiveSamples as number) > MAX_EFFECTIVE_SAMPLES
+      // These counters are advanced together by observe(); accepting a mismatch
+      // would let a forged sampleCount manufacture confidence without evidence.
+      || effectiveSamples !== Math.min(sampleCount as number, MAX_EFFECTIVE_SAMPLES)
+      || typeof lastAt !== 'number' || !Number.isFinite(lastAt) || lastAt < 0
       || !Array.isArray(value.mean) || !Array.isArray(value.variance)
       || value.mean.length !== fallback.dimensions || value.variance.length !== fallback.dimensions
       || !value.mean.every(Number.isFinite) || !value.variance.every(Number.isFinite)) {
@@ -72,12 +81,11 @@ export class SelfPriorDensityModel {
     this.state = {
       version: 1,
       dimensions: fallback.dimensions,
-      sampleCount: value.sampleCount as number,
-      effectiveSamples: clamp(value.effectiveSamples as number, 0, 64),
+      sampleCount: sampleCount as number,
+      effectiveSamples: effectiveSamples as number,
       mean: value.mean.map(item => clamp(item, -4, 4)),
       variance: value.variance.map(item => clamp(item, MIN_VARIANCE, MAX_VARIANCE)),
-      lastAt: typeof value.lastAt === 'number' && Number.isFinite(value.lastAt) && value.lastAt >= 0
-        ? value.lastAt : 0,
+      lastAt: lastAt as number,
     };
   }
 
@@ -114,7 +122,7 @@ export class SelfPriorDensityModel {
       this.state.variance[index] = clamp(nextVariance, MIN_VARIANCE, MAX_VARIANCE);
     }
     this.state.sampleCount = Math.min(MAX_SAMPLES, this.state.sampleCount + 1);
-    this.state.effectiveSamples = Math.min(64, this.state.effectiveSamples + 1);
+    this.state.effectiveSamples = Math.min(MAX_EFFECTIVE_SAMPLES, this.state.effectiveSamples + 1);
     const timestamp = Number.isFinite(at) && at >= 0 ? at : Date.now();
     this.state.lastAt = Math.max(this.state.lastAt, timestamp);
     return prediction;
