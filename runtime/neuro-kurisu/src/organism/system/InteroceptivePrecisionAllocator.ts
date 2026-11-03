@@ -34,11 +34,11 @@ type SafeInput = Record<string, unknown>;
  * getters while allocating attention; hostile Proxy reflection failures
  * degrade to an empty, conservative signal rather than escaping the tick.
  */
-function safeInputRecord(value: unknown): SafeInput {
+function safeInputRecord(value: unknown): SafeInput | null {
   try {
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) return Object.create(null);
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
     const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) return Object.create(null);
+    if (prototype !== Object.prototype && prototype !== null) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
     const output: SafeInput = Object.create(null);
     for (const key of Reflect.ownKeys(descriptors)) {
@@ -49,7 +49,7 @@ function safeInputRecord(value: unknown): SafeInput {
     }
     return output;
   } catch {
-    return Object.create(null);
+    return null;
   }
 }
 
@@ -62,12 +62,12 @@ export class InteroceptivePrecisionAllocator {
   allocate(input: InteroceptivePrecisionInput): InteroceptivePrecisionAllocation {
     const safe = safeInputRecord(input);
     const urgency01: InteroceptiveNeedVector = {
-      energy: clamp01(1 - clamp01(readMetric(safe, 'energy'))),
-      thermal: clamp01(readMetric(safe, 'thermal')),
-      cognitiveLoad: clamp01(readMetric(safe, 'cognitiveLoad')),
-      sleepPressure: clamp01(readMetric(safe, 'sleepPressure')),
+      energy: clamp01(1 - clamp01(safe ? readMetric(safe, 'energy') : 0)),
+      thermal: clamp01(safe ? readMetric(safe, 'thermal') : 0),
+      cognitiveLoad: clamp01(safe ? readMetric(safe, 'cognitiveLoad') : 0),
+      sleepPressure: clamp01(safe ? readMetric(safe, 'sleepPressure') : 0),
     };
-    const budget01 = clamp01(readMetric(safe, 'attentionBudget01', 1));
+    const budget01 = safe ? clamp01(readMetric(safe, 'attentionBudget01', 1)) : 0;
     const maximum = Math.max(...INTEROCEPTIVE_CHANNELS.map(channel => urgency01[channel]));
     const exponentials = INTEROCEPTIVE_CHANNELS.map(channel =>
       Math.exp((urgency01[channel] - maximum) / TEMPERATURE)
