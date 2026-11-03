@@ -18,7 +18,7 @@ export interface SelfImprovementCandidate {
   parentId?: string;
 }
 export interface CandidatePoolPolicy { maxPoolSize: number; minDownstreamGain: number; }
-export const DEFAULT_POOL_POLICY: CandidatePoolPolicy = { maxPoolSize: 32, minDownstreamGain: 0 };
+export const DEFAULT_POOL_POLICY: CandidatePoolPolicy = Object.freeze({ maxPoolSize: 32, minDownstreamGain: 0 });
 export interface AdmissionResult { accepted: boolean; candidateId: string; reason: string; guard?: GuardResult; divergence?: DivergenceResult; }
 export interface RankedCandidate { candidateId: string; downstreamGain: number; proxyGain: number; divergence: number; parentId?: string; }
 interface StoredCandidate { candidate: Readonly<SelfImprovementCandidate>; downstreamGain: number; proxyGain: number; divergence: number; }
