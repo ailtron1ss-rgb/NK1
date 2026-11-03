@@ -36,6 +36,25 @@ assert.equal(normalizeMetacognitiveEpisode(sparse), null, 'rejects sparse causal
 const hostile = new Proxy(valid, { ownKeys() { throw new Error('hostile proxy trap'); } });
 assert.equal(normalizeMetacognitiveEpisode(hostile), null, 'fails closed when a hostile proxy throws during inspection');
 
+const symbolRoot = { ...valid };
+Object.defineProperty(symbolRoot, Symbol('hidden-root-state'), { value: 'must-not-be-ignored' });
+assert.equal(normalizeMetacognitiveEpisode(symbolRoot), null, 'rejects unrecognized symbol properties on episode records');
+
+const symbolFeatures = { ...valid.selection.consumedFeatures };
+Object.defineProperty(symbolFeatures, Symbol('hidden-feature'), { value: 0.25 });
+assert.equal(normalizeMetacognitiveEpisode({
+  ...valid,
+  selection: { ...valid.selection, consumedFeatures: symbolFeatures },
+}), null, 'rejects symbol properties in consumed feature maps');
+
+const symbolParents = [...valid.parentEventIds];
+Object.defineProperty(symbolParents, Symbol('hidden-parent'), { value: 'untracked-parent' });
+assert.equal(normalizeMetacognitiveEpisode({
+  ...valid,
+  parentEventIds: symbolParents,
+}), null, 'rejects symbol properties in causal parent arrays');
+
+
 assert.equal(normalizeMetacognitiveEpisode({ ...valid, tick: -1 }), null, 'rejects negative source ticks');
 assert.equal(normalizeMetacognitiveEpisode({ ...valid, parentEventIds: ['same','same'] }), null, 'rejects duplicate causal parent references');
 assert.equal(normalizeMetacognitiveEpisode({ ...valid, outcome: { ...valid.outcome, predictionError01: 2 } }), null, 'rejects out-of-range prediction error');
