@@ -224,15 +224,15 @@ export class CanonicalSelfAgencyAuthority{
   admitSelfModification(input:{expectedGain01:number;holdoutGain01:number;risk01:number;rollbackReady:boolean;identityContinuity01:number;invariantFingerprint?:string;evidence01:number;pairedObservations?:readonly PairedObservation[]}){
     this.state.selfModificationChecks++;
     const fingerprintOK=(input.invariantFingerprint??this.state.invariantFingerprint)===this.state.invariantFingerprint;
-    // Proxy-vs-downstream check: the gate must not open on a proxy gain that the
-    // independent outcome does not back. When paired observations are supplied they
-    // are authoritative; the scalar holdoutGain01 stays only as a legacy prefilter.
-    const divergence = input.pairedObservations ? evaluateProxyDivergence(input.pairedObservations) : null;
-    const divergenceOK = divergence ? divergence.decision === 'supported' : true;
+    // Paired downstream evidence is mandatory. Missing observations are not a
+    // legacy bypass: evaluate an empty set so the divergence guard fails closed.
+    // The scalar holdoutGain01 remains a prefilter, never a substitute for paired proof.
+    const divergence = evaluateProxyDivergence(input.pairedObservations ?? []);
+    const divergenceOK = divergence.decision === 'supported';
     const allowed=Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&divergenceOK&&this.state.invariantIntegrity01>.85;
     if(!allowed)this.state.selfModificationBlocks++;
     this.state.lastDecision=allowed?'stable':'self-modification-block';
-    this.state.lastReason=allowed?'self-modification-evidence-gate-open':(divergenceOK?'self-modification-evidence-or-identity-gate':`self-modification-proxy-divergence:${divergence?.reason}`);
+    this.state.lastReason=allowed?'self-modification-evidence-gate-open':(!divergenceOK?`self-modification-proxy-divergence:${divergence.reason}`:'self-modification-evidence-or-identity-gate');
     return {allowed,fingerprintOK,divergence,reason:this.state.lastReason};
   }
 }
