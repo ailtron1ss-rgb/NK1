@@ -1,0 +1,36 @@
+name: NeuroK Engineering OS
+
+on:
+  pull_request:
+    paths:
+      - "engineering-os/**"
+      - "tools/neurok-os.mjs"
+      - "tools/neurok-os.test.mjs"
+      - "docs/engineering/NEUROK_ENGINEERING_OS_2026-11-03.md"
+      - ".github/workflows/neurok-engineering-os.yml"
+  push:
+    branches:
+      - "aspect/neurok-engineering-os-20261103"
+    paths:
+      - "engineering-os/**"
+      - "tools/neurok-os.mjs"
+      - "tools/neurok-os.test.mjs"
+      - ".github/workflows/neurok-engineering-os.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Validate capability registry
+        run: node tools/neurok-os.mjs validate
+      - name: Run registry safety tests
+        run: node --test tools/neurok-os.test.mjs
+      - name: Print control-plane status
+        run: node tools/neurok-os.mjs status
