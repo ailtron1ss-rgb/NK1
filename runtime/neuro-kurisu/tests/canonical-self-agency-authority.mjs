@@ -40,4 +40,43 @@ const tampered={...a.snapshot(),invariantFingerprint:'tampered'};
 const restored=new CanonicalSelfAgencyAuthority(); restored.restore(tampered);
 assert.equal(restored.snapshot().invariantIntegrity01,0);
 assert.equal(restored.diagnostics().lastDecision,'identity-block');
+
+// A missing fingerprint is not silently upgraded to the current canonical value.
+const missingFingerprint = new CanonicalSelfAgencyAuthority();
+const missingSnapshot = { ...a.snapshot() };
+delete missingSnapshot.invariantFingerprint;
+missingFingerprint.restore(missingSnapshot);
+assert.equal(missingFingerprint.snapshot().invariantIntegrity01, 0);
+assert.equal(missingFingerprint.diagnostics().lastDecision, 'identity-block');
+
+// Persisted counters and trait keys are untrusted data, not authority.
+const hostileSnapshot = {
+  ...a.snapshot(),
+  cycles: Number.MAX_SAFE_INTEGER + 1,
+  identityMutationChecks: -3,
+  identityMutationBlocks: 900,
+  selfModificationChecks: 2,
+  selfModificationBlocks: 900,
+  lastTick: Number.POSITIVE_INFINITY,
+  lastReason: 'x'.repeat(1000),
+  adaptiveTraits: {
+    ...a.snapshot().adaptiveTraits,
+    curiosity: Number.NaN,
+    responsibility: 4,
+    injectedTrait: 1,
+  },
+};
+const hardenedRestore = new CanonicalSelfAgencyAuthority();
+hardenedRestore.restore(hostileSnapshot);
+const safeState = hardenedRestore.snapshot();
+assert.equal(safeState.cycles, 0, 'unsafe counters must fall back to canonical defaults');
+assert.equal(safeState.identityMutationChecks, 0);
+assert.equal(safeState.identityMutationBlocks, 0);
+assert.equal(safeState.selfModificationBlocks, 2, 'block counters cannot exceed their check counters');
+assert.equal(safeState.lastTick, 0);
+assert.equal(safeState.lastReason.length, 160);
+assert.equal(safeState.adaptiveTraits.curiosity, defaultCanonicalSelfAgencyState().adaptiveTraits.curiosity);
+assert.equal(safeState.adaptiveTraits.responsibility, 1, 'known adaptive traits must be clamped');
+assert.equal(Object.hasOwn(safeState.adaptiveTraits, 'injectedTrait'), false,
+  'unknown traits must not enter the canonical personality schema');
 console.log(JSON.stringify({PASS:true,integrity01:obs.integrity01,verify:verify.contribution01,explore:explore.contribution01,goalAdmitted:goal.admitted,externalGoalAdmitted:externalGoal.admitted,coreChangeAllowed:coreChange.allowed,adaptiveChangeAllowed:adaptiveChange.allowed,selfModificationAllowed:selfModBad.allowed,tamperedIntegrity:restored.snapshot().invariantIntegrity01,ablationBaseline01:ablation.baseline.contribution01,ablationLesioned01:ablation.lesioned.contribution01,ablationDelta01:ablation.absoluteDelta01},null,2));
