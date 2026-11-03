@@ -110,6 +110,6 @@ const restoredMetacognition = new CognitiveEventFabric(128);
 restoredMetacognition.restore(metacognition.snapshot());
 assert.equal(restoredMetacognition.recent(128).filter(event => event.stage === 'metacognition').length, 1);
 assert.equal(restoredMetacognition.recordMetacognitiveEpisode(episodeInput).replayed, true);
-assert.equal(metacognition.recordMetacognitiveEpisode({ ...episodeInput, predictionError01: 0.9 }).resolved, false === true);
+assert.throws(() => metacognition.recordMetacognitiveEpisode({ ...episodeInput, predictionError01: 0.9 }), /metacognitive-episode-id-conflict/);
 
 console.log('COGNITIVE_EVENT_FABRIC_SNAPSHOT_RESTORE=PASS');
