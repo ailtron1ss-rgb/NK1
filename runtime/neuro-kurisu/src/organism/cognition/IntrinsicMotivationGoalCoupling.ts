@@ -27,10 +27,13 @@ export interface IntrinsicMotivationGoalStepResult {
  * both snapshots back, preventing drive history from drifting ahead of goals.
  */
 export class IntrinsicMotivationGoalCoupling {
-  constructor(
-    readonly motivation: IntrinsicMotivationEngine,
-    readonly goals: B272EndogenousGoalGenesis,
-  ) {}
+  readonly motivation: IntrinsicMotivationEngine;
+  readonly goals: B272EndogenousGoalGenesis;
+
+  constructor(motivation: IntrinsicMotivationEngine, goals: B272EndogenousGoalGenesis) {
+    this.motivation = motivation;
+    this.goals = goals;
+  }
 
   step(input: IntrinsicMotivationGoalStepInput): IntrinsicMotivationGoalStepResult {
     if (typeof input.driveConfidence01 !== 'number'
