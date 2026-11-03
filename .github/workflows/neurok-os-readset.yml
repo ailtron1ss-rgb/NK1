@@ -1,0 +1,34 @@
+name: NeuroK read-set freshness
+
+on:
+  pull_request:
+    paths:
+      - "tools/neurok-os-readset.mjs"
+      - "tools/neurok-os-readset.test.mjs"
+      - ".github/workflows/neurok-os-readset.yml"
+      - "docs/engineering/NEUROK_OS_READSET_ADMISSION_2026-11-03.md"
+  push:
+    branches:
+      - "aspect/neurok-os-readset-freshness-20261103"
+    paths:
+      - "tools/neurok-os-readset.mjs"
+      - "tools/neurok-os-readset.test.mjs"
+      - ".github/workflows/neurok-os-readset.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  read-set-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Run read-set freshness contract tests
+        run: node --test tools/neurok-os-readset.test.mjs
+      - name: Verify CLI syntax
+        run: node --check tools/neurok-os-readset.mjs
