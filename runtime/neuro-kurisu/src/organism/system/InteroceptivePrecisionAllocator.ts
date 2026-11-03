@@ -27,15 +27,47 @@ const clamp01 = (value: number): number => Number.isFinite(value) ? Math.max(0, 
 const TEMPERATURE = 0.22;
 const MIN_SHARE = 0.08;
 
+type SafeInput = Record<string, unknown>;
+
+/**
+ * Read only plain own-data records. In particular, never evaluate caller
+ * getters while allocating attention; hostile Proxy reflection failures
+ * degrade to an empty, conservative signal rather than escaping the tick.
+ */
+function safeInputRecord(value: unknown): SafeInput {
+  try {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return Object.create(null);
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return Object.create(null);
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const output: SafeInput = Object.create(null);
+    for (const key of Reflect.ownKeys(descriptors)) {
+      if (typeof key !== 'string') continue;
+      const descriptor = descriptors[key as keyof typeof descriptors];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+      output[key] = descriptor.value;
+    }
+    return output;
+  } catch {
+    return Object.create(null);
+  }
+}
+
+function readMetric(source: SafeInput, key: string, fallback = 0): number {
+  const value = source[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
 export class InteroceptivePrecisionAllocator {
   allocate(input: InteroceptivePrecisionInput): InteroceptivePrecisionAllocation {
+    const safe = safeInputRecord(input);
     const urgency01: InteroceptiveNeedVector = {
-      energy: clamp01(1 - clamp01(input.energy)),
-      thermal: clamp01(input.thermal),
-      cognitiveLoad: clamp01(input.cognitiveLoad),
-      sleepPressure: clamp01(input.sleepPressure),
+      energy: clamp01(1 - clamp01(readMetric(safe, 'energy'))),
+      thermal: clamp01(readMetric(safe, 'thermal')),
+      cognitiveLoad: clamp01(readMetric(safe, 'cognitiveLoad')),
+      sleepPressure: clamp01(readMetric(safe, 'sleepPressure')),
     };
-    const budget01 = clamp01(input.attentionBudget01 ?? 1);
+    const budget01 = clamp01(readMetric(safe, 'attentionBudget01', 1));
     const maximum = Math.max(...INTEROCEPTIVE_CHANNELS.map(channel => urgency01[channel]));
     const exponentials = INTEROCEPTIVE_CHANNELS.map(channel =>
       Math.exp((urgency01[channel] - maximum) / TEMPERATURE)
