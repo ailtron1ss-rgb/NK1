@@ -725,3 +725,51 @@ production-ready. Рисовать плейсхолдер и заявлять г
   механизм «anchor key pose» может укрепить §17/проход 4.3 (live-IK поверх клипов без рывков),
   но требует отдельного изолированного эксперимента и проверки лицензии до интеграции.
 
+
+---
+
+## 19. Прогресс-проход (2026-11-03, ветка `workpass71-body-systems`)
+
+### 19.1 Что исправлено (`IMPLEMENTED`, доказано регрессией)
+
+| Дефект | Причина | Исправление | Регрессия |
+|---|---|---|---|
+| 2.5D depth-rig гнал риг от **целевого** угла | `resolveDepthRigPoseFromMotorFrame` вычислял дельту из `targetAngleRad` (куда контроллер *хочет* повернуть сустав), а не из `angleRad` (где сустав *фактически* находится). Это противоречит инварианту I3 мастер-плана и поведению родственного `motorFrameMapper` («maps measured motor angles, not target intent») | дельта и валидация строятся на измеренном `angleRad` | `maps measured motor joint state through explicit bounded rig bindings, never the target intent` + `a joint already at rest emits no rotation even when its target is far away` (fail-before: 2 падения) |
+| 3D-риг: reset костей гасил клип | (перенесено из §18.1; подтверждено как закрытый) | — | — |
+
+### 19.2 Дополнительно в этом проходе (`IMPLEMENTED`, доказано регрессией)
+
+| Дефект | Причина | Исправление | Регрессия |
+|---|---|---|---|
+| Счётчики маршрутизации восприятия терялись при рестарте | `restoreFromPersisted` персистил и публиковал `facets.embodiment.perceptionRouting` (routedCount/droppedCount/lastRoute), но **никогда не восстанавливал** его в живое состояние — после рестарта счётчики сбрасывались в дефолт | добавлен `sanitizePerceptionRoutingState` (отвергает не-целые счётчики, неизвестный маршрут, чужую версию) и восстановление в `EmbodimentSubsystemRuntime` | `embodiment-perception-routing-restore-integrity.mjs` (fail-before: «persisted routing counters must survive restore») |
+
+### 19.3 Прогоны (OBSERVED)
+
+- `node --experimental-strip-types --test app/scripts/depth-rig.test.mjs` — 19/19 PASS (2 новые регрессии падают до фикса).
+- `npm --prefix app run test:body-systems` — 28/28 PASS.
+- `npm --prefix app run test:scripts` — 460/460 PASS.
+- `npm --prefix app run typecheck` — PASS.
+- `npm --prefix runtime/neuro-kurisu run test:aspect10:interaction` — 47/47 PASS.
+- `npm --prefix runtime/neuro-kurisu run test:embodiment-perception-routing-restore` — PASS.
+- `npm --prefix runtime/neuro-kurisu run typecheck` — PASS (`TYPECHECK=PASS mode=tsc compiler=app-lock`).
+- `node tools/audit-runtime-test-coverage.mjs` — `status: PASS`.
+
+### 19.4 Уточнённая оценка готовности (после §19)
+
+| Аспект | §18 | §19 | Причина |
+|---|---:|---:|---|
+| Capability/контракт тела | 88% | 88% | Без изменений |
+| Моторика (полное тело) | 46% | 47% | 2.5D-путь моторики теперь соответствует измеренному состоянию сустава; live-IK и device E2E всё ещё нет |
+| 2.5D depth rig | 20–25% | 21–26% | Исправлен реальный семантический дефект в transform-мосте (measured vs target); остаются production art, pivots, визуальный E2E |
+| 3D / VRM | 34% | 34% | Без изменений |
+| Live2D / Original 2D | 69% | 69% | Без изменений |
+| Взаимодействие с миром | 25% | 25% | Без изменений |
+| Континуальность состояния тела | — | + | Маршрутизация восприятия теперь переживает рестарт (evidence-counters не теряются) |
+
+### 19.5 Честная граница (`UNRESOLVED`)
+
+- Дефект measured/target был **реальным семантическим рассогласованием** в моторике, но
+  он в 2.5D-контракте, который ещё не подключён к render-пути; визуального E2E по-прежнему нет.
+- Проценты — инженерные прокси, не «процент файлов».
+- Восстановление `perceptionRouting` повышает континуальность, но не является доказательством
+  качества восприятия на независимом holdout.

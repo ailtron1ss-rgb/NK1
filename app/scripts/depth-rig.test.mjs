@@ -167,19 +167,31 @@ test("rejects malformed EmbodimentIntent v1 adapter payloads", () => {
   }), /Invalid EmbodimentIntent/);
 });
 
-test("maps active motor joint targets through explicit bounded rig bindings", () => {
+test("maps measured motor joint state through explicit bounded rig bindings, never the target intent", () => {
   const pose = resolveDepthRigPoseFromMotorFrame(rig, {
     version: 1, goalId: "goal.explain.01", phase: "moving",
     joints: {
-      headYaw: { id: "headYaw", angleRad: 0.1, targetAngleRad: 0.5, velocityRadPerSec: 0.2, available: true },
-      leftShoulder: { id: "leftShoulder", angleRad: 0, targetAngleRad: 2, velocityRadPerSec: 0, available: true },
+      headYaw: { id: "headYaw", angleRad: 0.5, targetAngleRad: 1.2, velocityRadPerSec: 0.2, available: true },
+      leftShoulder: { id: "leftShoulder", angleRad: 2, targetAngleRad: 0.3, velocityRadPerSec: 0, available: true },
     },
   }, [
     { nodeId: "head", jointId: "headYaw", restAngleRad: 0.1 },
     { nodeId: "arm-left", jointId: "leftShoulder", maxAbsDegrees: 30 },
   ]);
-  assert.ok(Math.abs(pose.deltas.head.rotation - (0.4 * 180 / Math.PI)) < 1e-12);
+  // The rig must follow where the joint actually is (angleRad), not where the
+  // controller wants it to go (targetAngleRad).
+  assert.ok(Math.abs(pose.deltas.head.rotation - ((0.5 - 0.1) * 180 / Math.PI)) < 1e-12);
   assert.equal(pose.deltas["arm-left"].rotation, 30);
+});
+
+test("a joint already at rest emits no rotation even when its target is far away", () => {
+  const pose = resolveDepthRigPoseFromMotorFrame(rig, {
+    version: 1, goalId: "goal.hold.01", phase: "moving",
+    joints: {
+      headYaw: { id: "headYaw", angleRad: 0.1, targetAngleRad: 3.0, velocityRadPerSec: 0, available: true },
+    },
+  }, [{ nodeId: "head", jointId: "headYaw", restAngleRad: 0.1 }]);
+  assert.equal(pose.deltas.head?.rotation ?? 0, 0);
 });
 
 test("idle motor frames do not animate and duplicate or unsafe bindings fail closed", () => {
