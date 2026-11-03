@@ -1,3 +1,9 @@
+## [NK1][Attention] Add voluntary attention effort regulation (2026-11-03)
+- Adapt the Will attention-effort mechanism to NK1's persisted CognitiveResourceEconomy without importing donor implementation code.
+- The previous completed action maps explore/verify to focus, rest to stand-down, and other actions to neutral recovery. Energy, thermal, RAM and cognitive scarcity remain the hard ceiling.
+- Persist the effort scalar with a legacy-safe default; omitted intent preserves old allocation behavior. Emit the scalar in resource telemetry.
+- Add five regressions for rest/focus/neutral, legacy restore, malformed intent and action mapping. This is a control-policy change, not proof of improved task performance; downstream paired-seed evaluation remains required.
+
 ## [NK1][Memory] Restore cross-lingual recall in the bilingual concept bridge (2026-11-03)
 - The answerability gate computed `conceptCoverage` but never treated it as grounding evidence, and document-side concept detection required a literal alias token, so inflected Russian never matched. Cross-lingual `retrieve()` returned `[]` in both directions.
 - Add a reverse concept-group index (alias token and its five-character stem), document-side concept detection symmetric with query-side expansion, concept-group postings in candidate selection, and a narrow `conceptGrounding` clause in the gate bounded to focused (1-3 group) queries with >=50% group coverage.
