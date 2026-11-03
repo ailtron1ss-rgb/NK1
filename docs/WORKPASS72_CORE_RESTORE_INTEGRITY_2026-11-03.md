@@ -28,11 +28,42 @@ live cognitive state — and in two cases crash the restore path outright.
 - `canonicalizeRepoPath()` — normalizes separators, resolves `.`/`..`, rejects
   root escapes, control characters, non-strings and oversized input (`null`).
 - `classifyProtectedArtifact()` — returns the matched class or `not-protected`;
-  unparseable paths fail closed as protected.
+  unparseable paths fail closed as protected; `includes` matching is
+  case-insensitive.
 - `guardSelfModification()` — gates a whole change set; any protected path
   blocks it; malformed/oversized/non-array input fails closed.
-- Self-referential by design: the registry file is itself protected, so a
-  self-edit cannot weaken its own checker.
+- Self-referential by design: the registry file, the whole `src/organism/
+  verification/` subsystem, every `.github/workflows/` file and the
+  `tests/workpass72-*` suite are protected, so a self-edit cannot weaken its own
+  checker.
+
+### Rules audited against the live tree
+
+The first draft referenced names that do not exist in the repository. A sweep of
+all 2,159 files under `src/`, `tests/` and `.github/workflows/` drove a rewrite:
+
+- `IndependentEvaluator` matched nothing → replaced with the real owners
+  (`OutcomeVerificationService`, `SkillRevisionGate`, `LearningTrustBoundary`,
+  `ConstitutionalArbiter`, `CriticalFunctionPassport`,
+  `CanonicalSelfAgencyAuthority`, `Independent*` evaluators).
+- `includes: 'holdout'` missed the capitalized
+  `B303HoldoutGeneralizationLedger.ts` → matching is now case-insensitive.
+- The guard's own regression suite was not protected → added.
+- 123 files now classify as protected; the sample of `src/` matches was manually
+  reviewed and contains only genuine verifiers, holdout owners and evidence
+  ledgers (no false positives on ordinary modules such as `MemoryOS2`).
+
+### Integration boundary (honest status)
+
+`OrganismCore` calls `admitSelfModification` at the live self-rewrite decision
+point (`OrganismCore.ts:4667`). The runtime has **no source-patching pipeline** —
+`SandboxedSelfRewriteEngine.propose` is a purely numeric gate with no file
+targets — so today the guard enforces the invariant when a change set is
+declared and fails closed on malformed declarations. Wiring a real change-set
+producer would mean inventing a patch pipeline, which the project rules forbid;
+the guard therefore sits at the correct maximal boundary rather than in a
+placeholder module.
+
 
 ## Evidence
 
