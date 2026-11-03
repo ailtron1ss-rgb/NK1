@@ -87,12 +87,12 @@ assert.ok(!impacted.includes('src/Thing.ts#__module__'), 'impact must not includ
 const pathGraph = buildSourceGraph([
   // Deliberately put b/util.ts first so basename overwrite cannot accidentally
   // make the a/consumer.ts assertion pass.
-  { path: 'src/b/util.ts', text: 'export class BOnly {}\\n' },
-  { path: 'src/a/util.ts', text: 'export class AOnly {}\\n' },
-  { path: 'src/a/consumer.ts', text: "import { AOnly } from './util.js';\\nexport class AConsumer { value = new AOnly(); }\\n" },
-  { path: 'src/b/consumer.ts', text: "import { BOnly } from './util.js';\\nexport class BConsumer { value = new BOnly(); }\\n" },
-  { path: 'src/a/features/index.ts', text: 'export class AFeature {}\\n' },
-  { path: 'src/a/feature-consumer.ts', text: "import { AFeature } from './features';\\nexport class AFeatureConsumer { value = new AFeature(); }\\n" },
+  { path: 'src/b/util.ts', text: 'export class BOnly {}\n' },
+  { path: 'src/a/util.ts', text: 'export class AOnly {}\n' },
+  { path: 'src/a/consumer.ts', text: "import { AOnly } from './util.js';\nexport class AConsumer { value = new AOnly(); }\n" },
+  { path: 'src/b/consumer.ts', text: "import { BOnly } from './util.js';\nexport class BConsumer { value = new BOnly(); }\n" },
+  { path: 'src/a/features/index.ts', text: 'export class AFeature {}\n' },
+  { path: 'src/a/feature-consumer.ts', text: "import { AFeature } from './features';\nexport class AFeatureConsumer { value = new AFeature(); }\n" },
 ]);
 const hasImport = (from, to) => pathGraph.edges.some((edge) =>
   edge.kind === 'imports' && edge.from === from && edge.to === to,
