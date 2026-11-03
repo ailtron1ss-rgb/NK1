@@ -101,14 +101,30 @@ export class B306AutonomousInitiativeVerificationLedger {
     return {changed,margin01:margin,eligible:Boolean(input.autonomousAllowed&&!input.externalInput)};
   }
 
-  observeOutcome(outcome01:number){
-    const q=clamp01(outcome01);
-    this.state.outcomes++;
-    const last=this.state.recent[this.state.recent.length-1];
-    if(last){
-      last.outcome01=q;
-      if(last.counterfactualChanged&&q>=.65) this.state.successfulCausalOutcomes++;
+  /**
+   * Attribute a result to the exact decision that produced it.
+   * When a tick is supplied, never fall back to another decision. The implicit
+   * latest-decision form remains for the canonical Core feedback path.
+   */
+  observeOutcome(outcome01:number, decisionTick?:number):{matched:boolean;tick:number|null;counterfactualChanged:boolean}{
+    if(typeof outcome01!=='number'||!Number.isFinite(outcome01)){
+      return {matched:false,tick:null,counterfactualChanged:false};
     }
+    if(decisionTick!==undefined&&(!Number.isSafeInteger(decisionTick)||decisionTick<0)){
+      return {matched:false,tick:null,counterfactualChanged:false};
+    }
+    const last=decisionTick===undefined
+      ? this.state.recent[this.state.recent.length-1]
+      : [...this.state.recent].reverse().find(entry=>entry.tick===decisionTick);
+    // Duplicate/replayed feedback must not rewrite history or inflate outcomes.
+    if(!last||last.outcome01!==null){
+      return {matched:false,tick:decisionTick??null,counterfactualChanged:false};
+    }
+    const q=clamp01(outcome01);
+    last.outcome01=q;
+    this.state.outcomes++;
+    if(last.counterfactualChanged&&q>=.65) this.state.successfulCausalOutcomes++;
+    return {matched:true,tick:last.tick,counterfactualChanged:Boolean(last.counterfactualChanged)};
   }
 
   lesion(fraction01=.5){this.state.lesion01=clamp01(fraction01);return this.state.lesion01;}
