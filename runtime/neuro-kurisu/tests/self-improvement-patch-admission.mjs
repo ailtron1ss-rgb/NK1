@@ -188,7 +188,7 @@ test('real P36 signed holdout authority is the only score source for host-verifi
   version:'v1',
  }));
  const ledger=new VerifiedOutcomeLedger(manifest);
- const treatmentMethod=patchTreatmentMethod(receipt.patchSha256);
+ const treatmentMethod=patchTreatmentMethod(baseSha, receipt.patchSha256);
  let ingested=0;
  for(let seed=0;seed<4;seed++){
   for(let taskIndex=0;taskIndex<manifest.length;taskIndex++){
