@@ -39,9 +39,12 @@ function coordinate(value:unknown):number|null {
  return Number.isFinite(parsed)&&Math.abs(parsed)<=MAX_COORDINATE?parsed:null;
 }
 export function spatialPointFromContext(context?:Record<string,string>):MemorySpatialPoint|null {
- if(!context||typeof context!=="object"||Array.isArray(context))return null;
- const frameId=validFrameId(context.spatialFrameId),x=coordinate(context.spatialX),y=coordinate(context.spatialY);
- const z=context.spatialZ===undefined?0:coordinate(context.spatialZ);
+ // Context may originate at an external ingestion boundary. Copy own data
+ // properties only; never execute getters or proxy traps while deriving an index.
+ const row=ownDataRecord(context);
+ if(!row)return null;
+ const frameId=validFrameId(row.spatialFrameId),x=coordinate(row.spatialX),y=coordinate(row.spatialY);
+ const z=row.spatialZ===undefined?0:coordinate(row.spatialZ);
  return frameId&&x!==null&&y!==null&&z!==null?{frameId,x,y,z}:null;
 }
 export function normalizeMemorySpatialQuery(value:unknown):MemorySpatialQuery|null {
@@ -73,7 +76,11 @@ export class MemorySpatialIndex {
  }
  upsert(id:string,context?:Record<string,string>):boolean {
   if(typeof id!=="string"||!id.trim()||id.length>160)return false;
-  this.remove(id);const point=spatialPointFromContext(context);if(!point)return false;
+  // Validate the replacement before mutating the current derived index. A refused
+  // update leaves the last validated point intact; canonical callers explicitly
+  // remove first when they intentionally clear a point from the owning memory.
+  const point=spatialPointFromContext(context);if(!point)return false;
+  this.remove(id);
   const [x,y,z]=cellCoordinates(point),key=cellKey(point.frameId,x,y,z);
   let members=this.cells.get(key);if(!members){members=new Set<string>();this.cells.set(key,members);}
   members.add(id);this.cellById.set(id,key);this.pointById.set(id,point);return true;
