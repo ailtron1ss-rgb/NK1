@@ -267,7 +267,7 @@ function normalizePatchOutcomeEvidence(
   const delayMs = ownData(value, 'delayMs');
   const evidenceScope = ownData(value, 'evidenceScope');
   if (candidateId !== expected.candidateId || baseSha !== expected.baseSha ||
-      patchSha256 !== expected.patchSha256 || treatmentMethod !== patchTreatmentMethod(expected.patchSha256) ||
+      patchSha256 !== expected.patchSha256 || treatmentMethod !== patchTreatmentMethod(expected.baseSha, expected.patchSha256) ||
       typeof manifestFingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(manifestFingerprint) ||
       typeof taskFamily !== 'string' || !taskFamily.trim() || taskFamily.length > 96 ||
       typeof baselineMethod !== 'string' || !baselineMethod.trim() || baselineMethod.length > 180 ||
