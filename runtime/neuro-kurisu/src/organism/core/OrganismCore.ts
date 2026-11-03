@@ -7935,6 +7935,7 @@ export class OrganismCore {
             },
             userRequestedAction,
             autonomousOverride,
+            goalAuthorshipAdmitted: canonicalGoalAdmission.admitted,
             worldContextKey,
             predictedOutcomes: governedCandidates.slice(0, 7).map(c => {
                 const p = predictions.get(c.action);
@@ -9602,7 +9603,7 @@ export class OrganismCore {
                 // Keep proposal and execution distinct: the goal generator authored the proposal,
                 // while policy/governance selected the action that actually produced this outcome.
                 // Only internally admitted goals receive this learning credit.
-                if (canonicalGoalAdmission.admitted) {
+                if (trace.goalAuthorshipAdmitted === true) {
                     this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
                         tick: state.tick, action: b272GoalState.action, executedAction: trace.selected.action,
                         reward01: gatedReward01, predictionError01: state.predictionError,
@@ -9886,7 +9887,7 @@ export class OrganismCore {
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
                 // Credit the current admitted goal while preserving the distinction between
                 // B272's proposal and the governed action that actually changed the world.
-                if (canonicalGoalAdmission.admitted) {
+                if (trace.goalAuthorshipAdmitted === true) {
                     this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
                         tick: state.tick,
                         action: b338GoalState.action,
