@@ -20,6 +20,8 @@ const EMOTION_PRESETS: Record<string, { expression: string; weight: number }> = 
   anxiety: { expression: "sad", weight: 0.34 },
   calm: { expression: "relaxed", weight: 0.24 },
   protective: { expression: "relaxed", weight: 0.28 },
+  // 2D maps curiosity to a "thinking" face; the closest VRM preset is a light surprise.
+  curiosity: { expression: "surprised", weight: 0.35 },
 };
 
 const MOUTH_PRESETS = ["aa", "ih", "ou", "ee", "oh"] as const;
