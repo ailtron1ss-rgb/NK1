@@ -119,3 +119,54 @@ test('admission from signed patch uses only host-owned P36 holdout evidence, not
  assert.equal(pool.best().proxyGain,null,'unmeasured proxy is not represented as zero or as a verified score');
  assert.equal(pool.best().outcomeEvidence.absoluteGain,.5);
 });
+
+test('refuses P36 holdout admission when no host outcome authority is configured',()=>{
+ const pool=trustedPool();
+ const result=pool.submitVerifiedOutcome(candidate('missing-p36-authority'),graph,receiptProof());
+ assert.equal(result.accepted,false);
+ assert.equal(result.reason,'patch-outcome:host-authority-unconfigured');
+ assert.equal(pool.size,0);
+});
+test('does not read candidate-supplied observations when using host P36 admission',()=>{
+ const pool=new SelfImprovementCandidatePool({},undefined,{baseSha,trustedPublicKeys},{
+  measure(request){
+   return {
+    candidateId:request.candidateId,baseSha,patchSha256:request.patchSha256,
+    treatmentMethod:'nk1-patch-sha256:'+request.patchSha256,
+    manifestFingerprint:'c'.repeat(64),taskFamily:'self-improvement',
+    baselineMethod:'baseline-v1',pairedSeedCount:4,
+    baselinePassRate:.5,candidatePassRate:1,absoluteGain:.5,
+    evidenceFingerprint:'d'.repeat(64),sourceEvidenceFingerprint:'e'.repeat(64),
+    evidenceRefs:Array.from({length:8},(_,i)=>'signed-'+i),
+    delayMs:0,evidenceScope:'point-in-time-holdout-only',
+   };
+  },
+ });
+ let getterCalled=false;
+ const input=candidate('observation-getter-never-read');
+ Object.defineProperty(input,'observations',{get(){getterCalled=true;throw new Error('candidate observation getter executed');}});
+ const result=pool.submitVerifiedOutcome(input,graph,receiptProof());
+ assert.equal(getterCalled,false);
+ assert.equal(result.accepted,true,result.reason);
+ assert.equal(pool.best().downstreamGain,.5);
+ assert.equal(pool.best().proxyGain,null);
+});
+test('rejects P36 authority evidence whose treatment method is not the exact patch digest identity',()=>{
+ const pool=new SelfImprovementCandidatePool({},undefined,{baseSha,trustedPublicKeys},{
+  measure(request){
+   return {
+    candidateId:request.candidateId,baseSha,patchSha256:request.patchSha256,
+    treatmentMethod:'candidate-controlled-method',
+    manifestFingerprint:'c'.repeat(64),taskFamily:'self-improvement',
+    baselineMethod:'baseline-v1',pairedSeedCount:4,
+    baselinePassRate:.5,candidatePassRate:1,absoluteGain:.5,
+    evidenceFingerprint:'d'.repeat(64),sourceEvidenceFingerprint:'e'.repeat(64),
+    evidenceRefs:Array.from({length:8},(_,i)=>'signed-'+i),
+    delayMs:0,evidenceScope:'point-in-time-holdout-only',
+   };
+  },
+ });
+ const result=pool.submitVerifiedOutcome(candidate('wrong-treatment-method'),graph,receiptProof());
+ assert.equal(result.accepted,false);
+ assert.equal(result.reason,'patch-outcome:evidence-binding-invalid');
+});
