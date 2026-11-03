@@ -118,6 +118,16 @@ assert.ok(windowsPathGraph.edges.some((edge) =>
   edge.from === 'src\\windows\\consumer.ts#__module__' &&
   edge.to === 'src\\windows\\util.ts#__module__',
 ), 'normalized Windows-style source paths must retain their original graph node identities');
+const modernPathGraph = buildSourceGraph([
+  { path: 'src/a/modern/util.mts', text: 'export class ModernOnly {}\\n' },
+  { path: 'src/a/modern/consumer.mts', text: "import { ModernOnly } from './util.mjs';\\nexport class ModernConsumer { value = new ModernOnly(); }\\n" },
+]);
+assert.ok(modernPathGraph.edges.some((edge) =>
+  edge.kind === 'imports' &&
+  edge.from === 'src/a/modern/consumer.mts#__module__' &&
+  edge.to === 'src/a/modern/util.mts#__module__',
+), 'Node ESM .mjs specifiers must resolve to matching .mts source modules');
+
 
 
 
