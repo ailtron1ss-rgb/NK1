@@ -58,6 +58,32 @@ function gitHead() {
   return result.status === 0 ? result.stdout.trim() : '';
 }
 
+const SHA_PATTERN = /^[0-9a-f]{7,40}$/i;
+
+function gitRun(args) {
+  return spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+}
+
+/**
+ * Evidence recorded at commit X stays valid at a later HEAD only when X is an ancestor
+ * of HEAD and none of the paths the evidence covers changed in between. Without this,
+ * every artifact would be invalid the moment it is committed (the commit itself moves
+ * HEAD), so verified efficacy could never rise above zero. When an artifact declares no
+ * covered paths we fall back to strict equality, so nothing is silently weakened.
+ */
+function evidenceCoversCurrentTree(artifact, currentSha) {
+  const recorded = typeof artifact?.sha === 'string' ? artifact.sha.trim() : '';
+  if (!currentSha || !SHA_PATTERN.test(recorded)) return false;
+  if (recorded === currentSha) return true;
+  const covered = Array.isArray(artifact?.coversPaths) ? artifact.coversPaths.filter((p) => typeof p === 'string' && p.length > 0) : [];
+  if (covered.length === 0) return false;
+  const ancestor = gitRun(['merge-base', '--is-ancestor', recorded, currentSha]);
+  if (ancestor.status !== 0) return false;
+  const changed = gitRun(['diff', '--name-only', recorded, currentSha, '--', ...covered]);
+  if (changed.status !== 0) return false;
+  return changed.stdout.trim().length === 0;
+}
+
 function globMatch(pattern, currentSha) {
   const dir = resolveRepoPath(dirname(pattern));
   const base = pattern.split('/').pop() ?? '';
@@ -70,7 +96,7 @@ function globMatch(pattern, currentSha) {
       const candidatePath = resolveRepoPath(`${dirname(pattern)}/${name}`);
       if (!candidatePath) return false;
       const artifact = JSON.parse(readFileSync(candidatePath, 'utf8'));
-      return artifact.verified === true && artifact.sha === currentSha;
+      return artifact.verified === true && evidenceCoversCurrentTree(artifact, currentSha);
     } catch {
       return false;
     }
@@ -93,7 +119,7 @@ function runEvidenceProbe(probe, currentSha) {
     if (!existsSync(full)) return { ok: false, detail: `${probe.path} missing` };
     const artifact = JSON.parse(readFileSync(full, 'utf8'));
     if (artifact.verified !== true) return { ok: false, detail: `${probe.path} is not verified` };
-    if (!currentSha || artifact.sha !== currentSha) return { ok: false, detail: `${probe.path} SHA is not the current HEAD` };
+    if (!evidenceCoversCurrentTree(artifact, currentSha)) return { ok: false, detail: `${probe.path} SHA is not the current HEAD` };
     for (const requirement of probe.requirements ?? []) {
       const actual = readEvidencePath(artifact, requirement.path);
       const expected = requirement.value;

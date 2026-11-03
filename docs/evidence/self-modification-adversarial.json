@@ -1,0 +1,19 @@
+{
+  "schema": "nk1.self-modification-adversarial.v1",
+  "generatedAt": "2026-11-03T08:19:43.692Z",
+  "sha": "12a2d1d6d36b832656c363fe7b6047d43fdcb96e",
+  "branch": "nk1-self-analysis-and-evidence-20261103",
+  "verified": true,
+  "metrics": {
+    "adversarialCasesPassed": 56,
+    "evaluatorTamperBlocked": true,
+    "dangerModelTamperBlocked": true,
+    "authorityTamperBlocked": true,
+    "forgedEvidenceBlocked": true,
+    "irreversibleChangeBlocked": true,
+    "selfDeclaredSafetyIgnored": true,
+    "postAdmissionMutationNeutralised": true,
+    "protectedFragmentsExercised": 43
+  },
+  "note": "Metrics are produced by tests/self-modification-adversarial.mjs driving the real guard, divergence gate, danger model and candidate pool. No mocks. The artifact is written only when every adversarial case is refused."
+}

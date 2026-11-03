@@ -159,6 +159,17 @@
           "id": "candidate-pool",
           "kind": "file-exists",
           "path": "runtime/neuro-kurisu/src/organism/analysis/SelfImprovementCandidatePool.ts"
+        },
+        {
+          "id": "danger-model",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/DangerModel.ts"
+        },
+        {
+          "id": "self-modification-adversarial",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-modification-adversarial"
         }
       ],
       "evidenceProbes": [
@@ -300,6 +311,17 @@
           "kind": "npm-script",
           "prefix": "runtime/neuro-kurisu",
           "script": "test:self-agency:authority"
+        },
+        {
+          "id": "danger-model",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/DangerModel.ts"
+        },
+        {
+          "id": "danger-understanding-tests",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-modification-adversarial"
         }
       ],
       "evidenceProbes": [
@@ -351,14 +373,14 @@
           "path": "docs/evidence/ci-exact-head-5cf0743.json",
           "requirements": [
             {
-              "path": "checks.failureCount",
-              "op": "eq",
-              "value": 0
-            },
-            {
-              "path": "checks.exactHead",
+              "path": "verified",
               "op": "eq",
               "value": true
+            },
+            {
+              "path": "success",
+              "op": "gte",
+              "value": 34
             }
           ]
         }

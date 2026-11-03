@@ -41,6 +41,7 @@ const DEFAULT_STEPS = [
   'test:cognitive-cycle-boundary-runtime-wiring',
   'test:workpass287:cognitive-cycle',
   'test:self-analysis-substrate',
+  'test:self-modification-adversarial',
   'test:self-agency:authority',
   'test:self-agency:live',
   'test:world-perception',
@@ -103,6 +104,10 @@ function main() {
     branch,
     node: process.version,
     prefix: args.prefix,
+    // Paths this result actually covers. progress-report keeps the artifact valid at a
+    // later HEAD only while none of these change, so committing the artifact itself does
+    // not invalidate it but a source change does.
+    coversPaths: [args.prefix, 'tools'],
     verified: failed.length === 0,
     steps: results,
     summary: {
