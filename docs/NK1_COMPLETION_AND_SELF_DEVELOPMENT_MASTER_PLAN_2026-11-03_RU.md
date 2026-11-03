@@ -503,3 +503,29 @@ test:world-perception (p41 deep pass + truthfulness) → PASS
 ---
 
 **Следующий единственный шаг:** восстановить Actions (B1) и зафиксировать локальный gate. Всё остальное зависит от того, сможет ли проект предъявлять воспроизводимые доказательства.
+
+---
+
+## 14. Статус на 3 ноября 2026 (после первого прохода реализации)
+
+Ветка `nk1-self-analysis-and-evidence-20261103`, PR #698. Всё ниже — на коде, не на бумаге.
+
+| Пункт плана | Статус | Артефакт / доказательство |
+|---|---|---|
+| §12.2 Локальный gate | `IMPLEMENTED` | `tools/run-local-gate.mjs`, артефакт с SHA; 8/8 шагов PASS |
+| §12.7 Песочница саморефакторинга | `IMPLEMENTED` | `analysis/SelfImprovementCandidatePool.ts` + `SelfModificationGuard.ts`; 52 assert |
+| §12.9 Индекс на tree-sitter | `IMPLEMENTED (частично)` | `analysis/SourceGraph.ts` — regex-граф без зависимостей; tree-sitter остаётся `ADOPT (dev-only)` |
+| §12.10 Threat model + tampering-тесты | `IMPLEMENTED` | `docs/NK1_THREAT_MODEL_RU.md`; тесты на подделку/расхождение |
+| §12.1 Восстановить Actions (B1) | `BLOCKED` | Причина — биллинг аккаунта; вне контроля кода |
+| §12.8 Заморозить RU/EN holdout | `PENDING` | Репозиторий сам отклоняет синтетику как независимое доказательство — верно |
+| §12.6 План сходимости ветвей | `PENDING` | — |
+| §12.3 Обновить START_HERE | `PENDING` | — |
+
+**Процент готовности** считается не из этого документа, а из `tools/progress-report.mjs` по машинно-проверяемым пробам: **77%**. Пробы требуют `"verified": true` в артефактах, поэтому написанный текст процент не поднимает.
+
+**Новые механизмы, которых не было в исходном плане** (добавлены по итогам исследований 2026):
+- `analysis/ProxyDivergenceGuard.ts` — отклоняет proxy-выигрыш без downstream-выигрыша (KernelBench 2026: 73.8% оптимизаций агентов были proxy-only);
+- `SelfModificationGuard` — отказ кандидату, целящемуся в evaluator/gate/holdout/approval/workflows (постмортем OpenAI 2026, METR/Redwood, Darwin Gödel Machine);
+- `SelfImprovementCandidatePool` — отбор по измеренному downstream-результату, а не по proxy.
+
+**Открытые разрывы** (см. `docs/NK1_OSS_INTEGRATION_REGISTER_RU.md`): нет измерения `recallDelta` на независимом holdout; нет переноса обучения; нет soak-автономии; нет browser/device E2E; лицензионная проверка не закрыта человеком.
