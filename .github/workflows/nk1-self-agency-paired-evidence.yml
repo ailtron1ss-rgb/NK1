@@ -1,0 +1,44 @@
+name: NK1 self-modification paired-evidence gate
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - 'runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts'
+      - 'runtime/neuro-kurisu/src/organism/analysis/ProxyDivergenceGuard.ts'
+      - 'runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs'
+      - 'runtime/neuro-kurisu/tests/canonical-self-agency-live.mjs'
+      - '.github/workflows/nk1-self-agency-paired-evidence.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-self-agency-paired-evidence-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  paired-evidence-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: Verify authority-level paired evidence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:self-agency:authority
+      - name: Verify live Core fails closed without paired evidence
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:self-agency:live
+      - name: Verify runtime TypeScript
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
