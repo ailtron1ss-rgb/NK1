@@ -85,6 +85,25 @@ assert.throws(() => gateway.registerTool({
   execute: async () => ({ ok: true }),
 }), /multiple-pattern-repetitions/);
 
+// A brace quantifier with an enormous upper bound (or exact count) must be rejected:
+// the contract advertises a bounded subset, and one repeat operator is not sufficient
+// proof that the pattern is bounded.
+for (const unbounded of ["^a{2,}$", "^a{1,999999}$", "^a{999999999999}$", "^[a-z]{0,5000}$"]) {
+  assert.throws(() => gateway.registerTool({
+    id: "catalog.unbounded-pattern", capability: "catalog.read", destructive: false,
+    inputContract: { type: "object", properties: { value: { type: "string", pattern: unbounded } }, required: ["value"] },
+    execute: async () => ({ ok: true }),
+  }), /unbounded-pattern-quantifier/, `open-ended or oversized quantifier must be rejected: ${unbounded}`);
+}
+// A bounded quantifier within the limit remains accepted, so the guard is not over-broad.
+gateway.registerTool({
+  id: "catalog.bounded-pattern", capability: "catalog.read", destructive: false,
+  inputContract: { type: "object", properties: { value: { type: "string", pattern: "^a{1,1000}$" } }, required: ["value"] },
+  execute: async () => ({ ok: true }),
+});
+assert.equal((await gateway.executeTool("catalog.bounded-pattern", { value: "a".repeat(1000) })).ok, true);
+assert.equal((await gateway.executeTool("catalog.bounded-pattern", { value: "a".repeat(1001) })).ok, false);
+
 const mutator = new ActionGateway();
 let ledgerWrites = 0, mutations = 0;
 mutator.setExecutionLedgerPersister(async () => { ledgerWrites++; });
