@@ -112,6 +112,12 @@ export class SelfPriorDensityModel {
 
   observe(observation: readonly number[], at = Date.now()): SelfPriorObservation {
     const vector = this.validateObservation(observation);
+    if (typeof at !== 'number' || !Number.isFinite(at) || at < 0) {
+      throw new RangeError('self-prior-observation-timestamp-must-be-finite-and-non-negative');
+    }
+    if (at < this.state.lastAt) {
+      throw new RangeError('self-prior-observation-timestamp-out-of-order');
+    }
     const prediction = this.predict(vector);
     const baseAlpha = Math.min(0.2, 2 / (this.state.effectiveSamples + 2));
     const alpha = baseAlpha * (1 - 0.65 * prediction.mismatch01 * prediction.confidence01);
@@ -123,8 +129,7 @@ export class SelfPriorDensityModel {
     }
     this.state.sampleCount = Math.min(MAX_SAMPLES, this.state.sampleCount + 1);
     this.state.effectiveSamples = Math.min(MAX_EFFECTIVE_SAMPLES, this.state.effectiveSamples + 1);
-    const timestamp = Number.isFinite(at) && at >= 0 ? at : Date.now();
-    this.state.lastAt = Math.max(this.state.lastAt, timestamp);
+    this.state.lastAt = at;
     return prediction;
   }
 
