@@ -34,6 +34,10 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   try { const prototype = Object.getPrototypeOf(value); return prototype === Object.prototype || prototype === null; }
   catch { return false; }
 }
+function hasAccessor(value: Record<string, unknown>, key: string): boolean {
+  try { const descriptor = Object.getOwnPropertyDescriptor(value, key); return descriptor !== undefined && !Object.prototype.hasOwnProperty.call(descriptor, 'value'); }
+  catch { return true; }
+}
 function ownData(value: Record<string, unknown>, key: string): unknown {
   try {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -128,6 +132,7 @@ function normalizeCandidate(input: unknown): { candidateId: string; candidate?: 
     observationIds.add(id.trim());
     observations.push({ id: id.trim(), proxyGain, downstreamGain });
   }
+  if (hasAccessor(input, 'parentId')) return { candidateId, reason: 'malformed-parent-id' };
   const rawParent = ownData(input, 'parentId');
   if (rawParent !== undefined && (typeof rawParent !== 'string' || !rawParent.trim() || rawParent.length > 128)) {
     return { candidateId, reason: 'malformed-parent-id' };
@@ -139,7 +144,7 @@ function normalizeCandidate(input: unknown): { candidateId: string; candidate?: 
   return { candidateId, candidate: freezeCandidate(normalized) };
 }
 function normalizePolicy(input: Partial<CandidatePoolPolicy>): CandidatePoolPolicy {
-  if (!isPlainRecord(input)) throw new RangeError('candidate-pool-policy-invalid');
+  if (!isPlainRecord(input) || hasAccessor(input, 'maxPoolSize') || hasAccessor(input, 'minDownstreamGain')) throw new RangeError('candidate-pool-policy-invalid');
   const rawMax = ownData(input, 'maxPoolSize');
   const rawFloor = ownData(input, 'minDownstreamGain');
   const maxPoolSize = rawMax === undefined ? DEFAULT_POOL_POLICY.maxPoolSize : rawMax;
