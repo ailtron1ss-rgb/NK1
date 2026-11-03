@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/learning/P36PatchOutcomeEvidenceAuthority.ts"
       - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
       - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
       - "runtime/neuro-kurisu/tests/patch-receipt-guard.mjs"
@@ -28,6 +29,7 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/learning/P36PatchOutcomeEvidenceAuthority.ts"
       - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
       - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
       - "runtime/neuro-kurisu/tests/patch-receipt-guard.mjs"
