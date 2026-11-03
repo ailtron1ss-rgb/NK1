@@ -552,6 +552,7 @@ def build_ci_fixture_report() -> dict[str, Any]:
         for index in range(4):
             train.append({
                 "exampleIdDigest": fixture_digest(f"{language}-train-id-{index}"),
+                "independenceGroupDigest": fixture_digest(f"{language}-train-source-{index}"),
                 "queryDigest": fixture_digest(f"{language}-train-query-{index}"),
                 "language": language,
                 "split": "train",
@@ -560,6 +561,7 @@ def build_ci_fixture_report() -> dict[str, Any]:
             target = corpus_ids[index + (0 if language == "en" else 20)]
             holdout.append({
                 "exampleIdDigest": fixture_digest(f"{language}-answerable-id-{index}"),
+                "independenceGroupDigest": fixture_digest(f"{language}-answerable-source-{index}"),
                 "queryDigest": fixture_digest(f"{language}-answerable-query-{index}"),
                 "language": language,
                 "split": "holdout",
@@ -578,6 +580,7 @@ def build_ci_fixture_report() -> dict[str, Any]:
         for index in range(8):
             holdout.append({
                 "exampleIdDigest": fixture_digest(f"{language}-unanswerable-id-{index}"),
+                "independenceGroupDigest": fixture_digest(f"{language}-unanswerable-source-{index}"),
                 "queryDigest": fixture_digest(f"{language}-unanswerable-query-{index}"),
                 "language": language,
                 "split": "holdout",
