@@ -56,6 +56,33 @@ function finite(value: unknown): number | null {
 }
 
 /**
+ * Policy is an authorization input, not a tuning hint. Reject malformed, inherited,
+ * accessor-backed or out-of-range policy values rather than allowing NaN comparisons
+ * to silently skip every refusal threshold.
+ */
+function readValidPolicy(value: unknown): DivergencePolicy | null {
+  try {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) return null;
+    const read = (key: keyof DivergencePolicy): number | null => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+      return finite(descriptor.value);
+    };
+    const minPairs = read('minPairs');
+    const maxMeanDivergence = read('maxMeanDivergence');
+    const maxInversionRate = read('maxInversionRate');
+    if (minPairs === null || !Number.isInteger(minPairs) || minPairs < 1 || minPairs > 10000) return null;
+    if (maxMeanDivergence === null || maxMeanDivergence < 0 || maxMeanDivergence > 2) return null;
+    if (maxInversionRate === null || maxInversionRate < 0 || maxInversionRate > 1) return null;
+    return { minPairs, maxMeanDivergence, maxInversionRate };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Evaluates whether the proxy improvement is backed by downstream improvement.
  * Malformed rows are dropped rather than silently treated as zero, and duplicate
  * ids are collapsed to the first occurrence so a candidate cannot inflate its
@@ -78,8 +105,20 @@ export function evaluateProxyDivergence(
 
   const pairs = rows.length;
   const mean = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0);
+  const safePolicy = readValidPolicy(policy);
+  if (!safePolicy) {
+    return {
+      decision: 'refused',
+      reason: 'invalid-divergence-policy',
+      pairs,
+      meanProxyGain: mean(rows.map((r) => r.proxyGain)),
+      meanDownstreamGain: mean(rows.map((r) => r.downstreamGain)),
+      meanDivergence: 0,
+      inversionRate: 0,
+    };
+  }
 
-  if (pairs < policy.minPairs) {
+  if (pairs < safePolicy.minPairs) {
     return {
       decision: 'refused',
       reason: `insufficient-paired-observations:${pairs}<${policy.minPairs}`,
@@ -99,12 +138,12 @@ export function evaluateProxyDivergence(
 
   let decision: DivergenceDecision = 'supported';
   let reason = 'proxy-supported-by-downstream';
-  if (inversionRate > policy.maxInversionRate) {
+  if (inversionRate > safePolicy.maxInversionRate) {
     decision = 'refused';
-    reason = `inversion-rate:${inversionRate.toFixed(3)}>${policy.maxInversionRate}`;
-  } else if (meanDivergence > policy.maxMeanDivergence) {
+    reason = `inversion-rate:${inversionRate.toFixed(3)}>${safePolicy.maxInversionRate}`;
+  } else if (meanDivergence > safePolicy.maxMeanDivergence) {
     decision = 'refused';
-    reason = `mean-divergence:${meanDivergence.toFixed(3)}>${policy.maxMeanDivergence}`;
+    reason = `mean-divergence:${meanDivergence.toFixed(3)}>${safePolicy.maxMeanDivergence}`;
   } else if (meanDownstreamGain <= 0) {
     decision = 'refused';
     reason = 'no-downstream-gain';
@@ -139,16 +178,34 @@ export function toDivergenceObservations(
   downstream: readonly PairedRateSummary[],
 ): PairedObservation[] {
   const downstreamByFamily = new Map<string, PairedRateSummary>();
+  const duplicateDownstreamFamilies = new Set<string>();
   for (const row of Array.isArray(downstream) ? downstream : []) {
-    const family = typeof row?.family === 'string' ? row.family.trim() : '';
+    const family = typeof row?.family === 'string' ? row.family.trim().normalize('NFKC') : '';
     if (!family) continue;
-    downstreamByFamily.set(family, row);
+    if (downstreamByFamily.has(family)) {
+      downstreamByFamily.delete(family);
+      duplicateDownstreamFamilies.add(family);
+      continue;
+    }
+    if (!duplicateDownstreamFamilies.has(family)) downstreamByFamily.set(family, row);
+  }
+
+  const proxyByFamily = new Map<string, PairedRateSummary>();
+  const duplicateProxyFamilies = new Set<string>();
+  for (const row of Array.isArray(proxy) ? proxy : []) {
+    const family = typeof row?.family === 'string' ? row.family.trim().normalize('NFKC') : '';
+    if (!family) continue;
+    if (proxyByFamily.has(family)) {
+      proxyByFamily.delete(family);
+      duplicateProxyFamilies.add(family);
+      continue;
+    }
+    if (!duplicateProxyFamilies.has(family)) proxyByFamily.set(family, row);
   }
 
   const observations: PairedObservation[] = [];
-  for (const row of Array.isArray(proxy) ? proxy : []) {
-    const family = typeof row?.family === 'string' ? row.family.trim() : '';
-    if (!family) continue;
+  for (const [family, row] of proxyByFamily) {
+    if (duplicateProxyFamilies.has(family) || duplicateDownstreamFamilies.has(family)) continue;
     const match = downstreamByFamily.get(family);
     if (!match) continue;
     const proxyGain = finite(row?.candidatePassRate) !== null && finite(row?.baselinePassRate) !== null
