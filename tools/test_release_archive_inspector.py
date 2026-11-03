@@ -40,6 +40,24 @@ class ReleaseArchiveInspectorTests(unittest.TestCase):
         self.assertEqual(result["comparison"]["sourceOnlyFileCount"], 0)
         self.assertEqual(result["archiveVersions"]["runtime/neuro-kurisu/package.json"]["version"], "35.90.0")
 
+    def test_auto_prefix_maps_wrapped_files_and_keeps_root_level_members(self):
+        (self.source / "LICENSE").write_text("MIT\n", encoding="utf-8")
+        self._write_archive({
+            "Neuro_Kurisu/README.md": b"NK1 source\n",
+            "LICENSE": b"MIT\n",
+        })
+        result = audit_release_archive(self.archive, self.source)
+        self.assertTrue(result["ok"], result["errors"])
+        self.assertEqual(result["archive"]["archivePrefixApplied"], "Neuro_Kurisu/")
+        self.assertEqual(result["comparison"]["identicalFileCount"], 2)
+
+    def test_empty_zip_is_not_a_valid_release_archive(self):
+        with zipfile.ZipFile(self.archive, "w"):
+            pass
+        result = audit_release_archive(self.archive, self.source)
+        self.assertFalse(result["ok"])
+        self.assertTrue(any("no file members" in error for error in result["errors"]))
+
     def test_reports_changed_missing_and_archive_only_files_without_calling_them_corrupt(self):
         (self.source / "README.md").write_text("new source\n", encoding="utf-8")
         (self.source / "source-only.txt").write_text("new file\n", encoding="utf-8")
