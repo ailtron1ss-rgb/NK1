@@ -12,8 +12,14 @@ import { buildBrowserVoiceProsody, resolveBrowserVoiceAffect } from "./avatar/br
 import {
   advanceBodySwitch,
   beginBodySwitch,
+  EXPRESSION_TEXT,
   projectSemanticBodyState,
 } from "./avatar/embodimentUiBridge";
+import {
+  arbitrateMotion,
+  defaultMotionArbitrationState,
+  type MotionArbitrationState,
+} from "./avatar/motionArbitration";
 import type { SwitchPlan } from "./avatar/embodimentSwitch";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
@@ -40,10 +46,6 @@ import {
   type SpeechLifecyclePhaseV1,
 } from "./avatar/embodimentTimeline";
 
-const EXPR: Record<EmotionLabel, string> = {
-  curiosity: "thinking", calm: "neutral", joy: "happy", anxiety: "sad",
-  frustration: "angry", sadness: "sad", anger: "angry", protective: "focused",
-};
 type ViewMode = "live2d" | "legacy" | "original" | "3d";
 const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 type Live2DActionStatus = "started" | "unavailable" | "error" | "not-requested";
@@ -138,6 +140,13 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const [switchOpacity, setSwitchOpacity] = useState(1);
   const previousModeRef = useRef<ViewMode>(mode);
   const bodyRevisionRef = useRef(0);
+  // Aspect 11 / motor: continuous renderer-neutral motion arbiter. It advances on a
+  // rAF loop and only feeds the handoff snapshot; it never drives a renderer directly.
+  const motionStateRef = useRef<MotionArbitrationState>(defaultMotionArbitrationState());
+  const motionChannelsRef = useRef<Record<string, number>>({});
+  const motionLastAtRef = useRef<number | null>(null);
+  const thinkingRef = useRef(false);
+  const speakingRef = useRef(false);
   // Latest-value refs so the mode-change effect can stay independent of per-tick churn.
   const latestSnapRef = useRef(snap);
   const mouthPoseRef = useRef(mouthPose);
@@ -212,6 +221,29 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
 
   useEffect(() => { latestSnapRef.current = snap; mouthPoseRef.current = mouthPose; }, [snap, mouthPose]);
 
+  // Keep the arbiter's view of affect/speech current without restarting it each tick.
+  useEffect(() => {
+    thinkingRef.current = thinking;
+    speakingRef.current = voiceStatus === "speaking";
+    const now = performance.now();
+    const deltaMs = now - (motionLastAtRef.current ?? now);
+    motionLastAtRef.current = now;
+    try {
+      const result = arbitrateMotion(motionStateRef.current, {
+        action: snap.lastOption,
+        emotion: snap.emotion.label,
+        speaking: speakingRef.current,
+        thinking,
+        awake: snap.awake,
+        energy01: snap.needs.energy,
+      }, deltaMs);
+      motionStateRef.current = result.state;
+      motionChannelsRef.current = result.channels as Record<string, number>;
+    } catch {
+      // A malformed intent must never freeze or crash the panel; keep the last pose.
+    }
+  }, [snap, thinking, voiceStatus]);
+
   // Aspect 11: plan a renderer handoff whenever the body changes. The projection is
   // monotonic and derived from the canonical snapshot; it never mutates organism state.
   // Only channels the destination declares are applied, and the crossfade is bounded.
@@ -239,6 +271,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         speechEventId: active?.speechEventId ?? null,
         audioTimeMs: Number(active?.lastAudioElapsedMs ?? 0),
         mouth: mouthPoseRef.current,
+        pose: motionChannelsRef.current,
       });
       plan = beginBodySwitch(from, mode, state).plan;
     } catch {
@@ -455,7 +488,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   useEffect(() => {
     const win = frame.current?.contentWindow;
     if (!win || !live || mode !== "live2d") return;
-    const expression = EXPR[snap.emotion.label] ?? "neutral";
+    const expression = EXPRESSION_TEXT[snap.emotion.label] ?? "neutral";
     const gazeByAction: Record<OrganismSnapshot["lastOption"], { x: number; y: number }> = {
       explore: { x: 0.24, y: 0.04 }, verify: { x: 0.14, y: -0.10 }, reflect: { x: -0.19, y: -0.14 },
       respond: { x: 0.01, y: 0.01 }, wait: { x: -0.035, y: -0.005 }, rest: { x: -0.06, y: 0.075 },
@@ -532,7 +565,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         {voiceEnabled && voices.length > 0 ? <select aria-label="Голос Курису" value={voiceName} onChange={(event) => { stopSpeech(); setVoiceName(event.target.value); }} className="max-w-32 rounded bg-black/70 px-1 py-1 text-[10px] text-white"><option value="">Авто</option>{voices.map((voice) => <option key={`${voice.name}:${voice.lang}`} value={voice.name}>{voice.name} · {voice.lang}</option>)}</select> : null}
       </div>
       <div className="transition-opacity duration-200 ease-out" style={{ opacity: switchOpacity }}>
-      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} /> : <>
+      {mode === "legacy" ? <LegacySpriteDeck emotion={snap.emotion.label} action={snap.lastOption} thinking={thinking} speaking={voiceStatus === "speaking" || thinking || (lastTurn?.role === "kurisu" && Date.now() - Number(lastTurn.at || 0) < 5_000)} /> : mode === "original" ? <KurisuOriginalStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} bodyChannels={motionChannelsRef.current} /> : mode === "3d" ? <Avatar3DStage emotion={snap.emotion.label} action={snap.lastOption} arousal={snap.emotion.arousal} valence={snap.emotion.valence} dominance={snap.emotion.dominance} energy={snap.needs.energy} cognitiveLoad={snap.needs.cognitiveLoad} uncertainty={snap.needs.uncertainty} socialNeed={snap.needs.socialNeed} novelty={snap.needs.novelty} goalPressure={snap.needs.goalPressure} curiosity={snap.curiosity} predictionError={snap.predictionError} traits={snap.identity.traits} gazeX={originalGaze.x} gazeY={originalGaze.y} speaking={voiceStatus === "speaking"} mouthPose={mouthPose} thinking={thinking} awake={snap.awake} bodyChannels={motionChannelsRef.current} /> : <>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,color-mix(in_oklab,var(--color-ember)_18%,transparent),transparent_62%)]" />
         <iframe ref={frame} title="Kurisu Live2D" src="/live2d/viewer.html?profile=auto" className={cn("relative z-10 h-[320px] w-full border-0 transition-opacity duration-300 md:h-[420px]", live ? "opacity-100" : "opacity-0")} allow="autoplay" />
         {!live ? <div className="absolute inset-0 z-[11] flex items-center justify-center p-6"><div className="max-w-sm rounded-xl border border-border bg-bg/85 p-4 text-center backdrop-blur"><p className="text-xs font-medium uppercase tracking-wider text-subtle">Live2D unavailable</p><p className="mt-1 text-sm text-fg">Переключитесь на Legacy — там используются реальные legacy sprite-ассеты.</p><button type="button" onClick={() => setMode("legacy")} className="mt-3 rounded-md border border-border px-3 py-1.5 text-xs text-fg hover:bg-elevated">Open Legacy</button></div></div> : null}

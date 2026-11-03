@@ -4,6 +4,8 @@
 **Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
 
+> **WorkPass71 (2026-11-03, ветка `workpass71-body-systems`):** добавлены версионированный capability manifest с fail-closed реестром, renderer-neutral motion library и арбитр движений с bounded cross-fade; 3D VRM и Original 2D тела теперь управляются одними и теми же каналами. См. [docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md](docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md). Это IMPLEMENTED/OBSERVED на синтетических тестах; device E2E, soak и visual verification ещё не проведены.
+
 ### Реально интегрировано и проверено
 
 | PR | Что вошло в проект | Проверки на точном PR HEAD |

@@ -28,6 +28,13 @@ on:
       - "app/src/components/avatar/avatarModelCatalog.ts"
       - "app/scripts/three-toon-materials.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
+      - "app/src/components/avatar/motionArbitration.ts"
+      - "app/src/components/avatar/motionLibrary.ts"
+      - "app/src/components/avatar/rendererCapabilityManifest.ts"
+      - "app/src/components/avatar/rendererRegistryDefaults.ts"
+      - "app/src/components/avatar/originalStageChannels.ts"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/body-systems.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
   workflow_dispatch:
@@ -61,6 +68,13 @@ on:
       - "app/src/components/avatar/avatarModelCatalog.ts"
       - "app/scripts/three-toon-materials.test.mjs"
       - "app/scripts/embodiment-switch.test.mjs"
+      - "app/src/components/avatar/motionArbitration.ts"
+      - "app/src/components/avatar/motionLibrary.ts"
+      - "app/src/components/avatar/rendererCapabilityManifest.ts"
+      - "app/src/components/avatar/rendererRegistryDefaults.ts"
+      - "app/src/components/avatar/originalStageChannels.ts"
+      - "app/src/components/avatar/vrmRuntimeAdapter.ts"
+      - "app/scripts/body-systems.test.mjs"
       - "app/package.json"
       - ".github/workflows/nk1-embodiment-switch.yml"
 
@@ -87,6 +101,8 @@ jobs:
         run: npm ci --prefix app --ignore-scripts
       - name: Test renderer-neutral body handoff
         run: npm --prefix app run test:embodiment-switch
+      - name: Test cognitive motion arbitration and renderer capability contracts
+        run: npm --prefix app run test:body-systems
       - name: Test shared grapheme-to-viseme articulation
         run: npm --prefix app run test:embodiment-timeline
       - name: Test body-switch UI integration bridge

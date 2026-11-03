@@ -102,6 +102,17 @@ test("normalized motor preserves precomputed NK1 affect and social arm intent", 
   assert.equal(vrm.bones.get("rightUpperArm").rotation.z, 0.38);
 });
 
+test("every NK1 emotion label maps to a VRM expression preset", () => {
+  // The label set is the canonical organism vocabulary; each must produce a face in 3D
+  // as it does in 2D. Missing a label silently drops the expression for that emotion.
+  const labels = ["curiosity", "calm", "joy", "anxiety", "frustration", "sadness", "anger", "protective"];
+  for (const emotion of labels) {
+    const vrm = createFakeVrm();
+    applyVrmExpressionFrame(vrm, { emotion, speaking: false, mouthOpen: 0, mouthForm: 0, blink: false });
+    assert.ok(vrm.values.size > 0, `emotion ${emotion} must set at least one VRM expression`);
+  }
+});
+
 test("VRM expression mapping follows NK1 affect and speech frame", () => {
   const vrm = createFakeVrm();
   applyVrmExpressionFrame(vrm, {

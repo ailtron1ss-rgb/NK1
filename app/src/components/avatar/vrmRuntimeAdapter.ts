@@ -1,4 +1,5 @@
 import type { VRM, VRMMeta } from "@pixiv/three-vrm";
+import type { BodyChannel } from "./embodimentSwitch.ts";
 
 export interface VrmExpressionFrame {
   emotion: string;
@@ -19,6 +20,8 @@ const EMOTION_PRESETS: Record<string, { expression: string; weight: number }> = 
   anxiety: { expression: "sad", weight: 0.34 },
   calm: { expression: "relaxed", weight: 0.24 },
   protective: { expression: "relaxed", weight: 0.28 },
+  // 2D maps curiosity to a "thinking" face; the closest VRM preset is a light surprise.
+  curiosity: { expression: "surprised", weight: 0.35 },
 };
 
 const MOUTH_PRESETS = ["aa", "ih", "ou", "ee", "oh"] as const;
@@ -44,6 +47,17 @@ export interface VrmNormalizedMotorRig {
   neck: NormalizedBoneNode | null;
   leftUpperArm: NormalizedBoneNode | null;
   rightUpperArm: NormalizedBoneNode | null;
+}
+
+/** Optional full-body rig resolved from the same normalized humanoid surface. */
+export interface VrmFullBodyRig extends VrmNormalizedMotorRig {
+  spine: NormalizedBoneNode | null;
+  leftLowerArm: NormalizedBoneNode | null;
+  rightLowerArm: NormalizedBoneNode | null;
+  leftUpperLeg: NormalizedBoneNode | null;
+  rightUpperLeg: NormalizedBoneNode | null;
+  leftLowerLeg: NormalizedBoneNode | null;
+  rightLowerLeg: NormalizedBoneNode | null;
 }
 
 export interface VrmNormalizedMotorResult {
@@ -160,6 +174,94 @@ export function applyVrmNormalizedMotorFrame(
     reason: controlledBones.length ? "normalized-motor-applied" : "normalized-rig-unavailable",
     controlledBones,
     available,
+  };
+}
+
+/**
+ * Resolve the optional full-body normalized rig. Uses the same normalized proxy
+ * surface as the gaze/gesture controller, so there is still one command surface.
+ */
+export function resolveVrmFullBodyRig(vrm: VRM): VrmFullBodyRig {
+  const base = resolveVrmNormalizedMotorRig(vrm);
+  const humanoid = vrm?.humanoid;
+  const resolve = (name: string): NormalizedBoneNode | null => {
+    if (!humanoid || typeof humanoid.getNormalizedBoneNode !== "function") return null;
+    try {
+      return humanoid.getNormalizedBoneNode(name as never) as NormalizedBoneNode | null;
+    } catch {
+      return null;
+    }
+  };
+  return {
+    ...base,
+    spine: resolve("spine"),
+    leftLowerArm: resolve("leftLowerArm"),
+    rightLowerArm: resolve("rightLowerArm"),
+    leftUpperLeg: resolve("leftUpperLeg"),
+    rightUpperLeg: resolve("rightUpperLeg"),
+    leftLowerLeg: resolve("leftLowerLeg"),
+    rightLowerLeg: resolve("rightLowerLeg"),
+  };
+}
+
+const CHANNEL_LIMIT: Record<string, number> = {
+  headYaw: 0.5, headPitch: 0.45, headRoll: 0.5, torsoYaw: 0.5, torsoPitch: 0.4,
+  leftShoulder: 0.7, rightShoulder: 0.7, leftElbow: 1.4, rightElbow: 1.4,
+  leftHip: 0.8, rightHip: 0.8, leftKnee: 1.4, rightKnee: 1.4,
+  leftAnkle: 0.5, rightAnkle: 0.5, rootYaw: 0.9,
+};
+
+const scaleChannel = (channel: BodyChannel, value: number): number => {
+  const limit = CHANNEL_LIMIT[channel];
+  if (limit === undefined || !Number.isFinite(value)) return 0;
+  return Math.max(-limit, Math.min(limit, value * limit));
+};
+
+export interface VrmFullBodyApplyResult {
+  applied: boolean;
+  reason: "full-body-channels-applied" | "no-supported-full-body-channels";
+  controlledBones: string[];
+}
+
+/**
+ * Apply renderer-neutral arbiter channels to normalized humanoid bones.
+ *
+ * Upper-arm bones are intentionally NOT written here: the gaze/gesture
+ * controller (`applyVrmNormalizedMotorFrame`) owns the shoulders via arm intents,
+ * so writing them twice would double-drive the same bone. This function owns
+ * elbow, hip, knee and spine. Channels without a mapping are ignored rather than
+ * guessed, and it reports only the bones it actually wrote — never a visual claim.
+ */
+export function applyVrmFullBodyChannels(vrm: VRM, channels: Readonly<Partial<Record<BodyChannel, number>>>): VrmFullBodyApplyResult {
+  const rig = resolveVrmFullBodyRig(vrm);
+  const controlledBones: string[] = [];
+  // The gaze/gesture pass resets head/neck/upper-arm bones every frame; this pass
+  // owns the remaining bones, so it must do the same or the additive writes below
+  // accumulate across frames. Reset every owned bone to identity first so a channel
+  // that stops being emitted returns to rest instead of freezing at its last value.
+  const owned = [rig.spine, rig.leftLowerArm, rig.rightLowerArm, rig.leftUpperLeg, rig.rightUpperLeg, rig.leftLowerLeg, rig.rightLowerLeg];
+  const resetSeen = new Set<NormalizedBoneNode>();
+  for (const node of owned) {
+    if (!node || resetSeen.has(node)) continue;
+    resetSeen.add(node);
+    node.rotation.set(0, 0, 0);
+  }
+  const write = (node: NormalizedBoneNode | null, axis: "x" | "z", value: number, name: string) => {
+    if (!node || value === 0) return;
+    node.rotation[axis] = value;
+    controlledBones.push(name);
+  };
+  write(rig.spine, "x", scaleChannel("torsoPitch", channels.torsoPitch ?? 0), "spine");
+  write(rig.leftLowerArm, "z", scaleChannel("leftElbow", channels.leftElbow ?? 0), "leftLowerArm");
+  write(rig.rightLowerArm, "z", scaleChannel("rightElbow", channels.rightElbow ?? 0), "rightLowerArm");
+  write(rig.leftUpperLeg, "z", scaleChannel("leftHip", channels.leftHip ?? 0), "leftUpperLeg");
+  write(rig.rightUpperLeg, "z", scaleChannel("rightHip", channels.rightHip ?? 0), "rightUpperLeg");
+  write(rig.leftLowerLeg, "z", scaleChannel("leftKnee", channels.leftKnee ?? 0), "leftLowerLeg");
+  write(rig.rightLowerLeg, "z", scaleChannel("rightKnee", channels.rightKnee ?? 0), "rightLowerLeg");
+  return {
+    applied: controlledBones.length > 0,
+    reason: controlledBones.length ? "full-body-channels-applied" : "no-supported-full-body-channels",
+    controlledBones,
   };
 }
 
