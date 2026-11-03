@@ -476,7 +476,7 @@ export class CognitiveEventFabric {
    * user content, model chain-of-thought or free-form reflection text.
    */
   recordMetacognitiveEpisode(input:{
-    tick:number;cycleId:string;actionEventId:string;outcomeEventId:string;learningEventId:string;
+    tick:number;cycleId:string;actionEventId:string;outcomeEventId:string;learningEventId:string;observationEventId?:string;predictionEventId?:string;
     predictedOutcomeHash:string;observedOutcomeHash:string;decisionRationaleHash:string;
     predictionError01:number;confidence01:number;
     reflectionKind:'none'|'calibration'|'contradiction'|'limitation'|'insight';
@@ -497,12 +497,20 @@ export class CognitiveEventFabric {
     const action=byId.get(String(input.actionEventId??''));
     const outcome=byId.get(String(input.outcomeEventId??''));
     const learning=byId.get(String(input.learningEventId??''));
+    const observation=input.observationEventId?byId.get(String(input.observationEventId)):undefined;
+    const prediction=input.predictionEventId?byId.get(String(input.predictionEventId)):undefined;
     if(!action||!outcome||!learning)return{resolved:false,replayed:false,reason:'causal-parent-missing'};
+    if(input.observationEventId&&(!observation||observation.stage!=='observation'||observation.tick!==input.tick))return{resolved:false,replayed:false,reason:'observation-parent-invalid'};
+    if(input.predictionEventId&&(!prediction||prediction.stage!=='prediction'||prediction.tick!==input.tick))return{resolved:false,replayed:false,reason:'prediction-parent-invalid'};
+    if(observation&&prediction&&!prediction.parentIds.includes(observation.id))return{resolved:false,replayed:false,reason:'prediction-observation-lineage-broken'};
+    if(prediction&&!action.parentIds.includes(prediction.id))return{resolved:false,replayed:false,reason:'action-prediction-lineage-broken'};
+    if(observation&&!prediction&&!action.parentIds.includes(observation.id))return{resolved:false,replayed:false,reason:'action-observation-lineage-broken'};
     if(action.stage!=='action'||outcome.stage!=='outcome'||learning.stage!=='learning')return{resolved:false,replayed:false,reason:'causal-parent-stage-invalid'};
     if(action.tick!==input.tick||outcome.tick!==input.tick||learning.tick!==input.tick)return{resolved:false,replayed:false,reason:'causal-parent-tick-mismatch'};
     if(!outcome.parentIds.includes(action.id)||!learning.parentIds.includes(outcome.id))return{resolved:false,replayed:false,reason:'causal-lineage-broken'};
     const normalized={
       tick:input.tick,cycleIdHash:sha256Stable(cycleId),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
+      observationEventId:observation?.id??null,predictionEventId:prediction?.id??null,
       predictedOutcomeHash:input.predictedOutcomeHash.toLowerCase(),observedOutcomeHash:input.observedOutcomeHash.toLowerCase(),
       decisionRationaleHash:input.decisionRationaleHash.toLowerCase(),predictionError01:input.predictionError01,
       confidence01:input.confidence01,reflectionKind:input.reflectionKind,correctionDisposition:input.correctionDisposition,
@@ -515,7 +523,7 @@ export class CognitiveEventFabric {
       return{resolved:true,replayed:true,eventId,projectionHash};
     }
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
-    const event=this.append({id:eventId,tick:input.tick,stage:'metacognition',source:'metacognitive-episode-ledger',parentIds:[learning.id,outcome.id],external:false,confidence01:input.confidence01,at,payload:{...normalized,projectionHash}});
+    const event=this.append({id:eventId,tick:input.tick,stage:'metacognition',source:'metacognitive-episode-ledger',parentIds:[learning.id,outcome.id,...(prediction?[prediction.id]:[]),...(observation?[observation.id]:[])],external:false,confidence01:input.confidence01,at,payload:{...normalized,projectionHash}});
     return{resolved:true,replayed:false,eventId:event.id,projectionHash};
   }
 

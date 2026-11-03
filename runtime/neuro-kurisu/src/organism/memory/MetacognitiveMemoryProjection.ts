@@ -1,4 +1,4 @@
-import type { CognitiveEventNode } from '../system/CognitiveEventFabric.ts';
+import { CognitiveEventFabric, type CognitiveEventNode } from '../system/CognitiveEventFabric.ts';
 import { MemoryOS2, type MemoryItem2 } from '../developmental/MemoryOS2.ts';
 import {
   MemoryConsolidationController,
@@ -17,6 +17,8 @@ type EpisodeProjection = {
   parentIds: string[];
   cycleIdHash: string;
   actionEventId: string;
+  observationEventId: string | null;
+  predictionEventId: string | null;
   outcomeEventId: string;
   learningEventId: string;
   predictedOutcomeHash: string;
@@ -75,6 +77,8 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
   const fields = {
     cycleIdHash: ownData(payload, 'cycleIdHash'),
     actionEventId: ownData(payload, 'actionEventId'),
+    observationEventId: ownData(payload, 'observationEventId'),
+    predictionEventId: ownData(payload, 'predictionEventId'),
     outcomeEventId: ownData(payload, 'outcomeEventId'),
     learningEventId: ownData(payload, 'learningEventId'),
     predictedOutcomeHash: ownData(payload, 'predictedOutcomeHash'),
@@ -100,11 +104,17 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
   }
   if (!parentIds.includes(fields.learningEventId as string)
     || !parentIds.includes(fields.outcomeEventId as string)) return null;
+  const observationEventId = typeof fields.observationEventId === 'string' ? fields.observationEventId : null;
+  const predictionEventId = typeof fields.predictionEventId === 'string' ? fields.predictionEventId : null;
+  if ((observationEventId && !parentIds.includes(observationEventId))
+    || (predictionEventId && !parentIds.includes(predictionEventId))) return null;
 
   return {
     id, tick: tick as number, at, parentIds,
     cycleIdHash: fields.cycleIdHash as string,
     actionEventId: fields.actionEventId as string,
+    observationEventId,
+    predictionEventId,
     outcomeEventId: fields.outcomeEventId as string,
     learningEventId: fields.learningEventId as string,
     predictedOutcomeHash: fields.predictedOutcomeHash as string,
@@ -188,6 +198,10 @@ export function persistMetacognitiveEpisode(
       sourceEventId: episode.id,
       cycleIdHash: episode.cycleIdHash,
       actionEventId: episode.actionEventId,
+      observationId: episode.observationEventId ?? '',
+      decisionId: episode.actionEventId,
+      outcomeDirection: episode.predictionError01 >= 0.5 ? 'prediction-mismatch' : 'prediction-aligned',
+      predictionEventId: episode.predictionEventId ?? '',
       outcomeEventId: episode.outcomeEventId,
       learningEventId: episode.learningEventId,
       projectionHash: episode.projectionHash,
@@ -222,4 +236,26 @@ export function persistMetacognitiveEpisode(
     memory: stored,
     consolidation: decision,
   };
+}
+
+
+/**
+ * One-call bridge for the runtime cycle: append/replay the causal episode, then
+ * project it into MemoryOS2 and the existing consolidation ranker. If memory
+ * persistence is interrupted, repeating the same input safely completes it.
+ */
+export function recordAndPersistMetacognitiveEpisode(
+  fabric: CognitiveEventFabric,
+  input: Parameters<CognitiveEventFabric['recordMetacognitiveEpisode']>[0],
+  memory: MemoryOS2,
+  consolidation: MemoryConsolidationController,
+): {
+  episode: ReturnType<CognitiveEventFabric['recordMetacognitiveEpisode']>;
+  projection: MetacognitiveMemoryProjectionResult | null;
+} {
+  const episode = fabric.recordMetacognitiveEpisode(input);
+  if (!episode.resolved || !episode.eventId) return { episode, projection: null };
+  const event = fabric.recent(256).find(row => row.id === episode.eventId);
+  if (!event) throw new Error('metacognitive-memory-projection-event-not-retained');
+  return { episode, projection: persistMetacognitiveEpisode(event, memory, consolidation) };
 }
