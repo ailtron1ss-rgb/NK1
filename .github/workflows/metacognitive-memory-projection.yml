@@ -33,6 +33,9 @@ jobs:
           package-manager-cache: false
       - name: Run metacognitive memory projection regressions
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/workpass642-metacognitive-memory-projection.mjs
+      - name: Install pinned TypeScript compiler for semantic typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm install --no-save --package-lock=false typescript@5.9.3
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: node scripts/typecheck-runtime.mjs
