@@ -170,7 +170,7 @@ function main() {
     artifactCoveragePercent,
     testHarnessCoveragePercent,
     verifiedEfficacyPercent,
-    disclaimer: 'Artifact coverage measures the presence of implementation/test artifacts only. Verified efficacy counts only JSON evidence with verified=true, exact current HEAD SHA, and every workstream-specific metric threshold. Neither percentage alone means product readiness.',
+    disclaimer: 'Artifact coverage measures implementation artifact presence; test harness coverage measures whether test scripts exist, not whether they pass. Verified efficacy counts only JSON evidence with verified=true, exact current HEAD SHA, and every workstream-specific metric threshold. Neither percentage alone means product readiness.',
     workstreams: workstreams.sort((a, b) => b.weight - a.weight),
   };
 
@@ -188,7 +188,7 @@ function main() {
   console.log(`NK1 PROGRESS — artifacts ${artifactCoveragePercent}% | test harness ${testHarnessCoveragePercent}% | verified efficacy ${verifiedEfficacyPercent}% | SHA ${currentSha.slice(0, 12)}\n`);
   for (const ws of report.workstreams) {
     const bar = '█'.repeat(Math.round(ws.artifactPercent / 10)).padEnd(10, '░');
-    console.log(`${bar} artifact ${String(ws.artifactPercent).padStart(3)}% | evidence ${String(ws.evidencePercent).padStart(3)}% | w=${String(ws.weight).padStart(2)} | ${ws.title}`);
+    console.log(`${bar} artifact ${String(ws.artifactPercent).padStart(3)}% | harness ${String(ws.testHarnessPercent).padStart(3)}% | evidence ${String(ws.evidencePercent).padStart(3)}% | w=${String(ws.weight).padStart(2)} | ${ws.title}`);
     if (ws.artifactMissing.length) console.log(`        missing artifacts: ${ws.artifactMissing.join('; ')}`);
     if (ws.testHarnessMissing.length) console.log(`        missing test harnesses: ${ws.testHarnessMissing.join('; ')}`);
     if (ws.evidenceMissing.length) console.log(`        missing verified evidence: ${ws.evidenceMissing.join('; ')}`);
