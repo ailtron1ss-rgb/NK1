@@ -1,6 +1,6 @@
 {
   "schema": "nk1.progress-workstreams.v1",
-  "note": "Weights are planning priorities, not measured quality. A workstream percentage is derived from machine-checkable evidence probes only; it must never be raised by writing prose, adding files, or counting tests.",
+  "note": "Weights are planning priorities, not measured quality. A workstream percentage is derived from machine-checkable evidence probes only; it must never be raised by writing prose, adding files, or counting tests. Evidence artifacts must assert \"verified\": true to count.",
   "workstreams": [
     {
       "id": "W1-runtime-integrity",
@@ -19,9 +19,10 @@
       "weight": 16,
       "endGoal": "MemoryOS2 as the single owner, with proven recallDelta > 0 on an immutable RU/EN holdout across paired seeds, plus correct abstention and forgetting.",
       "probes": [
-        { "id": "memory-integrity-test", "kind": "file-exists", "path": "runtime/neuro-kurisu/tests/memory-restore-integrity.mjs" },
+        { "id": "memory-restore-integrity", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:memory-restore-integrity" },
+        { "id": "memory-retrieval-benchmark", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:memory-retrieval-benchmark" },
         { "id": "holdout-pairing-test", "kind": "file-exists", "path": "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md" },
-        { "id": "retrieval-uplift-evidence", "kind": "file-exists", "path": "docs/evidence/retrieval-uplift.json" }
+        { "id": "retrieval-uplift-evidence", "kind": "file-contains", "path": "docs/evidence/retrieval-uplift.json", "needle": "\"verified\": true" }
       ]
     },
     {
@@ -32,7 +33,7 @@
       "probes": [
         { "id": "verified-outcome-gate", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts" },
         { "id": "authenticated-approval", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts" },
-        { "id": "transfer-evidence", "kind": "file-exists", "path": "docs/evidence/learning-transfer.json" }
+        { "id": "transfer-evidence", "kind": "file-contains", "path": "docs/evidence/learning-transfer.json", "needle": "\"verified\": true" }
       ]
     },
     {
@@ -43,6 +44,7 @@
       "probes": [
         { "id": "source-graph", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/analysis/SourceGraph.ts" },
         { "id": "self-modification-guard", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/analysis/SelfModificationGuard.ts" },
+        { "id": "proxy-divergence-guard", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/analysis/ProxyDivergenceGuard.ts" },
         { "id": "self-analysis-test", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:self-analysis-substrate" }
       ]
     },
@@ -53,7 +55,8 @@
       "endGoal": "Explainable self-initiated Perceive->Appraise->Plan->Act->Reflect cycles over soak, bounded by budget and stoppable by the user.",
       "probes": [
         { "id": "cadence-test", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:big-pass-224" },
-        { "id": "soak-evidence", "kind": "file-exists", "path": "docs/evidence/autonomy-soak.json" }
+        { "id": "self-agency-live", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:self-agency:live" },
+        { "id": "soak-evidence", "kind": "file-contains", "path": "docs/evidence/autonomy-soak.json", "needle": "\"verified\": true" }
       ]
     },
     {
@@ -64,8 +67,8 @@
       "probes": [
         { "id": "vrm-humanoid-test", "kind": "file-exists", "path": "app/scripts/vrm-humanoid-rig-adapter.test.mjs" },
         { "id": "embodiment-switch-test", "kind": "file-exists", "path": "app/scripts/embodiment-switch.test.mjs" },
-        { "id": "browser-e2e-evidence", "kind": "file-exists", "path": "docs/evidence/browser-embodiment-e2e.json" },
-        { "id": "device-e2e-evidence", "kind": "file-exists", "path": "docs/evidence/device-voice-e2e.json" }
+        { "id": "browser-e2e-evidence", "kind": "file-contains", "path": "docs/evidence/browser-embodiment-e2e.json", "needle": "\"verified\": true" },
+        { "id": "device-e2e-evidence", "kind": "file-contains", "path": "docs/evidence/device-voice-e2e.json", "needle": "\"verified\": true" }
       ]
     },
     {
@@ -76,7 +79,7 @@
       "probes": [
         { "id": "action-gateway", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts" },
         { "id": "threat-model", "kind": "file-exists", "path": "docs/NK1_THREAT_MODEL_RU.md" },
-        { "id": "tamper-tests", "kind": "file-exists", "path": "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs" }
+        { "id": "tamper-tests", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:self-agency:authority" }
       ]
     },
     {
@@ -98,7 +101,7 @@
       "probes": [
         { "id": "license-review-file", "kind": "file-exists", "path": "contracts/RELEASE_LICENSE_REVIEW.json" },
         { "id": "license-review-closed", "kind": "file-contains", "path": "contracts/RELEASE_LICENSE_REVIEW.json", "needle": "\"redistributionApproved\": true" },
-        { "id": "release-evidence", "kind": "file-exists", "path": "docs/evidence/release-publish.json" }
+        { "id": "release-evidence", "kind": "file-contains", "path": "docs/evidence/release-publish.json", "needle": "\"verified\": true" }
       ]
     }
   ]
