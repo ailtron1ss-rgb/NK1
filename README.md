@@ -39,10 +39,11 @@ SHA-256 полного архива:
 ## Стратегический мастер-план и трекер прогресса
 
 - **Мастер-план (10 жизненно важных этапов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md)
-- **Реестр статусов и отслеживание прогресса:** [docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md)
+- **Единая архитектура искусственного мозга (бионический синтез):** [docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_2026-11-03_RU.md](docs/NK1_UNIFIED_BRAIN_ARCHITECTURE_2026-11-03_RU.md)
+- **Реестр статусов и отслеживание прогресса:** [docs/PROJECT_PROGRESS_TRACKER_2026-11-03_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-11-03_RU.md)
 - **Протокол продвижения статусов:** `PLANNED` → `IMPLEMENTED` → `TESTED` → `INTEGRATED` → `MEASURED` → `RELEASED`
 - **Проверка воспроизводимости релизов (Этап 1):** `bash scripts/verify-release-reproducibility.sh`
 
 ## Следующий этап
 
-Следующий крупный проход должен сосредоточиться на независимой оценке retrieval/learning: paired seeds, неизменяемый holdout, task success, regret, calibration, forgetting, catastrophic failures и ресурсная стоимость. Ничего не продвигать автоматически без устойчивого улучшения на независимом наборе.
+Следующий крупный проход сосредоточен на реализации 5 мега-проходов: метакогнитивное замыкание, пространственно-соматическая память (LongMemEval), многорежимная моторика (Live2D/2.5D/3D VRM Rig), адаптация континуального обучения (River/Avalanche) и независимая сертификация с полным CycloneDX 1.5 SBOM.
