@@ -21,7 +21,7 @@ The weighted functional engineering maturity remains **46%** and release readine
 | Donor provenance and integration plan | #721 / research/donor-source-intake-20261103 | 80% | Archive digests, 22 nested ZIP snapshots / 21 unique sources recorded; current doc CI green | Path-level license/SBOM checks and mechanism-by-mechanism integration decisions |
 | Read-set freshness | #722 / aspect/neurok-os-readset-freshness-20261103 | 80% | Exact head f27b1bc46cdb…; focused read-set workflow and parent OS workflow success | Wire into mandatory patch admission; signed receipts or trusted provenance; independent review |
 | Patch provenance / policy preflight | #723 / aspect/neurok-os-patch-sandbox-20261103 | 100% for parent-branch scope | Merged 2026-11-03 into parent branch as 8fa7bf8023ed…; 3/3 exact-head checks success | Not in canonical source; actual isolated patch apply, test sandbox and rollback remain unimplemented |
-| Spatial MemoryOS2 recall | #730 / aspect/memory-spatial-recall-20261103 | 70% | Exact head 421621fbb92c…; spatial regressions + runtime typecheck green; 10k index stress: p95 1.195 ms over 60 top-64 queries; 13 broader exact-head workflows green before the stress-test update | Paired full-retrieval quality/latency probes; perception and avatar/world-model wiring |
+| Spatial MemoryOS2 recall | #730 / aspect/memory-spatial-recall-20261103 | 85% | Parent head 421621fbb92c…; 10k spatial-index stress p95 1.195 ms over 60 top-64 queries; #738 five-seed exact-head holdout at 2444de57fb13…: mean recall@10 0.00→1.00, delta +1.00 on all five seeds, zero cross-frame/radius false positives; #735 bridge integration and 9 unique broad workflows green at 1e454ea31b09… | Real P41 camera/world holdout, full retrieval latency, coordinate calibration/unit audit, avatar/world-model action coupling |
 
 Branch percentages describe delivery of each isolated engineering task, not intelligence or the readiness of the whole system. They do not alter the 46% weighted baseline until integration gates are passed.
 
@@ -48,7 +48,7 @@ Branch percentages describe delivery of each isolated engineering task, not inte
 - Frame isolation, coordinate/radius bounds, query-cell limits, candidate budget and proximity ranking are enforced.
 - Restore, deduplicated re-encoding, updateContext and forget/eviction maintain index consistency.
 - Text-only retrieval is unchanged and spatial retrieval only activates for an explicit valid spatial query.
-- No recall uplift is claimed yet. A dedicated stress test indexed 10,000 spatial rows and measured p95 1.195 ms over 60 bounded top-64 spatial-index queries on GitHub Actions; this measures the derived index path only, not the complete MemoryOS2 retrieval or perception-to-action pipeline.
+- Controlled spatial-retrieval uplift is now demonstrated on the synthetic five-seed holdout: baseline mean recall@10 0.00, spatial mean recall@10 1.00, delta +1.00 on every seed, and zero cross-frame or out-of-radius/unlocated results. This does not yet establish real-world perception recall or transfer. A separate 10,000-row index stress test measured p95 1.195 ms over 60 bounded top-64 spatial-index queries; this measures the derived index path only, not the complete MemoryOS2 retrieval or perception-to-action pipeline.
 
 ## Donor source choices
 
@@ -65,6 +65,13 @@ Next extraction priorities:
 6. llama.cpp: optional local inference provider; evaluate memory/thermal budget and model quality on target devices before making it a dependency.
 
 License rules: archive ZIP hashes are recorded, but ZIP branch names do not prove upstream Git commit identity. AutoGPT platform carries PolyForm Shield constraints; AutoGen and OWL need path-level license review. No wholesale source copying is approved by this report.
+
+
+### Pass 2 evidence update — 2026-11-03
+
+- PR #735, child of #730: grounded P41 vision observation → MemoryFabric → canonical MemoryOS2 integration; only fresh, visible, explicitly observed vision positions are admitted; 90-second freshness window; exact-head focused bridge tests and runtime typecheck passed at `1e454ea31b09a4a8086b599dc1071c2a5026e10c`.
+- PR #738, sibling of #730: five-seed spatial-vs-text synthetic holdout passed at `2444de57fb13d6cbc406e9ef6a20ba804364b865`; baseline recall@10 0.00, spatial recall@10 1.00, +1.00 delta on every seed, no cross-frame or out-of-radius false positives; runtime typecheck passed.
+- Both remain open draft PRs stacked on #730. These tests establish retrieval and integration contracts, not calibrated real-world spatial understanding or general intelligence.
 
 ## Next engineering passes
 
