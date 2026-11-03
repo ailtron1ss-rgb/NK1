@@ -112,4 +112,5 @@ test('fails closed when hostile proxy reflection throws', () => {
   assert.equal(frame.dominantChannel, 'none');
   assert.ok(Object.values(frame.allocation01).every(value => value === 0));
 });
-\nconsole.log('WORKPASS_INTEROCEPTIVE_PRECISION_ALLOCATION=PASS');\n
+
+console.log('WORKPASS_INTEROCEPTIVE_PRECISION_ALLOCATION=PASS');
