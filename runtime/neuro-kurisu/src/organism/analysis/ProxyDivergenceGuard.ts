@@ -33,11 +33,11 @@ export interface DivergencePolicy {
   maxInversionRate: number;
 }
 
-export const DEFAULT_DIVERGENCE_POLICY: DivergencePolicy = {
+export const DEFAULT_DIVERGENCE_POLICY: DivergencePolicy = Object.freeze({
   minPairs: 5,
   maxMeanDivergence: 0.15,
   maxInversionRate: 0.2,
-};
+});
 
 export type DivergenceDecision = 'supported' | 'refused';
 
