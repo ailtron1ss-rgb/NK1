@@ -1,3 +1,9 @@
+## [NK1][Body] Renderer capability manifest, motion library and arbiter-driven 2D/3D bodies (2026-11-03)
+- Add a versioned, truthful renderer capability manifest with a fail-closed registry; the UI switch table now derives from it so a renderer cannot advertise a channel it does not implement.
+- Add a renderer-neutral motion library (16 programs) and an intent-driven arbiter with bounded cross-fade, an additive idle-breath overlay, energy-scaled amplitude and a layer cap.
+- Drive the 3D normalized humanoid proxy (spine, elbows, hips, knees) from arbiter channels without double-driving shoulders; drive the Original 2D SVG rig from the same channel vocabulary.
+- Tests: `app/scripts/body-systems.test.mjs` 22/22, `npm run test:workpass71`, app `test:scripts` 452/452, typecheck and build PASS. See `docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md`.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
