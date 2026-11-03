@@ -190,7 +190,14 @@ assert.ok(
   realProtected.some((f) => f.includes('P23LearningEngine')),
   'real tree must expose P23LearningEngine as a protected capability',
 );
-for (const owner of ['ProxyDivergenceGuard', 'SelfImprovementCandidatePool', 'CanonicalSelfAgencyAuthority']) {
+for (const owner of [
+  'ProxyDivergenceGuard',
+  'SelfImprovementCandidatePool',
+  'CanonicalSelfAgencyAuthority',
+  'KurisuCanonProfile',
+  'OrganismCore',
+  'OrganismRuntime',
+]) {
   assert.ok(realProtected.some((f) => f.includes(owner)), `real source graph must protect ${owner}`);
 }
 const forbiddenGuard = evaluateModification(
