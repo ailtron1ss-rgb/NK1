@@ -8,7 +8,7 @@ import { sha256Stable } from '../core/StableSerialization.ts';
  * world or goals. It only records the causal spine of an operational cycle:
  * observation -> prediction -> action -> outcome -> learning/self update.
  */
-export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update'|'tool-action'|'tool-outcome'|'tool-evidence'|'external-evidence'|'tool-reconciliation';
+export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update'|'tool-action'|'tool-outcome'|'tool-evidence'|'external-evidence'|'tool-reconciliation'|'metacognition';
 
 export interface CognitiveEventNode {
   id: string;
@@ -127,7 +127,7 @@ function cleanRestoredPayload(value:unknown,depth=0):Record<string,unknown> {
   }
   return result;
 }
-const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
+const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation','metacognition']);
 
 export class CognitiveEventFabric {
   private readonly capacity:number;
@@ -465,6 +465,58 @@ export class CognitiveEventFabric {
     if(input.learning){const e=this.append({tick:input.tick,stage:'learning',source:input.learning.source??'learning',parentIds:parents(ids.outcome,ids.action),confidence01:input.learning.confidence01,payload:input.learning.payload,at:input.at});ids.learning=e.id;}
     if(input.selfUpdate){const e=this.append({tick:input.tick,stage:'self-update',source:input.selfUpdate.source??'self-update',parentIds:parents(ids.learning,ids.outcome),confidence01:input.selfUpdate.confidence01,payload:input.selfUpdate.payload,at:input.at});ids.selfUpdate=e.id;}
     return ids;
+  }
+
+
+  /**
+   * Record one privacy-minimised metacognitive episode in the canonical causal
+   * ledger. This is deliberately not a second memory store: it links the
+   * prediction/action/outcome/learning events already owned by this fabric.
+   * Only hashes and bounded categorical diagnostics are persisted, never raw
+   * user content, model chain-of-thought or free-form reflection text.
+   */
+  recordMetacognitiveEpisode(input:{
+    tick:number;cycleId:string;actionEventId:string;outcomeEventId:string;learningEventId:string;
+    predictedOutcomeHash:string;observedOutcomeHash:string;decisionRationaleHash:string;
+    predictionError01:number;confidence01:number;
+    reflectionKind:'none'|'calibration'|'contradiction'|'limitation'|'insight';
+    correctionDisposition:'none'|'staged'|'accepted'|'rejected'|'rolled-back';
+    at?:number;
+  }):{resolved:boolean;replayed:boolean;eventId?:string;projectionHash?:string;reason?:string}{
+    if(!Number.isSafeInteger(input.tick)||input.tick<0)return{resolved:false,replayed:false,reason:'tick-invalid'};
+    const cycleId=String(input.cycleId??'').trim().slice(0,180);
+    if(!cycleId)return{resolved:false,replayed:false,reason:'cycle-id-required'};
+    const hashes=[input.predictedOutcomeHash,input.observedOutcomeHash,input.decisionRationaleHash];
+    if(hashes.some(value=>typeof value!=='string'||!/^[a-f0-9]{64}$/i.test(value)))return{resolved:false,replayed:false,reason:'evidence-hash-invalid'};
+    if(typeof input.predictionError01!=='number'||!Number.isFinite(input.predictionError01)||input.predictionError01<0||input.predictionError01>1)return{resolved:false,replayed:false,reason:'prediction-error-invalid'};
+    if(typeof input.confidence01!=='number'||!Number.isFinite(input.confidence01)||input.confidence01<0||input.confidence01>1)return{resolved:false,replayed:false,reason:'confidence-invalid'};
+    const reflectionKinds=new Set(['none','calibration','contradiction','limitation','insight']);
+    const dispositions=new Set(['none','staged','accepted','rejected','rolled-back']);
+    if(!reflectionKinds.has(input.reflectionKind)||!dispositions.has(input.correctionDisposition))return{resolved:false,replayed:false,reason:'reflection-disposition-invalid'};
+    const byId=new Map(this.events.map(event=>[event.id,event] as const));
+    const action=byId.get(String(input.actionEventId??''));
+    const outcome=byId.get(String(input.outcomeEventId??''));
+    const learning=byId.get(String(input.learningEventId??''));
+    if(!action||!outcome||!learning)return{resolved:false,replayed:false,reason:'causal-parent-missing'};
+    if(action.stage!=='action'||outcome.stage!=='outcome'||learning.stage!=='learning')return{resolved:false,replayed:false,reason:'causal-parent-stage-invalid'};
+    if(action.tick!==input.tick||outcome.tick!==input.tick||learning.tick!==input.tick)return{resolved:false,replayed:false,reason:'causal-parent-tick-mismatch'};
+    if(!outcome.parentIds.includes(action.id)||!learning.parentIds.includes(outcome.id))return{resolved:false,replayed:false,reason:'causal-lineage-broken'};
+    const normalized={
+      tick:input.tick,cycleIdHash:sha256Stable(cycleId),actionEventId:action.id,outcomeEventId:outcome.id,learningEventId:learning.id,
+      predictedOutcomeHash:input.predictedOutcomeHash.toLowerCase(),observedOutcomeHash:input.observedOutcomeHash.toLowerCase(),
+      decisionRationaleHash:input.decisionRationaleHash.toLowerCase(),predictionError01:input.predictionError01,
+      confidence01:input.confidence01,reflectionKind:input.reflectionKind,correctionDisposition:input.correctionDisposition,
+    };
+    const projectionHash=sha256Stable(normalized);
+    const eventId='cef:metacognitive:'+sha256Stable({cycleIdHash:normalized.cycleIdHash,tick:input.tick,action:action.id}).slice(0,48);
+    const prior=byId.get(eventId);
+    if(prior){
+      if(prior.stage!=='metacognition'||prior.payload.projectionHash!==projectionHash)throw new Error('metacognitive-episode-id-conflict');
+      return{resolved:true,replayed:true,eventId,projectionHash};
+    }
+    const at=Number.isFinite(input.at)?Number(input.at):Date.now();
+    const event=this.append({id:eventId,tick:input.tick,stage:'metacognition',source:'metacognitive-episode-ledger',parentIds:[learning.id,outcome.id],external:false,confidence01:input.confidence01,at,payload:{...normalized,projectionHash}});
+    return{resolved:true,replayed:false,eventId:event.id,projectionHash};
   }
 
   verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
