@@ -1,3 +1,8 @@
+## 2026-11-03 — Exact-SHA evidence ledger (PR pending)
+
+- Added strict receipt schema and validator with commit-SHA binding, bounded metrics, artifact/dataset digests, secret-like command rejection and immutable local recording.
+- CI artifact publication, cryptographic signing and cross-device evidence synchronization remain future gates.
+
 ## 2026-11-03 — Patch preflight child workstream (PR pending)
 
 - Added unified-diff inspection with SHA-256 provenance, changed-path/hunk ranges, traversal and binary-patch rejection, and policy classification.
