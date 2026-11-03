@@ -93,7 +93,7 @@ try {
     persistence:true,
   }, null, 2));
 } finally {
-  runtime?.stop();
-  runtime2?.stop();
+  await runtime?.stop();
+  await runtime2?.stop();
   await rm(work, { recursive:true, force:true });
 }

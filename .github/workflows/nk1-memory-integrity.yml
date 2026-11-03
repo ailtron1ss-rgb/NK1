@@ -49,10 +49,10 @@ jobs:
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
       - name: Snapshot restore integrity and lineage
-        run: npm --prefix runtime/neuro-kurisu run test:memory-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass76:memory-lineage-integrity
+        run: npm --prefix runtime/neuro-kurisu run test:memory-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass76:memory-lineage-integrity && npm --prefix runtime/neuro-kurisu run test:memory-provenance-lineage-workpass30 && npm --prefix runtime/neuro-kurisu run test:memory-byte-estimate-idempotency && npm --prefix runtime/neuro-kurisu run test:memory-byte-budget-consistency
       - name: Memory lifecycle persistence
-        run: npm --prefix runtime/neuro-kurisu run test:memory-subsystem-state-roundtrip && npm --prefix runtime/neuro-kurisu run test:memory-semantic-vector-integrity
+        run: npm --prefix runtime/neuro-kurisu run test:memory-subsystem-state-roundtrip && npm --prefix runtime/neuro-kurisu run test:memory-semantic-vector-integrity && npm --prefix runtime/neuro-kurisu run test:memory-conflict-revision-graph && npm --prefix runtime/neuro-kurisu run test:memory-temporal-validity-write-guard && npm --prefix runtime/neuro-kurisu run test:memory-capacity-protection && npm --prefix runtime/neuro-kurisu run test:memory-duplicate-id-write-guard && npm --prefix runtime/neuro-kurisu run test:memory-write-defaults-integrity && npm --prefix runtime/neuro-kurisu run test:memory-revision-tip-reachability && npm --prefix runtime/neuro-kurisu run test:memory-evidence-lineage-bytes && npm --prefix runtime/neuro-kurisu run test:memory-live-restore-oracle-fuzz
       - name: Retrieval safety and metadata contracts
-        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-grounded-abstention-workpass574 && npm --prefix runtime/neuro-kurisu run test:memoryos2-metadata-retrieval && npm --prefix runtime/neuro-kurisu run test:memory-fabric-semantic-retrieval
+        run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-grounded-abstention-workpass574 && npm --prefix runtime/neuro-kurisu run test:memory-answerability-word-root && npm --prefix runtime/neuro-kurisu run test:memoryos2-metadata-retrieval && npm --prefix runtime/neuro-kurisu run test:memory-metadata-index-consistency && npm --prefix runtime/neuro-kurisu run test:memory-tip-of-tongue-partial-activation && npm --prefix runtime/neuro-kurisu run test:memory-fabric-semantic-retrieval
       - name: Retrieval benchmark and seed sensitivity
         run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-benchmark && npm --prefix runtime/neuro-kurisu run test:memory-retrieval-experiment
