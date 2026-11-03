@@ -270,6 +270,10 @@ assert.ok(
   realProtected.some((f) => f.includes('PatchReceiptGuard')),
   'real tree must protect the patch receipt verifier from candidate self-modification',
 );
+assert.ok(
+  realProtected.some((f) => f.includes('P36PatchOutcomeEvidenceAuthority')),
+  'real tree must protect the independent patch-outcome evidence authority from candidate self-modification',
+);
 for (const owner of [
   'ProxyDivergenceGuard',
   'SelfImprovementCandidatePool',
