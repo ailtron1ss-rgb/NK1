@@ -68,7 +68,11 @@ try {
   const securityReport = JSON.parse(securityRun.stdout);
   assert.equal(securityReport.workstreams[0].artifactPassed, 0,
     'all probes attempting to escape the repository must fail closed');
-  assert.equal(securityReport.workstreams[0].artifactTotal, 6);
+  assert.equal(securityReport.workstreams[0].artifactTotal, 5,
+    'file/evidence/glob probes must all reject paths outside the repository');
+  assert.equal(securityReport.workstreams[0].testHarnessTotal, 1);
+  assert.equal(securityReport.workstreams[0].testHarnessPassed, 0,
+    'npm-script probes must not read package manifests outside the repository');
 } finally {
   rmSync(fixtureDir, { recursive: true, force: true });
   rmSync(outsideDir, { recursive: true, force: true });
