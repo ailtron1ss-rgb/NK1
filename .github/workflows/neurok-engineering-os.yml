@@ -4,17 +4,18 @@ on:
   pull_request:
     paths:
       - "engineering-os/**"
-      - "tools/neurok-os.mjs"
-      - "tools/neurok-os.test.mjs"
+      - "tools/neurok-os*.mjs"
+      - "tools/neurok-os*.test.mjs"
       - "docs/engineering/NEUROK_ENGINEERING_OS_2026-11-03.md"
+      - "docs/research/NEUROK_MULTI_AGENT_COORDINATION_RESEARCH_2026-11-03.md"
       - ".github/workflows/neurok-engineering-os.yml"
   push:
     branches:
       - "aspect/neurok-engineering-os-20261103"
     paths:
       - "engineering-os/**"
-      - "tools/neurok-os.mjs"
-      - "tools/neurok-os.test.mjs"
+      - "tools/neurok-os*.mjs"
+      - "tools/neurok-os*.test.mjs"
       - ".github/workflows/neurok-engineering-os.yml"
 
 permissions:
@@ -30,7 +31,11 @@ jobs:
           node-version-file: .nvmrc
       - name: Validate capability registry
         run: node tools/neurok-os.mjs validate
-      - name: Run registry safety tests
-        run: node --test tools/neurok-os.test.mjs
+      - name: Run registry and coordinator safety tests
+        run: node --test tools/neurok-os*.test.mjs
       - name: Print control-plane status
         run: node tools/neurok-os.mjs status
+      - name: Check coordinator CLI
+        env:
+          NEUROK_OS_STATE_DIR: ${{ runner.temp }}/neurok-os-claims
+        run: node tools/neurok-os-coordinator.mjs list
