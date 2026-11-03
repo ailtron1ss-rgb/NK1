@@ -23,6 +23,21 @@ let output = '';
 child.stdout.on('data', d => output += d);
 child.stderr.on('data', d => output += d);
 const base = `http://127.0.0.1:${port}`;
+const stopChild = async childProcess => {
+  if (!childProcess || childProcess.exitCode !== null || childProcess.signalCode !== null) return;
+  let timeout;
+  const exited = new Promise(resolve => childProcess.once('exit', resolve));
+  childProcess.kill('SIGTERM');
+  const graceful = await Promise.race([
+    exited.then(() => true),
+    new Promise(resolve => { timeout = setTimeout(() => resolve(false), 3000); }),
+  ]);
+  if (timeout) clearTimeout(timeout);
+  if (!graceful && childProcess.exitCode === null && childProcess.signalCode === null) {
+    childProcess.kill('SIGKILL');
+    await exited;
+  }
+};
 const post = async (route, payload) => fetch(`${base}${route}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
 try {
   let ready = false;
@@ -114,10 +129,7 @@ try {
         originalAfterConflict.result?.reason !== 'duplicate-source-lineage') {
       throw new Error('hexis-original-lineage-must-survive-conflict:' + JSON.stringify(originalAfterConflict));
     }
-    await new Promise(resolve => {
-      if (child.exitCode !== null || child.signalCode !== null) return resolve();
-      child.once('exit', resolve); child.kill('SIGTERM');
-    });
+    await stopChild(child);
     restartedChild = spawn(process.execPath, ['--experimental-strip-types', 'src/server/server.mjs'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
     restartedChild.stdout.on('data', d => restartedOutput += d);
     restartedChild.stderr.on('data', d => restartedOutput += d);
@@ -189,8 +201,8 @@ try {
   if (!ack.ok || ack.result?.status !== 'published') throw new Error('hexis-outbox-ack');
   console.log('HEXIS_SERVER_SMOKE=PASS');
 } finally {
-  if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
-  if (restartedChild && restartedChild.exitCode === null && restartedChild.signalCode === null) restartedChild.kill('SIGTERM');
-  await new Promise(r => setTimeout(r, 400));
-  await rm(stateDir, { recursive: true, force: true });
+  // Both server processes must be fully reaped before deleting their shared
+  // persistence directory; a fixed sleep does not close the file-handle race.
+  await Promise.all([stopChild(child), stopChild(restartedChild)]);
+  await rm(stateDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
