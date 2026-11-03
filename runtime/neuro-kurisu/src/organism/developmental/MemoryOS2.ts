@@ -1653,6 +1653,11 @@ export class MemoryOS2{
    }
  }
  private removeIndexedId(id:string){
+   // Concept postings are derived indexes too: forgetting or evicting a memory
+   // must remove every membership, even if a previous restore left an orphaned one.
+   for(const [groupIndex,ids] of this.conceptGroupIndex){
+     if(ids.delete(id)&&ids.size===0)this.conceptGroupIndex.delete(groupIndex);
+   }
    const item=this.itemIndex.get(id);
    if(item){
      const group=item.revisionGroupId??item.id;
@@ -1734,7 +1739,23 @@ export class MemoryOS2{
    for(const item of this.state.items)for(const token of this.metadataTokens(item)){let posting=expectedMetadataIndex.get(token);if(!posting){posting=new Set<string>();expectedMetadataIndex.set(token,posting);}posting.add(item.id);}
    let metadataIndexMismatch=expectedMetadataIndex.size===this.metadataTokenIndex.size?0:1;
    if(!metadataIndexMismatch)for(const [token,expectedIds] of expectedMetadataIndex){const actual=this.metadataTokenIndex.get(token);if(!actual||actual.size!==expectedIds.size||[...expectedIds].some(id=>!actual.has(id))){metadataIndexMismatch++;break;}}
-   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0&&metadataIndexMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,characterGramVocabulary:this.characterGramIndex.size,metadataIndexMismatch,metadataTokenVocabulary:this.metadataTokenIndex.size,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
+   const expectedConceptIndex=new Map<number,Set<string>>();
+   for(const item of this.state.items){
+     for(const groupIndex of memoryConceptGroupsForTokens(this.tokensFor(item.content))){
+       let posting=expectedConceptIndex.get(groupIndex);
+       if(!posting){posting=new Set<string>();expectedConceptIndex.set(groupIndex,posting);}
+       posting.add(item.id);
+     }
+   }
+   let conceptIndexMismatch=expectedConceptIndex.size===this.conceptGroupIndex.size?0:1;
+   if(!conceptIndexMismatch)for(const [groupIndex,expectedIds] of expectedConceptIndex){
+     const actual=this.conceptGroupIndex.get(groupIndex);
+     if(!actual||actual.size!==expectedIds.size||[...expectedIds].some(id=>!actual.has(id))){
+       conceptIndexMismatch++;break;
+     }
+   }
+   const conceptIndexReferences=[...this.conceptGroupIndex.values()].reduce((total,ids)=>total+ids.size,0);
+   return {pass:staleItemIndex===0&&missingItemIndex===0&&staleExact===0&&staleContent===0&&dfMismatch===0&&characterGramMismatch===0&&metadataIndexMismatch===0&&conceptIndexMismatch===0,items:this.state.items.length,itemIndexSize:this.itemIndex.size,staleItemIndex,missingItemIndex,staleExact,staleContent,dfMismatch,characterGramMismatch,characterGramVocabulary:this.characterGramIndex.size,metadataIndexMismatch,metadataTokenVocabulary:this.metadataTokenIndex.size,conceptIndexMismatch,conceptIndexVocabulary:this.conceptGroupIndex.size,conceptIndexReferences,semanticEmbeddingProvider:'none' as const,semanticVectorUsedForRanking:false};
  }
  /**
   * Read-only /doctor pass adapted from MemFS maintenance: checks memory identity, provenance,
