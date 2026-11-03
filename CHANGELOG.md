@@ -4,6 +4,19 @@
 - Drive the 3D normalized humanoid proxy (spine, elbows, hips, knees) from arbiter channels without double-driving shoulders; drive the Original 2D SVG rig from the same channel vocabulary.
 - Tests: `app/scripts/body-systems.test.mjs` 22/22, `npm run test:workpass71`, app `test:scripts` 452/452, typecheck and build PASS. See `docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md`.
 
+## [NK1][Memory] Narrow sanitized feedback restore type without weakening rejection (2026-11-02)
+- Keep the distinction between an absent feedback record and a malformed feedback record explicit during consolidation restore.
+- Normalize the sanitized nullable result to undefined only after the invalid-snapshot guard, satisfying the declared persisted-state type without accepting malformed feedback.
+- Add a regression proving malformed feedback still resets to the safe default state.
+- Root cause was confirmed by the exact PR #644 typecheck log: TS2322 at MemoryConsolidationController.ts(93,9).
+
+## [NK1][Memory] Harden canonical consolidation and lifecycle restore (2026-11-02)
+- Validate MemoryConsolidationController counters, ratios, feedback and bounded decision history before restoring persisted state.
+- Validate CanonicalMemoryLifecycleAuthority counters, tick and bounded consolidation history; regenerate its diagnostic plan after restore instead of reviving opaque nested state.
+- Reject sparse/accessor-backed histories and recover safely from hostile Proxy traps without executing getters.
+- Add regressions for malformed state, getters, proxies and partial version-1 compatibility; wire the lifecycle test into NK1 memory-integrity CI.
+- Keep MemoryFabric/MemoryOS2 as the canonical memory owner; no parallel store or automatic rewrite policy is introduced.
+
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.
 - Preserve opportunity/skip accounting so deferred operations remain observable.
