@@ -71,6 +71,10 @@ export const PROTECTED_CAPABILITY_FRAGMENTS: readonly string[] = [
   'SelfModificationGuard',
   'ProxyDivergenceGuard',
   'SelfImprovementCandidatePool',
+  // Receipt parsing and cryptographic trust verification must not be editable
+  // by the same candidate whose patch is being verified.
+  'PatchReceiptGuard',
+  'HostOwnedPatchReceiptTrust',
   'DangerModel',
   'CanonicalSelfAgencyAuthority',
   // Identity canon and the orchestration entrypoints must not be editable by
