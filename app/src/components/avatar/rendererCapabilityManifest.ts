@@ -60,10 +60,23 @@ const EXPRESSION_CHANNELS: ReadonlySet<ExpressionChannel> = new Set([
 const isBoundedNonBlank = (value: unknown, max: number): value is string =>
   typeof value === "string" && value.trim().length > 0 && value.length <= max;
 
-const isUniqueStringList = (value: unknown, max: number): value is string[] =>
-  Array.isArray(value) && value.length <= max
-    && value.every((item) => typeof item === "string" && item.trim().length > 0)
-    && new Set(value).size === value.length;
+const isUniqueStringList = (value: unknown, max: number): value is string[] => {
+  if (!Array.isArray(value) || value.length > max) return false;
+  try {
+    const seen = new Set<string>();
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      // Array#every skips holes; a sparse capability list must never be accepted.
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, "value")) return false;
+      const item = descriptor.value;
+      if (typeof item !== "string" || !item.trim() || seen.has(item)) return false;
+      seen.add(item);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Structural validation. Returns every problem rather than the first, so a bad
