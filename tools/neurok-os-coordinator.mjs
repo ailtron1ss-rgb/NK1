@@ -2,6 +2,7 @@
 import { mkdir, readFile, writeFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -99,6 +100,9 @@ export async function claimTask(request, options = {}) {
   const stateDir = path.resolve(options.stateDir ?? process.env.NEUROK_OS_STATE_DIR ?? DEFAULT_STATE_DIR);
   const paths = validateRequest(request);
   const baseSha = request.baseSha.toLowerCase();
+  if (options.currentSha && baseSha !== options.currentSha.toLowerCase()) {
+    throw new Error('claim base SHA does not match the current checkout HEAD');
+  }
   return withLock(stateDir, async () => {
     const now = options.now ?? Date.now();
     const state = await readState(stateDir);
@@ -169,13 +173,14 @@ async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const args = argsOf(rest);
   if (command === 'claim') {
+    const currentSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
     const result = await claimTask({
       taskId: args.task,
       agentId: args.agent,
       baseSha: args.sha,
       paths: (args.paths ?? '').split(','),
       ttlMs: Number(args.ttlMs ?? 3_600_000)
-    });
+    }, { currentSha });
     console.log(JSON.stringify(result, null, 2));
     return;
   }
