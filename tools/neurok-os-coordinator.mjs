@@ -98,6 +98,7 @@ function activeClaims(state, now) {
 export async function claimTask(request, options = {}) {
   const stateDir = path.resolve(options.stateDir ?? process.env.NEUROK_OS_STATE_DIR ?? DEFAULT_STATE_DIR);
   const paths = validateRequest(request);
+  const baseSha = request.baseSha.toLowerCase();
   return withLock(stateDir, async () => {
     const now = options.now ?? Date.now();
     const state = await readState(stateDir);
@@ -105,7 +106,7 @@ export async function claimTask(request, options = {}) {
     const existing = claims.find(item => item.taskId === request.taskId);
     if (existing) {
       const same = existing.agentId === request.agentId &&
-        existing.baseSha === request.baseSha &&
+        existing.baseSha === baseSha &&
         JSON.stringify([...existing.paths].sort()) === JSON.stringify([...paths].sort());
       if (!same) throw new Error(`task already claimed by ${existing.agentId} with a different contract`);
       existing.expiresAt = now + request.ttlMs;
@@ -120,7 +121,7 @@ export async function claimTask(request, options = {}) {
     const claim = {
       taskId: request.taskId,
       agentId: request.agentId,
-      baseSha: request.baseSha.toLowerCase(),
+      baseSha,
       paths,
       createdAt: now,
       renewedAt: now,
