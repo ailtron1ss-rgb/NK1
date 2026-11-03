@@ -219,14 +219,14 @@ function resolveRelativeModule(
   if (!resolved) return null;
 
   const candidates = [resolved];
-  if (/\\.js$/i.test(resolved)) {
-    candidates.push(resolved.replace(/\\.js$/i, '.ts'));
-    candidates.push(resolved.replace(/\\.js$/i, '.tsx'));
-    candidates.push(resolved.replace(/\\.js$/i, '.mts'));
-  } else if (/\\.mjs$/i.test(resolved)) {
-    candidates.push(resolved.replace(/\\.mjs$/i, '.mts'));
-    candidates.push(resolved.replace(/\\.mjs$/i, '.ts'));
-  } else if (!/\\.[A-Za-z0-9]+$/.test(resolved)) {
+  if (/\.js$/i.test(resolved)) {
+    candidates.push(resolved.replace(/\.js$/i, '.ts'));
+    candidates.push(resolved.replace(/\.js$/i, '.tsx'));
+    candidates.push(resolved.replace(/\.js$/i, '.mts'));
+  } else if (/\.mjs$/i.test(resolved)) {
+    candidates.push(resolved.replace(/\.mjs$/i, '.mts'));
+    candidates.push(resolved.replace(/\.mjs$/i, '.ts'));
+  } else if (!/\.[A-Za-z0-9]+$/.test(resolved)) {
     candidates.push(
       resolved + '.ts',
       resolved + '.tsx',
