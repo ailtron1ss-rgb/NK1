@@ -66,6 +66,14 @@
 ### C8. Hindsight — MIT — `EVALUATE` (с оговоркой)
 Заявляет 94.6% LongMemEval; это **vendor-run**, независимой проверки нет. Берём только идею cross-encoder реранка — и только если он реально доступен локально.
 
+### C8a. Hexis — tip-of-tongue / partial activation — MIT — `ADAPT`
+**Проверенный upstream:** [QuixiAI/Hexis, `db/18_functions_tip_of_tongue.sql`](https://github.com/QuixiAI/Hexis/blob/122edeac115f1a3b014d98c0b9f7114fe9746c4b/db/18_functions_tip_of_tongue.sql), файл зафиксирован в commit `122edeac115f1a3b014d98c0b9f7114fe9746c4b`; GitHub API возвращает лицензию репозитория `MIT`.
+**Исходный механизм.** Hexis ищет близкий кластер по embedding centroid и проверяет, что отдельная память не достигла порога сходства: «тема знакома, но конкретное воспоминание не извлечено».
+**Адаптация в NK1.** В открытом [PR #690](https://github.com/ailtron1ss-rgb/NK1/pull/690) механизм реализован внутри единственного владельца `MemoryOS2`: компактные двуязычные concept groups, lexical member check и `retrievalDiagnostics().partialActivations`. Он работает без отдельной БД, pgvector или Apache AGE; сигнал только называет неразрешённую тему и не создаёт воспоминание. Для grounded recall partial activation обязан быть пустым.
+**Ограничение эквивалентности.** Это не порт SQL и не embedding-equivalent реализация Hexis: NK1 использует лексические concept aliases, поэтому возможны пропуски синонимов и морфологии. Следующий этап — парный RU/EN holdout на false-partial и missed-partial; векторный centroid добавлять только при измеренном выигрыше и без второго memory store.
+**Проверка текущего прохода.** `memory-tip-of-tongue-partial-activation.mjs` — отдельный regression; PR #690 на HEAD `7f5c2b6f3d7ee565c5ea837814cd444cb64feb6f` имеет 34/34 успешных workflow. Это подтверждает тестовый контракт, но не независимый retrieval uplift.
+**Решение.** `ADAPT` (модель частичной активации, не upstream SQL).
+
 ---
 
 ## 3. Самоулучшение и отбор кандидатов
