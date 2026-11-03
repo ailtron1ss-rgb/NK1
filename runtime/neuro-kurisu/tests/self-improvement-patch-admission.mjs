@@ -37,3 +37,11 @@ test('refuses a candidate whose evolve block omits the actual changed lines',()=
  {receipt,patchText:patch,expectedBaseSha:baseSha,trustedPublicKeys});
  assert.equal(result.accepted,false); assert.match(result.reason,/changed-lines-outside-evolve-block/);
 });
+test('does not trust keys and base SHA supplied by the candidate proof',()=>{
+ const pool=new SelfImprovementCandidatePool();
+ const result=pool.submitVerified(candidate('self-appointed-authority'),graph,{
+  receipt,patchText:patch,expectedBaseSha:baseSha,trustedPublicKeys,
+ });
+ assert.equal(result.accepted,false,'candidate-supplied public keys must not establish trust');
+ assert.equal(result.reason,'patch-receipt:host-trust-unconfigured');
+});
