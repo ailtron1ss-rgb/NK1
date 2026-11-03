@@ -58,4 +58,12 @@ assert.equal(second.validFromAt,secondAt,'the current validity window must start
 assert.equal(second.validUntilAt,secondAt+90_000,'the freshness expiry must extend from the latest observation');
 assert.equal(second.context.spatialX,'4','the current spatial point must move with the observed track');
 assert.equal(memory.indexDiagnostics().spatialIndex.pass,true,'the derived index must remain aligned with the canonical point');
+
+const delayed=memory.encode(observation(now+500,2));
+assert.equal(delayed.id,first.id,'a delayed observation must still resolve to the canonical entity memory');
+assert.equal(delayed.observedAt,secondAt,'an older observation must not rewind observedAt');
+assert.equal(delayed.validFromAt,secondAt,'an older observation must not rewind the current validity start');
+assert.equal(delayed.validUntilAt,secondAt+90_000,'an older observation must not shorten the current validity window');
+assert.equal(delayed.context.spatialX,'4','an older observation must not move the entity back to a stale coordinate');
+assert.equal(memory.indexDiagnostics().spatialIndex.pass,true,'stale observations must not desynchronize the derived index');
 console.log('MEMORYOS2_SPATIAL_OBSERVATION_REFRESH=PASS');
