@@ -745,7 +745,8 @@ production-ready. Рисовать плейсхолдер и заявлять г
 
 - `node --experimental-strip-types --test app/scripts/depth-rig.test.mjs` — 19/19 PASS (2 новые регрессии падают до фикса).
 - `node --experimental-strip-types --test app/scripts/embodiment-ui-bridge.test.mjs` — 16/16 PASS (2 новые регрессии кроссфейда).
-- `npm --prefix app run test:body-systems` — 28/28 PASS.
+- `npm --prefix app run test:body-systems` — 32/32 PASS.
+- PR [#764](https://github.com/ailtron1ss-rgb/NK1/pull/764) (base `workpass70-source`): exact-head `de31bb387` — 44/45 check-runs success; единственный `cancelled` — суперседированный дубликат `push`-прогона, чей `pull_request`-аналог зелёный. Ветка перебазирована мержем на двинувшийся `workpass70-source`.
 - `npm --prefix app run test:scripts` — 466/466 PASS (2 новые регрессии кроссфейда).
 - `npm --prefix app run typecheck` — PASS.
 - `npm --prefix runtime/neuro-kurisu run test:aspect10:interaction` — 47/47 PASS.
