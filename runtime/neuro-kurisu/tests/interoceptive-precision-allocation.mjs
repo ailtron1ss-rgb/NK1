@@ -89,3 +89,27 @@ test('restores legacy interoceptive snapshots with derived precision diagnostics
   assert.ok(snapshot.lastFrame.precisionAllocation01);
   assert.equal(snapshot.lastFrame.attendedPredictionError01, 0.2);
 });
+
+test('does not invoke accessor-backed input fields', () => {
+  let getterCalls = 0;
+  const input = {
+    thermal: 0.1, cognitiveLoad: 0.1, sleepPressure: 0.1, attentionBudget01: 0.5,
+    get energy() { getterCalls += 1; return 0; },
+  };
+  const frame = allocator.allocate(input);
+  assert.equal(getterCalls, 0);
+  assert.equal(frame.urgency01.energy, 1);
+  assert.equal(frame.budget01, 0.5);
+});
+
+test('fails closed when hostile proxy reflection throws', () => {
+  const input = new Proxy({}, {
+    getPrototypeOf() { throw new Error('blocked prototype trap'); },
+  });
+  assert.doesNotThrow(() => allocator.allocate(input));
+  const frame = allocator.allocate(input);
+  assert.equal(frame.budget01, 0);
+  assert.equal(frame.dominantChannel, 'none');
+  assert.ok(Object.values(frame.allocation01).every(value => value === 0));
+});
+\nconsole.log('WORKPASS_INTEROCEPTIVE_PRECISION_ALLOCATION=PASS');\n
