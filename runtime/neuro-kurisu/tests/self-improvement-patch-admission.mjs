@@ -4,6 +4,9 @@ import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { buildSourceGraph } from '../src/organism/analysis/SourceGraph.ts';
 import { canonicalPatchReceiptPayload, parseUnifiedDiff } from '../src/organism/analysis/PatchReceiptGuard.ts';
 import { SelfImprovementCandidatePool } from '../src/organism/analysis/SelfImprovementCandidatePool.ts';
+import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
+import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
+import { createP36PatchOutcomeEvidenceAuthority, patchTreatmentMethod } from '../src/organism/learning/P36PatchOutcomeEvidenceAuthority.ts';
 
 const baseSha='a'.repeat(40), file='src/organism/cognition/Evolvable.ts';
 const patch=[`diff --git a/${file} b/${file}`,'index 1111111..2222222 100644',
@@ -169,4 +172,69 @@ test('rejects P36 authority evidence whose treatment method is not the exact pat
  const result=pool.submitVerifiedOutcome(candidate('wrong-treatment-method'),graph,receiptProof());
  assert.equal(result.accepted,false);
  assert.equal(result.reason,'patch-outcome:evidence-binding-invalid');
+});
+
+test('real P36 signed holdout authority is the only score source for host-verified patch admission',()=>{
+ const verifierPair=generateKeyPairSync('ed25519');
+ const verifierPublicPem=verifierPair.publicKey.export({type:'spki',format:'pem'}).toString();
+ const verifierPrivatePem=verifierPair.privateKey.export({type:'pkcs8',format:'pem'}).toString();
+ const verifierId='nk1-p36-candidate-admission-verifier';
+ const manifest=Array.from({length:4},(_,index)=>({
+  taskId:`candidate-admission-holdout-${index}`,
+  family:'self-improvement',
+  split:'holdout',
+  promptFingerprint:VerifiedOutcomeLedger.fingerprintPrompt(`candidate admission independent holdout task ${index}`),
+  verifierId,
+  version:'v1',
+ }));
+ const ledger=new VerifiedOutcomeLedger(manifest);
+ const treatmentMethod=patchTreatmentMethod(receipt.patchSha256);
+ let ingested=0;
+ for(let seed=0;seed<4;seed++){
+  for(let taskIndex=0;taskIndex<manifest.length;taskIndex++){
+   const task=manifest[taskIndex];
+   for(const method of ['baseline-v1',treatmentMethod]){
+    const payload={
+     schemaVersion:1,
+     artifactId:`candidate-admission-${method}-${seed}-${task.taskId}`,
+     runId:`candidate-admission-run-${method}-${seed}-${task.taskId}`,
+     manifestFingerprint:ledger.manifestFingerprint(),
+     taskId:task.taskId,taskVersion:task.version,method,seed,attempt:1,
+     passed:method===treatmentMethod||taskIndex<2,
+     verifierId,observedAt:Date.now(),
+    };
+    const artifact=signOutcomePayloadForFixture(payload,verifierPrivatePem);
+    const result=ingestSignedOutcomeArtifact(ledger,manifest,artifact,new Map([[verifierId,verifierPublicPem]]));
+    assert.equal(result.accepted,true,result.rejection);
+    ingested++;
+   }
+  }
+ }
+ assert.equal(ingested,32);
+ const mutableHostConfig={
+  baseSha,ledger,manifest,evaluatorVersion:'nk1-self-improvement-candidate-admission-v1',
+  baselineMethod:'baseline-v1',taskFamily:'self-improvement',
+  sourceId:'nk1-p36-candidate-admission',independenceKey:'nk1-p36-verifier',
+  minimumPairedSeeds:4,
+ };
+ const authority=createP36PatchOutcomeEvidenceAuthority(mutableHostConfig);
+ const pool=new SelfImprovementCandidatePool({},undefined,{baseSha,trustedPublicKeys},authority);
+ let observationsGetterCalled=false;
+ const input=candidate('real-p36-signed-candidate');
+ Object.defineProperty(input,'observations',{get(){observationsGetterCalled=true;throw new Error('candidate observations are untrusted');}});
+ const result=pool.submitVerifiedOutcome(input,graph,receiptProof());
+ assert.equal(observationsGetterCalled,false);
+ assert.equal(result.accepted,true,result.reason);
+ assert.equal(result.admissionClass,'host-verified-holdout-outcome');
+ assert.equal(result.outcomeEvidence.pairedSeedCount,4);
+ assert.equal(result.outcomeEvidence.baselinePassRate,.5);
+ assert.equal(result.outcomeEvidence.candidatePassRate,1);
+ assert.equal(result.outcomeEvidence.absoluteGain,.5);
+ assert.equal(result.outcomeEvidence.evidenceRefs.length,32);
+ assert.equal(pool.best().downstreamGain,.5);
+ assert.equal(pool.best().proxyGain,null);
+ assert.equal(pool.best().divergence,null);
+ assert.equal(pool.best().outcomeEvidence.evidenceScope,'point-in-time-holdout-only');
+ mutableHostConfig.taskFamily='candidate-controlled-family';
+ assert.equal(pool.best().outcomeEvidence.taskFamily,'self-improvement');
 });
