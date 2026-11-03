@@ -46,3 +46,40 @@ test('rejects premature provider enablement', () => {
   assert.equal(result.ok, false);
   assert.ok(result.errors.some(error => error.includes('fail-closed')));
 });
+
+test('rejects accessor-backed manifest fields without invoking getters', () => {
+  let invoked = false;
+  const candidate = {};
+  Object.defineProperty(candidate, 'schemaVersion', { enumerable: true, get() { invoked = true; return 1; } });
+  const result = validateManifest(candidate);
+  assert.equal(invoked, false);
+  assert.equal(result.ok, false);
+});
+
+test('rejects hostile proxies and inherited manifest records', () => {
+  const hostile = new Proxy({}, { ownKeys() { throw new Error('hostile'); } });
+  assert.equal(validateManifest(hostile).ok, false);
+  assert.equal(validateManifest(Object.assign(Object.create({ schemaVersion: 1 }), {})).ok, false);
+});
+
+test('rejects sparse arrays, accessor entries and oversized catalogs', () => {
+  const sparse = structuredClone(manifest);
+  sparse.integrations = new Array(2);
+  assert.equal(validateManifest(sparse).ok, false);
+  const accessor = structuredClone(manifest);
+  Object.defineProperty(accessor.integrations, '0', { enumerable: true, configurable: true, get() { throw new Error('must not run'); } });
+  assert.equal(validateManifest(accessor).ok, false);
+  const oversized = structuredClone(manifest);
+  oversized.integrations = new Array(257).fill(oversized.integrations[0]);
+  assert.equal(validateManifest(oversized).ok, false);
+});
+
+test('rejects malformed planes and credential reference arrays', () => {
+  const candidate = structuredClone(manifest);
+  candidate.planes[0].purpose = '';
+  candidate.integrations[0].credentialRefs = new Array(1);
+  const result = validateManifest(candidate);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some(error => error.includes('planes[0]')));
+  assert.ok(result.errors.some(error => error.includes('credentialRefs')));
+});
