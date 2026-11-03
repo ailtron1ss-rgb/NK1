@@ -18,9 +18,38 @@ const normalizeBoundedId=(value:unknown,maxLength:number):string=>{
 };
 const normalizeTraceId=(value:unknown)=>normalizeBoundedId(value,180);
 const normalizeTaskId=(value:unknown)=>normalizeBoundedId(value,120);
-const hasBoundedRuntimePolicyVector=(record:Partial<CausalExperienceRecord>):boolean=>
-  Array.isArray(record.policyFeatures01)&&record.policyFeatures01.length>=16&&record.policyFeatures01.length<=64&&
-  record.policyFeatures01.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+function isPlainRecord(value:unknown):value is Record<string,unknown>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return false;
+  try{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null;}catch{return false;}
+}
+function ownData(value:Record<string,unknown>,key:string):unknown{
+  try{const descriptor=Object.getOwnPropertyDescriptor(value,key);return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;}catch{return undefined;}
+}
+function safeArrayLength(value:unknown,maxLength:number):number|null{
+  try{
+    if(!Array.isArray(value))return null;
+    const descriptor=Object.getOwnPropertyDescriptor(value,'length');
+    const length=descriptor&&'value'in descriptor?descriptor.value:Number.NaN;
+    return typeof length==='number'&&Number.isSafeInteger(length)&&length>=0&&length<=maxLength?length:null;
+  }catch{return null;}
+}
+function readDenseArray(value:unknown,maxLength:number):unknown[]|null{
+  const length=safeArrayLength(value,maxLength);
+  if(length===null)return null;
+  const values:unknown[]=[];
+  try{
+    for(let index=0;index<length;index++){
+      const descriptor=Object.getOwnPropertyDescriptor(value as unknown[],String(index));
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value'))return null;
+      values.push(descriptor.value);
+    }
+    return values;
+  }catch{return null;}
+}
+const hasBoundedRuntimePolicyVector=(record:Partial<CausalExperienceRecord>):boolean=>{
+  const values=readDenseArray(record.policyFeatures01,64);
+  return values!==null&&values.length>=16&&values.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+};
 const isGroundedRuntimeOutcome=(record:Partial<CausalExperienceRecord>):boolean=>
   record.provenance==='runtime-outcome'&&record.stateGrounded===true&&hasBoundedRuntimePolicyVector(record);
 const CAUSAL_ACTIONS: readonly ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
@@ -106,43 +135,87 @@ export class CausalExperienceStream {
   private readonly maxRecordedTraceIds=4096;
   constructor(maxRecords=1024){ this.maxRecords=Math.max(64,Math.min(4096,Math.floor(maxRecords))); }
   restore(raw?:Partial<CausalExperienceState>|null){
-    const d=defaultCausalExperienceStream(),r=raw??{};
-    const restoredRows:CausalExperienceRecord[]=Array.isArray(r.records)
-      ? r.records.slice(-this.maxRecords)
-        .flatMap(rawRecord=>{
-          const record=rawRecord as CausalExperienceRecord;
-          const traceId=normalizeTraceId(record?.traceId);
-          const taskId=normalizeTaskId(record?.taskId);
-          const validActions=CAUSAL_ACTIONS.includes(record?.action);
-          const boundedMetrics=[
-            record?.reward01,record?.success01,record?.surprise01,record?.predictionError01,
-            record?.novelty01,record?.uncertainty01,record?.energyBefore01,record?.energyAfter01,
-            record?.stateDelta01,record?.causalStrength01,record?.identityRelevance01,record?.goalPressure01,
-          ].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
-          const validCounters=Number.isSafeInteger(record?.tick)&&record.tick>=0&&
-            typeof record?.at==='number'&&Number.isFinite(record.at)&&record.at>=0&&
-            typeof record?.id==='string'&&record.id.length>0&&record.id.length<=256;
-          if(!traceId||!taskId||!validActions||!boundedMetrics||!validCounters)return [];
-          const policyFeatures=record.policyFeatures01;
-          const hasRuntimePolicyFeatures=hasBoundedRuntimePolicyVector(record)&&
-            Array.isArray(policyFeatures)&&policyFeatures.length<=128&&
-            policyFeatures.every(value=>Number.isFinite(value)&&value>=0&&value<=1);
-          const validReplayMetadata=record.replayEligible===undefined||typeof record.replayEligible==='boolean';
-          const validOptionalMetrics=[record.learningQuality01,record.replayPriority01].every(value=>
-            value===undefined||(typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1));
-          const validReplayCounters=[record.replayCount,record.lastReplayedAt].every(value=>
-            value===undefined||(typeof value==='number'&&Number.isSafeInteger(value)&&value>=0));
-          if(!validReplayMetadata||!validOptionalMetrics||!validReplayCounters)return [];
-          // A well-shaped record is not authenticated evidence. Preserve trusted
-          // eligibility only for the runtime-outcome provenance and bounded policy vector;
-          // the host persistence boundary still must authenticate the snapshot itself.
-          const trustedRuntimeEvidence=isGroundedRuntimeOutcome(record);
-          return [{
-            ...record,traceId,taskId,
-            ...(!trustedRuntimeEvidence?{provenance:'external',stateGrounded:false,replayEligible:false}:{}),
-          }];
-        })
-      : [];
+    const d=defaultCausalExperienceStream();
+    if(raw===undefined||raw===null){
+      this.state=d;
+      this.recordedOutcomeTraceIds.clear();
+      return;
+    }
+    const snapshot=isPlainRecord(raw)?raw:{};
+    const rawRecords=ownData(snapshot,'records');
+    const recordsLength=safeArrayLength(rawRecords,100_000);
+    const restoredRows:CausalExperienceRecord[]=[];
+    if(recordsLength!==null&&Array.isArray(rawRecords)){
+      const firstIndex=Math.max(0,recordsLength-this.maxRecords);
+      for(let index=firstIndex;index<recordsLength;index++){
+        let rawRecord:unknown;
+        try{
+          const descriptor=Object.getOwnPropertyDescriptor(rawRecords,String(index));
+          if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value'))continue;
+          rawRecord=descriptor.value;
+        }catch{continue;}
+        if(!isPlainRecord(rawRecord))continue;
+        const read=(key:string)=>ownData(rawRecord,key);
+        const traceId=normalizeTraceId(read('traceId'));
+        const taskId=normalizeTaskId(read('taskId'));
+        const id=normalizeBoundedId(read('id'),256);
+        const action=read('action');
+        const metricKeys=[
+          'reward01','success01','surprise01','predictionError01','novelty01','uncertainty01',
+          'energyBefore01','energyAfter01','stateDelta01','causalStrength01','identityRelevance01','goalPressure01',
+        ] as const;
+        const metrics=metricKeys.map(key=>read(key));
+        const boundedMetrics=metrics.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+        const tick=read('tick'),at=read('at');
+        if(!traceId||!taskId||!id||typeof action!=='string'||!CAUSAL_ACTIONS.includes(action as ActionKind)||
+          !boundedMetrics||!Number.isSafeInteger(tick)||typeof tick!=='number'||tick<0||
+          typeof at!=='number'||!Number.isFinite(at)||at<0)continue;
+
+        const policyFeaturesRaw=read('policyFeatures01');
+        const policyFeatures=readDenseArray(policyFeaturesRaw,64);
+        const validPolicyFeatures=policyFeatures!==null&&policyFeatures.length>=16&&
+          policyFeatures.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1);
+        const replayEligibleRaw=read('replayEligible');
+        const learningQuality=read('learningQuality01');
+        const replayPriority=read('replayPriority01');
+        const replayCount=read('replayCount');
+        const lastReplayedAt=read('lastReplayedAt');
+        const validReplayMetadata=replayEligibleRaw===undefined||typeof replayEligibleRaw==='boolean';
+        const validOptionalMetrics=[learningQuality,replayPriority].every(value=>
+          value===undefined||(typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1));
+        const validReplayCounters=[replayCount,lastReplayedAt].every(value=>
+          value===undefined||(typeof value==='number'&&Number.isSafeInteger(value)&&value>=0));
+        if(!validReplayMetadata||!validOptionalMetrics||!validReplayCounters)continue;
+
+        const rawSourceMemoryId=read('sourceMemoryId');
+        const rawEvidenceKey=read('evidenceKey');
+        const sourceMemoryId=rawSourceMemoryId===undefined?undefined:normalizeBoundedId(rawSourceMemoryId,180);
+        const evidenceKey=rawEvidenceKey===undefined?undefined:normalizeBoundedId(rawEvidenceKey,256);
+        if((rawSourceMemoryId!==undefined&&!sourceMemoryId)||(rawEvidenceKey!==undefined&&!evidenceKey))continue;
+
+        const trustedRuntimeEvidence=read('provenance')==='runtime-outcome'&&read('stateGrounded')===true&&validPolicyFeatures;
+        const record:CausalExperienceRecord={
+          id,tick,at,traceId,action:action as ActionKind,taskId,
+          reward01:metrics[0] as number,success01:metrics[1] as number,surprise01:metrics[2] as number,
+          predictionError01:metrics[3] as number,novelty01:metrics[4] as number,uncertainty01:metrics[5] as number,
+          energyBefore01:metrics[6] as number,energyAfter01:metrics[7] as number,stateDelta01:metrics[8] as number,
+          causalStrength01:metrics[9] as number,identityRelevance01:metrics[10] as number,goalPressure01:metrics[11] as number,
+          consolidated:read('consolidated')===true,
+          provenance:trustedRuntimeEvidence?'runtime-outcome':'external',
+          stateGrounded:trustedRuntimeEvidence,
+          ...(sourceMemoryId?{sourceMemoryId}:{}),
+          ...(evidenceKey?{evidenceKey}:{}),
+          ...(trustedRuntimeEvidence?{policyFeatures01:policyFeatures as number[]}:{}),
+          ...(learningQuality!==undefined?{learningQuality01:learningQuality as number}:{}),
+          replayEligible:trustedRuntimeEvidence&&replayEligibleRaw===true,
+          ...(replayPriority!==undefined?{replayPriority01:replayPriority as number}:{}),
+          ...(replayCount!==undefined?{replayCount:replayCount as number}:{}),
+          ...(lastReplayedAt!==undefined?{lastReplayedAt:lastReplayedAt as number}:{}),
+        };
+        restoredRows.push(record);
+      }
+    }
+
     const firstByTraceId=new Map<string,CausalExperienceRecord>();
     const conflictingTraceIds=new Set<string>();
     const uniqueRows:CausalExperienceRecord[]=[];
@@ -151,35 +224,23 @@ export class CausalExperienceStream {
       if(!prior){
         firstByTraceId.set(record.traceId,record);
         uniqueRows.push(record);
-      }else{
-        let identical=false;
-        try {
-          identical=JSON.stringify(prior)===JSON.stringify(record);
-        } catch {
-          // Cyclic/non-serializable persisted rows are not safe evidence.
-          identical=false;
-        }
-        if(!identical){
-          // Distinct persisted records became the same identity after NFKC.
-          // Quarantine every row for that identity rather than choosing one result.
-          conflictingTraceIds.add(record.traceId);
-        }
+      }else if(JSON.stringify(prior)!==JSON.stringify(record)){
+        // Distinct persisted records that normalize to the same trace identity are
+        // quarantined together. Exact duplicates collapse to the first copy.
+        conflictingTraceIds.add(record.traceId);
       }
-      // An exact duplicate row is safely collapsed to the first copy.
     }
     const records=uniqueRows.filter(record=>!conflictingTraceIds.has(record.traceId));
     const safeCounter=(value:unknown,fallback=0):number=>
-      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:fallback;
-    const normalizedRecordedIds=Array.isArray(r.recordedTraceIds)
-      ? [...new Set(r.recordedTraceIds.map(normalizeTraceId).filter(Boolean))].slice(-this.maxRecordedTraceIds)
-      : [];
+      typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000_000):fallback;
+    const rawRecordedIds=ownData(snapshot,'recordedTraceIds');
+    const recordedValues=readDenseArray(rawRecordedIds,100_000)??[];
+    const normalizedRecordedIds=[...new Set(recordedValues.map(normalizeTraceId).filter(Boolean))].slice(-this.maxRecordedTraceIds);
+    const observations=safeCounter(ownData(snapshot,'observations'));
+    const consolidatedAt=ownData(snapshot,'lastConsolidatedAt');
     this.state={
       ...d,
-      // Snapshot aggregates are untrusted input. Keep only bounded scalar shapes;
-      // behavioral aggregates are recomputed from eligible records below.
-      observations:safeCounter(r.observations),
-      // Recompute trusted outcome totals from grounded records; persisted scalar
-      // aggregates can include historical external claims and are not evidence.
+      observations,
       outcomes:records.filter(isGroundedRuntimeOutcome).length,
       consolidated:records.filter(record=>isGroundedRuntimeOutcome(record)&&record.consolidated).length,
       records,
@@ -191,7 +252,7 @@ export class CausalExperienceStream {
           record.causalStrength01*.58+record.surprise01*.18+record.predictionError01*.14+record.novelty01*.10
         )*.1),
       }),{...d.rolling}),
-      lastConsolidatedAt:typeof r.lastConsolidatedAt==='number'&&Number.isFinite(r.lastConsolidatedAt)&&r.lastConsolidatedAt>=0?r.lastConsolidatedAt:0,
+      lastConsolidatedAt:typeof consolidatedAt==='number'&&Number.isFinite(consolidatedAt)&&consolidatedAt>=0?consolidatedAt:0,
       recordedTraceIds:normalizedRecordedIds,
       behavioralImpact01:0,
       behavioralContextSamples:0,
@@ -200,7 +261,6 @@ export class CausalExperienceStream {
     this.recordedOutcomeTraceIds.clear();
     for(const id of this.state.recordedTraceIds??[])this.recordedOutcomeTraceIds.add(id);
     // Keep both valid and quarantined event identities in the bounded dedup guard.
-    // This prevents a malformed historical collision from being reintroduced as new data.
     for(const record of restoredRows)this.recordedOutcomeTraceIds.add(record.traceId);
     while(this.recordedOutcomeTraceIds.size>this.maxRecordedTraceIds)this.recordedOutcomeTraceIds.delete(this.recordedOutcomeTraceIds.values().next().value!);
     this.state.recordedTraceIds=[...this.recordedOutcomeTraceIds];
@@ -212,23 +272,32 @@ export class CausalExperienceStream {
     // Observation alone is not an outcome and must not suppress its later record.
     // Observation is intentionally cheap: it never evicts causal records. The stream waits for outcome before creating a sample.
   }
-  recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number}):CausalExperienceRecord|null{
+  recordOutcome(trace:OrganismDecisionTrace,stateAfter:OrganismState,input:{reward01:number;success01:number;surprise01:number;novelty01:number;observedSuccess01?:number}):CausalExperienceRecord|null{
+    // The state stores the observed (unscaled) outcome; the causal stream may be
+    // handed a learning-scaled success label. Compare like-for-like so a scaled
+    // label is not mistaken for a mismatched action attribution.
+    const observedSuccess01=input.observedSuccess01===undefined?input.success01:input.observedSuccess01;
     // A caller reaching this API is not enough to establish a grounded transition:
     // require a supported selected action and valid before/after state snapshots.
     if(!trace.selected||!CAUSAL_ACTIONS.includes(trace.selected.action)||
       !Number.isSafeInteger(trace.tick)||trace.tick<0||
       !hasValidObservedState(trace.stateBefore)||!hasValidObservedState(stateAfter)||
-      // The decision trace must describe the same pre-action world tick; otherwise
-      // an unrelated/old trace could be paired with a newer observed transition.
-      trace.tick!==trace.stateBefore.tick||
-      stateAfter.tick<=trace.stateBefore.tick||
+      // The decision trace must belong to this observed transition; otherwise an
+      // unrelated/old trace could be paired with a newer observed transition.
+      // Callers stamp the decision tick either as the pre-action tick or as the
+      // tick of the state the decision produced (the live OrganismCore cycle
+      // increments the world tick before recording its trace), so both bindings
+      // are accepted while a tick outside the transition is rejected.
+      !(trace.tick===trace.stateBefore.tick||trace.tick===stateAfter.tick)||
+      stateAfter.tick!==trace.stateBefore.tick+1||
       // The resulting state must explicitly attribute the last completed action
       // to this decision and carry a bounded outcome signal; mere state drift is
       // not enough to create action-conditioned learning credit.
       stateAfter.lastAction!==trace.selected.action||
       typeof stateAfter.lastActionSuccess!=='number'||
       !Number.isFinite(stateAfter.lastActionSuccess)||stateAfter.lastActionSuccess<0||stateAfter.lastActionSuccess>1||
-      Math.abs(stateAfter.lastActionSuccess-input.success01)>0.15)return null;
+      typeof observedSuccess01!=='number'||!Number.isFinite(observedSuccess01)||observedSuccess01<0||observedSuccess01>1||
+      Math.abs(stateAfter.lastActionSuccess-observedSuccess01)>0.15)return null;
     const boundedInput=[input.reward01,input.success01,input.surprise01,input.novelty01];
     if(!boundedInput.every(value=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1))return null;
     const traceId=normalizeTraceId(trace.id);
