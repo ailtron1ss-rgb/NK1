@@ -9,13 +9,13 @@ for(let i=0;i<96;i++){
 }
 // Verify the live Core facade preserves both the internally generated proposal
 // and the policy-selected action when they differ.
+const beforeMismatchDiagnostics=core.b272EndogenousGoalDiagnostics();
 const nextGoal=core.b272EndogenousGoalStep({tick:96,selfLatent:new Array(16).fill(.2),worldLatent:new Array(16).fill(.1),needs:{energy01:.7,uncertainty01:.4,novelty01:.5,goalPressure01:.3,socialNeed01:.2},traits:{curiosity:.7,caution:.6,'truth-seeking':.7,'self-reflection':.6,'self-preservation':.7,care:.6,'social-attunement':.5,persistence:.7},predictionError01:.3,autobiographicalContinuity01:.8,identityContinuity01:.8,intrinsicReward01:.6,lastAction:null,lastReward01:.5});
 const actualAction=nextGoal.action==='verify'?'explore':'verify';
 const mismatchLearning=core.b272EndogenousGoalLearn({tick:96,action:nextGoal.action,executedAction:actualAction,reward01:.95,predictionError01:.05,externalEvidence01:1,independentEvaluatorGain01:.8,acceptedExternalGoal:true});
 assert.equal(mismatchLearning.proposedAction,nextGoal.action);
 assert.equal(mismatchLearning.executedAction,actualAction);
-assert.equal(core.b272EndogenousGoalDiagnostics().learningUpdates,d.learningUpdates+1,'Core did not persist outcome learning for a governed alternate action');
-const dAfterMismatch=core.b272EndogenousGoalDiagnostics();
+assert.equal(core.b272EndogenousGoalDiagnostics().learningUpdates,beforeMismatchDiagnostics.learningUpdates+1,'Core did not persist outcome learning for a governed alternate action');
 const d=core.b272EndogenousGoalDiagnostics();
 assert.ok(d.learningUpdates>=90,'B272 did not learn in core');
 assert.ok(d.generatedGoals>=90,'B272 did not generate goals in core');
