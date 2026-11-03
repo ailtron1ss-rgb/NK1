@@ -49,17 +49,22 @@ function point(frameId,x,y,z=0){
 function dataset(seed){
  const random=rng(seed),rows=[];
  for(let i=0;i<16;i++){
-  const x=(i%4)*1.4-2.1,y=Math.floor(i/4)*1.3-1.95;
+  // Seed-specific geometry; the maximum 3D distance stays below radius 8.
+  const x=(random()-.5)*6,y=(random()-.5)*6,z=(random()-.5)*2;
   const id='near-'+String(i).padStart(2,'0');
-  rows.push({id,relevant:true,context:point('holdout-lab',x,y)});
+  rows.push({id,relevant:true,context:point('holdout-lab',x,y,z)});
  }
  for(let i=0;i<24;i++){
+  // Same-frame negatives stay well outside radius for every seed.
+  const x=40+random()*30,y=20+random()*40,z=(random()-.5)*2;
   const id='far-'+String(i).padStart(2,'0');
-  rows.push({id,relevant:false,context:point('holdout-lab',50+i*2,30+i)});
+  rows.push({id,relevant:false,context:point('holdout-lab',x,y,z)});
  }
  for(let i=0;i<24;i++){
+  // Numerically nearby negatives remain in a different coordinate frame.
+  const x=(random()-.5)*6,y=(random()-.5)*6,z=(random()-.5)*2;
   const id='wrong-frame-'+String(i).padStart(2,'0');
-  rows.push({id,relevant:false,context:point('other-lab',i%4,Math.floor(i/4))});
+  rows.push({id,relevant:false,context:point('other-lab',x,y,z)});
  }
  for(let i=0;i<16;i++){
   const id='unlocated-'+String(i).padStart(2,'0');
@@ -74,8 +79,12 @@ function recallAtK(ids,rows,k){
 }
 
 const results=[];
+const seedGeometrySignatures=new Set();
 for(const seed of SEEDS){
  const rows=dataset(seed),memoryOS=new MemoryOS2({embeddingProvider:null});
+ seedGeometrySignatures.add(rows.filter(row=>row.relevant)
+  .map(row=>[row.context.spatialX,row.context.spatialY,row.context.spatialZ??"0"].join(","))
+  .sort().join("|"));
  for(const row of rows)memoryOS.encode(memory(row.id,row.context));
  const baseline=memoryOS.previewRetrieveWithDiagnostics(QUERY,TOP_K);
  const baselineMetrics=recallAtK(baseline.items.map(row=>row.id),rows,TOP_K);
@@ -100,8 +109,10 @@ const meanBaseline=mean('baselineRecallAt10'),meanSpatial=mean('spatialRecallAt1
 assert.ok(meanDelta>0,'five-seed spatial recall delta must be positive');
 assert.ok(results.every(row=>row.delta>0),'every holdout seed must improve spatial recall');
 assert.ok(results.every(row=>row.crossFrameFalsePositives===0&&row.farFalsePositives===0));
+assert.equal(seedGeometrySignatures.size,SEEDS.length,
+ 'each seed must evaluate a distinct spatial point configuration');
 console.log('MEMORYOS2_SPATIAL_HOLDOUT=PASS '+JSON.stringify({
  seedCount:SEEDS.length,topK:TOP_K,meanBaselineRecallAt10:Number(meanBaseline.toFixed(3)),
  meanSpatialRecallAt10:Number(meanSpatial.toFixed(3)),meanRecallDelta:Number(meanDelta.toFixed(3)),
- results,
+ distinctSeedGeometries:seedGeometrySignatures.size,results,
 }));
