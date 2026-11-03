@@ -66,7 +66,14 @@ export const PROTECTED_CAPABILITY_FRAGMENTS: readonly string[] = [
   'IdentityContinuityGuard',
   'P60IdentityGuardian',
   'RealityLearningGate',
+  // The complete self-improvement trust boundary is immutable to its own candidates.
+  // Protecting only the outer guard leaves the scorer/pool/authority editable.
   'SelfModificationGuard',
+  'ProxyDivergenceGuard',
+  'SelfImprovementCandidatePool',
+  'CanonicalSelfAgencyAuthority',
+  'self-analysis-substrate',
+  'canonical-self-agency-authority',
   'SourceGraph',
   'holdout',
 ];
