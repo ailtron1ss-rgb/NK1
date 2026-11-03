@@ -3,7 +3,7 @@
 Date: 2026-11-03  
 Baseline: `workpass70-source` @ `eaf653d2229b8c032fe542ffb3215ff25ba69a93`
 
-> These percentages are provisional engineering-maturity estimates, not measured intelligence, not proof of consciousness, and not release certification. They are deliberately conservative and are not derived from code volume or number of modules. Open PRs #716, #717, #720 and #721 are tracked separately and are not counted as merged baseline capability.
+> These percentages are provisional engineering-maturity estimates, not measured intelligence, not proof of consciousness, and not release certification. They are deliberately conservative and are not derived from code volume or number of modules. Current work on PRs #716–#723 and #730 is tracked separately and is not counted as merged baseline capability. PR #723 is merged only into the parent Engineering OS branch, not into workpass70-source.
 
 ## Scorecard
 
@@ -13,7 +13,7 @@ Baseline: `workpass70-source` @ `eaf653d2229b8c032fe542ffb3215ff25ba69a93`
 | Memory / learning | 45% | MemoryOS2, episodic/semantic retrieval, revision lineage, holdout-pairing and restore integrity | Positive recall uplift on independent multi-seed holdouts; measured latency at 10k entries |
 | Motivation / autonomy / agency | 40% | Intrinsic drives, endogenous goal lifecycle, action gateway and self-agency gates | Background initiative usefulness, restart/pause behaviour and long-duration independent soak |
 | Self-model / personality continuity | 45% | SelfModelV2, personality coupling, identity continuity and self-agency evidence | Longitudinal trait stability, calibrated self-beliefs and adversarial identity-continuity evaluation |
-| Affect / interoception / attention | 40% | Emotion appraisal, interoceptive estimator, brainstem arousal/sleep scheduler, predictive attention | Causal attention-to-action wiring and independent evidence that precision allocation improves behaviour; PR #720 is pending |
+| Affect / interoception / attention | 40% | Emotion appraisal, interoceptive estimator, brainstem arousal/sleep scheduler, predictive attention | Causal attention-to-action wiring and independent paired evidence that precision allocation improves behaviour; PR #720 implementation and exact-head CI are green, but its paired behavioural gate is still open |
 | Embodiment / voice / avatar | 60% | Existing 2D/Live2D path, speech timeline, voice/interrupt infrastructure and fallback contracts | Browser E2E, Android audio/avatar sync, lip-sync drift and promoted 3D asset |
 | Evaluation / safety / reliability | 45% | Many focused workflows, restore/lineage tests, holdout eligibility and action governance | Independent multi-seed confirmation, real-device fault injection and complete threat-model review |
 | Release / operations | 25% | Published Release exists with GitHub asset digest and a source/release separation rule | Actual ZIP content/digest verification, license sign-off, clean-machine install/build and Android soak |
@@ -59,7 +59,12 @@ This is a weighted estimate of engineering maturity across the whole system, not
 
 ## Open work not counted in baseline score
 
-- PR #716 — Engineering OS foundation; CI passed on current head, not merged.
-- PR #717 — adversarial manifest validation; CI passed on current head, not merged.
-- PR #720 — homeostatic precision allocation; CI pending on latest head.
-- PR #721 — donor-source provenance and adaptation roadmap; documentation PR, not merged.
+- PR #716 — Engineering OS control plane; current parent head 8fa7bf8023ed… with 10 exact-head workflows green, not merged into workpass70-source.
+- PR #717 — hostile-input manifest validation; exact-head Engineering OS CI green, stacked child PR.
+- PR #718 — coordinator lock reclamation guard; exact-head Engineering OS CI green, stacked child PR.
+- PR #719 — EmotionAppraisalEngine restore hardening; 8 exact-head workflows green, not merged.
+- PR #720 — interoceptive precision allocation; 15 visible exact-head workflows green, paired behavioural evidence still pending.
+- PR #721 — donor-source provenance and archive inventory; documentation-only PR, not merged.
+- PR #722 — hash-bound read-set freshness; dedicated contract and parent OS workflows green, not yet wired into mandatory patch admission.
+- PR #723 — patch diff provenance and policy preflight; merged into the parent Engineering OS branch only.
+- PR #730 — frame-aware spatial recall; focused spatial regressions and runtime typecheck green, broader exact-head workflows partly still running.
