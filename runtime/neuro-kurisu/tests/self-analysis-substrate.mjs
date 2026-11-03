@@ -25,6 +25,12 @@ import {
   DEFAULT_POOL_POLICY,
   SelfImprovementCandidatePool,
 } from '../src/organism/analysis/SelfImprovementCandidatePool.ts';
+import {
+  assessDanger,
+  blastRadius,
+  DEFAULT_DANGER_THRESHOLDS,
+  isWithinDangerEnvelope,
+} from '../src/organism/analysis/DangerModel.ts';
 
 const ROOT = join(fileURLToPath(new URL('../', import.meta.url)), 'src', 'organism');
 
@@ -535,8 +541,54 @@ assert.deepEqual(toDivergenceObservations([getterFamily], []), []);
 assert.equal(observationGetterCalls, 0, 'adapter accessors must never execute');
 assert.equal(immutablePool.snapshot().rejectionLedgerSize, 1);
 
+// --- 9. danger understanding: structural risk from the graph and evidence, not a label ---
+const dangerGraph = buildSourceGraph([
+  { path: 'src/organism/cognition/Leaf.ts', text: 'export function leaf() { return 1; }\n' },
+  { path: 'src/organism/cognition/Hub.ts', text: 'export function hub() { return 2; }\n' },
+  { path: 'src/organism/cognition/A.ts', text: "import { hub } from './Hub.ts';\nexport function a() { return hub(); }\n" },
+  { path: 'src/organism/cognition/B.ts', text: "import { hub } from './Hub.ts';\nexport function b() { return hub(); }\n" },
+  { path: 'src/organism/cognition/C.ts', text: "import { hub } from './Hub.ts';\nexport function c() { return hub(); }\n" },
+]);
+const leafRadius = blastRadius(dangerGraph, ['src/organism/cognition/Leaf.ts']);
+const hubRadius = blastRadius(dangerGraph, ['src/organism/cognition/Hub.ts']);
+assert.equal(leafRadius.files.length, 0, 'a leaf has no dependents');
+assert.ok(hubRadius.files.length >= 3, 'a hub has several dependents');
+assert.ok(hubRadius.fraction01 > leafRadius.fraction01, 'hub blast radius must exceed a leaf');
+
+const safe = assessDanger({ candidateId: 'safe', targetFiles: ['src/organism/cognition/Leaf.ts'], rollbackReady: true, meanDownstreamGain: .3, meanDivergence: .02, observationCount: 5, protectedHits: 0 }, dangerGraph);
+assert.ok(safe.reversible);
+assert.ok(isWithinDangerEnvelope(safe), 'a reversible, well-evidenced leaf change is within the envelope');
+assert.equal(safe.band, 'low');
+
+const irreversible = assessDanger({ candidateId: 'irreversible', targetFiles: ['src/organism/cognition/Leaf.ts'], rollbackReady: false, meanDownstreamGain: .3, meanDivergence: .02, observationCount: 5, protectedHits: 0 }, dangerGraph);
+assert.equal(irreversible.reversible, false);
+assert.equal(isWithinDangerEnvelope(irreversible), false, 'an irreversible change is never within the envelope');
+
+const hubDanger = assessDanger({ candidateId: 'hub', targetFiles: ['src/organism/cognition/Hub.ts'], rollbackReady: true, meanDownstreamGain: .3, meanDivergence: .02, observationCount: 5, protectedHits: 0 }, dangerGraph);
+assert.ok(hubDanger.score01 > safe.score01, 'a hub change must be more dangerous than a leaf change');
+assert.ok(hubDanger.blastRadiusFiles >= 3);
+
+const sensitiveDanger = assessDanger({ candidateId: 'sensitive', targetFiles: ['src/organism/core/OrganismCore.ts'], rollbackReady: true, meanDownstreamGain: .3, meanDivergence: .02, observationCount: 5, protectedHits: 0 }, dangerGraph);
+assert.ok(sensitiveDanger.factors.some((f) => f.key === 'sensitive-subsystem'), 'core targets must be flagged as a sensitive subsystem');
+
+const unmeasured = assessDanger({ candidateId: 'unmeasured', targetFiles: ['src/organism/cognition/Leaf.ts'], rollbackReady: true, meanDownstreamGain: 0, meanDivergence: 0, observationCount: 0, protectedHits: 0 }, dangerGraph);
+assert.ok(unmeasured.factors.some((f) => f.key === 'unmeasured'), 'missing evidence must raise danger');
+assert.ok(unmeasured.score01 > safe.score01);
+
+// Danger is a function of the graph and the candidate's own evidence only, so the
+// same structural input always yields the same score: a candidate cannot lower its
+// own danger by re-labelling itself as safe.
+const repeated = assessDanger({ candidateId: 'safe', targetFiles: ['src/organism/cognition/Leaf.ts'], rollbackReady: true, meanDownstreamGain: .3, meanDivergence: .02, observationCount: 5, protectedHits: 0 }, dangerGraph);
+assert.equal(repeated.score01, safe.score01, 'danger score must be deterministic for identical inputs');
+
+// The pool refuses an irreversible candidate before it can ever be ranked.
+const dangerPool = new SelfImprovementCandidatePool({ maxPoolSize: 4 });
+assert.equal(dangerPool.submit({ candidateId: 'irreversible-in-pool', targetFiles: [block.file], evolveBlocks: [block], observations: backed(6), rollbackReady: false }, poolGraph).reason, 'no-rollback-path');
+assert.equal(DEFAULT_DANGER_THRESHOLDS.maxDanger01, 0.7);
+assert.ok(Object.isFrozen(DEFAULT_DANGER_THRESHOLDS), 'default danger thresholds must be immutable');
+
 console.log(
-  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=93 '
+  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=110 '
   + `realFiles=${realSummary.files} realNodes=${realSummary.nodes} realEdges=${realSummary.edges} `
   + `extracted=${realSummary.extractedEdges} inferred=${realSummary.inferredEdges} `
   + `protectedFiles=${realProtected.length} protectedFragments=${PROTECTED_CAPABILITY_FRAGMENTS.length}`,

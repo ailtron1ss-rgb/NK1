@@ -7,6 +7,7 @@
 import type { SourceGraph } from './SourceGraph.ts';
 import { evaluateModification, type GuardResult } from './SelfModificationGuard.ts';
 import { evaluateProxyDivergence, type DivergenceResult, type PairedObservation } from './ProxyDivergenceGuard.ts';
+import { assessDanger, isWithinDangerEnvelope, DEFAULT_DANGER_THRESHOLDS, type DangerAssessment, type DangerThresholds } from './DangerModel.ts';
 
 export interface EvolveBlock { file: string; startLine: number; endLine: number; }
 export interface SelfImprovementCandidate {
@@ -19,9 +20,9 @@ export interface SelfImprovementCandidate {
 }
 export interface CandidatePoolPolicy { maxPoolSize: number; minDownstreamGain: number; }
 export const DEFAULT_POOL_POLICY: CandidatePoolPolicy = Object.freeze({ maxPoolSize: 32, minDownstreamGain: 0 });
-export interface AdmissionResult { accepted: boolean; candidateId: string; reason: string; guard?: GuardResult; divergence?: DivergenceResult; }
-export interface RankedCandidate { candidateId: string; downstreamGain: number; proxyGain: number; divergence: number; parentId?: string; }
-interface StoredCandidate { candidate: Readonly<SelfImprovementCandidate>; downstreamGain: number; proxyGain: number; divergence: number; }
+export interface AdmissionResult { accepted: boolean; candidateId: string; reason: string; guard?: GuardResult; divergence?: DivergenceResult; danger?: DangerAssessment; }
+export interface RankedCandidate { candidateId: string; downstreamGain: number; proxyGain: number; divergence: number; danger01: number; parentId?: string; }
+interface StoredCandidate { candidate: Readonly<SelfImprovementCandidate>; downstreamGain: number; proxyGain: number; divergence: number; danger01: number; }
 const MAX_POOL_SIZE = 1024;
 const MAX_REJECTIONS = 256;
 const MAX_TARGETS = 256;
@@ -67,6 +68,9 @@ function validRepoPath(value: unknown): value is string {
 }
 function finite(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+function clamp01(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
 }
 function freezeCandidate(candidate: SelfImprovementCandidate): Readonly<SelfImprovementCandidate> {
   const evolveBlocks = candidate.evolveBlocks.map(block => Object.freeze({ ...block }));
@@ -160,10 +164,17 @@ export class SelfImprovementCandidatePool {
   private readonly byId = new Map<string, StoredCandidate>();
   private readonly rejected: { candidateId: string; reason: string }[] = [];
   private readonly policy: CandidatePoolPolicy;
+  private readonly dangerThresholds: DangerThresholds;
   private admittedCount = 0;
   private rejectedCount = 0;
 
-  constructor(policy: Partial<CandidatePoolPolicy> = {}) { this.policy = normalizePolicy(policy); }
+  constructor(policy: Partial<CandidatePoolPolicy> = {}, dangerThresholds: DangerThresholds = DEFAULT_DANGER_THRESHOLDS) {
+    this.policy = normalizePolicy(policy);
+    this.dangerThresholds = Object.freeze({
+      maxDanger01: clamp01(Number(dangerThresholds?.maxDanger01 ?? DEFAULT_DANGER_THRESHOLDS.maxDanger01)),
+      maxBlastRadius01: clamp01(Number(dangerThresholds?.maxBlastRadius01 ?? DEFAULT_DANGER_THRESHOLDS.maxBlastRadius01)),
+    });
+  }
   get size(): number { return this.byId.size; }
   rejections(): readonly { candidateId: string; reason: string }[] { return this.rejected.map(row => ({ ...row })); }
   private reject(candidateId: string, reason: string): AdmissionResult {
@@ -194,15 +205,33 @@ export class SelfImprovementCandidatePool {
       return this.reject(candidateId, `below-downstream-floor:${divergence.meanDownstreamGain}`);
     }
 
+    // Danger understanding: even a well-evidenced candidate is refused when its
+    // structural risk (blast radius, sensitive subsystem, irreversibility) leaves the
+    // advisory envelope. The score comes from the graph and the candidate's own
+    // evidence, so a candidate cannot talk its way past it with a self-declared label.
+    const danger = assessDanger({
+      candidateId,
+      targetFiles: candidate.targetFiles,
+      rollbackReady: candidate.rollbackReady,
+      meanDownstreamGain: divergence.meanDownstreamGain,
+      meanDivergence: divergence.meanDivergence,
+      observationCount: candidate.observations.length,
+      protectedHits: guard.protectedHits.length,
+    }, graph, this.dangerThresholds);
+    if (!isWithinDangerEnvelope(danger, this.dangerThresholds)) {
+      return this.reject(candidateId, danger.reason);
+    }
+
     this.byId.set(candidateId, {
       candidate,
       downstreamGain: divergence.meanDownstreamGain,
       proxyGain: divergence.meanProxyGain,
       divergence: divergence.meanDivergence,
+      danger01: danger.score01,
     });
     this.admittedCount = Math.min(1_000_000_000, this.admittedCount + 1);
     this.evictIfNeeded();
-    return { accepted: true, candidateId, reason: 'admitted', guard, divergence };
+    return { accepted: true, candidateId, reason: 'admitted', guard, divergence, danger };
   }
 
   private evictIfNeeded(): void {
@@ -222,8 +251,9 @@ export class SelfImprovementCandidatePool {
       downstreamGain: stored.downstreamGain,
       proxyGain: stored.proxyGain,
       divergence: stored.divergence,
+      danger01: stored.danger01,
       parentId: stored.candidate.parentId,
-    })).sort((a, b) => (b.downstreamGain - a.downstreamGain) || a.candidateId.localeCompare(b.candidateId));
+    })).sort((a, b) => (b.downstreamGain - a.downstreamGain) || (a.danger01 - b.danger01) || a.candidateId.localeCompare(b.candidateId));
   }
   best(): RankedCandidate | null { return this.rank()[0] ?? null; }
   snapshot() {

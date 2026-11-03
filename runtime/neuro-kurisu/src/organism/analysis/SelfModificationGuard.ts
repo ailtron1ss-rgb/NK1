@@ -71,6 +71,7 @@ export const PROTECTED_CAPABILITY_FRAGMENTS: readonly string[] = [
   'SelfModificationGuard',
   'ProxyDivergenceGuard',
   'SelfImprovementCandidatePool',
+  'DangerModel',
   'CanonicalSelfAgencyAuthority',
   // Identity canon and the orchestration entrypoints must not be editable by
   // the same mechanism they govern.
