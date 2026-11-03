@@ -5,6 +5,7 @@ const CENTER={frameId:'holdout-lab',x:0,y:0,z:0,radius:8};
 const QUERY='locate nearby target beacon';
 const SEEDS=[3,17,41,73,109];
 const TOP_K=10;
+// A synthetic coordinate-frame holdout; never interprets metric coordinates as pixels or global positions.
 
 function rng(seed){
  let state=seed>>>0;
