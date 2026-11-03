@@ -71,11 +71,14 @@ function validIdentity(value: unknown, maxLength = 180): value is string {
  * bytes. Signed verifier artifacts must have been produced by executing this patch
  * under this method identity; a candidate cannot choose a different method label.
  */
-export function patchTreatmentMethod(patchSha256: string): string {
+export function patchTreatmentMethod(baseSha: string, patchSha256: string): string {
+  if (typeof baseSha !== 'string' || !SHA1.test(baseSha)) {
+    throw new TypeError('p36-patch-outcome-base-sha-invalid');
+  }
   if (typeof patchSha256 !== 'string' || !SHA256.test(patchSha256)) {
     throw new TypeError('p36-patch-outcome-patch-sha256-invalid');
   }
-  return 'nk1-patch-sha256:' + patchSha256.toLowerCase();
+  return 'nk1-source-sha1:' + baseSha.toLowerCase() + ':patch-sha256:' + patchSha256.toLowerCase();
 }
 
 /**
@@ -124,7 +127,7 @@ export function measureP36PatchOutcomeEvidence(
   }
 
   const normalizedPatchSha = patchSha256.toLowerCase();
-  const treatmentMethod = patchTreatmentMethod(normalizedPatchSha);
+  const treatmentMethod = patchTreatmentMethod(baseSha.toLowerCase(), normalizedPatchSha);
   const typedManifest = manifest as TaskManifestEntry[];
   const manifestFingerprint = ledger.manifestFingerprint();
   const config: P36VerifiedOutcomeLedgerEvaluatorConfig = {
