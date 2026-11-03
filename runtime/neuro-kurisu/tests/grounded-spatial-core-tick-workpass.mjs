@@ -18,11 +18,6 @@ try{
  });
  await core.observe({worldContext:world(1,'observed')});
  const afterObserved=core.snapshot();
- console.log('CORE_SPATIAL_DEBUG='+JSON.stringify({
-  tick:afterObserved.state?.tick,at:afterObserved.state?.at,
-  grounded:afterObserved.facets.advanced.groundedWorld,
-  spatialMemories:afterObserved.facets.advanced.memoryOS.items.filter(row=>row.source===GROUNDED_SPATIAL_MEMORY_SOURCE),
- }));
  const observedMemories=afterObserved.facets.advanced.memoryOS.items.filter(row=>row.source===GROUNDED_SPATIAL_MEMORY_SOURCE);
  assert.equal(observedMemories.length,1,'a live Core observation must project the grounded coordinate into canonical MemoryOS2');
  assert.equal(observedMemories[0].context.spatialX,'1');
