@@ -199,20 +199,24 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         return {"valid": False, "promotionEligible": False, "reason": "memory-thresholds-invalid"}
 
     train_keys: dict[str, set[str]] = {language: set() for language in LANGUAGES}
+    train_independence_group_digests: set[str] = set()
+    holdout_independence_group_digests: set[str] = set()
+    holdout_groups_by_language: dict[str, dict[str, set[str]]] = {
+        language: {"answerable": set(), "unanswerable": set()} for language in LANGUAGES
+    }
     train_ids: set[str] = set()
     rows_by_language: dict[str, list[dict[str, Any]]] = {language: [] for language in LANGUAGES}
     all_train_query_digests: set[str] = set()
     all_holdout_query_digests: set[str] = set()
     all_example_ids: set[str] = set()
-    train_duplicate_query = False
-    holdout_duplicate_query = False
     malformed = 0
 
     for row in train:
         if not isinstance(row, dict) or row.get("split") != "train" or row.get("language") not in LANGUAGES:
             malformed += 1
             continue
-        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")):
+        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")) \
+            or not _valid_digest(row.get("independenceGroupDigest")):
             malformed += 1
             continue
         query_digest = row["queryDigest"]
@@ -225,12 +229,14 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         all_example_ids.add(example_id)
         train_ids.add(example_id)
         train_keys[row["language"]].add(query_digest)
+        train_independence_group_digests.add(row["independenceGroupDigest"])
 
     for row in holdout:
         if not isinstance(row, dict) or row.get("split") != "holdout" or row.get("language") not in LANGUAGES:
             malformed += 1
             continue
-        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")):
+        if not _valid_digest(row.get("queryDigest")) or not _valid_digest(row.get("exampleIdDigest")) \
+            or not _valid_digest(row.get("independenceGroupDigest")):
             malformed += 1
             continue
         query_digest = row["queryDigest"]
@@ -270,10 +276,17 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         if not valid_row:
             malformed += 1
             continue
+        group_digest = row["independenceGroupDigest"]
+        holdout_independence_group_digests.add(group_digest)
+        group_class = "answerable" if answerable else "unanswerable"
+        holdout_groups_by_language[row["language"]][group_class].add(group_digest)
         rows_by_language[row["language"]].append(row)
 
     train_holdout_query_leakage = bool(all_train_query_digests.intersection(all_holdout_query_digests))
-    if train_holdout_query_leakage:
+    train_holdout_independence_group_leakage = bool(
+        train_independence_group_digests.intersection(holdout_independence_group_digests)
+    )
+    if train_holdout_query_leakage or train_holdout_independence_group_leakage:
         malformed += 1
 
     language_reports: dict[str, Any] = {}
@@ -286,6 +299,8 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         candidate = _rank_metrics(rows, "candidateRankedMemory", corpus_ids)
         answerable_count = candidate["answerableQueries"]
         unanswerable_count = candidate["unanswerableQueries"]
+        independent_answerable_groups = len(holdout_groups_by_language[language]["answerable"])
+        independent_unanswerable_groups = len(holdout_groups_by_language[language]["unanswerable"])
         recall_delta = round(candidate["recallAtK01"] - baseline["recallAtK01"], 4)
         mrr_delta = round(candidate["mrr01"] - baseline["mrr01"], 4)
         unsupported_delta = round(candidate["unsupportedRetrievalRate01"] - baseline["unsupportedRetrievalRate01"], 4)
@@ -326,6 +341,9 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
             "sufficientTrainQueries": train_unique >= min_train,
             "sufficientAnswerableHoldoutQueries": answerable_count >= min_answerable,
             "sufficientUnanswerableHoldoutQueries": unanswerable_count >= min_unanswerable,
+            "sufficientIndependentAnswerableHoldoutGroups": independent_answerable_groups >= min_answerable,
+            "sufficientIndependentUnanswerableHoldoutGroups": independent_unanswerable_groups >= min_unanswerable,
+            "noTrainHoldoutIndependenceGroupLeakage": not train_holdout_independence_group_leakage,
             "minimumRecallUplift": recall_delta >= min_uplift,
             "recallUpliftConfidenceSupported": recall_confident,
             "mrrPointEstimateNonInferior": mrr_delta >= -max_mrr_regression,
@@ -343,6 +361,8 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
             "trainQueries": train_unique,
             "answerableHoldoutQueries": answerable_count,
             "unanswerableHoldoutQueries": unanswerable_count,
+            "independentAnswerableHoldoutGroups": independent_answerable_groups,
+            "independentUnanswerableHoldoutGroups": independent_unanswerable_groups,
             "baseline": {key: baseline[key] for key in ("recallAtK01", "mrr01", "unsupportedRetrievalRate01")},
             "candidate": {key: candidate[key] for key in ("recallAtK01", "mrr01", "unsupportedRetrievalRate01")},
             "deltas": {"recallAtK01": recall_delta, "mrr01": mrr_delta, "unsupportedRetrievalRate01": unsupported_delta},
@@ -410,12 +430,19 @@ def score_memory_holdout(record: dict[str, Any]) -> dict[str, Any]:
         "retrievalMetricsDeterministicAcrossSeeds": deterministic,
         "datasetCorpusAndRetrievalConfigurationFingerprintsStableAcrossSeeds": fingerprints_stable,
         "englishAndRussianHoldoutEligible": all_single_run_eligible and all_language_structural,
+        "independentHoldoutSourceGroups": all(
+            language_reports[language]["gates"]["sufficientIndependentAnswerableHoldoutGroups"]
+            and language_reports[language]["gates"]["sufficientIndependentUnanswerableHoldoutGroups"]
+            for language in LANGUAGES
+        ),
+        "noTrainHoldoutIndependenceGroupLeakage": not train_holdout_independence_group_leakage,
     }
     valid = (
         malformed == 0
         and all_language_structural
         and aggregate_gates["pairedArmsAreStructurallyValid"]
         and aggregate_gates["noTrainHoldoutQueryLeakage"]
+        and not train_holdout_independence_group_leakage
     )
     promotion_eligible = valid and all(gates.values())
     return {
