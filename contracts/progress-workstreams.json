@@ -8,9 +8,24 @@
       "weight": 12,
       "endGoal": "One traceable Perceive->Plan->Gate->Act->Observe->Reflect->Consolidate path with no unverified bypass and a single versioned state.",
       "probes": [
-        { "id": "cycle-boundary-test", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:cognitive-cycle-boundary" },
-        { "id": "cycle-runtime-wiring", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:cognitive-cycle-boundary-runtime-wiring" },
-        { "id": "cycle-contract", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:workpass287:cognitive-cycle" }
+        {
+          "id": "cycle-boundary-test",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:cognitive-cycle-boundary"
+        },
+        {
+          "id": "cycle-runtime-wiring",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:cognitive-cycle-boundary-runtime-wiring"
+        },
+        {
+          "id": "cycle-contract",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:workpass287:cognitive-cycle"
+        }
       ]
     },
     {
@@ -19,10 +34,29 @@
       "weight": 16,
       "endGoal": "MemoryOS2 as the single owner, with proven recallDelta > 0 on an immutable RU/EN holdout across paired seeds, plus correct abstention and forgetting.",
       "probes": [
-        { "id": "memory-restore-integrity", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:memory-restore-integrity" },
-        { "id": "memory-retrieval-benchmark", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:memory-retrieval-benchmark" },
-        { "id": "holdout-pairing-test", "kind": "file-exists", "path": "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md" },
-        { "id": "retrieval-uplift-evidence", "kind": "file-contains", "path": "docs/evidence/retrieval-uplift.json", "needle": "\"verified\": true" }
+        {
+          "id": "memory-restore-integrity",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:memory-restore-integrity"
+        },
+        {
+          "id": "memory-retrieval-benchmark",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:memory-retrieval-benchmark"
+        },
+        {
+          "id": "holdout-pairing-test",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md"
+        },
+        {
+          "id": "retrieval-uplift-evidence",
+          "kind": "file-contains",
+          "path": "docs/evidence/retrieval-uplift.json",
+          "needle": "\"verified\": true"
+        }
       ]
     },
     {
@@ -31,9 +65,22 @@
       "weight": 14,
       "endGoal": "Learning credit only from independently verified outcomes; promotion gated by signed evidence, held-out transfer and rollback.",
       "probes": [
-        { "id": "verified-outcome-gate", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts" },
-        { "id": "authenticated-approval", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts" },
-        { "id": "transfer-evidence", "kind": "file-contains", "path": "docs/evidence/learning-transfer.json", "needle": "\"verified\": true" }
+        {
+          "id": "verified-outcome-gate",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts"
+        },
+        {
+          "id": "authenticated-approval",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts"
+        },
+        {
+          "id": "transfer-evidence",
+          "kind": "file-contains",
+          "path": "docs/evidence/learning-transfer.json",
+          "needle": "\"verified\": true"
+        }
       ]
     },
     {
@@ -42,10 +89,32 @@
       "weight": 10,
       "endGoal": "The organism can read its own code structurally and refuse any candidate that edits its evaluator, gates, holdout or approval authority.",
       "probes": [
-        { "id": "source-graph", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/analysis/SourceGraph.ts" },
-        { "id": "self-modification-guard", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/analysis/SelfModificationGuard.ts" },
-        { "id": "proxy-divergence-guard", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/analysis/ProxyDivergenceGuard.ts" },
-        { "id": "self-analysis-test", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:self-analysis-substrate" }
+        {
+          "id": "source-graph",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/SourceGraph.ts"
+        },
+        {
+          "id": "self-modification-guard",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/SelfModificationGuard.ts"
+        },
+        {
+          "id": "proxy-divergence-guard",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/ProxyDivergenceGuard.ts"
+        },
+        {
+          "id": "self-analysis-test",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-analysis-substrate"
+        },
+        {
+          "id": "candidate-pool",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/SelfImprovementCandidatePool.ts"
+        }
       ]
     },
     {
@@ -54,9 +123,24 @@
       "weight": 12,
       "endGoal": "Explainable self-initiated Perceive->Appraise->Plan->Act->Reflect cycles over soak, bounded by budget and stoppable by the user.",
       "probes": [
-        { "id": "cadence-test", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:big-pass-224" },
-        { "id": "self-agency-live", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:self-agency:live" },
-        { "id": "soak-evidence", "kind": "file-contains", "path": "docs/evidence/autonomy-soak.json", "needle": "\"verified\": true" }
+        {
+          "id": "cadence-test",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:big-pass-224"
+        },
+        {
+          "id": "self-agency-live",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-agency:live"
+        },
+        {
+          "id": "soak-evidence",
+          "kind": "file-contains",
+          "path": "docs/evidence/autonomy-soak.json",
+          "needle": "\"verified\": true"
+        }
       ]
     },
     {
@@ -65,10 +149,28 @@
       "weight": 10,
       "endGoal": "Voice and avatar follow one timeline driven by organism state; real browser and real device E2E pass with measured drift.",
       "probes": [
-        { "id": "vrm-humanoid-test", "kind": "file-exists", "path": "app/scripts/vrm-humanoid-rig-adapter.test.mjs" },
-        { "id": "embodiment-switch-test", "kind": "file-exists", "path": "app/scripts/embodiment-switch.test.mjs" },
-        { "id": "browser-e2e-evidence", "kind": "file-contains", "path": "docs/evidence/browser-embodiment-e2e.json", "needle": "\"verified\": true" },
-        { "id": "device-e2e-evidence", "kind": "file-contains", "path": "docs/evidence/device-voice-e2e.json", "needle": "\"verified\": true" }
+        {
+          "id": "vrm-humanoid-test",
+          "kind": "file-exists",
+          "path": "app/scripts/vrm-humanoid-rig-adapter.test.mjs"
+        },
+        {
+          "id": "embodiment-switch-test",
+          "kind": "file-exists",
+          "path": "app/scripts/embodiment-switch.test.mjs"
+        },
+        {
+          "id": "browser-e2e-evidence",
+          "kind": "file-contains",
+          "path": "docs/evidence/browser-embodiment-e2e.json",
+          "needle": "\"verified\": true"
+        },
+        {
+          "id": "device-e2e-evidence",
+          "kind": "file-contains",
+          "path": "docs/evidence/device-voice-e2e.json",
+          "needle": "\"verified\": true"
+        }
       ]
     },
     {
@@ -77,9 +179,22 @@
       "weight": 10,
       "endGoal": "Documented threat model, evaluator-tamper resistance, injection handling and least-privilege action execution with regression coverage.",
       "probes": [
-        { "id": "action-gateway", "kind": "file-exists", "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts" },
-        { "id": "threat-model", "kind": "file-exists", "path": "docs/NK1_THREAT_MODEL_RU.md" },
-        { "id": "tamper-tests", "kind": "npm-script", "prefix": "runtime/neuro-kurisu", "script": "test:self-agency:authority" }
+        {
+          "id": "action-gateway",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+        },
+        {
+          "id": "threat-model",
+          "kind": "file-exists",
+          "path": "docs/NK1_THREAT_MODEL_RU.md"
+        },
+        {
+          "id": "tamper-tests",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-agency:authority"
+        }
       ]
     },
     {
@@ -88,9 +203,21 @@
       "weight": 8,
       "endGoal": "Every claim maps to a reproducible artifact; CI runs and its results are visible, or a documented local gate substitutes with the limitation stated.",
       "probes": [
-        { "id": "local-gate-tool", "kind": "file-exists", "path": "tools/run-local-gate.mjs" },
-        { "id": "local-gate-artifact", "kind": "glob", "path": "docs/evidence/local-gate-*.json" },
-        { "id": "ci-workflow", "kind": "file-exists", "path": ".github/workflows/nk1-self-analysis.yml" }
+        {
+          "id": "local-gate-tool",
+          "kind": "file-exists",
+          "path": "tools/run-local-gate.mjs"
+        },
+        {
+          "id": "local-gate-artifact",
+          "kind": "glob",
+          "path": "docs/evidence/local-gate-*.json"
+        },
+        {
+          "id": "ci-workflow",
+          "kind": "file-exists",
+          "path": ".github/workflows/nk1-self-analysis.yml"
+        }
       ]
     },
     {
@@ -99,9 +226,23 @@
       "weight": 8,
       "endGoal": "Human license review closed, exact-SHA ZIP built and published with checksum, clean-room install and rollback proven.",
       "probes": [
-        { "id": "license-review-file", "kind": "file-exists", "path": "contracts/RELEASE_LICENSE_REVIEW.json" },
-        { "id": "license-review-closed", "kind": "file-contains", "path": "contracts/RELEASE_LICENSE_REVIEW.json", "needle": "\"redistributionApproved\": true" },
-        { "id": "release-evidence", "kind": "file-contains", "path": "docs/evidence/release-publish.json", "needle": "\"verified\": true" }
+        {
+          "id": "license-review-file",
+          "kind": "file-exists",
+          "path": "contracts/RELEASE_LICENSE_REVIEW.json"
+        },
+        {
+          "id": "license-review-closed",
+          "kind": "file-contains",
+          "path": "contracts/RELEASE_LICENSE_REVIEW.json",
+          "needle": "\"redistributionApproved\": true"
+        },
+        {
+          "id": "release-evidence",
+          "kind": "file-contains",
+          "path": "docs/evidence/release-publish.json",
+          "needle": "\"verified\": true"
+        }
       ]
     }
   ]

@@ -21,6 +21,10 @@ import {
   evaluateProxyDivergence,
   toDivergenceObservations,
 } from '../src/organism/analysis/ProxyDivergenceGuard.ts';
+import {
+  DEFAULT_POOL_POLICY,
+  SelfImprovementCandidatePool,
+} from '../src/organism/analysis/SelfImprovementCandidatePool.ts';
 
 const ROOT = join(fileURLToPath(new URL('../', import.meta.url)), 'src', 'organism');
 
@@ -243,8 +247,92 @@ const divergingLedger = toDivergenceObservations(
 );
 assert.equal(evaluateProxyDivergence(divergingLedger).decision, 'refused');
 
+// --- 8. self-improvement candidate pool: selection by measured downstream gain ---
+const poolGraph = buildSourceGraph([
+  { path: 'src/organism/cognition/Evolvable.ts', text: 'export function tune(x: number) { return x; }\n' },
+  { path: 'src/organism/learning/VerifiedOutcomePromotionGate.ts', text: 'export class VerifiedOutcomePromotionGate {}\n' },
+]);
+const block = { file: 'src/organism/cognition/Evolvable.ts', startLine: 1, endLine: 1 };
+const pool = new SelfImprovementCandidatePool({ maxPoolSize: 2 });
+const backed = (n) => Array.from({ length: 5 }, (_, i) => ({ id: `p${n}-${i}`, proxyGain: 0.3, downstreamGain: 0.25 + n * 0.01 }));
+
+// A legitimate candidate inside an evolve block is admitted.
+const good = pool.submit({
+  candidateId: 'good', targetFiles: [block.file], evolveBlocks: [block], observations: backed(1), rollbackReady: true,
+}, poolGraph);
+assert.equal(good.accepted, true, 'in-block, backed, reversible candidate must be admitted');
+assert.equal(pool.size, 1);
+
+// A candidate targeting a file with no evolve block is refused.
+assert.equal(pool.submit({
+  candidateId: 'no-block', targetFiles: ['src/organism/cognition/Evolvable.ts'], evolveBlocks: [],
+  observations: backed(1), rollbackReady: true,
+}, poolGraph).reason, 'target-outside-evolve-block:src/organism/cognition/Evolvable.ts');
+
+// A candidate that would edit its own evaluator is refused even with a valid block.
+assert.equal(pool.submit({
+  candidateId: 'evaluator-edit',
+  targetFiles: ['src/organism/learning/VerifiedOutcomePromotionGate.ts'],
+  evolveBlocks: [{ file: 'src/organism/learning/VerifiedOutcomePromotionGate.ts', startLine: 1, endLine: 1 }],
+  observations: backed(2), rollbackReady: true,
+}, poolGraph).accepted, false, 'evaluator edit must be refused');
+
+// A proxy-only candidate is refused at the divergence gate.
+const poolProxyOnly = pool.submit({
+  candidateId: 'proxy-only', targetFiles: [block.file], evolveBlocks: [block],
+  observations: [0, 1, 2, 3, 4].map((i) => ({ id: `x${i}`, proxyGain: 0.9, downstreamGain: 0.01 })),
+  rollbackReady: true,
+}, poolGraph);
+assert.equal(poolProxyOnly.accepted, false);
+assert.match(poolProxyOnly.reason, /^divergence:/);
+
+// No rollback path is never admitted.
+assert.equal(pool.submit({
+  candidateId: 'no-rollback', targetFiles: [block.file], evolveBlocks: [block], observations: backed(3), rollbackReady: false,
+}, poolGraph).reason, 'no-rollback-path');
+
+// Duplicate ids cannot inflate the pool.
+assert.equal(pool.submit({
+  candidateId: 'good', targetFiles: [block.file], evolveBlocks: [block], observations: backed(4), rollbackReady: true,
+}, poolGraph).reason, 'duplicate-candidate-id');
+
+// Malformed blocks are refused.
+assert.equal(pool.submit({
+  candidateId: 'bad-block', targetFiles: [block.file],
+  evolveBlocks: [{ file: block.file, startLine: 5, endLine: 2 }], observations: backed(5), rollbackReady: true,
+}, poolGraph).reason, 'malformed-evolve-block:src/organism/cognition/Evolvable.ts');
+
+// Eviction keeps the pool bounded and keeps the strongest by downstream gain.
+pool.submit({
+  candidateId: 'stronger', targetFiles: [block.file], evolveBlocks: [block], observations: backed(9), rollbackReady: true,
+}, poolGraph);
+assert.equal(pool.size, 2, 'pool must honour maxPoolSize');
+const ranked = pool.rank();
+assert.equal(ranked[0].candidateId, 'stronger', 'strongest downstream gain must rank first');
+assert.ok(ranked.every((r) => r.downstreamGain > 0));
+assert.equal(DEFAULT_POOL_POLICY.maxPoolSize, 32);
+assert.equal(pool.best().candidateId, 'stronger');
+
+// Ranking must never use the proxy value: give a candidate a huge proxy, tiny downstream.
+const rankPool = new SelfImprovementCandidatePool({ maxPoolSize: 4 });
+rankPool.submit({
+  candidateId: 'honest', targetFiles: [block.file], evolveBlocks: [block],
+  observations: [0, 1, 2, 3, 4].map((i) => ({ id: `h${i}`, proxyGain: 0.36, downstreamGain: 0.35 })),
+  rollbackReady: true,
+}, poolGraph);
+rankPool.submit({
+  candidateId: 'flashy', targetFiles: [block.file], evolveBlocks: [block],
+  observations: [0, 1, 2, 3, 4].map((i) => ({ id: `f${i}`, proxyGain: 0.4, downstreamGain: 0.3 })),
+  rollbackReady: true,
+}, poolGraph);
+const honest = rankPool.rank().find((r) => r.candidateId === 'honest');
+const flashy = rankPool.rank().find((r) => r.candidateId === 'flashy');
+assert.ok(flashy.proxyGain > honest.proxyGain, 'flashy must have the higher proxy');
+assert.ok(flashy.downstreamGain < honest.downstreamGain, 'flashy must have the lower downstream');
+assert.equal(rankPool.rank()[0].candidateId, 'honest', 'ranking must follow downstream, not proxy');
+
 console.log(
-  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=38 '
+  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=52 '
   + `realFiles=${realSummary.files} realNodes=${realSummary.nodes} realEdges=${realSummary.edges} `
   + `extracted=${realSummary.extractedEdges} inferred=${realSummary.inferredEdges} `
   + `protectedFiles=${realProtected.length} protectedFragments=${PROTECTED_CAPABILITY_FRAGMENTS.length}`,
