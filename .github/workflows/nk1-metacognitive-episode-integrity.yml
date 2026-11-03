@@ -1,0 +1,61 @@
+name: NK1 Metacognitive Episode Integrity
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - "aspect/**"
+    paths:
+      - runtime/neuro-kurisu/src/organism/cognition/MetacognitiveEpisode.ts
+      - runtime/neuro-kurisu/src/organism/core/OrganismCore.ts
+      - runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts
+      - runtime/neuro-kurisu/src/organism/memory/EventSourcing.ts
+      - runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts
+      - runtime/neuro-kurisu/tests/metacognitive-episode-*.mjs
+      - runtime/neuro-kurisu/package.json
+      - .github/workflows/nk1-metacognitive-episode-integrity.yml
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - runtime/neuro-kurisu/src/organism/cognition/MetacognitiveEpisode.ts
+      - runtime/neuro-kurisu/src/organism/core/OrganismCore.ts
+      - runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts
+      - runtime/neuro-kurisu/src/organism/memory/EventSourcing.ts
+      - runtime/neuro-kurisu/src/organism/core/PersistenceProjectionCoordinator.ts
+      - runtime/neuro-kurisu/tests/metacognitive-episode-*.mjs
+      - runtime/neuro-kurisu/package.json
+      - .github/workflows/nk1-metacognitive-episode-integrity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-metacognitive-episode-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  metacognitive-episode:
+    name: WorkPass613 metacognitive episode contract
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts
+      - name: Run metacognitive contract and runtime integration tests
+        run: npm run test:workpass613:metacognitive-episodes
+      - name: Typecheck runtime
+        run: npm run typecheck
