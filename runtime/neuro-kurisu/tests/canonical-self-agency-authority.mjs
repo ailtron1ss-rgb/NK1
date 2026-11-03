@@ -68,7 +68,7 @@ const hostileSnapshot = {
   adaptiveTraits: {
     ...a.snapshot().adaptiveTraits,
     curiosity: Number.NaN,
-    responsibility: 4,
+    directness: 4,
     injectedTrait: 1,
   },
 };
@@ -82,7 +82,7 @@ assert.equal(safeState.selfModificationBlocks, 2, 'block counters cannot exceed 
 assert.equal(safeState.lastTick, 0);
 assert.equal(safeState.lastReason.length, 160);
 assert.equal(safeState.adaptiveTraits.curiosity, defaultCanonicalSelfAgencyState().adaptiveTraits.curiosity);
-assert.equal(safeState.adaptiveTraits.responsibility, 1, 'known adaptive traits must be clamped');
+assert.equal(safeState.adaptiveTraits.directness, 1, 'known adaptive traits must be clamped');
 assert.equal(Object.hasOwn(safeState.adaptiveTraits, 'injectedTrait'), false,
   'unknown traits must not enter the canonical personality schema');
 console.log(JSON.stringify({PASS:true,integrity01:obs.integrity01,verify:verify.contribution01,explore:explore.contribution01,goalAdmitted:goal.admitted,externalGoalAdmitted:externalGoal.admitted,coreChangeAllowed:coreChange.allowed,adaptiveChangeAllowed:adaptiveChange.allowed,selfModificationAllowed:selfModBad.allowed,tamperedIntegrity:restored.snapshot().invariantIntegrity01,ablationBaseline01:ablation.baseline.contribution01,ablationLesioned01:ablation.lesioned.contribution01,ablationDelta01:ablation.absoluteDelta01},null,2));
