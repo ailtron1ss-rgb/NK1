@@ -8681,18 +8681,19 @@ export class OrganismCore {
         const learningEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'learning', source: 'outcome-learning', parentIds: [outcomeEvent.id], confidence01: clamp(1 - surprise), payload: { predictionError: state.predictionError, uncertainty: state.needs.uncertainty } });
         // Close the action→outcome→learning trace into canonical episodic memory.
         // Replayed feedback reuses the CEF event and MemoryOS2 projection IDs.
-        const hasMetacognitiveLineage = Boolean(this.cognitiveCycleAnchors.observation
-            && this.cognitiveCycleAnchors.prediction && this.cognitiveCycleAnchors.action);
-        if (hasMetacognitiveLineage) {
+        const metacognitiveObservationEventId = this.cognitiveCycleAnchors.observation;
+        const metacognitivePredictionEventId = this.cognitiveCycleAnchors.prediction;
+        const metacognitiveActionEventId = this.cognitiveCycleAnchors.action;
+        if (metacognitiveObservationEventId && metacognitivePredictionEventId && metacognitiveActionEventId) {
             const metacognitiveSource = String(outcome.evidenceSource ?? (outcome.worldTransition ? 'simulator' : 'feedback')).slice(0, 80);
             const metacognitiveEpisode = recordAndPersistMetacognitiveEpisode(
                 this.cognitiveRuntime.cognitiveEventFabric,
                 {
                     tick: state.tick,
-                    cycleId: 'nk1-cycle:' + state.tick + ':' + this.cognitiveCycleAnchors.action,
-                    observationEventId: this.cognitiveCycleAnchors.observation,
-                    predictionEventId: this.cognitiveCycleAnchors.prediction,
-                    actionEventId: this.cognitiveCycleAnchors.action,
+                    cycleId: 'nk1-cycle:' + state.tick + ':' + metacognitiveActionEventId,
+                    observationEventId: metacognitiveObservationEventId,
+                    predictionEventId: metacognitivePredictionEventId,
+                    actionEventId: metacognitiveActionEventId,
                     outcomeEventId: outcomeEvent.id,
                     learningEventId: learningEvent.id,
                     predictedOutcomeHash: sha256Stable({
