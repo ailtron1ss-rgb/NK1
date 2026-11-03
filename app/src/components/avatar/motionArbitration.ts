@@ -170,10 +170,11 @@ export function restoreMotionArbitrationState(raw: unknown): MotionArbitrationSt
     : null;
   const elapsed = ownData(raw, "transitionElapsedMs");
   const requestedTransition = ownData(raw, "transitioning") === true;
-  const safeElapsed = typeof elapsed === "number" && Number.isFinite(elapsed)
-    ? Math.max(0, Math.min(MOTION_TRANSITION_MS, elapsed))
+  const elapsedValid = typeof elapsed === "number" && Number.isFinite(elapsed) && elapsed >= 0;
+  const safeElapsed = elapsedValid
+    ? Math.min(MOTION_TRANSITION_MS, elapsed as number)
     : 0;
-  const transitioning = requestedTransition && primary !== null && safeElapsed < MOTION_TRANSITION_MS;
+  const transitioning = requestedTransition && elapsedValid && primary !== null && safeElapsed < MOTION_TRANSITION_MS;
   if (primary !== null && requestedTransition && !transitioning) {
     const primaryLayer = layers.find((layer) => layer.programId === primary)!;
     primaryLayer.weight = 1;
