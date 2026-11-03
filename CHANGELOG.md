@@ -1,3 +1,9 @@
+## [NK1][Personhood] Harden P33 persisted identity restore (2026-11-03)
+- Restore P33 personhood state exclusively from plain own-data records and dense bounded arrays; reject accessors, proxy traps and malformed consent/interest evidence without invoking untrusted getters.
+- Bound and normalize persisted identity, development, autonomy, relationship, continuity, privacy, current-state and metric fields while preserving conservative defaults.
+- Add hostile root/child proxy, accessor, sparse array, invalid enum/value and valid roundtrip regressions; wire them into the WorkPass71 core regression workflow.
+- This hardens persistence integrity; it does not prove independent identity or subjective personhood.
+
 ## [NK1][Body] Renderer capability manifest, motion library and arbiter-driven 2D/3D bodies (2026-11-03)
 - Add a versioned, truthful renderer capability manifest with a fail-closed registry; the UI switch table now derives from it so a renderer cannot advertise a channel it does not implement.
 - Add a renderer-neutral motion library (16 programs) and an intent-driven arbiter with bounded cross-fade, an additive idle-breath overlay, energy-scaled amplitude and a layer cap.
