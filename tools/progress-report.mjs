@@ -67,7 +67,9 @@ function globMatch(pattern, currentSha) {
   return readdirSync(dir).some((name) => {
     if (!name.startsWith(prefix) || !name.endsWith(suffix)) return false;
     try {
-      const artifact = JSON.parse(readFileSync(resolve(dir, name), 'utf8'));
+      const candidatePath = resolveRepoPath(`${dirname(pattern)}/${name}`);
+      if (!candidatePath) return false;
+      const artifact = JSON.parse(readFileSync(candidatePath, 'utf8'));
       return artifact.verified === true && artifact.sha === currentSha;
     } catch {
       return false;
