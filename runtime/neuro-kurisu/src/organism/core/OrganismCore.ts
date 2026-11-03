@@ -5232,7 +5232,7 @@ export class OrganismCore {
                 lastSuccess: state.lastActionSuccess,
                 worldEvidenceQuality,
             },
-            driveConfidence01: intrinsicDriveConfidence01,
+            driveConfidence01: this.config.enableIntrinsicMotivation ? intrinsicDriveConfidence01 : 0,
         });
         const b272Goal = intrinsicCoupling.goal;
         const intrinsicState = intrinsicCoupling.driveState;
