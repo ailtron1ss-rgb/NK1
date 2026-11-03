@@ -25,6 +25,12 @@
           "kind": "npm-script",
           "prefix": "runtime/neuro-kurisu",
           "script": "test:workpass287:cognitive-cycle"
+        },
+        {
+          "id": "cycle-soak-harness",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:cognitive-cycle-soak"
         }
       ],
       "evidenceProbes": [

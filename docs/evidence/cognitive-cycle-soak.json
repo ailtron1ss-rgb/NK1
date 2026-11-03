@@ -1,0 +1,29 @@
+{
+  "schema": "nk1.cognitive-cycle-soak.v1",
+  "generatedAt": "2026-11-03T10:24:50.002Z",
+  "sha": "86b42cb033dbf71d28b0a4d4141480c19fbced5a",
+  "branch": "nk1-self-analysis-and-evidence-20261103",
+  "coversPaths": [
+    "runtime/neuro-kurisu/src/organism/core",
+    "runtime/neuro-kurisu/tests/cognitive-cycle-soak.mjs"
+  ],
+  "verified": true,
+  "metrics": {
+    "requestedTicks": 200,
+    "deterministicTicks": 95,
+    "deterministicOverFullRun": false,
+    "firstDivergenceTick": 95,
+    "maxTickMs": 671.15,
+    "steadyStateP50Ms": 293.91,
+    "steadyStateP90Ms": 379.35,
+    "steadyStateP99Ms": 598.55,
+    "peakRssMb": 932,
+    "rssGrowthRatio": 1.757,
+    "worldTransitions": 193
+  },
+  "profile": "mobile",
+  "host": "development-machine",
+  "knownDefect": "Cycle trajectory nondeterminism: two identical runs diverge after a finite horizon even with Date.now, performance.now and Math.random frozen. Resident memory also grows materially over the run (see rssGrowthRatio); whether it plateaus or leaks is UNPROVEN.",
+  "limitation": "Latency is a development-host baseline with the mobile profile, not a target-device measurement; the <=50ms device target is not measured here.",
+  "note": "Metrics are measured by running the real OrganismRuntime twice. `deterministicTicks` is the measured divergence horizon, not a target; it is below the 10000 the W1 contract requires until the runtime nondeterminism is fixed. `maxTickMs` is a development-host number, not a device measurement."
+}
