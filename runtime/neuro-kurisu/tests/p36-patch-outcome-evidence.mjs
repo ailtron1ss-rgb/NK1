@@ -4,6 +4,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { VerifiedOutcomeLedger } from '../src/organism/learning/VerifiedOutcomeLedger.ts';
 import { ingestSignedOutcomeArtifact, signOutcomePayloadForFixture } from '../src/organism/learning/VerifiedOutcomeArtifact.ts';
 import {
+  createP36PatchOutcomeEvidenceAuthority,
   measureP36PatchOutcomeEvidence,
   patchTreatmentMethod,
 } from '../src/organism/learning/P36PatchOutcomeEvidenceAuthority.ts';
@@ -114,4 +115,32 @@ test('does not infer delayed retention from point-in-time P36 holdout evidence',
   const result=measureP36PatchOutcomeEvidence({candidateId:'candidate-1',baseSha,patchSha256},hostConfig);
   assert.equal(result?.delayMs,0);
   assert.equal(result?.evidenceScope,'point-in-time-holdout-only');
+});
+
+test('creates a host-owned immutable P36 authority closure over its configuration',()=>{
+ const authority=createP36PatchOutcomeEvidenceAuthority(hostConfig);
+ assert.equal(typeof authority.measure,'function');
+ const result=authority.measure({candidateId:'candidate-closure',baseSha,patchSha256});
+ assert.ok(result);
+ assert.equal(result.absoluteGain,.5);
+ hostConfig.baselineMethod='candidate-controlled-baseline';
+ hostConfig.taskFamily='candidate-controlled-family';
+ const afterMutation=authority.measure({candidateId:'candidate-closure',baseSha,patchSha256});
+ assert.ok(afterMutation);
+ assert.equal(afterMutation.baselineMethod,'baseline-v1');
+ assert.equal(afterMutation.taskFamily,'self-improvement');
+});
+test('rejects accessor-backed host authority configuration without executing getters',()=>{
+ let getterCalled=false;
+ const invalid={...hostConfig};
+ Object.defineProperty(invalid,'baselineMethod',{get(){getterCalled=true;throw new Error('must not execute');}});
+ assert.throws(()=>createP36PatchOutcomeEvidenceAuthority(invalid),/host-config-invalid/);
+ assert.equal(getterCalled,false);
+});
+test('host-owned authority remains bound to its initial manifest fingerprint',()=>{
+ const authority=createP36PatchOutcomeEvidenceAuthority(hostConfig);
+ const original=authority.measure({candidateId:'candidate-closure',baseSha,patchSha256});
+ assert.ok(original);
+ assert.throws(()=>createP36PatchOutcomeEvidenceAuthority({...hostConfig,baseSha:'b'.repeat(40)}),/manifest|source|host-config-invalid/);
+ assert.equal(authority.measure({candidateId:'candidate-closure',baseSha:'b'.repeat(40),patchSha256}),null);
 });
