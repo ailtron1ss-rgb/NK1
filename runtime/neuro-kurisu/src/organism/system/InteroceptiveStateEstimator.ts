@@ -20,7 +20,7 @@ export class InteroceptiveStateEstimator {
   const energy=clamp(o.energy01),thermal=clamp(o.thermal01),load=clamp(o.cognitiveLoad01),capacity=clamp(o.capacity01),sleep=clamp(o.sleepPressure01),fresh=clamp(o.sensoryFreshness01);
   const p=this.state.prediction;
   const predicted={energy01:p.energy01,thermal01:p.thermal01,load01:p.load01,capacity01:p.capacity01};
-  const channelErrors={energy:Math.abs(energy-p.energy01),thermal:Math.abs(thermal-p.thermal01),cognitiveLoad:Math.abs(load-p.load01),sleepPressure:Math.abs(sleep-this.state.meanPredictionError01)};
+  const channelErrors={energy:Math.abs(energy-p.energy01),thermal:Math.abs(thermal-p.thermal01),cognitiveLoad:Math.abs(load-p.load01),sleepPressure:0};
   const predictionError=clamp((channelErrors.energy+channelErrors.thermal+channelErrors.cognitiveLoad+Math.abs(capacity-p.capacity01))/4);
   const precisionAllocation01=precisionAllocator.allocate({energy,thermal,cognitiveLoad:load,sleepPressure:sleep,attentionBudget01:o.attentionBudget01});
   const budget=precisionAllocation01.budget01;
