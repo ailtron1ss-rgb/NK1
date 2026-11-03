@@ -65,7 +65,7 @@ export interface B272State {
   selfProjectionWeights:number[][];
   worldProjectionWeights:number[][];
   goalHistory:Array<{tick:number;id:string;vector:number[];action:ActionKind;reward01:number;predictionError01:number;accepted:boolean}>;
-  outcomeHistory:Array<{tick:number;goalId:string;action:ActionKind;reward01:number;predictionError01:number}>;
+  outcomeHistory:Array<{tick:number;goalId:string;action:ActionKind;proposedAction?:ActionKind;reward01:number;predictionError01:number}>;
   goalOutcomeMemory:Record<string,{vector:number[];meanReward01:number;meanPredictionError01:number;updates:number;lastTick:number}>;
 }
 
@@ -142,7 +142,8 @@ export class B272EndogenousGoalGenesis {
       if(!Number.isSafeInteger(item.tick)||typeof item.tick!=='number'||item.tick<0||item.tick>tick)continue;
       if(!isSafeId(item.goalId)||!/^g-[0-9a-f]{8}$/u.test(item.goalId)||!isAction(item.action))continue;
       if(!isUnit(item.reward01)||!isUnit(item.predictionError01))continue;
-      outcomeHistory.push({tick:item.tick,goalId:item.goalId,action:item.action,reward01:item.reward01,predictionError01:item.predictionError01});
+      if(item.proposedAction!==undefined&&!isAction(item.proposedAction))continue;
+      outcomeHistory.push({tick:item.tick,goalId:item.goalId,action:item.action,proposedAction:isAction(item.proposedAction)?item.proposedAction:item.action,reward01:item.reward01,predictionError01:item.predictionError01});
     }
     outcomeHistory.sort((a,b)=>a.tick-b.tick);
     // A single cognitive tick can yield at most one credited outcome. If a
@@ -295,10 +296,12 @@ const learned=this.learnedGoalValue(v,input.tick);
     this.state.goalHistory=[...this.state.goalHistory,{tick:input.tick,id:c.id,vector:c.vector.slice(),action,reward01:input.lastReward01,predictionError01:input.predictionError01,accepted:false}].slice(-128);
     return {...c,action,goalId:c.id,goalVector:c.vector.slice(),selfConflict01:selfConflict,agency01:this.state.agency01,endogenous01};
   }
-  learnFromOutcome(input:{tick:number;action:ActionKind;reward01:number;predictionError01:number;externalEvidence01:number;independentEvaluatorGain01?:number;acceptedExternalGoal?:boolean}){
+  learnFromOutcome(input:{tick:number;action:ActionKind;executedAction?:ActionKind;reward01:number;predictionError01:number;externalEvidence01:number;independentEvaluatorGain01?:number;acceptedExternalGoal?:boolean}){
     if(!isRecord(input))throw new TypeError('B272 outcome must be an object');
     if(!Number.isSafeInteger(input.tick)||typeof input.tick!=='number'||input.tick!==this.state.tick)throw new RangeError('B272 outcome tick must match the current goal tick');
     if(!isAction(input.action)||input.action!==this.state.currentAction)throw new RangeError('B272 outcome action must match the generated action');
+    const executedAction=input.executedAction??input.action;
+    if(!isAction(executedAction))throw new RangeError('B272 executed action is invalid');
     if(!isUnit(input.reward01)||!isUnit(input.predictionError01)||!isUnit(input.externalEvidence01))throw new RangeError('B272 outcome signals must be finite values in [0,1]');
     if(input.independentEvaluatorGain01!==undefined&&(typeof input.independentEvaluatorGain01!=='number'||!Number.isFinite(input.independentEvaluatorGain01)||input.independentEvaluatorGain01< -1||input.independentEvaluatorGain01>1))throw new RangeError('B272 independent evaluator gain must be finite and in [-1,1]');
     if(input.acceptedExternalGoal!==undefined&&typeof input.acceptedExternalGoal!=='boolean')throw new TypeError('B272 acceptedExternalGoal must be boolean');
@@ -312,7 +315,7 @@ const learned=this.learnedGoalValue(v,input.tick);
     const gain=clamp11((input.reward01-.5)*.9+(0.5-input.predictionError01)*.35+(input.independentEvaluatorGain01??0)*.6+externalEvidenceBonus);
     const accepted=input.acceptedExternalGoal===true&&gain>=-.02;
     const goal=this.state.currentGoal.length?this.state.currentGoal:zeroGoal();
-    const ai=ACTIONS.indexOf(input.action); const lr=.012+.018*this.state.agency01+.012*this.state.goalNovelty01;
+    const ai=ACTIONS.indexOf(executedAction); const lr=.012+.018*this.state.agency01+.012*this.state.goalNovelty01;
     if(ai>=0){for(let j=0;j<8;j++){const target=goal[j]??0; const delta=lr*gain*target; this.state.actionPrototypeWeights[ai]![j]=clamp11(this.state.actionPrototypeWeights[ai]![j]+delta);}}
     for(let i=0;i<8;i++){
       for(let j=0;j<8;j++){
@@ -343,11 +346,11 @@ const learned=this.learnedGoalValue(v,input.tick);
       meanPredictionError01:clamp01(memory.meanPredictionError01+(clamp01(input.predictionError01)-memory.meanPredictionError01)*memoryAlpha),
       updates:memory.updates+1,lastTick:input.tick,
     };
-    this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:this.state.currentGoalId,action:input.action,reward01:input.reward01,predictionError01:input.predictionError01}].slice(-256);
+    this.state.outcomeHistory=[...this.state.outcomeHistory,{tick:input.tick,goalId:this.state.currentGoalId,action:executedAction,proposedAction:input.action,reward01:input.reward01,predictionError01:input.predictionError01}].slice(-256);
     this.state.lastOutcomeTick=input.tick;
     if(accepted)this.state.acceptedGoals++; else this.state.rejectedGoals++; if(input.independentEvaluatorGain01!=null&&input.independentEvaluatorGain01<-.04)this.state.rollbackCount++;
     this.state.learningUpdates++;
-    return {learningRate:lr,gain11:gain,accepted,goalId:this.state.currentGoalId,agency01:this.state.agency01,goalNovelty01:this.state.goalNovelty01,goalPressure01:this.state.goalPressure01};
+    return {learningRate:lr,gain11:gain,accepted,goalId:this.state.currentGoalId,proposedAction:input.action,executedAction,agency01:this.state.agency01,goalNovelty01:this.state.goalNovelty01,goalPressure01:this.state.goalPressure01};
   }
   learnedGoalBias(vector:number[], currentTick=this.state.tick){
     const learned=this.learnedGoalValue(vector.slice(0,8),currentTick);
