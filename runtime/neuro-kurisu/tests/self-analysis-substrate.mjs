@@ -450,6 +450,19 @@ assert.equal(immutableRank.parentId, 'parent-original', 'post-admission candidat
 assert.ok(immutableRank.downstreamGain > 0, 'post-admission candidate mutation must not alter measured gain');
 assert.throws(() => new SelfImprovementCandidatePool({ maxPoolSize: 0 }), /candidate-pool-policy-invalid/);
 assert.throws(() => new SelfImprovementCandidatePool({ minDownstreamGain: Number.NaN }), /candidate-pool-policy-invalid/);
+let policyGetterCalls = 0;
+const accessorPolicy = {};
+Object.defineProperty(accessorPolicy, 'maxPoolSize', { get() { policyGetterCalls++; throw new Error('policy getter must not run'); } });
+assert.throws(() => new SelfImprovementCandidatePool(accessorPolicy), /candidate-pool-policy-invalid/);
+assert.equal(policyGetterCalls, 0, 'candidate-pool policy accessors must never execute');
+let parentGetterCalls = 0;
+const accessorParent = {
+  candidateId: 'accessor-parent', targetFiles: [block.file], evolveBlocks: [block],
+  observations: backed(4), rollbackReady: true,
+};
+Object.defineProperty(accessorParent, 'parentId', { get() { parentGetterCalls++; throw new Error('parent getter must not run'); } });
+assert.equal(immutablePool.submit(accessorParent, poolGraph).reason, 'malformed-parent-id');
+assert.equal(parentGetterCalls, 0, 'optional lineage accessors must never execute');
 
 let observationGetterCalls = 0;
 const getterObservation = { id: 'getter', downstreamGain: .2 };
