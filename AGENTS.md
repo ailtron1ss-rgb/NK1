@@ -1,14 +1,20 @@
 # NeuroCore — repository working rules
 
-> **Current continuation checkpoint — 2026-11-01:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions. The source baseline at this checkpoint is `735b83d525c0d53c91e2e5a6587fb3529a08d13b`; never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass126/127 and PR #11/#12 notes formerly below were stale and have been removed from the active entry point; older WorkPass records later in the repository remain archival.
+# NeuroCore — repository working rules
 
-## Current checkpoint
+> **Current continuation checkpoint — 2026-11-03:** start with [README.md](README.md) and [NEUROCORE_START_HERE.md](NEUROCORE_START_HERE.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before every change. Verified live source HEAD at this checkpoint: `a3b3f4b00fcffe5bcb02161d5ac18d57dab50516`, 22 commits ahead of `54d2d35176faf774e3402fdd2ac4dd7b8d01b467` and 0 behind. Never assume this SHA remains current. `main` is release/metadata and is not the direct source merge target. The historical WorkPass records later in this repository are archival unless a current status page explicitly links them.
 
-- PR #594 merged: missing/corrupt-primary recovery, unchanged restore recreation and backup preservation; 11/11 exact-head checks.
-- PR #603 merged: terminal/unknown speech lifecycle clears stale mouth channels; 9/9 exact-head checks.
-- PR #607 merged: backup temp + fsync + atomic rename, with SIGKILL-before-rename regression; 11/11 exact-head checks.
-- UserModel v2 durable forgetting is already integrated at `efb7693`; motor-frame integrity is integrated at `c039f84`.
-- Latest published Release ZIP is still the 2026-10-19 WorkPass70 Hotfix prerelease. November source commits are not in the ZIP; license review and exact-SHA release gate remain blocking.
+## Current checkpoint — 2026-11-03 (live source)
+
+- Canonical source branch: `workpass70-source`; verified HEAD: `a3b3f4b00fcffe5bcb02161d5ac18d57dab50516`.
+- Exact-HEAD Actions at this source SHA: **16/16 completed successfully**, including core regression, Unified Organism Runtime, Action Gateway, world perception, memory integrity/retrieval, longitudinal holdout pairing, UserModel explicit forget, Hexis lineage, Emotion restore, B306 decision-bound outcome attribution and verified learning/skill lifecycle.
+- Source changes since the 2026-11-01 snapshot include live causal outcome binding, interoceptive precision allocation and estimator input hardening, B306 decision-tick outcome attribution, cross-lingual concept-index lifecycle integrity, frame-aware spatial recall, EmotionAppraisal restore hardening, metacognitive episodic memory and intrinsic-drive → endogenous-goal coupling.
+- PR #761 is an open draft based on the current source HEAD. Its current head `59fcc9e9c936d6ec00f0f917dd8f4bf762b15a58` adds self-prior restore-counter validation and ordered-timestamp rejection; exact-head focused regression and runtime typecheck passed in run [#41641976733](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41641976733). It is not merged.
+- PR #760 is an open draft based on the current source HEAD for voluntary attention-effort regulation. Treat it as implemented/tested on its own PR head, not as integrated.
+- PRs #754 and #755 were validated on their own heads against older base `36e576da622c0eb3d55759bb086657048c0243c1`; their source-relative results are stale against current HEAD `a3b3f4b` and must be refreshed before relying on parity/holdout conclusions.
+- Latest published prerelease remains `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. PR #754's archive workflow run #41620676908 verified the published ZIP bytes, digest, CRC and member safety at its own head; its source parity comparison was against `36e576d`, not current `a3b3f4b`.
+- `contracts/RELEASE_LICENSE_REVIEW.json` remains pending; root redistribution approval is false. Do not publish a new ZIP until human license review and the exact-SHA publisher gate pass.
+- Read-only infrastructure check: MongoDB Atlas Project 0 / Cluster0 is reachable (AWS `AP_SOUTH_1`, MongoDB 8.0.36, IDLE) and contains `sample_mflix`, `admin` and `local`; no NK1 database or runtime adapter exists. Supabase project list is empty. Replit search found no NK1 app. Redis has no connected NK1 RAM data plane or confirmed `AGENT_MEMORY_*` secrets. No database, schema, secret or paid service was created.
 
 ## Non-negotiable engineering workflow
 
