@@ -13,7 +13,7 @@ export interface InteroceptiveState {version:1;ticks:number;meanPredictionError0
 export const defaultInteroceptiveState=():InteroceptiveState=>({version:1,ticks:0,meanPredictionError01:.24,meanUncertainty01:.32,meanConfidence01:.68,lastFrame:null,prediction:{energy01:.75,thermal01:.2,load01:.2,capacity01:.8}});
 export class InteroceptiveStateEstimator {
  private state=defaultInteroceptiveState();
- restore(raw?:Partial<InteroceptiveState>|null){const d=defaultInteroceptiveState(),r=raw??{};this.state={...d,...r,prediction:{...d.prediction,...(r.prediction??{})},lastFrame:r.lastFrame?structuredClone(r.lastFrame):null,version:1};}
+ restore(raw?:Partial<InteroceptiveState>|null){const d=defaultInteroceptiveState(),r=raw??{};const lastFrame=r.lastFrame?structuredClone(r.lastFrame):null;if(lastFrame){if(!lastFrame.precisionAllocation01)lastFrame.precisionAllocation01=precisionAllocator.allocate({energy:lastFrame.latent?.energy01??.5,thermal:lastFrame.latent?.thermal01??.5,cognitiveLoad:lastFrame.latent?.load01??.5,sleepPressure:.5});if(!Number.isFinite(lastFrame.attendedPredictionError01))lastFrame.attendedPredictionError01=clamp(lastFrame.predictionError01);}this.state={...d,...r,prediction:{...d.prediction,...(r.prediction??{})},lastFrame,version:1};}
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){const s=this.state;return {...s,prediction:{...s.prediction},lastFrame:s.lastFrame?{...s.lastFrame,latent:{...s.lastFrame.latent},predicted:{...s.lastFrame.predicted},reason:[...s.lastFrame.reason]}:null};}
  observe(o:InteroceptiveObservation):InteroceptiveFrame{
@@ -24,12 +24,14 @@ export class InteroceptiveStateEstimator {
   const predictionError=clamp((channelErrors.energy+channelErrors.thermal+channelErrors.cognitiveLoad+Math.abs(capacity-p.capacity01))/4);
   const precisionAllocation01=precisionAllocator.allocate({energy,thermal,cognitiveLoad:load,sleepPressure:sleep,attentionBudget01:o.attentionBudget01});
   const budget=precisionAllocation01.budget01;
-  const attendedPredictionError=budget>0?clamp((channelErrors.energy*precisionAllocation01.allocation01.energy+channelErrors.thermal*precisionAllocation01.allocation01.thermal+channelErrors.cognitiveLoad*precisionAllocation01.allocation01.cognitiveLoad+channelErrors.sleepPressure*precisionAllocation01.allocation01.sleepPressure)/budget):predictionError;
+  const predictionPrecision=precisionAllocation01.allocation01.energy+precisionAllocation01.allocation01.thermal+precisionAllocation01.allocation01.cognitiveLoad;
+  const attendedPredictionError=predictionPrecision>0?clamp((channelErrors.energy*precisionAllocation01.allocation01.energy+channelErrors.thermal*precisionAllocation01.allocation01.thermal+channelErrors.cognitiveLoad*precisionAllocation01.allocation01.cognitiveLoad)/predictionPrecision):predictionError;
   const sensorUncertainty=clamp(.48*(1-fresh)+.34*attendedPredictionError+.18*predictionError+(1-budget)*.08);
   const uncertainty=clamp(this.state.meanUncertainty01*.86+sensorUncertainty*.14);
   const baselineRecovery=clamp((1-energy)*.42+thermal*.24+load*.18+sleep*.16);
   const attendedRecovery=clamp((1-energy)*precisionAllocation01.share01.energy+thermal*precisionAllocation01.share01.thermal+load*precisionAllocation01.share01.cognitiveLoad+sleep*precisionAllocation01.share01.sleepPressure);
-  const recovery=clamp(baselineRecovery*.7+attendedRecovery*.3);
+  const attentionInfluence=budget*.3;
+  const recovery=clamp(baselineRecovery*(1-attentionInfluence)+attendedRecovery*attentionInfluence);
   const salience=clamp(attendedPredictionError*.42+recovery*.38+(o.externalInput?.15:0));
   const conflict=clamp(Math.abs((1-capacity)-load)*.55+Math.abs(thermal-(1-energy))*.18+predictionError*.27);
   const controlPressure=clamp(recovery*.48+attendedPredictionError*.25+uncertainty*.17+conflict*.10);
