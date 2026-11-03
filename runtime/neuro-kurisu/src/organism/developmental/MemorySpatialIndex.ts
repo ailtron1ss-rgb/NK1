@@ -105,18 +105,47 @@ export class MemorySpatialIndex {
   return hits.sort((a,b)=>a.distance-b.distance||a.id.localeCompare(b.id)).slice(0,safeLimit);
  }
  diagnostics(items:ReadonlyArray<{id:string;context?:Record<string,string>}>):{
-  pass:boolean;indexedItems:number;canonicalSpatialItems:number;missingItems:number;staleItems:number;cellCount:number;
+  pass:boolean;indexedItems:number;canonicalSpatialItems:number;missingItems:number;staleItems:number;
+  reverseMappingMismatch:number;cellPostingMismatch:number;cellCount:number;
  } {
   const expected=new Map<string,MemorySpatialPoint>();
-  for(const item of items){const point=spatialPointFromContext(item.context);if(point)expected.set(item.id,point);}
-  let missingItems=0,staleItems=0;
+  const expectedCellById=new Map<string,string>();
+  const expectedCells=new Map<string,Set<string>>();
+  for(const item of items){
+   const point=spatialPointFromContext(item.context);if(!point)continue;
+   expected.set(item.id,point);
+   const [x,y,z]=cellCoordinates(point),key=cellKey(point.frameId,x,y,z);
+   expectedCellById.set(item.id,key);
+   let members=expectedCells.get(key);if(!members){members=new Set<string>();expectedCells.set(key,members);}
+   members.add(item.id);
+  }
+  let missingItems=0,staleItems=0,reverseMappingMismatch=0,cellPostingMismatch=0;
   for(const [id,point] of expected){
    const actual=this.pointById.get(id);
    if(!actual)missingItems++;
    else if(actual.frameId!==point.frameId||actual.x!==point.x||actual.y!==point.y||actual.z!==point.z)staleItems++;
   }
   for(const id of this.pointById.keys())if(!expected.has(id))staleItems++;
-  return {pass:missingItems===0&&staleItems===0&&expected.size===this.pointById.size,
-   indexedItems:this.pointById.size,canonicalSpatialItems:expected.size,missingItems,staleItems,cellCount:this.cells.size};
+  // Verify the ID -> cell reverse map independently of the point payload map.
+  for(const [id,key] of expectedCellById)if(this.cellById.get(id)!==key)reverseMappingMismatch++;
+  for(const [id,key] of this.cellById)if(expectedCellById.get(id)!==key)reverseMappingMismatch++;
+  // Verify complete cell -> ID memberships. A missing or orphan posting can make
+  // an otherwise valid point unreachable (or make a stale ID occupy query work).
+  for(const [key,expectedIds] of expectedCells){
+   const actualIds=this.cells.get(key);
+   if(!actualIds||actualIds.size!==expectedIds.size||
+      [...expectedIds].some(id=>!actualIds.has(id)))cellPostingMismatch++;
+  }
+  for(const [key,actualIds] of this.cells){
+   const expectedIds=expectedCells.get(key);
+   if(!expectedIds||actualIds.size!==expectedIds.size||
+      [...actualIds].some(id=>!expectedIds.has(id)))cellPostingMismatch++;
+   if(actualIds.size===0)cellPostingMismatch++;
+  }
+  const pass=missingItems===0&&staleItems===0&&reverseMappingMismatch===0&&
+   cellPostingMismatch===0&&expected.size===this.pointById.size&&
+   expectedCellById.size===this.cellById.size&&expectedCells.size===this.cells.size;
+  return {pass,indexedItems:this.pointById.size,canonicalSpatialItems:expected.size,
+   missingItems,staleItems,reverseMappingMismatch,cellPostingMismatch,cellCount:this.cells.size};
  }
 }
