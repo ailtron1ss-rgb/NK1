@@ -162,6 +162,18 @@ assert.equal(
   'refused',
   'guard must fail closed on empty proposal',
 );
+
+const accessorCandidate = { targetFiles: ['src/organism/cognition/NeutralThing.ts'] };
+Object.defineProperty(accessorCandidate, 'candidateId', { get() { throw new Error('candidate getter must not execute'); } });
+assert.equal(evaluateModification(accessorCandidate, guardGraph).decision, 'refused',
+  'accessor-backed proposal fields must fail closed without invoking getters');
+const accessorTargets = [];
+Object.defineProperty(accessorTargets, '0', { get() { throw new Error('target getter must not execute'); }, configurable: true });
+Object.defineProperty(accessorTargets, 'length', { value: 1 });
+assert.equal(evaluateModification({ candidateId: 'accessor-target', targetFiles: accessorTargets }, guardGraph).decision, 'refused',
+  'accessor-backed target entries must be refused');
+assert.equal(evaluateModification({ candidateId: 'sparse-target', targetFiles: new Array(1) }, guardGraph).decision, 'refused',
+  'sparse target arrays must be refused');
 assert.equal(
   evaluateModification({ candidateId: 'c3', targetFiles: ['src/does/not/exist.ts'] }, guardGraph).decision,
   'refused',
