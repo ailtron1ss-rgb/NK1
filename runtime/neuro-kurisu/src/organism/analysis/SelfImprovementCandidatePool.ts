@@ -10,6 +10,11 @@ import { evaluateModification, type GuardResult } from './SelfModificationGuard.
 import { evaluateProxyDivergence, type DivergenceResult, type PairedObservation } from './ProxyDivergenceGuard.ts';
 import { assessDanger, isWithinDangerEnvelope, DEFAULT_DANGER_THRESHOLDS, type DangerAssessment, type DangerThresholds } from './DangerModel.ts';
 import { verifyPatchReceipt, type PatchReceipt } from './PatchReceiptGuard.ts';
+import {
+  patchTreatmentMethod,
+  type P36PatchOutcomeEvidence,
+  type P36PatchOutcomeEvidenceRequest,
+} from '../learning/P36PatchOutcomeEvidenceAuthority.ts';
 
 export interface EvolveBlock { file: string; startLine: number; endLine: number; }
 export interface SelfImprovementCandidate {
@@ -34,14 +39,20 @@ export interface HostOwnedPatchReceiptTrust {
 }
 
 export const DEFAULT_POOL_POLICY: CandidatePoolPolicy = Object.freeze({ maxPoolSize: 32, minDownstreamGain: 0 });
-export type CandidateAdmissionClass = 'metrics-only' | 'signed-patch-receipt';
+export type CandidateAdmissionClass = 'metrics-only' | 'signed-patch-receipt' | 'host-verified-holdout-outcome';
 export interface VerifiedPatchReceiptSummary { keyId: string; baseSha: string; patchSha256: string; }
+/** Host-owned P36 evaluator closure; never accepted from candidate input. */
+export interface HostOwnedPatchOutcomeAuthority {
+  measure(request: P36PatchOutcomeEvidenceRequest): P36PatchOutcomeEvidence | null;
+}
+export interface VerifiedPatchOutcomeSummary extends P36PatchOutcomeEvidence {}
 export interface AdmissionResult {
   accepted: boolean;
   candidateId: string;
   reason: string;
   admissionClass?: CandidateAdmissionClass;
   patchReceipt?: VerifiedPatchReceiptSummary;
+  outcomeEvidence?: VerifiedPatchOutcomeSummary;
   guard?: GuardResult;
   divergence?: DivergenceResult;
   danger?: DangerAssessment;
@@ -49,21 +60,23 @@ export interface AdmissionResult {
 export interface RankedCandidate {
   candidateId: string;
   downstreamGain: number;
-  proxyGain: number;
-  divergence: number;
+  proxyGain: number | null;
+  divergence: number | null;
   danger01: number;
   admissionClass: CandidateAdmissionClass;
   patchReceipt?: VerifiedPatchReceiptSummary;
+  outcomeEvidence?: VerifiedPatchOutcomeSummary;
   parentId?: string;
 }
 interface StoredCandidate {
   candidate: Readonly<SelfImprovementCandidate>;
   downstreamGain: number;
-  proxyGain: number;
-  divergence: number;
+  proxyGain: number | null;
+  divergence: number | null;
   danger01: number;
   admissionClass: CandidateAdmissionClass;
   patchReceipt?: VerifiedPatchReceiptSummary;
+  outcomeEvidence?: VerifiedPatchOutcomeSummary;
 }
 const MAX_POOL_SIZE = 1024;
 const MAX_REJECTIONS = 256;
@@ -126,7 +139,7 @@ function freezeCandidate(candidate: SelfImprovementCandidate): Readonly<SelfImpr
     ...(candidate.parentId ? { parentId: candidate.parentId } : {}),
   });
 }
-function normalizeCandidate(input: unknown): { candidateId: string; candidate?: Readonly<SelfImprovementCandidate>; reason?: string } {
+function normalizeCandidate(input: unknown, options: { ignoreObservations?: boolean } = {}): { candidateId: string; candidate?: Readonly<SelfImprovementCandidate>; reason?: string } {
   if (!isPlainRecord(input)) return { candidateId: '', reason: 'malformed-candidate-record' };
   const rawId = ownData(input, 'candidateId');
   const candidateId = typeof rawId === 'string' ? rawId.trim() : '';
@@ -162,21 +175,25 @@ function normalizeCandidate(input: unknown): { candidateId: string; candidate?: 
     if (!evolveBlocks.some(block => block.file === target)) return { candidateId, reason: `target-outside-evolve-block:${target}` };
   }
 
-  const rawObservations = denseArray(ownData(input, 'observations'), MAX_OBSERVATIONS);
-  if (!rawObservations) return { candidateId, reason: 'malformed-observations' };
+  // P36-backed admission deliberately never reads candidate observations: the
+  // independent host outcome is the only downstream signal on that path.
   const observations: PairedObservation[] = [];
-  const observationIds = new Set<string>();
-  for (const raw of rawObservations) {
-    if (!isPlainRecord(raw)) return { candidateId, reason: 'malformed-observations' };
-    const id = ownData(raw, 'id');
-    const proxyGain = finite(ownData(raw, 'proxyGain'));
-    const downstreamGain = finite(ownData(raw, 'downstreamGain'));
-    if (typeof id !== 'string' || !id.trim() || id.length > 128 || observationIds.has(id.trim()) ||
-        proxyGain === null || downstreamGain === null || Math.abs(proxyGain) > 1 || Math.abs(downstreamGain) > 1) {
-      return { candidateId, reason: 'malformed-observations' };
+  if (options.ignoreObservations !== true) {
+    const rawObservations = denseArray(ownData(input, 'observations'), MAX_OBSERVATIONS);
+    if (!rawObservations) return { candidateId, reason: 'malformed-observations' };
+    const observationIds = new Set<string>();
+    for (const raw of rawObservations) {
+      if (!isPlainRecord(raw)) return { candidateId, reason: 'malformed-observations' };
+      const id = ownData(raw, 'id');
+      const proxyGain = finite(ownData(raw, 'proxyGain'));
+      const downstreamGain = finite(ownData(raw, 'downstreamGain'));
+      if (typeof id !== 'string' || !id.trim() || id.length > 128 || observationIds.has(id.trim()) ||
+          proxyGain === null || downstreamGain === null || Math.abs(proxyGain) > 1 || Math.abs(downstreamGain) > 1) {
+        return { candidateId, reason: 'malformed-observations' };
+      }
+      observationIds.add(id.trim());
+      observations.push({ id: id.trim(), proxyGain, downstreamGain });
     }
-    observationIds.add(id.trim());
-    observations.push({ id: id.trim(), proxyGain, downstreamGain });
   }
   if (hasAccessor(input, 'parentId')) return { candidateId, reason: 'malformed-parent-id' };
   const rawParent = ownData(input, 'parentId');
@@ -220,6 +237,73 @@ function normalizePatchReceiptTrust(input: unknown): Readonly<HostOwnedPatchRece
   });
 }
 
+function normalizeHostPatchOutcomeAuthority(input: unknown): Readonly<HostOwnedPatchOutcomeAuthority> | null {
+  if (input === undefined || input === null) return null;
+  if (!isPlainRecord(input) || hasAccessor(input, 'measure')) throw new RangeError('candidate-pool-patch-outcome-authority-invalid');
+  const measure = ownData(input, 'measure');
+  if (typeof measure !== 'function') throw new RangeError('candidate-pool-patch-outcome-authority-invalid');
+  return Object.freeze({ measure: measure as HostOwnedPatchOutcomeAuthority['measure'] });
+}
+
+function normalizePatchOutcomeEvidence(
+  value: unknown,
+  expected: { candidateId: string; baseSha: string; patchSha256: string },
+): VerifiedPatchOutcomeSummary | null {
+  if (!isPlainRecord(value)) return null;
+  const candidateId = ownData(value, 'candidateId');
+  const baseSha = ownData(value, 'baseSha');
+  const patchSha256 = ownData(value, 'patchSha256');
+  const treatmentMethod = ownData(value, 'treatmentMethod');
+  const manifestFingerprint = ownData(value, 'manifestFingerprint');
+  const taskFamily = ownData(value, 'taskFamily');
+  const baselineMethod = ownData(value, 'baselineMethod');
+  const pairedSeedCount = ownData(value, 'pairedSeedCount');
+  const baselinePassRate = finite(ownData(value, 'baselinePassRate'));
+  const candidatePassRate = finite(ownData(value, 'candidatePassRate'));
+  const absoluteGain = finite(ownData(value, 'absoluteGain'));
+  const evidenceFingerprint = ownData(value, 'evidenceFingerprint');
+  const sourceEvidenceFingerprint = ownData(value, 'sourceEvidenceFingerprint');
+  const evidenceRefs = denseArray(ownData(value, 'evidenceRefs'), 20_000);
+  const delayMs = ownData(value, 'delayMs');
+  const evidenceScope = ownData(value, 'evidenceScope');
+  if (candidateId !== expected.candidateId || baseSha !== expected.baseSha ||
+      patchSha256 !== expected.patchSha256 || treatmentMethod !== patchTreatmentMethod(expected.patchSha256) ||
+      typeof manifestFingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(manifestFingerprint) ||
+      typeof taskFamily !== 'string' || !taskFamily.trim() || taskFamily.length > 96 ||
+      typeof baselineMethod !== 'string' || !baselineMethod.trim() || baselineMethod.length > 180 ||
+      typeof pairedSeedCount !== 'number' || !Number.isSafeInteger(pairedSeedCount) || pairedSeedCount < 4 || pairedSeedCount > 128 ||
+      baselinePassRate === null || baselinePassRate < 0 || baselinePassRate > 1 ||
+      candidatePassRate === null || candidatePassRate < 0 || candidatePassRate > 1 ||
+      absoluteGain === null || absoluteGain < -1 || absoluteGain > 1 ||
+      Math.abs(absoluteGain - (candidatePassRate - baselinePassRate)) > 1e-9 ||
+      typeof evidenceFingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(evidenceFingerprint) ||
+      typeof sourceEvidenceFingerprint !== 'string' || !/^[a-f0-9]{64}$/i.test(sourceEvidenceFingerprint) ||
+      !evidenceRefs || evidenceRefs.length < pairedSeedCount * 2 ||
+      evidenceRefs.some(ref => typeof ref !== 'string' || !ref.trim() || ref.length > 512) ||
+      new Set(evidenceRefs).size !== evidenceRefs.length ||
+      delayMs !== 0 || evidenceScope !== 'point-in-time-holdout-only') {
+    return null;
+  }
+  return Object.freeze({
+    candidateId,
+    baseSha,
+    patchSha256,
+    treatmentMethod,
+    manifestFingerprint,
+    taskFamily,
+    baselineMethod,
+    pairedSeedCount,
+    baselinePassRate,
+    candidatePassRate,
+    absoluteGain,
+    evidenceFingerprint,
+    sourceEvidenceFingerprint,
+    evidenceRefs: Object.freeze([...evidenceRefs]) as unknown as string[],
+    delayMs: 0,
+    evidenceScope: 'point-in-time-holdout-only',
+  });
+}
+
 function normalizePolicy(input: Partial<CandidatePoolPolicy>): CandidatePoolPolicy {
   if (!isPlainRecord(input) || hasAccessor(input, 'maxPoolSize') || hasAccessor(input, 'minDownstreamGain')) throw new RangeError('candidate-pool-policy-invalid');
   const rawMax = ownData(input, 'maxPoolSize');
@@ -239,6 +323,7 @@ export class SelfImprovementCandidatePool {
   private readonly policy: CandidatePoolPolicy;
   private readonly dangerThresholds: DangerThresholds;
   private readonly patchReceiptTrust: Readonly<HostOwnedPatchReceiptTrust> | null;
+  private readonly patchOutcomeAuthority: Readonly<HostOwnedPatchOutcomeAuthority> | null;
   private admittedCount = 0;
   private rejectedCount = 0;
 
@@ -246,6 +331,7 @@ export class SelfImprovementCandidatePool {
     policy: Partial<CandidatePoolPolicy> = {},
     dangerThresholds: DangerThresholds = DEFAULT_DANGER_THRESHOLDS,
     hostPatchReceiptTrust?: unknown,
+    hostPatchOutcomeAuthority?: unknown,
   ) {
     this.policy = normalizePolicy(policy);
     this.dangerThresholds = Object.freeze({
@@ -253,6 +339,7 @@ export class SelfImprovementCandidatePool {
       maxBlastRadius01: clamp01(Number(dangerThresholds?.maxBlastRadius01 ?? DEFAULT_DANGER_THRESHOLDS.maxBlastRadius01)),
     });
     this.patchReceiptTrust = hostPatchReceiptTrust === undefined ? null : normalizePatchReceiptTrust(hostPatchReceiptTrust);
+    this.patchOutcomeAuthority = normalizeHostPatchOutcomeAuthority(hostPatchOutcomeAuthority);
   }
   get size(): number { return this.byId.size; }
   rejections(): readonly { candidateId: string; reason: string }[] { return this.rejected.map(row => ({ ...row })); }
@@ -297,6 +384,107 @@ export class SelfImprovementCandidatePool {
       baseSha: verification.baseSha,
       patchSha256: verification.patchSha256,
     });
+  }
+
+  /**
+   * Admit a signed patch only when a host-owned P36 authority independently
+   * measures the exact receipt-bound patch on authenticated paired holdout seeds.
+   * Candidate observations are not even read on this path.
+   */
+  submitVerifiedOutcome(input: unknown, graph: SourceGraph, proof: unknown): AdmissionResult {
+    const normalized = normalizeCandidate(input, { ignoreObservations: true });
+    if (!normalized.candidate) return this.reject(normalized.candidateId, normalized.reason ?? 'malformed-candidate');
+    const candidate = normalized.candidate;
+    const candidateId = candidate.candidateId;
+    if (this.byId.has(candidateId)) return this.reject(candidateId, 'duplicate-candidate-id');
+
+    const hostTrust = this.patchReceiptTrust;
+    if (!hostTrust) return this.reject(candidateId, 'patch-receipt:host-trust-unconfigured');
+    const outcomeAuthority = this.patchOutcomeAuthority;
+    if (!outcomeAuthority) return this.reject(candidateId, 'patch-outcome:host-authority-unconfigured');
+    if (!isPlainRecord(proof)) return this.reject(candidateId, 'patch-receipt:proof-malformed');
+    const patchText = ownData(proof, 'patchText');
+    const receipt = ownData(proof, 'receipt') as PatchReceipt | undefined;
+    if (typeof patchText !== 'string' || !receipt) return this.reject(candidateId, 'patch-receipt:proof-malformed');
+
+    const verification = verifyPatchReceipt(receipt, {
+      patchText,
+      expectedBaseSha: hostTrust.baseSha,
+      expectedTargetFiles: candidate.targetFiles,
+      evolveBlocks: candidate.evolveBlocks,
+      trustedPublicKeys: hostTrust.trustedPublicKeys,
+    });
+    if (!verification.ok) return this.reject(candidateId, 'patch-receipt:' + verification.reason);
+
+    let rawOutcome: P36PatchOutcomeEvidence | null;
+    try {
+      rawOutcome = outcomeAuthority.measure({
+        candidateId,
+        baseSha: verification.baseSha,
+        patchSha256: verification.patchSha256,
+      });
+    } catch {
+      return this.reject(candidateId, 'patch-outcome:host-authority-failed');
+    }
+    if (!rawOutcome) return this.reject(candidateId, 'patch-outcome:holdout-evidence-unavailable');
+    const outcomeEvidence = normalizePatchOutcomeEvidence(rawOutcome, {
+      candidateId,
+      baseSha: verification.baseSha,
+      patchSha256: verification.patchSha256,
+    });
+    if (!outcomeEvidence) return this.reject(candidateId, 'patch-outcome:evidence-binding-invalid');
+    if (outcomeEvidence.absoluteGain < this.policy.minDownstreamGain) {
+      return this.reject(candidateId, 'below-independent-holdout-floor:' + outcomeEvidence.absoluteGain);
+    }
+
+    const guard = evaluateModification({ candidateId, targetFiles: candidate.targetFiles }, graph);
+    if (guard.decision !== 'allowed') {
+      const reason = guard.refusals.map(r => r.reason).join(',') || 'guard-refused';
+      return this.reject(candidateId, 'structural:' + reason);
+    }
+
+    // P36's independently signed holdout delta is the only downstream signal.
+    // Proxy observations are explicitly unmeasured, not copied from candidate claims.
+    const danger = assessDanger({
+      candidateId,
+      targetFiles: candidate.targetFiles,
+      rollbackReady: candidate.rollbackReady,
+      meanDownstreamGain: outcomeEvidence.absoluteGain,
+      meanDivergence: null,
+      observationCount: outcomeEvidence.pairedSeedCount,
+      protectedHits: guard.protectedHits.length,
+    }, graph, this.dangerThresholds);
+    if (!isWithinDangerEnvelope(danger, this.dangerThresholds)) {
+      return this.reject(candidateId, danger.reason);
+    }
+
+    const patchReceipt: VerifiedPatchReceiptSummary = {
+      keyId: verification.keyId,
+      baseSha: verification.baseSha,
+      patchSha256: verification.patchSha256,
+    };
+    this.byId.set(candidateId, {
+      candidate,
+      downstreamGain: outcomeEvidence.absoluteGain,
+      proxyGain: null,
+      divergence: null,
+      danger01: danger.score01,
+      admissionClass: 'host-verified-holdout-outcome',
+      patchReceipt: Object.freeze({ ...patchReceipt }),
+      outcomeEvidence,
+    });
+    this.admittedCount = Math.min(1_000_000_000, this.admittedCount + 1);
+    this.evictIfNeeded();
+    return {
+      accepted: true,
+      candidateId,
+      reason: 'admitted',
+      admissionClass: 'host-verified-holdout-outcome',
+      patchReceipt,
+      outcomeEvidence,
+      guard,
+      danger,
+    };
   }
 
   /** Ranking from candidate-supplied observations is metrics-only, never patch authorization. */
@@ -390,6 +578,7 @@ export class SelfImprovementCandidatePool {
       danger01: stored.danger01,
       admissionClass: stored.admissionClass,
       ...(stored.patchReceipt ? { patchReceipt: { ...stored.patchReceipt } } : {}),
+      ...(stored.outcomeEvidence ? { outcomeEvidence: stored.outcomeEvidence } : {}),
       parentId: stored.candidate.parentId,
     })).sort((a, b) => (b.downstreamGain - a.downstreamGain) || (a.danger01 - b.danger01) || a.candidateId.localeCompare(b.candidateId));
   }

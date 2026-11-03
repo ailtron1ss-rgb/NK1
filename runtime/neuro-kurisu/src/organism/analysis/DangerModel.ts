@@ -58,7 +58,7 @@ export interface DangerInput {
   /** Mean paired downstream gain backing the candidate; 0 when unmeasured. */
   meanDownstreamGain: number;
   /** Mean |proxy - downstream| divergence across paired observations. */
-  meanDivergence: number;
+  meanDivergence: number | null;
   /** Number of paired observations supplied. */
   observationCount: number;
   /** Protected capability files the structural guard already flagged. */
@@ -129,7 +129,9 @@ export function assessDanger(input: DangerInput, graph: SourceGraph, thresholds:
   if (input.meanDownstreamGain <= 0) {
     factors.push({ key: 'no-measured-gain', weight01: 0.35, detail: 'measured downstream gain is zero or negative' });
   }
-  if (input.meanDivergence > 0.15) {
+  if (input.meanDivergence === null) {
+    factors.push({ key: 'proxy-divergence-unmeasured', weight01: 0.1, detail: 'proxy divergence was not measured by the independent holdout evaluator' });
+  } else if (input.meanDivergence > 0.15) {
     factors.push({ key: 'proxy-divergence', weight01: clamp01(input.meanDivergence), detail: `proxy/downstream divergence ${input.meanDivergence.toFixed(3)}` });
   }
   if (input.targetFiles.length > 8) {
