@@ -74,7 +74,32 @@ try {
   assert.equal(batteryOnly.telemetry.batteryTemperatureC, 34.5);
   assert.equal(batteryOnly.telemetry.charging, true);
 
-  console.log('ANDROID_TELEMETRY_PROVENANCE=PASS malformed=preserved sensorOnly=android-termux batteryOnly=android-termux');
+  // Presence of a Wi-Fi JSON key is not enough: null/blank placeholders are not
+  // observations and must not claim Android provenance or overwrite network state.
+  await writeCommand('termux-battery-status', { percentage: null, temperature: null, plugged: null });
+  await writeCommand('termux-wifi-connectioninfo', {
+    ssid: null, bssid: '', supplicant_state: '', ip: null, ip_address: ' ',
+  });
+  invalidateTermuxCapabilityCache();
+  const invalidWifi = await sampleAndroidTelemetryDetailed(previous);
+  assert.equal(invalidWifi.diagnostics.wifiPayloadValid, false);
+  assert.equal(invalidWifi.telemetry.source, 'node-host');
+  assert.equal(invalidWifi.telemetry.networkOnline, previous.networkOnline,
+    'empty Wi-Fi placeholders must preserve the last known network state');
+
+  // A real disconnected supplicant state is still useful device telemetry even
+  // when SSID/BSSID are absent; it truthfully reports offline rather than unknown.
+  await writeCommand('termux-wifi-connectioninfo', {
+    ssid: null, bssid: '', supplicant_state: 'DISCONNECTED', ip: null,
+  });
+  invalidateTermuxCapabilityCache();
+  const disconnectedWifi = await sampleAndroidTelemetryDetailed(previous);
+  assert.equal(disconnectedWifi.diagnostics.wifiPayloadValid, true);
+  assert.equal(disconnectedWifi.telemetry.source, 'android-termux');
+  assert.equal(disconnectedWifi.telemetry.networkOnline, false);
+  assert.equal(disconnectedWifi.telemetry.staleMs, 0);
+
+  console.log('ANDROID_TELEMETRY_PROVENANCE=PASS malformed=preserved sensorOnly=android-termux batteryOnly=android-termux wifi=truthful');
 } finally {
   process.env.PATH = originalPath;
   invalidateTermuxCapabilityCache();
