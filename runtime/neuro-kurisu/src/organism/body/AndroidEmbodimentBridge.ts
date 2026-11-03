@@ -62,8 +62,19 @@ function finiteTelemetryNumber(value: unknown): number | null {
 function hasWifiTelemetry(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const row = value as Record<string, unknown>;
-  return ['ssid', 'bssid', 'supplicant_state', 'ip', 'ip_address']
-    .some((key) => Object.prototype.hasOwnProperty.call(row, key));
+  // A JSON key is not evidence by itself: Termux may return null/blank fields
+  // when Wi-Fi permissions are denied or the provider payload is incomplete.
+  // A real disconnected state is still valid telemetry, because it is an
+  // observed network state rather than a fabricated "offline" default.
+  for (const key of ['ssid', 'bssid', 'supplicant_state', 'ip', 'ip_address']) {
+    if (!Object.prototype.hasOwnProperty.call(row, key)) continue;
+    const field = row[key];
+    if (typeof field !== 'string') continue;
+    const normalized = field.trim().toLocaleLowerCase();
+    if (!normalized || ['unknown', 'null', 'undefined', '<unknown ssid>', '02:00:00:00:00:00'].includes(normalized)) continue;
+    return true;
+  }
+  return false;
 }
 
 function parseSensorPayload(value: any): Pick<BodyTelemetry, 'ambientLight01'|'proximity01'|'motion01'> {
