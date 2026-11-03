@@ -10,7 +10,7 @@ import { P41TemporalPerceptionModel } from '../cognition/P41TemporalPerceptionMo
 import { P42UnifiedEmbodiedExperienceEngine } from '../cognition/P42UnifiedEmbodiedExperience.ts';
 import { P43EmbodiedImageryWorkspace } from '../cognition/P43EmbodiedImageryWorkspace.ts';
 import { P66InteroceptiveHomeostasis } from '../cognition/P66InteroceptiveHomeostasis.ts';
-import { defaultPerceptionRoutingState, routePerception, type PerceptionRoutingState } from '../body/PerceptionRouter.ts';
+import { defaultPerceptionRoutingState, routePerception, sanitizePerceptionRoutingState, type PerceptionRoutingState } from '../body/PerceptionRouter.ts';
 import type { PerceptionEvent } from '../cognition/PerceptionEngine.ts';
 import type { OrganismBodyState } from '../body/EmbodiedBody.ts';
 import { defaultCameraEvidenceState, type CameraEvidence } from '../body/CameraEvidenceProcessor.ts';
@@ -69,6 +69,7 @@ export class EmbodimentSubsystemRuntime {
     this.p42Experience.restore(embodiment.p42Experience);
     this.p43Imagery.restore(embodiment.p43Imagery);
     this.p66InteroceptiveHomeostasis.restore(advanced.p66InteroceptiveHomeostasis);
+    this.perceptionRouting = sanitizePerceptionRoutingState(embodiment.perceptionRouting);
   }
 
   routePerception(event: PerceptionEvent, body?: OrganismBodyState) { this.perceptionRouting = routePerception(event, body); return this.perceptionRouting; }

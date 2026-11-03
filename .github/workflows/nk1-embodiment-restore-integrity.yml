@@ -1,0 +1,46 @@
+name: NK1 embodiment perception-routing restore integrity
+
+on:
+  push:
+    branches: [workpass70-source, workpass71-body-systems]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/body/PerceptionRouter.ts"
+      - "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/tests/embodiment-perception-routing-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-embodiment-restore-integrity.yml"
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/body/PerceptionRouter.ts"
+      - "runtime/neuro-kurisu/src/organism/core/EmbodimentSubsystemRuntime.ts"
+      - "runtime/neuro-kurisu/tests/embodiment-perception-routing-restore-integrity.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-embodiment-restore-integrity.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-embodiment-restore-integrity-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  embodiment-restore-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Perception-routing restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:embodiment-perception-routing-restore
+      - name: Embodied interaction boundary (aspect 10)
+        run: npm --prefix runtime/neuro-kurisu run test:aspect10:interaction
