@@ -67,5 +67,10 @@ jobs:
           node --experimental-strip-types tests/p32-causal-self-model.mjs
           node --experimental-strip-types tests/p10-world-model.mjs
           node --experimental-strip-types tests/self-model-evidence-write-gate-workpass315.mjs
+      - name: Run live-policy and handoff regressions through the new accessors
+        run: |
+          node --experimental-strip-types tests/big-pass-308-temporal-policy-closure.mjs
+          node --experimental-strip-types tests/big-pass-309-arbitration-consolidation.mjs
+          node --experimental-strip-types tests/big-pass-313-longitudinal-divergence.mjs
       - name: Typecheck runtime
         run: npm run typecheck
