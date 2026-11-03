@@ -48,15 +48,65 @@ jobs:
             mkdir -p "$download_dir"
 
             local metadata
-            metadata="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq ".assets[] | select(.name == \\"$asset\\") | [.digest // \\"\\", (.size | tostring)] | @tsv")"
+            metadata="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" | ASSET_NAME="$asset" python3 -c 'import json, os, sys; data=json.load(sys.stdin); item=next((row for row in data.get("assets", []) if row.get("name") == os.environ["ASSET_NAME"]), None); print(((item.get("digest") or "") + "\\t" + str(item.get("size") or "")) if item else "")')"
             if [[ -z "$metadata" ]]; then
               echo "::error::Release asset not found: $tag / $asset"
               return 1
             fi
             local digest size
-            IFS=$'\t' read -r digest size <<< "$metadata"
-            if [[ -z "$digest" ]]; then
-              echo "::error::GitHub did not publish an asset digest for $tag / $asset"
+            IFS=
+
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$asset" --dir "$download_dir"
+            local archive="$download_dir/$asset"
+            if [[ ! -f "$archive" ]]; then
+              echo "::error::Downloaded asset is missing: $archive"
+              return 1
+            fi
+
+            local report="$GITHUB_WORKSPACE/artifacts/release-audit/$safe_tag.json"
+            python3 tools/release_archive_inspector.py \
+              --archive "$archive" \
+              --source-root "$GITHUB_WORKSPACE" \
+              --expected-sha256 "$digest" \
+              --expected-size "$size" \
+              --archive-prefix auto \
+              --release-tag "$tag" \
+              --out "$report"
+
+            python3 - "$report" "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json
+          import sys
+          report_path, summary_path = sys.argv[1:]
+          with open(report_path, encoding="utf-8") as source:
+              report = json.load(source)
+          archive = report["archive"]
+          comparison = report["comparison"]
+          with open(summary_path, "a", encoding="utf-8") as summary:
+              summary.write(f"### Release: {report['releaseTag']}\n\n")
+              summary.write(f"- Archive integrity / GitHub digest: **{'PASS' if report['ok'] else 'FAIL'}**\n")
+              summary.write(f"- SHA-256: {archive['sha256']}\n")
+              summary.write(f"- Size: {archive['sizeBytes']:,} bytes; files: {archive['fileCount']:,}\n")
+              summary.write(f"- Source-identical files: {comparison['identicalFileCount']:,}\n")
+              summary.write(f"- Same-path content changes: {comparison['changedFileCount']:,}\n")
+              summary.write(f"- Archive-only files: {comparison['archiveOnlyFileCount']:,}\n")
+              summary.write(f"- Source-only files: {comparison['sourceOnlyFileCount']:,}\n")
+              summary.write(f"- Source ref: {report['source']['ref']}\n\n")
+          PY
+          }
+
+          inspect_release "Neuro" "Neuro_Kurisu_WORKPASS70_2026-10-19.zip"
+          inspect_release "workpass70-hotfix1-2026-10-19" "Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip"
+
+      - name: Upload JSON manifests and source-drift reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: nk1-release-archive-inspection-${{ github.run_id }}
+          path: artifacts/release-audit/*.json
+          if-no-files-found: error
+          retention-days: 30
+\t' read -r digest size <<< "$metadata"
+            if [[ -z "$digest" || -z "$size" ]]; then
+              echo "::error::GitHub release metadata is missing an asset digest or byte size: $tag / $asset"
               return 1
             fi
 
