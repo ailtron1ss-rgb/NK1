@@ -60,4 +60,38 @@ const point=(frameId,x,y,z=0)=>({spatialFrameId:frameId,spatialX:String(x),spati
  assert.equal(memory.previewRetrieve("nearest room",4,0,0,{spatial:{frameId:"room",x:6,y:1,radius:2}})[0]?.id,"same");
  assert.equal(memory.indexDiagnostics().spatialIndex.pass,true);
 }
+
+{
+ const index=new MemorySpatialIndex();
+ const canonical=[];
+ for(let i=0;i<10_000;i++){
+  const context=point("scale-floor",(i%100)*2,Math.floor(i/100)*2,0);
+  const id="scale-"+String(i).padStart(5,"0");
+  index.upsert(id,context);canonical.push({id,context});
+ }
+ assert.equal(index.diagnostics(canonical).pass,true,"10k-row derived index must match canonical coordinates");
+ const samples=[];
+ for(let i=0;i<60;i++){
+  const started=performance.now();
+  const hits=index.query({frameId:"scale-floor",x:100,y:100,z:0,radius:24},64);
+  samples.push(performance.now()-started);
+  assert.equal(hits.length<=64,true,"query output must remain bounded at 10k rows");
+  assert.equal(hits.every(row=>row.id.startsWith("scale-")),true);
+ }
+ samples.sort((a,b)=>a-b);
+ const p95Ms=Number(samples[Math.min(samples.length-1,Math.ceil(samples.length*.95)-1)].toFixed(3));
+ assert.ok(p95Ms<100,"bounded 10k-row grid lookup p95 must stay below 100ms on CI");
+ console.log("MEMORYOS2_SPATIAL_SCALE=PASS",JSON.stringify({indexed:canonical.length,queryLimit:64,p95Ms}));
+}
+
+{
+ const memory=new MemoryOS2({embeddingProvider:null});
+ memory.encode(makeMemory("invalid-spatial","A note without coordinates."));
+ const invalid=memory.previewRetrieveWithDiagnostics("unrelated place request",4,0,0,{
+  spatial:{frameId:"room",x:0,y:0,radius:1000}
+ });
+ assert.equal(invalid.diagnostics.spatialInvalidQuery,true,"invalid spatial queries must be visible in diagnostics");
+ assert.equal(invalid.items.some(row=>row.id==="invalid-spatial"),false,
+  "an invalid spatial query must not bypass the grounded answerability gate");
+}
 console.log("MEMORYOS2_SPATIAL_RETRIEVAL=PASS");
