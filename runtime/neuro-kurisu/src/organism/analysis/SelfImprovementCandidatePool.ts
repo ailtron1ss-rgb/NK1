@@ -94,7 +94,7 @@ function normalizeCandidate(input: unknown): { candidateId: string; candidate?: 
   }
 
   const rawBlocks = denseArray(ownData(input, 'evolveBlocks'), MAX_TARGETS);
-  if (!rawBlocks || rawBlocks.length === 0) return { candidateId, reason: 'malformed-evolve-blocks' };
+  if (!rawBlocks) return { candidateId, reason: 'malformed-evolve-blocks' };
   const evolveBlocks: EvolveBlock[] = [];
   for (const raw of rawBlocks) {
     if (!isPlainRecord(raw)) return { candidateId, reason: 'malformed-evolve-blocks' };
