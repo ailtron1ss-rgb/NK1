@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -191,15 +191,30 @@ export function verifyReadSet(receipt, options = {}) {
 
 function parseArgs(argv) {
   const result = { paths: [] };
+  const allowed = new Set(["path", "base", "out", "receipt", "current"]);
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (!token.startsWith("--")) throw new Error("unexpected argument: " + token);
     const key = token.slice(2);
-    if (key === "path") result.paths.push(argv[++index]);
-    else result[key] = argv[++index];
-    if (result[key] === undefined) throw new Error("missing value for --" + key);
+    if (!allowed.has(key)) throw new Error("unknown option: --" + key);
+    const value = argv[++index];
+    if (value === undefined || value.startsWith("--")) throw new Error("missing value for --" + key);
+    if (key === "path") result.paths.push(value);
+    else {
+      if (Object.prototype.hasOwnProperty.call(result, key)) throw new Error("duplicate option: --" + key);
+      result[key] = value;
+    }
   }
   return result;
+}
+
+function resolveRepositoryFile(input, label) {
+  if (typeof input !== "string" || input.length === 0) throw new Error(label + " is required");
+  const resolved = path.resolve(ROOT, input);
+  if (resolved !== ROOT && !resolved.startsWith(ROOT + path.sep)) {
+    throw new Error(label + " must stay inside the repository");
+  }
+  return resolved;
 }
 
 async function main() {
@@ -207,7 +222,8 @@ async function main() {
   const args = parseArgs(rest);
   if (command === "capture") {
     const receipt = captureReadSet(args.paths, { baseSha: args.base, root: ROOT });
-    const output = args.out ? path.resolve(ROOT, args.out) : path.join(ROOT, "read-set.receipt.json");
+    const output = resolveRepositoryFile(args.out ?? ".neurok-os/read-set.receipt.json", "output path");
+    await mkdir(path.dirname(output), { recursive: true });
     const temporary = output + "." + process.pid + "." + randomUUID() + ".tmp";
     await writeFile(temporary, JSON.stringify(receipt, null, 2) + "\n", { flag: "wx" });
     await rename(temporary, output);
@@ -217,7 +233,10 @@ async function main() {
   if (command === "verify") {
     if (!args.receipt) throw new Error("verify requires --receipt");
     const currentSha = args.current ?? git(["rev-parse", "HEAD"], ROOT).toString("utf8").trim();
-    const receipt = JSON.parse(await readFile(path.resolve(ROOT, args.receipt), "utf8"));
+    const receiptPath = resolveRepositoryFile(args.receipt, "receipt path");
+    const receiptBytes = await readFile(receiptPath);
+    if (receiptBytes.length > 256 * 1024) throw new Error("receipt exceeds the 256 KiB limit");
+    const receipt = JSON.parse(receiptBytes.toString("utf8"));
     const result = verifyReadSet(receipt, { currentSha, root: ROOT });
     console.log(JSON.stringify(result, null, 2));
     if (!result.ok) process.exitCode = 1;
