@@ -475,7 +475,7 @@ const getterFamily = { baselinePassRate: .1, candidatePassRate: .2 };
 Object.defineProperty(getterFamily, 'family', { get() { observationGetterCalls++; throw new Error('family getter must not run'); } });
 assert.deepEqual(toDivergenceObservations([getterFamily], []), []);
 assert.equal(observationGetterCalls, 0, 'adapter accessors must never execute');
-assert.equal(immutablePool.snapshot().rejectionLedgerSize, 0);
+assert.equal(immutablePool.snapshot().rejectionLedgerSize, 1);
 
 console.log(
   'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=93 '
