@@ -45,8 +45,8 @@ export class P47TemporalMemoryMind {
    */
   restore(raw:P47State|undefined){
     const d=defaultP47State();
-    const source=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
-    const read=(key:string):unknown=>{try{return (source as Record<string,unknown>)[key];}catch{return undefined;}};
+    const source:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};
+    const read=(key:string):unknown=>{try{return source[key];}catch{return undefined;}};
     const nodesRaw=read('nodesData');
     const beliefsRaw=read('beliefsData');
     const nodesData: P47MemoryNode[]=Array.isArray(nodesRaw)?nodesRaw.flatMap((row):P47MemoryNode[]=>{
