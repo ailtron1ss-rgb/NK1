@@ -363,6 +363,7 @@ import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate } from './U
 import { MemoryRetentionEconomy, defaultMemoryRetentionEconomy } from '../system/MemoryRetentionEconomy.ts';
 import { BehavioralInfluenceLedger, defaultBehavioralInfluenceLedger } from '../system/BehavioralInfluenceLedger.ts';
 import { CognitiveEventFabric, type CognitiveEventNode } from '../system/CognitiveEventFabric.ts';
+import { recordAndPersistMetacognitiveEpisode } from '../memory/MetacognitiveMemoryProjection.ts';
 import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
@@ -8678,6 +8679,58 @@ export class OrganismCore {
         this.cognitiveRuntime.longitudinal.recordOutcome(gatedSuccess01);
         const outcomeEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'outcome', source: outcome.evidenceSource ?? (outcome.worldTransition ? 'simulator' : 'feedback'), parentIds: [this.cognitiveCycleAnchors.action, this.cognitiveCycleAnchors.prediction].filter(Boolean) as string[], external: externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase()), confidence01: clamp(1 - surprise), payload: { success, reward: outcome.reward ?? null, surprise } });
         const learningEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'learning', source: 'outcome-learning', parentIds: [outcomeEvent.id], confidence01: clamp(1 - surprise), payload: { predictionError: state.predictionError, uncertainty: state.needs.uncertainty } });
+        // Close the action→outcome→learning trace into canonical episodic memory.
+        // Replayed feedback reuses the CEF event and MemoryOS2 projection IDs.
+        const metacognitiveObservationEventId = this.cognitiveCycleAnchors.observation;
+        const metacognitivePredictionEventId = this.cognitiveCycleAnchors.prediction;
+        const metacognitiveActionEventId = this.cognitiveCycleAnchors.action;
+        if (metacognitiveObservationEventId && metacognitivePredictionEventId && metacognitiveActionEventId) {
+            const metacognitiveSource = String(outcome.evidenceSource ?? (outcome.worldTransition ? 'simulator' : 'feedback')).slice(0, 80);
+            const metacognitiveEpisode = recordAndPersistMetacognitiveEpisode(
+                this.cognitiveRuntime.cognitiveEventFabric,
+                {
+                    tick: state.tick,
+                    cycleId: 'nk1-cycle:' + state.tick + ':' + metacognitiveActionEventId,
+                    observationEventId: metacognitiveObservationEventId,
+                    predictionEventId: metacognitivePredictionEventId,
+                    actionEventId: metacognitiveActionEventId,
+                    outcomeEventId: outcomeEvent.id,
+                    learningEventId: learningEvent.id,
+                    predictedOutcomeHash: sha256Stable({
+                        tick: state.tick,
+                        action: trace?.selected?.action ?? 'wait',
+                        predictedUtility: clamp(Number(trace?.selected?.predictedUtility ?? .5)),
+                        confidence: clamp(Number(trace?.selected?.confidence ?? .5)),
+                    }),
+                    observedOutcomeHash: sha256Stable({
+                        tick: state.tick,
+                        success: clamp(Number(success)),
+                        reward: outcome.reward == null ? null : clamp(Number(outcome.reward)),
+                        predictionError01: clamp(Number(surprise)),
+                        evidenceSource: metacognitiveSource,
+                    }),
+                    decisionRationaleHash: sha256Stable({
+                        tick: state.tick,
+                        traceId: trace?.id ?? '',
+                        action: trace?.selected?.action ?? 'wait',
+                        goalEventId: this.cognitiveCycleAnchors.goal ?? '',
+                        planEventId: this.cognitiveCycleAnchors.plan ?? '',
+                    }),
+                    predictionError01: clamp(Number(surprise)),
+                    confidence01: clamp(1 - Number(surprise)),
+                    reflectionKind: surprise >= .65 && externalEvidenceSources.includes(metacognitiveSource.toLowerCase())
+                        ? 'contradiction' : surprise >= .25 ? 'calibration' : 'none',
+                    correctionDisposition: 'none',
+                    at: state.at,
+                },
+                this.memorySubsystem.memoryOS,
+                this.memorySubsystem.consolidationController,
+            );
+            if (metacognitiveEpisode.projection?.stored) {
+                this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+                this.persisted.facets.advanced.consolidationController = this.memorySubsystem.consolidationController.snapshot();
+            }
+        }
         const selfUpdateEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'self-update', source: 'self-model', parentIds: [learningEvent.id], confidence01: clamp(state.needs.identityCoherence), payload: { identityCoherence: state.needs.identityCoherence } });
         const cycleStageIds = { observation: this.cognitiveCycleAnchors.observation, prediction: this.cognitiveCycleAnchors.prediction, appraisal: this.cognitiveCycleAnchors.appraisal, attention: this.cognitiveCycleAnchors.attention, memory: this.cognitiveCycleAnchors.memory, goal: this.cognitiveCycleAnchors.goal, plan: this.cognitiveCycleAnchors.plan, action: this.cognitiveCycleAnchors.action, outcome: outcomeEvent.id, learning: learningEvent.id, 'self-update': selfUpdateEvent.id };
         const cycleLineage = this.cognitiveRuntime.cognitiveEventFabric.verifyOperationalCycle(cycleStageIds);
