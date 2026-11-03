@@ -1009,6 +1009,16 @@ export class MemoryOS2{
     existing.tags=mergeMemoTags(existing.tags,input.tags);
     this.spatialIndex.remove(existing.id);
     existing.context=mergeMemoContext(existing.context,input.context);
+    // Re-encoded observations refresh their point-in-time validity window. Without
+    // this, a spatial track would expire after its first sighting even while P41
+    // continued to observe it; older evidence is never allowed to rewind time.
+    const incomingObservedAt=Number(input.observedAt);
+    if(Number.isFinite(incomingObservedAt)&&incomingObservedAt>=Number(existing.observedAt??existing.createdAt)){
+     existing.observedAt=incomingObservedAt;
+     if(Number.isFinite(input.validFromAt))existing.validFromAt=Number(input.validFromAt);
+     if(input.validUntilAt===null)existing.validUntilAt=null;
+     else if(Number.isFinite(input.validUntilAt))existing.validUntilAt=Number(input.validUntilAt);
+    }
     this.spatialIndex.upsert(existing.id,existing.context);
     this.state.estimatedBytes=Math.max(0,this.state.estimatedBytes-priorBytes+estimateMemoryBytes(existing));
     this.state.reconsolidations++;
