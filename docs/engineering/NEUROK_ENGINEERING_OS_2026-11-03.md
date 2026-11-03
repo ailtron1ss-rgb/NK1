@@ -62,13 +62,14 @@ This manifest catalogs requested tools and their intended roles. It deliberately
 
 - Machine-readable tool/capability registry with explicit unverified defaults.
 - Offline CLI to validate the registry and print workstream plans.
-- Lease-based single-writer task coordinator with base-SHA binding, path traversal rejection, parent/child conflict detection, expiry, idempotent renewal and owner-only release.
-- Node test suite for registry safety and concurrent claim behavior.
+- Lease-based single-writer task coordinator with base-SHA binding, current-checkout verification, path traversal rejection, parent/child conflict detection, expiry, idempotent renewal and owner-only release.
+- Unified-diff preflight parser with SHA-256 digest, file status, hunk/changed-line ranges, binary/traversal rejection and human-approval/deny policy classification.
+- Node test suite for registry safety, concurrent claims and patch-policy invariants.
 - Research intake translating STORM, Co-Coder, CooperBench and OpenCollab into concrete coordination design decisions.
 
 ### Coordinator scope boundary
 
-The initial claim store is a local filesystem lease store. Multiple agents can coordinate only when they share the same `NEUROK_OS_STATE_DIR`; independent devices/worktrees do not share state automatically. It is advisory: it does not intercept arbitrary filesystem writes or replace Git review. A later authenticated shared backend must use transactional compare-and-swap and be contract-tested before cross-device claims are enabled.
+The initial patch sandbox is a read-only preflight: it parses and classifies a patch but does not apply it. Patch application must run in a separate disposable worktree/container with resource limits and rollback receipts. The initial claim store is a local filesystem lease store. Multiple agents can coordinate only when they share the same `NEUROK_OS_STATE_DIR`; independent devices/worktrees do not share state automatically. It is advisory: it does not intercept arbitrary filesystem writes or replace Git review. A later authenticated shared backend must use transactional compare-and-swap and be contract-tested before cross-device claims are enabled.
 
 ## Not included / not claimed
 
