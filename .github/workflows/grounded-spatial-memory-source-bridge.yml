@@ -1,0 +1,38 @@
+name: NK1 grounded spatial memory source bridge
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/GroundedSpatialMemoryBridge.ts"
+      - "runtime/neuro-kurisu/tests/grounded-spatial-memory-source-bridge-workpass.mjs"
+      - ".github/workflows/grounded-spatial-memory-source-bridge.yml"
+  push:
+    branches:
+      - "aspect/grounded-spatial-memory-source-20261103"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
+      - "runtime/neuro-kurisu/src/organism/memory/GroundedSpatialMemoryBridge.ts"
+      - "runtime/neuro-kurisu/tests/grounded-spatial-memory-source-bridge-workpass.mjs"
+permissions:
+  contents: read
+jobs:
+  grounded-spatial-source-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts
+        working-directory: runtime/neuro-kurisu
+      - name: Verify observed grounded source-to-memory projection
+        run: node --experimental-strip-types tests/grounded-spatial-memory-source-bridge-workpass.mjs
+        working-directory: runtime/neuro-kurisu
+      - name: Typecheck runtime
+        run: npm run typecheck
+        working-directory: runtime/neuro-kurisu
