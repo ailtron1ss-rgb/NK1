@@ -13,6 +13,19 @@ on:
       - runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts
       - runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts
       - runtime/neuro-kurisu/src/organism/verification/ProtectedArtifactRegistry.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveQuorum.ts
+      - runtime/neuro-kurisu/src/organism/system/MetaMemoryController.ts
+      - runtime/neuro-kurisu/src/organism/system/SparsePredictiveGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/DevelopmentalPhaseScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/LocalNeuralCreditAssigner.ts
+      - runtime/neuro-kurisu/src/organism/system/HybridCausalPlasticityCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/SubstratePortabilityEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SensorimotorCoSimulationEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/LongitudinalOrganismBenchmarkEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SandboxedSelfRewriteEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousProjectExecutor.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P70MemoryLifecycleGovernor.ts
+      - runtime/neuro-kurisu/src/organism/persistence/PersistenceProjectionGovernor.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -27,6 +40,19 @@ on:
       - runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts
       - runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts
       - runtime/neuro-kurisu/src/organism/verification/ProtectedArtifactRegistry.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveQuorum.ts
+      - runtime/neuro-kurisu/src/organism/system/MetaMemoryController.ts
+      - runtime/neuro-kurisu/src/organism/system/SparsePredictiveGraph.ts
+      - runtime/neuro-kurisu/src/organism/system/DevelopmentalPhaseScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/LocalNeuralCreditAssigner.ts
+      - runtime/neuro-kurisu/src/organism/system/HybridCausalPlasticityCompiler.ts
+      - runtime/neuro-kurisu/src/organism/system/SubstratePortabilityEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SensorimotorCoSimulationEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/LongitudinalOrganismBenchmarkEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/SandboxedSelfRewriteEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousProjectExecutor.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P70MemoryLifecycleGovernor.ts
+      - runtime/neuro-kurisu/src/organism/persistence/PersistenceProjectionGovernor.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -86,5 +112,9 @@ jobs:
           node --experimental-strip-types tests/big-pass-49-subsystem-extraction.mjs
           node --experimental-strip-types tests/big-pass-206-world-agency-learning.mjs
           node --experimental-strip-types tests/big-pass-38-autonomous-spine.mjs
+      - name: Run remaining pure-spread owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-250-258-neuro-digital-superupdate.mjs
+          node --experimental-strip-types tests/persistence-projection-governor.mjs
       - name: Typecheck runtime
         run: npm run typecheck

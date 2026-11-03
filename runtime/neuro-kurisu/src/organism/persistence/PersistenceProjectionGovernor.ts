@@ -1,4 +1,7 @@
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(fin(v,f)));
+const DECISIONS:readonly PersistenceProjectionState['lastDecision'][]=['forced','pressure','interval'];
 
 export interface PersistenceProjectionDecision {
   full:boolean;
@@ -27,7 +30,12 @@ export const defaultPersistenceProjectionState=():PersistenceProjectionState=>({
  */
 export class PersistenceProjectionGovernor {
   private state=defaultPersistenceProjectionState();
-  restore(raw?:Partial<PersistenceProjectionState>|null){ this.state={...defaultPersistenceProjectionState(),...(raw??{})}; }
+  /** Restore without trusting the snapshot: counts are non-negative, lastDecision validated, lastAt finite. */
+  restore(raw?:Partial<PersistenceProjectionState>|null){
+    const d=defaultPersistenceProjectionState(); const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    this.state={version:1,hotCheckpoints:cnt(read('hotCheckpoints'),d.hotCheckpoints),fullCheckpoints:cnt(read('fullCheckpoints'),d.fullCheckpoints),dirtyCyclesSinceFull:cnt(read('dirtyCyclesSinceFull'),d.dirtyCyclesSinceFull),lastDecision:DECISIONS.includes(read('lastDecision') as PersistenceProjectionState['lastDecision'])?read('lastDecision') as PersistenceProjectionState['lastDecision']:d.lastDecision,lastAt:Math.max(0,fin(read('lastAt'),d.lastAt))};
+  }
   decide(input:{force:boolean;baseEvery:number;pressure01?:number;at?:number}):PersistenceProjectionDecision{
     const baseEvery=Math.max(1,Math.floor(input.baseEvery));
     const pressure=clamp(input.pressure01??0);
