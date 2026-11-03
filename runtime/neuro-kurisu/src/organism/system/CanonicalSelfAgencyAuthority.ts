@@ -183,7 +183,7 @@ export class CanonicalSelfAgencyAuthority{
     const divergenceOK=divergence.decision==='supported';
     const allowed=Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&this.state.invariantIntegrity01>.85&&divergenceOK;
     if(!allowed)this.state.selfModificationBlocks++;
-    const reason=allowed?'self-modification-evidence-gate-open':!divergenceOK?\`self-modification-proxy-divergence:\${divergence.reason}\`:'self-modification-evidence-or-identity-gate';
+    const reason=allowed?'self-modification-evidence-gate-open':!divergenceOK?'self-modification-proxy-divergence:'+divergence.reason:'self-modification-evidence-or-identity-gate';
     this.state.lastDecision=allowed?'stable':'self-modification-block';this.state.lastReason=reason;
     return {allowed,fingerprintOK,divergence,reason:this.state.lastReason};
   }
