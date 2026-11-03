@@ -4367,11 +4367,21 @@ export class OrganismCore {
         }
         state.predictionError = clamp(state.predictionError * 0.82 + effectiveSurprise * 0.30);
         const attentionTarget = normalizedObservation.worldContext?.location || (activeGoalPressureFallback(this.persisted.goals));
-        this.persisted.facets.memory.attention = attend({ target: attentionTarget || 'internal-state', reason: surprise > 0.45 ? 'prediction-error' : novelty > 0.35 ? 'novelty' : 'goal-pressure', salience: Math.max(surprise, novelty, n.goalPressure), confidence: state.attentionBudget, budget: state.attentionBudget });
         state.attentionBudget = clamp(1 - n.cognitiveLoad * 0.52 - (1 - n.energy) * 0.28);
         const bodyTelemetry = { energy01: n.energy, thermal01: observation.embodiment?.thermalStrain01 ?? .2, capacity01: observation.embodiment?.cognitiveCapacity01 ?? (1 - n.cognitiveLoad), load01: n.cognitiveLoad };
         const p66Homeostasis = this.p66InteroceptiveHomeostasis.observe({ tick: state.tick + 1, at: Date.now(), ...bodyTelemetry, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError, novelty01: state.needs.novelty });
-        const interoceptiveFrame = this.organismSystems.embodiment.interoceptiveStateEstimator.observe({ energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, cognitiveLoad01: bodyTelemetry.load01, sleepPressure01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, capacity01: bodyTelemetry.capacity01, sensoryFreshness01: observation.embodiment?.sensoryFreshness01 ?? .5, externalInput: hasExternalSignal });
+        const interoceptiveFrame = this.organismSystems.embodiment.interoceptiveStateEstimator.observe({ energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, cognitiveLoad01: bodyTelemetry.load01, sleepPressure01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, capacity01: bodyTelemetry.capacity01, sensoryFreshness01: observation.embodiment?.sensoryFreshness01 ?? .5, attentionBudget01: state.attentionBudget, externalInput: hasExternalSignal });
+        // Reserve a bounded part of the global workspace for urgent internal signals.
+        // This feeds the same tick's network broadcast and predictive action selection.
+        const interoceptiveAttentionReserve = clamp(interoceptiveFrame.controlPressure01 * 0.18);
+        state.attentionBudget = clamp(state.attentionBudget * (1 - interoceptiveAttentionReserve));
+        const internalAttentionTarget = interoceptiveFrame.controlPressure01 > .55
+          ? `internal-state:${interoceptiveFrame.precisionAllocation01.dominantChannel}`
+          : attentionTarget || 'internal-state';
+        const attentionReason = interoceptiveFrame.controlPressure01 > .55
+          ? `interoceptive-${interoceptiveFrame.precisionAllocation01.dominantChannel}`
+          : surprise > 0.45 ? 'prediction-error' : novelty > 0.35 ? 'novelty' : 'goal-pressure';
+        this.persisted.facets.memory.attention = attend({ target: internalAttentionTarget, reason: attentionReason, salience: Math.max(surprise, novelty, n.goalPressure, interoceptiveFrame.salience01), confidence: state.attentionBudget, budget: state.attentionBudget });
         this.persisted.system.interoceptiveState = this.organismSystems.embodiment.interoceptiveStateEstimator.persistenceSnapshot();
         const predictiveAllostasis = this.cognitiveRuntime.predictiveAllostasis.observe({ tick: state.tick + 1, at: state.at, energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, capacity01: bodyTelemetry.capacity01, load01: bodyTelemetry.load01, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError, novelty01: n.novelty, pressure01: p66Homeostasis.pressure01, recoveryDebt01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, mode: p66Homeostasis.mode });
         const multiHorizonAllostasis = this.cognitiveRuntime.multiHorizonAllostasis.observe({ tick: state.tick + 1, at: state.at, energy01: bodyTelemetry.energy01, thermal01: bodyTelemetry.thermal01, capacity01: bodyTelemetry.capacity01, load01: bodyTelemetry.load01, arousal01: clamp(1 - n.cognitiveLoad), recoveryDebt01: this.p66InteroceptiveHomeostasis.summary().recoveryDebt01, pressure01: p66Homeostasis.pressure01, awake: observation.embodiment?.awake ?? true, uncertainty01: n.uncertainty, predictionError01: state.predictionError });
