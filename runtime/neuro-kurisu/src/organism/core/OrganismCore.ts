@@ -363,6 +363,7 @@ import { UnifiedCognitiveSubstrate, defaultUnifiedCognitiveSubstrate } from './U
 import { MemoryRetentionEconomy, defaultMemoryRetentionEconomy } from '../system/MemoryRetentionEconomy.ts';
 import { BehavioralInfluenceLedger, defaultBehavioralInfluenceLedger } from '../system/BehavioralInfluenceLedger.ts';
 import { CognitiveEventFabric, type CognitiveEventNode } from '../system/CognitiveEventFabric.ts';
+import { recordAndPersistMetacognitiveEpisode } from '../memory/MetacognitiveMemoryProjection.ts';
 import { CausalLifeGraph } from '../system/CausalLifeGraph.ts';
 import { CognitiveResourceEconomy } from '../system/CognitiveResourceEconomy.ts';
 import { RealityEvidenceLedger } from '../system/RealityEvidenceLedger.ts';
@@ -1172,7 +1173,7 @@ export class OrganismCore {
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
-    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics });
+    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272 });
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -5202,19 +5203,37 @@ export class OrganismCore {
         });
         const b271PostState = this.developmentalNeural.neuralAutobiographicalCoreB271.snapshot();
         this.persisted.system.neuralAutobiographicalCoreB271 = b271PostState;
-        const b272Goal = this.developmentalNeural.endogenousGoalGenesisB272.step({
-            tick: state.tick,
-            selfLatent: b270PostGerminalState.selfLatent,
-            worldLatent: p27Latent.vector,
-            needs: { energy01: state.needs.energy, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, goalPressure01: state.needs.goalPressure, socialNeed01: state.needs.socialNeed },
-            traits: b270PostAutonomousState.traitValues,
-            predictionError01: state.predictionError,
-            autobiographicalContinuity01: b271NeuralAuto.autobiographicalContinuity01,
-            identityContinuity01: p80Now.continuity01,
-            intrinsicReward01: b270PostAutonomousState.intrinsicReward01,
-            lastAction: state.lastAction === 'none' ? null : state.lastAction,
-            lastReward01: clamp(state.lastActionSuccess ?? .5),
+        const worldEvidenceQuality = this.worldSubsystem.world.beliefAvailable() ? clamp(0.45 + Math.min(0.45, this.worldSubsystem.world.transitionCount() / 80)) : 0.2;
+        const intrinsicDriveConfidence01 = clamp(worldEvidenceQuality * 0.65 + (1 - state.predictionError) * 0.35);
+        const intrinsicCoupling = this.cognitiveRuntime.intrinsicMotivationGoalCoupling.step({
+            cycle: {
+                tick: state.tick,
+                selfLatent: b270PostGerminalState.selfLatent,
+                worldLatent: p27Latent.vector,
+                needs: { energy01: state.needs.energy, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, goalPressure01: state.needs.goalPressure, socialNeed01: state.needs.socialNeed },
+                traits: b270PostAutonomousState.traitValues,
+                predictionError01: state.predictionError,
+                autobiographicalContinuity01: b271NeuralAuto.autobiographicalContinuity01,
+                identityContinuity01: p80Now.continuity01,
+                intrinsicReward01: b270PostAutonomousState.intrinsicReward01,
+                lastAction: state.lastAction === 'none' ? null : state.lastAction,
+                lastReward01: clamp(state.lastActionSuccess ?? .5),
+            },
+            drive: {
+                uncertainty: state.needs.uncertainty,
+                predictionError: state.predictionError,
+                novelty: state.needs.novelty,
+                goalPressure: state.needs.goalPressure,
+                socialNeed: state.needs.socialNeed,
+                energy: state.needs.energy,
+                lastSuccess: state.lastActionSuccess,
+                worldEvidenceQuality,
+            },
+            driveConfidence01: this.config.enableIntrinsicMotivation ? intrinsicDriveConfidence01 : 0,
         });
+        const b272Goal = intrinsicCoupling.goal;
+        const intrinsicState = intrinsicCoupling.driveState;
+        this.persisted.facets.consciousness.intrinsic = intrinsicState;
         this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
         // Stage the freshly generated endogenous goal only after the canonical self-agency gate.
         // Rejected authorship is represented as an unknown source and cannot enter B365 ownership.
@@ -5357,12 +5376,6 @@ export class OrganismCore {
         const broadcast = this.config.enableCognitiveNetwork ? this.cognitiveRuntime.cognitiveNetwork.stimulate(networkSignals, state.tick, state.attentionBudget * neuromod.attentionGain01) : null;
         // Cognitive network is projected by PersistenceProjectionCoordinator at checkpoint boundaries.
         // Keeping the hot-path copy only in the live bus avoids cloning the 64-entry broadcast history each cycle.
-        const worldEvidenceQuality = this.worldSubsystem.world.beliefAvailable() ? clamp(0.45 + Math.min(0.45, this.worldSubsystem.world.transitionCount() / 80)) : 0.2;
-        const intrinsicState = this.cognitiveRuntime.intrinsicMotivation.update({
-            uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goalPressure: n.goalPressure,
-            socialNeed: n.socialNeed, energy: n.energy, lastSuccess: state.lastActionSuccess, worldEvidenceQuality,
-        });
-        this.persisted.facets.consciousness.intrinsic = intrinsicState;
         if (this.config.enableContradictions && state.predictionError > 0.62) {
             const c = this.cognitiveRuntime.contradictions.register('Наблюдаемый исход существенно расходится с текущим прогнозом', [String(activeGoalPressureFallback(this.persisted.goals) || 'goal-model'), 'world-transition'], state.predictionError);
             this.cognitiveRuntime.cognitiveField.addPressure('contradiction', c.claim, c.confidence, [c.id], 0.03);
@@ -5379,7 +5392,7 @@ export class OrganismCore {
             });
         }
         if (this.config.enableIntrinsicGoals && this.config.enableIntrinsicMotivation) {
-            const proposal = this.cognitiveRuntime.intrinsicMotivation.proposeGoal();
+            const proposal = intrinsicCoupling.driveGoal;
             if (proposal) {
                 const intrinsic = this.addGoal(proposal);
                 intrinsic.status = 'active';
@@ -8678,6 +8691,58 @@ export class OrganismCore {
         this.cognitiveRuntime.longitudinal.recordOutcome(gatedSuccess01);
         const outcomeEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'outcome', source: outcome.evidenceSource ?? (outcome.worldTransition ? 'simulator' : 'feedback'), parentIds: [this.cognitiveCycleAnchors.action, this.cognitiveCycleAnchors.prediction].filter(Boolean) as string[], external: externalEvidenceSources.includes(String(outcome.evidenceSource ?? '').toLowerCase()), confidence01: clamp(1 - surprise), payload: { success, reward: outcome.reward ?? null, surprise } });
         const learningEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'learning', source: 'outcome-learning', parentIds: [outcomeEvent.id], confidence01: clamp(1 - surprise), payload: { predictionError: state.predictionError, uncertainty: state.needs.uncertainty } });
+        // Close the action→outcome→learning trace into canonical episodic memory.
+        // Replayed feedback reuses the CEF event and MemoryOS2 projection IDs.
+        const metacognitiveObservationEventId = this.cognitiveCycleAnchors.observation;
+        const metacognitivePredictionEventId = this.cognitiveCycleAnchors.prediction;
+        const metacognitiveActionEventId = this.cognitiveCycleAnchors.action;
+        if (metacognitiveObservationEventId && metacognitivePredictionEventId && metacognitiveActionEventId) {
+            const metacognitiveSource = String(outcome.evidenceSource ?? (outcome.worldTransition ? 'simulator' : 'feedback')).slice(0, 80);
+            const metacognitiveEpisode = recordAndPersistMetacognitiveEpisode(
+                this.cognitiveRuntime.cognitiveEventFabric,
+                {
+                    tick: state.tick,
+                    cycleId: 'nk1-cycle:' + state.tick + ':' + metacognitiveActionEventId,
+                    observationEventId: metacognitiveObservationEventId,
+                    predictionEventId: metacognitivePredictionEventId,
+                    actionEventId: metacognitiveActionEventId,
+                    outcomeEventId: outcomeEvent.id,
+                    learningEventId: learningEvent.id,
+                    predictedOutcomeHash: sha256Stable({
+                        tick: state.tick,
+                        action: trace?.selected?.action ?? 'wait',
+                        predictedUtility: clamp(Number(trace?.selected?.predictedUtility ?? .5)),
+                        confidence: clamp(Number(trace?.selected?.confidence ?? .5)),
+                    }),
+                    observedOutcomeHash: sha256Stable({
+                        tick: state.tick,
+                        success: clamp(Number(success)),
+                        reward: outcome.reward == null ? null : clamp(Number(outcome.reward)),
+                        predictionError01: clamp(Number(surprise)),
+                        evidenceSource: metacognitiveSource,
+                    }),
+                    decisionRationaleHash: sha256Stable({
+                        tick: state.tick,
+                        traceId: trace?.id ?? '',
+                        action: trace?.selected?.action ?? 'wait',
+                        goalEventId: this.cognitiveCycleAnchors.goal ?? '',
+                        planEventId: this.cognitiveCycleAnchors.plan ?? '',
+                    }),
+                    predictionError01: clamp(Number(surprise)),
+                    confidence01: clamp(1 - Number(surprise)),
+                    reflectionKind: surprise >= .65 && externalEvidenceSources.includes(metacognitiveSource.toLowerCase())
+                        ? 'contradiction' : surprise >= .25 ? 'calibration' : 'none',
+                    correctionDisposition: 'none',
+                    at: state.at,
+                },
+                this.memorySubsystem.memoryOS,
+                this.memorySubsystem.consolidationController,
+            );
+            if (metacognitiveEpisode.projection?.stored) {
+                this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
+                this.persisted.facets.advanced.consolidationController = this.memorySubsystem.consolidationController.snapshot();
+            }
+        }
         const selfUpdateEvent = this.cognitiveRuntime.cognitiveEventFabric.append({ tick: state.tick, stage: 'self-update', source: 'self-model', parentIds: [learningEvent.id], confidence01: clamp(state.needs.identityCoherence), payload: { identityCoherence: state.needs.identityCoherence } });
         const cycleStageIds = { observation: this.cognitiveCycleAnchors.observation, prediction: this.cognitiveCycleAnchors.prediction, appraisal: this.cognitiveCycleAnchors.appraisal, attention: this.cognitiveCycleAnchors.attention, memory: this.cognitiveCycleAnchors.memory, goal: this.cognitiveCycleAnchors.goal, plan: this.cognitiveCycleAnchors.plan, action: this.cognitiveCycleAnchors.action, outcome: outcomeEvent.id, learning: learningEvent.id, 'self-update': selfUpdateEvent.id };
         const cycleLineage = this.cognitiveRuntime.cognitiveEventFabric.verifyOperationalCycle(cycleStageIds);

@@ -5,15 +5,19 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
+      - "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts"
       - "runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs"
       - ".github/workflows/intrinsic-motivation-goal-coupling.yml"
   push:
     branches:
       - "aspect/intrinsic-drive-goal-coupling-20261103"
+      - "aspect/metacognitive-memory-autonomy-live-20261103"
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs"
       - ".github/workflows/intrinsic-motivation-goal-coupling.yml"
 permissions:
