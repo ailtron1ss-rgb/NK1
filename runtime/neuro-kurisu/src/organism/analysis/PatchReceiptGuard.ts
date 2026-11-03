@@ -96,7 +96,7 @@ export function parseUnifiedDiff(patchText: string): ChangedFileRange[] {
   const finish = () => {
     if (!current) return;
     if (!current.oldPath || !current.newPath || current.oldPath !== current.newPath) throw new Error('patch-file-add-delete-or-rename-refused');
-    if (current.header !== \`diff --git a/\${current.oldPath} b/\${current.newPath}\`) throw new Error('patch-file-header-path-mismatch');
+    if (current.header !== `diff --git a/${current.oldPath} b/${current.newPath}`) throw new Error('patch-file-header-path-mismatch');
     if (!current.hunks || !current.ranges.length || !current.changes) throw new Error('patch-file-without-textual-change');
     files.push({ path: current.oldPath, ranges: current.ranges });
     if (files.length > MAX_CHANGED_FILES) throw new Error('patch-too-many-files');
@@ -219,7 +219,7 @@ export function verifyPatchReceipt(receiptValue: unknown, options: PatchReceiptV
   if (receipt.patchSha256.toLowerCase()!==digest) return {ok:false,reason:'patch-digest-mismatch'};
   let actual: ChangedFileRange[];
   try { actual=parseUnifiedDiff(options.patchText); }
-  catch (error) { return {ok:false,reason:\`patch-parse-refused:\${error instanceof Error?error.message:'unknown'}\`}; }
+  catch (error) { return {ok:false,reason:`patch-parse-refused:${error instanceof Error?error.message:'unknown'}`}; }
   if (JSON.stringify(receipt.changedFiles)!==JSON.stringify(actual)) return {ok:false,reason:'patch-changed-lines-mismatch'};
   const expected=stablePaths(options.expectedTargetFiles);
   const actualPaths=actual.map(f=>f.path).sort((a,b)=>a.localeCompare(b));
@@ -236,7 +236,7 @@ export function verifyPatchReceipt(receiptValue: unknown, options: PatchReceiptV
   }
   for (const file of actual) for (const range of file.ranges) {
     if (!validBlocks.some(b=>b.file===file.path && b.startLine<=range.startLine && b.endLine>=range.endLine)) {
-      return {ok:false,reason:\`changed-lines-outside-evolve-block:\${file.path}:\${range.startLine}-\${range.endLine}\`};
+      return {ok:false,reason:`changed-lines-outside-evolve-block:${file.path}:${range.startLine}-${range.endLine}`};
     }
   }
   const keyMap=plain(options.trustedPublicKeys)?options.trustedPublicKeys:null;
