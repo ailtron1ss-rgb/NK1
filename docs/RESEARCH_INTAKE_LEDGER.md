@@ -230,3 +230,26 @@ Do not count a reference as “used” until a source revision/paper protocol is
 5. Require positive independent holdout task utility, no material regression on unrelated controls, bounded latency/cost and reproducible results before promotion. Recall-only uplift or a synthetic fixture is not sufficient. Keep rollback available.
 
 **Evidence boundary:** this is a research-to-test translation, not an implemented continual-learning algorithm, not a real RU/EN retrieval uplift and not a license approval for upstream code/data. No external benchmark dataset or runtime dependency was imported.
+
+---
+
+## WorkPass71 — avatar/body donor intake: rigs, retargeting and co-speech gesture (2026-11-03)
+
+**Decision:** adopt a small number of mechanisms behind isolated adapters; do not vendor runtime engines. These are candidate mechanisms for the body (2D/2.5D/3D) and motorics. No upstream code was copied or installed in this pass; each row records a candidate, not an integrated dependency. Base SHA for this pass: `608435493b4af3b4a222d385f1b77d978d18583b` (`workpass70-source`).
+
+| Candidate / source | Revision / access | License | Mechanism to inspect | NK1 integration target | Downside / boundary | Decision |
+|---|---|---|---|---|---|---|
+| [Meta MHR (Momentum Human Rig)](https://github.com/facebookresearch/MHR) | upstream main, inspected 2026-11-03 | Apache-2.0 (verify model-weight terms) | Decoupled skeleton/shape, pose correctives, face blendshapes, 60 Hz | Offline reference for NK1 retarget rig and joint naming | Not a browser runtime; do not vendor weights without license review | ADAPT (offline reference) |
+| [VRM Animation `.vrma` (VRMC_vrm_animation)](https://vrm.dev/en/vrma) | spec, inspected 2026-11-03 | Open spec (VRM Consortium) | Cross-model humanoid clip + expression animation | Motion-library clip format consumed by `vrmRuntimeAdapter` | Needs a runtime importer; keep one mixer owner | ADOPT format |
+| [GMR — General Motion Retargeting](https://github.com/YanjieZe/GMR) | upstream main, inspected 2026-11-03 | MIT | Human→humanoid retarget, CPU IK (mink/mujoco), BVH/SMPL-X/LAFAN1 | Offline retarget of donor clips into NK1 `.vrma` | Solver is offline only; never in the browser | ADAPT (offline) |
+| [Kalidokit](https://github.com/yeemachine/kalidokit) | upstream main (deprecated) | MIT | Blendshape/kinematics solver for MediaPipe → VRM/Live2D | Reference for solver logic only | Deprecated; superseded by MediaPipe tasks | REFERENCE ONLY |
+| [MediaPipe Tasks (face/pose/hand)](https://ai.google.dev/edge/mediapipe/solutions/vision) | current docs, inspected 2026-11-03 | Apache-2.0 | Landmarks → face/pose/hand rig | Opt-in camera-tracking input adapter | Separate input adapter; not a state owner; privacy-gated | ADAPT (opt-in) |
+| [EMAGE (CVPR 2024)](https://pantomatrix.github.io/EMAGE) | paper + project page | Verify code; BEAT2 dataset license separate | Audio → holistic gesture (body+face+hands), SMPL-X/BEAT2 | Offline gesture-quality reference | Dataset license blocks training without review | RESEARCH-ONLY |
+| [LiveGesture (CVPR 2026)](https://openaccess.thecvf.com/) | paper | Verify code license | Streamable zero-look-ahead full-body gesture from speech | Real-time gesture candidate; compare offline first | No reproduced result on NK1 corpus yet | RESEARCH-ONLY |
+| [3D Gaussian Splatting / Spark](https://github.com/sparkjsdev/spark) | upstream main | MIT (verify) | Real-time splat render; `KHR_gaussian_splatting` | Future photoreal head; separate renderer | Not a rig replacement | RESEARCH-ONLY |
+
+### Acceptance rule for this pass
+
+Promote a candidate only when it removes a named failure of the canonical owner, survives an isolated adapter test, and beats the current clip-based baseline on a frozen comparison without unbounded latency, memory or privacy cost. Keep the donor's license and attribution; never ship model weights or datasets whose license is unreviewed. Record the result and the rollback in the handover.
+
+**Evidence boundary:** this is a candidate queue. Nothing here is an integrated dependency, a measured quality uplift or a license approval for upstream code, weights or datasets.

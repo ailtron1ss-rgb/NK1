@@ -19,6 +19,7 @@ import type {
   SwitchPlan,
 } from "./embodimentSwitch.ts";
 import type { MouthPose } from "./embodimentTimeline";
+import { DEFAULT_RENDERER_MANIFESTS, createDefaultBodyRendererRegistry } from "./rendererRegistryDefaults.ts";
 
 /** UI renderer modes. `legacy` and `original` are 2D fallbacks, not skeletal adapters. */
 export type UiRenderMode = "live2d" | "legacy" | "original" | "3d";
@@ -43,6 +44,12 @@ export interface SemanticBodyProjectionInput {
   audioTimeMs: number;
   /** Optional because viseme/mouth samples can be absent between audio frames. */
   mouth?: MouthPose | null;
+  /**
+   * Optional renderer-neutral motion channels from the motion arbiter. Bounded
+   * and merged with the derived channels; unsupported ones are reported by the
+   * switch plan rather than dropped silently.
+   */
+  pose?: Readonly<Partial<Record<BodyChannel, number>>> | null;
 }
 
 const EXPRESSION_CHANNELS: readonly ExpressionChannel[] = [
@@ -60,41 +67,40 @@ const EXPRESSION_TEXT: Record<EmotionLabel, string> = {
 };
 
 /**
- * Channels each wired renderer actually applies today. Deliberately narrow:
- * limbs, hands and clothing layers are not driven by the current UI, so they are
- * reported as unsupported instead of being silently dropped.
- */
-const LIVE2D_CHANNELS: readonly BodyChannel[] = ["headRoll", "gazeX", "gazeY", "breath"];
-const SVG_CHANNELS: readonly BodyChannel[] = ["gazeX", "gazeY"];
-const SPRITE_CHANNELS: readonly BodyChannel[] = [];
-const VRM3D_CHANNELS: readonly BodyChannel[] = ["gazeX", "gazeY"];
-
-/**
  * Static capability table. `mode` is the coarse renderer class the switch
  * contract understands (2D = `live2d`, 2.5D = `depth2d`, 3D = `vrm3d`);
  * `rendererId` is the precise adapter identity, so two 2D renderers still switch.
+ *
+ * Derived from the canonical default manifests so declared channels cannot drift
+ * between the registry and the switch contract.
  */
+const UI_MODE_TO_RENDERER_ID: Record<UiRenderMode, string> = {
+  live2d: "nk1-live2d-cubism",
+  original: "nk1-original-svg-2d",
+  legacy: "nk1-legacy-sprites-2d",
+  "3d": "nk1-three-vrm3d",
+};
+
+const manifestToCapabilities = (rendererId: string): RendererCapabilities => {
+  const manifest = DEFAULT_RENDERER_MANIFESTS.find((entry) => entry.rendererId === rendererId);
+  if (!manifest) throw new TypeError(`missing-default-renderer-manifest:${rendererId}`);
+  return {
+    mode: manifest.mode,
+    rendererId: manifest.rendererId,
+    channels: manifest.channels,
+    expressions: manifest.expressions,
+    supportsSpeechVisemes: manifest.supportsSpeechVisemes,
+    supportsWorldTargets: manifest.supportsWorldTargets,
+    supportsClothingLayers: manifest.supportsClothingLayers,
+    supportsPhysics: manifest.supportsPhysics,
+  };
+};
+
 const CAPABILITY_TABLE: Record<UiRenderMode, RendererCapabilities> = {
-  live2d: {
-    mode: "live2d", rendererId: "nk1-live2d-cubism", channels: LIVE2D_CHANNELS,
-    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: true,
-    supportsWorldTargets: true, supportsClothingLayers: false, supportsPhysics: true,
-  },
-  original: {
-    mode: "live2d", rendererId: "nk1-original-svg-2d", channels: SVG_CHANNELS,
-    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: false,
-    supportsWorldTargets: true, supportsClothingLayers: false, supportsPhysics: false,
-  },
-  legacy: {
-    mode: "live2d", rendererId: "nk1-legacy-sprites-2d", channels: SPRITE_CHANNELS,
-    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: false,
-    supportsWorldTargets: false, supportsClothingLayers: false, supportsPhysics: false,
-  },
-  "3d": {
-    mode: "vrm3d", rendererId: "nk1-three-vrm3d", channels: VRM3D_CHANNELS,
-    expressions: EXPRESSION_CHANNELS, supportsSpeechVisemes: true,
-    supportsWorldTargets: true, supportsClothingLayers: false, supportsPhysics: true,
-  },
+  live2d: manifestToCapabilities(UI_MODE_TO_RENDERER_ID.live2d),
+  original: manifestToCapabilities(UI_MODE_TO_RENDERER_ID.original),
+  legacy: manifestToCapabilities(UI_MODE_TO_RENDERER_ID.legacy),
+  "3d": manifestToCapabilities(UI_MODE_TO_RENDERER_ID["3d"]),
 };
 
 const clamp01 = (value: number | null | undefined): number => Math.max(0, Math.min(1, typeof value === "number" && Number.isFinite(value) ? value : 0));
@@ -115,6 +121,30 @@ const normalizeSpeechEventId = (value: unknown): string | null => {
 
 export function capabilitiesForMode(mode: UiRenderMode): RendererCapabilities {
   return CAPABILITY_TABLE[mode];
+}
+
+/** The canonical default registry for the wired UI modes. */
+export const defaultBodyRendererRegistry = createDefaultBodyRendererRegistry();
+
+const CHANNEL_KEYS: ReadonlySet<BodyChannel> = new Set([
+  "headYaw", "headPitch", "headRoll", "torsoYaw", "torsoPitch",
+  "leftShoulder", "leftElbow", "leftWrist", "rightShoulder", "rightElbow", "rightWrist",
+  "leftHip", "leftKnee", "leftAnkle", "rightHip", "rightKnee", "rightAnkle",
+  "leftHand", "rightHand", "leftFingers", "rightFingers", "gazeX", "gazeY", "breath", "rootYaw",
+]);
+
+/** Merge bounded arbiter channels with derived channels; derived values win on conflict. */
+function mergePoseChannels(
+  derived: Partial<Record<BodyChannel, number>>,
+  extra: Readonly<Partial<Record<BodyChannel, number>>> | null | undefined,
+): Partial<Record<BodyChannel, number>> {
+  const merged: Partial<Record<BodyChannel, number>> = { ...derived };
+  if (!extra) return merged;
+  for (const [key, value] of Object.entries(extra) as [BodyChannel, number][]) {
+    if (!CHANNEL_KEYS.has(key) || key in derived || !Number.isFinite(value)) continue;
+    merged[key] = Math.max(-1, Math.min(1, value));
+  }
+  return merged;
 }
 
 /** Project the canonical snapshot into a renderer-neutral semantic body state. */
@@ -142,11 +172,11 @@ export function projectSemanticBodyState(input: SemanticBodyProjectionInput): Se
     },
     action: (typeof input.snapshot.lastOption === "string" && input.snapshot.lastOption.trim()) ? input.snapshot.lastOption.slice(0, 96) : "wait",
     intentId: null,
-    pose: {
+    pose: mergePoseChannels({
       headRoll: clampUnit(input.headTilt),
       gazeX,
       gazeY,
-    },
+    }, input.pose),
     wardrobeId: null,
   };
 }

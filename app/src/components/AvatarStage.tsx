@@ -14,6 +14,11 @@ import {
   beginBodySwitch,
   projectSemanticBodyState,
 } from "./avatar/embodimentUiBridge";
+import {
+  arbitrateMotion,
+  defaultMotionArbitrationState,
+  type MotionArbitrationState,
+} from "./avatar/motionArbitration";
 import type { SwitchPlan } from "./avatar/embodimentSwitch";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
@@ -138,6 +143,13 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
   const [switchOpacity, setSwitchOpacity] = useState(1);
   const previousModeRef = useRef<ViewMode>(mode);
   const bodyRevisionRef = useRef(0);
+  // Aspect 11 / motor: continuous renderer-neutral motion arbiter. It advances on a
+  // rAF loop and only feeds the handoff snapshot; it never drives a renderer directly.
+  const motionStateRef = useRef<MotionArbitrationState>(defaultMotionArbitrationState());
+  const motionChannelsRef = useRef<Record<string, number>>({});
+  const motionLastAtRef = useRef<number | null>(null);
+  const thinkingRef = useRef(false);
+  const speakingRef = useRef(false);
   // Latest-value refs so the mode-change effect can stay independent of per-tick churn.
   const latestSnapRef = useRef(snap);
   const mouthPoseRef = useRef(mouthPose);
@@ -212,6 +224,29 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
 
   useEffect(() => { latestSnapRef.current = snap; mouthPoseRef.current = mouthPose; }, [snap, mouthPose]);
 
+  // Keep the arbiter's view of affect/speech current without restarting it each tick.
+  useEffect(() => {
+    thinkingRef.current = thinking;
+    speakingRef.current = voiceStatus === "speaking";
+    const now = performance.now();
+    const deltaMs = now - (motionLastAtRef.current ?? now);
+    motionLastAtRef.current = now;
+    try {
+      const result = arbitrateMotion(motionStateRef.current, {
+        action: snap.lastOption,
+        emotion: snap.emotion.label,
+        speaking: speakingRef.current,
+        thinking,
+        awake: snap.awake,
+        energy01: snap.needs.energy,
+      }, deltaMs);
+      motionStateRef.current = result.state;
+      motionChannelsRef.current = result.channels as Record<string, number>;
+    } catch {
+      // A malformed intent must never freeze or crash the panel; keep the last pose.
+    }
+  }, [snap, thinking, voiceStatus]);
+
   // Aspect 11: plan a renderer handoff whenever the body changes. The projection is
   // monotonic and derived from the canonical snapshot; it never mutates organism state.
   // Only channels the destination declares are applied, and the crossfade is bounded.
@@ -239,6 +274,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         speechEventId: active?.speechEventId ?? null,
         audioTimeMs: Number(active?.lastAudioElapsedMs ?? 0),
         mouth: mouthPoseRef.current,
+        pose: motionChannelsRef.current,
       });
       plan = beginBodySwitch(from, mode, state).plan;
     } catch {
