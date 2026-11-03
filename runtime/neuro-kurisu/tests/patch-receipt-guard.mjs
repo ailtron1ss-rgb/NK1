@@ -51,6 +51,17 @@ test('maps deletion-only hunks to their insertion seam',()=>{
     `--- a/${file}`,`+++ b/${file}`,'@@ -2 +1,0 @@','-obsolete line',''].join('\n');
   assert.deepEqual(parseUnifiedDiff(deletion),[{path:file,ranges:[{startLine:1,endLine:1}]}]);
 });
+test('rejects accessor-backed verification options without executing getters',()=>{
+ let getterCalled=false;
+ const unsafe={patchText:patch,expectedBaseSha:baseSha,expectedTargetFiles:targets,evolveBlocks:blocks,trustedPublicKeys};
+ Object.defineProperty(unsafe,'patchText',{get(){getterCalled=true;throw new Error('must not execute');}});
+ const result=verifyPatchReceipt(receiptFor(),unsafe);
+ assert.equal(result.ok,false);
+ assert.equal(result.reason,'patch-verification-input-invalid');
+ assert.equal(getterCalled,false);
+ const proxy=new Proxy({}, {getPrototypeOf(){throw new Error('must not inspect proxy');}});
+ assert.equal(verifyPatchReceipt(receiptFor(),proxy).reason,'patch-verification-input-invalid');
+});
 test('rejects malformed receipt and accessor-backed trust map',()=>{
   assert.equal(verify({...receiptFor(),changedFiles:new Array(1)}).reason,'patch-receipt-malformed');
   const map={}; Object.defineProperty(map,'nk1-test-key',{get(){throw new Error('getter must not run');}});
