@@ -62,7 +62,13 @@ This manifest catalogs requested tools and their intended roles. It deliberately
 
 - Machine-readable tool/capability registry with explicit unverified defaults.
 - Offline CLI to validate the registry and print workstream plans.
-- Node test suite for schema, uniqueness, least-privilege defaults and safety invariants.
+- Lease-based single-writer task coordinator with base-SHA binding, path traversal rejection, parent/child conflict detection, expiry, idempotent renewal and owner-only release.
+- Node test suite for registry safety and concurrent claim behavior.
+- Research intake translating STORM, Co-Coder, CooperBench and OpenCollab into concrete coordination design decisions.
+
+### Coordinator scope boundary
+
+The initial claim store is a local filesystem lease store. Multiple agents can coordinate only when they share the same `NEUROK_OS_STATE_DIR`; independent devices/worktrees do not share state automatically. It is advisory: it does not intercept arbitrary filesystem writes or replace Git review. A later authenticated shared backend must use transactional compare-and-swap and be contract-tested before cross-device claims are enabled.
 
 ## Not included / not claimed
 
