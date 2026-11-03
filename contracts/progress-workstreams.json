@@ -1,6 +1,6 @@
 {
   "schema": "nk1.progress-workstreams.v1",
-  "note": "Weights are planning priorities, not measured quality. A workstream percentage is derived from machine-checkable evidence probes only; it must never be raised by writing prose, adding files, or counting tests. Evidence artifacts must assert \"verified\": true to count.",
+  "note": "Weights are planning priorities, not measured quality. Artifact coverage is only file/script availability. Verified efficacy counts only evidence JSON with verified=true, an exact current HEAD SHA, and every explicit workstream metric threshold. No score may be raised by prose or by stale test artifacts.",
   "workstreams": [
     {
       "id": "W1-runtime-integrity",
@@ -26,6 +26,25 @@
           "prefix": "runtime/neuro-kurisu",
           "script": "test:workpass287:cognitive-cycle"
         }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "deterministic-cycle-soak",
+          "kind": "evidence-json",
+          "path": "docs/evidence/cognitive-cycle-soak.json",
+          "requirements": [
+            {
+              "path": "metrics.deterministicTicks",
+              "op": "gte",
+              "value": 10000
+            },
+            {
+              "path": "metrics.maxTickMs",
+              "op": "lte",
+              "value": 50
+            }
+          ]
+        }
       ]
     },
     {
@@ -50,12 +69,25 @@
           "id": "holdout-pairing-test",
           "kind": "file-exists",
           "path": "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md"
-        },
+        }
+      ],
+      "evidenceProbes": [
         {
           "id": "retrieval-uplift-evidence",
-          "kind": "file-contains",
+          "kind": "evidence-json",
           "path": "docs/evidence/retrieval-uplift.json",
-          "needle": "\"verified\": true"
+          "requirements": [
+            {
+              "path": "metrics.recallDelta",
+              "op": "gt",
+              "value": 0
+            },
+            {
+              "path": "metrics.pairedSeeds",
+              "op": "gte",
+              "value": 5
+            }
+          ]
         }
       ]
     },
@@ -74,12 +106,25 @@
           "id": "authenticated-approval",
           "kind": "file-exists",
           "path": "runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts"
-        },
+        }
+      ],
+      "evidenceProbes": [
         {
           "id": "transfer-evidence",
-          "kind": "file-contains",
+          "kind": "evidence-json",
           "path": "docs/evidence/learning-transfer.json",
-          "needle": "\"verified\": true"
+          "requirements": [
+            {
+              "path": "metrics.holdoutTransferDelta",
+              "op": "gt",
+              "value": 0
+            },
+            {
+              "path": "metrics.rollbackVerified",
+              "op": "eq",
+              "value": true
+            }
+          ]
         }
       ]
     },
@@ -115,6 +160,25 @@
           "kind": "file-exists",
           "path": "runtime/neuro-kurisu/src/organism/analysis/SelfImprovementCandidatePool.ts"
         }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "self-modification-adversarial-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/self-modification-adversarial.json",
+          "requirements": [
+            {
+              "path": "metrics.adversarialCasesPassed",
+              "op": "gte",
+              "value": 20
+            },
+            {
+              "path": "metrics.evaluatorTamperBlocked",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
       ]
     },
     {
@@ -134,12 +198,30 @@
           "kind": "npm-script",
           "prefix": "runtime/neuro-kurisu",
           "script": "test:self-agency:live"
-        },
+        }
+      ],
+      "evidenceProbes": [
         {
-          "id": "soak-evidence",
-          "kind": "file-contains",
+          "id": "autonomy-soak-evidence",
+          "kind": "evidence-json",
           "path": "docs/evidence/autonomy-soak.json",
-          "needle": "\"verified\": true"
+          "requirements": [
+            {
+              "path": "metrics.durationHours",
+              "op": "gte",
+              "value": 24
+            },
+            {
+              "path": "metrics.initiativesPerHour",
+              "op": "gte",
+              "value": 1
+            },
+            {
+              "path": "metrics.userStopHonored",
+              "op": "eq",
+              "value": true
+            }
+          ]
         }
       ]
     },
@@ -158,18 +240,42 @@
           "id": "embodiment-switch-test",
           "kind": "file-exists",
           "path": "app/scripts/embodiment-switch.test.mjs"
-        },
+        }
+      ],
+      "evidenceProbes": [
         {
           "id": "browser-e2e-evidence",
-          "kind": "file-contains",
+          "kind": "evidence-json",
           "path": "docs/evidence/browser-embodiment-e2e.json",
-          "needle": "\"verified\": true"
+          "requirements": [
+            {
+              "path": "metrics.lipDriftMs",
+              "op": "lte",
+              "value": 80
+            },
+            {
+              "path": "metrics.interruptMs",
+              "op": "lte",
+              "value": 200
+            }
+          ]
         },
         {
           "id": "device-e2e-evidence",
-          "kind": "file-contains",
+          "kind": "evidence-json",
           "path": "docs/evidence/device-voice-e2e.json",
-          "needle": "\"verified\": true"
+          "requirements": [
+            {
+              "path": "metrics.lipDriftMs",
+              "op": "lte",
+              "value": 80
+            },
+            {
+              "path": "metrics.interruptMs",
+              "op": "lte",
+              "value": 200
+            }
+          ]
         }
       ]
     },
@@ -195,6 +301,25 @@
           "prefix": "runtime/neuro-kurisu",
           "script": "test:self-agency:authority"
         }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "security-redteam-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/security-redteam.json",
+          "requirements": [
+            {
+              "path": "metrics.redTeamCasesPassed",
+              "op": "gte",
+              "value": 20
+            },
+            {
+              "path": "metrics.criticalBypasses",
+              "op": "eq",
+              "value": 0
+            }
+          ]
+        }
       ]
     },
     {
@@ -217,12 +342,25 @@
           "id": "ci-workflow",
           "kind": "file-exists",
           "path": ".github/workflows/nk1-self-analysis.yml"
-        },
+        }
+      ],
+      "evidenceProbes": [
         {
           "id": "ci-exact-head-evidence",
-          "kind": "file-contains",
+          "kind": "evidence-json",
           "path": "docs/evidence/ci-exact-head-5cf0743.json",
-          "needle": "\"verified\": true"
+          "requirements": [
+            {
+              "path": "checks.failureCount",
+              "op": "eq",
+              "value": 0
+            },
+            {
+              "path": "checks.exactHead",
+              "op": "eq",
+              "value": true
+            }
+          ]
         }
       ]
     },
@@ -242,12 +380,30 @@
           "kind": "file-contains",
           "path": "contracts/RELEASE_LICENSE_REVIEW.json",
           "needle": "\"redistributionApproved\": true"
-        },
+        }
+      ],
+      "evidenceProbes": [
         {
           "id": "release-evidence",
-          "kind": "file-contains",
+          "kind": "evidence-json",
           "path": "docs/evidence/release-publish.json",
-          "needle": "\"verified\": true"
+          "requirements": [
+            {
+              "path": "redistributionApproved",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "path": "cleanRoomInstall",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "path": "checksumVerified",
+              "op": "eq",
+              "value": true
+            }
+          ]
         }
       ]
     }
