@@ -71,18 +71,32 @@ async function runSoak() {
 
 const percentile = (sorted, q) => sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
 
-const first = await runSoak();
-const second = await runSoak();
+const RUNS = Number(process.env.NK1_SOAK_RUNS ?? 3);
+const runs = [];
+for (let i = 0; i < RUNS; i += 1) runs.push(await runSoak());
+const first = runs[0];
 
-// 1. Determinism: measure how far two independent runs agree. We do not assert a horizon
-// here because the divergence point is itself host-dependent and non-reproducible; the
-// contract decides whether the measured horizon is acceptable. Asserting it in-process
-// would make this harness flaky and would hide the defect behind a retry.
-let firstDivergenceTick = -1;
-for (let i = 0; i < TICKS; i += 1) {
-  if (first.actions[i] !== second.actions[i]) { firstDivergenceTick = i; break; }
+// 1. Determinism: measure how far independent runs agree, across every pair. We do not
+// assert a horizon here because the divergence point is itself host-dependent and
+// non-reproducible; the contract decides whether the measured horizon is acceptable.
+// Divergence is intermittent: some pairs of runs agree end to end and others diverge, and
+// that inconsistency is the defect, so we report the worst (smallest) horizon and how many
+// pairs diverged rather than a single lucky pair.
+let firstDivergenceTick = TICKS;
+let pairsDiverged = 0;
+const pairHorizons = [];
+for (let a = 0; a < runs.length; a += 1) {
+  for (let b = a + 1; b < runs.length; b += 1) {
+    let horizon = TICKS;
+    for (let i = 0; i < TICKS; i += 1) {
+      if (runs[a].actions[i] !== runs[b].actions[i]) { horizon = i; break; }
+    }
+    pairHorizons.push(horizon);
+    if (horizon !== TICKS) pairsDiverged += 1;
+    firstDivergenceTick = Math.min(firstDivergenceTick, horizon);
+  }
 }
-const deterministicTicks = firstDivergenceTick === -1 ? TICKS : firstDivergenceTick;
+const deterministicTicks = firstDivergenceTick;
 assert.equal(first.summary.tick, TICKS, 'every requested tick must have completed');
 
 // 2. Endurance: resident memory must not run away across the run. Measured growth is
@@ -92,8 +106,10 @@ assert.equal(first.summary.tick, TICKS, 'every requested tick must have complete
 // mistaken for a clean bill of health.
 const half = Math.floor(first.rss.length / 2);
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
-const rssGrowthRatio = mean(first.rss.slice(half)) / Math.max(1, mean(first.rss.slice(0, half)));
-assert.ok(rssGrowthRatio < 5, `resident memory must not run away across the soak, growth ratio was ${rssGrowthRatio.toFixed(3)}`);
+const rssGrowthRatio = first.rss.length >= 4 ? mean(first.rss.slice(half)) / Math.max(1, mean(first.rss.slice(0, half))) : null;
+if (rssGrowthRatio != null) {
+  assert.ok(rssGrowthRatio < 5, `resident memory must not run away across the soak, growth ratio was ${rssGrowthRatio.toFixed(3)}`);
+}
 
 // 3. Latency: report the real distribution, fail only on an egregious outlier.
 const steady = [...first.times.slice(5)].sort((a, b) => a - b);
@@ -108,19 +124,22 @@ console.log(JSON.stringify({
   verified: true,
   metrics: {
     requestedTicks: TICKS,
+    runsPerformed: RUNS,
     deterministicTicks,
-    deterministicOverFullRun: firstDivergenceTick === -1,
+    deterministicOverFullRun: firstDivergenceTick === TICKS,
     firstDivergenceTick,
+    pairsDiverged,
+    pairHorizons,
     maxTickMs: Number(maxTickMs.toFixed(2)),
     steadyStateP50Ms: Number(p50.toFixed(2)),
     steadyStateP90Ms: Number(p90.toFixed(2)),
     steadyStateP99Ms: Number(p99.toFixed(2)),
     peakRssMb: Number((Math.max(...first.rss) / 1024 / 1024).toFixed(1)),
-    rssGrowthRatio: Number(rssGrowthRatio.toFixed(3)),
+    rssGrowthRatio: rssGrowthRatio == null ? null : Number(rssGrowthRatio.toFixed(3)),
     worldTransitions: first.summary.worldTransitions,
   },
   profile: 'mobile',
   host: 'development-machine',
-  knownDefect: 'Cycle trajectory nondeterminism: two identical runs diverge after a finite horizon even with Date.now, performance.now and Math.random frozen. Resident memory also grows materially over the run (see rssGrowthRatio); whether it plateaus or leaks is UNPROVEN.',
+  knownDefect: 'Cycle trajectory nondeterminism: independent runs diverge after a finite horizon even with Date.now, performance.now and Math.random frozen. The divergence is intermittent across run pairs (see pairsDiverged/pairHorizons), which is itself the defect. Resident memory also grows materially over the run (see rssGrowthRatio); whether it plateaus or leaks is UNPROVEN.',
   limitation: 'Latency is a development-host baseline with the mobile profile, not a target-device measurement; the <=50ms device target is not measured here.',
 }, null, 2));
