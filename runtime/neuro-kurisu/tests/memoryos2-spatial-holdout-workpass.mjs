@@ -74,8 +74,12 @@ function recallAtK(ids,rows,k){
 }
 
 const results=[];
+const seedGeometrySignatures=new Set();
 for(const seed of SEEDS){
  const rows=dataset(seed),memoryOS=new MemoryOS2({embeddingProvider:null});
+ seedGeometrySignatures.add(rows.filter(row=>row.relevant)
+  .map(row=>[row.context.spatialX,row.context.spatialY,row.context.spatialZ??"0"].join(","))
+  .sort().join("|"));
  for(const row of rows)memoryOS.encode(memory(row.id,row.context));
  const baseline=memoryOS.previewRetrieveWithDiagnostics(QUERY,TOP_K);
  const baselineMetrics=recallAtK(baseline.items.map(row=>row.id),rows,TOP_K);
@@ -100,6 +104,8 @@ const meanBaseline=mean('baselineRecallAt10'),meanSpatial=mean('spatialRecallAt1
 assert.ok(meanDelta>0,'five-seed spatial recall delta must be positive');
 assert.ok(results.every(row=>row.delta>0),'every holdout seed must improve spatial recall');
 assert.ok(results.every(row=>row.crossFrameFalsePositives===0&&row.farFalsePositives===0));
+assert.equal(seedGeometrySignatures.size,SEEDS.length,
+ 'each seed must evaluate a distinct spatial point configuration');
 console.log('MEMORYOS2_SPATIAL_HOLDOUT=PASS '+JSON.stringify({
  seedCount:SEEDS.length,topK:TOP_K,meanBaselineRecallAt10:Number(meanBaseline.toFixed(3)),
  meanSpatialRecallAt10:Number(meanSpatial.toFixed(3)),meanRecallDelta:Number(meanDelta.toFixed(3)),
