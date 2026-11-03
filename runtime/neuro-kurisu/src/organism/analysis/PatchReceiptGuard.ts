@@ -215,7 +215,7 @@ export function verifyPatchReceipt(receiptValue: unknown, options: PatchReceiptV
   }
   const base=options.expectedBaseSha.toLowerCase();
   if (receipt.baseSha.toLowerCase()!==base) return {ok:false,reason:'patch-base-sha-mismatch'};
-  const digest=createHash('sha256').update(options.patchText,'utf8').digest('hex');
+  const digest=createHash('sha256').update(options.patchText).digest('hex');
   if (receipt.patchSha256.toLowerCase()!==digest) return {ok:false,reason:'patch-digest-mismatch'};
   let actual: ChangedFileRange[];
   try { actual=parseUnifiedDiff(options.patchText); }
