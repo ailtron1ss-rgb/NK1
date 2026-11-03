@@ -56,7 +56,9 @@ export class IntrinsicMotivationEngine {
     socialNeed:number;
     energy:number;
     lastSuccess:number|null;
-    worldEvidenceQuality:number
+    worldEvidenceQuality:number;
+    selfPriorMismatch01?:number;
+    selfPriorConfidence01?:number;
   }):IntrinsicDriveState {
     // Treat all externally supplied signals as bounded observations. Invalid
     // numbers cannot leak NaN into ranking or make an arbitrary drive dominant.
@@ -74,7 +76,10 @@ export class IntrinsicMotivationEngine {
     const competence = clamp(lastSuccess*0.72 + predictionError*0.18 + (1-goalPressure)*0.10);
     const coherence = clamp(predictionError*0.42 + (1-worldEvidenceQuality)*0.30 + (1-energy)*0.08 + goalPressure*0.20);
     const social = clamp(socialNeed*0.88 + (1-energy)*0.05);
-    const homeostatic = clamp((1-energy)*0.72 + goalPressure*0.28);
+    const selfPriorMismatch01=finiteInput(input.selfPriorMismatch01);
+    const selfPriorConfidence01=finiteInput(input.selfPriorConfidence01);
+    const intrinsicFamiliarityPressure=selfPriorMismatch01*selfPriorConfidence01;
+    const homeostatic = clamp((1-energy)*0.72 + goalPressure*0.28 + intrinsicFamiliarityPressure*0.24);
     const entries:Record<DriveName,number> = { epistemic, novelty, competence, coherence, social, homeostatic };
     const dominant = DRIVE_NAMES.reduce<DriveName>((best,name)=>entries[name]>entries[best]?name:best,'epistemic');
     this.state = { ...entries, overall:clamp(Math.max(...Object.values(entries))), dominant, updatedAt:Date.now() };
