@@ -8,14 +8,26 @@ on:
   push:
     paths:
       - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
       - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "contracts/progress-workstreams.json"
+      - "tools/progress-report.mjs"
+      - "tools/run-local-gate.mjs"
+      - ".nvmrc"
       - ".github/workflows/nk1-self-analysis.yml"
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
       - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
       - "runtime/neuro-kurisu/package.json"
+      - "contracts/progress-workstreams.json"
+      - "tools/progress-report.mjs"
+      - "tools/run-local-gate.mjs"
+      - ".nvmrc"
       - ".github/workflows/nk1-self-analysis.yml"
 
 permissions:
