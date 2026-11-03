@@ -118,13 +118,14 @@ test('does not infer delayed retention from point-in-time P36 holdout evidence',
 });
 
 test('creates a host-owned immutable P36 authority closure over its configuration',()=>{
- const authority=createP36PatchOutcomeEvidenceAuthority(hostConfig);
+ const mutableHostConfig={...hostConfig};
+ const authority=createP36PatchOutcomeEvidenceAuthority(mutableHostConfig);
  assert.equal(typeof authority.measure,'function');
  const result=authority.measure({candidateId:'candidate-closure',baseSha,patchSha256});
  assert.ok(result);
  assert.equal(result.absoluteGain,.5);
- hostConfig.baselineMethod='candidate-controlled-baseline';
- hostConfig.taskFamily='candidate-controlled-family';
+ mutableHostConfig.baselineMethod='candidate-controlled-baseline';
+ mutableHostConfig.taskFamily='candidate-controlled-family';
  const afterMutation=authority.measure({candidateId:'candidate-closure',baseSha,patchSha256});
  assert.ok(afterMutation);
  assert.equal(afterMutation.baselineMethod,'baseline-v1');
