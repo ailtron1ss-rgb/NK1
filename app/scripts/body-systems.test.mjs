@@ -15,6 +15,7 @@ import {
   arbitrateMotion,
   defaultMotionArbitrationState,
   resolvePrimaryProgram,
+  restoreMotionArbitrationState,
 } from "../src/components/avatar/motionArbitration.ts";
 import {
   DEFAULT_RENDERER_MANIFESTS,
@@ -74,6 +75,11 @@ test("rejects a production-ready renderer that has no asset", () => {
   assert.ok(codes.includes("inconsistent-production-ready"));
 });
 
+test("malformed channel arrays return diagnostics instead of throwing", () => {
+  const issues = validateRendererCapabilityManifest({ ...baseManifest(), channels: undefined, supportsClothingLayers: true });
+  assert.ok(issues.some((issue) => issue.code === "invalid-channels"));
+});
+
 test("rejects unknown channels and duplicate channel entries", () => {
   const bad = validateRendererCapabilityManifest({ ...baseManifest(), channels: ["headRoll", "headRoll"] }).map((i) => i.code);
   assert.ok(bad.includes("invalid-channels"));
@@ -109,6 +115,16 @@ test("rejects a looping program whose seam values differ", () => {
   assert.ok(validateMotionProgram(broken).map((i) => i.code).includes("loop-seam-mismatch"));
 });
 
+test("malformed and sparse motion keyframes fail validation without throwing", () => {
+  const nullChannels = { ...MOTION_PROGRAMS.idle, keyframes: [{ t: 0, channels: null }, { t: 1, channels: {} }] };
+  assert.ok(validateMotionProgram(nullChannels).some((issue) => issue.code === "invalid-channel-map"));
+  const sparse = { ...MOTION_PROGRAMS.idle, keyframes: new Array(2) };
+  const issues = validateMotionProgram(sparse);
+  assert.ok(issues.some((issue) => issue.code === "invalid-keyframe-time"));
+  assert.ok(issues.some((issue) => issue.code === "missing-start-keyframe"));
+  assert.ok(issues.some((issue) => issue.code === "missing-end-keyframe"));
+});
+
 test("sampling interpolates between keyframes and wraps for loops", () => {
   const mid = sampleMotionProgram(MOTION_PROGRAMS.idle, MOTION_PROGRAMS.idle.durationMs / 2);
   assert.ok(mid.channels.breath > 0.4 && mid.channels.breath < 0.95);
@@ -135,8 +151,39 @@ test("primary program resolves from thinking, speaking and action precedence", (
   assert.equal(resolvePrimaryProgram({ action: "respond", emotion: "joy", speaking: true, thinking: false, awake: true, energy01: 0.5 }), "respond");
   assert.equal(resolvePrimaryProgram({ action: "explore", emotion: "curiosity", speaking: false, thinking: false, awake: true, energy01: 0.5 }), "explain");
   assert.equal(resolvePrimaryProgram({ action: "explore", emotion: "curiosity", speaking: false, thinking: false, awake: true, energy01: 0.5, allowLocomotion: true }), "walk");
+  assert.equal(resolvePrimaryProgram({ action: "explore", emotion: "curiosity", speaking: false, thinking: false, awake: true, energy01: 0.5, allowLocomotion: "false" }), "explain",
+    "truthy strings must never opt into locomotion");
   assert.equal(resolvePrimaryProgram({ action: "wait", emotion: "sadness", speaking: false, thinking: false, awake: true, energy01: 0.5 }), "idle");
   assert.equal(resolvePrimaryProgram({ action: "wait", emotion: "sadness", speaking: false, thinking: false, awake: false, energy01: 0.5 }), "idle");
+});
+
+test("arbitration rejects non-boolean locomotion consent and sanitizes restored state", () => {
+  assert.throws(() => arbitrateMotion(null, {
+    action: "explore", emotion: "curiosity", speaking: false, thinking: false,
+    awake: true, energy01: 0.5, allowLocomotion: "false",
+  }, 16), /invalid-motion-intent/);
+
+  const restored = restoreMotionArbitrationState({
+    schemaVersion: 1,
+    layers: [
+      { programId: "respond", timeMs: 10, weight: 4 },
+      { programId: "respond", timeMs: 20, weight: 0.5 },
+      { programId: "not-a-program", timeMs: 0, weight: 1 },
+      { programId: "idle", timeMs: -1, weight: 0.4 },
+      null,
+    ],
+    primary: "respond",
+    transitionElapsedMs: Number.POSITIVE_INFINITY,
+    transitioning: true,
+  });
+  assert.deepEqual(restored.layers, [{ programId: "respond", timeMs: 10, weight: 1 }]);
+  assert.equal(restored.primary, "respond");
+  assert.equal(restored.transitioning, false);
+  assert.equal(restoreMotionArbitrationState({ schemaVersion: 1, layers: null }).layers.length, 0);
+  const advanced = arbitrateMotion({ schemaVersion: 1, layers: null }, {
+    action: "wait", emotion: "calm", speaking: false, thinking: false, awake: true, energy01: 0.5,
+  }, 16);
+  assert.equal(advanced.primary, "idle");
 });
 
 test("arbitration holds idle breathing and never freezes", () => {
