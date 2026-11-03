@@ -7935,6 +7935,7 @@ export class OrganismCore {
             },
             userRequestedAction,
             autonomousOverride,
+            goalAuthorshipAdmitted: canonicalGoalAdmission.admitted,
             worldContextKey,
             predictedOutcomes: governedCandidates.slice(0, 7).map(c => {
                 const p = predictions.get(c.action);
@@ -9599,13 +9600,14 @@ export class OrganismCore {
                 this.developmentalNeural.neuralAutobiographicalCoreB271.learnFromOutcome({ tick: state.tick, action: trace.selected.action, reward01: gatedReward01, predictionError01: state.predictionError, selfLatent: this.developmentalNeural.neuralGerminalOrganismB270.snapshot().selfLatent, traits: this.developmentalNeural.neuralGerminalOrganismB270.autonomousSnapshot().traitValues, goal: this.developmentalNeural.neuralAutobiographicalCoreB271.snapshotAutobiography().proposedGoal, acceptedExternalEvidence01: projectEvidenceExternal ? 1 : 0 });
                 const b272GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b272IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                // Credit B272 only when the action it generated is the action that actually ran.
-                // Policy/governance may override a proposal; that outcome belongs to the selected
-                // action, not to a different endogenous action that never executed.
-                if (b272GoalState.action === trace.selected.action) {
+                // Keep proposal and execution distinct: the goal generator authored the proposal,
+                // while policy/governance selected the action that actually produced this outcome.
+                // Only internally admitted goals receive this learning credit.
+                if (trace.goalAuthorshipAdmitted === true) {
                     this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
-                        tick: state.tick, action: trace.selected.action, reward01: gatedReward01,
-                        predictionError01: state.predictionError, externalEvidence01: projectEvidenceExternal ? 1 : 0,
+                        tick: state.tick, action: b272GoalState.action, executedAction: trace.selected.action,
+                        reward01: gatedReward01, predictionError01: state.predictionError,
+                        externalEvidence01: projectEvidenceExternal ? 1 : 0,
                         independentEvaluatorGain01: b272IndependentGain,
                         acceptedExternalGoal: gatedSuccess01 >= .58 || projectEvidenceExternal,
                     });
@@ -9883,12 +9885,13 @@ export class OrganismCore {
             if (outcome.worldTransition) {
                 const b338GoalState = this.developmentalNeural.endogenousGoalGenesisB272.currentGoal();
                 const b338IndependentGain = clamp((gatedSuccess01 - .5) * .6 + (0.5 - state.predictionError) * .25);
-                // A governed action can differ from B272's proposal. Never teach the
-                // generator that its unexecuted action caused this real-world outcome.
-                if (b338GoalState.action === trace.selected.action) {
+                // Credit the current admitted goal while preserving the distinction between
+                // B272's proposal and the governed action that actually changed the world.
+                if (trace.goalAuthorshipAdmitted === true) {
                     this.developmentalNeural.endogenousGoalGenesisB272.learnFromOutcome({
                         tick: state.tick,
-                        action: trace.selected.action,
+                        action: b338GoalState.action,
+                        executedAction: trace.selected.action,
                         reward01: gatedReward01,
                         predictionError01: state.predictionError,
                         externalEvidence01: projectEvidenceExternal ? 1 : 0,
