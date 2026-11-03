@@ -398,6 +398,8 @@ const ranked = pool.rank();
 assert.equal(ranked[0].candidateId, 'stronger', 'strongest downstream gain must rank first');
 assert.ok(ranked.every((r) => r.downstreamGain > 0));
 assert.equal(DEFAULT_POOL_POLICY.maxPoolSize, 32);
+assert.ok(Object.isFrozen(DEFAULT_POOL_POLICY), 'default pool policy must be immutable');
+assert.ok(Object.isFrozen(DEFAULT_DIVERGENCE_POLICY), 'default divergence policy must be immutable');
 assert.equal(pool.best().candidateId, 'stronger');
 
 // Ranking must never use the proxy value: give a candidate a huge proxy, tiny downstream.
