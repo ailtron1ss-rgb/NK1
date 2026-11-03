@@ -1,3 +1,9 @@
+## [NK1][Memory] Restore cross-lingual recall in the bilingual concept bridge (2026-11-03)
+- The answerability gate computed `conceptCoverage` but never treated it as grounding evidence, and document-side concept detection required a literal alias token, so inflected Russian never matched. Cross-lingual `retrieve()` returned `[]` in both directions.
+- Add a reverse concept-group index (alias token and its five-character stem), document-side concept detection symmetric with query-side expansion, concept-group postings in candidate selection, and a narrow `conceptGrounding` clause in the gate bounded to focused (1-3 group) queries with >=50% group coverage.
+- Cross-lingual `recallAtK01` moves 0.000 -> 1.000 in both EN->RU and RU->EN synthetic contracts; abstention and single-concept focus are preserved. Owning memory tests stay green.
+- This is a mechanism fix with a synthetic contract, not independent field evidence. The P23 promotion gate still requires an external bilingual labelled holdout with paired seeds.
+
 ## [NK1][Learning] Bind live causal outcomes to the producing action (2026-11-03)
 - Correct the production OrganismCore handoff: pass the observed state success separately from the learning-scaled success label so action attribution compares like-for-like values.
 - Accept a trace stamped at either the pre-action or resulting tick, while requiring the resulting state to be exactly one tick after the pre-action state; reject stale and skipped-tick matches.

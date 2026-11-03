@@ -244,12 +244,47 @@ function expandMemoryQueryConcepts(tokens:Iterable<string>):{weights:Map<string,
 }
 function conceptGroupCoverage(groups:ReadonlyArray<number>,documentTokens:Set<string>):number{
  if(!groups.length)return 0;
+ const documentGroups=memoryConceptGroupsForTokens(documentTokens);
  let hits=0;
- for(const groupIndex of groups){
-  const terms=MEMORY_RETRIEVAL_CONCEPT_TERM_GROUPS[groupIndex]??[];
-  if(terms.some(aliasTerms=>aliasTerms.some(token=>documentTokens.has(token))))hits++;
- }
+ for(const groupIndex of groups)if(documentGroups.has(groupIndex))hits++;
  return clamp(hits/groups.length);
+}
+/**
+ * Reverse alias index: every concept alias token and its five-character stem maps
+ * to the concept groups that own it. This lets document-side concept detection run
+ * in time proportional to the document length instead of re-scanning the whole
+ * alias dictionary for every candidate memory.
+ */
+const MEMORY_CONCEPT_GROUP_INDEX:ReadonlyMap<string,ReadonlySet<number>>=(()=>{
+ const index=new Map<string,Set<number>>();
+ for(let groupIndex=0;groupIndex<MEMORY_RETRIEVAL_CONCEPT_GROUPS.length;groupIndex++){
+  for(const alias of MEMORY_RETRIEVAL_CONCEPT_GROUPS[groupIndex]){
+   for(const token of tokenize(alias.replace(/-/g,' '))){
+    const keys=token.length>=5?[token,token.slice(0,5)]:[token];
+    for(const key of keys){let owners=index.get(key);if(!owners){owners=new Set<number>();index.set(key,owners);}owners.add(groupIndex);}
+   }
+  }
+ }
+ return index;
+})();
+/**
+ * Detect which concept groups a *document* expresses. The previous document-side
+ * check required the exact alias token to appear verbatim, so an inflected Russian
+ * memory ("интересуется") never matched its alias ("интерес") and the bilingual
+ * bridge could not ground a cross-lingual query at all. Matching on the alias stem
+ * makes the bridge symmetric with query-side expansion.
+ */
+function memoryConceptGroupsForTokens(tokens:Iterable<string>):Set<number>{
+ const groups=new Set<number>();
+ for(const token of tokens){
+  const exact=MEMORY_CONCEPT_GROUP_INDEX.get(token);
+  if(exact)for(const groupIndex of exact)groups.add(groupIndex);
+  if(token.length>=5){
+   const stemmed=MEMORY_CONCEPT_GROUP_INDEX.get(token.slice(0,5));
+   if(stemmed)for(const groupIndex of stemmed)groups.add(groupIndex);
+  }
+ }
+ return groups;
 }
 function fuzzyTokenCoverage(queryTokens:string[],documentTokens:Set<string>):number{
  if(!queryTokens.length||!documentTokens.size)return 0;
@@ -438,6 +473,7 @@ export class MemoryOS2{
  private readonly metadataTokenIndex=new Map<string,Set<string>>();
  /** Token-level character n-gram inverted index for typo/inflection-tolerant candidate discovery. */
  private readonly characterGramIndex=new Map<string,Set<string>>();
+ private readonly conceptGroupIndex=new Map<number,Set<string>>();
  private readonly documentFrequency=new Map<string,number>();
  private readonly itemTokenLength=new Map<string,number>();
  private readonly revisionGroupIndex=new Map<string,Set<string>>();
@@ -847,7 +883,7 @@ export class MemoryOS2{
   this.lastRestoreDiagnosticsData={...this.lastRestoreDiagnosticsData,acceptedRows:this.state.items.length};
   this.state.estimatedBytes=this.state.items.reduce((total,item)=>total+estimateMemoryBytes(item),0);
   this.adaptivePolicy.restore(this.state.adaptiveMemoryPolicy);
-  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
+  this.exactIndex.clear();this.contentIndex.clear();this.itemIndex.clear();this.tokenCache.clear();this.lowerContentCache.clear();this.tokenIndex.clear();this.metadataTokenIndex.clear();this.characterGramIndex.clear();this.conceptGroupIndex.clear();this.documentFrequency.clear();this.itemTokenLength.clear();this.revisionGroupIndex.clear();this.totalTokenLength=0;this.linkSupportCache=null;this.linkSupportCacheVersion=-1;this.lastCandidateCount=0;
   const indexAt=Date.now();
   for(const item of this.state.items){
    const exactKey=`${item.kind}|${item.source}|${canonicalizeMemoryContent(item.content)}`;
@@ -1078,8 +1114,8 @@ export class MemoryOS2{
    // Accumulate inverse-document-frequency support across all unique query terms, then
    // select a bounded deterministic top set. The old first-192 walk could omit relevant
    // memories solely because their row happened to be later in an imported snapshot.
-   const candidatePriority=new Map<string,{idfSupport:number;matchedTerms:number;fuzzySupport:number;fuzzyMatches:number;metadataSupport:number;metadataMatches:number}>();
-   const priorityFor=(id:string)=>{const prior=candidatePriority.get(id)??{idfSupport:0,matchedTerms:0,fuzzySupport:0,fuzzyMatches:0,metadataSupport:0,metadataMatches:0};candidatePriority.set(id,prior);return prior;};
+   const candidatePriority=new Map<string,{idfSupport:number;matchedTerms:number;fuzzySupport:number;fuzzyMatches:number;metadataSupport:number;metadataMatches:number;conceptSupport:number;conceptMatches:number}>();
+   const priorityFor=(id:string)=>{const prior=candidatePriority.get(id)??{idfSupport:0,matchedTerms:0,fuzzySupport:0,fuzzyMatches:0,metadataSupport:0,metadataMatches:0,conceptSupport:0,conceptMatches:0};candidatePriority.set(id,prior);return prior;};
    const corpusSize=Math.max(1,this.state.items.length);
    const idfFor=(token:string)=>{const df=this.documentFrequency.get(token)??0;return Math.log(1+(corpusSize-df+.5)/(df+.5));};
    for(const token of qTokens){
@@ -1119,6 +1155,13 @@ export class MemoryOS2{
      const support=idfFor(token)*weight;
      for(const id of ids){const priority=priorityFor(id);priority.idfSupport+=support;priority.matchedTerms+=weight*.25;}
    }
+   // Concept-group postings: a memory expressing an active query concept is a
+   // candidate even when it shares no literal token (the cross-lingual case). The
+   // support stays below direct evidence so the bridge only breaks lexical ties.
+   for(const groupIndex of conceptQuery.groups){
+     const ids=this.conceptGroupIndex.get(groupIndex);if(!ids)continue;
+     for(const id of ids){const priority=priorityFor(id);priority.conceptSupport+=.9;priority.conceptMatches++;}
+   }
    const rankedSeedIds=[...candidatePriority.entries()].map(([id,priority])=>{
      const item=this.itemIndex.get(id);
      if(!item)return {id,score:priority.idfSupport+priority.fuzzySupport,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase:0,validAt:0,lastAccessAt:0,salience:0,createdAt:0,revisionSequence:0};
@@ -1126,7 +1169,7 @@ export class MemoryOS2{
      const validAt=temporalMode==='all'||isValidAt(item,now)?1:0;
      // A tiny lexical coverage/phrase term breaks high-fanout ties without letting
      // recency overpower a genuinely rarer query match.
-     const score=priority.idfSupport+priority.fuzzySupport*.70+priority.metadataSupport*.72+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
+     const score=priority.idfSupport+priority.fuzzySupport*.70+priority.metadataSupport*.72+priority.conceptSupport*.30+exactPhrase*.65+Math.min(priority.matchedTerms,8)*.035;
      return {id,score,matchedTerms:priority.matchedTerms,fuzzyMatches:priority.fuzzyMatches,exactPhrase,validAt,lastAccessAt:Number(item.lastAccessAt??0),salience:clamp(Number(item.salience??0)),createdAt:Number(item.observedAt??item.createdAt??0),revisionSequence:Number(item.revisionSequence??1)};
    }).sort((a,b)=>b.score-a.score||b.matchedTerms-a.matchedTerms||b.fuzzyMatches-a.fuzzyMatches||b.exactPhrase-a.exactPhrase||b.validAt-a.validAt||b.revisionSequence-a.revisionSequence||b.lastAccessAt-a.lastAccessAt||b.salience-a.salience||b.createdAt-a.createdAt||a.id.localeCompare(b.id)).slice(0,192).map(row=>row.id);
    const candidateIds=new Set<string>(rankedSeedIds);
@@ -1243,6 +1286,7 @@ export class MemoryOS2{
    // purpose is to ask for a category of memory (profile, episode, goal or procedure).
    // In particular, never let the bounded recent-memory fallback turn a no-match query
    // into a confident-looking autobiographical answer.
+   const conceptMatchesById=new Map<string,number>([...candidatePriority.entries()].map(([id,priority])=>[id,priority.conceptMatches]));
    const minQueryCoverage=qTokens.size>=5?.30:qTokens.size>=3?.34:qTokens.size===2?.50:1;
    const identifierPattern=/(?:\b[A-Z]{2,}[-_/]?[0-9]{2,}\b|\b[0-9]{3,}\b|\b[A-F0-9]{8,}\b)/giu;
    const normalizeIdentifier=(value:string)=>value.toLocaleUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -1263,9 +1307,17 @@ export class MemoryOS2{
        [...memoryTokens].some(memoryToken=>memoryToken.length>=5&&memoryToken!==queryToken&&
          (queryToken.startsWith(memoryToken.slice(0,5))||memoryToken.startsWith(queryToken.slice(0,5)))));
      const metadataEvidence=this.metadataRecallEnabled&&evidence.metadata>=.66;
+     // Bilingual concept grounding: a memory that expresses the query's active
+     // concept groups is direct evidence of aboutness even with zero literal token
+     // overlap. Bounded to a focused (<=3 group) query and >=50% group coverage so a
+     // generic single concept cannot ground an unrelated memory; the abstention test
+     // corpus carries no concept vocabulary and is unaffected.
+     const conceptGroupCount=conceptQuery.groups.length;
+     const conceptGrounding=conceptGroupCount>=1&&conceptGroupCount<=3&&(conceptMatchesById.get(m.id)??0)>=1&&evidence.conceptCoverage>=.50&&qTokens.size<=8;
      const lexicalEvidence=identifierEvidence||exactPhrase||morphologyEvidence||metadataEvidence||evidence.coverage>=minQueryCoverage||evidence.entity>=.40||
        (qTokens.size<5&&evidence.fuzzy>=.45)||
-       (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16);
+       (qTokens.size<=4&&evidence.conceptCoverage>=.45&&evidence.coverage>=.16)||
+       conceptGrounding;
      // A causal paraphrase may have no literal-token overlap with the event text.
      // Permit the concept bridge only when the memory carries explicit causal lineage;
      // generic semantic/recency matches still cannot bypass the answerability gate.
@@ -1589,6 +1641,14 @@ export class MemoryOS2{
    for(const token of this.metadataTokens(item)){
      let ids=this.metadataTokenIndex.get(token);
      if(!ids){ids=new Set<string>();this.metadataTokenIndex.set(token,ids);}
+     ids.add(item.id);
+   }
+   // Bilingual concept postings: which concept groups this memory expresses. Built
+   // from the item's own tokens so cross-lingual recall can reach a memory whose
+   // wording shares no literal token with the query.
+   for(const groupIndex of memoryConceptGroupsForTokens(uniqueTokens)){
+     let ids=this.conceptGroupIndex.get(groupIndex);
+     if(!ids){ids=new Set<string>();this.conceptGroupIndex.set(groupIndex,ids);}
      ids.add(item.id);
    }
  }
