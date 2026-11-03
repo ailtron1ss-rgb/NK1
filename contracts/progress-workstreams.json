@@ -1,0 +1,411 @@
+{
+  "schema": "nk1.progress-workstreams.v1",
+  "note": "Weights are planning priorities, not measured quality. Artifact coverage is only file/script availability. Verified efficacy counts only evidence JSON with verified=true, an exact current HEAD SHA, and every explicit workstream metric threshold. No score may be raised by prose or by stale test artifacts.",
+  "workstreams": [
+    {
+      "id": "W1-runtime-integrity",
+      "title": "Runtime and cognitive-cycle integrity",
+      "weight": 12,
+      "endGoal": "One traceable Perceive->Plan->Gate->Act->Observe->Reflect->Consolidate path with no unverified bypass and a single versioned state.",
+      "probes": [
+        {
+          "id": "cycle-boundary-test",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:cognitive-cycle-boundary"
+        },
+        {
+          "id": "cycle-runtime-wiring",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:cognitive-cycle-boundary-runtime-wiring"
+        },
+        {
+          "id": "cycle-contract",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:workpass287:cognitive-cycle"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "deterministic-cycle-soak",
+          "kind": "evidence-json",
+          "path": "docs/evidence/cognitive-cycle-soak.json",
+          "requirements": [
+            {
+              "path": "metrics.deterministicTicks",
+              "op": "gte",
+              "value": 10000
+            },
+            {
+              "path": "metrics.maxTickMs",
+              "op": "lte",
+              "value": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W2-memory-and-retrieval",
+      "title": "Memory correctness and independent retrieval evidence",
+      "weight": 16,
+      "endGoal": "MemoryOS2 as the single owner, with proven recallDelta > 0 on an immutable RU/EN holdout across paired seeds, plus correct abstention and forgetting.",
+      "probes": [
+        {
+          "id": "memory-restore-integrity",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:memory-restore-integrity"
+        },
+        {
+          "id": "memory-retrieval-benchmark",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:memory-retrieval-benchmark"
+        },
+        {
+          "id": "holdout-pairing-test",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "retrieval-uplift-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/retrieval-uplift.json",
+          "requirements": [
+            {
+              "path": "metrics.recallDelta",
+              "op": "gt",
+              "value": 0
+            },
+            {
+              "path": "metrics.pairedSeeds",
+              "op": "gte",
+              "value": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W3-learning-and-verification",
+      "title": "Learning, outcome verification and promotion authority",
+      "weight": 14,
+      "endGoal": "Learning credit only from independently verified outcomes; promotion gated by signed evidence, held-out transfer and rollback.",
+      "probes": [
+        {
+          "id": "verified-outcome-gate",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/learning/VerifiedOutcomePromotionGate.ts"
+        },
+        {
+          "id": "authenticated-approval",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/learning/AuthenticatedSkillPromotionApproval.ts"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "transfer-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/learning-transfer.json",
+          "requirements": [
+            {
+              "path": "metrics.holdoutTransferDelta",
+              "op": "gt",
+              "value": 0
+            },
+            {
+              "path": "metrics.rollbackVerified",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W4-self-analysis",
+      "title": "Structural self-analysis and self-modification safety",
+      "weight": 10,
+      "endGoal": "The organism can read its own code structurally and refuse any candidate that edits its evaluator, gates, holdout or approval authority.",
+      "probes": [
+        {
+          "id": "source-graph",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/SourceGraph.ts"
+        },
+        {
+          "id": "self-modification-guard",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/SelfModificationGuard.ts"
+        },
+        {
+          "id": "proxy-divergence-guard",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/ProxyDivergenceGuard.ts"
+        },
+        {
+          "id": "self-analysis-test",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-analysis-substrate"
+        },
+        {
+          "id": "candidate-pool",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/analysis/SelfImprovementCandidatePool.ts"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "self-modification-adversarial-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/self-modification-adversarial.json",
+          "requirements": [
+            {
+              "path": "metrics.adversarialCasesPassed",
+              "op": "gte",
+              "value": 20
+            },
+            {
+              "path": "metrics.evaluatorTamperBlocked",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W5-autonomy-and-initiative",
+      "title": "Intrinsic motivation, initiative and long-horizon continuity",
+      "weight": 12,
+      "endGoal": "Explainable self-initiated Perceive->Appraise->Plan->Act->Reflect cycles over soak, bounded by budget and stoppable by the user.",
+      "probes": [
+        {
+          "id": "cadence-test",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:big-pass-224"
+        },
+        {
+          "id": "self-agency-live",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-agency:live"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "autonomy-soak-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/autonomy-soak.json",
+          "requirements": [
+            {
+              "path": "metrics.durationHours",
+              "op": "gte",
+              "value": 24
+            },
+            {
+              "path": "metrics.initiativesPerHour",
+              "op": "gte",
+              "value": 1
+            },
+            {
+              "path": "metrics.userStopHonored",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W6-embodiment-and-voice",
+      "title": "Embodiment, voice and cross-renderer body switching",
+      "weight": 10,
+      "endGoal": "Voice and avatar follow one timeline driven by organism state; real browser and real device E2E pass with measured drift.",
+      "probes": [
+        {
+          "id": "vrm-humanoid-test",
+          "kind": "file-exists",
+          "path": "app/scripts/vrm-humanoid-rig-adapter.test.mjs"
+        },
+        {
+          "id": "embodiment-switch-test",
+          "kind": "file-exists",
+          "path": "app/scripts/embodiment-switch.test.mjs"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "browser-e2e-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/browser-embodiment-e2e.json",
+          "requirements": [
+            {
+              "path": "metrics.lipDriftMs",
+              "op": "lte",
+              "value": 80
+            },
+            {
+              "path": "metrics.interruptMs",
+              "op": "lte",
+              "value": 200
+            }
+          ]
+        },
+        {
+          "id": "device-e2e-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/device-voice-e2e.json",
+          "requirements": [
+            {
+              "path": "metrics.lipDriftMs",
+              "op": "lte",
+              "value": 80
+            },
+            {
+              "path": "metrics.interruptMs",
+              "op": "lte",
+              "value": 200
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W7-safety-and-privacy",
+      "title": "Safety, danger understanding and privacy",
+      "weight": 10,
+      "endGoal": "Documented threat model, evaluator-tamper resistance, injection handling and least-privilege action execution with regression coverage.",
+      "probes": [
+        {
+          "id": "action-gateway",
+          "kind": "file-exists",
+          "path": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts"
+        },
+        {
+          "id": "threat-model",
+          "kind": "file-exists",
+          "path": "docs/NK1_THREAT_MODEL_RU.md"
+        },
+        {
+          "id": "tamper-tests",
+          "kind": "npm-script",
+          "prefix": "runtime/neuro-kurisu",
+          "script": "test:self-agency:authority"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "security-redteam-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/security-redteam.json",
+          "requirements": [
+            {
+              "path": "metrics.redTeamCasesPassed",
+              "op": "gte",
+              "value": 20
+            },
+            {
+              "path": "metrics.criticalBypasses",
+              "op": "eq",
+              "value": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W8-evidence-and-ci",
+      "title": "Evidence pipeline and CI reliability",
+      "weight": 8,
+      "endGoal": "Every claim maps to a reproducible artifact; CI runs and its results are visible, or a documented local gate substitutes with the limitation stated.",
+      "probes": [
+        {
+          "id": "local-gate-tool",
+          "kind": "file-exists",
+          "path": "tools/run-local-gate.mjs"
+        },
+        {
+          "id": "local-gate-artifact",
+          "kind": "glob",
+          "path": "docs/evidence/local-gate-*.json"
+        },
+        {
+          "id": "ci-workflow",
+          "kind": "file-exists",
+          "path": ".github/workflows/nk1-self-analysis.yml"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "ci-exact-head-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/ci-exact-head-5cf0743.json",
+          "requirements": [
+            {
+              "path": "checks.failureCount",
+              "op": "eq",
+              "value": 0
+            },
+            {
+              "path": "checks.exactHead",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "W9-release-and-licensing",
+      "title": "Release, licensing and clean-room recovery",
+      "weight": 8,
+      "endGoal": "Human license review closed, exact-SHA ZIP built and published with checksum, clean-room install and rollback proven.",
+      "probes": [
+        {
+          "id": "license-review-file",
+          "kind": "file-exists",
+          "path": "contracts/RELEASE_LICENSE_REVIEW.json"
+        },
+        {
+          "id": "license-review-closed",
+          "kind": "file-contains",
+          "path": "contracts/RELEASE_LICENSE_REVIEW.json",
+          "needle": "\"redistributionApproved\": true"
+        }
+      ],
+      "evidenceProbes": [
+        {
+          "id": "release-evidence",
+          "kind": "evidence-json",
+          "path": "docs/evidence/release-publish.json",
+          "requirements": [
+            {
+              "path": "redistributionApproved",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "path": "cleanRoomInstall",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "path": "checksumVerified",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+name: NK1 self-analysis substrate
+
+# Guards the structural self-analysis index and the self-modification danger guard.
+# The guard is the only thing that can refuse a candidate for editing its own
+# evaluator, so its regression is kept on the push path for the owning files.
+
+on:
+  push:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
+      - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "contracts/progress-workstreams.json"
+      - "docs/evidence/**"
+      - "docs/NK1_COMPLETION_AND_SELF_DEVELOPMENT_MASTER_PLAN_2026-11-03_RU.md"
+      - "docs/NK1_OSS_INTEGRATION_REGISTER_RU.md"
+      - "tools/progress-report.mjs"
+      - "tools/progress-report.test.mjs"
+      - "tools/run-local-gate.mjs"
+      - ".nvmrc"
+      - ".github/workflows/nk1-self-analysis.yml"
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/analysis/**"
+      - "runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts"
+      - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
+      - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "contracts/progress-workstreams.json"
+      - "docs/evidence/**"
+      - "docs/NK1_COMPLETION_AND_SELF_DEVELOPMENT_MASTER_PLAN_2026-11-03_RU.md"
+      - "docs/NK1_OSS_INTEGRATION_REGISTER_RU.md"
+      - "tools/progress-report.mjs"
+      - "tools/progress-report.test.mjs"
+      - "tools/run-local-gate.mjs"
+      - ".nvmrc"
+      - ".github/workflows/nk1-self-analysis.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-self-analysis-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  self-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Structural index and self-modification guard
+        run: npm --prefix runtime/neuro-kurisu run test:self-analysis-substrate
+      - name: Test stale-evidence rejection and progress axes
+        run: node tools/progress-report.test.mjs
+      - name: Compute exact-SHA progress report
+        run: node tools/progress-report.mjs --json
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck

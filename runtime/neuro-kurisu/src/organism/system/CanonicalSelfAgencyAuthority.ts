@@ -1,6 +1,16 @@
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
+import { evaluateProxyDivergence, type PairedObservation } from '../analysis/ProxyDivergenceGuard.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+function isPlainRecord(value:unknown):value is Record<string,unknown>{
+  if(!value||typeof value!=='object'||Array.isArray(value))return false;
+  try{const prototype=Object.getPrototypeOf(value);return prototype===Object.prototype||prototype===null;}catch{return false;}
+}
+function ownData(value:Record<string,unknown>,key:string):unknown{
+  try{const descriptor=Object.getOwnPropertyDescriptor(value,key);return descriptor&&Object.prototype.hasOwnProperty.call(descriptor,'value')?descriptor.value:undefined;}catch{return undefined;}
+}
+const safeCounter=(value:unknown,fallback=0)=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?Math.min(value,1_000_000_000):fallback;
+const safeUnit=(value:unknown,fallback:number)=>typeof value==='number'&&Number.isFinite(value)?clamp(value):fallback;
 const ACTIONS=['respond','explore','verify','rest','reflect','wait','defer'] as const;
 export type CanonicalSelfAgencyAction=typeof ACTIONS[number];
 
@@ -83,16 +93,54 @@ export class CanonicalSelfAgencyAuthority{
   private state=defaultCanonicalSelfAgencyState();
 
   restore(raw?:Partial<CanonicalSelfAgencyState>|null){
-    const d=defaultCanonicalSelfAgencyState(),r=raw??{};
+    const d=defaultCanonicalSelfAgencyState();
+    // No snapshot means a fresh canonical instance, not a malformed restore.
+    if(raw===undefined||raw===null){this.state=d;return;}
+    const record=isPlainRecord(raw)?raw:{};
     const expected=d.invariantFingerprint;
-    const supplied=String(r.invariantFingerprint??expected);
-    const integrity=supplied===expected ? 1 : 0;
-    const invariants={...d.invariants};
-    const traits={...d.adaptiveTraits,...(r.adaptiveTraits??{})};
-    for(const [k,v] of Object.entries(traits))traits[k]=clamp(Number(v));
-    this.state={...d,...r,invariants,adaptiveTraits:traits,version:1,invariantVersion:d.invariantVersion,
-      invariantFingerprint:expected,protectedIdentityAssertion:d.protectedIdentityAssertion,invariantIntegrity01:integrity,
-      lastDecision:integrity?'stable':'identity-block',lastReason:integrity?(String(r.lastReason??d.lastReason)):'invariant-fingerprint-mismatch'};
+    const supplied=ownData(record,'invariantFingerprint');
+    // Missing fingerprints are not equivalent to a valid fingerprint. Old or
+    // partially written snapshots lose authority until explicitly revalidated.
+    const integrity=typeof supplied==='string'&&supplied===expected?1:0;
+    const readCounter=(key:string)=>safeCounter(ownData(record,key));
+    const cycles=readCounter('cycles');
+    const identityMutationChecks=readCounter('identityMutationChecks');
+    const goalAdmissionChecks=readCounter('goalAdmissionChecks');
+    const selfModificationChecks=readCounter('selfModificationChecks');
+    const adaptiveTraits={...d.adaptiveTraits};
+    const rawTraits=ownData(record,'adaptiveTraits');
+    if(isPlainRecord(rawTraits)){
+      for(const key of Object.keys(adaptiveTraits)){
+        const value=ownData(rawTraits,key);
+        if(typeof value==='number'&&Number.isFinite(value))adaptiveTraits[key]=clamp(value);
+      }
+    }
+    const decision=ownData(record,'lastDecision');
+    const allowedDecision=decision==='stable'||decision==='identity-block'||decision==='goal-block'||decision==='self-modification-block';
+    const reason=ownData(record,'lastReason');
+    this.state={
+      ...d,
+      cycles,
+      identityMutationChecks,
+      identityMutationBlocks:Math.min(readCounter('identityMutationBlocks'),identityMutationChecks),
+      goalAdmissionChecks,
+      goalAdmissionBlocks:Math.min(readCounter('goalAdmissionBlocks'),goalAdmissionChecks),
+      selfModificationChecks,
+      selfModificationBlocks:Math.min(readCounter('selfModificationBlocks'),selfModificationChecks),
+      invariantIntegrity01:integrity,
+      agencyIntegrity01:safeUnit(ownData(record,'agencyIntegrity01'),d.agencyIntegrity01),
+      meanIdentityContinuity01:safeUnit(ownData(record,'meanIdentityContinuity01'),d.meanIdentityContinuity01),
+      meanActionConstraint01:safeUnit(ownData(record,'meanActionConstraint01'),d.meanActionConstraint01),
+      meanActionConflict01:safeUnit(ownData(record,'meanActionConflict01'),d.meanActionConflict01),
+      invariantVersion:d.invariantVersion,
+      invariantFingerprint:expected,
+      protectedIdentityAssertion:d.protectedIdentityAssertion,
+      invariants:{...d.invariants},
+      adaptiveTraits,
+      lastDecision:integrity&&allowedDecision?decision as CanonicalSelfAgencyState['lastDecision']:'identity-block',
+      lastReason:integrity?(typeof reason==='string'?reason.slice(0,160):d.lastReason):'invariant-fingerprint-mismatch',
+      lastTick:readCounter('lastTick'),
+    };
   }
 
   snapshot(){return structuredClone(this.state);}
@@ -173,12 +221,18 @@ export class CanonicalSelfAgencyAuthority{
     return {allowed,protectedField,reason:this.state.lastReason};
   }
 
-  admitSelfModification(input:{expectedGain01:number;holdoutGain01:number;risk01:number;rollbackReady:boolean;identityContinuity01:number;invariantFingerprint?:string;evidence01:number}){
+  admitSelfModification(input:{expectedGain01:number;holdoutGain01:number;risk01:number;rollbackReady:boolean;identityContinuity01:number;invariantFingerprint?:string;evidence01:number;pairedObservations?:readonly PairedObservation[]}){
     this.state.selfModificationChecks++;
     const fingerprintOK=(input.invariantFingerprint??this.state.invariantFingerprint)===this.state.invariantFingerprint;
-    const allowed=Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&this.state.invariantIntegrity01>.85;
+    // Proxy-vs-downstream check: the gate must not open on a proxy gain that the
+    // independent outcome does not back. When paired observations are supplied they
+    // are authoritative; the scalar holdoutGain01 stays only as a legacy prefilter.
+    const divergence = input.pairedObservations ? evaluateProxyDivergence(input.pairedObservations) : null;
+    const divergenceOK = divergence ? divergence.decision === 'supported' : true;
+    const allowed=Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&divergenceOK&&this.state.invariantIntegrity01>.85;
     if(!allowed)this.state.selfModificationBlocks++;
-    this.state.lastDecision=allowed?'stable':'self-modification-block';this.state.lastReason=allowed?'self-modification-evidence-gate-open':'self-modification-evidence-or-identity-gate';
-    return {allowed,fingerprintOK,reason:this.state.lastReason};
+    this.state.lastDecision=allowed?'stable':'self-modification-block';
+    this.state.lastReason=allowed?'self-modification-evidence-gate-open':(divergenceOK?'self-modification-evidence-or-identity-gate':`self-modification-proxy-divergence:${divergence?.reason}`);
+    return {allowed,fingerprintOK,divergence,reason:this.state.lastReason};
   }
 }
