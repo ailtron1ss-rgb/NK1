@@ -1,8 +1,12 @@
 {
   "schema": "nk1.self-modification-adversarial.v1",
-  "generatedAt": "2026-11-03T08:19:43.692Z",
-  "sha": "12a2d1d6d36b832656c363fe7b6047d43fdcb96e",
+  "generatedAt": "2026-11-03T08:21:51.632Z",
+  "sha": "d64bd6db61e0de88a3fd316cd3f560c319c343ce",
   "branch": "nk1-self-analysis-and-evidence-20261103",
+  "coversPaths": [
+    "runtime/neuro-kurisu/src/organism/analysis",
+    "runtime/neuro-kurisu/tests/self-modification-adversarial.mjs"
+  ],
   "verified": true,
   "metrics": {
     "adversarialCasesPassed": 56,
