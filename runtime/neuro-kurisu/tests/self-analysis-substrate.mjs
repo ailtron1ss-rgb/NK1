@@ -82,6 +82,64 @@ assert.ok(graph.edges.every((e) => e.provenance === 'EXTRACTED' || e.provenance 
 const impacted = impactOf(graph, 'src/Thing.ts#__module__');
 assert.ok(impacted.includes('src/Use.ts#__module__'), 'Use.ts depends on Thing.ts and must be impacted');
 assert.ok(!impacted.includes('src/Thing.ts#__module__'), 'impact must not include the node itself');
+ 
+// --- 3a. relative import resolution must be directory-aware and TS-ESM aware ---
+const pathGraph = buildSourceGraph([
+  // Deliberately put b/util.ts first so basename overwrite cannot accidentally
+  // make the a/consumer.ts assertion pass.
+  { path: 'src/b/util.ts', text: 'export class BOnly {}\n' },
+  { path: 'src/a/util.ts', text: 'export class AOnly {}\n' },
+  { path: 'src/a/consumer.ts', text: "import { AOnly } from './util.js';\nexport class AConsumer { value = new AOnly(); }\n" },
+  { path: 'src/b/consumer.ts', text: "import { BOnly } from './util.js';\nexport class BConsumer { value = new BOnly(); }\n" },
+  { path: 'src/a/features/index.ts', text: 'export class AFeature {}\n' },
+  { path: 'src/a/feature-consumer.ts', text: "import { AFeature } from './features';\nexport class AFeatureConsumer { value = new AFeature(); }\n" },
+  { path: 'outside.ts', text: 'export class OutsideOnly {}\n' },
+  { path: 'src/a/escape-consumer.ts', text: "import { OutsideOnly } from '../../../outside.ts';\nexport class EscapeConsumer { value = new OutsideOnly(); }\n" },
+]);
+const hasImport = (from, to) => pathGraph.edges.some((edge) =>
+  edge.kind === 'imports' && edge.from === from && edge.to === to,
+);
+assert.ok(hasImport('src/a/consumer.ts#__module__', 'src/a/util.ts#__module__'),
+  'relative .js import must resolve to the sibling TypeScript source');
+const parentSegmentGraph = buildSourceGraph([
+  { path: 'src/a/util.ts', text: 'export class ParentSegmentOnly {}\\n' },
+  { path: 'src/a/nested/consumer.ts', text: "import { ParentSegmentOnly } from '../util.js';\\nexport class ParentSegmentConsumer { value = new ParentSegmentOnly(); }\\n" },
+]);
+assert.ok(parentSegmentGraph.edges.some((edge) =>
+  edge.kind === 'imports' &&
+  edge.from === 'src/a/nested/consumer.ts#__module__' &&
+  edge.to === 'src/a/util.ts#__module__',
+), 'relative parent segments must resolve from the importer directory without basename aliasing');
+
+assert.ok(!hasImport('src/a/consumer.ts#__module__', 'src/b/util.ts#__module__'),
+  'same-basename module in another directory must never capture the import');
+assert.ok(hasImport('src/b/consumer.ts#__module__', 'src/b/util.ts#__module__'),
+  'each importer must resolve its own directory-local module');
+assert.ok(hasImport('src/a/feature-consumer.ts#__module__', 'src/a/features/index.ts#__module__'),
+  'extensionless directory import must resolve its index.ts module');
+assert.ok(!hasImport('src/a/escape-consumer.ts#__module__', 'outside.ts#__module__'),
+  'relative import escaping the repository root must not resolve to a real file');
+const windowsPathGraph = buildSourceGraph([
+  { path: 'src\\windows\\util.ts', text: 'export class WindowsPathSymbol {}\\n' },
+  { path: 'src\\windows\\consumer.ts', text: "import { WindowsPathSymbol } from './util.js';\\nexport class WindowsPathConsumer { value = new WindowsPathSymbol(); }\\n" },
+]);
+assert.ok(windowsPathGraph.edges.some((edge) =>
+  edge.kind === 'imports' &&
+  edge.from === 'src\\windows\\consumer.ts#__module__' &&
+  edge.to === 'src\\windows\\util.ts#__module__',
+), 'normalized Windows-style source paths must retain their original graph node identities');
+const modernPathGraph = buildSourceGraph([
+  { path: 'src/a/modern/util.mts', text: 'export class ModernOnly {}\\n' },
+  { path: 'src/a/modern/consumer.mts', text: "import { ModernOnly } from './util.mjs';\\nexport class ModernConsumer { value = new ModernOnly(); }\\n" },
+]);
+assert.ok(modernPathGraph.edges.some((edge) =>
+  edge.kind === 'imports' &&
+  edge.from === 'src/a/modern/consumer.mts#__module__' &&
+  edge.to === 'src/a/modern/util.mts#__module__',
+), 'Node ESM .mjs specifiers must resolve to matching .mts source modules');
+
+
+
 
 // --- 4. duplicate definition and dead-symbol detection ---
 const dupGraph = buildSourceGraph([
