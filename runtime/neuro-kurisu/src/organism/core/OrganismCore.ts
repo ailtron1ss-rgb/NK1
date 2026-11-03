@@ -5235,7 +5235,8 @@ export class OrganismCore {
             driveConfidence01: intrinsicDriveConfidence01,
         });
         const b272Goal = intrinsicCoupling.goal;
-        this.persisted.facets.consciousness.intrinsic = intrinsicCoupling.driveState;
+        const intrinsicState = intrinsicCoupling.driveState;
+        this.persisted.facets.consciousness.intrinsic = intrinsicState;
         this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
         // Stage the freshly generated endogenous goal only after the canonical self-agency gate.
         // Rejected authorship is represented as an unknown source and cannot enter B365 ownership.
