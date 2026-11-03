@@ -22,6 +22,28 @@ export interface TemporalResolutionState {
 }
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const LEVELS:readonly TemporalResolutionLevel[]=['pulse','micro'];
+const REASONS:readonly TemporalResolutionReason[]=['quality','external-signal','pressure','cadence','resource','idle'];
+/** Copy own data properties only; accessors, exotic prototypes and hostile traps fail closed. */
+const ownDataRecord=(value:unknown):Record<string,unknown>|null=>{
+  try{
+    if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const output:Record<string,unknown>=Object.create(null);
+    for(const key of Reflect.ownKeys(descriptors)){
+      if(typeof key!=='string')return null;
+      const descriptor=(descriptors as Record<string,PropertyDescriptor>)[key];
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.get!==undefined||descriptor.set!==undefined)return null;
+      output[key]=descriptor.value;
+    }
+    return output;
+  }catch{return null;}
+};
+const readCounter=(value:unknown,fallback:number,min=0):number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=min?value:fallback;
+const readUnit=(value:unknown,fallback:number):number=>typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=1?value:fallback;
+const readEnum=<T extends string>(value:unknown,allowed:readonly T[],fallback:T):T=>typeof value==='string'&&(allowed as readonly string[]).includes(value)?value as T:fallback;
 
 export const defaultTemporalResolutionState=():TemporalResolutionState=>({
   version:1,pulses:0,microCycles:0,idleCyclesSincePulse:0,lastLevel:'pulse',lastReason:'quality',fullEvery:1,savedPulseFraction01:0,lastAt:0,
@@ -37,7 +59,20 @@ export class TemporalResolutionGovernor {
   private state=defaultTemporalResolutionState();
 
   restore(raw?:Partial<TemporalResolutionState>|null){
-    this.state={...defaultTemporalResolutionState(),...(raw??{})};
+    const d=defaultTemporalResolutionState();
+    const source=ownDataRecord(raw);
+    if(!source||((source.version!==undefined)&&(source.version!==1))){this.state=d;return;}
+    this.state={
+      version:1,
+      pulses:readCounter(source.pulses,d.pulses),
+      microCycles:readCounter(source.microCycles,d.microCycles),
+      idleCyclesSincePulse:readCounter(source.idleCyclesSincePulse,d.idleCyclesSincePulse),
+      lastLevel:readEnum(source.lastLevel,LEVELS,d.lastLevel),
+      lastReason:readEnum(source.lastReason,REASONS,d.lastReason),
+      fullEvery:readCounter(source.fullEvery,d.fullEvery,1),
+      savedPulseFraction01:readUnit(source.savedPulseFraction01,d.savedPulseFraction01),
+      lastAt:typeof source.lastAt==='number'&&Number.isFinite(source.lastAt)&&source.lastAt>=0?source.lastAt:d.lastAt,
+    };
   }
 
   decide(input:{profile:'quality'|'balanced'|'mobile';externalSignal:boolean;pressure01?:number;predictionError01?:number;goalPressure01?:number;uncertainty01?:number;energy01?:number;thermal01?:number;ramPressure01?:number;battery01?:number;cpuLoad01?:number;tick:number;enabled?:boolean;baseFullEvery?:number}):TemporalResolutionDecision{
@@ -49,7 +84,7 @@ export class TemporalResolutionGovernor {
     const battery=clamp(input.battery01??energy);
     const cpu=clamp(input.cpuLoad01??0);
     const devicePressure=Math.max(ram,thermal,(1-battery)*.92,cpu*.72);
-    let fullEvery=Math.max(1,Math.floor(input.baseFullEvery ?? (input.profile==='mobile'?8:input.profile==='balanced'?2:1)));
+    let fullEvery=Math.max(1,Math.floor(Number.isFinite(input.baseFullEvery)?(input.baseFullEvery as number):(input.profile==='mobile'?8:input.profile==='balanced'?2:1)));
     if(input.profile==='quality') fullEvery=1;
     if(energy<.24 || thermal>.78 || ram>.78 || battery<.24 || cpu>.86) fullEvery=Math.max(fullEvery,6);
     if(pressure>.68) fullEvery=Math.min(fullEvery,2);

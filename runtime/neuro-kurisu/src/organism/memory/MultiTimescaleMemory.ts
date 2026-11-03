@@ -11,15 +11,79 @@ export interface MemoryRecord extends ConsolidatedMemory {
   associationIds?: string[];
 }
 
+const TIMESCALES:readonly MemoryRecord['timescale'][]=['working','episodic','semantic','autobiographical'];
+const KINDS:readonly ConsolidatedMemory['kind'][]=['episode','pattern','self-model','goal-learning'];
+/** Copy own data properties only; accessors, exotic prototypes and hostile traps fail closed. */
+function ownDataRecord(value:unknown):Record<string,unknown>|null{
+  try{
+    if(value===null||typeof value!=='object'||Array.isArray(value))return null;
+    const prototype=Object.getPrototypeOf(value);
+    if(prototype!==Object.prototype&&prototype!==null)return null;
+    const descriptors=Object.getOwnPropertyDescriptors(value);
+    const output:Record<string,unknown>=Object.create(null);
+    for(const key of Reflect.ownKeys(descriptors)){
+      if(typeof key!=='string')return null;
+      const descriptor=(descriptors as Record<string,PropertyDescriptor>)[key];
+      if(!descriptor||!Object.prototype.hasOwnProperty.call(descriptor,'value')||descriptor.get!==undefined||descriptor.set!==undefined)return null;
+      output[key]=descriptor.value;
+    }
+    return output;
+  }catch{return null;}
+}
+const safeText=(value:unknown,max:number):string|null=>typeof value==='string'&&value.length>0&&value.length<=max?value:null;
+function safeStringList(value:unknown,max:number,itemMax:number):string[]|null{
+  try{
+    if(!Array.isArray(value))return null;
+    if(value.length>max)return null;
+    const output:string[]=[];
+    for(const item of value){const text=safeText(item,itemMax);if(text===null)return null;output.push(text);}
+    return output;
+  }catch{return null;}
+}
+function safeEmbedding(value:unknown):number[]|undefined{
+  try{
+    if(!Array.isArray(value))return undefined;
+    if(value.length===0||value.length>64)return undefined;
+    const output:number[]=[];
+    for(const item of value){if(typeof item!=='number'||!Number.isFinite(item))return undefined;output.push(item);}
+    return output;
+  }catch{return undefined;}
+}
+/** Restore-time record validation. A malformed row is dropped rather than crashing the whole store. */
+function sanitizeMemoryRecord(value:unknown):MemoryRecord|null{
+  const row=ownDataRecord(value);
+  if(!row)return null;
+  const id=safeText(row.id,160); const summary=safeText(row.summary,2048);
+  const evidence=safeStringList(row.evidence,64,512); const sourceEventIds=safeStringList(row.sourceEventIds,64,160);
+  if(id===null||summary===null||evidence===null||sourceEventIds===null)return null;
+  if(typeof row.kind!=='string'||!(KINDS as readonly string[]).includes(row.kind))return null;
+  if(typeof row.timescale!=='string'||!(TIMESCALES as readonly string[]).includes(row.timescale))return null;
+  const salience=typeof row.salience==='number'&&Number.isFinite(row.salience)?Math.max(0,Math.min(1,row.salience)):0;
+  const confidence=typeof row.confidence==='number'&&Number.isFinite(row.confidence)?Math.max(0,Math.min(1,row.confidence)):0.5;
+  const createdAt=typeof row.createdAt==='number'&&Number.isFinite(row.createdAt)&&row.createdAt>=0?row.createdAt:0;
+  const retrievalCount=typeof row.retrievalCount==='number'&&Number.isSafeInteger(row.retrievalCount)&&row.retrievalCount>=0?row.retrievalCount:0;
+  const lastRetrievedAt=typeof row.lastRetrievedAt==='number'&&Number.isFinite(row.lastRetrievedAt)&&row.lastRetrievedAt>=0?row.lastRetrievedAt:0;
+  const consolidationScore01=typeof row.consolidationScore01==='number'&&Number.isFinite(row.consolidationScore01)?Math.max(0,Math.min(1,row.consolidationScore01)):undefined;
+  const associationIds=safeStringList(row.associationIds,64,160);
+  return {
+    id,kind:row.kind as ConsolidatedMemory['kind'],summary,salience,evidence,createdAt,
+    timescale:row.timescale as MemoryRecord['timescale'],retrievalCount,lastRetrievedAt,confidence,sourceEventIds,
+    ...(safeEmbedding(row.embedding)===undefined?{}:{embedding:safeEmbedding(row.embedding)}),
+    ...(consolidationScore01===undefined?{}:{consolidationScore01}),
+    ...(associationIds===null?{}:{associationIds}),
+  };
+}
+
 export class MultiTimescaleMemory {
   private working: MemoryRecord[] = [];
   private episodic: MemoryRecord[] = [];
   private semantic: MemoryRecord[] = [];
   private autobiographical: MemoryRecord[] = [];
   private readonly textTokenCache=new Map<string,Set<string>>();
-  restore(rows: MemoryRecord[] = []) {
+  restore(rows: unknown) {
     this.working=[]; this.episodic=[]; this.semantic=[]; this.autobiographical=[]; this.textTokenCache.clear();
-    for (const row of rows) this.add(row);
+    if(!Array.isArray(rows))return;
+    for (const row of rows) { const sanitized=sanitizeMemoryRecord(row); if(sanitized)this.add(sanitized); }
   }
   add(row: MemoryRecord, clone=true) {
     this.remove(row.id);

@@ -1,0 +1,71 @@
+name: NK1 Core Restore Integrity (WorkPass72)
+
+on:
+  push:
+    branches:
+      - workpass70-source
+      - "workpass7*"
+      - "aspect/**"
+    paths:
+      - runtime/neuro-kurisu/src/organism/core/TemporalResolutionGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfModelV2.ts
+      - runtime/neuro-kurisu/src/organism/world/WorldModel.ts
+      - runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts
+      - runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts
+      - runtime/neuro-kurisu/src/organism/verification/ProtectedArtifactRegistry.ts
+      - runtime/neuro-kurisu/tests/workpass72-*.mjs
+      - runtime/neuro-kurisu/package.json
+      - runtime/neuro-kurisu/package-lock.json
+      - .github/workflows/nk1-core-restore-integrity.yml
+  pull_request:
+    branches:
+      - workpass70-source
+    paths:
+      - runtime/neuro-kurisu/src/organism/core/TemporalResolutionGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SelfModelV2.ts
+      - runtime/neuro-kurisu/src/organism/world/WorldModel.ts
+      - runtime/neuro-kurisu/src/organism/memory/MultiTimescaleMemory.ts
+      - runtime/neuro-kurisu/src/organism/system/CanonicalSelfAgencyAuthority.ts
+      - runtime/neuro-kurisu/src/organism/verification/ProtectedArtifactRegistry.ts
+      - runtime/neuro-kurisu/tests/workpass72-*.mjs
+      - runtime/neuro-kurisu/package.json
+      - runtime/neuro-kurisu/package-lock.json
+      - .github/workflows/nk1-core-restore-integrity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-core-restore-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-restore-integrity:
+    name: WorkPass72 restore and self-improvement boundary
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runtime/neuro-kurisu
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --ignore-scripts
+      - name: Run WorkPass72 restore and guard regressions
+        run: npm run test:workpass72:core-integrity
+      - name: Run owning subsystem regressions
+        run: |
+          node --experimental-strip-types tests/big-pass-75-temporal-resolution.mjs
+          node --experimental-strip-types tests/canonical-self-agency-authority.mjs
+          node --experimental-strip-types tests/p32-causal-self-model.mjs
+          node --experimental-strip-types tests/p10-world-model.mjs
+          node --experimental-strip-types tests/self-model-evidence-write-gate-workpass315.mjs
+      - name: Typecheck runtime
+        run: npm run typecheck
