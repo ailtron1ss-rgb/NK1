@@ -1,0 +1,41 @@
+name: NeuroK patch read-set admission
+
+on:
+  pull_request:
+    paths:
+      - "tools/neurok-os-readset.mjs"
+      - "tools/neurok-os-readset.test.mjs"
+      - "tools/neurok-os-patch.mjs"
+      - "tools/neurok-os-admission.test.mjs"
+      - "docs/engineering/NEUROK_OS_PATCH_ADMISSION_2026-11-03.md"
+      - ".github/workflows/neurok-os-admission.yml"
+  push:
+    branches:
+      - "aspect/neurok-os-readset-admission-20261103"
+    paths:
+      - "tools/neurok-os-readset.mjs"
+      - "tools/neurok-os-readset.test.mjs"
+      - "tools/neurok-os-patch.mjs"
+      - "tools/neurok-os-admission.test.mjs"
+      - "docs/engineering/NEUROK_OS_PATCH_ADMISSION_2026-11-03.md"
+      - ".github/workflows/neurok-os-admission.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  read-set-admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Run read-set admission behavioral tests
+        run: node --test tools/neurok-os-admission.test.mjs
+      - name: Run all Engineering OS contract tests
+        run: npm run neurok-os:test
+      - name: Check patch CLI syntax
+        run: node --check tools/neurok-os-patch.mjs
