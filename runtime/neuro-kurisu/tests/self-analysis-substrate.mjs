@@ -93,6 +93,8 @@ const pathGraph = buildSourceGraph([
   { path: 'src/b/consumer.ts', text: "import { BOnly } from './util.js';\nexport class BConsumer { value = new BOnly(); }\n" },
   { path: 'src/a/features/index.ts', text: 'export class AFeature {}\n' },
   { path: 'src/a/feature-consumer.ts', text: "import { AFeature } from './features';\nexport class AFeatureConsumer { value = new AFeature(); }\n" },
+  { path: 'outside.ts', text: 'export class OutsideOnly {}\n' },
+  { path: 'src/a/escape-consumer.ts', text: "import { OutsideOnly } from '../../../outside.ts';\nexport class EscapeConsumer { value = new OutsideOnly(); }\n" },
 ]);
 const hasImport = (from, to) => pathGraph.edges.some((edge) =>
   edge.kind === 'imports' && edge.from === from && edge.to === to,
@@ -105,6 +107,8 @@ assert.ok(hasImport('src/b/consumer.ts#__module__', 'src/b/util.ts#__module__'),
   'each importer must resolve its own directory-local module');
 assert.ok(hasImport('src/a/feature-consumer.ts#__module__', 'src/a/features/index.ts#__module__'),
   'extensionless directory import must resolve its index.ts module');
+assert.ok(!hasImport('src/a/escape-consumer.ts#__module__', 'outside.ts#__module__'),
+  'relative import escaping the repository root must not resolve to a real file');
 
 
 // --- 4. duplicate definition and dead-symbol detection ---
