@@ -85,3 +85,37 @@ test('keeps metrics-only candidates distinct from signed-patch candidates',()=>{
  assert.equal(verified.admissionClass,'signed-patch-receipt');
  assert.equal(verifiedPool.best().admissionClass,'signed-patch-receipt');
 });
+
+test('admission from signed patch uses only host-owned P36 holdout evidence, not candidate observations',()=>{
+ const patchSha256=receipt.patchSha256;
+ let authorityRequest;
+ const hostAuthority=Object.freeze({
+  measure(request){
+   authorityRequest=request;
+   return Object.freeze({
+    candidateId:request.candidateId,baseSha,patchSha256,
+    treatmentMethod:'nk1-patch-sha256:'+patchSha256,
+    manifestFingerprint:'c'.repeat(64),taskFamily:'self-improvement',
+    baselineMethod:'baseline-v1',pairedSeedCount:4,
+    baselinePassRate:.5,candidatePassRate:1,absoluteGain:.5,
+    evidenceFingerprint:'d'.repeat(64),sourceEvidenceFingerprint:'e'.repeat(64),
+    evidenceRefs:Object.freeze(Array.from({length:8},(_,i)=>'signed-ref-'+i)),
+    delayMs:0,evidenceScope:'point-in-time-holdout-only',
+   });
+  },
+ });
+ const pool=new SelfImprovementCandidatePool({},undefined,{baseSha,trustedPublicKeys},hostAuthority);
+ const input=candidate('host-measured-outcome');
+ input.observations=Array.from({length:5},(_,i)=>({id:'inflated-'+i,proxyGain:.99,downstreamGain:.99}));
+ assert.equal(typeof pool.submitVerifiedOutcome,'function',
+  'pool needs a distinct host-evidence admission method');
+ const result=pool.submitVerifiedOutcome(input,graph,receiptProof());
+ assert.equal(result.accepted,true,result.reason);
+ assert.equal(result.admissionClass,'host-verified-holdout-outcome');
+ assert.equal(authorityRequest.candidateId,'host-measured-outcome');
+ assert.equal(authorityRequest.baseSha,baseSha);
+ assert.equal(authorityRequest.patchSha256,patchSha256);
+ assert.equal(pool.best().downstreamGain,.5,'rank uses independently verified P36 gain, not candidate-claimed .99');
+ assert.equal(pool.best().proxyGain,null,'unmeasured proxy is not represented as zero or as a verified score');
+ assert.equal(pool.best().outcomeEvidence.absoluteGain,.5);
+});
