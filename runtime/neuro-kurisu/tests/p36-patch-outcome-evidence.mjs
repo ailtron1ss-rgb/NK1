@@ -24,7 +24,7 @@ const manifest=Array.from({length:4},(_,index)=>({
   version:'v1',
 }));
 const ledger=new VerifiedOutcomeLedger(manifest);
-const treatmentMethod=patchTreatmentMethod(patchSha256);
+const treatmentMethod=patchTreatmentMethod(baseSha, patchSha256);
 const methods=['baseline-v1',treatmentMethod];
 for(let seed=0;seed<4;seed++){
   for(let taskIndex=0;taskIndex<manifest.length;taskIndex++){
@@ -142,6 +142,9 @@ test('host-owned authority remains bound to its initial manifest fingerprint',()
  const authority=createP36PatchOutcomeEvidenceAuthority(hostConfig);
  const original=authority.measure({candidateId:'candidate-closure',baseSha,patchSha256});
  assert.ok(original);
- assert.throws(()=>createP36PatchOutcomeEvidenceAuthority({...hostConfig,baseSha:'b'.repeat(40)}),/manifest|source|host-config-invalid/);
+ const alternateAuthority=createP36PatchOutcomeEvidenceAuthority({...hostConfig,baseSha:'b'.repeat(40)});
+ assert.ok(alternateAuthority);
+ assert.equal(alternateAuthority.measure({candidateId:'candidate-closure',baseSha:'b'.repeat(40),patchSha256}),null,
+  'holdout outcomes measured against one source SHA must not transfer to another base tree');
  assert.equal(authority.measure({candidateId:'candidate-closure',baseSha:'b'.repeat(40),patchSha256}),null);
 });
