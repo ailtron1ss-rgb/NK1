@@ -94,4 +94,59 @@ const point=(frameId,x,y,z=0)=>({spatialFrameId:frameId,spatialX:String(x),spati
  assert.equal(invalid.items.some(row=>row.id==="invalid-spatial"),false,
   "an invalid spatial query must not bypass the grounded answerability gate");
 }
+
+{
+ // Accessor-backed coordinates must be rejected without invoking the getter,
+ // and an invalid replacement must not erase the last valid index entry.
+ const index=new MemorySpatialIndex();
+ const valid=point("room-A",1,0);
+ assert.equal(index.upsert("stable",valid),true);
+ let getterInvoked=false;
+ const hostile={...valid};
+ Object.defineProperty(hostile,"spatialFrameId",{enumerable:true,get(){
+  getterInvoked=true;throw new Error("untrusted spatial getter executed");
+ }});
+ let accepted=false;
+ assert.doesNotThrow(()=>{accepted=index.upsert("stable",hostile);},
+  "hostile coordinate getters must be rejected instead of executed");
+ assert.equal(accepted,false,"malformed spatial replacement must be refused");
+ assert.equal(getterInvoked,false,"spatial context getters must never execute");
+ assert.deepEqual(index.query({frameId:"room-A",x:0,y:0,radius:5}).map(row=>row.id),["stable"],
+  "refused replacement must preserve the last validated spatial point");
+ assert.equal(index.diagnostics([{id:"stable",context:valid}]).pass,true);
+ const hostileProxy=new Proxy({...valid},{getPrototypeOf(){
+  throw new Error("untrusted spatial proxy inspected");
+ }});
+ accepted=true;
+ assert.doesNotThrow(()=>{accepted=index.upsert("stable",hostileProxy);},
+  "hostile spatial proxies must be rejected instead of inspected unsafely");
+ assert.equal(accepted,false,"hostile proxy replacement must be refused");
+ assert.deepEqual(index.query({frameId:"room-A",x:0,y:0,radius:5}).map(row=>row.id),["stable"],
+  "proxy rejection must preserve the last validated spatial point");
+}
+
+
+{
+ // Diagnostics must reconcile all derived maps, not just the point payload map.
+ const index=new MemorySpatialIndex();
+ const context=point("room-A",1,0);
+ assert.equal(index.upsert("diagnostic-target",context),true);
+ const cell=index.cellById.get("diagnostic-target");
+ assert.ok(cell,"the canonical point must have a cell reverse mapping");
+ index.cells.get(cell).delete("diagnostic-target");
+ assert.equal(index.query({frameId:"room-A",x:0,y:0,radius:5}).length,0,
+  "a missing cell posting makes a spatial point unreachable");
+ assert.equal(index.diagnostics([{id:"diagnostic-target",context}]).pass,false,
+  "diagnostics must detect a point missing from its cell posting set");
+}
+{
+ const index=new MemorySpatialIndex();
+ const context=point("room-A",1,0);
+ assert.equal(index.upsert("valid-target",context),true);
+ const cell=index.cellById.get("valid-target");
+ index.cells.get(cell).add("orphan-target");
+ assert.equal(index.diagnostics([{id:"valid-target",context}]).pass,false,
+  "diagnostics must detect orphan IDs in cell posting sets");
+}
+
 console.log("MEMORYOS2_SPATIAL_RETRIEVAL=PASS");

@@ -39,9 +39,12 @@ function coordinate(value:unknown):number|null {
  return Number.isFinite(parsed)&&Math.abs(parsed)<=MAX_COORDINATE?parsed:null;
 }
 export function spatialPointFromContext(context?:Record<string,string>):MemorySpatialPoint|null {
- if(!context||typeof context!=="object"||Array.isArray(context))return null;
- const frameId=validFrameId(context.spatialFrameId),x=coordinate(context.spatialX),y=coordinate(context.spatialY);
- const z=context.spatialZ===undefined?0:coordinate(context.spatialZ);
+ // Context may originate at an external ingestion boundary. Copy own data
+ // properties only; never execute getters or proxy traps while deriving an index.
+ const row=ownDataRecord(context);
+ if(!row)return null;
+ const frameId=validFrameId(row.spatialFrameId),x=coordinate(row.spatialX),y=coordinate(row.spatialY);
+ const z=row.spatialZ===undefined?0:coordinate(row.spatialZ);
  return frameId&&x!==null&&y!==null&&z!==null?{frameId,x,y,z}:null;
 }
 export function normalizeMemorySpatialQuery(value:unknown):MemorySpatialQuery|null {
@@ -73,7 +76,11 @@ export class MemorySpatialIndex {
  }
  upsert(id:string,context?:Record<string,string>):boolean {
   if(typeof id!=="string"||!id.trim()||id.length>160)return false;
-  this.remove(id);const point=spatialPointFromContext(context);if(!point)return false;
+  // Validate the replacement before mutating the current derived index. A refused
+  // update leaves the last validated point intact; canonical callers explicitly
+  // remove first when they intentionally clear a point from the owning memory.
+  const point=spatialPointFromContext(context);if(!point)return false;
+  this.remove(id);
   const [x,y,z]=cellCoordinates(point),key=cellKey(point.frameId,x,y,z);
   let members=this.cells.get(key);if(!members){members=new Set<string>();this.cells.set(key,members);}
   members.add(id);this.cellById.set(id,key);this.pointById.set(id,point);return true;
@@ -98,18 +105,47 @@ export class MemorySpatialIndex {
   return hits.sort((a,b)=>a.distance-b.distance||a.id.localeCompare(b.id)).slice(0,safeLimit);
  }
  diagnostics(items:ReadonlyArray<{id:string;context?:Record<string,string>}>):{
-  pass:boolean;indexedItems:number;canonicalSpatialItems:number;missingItems:number;staleItems:number;cellCount:number;
+  pass:boolean;indexedItems:number;canonicalSpatialItems:number;missingItems:number;staleItems:number;
+  reverseMappingMismatch:number;cellPostingMismatch:number;cellCount:number;
  } {
   const expected=new Map<string,MemorySpatialPoint>();
-  for(const item of items){const point=spatialPointFromContext(item.context);if(point)expected.set(item.id,point);}
-  let missingItems=0,staleItems=0;
+  const expectedCellById=new Map<string,string>();
+  const expectedCells=new Map<string,Set<string>>();
+  for(const item of items){
+   const point=spatialPointFromContext(item.context);if(!point)continue;
+   expected.set(item.id,point);
+   const [x,y,z]=cellCoordinates(point),key=cellKey(point.frameId,x,y,z);
+   expectedCellById.set(item.id,key);
+   let members=expectedCells.get(key);if(!members){members=new Set<string>();expectedCells.set(key,members);}
+   members.add(item.id);
+  }
+  let missingItems=0,staleItems=0,reverseMappingMismatch=0,cellPostingMismatch=0;
   for(const [id,point] of expected){
    const actual=this.pointById.get(id);
    if(!actual)missingItems++;
    else if(actual.frameId!==point.frameId||actual.x!==point.x||actual.y!==point.y||actual.z!==point.z)staleItems++;
   }
   for(const id of this.pointById.keys())if(!expected.has(id))staleItems++;
-  return {pass:missingItems===0&&staleItems===0&&expected.size===this.pointById.size,
-   indexedItems:this.pointById.size,canonicalSpatialItems:expected.size,missingItems,staleItems,cellCount:this.cells.size};
+  // Verify the ID -> cell reverse map independently of the point payload map.
+  for(const [id,key] of expectedCellById)if(this.cellById.get(id)!==key)reverseMappingMismatch++;
+  for(const [id,key] of this.cellById)if(expectedCellById.get(id)!==key)reverseMappingMismatch++;
+  // Verify complete cell -> ID memberships. A missing or orphan posting can make
+  // an otherwise valid point unreachable (or make a stale ID occupy query work).
+  for(const [key,expectedIds] of expectedCells){
+   const actualIds=this.cells.get(key);
+   if(!actualIds||actualIds.size!==expectedIds.size||
+      [...expectedIds].some(id=>!actualIds.has(id)))cellPostingMismatch++;
+  }
+  for(const [key,actualIds] of this.cells){
+   const expectedIds=expectedCells.get(key);
+   if(!expectedIds||actualIds.size!==expectedIds.size||
+      [...actualIds].some(id=>!expectedIds.has(id)))cellPostingMismatch++;
+   if(actualIds.size===0)cellPostingMismatch++;
+  }
+  const pass=missingItems===0&&staleItems===0&&reverseMappingMismatch===0&&
+   cellPostingMismatch===0&&expected.size===this.pointById.size&&
+   expectedCellById.size===this.cellById.size&&expectedCells.size===this.cells.size;
+  return {pass,indexedItems:this.pointById.size,canonicalSpatialItems:expected.size,
+   missingItems,staleItems,reverseMappingMismatch,cellPostingMismatch,cellCount:this.cells.size};
  }
 }
