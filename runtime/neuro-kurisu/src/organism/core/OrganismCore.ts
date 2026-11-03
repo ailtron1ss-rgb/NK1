@@ -42,7 +42,6 @@ import { B269SpikingPlasticNeuralSubstrate, defaultB269SpikingPlastic } from '..
 import { B270NeuralGerminalOrganism, defaultB270NeuralGerminalOrganism } from '../cognition/B270NeuralGerminalOrganism.ts';
 import { B271NeuralAutobiographicalCore, defaultB271State } from '../cognition/B271NeuralAutobiographicalCore.ts';
 import { B272EndogenousGoalGenesis, defaultB272State } from '../cognition/B272EndogenousGoalGenesis.ts';
-import { IntrinsicMotivationGoalCoupling } from '../cognition/IntrinsicMotivationGoalCoupling.ts';
 import { B273AutonomousGoalLifecycle, defaultB273State } from '../cognition/B273AutonomousGoalLifecycle.ts';
 import { B274AutonomousSkillLaboratory, defaultB274State } from '../cognition/B274AutonomousSkillLaboratory.ts';
 import { B275NeuralCompositionalPolicy, defaultB275State } from '../cognition/B275NeuralCompositionalPolicy.ts';
@@ -1174,9 +1173,7 @@ export class OrganismCore {
     private readonly adaptiveMemoryStrategyReadout = new AdaptiveMemoryStrategyReadout();
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
-    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics });
-    /** Couples the existing six intrinsic drives to the canonical B272 goal generator. */
-    private readonly intrinsicMotivationGoalCoupling = new IntrinsicMotivationGoalCoupling(this.cognitiveRuntime.intrinsicMotivation, this.developmentalNeural.endogenousGoalGenesisB272);
+    private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics, endogenousGoalGenesisB272: this.developmentalNeural.endogenousGoalGenesisB272 });
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -5208,7 +5205,7 @@ export class OrganismCore {
         this.persisted.system.neuralAutobiographicalCoreB271 = b271PostState;
         const worldEvidenceQuality = this.worldSubsystem.world.beliefAvailable() ? clamp(0.45 + Math.min(0.45, this.worldSubsystem.world.transitionCount() / 80)) : 0.2;
         const intrinsicDriveConfidence01 = clamp(worldEvidenceQuality * 0.65 + (1 - state.predictionError) * 0.35);
-        const intrinsicCoupling = this.intrinsicMotivationGoalCoupling.step({
+        const intrinsicCoupling = this.cognitiveRuntime.intrinsicMotivationGoalCoupling.step({
             cycle: {
                 tick: state.tick,
                 selfLatent: b270PostGerminalState.selfLatent,

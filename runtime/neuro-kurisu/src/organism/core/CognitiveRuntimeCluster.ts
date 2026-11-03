@@ -30,6 +30,8 @@ import { GlobalWorkspaceSubstrateV2 } from '../cognition/GlobalWorkspaceSubstrat
 import { IntrinsicExperimentGenerator } from '../cognition/IntrinsicExperimentGenerator.ts';
 import { SensorimotorLoop, defaultSensorimotorState } from '../cognition/SensorimotorLoop.ts';
 import { IntrinsicMotivationEngine, defaultIntrinsicDriveState } from '../cognition/IntrinsicMotivationEngine.ts';
+import { IntrinsicMotivationGoalCoupling } from '../cognition/IntrinsicMotivationGoalCoupling.ts';
+import type { B272EndogenousGoalGenesis } from '../cognition/B272EndogenousGoalGenesis.ts';
 import { MetaCognitiveMonitor, defaultMetaCognitiveState } from '../cognition/MetaCognitiveMonitor.ts';
 import { MetacognitiveNeuralSubstrate } from '../cognition/MetacognitiveNeuralSubstrate.ts';
 import { ConsciousnessEvidenceLedger, defaultConsciousnessEvidence } from '../cognition/ConsciousnessEvidenceLedger.ts';
@@ -90,6 +92,7 @@ export class CognitiveRuntimeCluster {
   readonly sensorimotor = new SensorimotorLoop();
   readonly experimentGenerator = new IntrinsicExperimentGenerator();
   readonly intrinsicMotivation = new IntrinsicMotivationEngine();
+  readonly intrinsicMotivationGoalCoupling: IntrinsicMotivationGoalCoupling;
   readonly metacognition = new MetaCognitiveMonitor();
   readonly metacognitiveNeural = new MetacognitiveNeuralSubstrate();
   readonly predictiveAllostasis = new PredictiveAllostasisSubstrate();
@@ -176,7 +179,12 @@ export class CognitiveRuntimeCluster {
     organismSystems: OrganismSystemFabric;
     p61IntegratedMind: P61IntegratedMindKernel;
     p64IntegratedOrganismDynamics: P64IntegratedOrganismDynamics;
+    endogenousGoalGenesisB272: B272EndogenousGoalGenesis;
   }) {
+    this.intrinsicMotivationGoalCoupling = new IntrinsicMotivationGoalCoupling(
+      this.intrinsicMotivation,
+      input.endogenousGoalGenesisB272,
+    );
     this.cognitiveKernelCoordinator = new CognitiveKernelCoordinator(input.p61IntegratedMind, input.p64IntegratedOrganismDynamics);
     this.cognitiveSubsystemRegistry = new CognitiveSubsystemRegistry(input.organismSystems);
   }
