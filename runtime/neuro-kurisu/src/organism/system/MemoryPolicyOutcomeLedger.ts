@@ -80,7 +80,7 @@ export class MemoryPolicyOutcomeLedger {
     let index=-1;
     for(let i=this.state.pending.length-1;i>=0;i--){
       const d=this.state.pending[i]!;
-      if((input.decisionId?d.id===input.decisionId:d.memoryIds.includes(id))&&d.at<=at){index=i;break;}
+      if((input.decisionId?(d.id===input.decisionId&&d.memoryIds.includes(id)):d.memoryIds.includes(id))&&d.at<=at){index=i;break;}
     }
     if(index<0)return null;
     const d=this.state.pending[index]!;
