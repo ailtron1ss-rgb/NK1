@@ -95,9 +95,11 @@ export function validateMotionProgram(program: MotionProgram): MotionProgramIssu
   else if (firstFrame.t !== 0) issues.push({ code: "missing-start-keyframe", message: "first keyframe must start at t=0" });
   if (!lastFrame) issues.push({ code: "missing-end-keyframe", message: "last keyframe must end at t=1" });
   else if (lastFrame.t !== 1) issues.push({ code: "missing-end-keyframe", message: "last keyframe must end at t=1" });
-  if (program.loop) {
-    const first = program.keyframes[0]!.channels;
-    const last = program.keyframes[program.keyframes.length - 1]!.channels;
+  if (program.loop && firstFrame?.channels && lastFrame?.channels
+    && typeof firstFrame.channels === "object" && !Array.isArray(firstFrame.channels)
+    && typeof lastFrame.channels === "object" && !Array.isArray(lastFrame.channels)) {
+    const first = firstFrame.channels;
+    const last = lastFrame.channels;
     for (const channel of new Set([...Object.keys(first), ...Object.keys(last)])) {
       if ((first[channel as BodyChannel] ?? 0) !== (last[channel as BodyChannel] ?? 0)) {
         issues.push({ code: "loop-seam-mismatch", message: `looping program must start and end at the same value for ${channel}` });
