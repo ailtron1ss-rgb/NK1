@@ -44,10 +44,17 @@ function record(value: unknown, allowed: readonly string[]): Record<string, unkn
   if (prototype !== Object.prototype && prototype !== null) return null;
   const descriptors = Object.getOwnPropertyDescriptors(value);
   const allowedSet = new Set(allowed);
-  for (const [key, descriptor] of Object.entries(descriptors)) {
-    if (!allowedSet.has(key) || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) return null;
+  const keys = Reflect.ownKeys(descriptors);
+  const copied: Record<string, unknown> = {};
+  for (const key of keys) {
+    // JSON-like episode records cannot carry hidden symbol-keyed state. Reject it
+    // rather than silently normalizing away data that does not survive persistence.
+    if (typeof key !== 'string' || !allowedSet.has(key)) return null;
+    const descriptor = descriptors[key];
+    if (!Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) return null;
+    copied[key] = descriptor.value;
   }
-  return Object.fromEntries(Object.entries(descriptors).map(([key, descriptor]) => [key, descriptor.value]));
+  return copied;
 }
 
 function stringValue(value: unknown, max: number, optional = false): string | null {
@@ -68,7 +75,9 @@ function stringArray(value: unknown, max: number, exact?: number): string[] | nu
   const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value') ? lengthDescriptor.value : undefined;
   const descriptors = Object.getOwnPropertyDescriptors(value);
   if (!Number.isSafeInteger(length) || length < 0 || length > max || (exact !== undefined && length !== exact)) return null;
-  const keys = Object.keys(descriptors).filter(key => key !== 'length');
+  const ownKeys = Reflect.ownKeys(descriptors);
+  if (ownKeys.some(key => typeof key !== 'string')) return null;
+  const keys = (ownKeys as string[]).filter(key => key !== 'length');
   if (keys.length !== length) return null;
   const result: string[] = [];
   for (let index = 0; index < length; index++) {
@@ -86,10 +95,13 @@ function featureMap(value: unknown): Record<string, number> | null {
   const prototype = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) return null;
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  const entries = Object.entries(descriptors);
-  if (entries.length > 24) return null;
+  const ownKeys = Reflect.ownKeys(descriptors);
+  if (ownKeys.some(key => typeof key !== 'string')) return null;
+  const keys = ownKeys as string[];
+  if (keys.length > 24) return null;
   const result: Record<string, number> = {};
-  for (const [key, descriptor] of entries) {
+  for (const key of keys) {
+    const descriptor = descriptors[key];
     if (!/^[a-z][a-zA-Z0-9_]{0,47}$/u.test(key) || !Object.prototype.hasOwnProperty.call(descriptor, 'value') || descriptor.enumerable !== true) return null;
     if (typeof descriptor.value !== 'number' || !Number.isFinite(descriptor.value) || descriptor.value < -10_000 || descriptor.value > 10_000) return null;
     result[key] = descriptor.value;
