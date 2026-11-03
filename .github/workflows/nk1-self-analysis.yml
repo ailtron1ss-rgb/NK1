@@ -12,6 +12,7 @@ on:
       - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
       - "runtime/neuro-kurisu/tests/patch-receipt-guard.mjs"
       - "runtime/neuro-kurisu/tests/self-improvement-patch-admission.mjs"
+      - "runtime/neuro-kurisu/tests/p36-patch-outcome-evidence.mjs"
       - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "contracts/progress-workstreams.json"
@@ -31,6 +32,7 @@ on:
       - "runtime/neuro-kurisu/tests/self-analysis-substrate.mjs"
       - "runtime/neuro-kurisu/tests/patch-receipt-guard.mjs"
       - "runtime/neuro-kurisu/tests/self-improvement-patch-admission.mjs"
+      - "runtime/neuro-kurisu/tests/p36-patch-outcome-evidence.mjs"
       - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "contracts/progress-workstreams.json"
@@ -70,6 +72,8 @@ jobs:
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/patch-receipt-guard.mjs
       - name: Verify cryptographic candidate admission path
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/self-improvement-patch-admission.mjs
+      - name: Verify candidate patch-bound signed P36 holdout evidence
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/p36-patch-outcome-evidence.mjs
       - name: Live self-agency authority contract
         run: npm --prefix runtime/neuro-kurisu run test:self-agency:authority
       - name: Live self-agency Core integration
