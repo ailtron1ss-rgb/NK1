@@ -15,6 +15,10 @@ assert.ok(Number.isInteger(report.verifiedEfficacyPercent));
 assert.ok(report.artifactCoveragePercent >= 0 && report.artifactCoveragePercent <= 100);
 assert.ok(report.verifiedEfficacyPercent >= 0 && report.verifiedEfficacyPercent <= 100);
 assert.ok(report.workstreams.length >= 9);
+if (report.workstreams.some((row) => row.testHarnessTotal === 0)) {
+  assert.ok(report.testHarnessCoveragePercent < 100,
+    'workstreams with no declared test entrypoint must reduce aggregate harness coverage');
+}
 assert.ok(report.workstreams.every((row) => row.evidenceTotal > 0), 'every workstream must have an explicit efficacy evidence gate');
 
 // Existing evidence files belong to earlier SHAs. They must not count as proof for
