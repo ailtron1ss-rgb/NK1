@@ -1,40 +1,68 @@
-# CURRENT HANDOFF — 2026-11-01
+# CURRENT HANDOFF — 2026-11-03
 
-> **Current entry point:** read the current checkpoint in [README.md](README.md), then refresh the live `workpass70-source` head, open PRs and exact-head Actions before making changes. Historical WorkPass sections below are archive material; they are not the current source baseline.
+> **Live source truth:** read the current README, then refresh the canonical branch, PRs and exact-SHA Actions before any change. Historical WorkPass sections below this handoff are archive material, not live state.
 
+**Canonical repository:** https://github.com/ailtron1ss-rgb/NK1  
 **Canonical source branch:** `workpass70-source`  
-**Source HEAD at this checkpoint:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b`  
-**Branch policy:** `workpass70-source` is the canonical working tree. `main` remains release/metadata; do not merge source work directly into `main`.
+**Verified source HEAD:** `a3b3f4b00fcffe5bcb02161d5ac18d57dab50516`  
+**Ancestry:** 22 commits ahead of `54d2d35176faf774e3402fdd2ac4dd7b8d01b467`, 0 behind.  
+**Branch policy:** `workpass70-source` owns source work; `main` remains release/metadata. Never merge a PR without a separate user instruction naming that PR.
 
-## Latest verified integrations — 2026-11-01
+## Latest source validation — 2026-11-03
 
-| PR | Merged SHA | Change | Exact PR-head checks |
-|---|---|---|---:|
-| [#594](https://github.com/ailtron1ss-rgb/NK1/pull/594) | `619ec5dc22f4559cb915281c46de23d1c369bf50` | FileStateStore missing/corrupt-primary recovery; primary recreation; verified-backup preservation | 11/11 |
-| [#603](https://github.com/ailtron1ss-rgb/NK1/pull/603) | `9b36efb3793730550b6d7fb6d2f028472651d3b4` | Speech lifecycle resets semantic mouth channels outside active speaking; missing sensor samples normalized | 9/9 |
-| [#607](https://github.com/ailtron1ss-rgb/NK1/pull/607) | `735b83d525c0d53c91e2e5a6587fb3529a08d13b` | Atomic backup rotation via temp + fsync + rename; deterministic SIGKILL regression | 11/11 |
+At exact source HEAD `a3b3f4b00fcffe5bcb02161d5ac18d57dab50516`, **16/16 GitHub Actions runs completed successfully**. The set includes core regression, Unified Organism Runtime, Action Gateway governance, world perception, memory integrity/retrieval, longitudinal holdout pairing, UserModel explicit-forget, Hexis source lineage, Emotion restore, B306 decision-bound outcome attribution and verified learning/skill lifecycle.
 
-**Already present in the source baseline:** [`efb7693`](https://github.com/ailtron1ss-rgb/NK1/commit/efb7693df564512ed653f8bafc772d97e2c36e32) upgrades UserModel to v2 durable forgetting with tombstones, strict fail-closed restore, source-event replay protection and v1 migration. The motor-frame integrity guard from `c039f84` is also integrated.
+The 22-commit progression since the 2026-11-01 snapshot adds/repairs:
+- live causal outcome binding and decision-tick attribution;
+- interoceptive precision allocation and hostile-input validation;
+- cross-lingual concept-index lifecycle integrity and frame-aware spatial recall;
+- EmotionAppraisal snapshot restore;
+- metacognitive causal episodes and canonical MemoryOS2 projection;
+- intrinsic motivation → endogenous goal coupling.
 
-## Release and external services
+These are source-branch implementations with exact-head CI evidence; they are not a new published Release.
 
-- Latest published ZIP including prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`. Stable `Neuro` ZIP is older; neither contains the November 1 integrations.
-- No new Release ZIP has been assembled, inspected internally or published. Do not claim release parity from source-branch CI.
-- License review remains pending; redistribution approval is false. Do not publish until human license review and exact-SHA publisher gate pass.
-- MongoDB Atlas read-only inspection: Project 0 / Cluster0 is reachable, but only `sample_mflix` exists; no NK1 database or runtime adapter.
-- Supabase currently has zero projects. Redis Agent Memory SDK guidance exists, but no connected RAM data plane or `AGENT_MEMORY_*` secrets. Replit search found no NK1 app. No external database/schema/secret was created.
+## Current active work (do not duplicate)
+
+| PR | Current state | Evidence / next condition |
+|---|---|---|
+| [#761](https://github.com/ailtron1ss-rgb/NK1/pull/761) | Open draft; based on current source HEAD | Current head `59fcc9e9c936d6ec00f0f917dd8f4bf762b15a58`; self-prior restore counters and timestamp ordering hardened; exact-head workflow [#41641976733](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41641976733) passed focused regression + runtime typecheck. Not merged. |
+| [#760](https://github.com/ailtron1ss-rgb/NK1/pull/760) | Open draft; based on current source HEAD | Voluntary attention effort regulation; prior exact-head workflow set passed on `23a5d3b`; re-check after any new commit. Not merged. |
+| [#754](https://github.com/ailtron1ss-rgb/NK1/pull/754) | Open draft; base `36e576d` is stale | Archive inspector run [#41620676908](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41620676908) passed ZIP digest/CRC/member safety. Source parity counts were measured against `36e576d`, not current `a3b3f4b`; refresh comparison before using those counts. |
+| [#755](https://github.com/ailtron1ss-rgb/NK1/pull/755) | Open draft; base `36e576d` is stale | Independent source-group holdout gates; exact-head checks passed on its own head, but current-source reconciliation and final RU/EN independent evidence remain open. |
+
+## Release and license gate
+
+- Latest published ZIP including prerelease: `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
+- The archive inspector workflow downloaded both stable and prerelease assets and validated digest, size, ZIP CRC and safe member paths at PR #754 head. Its source comparison is stale against current HEAD.
+- No November Release ZIP has been assembled or published. The current ZIP does not contain November source changes.
+- `RELEASE_LICENSE_REVIEW.json` remains pending: root project is `NOASSERTION`, runtime is private/all-rights-reserved, and redistribution approval is false. Human license review and exact-SHA publisher gate are mandatory.
+
+## External infrastructure — read-only snapshot
+
+- MongoDB Atlas: Project 0 / Cluster0 reachable, AWS `AP_SOUTH_1`, MongoDB 8.0.36, IDLE. Databases: `sample_mflix`, `admin`, `local`; no NK1 database or adapter.
+- Supabase: project list empty.
+- Redis: no connected NK1 RAM data plane or confirmed `AGENT_MEMORY_*` secrets.
+- Replit: no app matching NK1.
+- No external database, schema, secret, paid service or production environment was created or changed.
 
 ## Remaining P0 gates
 
-1. Complete human license review and exact-SHA release publisher gate.
-2. Run browser/WebGL E2E for VRM/GLB replacement, reload, reset, GPU/resource counters and soak.
-3. Run real Android/Termux audio interruption, viseme/audio drift and background/foreground soak.
-4. Prove bilingual RU/EN retrieval uplift on immutable, source-clustered holdout pairs with at least five paired seeds; no promotion on synthetic fixtures alone.
-5. Complete 2.5D depth-rig and acquire a separately licensed Kurisu-compatible 3D asset.
-6. Validate self-initiated Perceive → Appraise → Plan → Act → Reflect → Consolidate behavior over soak with explainable internal causes; do not claim consciousness as a measured result.
-7. Continue persistence hardening with filesystem/power-loss testing beyond deterministic process SIGKILL tests.
+1. Human license review and exact-SHA release publisher gate.
+2. Independent bilingual RU/EN retrieval uplift: immutable source-clustered holdout, at least five paired seeds, `recallDelta > 0`; synthetic CI is not sufficient.
+3. Browser/WebGL E2E for VRM/GLB load, replacement, reset, GPU/resource counters and soak; complete the 2.5D depth-rig.
+4. Real Android/Termux speech interruption, viseme/audio drift, background/foreground behavior and phone soak.
+5. Longitudinal initiative test proving self-initiated actions from internal state with causal explanations; no consciousness claim.
 
-**Progress rule:** keep implemented / connected / tested / released distinct. Do not raise global readiness from unit tests or exact PR CI alone. Refresh this handoff when the live branch advances.
+## Next execution order
+
+1. Keep PR #761's current exact-head regression/typecheck evidence attached; obtain broad integration validation on the final PR head.
+2. Reconcile stale-base PRs #754/#755 without force-push or duplicate branches.
+3. Run independent RU/EN source-group holdout; do not promote on synthetic results.
+4. Prepare browser and real-phone test harnesses; execute hardware-dependent portions only on actual devices.
+5. Continue license evidence review, but leave redistribution approval and release publication to the authorized human.
+
+**Evidence rule:** implemented ≠ connected ≠ tested ≠ released. Exact-head CI does not prove device performance, memory uplift, production readiness or subjective consciousness.
 
 ---
 
