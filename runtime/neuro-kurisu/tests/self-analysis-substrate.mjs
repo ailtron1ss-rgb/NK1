@@ -418,8 +418,52 @@ assert.ok(flashy.proxyGain > honest.proxyGain, 'flashy must have the higher prox
 assert.ok(flashy.downstreamGain < honest.downstreamGain, 'flashy must have the lower downstream');
 assert.equal(rankPool.rank()[0].candidateId, 'honest', 'ranking must follow downstream, not proxy');
 
+// Candidate admission is an untrusted boundary: getters, sparse arrays and
+// post-admission mutation must not change the stored candidate or run caller code.
+let candidateGetterCalls = 0;
+const getterCandidate = {
+  candidateId: 'getter-candidate', targetFiles: [block.file], evolveBlocks: [block],
+  observations: backed(2), rollbackReady: true,
+};
+Object.defineProperty(getterCandidate, 'observations', { get() { candidateGetterCalls++; throw new Error('getter must not run'); } });
+assert.equal(pool.submit(getterCandidate, poolGraph).reason, 'malformed-observations');
+assert.equal(candidateGetterCalls, 0, 'candidate accessors must never execute');
+assert.equal(pool.submit({
+  candidateId: 'sparse-candidate', targetFiles: new Array(1), evolveBlocks: [block],
+  observations: backed(2), rollbackReady: true,
+}, poolGraph).reason, 'malformed-target-files');
+
+const immutablePool = new SelfImprovementCandidatePool({ maxPoolSize: 4 });
+const mutableCandidate = {
+  candidateId: 'immutable-id', targetFiles: [block.file], evolveBlocks: [block],
+  observations: backed(3), rollbackReady: true, parentId: 'parent-original',
+};
+assert.equal(immutablePool.submit(mutableCandidate, poolGraph).accepted, true);
+mutableCandidate.candidateId = 'mutated-id';
+mutableCandidate.parentId = 'mutated-parent';
+mutableCandidate.observations[0].downstreamGain = -1;
+const immutableRank = immutablePool.best();
+assert.equal(immutableRank.candidateId, 'immutable-id', 'post-admission candidate mutation must not alter its id');
+assert.equal(immutableRank.parentId, 'parent-original', 'post-admission candidate mutation must not alter lineage');
+assert.ok(immutableRank.downstreamGain > 0, 'post-admission candidate mutation must not alter measured gain');
+assert.throws(() => new SelfImprovementCandidatePool({ maxPoolSize: 0 }), /candidate-pool-policy-invalid/);
+assert.throws(() => new SelfImprovementCandidatePool({ minDownstreamGain: Number.NaN }), /candidate-pool-policy-invalid/);
+
+let observationGetterCalls = 0;
+const getterObservation = { id: 'getter', downstreamGain: .2 };
+Object.defineProperty(getterObservation, 'proxyGain', { get() { observationGetterCalls++; throw new Error('row getter must not run'); } });
+assert.equal(evaluateProxyDivergence([getterObservation]).decision, 'refused');
+assert.equal(observationGetterCalls, 0, 'observation accessors must never execute');
+const sparseObservations = new Array(5);
+assert.equal(evaluateProxyDivergence(sparseObservations).decision, 'refused');
+const getterFamily = { baselinePassRate: .1, candidatePassRate: .2 };
+Object.defineProperty(getterFamily, 'family', { get() { observationGetterCalls++; throw new Error('family getter must not run'); } });
+assert.deepEqual(toDivergenceObservations([getterFamily], []), []);
+assert.equal(observationGetterCalls, 0, 'adapter accessors must never execute');
+assert.equal(immutablePool.snapshot().rejectionLedgerSize, 0);
+
 console.log(
-  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=52 '
+  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=64 '
   + `realFiles=${realSummary.files} realNodes=${realSummary.nodes} realEdges=${realSummary.edges} `
   + `extracted=${realSummary.extractedEdges} inferred=${realSummary.inferredEdges} `
   + `protectedFiles=${realProtected.length} protectedFragments=${PROTECTED_CAPABILITY_FRAGMENTS.length}`,
