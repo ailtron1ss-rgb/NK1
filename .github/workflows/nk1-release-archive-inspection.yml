@@ -48,7 +48,7 @@ jobs:
             mkdir -p "$download_dir"
 
             local metadata
-            metadata="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" | ASSET_NAME="$asset" python3 -c 'import json, os, sys; data=json.load(sys.stdin); item=next((row for row in data.get("assets", []) if row.get("name") == os.environ["ASSET_NAME"]), None); print(((item.get("digest") or "") + "\\t" + str(item.get("size") or "")) if item else "")')"
+            metadata="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" | ASSET_NAME="$asset" python3 -c 'import json, os, sys; data=json.load(sys.stdin); item=next((row for row in data.get("assets", []) if row.get("name") == os.environ["ASSET_NAME"]), None); print(((item.get("digest") or "") + "\t" + str(item.get("size") or "")) if item else "")')"
             if [[ -z "$metadata" ]]; then
               echo "::error::Release asset not found: $tag / $asset"
               return 1
