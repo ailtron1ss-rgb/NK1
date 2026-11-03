@@ -1,3 +1,8 @@
+## 2026-11-03 — Exact-SHA evidence ledger child workstream (PR pending)
+
+- Added strict receipt schema and validator with commit-SHA binding, bounded metrics, artifact/dataset digests, secret-like command rejection and immutable local recording.
+- CI publication, cryptographic signing and cross-device evidence synchronization remain future gates.
+
 ## 2026-11-03 — NeuroK Engineering OS foundation (PR #716)
 
 - Added a fail-closed catalog for requested engineering tools and their adapter boundaries.

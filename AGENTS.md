@@ -111,3 +111,6 @@ Before a substantial pass, read:
 - Claims are advisory until the patch-admission layer enforces them. Git, review and exact-SHA CI remain authoritative.
 - Never change a catalog entry to connected/enabled/runtime-integrated without verifiable account, permission, adapter-contract and test evidence. Never put secret values in the catalog.
 - Run `npm run neurok-os:test` and the dedicated GitHub Actions workflow after changing the control plane.
+
+- Record only structured evidence receipts with `npm run neurok-os:evidence -- record --receipt-file FILE`; recording requires the receipt SHA to match the current Git HEAD. For offline validation use `npm run neurok-os:evidence -- validate --receipt-file FILE --expected-sha FULL_SHA`.
+- Evidence receipts must not contain raw stdout/stderr, secrets, private user data or holdout examples. Store hashes and bounded metrics only; never overwrite an existing receipt.
