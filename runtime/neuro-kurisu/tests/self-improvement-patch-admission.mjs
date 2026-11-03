@@ -21,19 +21,67 @@ const graph=buildSourceGraph([
 ]);
 const candidate=id=>({candidateId:id,targetFiles:[file],evolveBlocks:[{file,startLine:1,endLine:1}],
  observations:Array.from({length:5},(_,i)=>({id:`holdout-${i+1}`,proxyGain:.30,downstreamGain:.28})),rollbackReady:true});
+const trustedPool=(trust={baseSha,trustedPublicKeys})=>new SelfImprovementCandidatePool({},undefined,trust);
+const receiptProof=(extra={})=>({receipt,patchText:patch,...extra});
 test('admits candidate through the signed exact-diff path',()=>{
- const pool=new SelfImprovementCandidatePool();
- const result=pool.submitVerified(candidate('signed-change'),graph,{receipt,patchText:patch,expectedBaseSha:baseSha,trustedPublicKeys});
+ const pool=trustedPool();
+ const result=pool.submitVerified(candidate('signed-change'),graph,receiptProof());
  assert.equal(result.accepted,true,result.reason);
 });
 test('refuses invalid signature at candidate admission',()=>{
- const pool=new SelfImprovementCandidatePool();
- const result=pool.submitVerified(candidate('invalid-signature'),graph,{receipt:{...receipt,signature:'A'.repeat(88)},patchText:patch,expectedBaseSha:baseSha,trustedPublicKeys});
+ const pool=trustedPool();
+ const result=pool.submitVerified(candidate('invalid-signature'),graph,{receipt:{...receipt,signature:'A'.repeat(88)},patchText:patch});
  assert.equal(result.accepted,false); assert.match(result.reason,/^patch-receipt:/);
 });
 test('refuses a candidate whose evolve block omits the actual changed lines',()=>{
- const pool=new SelfImprovementCandidatePool();
- const result=pool.submitVerified({...candidate('out-of-range'),evolveBlocks:[{file,startLine:2,endLine:3}]},graph,
- {receipt,patchText:patch,expectedBaseSha:baseSha,trustedPublicKeys});
+ const pool=trustedPool();
+ const result=pool.submitVerified({...candidate('out-of-range'),evolveBlocks:[{file,startLine:2,endLine:3}]},graph,receiptProof());
  assert.equal(result.accepted,false); assert.match(result.reason,/changed-lines-outside-evolve-block/);
+});
+test('does not trust keys and base SHA supplied by the candidate proof',()=>{
+ const pool=new SelfImprovementCandidatePool();
+ const result=pool.submitVerified(candidate('self-appointed-authority'),graph,{
+  receipt,patchText:patch,expectedBaseSha:baseSha,trustedPublicKeys,
+ });
+ assert.equal(result.accepted,false,'candidate-supplied public keys must not establish trust');
+ assert.equal(result.reason,'patch-receipt:host-trust-unconfigured');
+});
+
+test('uses the host-pinned base SHA and key registry instead of proof overrides',()=>{
+ const pool=trustedPool();
+ const result=pool.submitVerified(candidate('host-authority-wins'),graph,
+  receiptProof({expectedBaseSha:'b'.repeat(40),trustedPublicKeys:{}}));
+ assert.equal(result.accepted,true,result.reason);
+});
+test('snapshots the host public-key registry at construction',()=>{
+ const mutableKeys={...trustedPublicKeys};
+ const pool=trustedPool({baseSha,trustedPublicKeys:mutableKeys});
+ const wrong=generateKeyPairSync('ed25519').publicKey.export({type:'spki',format:'pem'}).toString();
+ mutableKeys['nk1-test-key']=wrong;
+ assert.equal(pool.submitVerified(candidate('immutable-key-snapshot'),graph,receiptProof()).accepted,true);
+});
+test('rejects a receipt that does not match the host-pinned source revision',()=>{
+ const pool=trustedPool({baseSha:'b'.repeat(40),trustedPublicKeys});
+ const result=pool.submitVerified(candidate('wrong-host-base'),graph,receiptProof());
+ assert.equal(result.accepted,false);
+ assert.equal(result.reason,'patch-receipt:patch-base-sha-mismatch');
+});
+test('refuses invalid or empty host trust configuration at construction',()=>{
+ assert.throws(()=>new SelfImprovementCandidatePool({},undefined,{baseSha,trustedPublicKeys:{}}),
+  /candidate-pool-patch-receipt-trust-invalid/);
+ assert.throws(()=>new SelfImprovementCandidatePool({},undefined,{baseSha:'short',trustedPublicKeys}),
+  /candidate-pool-patch-receipt-trust-invalid/);
+});
+test('keeps metrics-only candidates distinct from signed-patch candidates',()=>{
+ const metricsPool=new SelfImprovementCandidatePool();
+ const metrics=metricsPool.submit(candidate('metrics-only'),graph);
+ assert.equal(metrics.accepted,true);
+ assert.equal(metrics.admissionClass,'metrics-only');
+ assert.equal(metricsPool.best().admissionClass,'metrics-only');
+
+ const verifiedPool=trustedPool();
+ const verified=verifiedPool.submitVerified(candidate('signed-patch'),graph,receiptProof());
+ assert.equal(verified.accepted,true,verified.reason);
+ assert.equal(verified.admissionClass,'signed-patch-receipt');
+ assert.equal(verifiedPool.best().admissionClass,'signed-patch-receipt');
 });

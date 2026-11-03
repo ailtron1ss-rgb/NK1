@@ -1,3 +1,4 @@
+import { createPublicKey } from 'node:crypto';
 /**
  * Bounded self-improvement candidate admission.
  * All candidate input is treated as untrusted data: only own data properties on
@@ -20,10 +21,50 @@ export interface SelfImprovementCandidate {
   parentId?: string;
 }
 export interface CandidatePoolPolicy { maxPoolSize: number; minDownstreamGain: number; }
+
+/**
+ * Immutable host-owned trust configuration. It must be loaded by the trusted
+ * composition root from operator-controlled configuration, never from a
+ * candidate, model response, tool result or runtime-writable memory.
+ * Contains public verification keys only; signing private keys stay outside NK1.
+ */
+export interface HostOwnedPatchReceiptTrust {
+  baseSha: string;
+  trustedPublicKeys: Readonly<Record<string, string>>;
+}
+
 export const DEFAULT_POOL_POLICY: CandidatePoolPolicy = Object.freeze({ maxPoolSize: 32, minDownstreamGain: 0 });
-export interface AdmissionResult { accepted: boolean; candidateId: string; reason: string; guard?: GuardResult; divergence?: DivergenceResult; danger?: DangerAssessment; }
-export interface RankedCandidate { candidateId: string; downstreamGain: number; proxyGain: number; divergence: number; danger01: number; parentId?: string; }
-interface StoredCandidate { candidate: Readonly<SelfImprovementCandidate>; downstreamGain: number; proxyGain: number; divergence: number; danger01: number; }
+export type CandidateAdmissionClass = 'metrics-only' | 'signed-patch-receipt';
+export interface VerifiedPatchReceiptSummary { keyId: string; baseSha: string; patchSha256: string; }
+export interface AdmissionResult {
+  accepted: boolean;
+  candidateId: string;
+  reason: string;
+  admissionClass?: CandidateAdmissionClass;
+  patchReceipt?: VerifiedPatchReceiptSummary;
+  guard?: GuardResult;
+  divergence?: DivergenceResult;
+  danger?: DangerAssessment;
+}
+export interface RankedCandidate {
+  candidateId: string;
+  downstreamGain: number;
+  proxyGain: number;
+  divergence: number;
+  danger01: number;
+  admissionClass: CandidateAdmissionClass;
+  patchReceipt?: VerifiedPatchReceiptSummary;
+  parentId?: string;
+}
+interface StoredCandidate {
+  candidate: Readonly<SelfImprovementCandidate>;
+  downstreamGain: number;
+  proxyGain: number;
+  divergence: number;
+  danger01: number;
+  admissionClass: CandidateAdmissionClass;
+  patchReceipt?: VerifiedPatchReceiptSummary;
+}
 const MAX_POOL_SIZE = 1024;
 const MAX_REJECTIONS = 256;
 const MAX_TARGETS = 256;
@@ -148,6 +189,37 @@ function normalizeCandidate(input: unknown): { candidateId: string; candidate?: 
   };
   return { candidateId, candidate: freezeCandidate(normalized) };
 }
+function normalizePatchReceiptTrust(input: unknown): Readonly<HostOwnedPatchReceiptTrust> {
+  const refuse = () => { throw new RangeError('candidate-pool-patch-receipt-trust-invalid'); };
+  if (!isPlainRecord(input) || hasAccessor(input, 'baseSha') || hasAccessor(input, 'trustedPublicKeys')) return refuse();
+  const baseSha = ownData(input, 'baseSha');
+  const rawKeys = ownData(input, 'trustedPublicKeys');
+  if (typeof baseSha !== 'string' || !/^[a-f0-9]{40}$/i.test(baseSha) || !isPlainRecord(rawKeys)) return refuse();
+
+  let keyIds: string[];
+  try { keyIds = Object.keys(rawKeys); } catch { return refuse(); }
+  if (keyIds.length < 1 || keyIds.length > 64) return refuse();
+
+  const trustedPublicKeys: Record<string, string> = Object.create(null);
+  for (const keyId of keyIds) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,95}$/.test(keyId) || hasAccessor(rawKeys, keyId)) return refuse();
+    const pem = ownData(rawKeys, keyId);
+    if (typeof pem !== 'string' || pem.length < 64 || pem.length > 8192 || !pem.includes('BEGIN PUBLIC KEY')) return refuse();
+    try {
+      const publicKey = createPublicKey(pem);
+      if (publicKey.asymmetricKeyType !== 'ed25519') return refuse();
+    } catch {
+      return refuse();
+    }
+    trustedPublicKeys[keyId] = pem;
+  }
+
+  return Object.freeze({
+    baseSha: baseSha.toLowerCase(),
+    trustedPublicKeys: Object.freeze(trustedPublicKeys),
+  });
+}
+
 function normalizePolicy(input: Partial<CandidatePoolPolicy>): CandidatePoolPolicy {
   if (!isPlainRecord(input) || hasAccessor(input, 'maxPoolSize') || hasAccessor(input, 'minDownstreamGain')) throw new RangeError('candidate-pool-policy-invalid');
   const rawMax = ownData(input, 'maxPoolSize');
@@ -166,15 +238,21 @@ export class SelfImprovementCandidatePool {
   private readonly rejected: { candidateId: string; reason: string }[] = [];
   private readonly policy: CandidatePoolPolicy;
   private readonly dangerThresholds: DangerThresholds;
+  private readonly patchReceiptTrust: Readonly<HostOwnedPatchReceiptTrust> | null;
   private admittedCount = 0;
   private rejectedCount = 0;
 
-  constructor(policy: Partial<CandidatePoolPolicy> = {}, dangerThresholds: DangerThresholds = DEFAULT_DANGER_THRESHOLDS) {
+  constructor(
+    policy: Partial<CandidatePoolPolicy> = {},
+    dangerThresholds: DangerThresholds = DEFAULT_DANGER_THRESHOLDS,
+    hostPatchReceiptTrust?: unknown,
+  ) {
     this.policy = normalizePolicy(policy);
     this.dangerThresholds = Object.freeze({
       maxDanger01: clamp01(Number(dangerThresholds?.maxDanger01 ?? DEFAULT_DANGER_THRESHOLDS.maxDanger01)),
       maxBlastRadius01: clamp01(Number(dangerThresholds?.maxBlastRadius01 ?? DEFAULT_DANGER_THRESHOLDS.maxBlastRadius01)),
     });
+    this.patchReceiptTrust = hostPatchReceiptTrust === undefined ? null : normalizePatchReceiptTrust(hostPatchReceiptTrust);
   }
   get size(): number { return this.byId.size; }
   rejections(): readonly { candidateId: string; reason: string }[] { return this.rejected.map(row => ({ ...row })); }
@@ -193,26 +271,45 @@ export class SelfImprovementCandidatePool {
   submitVerified(input: unknown, graph: SourceGraph, proof: unknown): AdmissionResult {
     const normalized = normalizeCandidate(input);
     if (!normalized.candidate) return this.reject(normalized.candidateId, normalized.reason ?? 'malformed-candidate');
-    if (!isPlainRecord(proof)) return this.reject(normalized.candidate.candidateId, 'patch-receipt:proof-malformed');
+    const candidateId = normalized.candidate.candidateId;
+    const hostTrust = this.patchReceiptTrust;
+    if (!hostTrust) return this.reject(candidateId, 'patch-receipt:host-trust-unconfigured');
+    if (!isPlainRecord(proof)) return this.reject(candidateId, 'patch-receipt:proof-malformed');
     const patchText = ownData(proof, 'patchText');
-    const expectedBaseSha = ownData(proof, 'expectedBaseSha');
     const receipt = ownData(proof, 'receipt') as PatchReceipt | undefined;
-    const trustedPublicKeys = ownData(proof, 'trustedPublicKeys');
-    if (typeof patchText !== 'string' || typeof expectedBaseSha !== 'string' || !receipt || !isPlainRecord(trustedPublicKeys)) {
-      return this.reject(normalized.candidate.candidateId, 'patch-receipt:proof-malformed');
+    if (typeof patchText !== 'string' || !receipt) {
+      return this.reject(candidateId, 'patch-receipt:proof-malformed');
     }
+
+    // The candidate supplies only the bytes to inspect. Expected source revision
+    // and accepted public keys are snapshotted from host configuration at pool
+    // construction and are never read from this proof object.
     const verification = verifyPatchReceipt(receipt, {
       patchText,
-      expectedBaseSha,
+      expectedBaseSha: hostTrust.baseSha,
       expectedTargetFiles: normalized.candidate.targetFiles,
       evolveBlocks: normalized.candidate.evolveBlocks,
-      trustedPublicKeys: trustedPublicKeys as Record<string, string>,
+      trustedPublicKeys: hostTrust.trustedPublicKeys,
     });
-    if (!verification.ok) return this.reject(normalized.candidate.candidateId, 'patch-receipt:' + verification.reason);
-    return this.submit(input, graph);
+    if (!verification.ok) return this.reject(candidateId, 'patch-receipt:' + verification.reason);
+    return this.admit(input, graph, 'signed-patch-receipt', {
+      keyId: verification.keyId,
+      baseSha: verification.baseSha,
+      patchSha256: verification.patchSha256,
+    });
   }
 
+  /** Ranking from candidate-supplied observations is metrics-only, never patch authorization. */
   submit(input: unknown, graph: SourceGraph): AdmissionResult {
+    return this.admit(input, graph, 'metrics-only');
+  }
+
+  private admit(
+    input: unknown,
+    graph: SourceGraph,
+    admissionClass: CandidateAdmissionClass,
+    patchReceipt?: VerifiedPatchReceiptSummary,
+  ): AdmissionResult {
     const normalized = normalizeCandidate(input);
     const candidateId = normalized.candidateId;
     if (!normalized.candidate) return this.reject(candidateId, normalized.reason ?? 'malformed-candidate');
@@ -256,10 +353,21 @@ export class SelfImprovementCandidatePool {
       proxyGain: divergence.meanProxyGain,
       divergence: divergence.meanDivergence,
       danger01: danger.score01,
+      admissionClass,
+      ...(patchReceipt ? { patchReceipt: Object.freeze({ ...patchReceipt }) } : {}),
     });
     this.admittedCount = Math.min(1_000_000_000, this.admittedCount + 1);
     this.evictIfNeeded();
-    return { accepted: true, candidateId, reason: 'admitted', guard, divergence, danger };
+    return {
+      accepted: true,
+      candidateId,
+      reason: 'admitted',
+      admissionClass,
+      ...(patchReceipt ? { patchReceipt: { ...patchReceipt } } : {}),
+      guard,
+      divergence,
+      danger,
+    };
   }
 
   private evictIfNeeded(): void {
@@ -280,6 +388,8 @@ export class SelfImprovementCandidatePool {
       proxyGain: stored.proxyGain,
       divergence: stored.divergence,
       danger01: stored.danger01,
+      admissionClass: stored.admissionClass,
+      ...(stored.patchReceipt ? { patchReceipt: { ...stored.patchReceipt } } : {}),
       parentId: stored.candidate.parentId,
     })).sort((a, b) => (b.downstreamGain - a.downstreamGain) || (a.danger01 - b.danger01) || a.candidateId.localeCompare(b.candidateId));
   }

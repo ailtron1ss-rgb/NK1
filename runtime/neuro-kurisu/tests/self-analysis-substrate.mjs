@@ -266,6 +266,10 @@ assert.ok(
   realProtected.some((f) => f.includes('P23LearningEngine')),
   'real tree must expose P23LearningEngine as a protected capability',
 );
+assert.ok(
+  realProtected.some((f) => f.includes('PatchReceiptGuard')),
+  'real tree must protect the patch receipt verifier from candidate self-modification',
+);
 for (const owner of [
   'ProxyDivergenceGuard',
   'SelfImprovementCandidatePool',
