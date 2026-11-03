@@ -478,7 +478,7 @@ assert.equal(observationGetterCalls, 0, 'adapter accessors must never execute');
 assert.equal(immutablePool.snapshot().rejectionLedgerSize, 0);
 
 console.log(
-  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=89 '
+  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=93 '
   + `realFiles=${realSummary.files} realNodes=${realSummary.nodes} realEdges=${realSummary.edges} `
   + `extracted=${realSummary.extractedEdges} inferred=${realSummary.inferredEdges} `
   + `protectedFiles=${realProtected.length} protectedFragments=${PROTECTED_CAPABILITY_FRAGMENTS.length}`,
