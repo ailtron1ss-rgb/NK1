@@ -369,7 +369,38 @@
         "motivation/heartbeat"
       ],
       "disposition": "diff-against-existing-adaptation-before-code",
-      "decision": "Do not duplicate Hexis subsystem. Compare this snapshot to archived 2026-10-08 source and selectively port only missing tests/invariants."
+      "decision": "Do not duplicate Hexis subsystem. Compare this snapshot to archived 2026-10-08 source and selectively port only missing tests/invariants.",
+      "securityFindings": [
+        {
+          "path": "Hexis-main/.env.local",
+          "classification": "potential-local-credential-config",
+          "observedKeys": [
+            "POSTGRES_DB",
+            "POSTGRES_USER",
+            "POSTGRES_PASSWORD",
+            "POSTGRES_HOST",
+            "POSTGRES_PORT",
+            "HEXIS_BIND_ADDRESS"
+          ],
+          "nonEmptyValues": 6,
+          "valuesPersisted": false,
+          "valuesPublished": false,
+          "importedToNk1": false,
+          "action": "exclude-from-import-and-release; rotate POSTGRES_PASSWORD if it is live, reused or shared"
+        },
+        {
+          "path": "Hexis-main/.env.local.redacted.example",
+          "classification": "expected-redacted-template",
+          "presentInUploadedArchive": false,
+          "importedToNk1": false
+        },
+        {
+          "path": "Hexis-main/SECURITY-SANITIZATION-NOTICE.md",
+          "classification": "sanitization-notice",
+          "presentInUploadedArchive": false,
+          "existingInNk1ArchivedSnapshot": true
+        }
+      ]
     },
     {
       "file": "PocketFlow-main.zip",
@@ -488,5 +519,9 @@
       "disposition": "already-indexed-adaptation-check",
       "decision": "SHA is byte-identical to already indexed Will source. Existing NK1 Will integration matrix covers reafference/action receipts; no duplicate import."
     }
-  ]
+  ],
+  "securityBoundary": {
+    "summary": "The uploaded Hexis ZIP contains a local .env.local with six non-empty configuration values, including a PostgreSQL password field. Values are deliberately not stored in this manifest or any report.",
+    "action": "Do not import or publish .env.local. Keep the already-sanitized NK1 archive representation. Rotate the password if it is not an isolated disposable local test credential."
+  }
 }
