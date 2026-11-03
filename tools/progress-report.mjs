@@ -117,17 +117,27 @@ function main() {
   const contract = JSON.parse(readFileSync(CONTRACT, 'utf8'));
   const workstreams = [];
   let weightedArtifacts = 0;
+  let weightedHarness = 0;
+  let harnessWeight = 0;
   let weightedEvidence = 0;
   let totalWeight = 0;
 
   for (const ws of contract.workstreams) {
     const results = ws.probes.map((probe) => ({ probe, ...runProbe(probe, currentSha) }));
-    const passed = results.filter((r) => r.ok).length;
-    const artifactPercent = results.length ? Math.round((passed / results.length) * 100) : 0;
+    const artifactResults = results.filter((result) => result.probe.kind !== 'npm-script');
+    const harnessResults = results.filter((result) => result.probe.kind === 'npm-script');
+    const artifactPassed = artifactResults.filter((r) => r.ok).length;
+    const artifactPercent = artifactResults.length ? Math.round((artifactPassed / artifactResults.length) * 100) : 0;
+    const harnessPassed = harnessResults.filter((r) => r.ok).length;
+    const testHarnessPercent = harnessResults.length ? Math.round((harnessPassed / harnessResults.length) * 100) : 0;
     const evidenceResults = (ws.evidenceProbes ?? []).map((probe) => ({ probe, ...runEvidenceProbe(probe, currentSha) }));
     const evidencePassed = evidenceResults.filter((r) => r.ok).length;
     const evidencePercent = evidenceResults.length ? Math.round((evidencePassed / evidenceResults.length) * 100) : 0;
     weightedArtifacts += (ws.weight * artifactPercent) / 100;
+    if (harnessResults.length) {
+      weightedHarness += (ws.weight * testHarnessPercent) / 100;
+      harnessWeight += ws.weight;
+    }
     weightedEvidence += (ws.weight * evidencePercent) / 100;
     totalWeight += ws.weight;
     workstreams.push({
@@ -136,9 +146,13 @@ function main() {
       weight: ws.weight,
       endGoal: ws.endGoal,
       artifactPercent,
-      artifactPassed: passed,
-      artifactTotal: results.length,
-      artifactMissing: results.filter((r) => !r.ok).map((r) => r.detail),
+      artifactPassed,
+      artifactTotal: artifactResults.length,
+      artifactMissing: artifactResults.filter((r) => !r.ok).map((r) => r.detail),
+      testHarnessPercent,
+      testHarnessPassed: harnessPassed,
+      testHarnessTotal: harnessResults.length,
+      testHarnessMissing: harnessResults.filter((r) => !r.ok).map((r) => r.detail),
       evidencePercent,
       evidencePassed,
       evidenceTotal: evidenceResults.length,
@@ -147,12 +161,14 @@ function main() {
   }
 
   const artifactCoveragePercent = totalWeight ? Math.round((weightedArtifacts / totalWeight) * 100) : 0;
+  const testHarnessCoveragePercent = harnessWeight ? Math.round((weightedHarness / harnessWeight) * 100) : 0;
   const verifiedEfficacyPercent = totalWeight ? Math.round((weightedEvidence / totalWeight) * 100) : 0;
   const report = {
     schema: 'nk1.progress-report.v2',
     generatedAt: new Date().toISOString(),
     currentSha,
     artifactCoveragePercent,
+    testHarnessCoveragePercent,
     verifiedEfficacyPercent,
     disclaimer: 'Artifact coverage measures the presence of implementation/test artifacts only. Verified efficacy counts only JSON evidence with verified=true, exact current HEAD SHA, and every workstream-specific metric threshold. Neither percentage alone means product readiness.',
     workstreams: workstreams.sort((a, b) => b.weight - a.weight),
@@ -169,13 +185,14 @@ function main() {
     return;
   }
 
-  console.log(`NK1 PROGRESS — artifact coverage ${artifactCoveragePercent}% | verified efficacy ${verifiedEfficacyPercent}% | SHA ${currentSha.slice(0, 12)}\n`);
+  console.log(`NK1 PROGRESS — artifacts ${artifactCoveragePercent}% | test harness ${testHarnessCoveragePercent}% | verified efficacy ${verifiedEfficacyPercent}% | SHA ${currentSha.slice(0, 12)}\n`);
   for (const ws of report.workstreams) {
     const bar = '█'.repeat(Math.round(ws.artifactPercent / 10)).padEnd(10, '░');
     console.log(`${bar} artifact ${String(ws.artifactPercent).padStart(3)}% | evidence ${String(ws.evidencePercent).padStart(3)}% | w=${String(ws.weight).padStart(2)} | ${ws.title}`);
     if (ws.artifactMissing.length) console.log(`        missing artifacts: ${ws.artifactMissing.join('; ')}`);
+    if (ws.testHarnessMissing.length) console.log(`        missing test harnesses: ${ws.testHarnessMissing.join('; ')}`);
     if (ws.evidenceMissing.length) console.log(`        missing verified evidence: ${ws.evidenceMissing.join('; ')}`);
   }
-  console.log(`\nArtifact coverage: ${artifactCoveragePercent}% (not behaviour or readiness). Verified efficacy: ${verifiedEfficacyPercent}% (exact-SHA holdout/device/soak evidence only).`);
+  console.log(`\nArtifacts: ${artifactCoveragePercent}% | Test harnesses available: ${testHarnessCoveragePercent}% (not test pass rate) | Verified efficacy: ${verifiedEfficacyPercent}% (exact-SHA holdout/device/soak evidence only).`);
 }
 main();
