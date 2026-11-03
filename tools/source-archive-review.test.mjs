@@ -10,6 +10,16 @@ assert.equal(manifest.containers.length, 4);
 assert.equal(manifest.archives.length, 22);
 assert.equal(manifest.summary.uniqueInnerProjects, 21);
 assert.equal(manifest.summary.duplicateInnerZipArtifacts, 1);
+assert.equal(manifest.containers.reduce((sum, item) => sum + item.members.length, 0), 22,
+  'every inner archive must be assigned to exactly one outer container');
+assert.equal(new Set(manifest.archives.map(item => item.sha256)).size, 21,
+  'the two Letta entries are the only exact inner-archive duplicate');
+for (const container of manifest.containers) {
+  assert.match(container.sha256, /^[a-f0-9]{64}$/, 'outer container must have a SHA-256 digest');
+  assert.ok(container.members.length > 0, 'every outer container must contain indexed archives');
+  assert.equal(new Set(container.members).size, container.members.length,
+    'an outer container cannot list an inner archive twice');
+}
 const containerNames = new Set(manifest.containers.map(x => x.file));
 const byName = new Map();
 for (const row of manifest.archives) {
