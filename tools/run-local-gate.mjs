@@ -43,6 +43,7 @@ const DEFAULT_STEPS = [
   'test:self-analysis-substrate',
   'test:cognitive-cycle-soak',
   'test:performance-governor-determinism',
+  'test:security-redteam',
   'test:self-modification-adversarial',
   'test:self-agency:authority',
   'test:self-agency:live',
