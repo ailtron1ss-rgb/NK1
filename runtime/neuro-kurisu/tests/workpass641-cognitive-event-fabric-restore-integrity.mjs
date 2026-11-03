@@ -89,4 +89,27 @@ receiptRestore.restore(tamperedReceipt);
 assert.equal(receiptRestore.hasToolReceiptTrace('exec:7'), false,
   'a receipt replay guard with a numeric-string timestamp must not be restored');
 
+
+const metacognition = new CognitiveEventFabric(128);
+const action = metacognition.append({ tick: 91, stage: 'action', source: 'test-action' });
+const outcome = metacognition.append({ tick: 91, stage: 'outcome', source: 'test-outcome', parentIds: [action.id] });
+const learning = metacognition.append({ tick: 91, stage: 'learning', source: 'test-learning', parentIds: [outcome.id] });
+const episodeInput = {
+  tick: 91, cycleId: 'cycle-91', actionEventId: action.id, outcomeEventId: outcome.id, learningEventId: learning.id,
+  predictedOutcomeHash: 'a'.repeat(64), observedOutcomeHash: 'b'.repeat(64), decisionRationaleHash: 'c'.repeat(64),
+  predictionError01: 0.35, confidence01: 0.8, reflectionKind: 'calibration', correctionDisposition: 'staged',
+};
+const firstEpisode = metacognition.recordMetacognitiveEpisode(episodeInput);
+assert.equal(firstEpisode.resolved, true);
+assert.equal(firstEpisode.replayed, false);
+const replayEpisode = metacognition.recordMetacognitiveEpisode(episodeInput);
+assert.equal(replayEpisode.replayed, true);
+assert.equal(replayEpisode.eventId, firstEpisode.eventId);
+assert.equal(metacognition.recent(128).filter(event => event.stage === 'metacognition').length, 1);
+const restoredMetacognition = new CognitiveEventFabric(128);
+restoredMetacognition.restore(metacognition.snapshot());
+assert.equal(restoredMetacognition.recent(128).filter(event => event.stage === 'metacognition').length, 1);
+assert.equal(restoredMetacognition.recordMetacognitiveEpisode(episodeInput).replayed, true);
+assert.throws(() => metacognition.recordMetacognitiveEpisode({ ...episodeInput, predictionError01: 0.9 }), /metacognitive-episode-id-conflict/);
+
 console.log('COGNITIVE_EVENT_FABRIC_SNAPSHOT_RESTORE=PASS');
