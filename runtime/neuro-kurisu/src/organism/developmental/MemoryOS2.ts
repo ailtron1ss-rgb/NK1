@@ -1046,7 +1046,9 @@ export class MemoryOS2{
     this.spatialIndex.remove(existing.id);
     const incomingObservedAt=Number(input.observedAt);
     const existingObservedAt=Number(existing.observedAt??existing.createdAt);
-    const hasNewerObservation=Number.isFinite(incomingObservedAt)&&incomingObservedAt>=existingObservedAt;
+    // Equal timestamps cannot establish temporal precedence. Treat a conflicting
+    // same-time spatial row as a replay/ambiguous frame and keep the accepted point.
+    const hasNewerObservation=Number.isFinite(incomingObservedAt)&&incomingObservedAt>existingObservedAt;
     const hasSpatialObservation=Boolean(input.context&&
       typeof input.context.spatialFrameId==='string'&&
       typeof input.context.spatialX==='string'&&
