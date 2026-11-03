@@ -2,10 +2,38 @@ export type IdentityAxis='values'|'relationships'|'preferences'|'autobiography'|
 export interface P76Input { tick:number; identity01:number; drift01:number; valueContinuity01:number; memoryContinuity01:number; authoredContinuity01:number; relationshipContinuity01:number; goalContinuity01:number; contradiction01:number; }
 export interface P76State { version:1; samples:number; continuity01:number; drift01:number; conservation01:number; narrativeContinuity01:number; relationshipContinuity01:number; goalContinuity01:number; protectedViolations:number; recentEvents:Array<{tick:number;kind:string;delta01:number}>; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finiteOr=(value:unknown,fallback:number):number=>{
+  const numeric=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;
+  return Number.isFinite(numeric)?numeric:(Number.isFinite(fallback)?fallback:0);
+};
+const countOr=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(finiteOr(value,fallback)));
 export const defaultP76=():P76State=>({version:1,samples:0,continuity01:.86,drift01:0,conservation01:.92,narrativeContinuity01:.65,relationshipContinuity01:.65,goalContinuity01:.55,protectedViolations:0,recentEvents:[]});
 export class P76IdentityLifeOS{
  private state=JSON.parse(JSON.stringify(defaultP76())) as P76State;
- restore(raw:Partial<P76State>|undefined){if(!raw)return;const d=defaultP76();this.state={...d,...raw,recentEvents:Array.isArray(raw.recentEvents)?raw.recentEvents.slice(-64):[]};}
+ /**
+  * Restore without trusting the snapshot: the continuity/drift scalars drive
+  * multiplicative EMAs, so NaN would permanently poison identity conservation.
+  * Counts are non-negative integers, ratio fields are clamped, and `recentEvents`
+  * is element-validated from an own-data read that cannot throw.
+  */
+ restore(raw:Partial<P76State>|undefined){
+  const d=defaultP76();
+  const source=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
+  const read=(key:string):unknown=>{try{return (source as Record<string,unknown>)[key];}catch{return undefined;}};
+  const eventsRaw=read('recentEvents');
+  this.state={
+   version:1,
+   samples:countOr(read('samples'),d.samples),
+   continuity01:clamp(finiteOr(read('continuity01'),d.continuity01)),
+   drift01:clamp(finiteOr(read('drift01'),d.drift01)),
+   conservation01:clamp(finiteOr(read('conservation01'),d.conservation01)),
+   narrativeContinuity01:clamp(finiteOr(read('narrativeContinuity01'),d.narrativeContinuity01)),
+   relationshipContinuity01:clamp(finiteOr(read('relationshipContinuity01'),d.relationshipContinuity01)),
+   goalContinuity01:clamp(finiteOr(read('goalContinuity01'),d.goalContinuity01)),
+   protectedViolations:countOr(read('protectedViolations'),d.protectedViolations),
+   recentEvents:Array.isArray(eventsRaw)?eventsRaw.filter((e):e is {tick:number;kind:string;delta01:number}=>Boolean(e)&&typeof e==='object'&&typeof (e as any).kind==='string').map((e:any)=>({tick:countOr(e.tick,0),kind:String(e.kind).slice(0,80),delta01:clamp(finiteOr(e.delta01,0))})).slice(-64):[],
+  };
+ }
  snapshot(){return JSON.parse(JSON.stringify(this.state)) as P76State;}
  summary(){return{version:1,samples:this.state.samples,continuity01:this.state.continuity01,drift01:this.state.drift01,conservation01:this.state.conservation01,narrativeContinuity01:this.state.narrativeContinuity01,relationshipContinuity01:this.state.relationshipContinuity01,goalContinuity01:this.state.goalContinuity01,protectedViolations:this.state.protectedViolations,lastReason:this.state.recentEvents.at(-1)?.kind??'none'};}
  observe(i:P76Input){
