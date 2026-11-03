@@ -18,13 +18,40 @@
  * Usage: node tools/progress-report.mjs [--json] [--out <file>]
  */
 
-import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, relative, isAbsolute, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const CONTRACT = resolve(ROOT, 'contracts/progress-workstreams.json');
+const ROOT_REAL = realpathSync(ROOT);
+
+/**
+ * Contract paths are untrusted configuration. Resolve only repo-relative paths,
+ * reject traversal/absolute forms, and check real paths so an in-repo symlink
+ * cannot redirect a probe outside the checkout.
+ */
+function resolveRepoPath(value) {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 1024 ||
+      value.includes(String.fromCharCode(0)) || value.startsWith('/') || /^[A-Za-z]:/.test(value) ||
+      value.includes(String.fromCharCode(92))) return null;
+  const segments = value.split('/');
+  if (segments.some((segment) => segment === '' || segment === '..')) return null;
+  const full = resolve(ROOT, value);
+  const relativePath = relative(ROOT_REAL, full);
+  if (relativePath === '..' || relativePath.startsWith('..' + sep) || isAbsolute(relativePath)) return null;
+  if (existsSync(full)) {
+    try {
+      const real = realpathSync(full);
+      const realRelative = relative(ROOT_REAL, real);
+      if (realRelative === '..' || realRelative.startsWith('..' + sep) || isAbsolute(realRelative)) return null;
+    } catch {
+      return null;
+    }
+  }
+  return full;
+}
 
 function gitHead() {
   const result = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
@@ -32,15 +59,17 @@ function gitHead() {
 }
 
 function globMatch(pattern, currentSha) {
-  const dir = resolve(ROOT, dirname(pattern));
+  const dir = resolveRepoPath(dirname(pattern));
   const base = pattern.split('/').pop() ?? '';
-  if (!existsSync(dir) || !currentSha) return false;
+  if (!dir || !existsSync(dir) || !currentSha) return false;
   const prefix = base.split('*')[0];
   const suffix = base.split('*').pop() ?? '';
   return readdirSync(dir).some((name) => {
     if (!name.startsWith(prefix) || !name.endsWith(suffix)) return false;
     try {
-      const artifact = JSON.parse(readFileSync(resolve(dir, name), 'utf8'));
+      const candidatePath = resolveRepoPath(`${dirname(pattern)}/${name}`);
+      if (!candidatePath) return false;
+      const artifact = JSON.parse(readFileSync(candidatePath, 'utf8'));
       return artifact.verified === true && artifact.sha === currentSha;
     } catch {
       return false;
@@ -59,7 +88,8 @@ function readEvidencePath(value, path) {
 
 function runEvidenceProbe(probe, currentSha) {
   try {
-    const full = resolve(ROOT, probe.path);
+    const full = resolveRepoPath(probe.path);
+    if (!full) return { ok: false, detail: `${probe.path} is not a safe repository-relative path` };
     if (!existsSync(full)) return { ok: false, detail: `${probe.path} missing` };
     const artifact = JSON.parse(readFileSync(full, 'utf8'));
     if (artifact.verified !== true) return { ok: false, detail: `${probe.path} is not verified` };
@@ -84,20 +114,23 @@ function runEvidenceProbe(probe, currentSha) {
 function runProbe(probe, currentSha) {
   try {
     if (probe.kind === 'file-exists') {
-      return { ok: existsSync(resolve(ROOT, probe.path)), detail: probe.path };
+      const full = resolveRepoPath(probe.path);
+      return { ok: Boolean(full) && existsSync(full), detail: full ? probe.path : `${probe.path} is not a safe repository-relative path` };
     }
     if (probe.kind === 'glob') {
       return { ok: globMatch(probe.path, currentSha), detail: `${probe.path} requires verified evidence for current HEAD` };
     }
     if (probe.kind === 'evidence-json') return runEvidenceProbe(probe, currentSha);
     if (probe.kind === 'file-contains') {
-      const full = resolve(ROOT, probe.path);
+      const full = resolveRepoPath(probe.path);
+      if (!full) return { ok: false, detail: `${probe.path} is not a safe repository-relative path` };
       if (!existsSync(full)) return { ok: false, detail: `${probe.path} missing` };
       const text = readFileSync(full, 'utf8');
       return { ok: text.includes(probe.needle), detail: `${probe.path} contains ${probe.needle}` };
     }
     if (probe.kind === 'npm-script') {
-      const pkg = resolve(ROOT, probe.prefix, 'package.json');
+      const pkg = resolveRepoPath(String(probe.prefix) + '/package.json');
+      if (!pkg) return { ok: false, detail: `${probe.prefix}/package.json is not a safe repository-relative path` };
       if (!existsSync(pkg)) return { ok: false, detail: `${probe.prefix}/package.json missing` };
       const scripts = JSON.parse(readFileSync(pkg, 'utf8')).scripts ?? {};
       return { ok: Boolean(scripts[probe.script]), detail: `${probe.prefix}#${probe.script}` };
@@ -114,7 +147,11 @@ function main() {
   const outPath = outIndex !== -1 ? process.argv[outIndex + 1] : null;
   const currentSha = gitHead();
 
-  const contract = JSON.parse(readFileSync(CONTRACT, 'utf8'));
+  const contractIndex = process.argv.indexOf('--contract');
+  const contractArg = contractIndex === -1 ? null : process.argv[contractIndex + 1];
+  const contractPath = contractArg === null ? CONTRACT : resolveRepoPath(contractArg);
+  if (!contractPath) throw new Error('progress contract must be a safe repository-relative path');
+  const contract = JSON.parse(readFileSync(contractPath, 'utf8'));
   const workstreams = [];
   let weightedArtifacts = 0;
   let weightedHarness = 0;
