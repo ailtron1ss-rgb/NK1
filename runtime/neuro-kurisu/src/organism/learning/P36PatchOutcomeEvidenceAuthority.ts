@@ -37,6 +37,11 @@ export interface P36PatchOutcomeEvidence {
   evidenceScope: 'point-in-time-holdout-only';
 }
 
+/** Process-local host authority injected into the candidate pool constructor. */
+export interface HostOwnedP36PatchOutcomeAuthority {
+  measure(request: P36PatchOutcomeEvidenceRequest): P36PatchOutcomeEvidence | null;
+}
+
 const SHA1 = /^[a-f0-9]{40}$/i;
 const SHA256 = /^[a-f0-9]{64}$/i;
 
@@ -178,3 +183,67 @@ export function measureP36PatchOutcomeEvidence(
     evidenceScope: 'point-in-time-holdout-only',
   });
 }
+
+/**
+ * Capture the host-owned P36 configuration once and expose only a narrow measure()
+ * capability to the admission pool. The manifest is cloned/frozen, the task-family,
+ * baseline, verifier provenance and source SHA are fixed, and the ledger reference
+ * remains inside this closure. Candidate payloads can never supply or mutate them.
+ */
+export function createP36PatchOutcomeEvidenceAuthority(
+  input: unknown,
+): Readonly<HostOwnedP36PatchOutcomeAuthority> {
+  const refuse = (): never => { throw new TypeError('p36-patch-outcome-host-config-invalid'); };
+  if (!isPlainRecord(input)) return refuse();
+  const baseSha = ownData(input, 'baseSha');
+  const ledger = ownData(input, 'ledger');
+  const rawManifest = ownData(input, 'manifest');
+  const evaluatorVersion = ownData(input, 'evaluatorVersion');
+  const baselineMethod = ownData(input, 'baselineMethod');
+  const taskFamily = ownData(input, 'taskFamily');
+  const sourceId = ownData(input, 'sourceId');
+  const independenceKey = ownData(input, 'independenceKey');
+  const minimumPairedSeeds = ownData(input, 'minimumPairedSeeds');
+  if (typeof baseSha !== 'string' || !SHA1.test(baseSha) ||
+      !(ledger instanceof VerifiedOutcomeLedger) || !Array.isArray(rawManifest) ||
+      !validIdentity(evaluatorVersion, 64) || !validIdentity(baselineMethod, 180) ||
+      !validIdentity(taskFamily, 96) || !validIdentity(sourceId, 80) ||
+      !validIdentity(independenceKey, 120) ||
+      (minimumPairedSeeds !== undefined &&
+        (!Number.isSafeInteger(minimumPairedSeeds) || (minimumPairedSeeds as number) < 4 || (minimumPairedSeeds as number) > 128))) {
+    return refuse();
+  }
+
+  let manifest: TaskManifestEntry[];
+  try {
+    manifest = structuredClone(rawManifest) as TaskManifestEntry[];
+  } catch {
+    return refuse();
+  }
+  let manifestFingerprint: string;
+  try {
+    manifestFingerprint = new VerifiedOutcomeLedger(manifest).manifestFingerprint();
+    if (ledger.manifestFingerprint() !== manifestFingerprint) return refuse();
+  } catch {
+    return refuse();
+  }
+  const frozenManifest = Object.freeze(manifest.map(task => Object.freeze({ ...task }))) as unknown as readonly TaskManifestEntry[];
+  const snapshot: P36PatchOutcomeEvidenceAuthorityConfig = Object.freeze({
+    baseSha: baseSha.toLowerCase(),
+    ledger,
+    manifest: frozenManifest,
+    evaluatorVersion,
+    baselineMethod,
+    taskFamily,
+    sourceId,
+    independenceKey,
+    ...(minimumPairedSeeds === undefined ? {} : { minimumPairedSeeds: minimumPairedSeeds as number }),
+  });
+
+  return Object.freeze({
+    measure(request: P36PatchOutcomeEvidenceRequest): P36PatchOutcomeEvidence | null {
+      return measureP36PatchOutcomeEvidence(request, snapshot);
+    },
+  });
+}
+
