@@ -194,7 +194,11 @@ resource01:number}){
 
   const holdout=clamp01(.35+cf.score01*.35+mm.meanPrecision01*.2+port.portable01*.1);
 
-  const rewrite=this.selfRewrite.propose({expectedGain01:clamp01(input.capabilityGap01*.65+lc.credit01*.35),holdoutGain01:holdout,risk01:clamp01(input.causalUncertainty01*.55+mm.forgettingRisk01*.25+(1-input.stability01)*.2),rollbackReady:true});
+  // The proxy arm is the internal capability-gap estimate. The downstream arm is the
+  // independent held-out estimate. They are deliberately separate: collapsing them into
+  // one number made proxy-vs-downstream divergence undetectable at the live gate.
+  const proxyGain=clamp01(input.capabilityGap01*.65+lc.credit01*.35);
+  const rewrite=this.selfRewrite.propose({expectedGain01:proxyGain,holdoutGain01:holdout,risk01:clamp01(input.causalUncertainty01*.55+mm.forgettingRisk01*.25+(1-input.stability01)*.2),rollbackReady:true});
 
   const long=this.longitudinalBenchmark.observe({stability01:input.stability01,transfer01:sim.transfer01,identity01:input.coherence01,drift01:clamp01(input.causalUncertainty01*.6+(1-input.coherence01)*.4),holdout01:holdout});
 
