@@ -52,22 +52,65 @@ async function commandExists(command: string): Promise<boolean> {
   try { await execFileAsync('sh', ['-c', `command -v ${command}`], { timeout: 1500 }); return true; } catch { return false; }
 }
 
+function finiteTelemetryNumber(value: unknown): number | null {
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasWifiTelemetry(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  // A JSON key is not evidence by itself: Termux may return null/blank fields
+  // when Wi-Fi permissions are denied or the provider payload is incomplete.
+  // A real disconnected state is still valid telemetry, because it is an
+  // observed network state rather than a fabricated "offline" default.
+  for (const key of ['ssid', 'bssid', 'supplicant_state', 'ip', 'ip_address']) {
+    if (!Object.prototype.hasOwnProperty.call(row, key)) continue;
+    const field = row[key];
+    if (typeof field !== 'string') continue;
+    const normalized = field.trim().toLocaleLowerCase();
+    if (!normalized || ['unknown', 'null', 'undefined', '<unknown ssid>', '02:00:00:00:00:00'].includes(normalized)) continue;
+    return true;
+  }
+  return false;
+}
+
 function parseSensorPayload(value: any): Pick<BodyTelemetry, 'ambientLight01'|'proximity01'|'motion01'> {
   const out: Pick<BodyTelemetry, 'ambientLight01'|'proximity01'|'motion01'> = { ambientLight01: null, proximity01: null, motion01: null };
-  const rows = Array.isArray(value) ? value : (Array.isArray(value?.sensors) ? value.sensors : []);
+  const rows: Array<{ name: string; payload: any }> = [];
+  if (Array.isArray(value)) {
+    for (const row of value) rows.push({ name: String(row?.name ?? row?.type ?? ''), payload: row });
+  } else if (Array.isArray(value?.sensors)) {
+    for (const row of value.sensors) rows.push({ name: String(row?.name ?? row?.type ?? ''), payload: row });
+  } else if (value && typeof value === 'object') {
+    // Termux SensorAPI's documented wire shape is keyed by sensor name:
+    // { "Accelerometer": { "values": [x, y, z] }, "Light": { "values": [lux] } }.
+    // Keep array forms supported for older adapters and test fixtures.
+    for (const [name, payload] of Object.entries(value)) {
+      if (payload && typeof payload === 'object' && !Array.isArray(payload)) rows.push({ name, payload });
+    }
+  }
   const flat: Record<string, number> = {};
   const visit = (name: string, payload: any) => {
-    if (Array.isArray(payload?.values)) payload.values.forEach((v: unknown, i: number) => flat[`${name}:${i}`] = Number(v));
-    if (Array.isArray(payload?.data)) payload.data.forEach((v: unknown, i: number) => flat[`${name}:${i}`] = Number(v));
+    for (const values of [payload?.values, payload?.data]) {
+      if (!Array.isArray(values)) continue;
+      values.forEach((raw: unknown, i: number) => {
+        const parsed = finiteTelemetryNumber(raw);
+        if (parsed !== null) flat[`${name}:${i}`] = parsed;
+      });
+    }
   };
-  for (const row of rows) visit(String(row?.name ?? row?.type ?? ''), row);
-  const light = Object.entries(flat).find(([k]) => /light/i.test(k));
-  const proximity = Object.entries(flat).find(([k]) => /proximity/i.test(k));
-  const accel = Object.entries(flat).filter(([k]) => /accelerometer|accel/i.test(k));
-  if (light) out.ambientLight01 = clamp(Number(light[1]) / 1000);
-  if (proximity) out.proximity01 = clamp(Number(proximity[1]) / 10);
-  if (accel.length) {
-    const magnitude = Math.sqrt(accel.slice(0, 3).reduce((s, [,v]) => s + v * v, 0));
+  for (const row of rows) visit(row.name, row.payload);
+  const light = Object.entries(flat).find(([key]) => /light/i.test(key));
+  const proximity = Object.entries(flat).find(([key]) => /proximity/i.test(key));
+  const accel = Object.entries(flat).filter(([key]) => /accelerometer|accel/i.test(key));
+  if (light) out.ambientLight01 = clamp(light[1] / 1000);
+  if (proximity) out.proximity01 = clamp(proximity[1] / 10);
+  if (accel.length >= 3) {
+    const axes = accel.slice(0, 3);
+    const magnitude = Math.sqrt(axes.reduce((sum, [, value]) => sum + value * value, 0));
     out.motion01 = clamp(Math.abs(magnitude - 9.81) / 9.81);
   }
   return out;
@@ -118,21 +161,60 @@ export async function sampleAndroidTelemetryDetailed(previous: BodyTelemetry, pl
   let androidFresh = false;
   let charging = previous.charging;
   let source: SensorSource = 'node-host';
+  let batteryPayloadValid = !caps.battery;
+  let sensorPayloadValid = false;
+  let wifiPayloadValid = !caps.wifi;
   let commandsAttempted = 0; let commandsSucceeded = 0; let commandFailures = 0;
   if (caps.battery && wantsBattery) {
-    commandsAttempted++; const b = await commandJson('termux-battery-status', [], 2200); if (b) commandsSucceeded++; else commandFailures++;
-    const pct = Number(b?.percentage);
-    if (Number.isFinite(pct)) { battery01 = clamp(pct / 100); androidFresh=true; }
-    temp = Number.isFinite(Number(b?.temperature)) ? Number(b.temperature) : temp;
-    charging = typeof b?.plugged === 'string' ? !/unplugged/i.test(b.plugged) : charging;
+    commandsAttempted++;
+    const rawBattery = await commandJson('termux-battery-status', [], 2200);
+    const battery = rawBattery && typeof rawBattery === 'object' && !Array.isArray(rawBattery)
+      ? rawBattery as Record<string, unknown>
+      : null;
+    if (battery) commandsSucceeded++; else commandFailures++;
+    const pct = finiteTelemetryNumber(battery?.percentage);
+    batteryPayloadValid = pct !== null && pct >= 0 && pct <= 100;
+    if (batteryPayloadValid && pct !== null) {
+      battery01 = clamp(pct / 100);
+      androidFresh = true;
+      source = 'android-termux';
+    }
+    const temperature = finiteTelemetryNumber(battery?.temperature);
+    if (temperature !== null) {
+      temp = temperature;
+      androidFresh = true;
+      source = 'android-termux';
+    }
+    charging = typeof battery?.plugged === 'string' ? !/unplugged/i.test(battery.plugged) : charging;
+  }
+  let sensor: any = null;
+  if (caps.sensors && wantsMotion) {
+    commandsAttempted++;
+    sensor = await commandJson('termux-sensor', ['-n', '1'], 3500);
+    if (sensor && typeof sensor === 'object') commandsSucceeded++; else commandFailures++;
+  }
+  const s = parseSensorPayload(sensor);
+  sensorPayloadValid = Object.values(s).some((sample) => sample !== null);
+  if (sensorPayloadValid) {
+    androidFresh = true;
     source = 'android-termux';
   }
-  let sensor = null;
-  if (caps.sensors && wantsMotion) { commandsAttempted++; sensor = await commandJson('termux-sensor', ['-n', '1'], 3500); if (sensor) { androidFresh=true; commandsSucceeded++; } else commandFailures++; }
-  const wifi = caps.wifi && wantsNetwork ? (commandsAttempted++, await commandJson('termux-wifi-connectioninfo', [], 2200)) : null;
-  if (wifi) { androidFresh=true; commandsSucceeded++; } else if (caps.wifi) commandFailures++;
-  const networkOnline = caps.wifi ? Boolean(wifi && (wifi.ssid || wifi.bssid)) : previous.networkOnline;
-  const s = parseSensorPayload(sensor);
+  let wifi: any = null;
+  if (caps.wifi && wantsNetwork) {
+    commandsAttempted++;
+    wifi = await commandJson('termux-wifi-connectioninfo', [], 2200);
+    wifiPayloadValid = hasWifiTelemetry(wifi);
+    if (wifiPayloadValid) {
+      commandsSucceeded++;
+      androidFresh = true;
+      source = 'android-termux';
+    } else {
+      commandFailures++;
+    }
+  }
+  const networkOnline = caps.wifi && wantsNetwork && wifiPayloadValid
+    ? Boolean(wifi?.ssid || wifi?.bssid)
+    : previous.networkOnline;
   const screenOverride=String(process.env.NEURO_SCREEN_INTERACTIVE??'').trim().toLowerCase();
   const screenInteractive=screenOverride==='true'?true:screenOverride==='false'?false:previous.screenInteractive;
   const thermalPressure = temp == null ? previous.thermalPressure01 * 0.92 : clamp((temp - 30) / 18);
@@ -143,9 +225,9 @@ export async function sampleAndroidTelemetryDetailed(previous: BodyTelemetry, pl
     battery01, batteryTemperatureC: temp, thermalPressure01: thermalPressure, cpuLoad01: cpuLoad, ramPressure01: ramPressure,
     networkOnline, screenInteractive, ambientLight01: s.ambientLight01 ?? previous.ambientLight01,
     proximity01: s.proximity01 ?? previous.proximity01, motion01: s.motion01 ?? previous.motion01, charging, sampledAt: now,
-    source: caps.battery || caps.sensors ? source : 'node-host', staleMs: androidFresh ? 0 : Math.max(0, now - Number(previous.sampledAt || now)),
+    source, staleMs: androidFresh ? 0 : Math.max(0, now - Number(previous.sampledAt || now)),
   };
-  return { telemetry, diagnostics: { sampledAt: now, commandsAttempted, commandsSucceeded, commandFailures, sensorPayloadValid: sensor != null, batteryPayloadValid: !caps.battery || battery01 !== null, wifiPayloadValid: !caps.wifi || wifi != null, capabilitySnapshot: caps, source: telemetry.source } };
+  return { telemetry, diagnostics: { sampledAt: now, commandsAttempted, commandsSucceeded, commandFailures, sensorPayloadValid, batteryPayloadValid, wifiPayloadValid, capabilitySnapshot: caps, source: telemetry.source } };
 }
 
 export async function sampleAndroidTelemetry(previous: BodyTelemetry, plan: AndroidSamplingPlan = {}): Promise<BodyTelemetry> {
