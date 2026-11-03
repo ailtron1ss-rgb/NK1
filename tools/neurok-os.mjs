@@ -47,7 +47,7 @@ function ownArray(value, maxLength) {
     if (!Number.isSafeInteger(length) || length < 0 || length > maxLength) return null;
     const keys = Reflect.ownKeys(descriptors);
     if (keys.some(key => typeof key !== 'string' ||
-      (key !== 'length' && !/^(0|[1-9]\\d*)$/.test(key)))) return null;
+      (key !== 'length' && !/^(0|[1-9]\d*)$/.test(key)))) return null;
     const result = [];
     for (let index = 0; index < length; index += 1) {
       const descriptor = descriptors[String(index)];
