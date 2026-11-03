@@ -114,6 +114,15 @@ const point=(frameId,x,y,z=0)=>({spatialFrameId:frameId,spatialX:String(x),spati
  assert.deepEqual(index.query({frameId:"room-A",x:0,y:0,radius:5}).map(row=>row.id),["stable"],
   "refused replacement must preserve the last validated spatial point");
  assert.equal(index.diagnostics([{id:"stable",context:valid}]).pass,true);
+ const hostileProxy=new Proxy({...valid},{getPrototypeOf(){
+  throw new Error("untrusted spatial proxy inspected");
+ }});
+ accepted=true;
+ assert.doesNotThrow(()=>{accepted=index.upsert("stable",hostileProxy);},
+  "hostile spatial proxies must be rejected instead of inspected unsafely");
+ assert.equal(accepted,false,"hostile proxy replacement must be refused");
+ assert.deepEqual(index.query({frameId:"room-A",x:0,y:0,radius:5}).map(row=>row.id),["stable"],
+  "proxy rejection must preserve the last validated spatial point");
 }
 
 console.log("MEMORYOS2_SPATIAL_RETRIEVAL=PASS");
