@@ -13,6 +13,7 @@ on:
       - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "contracts/progress-workstreams.json"
+      - "docs/evidence/**"
       - "tools/progress-report.mjs"
       - "tools/run-local-gate.mjs"
       - ".nvmrc"
@@ -25,6 +26,7 @@ on:
       - "runtime/neuro-kurisu/tests/canonical-self-agency-authority.mjs"
       - "runtime/neuro-kurisu/package.json"
       - "contracts/progress-workstreams.json"
+      - "docs/evidence/**"
       - "tools/progress-report.mjs"
       - "tools/run-local-gate.mjs"
       - ".nvmrc"
@@ -52,5 +54,7 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Structural index and self-modification guard
         run: npm --prefix runtime/neuro-kurisu run test:self-analysis-substrate
+      - name: Compute exact-SHA progress report
+        run: node tools/progress-report.mjs --json
       - name: Runtime typecheck
         run: npm --prefix runtime/neuro-kurisu run typecheck
