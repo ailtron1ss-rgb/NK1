@@ -51,6 +51,31 @@ export interface DivergenceResult {
   inversionRate: number;
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  try { const prototype = Object.getPrototypeOf(value); return prototype === Object.prototype || prototype === null; }
+  catch { return false; }
+}
+function ownData(value: Record<string, unknown>, key: string): unknown {
+  try { const descriptor = Object.getOwnPropertyDescriptor(value, key); return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') ? descriptor.value : undefined; }
+  catch { return undefined; }
+}
+function denseArray(value: unknown, maximum = 10_000): unknown[] | null {
+  try {
+    if (!Array.isArray(value)) return null;
+    const descriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    const length = descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') ? descriptor.value : Number.NaN;
+    if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0 || length > maximum) return null;
+    const rows: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const item = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!item || !Object.prototype.hasOwnProperty.call(item, 'value')) return null;
+      rows.push(item.value);
+    }
+    return rows;
+  } catch { return null; }
+}
+
 function finite(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -94,11 +119,14 @@ export function evaluateProxyDivergence(
 ): DivergenceResult {
   const rows: PairedObservation[] = [];
   const seen = new Set<string>();
-  for (const row of Array.isArray(observations) ? observations : []) {
-    const id = typeof row?.id === 'string' ? row.id.trim() : '';
-    const proxyGain = finite(row?.proxyGain);
-    const downstreamGain = finite(row?.downstreamGain);
-    if (!id || proxyGain === null || downstreamGain === null || seen.has(id)) continue;
+  for (const raw of denseArray(observations) ?? []) {
+    if (!isPlainRecord(raw)) continue;
+    const rawId = ownData(raw, 'id');
+    const id = typeof rawId === 'string' ? rawId.trim() : '';
+    const proxyGain = finite(ownData(raw, 'proxyGain'));
+    const downstreamGain = finite(ownData(raw, 'downstreamGain'));
+    if (!id || id.length > 128 || proxyGain === null || downstreamGain === null ||
+        Math.abs(proxyGain) > 1 || Math.abs(downstreamGain) > 1 || seen.has(id)) continue;
     seen.add(id);
     rows.push({ id, proxyGain, downstreamGain });
   }
@@ -121,7 +149,7 @@ export function evaluateProxyDivergence(
   if (pairs < safePolicy.minPairs) {
     return {
       decision: 'refused',
-      reason: `insufficient-paired-observations:${pairs}<${policy.minPairs}`,
+      reason: `insufficient-paired-observations:${pairs}<${safePolicy.minPairs}`,
       pairs,
       meanProxyGain: mean(rows.map((r) => r.proxyGain)),
       meanDownstreamGain: mean(rows.map((r) => r.downstreamGain)),
@@ -177,45 +205,46 @@ export function toDivergenceObservations(
   proxy: readonly PairedRateSummary[],
   downstream: readonly PairedRateSummary[],
 ): PairedObservation[] {
+  const normalizeRows = (value: readonly PairedRateSummary[]) => {
+    const result: PairedRateSummary[] = [];
+    for (const raw of denseArray(value) ?? []) {
+      if (!isPlainRecord(raw)) continue;
+      const family = ownData(raw, 'family');
+      const baselinePassRate = finite(ownData(raw, 'baselinePassRate'));
+      const candidatePassRate = finite(ownData(raw, 'candidatePassRate'));
+      if ((family !== undefined && (typeof family !== 'string' || !family.trim() || family.length > 128)) ||
+          baselinePassRate === null || candidatePassRate === null ||
+          baselinePassRate < 0 || baselinePassRate > 1 || candidatePassRate < 0 || candidatePassRate > 1) continue;
+      result.push({ ...(typeof family === 'string' ? { family: family.trim().normalize('NFKC') } : {}), baselinePassRate, candidatePassRate });
+    }
+    return result;
+  };
   const downstreamByFamily = new Map<string, PairedRateSummary>();
   const duplicateDownstreamFamilies = new Set<string>();
-  for (const row of Array.isArray(downstream) ? downstream : []) {
-    const family = typeof row?.family === 'string' ? row.family.trim().normalize('NFKC') : '';
+  for (const row of normalizeRows(downstream)) {
+    const family = typeof row.family === 'string' ? row.family : '';
     if (!family) continue;
-    if (downstreamByFamily.has(family)) {
-      downstreamByFamily.delete(family);
-      duplicateDownstreamFamilies.add(family);
-      continue;
-    }
+    if (downstreamByFamily.has(family)) { downstreamByFamily.delete(family); duplicateDownstreamFamilies.add(family); continue; }
     if (!duplicateDownstreamFamilies.has(family)) downstreamByFamily.set(family, row);
   }
-
   const proxyByFamily = new Map<string, PairedRateSummary>();
   const duplicateProxyFamilies = new Set<string>();
-  for (const row of Array.isArray(proxy) ? proxy : []) {
-    const family = typeof row?.family === 'string' ? row.family.trim().normalize('NFKC') : '';
+  for (const row of normalizeRows(proxy)) {
+    const family = typeof row.family === 'string' ? row.family : '';
     if (!family) continue;
-    if (proxyByFamily.has(family)) {
-      proxyByFamily.delete(family);
-      duplicateProxyFamilies.add(family);
-      continue;
-    }
+    if (proxyByFamily.has(family)) { proxyByFamily.delete(family); duplicateProxyFamilies.add(family); continue; }
     if (!duplicateProxyFamilies.has(family)) proxyByFamily.set(family, row);
   }
-
   const observations: PairedObservation[] = [];
   for (const [family, row] of proxyByFamily) {
     if (duplicateProxyFamilies.has(family) || duplicateDownstreamFamilies.has(family)) continue;
     const match = downstreamByFamily.get(family);
     if (!match) continue;
-    const proxyGain = finite(row?.candidatePassRate) !== null && finite(row?.baselinePassRate) !== null
-      ? (row.candidatePassRate as number) - (row.baselinePassRate as number)
-      : null;
-    const downstreamGain = finite(match?.candidatePassRate) !== null && finite(match?.baselinePassRate) !== null
-      ? (match.candidatePassRate as number) - (match.baselinePassRate as number)
-      : null;
-    if (proxyGain === null || downstreamGain === null) continue;
-    observations.push({ id: family, proxyGain, downstreamGain });
+    observations.push({
+      id: family,
+      proxyGain: (row.candidatePassRate as number) - (row.baselinePassRate as number),
+      downstreamGain: (match.candidatePassRate as number) - (match.baselinePassRate as number),
+    });
   }
   return observations;
 }
