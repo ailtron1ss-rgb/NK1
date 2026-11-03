@@ -1,0 +1,38 @@
+name: NK1 embodiment voice cognitive context
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/body/VoiceEmbodiment.ts"
+      - "runtime/neuro-kurisu/tests/embodiment-voice-cognitive-context.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-embodiment-voice-cognitive-context.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nk1-embodiment-voice-cognitive-context-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    name: Cognitive state to voice planning contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: Live organism state to voice plan regression
+        run: npm --prefix runtime/neuro-kurisu run test:embodiment-voice-cognitive-context
+      - name: Existing voice contract regression
+        run: npm --prefix runtime/neuro-kurisu run test:voice

@@ -33,6 +33,7 @@ export interface ToolInputContractResult { valid: boolean; issues: ToolInputCont
 const TYPES = new Set<ToolInputType>(["object", "array", "string", "number", "integer", "boolean", "null"]);
 const DANGEROUS = new Set(["__proto__", "prototype"]);
 const MAX_DEPTH = 8, MAX_ISSUES = 24, MAX_KEYS = 32, MAX_ITEMS = 100, MAX_SCHEMA_KEYS = 128;
+const MAX_QUANTIFIER = 1000;
 const DEFAULT_BYTES = 65_536, MAX_BYTES = 2_097_152;
 
 function plain(value: unknown): value is Record<string, unknown> {
@@ -106,8 +107,17 @@ function assertSafePattern(pattern: string, path: string): void {
       continue;
     }
     if (character === "{") {
-      const quantifier = /^\{[0-9]+(?:,[0-9]*)?\}/.exec(pattern.slice(i));
+      const quantifier = /^\{([0-9]+)(?:,([0-9]*))?\}/.exec(pattern.slice(i));
       if (!quantifier) throw new Error("invalid-tool-input-contract:" + path + ":unsupported-pattern-construct");
+      // The contract advertises a bounded regular-expression subset. An explicit
+      // brace quantifier with an enormous upper bound (or a huge exact count)
+      // reintroduces the compile/size hazard the subset exists to prevent, so
+      // reject it even though it carries only one repeat operator.
+      const lower = Number(quantifier[1]);
+      const upper = quantifier[2] === undefined || quantifier[2] === "" ? Infinity : Number(quantifier[2]);
+      if (!Number.isSafeInteger(lower) || lower > MAX_QUANTIFIER || upper > MAX_QUANTIFIER || upper < lower) {
+        throw new Error("invalid-tool-input-contract:" + path + ":unbounded-pattern-quantifier");
+      }
       repeatOperators += 1;
       if (repeatOperators > 1) throw new Error("invalid-tool-input-contract:" + path + ":multiple-pattern-repetitions");
       i += quantifier[0].length - 1;

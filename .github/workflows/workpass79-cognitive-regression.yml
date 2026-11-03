@@ -98,3 +98,6 @@ jobs:
       - name: Exercise real server HTTP path with a controlled local provider
         working-directory: runtime/neuro-kurisu
         run: npm run test:workpass69:server-smoke
+      - name: Verify live causal action-to-post-state binding and strict one-tick attribution
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:workpass667:causal-live-binding

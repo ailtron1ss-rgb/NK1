@@ -264,21 +264,18 @@ Promote a candidate only when it removes a named failure of the canonical owner,
 
 ---
 
-## WorkPass71 addendum — co-speech gesture / full-body generation refresh (2026-11-03)
+## WorkPass71 addendum — additional co-speech / full-body gesture candidates (2026-11-03)
 
-**Decision:** extend the candidate queue only; adopt nothing in this pass. These are newer
-mechanisms relevant to §17 pass 4 (full motorics: co-speech gesture, walk/sit, live IK) and
-pass 5 (world interaction). All rows are `RESEARCH-ONLY` until a mechanism removes a named
-failure of the canonical owner and beats the current clip-based baseline on a frozen comparison
-under equal budget. No upstream code, weights or datasets were downloaded or installed.
+**Decision:** extend the candidate queue only; adopt nothing in this pass. These supplement the
+StreamTalk / LiveGesture / GlobalDiff rows above with further recent mechanisms for §17 pass 4
+(full motorics) and pass 5 (world interaction). All rows are `RESEARCH-ONLY`: no upstream code,
+weights or datasets were downloaded or installed.
 
 | Candidate / source | Revision / access | License | Mechanism | NK1 target | Boundary |
 |---|---|---|---|---|---|
-| [LiveGesture (streamable co-speech gesture)](https://www.catalyzex.com/paper/livegesture-streamable-co-speech-gesture) | paper, inspected 2026-11-03 | verify code license | Causal, region-coordinated full-body gesture with zero look-ahead; streamable VQ motion tokenizer + region-expert autoregressive transformer | Real-time co-speech layer candidate over the arbiter (pass 4.1/4.3) | Needs a runtime decoder; no reproduced NK1 result; BEAT2 license separate |
 | [DIDiffGes (AAAI 2025)](https://arxiv.org/html/2503.17059v1) | paper, inspected 2026-11-03 | verify code license | Decoupled semi-implicit diffusion, 10-step sampling, 88 frames in ~0.4 s | Offline gesture-quality reference | Diffusion sampling cost; not a browser runtime |
 | [SemTalk (ICCV 2025)](https://openaccess.thecvf.com/content/ICCV2025/papers/) | paper, inspected 2026-11-03 | verify code license | Holistic co-speech motion with frame-level semantic emphasis | Semantics-to-gesture mapping reference | Offline; dataset license separate |
-| [PRIMAL (ICCV 2025)](https://github.com/Kedreamix/Awesome-Talking-Head-Synthesis) | listed, inspected 2026-11-03 | verify code license | Physically reactive interactive motor model | Reference for reactive whole-body response (pass 5) | Not a web runtime; weights unreviewed |
-| [MediaPipe Tasks (face/pose/hand)](https://ai.google.dev/edge/mediapipe/solutions/vision) | current docs | Apache-2.0 | Landmark capture for opt-in camera tracking | Already recorded in this ledger (pass 5.2) | Privacy-gated input adapter only |
+| [PRIMAL (ICCV 2025)](https://github.com/Kedreamix/Awesome-Talking-Head-Synthesis) | index, inspected 2026-11-03 | verify code license | Physically reactive interactive motor model | Reference for reactive whole-body response (pass 5) | Not a web runtime; weights unreviewed |
 
 ### Acceptance rule (unchanged)
 

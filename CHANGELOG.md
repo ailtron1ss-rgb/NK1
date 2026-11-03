@@ -1,8 +1,53 @@
+## [NK1][Memory] Restore cross-lingual recall in the bilingual concept bridge (2026-11-03)
+- The answerability gate computed `conceptCoverage` but never treated it as grounding evidence, and document-side concept detection required a literal alias token, so inflected Russian never matched. Cross-lingual `retrieve()` returned `[]` in both directions.
+- Add a reverse concept-group index (alias token and its five-character stem), document-side concept detection symmetric with query-side expansion, concept-group postings in candidate selection, and a narrow `conceptGrounding` clause in the gate bounded to focused (1-3 group) queries with >=50% group coverage.
+- Cross-lingual `recallAtK01` moves 0.000 -> 1.000 in both EN->RU and RU->EN synthetic contracts; abstention and single-concept focus are preserved. Owning memory tests stay green.
+- This is a mechanism fix with a synthetic contract, not independent field evidence. The P23 promotion gate still requires an external bilingual labelled holdout with paired seeds.
+
+## [NK1][Learning] Bind live causal outcomes to the producing action (2026-11-03)
+- Correct the production OrganismCore handoff: pass the observed state success separately from the learning-scaled success label so action attribution compares like-for-like values.
+- Accept a trace stamped at either the pre-action or resulting tick, while requiring the resulting state to be exactly one tick after the pre-action state; reject stale and skipped-tick matches.
+- Harden CausalExperienceStream restore using own-data records, bounded dense arrays, per-field validation, provenance reconstruction and duplicate/conflicting trace quarantine.
+- Add live-cycle regression, update the P292 evidence-lane contract and wire the targeted test into WorkPass79 cognitive regression.
+- This fixes causal evidence admission; measurable learning uplift still requires independent bilingual holdout and paired-seed confirmation.
+
+## [NK1][Personality] Learn named character traits from verified outcomes (2026-11-03)
+- Map each ActionKind to explicit adaptive-trait and value targets; successful response, exploration and verification update only semantically aligned dimensions, not array positions derived from enum order.
+- Gate plasticity, relationship trust, autobiographical strength and self-belief changes on verified, low-error outcomes; unverified outcomes increase uncertainty but cannot rewrite enduring traits or values.
+- Harden P2702 restore using plain own-data records, dense bounded arrays, canonical vector names/widths, bounded metrics and safe relationship/action-preference reconstruction; hostile accessors/proxy traps fail closed.
+- Add named-trait/value, unverified-outcome, malformed snapshot, accessor, sparse-array and hostile proxy regressions. Reuse locked runtime dependencies; no new runtime dependency is introduced.
+- This measures consistent behavioral adaptation, not subjective consciousness or human-equivalent personality.
+
+## [NK1][Embodiment] Connect cognitive and affective state to voice planning (2026-11-03)
+- Snapshot post-interoceptive needs, identity continuity, grounding and appraisal affect as one bounded voice-context packet.
+- Add side-effect-free voice plan preview; per-utterance overrides remain isolated from the persistent context snapshot.
+- Route live speech through the same planner so cognitive load, uncertainty, social need and affect tune prosody without allowing negative high-arousal affect to escalate hostile delivery.
+- Add focused tests and a dedicated Node 24 workflow; physical device TTS/audio timing remains a separate E2E gate.
+
+## [NK1][Personhood] Harden P33 persisted identity restore (2026-11-03)
+- Restore P33 personhood state exclusively from plain own-data records and dense bounded arrays; reject accessors, proxy traps and malformed consent/interest evidence without invoking untrusted getters.
+- Bound and normalize persisted identity, development, autonomy, relationship, continuity, privacy, current-state and metric fields while preserving conservative defaults.
+- Add hostile root/child proxy, accessor, sparse array, invalid enum/value and valid roundtrip regressions; wire them into the WorkPass71 core regression workflow.
+- This hardens persistence integrity; it does not prove independent identity or subjective personhood.
+
 ## [NK1][Body] Renderer capability manifest, motion library and arbiter-driven 2D/3D bodies (2026-11-03)
 - Add a versioned, truthful renderer capability manifest with a fail-closed registry; the UI switch table now derives from it so a renderer cannot advertise a channel it does not implement.
 - Add a renderer-neutral motion library (16 programs) and an intent-driven arbiter with bounded cross-fade, an additive idle-breath overlay, energy-scaled amplitude and a layer cap.
 - Drive the 3D normalized humanoid proxy (spine, elbows, hips, knees) from arbiter channels without double-driving shoulders; drive the Original 2D SVG rig from the same channel vocabulary.
 - Tests: `app/scripts/body-systems.test.mjs` 22/22, `npm run test:workpass71`, app `test:scripts` 452/452, typecheck and build PASS. See `docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md`.
+
+## [NK1][Memory] Narrow sanitized feedback restore type without weakening rejection (2026-11-02)
+- Keep the distinction between an absent feedback record and a malformed feedback record explicit during consolidation restore.
+- Normalize the sanitized nullable result to undefined only after the invalid-snapshot guard, satisfying the declared persisted-state type without accepting malformed feedback.
+- Add a regression proving malformed feedback still resets to the safe default state.
+- Root cause was confirmed by the exact PR #644 typecheck log: TS2322 at MemoryConsolidationController.ts(93,9).
+
+## [NK1][Memory] Harden canonical consolidation and lifecycle restore (2026-11-02)
+- Validate MemoryConsolidationController counters, ratios, feedback and bounded decision history before restoring persisted state.
+- Validate CanonicalMemoryLifecycleAuthority counters, tick and bounded consolidation history; regenerate its diagnostic plan after restore instead of reviving opaque nested state.
+- Reject sparse/accessor-backed histories and recover safely from hostile Proxy traps without executing getters.
+- Add regressions for malformed state, getters, proxies and partial version-1 compatibility; wire the lifecycle test into NK1 memory-integrity CI.
+- Keep MemoryFabric/MemoryOS2 as the canonical memory owner; no parallel store or automatic rewrite policy is introduced.
 
 ## [NK1][Cognition] Enforce protective spine budget and validate world feedback (2026-11-01)
 - Make `protect` a hard stop for optional research, world rollout, shadow simulation and project work, even under high-urgency external input.

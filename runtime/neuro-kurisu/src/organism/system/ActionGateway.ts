@@ -645,6 +645,14 @@ export class ActionGateway {
     const validation=validateToolInputContract(input,registeredTool?.inputContract??DEFAULT_TOOL_INPUT_ENVELOPE);
     if(!validation.valid) return this.result(id,registeredTool?.capability??'unknown','tool-input-invalid','gate-check-failed','exec-' + randomUUID(),{error:'tool-input-invalid',issues:validation.issues},'tool arguments must be inert bounded JSON and satisfy the registered contract before approval, receipt admission or executor entry');
     const rawKey=options?.idempotencyKey;
+    // A hard policy refusal is terminal and must dominate the idempotency prompt:
+    // asking for a key to run an action that is refused either way would imply the
+    // action can proceed. The same checks run again in executeToolDirect.
+    const registeredDefinition=this.tools.get(id);
+    if(registeredDefinition?.destructive&&!this.live)
+      return this.result(id,registeredDefinition.capability,'dry-run-destructive-block','policy-refused',`exec-${randomUUID()}`,{error:'dry-run-destructive-block'},'destructive action is disabled in dry-run');
+    if(registeredDefinition?.destructive&&this.live&&!registeredDefinition.verify)
+      return this.result(id,registeredDefinition.capability,'live-destructive-verifier-required','policy-refused',`exec-${randomUUID()}`,{error:'live-destructive-verifier-required'},'live destructive tools require an independent postcondition verifier');
     if(rawKey===undefined || rawKey===null || rawKey==='') {
       if(requiresDurableIdempotency(this.tools.get(id))) return this.result(id,this.tools.get(id)?.capability??'unknown','idempotency-key-required','idempotency-key-required',`exec-${randomUUID()}`,{error:'idempotency-key-required'},'this operation is classified as side-effecting or high-risk and requires a stable key plus durable receipt ledger');
       const permission=await this.consumeDirectActionApproval(id,input,options.approvalId,options,'execute');

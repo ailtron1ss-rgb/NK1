@@ -7,6 +7,20 @@ import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './NativeSpeechEventChannel.ts';
 
 type OrganismNeedsLike = { energy:number; cognitiveLoad:number; uncertainty:number; socialNeed:number; novelty:number; identityCoherence:number; goalPressure:number; };
+export interface VoiceCognitiveContextOverrides {
+  continuity01?:number;
+  grounding01?:number;
+  uncertainty01?:number;
+  emotion?:{label?:string;valence01?:number;arousal01?:number;dominance01?:number};
+  needs?:OrganismNeedsLike;
+}
+export interface VoiceCognitiveContextSnapshot {
+  needs:OrganismNeedsLike;
+  continuity01:number;
+  grounding01:number;
+  uncertainty01:number;
+  emotion?:{label?:string;valence01?:number;arousal01?:number;dominance01?:number};
+}
 export type SpeechGatewayResult = { ok:boolean; uncertain?:boolean; outcomeClass?:string; reason?:string };
 export type SpeechGatewayDispatcher = (text:string, options:TermuxTtsOptions, speechEventId:string) => Promise<SpeechGatewayResult>;
 export type SpeechInterruptGatewayDispatcher = (speechEventId:string, reason:string, interruptEventId:string) => Promise<SpeechGatewayResult>;
@@ -18,6 +32,7 @@ export class EmbodimentRuntime {
   private lastSampleAt = 0;
   private voice: VoiceRuntimeState = defaultVoiceRuntimeState();
   private lastVoicePlan: VoicePlan | null = null;
+  private lastVoiceCognitiveContext:VoiceCognitiveContextSnapshot|null=null;
   private lastDiagnostics: AndroidTelemetryDiagnostics | null = null;
   private sensorFailures = 0;
   private sampleCount = 0;
@@ -43,6 +58,7 @@ export class EmbodimentRuntime {
   eventLog(): OrganismBodyEvent[] { return structuredClone(this.events.slice(0, 200)); }
   capabilitiesSnapshot(): TermuxCapabilities { return { ...this.capabilities }; }
   voiceSnapshot(): { state: VoiceRuntimeState; plan: VoicePlan | null } { return { state: structuredClone(this.voice), plan: structuredClone(this.lastVoicePlan) }; }
+  voiceCognitiveContextSnapshot():VoiceCognitiveContextSnapshot|null{return this.lastVoiceCognitiveContext?structuredClone(this.lastVoiceCognitiveContext):null;}
   sensorDiagnosticsSnapshot(): { diagnostics: AndroidTelemetryDiagnostics | null; sampleCount:number; sensorFailures:number } { return { diagnostics: structuredClone(this.lastDiagnostics), sampleCount:this.sampleCount, sensorFailures:this.sensorFailures }; }
 
   /** Subscribe to native provider-process telemetry without importing the low-level Termux bridge. These events are not verified audio playback events. */
@@ -103,12 +119,38 @@ export class EmbodimentRuntime {
     this.body.sleep = 'awake';
   }
 
-  applyToState(state: OrganismState): OrganismState {
+  applyToState(state: OrganismState, voiceContext:VoiceCognitiveContextOverrides={}): OrganismState {
     const lowBattery = Math.max(0, 0.35 - this.body.telemetry.battery01) / 0.35;
     const heat = this.body.thermalStrain01;
     state.needs.energy = Math.max(0, Math.min(1, state.needs.energy * 0.75 + this.body.bodyEnergy01 * 0.25 - lowBattery * 0.08));
     state.needs.cognitiveLoad = Math.max(0, Math.min(1, state.needs.cognitiveLoad * 0.76 + (1 - this.body.cognitiveCapacity01) * 0.28 + heat * 0.12 + (this.body.awake ? 0 : 0.15)));
     state.attentionBudget = Math.max(0, Math.min(1, state.attentionBudget * 0.72 + this.body.cognitiveCapacity01 * 0.28));
+    // Capture the post-interoceptive state, not stale pre-body values. This context
+    // is consumed by both previewVoicePlan() and speak(), unless a turn overrides it.
+    const unit=(value:number,fallback:number)=>Number.isFinite(value)?Math.max(0,Math.min(1,value)):fallback;
+    const needs:OrganismNeedsLike={
+      energy:unit(state.needs.energy,this.body.bodyEnergy01),
+      cognitiveLoad:unit(state.needs.cognitiveLoad,1-this.body.cognitiveCapacity01),
+      uncertainty:unit(state.needs.uncertainty,1-this.body.sensoryFreshness01),
+      socialNeed:unit(state.needs.socialNeed,.35),
+      novelty:unit(state.needs.novelty,.2),
+      identityCoherence:unit(state.needs.identityCoherence,.8),
+      goalPressure:unit(state.needs.goalPressure,.35),
+    };
+    const rawEmotion=voiceContext.emotion;
+    const emotion=rawEmotion?{
+      ...(typeof rawEmotion.label==='string'?{label:rawEmotion.label.slice(0,40)}:{}),
+      ...(rawEmotion.valence01!==undefined?{valence01:unit(rawEmotion.valence01,.5)}:{}),
+      ...(rawEmotion.arousal01!==undefined?{arousal01:unit(rawEmotion.arousal01,.22)}:{}),
+      ...(rawEmotion.dominance01!==undefined?{dominance01:unit(rawEmotion.dominance01,.5)}:{}),
+    }:undefined;
+    this.lastVoiceCognitiveContext={
+      needs,
+      continuity01:unit(voiceContext.continuity01??needs.identityCoherence,needs.identityCoherence),
+      grounding01:unit(voiceContext.grounding01??.7,.7),
+      uncertainty01:unit(voiceContext.uncertainty01??needs.uncertainty,needs.uncertainty),
+      ...(emotion?{emotion}:{}),
+    };
     return state;
   }
 
@@ -117,11 +159,31 @@ export class EmbodimentRuntime {
     return `battery=${Math.round(t.battery01*100)}%, temp=${t.batteryTemperatureC == null ? 'n/a' : `${t.batteryTemperatureC.toFixed(1)}C`}, cpu=${Math.round(t.cpuLoad01*100)}%, ram=${Math.round(t.ramPressure01*100)}%, thermal=${Math.round(this.body.thermalStrain01*100)}%, sleep=${this.body.sleep}`;
   }
 
-  async speak(text: string, context?: { action?:string|null; mode?:string|null; needs?:OrganismNeedsLike; continuity01?:number; grounding01?:number; uncertainty01?:number; emotion?:{label?:string;valence01?:number;arousal01?:number;dominance01?:number}; speechEventId?:string }): Promise<boolean> {
+  previewVoicePlan(text:string,context:VoiceCognitiveContextOverrides & {action?:string|null;mode?:string|null}={}):VoicePlan{
+    const cached=this.lastVoiceCognitiveContext;
+    const needs=context.needs??cached?.needs??{
+      energy:this.body.bodyEnergy01,
+      cognitiveLoad:1-this.body.cognitiveCapacity01,
+      uncertainty:1-this.body.sensoryFreshness01,
+      socialNeed:.35,novelty:.2,identityCoherence:.8,goalPressure:.35,
+    };
+    return buildVoicePlan({
+      text:String(text||''),
+      action:context.action,
+      mode:context.mode,
+      needs,
+      body:this.body,
+      continuity01:context.continuity01??cached?.continuity01,
+      grounding01:context.grounding01??cached?.grounding01,
+      uncertainty01:context.uncertainty01??cached?.uncertainty01??needs.uncertainty,
+      emotion:context.emotion??cached?.emotion,
+    });
+  }
+
+  async speak(text: string, context?: VoiceCognitiveContextOverrides & { action?:string|null; mode?:string|null; speechEventId?:string }): Promise<boolean> {
     if(this.activeSpeechEventId){this.voice.lastError='tts-prior-outcome-unresolved-no-overlap';this.voice.lastAt=Date.now();return false;}
     if(!this.body.ttsAvailable) { this.voice.lastError='tts-unavailable'; this.voice.lastAt=Date.now(); return false; }
-    const needs=context?.needs ?? { energy: this.body.bodyEnergy01, cognitiveLoad:1-this.body.cognitiveCapacity01, uncertainty:.35, socialNeed:.35, novelty:.2, identityCoherence:.8, goalPressure:.35 };
-    const plan=buildVoicePlan({ text:String(text||''), action:context?.action, mode:context?.mode, needs, body:this.body, continuity01:context?.continuity01, grounding01:context?.grounding01, uncertainty01:context?.uncertainty01, emotion:context?.emotion });
+    const plan=this.previewVoicePlan(text,context);
     this.lastVoicePlan=plan;
     const clean=String(text||'').replace(/[\r\n]+/g,' ').trim().slice(0,2000);
     const dispatcher=this.speechGatewayDispatcher;
