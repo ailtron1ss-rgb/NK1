@@ -19,15 +19,18 @@ concurrency:
 jobs:
   b272-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Verify B272 unit contract
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-272-endogenous-goal-genesis.mjs
       - name: Verify B272 live Core integration
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/big-pass-272-core-endogenous-goals.mjs
+      - name: Verify runtime TypeScript
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
