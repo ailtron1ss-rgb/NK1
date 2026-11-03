@@ -34,9 +34,37 @@ export interface HostOwnedPatchReceiptTrust {
 }
 
 export const DEFAULT_POOL_POLICY: CandidatePoolPolicy = Object.freeze({ maxPoolSize: 32, minDownstreamGain: 0 });
-export interface AdmissionResult { accepted: boolean; candidateId: string; reason: string; guard?: GuardResult; divergence?: DivergenceResult; danger?: DangerAssessment; }
-export interface RankedCandidate { candidateId: string; downstreamGain: number; proxyGain: number; divergence: number; danger01: number; parentId?: string; }
-interface StoredCandidate { candidate: Readonly<SelfImprovementCandidate>; downstreamGain: number; proxyGain: number; divergence: number; danger01: number; }
+export type CandidateAdmissionClass = 'metrics-only' | 'signed-patch-receipt';
+export interface VerifiedPatchReceiptSummary { keyId: string; baseSha: string; patchSha256: string; }
+export interface AdmissionResult {
+  accepted: boolean;
+  candidateId: string;
+  reason: string;
+  admissionClass?: CandidateAdmissionClass;
+  patchReceipt?: VerifiedPatchReceiptSummary;
+  guard?: GuardResult;
+  divergence?: DivergenceResult;
+  danger?: DangerAssessment;
+}
+export interface RankedCandidate {
+  candidateId: string;
+  downstreamGain: number;
+  proxyGain: number;
+  divergence: number;
+  danger01: number;
+  admissionClass: CandidateAdmissionClass;
+  patchReceipt?: VerifiedPatchReceiptSummary;
+  parentId?: string;
+}
+interface StoredCandidate {
+  candidate: Readonly<SelfImprovementCandidate>;
+  downstreamGain: number;
+  proxyGain: number;
+  divergence: number;
+  danger01: number;
+  admissionClass: CandidateAdmissionClass;
+  patchReceipt?: VerifiedPatchReceiptSummary;
+}
 const MAX_POOL_SIZE = 1024;
 const MAX_REJECTIONS = 256;
 const MAX_TARGETS = 256;
@@ -264,10 +292,24 @@ export class SelfImprovementCandidatePool {
       trustedPublicKeys: hostTrust.trustedPublicKeys,
     });
     if (!verification.ok) return this.reject(candidateId, 'patch-receipt:' + verification.reason);
-    return this.submit(input, graph);
+    return this.admit(input, graph, 'signed-patch-receipt', {
+      keyId: verification.keyId,
+      baseSha: verification.baseSha,
+      patchSha256: verification.patchSha256,
+    });
   }
 
+  /** Ranking from candidate-supplied observations is metrics-only, never patch authorization. */
   submit(input: unknown, graph: SourceGraph): AdmissionResult {
+    return this.admit(input, graph, 'metrics-only');
+  }
+
+  private admit(
+    input: unknown,
+    graph: SourceGraph,
+    admissionClass: CandidateAdmissionClass,
+    patchReceipt?: VerifiedPatchReceiptSummary,
+  ): AdmissionResult {
     const normalized = normalizeCandidate(input);
     const candidateId = normalized.candidateId;
     if (!normalized.candidate) return this.reject(candidateId, normalized.reason ?? 'malformed-candidate');
@@ -311,10 +353,21 @@ export class SelfImprovementCandidatePool {
       proxyGain: divergence.meanProxyGain,
       divergence: divergence.meanDivergence,
       danger01: danger.score01,
+      admissionClass,
+      ...(patchReceipt ? { patchReceipt: Object.freeze({ ...patchReceipt }) } : {}),
     });
     this.admittedCount = Math.min(1_000_000_000, this.admittedCount + 1);
     this.evictIfNeeded();
-    return { accepted: true, candidateId, reason: 'admitted', guard, divergence, danger };
+    return {
+      accepted: true,
+      candidateId,
+      reason: 'admitted',
+      admissionClass,
+      ...(patchReceipt ? { patchReceipt: { ...patchReceipt } } : {}),
+      guard,
+      divergence,
+      danger,
+    };
   }
 
   private evictIfNeeded(): void {
@@ -335,6 +388,8 @@ export class SelfImprovementCandidatePool {
       proxyGain: stored.proxyGain,
       divergence: stored.divergence,
       danger01: stored.danger01,
+      admissionClass: stored.admissionClass,
+      ...(stored.patchReceipt ? { patchReceipt: { ...stored.patchReceipt } } : {}),
       parentId: stored.candidate.parentId,
     })).sort((a, b) => (b.downstreamGain - a.downstreamGain) || (a.danger01 - b.danger01) || a.candidateId.localeCompare(b.candidateId));
   }
