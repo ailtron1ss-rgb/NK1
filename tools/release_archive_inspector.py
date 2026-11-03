@@ -62,8 +62,7 @@ def _choose_prefix(paths: list[str], source_paths: set[str], requested: str) -> 
         return prefix + "/" if prefix else ""
     candidates = {""}
     first_parts = {path.split("/", 1)[0] for path in paths if "/" in path}
-    if paths and len(first_parts) == 1 and all("/" in path for path in paths):
-        candidates.add(next(iter(first_parts)) + "/")
+    candidates.update(part + "/" for part in first_parts)
     scored = []
     for prefix in candidates:
         mapped = {path[len(prefix):] if prefix and path.startswith(prefix) else path for path in paths}
@@ -164,6 +163,8 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
                         errors.append(f"member exceeds the compression-ratio limit: {member_path}")
                         continue
                     valid_infos.append((info, member_path))
+                if not valid_infos:
+                    errors.append("archive contains no file members")
                 for info, member_path in valid_infos:
                     digest = hashlib.sha256()
                     bytes_read = 0
@@ -188,10 +189,7 @@ def audit_release_archive(archive_path: str | Path, source_root: str | Path, exp
     mapped_entries: dict[str, dict[str, Any]] = {}
     for entry in entries:
         path = entry["path"]
-        if prefix:
-            if not path.startswith(prefix):
-                errors.append(f"archive member is outside selected root prefix {prefix!r}: {path}")
-                continue
+        if prefix and path.startswith(prefix):
             source_name = path[len(prefix):]
         else:
             source_name = path
