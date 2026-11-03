@@ -1,3 +1,10 @@
+## [NK1][Personality] Learn named character traits from verified outcomes (2026-11-03)
+- Map each ActionKind to explicit adaptive-trait and value targets; successful response, exploration and verification update only semantically aligned dimensions, not array positions derived from enum order.
+- Gate plasticity, relationship trust, autobiographical strength and self-belief changes on verified, low-error outcomes; unverified outcomes increase uncertainty but cannot rewrite enduring traits or values.
+- Harden P2702 restore using plain own-data records, dense bounded arrays, canonical vector names/widths, bounded metrics and safe relationship/action-preference reconstruction; hostile accessors/proxy traps fail closed.
+- Add named-trait/value, unverified-outcome, malformed snapshot, accessor, sparse-array and hostile proxy regressions. Reuse locked runtime dependencies; no new runtime dependency is introduced.
+- This measures consistent behavioral adaptation, not subjective consciousness or human-equivalent personality.
+
 ## [NK1][Embodiment] Connect cognitive and affective state to voice planning (2026-11-03)
 - Snapshot post-interoceptive needs, identity continuity, grounding and appraisal affect as one bounded voice-context packet.
 - Add side-effect-free voice plan preview; per-utterance overrides remain isolated from the persistent context snapshot.
