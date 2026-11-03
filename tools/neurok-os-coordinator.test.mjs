@@ -65,3 +65,11 @@ test('base SHA comparison is case-normalized for idempotent renewal', async () =
   assert.equal(renewed.renewed, true);
   assert.equal(renewed.baseSha, sha);
 }));
+
+test('rejects a claim based on a stale checkout SHA', async () => fixture(async stateDir => {
+  await assert.rejects(
+    () => claimTask(request('TASK-STALE', 'agent-a', ['src/a.ts']), { stateDir, currentSha: 'b'.repeat(40) }),
+    /does not match the current checkout HEAD/
+  );
+  assert.equal((await listClaims({ stateDir })).length, 0);
+}));
