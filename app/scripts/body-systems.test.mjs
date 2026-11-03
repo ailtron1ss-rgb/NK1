@@ -21,7 +21,28 @@ import {
   createDefaultBodyRendererRegistry,
 } from "../src/components/avatar/rendererRegistryDefaults.ts";
 import { capabilitiesForMode, projectSemanticBodyState } from "../src/components/avatar/embodimentUiBridge.ts";
+import {
+  applyVrmFullBodyChannels,
+  resolveVrmFullBodyRig,
+} from "../src/components/avatar/vrmRuntimeAdapter.ts";
 import { emptySnapshot } from "../src/organism/types.ts";
+
+function fakeBone() {
+  return { rotation: { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } } };
+}
+function createFakeVrm(names) {
+  const bones = new Map(names.map((name) => [name, fakeBone()]));
+  return {
+    humanoid: {
+      autoUpdateHumanBones: false,
+      getNormalizedBoneNode(name) { return bones.get(name) ?? null; },
+    },
+    expressionManager: { resetValues() {}, setValue() {} },
+    update() {},
+    bones,
+  };
+}
+const FULL_BODY_NAMES = ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"];
 
 const baseManifest = () => ({
   schemaVersion: 1,
@@ -196,4 +217,41 @@ test("out-of-range arbiter channels are clamped at the semantic boundary", () =>
   });
   assert.equal(state.pose.rightElbow, 1);
   assert.equal(state.pose.leftElbow, -1);
+});
+
+test("full-body rig resolves the optional normalized bones and tolerates a partial rig", () => {
+  const full = resolveVrmFullBodyRig(createFakeVrm(FULL_BODY_NAMES));
+  assert.ok(full.spine && full.leftUpperLeg && full.rightLowerLeg);
+  const partial = resolveVrmFullBodyRig(createFakeVrm(["head", "neck"]));
+  assert.equal(partial.spine, null);
+  assert.equal(partial.leftUpperLeg, null);
+});
+
+test("full-body channels drive normalized leg/arm/spine bones and report what they wrote", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const result = applyVrmFullBodyChannels(vrm, { leftHip: -0.3, rightKnee: 0.15, rightElbow: 0.5, torsoPitch: 0.05 });
+  assert.equal(result.applied, true);
+  assert.deepEqual(result.controlledBones.sort(), ["leftUpperLeg", "rightLowerArm", "rightLowerLeg", "spine"].sort());
+  assert.ok(vrm.bones.get("leftUpperLeg").rotation.z < 0);
+  assert.equal(vrm.bones.get("rightUpperLeg").rotation.z, 0);
+  assert.ok(vrm.bones.get("rightLowerLeg").rotation.z > 0);
+  assert.ok(vrm.bones.get("rightLowerArm").rotation.z > 0);
+  assert.ok(vrm.bones.get("spine").rotation.x > 0);
+});
+
+test("full-body apply ignores channels it cannot map and reports none written", () => {
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const result = applyVrmFullBodyChannels(vrm, { gazeX: 0.4, breath: 0.6, leftShoulder: -0.3 });
+  assert.equal(result.applied, false);
+  assert.equal(result.reason, "no-supported-full-body-channels");
+  assert.deepEqual(result.controlledBones, []);
+  // Shoulders belong to the gaze/gesture controller, so the full-body pass must not touch them.
+  assert.equal(vrm.bones.get("leftUpperArm").rotation.z, 0);
+});
+
+test("full-body apply leaves an absent bone untouched without throwing", () => {
+  const vrm = createFakeVrm(["head", "neck", "leftUpperArm"]);
+  const result = applyVrmFullBodyChannels(vrm, { leftHip: 0.5, torsoPitch: 0.2 });
+  assert.equal(result.applied, false);
+  assert.deepEqual(result.controlledBones, []);
 });
