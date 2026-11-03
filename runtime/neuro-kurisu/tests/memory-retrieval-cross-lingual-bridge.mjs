@@ -76,6 +76,26 @@ const focused = russian.retrieve('what is my goal', 8, 0, 0, { temporalMode: 'at
 assert.equal(focused.length, 1, 'a single-concept query must not pull unrelated memories into the result');
 assert.equal(focused[0].id, 'ru-goal');
 
+
+// The concept posting index must follow the canonical memory lifecycle. A forgotten
+// record must not leave a stale posting behind, including when the same ID is reused.
+const lifecycle = new MemoryOS2();
+encode(lifecycle, 'reused-concept-id', 'пользователь интересуется квантовой физикой');
+assert.equal(lifecycle.indexDiagnostics().conceptIndexMismatch, 0,
+  'newly indexed concept postings must match the active memory corpus');
+assert.equal(lifecycle.forgetById('reused-concept-id', 'concept-index-integrity'), true);
+assert.equal(lifecycle.indexDiagnostics().conceptIndexMismatch, 0,
+  'forgetting a memory must remove all of its concept postings');
+encode(lifecycle, 'reused-concept-id', 'резервный генератор работает при потере питания');
+assert.equal(lifecycle.indexDiagnostics().conceptIndexMismatch, 0,
+  'reusing a forgotten ID must not retain the previous concept associations');
+const lifecycleRestored = new MemoryOS2();
+lifecycleRestored.restore(lifecycle.snapshot());
+assert.equal(lifecycleRestored.indexDiagnostics().conceptIndexMismatch, 0,
+  'snapshot restoration must rebuild concept postings only from live records');
+assert.equal(lifecycleRestored.indexDiagnostics().pass, true,
+  'all retrieval indexes must remain consistent after forget, reuse and restore');
+
 console.log('MEMORY_RETRIEVAL_CROSS_LINGUAL_BRIDGE=PASS', JSON.stringify({
   enToRuRecallDelta: enReport.deltas.recallAtK01,
   ruToEnRecallDelta: ruReport.deltas.recallAtK01,
