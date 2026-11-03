@@ -1,7 +1,14 @@
-import type { P36VerifiedOutcomeLedgerEvaluatorConfig } from './P36VerifiedOutcomeLedgerEvaluator.ts';
+import { sha256Stable } from '../core/StableSerialization.ts';
+import {
+  measureP36VerifiedOutcomeLedger,
+  type P36VerifiedOutcomeLedgerEvaluatorConfig,
+  type P36VerifiedOutcomeLedgerMeasurement,
+} from './P36VerifiedOutcomeLedgerEvaluator.ts';
+import { VerifiedOutcomeLedger, type TaskManifestEntry } from './VerifiedOutcomeLedger.ts';
 
 export interface P36PatchOutcomeEvidenceAuthorityConfig
   extends Omit<P36VerifiedOutcomeLedgerEvaluatorConfig, 'treatmentMethod'> {
+  /** Exact source revision accepted by the host-owned patch signer. */
   baseSha: string;
 }
 
@@ -24,20 +31,150 @@ export interface P36PatchOutcomeEvidence {
   candidatePassRate: number;
   absoluteGain: number;
   evidenceFingerprint: string;
+  sourceEvidenceFingerprint: string;
   evidenceRefs: string[];
   delayMs: 0;
   evidenceScope: 'point-in-time-holdout-only';
 }
 
-/** Deterministic treatment identity; verifier artifacts must sign this exact method label. */
-export function patchTreatmentMethod(patchSha256: string): string {
-  return 'nk1-patch-sha256:' + patchSha256;
+const SHA1 = /^[a-f0-9]{40}$/i;
+const SHA256 = /^[a-f0-9]{64}$/i;
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch { return false; }
+}
+function ownData(value: Record<string, unknown>, key: string): unknown {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') &&
+      descriptor.get === undefined && descriptor.set === undefined
+      ? descriptor.value : undefined;
+  } catch { return undefined; }
+}
+function validIdentity(value: unknown, maxLength = 180): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= maxLength &&
+    value === value.normalize('NFKC').trim() &&
+    !/[\u0000-\u001f\u007f-\u009f]/.test(value);
 }
 
-/** Fail-closed placeholder; the RED regression must fail on missing authenticated measurement. */
+/**
+ * The treatment method is a deterministic, host-defined name for the exact patch
+ * bytes. Signed verifier artifacts must have been produced by executing this patch
+ * under this method identity; a candidate cannot choose a different method label.
+ */
+export function patchTreatmentMethod(patchSha256: string): string {
+  if (typeof patchSha256 !== 'string' || !SHA256.test(patchSha256)) {
+    throw new TypeError('p36-patch-outcome-patch-sha256-invalid');
+  }
+  return 'nk1-patch-sha256:' + patchSha256.toLowerCase();
+}
+
+/**
+ * Measure one patch against the host-pinned baseline using only P36's authenticated
+ * signed holdout ledger. No observation, score, treatment method, manifest, key or
+ * verifier identity is accepted from candidate input.
+ *
+ * The host must provision signed P36 outcome artifacts whose treatment method is
+ * patchTreatmentMethod(exactPatchSha256). P36 rechecks the artifact receipts,
+ * fixed manifest, holdout split, task family and paired seed coverage.
+ */
 export function measureP36PatchOutcomeEvidence(
-  _request: P36PatchOutcomeEvidenceRequest,
-  _hostConfig: P36PatchOutcomeEvidenceAuthorityConfig,
+  request: P36PatchOutcomeEvidenceRequest,
+  hostConfig: P36PatchOutcomeEvidenceAuthorityConfig,
 ): P36PatchOutcomeEvidence | null {
-  return null;
+  if (!isPlainRecord(request)) return null;
+  const candidateId = ownData(request, 'candidateId');
+  const requestedBaseSha = ownData(request, 'baseSha');
+  const patchSha256 = ownData(request, 'patchSha256');
+  if (!validIdentity(candidateId, 128) ||
+      typeof requestedBaseSha !== 'string' || !SHA1.test(requestedBaseSha) ||
+      typeof patchSha256 !== 'string' || !SHA256.test(patchSha256)) return null;
+
+  if (!isPlainRecord(hostConfig)) throw new TypeError('p36-patch-outcome-host-config-invalid');
+  const baseSha = ownData(hostConfig, 'baseSha');
+  const ledger = ownData(hostConfig, 'ledger');
+  const manifest = ownData(hostConfig, 'manifest');
+  const evaluatorVersion = ownData(hostConfig, 'evaluatorVersion');
+  const baselineMethod = ownData(hostConfig, 'baselineMethod');
+  const taskFamily = ownData(hostConfig, 'taskFamily');
+  const sourceId = ownData(hostConfig, 'sourceId');
+  const independenceKey = ownData(hostConfig, 'independenceKey');
+  const minimumPairedSeeds = ownData(hostConfig, 'minimumPairedSeeds');
+
+  if (typeof baseSha !== 'string' || !SHA1.test(baseSha) ||
+      requestedBaseSha.toLowerCase() !== baseSha.toLowerCase()) return null;
+  if (!(ledger instanceof VerifiedOutcomeLedger) || !Array.isArray(manifest) ||
+      !validIdentity(evaluatorVersion, 64) || !validIdentity(baselineMethod, 180) ||
+      !validIdentity(taskFamily, 96) || !validIdentity(sourceId, 80) ||
+      !validIdentity(independenceKey, 120)) {
+    throw new TypeError('p36-patch-outcome-host-config-invalid');
+  }
+  if (minimumPairedSeeds !== undefined &&
+      (!Number.isSafeInteger(minimumPairedSeeds) || (minimumPairedSeeds as number) < 4 || (minimumPairedSeeds as number) > 128)) {
+    throw new RangeError('p36-verified-outcome-ledger-minimum-paired-seeds-invalid');
+  }
+
+  const normalizedPatchSha = patchSha256.toLowerCase();
+  const treatmentMethod = patchTreatmentMethod(normalizedPatchSha);
+  const typedManifest = manifest as TaskManifestEntry[];
+  const manifestFingerprint = ledger.manifestFingerprint();
+  const config: P36VerifiedOutcomeLedgerEvaluatorConfig = {
+    ledger,
+    manifest: typedManifest,
+    evaluatorVersion,
+    baselineMethod,
+    treatmentMethod,
+    taskFamily,
+    sourceId,
+    independenceKey,
+    ...(minimumPairedSeeds === undefined ? {} : { minimumPairedSeeds: minimumPairedSeeds as number }),
+  };
+
+  const measurement: P36VerifiedOutcomeLedgerMeasurement | null = measureP36VerifiedOutcomeLedger({
+    hypothesisId: 'nk1-patch-' + normalizedPatchSha.slice(0, 48),
+    contextKey: taskFamily,
+    holdout: true,
+    delayMs: 0,
+    evaluatorVersion,
+    evidenceSource: 'external-evaluator',
+    protocolId: manifestFingerprint,
+    baselineMethod,
+    treatmentMethod,
+    taskFamily,
+    manifestFingerprint,
+  }, config);
+  if (!measurement) return null;
+
+  const absoluteGain = measurement.treatment01 - measurement.control01;
+  const evidenceFingerprint = sha256Stable({
+    schemaVersion: 1,
+    candidateId,
+    baseSha: baseSha.toLowerCase(),
+    patchSha256: normalizedPatchSha,
+    sourceEvidenceFingerprint: measurement.evidenceFingerprint,
+    evidenceRefs: measurement.evidenceRefs,
+    pairedSeedCount: measurement.pairedSeedCount,
+  });
+  return Object.freeze({
+    candidateId,
+    baseSha: baseSha.toLowerCase(),
+    patchSha256: normalizedPatchSha,
+    treatmentMethod,
+    manifestFingerprint: measurement.manifestFingerprint,
+    taskFamily: measurement.taskFamily,
+    baselineMethod: measurement.baselineMethod,
+    pairedSeedCount: measurement.pairedSeedCount,
+    baselinePassRate: measurement.control01,
+    candidatePassRate: measurement.treatment01,
+    absoluteGain,
+    evidenceFingerprint,
+    sourceEvidenceFingerprint: measurement.evidenceFingerprint,
+    evidenceRefs: Object.freeze([...measurement.evidenceRefs]) as unknown as string[],
+    delayMs: 0,
+    evidenceScope: 'point-in-time-holdout-only',
+  });
 }
