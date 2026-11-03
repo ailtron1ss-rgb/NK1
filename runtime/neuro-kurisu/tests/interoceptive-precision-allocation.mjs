@@ -52,3 +52,40 @@ test('interoceptive estimator exposes precision allocation and attended predicti
   assert.ok(Number.isFinite(frame.attendedPredictionError01));
   assert.ok(frame.uncertainty01 >= 0 && frame.uncertainty01 <= 1);
 });
+
+test('zero attention budget leaves homeostatic recovery at the baseline estimate', () => {
+  const estimator = new InteroceptiveStateEstimator();
+  const observation = {
+    energy01: 0.12, thermal01: 0.72, cognitiveLoad01: 0.66,
+    sleepPressure01: 0.8, capacity01: 0.35, sensoryFreshness01: 0.9,
+    attentionBudget01: 0,
+  };
+  const frame = estimator.observe(observation);
+  const expected = Math.max(0, Math.min(1,
+    (1 - observation.energy01) * 0.42 +
+    observation.thermal01 * 0.24 +
+    observation.cognitiveLoad01 * 0.18 +
+    observation.sleepPressure01 * 0.16
+  ));
+  assert.ok(Math.abs(frame.latent.recoveryNeed01 - expected) < 1e-12);
+});
+
+test('restores legacy interoceptive snapshots with derived precision diagnostics', () => {
+  const estimator = new InteroceptiveStateEstimator();
+  const legacy = {
+    version: 1, ticks: 3, meanPredictionError01: 0.2, meanUncertainty01: 0.3,
+    meanConfidence01: 0.7,
+    prediction: { energy01: 0.7, thermal01: 0.2, load01: 0.3, capacity01: 0.8 },
+    lastFrame: {
+      latent: { energy01: 0.4, thermal01: 0.2, load01: 0.3, capacity01: 0.7, recoveryNeed01: 0.4 },
+      predicted: { energy01: 0.6, thermal01: 0.2, load01: 0.2, capacity01: 0.8 },
+      predictionError01: 0.2, uncertainty01: 0.3, salience01: 0.2,
+      conflict01: 0.1, controlPressure01: 0.3, confidence01: 0.7, reason: ['legacy'],
+    },
+  };
+  estimator.restore(legacy);
+  const snapshot = estimator.snapshot();
+  assert.equal(snapshot.ticks, 3);
+  assert.ok(snapshot.lastFrame.precisionAllocation01);
+  assert.equal(snapshot.lastFrame.attendedPredictionError01, 0.2);
+});
