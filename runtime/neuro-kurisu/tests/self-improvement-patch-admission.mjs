@@ -97,7 +97,7 @@ test('admission from signed patch uses only host-owned P36 holdout evidence, not
    authorityRequest=request;
    return Object.freeze({
     candidateId:request.candidateId,baseSha,patchSha256,
-    treatmentMethod:'nk1-patch-sha256:'+patchSha256,
+    treatmentMethod:'nk1-source-sha1:'+baseSha+':patch-sha256:'+patchSha256,
     manifestFingerprint:'c'.repeat(64),taskFamily:'self-improvement',
     baselineMethod:'baseline-v1',pairedSeedCount:4,
     baselinePassRate:.5,candidatePassRate:1,absoluteGain:.5,
@@ -135,7 +135,7 @@ test('does not read candidate-supplied observations when using host P36 admissio
   measure(request){
    return {
     candidateId:request.candidateId,baseSha,patchSha256:request.patchSha256,
-    treatmentMethod:'nk1-patch-sha256:'+request.patchSha256,
+    treatmentMethod:'nk1-source-sha1:'+request.baseSha+':patch-sha256:'+request.patchSha256,
     manifestFingerprint:'c'.repeat(64),taskFamily:'self-improvement',
     baselineMethod:'baseline-v1',pairedSeedCount:4,
     baselinePassRate:.5,candidatePassRate:1,absoluteGain:.5,
