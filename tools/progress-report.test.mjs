@@ -54,6 +54,7 @@ try {
         { id: 'outside-exists', kind: 'file-exists', path: outsideRelative(outsideEvidence) },
         { id: 'absolute-path', kind: 'file-exists', path: outsideEvidence },
         { id: 'windows-drive-path', kind: 'file-exists', path: 'C:\\outside\\evidence.json' },
+        { id: 'dotdot-alias', kind: 'file-exists', path: 'runtime/neuro-kurisu/tests/../../README.md' }
         { id: 'outside-contains', kind: 'file-contains', path: outsideRelative(outsideEvidence), needle: report.currentSha },
         { id: 'outside-evidence', kind: 'evidence-json', path: outsideRelative(outsideEvidence) },
         { id: 'outside-glob', kind: 'glob', path: outsideRelative(join(outsideDir, '*.json')) },
@@ -72,7 +73,7 @@ try {
   const securityReport = JSON.parse(securityRun.stdout);
   assert.equal(securityReport.workstreams[0].artifactPassed, 0,
     'all probes attempting to escape the repository must fail closed');
-  assert.equal(securityReport.workstreams[0].artifactTotal, 7,
+  assert.equal(securityReport.workstreams[0].artifactTotal, 8,
     'file/evidence/glob probes must all reject paths outside the repository');
   assert.equal(securityReport.workstreams[0].testHarnessTotal, 2);
   assert.equal(securityReport.workstreams[0].testHarnessPassed, 0,
