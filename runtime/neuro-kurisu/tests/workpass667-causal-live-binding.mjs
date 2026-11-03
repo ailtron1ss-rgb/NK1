@@ -69,6 +69,13 @@ const unrelated = { ...liveTrace, id: 'wp667-unrelated', tick: 7 };
 assert.equal(stream.recordOutcome(unrelated, mkState(1, { lastAction: 'explore', lastActionSuccess: .8 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 }), null,
   'a trace outside the observed transition must never be paired with it');
 
+// A matching produced-state tick is not enough if the state skipped more than
+// one world transition; otherwise a repeated lastAction could misattribute a
+// much later outcome to this old decision.
+const jumpedStateTrace = { ...liveTrace, id: 'wp667-jumped-state-trace', tick: 7 };
+assert.equal(stream.recordOutcome(jumpedStateTrace, mkState(7, { lastAction: 'explore', lastActionSuccess: .8 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 }), null,
+  'a decision must not be bound to a post-state separated by multiple world ticks');
+
 // The state records the observed (unscaled) success while learning may pass a
 // scaled success label; the attribution check must compare like-for-like.
 const scaledStream = new CausalExperienceStream(16);
