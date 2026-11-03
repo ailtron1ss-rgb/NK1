@@ -101,3 +101,15 @@ Before a substantial pass, read:
 **Brain analogy rule:** human brain mappings are explanatory analogies only. A software memory store is not a hippocampus, a language model is not a neocortex, and a scheduler is not a hypothalamus. Evaluate functions and observable behaviors, not anthropomorphic labels. Subjective consciousness remains UNKNOWN / UNRESOLVED absent independent evidence.
 
 **Release discipline:** the product is not release-ready until real local inference, memory quality on independent holdouts, learning transfer, action verification/restart recovery, real embodiment E2E, security/privacy, target-device performance, soak, clean-room packaging and rollback gates have evidence. Passing CI on synthetic fixtures is necessary but insufficient.
+
+
+## NeuroK Engineering OS
+
+- For the capability catalog and workstream plan, run `node tools/neurok-os.mjs status`, `validate`, or `plan` (also exposed as root npm scripts).
+- For concurrent agents sharing one filesystem, claim owned paths before editing with `npm run neurok-os:claims -- claim --task TASK-ID --agent AGENT-ID --sha FULL_BASE_SHA --paths path/a.ts,path/b.ts`; release after handoff with `npm run neurok-os:claims -- release --task TASK-ID --agent AGENT-ID`.
+- The local lease store coordinates only processes sharing the same `NEUROK_OS_STATE_DIR`. Separate devices/worktrees must not assume they share claims; use isolated branches and sequential PR integration until a transactional shared backend exists.
+- Claims are advisory until the patch-admission layer enforces them. Git, review and exact-SHA CI remain authoritative.
+- Never change a catalog entry to connected/enabled/runtime-integrated without verifiable account, permission, adapter-contract and test evidence. Never put secret values in the catalog.
+- Run `npm run neurok-os:test` and the dedicated GitHub Actions workflow after changing the control plane.
+
+- Before applying an agent-produced unified diff, run `npm run neurok-os:patch -- inspect --patch-file PATH`; treat `deny` as blocked and `human-approval-required` as requiring an explicit human gate. This command is preflight only and does not apply patches.
