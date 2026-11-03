@@ -775,3 +775,118 @@ production-ready. Рисовать плейсхолдер и заявлять г
 - Проценты — инженерные прокси, не «процент файлов».
 - Восстановление `perceptionRouting` повышает континуальность, но не является доказательством
   качества восприятия на независимом holdout.
+
+---
+
+## 20. Супердетальный поэтапный план доведения до работоспособности: аспекты 2 / 2.5 / 3 (тела), моторика, полноценное взаимодействие с миром
+
+Раздел превращает §17 в исполнимую декомпозицию: каждый шаг — **независимо проверяемый переход
+состояния** с конкретным артефактом, владельцем, минимальной правкой, воротами приёмки, меткой
+доказанности, зависимостями и определением «готово». Правила §3.2 (один владелец на способность,
+непереопределение производных каналов, честный `unsupported`, запрет плейсхолдеров вместо арта)
+действуют на каждом шаге.
+
+Легенда метки «готово»: **DoD** — что должно быть верно, чтобы шаг считался закрытым.
+Метки доказанности: `PLANNED` → `IMPLEMENTED` → `TESTED` → `INTEGRATED` → `MEASURED` → `RELEASED`.
+
+### Фаза A — Аспект 2: 2D-тела (Live2D / Original SVG / Legacy sprites)
+
+| # | Задача | Артефакт / владелец | Минимальная правка | Ворота приёмки | DoD |
+|---|---|---|---|---|---|
+| A1 | Инвентаризация реальных каналов каждого 2D-адаптера | `rendererRegistryDefaults.ts` + `body-systems.test.mjs` | список каналов выводится из фактических записей адаптера | fail-before/pass-after тест | `PROVEN` (§16) |
+| A2 | Словарь выражений stage ↔ viewer | `AvatarStage.tsx`, `viewer.html` | каждое отправляемое значение обязано быть в `EXPR_MAP` | тест на полноту словаря | `PROVEN` (§16.2a) |
+| A3 | Авторинг дополнительных Live2D-движений (Idle/TapHead/TapBody/Special+) | `runtime/…/public/live2d/` | новые `.motion3.json` без разрыва физики | клип загружается, не ломает `physics` | `IMPLEMENTED` → нужен визуальный E2E |
+| A4 | Синхронизация губ с audio clock Live2D | `embodimentTimeline.ts` + viewer | viseme-таймлайн от аудио-часов, не от кадров | измеренная задержка ≤ бюджета | `MEASURED` |
+| A5 | Production-мастер Original 2D: слои, выражение-атлас, независимые garments/props | `app/public/…` + провенанс в `site.json` | реальный арт с подтверждённой лицензией | asset-hash + license в манифесте | `RELEASED` (арт отсутствует — блокер) |
+| A6 | Честная семантика Legacy sprites (это реакции, не тело) | манифест `nk1-legacy-sprites-2d` | `channels: []`, `productionReady` по факту | манифест не заявляет лишнего | `PROVEN` |
+| A7 | Browser/device E2E для 2D | Playwright + реальный рендер | скриншоты с ненулевыми каналами, чистая консоль | визуальная приёмка | `MEASURED` |
+
+### Фаза B — Аспект 2.5: производственное 2.5D-тело (layered puppet) — единственный режим без рендера
+
+| # | Задача | Артефакт / владелец | Минимальная правка | Ворота приёмки | DoD |
+|---|---|---|---|---|---|
+| B1 | Завести `depth2d`-манифест и 5-й режим UI за feature-gate | `rendererRegistryDefaults.ts`, `AvatarStage.tsx` | режим виден только при валидном риге | регрессия UI, `selectable()` не отдаёт плейсхолдер | `INTEGRATED` |
+| B2 | Production layered-art: слои (волосы/лицо/тело/руки) с pivot-offset и закрашенными скрытыми зонами | `app/public/depth-rig/…` + провенанс | реальный PSD/Krita-экспорт | asset-hash + license в манифесте | **блокер: нет арта** |
+| B3 | Подключить `applyDepthRigWorldPoseToLayers` к render-пути | `depthRigRendererAdapter.ts` → stage | поза пишется в матрицы слоёв | readback `renderedNodeIds`, нет второго scene graph | `INTEGRATED` |
+| B4 | Связать `resolveDepthRigPoseFromEmbodimentIntent` и `…FromMotorFrame` с arbiter-каналами | `embodimentIntentAdapter.ts` | **измеренный** `angleRad` (исправлено, §19), единый словарь каналов с 2D/3D | тест на совпадение словаря каналов | `TESTED` (§19) |
+| B5 | Калибровка pivots и rest-поз под арт | данные рига | числовая калибровка по факту арта | визуальная сверка поз | `MEASURED` |
+| B6 | Жёсткая граница: без подтверждённого арта `productionReady:false` | манифест | запрет публикации плейсхолдера | `selectable()` не отдаёт | `PROVEN` |
+
+### Фаза C — Аспект 3: производственное 3D/VRM-тело
+
+| # | Задача | Артефакт / владелец | Минимальная правка | Ворота приёмки | DoD |
+|---|---|---|---|---|---|
+| C1 | Подключить проверенный VRM (hosted/bundled) с license/credit | `avatarModelCatalog.ts` | строгий GLB/VRM-gate, fingerprint | модель проходит preflight | `INTEGRATED` |
+| C2 | Устранить накопление костей полного тела | `vrmRuntimeAdapter.ts` | reset «своих» костей перед записью (§18) | fail-before/pass-after | `PROVEN` (§18) |
+| C3 | Live-IK рук поверх клипа (CCD/FABRIK в плоскости) | `planarArmIK.ts` + adapter | IK поверх `AnimationMixer`, приоритет каналов | тест достижимости/пределов + отсутствие рывков | `MEASURED` |
+| C4 | Live-IK ног + фазы walk/sit/stand без конфликта с arbiter | `motionLibrary.ts` + adapter | клипы согласованы с приоритетами | клип не переопределяет производные каналы | `MEASURED` |
+| C5 | Губные морфы/visemes ↔ audio clock (latency-бюджет) | `glbMouthMorphAdapter.ts` | виземы от аудио-часов | измеренная задержка ≤ бюджета | `MEASURED` |
+| C6 | Spring bones / физика волос и одежды | three-vrm spring bones | канал `supportsPhysics` подтверждён | визуальная сверка | `MEASURED` |
+| C7 | Calibration profile/session для IK | `vrmRigCalibrationProfile.ts` | профиль валидируется против рига | экспорт/импорт только валидного профиля | `TESTED` |
+
+### Фаза D — Полноценная моторика («любые движения»)
+
+| # | Задача | Артефакт / владелец | Минимальная правка | Ворота приёмки | DoD |
+|---|---|---|---|---|---|
+| D1 | Корректный арбитр слоёв (primary не теряется, дыхание затухает) | `motionArbitration.ts` | сортировка primary первым, `weight*energyScale` (§18) | fail-before/pass-after | `PROVEN` (§18) |
+| D2 | Расширить motion library фазами reach/point/wave/hold/step | `motionLibrary.ts` | новые программы loop-safe, seam-валидация | `validateMotionProgram` без issues | `TESTED` |
+| D3 | Offline-retarget донорских клипов (GMR / `.vrma`) в риг NK1 | pipeline вне runtime | клип воспроизводится в риге | лицензия записана, клип валиден | `INTEGRATED` |
+| D4 | Live-IK поверх клиповой анимации без рывков | adapter | cross-fade + приоритеты каналов | отсутствие визуальных разрывов | `MEASURED` |
+| D5 | Co-speech жестикуляция (streamable) — изолированный кандидат | адаптер поверх арбитра | сравнение с clip-baseline на замороженном корпусе | побеждает baseline при равном бюджете | `RESEARCH-ONLY` (LiveGesture) |
+| D6 | Приоритеты каналов: производные не переопределяются arbiter-ом | `embodimentUiBridge.ts` | merge с приоритетом производных | регрессия расширена | `TESTED` |
+
+### Фаза E — Взаимодействие с миром (embodiment)
+
+| # | Задача | Артефакт / владелец | Минимальная правка | Ворота приёмки | DoD |
+|---|---|---|---|---|---|
+| E1 | Взгляд/поворот к мировым целям | `supportsWorldTargets` путь | цель из canonical owner | цель приходит из единого владельца | `INTEGRATED` |
+| E2 | Опциональный захват камеры (MediaPipe face/pose/hand) | отдельный входной адаптер | opt-in, локально, без утечек | приватность-регрессия | `INTEGRATED` |
+| E3 | Grounded-цель: камера ↔ семантический мир | `GroundedInteractionBridge.ts` | соединение по метке, отказ при неоднозначности | 13/13 тестов (§E evidence) | `TESTED` |
+| E4 | План look/inspect/reach/touch/grasp/release/press | `EmbodiedInteractionController.ts` | deny-by-default, safety-authorization | 47/47 тестов | `TESTED` |
+| E5 | Независимый postcondition | `OutcomeVerificationService` | единственный источник правды, spoofed ACK отвергается | регрессия на подделку | `TESTED` |
+| E6 | Реальный контакт/манипуляция | hardware-backed adapter | только после независимой проверки | `realityClass:'device-observation'` | `UNRESOLVED` (нет железа) |
+
+### Фаза F — Транзакционное переключение тел и визуальная верификация
+
+| # | Задача | Артефакт / владелец | Минимальная правка | Ворота приёмки | DoD |
+|---|---|---|---|---|---|
+| F1 | Cross-fade без потери состояния | `embodimentSwitch.ts` | handoff сохраняет pose/gaze/speech | handoff-тест | `TESTED` |
+| F2 | Завершение cross-fade (не застревает на ~40%) | `embodimentUiBridge.ts` + `AvatarStage.tsx` | якорь на старт перехода (§19) | fail-before/pass-after | `PROVEN` (§19) |
+| F3 | Playwright-скриншоты 2D/2.5D/3D с ненулевыми каналами | `app/screenshots/` | реальный рендер, чистая консоль | визуальная приёмка | `MEASURED` |
+| F4 | Откат к прежнему телу при сбое | switch contract | fail-closed, без белого экрана | rollback-тест | `TESTED` |
+
+### Фаза G — Реальная проверка на устройствах, производительность, soak
+
+| # | Задача | Ворота | DoD |
+|---|---|---|---|
+| G1 | Latency STT→LLM→TTS→viseme на целевом устройстве | бюджет зафиксирован | `MEASURED` |
+| G2 | FPS/память/батарея при долгом прогоне | soak ≥ 30–60 мин | `MEASURED` |
+| G3 | Мобильный viewport и слабый GPU | деградация с честным сообщением | `MEASURED` |
+| G4 | WebGL context loss / reduced motion / low-memory | восстановление без утечек RAF/контекстов/audio | `TESTED` |
+
+### Фаза H — Поставка на GitHub (deliverables и evidence)
+
+| # | Задача | Артефакт | DoD |
+|---|---|---|---|
+| H1 | Каждый проход = отдельный PR от `workpass70-source` (не пачкой) | PR с exact-SHA | §6 соблюдён |
+| H2 | Exact-head CI зелёный на каждом PR | ссылки на runs | `OBSERVED` |
+| H3 | Обновлять handover/changelog и `RESEARCH_INTAKE_LEDGER.md` | запись донора/результата/решения | документировано |
+| H4 | Release ZIP из проверенного source SHA + provenance/SBOM/checksum | артефакт релиза | `RELEASED` (лицензия — блокер) |
+| H5 | Human license review для всех art/model assets | подписанный чек-лист | `RELEASED` |
+
+### Порядок исполнения и зависимости
+
+1. **Сначала контракт и честность** (A1, A2, A6, B4, B6, C2, D1, D6, F2) — уже закрыты в §16–§19.
+2. **Затем блокеры арта/модели** (A5, B2, C1) — внешняя зависимость: production-art и
+   лицензированная VRM. Без них аспекты 2.5 и 3 не могут стать `RELEASED`.
+3. **Затем интеграция рендер-путей** (B3, B5, C3–C7, D2–D4).
+4. **Затем E2E и мир** (A7, E1–E5, F3, G1–G4).
+5. **В конце поставка** (H1–H5).
+
+### Честная граница §20
+
+- Это исполнимый план, а не отчёт о достижениях. Большинство строк — `PLANNED`/`UNRESOLVED`.
+- Проценты готовности — инженерные прокси, не «процент файлов».
+- Субъективное переживание/сознание — `UNKNOWN / UNRESOLVED`.
+- Ни один шаг не считается `RELEASED` без exact-SHA CI, независимого доказательства и
+  закрытого license-review.
