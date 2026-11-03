@@ -76,5 +76,8 @@ assert.equal(tieLatest.context.spatialX,'4');
 const sameTimestampConflict=tieMemory.encode(observation(tieLatestAt,999));
 assert.equal(sameTimestampConflict.id,tieFirst.id);
 assert.equal(sameTimestampConflict.observedAt,tieLatestAt,'an equal-timestamp replay must not rewrite the current observation time');
+assert.equal(sameTimestampConflict.validFromAt,tieLatestAt,'an equal-timestamp replay must not rewind or restart the current validity interval');
+assert.equal(sameTimestampConflict.validUntilAt,tieLatestAt+90_000,'an equal-timestamp replay must not extend the spatial freshness expiry');
+assert.equal(sameTimestampConflict.evidenceFreshnessAt,tieLatestAt,'an equal-timestamp replay must not refresh evidence freshness');
 assert.equal(sameTimestampConflict.context.spatialX,'4','equal-timestamp coordinate conflicts must preserve the already accepted position');
 assert.equal(tieMemory.indexDiagnostics().spatialIndex.pass,true,'equal-timestamp replays must preserve derived index consistency');
