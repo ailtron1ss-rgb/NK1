@@ -22,7 +22,9 @@ assert.equal(coreChange.allowed,false);
 const adaptiveChange=a.admitIdentityChange({field:'adaptive-trait:directness',identityImpact01:.35,evidenceCount:2,identityContinuity01:.9,rollbackReady:true});
 assert.equal(adaptiveChange.allowed,true);
 const selfModBad=a.admitSelfModification({expectedGain01:.7,holdoutGain01:.71,risk01:.2,rollbackReady:true,identityContinuity01:.9,evidence01:.8,invariantFingerprint:a.snapshot().invariantFingerprint});
-assert.equal(selfModBad.allowed,true);
+assert.equal(selfModBad.allowed,false,'missing paired downstream evidence must fail closed');
+assert.equal(selfModBad.divergence.decision,'refused');
+assert.match(selfModBad.reason,/insufficient-paired-observations/);
 // Proxy-divergence gate: a candidate whose proxy gain is not backed by downstream
 // improvement must be refused even when every scalar gate passes.
 const fp=a.snapshot().invariantFingerprint;
