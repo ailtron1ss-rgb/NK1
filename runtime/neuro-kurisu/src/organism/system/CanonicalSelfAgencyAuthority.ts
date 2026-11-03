@@ -1,4 +1,5 @@
 import { KURISU_ORGANISM_CANON } from '../language/KurisuCanonProfile.ts';
+import { evaluateProxyDivergence, type PairedObservation } from '../analysis/ProxyDivergenceGuard.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const ACTIONS=['respond','explore','verify','rest','reflect','wait','defer'] as const;
@@ -173,12 +174,18 @@ export class CanonicalSelfAgencyAuthority{
     return {allowed,protectedField,reason:this.state.lastReason};
   }
 
-  admitSelfModification(input:{expectedGain01:number;holdoutGain01:number;risk01:number;rollbackReady:boolean;identityContinuity01:number;invariantFingerprint?:string;evidence01:number}){
+  admitSelfModification(input:{expectedGain01:number;holdoutGain01:number;risk01:number;rollbackReady:boolean;identityContinuity01:number;invariantFingerprint?:string;evidence01:number;pairedObservations?:readonly PairedObservation[]}){
     this.state.selfModificationChecks++;
     const fingerprintOK=(input.invariantFingerprint??this.state.invariantFingerprint)===this.state.invariantFingerprint;
-    const allowed=Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&this.state.invariantIntegrity01>.85;
+    // Proxy-vs-downstream check: the gate must not open on a proxy gain that the
+    // independent outcome does not back. When paired observations are supplied they
+    // are authoritative; the scalar holdoutGain01 stays only as a legacy prefilter.
+    const divergence = input.pairedObservations ? evaluateProxyDivergence(input.pairedObservations) : null;
+    const divergenceOK = divergence ? divergence.decision === 'supported' : true;
+    const allowed=Boolean(input.rollbackReady)&&clamp(input.expectedGain01)>.5&&clamp(input.holdoutGain01)>.62&&clamp(input.risk01)<.42&&clamp(input.identityContinuity01)>.72&&clamp(input.evidence01)>.62&&fingerprintOK&&divergenceOK&&this.state.invariantIntegrity01>.85;
     if(!allowed)this.state.selfModificationBlocks++;
-    this.state.lastDecision=allowed?'stable':'self-modification-block';this.state.lastReason=allowed?'self-modification-evidence-gate-open':'self-modification-evidence-or-identity-gate';
-    return {allowed,fingerprintOK,reason:this.state.lastReason};
+    this.state.lastDecision=allowed?'stable':'self-modification-block';
+    this.state.lastReason=allowed?'self-modification-evidence-gate-open':(divergenceOK?'self-modification-evidence-or-identity-gate':`self-modification-proxy-divergence:${divergence?.reason}`);
+    return {allowed,fingerprintOK,divergence,reason:this.state.lastReason};
   }
 }

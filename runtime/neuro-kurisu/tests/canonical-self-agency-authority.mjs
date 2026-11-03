@@ -19,6 +19,19 @@ const adaptiveChange=a.admitIdentityChange({field:'adaptive-trait:directness',id
 assert.equal(adaptiveChange.allowed,true);
 const selfModBad=a.admitSelfModification({expectedGain01:.7,holdoutGain01:.71,risk01:.2,rollbackReady:true,identityContinuity01:.9,evidence01:.8,invariantFingerprint:a.snapshot().invariantFingerprint});
 assert.equal(selfModBad.allowed,true);
+// Proxy-divergence gate: a candidate whose proxy gain is not backed by downstream
+// improvement must be refused even when every scalar gate passes.
+const fp=a.snapshot().invariantFingerprint;
+const backed=[0,1,2,3,4].map(i=>({id:`b${i}`,proxyGain:.3,downstreamGain:.28}));
+const unbacked=[0,1,2,3,4].map(i=>({id:`u${i}`,proxyGain:.8,downstreamGain:.02}));
+const withBacked=a.admitSelfModification({expectedGain01:.7,holdoutGain01:.71,risk01:.2,rollbackReady:true,identityContinuity01:.9,evidence01:.8,invariantFingerprint:fp,pairedObservations:backed});
+assert.equal(withBacked.allowed,true,'downstream-backed candidate must be admitted');
+assert.equal(withBacked.divergence.decision,'supported');
+const withUnbacked=a.admitSelfModification({expectedGain01:.7,holdoutGain01:.71,risk01:.2,rollbackReady:true,identityContinuity01:.9,evidence01:.8,invariantFingerprint:fp,pairedObservations:unbacked});
+assert.equal(withUnbacked.allowed,false,'proxy-only candidate must be refused');
+assert.match(withUnbacked.reason,/proxy-divergence/);
+const noPairs=a.admitSelfModification({expectedGain01:.7,holdoutGain01:.71,risk01:.2,rollbackReady:true,identityContinuity01:.9,evidence01:.8,invariantFingerprint:fp,pairedObservations:[]});
+assert.equal(noPairs.allowed,false,'empty paired evidence must fail closed');
 const ablation=a.ablateActionContribution('verify',{baseSignals01:.22,selfImprovementDecision:'continue',identityContinuity01:.92,uncertainty01:.15,externalInput:false,autonomy01:.82,domain:'verification'},.9);
 assert(ablation.baseline.contribution01>ablation.lesioned.contribution01);
 assert(ablation.absoluteDelta01>0);

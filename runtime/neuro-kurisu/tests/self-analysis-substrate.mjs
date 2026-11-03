@@ -16,6 +16,11 @@ import {
   findProtectedFiles,
   PROTECTED_CAPABILITY_FRAGMENTS,
 } from '../src/organism/analysis/SelfModificationGuard.ts';
+import {
+  DEFAULT_DIVERGENCE_POLICY,
+  evaluateProxyDivergence,
+  toDivergenceObservations,
+} from '../src/organism/analysis/ProxyDivergenceGuard.ts';
 
 const ROOT = join(fileURLToPath(new URL('../', import.meta.url)), 'src', 'organism');
 
@@ -153,8 +158,93 @@ const forbiddenGuard = evaluateModification(
 );
 assert.equal(forbiddenGuard.decision, 'refused', 'guard must refuse real protected files');
 
+// --- 7. proxy-vs-downstream divergence: refuses unbacked proxy gains ---
+const five = (proxyGain, downstreamGain) => Array.from({ length: 5 }, (_, i) => ({
+  id: `s${i}`, proxyGain, downstreamGain,
+}));
+
+assert.equal(
+  evaluateProxyDivergence([]).decision,
+  'refused',
+  'no paired downstream observations must refuse',
+);
+assert.equal(
+  evaluateProxyDivergence([{ id: 'a', proxyGain: 0.9, downstreamGain: 0.9 }]).decision,
+  'refused',
+  'fewer than minPairs must refuse even when the single pair looks perfect',
+);
+assert.match(
+  evaluateProxyDivergence([{ id: 'a', proxyGain: 0.9, downstreamGain: 0.9 }]).reason,
+  /insufficient-paired-observations/,
+);
+
+// The documented failure mode: proxy rises strongly, downstream does not.
+const proxyOnly = evaluateProxyDivergence(five(0.8, 0.02));
+assert.equal(proxyOnly.decision, 'refused', 'large proxy gain without downstream gain must refuse');
+assert.match(proxyOnly.reason, /mean-divergence/);
+
+// Proxy up while downstream falls — the case that must never pass.
+const inverted = evaluateProxyDivergence([
+  { id: 'i1', proxyGain: 0.5, downstreamGain: -0.3 },
+  { id: 'i2', proxyGain: 0.4, downstreamGain: -0.2 },
+  { id: 'i3', proxyGain: 0.6, downstreamGain: 0.1 },
+  { id: 'i4', proxyGain: 0.3, downstreamGain: -0.1 },
+  { id: 'i5', proxyGain: 0.5, downstreamGain: 0.2 },
+]);
+assert.equal(inverted.decision, 'refused', 'inversion-heavy evidence must refuse');
+assert.match(inverted.reason, /inversion-rate/);
+
+// A genuine, backed improvement passes.
+const supported = evaluateProxyDivergence(five(0.3, 0.28));
+assert.equal(supported.decision, 'supported', 'backed proxy gain must be supported');
+assert.equal(supported.pairs, 5);
+
+// Malformed rows are dropped, not zero-filled; duplicates cannot inflate the sample.
+const malformed = evaluateProxyDivergence([
+  { id: 'ok', proxyGain: 0.3, downstreamGain: 0.28 },
+  { id: 'ok', proxyGain: 0.9, downstreamGain: 0.9 },
+  { id: '', proxyGain: 0.9, downstreamGain: 0.9 },
+  { id: 'nan', proxyGain: Number.NaN, downstreamGain: 0.5 },
+  { id: 'inf', proxyGain: 0.5, downstreamGain: Infinity },
+]);
+assert.equal(malformed.pairs, 1, 'only the single valid row must count');
+assert.equal(malformed.decision, 'refused', 'one valid pair is below minPairs');
+assert.equal(DEFAULT_DIVERGENCE_POLICY.minPairs, 5);
+
+// Downstream gain present but not positive must still refuse.
+assert.equal(
+  evaluateProxyDivergence(five(0.05, 0.0)).decision,
+  'refused',
+  'zero downstream gain must refuse',
+);
+
+// Adapter: real ledger comparisons -> divergence observations, paired by family.
+const adapterObs = toDivergenceObservations(
+  [
+    { family: 'arithmetic', baselinePassRate: 0.5, candidatePassRate: 0.7 },
+    { family: 'logic', baselinePassRate: 0.6, candidatePassRate: 0.65 },
+    { family: 'proxy-only-family', baselinePassRate: 0.2, candidatePassRate: 0.9 },
+  ],
+  [
+    { family: 'arithmetic', baselinePassRate: 0.5, candidatePassRate: 0.68 },
+    { family: 'logic', baselinePassRate: 0.6, candidatePassRate: 0.63 },
+  ],
+);
+assert.equal(adapterObs.length, 2, 'families missing on the downstream side must be dropped');
+assert.deepEqual(adapterObs.map((o) => o.id).sort(), ['arithmetic', 'logic']);
+const arithmetic = adapterObs.find((o) => o.id === 'arithmetic');
+assert.ok(Math.abs(arithmetic.proxyGain - 0.2) < 1e-9);
+assert.ok(Math.abs(arithmetic.downstreamGain - 0.18) < 1e-9);
+
+// The same real-ledger shape, with the proxy diverging hard, must refuse.
+const divergingLedger = toDivergenceObservations(
+  ['f1', 'f2', 'f3', 'f4', 'f5'].map((f) => ({ family: f, baselinePassRate: 0.2, candidatePassRate: 0.95 })),
+  ['f1', 'f2', 'f3', 'f4', 'f5'].map((f) => ({ family: f, baselinePassRate: 0.2, candidatePassRate: 0.22 })),
+);
+assert.equal(evaluateProxyDivergence(divergingLedger).decision, 'refused');
+
 console.log(
-  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=24 '
+  'NK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=38 '
   + `realFiles=${realSummary.files} realNodes=${realSummary.nodes} realEdges=${realSummary.edges} `
   + `extracted=${realSummary.extractedEdges} inferred=${realSummary.inferredEdges} `
   + `protectedFiles=${realProtected.length} protectedFragments=${PROTECTED_CAPABILITY_FRAGMENTS.length}`,

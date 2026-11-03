@@ -41,6 +41,8 @@ const DEFAULT_STEPS = [
   'test:cognitive-cycle-boundary-runtime-wiring',
   'test:workpass287:cognitive-cycle',
   'test:self-analysis-substrate',
+  'test:self-agency:authority',
+  'test:self-agency:live',
   'test:world-perception',
   'test:big-pass-224',
 ];
