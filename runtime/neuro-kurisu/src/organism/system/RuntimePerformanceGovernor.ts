@@ -53,8 +53,23 @@ export function defaultRuntimePerformanceGovernor(targetCycleMs=1200){ return de
 export class RuntimePerformanceGovernor {
   private state=defaults();
   private recentWallMs:number[]=[];
+  /**
+   * When true, host load is not fed back into the pressure signal. The governor still
+   * reports nominal pressure so its output shape is unchanged, but a cycle no longer
+   * depends on the machine's timing, CPU and heap at the moment it ran. Without this,
+   * two identical runs diverge: measured divergence began around tick 95-247 with wall,
+   * CPU and heap frozen except for process.cpuUsage()/memoryUsage(), and disappeared
+   * once those were held constant too. Used by determinism/soak runs, never by default.
+   */
+  private deterministic=false;
 
-  constructor(targetCycleMs=1200){ this.state=defaults(targetCycleMs); }
+  constructor(targetCycleMs=1200, options:{deterministic?:boolean}={}){
+    this.state=defaults(targetCycleMs);
+    this.deterministic=options.deterministic===true;
+  }
+
+  setDeterministic(deterministic:boolean):void{ this.deterministic=deterministic===true; }
+  isDeterministic():boolean{ return this.deterministic; }
 
   restore(raw?:Partial<RuntimePerformanceGovernorState>|null):void{
     const d=defaults(Number(raw?.targetCycleMs??this.state.targetCycleMs));
@@ -75,6 +90,24 @@ export class RuntimePerformanceGovernor {
     const rss=Math.max(0,Number(input.rssBytes??0)||0);
     const thermal=clamp(Number(input.thermal01??0));
     const ram=clamp(Number(input.ramPressure01??0));
+
+    if(this.deterministic){
+      // Determinism mode: record the sample for observability, but do not let host
+      // timing/CPU/heap move the pressure signal that feeds decisions.
+      this.state.samples+=1;
+      this.state.lastWallMs=wall;
+      this.state.lastCpuMs=cpu;
+      this.state.lastHeapUsedBytes=heap;
+      this.state.lastRssBytes=rss;
+      this.state.maxWallMs=Math.max(this.state.maxWallMs,wall);
+      this.state.maxHeapUsedBytes=Math.max(this.state.maxHeapUsedBytes,heap);
+      this.state.maxRssBytes=Math.max(this.state.maxRssBytes,rss);
+      this.state.performancePressure01=0;
+      this.state.memoryPressure01=0;
+      this.state.cpuPressure01=0;
+      this.state.lastReason='deterministic-mode';
+      return this.decision();
+    }
 
     this.state.samples+=1;
     this.state.totalWallMs+=wall;
@@ -127,7 +160,9 @@ export class RuntimePerformanceGovernor {
       performancePressure01:p,
       memoryPressure01:clamp(this.state.memoryPressure01),
       cpuPressure01:clamp(this.state.cpuPressure01),
-      effectiveLastStepMs:Math.max(this.state.lastWallMs,this.state.p95WallMs),
+      // In determinism mode the observed step duration must not reach policy either,
+      // or wall-clock jitter still changes the delay/budget decision downstream.
+      effectiveLastStepMs:this.deterministic?0:Math.max(this.state.lastWallMs,this.state.p95WallMs),
       maintenanceMultiplier01:maintenanceMultiplier,
       schedulerMultiplier01:schedulerMultiplier,
       reasonCodes:this.state.lastReason.split(',').filter(Boolean),

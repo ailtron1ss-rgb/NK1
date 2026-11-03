@@ -114,6 +114,12 @@ export interface RuntimeConfig extends OrganismConfig {
   mem0CognitiveRecall?: boolean;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+  /**
+   * Reproducible-run mode: the performance governor does not feed host wall/CPU/heap
+   * back into decisions, so two runs from the same state follow the same trajectory.
+   * Off by default; used by determinism and soak harnesses.
+   */
+  deterministic?: boolean;
 }
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
@@ -226,6 +232,7 @@ export class OrganismRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
+    this.runtimePerformance.setDeterministic(config.deterministic === true);
     this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
     this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
     const defaultSensorCadenceMs = config.performanceProfile === 'mobile' ? 60_000 : 60_000;
@@ -386,9 +393,14 @@ export class OrganismRuntime {
       });
       await this.core.setEmbodiment(this.embodiment.snapshot(), this.embodiment.eventLog(), { sensorFailures: snap.facets.embodiment?.sensorFailures ?? 0 });
       this.initialized = true;
-      this.startEmbodimentClock();
-      this.clockScheduler.start('reflection');
-      if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
+      // Determinism mode runs cycles explicitly and must not also have background clocks
+      // firing on the shared runtime queue, or their interleaving makes the trajectory
+      // host-dependent. This only affects reproducible-run harnesses.
+      if (this.config.deterministic !== true) {
+        this.startEmbodimentClock();
+        this.clockScheduler.start('reflection');
+        if (this.trustedShadowLearningScheduler) this.clockScheduler.start('trusted-shadow-learning');
+      }
       if (this.config.autoRun) this.startCognitiveClock();
       await this.journal.write('info', 'runtime.init.complete', { tick: this.core.operationalStatusSnapshot().tick });
     });

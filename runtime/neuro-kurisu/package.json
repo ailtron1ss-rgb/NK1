@@ -1854,6 +1854,7 @@
     "test:user-model-http-route": "node tests/user-model-http-route.mjs",
     "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs",
     "test:self-modification-adversarial": "node --experimental-strip-types tests/self-modification-adversarial.mjs",
-    "test:cognitive-cycle-soak": "node --experimental-strip-types tests/cognitive-cycle-soak.mjs"
+    "test:cognitive-cycle-soak": "node --experimental-strip-types tests/cognitive-cycle-soak.mjs",
+    "test:performance-governor-determinism": "node --experimental-strip-types tests/performance-governor-determinism.mjs"
   }
 }

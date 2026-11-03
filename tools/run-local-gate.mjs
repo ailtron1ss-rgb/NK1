@@ -42,6 +42,7 @@ const DEFAULT_STEPS = [
   'test:workpass287:cognitive-cycle',
   'test:self-analysis-substrate',
   'test:cognitive-cycle-soak',
+  'test:performance-governor-determinism',
   'test:self-modification-adversarial',
   'test:self-agency:authority',
   'test:self-agency:live',

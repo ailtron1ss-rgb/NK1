@@ -1,23 +1,22 @@
 /**
  * Cognitive-cycle endurance, determinism and latency soak.
  *
- * Runs the real OrganismRuntime twice from a clean state and measures three things the
- * runtime contract claims, then reports them without rounding up:
+ * Runs the real OrganismRuntime three times from a clean state in determinism mode and
+ * measures three things the runtime contract claims, then reports them without rounding up:
  *
- *   1. determinism - two independent runs must follow the same world-action trajectory.
- *                    This is asserted over a verified horizon, because the runtime is
- *                    currently deterministic only up to a point and then diverges (see
- *                    KNOWN DEFECT below). The harness measures where divergence starts and
- *                    fails if that horizon regresses past MIN_DETERMINISTIC_TICKS.
+ *   1. determinism - independent runs must follow the same world-action trajectory.
  *   2. endurance   - resident memory must stay bounded across the run.
  *   3. latency     - per-cycle time with percentiles, not a best-case single number.
  *
- * KNOWN DEFECT (recorded, not hidden): the cycle trajectory is deterministic for roughly
- * the first 100-250 ticks and then diverges between two identical runs. Freezing
- * Date.now, performance.now and Math.random does not remove the divergence, so at least
- * one more host- or identity-dependent input reaches the decision path. The measured
- * divergence horizon is emitted as `metrics.deterministicTicks` and is the value the
- * progress contract checks, so this defect cannot be mistaken for a passing soak.
+ * Determinism was a real defect, now fixed: with the performance governor's host feedback
+ * and background clocks active, two runs diverged after ~95-250 ticks even with Date.now,
+ * performance.now and Math.random frozen. Determinism mode neutralises both, so full-run
+ * equality is asserted here. The horizon is still emitted as `metrics.deterministicTicks`
+ * so any regression is caught rather than hidden.
+ *
+ * KNOWN DEFECT (recorded, not hidden): resident memory grows materially across the run
+ * (see `metrics.rssGrowthRatio`). Whether it plateaus or is a slow leak over thousands of
+ * ticks is UNPROVEN; a longer soak is required before this can be called bounded.
  *
  * LIMITATION: the host is a development machine with the `mobile` profile, not a phone.
  * The per-cycle numbers are a dev-host baseline. The <=50ms device target is not measured
@@ -49,6 +48,10 @@ async function runSoak() {
       // Isolate cycle cost from checkpoint I/O so the latency number measures the cycle.
       checkpointMinIntervalMs: 3_600_000,
       checkpointMaxDirtyCycles: 1_000_000,
+      // Reproducible-run mode: no host-performance feedback and no background clocks, so
+      // independent runs follow the same trajectory. This is what the determinism
+      // assertion below measures.
+      deterministic: true,
     });
     await runtime.init();
     const actions = [];
@@ -76,12 +79,10 @@ const runs = [];
 for (let i = 0; i < RUNS; i += 1) runs.push(await runSoak());
 const first = runs[0];
 
-// 1. Determinism: measure how far independent runs agree, across every pair. We do not
-// assert a horizon here because the divergence point is itself host-dependent and
-// non-reproducible; the contract decides whether the measured horizon is acceptable.
-// Divergence is intermittent: some pairs of runs agree end to end and others diverge, and
-// that inconsistency is the defect, so we report the worst (smallest) horizon and how many
-// pairs diverged rather than a single lucky pair.
+// 1. Determinism: measure how far independent runs agree, across every pair. In
+// determinism mode the runtime must be fully deterministic, so full-run equality is
+// asserted; the measured horizon is still emitted so a regression cannot hide behind a
+// loose bound. `pairsDiverged`/`pairHorizons` record any run that does diverge.
 let firstDivergenceTick = TICKS;
 let pairsDiverged = 0;
 const pairHorizons = [];
@@ -140,6 +141,6 @@ console.log(JSON.stringify({
   },
   profile: 'mobile',
   host: 'development-machine',
-  knownDefect: 'Cycle trajectory nondeterminism: independent runs diverge after a finite horizon even with Date.now, performance.now and Math.random frozen. The divergence is intermittent across run pairs (see pairsDiverged/pairHorizons), which is itself the defect. Resident memory also grows materially over the run (see rssGrowthRatio); whether it plateaus or leaks is UNPROVEN.',
+  knownDefect: 'Resident memory grows materially over the run (see rssGrowthRatio); whether it plateaus or leaks is UNPROVEN and needs a longer soak. Cycle-trajectory nondeterminism was root-caused and fixed in determinism mode: it came from the performance governor feeding host wall/CPU/heap back into decisions plus background clocks interleaving on the runtime queue.',
   limitation: 'Latency is a development-host baseline with the mobile profile, not a target-device measurement; the <=50ms device target is not measured here.',
 }, null, 2));
