@@ -52,6 +52,8 @@ jobs:
         run: npm --prefix runtime/neuro-kurisu run test:memory-restore-integrity && npm --prefix runtime/neuro-kurisu run test:workpass76:memory-lineage-integrity
       - name: Memory lifecycle persistence
         run: npm --prefix runtime/neuro-kurisu run test:memory-subsystem-state-roundtrip && npm --prefix runtime/neuro-kurisu run test:memory-semantic-vector-integrity
+      - name: Consolidation and canonical lifecycle restore integrity
+        run: npm --prefix runtime/neuro-kurisu run test:r5:memory-lifecycle
       - name: Retrieval safety and metadata contracts
         run: npm --prefix runtime/neuro-kurisu run test:memory-retrieval-grounded-abstention-workpass574 && npm --prefix runtime/neuro-kurisu run test:memoryos2-metadata-retrieval && npm --prefix runtime/neuro-kurisu run test:memory-fabric-semantic-retrieval
       - name: Retrieval benchmark and seed sensitivity
