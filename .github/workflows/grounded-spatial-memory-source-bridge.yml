@@ -6,6 +6,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/memory/GroundedSpatialMemoryBridge.ts"
       - "runtime/neuro-kurisu/tests/grounded-spatial-memory-source-bridge-workpass.mjs"
+      - "runtime/neuro-kurisu/tests/grounded-spatial-core-tick-workpass.mjs"
       - ".github/workflows/grounded-spatial-memory-source-bridge.yml"
   push:
     branches:
@@ -32,6 +33,9 @@ jobs:
         working-directory: runtime/neuro-kurisu
       - name: Verify observed grounded source-to-memory projection
         run: node --experimental-strip-types tests/grounded-spatial-memory-source-bridge-workpass.mjs
+        working-directory: runtime/neuro-kurisu
+      - name: Exercise real OrganismCore perception-to-memory tick
+        run: node --experimental-strip-types tests/grounded-spatial-core-tick-workpass.mjs
         working-directory: runtime/neuro-kurisu
       - name: Typecheck runtime
         run: npm run typecheck
