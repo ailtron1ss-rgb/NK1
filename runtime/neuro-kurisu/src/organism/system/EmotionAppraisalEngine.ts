@@ -200,6 +200,13 @@ export class EmotionAppraisalEngine {
     const feelings=ownDataArray(r.feelings);
     const restoredHistory=history ? history.map(validEmotionEpisode) : null;
     const restoredFeelings=feelings ? feelings.map(validFeelingEpisode) : null;
+    const validHistory = restoredHistory && restoredHistory.every(Boolean)
+      ? restoredHistory as EmotionEpisode[]
+      : [];
+    const validFeelings = restoredFeelings && restoredFeelings.every(Boolean)
+      ? (restoredFeelings as FeelingEpisode[]).filter(feeling =>
+          validHistory.some(episode => episode.id === feeling.causeEmotionId))
+      : [];
     this.state={
       version:2,
       episodes:validCounter(r.episodes,0),
@@ -210,8 +217,8 @@ export class EmotionAppraisalEngine {
       meanValence01:boundedNumber(r.meanValence01,d.meanValence01),
       meanStress01:boundedNumber(r.meanStress01,d.meanStress01),
       meanAttentionCapture01:boundedNumber(r.meanAttentionCapture01,d.meanAttentionCapture01),
-      history:restoredHistory && restoredHistory.every(Boolean) ? restoredHistory as EmotionEpisode[] : [],
-      feelings:restoredFeelings && restoredFeelings.every(Boolean) ? restoredFeelings as FeelingEpisode[] : [],
+      history:validHistory,
+      feelings:validFeelings,
       interoception:restoreInteroception(r.interoception,d.interoception),
       outcomes:restoreOutcomes(r.outcomes),
     };
