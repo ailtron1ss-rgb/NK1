@@ -15,6 +15,7 @@ on:
       - "contracts/progress-workstreams.json"
       - "docs/evidence/**"
       - "tools/progress-report.mjs"
+      - "tools/progress-report.test.mjs"
       - "tools/run-local-gate.mjs"
       - ".nvmrc"
       - ".github/workflows/nk1-self-analysis.yml"
@@ -28,6 +29,7 @@ on:
       - "contracts/progress-workstreams.json"
       - "docs/evidence/**"
       - "tools/progress-report.mjs"
+      - "tools/progress-report.test.mjs"
       - "tools/run-local-gate.mjs"
       - ".nvmrc"
       - ".github/workflows/nk1-self-analysis.yml"
@@ -54,6 +56,8 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Structural index and self-modification guard
         run: npm --prefix runtime/neuro-kurisu run test:self-analysis-substrate
+      - name: Test stale-evidence rejection and progress axes
+        run: node tools/progress-report.test.mjs
       - name: Compute exact-SHA progress report
         run: node tools/progress-report.mjs --json
       - name: Runtime typecheck
