@@ -289,7 +289,7 @@ export class CausalExperienceStream {
       // increments the world tick before recording its trace), so both bindings
       // are accepted while a tick outside the transition is rejected.
       !(trace.tick===trace.stateBefore.tick||trace.tick===stateAfter.tick)||
-      stateAfter.tick<=trace.stateBefore.tick||
+      stateAfter.tick!==trace.stateBefore.tick+1||
       // The resulting state must explicitly attribute the last completed action
       // to this decision and carry a bounded outcome signal; mere state drift is
       // not enough to create action-conditioned learning credit.
