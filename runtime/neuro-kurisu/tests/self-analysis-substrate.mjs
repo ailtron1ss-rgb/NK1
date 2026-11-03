@@ -103,6 +103,11 @@ assert.ok(!unreferenced.includes('used'), 'exported symbol must not be reported 
 const guardGraph = buildSourceGraph([
   { path: 'src/organism/learning/VerifiedOutcomePromotionGate.ts', text: 'export class VerifiedOutcomePromotionGate {}\n' },
   { path: 'src/organism/analysis/SourceGraph.ts', text: 'export class SourceGraph {}\n' },
+  { path: 'src/organism/analysis/ProxyDivergenceGuard.ts', text: 'export function evaluateProxyDivergence() {}\n' },
+  { path: 'src/organism/analysis/SelfImprovementCandidatePool.ts', text: 'export class SelfImprovementCandidatePool {}\n' },
+  { path: 'src/organism/system/CanonicalSelfAgencyAuthority.ts', text: 'export class CanonicalSelfAgencyAuthority {}\n' },
+  { path: 'tests/self-analysis-substrate.mjs', text: '// self evaluator regression suite\n' },
+  { path: 'tests/canonical-self-agency-authority.mjs', text: '// identity authority regression suite\n' },
   { path: 'src/organism/cognition/NeutralThing.ts', text: 'export class NeutralThing {}\n' },
   { path: '.github/workflows/ci.yml', text: 'name: ci\n' },
 ]);
@@ -116,6 +121,19 @@ const refusedEvaluator = evaluateModification(
 );
 assert.equal(refusedEvaluator.decision, 'refused');
 assert.ok(refusedEvaluator.refusals.some((r) => r.reason.startsWith('protected-capability:')));
+
+// The trust boundary must protect the scorer, candidate pool, canonical identity
+// authority and the regression suites that constrain them—not only the outer guard.
+for (const protectedPath of [
+  'src/organism/analysis/ProxyDivergenceGuard.ts',
+  'src/organism/analysis/SelfImprovementCandidatePool.ts',
+  'src/organism/system/CanonicalSelfAgencyAuthority.ts',
+  'tests/self-analysis-substrate.mjs',
+  'tests/canonical-self-agency-authority.mjs',
+]) {
+  const decision = evaluateModification({ candidateId: 'protect-trust-boundary', targetFiles: [protectedPath] }, guardGraph);
+  assert.equal(decision.decision, 'refused', `self-modification must not edit trust-boundary file: ${protectedPath}`);
+}
 
 const refusedWorkflow = evaluateModification(
   { candidateId: 'c2', targetFiles: ['.github/workflows/ci.yml'] },
@@ -156,6 +174,9 @@ assert.ok(
   realProtected.some((f) => f.includes('P23LearningEngine')),
   'real tree must expose P23LearningEngine as a protected capability',
 );
+for (const owner of ['ProxyDivergenceGuard', 'SelfImprovementCandidatePool', 'CanonicalSelfAgencyAuthority']) {
+  assert.ok(realProtected.some((f) => f.includes(owner)), `real source graph must protect ${owner}`);
+}
 const forbiddenGuard = evaluateModification(
   { candidateId: 'real-guard', targetFiles: realProtected.slice(0, 3) },
   realGraph,
@@ -215,6 +236,20 @@ assert.equal(malformed.pairs, 1, 'only the single valid row must count');
 assert.equal(malformed.decision, 'refused', 'one valid pair is below minPairs');
 assert.equal(DEFAULT_DIVERGENCE_POLICY.minPairs, 5);
 
+// Malformed policy is an authorization failure, never a reason to skip thresholds.
+for (const invalidPolicy of [
+  { minPairs: Number.NaN, maxMeanDivergence: 0.15, maxInversionRate: 0.2 },
+  { minPairs: 0, maxMeanDivergence: 0.15, maxInversionRate: 0.2 },
+  { minPairs: 5, maxMeanDivergence: Number.NaN, maxInversionRate: 0.2 },
+  { minPairs: 5, maxMeanDivergence: -0.1, maxInversionRate: 0.2 },
+  { minPairs: 5, maxMeanDivergence: 0.15, maxInversionRate: 1.1 },
+  Object.defineProperty({}, 'minPairs', { get() { throw new Error('untrusted policy getter'); } }),
+]) {
+  const invalid = evaluateProxyDivergence(five(0.3, 0.28), invalidPolicy);
+  assert.equal(invalid.decision, 'refused', 'malformed divergence policy must fail closed');
+  assert.equal(invalid.reason, 'invalid-divergence-policy');
+}
+
 // Downstream gain present but not positive must still refuse.
 assert.equal(
   evaluateProxyDivergence(five(0.05, 0.0)).decision,
@@ -236,6 +271,23 @@ const adapterObs = toDivergenceObservations(
 );
 assert.equal(adapterObs.length, 2, 'families missing on the downstream side must be dropped');
 assert.deepEqual(adapterObs.map((o) => o.id).sort(), ['arithmetic', 'logic']);
+
+// Duplicate family rows are ambiguous evidence. Exclude the family entirely rather
+// than allowing last-write-wins to select whichever downstream result is favourable.
+const duplicateFamilyObs = toDivergenceObservations(
+  [
+    { family: 'ambiguous', baselinePassRate: 0.1, candidatePassRate: 0.9 },
+    { family: 'ambiguous', baselinePassRate: 0.1, candidatePassRate: 0.2 },
+    { family: 'unique', baselinePassRate: 0.2, candidatePassRate: 0.4 },
+  ],
+  [
+    { family: 'ambiguous', baselinePassRate: 0.1, candidatePassRate: 0.11 },
+    { family: 'ambiguous', baselinePassRate: 0.1, candidatePassRate: 0.99 },
+    { family: 'unique', baselinePassRate: 0.2, candidatePassRate: 0.38 },
+  ],
+);
+assert.deepEqual(duplicateFamilyObs.map((o) => o.id), ['unique'],
+  'duplicate families on either side must be excluded, not overwritten');
 const arithmetic = adapterObs.find((o) => o.id === 'arithmetic');
 assert.ok(Math.abs(arithmetic.proxyGain - 0.2) < 1e-9);
 assert.ok(Math.abs(arithmetic.downstreamGain - 0.18) < 1e-9);
