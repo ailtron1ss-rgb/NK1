@@ -54,7 +54,7 @@ try {
         { id: 'outside-exists', kind: 'file-exists', path: outsideRelative(outsideEvidence) },
         { id: 'absolute-path', kind: 'file-exists', path: outsideEvidence },
         { id: 'windows-drive-path', kind: 'file-exists', path: 'C:\\outside\\evidence.json' },
-        { id: 'dotdot-alias', kind: 'file-exists', path: 'runtime/neuro-kurisu/tests/../../README.md' }
+        { id: 'dotdot-alias', kind: 'file-exists', path: 'runtime/neuro-kurisu/tests/../../README.md' },
         { id: 'outside-contains', kind: 'file-contains', path: outsideRelative(outsideEvidence), needle: report.currentSha },
         { id: 'outside-evidence', kind: 'evidence-json', path: outsideRelative(outsideEvidence) },
         { id: 'outside-glob', kind: 'glob', path: outsideRelative(join(outsideDir, '*.json')) },
