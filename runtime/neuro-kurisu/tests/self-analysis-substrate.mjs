@@ -109,6 +109,16 @@ assert.ok(hasImport('src/a/feature-consumer.ts#__module__', 'src/a/features/inde
   'extensionless directory import must resolve its index.ts module');
 assert.ok(!hasImport('src/a/escape-consumer.ts#__module__', 'outside.ts#__module__'),
   'relative import escaping the repository root must not resolve to a real file');
+const windowsPathGraph = buildSourceGraph([
+  { path: 'src\\windows\\util.ts', text: 'export class WindowsPathSymbol {}\\n' },
+  { path: 'src\\windows\\consumer.ts', text: "import { WindowsPathSymbol } from './util.js';\\nexport class WindowsPathConsumer { value = new WindowsPathSymbol(); }\\n" },
+]);
+assert.ok(windowsPathGraph.edges.some((edge) =>
+  edge.kind === 'imports' &&
+  edge.from === 'src\\windows\\consumer.ts#__module__' &&
+  edge.to === 'src\\windows\\util.ts#__module__',
+), 'normalized Windows-style source paths must retain their original graph node identities');
+
 
 
 // --- 4. duplicate definition and dead-symbol detection ---
