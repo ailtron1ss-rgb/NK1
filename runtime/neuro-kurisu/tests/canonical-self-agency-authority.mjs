@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { CanonicalSelfAgencyAuthority, defaultCanonicalSelfAgencyState } from '../src/organism/system/CanonicalSelfAgencyAuthority.ts';
 
 const a=new CanonicalSelfAgencyAuthority();
+const freshAuthority = new CanonicalSelfAgencyAuthority();
+freshAuthority.restore();
+assert.equal(freshAuthority.snapshot().invariantIntegrity01, 1,
+  'an absent snapshot must preserve fresh canonical defaults');
 a.restore(defaultCanonicalSelfAgencyState());
 const obs=a.observe({tick:1,identityContinuity01:.92,identityDrift01:.05,valueContinuity01:.95,goalContinuity01:.9,memoryContinuity01:.94,authorship01:.7,autonomy01:.82,coherence01:.86,realityAlignment01:.9,uncertainty01:.2,energy01:.82,thermal01:.2,externalInput:false,selfDirectedInitiative01:.72,selfDirectedDomain:'verification',selfImprovementDecision:'continue'});
 assert(obs.integrity01>.8);
