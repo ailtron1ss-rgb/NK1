@@ -1,0 +1,84 @@
+{
+  "schema": "nk1.local-gate.v1",
+  "generatedAt": "2026-11-03T08:21:32.744Z",
+  "sha": "44a64e331d8766a3188686ba309a059c75cca29d",
+  "branch": "nk1-self-analysis-and-evidence-20261103",
+  "node": "v24.21.0",
+  "prefix": "runtime/neuro-kurisu",
+  "coversPaths": [
+    "runtime/neuro-kurisu",
+    "tools"
+  ],
+  "verified": true,
+  "steps": [
+    {
+      "step": "test:cognitive-cycle-boundary",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 186,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:cognitive-cycle-boundary\n> node --experimental-strip-types tests/cognitive-cycle-boundary.mjs\n\nNK1_COGNITIVE_CYCLE_BOUNDARY=PASS assertions=9 modes=2 rejectsMalformedObservation=true rejectsInvalidMode=true mutation=false\n\n"
+    },
+    {
+      "step": "test:cognitive-cycle-boundary-runtime-wiring",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 147,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:cognitive-cycle-boundary-runtime-wiring\n> node tests/cognitive-cycle-boundary-runtime-wiring.mjs\n\ncognitive-cycle-boundary-runtime-wiring: ok\n\n"
+    },
+    {
+      "step": "test:workpass287:cognitive-cycle",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 573,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:workpass287:cognitive-cycle\n> node --experimental-strip-types tests/workpass287-unified-cycle-contract.mjs && npm run test:workpass71:strict-cycle-completeness\n\nWorkPass287/71 unified cognitive-cycle contract: PASS\n\n> neuro-kurisu-organism-evolution@35.90.0 test:workpass71:strict-cycle-completeness\n> node --experimental-strip-types tests/CycleCompletenessPolicy.test.mjs && node --experimental-strip-types tests/workpass71-unified-cycle-completeness.mjs && node --experimental-strip-types tests/workpass71-cognitive-event-lineage.mjs\n\n✔ six-stage trace remains core-complete but cannot be full-complete (1.68937ms)\n✔ eleven unique stages and an independently verified full lineage are full-complete (0.20403ms)\n✔ stage coverage alone cannot substitute for event-fabric full-lineage verification (0.18059ms)\n✔ missing a core stage fails both tiers (0.15775ms)\n✔ duplicate event IDs fail full completion and fail core when a core ID is aliased (0.22812ms)\n✔ duplicate optional-stage IDs cannot satisfy full completion (0.18895ms)\n✔ broken core or full causal lineage fails closed (0.16434ms)\n✔ inherited properties never count as stage evidence (0.22647ms)\n✔ invalid inputs fail closed (1.39695ms)\nℹ tests 9\nℹ suites 0\nℹ pass 9\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 10.80785\nWORKPASS71_UNIFIED_CYCLE_COMPLETENESS=PASS\nWORKPASS71_COGNITIVE_EVENT_LINEAGE=PASS\n\n"
+    },
+    {
+      "step": "test:self-analysis-substrate",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 14042,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:self-analysis-substrate\n> node --experimental-strip-types tests/self-analysis-substrate.mjs\n\nNK1_SELF_ANALYSIS_SUBSTRATE=PASS assertions=110 realFiles=660 realNodes=24584 realEdges=1124096 extracted=40890 inferred=1083206 protectedFiles=32 protectedFragments=43\n\n"
+    },
+    {
+      "step": "test:self-modification-adversarial",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 199,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:self-modification-adversarial\n> node --experimental-strip-types tests/self-modification-adversarial.mjs\n\n{\n  \"pass\": \"NK1_SELF_MODIFICATION_ADVERSARIAL\",\n  \"verified\": true,\n  \"metrics\": {\n    \"adversarialCasesPassed\": 56,\n    \"evaluatorTamperBlocked\": true,\n    \"dangerModelTamperBlocked\": true,\n    \"authorityTamperBlocked\": true,\n    \"forgedEvidenceBlocked\": true,\n    \"irreversibleChangeBlocked\": true,\n    \"selfDeclaredSafetyIgnored\": true,\n    \"postAdmissionMutationNeutralised\": true,\n    \"protectedFragmentsExercised\": 43\n  }\n}\n\n"
+    },
+    {
+      "step": "test:self-agency:authority",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 184,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:self-agency:authority\n> node --experimental-strip-types tests/canonical-self-agency-authority.mjs\n\n{\n  \"PASS\": true,\n  \"integrity01\": 1,\n  \"verify\": 0.04896262569832402,\n  \"explore\": 0.02879896907216495,\n  \"goalAdmitted\": true,\n  \"externalGoalAdmitted\": false,\n  \"coreChangeAllowed\": false,\n  \"adaptiveChangeAllowed\": true,\n  \"selfModificationAllowed\": false,\n  \"tamperedIntegrity\": 0,\n  \"ablationBaseline01\": 0.085,\n  \"ablationLesioned01\": 0.008499999999999999,\n  \"ablationDelta01\": 0.07650000000000001\n}\n\n"
+    },
+    {
+      "step": "test:self-agency:live",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 3320,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:self-agency:live\n> node --experimental-strip-types tests/canonical-self-agency-live.mjs\n\n{\"PASS\":true,\"selfCycles\":10,\"invariantIntegrity01\":1,\"agencyIntegrity01\":0.5620442630528969,\"identityBlocks\":2,\"goalAdmissions\":10,\"goalBlocks\":4,\"selfModificationChecks\":10,\"selfModificationBlocks\":10,\"plasticIdentityStatus\":\"proposed\",\"selfAgencyAblationDelta01\":0.07650000000000001,\"policyContributions\":21,\"policyDuplicates\":0}\n\n"
+    },
+    {
+      "step": "test:world-perception",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 5125,
+      "tail": "…ntegrity && npm run test:world-perception-runtime-wiring && npm run test:world-perception-runtime-ingress && npm run test:p41:semantic-perception && npm run test:p41:integration && npm run test:p41:perceptual-integrity-deep-pass && npm run test:p41:truthfulness\n\n\n> neuro-kurisu-organism-evolution@35.90.0 test:world-context-normalizer-integrity\n> node --experimental-strip-types tests/world-context-normalizer-integrity.mjs\n\nWORLD_CONTEXT_NORMALIZATION_INTEGRITY=PASS\n\n> neuro-kurisu-organism-evolution@35.90.0 test:perception-engine-signal-integrity\n> node --experimental-strip-types tests/perception-engine-signal-integrity.mjs\n\nPERCEPTION_ENGINE_SIGNAL_INTEGRITY=PASS\n\n> neuro-kurisu-organism-evolution@35.90.0 test:world-perception-delta-integrity\n> node --experimental-strip-types tests/world-perception-delta-integrity.mjs\n\nWORLD_PERCEPTION_DELTA_INTEGRITY=PASS\n\n> neuro-kurisu-organism-evolution@35.90.0 test:world-perception-runtime-wiring\n> node --experimental-strip-types tests/world-perception-runtime-wiring.mjs\n\nWORLD_PERCEPTION_RUNTIME_WIRING=PASS\n\n> neuro-kurisu-organism-evolution@35.90.0 test:world-perception-runtime-ingress\n> node --experimental-strip-types tests/world-perception-runtime-ingress.mjs\n\nWORLD_PERCEPTION_RUNTIME_INGRESS=PASS\n\n> neuro-kurisu-organism-evolution@35.90.0 test:p41:semantic-perception\n> node --experimental-strip-types tests/p41-semantic-perception.mjs\n\nP41_SEMANTIC_PERCEPTION=PASS entities=7 events=2 pending=2 temporal=0.151\n\n> neuro-kurisu-organism-evolution@35.90.0 test:p41:integration\n> node --experimental-strip-types tests/p41-integration.mjs\n\nP41_INTEGRATION=PASS nativeFrames=1 entities=7\n\n> neuro-kurisu-organism-evolution@35.90.0 test:p41:perceptual-integrity-deep-pass\n> node --experimental-strip-types tests/p41-perceptual-integrity-deep-pass.mjs\n\nP41_PERCEPTUAL_INTEGRITY_DEEP_PASS=PASS\n\n> neuro-kurisu-organism-evolution@35.90.0 test:p41:truthfulness\n> node --experimental-strip-types tests/p41-truthfulness.mjs\n\nP41_TRUTHFULNESS=PASS\n\n"
+    },
+    {
+      "step": "test:big-pass-224",
+      "status": "pass",
+      "exitCode": 0,
+      "durationMs": 1606,
+      "tail": "\n> neuro-kurisu-organism-evolution@35.90.0 test:big-pass-224\n> node --experimental-strip-types tests/big-pass-224-autonomous-runtime-life.mjs\n\n{\n  \"pass\": \"BIG_PASS_224_AUTONOMOUS_RUNTIME_LIFE\",\n  \"controller\": {\n    \"selfStartedCycles\": 2,\n    \"idleGapCycles\": 1,\n    \"temporalPersistence01\": 0.35142400000000007,\n    \"environmentalAgency01\": 0.3768,\n    \"longestStreak\": 2\n  },\n  \"core\": {\n    \"ambientCycles\": 1,\n    \"selfStartedCycles\": 1,\n    \"selfAuthoredActivity01\": 0.3899,\n    \"temporalPersistence01\": 0.30720000000000003,\n    \"persistedSelfStartedCycles\": 1\n  },\n  \"verified\": true\n}\n\n"
+    }
+  ],
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "failedSteps": []
+  }
+}
