@@ -70,6 +70,10 @@ This manifest catalogs requested tools and their intended roles. It deliberately
 
 The initial claim store is a local filesystem lease store. Multiple agents can coordinate only when they share the same `NEUROK_OS_STATE_DIR`; independent devices/worktrees do not share state automatically. It is advisory: it does not intercept arbitrary filesystem writes or replace Git review. A later authenticated shared backend must use transactional compare-and-swap and be contract-tested before cross-device claims are enabled.
 
+### Evidence ledger scope boundary
+
+Evidence receipts are immutable local files bound to a commit SHA. They are not yet automatically uploaded as CI artifacts, signed by an independent key, or synchronized across devices. A future CI publisher must attach the same receipt bytes and artifact digests to the exact workflow run; never infer efficacy from a PASS status without the matching dataset, holdout and metric contract.
+
 ## Not included / not claimed
 
 No external service has been connected by this change. No API keys or database schemas were created. No remote agent is running continuously. No self-modification pipeline, sandbox isolation, independent verifier, production dashboard or Release ZIP integration is claimed. Those are separate implementation gates.
