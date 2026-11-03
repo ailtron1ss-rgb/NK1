@@ -72,6 +72,11 @@ export const PROTECTED_CAPABILITY_FRAGMENTS: readonly string[] = [
   'ProxyDivergenceGuard',
   'SelfImprovementCandidatePool',
   'CanonicalSelfAgencyAuthority',
+  // Identity canon and the orchestration entrypoints must not be editable by
+  // the same mechanism they govern.
+  'KurisuCanonProfile',
+  'OrganismCore',
+  'OrganismRuntime',
   'self-analysis-substrate',
   'canonical-self-agency-authority',
   // Build/test configuration and the progress/evidence machinery are part of the
