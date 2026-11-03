@@ -152,6 +152,8 @@ export interface OrganismDecisionTrace {
   agencyEvidence?: DecisionAgencyEvidence;
   userRequestedAction: ActionKind | null;
   autonomousOverride: boolean;
+  /** Canonical self-agency admission for the endogenous goal authored in this cycle. */
+  goalAuthorshipAdmitted?: boolean;
   predictedOutcomes: PredictedActionOutcome[];
   outcome?: { success:number; reward?:number; surprise?:number; notes?:string; at:number };
 }
