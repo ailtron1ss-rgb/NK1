@@ -18,6 +18,9 @@ import {
 } from "../src/components/avatar/motionArbitration.ts";
 import {
   DEFAULT_RENDERER_MANIFESTS,
+  LIVE2D_CHANNELS,
+  SVG_CHANNELS,
+  VRM3D_CHANNELS,
   createDefaultBodyRendererRegistry,
 } from "../src/components/avatar/rendererRegistryDefaults.ts";
 import { capabilitiesForMode, projectSemanticBodyState } from "../src/components/avatar/embodimentUiBridge.ts";
@@ -183,6 +186,59 @@ test("default registry seeds four wired renderers with no channel drift", () => 
     assert.deepEqual(caps.channels, manifest.channels);
     assert.equal(caps.supportsPhysics, manifest.supportsPhysics);
   }
+});
+
+// The manifest claims to describe "what each renderer actually applies today", so a
+// declared channel must correspond to a real adapter mapping. These tests derive the
+// expected channel set from the adapters themselves, so the manifest cannot drift
+// back to a narrower or wider claim without failing.
+test("declared Original 2D channels match the flat-SVG channel mapper", () => {
+  const declared = new Set(SVG_CHANNELS);
+  const probes = {
+    torsoYaw: { channel: "torsoYaw", read: (o) => o.torsoOffsetX },
+    torsoPitch: { channel: "torsoPitch", read: (o) => o.torsoOffsetY },
+    headYaw: { channel: "headYaw", read: (o) => o.headOffsetX },
+    headPitch: { channel: "headPitch", read: (o) => o.headOffsetY },
+    headRoll: { channel: "headRoll", read: (o) => o.headRollDeg },
+    breath: { channel: "breath", read: (o) => o.breathScale },
+  };
+  for (const [name, probe] of Object.entries(probes)) {
+    const moved = probe.read(originalStageChannelOffsets({ [probe.channel]: 1 }));
+    const rest = probe.read(originalStageChannelOffsets({ [probe.channel]: 0 }));
+    assert.notEqual(moved, rest, `${name} must change the SVG rig`);
+    assert.ok(declared.has(name), `${name} is applied by the SVG adapter and must be declared`);
+  }
+  // gazeX/gazeY are consumed by the stage's pupil offset, not this mapper.
+  assert.ok(declared.has("gazeX") && declared.has("gazeY"));
+  // A channel the mapper ignores must not be declared.
+  assert.equal(declared.has("leftKnee"), false);
+});
+
+test("declared VRM 3D channels match the full-body bone applier", () => {
+  const declared = new Set(VRM3D_CHANNELS);
+  const vrm = createFakeVrm(FULL_BODY_NAMES);
+  const bones = ["spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"];
+  const result = applyVrmFullBodyChannels(vrm, {
+    torsoPitch: 0.2, leftElbow: 0.2, rightElbow: 0.2, leftHip: 0.2, rightHip: 0.2, leftKnee: 0.2, rightKnee: 0.2,
+  });
+  assert.deepEqual(result.controlledBones.sort(), bones.sort());
+  for (const channel of ["torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee"]) {
+    assert.ok(declared.has(channel), `${channel} drives a real bone and must be declared`);
+  }
+  // The head/gaze controller owns headYaw/headPitch/headRoll and shoulders; the
+  // full-body pass must not claim them.
+  for (const channel of ["leftShoulder", "rightShoulder", "headYaw", "headPitch", "headRoll"]) {
+    assert.equal(declared.has(channel), false, `${channel} is not a full-body bone channel`);
+  }
+});
+
+test("declared Live2D channels match what the viewer can actually drive", () => {
+  const declared = new Set(LIVE2D_CHANNELS);
+  // The bundled viewer writes ParamAngleX/Y/Z, eye-ball and mouth params. It applies
+  // head roll, gaze and mouth, but has no breath parameter, so breath must not be declared.
+  assert.deepEqual([...declared].sort(), ["gazeX", "gazeY", "headRoll"].sort());
+  assert.equal(declared.has("breath"), false, "the Live2D viewer exposes no breath parameter");
+  assert.equal(declared.has("torsoYaw"), false, "the Live2D viewer drives no torso channel");
 });
 
 test("motion arbiter channels flow into the semantic pose but never override derived channels", () => {

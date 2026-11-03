@@ -13,11 +13,16 @@ const EXPRESSION_CHANNELS = [
   "neutral", "joy", "sadness", "anger", "anxiety", "curiosity", "protective", "surprise",
 ] as const;
 
-/** Channels each wired renderer actually applies today. */
-export const LIVE2D_CHANNELS = ["headRoll", "gazeX", "gazeY", "breath"] as const;
-export const SVG_CHANNELS = ["gazeX", "gazeY"] as const;
+/**
+ * Channels each wired renderer actually applies today.
+ *
+ * Each list is checked against the renderer's own adapter by `body-systems.test.mjs`:
+ * a channel may only be declared if the adapter maps it to a real rig change.
+ */
+export const LIVE2D_CHANNELS = ["headRoll", "gazeX", "gazeY"] as const;
+export const SVG_CHANNELS = ["torsoYaw", "torsoPitch", "headYaw", "headPitch", "headRoll", "gazeX", "gazeY", "breath"] as const;
 export const SPRITE_CHANNELS = [] as const;
-export const VRM3D_CHANNELS = ["gazeX", "gazeY"] as const;
+export const VRM3D_CHANNELS = ["torsoPitch", "leftElbow", "rightElbow", "leftHip", "rightHip", "leftKnee", "rightKnee", "gazeX", "gazeY"] as const;
 
 export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest[] = [
   {
@@ -52,7 +57,7 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     supportsClothingLayers: false,
     supportsPhysics: false,
     joints: [],
-    notes: "Scalable SVG concept; no skeletal channels.",
+    notes: "Flat SVG concept; yaw/pitch map to translation, roll to rotation, breath to a bounded scale. No skeletal joints.",
   },
   {
     schemaVersion: 1,
@@ -85,8 +90,8 @@ export const DEFAULT_RENDERER_MANIFESTS: readonly BodyRendererCapabilityManifest
     supportsWorldTargets: true,
     supportsClothingLayers: false,
     supportsPhysics: true,
-    joints: ["head", "neck", "leftUpperArm", "rightUpperArm"],
-    notes: "Normalized humanoid drive; full-body joint control is not wired yet.",
+    joints: ["head", "neck", "leftUpperArm", "rightUpperArm", "spine", "leftLowerArm", "rightLowerArm", "leftUpperLeg", "rightUpperLeg", "leftLowerLeg", "rightLowerLeg"],
+    notes: "Normalized humanoid drive: head/neck, shoulders, elbows, spine, hips and knees; wrists, hands and ankles are not wired yet.",
   },
 ];
 

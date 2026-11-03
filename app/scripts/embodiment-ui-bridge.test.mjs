@@ -8,6 +8,11 @@ import {
   capabilitiesForMode,
   projectSemanticBodyState,
 } from "../src/components/avatar/embodimentUiBridge.ts";
+import {
+  LIVE2D_CHANNELS,
+  SVG_CHANNELS,
+  SPRITE_CHANNELS,
+} from "../src/components/avatar/rendererRegistryDefaults.ts";
 
 const baseInput = () => ({
   snapshot: emptySnapshot(),
@@ -79,11 +84,17 @@ test("maps every organism emotion label to a supported expression channel", () =
 });
 
 test("reports 2D renderers honestly: no skeletal channels are claimed", () => {
+  // Flat 2D renderers translate/rotate layers; they cannot drive skeletal joints such
+  // as elbows, knees or hips. Each renderer may declare only the channels its own
+  // adapter maps, which is asserted against the adapter in body-systems.test.mjs.
+  const expected = { live2d: LIVE2D_CHANNELS, original: SVG_CHANNELS, legacy: SPRITE_CHANNELS };
+  const skeletal = ["leftElbow", "rightElbow", "leftKnee", "rightKnee", "leftHip", "rightHip", "leftWrist", "rightWrist", "leftAnkle", "rightAnkle"];
   for (const mode of ["live2d", "original", "legacy"]) {
     const caps = capabilitiesForMode(mode);
     assert.equal(caps.mode, "live2d", `${mode} is a 2D renderer`);
+    assert.deepEqual(caps.channels, [...expected[mode]], `${mode} must declare exactly its adapter channels`);
     for (const channel of caps.channels) {
-      assert.ok(["headRoll", "gazeX", "gazeY", "breath"].includes(channel), `${mode} claims an unexpected channel ${channel}`);
+      assert.equal(skeletal.includes(channel), false, `${mode} must not claim skeletal channel ${channel}`);
     }
   }
 });
