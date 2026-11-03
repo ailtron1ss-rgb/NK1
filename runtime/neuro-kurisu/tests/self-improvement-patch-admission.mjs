@@ -72,3 +72,16 @@ test('refuses invalid or empty host trust configuration at construction',()=>{
  assert.throws(()=>new SelfImprovementCandidatePool({},undefined,{baseSha:'short',trustedPublicKeys}),
   /candidate-pool-patch-receipt-trust-invalid/);
 });
+test('keeps metrics-only candidates distinct from signed-patch candidates',()=>{
+ const metricsPool=new SelfImprovementCandidatePool();
+ const metrics=metricsPool.submit(candidate('metrics-only'),graph);
+ assert.equal(metrics.accepted,true);
+ assert.equal(metrics.admissionClass,'metrics-only');
+ assert.equal(metricsPool.best().admissionClass,'metrics-only');
+
+ const verifiedPool=trustedPool();
+ const verified=verifiedPool.submitVerified(candidate('signed-patch'),graph,receiptProof());
+ assert.equal(verified.accepted,true,verified.reason);
+ assert.equal(verified.admissionClass,'signed-patch-receipt');
+ assert.equal(verifiedPool.best().admissionClass,'signed-patch-receipt');
+});
