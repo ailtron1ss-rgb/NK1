@@ -84,6 +84,16 @@ invalidTimestamp.restore({
 assert.equal(invalidTimestamp.snapshot().sampleCount, 0,
   'non-finite restore timestamps must reset the persisted prior');
 
+const timestampOrdered = new SelfPriorDensityModel(16);
+timestampOrdered.observe(new Array(16).fill(0), 100);
+const beforeTimestampRejection = timestampOrdered.snapshot();
+assert.throws(() => timestampOrdered.observe(new Array(16).fill(1), 99), /timestamp-out-of-order/);
+assert.deepEqual(timestampOrdered.snapshot(), beforeTimestampRejection,
+  'an older self observation must not mutate the learned prior');
+assert.throws(() => timestampOrdered.observe(new Array(16).fill(1), Number.NaN), /timestamp-must-be-finite/);
+assert.deepEqual(timestampOrdered.snapshot(), beforeTimestampRejection,
+  'an invalid timestamp must be rejected before learning');
+
 const cycle = {
   tick: 1,
   selfLatent: new Array(16).fill(0.2),
@@ -122,8 +132,17 @@ assert.ok(mismatchResult.driveState.homeostatic > baselineHomeostatic,
   'self-prior mismatch should add a bounded familiarity-restoration drive');
 assert.ok(mismatchResult.goal.predictedFutureValue01 > 0);
 
-// Rejected B272 ticks roll the learned self-prior back with the other two owners.
+// Rejected ticks roll the learned self-prior back with the other two owners.
 const beforeRollback = coupling.snapshot();
+assert.throws(() => coupling.step({
+  cycle: { ...cycle, tick: 32 },
+  drive,
+  driveConfidence01: 1,
+  selfObservation: new Array(16).fill(0.5),
+  at: 32,
+}), /timestamp-out-of-order/);
+assert.deepEqual(coupling.snapshot(), beforeRollback,
+  'a stale observation must roll back the entire motivation-goal tick');
 assert.throws(() => coupling.step({
   cycle: { ...cycle, tick: Number.NaN },
   drive,
