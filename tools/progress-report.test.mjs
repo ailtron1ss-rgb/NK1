@@ -10,6 +10,7 @@ const report = JSON.parse(run.stdout);
 assert.equal(report.schema, 'nk1.progress-report.v2');
 assert.match(report.currentSha, /^[0-9a-f]{40}$/);
 assert.ok(Number.isInteger(report.artifactCoveragePercent));
+assert.ok(Number.isInteger(report.testHarnessCoveragePercent));
 assert.ok(Number.isInteger(report.verifiedEfficacyPercent));
 assert.ok(report.artifactCoveragePercent >= 0 && report.artifactCoveragePercent <= 100);
 assert.ok(report.verifiedEfficacyPercent >= 0 && report.verifiedEfficacyPercent <= 100);
