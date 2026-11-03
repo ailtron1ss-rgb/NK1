@@ -105,10 +105,10 @@ function normalizeCandidate(input: unknown): { candidateId: string; candidate?: 
     const file = ownData(raw, 'file');
     const startLine = ownData(raw, 'startLine');
     const endLine = ownData(raw, 'endLine');
-    if (!validRepoPath(file) || !targetSet.has(file) ||
-        typeof startLine !== 'number' || !Number.isSafeInteger(startLine) || startLine < 1 || startLine > MAX_LINE ||
+    if (!validRepoPath(file) || !targetSet.has(file)) return { candidateId, reason: 'malformed-evolve-blocks' };
+    if (typeof startLine !== 'number' || !Number.isSafeInteger(startLine) || startLine < 1 || startLine > MAX_LINE ||
         typeof endLine !== 'number' || !Number.isSafeInteger(endLine) || endLine < startLine || endLine > MAX_LINE) {
-      return { candidateId, reason: 'malformed-evolve-blocks' };
+      return { candidateId, reason: `malformed-evolve-block:${file}` };
     }
     evolveBlocks.push({ file, startLine, endLine });
   }
