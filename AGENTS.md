@@ -113,3 +113,6 @@ Before a substantial pass, read:
 - Run `npm run neurok-os:test` and the dedicated GitHub Actions workflow after changing the control plane.
 
 - Before applying an agent-produced unified diff, run `npm run neurok-os:patch -- inspect --patch-file PATH`; treat `deny` as blocked and `human-approval-required` as requiring an explicit human gate. This command is preflight only and does not apply patches.
+
+- Record only structured evidence receipts with `npm run neurok-os:evidence -- record --receipt-file FILE`; recording requires the receipt SHA to match the current Git HEAD. For offline validation use `npm run neurok-os:evidence -- validate --receipt-file FILE --expected-sha FULL_SHA`.
+- Evidence receipts must not contain raw stdout/stderr, secrets, private user data or holdout examples. Store hashes and bounded metrics only; never overwrite an existing receipt.
