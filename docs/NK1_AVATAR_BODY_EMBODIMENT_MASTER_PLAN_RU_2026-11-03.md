@@ -525,3 +525,163 @@ OrganismCore (single cognitive owner)
 2. Визуальная проверка (Playwright-скриншот) для 2D/3D с ненулевыми arbiter-каналами.
 3. Live-IK рук/ног в 3D adapter; walk/sit фазы в motion library.
 4. Первый изолированный донорский адаптер (импорт `.vrma` клипов).
+
+---
+
+## 16. Прогресс-проход (2026-11-03, ветка `workpass71-body-systems`, head `516ce72`)
+
+Этот проход — исправление **дефекта честности контракта**, а не косметика. Манифест заявлен как
+«единственное машинночитаемое описание того, что рендер реально применяет сегодня», и switch-контракт
+именно из него выводит деградацию неподдерживаемых каналов. Три манифеста занижали возможности
+рендеров, поэтому реальные каналы помечались как неподдерживаемые.
+
+### 16.1 Что исправлено (`IMPLEMENTED`, доказано регрессией)
+
+| Рендер | Было заявлено | Фактически применяет | Источник факта |
+|---|---|---|---|
+| Original 2D (`nk1-original-svg-2d`) | `gazeX`, `gazeY` | + `torsoYaw`, `torsoPitch`, `headYaw`, `headPitch`, `headRoll`, `breath` | `originalStageChannelOffsets()` |
+| Three.js VRM (`nk1-three-vrm3d`) | `gazeX`, `gazeY` | + `torsoPitch`, `leftElbow`, `rightElbow`, `leftHip`, `rightHip`, `leftKnee`, `rightKnee` | `applyVrmFullBodyChannels()` |
+| Live2D (`nk1-live2d-cubism`) | `headRoll`, `gazeX`, `gazeY`, `breath` | `headRoll`, `gazeX`, `gazeY` (у viewer нет параметра breath) | `viewer.html` (нет `ParamBreath`) |
+
+Также синхронизированы `joints` и `notes` 3D-манифеста (spine/elbows/hips/knees добавлены, wrists/hands/ankles
+явно помечены как неподключённые).
+
+### 16.2 Регрессии (fail-before / pass-after — `PROVEN`)
+
+Три новых теста в `app/scripts/body-systems.test.mjs` выводят ожидаемый набор каналов **из самих адаптеров**,
+а не из манифеста, поэтому дрейф в любую сторону снова уронит сборку:
+
+- `declared Original 2D channels match the flat-SVG channel mapper`
+- `declared VRM 3D channels match the full-body bone applier`
+- `declared Live2D channels match what the viewer can actually drive`
+
+Проверено: на старых манифестах все три падают (`3 fail`), на исправленных — `25/25 pass`.
+`embodiment-ui-bridge.test.mjs` обновлён: его прежний allow-list (`headRoll/gazeX/gazeY/breath`) сам
+был устаревшим допущением; теперь он выводится из того же источника и дополнительно запрещает
+скелетные каналы у плоских 2D-рендеров.
+
+### 16.2a Дополнительные дефекты, исправленные в том же проходе
+
+| Дефект | Причина | Исправление | Регрессия |
+|---|---|---|---|
+| `curiosity` не даёт мимики в 3D | `EMOTION_PRESETS` покрывал 7 из 8 меток | добавлен preset `curiosity → surprised` (2D рисует «thinking») | `every NK1 emotion label maps to a VRM expression preset` (fail-before: `curiosity must set…`) |
+| Дублирование словаря выражений | `EXPR` в `AvatarStage.tsx` копировал `EXPRESSION_TEXT` из моста; viewer отвергает весь intent-фрейм при неизвестном имени | экспортирован `EXPRESSION_TEXT`, stage использует его | guard в `test-live2d-expression-cache.mjs` (проверка, что каждое отправляемое имя есть в `EXPR_MAP`) |
+
+### 16.3 Прогоны (OBSERVED, exact-head `4f71e42`)
+
+- `npm --prefix app run test:body-systems` — 25/25 PASS.
+- `npm --prefix app run test:scripts` — 456/456 PASS.
+- `npm --prefix app run typecheck` — PASS (`tsc --noEmit`).
+- `npm --prefix app run build:dev` — PASS (nitro output сгенерирован).
+- `npm run test:workpass71` (агрегат тела) — все под-наборы PASS.
+- GitHub Actions — 16/16 `success` на `516ce72`; повторная проверка на `4f71e42` (в т.ч.
+  `normalized-vrm`, `validate-original-2d-contract`, `deterministic-interaction-contract`).
+
+### 16.4 Уточнённая оценка готовности (после §16)
+
+| Аспект | §15 | §16 | Причина |
+|---|---:|---:|---|
+| Capability/контракт тела | 85% | 88% | Каналы манифеста теперь сверены с адаптерами и защищены регрессией; осталось выводить их из рига на лету |
+| Моторика (полное тело) | 45% | 45% | Без изменений: каналы идут в рендер, но нет live-IK и device E2E |
+| 3D / VRM | 32% | 33% | Манифест больше не занижает 3D; production VRM-модели и визуальной проверки по-прежнему нет |
+| Live2D / Original 2D | 68% | 69% | Контракт стал честнее; authored motion и device E2E всё ещё нужны |
+| 2.5D depth rig | 20–25% | 20–25% | Без изменений: render-путь не подключён |
+| Взаимодействие с миром | 25% | 25% | Без изменений |
+
+### 16.5 Честная граница (`UNRESOLVED`)
+
+- Исправление контракта **не** меняет визуальное качество и **не** является device E2E.
+- Проценты — инженерные прокси, не доказательство пользовательской ценности.
+- Live2D `expressions` по-прежнему заявляет 8 каналов; viewer понимает их через `EXPR_MAP`
+  (`happy/sad/angry/surprised/flustered/embarrassed/thinking/...`), но stage шлёт другой словарь
+  (`thinking/happy/sad/angry/focused/neutral`). Оба словаря совместимы по значениям, однако
+  **автоматической сверки словарей пока нет** — вынести в отдельную задачу (§17, проход 1.3).
+
+---
+
+## 17. Расширенный многоэтапный план: тела (2D / 2.5D / 3D), моторика, взаимодействие с миром
+
+Раздел уточняет §7 конкретными шагами, артефактами, воротами и evidence-метками для аспектов
+**2 (2D-тело), 2.5 (2.5D-тело), 3 (3D-тело)** и сквозных направлений **моторика** и **взаимодействие с миром**.
+Каждый шаг формулируется как независимо проверяемый переход состояния. Метки: `IMPLEMENTED`,
+`FUNCTIONAL INDICATOR`, `OBSERVED`, `PROVEN`, `HYPOTHESIS`, `UNRESOLVED`.
+
+### Проход 1 — Заморозка и честность контракта (текущий + ближайший)
+
+| # | Задача | Артефакт / владелец | Ворота приёмки | Статус |
+|---|---|---|---|---|
+| 1.1 | Заморозить source SHA, собрать body-manifest и PR-map | `docs/…MASTER_PLAN…` §16 | SHA записан, ветки/PR классифицированы | `IMPLEMENTED` |
+| 1.2 | Сверить каналы манифеста с адаптерами (2D/3D/Live2D) | `rendererRegistryDefaults.ts` + `body-systems.test.mjs` | fail-before/pass-after регрессия | `PROVEN` (§16) |
+| 1.3 | Сверить словарь выражений Live2D (`EXPR` stage ↔ `EXPR_MAP` viewer) | `AvatarStage.tsx`, `viewer.html` | тест, что каждое отправляемое значение есть в `EXPR_MAP` | `PROVEN` (§16.2a) |
+| 1.4 | Выводить каналы манифеста из фактического рига на лету (readback), а не хардкодить | `rendererCapabilityManifest.ts` | рантайм-сверка, расхождение → предупреждение/ошибка | TODO |
+
+### Проход 2 — Производственное 2.5D-тело (layered puppet) — единственный режим без рендера
+
+| # | Задача | Артефакт | Ворота | Риск |
+|---|---|---|---|---|
+| 2.1 | Завести `depth2d`-манифест и режим в UI (5-я кнопка) за feature-gate | `rendererRegistryDefaults.ts`, `AvatarStage.tsx` | режим появляется только при валидном риге | UI-регрессия |
+| 2.2 | Production layered-art: слои (волосы/лицо/тело/руки) с pivot-offset, лицензия подтверждена | `app/public/depth-rig/…` + `site.json`-провенанс | asset-hash + license в манифесте | **нет арта** (блокер) |
+| 2.3 | Подключить `applyDepthRigWorldPoseToLayers` к render-пути (сейчас не вызывается) | `depthRigRendererAdapter.ts` → stage | поза пишется в матрицы слоёв, readback `renderedNodeIds` | двойной scene graph |
+| 2.4 | Связать `resolveDepthRigPoseFromEmbodimentIntent` с arbiter-каналами | `embodimentIntentAdapter.ts` | те же каналы, что у 2D/3D | рассинхрон словаря |
+| 2.5 | Жёсткая граница: без подтверждённого арта режим остаётся `productionReady:false` | manifest | `selectable()` не отдаёт плейсхолдер | — |
+
+**Правило:** пока нет реального layered-арта с проверенной лицензией, режим не публикуется как
+production-ready. Рисовать плейсхолдер и заявлять готовность запрещено (см. §1, §11).
+
+### Проход 3 — Производственное 3D/VRM-тело
+
+| # | Задача | Артефакт | Ворота |
+|---|---|---|---|
+| 3.1 | Подключить проверенный VRM (hosted или bundled) с license/credit в манифесте | `avatarModelCatalog.ts` | модель проходит strict GLB gate (#661) |
+| 3.2 | Live-IK рук: цель → CCD/FABRIK в плоскости, поверх клипа | `planarArmIK.ts` (есть) + adapter | тест IK на достижимость/пределы |
+| 3.3 | Live-IK ног + фазы walk/sit/stand | `motionLibrary.ts` + adapter | клипы не конфликтуют с arbiter |
+| 3.4 | Губные морфы и visemes связать с audio clock (latency-бюджет) | `glbMouthMorphAdapter.ts` | измеренная задержка ≤ бюджета (`OBSERVED`) |
+| 3.5 | Spring bones / физика волос и одежды | three-vrm spring bones | канал `supportsPhysics` подтверждён визуально |
+
+### Проход 4 — Полноценная моторика («любые движения»)
+
+| # | Задача | Артефакт | Ворота |
+|---|---|---|---|
+| 4.1 | Расширить motion library фазами (reach/point/wave/hold/step) | `motionLibrary.ts` | валидация seam, loop-safe |
+| 4.2 | Offline-retarget донорских клипов (GMR / `.vrma`) в риг NK1 | pipeline вне runtime | клип воспроизводится, лицензия записана |
+| 4.3 | Live-IK поверх клиповой анимации без рывков | adapter | cross-fade + приоритеты каналов |
+| 4.4 | Приоритеты: производные каналы не переопределяются arbiter-ом | `embodimentUiBridge.ts` | регрессия уже есть; расширить |
+
+### Проход 5 — Взаимодействие с миром (embodiment)
+
+| # | Задача | Артефакт | Ворота |
+|---|---|---|---|
+| 5.1 | Взгляд/поворот к мировым целям (world targets) | `supportsWorldTargets` путь | цель приходит из canonical owner |
+| 5.2 | Опциональный захват камеры (MediaPipe face/pose/hand) | отдельный входной адаптер | opt-in, приватность: локально, без утечек |
+| 5.3 | Реакция на реальные события среды (не только чат) | через существующий action gateway | postcondition-верификация |
+| 5.4 | Верификация действий: `OutcomeVerificationService` как единственный источник правды | governance | regression на spoofed ACK (есть) |
+
+### Проход 6 — Транзакционное переключение тел и визуальная верификация
+
+| # | Задача | Артефакт | Ворота |
+|---|---|---|---|
+| 6.1 | Cross-fade при смене рендера без потери состояния | `embodimentSwitch.ts` | handoff сохраняет pose/gaze/speech |
+| 6.2 | Playwright-скриншоты 2D/3D/2.5D с ненулевыми arbiter-каналами | `app/screenshots/` | визуально видна реакция, консоль чистая |
+| 6.3 | Откат к предыдущему телу при сбое инициализации | switch contract | fail-closed, без белого экрана |
+
+### Проход 7 — Реальная проверка на устройствах, производительность, soak
+
+| # | Задача | Ворота |
+|---|---|---|
+| 7.1 | Измерить latency (STT→LLM→TTS→viseme) на целевом устройстве | `OBSERVED`, бюджет зафиксирован |
+| 7.2 | FPS/память/батарея при долгом прогоне | soak ≥ N часов |
+| 7.3 | Проверка на мобильном viewport и слабом GPU | деградация с честным сообщением |
+
+### Проход 8 — Поставка на GitHub (deliverables и evidence)
+
+| # | Задача | Артефакт |
+|---|---|---|
+| 8.1 | Каждый проход = отдельный PR на свежую ветку от `workpass70-source` | PR с exact-SHA |
+| 8.2 | Exact-head CI зелёный на каждом PR | ссылки на runs |
+| 8.3 | Обновлять handover/changelog и `RESEARCH_INTAKE_LEDGER.md` | запись донора/результата/решения |
+| 8.4 | Не сливать пачкой; не удалять ветки без доказательства | протокол §6 |
+
+**Сквозные инварианты (не нарушать):** один владелец на capability; каналы не переопределяют
+производные; неподдерживаемое репортится, а не выдумывается; никаких плейсхолдеров вместо арта;
+никаких заявлений о device-производительности/recall/autonomy без независимого доказательства.
+
