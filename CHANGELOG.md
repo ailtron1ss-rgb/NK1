@@ -1,3 +1,10 @@
+## [NK1][Learning] Bind live causal outcomes to the producing action (2026-11-03)
+- Correct the production OrganismCore handoff: pass the observed state success separately from the learning-scaled success label so action attribution compares like-for-like values.
+- Accept a trace stamped at either the pre-action or resulting tick, while requiring the resulting state to be exactly one tick after the pre-action state; reject stale and skipped-tick matches.
+- Harden CausalExperienceStream restore using own-data records, bounded dense arrays, per-field validation, provenance reconstruction and duplicate/conflicting trace quarantine.
+- Add live-cycle regression, update the P292 evidence-lane contract and wire the targeted test into WorkPass79 cognitive regression.
+- This fixes causal evidence admission; measurable learning uplift still requires independent bilingual holdout and paired-seed confirmation.
+
 ## [NK1][Personality] Learn named character traits from verified outcomes (2026-11-03)
 - Map each ActionKind to explicit adaptive-trait and value targets; successful response, exploration and verification update only semantically aligned dimensions, not array positions derived from enum order.
 - Gate plasticity, relationship trust, autobiographical strength and self-belief changes on verified, low-error outcomes; unverified outcomes increase uncertainty but cannot rewrite enduring traits or values.
