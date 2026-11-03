@@ -45,7 +45,7 @@ function observation(observedAt,x){
   };
 }
 
-const now=Date.now();
+const now=Date.now()-10_000;
 const memory=new MemoryOS2({embeddingProvider:null});
 const first=memory.encode(observation(now,1));
 const secondAt=now+1000;
