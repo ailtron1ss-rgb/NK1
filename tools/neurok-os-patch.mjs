@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -16,7 +16,7 @@ function normalizePath(value) {
     throw new Error(`unsafe patch path: ${String(value)}`);
   }
   const parts = value.split('/');
-  if (parts.some(part => part === '' || part === '.' || part === '..')) {
+  if (parts.some(part => part === '' || part === '.' || part === '..' || part.toLowerCase() === '.git')) {
     throw new Error(`unsafe patch path: ${value}`);
   }
   return parts.join('/');
@@ -282,11 +282,17 @@ export function evaluatePatchAdmission(inspection, receipt, options = {}) {
   });
 }
 
-function repositoryFile(input, label) {
+async function repositoryFile(input, label) {
   if (typeof input !== 'string' || !input.trim()) throw new Error(label + ' is required');
-  const resolved = path.resolve(ROOT, input);
-  if (resolved !== ROOT && !resolved.startsWith(ROOT + path.sep)) {
+  const lexical = path.resolve(ROOT, input);
+  if (lexical !== ROOT && !lexical.startsWith(ROOT + path.sep)) {
     throw new Error(label + ' must stay inside the repository');
+  }
+  // Lexical containment alone does not prevent a repository symlink from
+  // pointing outside the checkout. Resolve the final path before reading it.
+  const resolved = await realpath(lexical);
+  if (resolved !== ROOT && !resolved.startsWith(ROOT + path.sep)) {
+    throw new Error(label + ' resolves outside the repository');
   }
   return resolved;
 }
@@ -305,8 +311,8 @@ async function main() {
   }
   const patchFile = readArg(args, 'patch-file');
   if (!patchFile) throw new Error('--patch-file is required');
-  const patchPath = repositoryFile(patchFile, 'patch file');
-  const policyFile = repositoryFile(readArg(args, 'policy') ?? 'engineering-os/patch-policy.v1.json', 'policy file');
+  const patchPath = await repositoryFile(patchFile, 'patch file');
+  const policyFile = await repositoryFile(readArg(args, 'policy') ?? 'engineering-os/patch-policy.v1.json', 'policy file');
   const patchBytes = await readFile(patchPath);
   if (patchBytes.length > MAX_PATCH_BYTES) throw new Error('patch exceeds 5 MiB inspection limit');
   const policy = JSON.parse(await readFile(policyFile, 'utf8'));
@@ -321,7 +327,7 @@ async function main() {
   const currentSha = readArg(args, 'current-sha') ?? execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
   if (!receiptFile) throw new Error('--read-set is required');
   if (!expectedBaseSha) throw new Error('--base-sha is required');
-  const receiptPath = repositoryFile(receiptFile, 'read-set receipt');
+  const receiptPath = await repositoryFile(receiptFile, 'read-set receipt');
   const receiptBytes = await readFile(receiptPath);
   if (receiptBytes.length > 256 * 1024) throw new Error('read-set receipt exceeds 256 KiB');
   const receipt = JSON.parse(receiptBytes.toString('utf8'));
