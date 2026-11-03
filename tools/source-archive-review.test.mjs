@@ -48,4 +48,15 @@ assert.equal(byName.get('autogen-main.zip').disposition, 'research-reference-onl
 assert.equal(byName.get('AutoGPT-master.zip').disposition, 'reference-only-no-platform-copy');
 assert.equal(manifest.summary.codeCopiedByThisReview, 0);
 assert.equal(manifest.summary.dependenciesInstalled, 0);
+const hexisSecurity = byName.get('Hexis-main.zip').securityFindings;
+assert.ok(Array.isArray(hexisSecurity) && hexisSecurity.length >= 3);
+const localEnv = hexisSecurity.find(item => item.path === 'Hexis-main/.env.local');
+assert.ok(localEnv);
+assert.equal(localEnv.classification, 'potential-local-credential-config');
+assert.equal(localEnv.nonEmptyValues, 6);
+assert.equal(localEnv.valuesPersisted, false);
+assert.equal(localEnv.valuesPublished, false);
+assert.equal(localEnv.importedToNk1, false);
+assert.ok(!Object.hasOwn(localEnv, 'values'), 'credential values must never enter provenance manifest');
+assert.equal(manifest.securityBoundary.summary.includes('six non-empty'), true);
 console.log('NK1_SOURCE_ARCHIVE_REVIEW=PASS archives=22 unique=21 duplicates=1');
