@@ -94,6 +94,8 @@ export class CanonicalSelfAgencyAuthority{
 
   restore(raw?:Partial<CanonicalSelfAgencyState>|null){
     const d=defaultCanonicalSelfAgencyState();
+    // No snapshot means a fresh canonical instance, not a malformed restore.
+    if(raw===undefined||raw===null){this.state=d;return;}
     const record=isPlainRecord(raw)?raw:{};
     const expected=d.invariantFingerprint;
     const supplied=ownData(record,'invariantFingerprint');
