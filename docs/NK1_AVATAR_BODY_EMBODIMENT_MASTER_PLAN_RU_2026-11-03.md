@@ -711,7 +711,7 @@ production-ready. Рисовать плейсхолдер и заявлять г
 | Capability/контракт тела | 88% | 88% | Без изменений |
 | Моторика (полное тело) | 45% | 46% | Арбитр стал корректным (не теряет primary, дыхание затухает); live-IK и device E2E всё ещё нет |
 | 3D / VRM | 33% | 34% | Устранён дрейф костей полного тела (реальный визуальный дефект в покадровом цикле); production-модели и визуальной проверки по-прежнему нет |
-| Live2D / Original 2D | 69% | 69% | Без изменений |
+| Live2D / Original 2D | 69% | 70% | Устранён реальный дефект переключения тела: кроссфейд теперь действительно завершается (виден конечный кадр тела, а не замороженные ~40%); device E2E по-прежнему нет |
 | 2.5D depth rig | 20–25% | 20–25% | Без изменений |
 | Взаимодействие с миром | 25% | 25% | Без изменений |
 
@@ -736,6 +736,7 @@ production-ready. Рисовать плейсхолдер и заявлять г
 |---|---|---|---|
 | 2.5D depth-rig гнал риг от **целевого** угла | `resolveDepthRigPoseFromMotorFrame` вычислял дельту из `targetAngleRad` (куда контроллер *хочет* повернуть сустав), а не из `angleRad` (где сустав *фактически* находится). Это противоречит инварианту I3 мастер-плана и поведению родственного `motorFrameMapper` («maps measured motor angles, not target intent») | дельта и валидация строятся на измеренном `angleRad` | `maps measured motor joint state through explicit bounded rig bindings, never the target intent` + `a joint already at rest emits no rotation even when its target is far away` (fail-before: 2 падения) |
 | 3D-риг: reset костей гасил клип | (перенесено из §18.1; подтверждено как закрытый) | — | — |
+| Кроссфейд переключения тела никогда не завершался | `AvatarStage` передавал в `advanceBodySwitch` покадровую дельту `now - lastAt`, тогда как функция ожидает **накопленное** время от старта. Прогресс рос на ~16/220 за кадр и `committed` не наступал: прозрачность замирала на ~0.40 и переход не фиксировался | добавлен `advanceBodySwitchFromStart(previous, startMs, nowMs, durationMs)` (якорь на `performance.now()` старта перехода); компонент использует его | `a requestAnimationFrame loop driven by per-frame deltas still commits within the duration` + `start-anchored crossfade stays monotonic, bounded and robust to invalid clocks` (fail-before: без якоря `committed=false` даже после 40 кадров) |
 
 ### 19.2 Дополнительно в этом проходе (`IMPLEMENTED`, доказано регрессией)
 
@@ -746,8 +747,9 @@ production-ready. Рисовать плейсхолдер и заявлять г
 ### 19.3 Прогоны (OBSERVED)
 
 - `node --experimental-strip-types --test app/scripts/depth-rig.test.mjs` — 19/19 PASS (2 новые регрессии падают до фикса).
+- `node --experimental-strip-types --test app/scripts/embodiment-ui-bridge.test.mjs` — 16/16 PASS (2 новые регрессии кроссфейда).
 - `npm --prefix app run test:body-systems` — 28/28 PASS.
-- `npm --prefix app run test:scripts` — 460/460 PASS.
+- `npm --prefix app run test:scripts` — 466/466 PASS (2 новые регрессии кроссфейда).
 - `npm --prefix app run typecheck` — PASS.
 - `npm --prefix runtime/neuro-kurisu run test:aspect10:interaction` — 47/47 PASS.
 - `npm --prefix runtime/neuro-kurisu run test:embodiment-perception-routing-restore` — PASS.
@@ -762,7 +764,7 @@ production-ready. Рисовать плейсхолдер и заявлять г
 | Моторика (полное тело) | 46% | 47% | 2.5D-путь моторики теперь соответствует измеренному состоянию сустава; live-IK и device E2E всё ещё нет |
 | 2.5D depth rig | 20–25% | 21–26% | Исправлен реальный семантический дефект в transform-мосте (measured vs target); остаются production art, pivots, визуальный E2E |
 | 3D / VRM | 34% | 34% | Без изменений |
-| Live2D / Original 2D | 69% | 69% | Без изменений |
+| Live2D / Original 2D | 69% | 70% | Устранён реальный дефект переключения тела: кроссфейд теперь действительно завершается (виден конечный кадр тела, а не замороженные ~40%); device E2E по-прежнему нет |
 | Взаимодействие с миром | 25% | 25% | Без изменений |
 | Континуальность состояния тела | — | + | Маршрутизация восприятия теперь переживает рестарт (evidence-counters не теряются) |
 

@@ -10,7 +10,7 @@ import {
 import { planAvatarMotorIntent } from "./avatar/motorIntent";
 import { buildBrowserVoiceProsody, resolveBrowserVoiceAffect } from "./avatar/browserVoiceProsody";
 import {
-  advanceBodySwitch,
+  advanceBodySwitchFromStart,
   beginBodySwitch,
   EXPRESSION_TEXT,
   projectSemanticBodyState,
@@ -283,11 +283,10 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     setBodySwitch({ from, to: mode, plan });
     const durationMs = 220;
     let progress = { progress: 0, committed: false };
-    let lastAt = performance.now();
+    const startAt = performance.now();
     setSwitchOpacity(0.35);
     let raf = requestAnimationFrame(function tick(now: number) {
-      progress = advanceBodySwitch(progress, now - lastAt, durationMs);
-      lastAt = now;
+      progress = advanceBodySwitchFromStart(progress, startAt, now, durationMs);
       setSwitchOpacity(0.35 + 0.65 * progress.progress);
       if (!progress.committed) raf = requestAnimationFrame(tick);
     });

@@ -4,6 +4,7 @@ import { emptySnapshot } from "../src/organism/types.ts";
 import { validateSemanticBodyState } from "../src/components/avatar/embodimentSwitch.ts";
 import {
   advanceBodySwitch,
+  advanceBodySwitchFromStart,
   beginBodySwitch,
   capabilitiesForMode,
   projectSemanticBodyState,
@@ -139,6 +140,34 @@ test("crossfade progress is monotonic, bounded and robust to invalid timing", ()
   assert.equal(p.progress, 1);
   assert.equal(p.committed, true);
   assert.equal(advanceBodySwitch(p, Number.NaN, 0).progress, 1, "invalid timing keeps the high-water mark");
+});
+
+test("a requestAnimationFrame loop driven by per-frame deltas still commits within the duration", () => {
+  // Regression for the body-switch crossfade that froze at ~40%: the component passed
+  // (now - lastAt), a per-frame delta, into the cumulative-elapsed advance, so progress
+  // crept forward by ~16/220 per frame and never reached `committed`.
+  let frozen = { progress: 0, committed: false };
+  for (let i = 0; i < 40; i += 1) frozen = advanceBodySwitch(frozen, 16, 220);
+  assert.equal(frozen.committed, false, "per-frame deltas must not be mistaken for cumulative elapsed");
+
+  let p = { progress: 0, committed: false };
+  const start = 1000;
+  for (let i = 1; i <= 40; i += 1) p = advanceBodySwitchFromStart(p, start, start + i * 16, 220);
+  assert.equal(p.committed, true, "a start-anchored frame loop must finish the crossfade");
+  assert.equal(p.progress, 1);
+});
+
+test("start-anchored crossfade stays monotonic, bounded and robust to invalid clocks", () => {
+  const start = 500;
+  let p = advanceBodySwitchFromStart({ progress: 0, committed: false }, start, start + 110, 220);
+  assert.ok(p.progress > 0 && p.progress < 1);
+  const stale = advanceBodySwitchFromStart(p, start, start + 20, 220);
+  assert.equal(stale.progress, p.progress, "a clock that moves backwards must not regress progress");
+  assert.deepEqual(
+    advanceBodySwitchFromStart(p, Number.NaN, start + 50, 220),
+    p,
+    "a non-finite start clock keeps the previous progress",
+  );
 });
 
 test("normalizes malformed speech lifecycle and missing sensory values without aborting handoff", () => {
