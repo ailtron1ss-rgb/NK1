@@ -210,21 +210,28 @@ function stablePaths(value: unknown): string[]|null {
 export function verifyPatchReceipt(receiptValue: unknown, options: PatchReceiptVerificationOptions): VerifiedPatchEvidence|RefusedPatchEvidence {
   const receipt=readReceipt(receiptValue);
   if (!receipt) return {ok:false,reason:'patch-receipt-malformed'};
-  if (!options || typeof options.patchText!=='string' || typeof options.expectedBaseSha!=='string' || !SHA1.test(options.expectedBaseSha)) {
+  if (!plain(options)) return {ok:false,reason:'patch-verification-input-invalid'};
+  const optionRecord=options as unknown as Record<string,unknown>;
+  const patchText=own(optionRecord,'patchText');
+  const expectedBaseSha=own(optionRecord,'expectedBaseSha');
+  const expectedTargetFiles=own(optionRecord,'expectedTargetFiles');
+  const evolveBlocks=own(optionRecord,'evolveBlocks');
+  const trustedPublicKeys=own(optionRecord,'trustedPublicKeys');
+  if (typeof patchText!=='string' || typeof expectedBaseSha!=='string' || !SHA1.test(expectedBaseSha)) {
     return {ok:false,reason:'patch-verification-input-invalid'};
   }
-  const base=options.expectedBaseSha.toLowerCase();
+  const base=expectedBaseSha.toLowerCase();
   if (receipt.baseSha.toLowerCase()!==base) return {ok:false,reason:'patch-base-sha-mismatch'};
-  const digest=createHash('sha256').update(options.patchText).digest('hex');
+  const digest=createHash('sha256').update(patchText).digest('hex');
   if (receipt.patchSha256.toLowerCase()!==digest) return {ok:false,reason:'patch-digest-mismatch'};
   let actual: ChangedFileRange[];
-  try { actual=parseUnifiedDiff(options.patchText); }
+  try { actual=parseUnifiedDiff(patchText); }
   catch (error) { return {ok:false,reason:`patch-parse-refused:${error instanceof Error?error.message:'unknown'}`}; }
   if (JSON.stringify(receipt.changedFiles)!==JSON.stringify(actual)) return {ok:false,reason:'patch-changed-lines-mismatch'};
-  const expected=stablePaths(options.expectedTargetFiles);
+  const expected=stablePaths(expectedTargetFiles);
   const actualPaths=actual.map(f=>f.path).sort((a,b)=>a.localeCompare(b));
   if (!expected || JSON.stringify(expected)!==JSON.stringify(actualPaths)) return {ok:false,reason:'patch-target-files-mismatch'};
-  const blocks=dense(options.evolveBlocks,MAX_CHANGED_FILES*4);
+  const blocks=dense(evolveBlocks,MAX_CHANGED_FILES*4);
   if (!blocks) return {ok:false,reason:'evolve-blocks-malformed'};
   const validBlocks: {file:string;startLine:number;endLine:number}[]=[];
   for (const row of blocks) {
@@ -239,7 +246,7 @@ export function verifyPatchReceipt(receiptValue: unknown, options: PatchReceiptV
       return {ok:false,reason:`changed-lines-outside-evolve-block:${file.path}:${range.startLine}-${range.endLine}`};
     }
   }
-  const keyMap=plain(options.trustedPublicKeys)?options.trustedPublicKeys:null;
+  const keyMap=plain(trustedPublicKeys)?trustedPublicKeys as Record<string,unknown>:null;
   const publicKey=keyMap?own(keyMap,receipt.keyId):undefined;
   if (typeof publicKey!=='string' || !publicKey.includes('BEGIN PUBLIC KEY')) return {ok:false,reason:'patch-signing-key-untrusted'};
   try {
