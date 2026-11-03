@@ -1,3 +1,9 @@
+## [NK1][Embodiment] Connect cognitive and affective state to voice planning (2026-11-03)
+- Snapshot post-interoceptive needs, identity continuity, grounding and appraisal affect as one bounded voice-context packet.
+- Add side-effect-free voice plan preview; per-utterance overrides remain isolated from the persistent context snapshot.
+- Route live speech through the same planner so cognitive load, uncertainty, social need and affect tune prosody without allowing negative high-arousal affect to escalate hostile delivery.
+- Add focused tests and a dedicated Node 24 workflow; physical device TTS/audio timing remains a separate E2E gate.
+
 ## [NK1][Personhood] Harden P33 persisted identity restore (2026-11-03)
 - Restore P33 personhood state exclusively from plain own-data records and dense bounded arrays; reject accessors, proxy traps and malformed consent/interest evidence without invoking untrusted getters.
 - Bound and normalize persisted identity, development, autonomy, relationship, continuity, privacy, current-state and metric fields while preserving conservative defaults.
