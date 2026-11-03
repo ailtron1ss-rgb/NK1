@@ -13,6 +13,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemorySpatialIndex.ts"
       - "runtime/neuro-kurisu/tests/memoryos2-spatial-holdout-workpass.mjs"
+      - ".github/workflows/memoryos2-spatial-holdout.yml"
 permissions:
   contents: read
 jobs:
