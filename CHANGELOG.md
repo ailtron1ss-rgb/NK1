@@ -1,3 +1,16 @@
+## [NK1][Gateway] Bound tool contracts and destructive-action admission (2026-11-03)
+- Reject open-ended and oversized brace quantifiers in tool input contracts so the accepted regex subset remains bounded.
+- Enforce destructive dry-run and independent-verifier refusals before idempotency-key admission; refused actions no longer request a key as if they were eligible.
+- Add boundary regressions for oversized exact/ranged/open-ended quantifiers and valid maximum-size bounded patterns.
+- Validation: PR #700, exact-head CI 8/8 workflows passed; focused action-gateway contract and runtime TypeScript check passed.
+
+## [NK1][Cognition] Preserve proposed vs executed action credit in B272 (2026-11-03)
+- Keep the generated action receipt strict while separately recording the action actually selected by policy/governance.
+- Attribute action-prototype learning to the executed action; retain both proposed and executed actions in the bounded outcome ledger with backward-compatible restore.
+- Persist canonical goal-authorship admission in the decision trace and consume that recorded decision during feedback.
+- Validation: PR #699, exact-head CI 15/15 workflows passed, including B272 unit/Core integration, runtime typecheck, unified organism runtime and cognitive regressions.
+- No recall-uplift or learning-transfer improvement is claimed from these correctness tests.
+
 ## [NK1][Body] Renderer capability manifest, motion library and arbiter-driven 2D/3D bodies (2026-11-03)
 - Add a versioned, truthful renderer capability manifest with a fail-closed registry; the UI switch table now derives from it so a renderer cannot advertise a channel it does not implement.
 - Add a renderer-neutral motion library (16 programs) and an intent-driven arbiter with bounded cross-fade, an additive idle-breath overlay, energy-scaled amplitude and a layer cap.
