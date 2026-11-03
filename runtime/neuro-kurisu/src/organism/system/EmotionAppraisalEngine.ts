@@ -89,7 +89,7 @@ function ownDataArray(value: unknown, max = 128): unknown[] | null {
   try {
     if (!Array.isArray(value)) return null;
     const descriptors = Object.getOwnPropertyDescriptors(value);
-    const length = descriptors.length?.value;
+    const length = (descriptors as Record<string, PropertyDescriptor>).length?.value;
     if (!Number.isSafeInteger(length) || length < 0 || length > max) return null;
     const keys = Reflect.ownKeys(descriptors);
     if (keys.some(key => typeof key !== 'string' || (key !== 'length' && !/^(0|[1-9]\d*)$/.test(key)))) return null;
