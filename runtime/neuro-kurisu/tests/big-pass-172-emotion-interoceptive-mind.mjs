@@ -54,4 +54,40 @@ assert.equal(stressR.emotionAppraisalSnapshot().interoception.cycles,stressS.int
 assert.equal(stressR.p66Summary().recoveryDebt01,stressCore.p66Summary().recoveryDebt01);
 stable.stop?.(); stressCore.stop?.(); stressR.stop?.(); await rm(root,{recursive:true,force:true});
 
+
+const restoreProbe = new EmotionAppraisalEngine();
+restoreProbe.restore(es);
+assert.deepEqual(restoreProbe.snapshot(), es, 'valid v2 snapshots must round-trip without mutation');
+let getterInvoked = false;
+const getterSnapshot = {};
+Object.defineProperty(getterSnapshot, 'episodes', { enumerable: true, get() { getterInvoked = true; return 99; } });
+restoreProbe.restore(getterSnapshot);
+assert.equal(getterInvoked, false, 'restore must not invoke root getters');
+assert.equal(restoreProbe.snapshot().episodes, 0, 'accessor-backed roots must fail closed');
+const nestedGetter = { ...es, interoception: { ...es.interoception } };
+Object.defineProperty(nestedGetter.interoception, 'cycles', { enumerable: true, get() { getterInvoked = true; return 999; } });
+restoreProbe.restore(nestedGetter);
+assert.equal(getterInvoked, false, 'restore must not invoke nested getters');
+assert.equal(restoreProbe.snapshot().interoception.cycles, 0, 'malformed nested state must use conservative defaults');
+restoreProbe.restore(new Proxy({}, { ownKeys() { throw new Error('hostile proxy'); } }));
+assert.equal(restoreProbe.snapshot().episodes, 0, 'hostile proxies must not escape restore');
+restoreProbe.restore(Object.assign(Object.create({ episodes: 900 }), { version: 2 }));
+assert.equal(restoreProbe.snapshot().episodes, 0, 'inherited properties must not be trusted');
+const sparseHistory = { ...es, history: new Array(2) };
+restoreProbe.restore(sparseHistory);
+assert.equal(restoreProbe.snapshot().history.length, 0, 'sparse histories must be rejected');
+const invalidMetrics = { ...es, episodes: Number.POSITIVE_INFINITY, meanStress01: 4,
+  interoception: { ...es.interoception, cycles: -3, lastObserved: { ...es.interoception.lastObserved, energy01: Number.NaN } } };
+restoreProbe.restore(invalidMetrics);
+assert.equal(restoreProbe.snapshot().episodes, 0, 'non-finite counters must not be restored');
+assert.equal(restoreProbe.snapshot().meanStress01, .2, 'out-of-range aggregate metrics must use defaults');
+assert.equal(restoreProbe.snapshot().interoception.cycles, 0, 'invalid body metrics must use defaults');
+assert.equal(restoreProbe.snapshot().interoception.lastObserved.energy01, .68, 'invalid body metrics must use defaults');
+const invalidOutcome = { ...es, outcomes: { rest: { attempts: 2, meanSuccess01: .8, meanSurprise01: Number.NaN, meanBenefit01: .7 } } };
+restoreProbe.restore(invalidOutcome);
+assert.deepEqual(restoreProbe.snapshot().outcomes, {}, 'malformed calibration rows must not enter active state');
+const invalidEpisode = { ...es, history: [{ ...es.history[0], appraisal: { ...es.history[0].appraisal, novelty01: 9 } }] };
+restoreProbe.restore(invalidEpisode);
+assert.equal(restoreProbe.snapshot().history.length, 0, 'malformed nested episode metrics must be rejected');
+
 console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest')},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));
