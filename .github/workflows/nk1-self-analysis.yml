@@ -1,8 +1,8 @@
 name: NK1 self-analysis substrate
 
-# Guards the structural self-analysis index and the self-modification danger guard.
-# The guard is the only thing that can refuse a candidate for editing its own
-# evaluator, so its regression is kept on the push path for the owning files.
+# Guards the structural self-analysis index and the live self-agency admission gate.
+# Missing paired downstream evidence must fail closed; keep both authority and Core-live
+# regressions on the owning-file path so a future caller cannot silently bypass them.
 
 on:
   push:
@@ -60,6 +60,10 @@ jobs:
         run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
       - name: Structural index and self-modification guard
         run: npm --prefix runtime/neuro-kurisu run test:self-analysis-substrate
+      - name: Live self-agency authority contract
+        run: npm --prefix runtime/neuro-kurisu run test:self-agency:authority
+      - name: Live self-agency Core integration
+        run: npm --prefix runtime/neuro-kurisu run test:self-agency:live
       - name: Test stale-evidence rejection and progress axes
         run: node tools/progress-report.test.mjs
       - name: Compute exact-SHA progress report
