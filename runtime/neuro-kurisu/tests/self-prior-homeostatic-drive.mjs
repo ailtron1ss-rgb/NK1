@@ -27,6 +27,63 @@ const malformed = new SelfPriorDensityModel(16);
 malformed.restore({ version: 1, dimensions: 16, sampleCount: 1, effectiveSamples: 1, mean: [Number.NaN], variance: [1], lastAt: 1 });
 assert.equal(malformed.snapshot().sampleCount, 0, 'invalid persisted prior should reset to a neutral state');
 
+// Restored confidence must be supported by the paired counters that observe()
+// advances together. A forged sampleCount must not make an empty prior trusted.
+const forgedCount = new SelfPriorDensityModel(16);
+forgedCount.restore({
+  version: 1,
+  dimensions: 16,
+  sampleCount: 24,
+  effectiveSamples: 0,
+  mean: new Array(16).fill(1),
+  variance: new Array(16).fill(0.02),
+  lastAt: 24,
+});
+assert.equal(forgedCount.snapshot().sampleCount, 0,
+  'inconsistent persisted counters must reset instead of manufacturing confidence');
+assert.equal(forgedCount.predict(new Array(16).fill(1)).confidence01, 0);
+
+// The effective-sample counter is an integer, capped at 64, and must equal the
+// deterministic projection of sampleCount; a valid saturated snapshot remains restorable.
+const fractionalCount = new SelfPriorDensityModel(16);
+fractionalCount.restore({
+  version: 1,
+  dimensions: 16,
+  sampleCount: 24,
+  effectiveSamples: 23.5,
+  mean: new Array(16).fill(0),
+  variance: new Array(16).fill(1),
+  lastAt: 24,
+});
+assert.equal(fractionalCount.snapshot().sampleCount, 0,
+  'fractional effective sample counts must not be accepted');
+const saturated = new SelfPriorDensityModel(16);
+saturated.restore({
+  version: 1,
+  dimensions: 16,
+  sampleCount: 128,
+  effectiveSamples: 64,
+  mean: new Array(16).fill(0),
+  variance: new Array(16).fill(1),
+  lastAt: 128,
+});
+assert.equal(saturated.snapshot().sampleCount, 128);
+assert.equal(saturated.snapshot().effectiveSamples, 64);
+assert.equal(saturated.predict(new Array(16).fill(0)).confidence01, 1);
+
+const invalidTimestamp = new SelfPriorDensityModel(16);
+invalidTimestamp.restore({
+  version: 1,
+  dimensions: 16,
+  sampleCount: 0,
+  effectiveSamples: 0,
+  mean: new Array(16).fill(0),
+  variance: new Array(16).fill(1),
+  lastAt: Number.NaN,
+});
+assert.equal(invalidTimestamp.snapshot().sampleCount, 0,
+  'non-finite restore timestamps must reset the persisted prior');
+
 const cycle = {
   tick: 1,
   selfLatent: new Array(16).fill(0.2),
