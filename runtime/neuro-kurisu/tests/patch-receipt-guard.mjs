@@ -4,11 +4,11 @@ import { canonicalPatchReceiptPayload, parseUnifiedDiff, verifyPatchReceipt } fr
 
 const baseSha='a'.repeat(40), file='src/organism/cognition/Evolvable.ts';
 const patch=[
-  \`diff --git a/\${file} b/\${file}\`,'index 1111111..2222222 100644',
-  \`--- a/\${file}\`,\`+++ b/\${file}\`,'@@ -1 +1 @@',
+  `diff --git a/${file} b/${file}`,'index 1111111..2222222 100644',
+  `--- a/${file}`,`+++ b/${file}`,'@@ -1 +1 @@',
   '-export function tune(x: number) { return x; }',
   '+export function tune(x: number) { return x + 1; }','',
-].join('\\n');
+].join('\n');
 const pair=generateKeyPairSync('ed25519');
 const trustedPublicKeys={'nk1-test-key':pair.publicKey.export({type:'spki',format:'pem'}).toString()};
 const blocks=[{file,startLine:1,endLine:1}], targets=[file];
@@ -39,15 +39,15 @@ test('rejects untrusted key and invalid signature',()=>{
   assert.equal(verify(receiptFor(),patch,{trustedPublicKeys:{'nk1-test-key':wrong}}).reason,'patch-signature-invalid');
 });
 test('rejects binary, new/delete, rename and traversal patches',()=>{
-  const bad=['diff --git a/blob b/blob\\nGIT binary patch\\n',
-    'diff --git a/new.ts b/new.ts\\nnew file mode 100644\\n--- /dev/null\\n+++ b/new.ts\\n@@ -0,0 +1 @@\\n+x\\n',
-    'diff --git a/old.ts b/new.ts\\nrename from old.ts\\nrename to new.ts\\n--- a/old.ts\\n+++ b/new.ts\\n@@ -1 +1 @@\\n-x\\n+y\\n',
-    'diff --git a/../outside.ts b/../outside.ts\\n--- a/../outside.ts\\n+++ b/../outside.ts\\n@@ -1 +1 @@\\n-x\\n+y\\n'];
+  const bad=['diff --git a/blob b/blob\nGIT binary patch\n',
+    'diff --git a/new.ts b/new.ts\nnew file mode 100644\n--- /dev/null\n+++ b/new.ts\n@@ -0,0 +1 @@\n+x\n',
+    'diff --git a/old.ts b/new.ts\nrename from old.ts\nrename to new.ts\n--- a/old.ts\n+++ b/new.ts\n@@ -1 +1 @@\n-x\n+y\n',
+    'diff --git a/../outside.ts b/../outside.ts\n--- a/../outside.ts\n+++ b/../outside.ts\n@@ -1 +1 @@\n-x\n+y\n'];
   for(const text of bad) assert.throws(()=>parseUnifiedDiff(text));
 });
 test('maps deletion-only hunks to their insertion seam',()=>{
-  const deletion=[\`diff --git a/\${file} b/\${file}\`,'index 1111111..2222222 100644',
-    \`--- a/\${file}\`,\`+++ b/\${file}\`,'@@ -2 +1,0 @@','-obsolete line',''].join('\\n');
+  const deletion=[`diff --git a/${file} b/${file}`,'index 1111111..2222222 100644',
+    `--- a/${file}`,`+++ b/${file}`,'@@ -2 +1,0 @@','-obsolete line',''].join('\n');
   assert.deepEqual(parseUnifiedDiff(deletion),[{path:file,ranges:[{startLine:1,endLine:1}]}]);
 });
 test('rejects malformed receipt and accessor-backed trust map',()=>{
