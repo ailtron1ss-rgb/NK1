@@ -19,29 +19,77 @@
  */
 
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const CONTRACT = resolve(ROOT, 'contracts/progress-workstreams.json');
 
-function globMatch(pattern) {
-  const dir = resolve(ROOT, dirname(pattern));
-  const base = pattern.split('/').pop() ?? '';
-  if (!existsSync(dir)) return false;
-  const prefix = base.split('*')[0];
-  const suffix = base.split('*').pop() ?? '';
-  return readdirSync(dir).some((name) => name.startsWith(prefix) && name.endsWith(suffix));
+function gitHead() {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
+  return result.status === 0 ? result.stdout.trim() : '';
 }
 
-function runProbe(probe) {
+function globMatch(pattern, currentSha) {
+  const dir = resolve(ROOT, dirname(pattern));
+  const base = pattern.split('/').pop() ?? '';
+  if (!existsSync(dir) || !currentSha) return false;
+  const prefix = base.split('*')[0];
+  const suffix = base.split('*').pop() ?? '';
+  return readdirSync(dir).some((name) => {
+    if (!name.startsWith(prefix) || !name.endsWith(suffix)) return false;
+    try {
+      const artifact = JSON.parse(readFileSync(resolve(dir, name), 'utf8'));
+      return artifact.verified === true && artifact.sha === currentSha;
+    } catch {
+      return false;
+    }
+  });
+}
+
+function readEvidencePath(value, path) {
+  let current = value;
+  for (const key of String(path).split('.')) {
+    if (!current || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, key)) return undefined;
+    current = current[key];
+  }
+  return current;
+}
+
+function runEvidenceProbe(probe, currentSha) {
+  try {
+    const full = resolve(ROOT, probe.path);
+    if (!existsSync(full)) return { ok: false, detail: `${probe.path} missing` };
+    const artifact = JSON.parse(readFileSync(full, 'utf8'));
+    if (artifact.verified !== true) return { ok: false, detail: `${probe.path} is not verified` };
+    if (!currentSha || artifact.sha !== currentSha) return { ok: false, detail: `${probe.path} SHA is not the current HEAD` };
+    for (const requirement of probe.requirements ?? []) {
+      const actual = readEvidencePath(artifact, requirement.path);
+      const expected = requirement.value;
+      const passed = requirement.op === 'gt' ? typeof actual === 'number' && actual > expected
+        : requirement.op === 'gte' ? typeof actual === 'number' && actual >= expected
+        : requirement.op === 'lt' ? typeof actual === 'number' && actual < expected
+        : requirement.op === 'lte' ? typeof actual === 'number' && actual <= expected
+        : requirement.op === 'eq' ? actual === expected
+        : false;
+      if (!passed) return { ok: false, detail: `${probe.path} requirement failed: ${requirement.path} ${requirement.op} ${expected}` };
+    }
+    return { ok: true, detail: `${probe.path} verified for ${currentSha.slice(0, 12)}` };
+  } catch (error) {
+    return { ok: false, detail: `${probe.path} evidence error: ${error.message}` };
+  }
+}
+
+function runProbe(probe, currentSha) {
   try {
     if (probe.kind === 'file-exists') {
       return { ok: existsSync(resolve(ROOT, probe.path)), detail: probe.path };
     }
     if (probe.kind === 'glob') {
-      return { ok: globMatch(probe.path), detail: probe.path };
+      return { ok: globMatch(probe.path, currentSha), detail: `${probe.path} requires verified evidence for current HEAD` };
     }
+    if (probe.kind === 'evidence-json') return runEvidenceProbe(probe, currentSha);
     if (probe.kind === 'file-contains') {
       const full = resolve(ROOT, probe.path);
       if (!existsSync(full)) return { ok: false, detail: `${probe.path} missing` };
@@ -64,36 +112,49 @@ function main() {
   const asJson = process.argv.includes('--json');
   const outIndex = process.argv.indexOf('--out');
   const outPath = outIndex !== -1 ? process.argv[outIndex + 1] : null;
+  const currentSha = gitHead();
 
   const contract = JSON.parse(readFileSync(CONTRACT, 'utf8'));
   const workstreams = [];
-  let weighted = 0;
+  let weightedArtifacts = 0;
+  let weightedEvidence = 0;
   let totalWeight = 0;
 
   for (const ws of contract.workstreams) {
-    const results = ws.probes.map((probe) => ({ probe, ...runProbe(probe) }));
+    const results = ws.probes.map((probe) => ({ probe, ...runProbe(probe, currentSha) }));
     const passed = results.filter((r) => r.ok).length;
-    const percent = results.length ? Math.round((passed / results.length) * 100) : 0;
-    weighted += (ws.weight * percent) / 100;
+    const artifactPercent = results.length ? Math.round((passed / results.length) * 100) : 0;
+    const evidenceResults = (ws.evidenceProbes ?? []).map((probe) => ({ probe, ...runEvidenceProbe(probe, currentSha) }));
+    const evidencePassed = evidenceResults.filter((r) => r.ok).length;
+    const evidencePercent = evidenceResults.length ? Math.round((evidencePassed / evidenceResults.length) * 100) : 0;
+    weightedArtifacts += (ws.weight * artifactPercent) / 100;
+    weightedEvidence += (ws.weight * evidencePercent) / 100;
     totalWeight += ws.weight;
     workstreams.push({
       id: ws.id,
       title: ws.title,
       weight: ws.weight,
       endGoal: ws.endGoal,
-      percent,
-      passed,
-      total: results.length,
-      failing: results.filter((r) => !r.ok).map((r) => r.detail),
+      artifactPercent,
+      artifactPassed: passed,
+      artifactTotal: results.length,
+      artifactMissing: results.filter((r) => !r.ok).map((r) => r.detail),
+      evidencePercent,
+      evidencePassed,
+      evidenceTotal: evidenceResults.length,
+      evidenceMissing: evidenceResults.filter((r) => !r.ok).map((r) => r.detail),
     });
   }
 
-  const overall = totalWeight ? Math.round((weighted / totalWeight) * 100) : 0;
+  const artifactCoveragePercent = totalWeight ? Math.round((weightedArtifacts / totalWeight) * 100) : 0;
+  const verifiedEfficacyPercent = totalWeight ? Math.round((weightedEvidence / totalWeight) * 100) : 0;
   const report = {
-    schema: 'nk1.progress-report.v1',
+    schema: 'nk1.progress-report.v2',
     generatedAt: new Date().toISOString(),
-    overallPercent: overall,
-    disclaimer: 'Derived from artifact/script existence probes only. Existence is not proof of behaviour; see docs/evidence for run artifacts.',
+    currentSha,
+    artifactCoveragePercent,
+    verifiedEfficacyPercent,
+    disclaimer: 'Artifact coverage measures the presence of implementation/test artifacts only. Verified efficacy counts only JSON evidence with verified=true, exact current HEAD SHA, and every workstream-specific metric threshold. Neither percentage alone means product readiness.',
     workstreams: workstreams.sort((a, b) => b.weight - a.weight),
   };
 
@@ -108,13 +169,13 @@ function main() {
     return;
   }
 
-  console.log(`NK1 PROGRESS (evidence-probe derived) — overall ${overall}%\n`);
+  console.log(`NK1 PROGRESS — artifact coverage ${artifactCoveragePercent}% | verified efficacy ${verifiedEfficacyPercent}% | SHA ${currentSha.slice(0, 12)}\n`);
   for (const ws of report.workstreams) {
-    const bar = '█'.repeat(Math.round(ws.percent / 10)).padEnd(10, '░');
-    console.log(`${bar} ${String(ws.percent).padStart(3)}%  w=${String(ws.weight).padStart(2)}  ${ws.title}`);
-    if (ws.failing.length) console.log(`        missing: ${ws.failing.join('; ')}`);
+    const bar = '█'.repeat(Math.round(ws.artifactPercent / 10)).padEnd(10, '░');
+    console.log(`${bar} artifact ${String(ws.artifactPercent).padStart(3)}% | evidence ${String(ws.evidencePercent).padStart(3)}% | w=${String(ws.weight).padStart(2)} | ${ws.title}`);
+    if (ws.artifactMissing.length) console.log(`        missing artifacts: ${ws.artifactMissing.join('; ')}`);
+    if (ws.evidenceMissing.length) console.log(`        missing verified evidence: ${ws.evidenceMissing.join('; ')}`);
   }
-  console.log(`\nOverall: ${overall}% (weighted by planning priority, not measured quality)`);
+  console.log(`\nArtifact coverage: ${artifactCoveragePercent}% (not behaviour or readiness). Verified efficacy: ${verifiedEfficacyPercent}% (exact-SHA holdout/device/soak evidence only).`);
 }
-
 main();
