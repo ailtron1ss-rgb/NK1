@@ -108,6 +108,11 @@ const guardGraph = buildSourceGraph([
   { path: 'src/organism/system/CanonicalSelfAgencyAuthority.ts', text: 'export class CanonicalSelfAgencyAuthority {}\n' },
   { path: 'tests/self-analysis-substrate.mjs', text: '// self evaluator regression suite\n' },
   { path: 'tests/canonical-self-agency-authority.mjs', text: '// identity authority regression suite\n' },
+  { path: 'package.json', text: '{ "scripts": {} }\n' },
+  { path: 'runtime/neuro-kurisu/package-lock.json', text: '{}\n' },
+  { path: 'contracts/progress-workstreams.json', text: '{}\n' },
+  { path: 'tools/progress-report.mjs', text: '// progress scoring owner\n' },
+  { path: 'tools/run-local-gate.mjs', text: '// verification runner\n' },
   { path: 'src/organism/cognition/NeutralThing.ts', text: 'export class NeutralThing {}\n' },
   { path: '.github/workflows/ci.yml', text: 'name: ci\n' },
 ]);
@@ -130,6 +135,11 @@ for (const protectedPath of [
   'src/organism/system/CanonicalSelfAgencyAuthority.ts',
   'tests/self-analysis-substrate.mjs',
   'tests/canonical-self-agency-authority.mjs',
+  'package.json',
+  'runtime/neuro-kurisu/package-lock.json',
+  'contracts/progress-workstreams.json',
+  'tools/progress-report.mjs',
+  'tools/run-local-gate.mjs',
 ]) {
   const decision = evaluateModification({ candidateId: 'protect-trust-boundary', targetFiles: [protectedPath] }, guardGraph);
   assert.equal(decision.decision, 'refused', `self-modification must not edit trust-boundary file: ${protectedPath}`);
