@@ -26,6 +26,39 @@ const record = stream.recordOutcome(liveTrace, after, { reward01: .8, success01:
 assert.ok(record, 'a live-cycle trace (tick === stateAfter.tick) must mint causal evidence');
 assert.ok(record.causalStrength01 > .3);
 
+// Restore is a persistence trust boundary: accessors and sparse arrays must not
+// execute user code or turn malformed vectors into trusted causal outcomes.
+const accessorRecord = { ...record, traceId: 'wp667-accessor-record' };
+Object.defineProperty(accessorRecord, 'reward01', {
+  get() { throw new Error('persisted getter must not execute'); },
+});
+const sparsePolicyRecord = {
+  ...record,
+  id: 'cx-sparse-policy',
+  traceId: 'wp667-sparse-policy',
+  policyFeatures01: new Array(16),
+};
+const hardenedRestore = new CausalExperienceStream(16);
+assert.doesNotThrow(() => hardenedRestore.restore({
+  observations: Number.MAX_SAFE_INTEGER + 1,
+  records: [record, accessorRecord, sparsePolicyRecord],
+  recordedTraceIds: new Array(2),
+}));
+const hardenedSnapshot = hardenedRestore.snapshot();
+assert.equal(hardenedSnapshot.observations, 0, 'unsafe persisted counters must reset');
+assert.equal(hardenedSnapshot.records.length, 2, 'accessor-backed records must be dropped while safe rows remain');
+assert.equal(hardenedSnapshot.outcomes, 1, 'only bounded runtime-grounded records count as outcomes');
+const quarantinedSparse = hardenedSnapshot.records.find((row) => row.traceId === 'wp667-sparse-policy');
+assert.ok(quarantinedSparse);
+assert.equal(quarantinedSparse.provenance, 'external');
+assert.equal(quarantinedSparse.stateGrounded, false);
+assert.equal(quarantinedSparse.replayEligible, false);
+const throwingSnapshot = {};
+Object.defineProperty(throwingSnapshot, 'records', { get() { throw new Error('snapshot getter must not execute'); } });
+const emptyRestore = new CausalExperienceStream(16);
+assert.doesNotThrow(() => emptyRestore.restore(throwingSnapshot));
+assert.equal(emptyRestore.snapshot().records.length, 0);
+
 // The pre-action convention (trace.tick === stateBefore.tick) must keep working.
 const replayTrace = { ...liveTrace, id: 'wp667-replay-trace', tick: 0 };
 const replayRecord = stream.recordOutcome(replayTrace, mkState(1, { lastAction: 'explore', lastActionSuccess: .8 }), { reward01: .8, success01: .8, surprise01: .7, novelty01: .75 });
