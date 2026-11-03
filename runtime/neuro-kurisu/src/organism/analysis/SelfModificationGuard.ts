@@ -74,6 +74,20 @@ export const PROTECTED_CAPABILITY_FRAGMENTS: readonly string[] = [
   'CanonicalSelfAgencyAuthority',
   'self-analysis-substrate',
   'canonical-self-agency-authority',
+  // Build/test configuration and the progress/evidence machinery are part of the
+  // evaluator trust boundary: changing them can erase checks or counterfeit scores.
+  'package.json',
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  '.nvmrc',
+  'tsconfig',
+  'vitest.config',
+  'jest.config',
+  'playwright.config',
+  'progress-workstreams.json',
+  'progress-report.mjs',
+  'run-local-gate.mjs',
   'SourceGraph',
   'holdout',
 ];
