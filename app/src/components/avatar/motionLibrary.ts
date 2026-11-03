@@ -79,14 +79,22 @@ export function validateMotionProgram(program: MotionProgram): MotionProgramIssu
     }
     if (frame.t <= previousT) issues.push({ code: "non-increasing-keyframe", message: `keyframe ${index} t must strictly increase` });
     previousT = frame.t;
+    if (!frame.channels || typeof frame.channels !== "object" || Array.isArray(frame.channels)) {
+      issues.push({ code: "invalid-channel-map", message: `keyframe ${index} channels must be an object` });
+      continue;
+    }
     for (const [channel, value] of Object.entries(frame.channels)) {
       if (!BODY_CHANNELS.has(channel as BodyChannel) || !Number.isFinite(value) || Math.abs(value as number) > 1) {
         issues.push({ code: "invalid-channel-value", message: `keyframe ${index} channel ${channel} is invalid or unbounded` });
       }
     }
   }
-  if (program.keyframes[0]!.t !== 0) issues.push({ code: "missing-start-keyframe", message: "first keyframe must start at t=0" });
-  if (program.keyframes[program.keyframes.length - 1]!.t !== 1) issues.push({ code: "missing-end-keyframe", message: "last keyframe must end at t=1" });
+  const firstFrame = program.keyframes[0];
+  const lastFrame = program.keyframes[program.keyframes.length - 1];
+  if (!firstFrame) issues.push({ code: "missing-start-keyframe", message: "first keyframe must start at t=0" });
+  else if (firstFrame.t !== 0) issues.push({ code: "missing-start-keyframe", message: "first keyframe must start at t=0" });
+  if (!lastFrame) issues.push({ code: "missing-end-keyframe", message: "last keyframe must end at t=1" });
+  else if (lastFrame.t !== 1) issues.push({ code: "missing-end-keyframe", message: "last keyframe must end at t=1" });
   if (program.loop) {
     const first = program.keyframes[0]!.channels;
     const last = program.keyframes[program.keyframes.length - 1]!.channels;
