@@ -125,4 +125,28 @@ const point=(frameId,x,y,z=0)=>({spatialFrameId:frameId,spatialX:String(x),spati
   "proxy rejection must preserve the last validated spatial point");
 }
 
+
+{
+ // Diagnostics must reconcile all derived maps, not just the point payload map.
+ const index=new MemorySpatialIndex();
+ const context=point("room-A",1,0);
+ assert.equal(index.upsert("diagnostic-target",context),true);
+ const cell=index.cellById.get("diagnostic-target");
+ assert.ok(cell,"the canonical point must have a cell reverse mapping");
+ index.cells.get(cell).delete("diagnostic-target");
+ assert.equal(index.query({frameId:"room-A",x:0,y:0,radius:5}).length,0,
+  "a missing cell posting makes a spatial point unreachable");
+ assert.equal(index.diagnostics([{id:"diagnostic-target",context}]).pass,false,
+  "diagnostics must detect a point missing from its cell posting set");
+}
+{
+ const index=new MemorySpatialIndex();
+ const context=point("room-A",1,0);
+ assert.equal(index.upsert("valid-target",context),true);
+ const cell=index.cellById.get("valid-target");
+ index.cells.get(cell).add("orphan-target");
+ assert.equal(index.diagnostics([{id:"valid-target",context}]).pass,false,
+  "diagnostics must detect orphan IDs in cell posting sets");
+}
+
 console.log("MEMORYOS2_SPATIAL_RETRIEVAL=PASS");
