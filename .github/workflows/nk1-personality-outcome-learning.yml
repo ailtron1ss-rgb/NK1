@@ -1,0 +1,36 @@
+name: NK1 personality outcome learning
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts"
+      - "runtime/neuro-kurisu/tests/p2702-persistent-personality-dynamics.mjs"
+      - ".github/workflows/nk1-personality-outcome-learning.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nk1-personality-outcome-learning-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    name: Personality learning and interoceptive integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        run: npm ci --prefix runtime/neuro-kurisu --ignore-scripts --no-audit --no-fund
+      - name: Runtime typecheck
+        run: npm --prefix runtime/neuro-kurisu run typecheck
+      - name: P2702 persistent personality outcome learning
+        run: npm --prefix runtime/neuro-kurisu run test:p2702:personality
+      - name: P66/P172 interoceptive affect regression
+        run: npm --prefix runtime/neuro-kurisu run test:big-pass-172
