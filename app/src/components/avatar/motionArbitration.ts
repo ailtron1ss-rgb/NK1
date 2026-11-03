@@ -87,7 +87,7 @@ export function resolvePrimaryProgram(intent: MotionIntent): MotionProgramId {
   if (intent.speaking && intent.action === "respond") return "respond";
   switch (intent.action) {
     case "explore":
-      return intent.allowLocomotion ? "walk" : "explain";
+      return intent.allowLocomotion === true ? "walk" : "explain";
     case "verify":
     case "reflect":
       return "think";
@@ -107,7 +107,85 @@ function validateIntent(intent: MotionIntent): boolean {
     && typeof intent.emotion === "string" && intent.emotion.length <= 64
     && typeof intent.speaking === "boolean"
     && typeof intent.thinking === "boolean"
-    && typeof intent.awake === "boolean";
+    && typeof intent.awake === "boolean"
+    && (intent.allowLocomotion === undefined || typeof intent.allowLocomotion === "boolean");
+}
+
+const MOTION_PROGRAM_IDS: ReadonlySet<string> = new Set(Object.keys(MOTION_PROGRAMS));
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
+}
+
+function ownData(value: Record<string, unknown>, key: string): unknown {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor && Object.prototype.hasOwnProperty.call(descriptor, "value")
+      ? descriptor.value
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Normalize persisted arbitration state before it reaches the frame loop.
+ * Invalid/unknown layers are dropped; malformed snapshots reset to a safe idle
+ * state instead of crashing the renderer or injecting unbounded motion weights.
+ */
+export function restoreMotionArbitrationState(raw: unknown): MotionArbitrationState {
+  if (!isPlainRecord(raw) || ownData(raw, "schemaVersion") !== 1) return defaultMotionArbitrationState();
+  const rawLayers = ownData(raw, "layers");
+  const layers: MotionLayerState[] = [];
+  const seen = new Set<string>();
+  if (Array.isArray(rawLayers)) {
+    for (const candidate of rawLayers) {
+      if (!isPlainRecord(candidate)) continue;
+      const programId = ownData(candidate, "programId");
+      const timeMs = ownData(candidate, "timeMs");
+      const weight = ownData(candidate, "weight");
+      if (typeof programId !== "string" || !MOTION_PROGRAM_IDS.has(programId) || seen.has(programId)) continue;
+      if (typeof timeMs !== "number" || !Number.isFinite(timeMs) || timeMs < 0) continue;
+      if (typeof weight !== "number" || !Number.isFinite(weight)) continue;
+      seen.add(programId);
+      layers.push({
+        programId: programId as MotionProgramId,
+        timeMs: Math.min(timeMs, 1_000_000_000),
+        weight: Math.max(0, Math.min(1, weight)),
+      });
+      if (layers.length >= MAX_LAYERS) break;
+    }
+  }
+
+  const rawPrimary = ownData(raw, "primary");
+  const primary = typeof rawPrimary === "string" && MOTION_PROGRAM_IDS.has(rawPrimary)
+    && layers.some((layer) => layer.programId === rawPrimary)
+    ? rawPrimary as MotionProgramId
+    : null;
+  const elapsed = ownData(raw, "transitionElapsedMs");
+  const requestedTransition = ownData(raw, "transitioning") === true;
+  const safeElapsed = typeof elapsed === "number" && Number.isFinite(elapsed)
+    ? Math.max(0, Math.min(MOTION_TRANSITION_MS, elapsed))
+    : 0;
+  const transitioning = requestedTransition && primary !== null && safeElapsed < MOTION_TRANSITION_MS;
+  if (primary !== null && requestedTransition && !transitioning) {
+    const primaryLayer = layers.find((layer) => layer.programId === primary)!;
+    primaryLayer.weight = 1;
+    return { schemaVersion: 1, layers: [primaryLayer], primary, transitionElapsedMs: 0, transitioning: false };
+  }
+  return {
+    schemaVersion: 1,
+    layers,
+    primary,
+    transitionElapsedMs: transitioning ? safeElapsed : 0,
+    transitioning,
+  };
 }
 
 /**
@@ -120,9 +198,7 @@ export function arbitrateMotion(
   deltaMs: number,
 ): MotionArbitrationResult {
   if (!validateIntent(intent)) throw new TypeError("invalid-motion-intent");
-  const state: MotionArbitrationState = previous && previous.schemaVersion === 1
-    ? { ...previous, layers: previous.layers.map((layer) => ({ ...layer })) }
-    : defaultMotionArbitrationState();
+  const state = restoreMotionArbitrationState(previous);
   const step = Number.isFinite(deltaMs) && deltaMs > 0 ? Math.min(deltaMs, 250) : 0;
 
   // Advance every live layer's clock first so idle breathing stays continuous.
