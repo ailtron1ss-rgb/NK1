@@ -182,11 +182,63 @@ export function parseSourceFile(path: string, text: string): ParsedFile {
   return { symbols, imports };
 }
 
-function moduleKey(importPath: string): string | null {
+/**
+ * Resolve a relative import against the importing file, not against a global
+ * basename index. Basename-only matching aliases unrelated modules whenever two
+ * directories contain the same filename, which corrupts impact analysis.
+ *
+ * TypeScript ESM projects commonly write .js specifiers for .ts source files;
+ * extension and index candidates below preserve that convention without
+ * guessing across directories.
+ */
+function normalizeRepoPath(value: string): string | null {
+  const parts: string[] = [];
+  for (const part of value.replace(/\\/g, '/').split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      if (parts.length === 0) return null;
+      parts.pop();
+      continue;
+    }
+    parts.push(part);
+  }
+  return parts.length ? parts.join('/') : null;
+}
+
+function resolveRelativeModule(
+  importerPath: string,
+  importPath: string,
+  knownFiles: ReadonlySet<string>,
+): string | null {
   if (!importPath.startsWith('.')) return null;
-  const cleaned = importPath.replace(/\.ts$/, '').replace(/\/index$/, '');
-  const parts = cleaned.split('/').filter((p) => p && p !== '.');
-  return parts.length ? parts[parts.length - 1] : null;
+  const importer = normalizeRepoPath(importerPath);
+  if (!importer) return null;
+  const importerParts = importer.split('/');
+  importerParts.pop();
+  const resolved = normalizeRepoPath([...importerParts, importPath].join('/'));
+  if (!resolved) return null;
+
+  const candidates = [resolved];
+  if (/\\.js$/i.test(resolved)) {
+    candidates.push(resolved.replace(/\\.js$/i, '.ts'));
+    candidates.push(resolved.replace(/\\.js$/i, '.tsx'));
+    candidates.push(resolved.replace(/\\.js$/i, '.mts'));
+  } else if (/\\.mjs$/i.test(resolved)) {
+    candidates.push(resolved.replace(/\\.mjs$/i, '.mts'));
+    candidates.push(resolved.replace(/\\.mjs$/i, '.ts'));
+  } else if (!/\\.[A-Za-z0-9]+$/.test(resolved)) {
+    candidates.push(
+      resolved + '.ts',
+      resolved + '.tsx',
+      resolved + '.mts',
+      resolved + '.js',
+      resolved + '/index.ts',
+      resolved + '/index.tsx',
+      resolved + '/index.mts',
+      resolved + '/index.js',
+    );
+  }
+  return candidates.find((candidate) => knownFiles.has(candidate)) ?? null;
 }
 
 export function buildSourceGraph(files: SourceFileInput[]): SourceGraph {
@@ -209,20 +261,14 @@ export function buildSourceGraph(files: SourceFileInput[]): SourceGraph {
     nodes.push(...result.symbols);
   }
 
-  const moduleByKey = new Map<string, string>();
-  for (const file of files) {
-    const key = file.path.replace(/\.ts$/, '').split('/').pop() ?? file.path;
-    moduleByKey.set(key, file.path);
-  }
+  const knownFiles = new Set(files.map((file) => normalizeRepoPath(file.path)).filter((path): path is string => path !== null));
 
   for (const file of files) {
     const result = parsed.get(file.path);
     if (!result) continue;
     const moduleId = `${file.path}#__module__`;
     for (const spec of result.imports) {
-      const key = moduleKey(spec);
-      if (!key) continue;
-      const target = moduleByKey.get(key);
+      const target = resolveRelativeModule(file.path, spec, knownFiles);
       if (!target || target === file.path) continue;
       edges.push({ from: moduleId, to: `${target}#__module__`, kind: 'imports', provenance: 'EXTRACTED' });
       for (const symbol of parsed.get(target)?.symbols ?? []) {
