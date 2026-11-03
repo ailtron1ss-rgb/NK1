@@ -42,6 +42,7 @@ import { B269SpikingPlasticNeuralSubstrate, defaultB269SpikingPlastic } from '..
 import { B270NeuralGerminalOrganism, defaultB270NeuralGerminalOrganism } from '../cognition/B270NeuralGerminalOrganism.ts';
 import { B271NeuralAutobiographicalCore, defaultB271State } from '../cognition/B271NeuralAutobiographicalCore.ts';
 import { B272EndogenousGoalGenesis, defaultB272State } from '../cognition/B272EndogenousGoalGenesis.ts';
+import { IntrinsicMotivationGoalCoupling } from '../cognition/IntrinsicMotivationGoalCoupling.ts';
 import { B273AutonomousGoalLifecycle, defaultB273State } from '../cognition/B273AutonomousGoalLifecycle.ts';
 import { B274AutonomousSkillLaboratory, defaultB274State } from '../cognition/B274AutonomousSkillLaboratory.ts';
 import { B275NeuralCompositionalPolicy, defaultB275State } from '../cognition/B275NeuralCompositionalPolicy.ts';
@@ -1174,6 +1175,8 @@ export class OrganismCore {
     /** R23 bounded recurrent/SSM-style ablation; opt-in and causally isolated from canonical decisions. */
     /** Owns general cognitive/runtime services; Core remains the orchestration spine. */
     private readonly cognitiveRuntime = new CognitiveRuntimeCluster({ organismSystems: this.organismSystems, p61IntegratedMind: this.organismSystems.self.p61IntegratedMind, p64IntegratedOrganismDynamics: this.organismSystems.self.p64IntegratedOrganismDynamics });
+    /** Couples the existing six intrinsic drives to the canonical B272 goal generator. */
+    private readonly intrinsicMotivationGoalCoupling = new IntrinsicMotivationGoalCoupling(this.cognitiveRuntime.intrinsicMotivation, this.developmentalNeural.endogenousGoalGenesisB272);
     /** Owns mutable persistence/continuity machinery; Core supplies orchestration decisions. */
     private readonly persistence = new PersistenceRuntime();
     /** Selected WILL contracts are owned by the composition fabric; Core only orchestrates them. */
@@ -5203,19 +5206,36 @@ export class OrganismCore {
         });
         const b271PostState = this.developmentalNeural.neuralAutobiographicalCoreB271.snapshot();
         this.persisted.system.neuralAutobiographicalCoreB271 = b271PostState;
-        const b272Goal = this.developmentalNeural.endogenousGoalGenesisB272.step({
-            tick: state.tick,
-            selfLatent: b270PostGerminalState.selfLatent,
-            worldLatent: p27Latent.vector,
-            needs: { energy01: state.needs.energy, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, goalPressure01: state.needs.goalPressure, socialNeed01: state.needs.socialNeed },
-            traits: b270PostAutonomousState.traitValues,
-            predictionError01: state.predictionError,
-            autobiographicalContinuity01: b271NeuralAuto.autobiographicalContinuity01,
-            identityContinuity01: p80Now.continuity01,
-            intrinsicReward01: b270PostAutonomousState.intrinsicReward01,
-            lastAction: state.lastAction === 'none' ? null : state.lastAction,
-            lastReward01: clamp(state.lastActionSuccess ?? .5),
+        const worldEvidenceQuality = this.worldSubsystem.world.beliefAvailable() ? clamp(0.45 + Math.min(0.45, this.worldSubsystem.world.transitionCount() / 80)) : 0.2;
+        const intrinsicDriveConfidence01 = clamp(worldEvidenceQuality * 0.65 + (1 - state.predictionError) * 0.35);
+        const intrinsicCoupling = this.intrinsicMotivationGoalCoupling.step({
+            cycle: {
+                tick: state.tick,
+                selfLatent: b270PostGerminalState.selfLatent,
+                worldLatent: p27Latent.vector,
+                needs: { energy01: state.needs.energy, uncertainty01: state.needs.uncertainty, novelty01: state.needs.novelty, goalPressure01: state.needs.goalPressure, socialNeed01: state.needs.socialNeed },
+                traits: b270PostAutonomousState.traitValues,
+                predictionError01: state.predictionError,
+                autobiographicalContinuity01: b271NeuralAuto.autobiographicalContinuity01,
+                identityContinuity01: p80Now.continuity01,
+                intrinsicReward01: b270PostAutonomousState.intrinsicReward01,
+                lastAction: state.lastAction === 'none' ? null : state.lastAction,
+                lastReward01: clamp(state.lastActionSuccess ?? .5),
+            },
+            drive: {
+                uncertainty: state.needs.uncertainty,
+                predictionError: state.predictionError,
+                novelty: state.needs.novelty,
+                goalPressure: state.needs.goalPressure,
+                socialNeed: state.needs.socialNeed,
+                energy: state.needs.energy,
+                lastSuccess: state.lastActionSuccess,
+                worldEvidenceQuality,
+            },
+            driveConfidence01: intrinsicDriveConfidence01,
         });
+        const b272Goal = intrinsicCoupling.goal;
+        this.persisted.facets.consciousness.intrinsic = intrinsicCoupling.driveState;
         this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
         // Stage the freshly generated endogenous goal only after the canonical self-agency gate.
         // Rejected authorship is represented as an unknown source and cannot enter B365 ownership.
@@ -5358,12 +5378,6 @@ export class OrganismCore {
         const broadcast = this.config.enableCognitiveNetwork ? this.cognitiveRuntime.cognitiveNetwork.stimulate(networkSignals, state.tick, state.attentionBudget * neuromod.attentionGain01) : null;
         // Cognitive network is projected by PersistenceProjectionCoordinator at checkpoint boundaries.
         // Keeping the hot-path copy only in the live bus avoids cloning the 64-entry broadcast history each cycle.
-        const worldEvidenceQuality = this.worldSubsystem.world.beliefAvailable() ? clamp(0.45 + Math.min(0.45, this.worldSubsystem.world.transitionCount() / 80)) : 0.2;
-        const intrinsicState = this.cognitiveRuntime.intrinsicMotivation.update({
-            uncertainty: n.uncertainty, predictionError: state.predictionError, novelty: n.novelty, goalPressure: n.goalPressure,
-            socialNeed: n.socialNeed, energy: n.energy, lastSuccess: state.lastActionSuccess, worldEvidenceQuality,
-        });
-        this.persisted.facets.consciousness.intrinsic = intrinsicState;
         if (this.config.enableContradictions && state.predictionError > 0.62) {
             const c = this.cognitiveRuntime.contradictions.register('Наблюдаемый исход существенно расходится с текущим прогнозом', [String(activeGoalPressureFallback(this.persisted.goals) || 'goal-model'), 'world-transition'], state.predictionError);
             this.cognitiveRuntime.cognitiveField.addPressure('contradiction', c.claim, c.confidence, [c.id], 0.03);
@@ -5380,7 +5394,7 @@ export class OrganismCore {
             });
         }
         if (this.config.enableIntrinsicGoals && this.config.enableIntrinsicMotivation) {
-            const proposal = this.cognitiveRuntime.intrinsicMotivation.proposeGoal();
+            const proposal = intrinsicCoupling.driveGoal;
             if (proposal) {
                 const intrinsic = this.addGoal(proposal);
                 intrinsic.status = 'active';
