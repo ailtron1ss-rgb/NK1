@@ -61,7 +61,12 @@ const EMOTION_TO_EXPRESSION: Record<EmotionLabel, ExpressionChannel> = {
   frustration: "anger", sadness: "sadness", anger: "anger", protective: "protective",
 };
 
-const EXPRESSION_TEXT: Record<EmotionLabel, string> = {
+/**
+ * Live2D expression vocabulary sent to the viewer. Exported so the stage and the
+ * viewer-contract test share one source: an unknown name makes the viewer drop the
+ * whole intent frame, so every value here must be a key of the viewer's EXPR_MAP.
+ */
+export const EXPRESSION_TEXT: Record<EmotionLabel, string> = {
   curiosity: "thinking", calm: "neutral", joy: "happy", anxiety: "sad",
   frustration: "angry", sadness: "sad", anger: "angry", protective: "focused",
 };
