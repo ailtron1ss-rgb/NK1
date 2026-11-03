@@ -8,6 +8,7 @@ export type OrganismEventType =
   | 'autonomous-goal-created'
   | 'goal-updated'
   | 'memory-created'
+  | 'metacognitive-episode'
   | 'memory-lifecycle'
   | 'self-update'
   | 'attention'

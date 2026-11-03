@@ -8,7 +8,7 @@ import { sha256Stable } from '../core/StableSerialization.ts';
  * world or goals. It only records the causal spine of an operational cycle:
  * observation -> prediction -> action -> outcome -> learning/self update.
  */
-export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update'|'tool-action'|'tool-outcome'|'tool-evidence'|'external-evidence'|'tool-reconciliation';
+export type CognitiveStage = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update'|'tool-action'|'tool-outcome'|'tool-evidence'|'external-evidence'|'tool-reconciliation'|'metacognitive-episode';
 
 export interface CognitiveEventNode {
   id: string;
@@ -127,7 +127,7 @@ function cleanRestoredPayload(value:unknown,depth=0):Record<string,unknown> {
   }
   return result;
 }
-const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation']);
+const COGNITIVE_STAGES=new Set<CognitiveStage>(['observation','prediction','appraisal','attention','memory','goal','plan','action','outcome','learning','self-update','tool-action','tool-outcome','tool-evidence','external-evidence','tool-reconciliation','metacognitive-episode']);
 
 export class CognitiveEventFabric {
   private readonly capacity:number;
