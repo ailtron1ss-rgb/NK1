@@ -67,3 +67,17 @@ assert.equal(delayed.validUntilAt,secondAt+90_000,'an older observation must not
 assert.equal(delayed.context.spatialX,'4','an older observation must not move the entity back to a stale coordinate');
 assert.equal(memory.indexDiagnostics().spatialIndex.pass,true,'stale observations must not desynchronize the derived index');
 console.log('MEMORYOS2_SPATIAL_OBSERVATION_REFRESH=PASS');
+
+const tieMemory=new MemoryOS2({embeddingProvider:null});
+const tieFirst=tieMemory.encode(observation(now,1));
+const tieLatestAt=now+2_000;
+const tieLatest=tieMemory.encode(observation(tieLatestAt,4));
+assert.equal(tieLatest.context.spatialX,'4');
+const sameTimestampConflict=tieMemory.encode(observation(tieLatestAt,999));
+assert.equal(sameTimestampConflict.id,tieFirst.id);
+assert.equal(sameTimestampConflict.observedAt,tieLatestAt,'an equal-timestamp replay must not rewrite the current observation time');
+assert.equal(sameTimestampConflict.validFromAt,tieLatestAt,'an equal-timestamp replay must not rewind or restart the current validity interval');
+assert.equal(sameTimestampConflict.validUntilAt,tieLatestAt+90_000,'an equal-timestamp replay must not extend the spatial freshness expiry');
+assert.equal(sameTimestampConflict.evidenceFreshnessAt,tieLatestAt,'an equal-timestamp replay must not refresh evidence freshness');
+assert.equal(sameTimestampConflict.context.spatialX,'4','equal-timestamp coordinate conflicts must preserve the already accepted position');
+assert.equal(tieMemory.indexDiagnostics().spatialIndex.pass,true,'equal-timestamp replays must preserve derived index consistency');
