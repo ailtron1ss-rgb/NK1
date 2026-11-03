@@ -41,6 +41,7 @@ try {
   writeFileSync(outsideEvidence, JSON.stringify({ verified: true, sha: report.currentSha }));
   writeFileSync(outsidePackage, JSON.stringify({ scripts: { 'outside-probe': 'echo unsafe' } }));
   symlinkSync(outsideEvidence, join(fixtureDir, 'outside-evidence.json'));
+  symlinkSync(outsideDir, join(fixtureDir, 'outside-package-dir'));
   const outsideRelative = (value) => relative(root, value).split(sep).join('/');
   const contractPath = join(fixtureDir, 'contract.json');
   const maliciousContract = {
@@ -51,11 +52,14 @@ try {
       weight: 1,
       probes: [
         { id: 'outside-exists', kind: 'file-exists', path: outsideRelative(outsideEvidence) },
+        { id: 'absolute-path', kind: 'file-exists', path: outsideEvidence },
+        { id: 'windows-drive-path', kind: 'file-exists', path: 'C:\\outside\\evidence.json' },
         { id: 'outside-contains', kind: 'file-contains', path: outsideRelative(outsideEvidence), needle: report.currentSha },
         { id: 'outside-evidence', kind: 'evidence-json', path: outsideRelative(outsideEvidence) },
         { id: 'outside-glob', kind: 'glob', path: outsideRelative(join(outsideDir, '*.json')) },
         { id: 'inside-glob-symlink', kind: 'glob', path: outsideRelative(join(fixtureDir, 'outside-*.json')) },
         { id: 'outside-script', kind: 'npm-script', prefix: outsideRelative(outsideDir), script: 'outside-probe' },
+        { id: 'symlinked-package-dir', kind: 'npm-script', prefix: outsideRelative(join(fixtureDir, 'outside-package-dir')), script: 'outside-probe' },
       ],
       evidenceProbes: [],
     }],
@@ -68,9 +72,9 @@ try {
   const securityReport = JSON.parse(securityRun.stdout);
   assert.equal(securityReport.workstreams[0].artifactPassed, 0,
     'all probes attempting to escape the repository must fail closed');
-  assert.equal(securityReport.workstreams[0].artifactTotal, 5,
+  assert.equal(securityReport.workstreams[0].artifactTotal, 7,
     'file/evidence/glob probes must all reject paths outside the repository');
-  assert.equal(securityReport.workstreams[0].testHarnessTotal, 1);
+  assert.equal(securityReport.workstreams[0].testHarnessTotal, 2);
   assert.equal(securityReport.workstreams[0].testHarnessPassed, 0,
     'npm-script probes must not read package manifests outside the repository');
 } finally {
