@@ -159,9 +159,11 @@ export function arbitrateMotion(
     state.layers.push({ programId: "idle", timeMs: 0, weight: IDLE_BREATH_WEIGHT });
   }
 
-  // Bound the layer count deterministically: drop the lowest-weight non-primary layer.
+  // Bound the layer count deterministically: keep the primary and drop the
+  // lowest-weight non-primary layers. The primary must sort first, otherwise a
+  // rapid sequence of intents can trim the very program that should dominate.
   if (state.layers.length > MAX_LAYERS) {
-    state.layers.sort((a, b) => (a.programId === desired ? 1 : 0) - (b.programId === desired ? 1 : 0) || b.weight - a.weight);
+    state.layers.sort((a, b) => (a.programId === desired ? 0 : 1) - (b.programId === desired ? 0 : 1) || b.weight - a.weight);
     state.layers = state.layers.slice(0, MAX_LAYERS);
   }
 
@@ -183,7 +185,9 @@ export function arbitrateMotion(
   }
   if (idleLayer && state.primary !== "idle") {
     const breath = sampleMotionProgram(MOTION_PROGRAMS.idle, idleLayer.timeMs).channels.breath ?? 0;
-    channels.breath = Math.max(-1, Math.min(1, (channels.breath ?? 0) + breath * idleLayer.weight));
+    // Scale the overlay by the layer's real blend weight (not the raw breath
+    // constant) so it fades in and out with the rest of the blend.
+    channels.breath = Math.max(-1, Math.min(1, (channels.breath ?? 0) + breath * idleLayer.weight * energyScale));
   }
 
   return {

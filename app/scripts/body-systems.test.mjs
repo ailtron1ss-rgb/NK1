@@ -174,6 +174,38 @@ test("arbitration rejects malformed intent and ignores non-positive delta", () =
   assert.deepEqual(state.layers.map((l) => l.timeMs), [0]);
 });
 
+test("rapid intent changes never trim the primary program away", () => {
+  // A burst of intents before the 260 ms transition settles builds up layers; the
+  // fourth distinct intent pushes the count over MAX_LAYERS and triggers the trim.
+  // The trim must keep the current primary, never drop it as the "lowest-weight"
+  // layer (the primary starts each transition at weight ~0).
+  const mk = (action, emotion, speaking, thinking) => ({ action, emotion, speaking, thinking, awake: true, energy01: 0.7 });
+  let state = defaultMotionArbitrationState();
+  state = arbitrateMotion(state, mk("respond", "joy", true, false), 16).state;
+  state = arbitrateMotion(state, mk("reflect", "calm", false, true), 16).state;
+  const trimmed = arbitrateMotion(state, mk("explore", "curiosity", false, false), 16);
+  assert.equal(trimmed.primary, "explain");
+  assert.ok(trimmed.state.layers.length <= 3);
+  assert.ok(trimmed.state.layers.some((l) => l.programId === trimmed.primary), "primary must survive the trim");
+  assert.ok(trimmed.state.layers.some((l) => l.programId === "idle"), "idle breath layer must survive the trim");
+});
+
+test("idle breath overlay is scaled by its real blend weight", () => {
+  // During a transition the idle layer weight is < IDLE_BREATH_WEIGHT; the overlay
+  // must follow weight * energyScale, not the raw constant. energy01 < 1 makes the
+  // energy factor observable (energy01 = 1 would mask it).
+  const intent = { action: "wait", emotion: "curiosity", speaking: false, thinking: false, awake: true, energy01: 0.5 };
+  const state = arbitrateMotion(null, intent, 16).state; // idle primary, settled
+  const think = { action: "reflect", emotion: "calm", speaking: false, thinking: true, awake: true, energy01: 0.5 };
+  const r = arbitrateMotion(state, think, 16); // first frame of the think transition
+  const idleLayer = r.state.layers.find((l) => l.programId === "idle");
+  assert.ok(idleLayer && idleLayer.weight < 1);
+  const idleOnly = sampleMotionProgram(MOTION_PROGRAMS.idle, idleLayer.timeMs).channels.breath ?? 0;
+  const energyScale = 0.55 + 0.5 * 0.45;
+  assert.ok(Math.abs(r.channels.breath - idleOnly * idleLayer.weight * energyScale) < 1e-9);
+  assert.notEqual(r.channels.breath, idleOnly * idleLayer.weight);
+});
+
 test("default registry seeds four wired renderers with no channel drift", () => {
   const registry = createDefaultBodyRendererRegistry();
   assert.equal(registry.list().length, 4);
