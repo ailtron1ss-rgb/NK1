@@ -21,7 +21,7 @@ The weighted functional engineering maturity remains **46%** and release readine
 | Donor provenance and integration plan | #721 / research/donor-source-intake-20261103 | 80% | Archive digests, 22 nested ZIP snapshots / 21 unique sources recorded; current doc CI green | Path-level license/SBOM checks and mechanism-by-mechanism integration decisions |
 | Read-set freshness | #722 / aspect/neurok-os-readset-freshness-20261103 | 80% | Exact head f27b1bc46cdb…; focused read-set workflow and parent OS workflow success | Wire into mandatory patch admission; signed receipts or trusted provenance; independent review |
 | Patch provenance / policy preflight | #723 / aspect/neurok-os-patch-sandbox-20261103 | 100% for parent-branch scope | Merged 2026-11-03 into parent branch as 8fa7bf8023ed…; 3/3 exact-head checks success | Not in canonical source; actual isolated patch apply, test sandbox and rollback remain unimplemented |
-| Spatial MemoryOS2 recall | #730 / aspect/memory-spatial-recall-20261103 | 70% | Exact head 1e19ffdc5d07…; spatial regression workflow + runtime typecheck green; memory integrity, restore, unified runtime and gateway checks green | Finish remaining broad CI; paired retrieval-quality/latency probes; perception and avatar/world-model wiring |
+| Spatial MemoryOS2 recall | #730 / aspect/memory-spatial-recall-20261103 | 70% | Exact head 421621fbb92c…; spatial regressions + runtime typecheck green; 10k index stress: p95 1.195 ms over 60 top-64 queries; 13 broader exact-head workflows green before the stress-test update | Paired full-retrieval quality/latency probes; perception and avatar/world-model wiring |
 
 Branch percentages describe delivery of each isolated engineering task, not intelligence or the readiness of the whole system. They do not alter the 46% weighted baseline until integration gates are passed.
 
@@ -48,7 +48,7 @@ Branch percentages describe delivery of each isolated engineering task, not inte
 - Frame isolation, coordinate/radius bounds, query-cell limits, candidate budget and proximity ranking are enforced.
 - Restore, deduplicated re-encoding, updateContext and forget/eviction maintain index consistency.
 - Text-only retrieval is unchanged and spatial retrieval only activates for an explicit valid spatial query.
-- No recall uplift is claimed yet.
+- No recall uplift is claimed yet. A dedicated stress test indexed 10,000 spatial rows and measured p95 1.195 ms over 60 bounded top-64 spatial-index queries on GitHub Actions; this measures the derived index path only, not the complete MemoryOS2 retrieval or perception-to-action pipeline.
 
 ## Donor source choices
 
