@@ -28,6 +28,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
+      - name: Record exact tested commit
+        run: echo "TESTED_COMMIT=$(git rev-parse HEAD)"
       - name: Run voluntary attention effort regressions
         run: npm run test:voluntary-attention-effort --prefix runtime/neuro-kurisu
       - name: Run runtime typecheck
