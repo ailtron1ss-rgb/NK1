@@ -89,5 +89,8 @@ assert.deepEqual(restoreProbe.snapshot().outcomes, {}, 'malformed calibration ro
 const invalidEpisode = { ...es, history: [{ ...es.history[0], appraisal: { ...es.history[0].appraisal, novelty01: 9 } }] };
 restoreProbe.restore(invalidEpisode);
 assert.equal(restoreProbe.snapshot().history.length, 0, 'malformed nested episode metrics must be rejected');
+const danglingFeeling = { ...es, feelings: [{ ...es.feelings[0], causeEmotionId: 'emo:missing' }] };
+restoreProbe.restore(danglingFeeling);
+assert.equal(restoreProbe.snapshot().feelings.length, 0, 'dangling emotion references must be rejected');
 
 console.log(JSON.stringify({pass:172,status:'PASS',direct:{episodeIdsUnique:true,positiveValence:first.valence01,stressLabel:stressed.label,feelingMismatch:feeling.interoceptiveMismatch01,restBias:e.actionBias('rest')},p66:{highMode:high.mode,highPressure:high.pressure01,recoveryDebtAfterRecovery:hs.recoveryDebt01},core:{stableInteroCycles:stableS.interoception.cycles,stressInteroCycles:stressS.interoception.cycles,stableRegulation:stableS.interoception.regulationPressure01,stressRegulation:stressS.interoception.regulationPressure01,stableMeanStress:stableS.meanStress01,stressMeanStress:stressS.meanStress01,stableRecoveryDebt:stable.p66Summary().recoveryDebt01,stressRecoveryDebt:stressCore.p66Summary().recoveryDebt01,restart:true}},null,2));
