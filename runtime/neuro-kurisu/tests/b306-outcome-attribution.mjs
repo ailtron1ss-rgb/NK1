@@ -7,7 +7,7 @@ const decision = (tick, selected, alternative) => ledger.observeDecision({
   externalInput: false,
   autonomousAllowed: true,
   initiative01: .8,
-  agendaCreated: tick === 1,
+  agendaCreated: tick === 101,
   selectedAction: 'explore',
   selectedKernelBias01: .2,
   counterfactualSelectedScore01: selected,
@@ -43,5 +43,18 @@ assert.equal(ledger.diagnostics().recent.find(row => row.tick === 102)?.outcome0
 assert.equal(ledger.observeOutcome(.8, 999).matched, false);
 assert.equal(ledger.observeOutcome(.8, -1).matched, false);
 assert.equal(ledger.diagnostics().outcomes, 2);
+
+// The existing Core feedback path uses the implicit latest-decision form.
+const corePathLedger = new B306AutonomousInitiativeVerificationLedger();
+corePathLedger.observeDecision({
+  tick: 201, externalInput: false, autonomousAllowed: true, initiative01: .7,
+  agendaCreated: true, selectedAction: 'verify', selectedKernelBias01: .15,
+  counterfactualSelectedScore01: .35, counterfactualBestAlternativeScore01: .7,
+});
+assert.equal(corePathLedger.observeOutcome(.74).matched, true);
+assert.equal(corePathLedger.observeOutcome(.99).matched, false);
+assert.equal(corePathLedger.diagnostics().outcomes, 1);
+assert.equal(corePathLedger.diagnostics().successfulCausalOutcomes, 1);
+assert.equal(corePathLedger.diagnostics().recent[0].outcome01, .74);
 
 console.log('B306_OUTCOME_ATTRIBUTION=PASS');
