@@ -25,6 +25,7 @@ import {
   applyVrmFullBodyChannels,
   resolveVrmFullBodyRig,
 } from "../src/components/avatar/vrmRuntimeAdapter.ts";
+import { originalStageChannelOffsets } from "../src/components/avatar/originalStageChannels.ts";
 import { emptySnapshot } from "../src/organism/types.ts";
 
 function fakeBone() {
@@ -254,4 +255,18 @@ test("full-body apply leaves an absent bone untouched without throwing", () => {
   const result = applyVrmFullBodyChannels(vrm, { leftHip: 0.5, torsoPitch: 0.2 });
   assert.equal(result.applied, false);
   assert.deepEqual(result.controlledBones, []);
+});
+
+test("2D channel mapping is bounded, zero-safe and keeps the breath term additive", () => {
+  const idle = originalStageChannelOffsets();
+  assert.deepEqual(idle, { torsoOffsetX: 0, torsoOffsetY: 0, headOffsetX: 0, headOffsetY: 0, headRollDeg: 0, breathScale: 1 });
+  const extreme = originalStageChannelOffsets({ headYaw: 9, headPitch: -9, torsoYaw: 9, torsoPitch: -9, headRoll: 9, breath: 9 });
+  assert.equal(extreme.headOffsetX, 7);
+  assert.equal(extreme.headOffsetY, -5);
+  assert.equal(extreme.torsoOffsetX, 8);
+  assert.equal(extreme.headRollDeg, 7);
+  assert.equal(extreme.breathScale, 1.015);
+  const nonFinite = originalStageChannelOffsets({ headYaw: Number.NaN, breath: Number.POSITIVE_INFINITY });
+  assert.equal(nonFinite.headOffsetX, 0);
+  assert.equal(nonFinite.breathScale, 1);
 });

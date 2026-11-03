@@ -190,7 +190,7 @@
     "test:aspect10:interaction": "npm --prefix runtime/neuro-kurisu run test:aspect10:interaction",
     "test:aspect10:ik": "npm --prefix app run test:planar-arm-ik",
     "test:body-systems": "npm --prefix app run test:body-systems",
-    "test:workpass71": "npm run test:body-systems && npm --prefix app run test:embodiment-ui-bridge && npm --prefix app run test:depth-rig && npm --prefix runtime/neuro-kurisu run test:aspect10:interaction"
+    "test:workpass71": "npm run test:body-systems && npm --prefix app run test:embodiment-ui-bridge && npm --prefix app run test:embodiment-switch && npm --prefix app run test:motor-frame-mapper && npm --prefix app run test:planar-arm-ik && npm --prefix app run test:vrm-humanoid-rig && npm --prefix runtime/neuro-kurisu run test:aspect10:interaction"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",

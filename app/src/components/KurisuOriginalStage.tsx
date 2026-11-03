@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import type { EmotionLabel, ActionKind } from "@/organism/types";
 import { readAvatarPreference, writeAvatarPreference } from "@/legacy/avatar/safeLocalStorage";
 import type { MouthPose } from "./avatar/embodimentTimeline";
+import { originalStageChannelOffsets, type BodyChannels } from "./avatar/originalStageChannels";
 
 type Outfit = "lab" | "casual" | "night";
 type EyeTone = "ice" | "violet" | "teal";
@@ -92,6 +93,8 @@ export interface KurisuOriginalStageProps {
   speaking: boolean;
   mouthPose: MouthPose;
   thinking: boolean;
+  /** Renderer-neutral arbiter channels, applied additively on top of the authored pose. */
+  bodyChannels?: BodyChannels;
 }
 
 /**
@@ -100,7 +103,7 @@ export interface KurisuOriginalStageProps {
  * organism state and audio-timed mouth signal, and is intended to be the art
  * direction + switchable UI while a production PSD/Cubism rig is authored.
  */
-export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking }: KurisuOriginalStageProps) {
+export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, speaking, mouthPose, thinking, bodyChannels }: KurisuOriginalStageProps) {
   // SVG paint-server IDs must be unique when multiple avatar previews are mounted.
   const instanceId = useId().replace(/:/g, "");
   const svgIds = {
@@ -131,6 +134,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
   const pupilOffsetX = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeX) ? gazeX : 0)) * 15;
   const pupilOffsetY = Math.max(-0.4, Math.min(0.4, Number.isFinite(gazeY) ? gazeY : 0)) * 10;
   const browLift = EMOTION_BROW[emotion];
+  const { torsoOffsetX, torsoOffsetY, headOffsetX, headOffsetY, headRollDeg, breathScale } = originalStageChannelOffsets(bodyChannels);
   const moodLabel: Record<EmotionLabel, string> = {
     curiosity: "интерес", calm: "спокойствие", joy: "радость", anxiety: "тревога",
     frustration: "раздражение", sadness: "грусть", anger: "злость", protective: "забота",
@@ -191,7 +195,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
         <path className="nk-scanner" d="M20 80H400" stroke={accent.color} strokeOpacity=".42" strokeWidth="1"/>
         <ellipse cx="210" cy="505" rx="78" ry="9" fill={accent.color} opacity=".12" filter={`url(#${svgIds.glow})`}/>
         <g className="nk-float">
-          <g style={{ transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
+          <g style={{ translate: `${torsoOffsetX}px ${torsoOffsetY}px`, transform: `rotate(${poseOverride === "auto" ? pose.body : 0}deg)`, transformOrigin: "210px 280px", transition: "transform 700ms ease" }}>
           {/* Rear hair silhouette and long, independently swinging locks. */}
           <g className="nk-hair">
             <path d="M150 79 Q145 38 192 29 Q246 24 273 67 Q289 104 272 180 L292 311 Q265 348 249 317 L241 205 L179 208 L170 321 Q147 348 131 308 L143 173 Q130 122 150 79Z" fill={`url(#${svgIds.hair})`} stroke={hair.shade} strokeWidth="2"/>
@@ -218,7 +222,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M174 194 L188 203 L182 338 L166 354 L151 342Z" fill="#d5b3a0" opacity=".55"/>
             <path d="M246 194 L231 205 L237 337 L252 353 L267 341Z" fill={coatShadow} opacity=".46"/>
           </g>}
-          <g className="nk-breath">
+          <g style={{ scale: String(breathScale), transformOrigin: "210px 240px" }} className="nk-breath">
             {/* Pose presets change the limb silhouettes; Auto follows organism action/emotion. */}
             {effectivePose === "crossed" ? <g>
               <path d="M164 196 Q148 194 149 216 L177 252 Q198 269 218 253 L209 234 Q198 246 185 234 L174 210Z" fill={coat} stroke={coatShadow} strokeWidth="2"/>
@@ -256,7 +260,7 @@ export function KurisuOriginalStage({ emotion, action, arousal, gazeX, gazeY, sp
             <path d="M248 280 L259 280 L256 287 L247 287Z" fill={accent.color}/>
           </g>
           {/* Face and separate features. */}
-          <g style={{ transform: `rotate(${pose.head}deg)`, transformOrigin: "210px 134px", transition: "transform 450ms ease" }}>
+          <g style={{ translate: `${headOffsetX}px ${headOffsetY}px`, transform: `rotate(${pose.head + headRollDeg}deg)`, transformOrigin: "210px 134px", transition: "transform 450ms ease" }}>
             <path d="M151 79 Q151 42 193 40 Q235 35 263 69 Q272 96 257 145 Q247 177 211 185 Q178 177 163 147 Q148 120 151 79Z" fill={`url(#${svgIds.skin})`} stroke="#9f6267" strokeWidth="2"/>
             <path d="M151 85 Q153 47 192 39 Q236 33 263 69 L267 96 Q241 68 216 66 Q187 66 155 101Z" fill={`url(#${svgIds.hair})`}/>
             <path d="M157 72 Q168 48 195 44 Q222 40 245 60 Q216 51 201 59 Q178 65 157 88Z" fill="#ee9d6c" opacity=".65"/>
