@@ -935,7 +935,7 @@ export class MemoryOS2{
    const temporal=detachedTemporal as Record<string,unknown>;
    if(temporalKeys.some(key=>key!=='temporalMode'&&key!=='asOfAt')||
       (temporal.temporalMode!==undefined&&!['current','at','all'].includes(String(temporal.temporalMode)))||
-      (temporal.asOfAt!==undefined&&(typeof temporal.asOfAt!=='number'||!Number.isFinite(temporal.asOfAt)||temporal.asOfAt<0))) {
+      (temporal.asOfAt!==undefined&&temporal.asOfAt!==null&&(typeof temporal.asOfAt!=='number'||!Number.isFinite(temporal.asOfAt)||temporal.asOfAt<0))) {
      throw new TypeError('memory-temporal-options-invalid');
    }
    temporalOptions=temporal as MemoryTemporalQueryOptions;

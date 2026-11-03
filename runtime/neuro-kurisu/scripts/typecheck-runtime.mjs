@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { stripTypeScriptTypes } from 'node:module';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -34,6 +36,10 @@ try {
   process.exit(0);
 } catch (error) {
   if (error?.code === 'ENOENT' && localCompilers.length === 0) {
+    // No TypeScript compiler is installed, so a semantic tsc check is impossible.
+    // Node's `--check` never strips types (it parses as plain JS and fails on every
+    // annotation), so the previous approach produced false "TS_PARSE_FAIL" results.
+    // Use the type-stripping API and surface the parser's real diagnostics instead.
     const files = [];
     const walk = dir => {
       for (const ent of readdirSync(dir, { withFileTypes: true })) {
@@ -44,15 +50,27 @@ try {
       }
     };
     walk(path.join(root, 'src'));
+    const scratch = mkdtempSync(path.join(tmpdir(), 'nk-typecheck-'));
     let failed = 0;
     for (const file of files) {
+      let stripped;
       try {
-        execFileSync(process.execPath, ['--experimental-strip-types', '--check', file], { cwd: root, stdio: 'ignore' });
+        stripped = stripTypeScriptTypes(readFileSync(file, 'utf8'), { mode: 'strip', sourceUrl: file });
+      } catch (stripError) {
+        failed++;
+        console.error(`TS_PARSE_FAIL ${path.relative(root, file)} ${String(stripError?.message ?? stripError).split('\n')[0]}`);
+        continue;
+      }
+      const probe = path.join(scratch, `${failed}-${path.basename(file)}.mjs`);
+      writeFileSync(probe, stripped);
+      try {
+        execFileSync(process.execPath, ['--check', probe], { cwd: root, stdio: 'ignore' });
       } catch {
         failed++;
         console.error(`TS_PARSE_FAIL ${path.relative(root, file)}`);
       }
     }
+    rmSync(scratch, { recursive: true, force: true });
     if (failed) process.exit(1);
     console.log(`TYPECHECK=PASS mode=node-strip-syntax-only files=${files.length} note="TypeScript compiler not installed; semantic tsc check unavailable."`);
     process.exit(0);

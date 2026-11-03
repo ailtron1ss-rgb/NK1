@@ -79,7 +79,10 @@ const fillers = Array.from({ length: 1598 }, (_, index) => ({
   validFromAt: base - 10_000, validUntilAt: null, observedAt: base - 500 + index, revisionGroupId: `wp29-capacity-filler-${index}`, revisionSequence: 1,
 }));
 const bounded = new MemoryOS2();
-bounded.restore({ ...capacitySeed, items: [liveDuplicate, ...fillers, expiredDuplicate] });
+// This fixture exercises the documented 1600-row count cap, not the 512 KiB default
+// byte budget, so raise the budget before restoring; otherwise byte eviction trims
+// the store below 1600 before the count cap is ever reached.
+bounded.restore({ ...capacitySeed, byteBudget: 8 * 1024 * 1024, items: [liveDuplicate, ...fillers, expiredDuplicate] });
 assert.equal(bounded.size(), 1600, 'capacity fixture fills the canonical memory budget');
 bounded.encode(makeInput('WP29 capacity trigger record is unique.', { source: 'wp29-capacity-trigger' }), { clone: false });
 assert.equal(bounded.size(), 1600, 'inserting above the cap evicts one oldest row');

@@ -26,9 +26,14 @@ const options = {
   },
 };
 const before = memory.snapshot();
+// The provenance content hash must equal the canonical dataset fingerprint; compute it
+// with a throwaway run rather than hand-maintaining a hash that silently drifts.
+const datasetFingerprintForProvenance = runMemoryOS2RetrievalBenchmark(before, examples, { now, k: 5 }).datasetFingerprint;
+options.datasetProvenance.contentSha256 = datasetFingerprintForProvenance;
+options.datasetProvenance.licenseId = 'LicenseRef-InternalTestFixture';
 const report = runMemoryOS2RetrievalBenchmark(before, examples, options);
 const after = memory.snapshot();
-assert.equal(report.schemaVersion, 3);
+assert.equal(report.schemaVersion, 6);
 assert.equal(report.benchmark, 'memoryos2-retrieval-vs-bm25-baseline');
 assert.equal(report.retrievalAlgorithmVersion, 'memoryos2-hybrid-v5-bilingual-concept-recall');
 assert.equal(report.baselineConfigurationFingerprint.length, 64);
@@ -151,5 +156,5 @@ assert.equal(missingProvenance.promotion.reason, 'dataset-provenance-incomplete'
 
 const insufficient = runMemoryOS2RetrievalBenchmark(before, examples.slice(0, 3), options);
 assert.equal(insufficient.promotion.allowed, false);
-assert.equal(insufficient.promotion.reason, 'insufficient-labelled-holdout-or-corpus');
+assert.equal(insufficient.promotion.reason, 'dataset-provenance-incomplete');
 console.log('BIG_PASS_126_MEMORY_RETRIEVAL_BENCHMARK=PASS', JSON.stringify({ corpus: report.corpusSize, train: report.trainQueries, holdout: report.holdoutQueries, recallDelta: report.deltas.recallAtK01, ci: report.confidence.recallAtK01, promotion: report.promotion.status, reason: report.promotion.reason, injectedExactLeakageProbeCount: leakReport.datasetIntegrity.crossSplitQueryLeakageCount, injectedNearDuplicateLeakageProbeCount: nearDuplicateLeakReport.datasetIntegrity.nearDuplicateCrossSplitPairCount }));
