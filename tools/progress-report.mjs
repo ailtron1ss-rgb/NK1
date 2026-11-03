@@ -134,10 +134,10 @@ function main() {
     const evidencePassed = evidenceResults.filter((r) => r.ok).length;
     const evidencePercent = evidenceResults.length ? Math.round((evidencePassed / evidenceResults.length) * 100) : 0;
     weightedArtifacts += (ws.weight * artifactPercent) / 100;
-    if (harnessResults.length) {
-      weightedHarness += (ws.weight * testHarnessPercent) / 100;
-      harnessWeight += ws.weight;
-    }
+    // A workstream with no declared test entrypoint is 0% covered, not excluded
+    // from the aggregate. Otherwise missing test harnesses inflate the score.
+    weightedHarness += (ws.weight * testHarnessPercent) / 100;
+    harnessWeight += ws.weight;
     weightedEvidence += (ws.weight * evidencePercent) / 100;
     totalWeight += ws.weight;
     workstreams.push({
