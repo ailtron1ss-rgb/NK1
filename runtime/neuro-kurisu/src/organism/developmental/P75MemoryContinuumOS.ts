@@ -1,10 +1,39 @@
 export interface P75Input { tick:number; pressure01:number; recentEpisodes:number; semanticNodes:number; activeGoals:number; energy01:number; textPresent:boolean; experienceHot?:number; experienceWarm?:number; experienceCold?:number; identityTension01?:number; }
 export interface P75State { version:1; cycles:number; hotBudget:number; warmBudget:number; coldBudget:number; retrievalFocus:string; consolidationCount:number; forgottenCount:number; continuity01:number; health01:number; recentModes:string[]; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finiteOr=(value:unknown,fallback:number):number=>{
+  const numeric=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;
+  return Number.isFinite(numeric)?numeric:(Number.isFinite(fallback)?fallback:0);
+};
+const countOr=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(finiteOr(value,fallback)));
+const textOr=(value:unknown,fallback:string):string=>typeof value==='string'&&value.length?value.slice(0,120):fallback;
 export const defaultP75=():P75State=>({version:1,cycles:0,hotBudget:32,warmBudget:192,coldBudget:1024,retrievalFocus:'recent',consolidationCount:0,forgottenCount:0,continuity01:0.85,health01:0.85,recentModes:[]});
 export class P75MemoryContinuumOS{
  private state=JSON.parse(JSON.stringify(defaultP75())) as P75State;
- restore(raw:Partial<P75State>|undefined){if(!raw)return;const d=defaultP75();this.state={...d,...raw,recentModes:Array.isArray(raw.recentModes)?raw.recentModes.slice(-24):[]};}
+ /**
+  * Restore without trusting the snapshot: continuity/health feed multiplicative
+  * EMAs, budgets must stay finite integers, and `retrievalFocus`/`recentModes`
+  * must not inject arbitrary strings. Every read is own-data and cannot throw.
+  */
+ restore(raw:Partial<P75State>|undefined){
+  const d=defaultP75();
+  const source=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
+  const read=(key:string):unknown=>{try{return (source as Record<string,unknown>)[key];}catch{return undefined;}};
+  const modesRaw=read('recentModes');
+  this.state={
+   version:1,
+   cycles:countOr(read('cycles'),d.cycles),
+   hotBudget:countOr(read('hotBudget'),d.hotBudget),
+   warmBudget:countOr(read('warmBudget'),d.warmBudget),
+   coldBudget:countOr(read('coldBudget'),d.coldBudget),
+   retrievalFocus:textOr(read('retrievalFocus'),d.retrievalFocus),
+   consolidationCount:countOr(read('consolidationCount'),d.consolidationCount),
+   forgottenCount:countOr(read('forgottenCount'),d.forgottenCount),
+   continuity01:clamp(finiteOr(read('continuity01'),d.continuity01)),
+   health01:clamp(finiteOr(read('health01'),d.health01)),
+   recentModes:Array.isArray(modesRaw)?modesRaw.filter((m):m is string=>typeof m==='string').map(m=>m.slice(0,80)).slice(-24):[],
+  };
+ }
  snapshot(){return JSON.parse(JSON.stringify(this.state)) as P75State;}
  plan(i:P75Input){
   this.state.cycles++;

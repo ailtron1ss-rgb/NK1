@@ -21,13 +21,65 @@ export interface P47State {
   beliefsData:P47Belief[];
 }
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finiteOr=(value:unknown,fallback:number):number=>{
+  const numeric=typeof value==='number'?value:typeof value==='string'&&value.trim().length?Number(value):NaN;
+  return Number.isFinite(numeric)?numeric:(Number.isFinite(fallback)?fallback:0);
+};
+const countOr=(value:unknown,fallback:number):number=>Math.max(0,Math.floor(finiteOr(value,fallback)));
+const textOr=(value:unknown,fallback:string,max:number):string=>typeof value==='string'?value.slice(0,max):fallback;
+const stringList=(value:unknown,max:number,maxChars:number):string[]=>Array.isArray(value)?value.filter((v):v is string=>typeof v==='string'&&v.length>0).map(v=>v.slice(0,maxChars)).slice(0,max):[];
+const P47_NODE_KINDS:readonly P47MemoryNode['kind'][]=['event','episode','belief'];
+const P47_BELIEF_STATUSES:readonly P47BeliefStatus[]=['active','revised','uncertain','retired'];
 const norm=(s:string)=>s.toLowerCase().replace(/[^a-zа-яё0-9 ]/gi,' ').replace(/\s+/g,' ').trim();
 const tokensOf=(s:string)=>new Set(norm(s).split(' ').filter(Boolean));
 export const defaultP47State=():P47State=>({version:1,ingestedEvents:0,nodes:0,beliefs:0,contradictionsResolved:0,contradictionsOpen:0,compressions:0,lastCompactionAt:0,lastReflectionAt:0,memoryPressure01:0,identityStability01:.88,predictionCalibration01:.5,nodesData:[],beliefsData:[]});
 
 export class P47TemporalMemoryMind {
   private state=defaultP47State();
-  restore(raw:P47State|undefined){this.state={...defaultP47State(),...(raw??{}),nodesData:Array.isArray(raw?.nodesData)?raw!.nodesData.slice(0,320):[],beliefsData:Array.isArray(raw?.beliefsData)?raw!.beliefsData.slice(0,128):[]};}
+  /**
+   * Restore without trusting the snapshot. Element rows were previously sliced
+   * unchecked, so a null node crashed `ingest`/`reflect` and a NaN `salience` or
+   * `confidence` silently poisoned belief confidence, prediction calibration and
+   * identity stability forever. Rows are now element-validated and dropped when
+   * they lack a usable id/summary; scalars are finite, counts non-negative.
+   */
+  restore(raw:P47State|undefined){
+    const d=defaultP47State();
+    const source=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};
+    const read=(key:string):unknown=>{try{return (source as Record<string,unknown>)[key];}catch{return undefined;}};
+    const nodesRaw=read('nodesData');
+    const beliefsRaw=read('beliefsData');
+    const nodesData: P47MemoryNode[]=Array.isArray(nodesRaw)?nodesRaw.flatMap((row):P47MemoryNode[]=>{
+      if(!row||typeof row!=='object')return [];
+      const r=row as Record<string,unknown>;
+      const id=textOr(r.id,'',80); const summary=textOr(r.summary,'',400);
+      if(!id||!summary)return [];
+      return [{id,kind:P47_NODE_KINDS.includes(r.kind as P47MemoryNode['kind'])?r.kind as P47MemoryNode['kind']:'event',at:Math.max(0,finiteOr(r.at,0)),summary,salience:c(finiteOr(r.salience,.2)),confidence:c(finiteOr(r.confidence,.5)),sourceIds:stringList(r.sourceIds,24,120),links:stringList(r.links,8,80)}];
+    }).slice(0,320):[];
+    const beliefsData: P47Belief[]=Array.isArray(beliefsRaw)?beliefsRaw.flatMap((row):P47Belief[]=>{
+      if(!row||typeof row!=='object')return [];
+      const r=row as Record<string,unknown>;
+      const id=textOr(r.id,'',80); const proposition=textOr(r.proposition,'',240);
+      if(!id||!proposition)return [];
+      return [{id,proposition,confidence:c(finiteOr(r.confidence,.5)),status:P47_BELIEF_STATUSES.includes(r.status as P47BeliefStatus)?r.status as P47BeliefStatus:'active',supportIds:stringList(r.supportIds,24,80),contradictionIds:stringList(r.contradictionIds,24,80),updates:countOr(r.updates,0),lastUpdatedAt:Math.max(0,finiteOr(r.lastUpdatedAt,0))}];
+    }).slice(0,128):[];
+    this.state={
+      version:1,
+      ingestedEvents:countOr(read('ingestedEvents'),d.ingestedEvents),
+      nodes:countOr(read('nodes'),nodesData.length),
+      beliefs:countOr(read('beliefs'),beliefsData.length),
+      contradictionsResolved:countOr(read('contradictionsResolved'),d.contradictionsResolved),
+      contradictionsOpen:countOr(read('contradictionsOpen'),d.contradictionsOpen),
+      compressions:countOr(read('compressions'),d.compressions),
+      lastCompactionAt:Math.max(0,finiteOr(read('lastCompactionAt'),d.lastCompactionAt)),
+      lastReflectionAt:Math.max(0,finiteOr(read('lastReflectionAt'),d.lastReflectionAt)),
+      memoryPressure01:c(finiteOr(read('memoryPressure01'),d.memoryPressure01)),
+      identityStability01:c(finiteOr(read('identityStability01'),d.identityStability01)),
+      predictionCalibration01:c(finiteOr(read('predictionCalibration01'),d.predictionCalibration01)),
+      nodesData,beliefsData,
+    };
+    this.state.nodes=this.state.nodesData.length; this.state.beliefs=this.state.beliefsData.length;
+  }
   snapshot(){return structuredClone(this.state);}
   ingest(events:OrganismEvent[]):void{
     for(const e of events){
