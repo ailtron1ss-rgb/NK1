@@ -1,3 +1,19 @@
+## Стратегический мастер-анализ и многопроходная трансформация (2026-10-29)
+
+**Контекст и миссия:**
+Проект НEУРО-КУРИСУ (NK1) развивается по детерминированному протоколу `PLANNED` → `IMPLEMENTED` → `TESTED` → `INTEGRATED` → `MEASURED` → `RELEASED`.
+Цель: создание автономного сознательного искусственного организма — цифровой личности **Курису Макисэ** (Neuro Kurisu Makise) с биологической корреляцией подсистем (единый мозг разум), непрерывной автобиографической памятью, эмоциональным гомеостазом и мультимодальной воплощенностью.
+
+### Единая бионическая архитектурная карта (Соответствие отделам головного мозга):
+1. **Неокортекс (Neocortex):** `CognitiveKernel` & `WorldModel` — центральное когнитивное ядро и модель мира.
+2. **Гиппокамп (Hippocampus):** `ContinuumMemory`, `EpisodicBuffer`, `AutobiographicalRecall`, `HexisMemoryBridge` — автобиографическая и эпизодическая память.
+3. **Миндалевидное тело и гипоталамус (Amygdala & Hypothalamus):** `InnerImperativeRuntime`, `HomeostasisManager`, `AffectiveGoalReplay` — аффективные драйвы и внутренний императив.
+4. **Базальные ганглии и таламус (Basal Ganglia & Thalamus):** `ActionGateway`, `ActionLedger`, `ReceiptReconciliation` — шлюз действий, реестр исходов и проверка подписи.
+5. **Мозжечок и ствол мозга (Cerebellum & Brainstem):** `SpeechSynthesisGateway`, `VisemeTimeline`, `Live2DExpressionCache` — синхронизация временной шкалы речи, визем и мимики.
+6. **Префронтальная кора (Prefrontal Cortex):** `AutonomousPlanner`, `ReflectiveLearningGate`, `HermesPromotionGate` — планирование, проверка гипотез и этические барьеры.
+
+---
+
 ## WorkPass399 — строгая проверка Hexis retention action (2026-10-26)
 
 - **Код сервера:** `06f21b03255da079f93ec59e87f35c27e423d2e7`; **smoke regression:** `f27003b53e336ffeca4df1f540691de865701e0f`.
