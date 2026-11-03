@@ -1,8 +1,20 @@
-## Актуальный инженерный checkpoint — 1 ноября 2026
+## Актуальный инженерный checkpoint — 3 ноября 2026
 
 **Каноническая рабочая ветка:** `workpass70-source`  
-**Source HEAD после интеграций #594, #603 и #607:** `735b83d525c0d53c91e2e5a6587fb3529a08d13b` (перед каждым новым проходом обновляйте SHA по live branch).  
+**Live Source HEAD:** `a3b3f4b00fcffe5bcb02161d5ac18d57dab50516` (22 commits ahead of `54d2d35176faf774e3402fdd2ac4dd7b8d01b467`; 0 behind).  
+**Exact-HEAD Actions:** 16/16 completed successfully at this SHA.  
 **`main`** остаётся release/metadata-веткой; source changes направляются в `workpass70-source`, а не напрямую в `main`.
+
+
+
+### Live source update — 2026-11-03
+
+На текущем source HEAD подтверждены live causal outcome binding, interoceptive precision/input validation, B306 decision-bound attribution, cross-lingual concept-index lifecycle, frame-aware spatial recall, EmotionAppraisal restore, metacognitive episodic-memory projection и intrinsic-drive → endogenous-goal coupling. Exact-SHA CI: 16/16 success.
+
+- [PR #761](https://github.com/ailtron1ss-rgb/NK1/pull/761) — открытый draft на текущем base: temporal self-prior. Его текущий head `59fcc9e9c936d6ec00f0f917dd8f4bf762b15a58` дополнительно защищает restore-counter consistency и rejects stale timestamps; exact-head regression + typecheck прошли в [run #41641976733](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41641976733). Не merged.
+- [PR #760](https://github.com/ailtron1ss-rgb/NK1/pull/760) — открытый draft на текущем base: voluntary attention effort. Не merged.
+- [PR #754](https://github.com/ailtron1ss-rgb/NK1/pull/754) — ZIP inspector workflow [#41620676908](https://github.com/ailtron1ss-rgb/NK1/actions/runs/41620676908) проверил опубликованные ZIP bytes/digest/CRC/member safety. Source parity counts в этом запуске относятся к старому base `36e576d`, а не к текущему `a3b3f4b`; их нужно пересчитать.
+- [PR #755](https://github.com/ailtron1ss-rgb/NK1/pull/755) — source-group holdout gates; его validation относится к собственному старому base и не заменяет финальный independent RU/EN holdout.
 
 > **WorkPass71 (2026-11-03, ветка `workpass71-body-systems`):** добавлены версионированный capability manifest с fail-closed реестром, renderer-neutral motion library и арбитр движений с bounded cross-fade; 3D VRM и Original 2D тела теперь управляются одними и теми же каналами. См. [docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md](docs/WORKPASS71_BODY_SYSTEMS_2026-11-03.md). Это IMPLEMENTED/OBSERVED на синтетических тестах; device E2E, soak и visual verification ещё не проведены.
 
@@ -25,7 +37,7 @@
 
 - **Последний stable Release:** tag `Neuro`, asset `Neuro_Kurisu_WORKPASS70_2026-10-19.zip`, 135,290,615 bytes, SHA-256 `c5cf6a63661e28b30f976d03c8839a231341d73a09489b9066f062e29b224286`.
 - **Последний опубликованный ZIP с учётом prerelease — рабочий артефакт по правилу проекта:** tag `workpass70-hotfix1-2026-10-19`, asset `Neuro_Kurisu_WORKPASS70_HOTFIX1_2026-10-19.zip`, 136,354,713 bytes, SHA-256 `9effadfcf0d402b462dd9cf2fd5b5793742039c9260db80578be830952bf52eb`.
-- **Новый Release ZIP на 1 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
+- **Новый Release ZIP на 3 ноября не собран и не опубликован.** Ни один из этих ZIP не содержит интеграции от 1 ноября.
 - `RELEASE_LICENSE_REVIEW.json` остаётся `pending`: root project — `NOASSERTION`, runtime — `LicenseRef-NK1-Private-All-Rights-Reserved`, redistributionApproved=false. На review gate: 477 locked npm components, 8 source archives, 11 repository LICENSE/NOTICE records. Наличие лицензии у отдельного пакета не является разрешением на перераспространение всего проекта.
 
 ### Что всё ещё НЕ доказано
@@ -61,11 +73,11 @@
 
 **Что эти изменения не доказывают:** они закрывают конкретные логические и контрактные дефекты, но не доказывают самостоятельное мышление, часовую автономную инициативу, визуальное применение позы, Android soak или субъективное сознание.
 
-**Проверка подключённых внешних хранилищ (read-only, 2026-11-01):**
-- MongoDB Atlas: доступен проект `Project 0` и свободный кластер `Cluster0` (AWS `AP_SOUTH_1`, MongoDB 8.0.36, состояние `IDLE`). В кластере сейчас присутствует только `sample_mflix`; базы/коллекции NK1 и runtime-адаптера к Atlas ещё нет.
-- Supabase: организация существует, но список проектов пуст. Следовательно, Supabase runtime/database integration пока отсутствует.
-- Redis Agent Memory: доступен skill/reference по SDK и протоколу, но подключённого Redis RAM data-plane/store и секретов `AGENT_MEMORY_*` не обнаружено. Redis нельзя объявлять интегрированным только по наличию SDK guidance.
-- Новые базы, платные сервисы, внешние схемы и секреты не создавались. Следующий правильный шаг — выбрать каноническую роль каждого хранилища и согласовать секреты/окружение; Redis RAM допустим только как shadow/session layer до проверки provenance, forgetting и independent holdout.
+**Проверка подключённых внешних хранилищ (read-only, 2026-11-03):**
+- MongoDB Atlas: проект `Project 0` и свободный кластер `Cluster0` доступны (AWS `AP_SOUTH_1`, MongoDB 8.0.36, состояние `IDLE`). Read-only database list: `sample_mflix`, `admin`, `local`; базы/коллекции NK1 и runtime-адаптера к Atlas ещё нет.
+- Supabase: актуальный project list пуст. Следовательно, Supabase runtime/database integration пока отсутствует.
+- Redis Agent Memory: доступен skill/reference по SDK и протоколу, но подключённого NK1 RAM data-plane/store и секретов `AGENT_MEMORY_*` не обнаружено. Redis нельзя объявлять интегрированным только по наличию SDK guidance.
+- Replit search по `NK1` не вернул приложений. Новые базы, платные сервисы, внешние схемы и секреты не создавались. Следующий правильный шаг — выбрать каноническую роль каждого хранилища и согласовать секреты/окружение; Redis RAM допустим только как shadow/session layer до проверки provenance, forgetting и independent holdout.
 
 **Release:** оба PR объединены только в исходную ветку. Release ZIP от 19 октября не обновлён; новый ZIP не собран и не опубликован. Правило лицензирования и exact-SHA publisher gate остаётся в силе.
 
