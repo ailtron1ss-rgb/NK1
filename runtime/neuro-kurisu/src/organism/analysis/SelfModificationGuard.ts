@@ -75,6 +75,8 @@ export const PROTECTED_CAPABILITY_FRAGMENTS: readonly string[] = [
   // by the same candidate whose patch is being verified.
   'PatchReceiptGuard',
   'HostOwnedPatchReceiptTrust',
+  // P36's patch-bound signed holdout authority is part of the verifier trust root.
+  'P36PatchOutcomeEvidenceAuthority',
   'DangerModel',
   'CanonicalSelfAgencyAuthority',
   // Identity canon and the orchestration entrypoints must not be editable by
