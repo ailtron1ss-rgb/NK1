@@ -30,12 +30,12 @@ jobs:
         with:
           node-version-file: .nvmrc
       - name: Validate capability registry
-        run: node tools/neurok-os.mjs validate
+        run: npm run neurok-os:validate
       - name: Run registry and coordinator safety tests
-        run: node --test tools/neurok-os*.test.mjs
+        run: npm run neurok-os:test
       - name: Print control-plane status
-        run: node tools/neurok-os.mjs status
+        run: npm run neurok-os
       - name: Check coordinator CLI
         env:
           NEUROK_OS_STATE_DIR: ${{ runner.temp }}/neurok-os-claims
-        run: node tools/neurok-os-coordinator.mjs list
+        run: npm run neurok-os:claims -- list
