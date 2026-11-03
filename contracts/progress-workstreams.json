@@ -217,6 +217,12 @@
           "id": "ci-workflow",
           "kind": "file-exists",
           "path": ".github/workflows/nk1-self-analysis.yml"
+        },
+        {
+          "id": "ci-exact-head-evidence",
+          "kind": "file-contains",
+          "path": "docs/evidence/ci-exact-head-5cf0743.json",
+          "needle": "\"verified\": true"
         }
       ]
     },

@@ -1,0 +1,183 @@
+{
+  "schema": "nk1.ci-exact-head.v1",
+  "generatedAt": "2026-11-03",
+  "sha": "5cf0743ed192f1088214af85d09b2d38e8178ac2",
+  "branch": "nk1-self-analysis-and-evidence-20261103",
+  "pr": 698,
+  "verified": true,
+  "total": 34,
+  "success": 34,
+  "note": "Exact-head GitHub Actions results. All listed workflows completed successfully; the earlier account billing failure that prevented jobs from starting no longer blocks this head.",
+  "checks": [
+    {
+      "name": "targeted-and-regression",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287146/job/125768730401"
+    },
+    {
+      "name": "metrics",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287030/job/125768544707"
+    },
+    {
+      "name": "validate",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286989/job/125768483359"
+    },
+    {
+      "name": "verified-promotion",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287094/job/125768464019"
+    },
+    {
+      "name": "cognitive-contracts",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287034/job/125768453909"
+    },
+    {
+      "name": "self-analysis",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287132/job/125768451020"
+    },
+    {
+      "name": "source-lineage-contract",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287023/job/125768440444"
+    },
+    {
+      "name": "mem0-adapter",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286882/job/125768428681"
+    },
+    {
+      "name": "verified-learning",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287198/job/125768428513"
+    },
+    {
+      "name": "Runtime typecheck and revision-lineage integrity",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286992/job/125768426305"
+    },
+    {
+      "name": "verified-outcomes",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287125/job/125768411592"
+    },
+    {
+      "name": "Runtime typecheck and semantic vector integrity",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287039/job/125768391064"
+    },
+    {
+      "name": "memory-integrity",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287011/job/125768380514"
+    },
+    {
+      "name": "world-perception-integrity",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287135/job/125768380321"
+    },
+    {
+      "name": "replay-strategy-benchmark",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287069/job/125768375343"
+    },
+    {
+      "name": "Runtime typecheck and clustered retrieval evaluation",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287165/job/125768374988"
+    },
+    {
+      "name": "Typecheck and cadence-weight regression",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287129/job/125768373943"
+    },
+    {
+      "name": "unified-organism",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287111/job/125768373884"
+    },
+    {
+      "name": "action-governance",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287076/job/125768373713"
+    },
+    {
+      "name": "validate-original-2d-contract",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287148/job/125768373317"
+    },
+    {
+      "name": "explicit-forget",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286958/job/125768373184"
+    },
+    {
+      "name": "local-language-resilience",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286909/job/125768373132"
+    },
+    {
+      "name": "Runtime typecheck and learning integrity regressions",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287074/job/125768370621"
+    },
+    {
+      "name": "reservoir-replay",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287152/job/125768370049"
+    },
+    {
+      "name": "holdout-pairing",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287159/job/125768369971"
+    },
+    {
+      "name": "Runtime typecheck and semantic runtime accounting",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287028/job/125768369739"
+    },
+    {
+      "name": "boundary",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287091/job/125768369710"
+    },
+    {
+      "name": "Runtime typecheck and retrieval-label integrity",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287079/job/125768369541"
+    },
+    {
+      "name": "independent-evidence-evaluation",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287067/job/125768369314"
+    },
+    {
+      "name": "agency-deliberation-contract",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286998/job/125768369163"
+    },
+    {
+      "name": "verified-experience-lanes",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286891/job/125768369085"
+    },
+    {
+      "name": "correlated-postcondition",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591286942/job/125768368964"
+    },
+    {
+      "name": "reflective-payload-budget",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287022/job/125768368841"
+    },
+    {
+      "name": "autonomous-p23-revision",
+      "conclusion": "success",
+      "url": "https://github.com/ailtron1ss-rgb/NK1/actions/runs/41591287050/job/125768368669"
+    }
+  ]
+}
