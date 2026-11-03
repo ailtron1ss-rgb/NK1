@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { captureReadSet } from './neurok-os-readset.mjs';
 import { inspectUnifiedDiff } from './neurok-os-patch.mjs';
 
+const REPO_ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const patchModule=await import('./neurok-os-patch.mjs');
 const PATCH=`diff --git a/src/core.mjs b/src/core.mjs
 --- a/src/core.mjs
@@ -136,6 +138,47 @@ test('preserves mandatory human approval after read-set verification',async()=>f
   assert.equal(result.decision,'human-approval-required');
   assert.equal(result.readSet.ok,true);
 }));
+
+test('CLI admits a fresh receipt and rejects a symlink that escapes the checkout',async()=>{
+ const workspace=await mkdtemp(path.join(REPO_ROOT,'.neurok-os-cli-test-'));
+ const external=await mkdtemp(path.join(os.tmpdir(),'neurok-os-cli-outside-'));
+ try{
+  const baseSha=execFileSync('git',['rev-parse','HEAD'],{cwd:REPO_ROOT,encoding:'utf8'}).trim();
+  const receipt=captureReadSet(['README.md'],{root:REPO_ROOT,baseSha});
+  const patch=`diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@ -1 +1 @@
+-old line
++new line
+`;
+  const patchPath=path.join(workspace,'task.patch');
+  const receiptPath=path.join(workspace,'read-set.json');
+  await writeFile(patchPath,patch);
+  await writeFile(receiptPath,JSON.stringify(receipt));
+  const cli=path.join(REPO_ROOT,'tools/neurok-os-patch.mjs');
+  const relativePatch=path.relative(REPO_ROOT,patchPath);
+  const relativeReceipt=path.relative(REPO_ROOT,receiptPath);
+  const output=execFileSync(process.execPath,[cli,'admit',
+   '--patch-file',relativePatch,'--read-set',relativeReceipt,
+   '--base-sha',baseSha,'--current-sha',baseSha,
+  ],{cwd:REPO_ROOT,encoding:'utf8'});
+  assert.equal(JSON.parse(output).admission.decision,'reviewable');
+
+  const outsidePatch=path.join(external,'outside.patch');
+  await writeFile(outsidePatch,patch);
+  const linkPath=path.join(workspace,'escape.patch');
+  await symlink(outsidePatch,linkPath);
+  assert.throws(()=>execFileSync(process.execPath,[cli,'admit',
+   '--patch-file',path.relative(REPO_ROOT,linkPath),
+   '--read-set',relativeReceipt,'--base-sha',baseSha,'--current-sha',baseSha,
+  ],{cwd:REPO_ROOT,encoding:'utf8'}),error=>
+   error.status===1&&String(error.stderr).includes('resolves outside the repository'));
+ }finally{
+  await rm(workspace,{recursive:true,force:true});
+  await rm(external,{recursive:true,force:true});
+ }
+});
 
 test('fails closed for missing or malformed admission inputs',()=>{
  const result=admission(inspectUnifiedDiff(PATCH),null,{
