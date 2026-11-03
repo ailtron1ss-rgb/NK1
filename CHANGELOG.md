@@ -1,3 +1,8 @@
+## 2026-11-03 — Patch preflight child workstream (PR pending)
+
+- Added unified-diff inspection with SHA-256 provenance, changed-path/hunk ranges, traversal and binary-patch rejection, and policy classification.
+- This is not yet an isolated patch-application sandbox; no patch is applied by the inspector.
+
 ## 2026-11-03 — NeuroK Engineering OS foundation (PR #716)
 
 - Added a fail-closed catalog for requested engineering tools and their adapter boundaries.
