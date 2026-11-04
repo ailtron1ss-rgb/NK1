@@ -16,7 +16,7 @@ const files = [
   const before = runtime.fabric.canonicalSize();
   const preview = adapter.preview(files);
   assert.equal(preview.sourceFormat, 'openclaw');
-  assert.equal(preview.candidates.length, 4);
+  assert.equal(preview.candidates.length, 5);
   assert.equal(runtime.fabric.canonicalSize(), before, 'preview must not write canonical memories');
   const byKind = Object.fromEntries(preview.candidates.map(row => [row.sourceKind, row]));
   assert.equal(byKind.user.memoryKind, 'social');
