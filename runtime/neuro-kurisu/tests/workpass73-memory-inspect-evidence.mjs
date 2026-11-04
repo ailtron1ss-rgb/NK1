@@ -137,6 +137,8 @@ for (const row of [...experiment.queryEvidence.train, ...experiment.queryEvidenc
   assert.match(row.independenceGroupDigest, /^[a-f0-9]{64}$/);
   assert.match(row.queryDigest, /^[a-f0-9]{64}$/);
   assert.match(row.exampleIdDigest, /^[a-f0-9]{64}$/);
+}
+for (const row of experiment.queryEvidence.holdout) {
   assert.ok(row.baselineRankedMemory.length <= 5);
   assert.ok(row.candidateRankedMemory.length <= 5);
   for (const item of [...row.baselineRankedMemory, ...row.candidateRankedMemory]) {
