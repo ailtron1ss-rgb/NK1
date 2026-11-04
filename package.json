@@ -198,7 +198,12 @@
     "neurok-os:claims": "node tools/neurok-os-coordinator.mjs",
     "neurok-os:patch": "node tools/neurok-os-patch.mjs",
     "neurok-os:evidence": "node tools/neurok-os-evidence.mjs",
-    "neurok-os:snapshot": "node tools/neurok-os-coordinator.mjs snapshot"
+    "neurok-os:snapshot": "node tools/neurok-os-coordinator.mjs snapshot",
+    "aspects": "node tools/neurok-aspects.mjs status",
+    "aspects:validate": "node tools/neurok-aspects.mjs validate",
+    "aspects:report": "node tools/neurok-aspects.mjs report",
+    "aspects:next": "node tools/neurok-aspects.mjs next",
+    "aspects:test": "node --test tools/neurok-aspects.test.mjs"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",

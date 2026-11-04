@@ -39,6 +39,7 @@ Work code-first. Prefer observable, testable behavior over architectural labels.
 - `runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts`: deterministic multi-seed bootstrap sensitivity check; seeds do not train the retriever.
 - `runtime/neuro-kurisu/tests/`: runtime regression tests.
 - `docs/RESEARCH_INTAKE_LEDGER.md`: persistent upstream research and integration queue; update it when candidates are evaluated.
+- `engineering-os/aspects.v1.json`: canonical machine-readable registry of the 75 development aspects (10 domains, 6 waves) with owners, dependencies, verification gates and fail-closed status; `docs/NK1_75_ASPECTS_EXECUTION_BACKLOG_RU.md` is its human-readable projection; `npm run aspects:validate` / `npm run aspects:next` / `npm run aspects:report` operate it.
 - `app/`: client/UI shell; do not implement a second organism or canonical memory owner here.
 - `research/`: isolated experiments; `legacy/`: preserved historical source and provenance.
 - `docs/history/`: archived reports and source records. Old `WORKPASS*`, `ROADMAP*`, and numbered pass files are historical unless a current status page links to them.

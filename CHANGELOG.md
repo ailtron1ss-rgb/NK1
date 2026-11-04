@@ -1,3 +1,12 @@
+## [NK1][Aspects] Add executable 75-aspect execution registry and weekly tracker (2026-11-04)
+
+- Add `engineering-os/aspects.v1.json`: 75 development aspects across 10 domains and 6 waves, each with an owner path, owner status, dependencies, verification gate, status and evidence.
+- Keep progress fail-closed: `CONNECTED`/`TESTED`/`PROVEN` require a non-empty evidence reference; `REJECTED` requires a reason; `unmapped` aspects may not claim a canonical owner. `IMPLEMENTED` is not treated as verified capability.
+- Add `tools/neurok-aspects.mjs` (`validate`, `status`, `report`, `waves`, `next`) and `tools/neurok-aspects.test.mjs` with 11 behavioral regressions covering 75 unique aspects, wave coverage, dependency acyclicity, fail-closed evidence, unknown dependencies, cycles and owner invariants.
+- Add `docs/NK1_75_ASPECTS_EXECUTION_BACKLOG_RU.md` as the human-readable projection of the registry.
+- Add `npm run aspects:*` scripts and two workflows: exact-head validation on push/PR and a weekly status report that warns when the registry's observed source head drifts from the live head.
+- Record only one aspect as verified (`reliability`, backed by PR #594/#607 evidence); all other aspects remain `IMPLEMENTED`/`PLANNED`/`BLOCKED`. No capability is claimed from the registry itself.
+
 ## [NK1][EngineeringOS] Close nested secret-path preflight bypasses (2026-11-04)
 
 - Extend fail-closed diff policy to inspect path segments and basenames, not only repository-root exact paths.
