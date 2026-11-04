@@ -230,12 +230,24 @@ export class NekoPluginManifestPolicyRegistry {
   }
 
   restore(raw: unknown): number {
+    // A snapshot replaces the registry as one unit. Never expose a valid prefix
+    // when a later row is malformed, duplicated, or no longer matches ActionGateway.
+    this.manifests.clear();
     const row = ownDataObject(raw, 4);
     const manifests = row?.version === 1 ? ownDenseArray(row.manifests, 256) : null;
-    this.manifests.clear();
     if (!manifests) return 0;
-    for (const manifest of manifests) this.register(manifest);
-    return this.manifests.size;
+
+    const restored = new Map<string, NekoPluginAuthorizationManifest>();
+    for (const rawManifest of manifests) {
+      const normalized = this.normalizeManifest(rawManifest);
+      if (!normalized.manifest || restored.has(normalized.manifest.id)) {
+        return 0;
+      }
+      restored.set(normalized.manifest.id, deepFreeze(normalized.manifest));
+    }
+
+    for (const [pluginId, manifest] of restored) this.manifests.set(pluginId, manifest);
+    return restored.size;
   }
 
   /** Bind the registry instance for direct injection into PluginGatewayAdapter.authorize. */
