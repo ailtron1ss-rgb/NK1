@@ -132,7 +132,7 @@ function normalizePayload(value: unknown, maxBytes: number): {
   const facts = normalizeFacts(raw.facts);
   const observedPostcondition = raw.observedPostcondition === undefined
     ? undefined
-    : boundedString(raw.observedPostcondition, 320);
+    : (boundedString(raw.observedPostcondition, 320) ?? undefined);
   if (!claimKey || !facts || (raw.observedPostcondition !== undefined && !observedPostcondition) ||
       (!facts.length && !observedPostcondition)) return { ok: false };
   const payload: Record<string, unknown> = {
