@@ -1881,10 +1881,7 @@ export class OrganismRuntime {
     approval: import('../integration/neko/NekoKnowledgePackImporter.ts').NekoKnowledgePackImportApproval,
   ) {
     const ownedBytes = new Uint8Array(rawBytes);
-    const ownedApproval = approval && typeof approval === 'object'
-      ? { approved: approval.approved, licenseAccepted: approval.licenseAccepted, entryIndices: Array.isArray(approval.entryIndices) ? [...approval.entryIndices] : undefined }
-      : approval;
-    return this.enqueue(() => this.core.importNekoKnowledgePack(ownedBytes, ownedApproval));
+    return this.enqueue(() => this.core.importNekoKnowledgePack(ownedBytes, approval));
   }
 
   async flush(): Promise<void> {
