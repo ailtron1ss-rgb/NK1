@@ -1600,7 +1600,8 @@ export class OrganismRuntime {
   async interruptVoice(reason='manual'): Promise<boolean> { return this.embodiment.markVoiceInterruption(reason); }
   async voiceTurn(options:{deliberate?:boolean;speak?:boolean}={}){
     return this.enqueue(async ()=>{
-      const input = await readVoiceInput(this.embodiment);\n      const text = input?.text ?? null;
+      const input = await readVoiceInput(this.embodiment);
+      const text = input?.text ?? null;
       if(!text) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
       this.embodiment.userActivity();
       const clean=text.trim().slice(0,4000);
