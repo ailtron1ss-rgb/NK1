@@ -1,7 +1,7 @@
 ## [NK1][Body] Sanitize persisted body-subsystem restores (2026-11-04)
-- `MultimodalPerception`, `MultimodalSituationModel`, `PerceptualEvidenceCompiler`, `DeviceEvidenceLedger` and the runtime `cameraEvidence` store spread a raw persisted snapshot into live state, so a corrupted/truncated/hand-edited file leaked `NaN`, strings, out-of-range numbers and non-plain objects into every metric that later reads them.
+- `MultimodalPerception`, `MultimodalSituationModel`, `PerceptualEvidenceCompiler`, `DeviceEvidenceLedger`, the runtime `cameraEvidence` store, and the `P35SemanticWorldBodyEngine`/`P37EmbodiedSensoriumEngine` world-model owners spread a raw persisted snapshot into live state, so a corrupted/truncated/hand-edited file leaked `NaN`, strings, out-of-range numbers and non-plain objects into every metric that later reads them.
 - Add `body/RestoreSanitizers.ts` as the shared coercion owner (`ownDataValue`, `isPlainDataRecord`, `finiteOr`/`unitOr`/`countOr`/`timestampOr`/`stringOr`/`enumOr`); each restore rebuilds state from validated primitives and reads persisted records through own data descriptors only, so a hostile getter or Proxy trap cannot execute.
-- A hostile snapshot can no longer inflate `verifiedProbes` to falsely certify a device, weight modality fusion above 1, or seed a `NaN` event counter.
+- A hostile snapshot can no longer inflate `verifiedProbes` to falsely certify a device, weight modality fusion above 1, seed a `NaN` event counter, drive a body coordinate to `NaN`, or claim a non-visible entity as `visible`; a corrupted entity coordinate becomes `null`, never `NaN` or a false `0`.
 - Regression `embodiment-restore-sanitization-integrity.mjs` proves fail-before/pass-after (valid snapshots still round-trip exactly) and is wired into the NK1 embodiment restore-integrity workflow; runtime typecheck PASS.
 
 ## [NK1][Body] Honest depth-rig node ids and planar-IK reach (2026-11-03)

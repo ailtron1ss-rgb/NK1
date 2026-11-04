@@ -4,6 +4,8 @@ import { MultimodalSituationModel, defaultMultimodalSituation } from '../src/org
 import { PerceptualEvidenceCompiler, defaultPerceptualEvidence } from '../src/organism/body/PerceptualEvidenceCompiler.ts';
 import { DeviceEvidenceLedger, defaultDeviceEvidence } from '../src/organism/body/DeviceEvidenceLedger.ts';
 import { EmbodimentSubsystemRuntime } from '../src/organism/core/EmbodimentSubsystemRuntime.ts';
+import { P35SemanticWorldBodyEngine, defaultP35SemanticWorldBody } from '../src/organism/body/P35SemanticWorldBody.ts';
+import { P37EmbodiedSensoriumEngine, defaultP37EmbodiedSensorium } from '../src/organism/body/P37EmbodiedSensorium.ts';
 
 // Persisted body-subsystem snapshots are written to disk every tick and restored
 // on the next start. Before this hardening, each restore() spread raw persisted
@@ -140,5 +142,77 @@ assert.deepEqual(proxyRestored.snapshot(), defaultMultimodalState(), 'a hostile 
 const emptyRestored = new PerceptualEvidenceCompiler();
 emptyRestored.restore(undefined);
 assert.deepEqual(emptyRestored.snapshot(), defaultPerceptualEvidence());
+
+// --- P35 semantic world/body --------------------------------------------------
+const p35 = new P35SemanticWorldBodyEngine();
+p35.restore({
+  tick: -1,
+  metrics: { grounding01: 'x', conflict01: 99 },
+  body: { energy01: 'bad', awake: 'yes' },
+  modalityReliability: { text: 5, vision: 'x' },
+  spatialSelf: { x: Number.NaN, orientationDeg: 1e9 },
+  scene: { label: 5, confidence01: 9 },
+  affordances: { respond: 7, bogus: 1 },
+});
+const p35s = p35.snapshot();
+assert.equal(p35s.tick, 0, 'negative tick falls back');
+assert.equal(p35s.metrics.grounding01, defaultP35SemanticWorldBody().metrics.grounding01, 'string metric falls back');
+assert.equal(p35s.metrics.conflict01, defaultP35SemanticWorldBody().metrics.conflict01);
+assert.equal(p35s.body.energy01, defaultP35SemanticWorldBody().body.energy01, 'non-number energy falls back');
+assert.equal(p35s.body.awake, true, 'non-boolean awake fails closed to awake');
+assert.equal(p35s.modalityReliability.text, 1, 'reliability above 1 clamps to 1');
+assert.equal(p35s.modalityReliability.vision, defaultP35SemanticWorldBody().modalityReliability.vision);
+assert.equal(p35s.spatialSelf.x, 0, 'NaN coordinate falls back');
+assert.equal(p35s.spatialSelf.orientationDeg, 720, 'out-of-range orientation clamps');
+assert.equal(p35s.scene.label, 'unknown', 'non-string scene label falls back');
+assert.equal(p35s.scene.confidence01, 1);
+assert.equal(p35s.affordances.respond, 1, 'affordance weight above 1 clamps to 1');
+assert.equal('bogus' in p35s.affordances, false, 'unknown affordance keys are dropped');
+assert.equal(Number.isFinite(p35.ingest({ text: 'hello', at: 1 }).body.energy01), true, 'P35 stays finite after ingest');
+
+// A valid P35 snapshot round-trips exactly.
+const p35Source = new P35SemanticWorldBodyEngine();
+p35Source.ingest({ text: 'a person is near the door', vision: { sceneLabel: 'hall', confidence01: 0.7 }, at: 5 });
+const p35Snapshot = p35Source.snapshot();
+const p35Restored = new P35SemanticWorldBodyEngine();
+p35Restored.restore(p35Snapshot);
+assert.deepEqual(p35Restored.snapshot(), p35Snapshot, 'valid P35 snapshot must round-trip');
+
+// --- P37 embodied sensorium ---------------------------------------------------
+const p37 = new P37EmbodiedSensoriumEngine();
+p37.restore({
+  tick: -1,
+  scene: { label: 5, confidence01: 9 },
+  body: { energy01: 'bad', awake: 'yes' },
+  sensors: { text: 'x', vision: { reliability01: 5, samples: -3 } },
+  affordance: { respond: 5 },
+  spatialSelf: { x: Number.NaN },
+  entities: [{ id: 1, present01: 9, seenCount: -4, x: Number.NaN, presenceStatus: 'TOTALLY_VISIBLE' }, 'not-a-record'],
+});
+const p37s = p37.snapshot();
+assert.equal(p37s.tick, 0);
+assert.equal(p37s.body.energy01, defaultP37EmbodiedSensorium().body.energy01);
+assert.equal(p37s.body.awake, true);
+assert.equal(p37s.scene.label, 'unknown');
+assert.equal(p37s.scene.confidence01, 1);
+assert.equal(p37s.sensors.text.reliability01, defaultP37EmbodiedSensorium().sensors.text.reliability01, 'non-record sensor row falls back');
+assert.equal(p37s.sensors.vision.reliability01, 1, 'sensor reliability above 1 clamps to 1');
+assert.equal(p37s.sensors.vision.samples, 0, 'negative sample counter falls back');
+assert.equal(p37s.affordance.respond, 1);
+assert.equal(p37s.spatialSelf.x, 0, 'NaN spatial coordinate falls back');
+assert.equal(p37s.entities.length, 1, 'only plain-record entity rows survive');
+assert.equal(p37s.entities[0].id, 'entity-unknown', 'non-string entity id falls back');
+assert.equal(p37s.entities[0].presenceStatus, 'unknown', 'unknown presence status falls back');
+assert.equal(p37s.entities[0].seenCount, 1, 'non-positive seenCount is at least 1');
+assert.equal(p37s.entities[0].x, null, 'a corrupted coordinate becomes null, never NaN');
+assert.equal(Number.isFinite(p37.ingest({ text: 'hello', at: 1 }).body.energy01), true, 'P37 stays finite after ingest');
+
+// A valid P37 snapshot round-trips exactly.
+const p37Source = new P37EmbodiedSensoriumEngine();
+p37Source.ingest({ text: 'the cat is on the mat', vision: { sceneLabel: 'room', confidence01: 0.6 }, at: 9 });
+const p37Snapshot = p37Source.snapshot();
+const p37Restored = new P37EmbodiedSensoriumEngine();
+p37Restored.restore(p37Snapshot);
+assert.deepEqual(p37Restored.snapshot(), p37Snapshot, 'valid P37 snapshot must round-trip');
 
 console.log('EMBODIMENT_RESTORE_SANITIZATION_INTEGRITY=PASS');

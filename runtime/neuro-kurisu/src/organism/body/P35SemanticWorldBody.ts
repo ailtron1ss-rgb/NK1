@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { countOr, finiteOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp = (n:number) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 const now = () => Date.now();
@@ -95,21 +96,75 @@ function stableId(prefix:string, seed:string):string {
   return `${prefix}-${digest}`;
 }
 
+/** Keep only finite, unit-bounded affordance weights; unknown keys are dropped. */
+function sanitizeAffordances(raw:unknown, fallback:Record<string,number>):Record<string,number>{
+  if(!isPlainDataRecord(raw)) return {...fallback};
+  const out:Record<string,number>={};
+  for(const key of Object.keys(fallback)){
+    out[key]=unitOr(ownDataValue(raw,key),fallback[key]);
+  }
+  return out;
+}
+
 export class P35SemanticWorldBodyEngine {
   private state = defaultP35SemanticWorldBody();
 
   restore(value?:P35SemanticWorldBodyState|null):void {
     const d=defaultP35SemanticWorldBody();
-    this.state={...d,...(value??{}),
-      entities:Array.isArray(value?.entities)?value!.entities.slice(-160):[],
-      relations:Array.isArray(value?.relations)?value!.relations.slice(-320):[],
-      claims:Array.isArray(value?.claims)?value!.claims.slice(-256):[],
-      modalityReliability:{...d.modalityReliability,...(value?.modalityReliability??{})},
-      spatialSelf:{...d.spatialSelf,...(value?.spatialSelf??{})},
-      body:{...d.body,...(value?.body??{})},
-      affordances:{...d.affordances,...(value?.affordances??{})},
-      scene:{...d.scene,...(value?.scene??{})},
-      metrics:{...d.metrics,...(value?.metrics??{})},
+    const raw=isPlainDataRecord(value)?value:{};
+    const scene=ownDataValue(raw,'scene');
+    const spatialSelf=ownDataValue(raw,'spatialSelf');
+    const body=ownDataValue(raw,'body');
+    const metrics=ownDataValue(raw,'metrics');
+    const reliability=ownDataValue(raw,'modalityReliability');
+    this.state={
+      version:1,
+      tick:countOr(ownDataValue(raw,'tick'),d.tick),
+      entities:Array.isArray(ownDataValue(raw,'entities'))?(ownDataValue(raw,'entities') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-160) as unknown as P35Entity[]:[],
+      relations:Array.isArray(ownDataValue(raw,'relations'))?(ownDataValue(raw,'relations') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-320) as unknown as P35RelationRecord[]:[],
+      claims:Array.isArray(ownDataValue(raw,'claims'))?(ownDataValue(raw,'claims') as unknown[]).filter((row)=>isPlainDataRecord(row)).slice(-256) as unknown as P35PerceptionClaim[]:[],
+      scene:{
+        label:stringOr(ownDataValue(scene,'label'),d.scene.label,120),
+        confidence01:unitOr(ownDataValue(scene,'confidence01'),d.scene.confidence01),
+        salience01:unitOr(ownDataValue(scene,'salience01'),d.scene.salience01),
+        at:timestampOr(ownDataValue(scene,'at'),d.scene.at),
+      },
+      modalityReliability:{
+        text:unitOr(ownDataValue(reliability,'text'),d.modalityReliability.text),
+        vision:unitOr(ownDataValue(reliability,'vision'),d.modalityReliability.vision),
+        audio:unitOr(ownDataValue(reliability,'audio'),d.modalityReliability.audio),
+        sensor:unitOr(ownDataValue(reliability,'sensor'),d.modalityReliability.sensor),
+        world:unitOr(ownDataValue(reliability,'world'),d.modalityReliability.world),
+      },
+      spatialSelf:{
+        frameId:stringOr(ownDataValue(spatialSelf,'frameId'),d.spatialSelf.frameId,64),
+        location:stringOr(ownDataValue(spatialSelf,'location'),d.spatialSelf.location,160),
+        x:finiteOr(ownDataValue(spatialSelf,'x'),d.spatialSelf.x,-1000,1000),
+        y:finiteOr(ownDataValue(spatialSelf,'y'),d.spatialSelf.y,-1000,1000),
+        z:finiteOr(ownDataValue(spatialSelf,'z'),d.spatialSelf.z,-1000,1000),
+        orientationDeg:finiteOr(ownDataValue(spatialSelf,'orientationDeg'),d.spatialSelf.orientationDeg,-720,720),
+        confidence01:unitOr(ownDataValue(spatialSelf,'confidence01'),d.spatialSelf.confidence01),
+        lastAt:timestampOr(ownDataValue(spatialSelf,'lastAt'),d.spatialSelf.lastAt),
+      },
+      body:{
+        energy01:unitOr(ownDataValue(body,'energy01'),d.body.energy01),
+        thermal01:unitOr(ownDataValue(body,'thermal01'),d.body.thermal01),
+        capacity01:unitOr(ownDataValue(body,'capacity01'),d.body.capacity01),
+        awake:ownDataValue(body,'awake')!==false,
+        sensoryFreshness01:unitOr(ownDataValue(body,'sensoryFreshness01'),d.body.sensoryFreshness01),
+        lastAt:timestampOr(ownDataValue(body,'lastAt'),d.body.lastAt),
+      },
+      affordances:sanitizeAffordances(ownDataValue(raw,'affordances'),d.affordances),
+      conflicts:countOr(ownDataValue(raw,'conflicts'),d.conflicts),
+      semanticUpdates:countOr(ownDataValue(raw,'semanticUpdates'),d.semanticUpdates),
+      lastWorldHash:typeof ownDataValue(raw,'lastWorldHash')==='string'?(ownDataValue(raw,'lastWorldHash') as string).slice(0,64):d.lastWorldHash,
+      metrics:{
+        sceneConfidence01:unitOr(ownDataValue(metrics,'sceneConfidence01'),d.metrics.sceneConfidence01),
+        crossModalAgreement01:unitOr(ownDataValue(metrics,'crossModalAgreement01'),d.metrics.crossModalAgreement01),
+        semanticCoverage01:unitOr(ownDataValue(metrics,'semanticCoverage01'),d.metrics.semanticCoverage01),
+        spatialSelfConfidence01:unitOr(ownDataValue(metrics,'spatialSelfConfidence01'),d.metrics.spatialSelfConfidence01),
+        bodyWorldCoherence01:unitOr(ownDataValue(metrics,'bodyWorldCoherence01'),d.metrics.bodyWorldCoherence01),
+      },
     };
   }
 
