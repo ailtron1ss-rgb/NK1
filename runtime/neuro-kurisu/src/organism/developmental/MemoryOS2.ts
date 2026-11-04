@@ -481,6 +481,10 @@ export class MemoryOS2{
  private readonly revisionGroupIndex=new Map<string,Set<string>>();
  private totalTokenLength=0;
  private lastCandidateCount=0;
+ /** Enabled only on isolated preview instances; never persists ranked IDs in canonical state. */
+ private captureRankedChannelIds=false;
+ private rankedChannelCaptureLimit=64;
+ private lastRankedChannelIds:Record<string,string[]>={};
  private lastHybridDiagnostics:{bm25Enabled:boolean;bm25CandidateCount:number;bm25Max:number;rrfEnabled:boolean;identifierBias:boolean;temporalMode:MemoryTemporalMode;asOfAt:number;queryIntentMode:MemoryQueryIntent;maxQueryIntentBoost01:number;candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id'|'idf-coverage-fuzzy-concept-metadata-rrf-stable-id';candidateSelectionLimit:number;fuzzyEnabled:boolean;fuzzyCandidateCount:number;semanticVectorUsedForRanking:boolean;semanticEmbeddingProvider:string;rrfSignals:string[];answerabilityGate:'direct-evidence-or-typed-recall-v1';rankedBeforeGate:number;groundedAfterGate:number;abstained:boolean;abstentionReason:'no-grounded-evidence'|null;spatialRequested:boolean;spatialInvalidQuery:boolean;spatialFrameId:string|null;spatialCandidateCount:number}={bm25Enabled:true,bm25CandidateCount:0,bm25Max:0,rrfEnabled:true,identifierBias:false,temporalMode:'current',asOfAt:0,queryIntentMode:'general',maxQueryIntentBoost01:0,candidateSelection:'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:0,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:['bm25','token-coverage','character-fuzzy','entity','graph-temporal'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:0,groundedAfterGate:0,abstained:false,abstentionReason:null,spatialRequested:false,spatialInvalidQuery:false,spatialFrameId:null,spatialCandidateCount:0};
  private linkSupportCache:Map<string,number>|null=null;
  private linkSupportCacheVersion=-1;
@@ -641,6 +645,28 @@ export class MemoryOS2{
  }
  previewRetrieve(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={}){
    return this.previewRetrieveWithDiagnostics(query,limit,goalRelevance,identityRelevance,temporalOptions).items;
+ }
+ /**
+  * Read-only ranked-channel export for independent retrieval evaluation.
+  * The query runs on an isolated snapshot; only bounded memory IDs and current
+  * fusion weights leave the preview. No memory text or live state is returned.
+  */
+ previewRetrieveWithRankedChannels(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},maxPerChannel=64){
+   const boundedChannelLimit=Number.isFinite(maxPerChannel)?Math.floor(maxPerChannel):64;
+   if(boundedChannelLimit<1||boundedChannelLimit>192)throw new RangeError('memory-ranked-channel-preview-limit-invalid');
+   const boundedResultLimit=Number.isFinite(limit)?Math.max(1,Math.min(64,Math.floor(limit))):8;
+   const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,embeddingProvider:null});
+   isolated.restore(this.snapshot());
+   isolated.captureRankedChannelIds=true;
+   isolated.rankedChannelCaptureLimit=boundedChannelLimit;
+   const items=isolated.retrieve(query,boundedResultLimit,goalRelevance,identityRelevance,temporalOptions,true) as MemoryItem2[];
+   return {
+    itemIds:items.map(item=>item.id),
+    rankedChannels:Object.fromEntries(Object.entries(isolated.lastRankedChannelIds).map(([name,ids])=>[name,ids.slice()])),
+    currentRrfK:60,
+    currentRrfWeights:{bm25:1,coverage:.90,fuzzy:.60,metadata:(isolated.metadataRecallEnabled?.28:0),entity:.42,relationship:.32},
+    diagnostics:isolated.retrievalDiagnostics(),
+   };
  }
  /**
   * Low-priority, bounded semantic-index maintenance. Adapts the deferred embedding-worker
@@ -1271,6 +1297,17 @@ export class MemoryOS2{
    // The hashed token vector is intentionally not a ranking channel: it is not
    // a semantic embedding and was largely duplicating the lexical projection.
    const metadataRank=rankBy(row=>row.metadata);
+   if(this.captureRankedChannelIds){
+    const take=(ranked:Map<string,number>)=>[...ranked.keys()].slice(0,this.rankedChannelCaptureLimit);
+    this.lastRankedChannelIds={
+     bm25:take(bm25Rank),
+     coverage:take(coverageRank),
+     fuzzy:take(fuzzyRank),
+     metadata:take(metadataRank),
+     entity:take(entityRank),
+     relationship:take(relationshipRank),
+    };
+   }
    const rrfWeights={bm25:1,coverage:.90,fuzzy:.60,metadata:(this.metadataRecallEnabled ? .28 : 0),entity:.42,relationship:.32};
    const maxRrf=Object.values(rrfWeights).reduce((sum,weight)=>sum+weight/(rrfK+1),0);
    const maxBm25=Math.max(0,...rawRows.map(x=>x.bm25));
