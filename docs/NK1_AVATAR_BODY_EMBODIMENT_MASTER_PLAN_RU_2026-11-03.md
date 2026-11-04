@@ -948,3 +948,38 @@ production-ready. Рисовать плейсхолдер и заявлять г
 - `npm --prefix app run test:body-systems` — 32/32; `test:embodiment-ui-bridge` — 16/16;
   `test:scripts` — 468/468; `app typecheck` — PASS.
 - `runtime/neuro-kurisu` typecheck и routing/aspect10-наборы остаются зелёными (см. §21.2).
+
+## 22. Прогресс-проход 3 (2026-11-03, ветка `workpass71-body-systems`)
+
+> Тот же класс дефекта, что и §21.4 (утечка hostile-значений через аккумулятор/restore),
+> но теперь на границе **восстановления тела из персистентного снапшота** — путь,
+> который выполняется каждый старт и питает все метрики восприятия/грундинга.
+
+### 22.1 Что исправлено (`IMPLEMENTED`, доказано регрессией)
+
+| Дефект | Симптом до фикса | Исправление |
+| --- | --- | --- |
+| Restore не валидировал значения | `restore()` спредил сырой снапшот в живое состояние: `NaN`/строки/выход за диапазон протекали в метрики | новый общий владелец `body/RestoreSanitizers.ts` (чтение только через own data-дескрипторы, fail-closed) |
+| `MultimodalPerception.restore` | `modalities.text='corrupt'` → `NaN` при следующем `observe()`; `events='nan'`, `visionCaptures=-5` сохранялись | пересборка счётчиков/единичных значений через `countOr`/`unitOr`/`timestampOr` |
+| `MultimodalSituationModel.restore` | `modalityReliability.text=5` (вес фьюжна > 1), `last.features='no'` | валидация reliability в `[0,1]`, фильтр modalities/features, реконструкция `last` |
+| `PerceptualEvidenceCompiler.restore` | `metrics.grounding01='x'`, `conflict01=99`, `updates='bad'`, `scene=42` | каждое поле метрик/счётчик/сцена/activeQuery валидируется отдельно |
+| `DeviceEvidenceLedger.restore` | `verifiedProbes=-9`/строки → возможность ложно сертифицировать устройство | счётчики и `lastStatus` валидируются; сертификация остаётся `unavailable` |
+| `EmbodimentSubsystemRuntime.cameraEvidence.restore` | `captures='x'`, `cumulativeNovelty01=5`, `previousHash=7`, `last='nope'` | пересборка счётчиков/новизны/hash, `last` только как plain-record |
+
+### 22.2 Прогоны (OBSERVED)
+
+- `node --experimental-strip-types runtime/neuro-kurisu/tests/embodiment-restore-sanitization-integrity.mjs`
+  — **PASS** (fail-before подтверждён: без фикса падает на первой же проверке hostile-значений).
+- `runtime/neuro-kurisu` typecheck — `TYPECHECK=PASS mode=tsc compiler=app-lock`.
+- Смежные наборы остаются зелёными: `big-pass-57-persistence-coordinator`, `big-pass-48-subsystem-ports`,
+  `embodiment-perception-routing-restore-integrity`, `aspect10-grounded-bridge`.
+- `npm --prefix runtime/neuro-kurisu run test:embodiment-restore-sanitization` — PASS (тот же шаг, что в CI).
+- CI-шаг `Embodiment restore sanitization integrity` добавлен в `.github/workflows/nk1-embodiment-restore-integrity.yml`.
+
+### 22.3 Остаточный аудит (`UNRESOLVED`)
+
+- `p17-embodied-multimodal-agent` и `big-pass-53-perceptual-grounding` **падают на базовом коммите**
+  (проверено stash-прогоном до моих правок) и не входят в активный NK1-CI — вынесены в очередь, не трогались в этом проходе.
+- Валидация hostile-снапшотов на уровне `StateMigrations` (p35/p37/p41/p42/p43) пока ограничена shape-проверками
+  (`Array.isArray`, spread дефолтов); строгая по-полю валидация — следующий кандидат.
+

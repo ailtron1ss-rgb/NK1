@@ -2,6 +2,7 @@ import type { P41PerceptionState } from '../cognition/P41SemanticPerception.ts';
 import type { P41NativePerceptionState } from '../cognition/P41NativePerception.ts';
 import type { P41TemporalPerceptionState } from '../cognition/P41TemporalPerceptionModel.ts';
 import type { MultimodalState } from './MultimodalPerception.ts';
+import { countOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
 
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
 const stableHash=(value:string)=>{let h=2166136261;for(let i=0;i<value.length;i++){h^=value.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
@@ -39,9 +40,49 @@ export interface PerceptualEvidenceInput{
 
 export class PerceptualEvidenceCompiler{
   private state=defaultPerceptualEvidence();
+  /**
+   * Rebuild persisted evidence state from validated primitives. The metrics block
+   * feeds epistemic/immune scoring and the grounded-world integrate step, so a
+   * corrupted metric (string, NaN or >1) must be replaced by its default rather
+   * than spread into live state. Evidence rows and the active query are re-derived
+   * through own data descriptors so a hostile record cannot inject accessors.
+   */
   restore(raw?:Partial<PerceptualEvidenceState>|null){
-    const d=defaultPerceptualEvidence();const r=raw??{};
-    this.state={...d,...r,evidence:Array.isArray(r.evidence)?r.evidence.slice(0,96):[],metrics:{...d.metrics,...(r.metrics??{})},activeQuery:r.activeQuery??null};
+    const d=defaultPerceptualEvidence();
+    const r=isPlainDataRecord(raw)?raw:{};
+    const rawEvidence=ownDataValue(r,'evidence');
+    const evidence=Array.isArray(rawEvidence)
+      ? rawEvidence.filter((row)=>isPlainDataRecord(row)).slice(0,96) as unknown as PerceptualEvidenceRecord[]
+      : [];
+    const rawMetrics=ownDataValue(r,'metrics');
+    const metrics={
+      grounding01:unitOr(ownDataValue(rawMetrics,'grounding01'),d.metrics.grounding01),
+      semanticCoverage01:unitOr(ownDataValue(rawMetrics,'semanticCoverage01'),d.metrics.semanticCoverage01),
+      crossModalAgreement01:unitOr(ownDataValue(rawMetrics,'crossModalAgreement01'),d.metrics.crossModalAgreement01),
+      temporalBinding01:unitOr(ownDataValue(rawMetrics,'temporalBinding01'),d.metrics.temporalBinding01),
+      groundedSignalRatio01:unitOr(ownDataValue(rawMetrics,'groundedSignalRatio01'),d.metrics.groundedSignalRatio01),
+      conflict01:unitOr(ownDataValue(rawMetrics,'conflict01'),d.metrics.conflict01),
+      unresolved01:unitOr(ownDataValue(rawMetrics,'unresolved01'),d.metrics.unresolved01),
+    };
+    const rawQuery=ownDataValue(r,'activeQuery');
+    const activeQuery=isPlainDataRecord(rawQuery)?{
+      id:stringOr(ownDataValue(rawQuery,'id'),'',128),
+      modality:stringOr(ownDataValue(rawQuery,'modality'),'unknown',32),
+      query:stringOr(ownDataValue(rawQuery,'query'),'',240),
+      priority01:unitOr(ownDataValue(rawQuery,'priority01'),0),
+      expectedInformationGain01:unitOr(ownDataValue(rawQuery,'expectedInformationGain01'),0),
+      estimatedCost01:unitOr(ownDataValue(rawQuery,'estimatedCost01'),0),
+    }:null;
+    this.state={
+      version:1,
+      updates:countOr(ownDataValue(r,'updates'),d.updates),
+      lastAt:timestampOr(ownDataValue(r,'lastAt'),d.lastAt),
+      scene:stringOr(ownDataValue(r,'scene'),d.scene,120),
+      evidence,
+      activeQuery,
+      metrics,
+      lastHash:typeof ownDataValue(r,'lastHash')==='string'?(ownDataValue(r,'lastHash') as string).slice(0,64):d.lastHash,
+    };
   }
   snapshot(){return structuredClone(this.state);}
 
