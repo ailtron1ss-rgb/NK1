@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nk1.local/contracts/evaluation-run.v1.schema.json",
+  "title": "NeuroCore reproducible evaluation run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "sourceSha", "experimentId", "planFingerprint", "datasetFingerprint", "split", "seed", "method", "metrics", "resource", "environment"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "runId": { "type": "string", "minLength": 1 },
+    "sourceSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "experimentId": { "type": "string", "minLength": 1 }, "planFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "datasetFingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "split": { "enum": ["train", "validation", "holdout"] }, "seed": { "type": "integer", "minimum": 0 },
+    "method": { "type": "string", "minLength": 1 },
+    "usedForTuning": { "type": "boolean", "default": false },
+    "metrics": { "type": "object", "minProperties": 1, "additionalProperties": { "type": "number" } },
+    "resource": { "type": "object", "required": ["latencyMs", "peakRamMb"], "properties": { "latencyMs": { "type": "number", "minimum": 0 }, "peakRamMb": { "type": "number", "minimum": 0 }, "peakVramMb": { "type": "number", "minimum": 0 }, "energyWh": { "type": "number", "minimum": 0 } } },
+    "environment": { "type": "object", "required": ["runtime", "platform"], "properties": { "runtime": { "type": "string" }, "platform": { "type": "string" }, "model": { "type": "string" }, "quantization": { "type": "string" }, "deviceProfile": { "type": "string" } } }
+  }
+}

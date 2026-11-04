@@ -1,0 +1,22 @@
+{
+  "name": "nk1-completion-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Evidence-first architecture audit and completion gates for NeuroCore / NK1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "audit": "node scripts/audit-architecture.mjs",
+    "imports": "node scripts/audit-import-graph.mjs",
+    "test-surface": "node scripts/check-test-surface.mjs",
+    "report": "node scripts/build-evidence-report.mjs",
+    "tree": "node scripts/generate-architecture-tree.mjs",
+    "verify": "npm run test && npm run audit && npm run imports && npm run test-surface",
+    "promotion": "node --experimental-strip-types scripts/evaluate-promotion.mjs",
+    "dataset-check": "node scripts/verify-dataset-manifest.mjs",
+    "cef-check": "node scripts/verify-cef-snapshot.mjs"
+  }
+}
