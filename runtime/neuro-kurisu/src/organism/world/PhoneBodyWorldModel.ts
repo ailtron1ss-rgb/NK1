@@ -22,10 +22,25 @@ export interface PhoneBodyWorldState {
   projectedBattery01:number;
 }
 const c=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(fin(v,f)));
+const tri=(v:unknown):boolean|null=>v===true?true:v===false?false:null;
 export const defaultPhoneBodyWorld=():PhoneBodyWorldState=>({version:1,observations:0,transitions:0,last:null,meanDrainPerCycle01:0,meanThermalRise01:0,meanCapacityDrop01:0,resourceRisk01:0.12,projectedBattery01:0.75});
 export class PhoneBodyWorldModel{
   private state=defaultPhoneBodyWorld();
-  restore(s:PhoneBodyWorldState|undefined){this.state={...defaultPhoneBodyWorld(),...(s??{}),last:s?.last?{...s.last}:null};}
+  /** Rebuild the last snapshot field-by-field so a malformed one cannot inject NaN battery/energy into the body model that feeds the whole organism. */
+  restore(s:PhoneBodyWorldState|undefined){
+    const d=defaultPhoneBodyWorld();
+    const src:Record<string,unknown>=(s&&typeof s==='object')?s as unknown as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const rawLast=read('last');
+    let last:PhoneBodySnapshot|null=null;
+    if(rawLast&&typeof rawLast==='object'){
+      const l=rawLast as Record<string,unknown>;
+      last={at:Math.max(0,fin(l.at,0)),battery01:c(fin(l.battery01,d.projectedBattery01)),thermal01:c(fin(l.thermal01,0)),cpu01:c(fin(l.cpu01,0)),ram01:c(fin(l.ram01,0)),networkOnline:tri(l.networkOnline),screenInteractive:tri(l.screenInteractive),charging:tri(l.charging),bodyEnergy01:c(fin(l.bodyEnergy01,0)),cognitiveCapacity01:c(fin(l.cognitiveCapacity01,0))};
+    }
+    this.state={version:1,observations:cnt(read('observations'),d.observations),transitions:cnt(read('transitions'),d.transitions),last,meanDrainPerCycle01:c(fin(read('meanDrainPerCycle01'),d.meanDrainPerCycle01)),meanThermalRise01:c(fin(read('meanThermalRise01'),d.meanThermalRise01)),meanCapacityDrop01:c(fin(read('meanCapacityDrop01'),d.meanCapacityDrop01)),resourceRisk01:c(fin(read('resourceRisk01'),d.resourceRisk01)),projectedBattery01:c(fin(read('projectedBattery01'),d.projectedBattery01))};
+  }
   snapshot(){return structuredClone(this.state);}
   observe(body:{telemetry:{battery01:number;thermalPressure01:number;cpuLoad01:number;ramPressure01:number;networkOnline:boolean|null;screenInteractive:boolean|null;charging:boolean|null;};bodyEnergy01:number;cognitiveCapacity01:number},at=Date.now()){
     const next:PhoneBodySnapshot={at,battery01:c(body.telemetry.battery01),thermal01:c(body.telemetry.thermalPressure01),cpu01:c(body.telemetry.cpuLoad01),ram01:c(body.telemetry.ramPressure01),networkOnline:body.telemetry.networkOnline,screenInteractive:body.telemetry.screenInteractive,charging:body.telemetry.charging,bodyEnergy01:c(body.bodyEnergy01),cognitiveCapacity01:c(body.cognitiveCapacity01)};
