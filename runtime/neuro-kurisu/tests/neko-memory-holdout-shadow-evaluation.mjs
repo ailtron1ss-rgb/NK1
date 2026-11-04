@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
 import { fingerprintMemoryRetrievalDataset, runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { previewNekoHybridMemoryRanking } from '../../../integrations/neko-memory-shadow/src/memoryos2-preview.mjs';
 
 const memory = new MemoryOS2({ embeddingProvider: null });
 const examples = [];
@@ -35,6 +36,19 @@ for (const language of ['en', 'ru']) {
 }
 
 const snapshot = memory.snapshot();
+const shadowMemory = new MemoryOS2({ embeddingProvider: null });
+shadowMemory.restore(structuredClone(snapshot));
+const itemById = new Map(snapshot.items.map(item => [item.id, item]));
+const shadowByQuery = new Map();
+for (const query of new Set(examples.map(example => example.query))) {
+  const result = await previewNekoHybridMemoryRanking(shadowMemory, query, {
+    limit: 1,
+    maxPerChannel: 64,
+    includeSemanticEmbeddingChannel: false,
+    useCanonicalWeights: false,
+  });
+  shadowByQuery.set(query, result.shadowIds.map(id => itemById.get(id)).filter(Boolean));
+}
 let injectedCandidateCalls = 0;
 const report = runMemoryOS2RetrievalBenchmark(snapshot, examples, {
   now: Date.now(),
@@ -57,17 +71,23 @@ const report = runMemoryOS2RetrievalBenchmark(snapshot, examples, {
     contentSha256: fingerprintMemoryRetrievalDataset(examples),
   },
   candidateStrategy: 'neko-shadow-rrf',
-  candidateRetriever: () => { injectedCandidateCalls++; return []; },
+  candidateRrfProfile: 'equal',
+  candidateVectorEnabled: false,
+  candidateRetriever: (query, limit) => { injectedCandidateCalls++; return (shadowByQuery.get(query) ?? []).slice(0, limit); },
 });
 
 assert.ok(report.metrics.baseline.recallAtK01 > .5, 'BM25 baseline should retrieve every exact bilingual fixture');
-assert.equal(report.metrics.candidate.recallAtK01, 0,
-  'the injected shadow candidate arm must be the one scored by the existing holdout benchmark');
-assert.ok(report.metrics.candidate.falseAbstentionRate01 > .5);
+assert.ok(report.metrics.candidate.recallAtK01 > .5,
+  'the actual MemoryOS2 shadow RRF arm must preserve bilingual exact-match recall');
+assert.equal(report.metrics.candidate.unsupportedRetrievalRate01, 0,
+  'unanswerable holdout queries must remain abstentions');
+assert.ok(report.metrics.candidate.falseAbstentionRate01 < .1);
 assert.ok(injectedCandidateCalls > 0, 'benchmark must invoke the injected shadow candidate arm');
 assert.equal(report.candidateStrategy, 'neko-shadow-rrf');
-assert.ok(report.queryEvidence.holdout.every(row => row.candidateRankedMemory.length === 0),
-  'the existing Inspect evidence export must contain the shadow arm, not canonical MemoryOS2 results');
+assert.ok(report.queryEvidence.holdout.filter(row => row.answerable).every(row => row.candidateRankedMemory.length > 0),
+  'the existing Inspect evidence export must contain the real shadow arm for answerable holdout rows');
+assert.ok(report.queryEvidence.holdout.filter(row => !row.answerable).every(row => row.candidateRankedMemory.length === 0),
+  'the Inspect evidence export must preserve abstention for unanswerable holdout rows');
 assert.equal(report.promotion.allowed, false, 'synthetic CI evidence must never authorize promotion');
 
 console.log(JSON.stringify({
