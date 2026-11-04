@@ -1,7 +1,7 @@
 import type { OrganismEvent } from './EventSourcing.ts';
 import { EventLog, makeEvent } from './EventSourcing.ts';
 import { createHash } from 'node:crypto';
-import { MemoryOS2, type MemoryEvidenceSource, type MemoryItem2, type MemoryOSState2, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult } from '../developmental/MemoryOS2.ts';
+import { MemoryOS2, type MemoryEvidenceSource, type MemoryItem2, type MemoryOSState2, type MemoryTemporalQueryOptions, type SemanticIndexMaintenanceResult, type SemanticMemoryPreview } from '../developmental/MemoryOS2.ts';
 import { MultiTimescaleMemory, type MemoryRecord } from './MultiTimescaleMemory.ts';
 import { MemorySubstrateCoordinator } from '../developmental/MemorySubstrateCoordinator.ts';
 import { UnifiedMemorySystem, type MemoryDevelopmentState } from '../developmental/UnifiedMemorySystem.ts';
@@ -359,7 +359,7 @@ export class MemoryFabric {
     const fallbackPreview=this.memoryOS.previewRetrieveWithDiagnostics(query,safeLimit,goalRelevance,identityRelevance,temporalContext);
     const fallback=fallbackPreview.items;
     const fallbackCost01=Math.max(0,Math.min(1,fallbackPreview.diagnostics.candidateCount/192));
-    const finish=(selected:MemoryItem2[],semantic=false,computeCost01=fallbackCost01,costSource:'isolated-lexical-preview'|'semantic-runtime-estimate'='isolated-lexical-preview')=>{
+    const finish=(selected:MemoryItem2[],semantic=false,computeCost01=fallbackCost01,costSource:'isolated-lexical-preview'|'semantic-runtime-estimate'='isolated-lexical-preview',semanticDiagnostics?:SemanticMemoryPreview['semantic'])=>{
       const rows=this.memoryOS.commitSelectedRetrieval(query,selected.map(row=>({id:row.id,content:row.content})),goalRelevance,identityRelevance,temporalContext);
       return this.recordRetrievalResult(query,rows,{
         tick:context.tick,
@@ -367,6 +367,7 @@ export class MemoryFabric {
         evidenceMode:semantic?'semantic-cognitive-retrieval':'retrieval-audit',
         computeCost01,
         costSource,
+        semanticDiagnostics,
       });
     };
     const runtimeEnabled=/^(1|true|yes|on)$/i.test(String(process.env.NK_EMBEDDINGS_RUNTIME_ENABLED??''));
@@ -395,13 +396,13 @@ export class MemoryFabric {
       outcome.result.semantic.newlyIndexed/12,
       outcome.result.semantic.lastLatencyMs/Math.max(1,providerTimeout),
     );
-    return finish(outcome.result.items.slice(0,safeLimit),true,semanticCost01,'semantic-runtime-estimate');
+    return finish(outcome.result.items.slice(0,safeLimit),true,semanticCost01,'semantic-runtime-estimate',outcome.result.semantic);
   }
 
   private recordRetrievalResult(
     query:string,
     rows:MemoryItem2[],
-    context:{tick?:number;emitEvent?:boolean;evidenceMode?:'retrieval-audit'|'semantic-cognitive-retrieval';computeCost01?:number;costSource?:'isolated-lexical-preview'|'semantic-runtime-estimate'|'live-lexical-runtime'}={}
+    context:{tick?:number;emitEvent?:boolean;evidenceMode?:'retrieval-audit'|'semantic-cognitive-retrieval';computeCost01?:number;costSource?:'isolated-lexical-preview'|'semantic-runtime-estimate'|'live-lexical-runtime';semanticDiagnostics?:SemanticMemoryPreview['semantic']}={}
   ):MemoryItem2[]{
     this.statsData.retrievals++;
     this.statsData.retrievalHits+=rows.length;
@@ -421,6 +422,14 @@ export class MemoryFabric {
         source:'memory-fabric',query:query.slice(0,semantic?120:160),hits:rows.length,
         touchedMemoryIds:rows.slice(0,semantic?8:12).map(row=>row.id),
         evidenceMode:context.evidenceMode??'retrieval-audit',
+        ...(context.semanticDiagnostics?{
+          semanticGroundedCandidateCount:context.semanticDiagnostics.groundedCandidateCount,
+          semanticRejectedCandidateCount:context.semanticDiagnostics.rejectedSemanticCandidates,
+          semanticTopSimilarity:context.semanticDiagnostics.topSimilarity,
+          semanticTopMargin:context.semanticDiagnostics.topMargin,
+          semanticAnswerabilityGate:context.semanticDiagnostics.answerabilityGate,
+          semanticRankingFusion:context.semanticDiagnostics.rankingFusion,
+        }:{}),
       }));
     }
     this.unifiedMemory.recordRetrieval(query,rows.length);
