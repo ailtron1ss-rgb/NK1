@@ -161,6 +161,39 @@ function makeBridge({ enabled = true, consent = () => true, enqueue = () => true
     hasConsent: () => true,
     enqueueToPlugins: () => true,
   }), /neko-plugin-voice-subscriber-id-invalid/);
+  let proxyLengthRead = false;
+  const proxyTargets = new Proxy(['study_companion'], {
+    get(target, key, receiver) {
+      if (key === 'length') {
+        proxyLengthRead = true;
+        throw new Error('proxy-length-trap');
+      }
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  assert.throws(() => new NekoPluginVoiceTranscriptBridge({
+    enabled: true,
+    targetPluginIds: proxyTargets,
+    hasConsent: () => true,
+    enqueueToPlugins: () => true,
+  }), /neko-plugin-voice-subscriber-allowlist-required/);
+  assert.equal(proxyLengthRead, false, 'Proxy rejection must happen before reading its length');
+
+  let targetGetterCalls = 0;
+  const accessorTargets = ['placeholder'];
+  Object.defineProperty(accessorTargets, 0, {
+    enumerable: true,
+    configurable: true,
+    get() { targetGetterCalls += 1; return 'study_companion'; },
+  });
+  assert.throws(() => new NekoPluginVoiceTranscriptBridge({
+    enabled: true,
+    targetPluginIds: accessorTargets,
+    hasConsent: () => true,
+    enqueueToPlugins: () => true,
+  }), /neko-plugin-voice-subscriber-allowlist-required/);
+  assert.equal(targetGetterCalls, 0, 'accessor-backed allowlist entries must not execute');
+
   assert.throws(() => new NekoPluginVoiceTranscriptBridge({
     enabled: true,
     targetPluginIds: ['study_companion'],

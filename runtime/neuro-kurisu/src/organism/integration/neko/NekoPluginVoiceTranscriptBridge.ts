@@ -93,6 +93,28 @@ function ownDataRecord(value: unknown, maxKeys: number): Record<string, unknown>
   }
 }
 
+/** Read a small host allowlist without invoking array accessors or Proxy traps. */
+function ownDenseArray(value: unknown, maxLength: number): unknown[] | null {
+  try {
+    if (!Array.isArray(value) || nodeUtilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    const keys = Reflect.ownKeys(descriptors);
+    const lengthDescriptor = descriptors.length;
+    const length = lengthDescriptor?.value;
+    if (!Number.isSafeInteger(length) || length < 1 || length > maxLength || keys.length !== length + 1) return null;
+    const output: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) return null;
+      output.push(descriptor.value);
+    }
+    return output;
+  } catch {
+    return null;
+  }
+}
+
 function boundedId(value: unknown, max: number): string | null {
   if (typeof value !== 'string' || value.length === 0 || value.length > max) return null;
   const normalized = value.trim();
@@ -135,12 +157,10 @@ export class NekoPluginVoiceTranscriptBridge {
     if (typeof options.enqueueToPlugins !== 'function') {
       throw new Error('neko-plugin-voice-enqueue-required');
     }
-    if (!Array.isArray(options.targetPluginIds) || options.targetPluginIds.length === 0 ||
-        options.targetPluginIds.length > 32 || nodeUtilTypes.isProxy(options.targetPluginIds)) {
-      throw new Error('neko-plugin-voice-subscriber-allowlist-required');
-    }
+    const rawTargets = ownDenseArray(options.targetPluginIds, 32);
+    if (!rawTargets) throw new Error('neko-plugin-voice-subscriber-allowlist-required');
     const targets: string[] = [];
-    for (const value of options.targetPluginIds) {
+    for (const value of rawTargets) {
       const pluginId = boundedId(value, 80);
       if (!pluginId || targets.includes(pluginId)) throw new Error('neko-plugin-voice-subscriber-id-invalid');
       targets.push(pluginId);
