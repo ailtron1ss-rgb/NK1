@@ -63,7 +63,7 @@ NK1 canonical owners
 |---|---|---|---|
 | 01 — retrieval | BM25 + vector + Reciprocal Rank Fusion | Expose six existing MemoryOS2 rank channels from an isolated snapshot after the answerability gate; optionally add a cosine/vector preview; return IDs only and never change live ranking | Implemented in PR #774; shadow-only, not user-facing |
 | 02 — journal durability | append + fsync + bounded rotation | Serialize diagnostic writes; fsync warnings/errors and selected critical lifecycle records; leave ordinary info ticks unsynced | Implemented in PR #775; exact focused CI and typecheck passed |
-| 03 — Outbox | pending/done/attempt and dead-letter handling | Do not add another queue: NK1 ActionGateway already has durable idempotency, pending receipts and provider reconciliation. Review any gap against its canonical ledger first | Existing owner; no duplicate implementation |
+| 03 — Outbox | pending/done/attempt and dead-letter handling | Do not add another queue: NK1 ActionGateway has an idempotency ledger, pending receipts and provider reconciliation hooks. Verify the host execution-ledger persister is configured (`durablePersisterConfigured`) before treating it as a durable Outbox-equivalent; review any gap against that owner first | Existing owner; no duplicate implementation |
 | 04 — plugin governance | plugin.toml, SDK, runtime flags and UI permission requests | Manifest UI permissions are not runtime tool capabilities. Any future importer must require host-owned capability grants, explicit permission class, bounded input/output contracts and idempotency policy | Adaptation contract only; no automatic plugin execution |
 | 05 — autonomy | proactive controller and session/consent guards | Preserve NK1 cadence, silence accounting, user interruption and explicit consent. Do not create a parallel scheduler or background side-effect path | Existing runtime owner; no duplicate controller |
 | 06 — perception | camera/screen/browser/computer-use adapters | Accept only producer-marked observed evidence with source/frame provenance; model-generated descriptions must not masquerade as sensor observations | Existing grounded-world/spatial workstreams; device truth remains a separate gate |
@@ -95,7 +95,7 @@ NK1 canonical owners
 ## 5. Security and promotion boundaries
 
 - N.E.K.O. manifest flags such as enabled/auto_start and UI permissions must never be treated as NK1 host authorization.
-- N.E.K.O. Outbox semantics must not bypass ActionGateway's durable idempotency and provider-receipt reconciliation.
+- N.E.K.O. Outbox semantics must not bypass ActionGateway's idempotency ledger and provider-receipt reconciliation. Verify the host persister is configured before relying on restart durability.
 - Self-improvement signing keys and expected source revisions remain host-owned; candidate-controlled proof data cannot establish its own trust. Existing host-owned patch-receipt authority work is tracked separately (PR #743); its live composition-root wiring must be verified before any self-modification is enabled.
 - RRF promotion requires canonical ranked IDs, immutable RU/EN source/session-clustered holdout, at least five paired seeds, positive recallDelta and no subject leakage or latency regression.
 - The OperationalJournal changes do not establish power-loss durability on Android/Termux. Device-level crash/power-loss soak remains required.
