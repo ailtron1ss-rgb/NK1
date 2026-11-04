@@ -50,3 +50,21 @@ test('rank comparison is bounded and deterministic', () => {
     { leftCount: 2, rightCount: 2, overlapAtK: 1, jaccardAtK: 1 / 3 });
   assert.throws(() => compareRankedLists([], [], 0), /bounds/);
 });
+test('accessor-backed input and candidate fields are rejected without invoking getters', () => {
+  let inputGetterCalled = false;
+  const unsafeInput = {};
+  Object.defineProperty(unsafeInput, 'channels', {
+    get() { inputGetterCalled = true; throw new Error('input getter executed'); },
+  });
+  assert.throws(() => combineRankedMemoryChannels(unsafeInput), /plain data|accessor|invalid/);
+  assert.equal(inputGetterCalled, false);
+  let candidateGetterCalled = false;
+  const unsafeCandidate = {};
+  Object.defineProperty(unsafeCandidate, 'id', {
+    get() { candidateGetterCalled = true; throw new Error('candidate getter executed'); },
+  });
+  assert.throws(() => combineRankedMemoryChannels({
+    channels: [{ name: 'bm25', candidates: [unsafeCandidate] }],
+  }), /plain data|accessor|invalid/);
+  assert.equal(candidateGetterCalled, false);
+});
