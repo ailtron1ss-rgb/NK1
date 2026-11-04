@@ -11,7 +11,7 @@ on:
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/nk1-neko-asr-provider-adapter.yml"
   push:
-    branches: [workpass70-source]
+    branches: [workpass70-source, aspect/neko-voice-perception-adapters-20261104]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
       - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
