@@ -36,6 +36,44 @@ test('EmbodimentRuntime accepts a host-injected final ASR transcript and exposes
   assert.equal(runtime.voiceSnapshot().state.lastError, null);
 });
 
+test('EmbodimentRuntime preserves ASR confidence and event metadata while keeping listen() string-compatible', async () => {
+  const runtime = new EmbodimentRuntime();
+  runtime.setNekoAsrProvider({
+    providerId: 'faster-whisper-local',
+    isAvailable: () => true,
+    async captureFinal(request) {
+      return envelope(request.sessionId, {
+        eventId: 'confidence-event-1',
+        turnId: 'confidence-turn-1',
+        confidence01: 0.37,
+        language: 'ru-RU',
+      });
+    },
+  });
+  runtime.body.sttAvailable = true;
+  const detailed = await runtime.listenDetailed();
+  assert.deepEqual(detailed, {
+    text: 'Проверка входящей речи',
+    providerId: 'faster-whisper-local',
+    confidence01: 0.37,
+    language: 'ru-RU',
+    eventId: 'confidence-event-1',
+    turnId: 'confidence-turn-1',
+  });
+  assert.equal(runtime.voiceSnapshot().state.listening, false);
+
+  const compatible = new EmbodimentRuntime();
+  compatible.setNekoAsrProvider({
+    providerId: 'faster-whisper-local',
+    isAvailable: () => true,
+    async captureFinal(request) {
+      return envelope(request.sessionId, { eventId: 'compatibility-event-1' });
+    },
+  });
+  compatible.body.sttAvailable = true;
+  assert.equal(await compatible.listen(), 'Проверка входящей речи');
+});
+
 test('EmbodimentRuntime does not claim ASR interruption when provider cancellation is unverified', async () => {
   let release;
   let captureStarted;
