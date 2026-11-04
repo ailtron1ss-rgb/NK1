@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile, rename, rm, stat } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, rm, stat, realpath } from 'node:fs/promises';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -32,6 +32,48 @@ function pathsOverlap(a, b) {
   const limit = Math.min(left.length, right.length);
   for (let i = 0; i < limit; i += 1) if (left[i] !== right[i]) return false;
   return true;
+}
+
+function validateReadSet(readSet) {
+  if (readSet === undefined) return [];
+  if (!Array.isArray(readSet) || readSet.length > 200) throw new Error('readSet must contain at most 200 dependency snapshots');
+  const seen = new Set();
+  return readSet.map((entry, index) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error(`readSet[${index}] must be an object`);
+    const filePath = normalizeClaimPath(entry.path);
+    if (!/^[a-f0-9]{64}$/i.test(entry.sha256 ?? '')) throw new Error(`readSet[${index}] SHA-256 digest is invalid`);
+    if (seen.has(filePath)) throw new Error(`duplicate read-set dependency: ${filePath}`);
+    seen.add(filePath);
+    return { path: filePath, sha256: entry.sha256.toLowerCase() };
+  });
+}
+
+async function readRepositoryFile(root, relativePath) {
+  const rootReal = await realpath(root);
+  const target = path.resolve(rootReal, relativePath);
+  const relative = path.relative(rootReal, target);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`read-set path escapes repository root: ${relativePath}`);
+  const targetReal = await realpath(target);
+  const resolved = path.relative(rootReal, targetReal);
+  if (!resolved || resolved.startsWith('..') || path.isAbsolute(resolved)) throw new Error(`read-set symlink escapes repository root: ${relativePath}`);
+  return readFile(targetReal);
+}
+
+async function inspectReadSet(readSet, options = {}) {
+  const root = path.resolve(options.root ?? ROOT);
+  const stalePaths = [];
+  const missingPaths = [];
+  for (const item of readSet) {
+    try {
+      const bytes = await readRepositoryFile(root, item.path);
+      const actual = createHash('sha256').update(bytes).digest('hex');
+      if (actual !== item.sha256) stalePaths.push(item.path);
+    } catch (error) {
+      if (error.code === 'ENOENT') missingPaths.push(item.path);
+      else throw error;
+    }
+  }
+  return { fresh: stalePaths.length === 0 && missingPaths.length === 0, stalePaths, missingPaths };
 }
 
 function validateRequest({ taskId, agentId, baseSha, paths, ttlMs }) {
@@ -99,6 +141,11 @@ function activeClaims(state, now) {
 export async function claimTask(request, options = {}) {
   const stateDir = path.resolve(options.stateDir ?? process.env.NEUROK_OS_STATE_DIR ?? DEFAULT_STATE_DIR);
   const paths = validateRequest(request);
+  const readSet = validateReadSet(request.readSet);
+  if (readSet.length) {
+    const snapshot = await inspectReadSet(readSet, { root: options.root });
+    if (!snapshot.fresh) throw new Error(`read-set snapshot is stale at claim creation: ${[...snapshot.stalePaths, ...snapshot.missingPaths].join(', ')}`);
+  }
   const baseSha = request.baseSha.toLowerCase();
   if (options.currentSha && baseSha !== options.currentSha.toLowerCase()) {
     throw new Error('claim base SHA does not match the current checkout HEAD');
@@ -111,7 +158,8 @@ export async function claimTask(request, options = {}) {
     if (existing) {
       const same = existing.agentId === request.agentId &&
         existing.baseSha === baseSha &&
-        JSON.stringify([...existing.paths].sort()) === JSON.stringify([...paths].sort());
+        JSON.stringify([...existing.paths].sort()) === JSON.stringify([...paths].sort()) &&
+        JSON.stringify(existing.readSet ?? []) === JSON.stringify(readSet);
       if (!same) throw new Error(`task already claimed by ${existing.agentId} with a different contract`);
       existing.expiresAt = now + request.ttlMs;
       existing.renewedAt = now;
@@ -127,12 +175,28 @@ export async function claimTask(request, options = {}) {
       agentId: request.agentId,
       baseSha,
       paths,
+      readSet,
       createdAt: now,
       renewedAt: now,
       expiresAt: now + request.ttlMs
     };
     await writeState(stateDir, { schemaVersion: 1, claims: [...claims, claim] });
     return { ...claim, renewed: false };
+  });
+}
+
+export async function verifyClaimFreshness(taskId, agentId, options = {}) {
+  const stateDir = path.resolve(options.stateDir ?? process.env.NEUROK_OS_STATE_DIR ?? DEFAULT_STATE_DIR);
+  return withLock(stateDir, async () => {
+    const state = await readState(stateDir);
+    const claims = activeClaims(state, options.now ?? Date.now());
+    const claim = claims.find(item => item.taskId === taskId);
+    if (!claim) throw new Error('task claim not found or expired');
+    if (claim.agentId !== agentId) throw new Error('only the owning agent may verify this claim');
+    if (!Array.isArray(claim.readSet) || claim.readSet.length === 0) {
+      return { fresh: false, stalePaths: [], missingPaths: [], reason: 'claim has no read-set; context freshness is unverified' };
+    }
+    return inspectReadSet(claim.readSet, { root: options.root });
   });
 }
 
@@ -184,7 +248,7 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
     return;
   }
-  if (command === 'release') {
+  if (command === 'verify') {\n    const result = await verifyClaimFreshness(args.task, args.agent);\n    console.log(JSON.stringify(result, null, 2));\n    if (!result.fresh) process.exitCode = 1;\n    return;\n  }\n  if (command === 'release') {
     console.log(JSON.stringify(await releaseTask({ taskId: args.task, agentId: args.agent }), null, 2));
     return;
   }
@@ -192,7 +256,7 @@ async function main() {
     console.log(JSON.stringify(await listClaims(), null, 2));
     return;
   }
-  console.error('Usage: node tools/neurok-os-coordinator.mjs [claim|release|list] --task ID --agent ID --sha FULL_SHA --paths a.ts,b.ts [--ttlMs 3600000]');
+  console.error('Usage: node tools/neurok-os-coordinator.mjs [claim|verify|release|list] --task ID --agent ID --sha FULL_SHA --paths a.ts,b.ts [--ttlMs 3600000]');
   process.exitCode = 2;
 }
 
