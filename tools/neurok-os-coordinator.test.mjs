@@ -75,7 +75,7 @@ test('rejects a claim based on a stale checkout SHA', async () => fixture(async 
 }));
 
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, symlink } from 'node:fs/promises';
 
 test('read-set freshness detects changed context before an agent writes', async () => fixture(async stateDir => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'neurok-os-readset-'));
@@ -107,4 +107,32 @@ test('read-set rejects unsafe and malformed dependency snapshots', async () => f
   await assert.rejects(() => claimTask(request('TASK-READSET-BAD2', 'agent-a', ['src/change.ts'], {
     readSet: [{ path: 'src/dep.ts', sha256: 'not-a-digest' }]
   }), { stateDir }), /SHA-256/);
+}));
+
+test('read-set symlinks cannot escape the claimed repository root', async () => fixture(async stateDir => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'neurok-os-readset-root-'));
+  const outside = await mkdtemp(path.join(os.tmpdir(), 'neurok-os-readset-outside-'));
+  try {
+    const secret = path.join(outside, 'secret.ts');
+    await writeFile(secret, 'export const secret = true;\n');
+    await symlink(secret, path.join(root, 'secret-link.ts'));
+    const digest = createHash('sha256').update('export const secret = true;\n').digest('hex');
+    await assert.rejects(
+      () => claimTask(request('TASK-SYMLINK', 'agent-a', ['src/change.ts'], {
+        readSet: [{ path: 'secret-link.ts', sha256: digest }]
+      }), { stateDir, root }),
+      /symlink escapes repository root/
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
+}));
+
+test('claims without a read-set are explicitly unverified, never silently fresh', async () => fixture(async stateDir => {
+  const { verifyClaimFreshness } = await import('./neurok-os-coordinator.mjs');
+  await claimTask(request('TASK-NO-READSET', 'agent-a', ['src/change.ts']), { stateDir });
+  const result = await verifyClaimFreshness('TASK-NO-READSET', 'agent-a', { stateDir });
+  assert.equal(result.fresh, false);
+  assert.match(result.reason, /unverified/);
 }));
