@@ -80,6 +80,31 @@ test('optional cosine preview adds a vector rank channel but never returns memor
   assert.ok(!JSON.stringify(result).includes('private memory body'));
 });
 
+test('MemoryOS2 profile replays canonical channel weights and defaults vector to one', async () => {
+  const fakeMemory = {
+    previewRetrieveWithRankedChannels() {
+      return {
+        itemIds: ['base'],
+        rankedChannels: { bm25: ['base'], coverage: [], fuzzy: [], metadata: [], entity: [], relationship: [] },
+        currentRrfK: 60,
+        currentRrfWeights: { bm25: 1, coverage: .9, fuzzy: .6, metadata: 0, entity: .42, relationship: .32 },
+        maxPerChannel: 64,
+        diagnostics: { abstained: false },
+      };
+    },
+    async previewRetrieveWithEmbeddings() {
+      return { items: [{ id: 'vector' }], semantic: { enabled: true, provider: 'ollama', model: 'fixture', fallbackReason: null, coverage01: 1, indexedItems: 2, corpusItems: 2 } };
+    },
+  };
+  const result = await previewNekoHybridMemoryRanking(fakeMemory, 'profile test', {
+    includeSemanticEmbeddingChannel: true,
+    useCanonicalWeights: true,
+  });
+  assert.equal(result.rrfProfile, 'memoryos2');
+  assert.ok(result.shadowIds.includes('base'));
+  assert.ok(result.shadowIds.includes('vector'));
+});
+
 test('vector-only candidates remain evaluation-only when canonical answerability abstains', async () => {
   let embeddingCalls = 0;
   const fakeMemory = {
