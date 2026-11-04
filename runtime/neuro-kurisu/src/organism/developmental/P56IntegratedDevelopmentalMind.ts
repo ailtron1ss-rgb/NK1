@@ -6,6 +6,13 @@
  * developmental mode from independent evidence and produces a bounded plan.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const P56_MODES:readonly P56Mode[]=['observe','repair','consolidate','experiment','protect','explore'];
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)).slice(0,cap):[];
+const modeCounts=(v:unknown,d:Record<P56Mode,number>):Record<P56Mode,number>=>{const out:Record<P56Mode,number>={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const m of P56_MODES)if(m in r)out[m]=cnt(r[m],d[m]);return out;};
+const sanitizePlan=(v:unknown):P56Plan|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;return {mode:P56_MODES.includes(r.mode as P56Mode)?r.mode as P56Mode:'observe',priority01:clamp(finN(r.priority01,0)),confidence01:clamp(finN(r.confidence01,0)),reasons:strArr(r.reasons,8),nextEvidence:strArr(r.nextEvidence,8)};};
+const sanitizeHistory=(v:unknown):P56State['history'][number]|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;return {tick:cnt(r.tick,0),at:Math.max(0,finN(r.at,0)),mode:P56_MODES.includes(r.mode as P56Mode)?r.mode as P56Mode:'observe',priority01:clamp(finN(r.priority01,0)),confidence01:clamp(finN(r.confidence01,0)),realityGap01:clamp(finN(r.realityGap01,0))};};
 
 export type P56Mode='observe'|'repair'|'consolidate'|'experiment'|'protect'|'explore';
 export interface P56Signals {
@@ -30,7 +37,7 @@ export const defaultP56=():P56State=>({
 
 export class P56IntegratedDevelopmentalMind {
   private state=defaultP56();
-  restore(raw?:Partial<P56State>|null){const d=defaultP56(),r=raw??{};this.state={...d,...r,modeCounts:{...d.modeCounts,...(r.modeCounts??{})},history:Array.isArray(r.history)?r.history.slice(-96):[]};}
+  restore(raw?:Partial<P56State>|null){const d=defaultP56();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let history:P56State['history']=[];try{const h=read('history');if(Array.isArray(h))history=h.map(sanitizeHistory).filter((x):x is P56State['history'][number]=>x!==null).slice(-96);}catch{history=[];}let lastPlan:P56Plan|null=null;try{lastPlan=sanitizePlan(read('lastPlan'));}catch{lastPlan=null;}this.state={version:1,cycles:cnt(read('cycles'),d.cycles),assessments:cnt(read('assessments'),d.assessments),planned:cnt(read('planned'),d.planned),protectedCycles:cnt(read('protectedCycles'),d.protectedCycles),meanIntegrated01:clamp(finN(read('meanIntegrated01'),d.meanIntegrated01)),meanRealityGap01:clamp(finN(read('meanRealityGap01'),d.meanRealityGap01)),meanStability01:clamp(finN(read('meanStability01'),d.meanStability01)),modeCounts:modeCounts(read('modeCounts'),d.modeCounts),lastPlan,lastAt:Math.max(0,finN(read('lastAt'),d.lastAt)),history};}
   snapshot(){return structuredClone(this.state);}
   persistenceSnapshot(){
     return {...this.state,modeCounts:{...this.state.modeCounts},history:this.state.history.slice(-48).map(row=>({...row}))};

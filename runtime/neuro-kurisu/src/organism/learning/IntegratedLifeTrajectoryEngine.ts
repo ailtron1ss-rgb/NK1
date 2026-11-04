@@ -2,6 +2,14 @@ import type { ActionKind, OrganismGoal, OrganismState } from '../core/types.ts';
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const clean=(x:unknown,n=160)=>String(x??'').trim().replace(/\s+/g,' ').slice(0,n);
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const ACTION_KINDS:readonly ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const HORIZONS:readonly Horizon[]=['immediate','near','long','identity'];
+const DOMAINS:readonly string[]=['self','world','social','skills','research','embodiment','none'];
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)).slice(0,cap):[];
+const sanitizeForecast=(x:unknown):TrajectoryForecast|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const hv=(r.horizonValues&&typeof r.horizonValues==='object')?r.horizonValues as Record<string,unknown>:{};const horizonValues={immediate:clamp(finN(hv.immediate,.5)),near:clamp(finN(hv.near,.5)),long:clamp(finN(hv.long,.5)),identity:clamp(finN(hv.identity,.5))} as Record<Horizon,number>;return {action:(ACTION_KINDS.includes(r.action as ActionKind)?r.action:'wait') as ActionKind,score01:clamp(finN(r.score01,0)),horizonValues,expectedContinuity01:clamp(finN(r.expectedContinuity01,.5)),expectedAgency01:clamp(finN(r.expectedAgency01,.5)),expectedSocial01:clamp(finN(r.expectedSocial01,.5)),expectedGoalCoherence01:clamp(finN(r.expectedGoalCoherence01,.5)),expectedLearning01:clamp(finN(r.expectedLearning01,.5)),expectedRepair01:clamp(finN(r.expectedRepair01,.2)),predictedRisk01:clamp(finN(r.predictedRisk01,.3)),confidence01:clamp(finN(r.confidence01,.4)),generatedAt:Math.max(0,finN(r.generatedAt,0))};};
+const sanitizeOutcome=(x:unknown):TrajectoryOutcomeRecord|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,180),action:(ACTION_KINDS.includes(r.action as ActionKind)?r.action:'wait') as ActionKind,predicted01:clamp(finN(r.predicted01,0)),actual01:clamp(finN(r.actual01,0)),error01:clamp(finN(r.error01,0)),verified01:clamp(finN(r.verified01,0)),surprise01:clamp(finN(r.surprise01,0)),contextKey:typeof r.contextKey==='string'?r.contextKey.slice(0,180):'',at:Math.max(0,finN(r.at,0))};};
 
 type Horizon='immediate'|'near'|'long'|'identity';
 type Domain='self'|'world'|'social'|'skills'|'research'|'embodiment';
@@ -153,12 +161,12 @@ export class IntegratedLifeTrajectoryEngine {
   private state=defaultIntegratedLifeTrajectory();
 
   restore(raw?:Partial<IntegratedLifeTrajectoryState>|null){
-    const d=defaultIntegratedLifeTrajectory(),r:any=raw??{};
-    const safeForecast=(x:any):TrajectoryForecast|null=>x&&typeof x==='object'?{
-      action:x.action as ActionKind,score01:clamp(Number(x.score01)),horizonValues:{immediate:clamp(Number(x.horizonValues?.immediate??.5)),near:clamp(Number(x.horizonValues?.near??.5)),long:clamp(Number(x.horizonValues?.long??.5)),identity:clamp(Number(x.horizonValues?.identity??.5))},
-      expectedContinuity01:clamp(Number(x.expectedContinuity01??.5)),expectedAgency01:clamp(Number(x.expectedAgency01??.5)),expectedSocial01:clamp(Number(x.expectedSocial01??.5)),expectedGoalCoherence01:clamp(Number(x.expectedGoalCoherence01??.5)),expectedLearning01:clamp(Number(x.expectedLearning01??.5)),expectedRepair01:clamp(Number(x.expectedRepair01??.2)),predictedRisk01:clamp(Number(x.predictedRisk01??.3)),confidence01:clamp(Number(x.confidence01??.4)),generatedAt:Number(x.generatedAt??0)
-    }:null;
-    this.state={...d,...r,version:1,focusDomain:['self','world','social','skills','research','embodiment','none'].includes(r.focusDomain)?r.focusDomain:'none',focusHorizon:['immediate','near','long','identity'].includes(r.focusHorizon)?r.focusHorizon:'near',lastForecast:safeForecast(r.lastForecast),forecasts:Array.isArray(r.forecasts)?r.forecasts.slice(0,96).map(safeForecast).filter(Boolean):[],outcomes:Array.isArray(r.outcomes)?r.outcomes.slice(0,128).map((x:any)=>({...x,error01:clamp(Number(x?.error01)),predicted01:clamp(Number(x?.predicted01)),actual01:clamp(Number(x?.actual01))})):[]};
+    const d=defaultIntegratedLifeTrajectory();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const fg=read('focusGoalId');const fd=read('focusDomain');const fh=read('focusHorizon');
+    let forecasts:TrajectoryForecast[]=[];try{const f=read('forecasts');if(Array.isArray(f))forecasts=f.slice(0,96).map(sanitizeForecast).filter((x):x is TrajectoryForecast=>x!==null);}catch{forecasts=[];}
+    let outcomes:TrajectoryOutcomeRecord[]=[];try{const o=read('outcomes');if(Array.isArray(o))outcomes=o.slice(0,128).map(sanitizeOutcome).filter((x):x is TrajectoryOutcomeRecord=>x!==null);}catch{outcomes=[];}
+    let lastForecast:TrajectoryForecast|null=null;try{lastForecast=sanitizeForecast(read('lastForecast'));}catch{lastForecast=null;}
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),focusGoalId:(typeof fg==='string'&&fg)?fg.slice(0,180):null,focusDomain:(DOMAINS.includes(fd as string)?fd:'none') as Domain|'none',focusHorizon:(HORIZONS.includes(fh as Horizon)?fh:'near') as Horizon,trajectoryCoherence01:clamp(finN(read('trajectoryCoherence01'),d.trajectoryCoherence01)),selfContinuity01:clamp(finN(read('selfContinuity01'),d.selfContinuity01)),socialContinuity01:clamp(finN(read('socialContinuity01'),d.socialContinuity01)),goalContinuity01:clamp(finN(read('goalContinuity01'),d.goalContinuity01)),futureAlignment01:clamp(finN(read('futureAlignment01'),d.futureAlignment01)),agencyReadiness01:clamp(finN(read('agencyReadiness01'),d.agencyReadiness01)),repairPressure01:clamp(finN(read('repairPressure01'),d.repairPressure01)),commitmentPressure01:clamp(finN(read('commitmentPressure01'),d.commitmentPressure01)),learningPressure01:clamp(finN(read('learningPressure01'),d.learningPressure01)),predictionError01:clamp(finN(read('predictionError01'),d.predictionError01)),counterfactualGap01:clamp(finN(read('counterfactualGap01'),d.counterfactualGap01)),lastForecast,forecasts,outcomes,lastReason:typeof read('lastReason')==='string'?String(read('lastReason')).slice(0,240):'',lastAt:Math.max(0,finN(read('lastAt'),d.lastAt))};
   }
 
   snapshot(){return structuredClone(this.state);}
