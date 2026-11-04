@@ -196,9 +196,10 @@ export class NekoAsrTranscriptAdapter {
       cancelled: false,
     };
     this.active = active;
+    let admissionOpen = false;
     try {
       const admissionGate = new NekoSpeechAdmissionGate(active.sessionId);
-      let admissionOpen = true;
+      admissionOpen = true;
       let admissionError: string | undefined;
       const observeSileroProbabilityWindow = (
         input: NekoSpeechProbabilityWindowV1,
