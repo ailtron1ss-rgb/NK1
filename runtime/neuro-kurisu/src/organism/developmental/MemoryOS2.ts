@@ -1381,7 +1381,7 @@ export class MemoryOS2{
    // This prevents the shadow evaluator from resurrecting ungrounded lexical candidates.
    if(this.captureRankedChannelIds){
     const groundedIds=new Set(groundedRows.map(row=>row.m.id));
-    const take=(ranked:Map<string,number>)=>[...ranked.keys()].filter(id=>groundedIds.has(id)).slice(0,this.rankedChannelCaptureLimit);
+    const take=(ranked:Map<string,number>)=>[...ranked.entries()].filter(([id])=>groundedIds.has(id)).sort((left,right)=>right[1]-left[1]||(left[0]<right[0]?-1:left[0]>right[0]?1:0)).slice(0,this.rankedChannelCaptureLimit).map(([id])=>id);
     this.lastRankedChannelIds={
      bm25:take(bm25Rank),
      coverage:take(coverageRank),
