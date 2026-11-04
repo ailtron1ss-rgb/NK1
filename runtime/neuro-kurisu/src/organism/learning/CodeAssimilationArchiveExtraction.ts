@@ -134,17 +134,19 @@ function range(buffer: Buffer, offset: number, size: number, label: string): voi
       offset < 0 || size < 0 || offset + size > buffer.length) fail(`${label}-truncated`);
 }
 function u16(buffer: Buffer, offset: number, label: string): number {
-  range(buffer, offset, 2, label); return buffer.readUInt16LE(offset);
+  range(buffer, offset, 2, label);
+  return new DataView(buffer.buffer, buffer.byteOffset + offset, 2).getUint16(0, true);
 }
 function u32(buffer: Buffer, offset: number, label: string): number {
-  range(buffer, offset, 4, label); return buffer.readUInt32LE(offset);
+  range(buffer, offset, 4, label);
+  return new DataView(buffer.buffer, buffer.byteOffset + offset, 4).getUint32(0, true);
 }
 function findEocd(buffer: Buffer): number {
   if (buffer.length < 22) fail('end-record-missing');
   const first = Math.max(0, buffer.length - 22 - 65_535);
   for (let offset = buffer.length - 22; offset >= first; offset -= 1) {
-    if (buffer.readUInt32LE(offset) === EOCD &&
-        offset + 22 + buffer.readUInt16LE(offset + 20) === buffer.length) return offset;
+    if (u32(buffer, offset, 'end-record') === EOCD &&
+        offset + 22 + u16(buffer, offset + 20, 'end-record') === buffer.length) return offset;
   }
   return fail('end-record-invalid');
 }
@@ -161,7 +163,7 @@ function checkExtra(extra: Buffer, scope: string): void {
   let offset = 0;
   while (offset < extra.length) {
     if (offset + 4 > extra.length) fail(`${scope}-extra-truncated`);
-    const id = extra.readUInt16LE(offset), length = extra.readUInt16LE(offset + 2);
+    const id = u16(extra, offset, `${scope}-extra`), length = u16(extra, offset + 2, `${scope}-extra`);
     offset += 4;
     if (offset + length > extra.length) fail(`${scope}-extra-truncated`);
     if (id === ZIP64) fail('zip64-unsupported');
@@ -258,7 +260,9 @@ function validateLocalRecords(buffer: Buffer, entries: ParsedEntry[], centralOff
     const extraLength = u16(buffer, offset + 28, 'local-header');
     range(buffer, offset + 30, nameLength + extraLength, 'local-header');
     if (flags !== entry.flags || method !== entry.method || nameLength !== entry.localName.length) fail('local-central-header-mismatch');
-    if (!buffer.subarray(offset + 30, offset + 30 + nameLength).equals(entry.localName)) fail('local-central-name-mismatch');
+    const localName = buffer.subarray(offset + 30, offset + 30 + nameLength);
+    if (localName.length !== entry.localName.length ||
+        localName.some((byte, index) => byte !== entry.localName[index])) fail('local-central-name-mismatch');
     checkExtra(buffer.subarray(offset + 30 + nameLength, offset + 30 + nameLength + extraLength), 'local');
     if (compressed === 0xffffffff || expanded === 0xffffffff) fail('zip64-unsupported');
     const hasDescriptor = (flags & DESCRIPTOR_FLAG) !== 0;
