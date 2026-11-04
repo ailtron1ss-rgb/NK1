@@ -72,6 +72,10 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/BoundedRecurrentStateSubstrate.ts
       - runtime/neuro-kurisu/src/organism/cognition/P74IntegratedOrganismKernel.ts
       - runtime/neuro-kurisu/src/organism/cognition/ValuePlasticity.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifelongDevelopmentSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/AutobiographicalNarrative.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/ValueEvolutionEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/BehavioralInfluenceLedger.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -145,6 +149,10 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/BoundedRecurrentStateSubstrate.ts
       - runtime/neuro-kurisu/src/organism/cognition/P74IntegratedOrganismKernel.ts
       - runtime/neuro-kurisu/src/organism/cognition/ValuePlasticity.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifelongDevelopmentSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/AutobiographicalNarrative.ts
+      - runtime/neuro-kurisu/src/organism/cognition/evolution/ValueEvolutionEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/BehavioralInfluenceLedger.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -193,6 +201,10 @@ jobs:
       - name: Run identity-owner consumers
         run: |
           node --experimental-strip-types tests/big-pass-80-developmental-identity.mjs
+          node --experimental-strip-types tests/big-pass-85-self-change-lineage.mjs
+          node --experimental-strip-types tests/big-pass-88-value-attribution.mjs
+          node --experimental-strip-types tests/big-pass-96-value-evidence-gate.mjs
+          node --experimental-strip-types tests/big-pass-163-reality-memory-influence.mjs
           node --experimental-strip-types tests/big-pass-225-228-autonomous-personhood-expansion.mjs
       - name: Run world and temporal-memory owner consumers
         run: |

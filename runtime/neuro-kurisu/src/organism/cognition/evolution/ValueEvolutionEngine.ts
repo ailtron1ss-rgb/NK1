@@ -9,10 +9,14 @@ export interface ValueAttribution {
   rationale:string;
 }
 const clamp=(n:number)=>Math.max(0,Math.min(1,Number.isFinite(n)?n:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const VALUE_NAMES:readonly ValueRevision['value'][]=['curiosity','truth','autonomy','evidence','care','responsibility','social'];
+const sanitizeRevision=(v:unknown):ValueRevision|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;if(!VALUE_NAMES.includes(r.value as ValueRevision['value']))return null;return {id:r.id.slice(0,120),value:r.value as ValueRevision['value'],before:clamp(finN(r.before,0)),after:clamp(finN(r.after,0)),delta:clamp(finN(r.delta,0)),success:clamp(finN(r.success,0)),surprise:clamp(finN(r.surprise,0)),at:Math.max(0,finN(r.at,0))};};
+const sanitizeRatioMap=(v:unknown):Record<string,number>=>{if(!v||typeof v!=='object')return {};const out:Record<string,number>={};for(const [k,x] of Object.entries(v as Record<string,unknown>)){const n=Number(x);if(Number.isFinite(n))out[k.slice(0,64)]=n;}return out;};
 export function defaultValueEvolution():ValueEvolutionState{return{version:1,revisions:[],evidenceStreaks:{},tentativePressure:{},protectedFloor:{truth:0.9,autonomy:0.78,responsibility:0.82,care:0.55,curiosity:0.65,evidence:0.82,social:0.25},totalRevisionMagnitude:0,lastRevisionAt:0};}
 export class ValueEvolutionEngine{
   private state=defaultValueEvolution();
-  restore(v:ValueEvolutionState|undefined){this.state={...defaultValueEvolution(),...(v||{}),revisions:[...(v?.revisions||[])],evidenceStreaks:{...(v?.evidenceStreaks||{})},tentativePressure:{...((v as any)?.tentativePressure||{})},protectedFloor:{...defaultValueEvolution().protectedFloor,...(v?.protectedFloor||{})}};}
+  restore(v:ValueEvolutionState|undefined){const d=defaultValueEvolution();const src:Record<string,unknown>=(v&&typeof v==='object')?v as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let revisions:ValueRevision[]=[];try{const r=read('revisions');if(Array.isArray(r))revisions=r.map(sanitizeRevision).filter((x):x is ValueRevision=>x!==null).slice(-256);}catch{revisions=[];}const floorRaw=sanitizeRatioMap(read('protectedFloor'));const protectedFloor={...d.protectedFloor};for(const k of Object.keys(protectedFloor)){if(k in floorRaw)protectedFloor[k]=clamp(floorRaw[k]);}this.state={version:1,revisions,evidenceStreaks:sanitizeRatioMap(read('evidenceStreaks')),tentativePressure:sanitizeRatioMap(read('tentativePressure')),protectedFloor,totalRevisionMagnitude:Math.max(0,finN(read('totalRevisionMagnitude'),d.totalRevisionMagnitude)),lastRevisionAt:Math.max(0,finN(read('lastRevisionAt'),d.lastRevisionAt))};}
   snapshot(){return structuredClone(this.state);}
 
   /** Attribute an outcome to the value family actually engaged by the action/goal context.
