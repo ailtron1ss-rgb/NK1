@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
+import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
 import { OrganismCore, type OrganismConfig, type PersistedOrganism } from './OrganismCore.ts';
@@ -114,6 +115,18 @@ export interface RuntimeConfig extends OrganismConfig {
   mem0CognitiveRecall?: boolean;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
+}
+
+export interface RuntimeStepOptions {
+  deliberate?: boolean;
+  spontaneous?: boolean;
+  signal?: AbortSignal;
+  /** Suppress immediate language generation while still processing the observation. */
+  suppressResponse?: boolean;
+  /** External plugin observations must not be promoted to direct user goals. */
+  externalGoalPolicy?: RuntimeExternalGoalPolicy;
+  /** Provenance bound by the authenticated N.E.K.O. host adapter. */
+  externalSource?: RuntimeExternalPluginSource;
 }
 
 export interface RuntimeStep { cycle: OrganismCycleResult; worldAction: EnvironmentAction; language?: LanguageResponse; embodiedAction?: EmbodiedActionResult; }
@@ -408,7 +421,7 @@ export class OrganismRuntime {
     return {cycles:total,actions,worldTicks:this.environment.snapshot().tick,neuralLearningUpdates:Number(neural.learningUpdates??0),temporalUpdates:Number(neural.temporalUpdates??0),externalCommands:0};
   }
 
-  async step(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = { deliberate: true }): Promise<RuntimeStep> {
+  async step(externalText?: string, options: RuntimeStepOptions = { deliberate: true }): Promise<RuntimeStep> {
     return this.enqueue(async () => {
       const stepStartedAt=Date.now();
       let stepCpuStart:any=null;
@@ -573,9 +586,10 @@ export class OrganismRuntime {
     }
   }
 
-  private async stepInternal(externalText?: string, options: { deliberate?: boolean; spontaneous?: boolean; signal?: AbortSignal } = {}): Promise<RuntimeStep> {
+  private async stepInternal(externalText?: string, options: RuntimeStepOptions = {}): Promise<RuntimeStep> {
     if (!this.initialized) throw new Error('OrganismRuntime.init() must be called first');
     if (externalText) this.embodiment.userActivity();
+    const externalPluginSource = normalizeRuntimeExternalPluginSource(options.externalSource);
     let body = await this.embodiment.sample();
     const resourceAllocation = this.resourceEconomy.allocate({
       tick: this.core.operationalStatusSnapshot().tick,
@@ -632,7 +646,7 @@ export class OrganismRuntime {
     // Validate the normalized observation before any nested fields are consumed.
     assertCognitiveCycleBoundaryInput(observation, 'full');
     const modalityEvents = [];
-    if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:['user-input'], content:externalText }));
+    if (externalText) modalityEvents.push(this.core.recordMultimodalObservation({ modality:'text', summary:externalText.slice(0,500), confidence:.88, salience:.72, evidence:externalPluginSource ? [`plugin:${externalPluginSource.pluginId}:${externalPluginSource.messageId}`] : ['user-input'], content:externalText }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'sensor', summary:this.embodiment.resourceSummary(), confidence:body.sensoryFreshness01*.82, salience:Math.max(.18,Math.abs(body.telemetry.motion01 ?? 0)+.15), evidence:['device-telemetry'] }));
     modalityEvents.push(this.core.recordMultimodalObservation({ modality:'world', summary:observation.worldContext.facts.slice(-8).join(' | '), confidence:.7, salience:Math.max(.15,observation.surprise ?? .2), evidence:['world-model'] }));
     // OrganismCore owns the canonical PerceptionEngine and persists its snapshot.
@@ -642,7 +656,7 @@ export class OrganismRuntime {
     const cycle = await this.core.observe({
       ...observation,
       text: externalText,
-      externalGoal: externalText ? { title: externalText.slice(0, 160), importance: 0.65, urgency: 0.4 } : undefined,
+      externalGoal: externalGoalForRuntimeInput(externalText, options.externalGoalPolicy),
       embodiment: { bodyEnergy01: body.bodyEnergy01, cognitiveCapacity01: body.cognitiveCapacity01, thermalStrain01: body.thermalStrain01, sensoryFreshness01: body.sensoryFreshness01, awake: body.awake, battery01: body.telemetry.battery01, cpuLoad01: body.telemetry.cpuLoad01, ramPressure01: body.telemetry.ramPressure01 },
     });
     const perceptionAfter = this.core.perceptionSnapshot();
@@ -761,7 +775,7 @@ export class OrganismRuntime {
       ? this.core.autonomousSocialInitiativeForGeneration()
       : null;
     const languageBudgetAllows = currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode);
-    if (this.config.enableLanguage && this.config.languageInvoker && languageBudgetAllows && (Boolean(externalText) || Boolean(autonomousAgenda))) {
+    if (shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:Boolean(this.config.languageInvoker), languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
       const mem0Query = externalText || autonomousAgenda?.topic || '';
       const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
       const request = externalText
@@ -1033,7 +1047,7 @@ export class OrganismRuntime {
     // Record causal-cycle completion only after feedback, model updates, and embodiment state updates have actually run.
     const cycleStageIds = this.cognitiveEventFabric.recordOperationalCycle({
       tick:cycle.state.tick,
-      observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
+      observation:{source:externalPluginSource ? `neko-plugin:${externalPluginSource.pluginId}` : 'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id,...(externalPluginSource ? {externalSourceKind:externalPluginSource.kind,externalMessageId:externalPluginSource.messageId} : {})}},
       prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
       appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
       attention:{source:'global-workspace',confidence01:clamp01(cycle.workspace.selected.length/Math.max(1,cycle.decision.candidates.length)),payload:{broadcastId:cycle.workspace.broadcastId,selectedCandidateIds:cycle.workspace.selected.slice(0,16),recurrentCycles:cycle.workspace.recurrentCycles,attentionBudget01:cycle.state.attentionBudget}},
