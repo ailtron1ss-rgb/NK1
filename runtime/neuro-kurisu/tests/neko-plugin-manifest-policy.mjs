@@ -217,4 +217,25 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
   assert.equal(await unavailable.authorize(context(), registeredTools[0]), false);
 }
 
-console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=11');
+
+/* Restore is atomic and fail-closed: no valid prefix may survive a bad row. */
+{
+  const registry = makeRegistry();
+  assert.equal(registry.register(manifest()).registered, true);
+  const malformedSnapshot = { version: 1, manifests: [manifest(), manifest({ id: 'calendar' })] };
+  assert.equal(registry.restore(malformedSnapshot), 0);
+  assert.equal(registry.list().length, 0);
+  assert.equal(await registry.authorize(context(), registeredTools[0]), false);
+
+  const duplicateSnapshot = { version: 1, manifests: [manifest(), manifest()] };
+  assert.equal(registry.restore(duplicateSnapshot), 0);
+  assert.equal(registry.list().length, 0);
+  assert.equal(await registry.authorize(context(), registeredTools[0]), false);
+
+  const validSnapshot = { version: 1, manifests: [manifest()] };
+  assert.equal(registry.restore(validSnapshot), 1);
+  assert.equal(registry.list().length, 1);
+  assert.equal(await registry.authorize(context(), registeredTools[0]), true);
+}
+
+console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=12');
