@@ -38,3 +38,8 @@ jobs:
         env:
           NEUROK_OS_STATE_DIR: ${{ runner.temp }}/neurok-os-claims
         run: npm run neurok-os:claims -- list
+
+      - name: Verify read-set snapshot CLI
+        run: |
+          npm run neurok-os:snapshot -- --paths package.json --out "$RUNNER_TEMP/neurok-os-read-set.json"
+          node -e "const fs=require('node:fs'); const data=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/neurok-os-read-set.json','utf8')); if (data.length !== 1 || data[0].path !== 'package.json' || !/^[a-f0-9]{64}$/.test(data[0].sha256)) process.exit(1)"
