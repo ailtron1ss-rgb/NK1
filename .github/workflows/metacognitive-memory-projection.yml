@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
       - "runtime/neuro-kurisu/src/organism/memory/MemoryConsolidationController.ts"
       - "runtime/neuro-kurisu/src/organism/memory/MetacognitiveMemoryProjection.ts"
@@ -12,6 +13,7 @@ on:
   push:
     branches:
       - "aspect/metacognitive-memory-consolidation-20261103"
+      - "aspect/metacognitive-full-cycle-lineage-20261104"
     paths:
       - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
       - "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts"
