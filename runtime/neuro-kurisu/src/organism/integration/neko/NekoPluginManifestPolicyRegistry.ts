@@ -238,6 +238,14 @@ export class NekoPluginManifestPolicyRegistry {
     return this.manifests.size;
   }
 
+  /** Bind the registry instance for direct injection into PluginGatewayAdapter.authorize. */
+  asAuthorizer(): (
+    request: NekoPluginManifestPolicyContext,
+    suppliedTool: NekoPluginRegisteredTool,
+  ) => Promise<boolean> {
+    return (request, suppliedTool) => this.authorize(request, suppliedTool);
+  }
+
   /** Signature-compatible with PluginGatewayAdapter's host authorization callback. */
   async authorize(
     request: NekoPluginManifestPolicyContext,
