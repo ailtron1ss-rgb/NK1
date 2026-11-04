@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { MemoryOS2 } from '../src/organism/developmental/MemoryOS2.ts';
-import { fingerprintMemoryRetrievalDataset, runMemoryOS2RetrievalBenchmark } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { fingerprintMemoryRetrievalDataset } from '../src/organism/memory/MemoryRetrievalBenchmark.ts';
+import { runMemoryOS2RetrievalExperiment } from '../src/organism/memory/MemoryRetrievalExperiment.ts';
 import { previewNekoHybridMemoryRanking } from '../../../integrations/neko-memory-shadow/src/memoryos2-preview.mjs';
 
 const memory = new MemoryOS2({ embeddingProvider: null });
@@ -50,10 +51,10 @@ for (const query of new Set(examples.map(example => example.query))) {
   shadowByQuery.set(query, result.shadowIds.map(id => itemById.get(id)).filter(Boolean));
 }
 let injectedCandidateCalls = 0;
-const report = runMemoryOS2RetrievalBenchmark(snapshot, examples, {
+const report = runMemoryOS2RetrievalExperiment(snapshot, examples, {
   now: Date.now(),
   k: 1,
-  seed: 13,
+  seeds: [11, 29, 47, 71, 101],
   bootstrapSamples: 200,
   minHoldoutQueries: 20,
   minUnanswerableHoldoutQueries: 4,
@@ -82,7 +83,7 @@ assert.ok(report.metrics.candidate.recallAtK01 > .5,
 assert.equal(report.metrics.candidate.unsupportedRetrievalRate01, 0,
   'unanswerable holdout queries must remain abstentions');
 assert.ok(report.metrics.candidate.falseAbstentionRate01 < .1);
-assert.ok(injectedCandidateCalls > 0, 'benchmark must invoke the injected shadow candidate arm');
+assert.ok(injectedCandidateCalls >= examples.length * 5, 'paired benchmark must invoke the injected shadow candidate arm for every example and seed');
 assert.equal(report.candidateStrategy, 'neko-shadow-rrf');
 assert.ok(report.queryEvidence.holdout.filter(row => row.answerable).every(row => row.candidateRankedMemory.length > 0),
   'the existing Inspect evidence export must contain the real shadow arm for answerable holdout rows');
@@ -93,8 +94,8 @@ assert.equal(report.promotion.allowed, false, 'synthetic CI evidence must never 
 console.log(JSON.stringify({
   status: 'PASS',
   suite: 'neko-memory-holdout-shadow-evaluation',
-  baselineRecallAtK01: report.metrics.baseline.recallAtK01,
-  shadowRecallAtK01: report.metrics.candidate.recallAtK01,
+  pairedSeeds: report.seedCount,
+  shadowRecallAtK01: report.runs[0].candidateHoldout.recallAtK01,
   inspectEvidenceRows: report.queryEvidence.holdout.length,
   syntheticPromotionBlocked: report.promotion.allowed === false,
 }));
