@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { OrganismRuntime } from '../src/organism/core/OrganismRuntime.ts';
 import { FileStateStore } from '../src/organism/persistence/FileStateStore.ts';
+import { CognitiveEventFabric } from '../src/organism/system/CognitiveEventFabric.ts';
+import { validateCognitiveStageReceipt } from '../src/organism/system/CognitiveStageReceipt.ts';
 
 // W01: exercise the real owner-to-runtime-to-CEF path, not synthetic phase objects.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nk1-stage-evidence-w01-'));
@@ -83,4 +85,45 @@ try {
 } finally {
   await runtime.stop().catch(() => {});
   fs.rmSync(dir, { recursive: true, force: true });
+}
+
+
+// Receipt shape and CEF admission are strict; a graph node alone is not owner evidence.
+{
+  const attentionReceipt = {
+    id: 'nk1-cycle:9:attention', cycleId: 'nk1-cycle:9', tick: 9, stage: 'attention',
+    owner: 'OrganismCore.attend', status: 'completed',
+    inputRefs: [], outputRefs: ['attention-state:9'], consumedStageReceipts: [], outputHash: 'a'.repeat(64),
+  };
+  const memoryReceipt = {
+    id: 'nk1-cycle:9:memory', cycleId: 'nk1-cycle:9', tick: 9, stage: 'memory',
+    owner: 'MemoryFabric.retrieveForCognition', status: 'completed_empty',
+    inputRefs: ['query-sha256:' + 'b'.repeat(64)], outputRefs: [], consumedStageReceipts: [], outputHash: 'c'.repeat(64),
+  };
+  assert.equal(validateCognitiveStageReceipt(attentionReceipt, { tick: 9, stage: 'attention' }).ok, true);
+  assert.equal(validateCognitiveStageReceipt({ ...attentionReceipt, tick: 10 }, { tick: 9 }).ok, false);
+  assert.equal(validateCognitiveStageReceipt({ ...attentionReceipt, owner: 'global-workspace' }).ok, false);
+  assert.equal(validateCognitiveStageReceipt({ ...memoryReceipt, status: 'completed' }).ok, false);
+
+  const fabric = new CognitiveEventFabric();
+  assert.throws(
+    () => fabric.recordOperationalCycle({
+      tick: 9,
+      attention: { source: 'OrganismCore.attend', receipt: { ...attentionReceipt, tick: 8 }, payload: {} },
+    }),
+    /invalid-stage-owner-receipt:attention:.*tick-mismatch/,
+  );
+  const ids = fabric.recordOperationalCycle({
+    tick: 9,
+    observation: { source: 'runtime' },
+    appraisal: { source: 'homeostatic-appraisal' },
+    attention: { source: 'OrganismCore.attend', receipt: attentionReceipt, payload: { timing: 'pre-decision' } },
+    memory: { source: 'MemoryFabric.retrieveForCognition', receipt: memoryReceipt, payload: { status: 'completed_empty' } },
+  });
+  const check = fabric.verifyOperationalCycle(ids, [attentionReceipt, memoryReceipt]);
+  assert.equal(check.ownerEvidenceComplete, true);
+  assert.deepEqual(check.missingOwnerEvidenceStages, []);
+  const missing = fabric.verifyOperationalCycle(ids, [attentionReceipt]);
+  assert.equal(missing.ownerEvidenceComplete, false);
+  assert.deepEqual(missing.missingOwnerEvidenceStages, ['memory']);
 }

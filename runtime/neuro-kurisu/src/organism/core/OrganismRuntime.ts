@@ -1036,8 +1036,49 @@ export class OrganismRuntime {
       observation:{source:'runtime',external:Boolean(externalText),confidence01:.72,payload:{predictionError:cycle.state.predictionError,selectedAction:internalAction,evidenceId:observationEvidence.id}},
       prediction:{source:'reward-model',confidence01:plan.steps[0]?.confidence ?? .5,payload:{predictionId:rewardPredictionId,evidenceId:predictionEvidence.id,action:worldAction,predicted01:expectedReward,shadowModel:true}},
       appraisal:{source:'homeostatic-appraisal',confidence01:clamp01(1-cycle.state.needs.uncertainty),payload:{energy01:cycle.state.needs.energy,cognitiveLoad01:cycle.state.needs.cognitiveLoad,uncertainty01:cycle.state.needs.uncertainty,novelty01:cycle.state.needs.novelty,socialNeed01:cycle.state.needs.socialNeed,goalPressure01:cycle.state.needs.goalPressure,predictionError01:cycle.state.predictionError}},
-      attention:{source:'global-workspace',confidence01:clamp01(cycle.workspace.selected.length/Math.max(1,cycle.decision.candidates.length)),payload:{broadcastId:cycle.workspace.broadcastId,selectedCandidateIds:cycle.workspace.selected.slice(0,16),recurrentCycles:cycle.workspace.recurrentCycles,attentionBudget01:cycle.state.attentionBudget}},
-      memory:{source:'active-memory-context',confidence01:clamp01(cycle.memories.length/8),payload:{retrievedMemoryIds:cycle.memories.slice(0,12).map(memory=>memory.id),retrievedCount:cycle.memories.length,continuity01:continuousFabric.continuity01,memoryRetention01:continuousFabric.memoryRetention01,lastSpine01:continuousFabric.lastSpine01}},
+      attention:cycle.stageEvidence ? {
+        source:'OrganismCore.attend',
+        confidence01:cycle.stageEvidence.attention.confidence,
+        receipt:cycle.stageEvidence.receipts.find(receipt=>receipt.stage==='attention'),
+        payload:{
+          receiptId:cycle.stageEvidence.receipts.find(receipt=>receipt.stage==='attention')?.id,
+          status:'completed',
+          timing:cycle.stageEvidence.attention.timing,
+          target:cycle.stageEvidence.attention.target,
+          reason:cycle.stageEvidence.attention.reason,
+          salience:cycle.stageEvidence.attention.salience,
+          confidence:cycle.stageEvidence.attention.confidence,
+          budget:cycle.stageEvidence.attention.budget,
+          inhibited:cycle.stageEvidence.attention.inhibited,
+          switchedAt:cycle.stageEvidence.attention.switchedAt,
+          postDecisionWorkspace:{
+            broadcastId:cycle.workspace.broadcastId,
+            selectedCandidateIds:cycle.workspace.selected.slice(0,16),
+            recurrentCycles:cycle.workspace.recurrentCycles,
+          },
+          attentionBudget01:cycle.state.attentionBudget,
+        },
+      } : undefined,
+      memory:cycle.stageEvidence ? {
+        source:'MemoryFabric.retrieveForCognition',
+        confidence01:cycle.stageEvidence.memory.meanConfidence01,
+        receipt:cycle.stageEvidence.receipts.find(receipt=>receipt.stage==='memory'),
+        payload:{
+          receiptId:cycle.stageEvidence.receipts.find(receipt=>receipt.stage==='memory')?.id,
+          status:cycle.stageEvidence.memory.status,
+          enabled:cycle.stageEvidence.memory.enabled,
+          queryKind:cycle.stageEvidence.memory.queryKind,
+          queryDigest:cycle.stageEvidence.memory.queryDigest,
+          retrievedMemoryIds:cycle.stageEvidence.memory.retrievedMemoryIds,
+          retrievedCount:cycle.stageEvidence.memory.retrievedCount,
+          requestedLimit:cycle.stageEvidence.memory.requestedLimit,
+          meanConfidence01:cycle.stageEvidence.memory.meanConfidence01,
+          storedMemoryCount:cycle.memories.length,
+          continuity01:continuousFabric.continuity01,
+          memoryRetention01:continuousFabric.memoryRetention01,
+          lastSpine01:continuousFabric.lastSpine01,
+        },
+      } : undefined,
       goal:{source:'canonical-goal-selection',confidence01:clamp01(cycle.decision.selected?.confidence ?? .5),payload:{selectedGoalId:cycle.decision.selected?.goalId ?? null,activeGoalIds:cycle.goals.slice(0,12).map(goal=>goal.id),autonomousOverride:cycle.decision.autonomousOverride}},
       plan:{source:'plan-engine',confidence01:clamp01(plan.steps[0]?.confidence ?? .5),payload:{stepCount:plan.steps.length,nextAction:worldAction,firstStepConfidence01:plan.steps[0]?.confidence ?? null}},
       action:{source:'organism-action-gate',confidence01:cycle.decision.selected?.confidence ?? .5,payload:{evidenceId:actionEvidence.id,action:embodiedAction.action,internalAction,goalId:cycle.decision.selected?.goalId ?? null}},
@@ -1049,8 +1090,8 @@ export class OrganismRuntime {
     const fabricSnapshot = this.cognitiveEventFabric.snapshot();
     this.core.setRuntimeCognitiveEventFabric(fabricSnapshot);
     const cycleStageMap = {observation:cycleStageIds.observation,prediction:cycleStageIds.prediction,appraisal:cycleStageIds.appraisal,attention:cycleStageIds.attention,memory:cycleStageIds.memory,goal:cycleStageIds.goal,plan:cycleStageIds.plan,action:cycleStageIds.action,outcome:cycleStageIds.outcome,learning:cycleStageIds.learning,'self-update':cycleStageIds.selfUpdate};
-    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap);
-    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete,fullIntegrity01:cycleLineage.fullIntegrity01});
+    const cycleLineage = this.cognitiveEventFabric.verifyOperationalCycle(cycleStageMap, cycle.stageEvidence?.receipts);
+    const cycleVerification = this.unifiedCycle.evaluate({tick:cycle.state.tick,stageIds:cycleStageMap,parentIntegrity01:cycleLineage.coreIntegrity01,coreLineageComplete:cycleLineage.coreComplete,fullLineageComplete:cycleLineage.fullComplete && cycleLineage.ownerEvidenceComplete,fullIntegrity01:cycleLineage.ownerEvidenceComplete ? cycleLineage.fullIntegrity01 : 0});
     this.core.setRuntimeUnifiedCognitiveCycle(this.unifiedCycle.snapshot());
     this.core.recordRealityEvidence({tick:cycle.state.tick,realityClass:'derived',claim:'cognitive-cycle-completeness',confidence01:cycleVerification.complete ? .95 : .35,independenceKey:`cycle:${cycle.state.tick}`,parentIds:Object.values(cycleStageIds).filter(Boolean) as string[]});
 

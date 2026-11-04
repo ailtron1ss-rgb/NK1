@@ -1,3 +1,4 @@
+import { validateCognitiveStageReceipt, type CognitiveStageReceipt, type CognitiveStageOwnerName } from './CognitiveStageReceipt.ts';
 import { sha256Stable } from '../core/StableSerialization.ts';
 
 /**
@@ -24,7 +25,7 @@ export interface CognitiveEventNode {
 
 export type OperationalCycleStageName = 'observation'|'prediction'|'appraisal'|'attention'|'memory'|'goal'|'plan'|'action'|'outcome'|'learning'|'self-update';
 export type OperationalCycleStageIds = Partial<Record<OperationalCycleStageName, string | undefined>>;
-type OperationalCyclePhaseInput = { source?:string; external?:boolean; confidence01?:number; payload?:Record<string,unknown> };
+type OperationalCyclePhaseInput = { source?:string; external?:boolean; confidence01?:number; payload?:Record<string,unknown>; receipt?:CognitiveStageReceipt };
 
 export interface OperationalCycleLineageCheck {
   tick: number | null;
@@ -43,6 +44,10 @@ export interface OperationalCycleLineageCheck {
   missingEdges: string[];
   coreMissingEdges: string[];
   fullMissingEdges: string[];
+  /** Owner evidence is distinct from graph shape and is required for strict full-cycle admission. */
+  ownerEvidenceComplete: boolean;
+  missingOwnerEvidenceStages: string[];
+  invalidOwnerEvidence: string[];
 }
 
 export interface ExternalObservationProjectionRef { observationId:string; eventId:string; projectionHash:string; projectedAt:number; }
@@ -456,8 +461,26 @@ export class CognitiveEventFabric {
     if(input.observation){const e=this.append({tick:input.tick,stage:'observation',source:input.observation.source??'runtime',external:input.observation.external,confidence01:input.observation.confidence01,payload:input.observation.payload,at:input.at});ids.observation=e.id;}
     if(input.prediction){const e=this.append({tick:input.tick,stage:'prediction',source:input.prediction.source??'prediction',parentIds:parents(ids.observation),confidence01:input.prediction.confidence01,payload:input.prediction.payload,at:input.at});ids.prediction=e.id;}
     if(input.appraisal){const e=this.append({tick:input.tick,stage:'appraisal',source:input.appraisal.source??'appraisal',parentIds:parents(ids.observation,ids.prediction),confidence01:input.appraisal.confidence01,payload:input.appraisal.payload,at:input.at});ids.appraisal=e.id;}
-    if(input.attention){const e=this.append({tick:input.tick,stage:'attention',source:input.attention.source??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:input.attention.confidence01,payload:input.attention.payload,at:input.at});ids.attention=e.id;}
-    if(input.memory){const e=this.append({tick:input.tick,stage:'memory',source:input.memory.source??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:input.memory.confidence01,payload:input.memory.payload,at:input.at});ids.memory=e.id;}
+    if(input.attention){
+      const receipt = input.attention.receipt
+        ? validateCognitiveStageReceipt(input.attention.receipt,{tick:input.tick,stage:'attention'})
+        : undefined;
+      if(receipt && !receipt.ok) throw new Error(`invalid-stage-owner-receipt:attention:${receipt.issues.join(',')}`);
+      if(receipt?.ok && input.attention.source && input.attention.source !== receipt.receipt.owner) throw new Error('invalid-stage-owner-receipt:attention:owner-source-mismatch');
+      const ownerReceipt = receipt?.ok ? receipt.receipt : undefined;
+      const payload = {...(input.attention.payload??{}),...(ownerReceipt?{ownerReceipt}:{})};
+      const e=this.append({tick:input.tick,stage:'attention',source:input.attention.source??ownerReceipt?.owner??'attention',parentIds:parents(ids.appraisal,ids.prediction),confidence01:input.attention.confidence01,payload,at:input.at});ids.attention=e.id;
+    }
+    if(input.memory){
+      const receipt = input.memory.receipt
+        ? validateCognitiveStageReceipt(input.memory.receipt,{tick:input.tick,stage:'memory'})
+        : undefined;
+      if(receipt && !receipt.ok) throw new Error(`invalid-stage-owner-receipt:memory:${receipt.issues.join(',')}`);
+      if(receipt?.ok && input.memory.source && input.memory.source !== receipt.receipt.owner) throw new Error('invalid-stage-owner-receipt:memory:owner-source-mismatch');
+      const ownerReceipt = receipt?.ok ? receipt.receipt : undefined;
+      const payload = {...(input.memory.payload??{}),...(ownerReceipt?{ownerReceipt}:{})};
+      const e=this.append({tick:input.tick,stage:'memory',source:input.memory.source??ownerReceipt?.owner??'memory',parentIds:parents(ids.attention,ids.observation),confidence01:input.memory.confidence01,payload,at:input.at});ids.memory=e.id;
+    }
     if(input.goal){const e=this.append({tick:input.tick,stage:'goal',source:input.goal.source??'goal',parentIds:parents(ids.appraisal,ids.memory,ids.prediction),confidence01:input.goal.confidence01,payload:input.goal.payload,at:input.at});ids.goal=e.id;}
     if(input.plan){const e=this.append({tick:input.tick,stage:'plan',source:input.plan.source??'plan',parentIds:parents(ids.goal,ids.prediction),confidence01:input.plan.confidence01,payload:input.plan.payload,at:input.at});ids.plan=e.id;}
     if(input.action){const e=this.append({tick:input.tick,stage:'action',source:input.action.source??'action',parentIds:parents(ids.plan,ids.prediction,ids.observation),confidence01:input.action.confidence01,payload:input.action.payload,at:input.at});ids.action=e.id;}
@@ -549,7 +572,7 @@ export class CognitiveEventFabric {
     return{resolved:true,replayed:false,eventId:event.id,projectionHash};
   }
 
-  verifyOperationalCycle(stageIds: OperationalCycleStageIds): OperationalCycleLineageCheck {
+  verifyOperationalCycle(stageIds: OperationalCycleStageIds, ownerReceipts?: readonly CognitiveStageReceipt[]): OperationalCycleLineageCheck {
     const required = ['observation','prediction','action','outcome','learning','self-update'] as const;
     const optional = ['appraisal','attention','memory','goal','plan'] as const;
     const byId = new Map(this.events.map(event => [event.id, event] as const));
@@ -580,6 +603,55 @@ export class CognitiveEventFabric {
       found.set(stage, event);
     }
 
+    const requiredOwnerStages: readonly CognitiveStageOwnerName[] = ['attention','memory'];
+    const missingOwnerEvidenceStages: string[] = [];
+    const invalidOwnerEvidence: string[] = [];
+    const expectedOwnerReceipts = new Map<CognitiveStageOwnerName,CognitiveStageReceipt>();
+    for (const rawReceipt of ownerReceipts ?? []) {
+      const validation = validateCognitiveStageReceipt(rawReceipt, cycleTick === null ? {} : {tick:cycleTick});
+      if (!validation.ok) {
+        invalidOwnerEvidence.push(...validation.issues);
+        continue;
+      }
+      const receipt = validation.receipt;
+      if (expectedOwnerReceipts.has(receipt.stage)) {
+        invalidOwnerEvidence.push(receipt.stage + ':duplicate-owner-receipt');
+        continue;
+      }
+      expectedOwnerReceipts.set(receipt.stage,receipt);
+    }
+    for (const stage of requiredOwnerStages) {
+      const expectedReceipt = expectedOwnerReceipts.get(stage);
+      const event = found.get(stage);
+      if (!expectedReceipt) {
+        missingOwnerEvidenceStages.push(stage);
+        continue;
+      }
+      if (!event) {
+        missingOwnerEvidenceStages.push(stage);
+        continue;
+      }
+      const persisted = validateCognitiveStageReceipt(event.payload.ownerReceipt, {tick:cycleTick ?? expectedReceipt.tick,stage});
+      if (!persisted.ok) {
+        invalidOwnerEvidence.push(stage + ':cef-owner-receipt-' + persisted.issues.join(','));
+        continue;
+      }
+      if (event.source !== expectedReceipt.owner ||
+          persisted.receipt.id !== expectedReceipt.id ||
+          persisted.receipt.cycleId !== expectedReceipt.cycleId ||
+          persisted.receipt.owner !== expectedReceipt.owner ||
+          persisted.receipt.status !== expectedReceipt.status ||
+          JSON.stringify(persisted.receipt.inputRefs) !== JSON.stringify(expectedReceipt.inputRefs) ||
+          JSON.stringify(persisted.receipt.outputRefs) !== JSON.stringify(expectedReceipt.outputRefs) ||
+          JSON.stringify(persisted.receipt.consumedStageReceipts) !== JSON.stringify(expectedReceipt.consumedStageReceipts) ||
+          persisted.receipt.outputHash !== expectedReceipt.outputHash) {
+        invalidOwnerEvidence.push(stage + ':cef-owner-receipt-mismatch');
+      }
+    }
+    const ownerEvidenceComplete =
+      missingOwnerEvidenceStages.length === 0 &&
+      invalidOwnerEvidence.length === 0 &&
+      requiredOwnerStages.every(stage => expectedOwnerReceipts.has(stage));
     const requiredEdges: Array<[OperationalCycleStageName, OperationalCycleStageName, string]> = [
       ['prediction','observation','prediction->observation'],
       ['action','prediction','action->prediction'],
@@ -680,6 +752,9 @@ export class CognitiveEventFabric {
       missingEdges,
       coreMissingEdges,
       fullMissingEdges,
+      ownerEvidenceComplete,
+      missingOwnerEvidenceStages,
+      invalidOwnerEvidence,
     };
   }
 
