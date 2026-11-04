@@ -1,9 +1,11 @@
+import { types as nodeTypes } from 'node:util';
+
 const DEFAULT_RRF_K = 60;
 const MAX_CHANNELS = 8;
 const MAX_ID_LENGTH = 256;
 
 function isPlainRecord(value) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  if (value === null || typeof value !== 'object' || nodeTypes.isProxy(value) || Array.isArray(value)) return false;
   try {
     const prototype = Object.getPrototypeOf(value);
     return prototype === Object.prototype || prototype === null;
@@ -36,7 +38,7 @@ function readFields(record, keys) {
 
 function readDensePrefix(value, maximum) {
   try {
-    if (!Array.isArray(value)) return null;
+    if (nodeTypes.isProxy(value) || !Array.isArray(value)) return null;
     const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
     const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')
       ? lengthDescriptor.value : Number.NaN;
