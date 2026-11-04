@@ -7,6 +7,7 @@ const preview = {
   rankedChannels: {
     bm25: ['baseline-a', 'shared', 'lexical'],
     vector: ['shared', 'baseline-b', 'semantic'],
+    metadata: [],
   },
   currentRrfK: 60,
   currentRrfWeights: { bm25: 1, vector: 0.5, metadata: 0 },
@@ -15,9 +16,10 @@ const preview = {
 
 test('MemoryOS2 preview converts ranked ID channels into a text-free RRF comparison', () => {
   const result = evaluateMemoryOS2ShadowPreview(preview, { limit: 3 });
-  assert.equal(result.channelNames.length, 2);
+  assert.equal(result.channelNames.length, 3);
   assert.equal(result.shadowIds[0], 'shared');
   assert.equal(result.currentRrfK, 60);
+  assert.equal(result.currentRrfWeights.metadata, 0);
   assert.equal(result.currentRrfWeights.metadata, 0);
   assert.equal(result.diagnostics.groundedAfterGate, 3);
   assert.ok(!JSON.stringify(result).includes('memory text'));
