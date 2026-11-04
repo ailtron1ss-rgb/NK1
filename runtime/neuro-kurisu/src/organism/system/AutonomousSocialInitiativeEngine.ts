@@ -111,73 +111,149 @@ const validKind = (value: unknown): SocialInitiativeKind => {
   return values.includes(value as SocialInitiativeKind) ? value as SocialInitiativeKind : 'share-thought';
 };
 
+const INITIATIVE_PENDING_TTL_MS = 20 * 60_000;
+const MAX_SOCIAL_COUNTER = 1_000_000_000;
+type SocialRecord = Record<string, unknown>;
+function isPlainRecord(value: unknown): value is SocialRecord {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+function ownData(record: SocialRecord, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor && Object.prototype.hasOwnProperty.call(descriptor, 'value') ? descriptor.value : undefined;
+}
+function safeCounter(value: unknown, fallback: number, maximum = MAX_SOCIAL_COUNTER): number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? Math.min(maximum, value) : fallback;
+}
+function safeTime(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+function safeRatio(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? clamp(value) : fallback;
+}
+function normalizeRestoredInitiative(raw: unknown, index: number): { item: SocialInitiative | null; privacyDeferred: boolean } {
+  if (!isPlainRecord(raw) || Object.getOwnPropertySymbols(raw).length > 0) return { item: null, privacyDeferred: false };
+  const rawStatus = ownData(raw, 'status');
+  let status: SocialInitiativeStatus = rawStatus === 'ready' || rawStatus === 'executed' || rawStatus === 'deferred' ? rawStatus : 'planned';
+  const kind = validKind(ownData(raw, 'kind'));
+  const rawTopic = ownData(raw, 'topic') ?? (kind === 'collaborate' ? 'A possible shared idea worth exploring' : 'A thought worth exploring in conversation');
+  const safeTopic = sanitizeAutonomousTopicText(rawTopic, 360);
+  const rawMessage = ownData(raw, 'message');
+  const safeMessage = typeof rawMessage === 'string' ? sanitizeAutonomousDialogueMessage(rawMessage) : null;
+  const unsafeTopic = !safeTopic;
+  const unsafeReadyMessage = typeof rawMessage === 'string' && !safeMessage && (status === 'ready' || status === 'planned');
+  const createdAt = safeTime(ownData(raw, 'createdAt')) ?? 0;
+  const rawStagedAt = safeTime(ownData(raw, 'stagedAt'));
+  const rawResolvedAt = safeTime(ownData(raw, 'resolvedAt'));
+  const readyStateInvalid = status === 'ready' && (!safeMessage || rawStagedAt === undefined || rawStagedAt < createdAt);
+  let privacyDeferred = false;
+  if ((unsafeTopic || unsafeReadyMessage || readyStateInvalid) && status !== 'executed' && status !== 'deferred') {
+    status = 'deferred';
+    privacyDeferred = true;
+  }
+  const safeReason = sanitizeAutonomousTopicText(ownData(raw, 'reason') ?? 'restored autonomous initiative', 240) ?? 'restored autonomous initiative';
+  const rawContact = ownData(raw, 'contact');
+  const contact = typeof rawContact === 'string' && rawContact !== 'ambient-network' && isSafeTopic(rawContact)
+    ? rawContact.slice(0, 128) : null;
+  const rawAffect = ownData(raw, 'affect');
+  const affect = isPlainRecord(rawAffect) && validEmotion(ownData(rawAffect, 'label'))
+    ? {
+        label: validEmotion(ownData(rawAffect, 'label'))!,
+        valence01: safeRatio(ownData(rawAffect, 'valence01'), .5),
+        arousal01: safeRatio(ownData(rawAffect, 'arousal01'), .3),
+        confidence01: safeRatio(ownData(rawAffect, 'confidence01'), .2),
+      }
+    : undefined;
+  const rawInterest = ownData(raw, 'interestContext');
+  const interestContext = isPlainRecord(rawInterest)
+    && typeof ownData(rawInterest, 'domainId') === 'string'
+    && typeof ownData(rawInterest, 'label') === 'string'
+    ? {
+        domainId: String(ownData(rawInterest, 'domainId')).replace(/[^a-z0-9-]/gi, '').slice(0, 64),
+        label: sanitizeAutonomousTopicText(ownData(rawInterest, 'label'), 120) ?? 'personal interest',
+        strength01: safeRatio(ownData(rawInterest, 'strength01'), .5),
+        confidence01: safeRatio(ownData(rawInterest, 'confidence01'), .2),
+        evidenceCount: safeCounter(ownData(rawInterest, 'evidenceCount'), 0, 10_000),
+      }
+    : undefined;
+  const rawId = ownData(raw, 'id');
+  const rawOpeningIntent = ownData(raw, 'openingIntent');
+  const openingIntent: SocialInitiative['openingIntent'] =
+    rawOpeningIntent === 'ask-a-real-question' || rawOpeningIntent === 'offer-an-idea' || rawOpeningIntent === 'continue-a-thread'
+      ? rawOpeningIntent : 'share-observation';
+  const rawFeedbackAt = safeTime(ownData(raw, 'feedbackAt'));
+  const rawFeedbackSignal = validFeedback(ownData(raw, 'feedbackSignal'));
+  return {
+    item: {
+      id: typeof rawId === 'string' && rawId.trim() ? rawId.slice(0, 160) : `restored:${index}`,
+      contact,
+      kind,
+      priority01: safeRatio(ownData(raw, 'priority01'), .4),
+      status,
+      createdAt,
+      reason: unsafeTopic || unsafeReadyMessage || readyStateInvalid ? 'privacy-filtered-restored-initiative' : safeReason,
+      topic: safeTopic ?? 'A previously stored topic was withheld after a privacy check',
+      topicSource: validSource(ownData(raw, 'topicSource')),
+      openingIntent,
+      ...(validTone(ownData(raw, 'toneHint')) ? { toneHint: validTone(ownData(raw, 'toneHint'))! } : {}),
+      ...(affect ? { affect } : {}),
+      ...(safeMessage ? { message: safeMessage } : {}),
+      ...(rawStagedAt !== undefined && rawStagedAt >= createdAt ? { stagedAt: rawStagedAt } : {}),
+      ...(rawResolvedAt !== undefined && rawResolvedAt >= createdAt ? { resolvedAt: rawResolvedAt } : {}),
+      ...(rawFeedbackSignal ? { feedbackSignal: rawFeedbackSignal } : {}),
+      ...(rawFeedbackAt !== undefined ? { feedbackAt: rawFeedbackAt } : {}),
+      ...(Number.isFinite(ownData(raw, 'feedbackRelevance01')) ? { feedbackRelevance01: safeRatio(ownData(raw, 'feedbackRelevance01'), .5) } : {}),
+      ...(interestContext ? { interestContext } : {}),
+    },
+    privacyDeferred,
+  };
+}
+
 export class AutonomousSocialInitiativeEngine {
   private state = defaultAutonomousSocialInitiative();
 
   restore(raw?: Partial<SocialInitiativeState> | null): void {
-    const d = defaultAutonomousSocialInitiative();
-    const r = raw ?? {};
-    const items = Array.isArray(r.initiatives) ? r.initiatives.slice(0, 64) : [];
-    let privacyDeferredCount = 0;
-    const initiatives: SocialInitiative[] = items.map((rawItem: any, index: number) => {
-      const oldStatus = rawItem?.status;
-      let status: SocialInitiativeStatus = oldStatus === 'ready' || oldStatus === 'executed' || oldStatus === 'deferred' ? oldStatus : 'planned';
-      const kind = validKind(rawItem?.kind);
-      const rawTopic = rawItem?.topic ?? (kind === 'collaborate' ? 'A possible shared idea worth exploring' : 'A thought worth exploring in conversation');
-      const safeTopic = sanitizeAutonomousTopicText(rawTopic, 360);
-      const safeMessage = typeof rawItem?.message === 'string' ? sanitizeAutonomousDialogueMessage(rawItem.message) : null;
-      const unsafeTopic = !safeTopic;
-      const unsafeReadyMessage = typeof rawItem?.message === 'string' && !safeMessage && (status === 'ready' || status === 'planned');
-      if ((unsafeTopic || unsafeReadyMessage) && status !== 'executed' && status !== 'deferred') {
-        status = 'deferred';
-        privacyDeferredCount++;
+    const defaults = defaultAutonomousSocialInitiative();
+    try {
+      if (raw == null) { this.state = defaults; return; }
+      if (!isPlainRecord(raw) || Object.getOwnPropertySymbols(raw).length > 0) { this.state = defaults; return; }
+      const rawVersion = ownData(raw, 'version');
+      if (rawVersion !== undefined && rawVersion !== 1) { this.state = defaults; return; }
+      const rawItems = ownData(raw, 'initiatives');
+      const initiatives: SocialInitiative[] = [];
+      const seenIds = new Set<string>();
+      let privacyDeferredCount = 0;
+      if (Array.isArray(rawItems)) {
+        const limit = Math.min(rawItems.length, 64);
+        for (let index = 0; index < limit; index += 1) {
+          const descriptor = Object.getOwnPropertyDescriptor(rawItems, String(index));
+          if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) continue;
+          const normalized = normalizeRestoredInitiative(descriptor.value, index);
+          if (!normalized.item) continue;
+          if (seenIds.has(normalized.item.id)) { privacyDeferredCount++; continue; }
+          seenIds.add(normalized.item.id);
+          initiatives.push(normalized.item);
+          if (normalized.privacyDeferred) privacyDeferredCount++;
+        }
       }
-      const safeReason = sanitizeAutonomousTopicText(rawItem?.reason ?? 'restored autonomous initiative', 240) ?? 'restored autonomous initiative';
-      return {
-        id: String(rawItem?.id ?? `restored:${index}`).slice(0, 160),
-        contact: typeof rawItem?.contact === 'string' && rawItem.contact !== 'ambient-network' ? rawItem.contact.slice(0, 128) : null,
-        kind,
-        priority01: clamp(Number(rawItem?.priority01 ?? .4)),
-        status,
-        createdAt: Number.isFinite(Number(rawItem?.createdAt)) ? Number(rawItem.createdAt) : 0,
-        reason: unsafeTopic || unsafeReadyMessage ? 'privacy-filtered-restored-initiative' : safeReason,
-        topic: safeTopic ?? 'A previously stored topic was withheld after a privacy check',
-        topicSource: validSource(rawItem?.topicSource),
-        openingIntent: rawItem?.openingIntent === 'ask-a-real-question' || rawItem?.openingIntent === 'offer-an-idea' || rawItem?.openingIntent === 'continue-a-thread' ? rawItem.openingIntent : 'share-observation',
-        ...(validTone(rawItem?.toneHint) ? { toneHint: validTone(rawItem?.toneHint)! } : {}),
-        ...(rawItem?.affect && validEmotion(rawItem.affect.label) ? { affect: { label: validEmotion(rawItem.affect.label)!, valence01: clamp(Number(rawItem.affect.valence01 ?? .5)), arousal01: clamp(Number(rawItem.affect.arousal01 ?? .3)), confidence01: clamp(Number(rawItem.affect.confidence01 ?? .2)) } } : {}),
-        ...(safeMessage ? { message: safeMessage } : {}),
-        ...(Number.isFinite(Number(rawItem?.stagedAt)) ? { stagedAt: Number(rawItem.stagedAt) } : {}),
-        ...(Number.isFinite(Number(rawItem?.resolvedAt)) ? { resolvedAt: Number(rawItem.resolvedAt) } : {}),
-        ...(validFeedback(rawItem?.feedbackSignal) ? { feedbackSignal: validFeedback(rawItem?.feedbackSignal)! } : {}),
-        ...(Number.isFinite(Number(rawItem?.feedbackAt)) ? { feedbackAt: Number(rawItem.feedbackAt) } : {}),
-        ...(Number.isFinite(Number(rawItem?.feedbackRelevance01)) ? { feedbackRelevance01: clamp(Number(rawItem.feedbackRelevance01)) } : {}),
-        ...(rawItem?.interestContext && typeof rawItem.interestContext === 'object' && typeof rawItem.interestContext.domainId === 'string' && typeof rawItem.interestContext.label === 'string' ? {
-          interestContext: {
-            domainId: rawItem.interestContext.domainId.replace(/[^a-z0-9-]/gi, '').slice(0,64),
-            label: sanitizeAutonomousTopicText(rawItem.interestContext.label, 120) ?? 'personal interest',
-            strength01: clamp(Number(rawItem.interestContext.strength01 ?? .5)),
-            confidence01: clamp(Number(rawItem.interestContext.confidence01 ?? .2)),
-            evidenceCount: Math.max(0, Math.min(10000, Math.floor(Number(rawItem.interestContext.evidenceCount ?? 0) || 0))),
-          }
-        } : {}),
+      this.state = {
+        version: 1,
+        cycles: safeCounter(ownData(raw, 'cycles'), 0),
+        planned: safeCounter(ownData(raw, 'planned'), 0),
+        executed: safeCounter(ownData(raw, 'executed'), 0),
+        deferred: Math.min(MAX_SOCIAL_COUNTER, safeCounter(ownData(raw, 'deferred'), 0) + privacyDeferredCount),
+        reciprocity01: safeRatio(ownData(raw, 'reciprocity01'), defaults.reciprocity01),
+        initiative01: safeRatio(ownData(raw, 'initiative01'), defaults.initiative01),
+        startedAt: safeTime(ownData(raw, 'startedAt')) ?? 0,
+        lastExternalInputAt: safeTime(ownData(raw, 'lastExternalInputAt')) ?? 0,
+        lastInitiativeAt: safeTime(ownData(raw, 'lastInitiativeAt')) ?? 0,
+        initiatives,
       };
-    });
-    this.state = {
-      ...d,
-      ...r,
-      version: 1,
-      cycles: Math.max(0, Math.floor(Number(r.cycles ?? 0) || 0)),
-      planned: Math.max(0, Math.floor(Number(r.planned ?? 0) || 0)),
-      executed: Math.max(0, Math.floor(Number(r.executed ?? 0) || 0)),
-      deferred: Math.max(0, Math.floor(Number(r.deferred ?? 0) || 0)) + privacyDeferredCount,
-      reciprocity01: clamp(Number(r.reciprocity01 ?? d.reciprocity01)),
-      initiative01: clamp(Number(r.initiative01 ?? d.initiative01)),
-      startedAt: Math.max(0, Number(r.startedAt ?? 0) || 0),
-      lastExternalInputAt: Math.max(0, Number(r.lastExternalInputAt ?? 0) || 0),
-      lastInitiativeAt: Math.max(0, Number(r.lastInitiativeAt ?? 0) || 0),
-      initiatives,
-    };
+    } catch {
+      // Restore is atomic: accessors, proxies, descriptor traps and malformed arrays reset safely.
+      this.state = defaults;
+    }
   }
 
   snapshot(): SocialInitiativeState { return structuredClone(this.state); }
