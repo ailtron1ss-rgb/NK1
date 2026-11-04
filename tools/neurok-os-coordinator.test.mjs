@@ -87,7 +87,7 @@ test('read-set freshness detects changed context before an agent writes', async 
     const digest = createHash('sha256').update(original).digest('hex');
     const claim = await claimTask(request('TASK-READSET', 'agent-a', ['src/change.ts'], {
       readSet: [{ path: 'src/dependency.ts', sha256: digest }]
-    }), { stateDir });
+    }), { stateDir, root });
     assert.equal(claim.readSet.length, 1);
     const { verifyClaimFreshness } = await import('./neurok-os-coordinator.mjs');
     assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root }), {
