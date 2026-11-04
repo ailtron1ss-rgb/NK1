@@ -41,13 +41,16 @@ function acknowledge(engine, at, topic, source) {
 {
   const engine = new AutonomousSocialInitiativeEngine();
   let at = start;
-  for (let index = 0; index < 6; index += 1) {
-    acknowledge(
-      engine,
-      at,
-      `Reflection on tactile prediction calibration under unique sensor condition ${index}`,
-      'reflection',
-    );
+  const deliveredReflectionTopics = [
+    'Reflection about tactile sensor calibration across uncertain physical surfaces',
+    'Reflection about motor prediction drift during constrained device interactions',
+    'Reflection about visual depth inference for moving objects in cluttered scenes',
+    'Reflection about affective appraisal when social cues remain ambiguous',
+    'Reflection about thermal limits shaping local inference scheduling',
+    'Reflection about autobiographical continuity across interrupted sessions',
+  ];
+  for (const topic of deliveredReflectionTopics) {
+    acknowledge(engine, at, topic, 'reflection');
     at += hour;
   }
 
