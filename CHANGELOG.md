@@ -1,3 +1,9 @@
+## [NK1][EngineeringOS] Exclude Vibelets from active provider catalog (2026-11-04)
+
+- Remove Vibelets from the active integration catalog at the user's explicit request.
+- Add a regression ensuring the excluded provider cannot silently reappear in the active catalog.
+- No Vibelets connector, app or runtime code is invoked.
+
 ## [NK1][EngineeringOS] Bind agent claims to context read-set freshness (2026-11-04)
 
 - Extend task claims with bounded, normalized SHA-256 snapshots of source/context dependencies; verify the snapshots against repository bytes at claim time.
