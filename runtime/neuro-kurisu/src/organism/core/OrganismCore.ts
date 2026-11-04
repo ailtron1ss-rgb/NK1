@@ -2327,10 +2327,7 @@ export class OrganismCore {
     async importNekoKnowledgePack(rawBytes: Uint8Array, approval: import('../integration/neko/NekoKnowledgePackImporter.ts').NekoKnowledgePackImportApproval) {
         if (!this.ready)
             throw new Error('OrganismCore.init() must be called first');
-        const safeApproval = approval && typeof approval === 'object'
-            ? { approved: approval.approved, licenseAccepted: approval.licenseAccepted, entryIndices: Array.isArray(approval.entryIndices) ? [...approval.entryIndices] : undefined }
-            : approval;
-        const result = this.memorySubsystem.nekoKnowledgePackImporter.import(new Uint8Array(rawBytes), safeApproval, { tick: this.persisted.state.tick });
+        const result = this.memorySubsystem.nekoKnowledgePackImporter.import(new Uint8Array(rawBytes), approval, { tick: this.persisted.state.tick });
         this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot({ clone: false });
         await this.checkpoint(true);
