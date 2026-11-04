@@ -1,0 +1,1586 @@
+{
+  "schemaVersion": 1,
+  "name": "NK1 / NeuroCore 75-aspect execution registry",
+  "version": "1.0.0",
+  "date": "2026-11-04",
+  "baseBranch": "workpass70-source",
+  "observedSourceHead": "06e8831447b29bc128cc56ba03dbf942471bea5b",
+  "observedSourceHeadNote": "Observed at authoring time only; refresh the live workpass70-source head before relying on this value. Never assume it stays current.",
+  "purpose": "Executable, machine-readable backlog for the 75 development aspects, grouped in 10 domains and 6 waves, with explicit owners, dependencies, exit evidence and fail-closed progress accounting. It plans work; it does not claim capability.",
+  "evidenceVocabulary": [
+    "PROVEN",
+    "IMPLEMENTED",
+    "CONNECTED",
+    "TESTED",
+    "FUNCTIONAL_INDICATOR",
+    "OBSERVED",
+    "HYPOTHESIS",
+    "UNKNOWN",
+    "UNRESOLVED",
+    "FAILED",
+    "BLOCKED",
+    "DEFERRED",
+    "REJECTED"
+  ],
+  "statusVocabulary": [
+    "PLANNED",
+    "IMPLEMENTED",
+    "CONNECTED",
+    "TESTED",
+    "PROVEN",
+    "BLOCKED",
+    "DEFERRED",
+    "REJECTED"
+  ],
+  "verifiedStatuses": [
+    "CONNECTED",
+    "TESTED",
+    "PROVEN"
+  ],
+  "rules": [
+    "A CONNECTED/TESTED/PROVEN aspect must carry a non-empty evidence reference; otherwise the registry is invalid.",
+    "An interface, catalog entry or open PR is not connected functionality.",
+    "A passing unit test is not proof of real behaviour.",
+    "Do not create duplicate state owners; integrate into the canonical owner or mark the aspect REJECTED with a reason.",
+    "Refresh the live source SHA before integration; a moved base invalidates prior evidence.",
+    "Do not delete useful branches or history during consolidation.",
+    "Every improvement needs measurable evidence and must reach a verified Release ZIP.",
+    "Do not declare an aspect done before its corresponding gate passes."
+  ],
+  "groups": [
+    {
+      "id": "I",
+      "titleRu": "Фундамент и архитектура",
+      "titleEn": "Foundation and architecture"
+    },
+    {
+      "id": "II",
+      "titleRu": "Интеллект и познание",
+      "titleEn": "Intelligence and cognition"
+    },
+    {
+      "id": "III",
+      "titleRu": "Память и обучение",
+      "titleEn": "Memory and learning"
+    },
+    {
+      "id": "IV",
+      "titleRu": "Личность, мотивация и автономность",
+      "titleEn": "Identity, motivation and autonomy"
+    },
+    {
+      "id": "V",
+      "titleRu": "Тело, голос и взаимодействие",
+      "titleEn": "Body, voice and interaction"
+    },
+    {
+      "id": "VI",
+      "titleRu": "Интеграции и инструменты",
+      "titleEn": "Integrations and tools"
+    },
+    {
+      "id": "VII",
+      "titleRu": "Безопасность и надёжность",
+      "titleEn": "Safety and reliability"
+    },
+    {
+      "id": "VIII",
+      "titleRu": "Приложение и платформы",
+      "titleEn": "Application and platforms"
+    },
+    {
+      "id": "IX",
+      "titleRu": "Тестирование и научная проверка",
+      "titleEn": "Testing and scientific verification"
+    },
+    {
+      "id": "X",
+      "titleRu": "Релиз и развитие",
+      "titleEn": "Release and development"
+    }
+  ],
+  "waves": [
+    {
+      "id": "1",
+      "titleRu": "Стабилизация",
+      "titleEn": "Stabilization",
+      "critical": true,
+      "aspects": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        60,
+        61,
+        62,
+        63,
+        69,
+        70
+      ]
+    },
+    {
+      "id": "2",
+      "titleRu": "Единый организм",
+      "titleEn": "Unified organism",
+      "critical": false,
+      "aspects": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ]
+    },
+    {
+      "id": "3",
+      "titleRu": "Самостоятельность",
+      "titleEn": "Self-direction",
+      "critical": false,
+      "aspects": [
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ]
+    },
+    {
+      "id": "4",
+      "titleRu": "Внешнее взаимодействие",
+      "titleEn": "External interaction",
+      "critical": false,
+      "aspects": [
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44
+      ]
+    },
+    {
+      "id": "5",
+      "titleRu": "Реальные платформы",
+      "titleEn": "Real platforms",
+      "critical": false,
+      "aspects": [
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        65,
+        66,
+        67
+      ]
+    },
+    {
+      "id": "6",
+      "titleRu": "Подтверждение готовности",
+      "titleEn": "Readiness confirmation",
+      "critical": false,
+      "aspects": [
+        64,
+        68,
+        71,
+        72,
+        73,
+        74,
+        75
+      ]
+    }
+  ],
+  "acceptanceCriteria": [
+    {
+      "metric": "Детерминированные ticks",
+      "metricEn": "Deterministic ticks",
+      "target": "10000",
+      "targetEn": "10000 deterministic ticks"
+    },
+    {
+      "metric": "Memory search / 10k",
+      "metricEn": "Memory search per 10k",
+      "target": "<= 30 мс",
+      "targetEn": "<= 30 ms"
+    },
+    {
+      "metric": "Recall improvement",
+      "metricEn": "Recall improvement",
+      "target": "> 0",
+      "targetEn": "> 0"
+    },
+    {
+      "metric": "Paired seeds",
+      "metricEn": "Paired seeds",
+      "target": ">= 5",
+      "targetEn": ">= 5"
+    },
+    {
+      "metric": "Tick latency на телефоне",
+      "metricEn": "Tick latency on phone",
+      "target": "<= 50 мс",
+      "targetEn": "<= 50 ms"
+    },
+    {
+      "metric": "Lip-sync drift",
+      "metricEn": "Lip-sync drift",
+      "target": "<= 80 мс",
+      "targetEn": "<= 80 ms"
+    },
+    {
+      "metric": "Interrupt latency",
+      "metricEn": "Interrupt latency",
+      "target": "<= 200 мс",
+      "targetEn": "<= 200 ms"
+    },
+    {
+      "metric": "Автономные инициативы",
+      "metricEn": "Autonomous initiatives",
+      "target": ">= 1/час",
+      "targetEn": ">= 1 per hour"
+    },
+    {
+      "metric": "Runtime recovery",
+      "metricEn": "Runtime recovery",
+      "target": "Без потери подтверждённого состояния",
+      "targetEn": "No loss of confirmed state"
+    },
+    {
+      "metric": "Release",
+      "metricEn": "Release",
+      "target": "Проверенный ZIP с provenance и разрешённой лицензией",
+      "targetEn": "Verified ZIP with provenance and cleared license"
+    }
+  ],
+  "aspects": [
+    {
+      "n": 1,
+      "id": "core-architecture",
+      "group": "I",
+      "wave": "1",
+      "titleRu": "Core Architecture",
+      "titleEn": "Core architecture",
+      "owner": "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "OrganismCore is the canonical runtime owner; monolith reduction and single-owner event routing are ongoing."
+    },
+    {
+      "n": 2,
+      "id": "organism-bus",
+      "group": "I",
+      "wave": "1",
+      "titleRu": "OrganismBus",
+      "titleEn": "Organism bus",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/CognitiveNetworkBus.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Event bus exists; full routing and synchronisation contract is not independently verified."
+    },
+    {
+      "n": 3,
+      "id": "organism-state",
+      "group": "I",
+      "wave": "1",
+      "titleRu": "OrganismState",
+      "titleEn": "Organism state",
+      "owner": "runtime/neuro-kurisu/src/organism/persistence/FileStateStore.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "State store, migrations and restore exist; missing/corrupt-primary recovery is tracked under aspect 51."
+    },
+    {
+      "n": 4,
+      "id": "cognitive-kernel",
+      "group": "I",
+      "wave": "1",
+      "titleRu": "Cognitive Kernel",
+      "titleEn": "Cognitive kernel",
+      "owner": "runtime/neuro-kurisu/src/organism/core/CognitiveKernelCoordinator.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "GWT, predictive-processing, attention and arbitration substrates exist; a unified kernel is not independently validated."
+    },
+    {
+      "n": 5,
+      "id": "cognitive-cycle",
+      "group": "I",
+      "wave": "1",
+      "titleRu": "Cognitive Cycle",
+      "titleEn": "Cognitive cycle",
+      "owner": "runtime/neuro-kurisu/src/organism/core/CognitiveCycleBoundary.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "cognitive-kernel",
+        "organism-bus",
+        "organism-state"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Perceive/Appraise/Plan/Act/Reflect/Consolidate boundary exists; long-horizon behaviour is unproven."
+    },
+    {
+      "n": 6,
+      "id": "engineering-os",
+      "group": "I",
+      "wave": "1",
+      "titleRu": "Engineering OS",
+      "titleEn": "Engineering OS",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Multi-agent control plane with claims, receipts, leases and rollback; merged 2026-11-04."
+    },
+    {
+      "n": 7,
+      "id": "perception",
+      "group": "II",
+      "wave": "2",
+      "titleRu": "Perception",
+      "titleEn": "Perception",
+      "owner": "runtime/neuro-kurisu/src/organism/body/PerceptionRouter.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "cognitive-cycle"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Camera, audio and text routing exists; live sensor grounding is unverified."
+    },
+    {
+      "n": 8,
+      "id": "world-model",
+      "group": "II",
+      "wave": "2",
+      "titleRu": "World Model",
+      "titleEn": "World model",
+      "owner": "runtime/neuro-kurisu/src/organism/world/WorldModel.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "perception"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Space, time, object and causality models exist; independent world-fact verification is open."
+    },
+    {
+      "n": 9,
+      "id": "reasoning",
+      "group": "II",
+      "wave": "2",
+      "titleRu": "Reasoning",
+      "titleEn": "Reasoning",
+      "owner": "UNKNOWN",
+      "ownerStatus": "unmapped",
+      "dependsOn": [
+        "cognitive-kernel"
+      ],
+      "verificationGate": "cognitive",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "No single reasoning owner; deductive/inductive/abductive/probabilistic capability is scattered (NeuroSymbolicConceptCompiler.ts is partial). Confirm the owner before changing."
+    },
+    {
+      "n": 10,
+      "id": "planning",
+      "group": "II",
+      "wave": "2",
+      "titleRu": "Planning",
+      "titleEn": "Planning",
+      "owner": "runtime/neuro-kurisu/src/organism/world/PlanEngine.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "reasoning",
+        "world-model"
+      ],
+      "verificationGate": "cognitive",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Hierarchical planning and alternatives exist; counterfactual outcome prediction is unproven."
+    },
+    {
+      "n": 11,
+      "id": "metacognition",
+      "group": "II",
+      "wave": "2",
+      "titleRu": "Metacognition",
+      "titleEn": "Metacognition",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "cognitive-kernel"
+      ],
+      "verificationGate": "cognitive",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Self-monitoring and confidence signals exist; calibration on independent data is open."
+    },
+    {
+      "n": 12,
+      "id": "attention",
+      "group": "II",
+      "wave": "2",
+      "titleRu": "Attention",
+      "titleEn": "Attention",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/P81PredictiveAttention.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "cognitive-kernel"
+      ],
+      "verificationGate": "cognitive",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Priority, working-memory and switching signals exist; compute-budget arbitration is not independently measured."
+    },
+    {
+      "n": 13,
+      "id": "memoryos2",
+      "group": "III",
+      "wave": "2",
+      "titleRu": "MemoryOS2",
+      "titleEn": "MemoryOS2",
+      "owner": "runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "organism-state"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Canonical memory owner for episodic, semantic, autobiographical and working memory."
+    },
+    {
+      "n": 14,
+      "id": "retrieval",
+      "group": "III",
+      "wave": "2",
+      "titleRu": "Retrieval",
+      "titleEn": "Retrieval",
+      "owner": "runtime/neuro-kurisu/src/organism/developmental/MemorySignalFusion.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "memoryos2"
+      ],
+      "verificationGate": "math",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Hybrid search, RRF and reranking exist; recallDelta remains 0 and no candidate is promoted."
+    },
+    {
+      "n": 15,
+      "id": "consolidation",
+      "group": "III",
+      "wave": "2",
+      "titleRu": "Consolidation",
+      "titleEn": "Consolidation",
+      "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryConsolidationController.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "memoryos2"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Compression, forgetting and revision exist; contradiction resolution on independent data is open."
+    },
+    {
+      "n": 16,
+      "id": "continual-learning",
+      "group": "III",
+      "wave": "2",
+      "titleRu": "Continual Learning",
+      "titleEn": "Continual learning",
+      "owner": "runtime/neuro-kurisu/src/organism/learning/ContinualReplayBuffer.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "retrieval",
+        "consolidation"
+      ],
+      "verificationGate": "cognitive",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Replay and transfer trackers exist; real skill transfer and forgetting prevention are unproven."
+    },
+    {
+      "n": 17,
+      "id": "skill-system",
+      "group": "III",
+      "wave": "2",
+      "titleRu": "Skill System",
+      "titleEn": "Skill system",
+      "owner": "runtime/neuro-kurisu/src/organism/learning/ProceduralSkillLibrary.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "continual-learning"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Skill generation, testing and promotion lifecycle exists; promotion is gated on verified outcomes."
+    },
+    {
+      "n": 18,
+      "id": "evaluation",
+      "group": "III",
+      "wave": "2",
+      "titleRu": "Evaluation",
+      "titleEn": "Evaluation",
+      "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "math-tests"
+      ],
+      "verificationGate": "independent",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Offline benchmark and paired-seed sensitivity exist; no measured uplift yet (recallDelta=0)."
+    },
+    {
+      "n": 19,
+      "id": "selfmodel",
+      "group": "IV",
+      "wave": "3",
+      "titleRu": "SelfModel",
+      "titleEn": "Self model",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/P32CausalSelfModel.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "memoryos2",
+        "metacognition"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Self-identity, capability and history models exist; long-horizon identity consistency is untested."
+    },
+    {
+      "n": 20,
+      "id": "usermodel",
+      "group": "IV",
+      "wave": "3",
+      "titleRu": "UserModel",
+      "titleEn": "User model",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/UserModelEvidenceModel.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "selfmodel"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "UserModel v2 durable forgetting with tombstones is integrated at efb7693."
+    },
+    {
+      "n": 21,
+      "id": "personality",
+      "group": "IV",
+      "wave": "3",
+      "titleRu": "Personality",
+      "titleEn": "Personality",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/P2702PersistentPersonalityDynamics.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "selfmodel"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Kurisu identity and character dynamics exist; longitudinal consistency is unmeasured."
+    },
+    {
+      "n": 22,
+      "id": "affect-system",
+      "group": "IV",
+      "wave": "3",
+      "titleRu": "Affect System",
+      "titleEn": "Affect system",
+      "owner": "runtime/neuro-kurisu/src/organism/system/EmotionAppraisalEngine.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "personality"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Emotion appraisal and neuromodulation exist; browser and device affect coherence is open."
+    },
+    {
+      "n": 23,
+      "id": "motivation",
+      "group": "IV",
+      "wave": "3",
+      "titleRu": "Motivation",
+      "titleEn": "Motivation",
+      "owner": "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "affect-system",
+        "selfmodel"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Drives, curiosity and homeostasis exist; sustained real-world initiative is unproven."
+    },
+    {
+      "n": 24,
+      "id": "autonomy",
+      "group": "IV",
+      "wave": "3",
+      "titleRu": "Autonomy",
+      "titleEn": "Autonomy",
+      "owner": "runtime/neuro-kurisu/src/organism/system/AutonomousRuntimeLifeController.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "motivation",
+        "planning",
+        "ethical-gate"
+      ],
+      "verificationGate": "soak",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Cadence gate and proactive initiatives exist; >=1 initiative/hour and explainable causes are unproven."
+    },
+    {
+      "n": 25,
+      "id": "embodiment",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "Embodiment",
+      "titleEn": "Embodiment",
+      "owner": "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "cognitive-cycle"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "A unified internal/external body model exists; device E2E is open."
+    },
+    {
+      "n": 26,
+      "id": "live2d",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "Live2D",
+      "titleEn": "Live2D",
+      "owner": "app/public/live2d",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Cubism model with a SHA-256 locked asset manifest; browser and device timing is unverified."
+    },
+    {
+      "n": 27,
+      "id": "2-5d",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "2.5D",
+      "titleEn": "2.5D",
+      "owner": "app/src/components/avatar/depthRig.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Depth-rig manifest and pose foundation exist; production layered art and IK/VRMA are open."
+    },
+    {
+      "n": 28,
+      "id": "3d-avatar",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "3D Avatar",
+      "titleEn": "3D avatar",
+      "owner": "app/src/components/avatar/vrmRuntimeAdapter.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "VRM/GLB runtime with preflight exists; there is no licensed Kurisu 3D asset and no visual E2E."
+    },
+    {
+      "n": 29,
+      "id": "body-intelligence",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "Body Intelligence",
+      "titleEn": "Body intelligence",
+      "owner": "runtime/neuro-kurisu/src/organism/body/P35SemanticWorldBody.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment",
+        "affect-system"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Links emotion, motivation and internal state to body channels; end-to-end coherence is open."
+    },
+    {
+      "n": 30,
+      "id": "speech",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "Speech",
+      "titleEn": "Speech",
+      "owner": "runtime/neuro-kurisu/src/organism/body/VoiceEmbodiment.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "TTS path runs through the ActionGateway; GPT-SoVITS/RVC/edge-tts fallback is not independently validated."
+    },
+    {
+      "n": 31,
+      "id": "voice-interaction",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "Voice Interaction",
+      "titleEn": "Voice interaction",
+      "owner": "runtime/neuro-kurisu/src/organism/body/NativeSpeechEventChannel.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "speech"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Real-time dialogue, interruption and turn-taking contracts exist; <=200 ms interrupt is unmeasured on device."
+    },
+    {
+      "n": 32,
+      "id": "multimodal-interaction",
+      "group": "V",
+      "wave": "4",
+      "titleRu": "Multimodal Interaction",
+      "titleEn": "Multimodal interaction",
+      "owner": "runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "perception",
+        "voice-interaction"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Voice, vision, gesture and expression fusion exists; joint context grounding is unverified."
+    },
+    {
+      "n": 33,
+      "id": "neko",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "N.E.K.O.",
+      "titleEn": "N.E.K.O.",
+      "owner": "UNKNOWN",
+      "ownerStatus": "candidate-pr",
+      "dependsOn": [
+        "permission-system",
+        "skill-system"
+      ],
+      "verificationGate": "integration",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Only open PRs (#780-#792) adapt the N.E.K.O. gateway; there is no merged canonical owner yet."
+    },
+    {
+      "n": 34,
+      "id": "hermes",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Hermes",
+      "titleEn": "Hermes",
+      "owner": "runtime/neuro-kurisu/src/organism/learning/HermesVerifiedEvidenceBinding.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "skill-system"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Skill and tool governance with reflective-learning bindings exist; end-to-end execution is open."
+    },
+    {
+      "n": 35,
+      "id": "firecrawl",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Firecrawl",
+      "titleEn": "Firecrawl",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "candidate",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Catalog entry only; the connector is unverified and fail-closed (enabled=false)."
+    },
+    {
+      "n": 36,
+      "id": "tinyfish",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "TinyFish",
+      "titleEn": "TinyFish",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "candidate",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Catalog entry only; external observation and browser automation are not integrated."
+    },
+    {
+      "n": 37,
+      "id": "context7",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Context7",
+      "titleEn": "Context7",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "candidate",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Catalog entry only; versioned API documentation intake is not integrated."
+    },
+    {
+      "n": 38,
+      "id": "supabase",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Supabase",
+      "titleEn": "Supabase",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "candidate",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Catalog entry only; zero Supabase projects are provisioned. No schema or secret was created."
+    },
+    {
+      "n": 39,
+      "id": "mongodb",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "MongoDB",
+      "titleEn": "MongoDB",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "candidate",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Catalog entry only; Atlas read-only shows no NK1 database or adapter."
+    },
+    {
+      "n": 40,
+      "id": "redis",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Redis",
+      "titleEn": "Redis",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "candidate",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Catalog entry only; no connected cache, queue or coordination data plane."
+    },
+    {
+      "n": 41,
+      "id": "local-models",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Local Models",
+      "titleEn": "Local models",
+      "owner": "runtime/neuro-kurisu/src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "reasoning"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "llama.cpp OpenAI-compatible adapter is configured-unverified; no target-host inference yet."
+    },
+    {
+      "n": 42,
+      "id": "cloud-models",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Cloud Models",
+      "titleEn": "Cloud models",
+      "owner": "runtime/neuro-kurisu/src/organism/learning/P40ModelEcology.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "local-models"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Provider abstraction, fallback and budgets exist; live multi-provider validation is open."
+    },
+    {
+      "n": 43,
+      "id": "replit-github",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Replit / GitHub",
+      "titleEn": "Replit / GitHub",
+      "owner": ".github/workflows",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "engineering-os"
+      ],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "CI/CD automation exists; autonomous engineering end-to-end is not demonstrated."
+    },
+    {
+      "n": 44,
+      "id": "agent-ecosystem",
+      "group": "VI",
+      "wave": "4",
+      "titleRu": "Agent Ecosystem",
+      "titleEn": "Agent ecosystem",
+      "owner": "tools/neurok-os-coordinator.mjs",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "engineering-os",
+        "replit-github"
+      ],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Multi-agent claims, specialisation and review coordination exist; cross-agent verification is advisory."
+    },
+    {
+      "n": 45,
+      "id": "ethical-gate",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "EthicalGate",
+      "titleEn": "Ethical gate",
+      "owner": "runtime/neuro-kurisu/src/organism/system/ActionGateway.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "There is no dedicated EthicalGate owner; consequence and action limits live in the ActionGateway policy path."
+    },
+    {
+      "n": 46,
+      "id": "permission-system",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "Permission System",
+      "titleEn": "Permission system",
+      "owner": "runtime/neuro-kurisu/src/organism/system/ApiSecurityPolicy.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Access, roles and capability-based authorization exist; the full capability model is unverified."
+    },
+    {
+      "n": 47,
+      "id": "action-verification",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "Action Verification",
+      "titleEn": "Action verification",
+      "owner": "runtime/neuro-kurisu/src/organism/system/OutcomeCognitionFabric.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "permission-system",
+        "autonomy"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "OutcomeVerificationService requires the exact normalized object; live provider and device postconditions are open."
+    },
+    {
+      "n": 48,
+      "id": "memory-safety",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "Memory Safety",
+      "titleEn": "Memory safety",
+      "owner": "runtime/neuro-kurisu/src/organism/memory/EvidenceLineageProvenance.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "memoryos2"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Provenance and trust guards exist; the false-memory rate on an independent holdout is unmeasured."
+    },
+    {
+      "n": 49,
+      "id": "tool-security",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "Tool Security",
+      "titleEn": "Tool security",
+      "owner": "runtime/neuro-kurisu/src/organism/system/ToolInputContract.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "permission-system"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Input contracts, allowlists and sandboxing exist; SSRF and injection coverage requires review."
+    },
+    {
+      "n": 50,
+      "id": "self-modification",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "Self-Modification",
+      "titleEn": "Self-modification",
+      "owner": "runtime/neuro-kurisu/src/organism/system/SandboxedSelfRewriteEngine.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "permission-system",
+        "action-verification"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "An approval, shadow-execution and rollback path exists; controlled self-improvement promotion is unverified."
+    },
+    {
+      "n": 51,
+      "id": "reliability",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "Reliability",
+      "titleEn": "Reliability",
+      "owner": "runtime/neuro-kurisu/src/organism/persistence/RecoveryWatchdog.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "organism-state"
+      ],
+      "verificationGate": "integration",
+      "status": "TESTED",
+      "evidence": "PR #594 (11/11 exact-head checks) missing/corrupt-primary recovery; PR #607 (11/11) atomic temp+fsync+rename backup with a SIGKILL regression. README checkpoint 2026-11-01.",
+      "notes": "Deterministic process-kill coverage only; filesystem/power-loss and live provider recovery remain open."
+    },
+    {
+      "n": 52,
+      "id": "observability",
+      "group": "VII",
+      "wave": "3",
+      "titleRu": "Observability",
+      "titleEn": "Observability",
+      "owner": "runtime/neuro-kurisu/src/organism/persistence/OperationalJournal.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "engineering-os"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "OperationalJournal and JSONL exist; there is no ClawMetry-equivalent unified tracing/metrics yet."
+    },
+    {
+      "n": 53,
+      "id": "desktop",
+      "group": "VIII",
+      "wave": "5",
+      "titleRu": "Desktop",
+      "titleEn": "Desktop",
+      "owner": "app",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "The application shell exists; a dependency-complete production build and runtime management are open."
+    },
+    {
+      "n": 54,
+      "id": "android",
+      "group": "VIII",
+      "wave": "5",
+      "titleRu": "Android",
+      "titleEn": "Android",
+      "owner": "runtime/neuro-kurisu/src/organism/body/AndroidEmbodimentBridge.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Bridge and lifecycle exist; real-phone background execution and soak are unverified."
+    },
+    {
+      "n": 55,
+      "id": "termux",
+      "group": "VIII",
+      "wave": "5",
+      "titleRu": "Termux",
+      "titleEn": "Termux",
+      "owner": "runtime/neuro-kurisu/src/organism/body/NativeSpeechHostRouter.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "android"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Deterministic Termux TTS regressions exist; physical playback and audio drift are unverified."
+    },
+    {
+      "n": 56,
+      "id": "ui-ux",
+      "group": "VIII",
+      "wave": "5",
+      "titleRu": "UI/UX",
+      "titleEn": "UI/UX",
+      "owner": "app/src/components/AvatarStage.tsx",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "embodiment"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Dialogue, settings, memory, character and state surfaces exist; browser E2E is open."
+    },
+    {
+      "n": 57,
+      "id": "avatar-interface",
+      "group": "VIII",
+      "wave": "5",
+      "titleRu": "Avatar Interface",
+      "titleEn": "Avatar interface",
+      "owner": "app/src/components/avatar/rendererCapabilityManifest.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "live2d",
+        "2-5d",
+        "3d-avatar"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "2D/2.5D/3D switching via a capability manifest exists; device E2E is open."
+    },
+    {
+      "n": 58,
+      "id": "synchronization",
+      "group": "VIII",
+      "wave": "5",
+      "titleRu": "Synchronization",
+      "titleEn": "Synchronization",
+      "owner": "runtime/neuro-kurisu/src/organism/persistence/PortableSubjectContract.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "organism-state"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "A portable-subject contract exists; cross-device state reconciliation is unverified."
+    },
+    {
+      "n": 59,
+      "id": "performance",
+      "group": "VIII",
+      "wave": "5",
+      "titleRu": "Performance",
+      "titleEn": "Performance",
+      "owner": "runtime/neuro-kurisu/src/organism/system/RuntimePerformanceGovernor.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "reliability"
+      ],
+      "verificationGate": "device",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Governors exist; CPU/GPU/RAM/latency/battery/thermal targets are unmeasured on target devices."
+    },
+    {
+      "n": 60,
+      "id": "unit-tests",
+      "group": "IX",
+      "wave": "1",
+      "titleRu": "Unit Tests",
+      "titleEn": "Unit tests",
+      "owner": "runtime/neuro-kurisu/tests",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "unit",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "1,407 test files are present; passing counts are evidence, not a capability claim."
+    },
+    {
+      "n": 61,
+      "id": "integration-tests",
+      "group": "IX",
+      "wave": "1",
+      "titleRu": "Integration Tests",
+      "titleEn": "Integration tests",
+      "owner": "runtime/neuro-kurisu/tests",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "cognitive-cycle"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Cross-module integration suites exist; device and live-provider integration are open."
+    },
+    {
+      "n": 62,
+      "id": "architecture-tests",
+      "group": "IX",
+      "wave": "1",
+      "titleRu": "Architecture Tests",
+      "titleEn": "Architecture tests",
+      "owner": "tools/verify-integration.mjs",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Ownership, import and contract checks exist (contracts/OWNERSHIP.md); the dependency-graph proof is incomplete."
+    },
+    {
+      "n": 63,
+      "id": "math-tests",
+      "group": "IX",
+      "wave": "1",
+      "titleRu": "Mathematical Tests",
+      "titleEn": "Mathematical tests",
+      "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalExperiment.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "integration-tests"
+      ],
+      "verificationGate": "math",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Multi-seed bootstrap sensitivity exists; statistical significance of uplift is unproven."
+    },
+    {
+      "n": 64,
+      "id": "cognitive-benchmarks",
+      "group": "IX",
+      "wave": "6",
+      "titleRu": "Cognitive Benchmarks",
+      "titleEn": "Cognitive benchmarks",
+      "owner": "runtime/neuro-kurisu/src/organism/memory/MemoryRetrievalBenchmark.ts",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "math-tests"
+      ],
+      "verificationGate": "cognitive",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Offline reasoning, planning, memory and transfer harnesses exist; no result is promoted."
+    },
+    {
+      "n": 65,
+      "id": "autonomy-soak",
+      "group": "IX",
+      "wave": "5",
+      "titleRu": "Autonomy Soak",
+      "titleEn": "Autonomy soak",
+      "owner": "UNKNOWN",
+      "ownerStatus": "unmapped",
+      "dependsOn": [
+        "autonomy"
+      ],
+      "verificationGate": "soak",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "No long autonomous soak has run; >=1 initiative/hour and explainable causes are unproven."
+    },
+    {
+      "n": 66,
+      "id": "device-e2e",
+      "group": "IX",
+      "wave": "5",
+      "titleRu": "Device E2E",
+      "titleEn": "Device E2E",
+      "owner": "UNKNOWN",
+      "ownerStatus": "unmapped",
+      "dependsOn": [
+        "desktop",
+        "android"
+      ],
+      "verificationGate": "device",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "No real PC/Android E2E is recorded; lip-sync, interrupt and tick-latency targets are unmeasured."
+    },
+    {
+      "n": 67,
+      "id": "regression",
+      "group": "IX",
+      "wave": "5",
+      "titleRu": "Regression",
+      "titleEn": "Regression",
+      "owner": ".github/workflows",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "unit-tests"
+      ],
+      "verificationGate": "unit",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Regression workflows exist; the guard against capability regression must be proven per change."
+    },
+    {
+      "n": 68,
+      "id": "independent-holdout",
+      "group": "IX",
+      "wave": "6",
+      "titleRu": "Independent Holdout",
+      "titleEn": "Independent holdout",
+      "owner": "runtime/neuro-kurisu/tests/INDEPENDENT_BILINGUAL_HOLDOUT.md",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "evaluation"
+      ],
+      "verificationGate": "independent",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "An immutable RU/EN source-clustered holdout with >=5 paired seeds is not yet closed; recallDelta=0."
+    },
+    {
+      "n": 69,
+      "id": "branch-consolidation",
+      "group": "X",
+      "wave": "1",
+      "titleRu": "Branch Consolidation",
+      "titleEn": "Branch consolidation",
+      "owner": "docs/BRANCH_CONVERGENCE_AUDIT_2026-11-01_RU.md",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "engineering-os"
+      ],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Branch audits exist; 141k remote refs make full inventory and useful-code preservation ongoing."
+    },
+    {
+      "n": 70,
+      "id": "ci-cd",
+      "group": "X",
+      "wave": "1",
+      "titleRu": "CI/CD",
+      "titleEn": "CI/CD",
+      "owner": ".github/workflows",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "architecture-tests"
+      ],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Required checks exist; exact-head enforcement across cross-cutting changes is the gate."
+    },
+    {
+      "n": 71,
+      "id": "release-pipeline",
+      "group": "X",
+      "wave": "6",
+      "titleRu": "Release Pipeline",
+      "titleEn": "Release pipeline",
+      "owner": "scripts/publish-workpass70-main-sync.ps1",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "ci-cd",
+        "branch-consolidation"
+      ],
+      "verificationGate": "release",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "A reproducible ZIP build exists; publication is blocked by the license gate (aspect 72)."
+    },
+    {
+      "n": 72,
+      "id": "license-review",
+      "group": "X",
+      "wave": "6",
+      "titleRu": "License Review",
+      "titleEn": "License review",
+      "owner": "contracts/RELEASE_LICENSE_REVIEW.json",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "release-pipeline"
+      ],
+      "verificationGate": "release",
+      "status": "BLOCKED",
+      "evidence": null,
+      "notes": "RELEASE_LICENSE_REVIEW.json is pending; root NOASSERTION, runtime all-rights-reserved, redistributionApproved=false."
+    },
+    {
+      "n": 73,
+      "id": "documentation",
+      "group": "X",
+      "wave": "6",
+      "titleRu": "Documentation",
+      "titleEn": "Documentation",
+      "owner": "README.md",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "core-architecture"
+      ],
+      "verificationGate": "architecture",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Architecture, API, instructions and changelog exist; currency must be maintained each pass."
+    },
+    {
+      "n": 74,
+      "id": "backup-recovery",
+      "group": "X",
+      "wave": "6",
+      "titleRu": "Backup & Recovery",
+      "titleEn": "Backup and recovery",
+      "owner": "tools/super-backup.mjs",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "reliability"
+      ],
+      "verificationGate": "integration",
+      "status": "IMPLEMENTED",
+      "evidence": null,
+      "notes": "Backup and restore tooling exists; clean-room restore and checkpoints require independent proof."
+    },
+    {
+      "n": 75,
+      "id": "continuous-development",
+      "group": "X",
+      "wave": "6",
+      "titleRu": "Continuous Development",
+      "titleEn": "Continuous development",
+      "owner": "engineering-os/manifest.v1.json",
+      "ownerStatus": "canonical",
+      "dependsOn": [
+        "engineering-os",
+        "ci-cd"
+      ],
+      "verificationGate": "architecture",
+      "status": "PLANNED",
+      "evidence": null,
+      "notes": "Automated problem detection and a self-development loop are not yet demonstrated end-to-end."
+    }
+  ]
+}
