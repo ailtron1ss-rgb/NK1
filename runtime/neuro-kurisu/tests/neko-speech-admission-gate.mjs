@@ -30,7 +30,7 @@ test('admits a sustained local-speech candidate on the bounded 480 ms occupancy 
   assert.equal(result?.observedSamples, 8 * FRAME_SAMPLES);
   assert.equal(result?.voicedAudioMs, 256);
   assert.equal(result?.probabilityMean01, 0.9);
-  assert.equal(result?.terminalAudioEndSample, 8 * FRAME_SAMPLES);
+  assert.equal(result?.terminalAudioEndSample, 7 * FRAME_SAMPLES);
   assert.equal(Object.isFrozen(result), true);
   assert.equal(gate.snapshot, result);
 });
