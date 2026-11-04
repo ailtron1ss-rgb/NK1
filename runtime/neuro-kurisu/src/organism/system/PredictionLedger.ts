@@ -5,12 +5,34 @@
 export interface PredictionRecord { id:string; at:number; tick:number; kind:'reward'|'self'|'world'; action:string; predicted01:number; confidence01:number; context?:Record<string,unknown>; resolvedAt?:number; actual01?:number; error01?:number; }
 export interface PredictionLedgerState { version:2; capacity:number; pending:PredictionRecord[]; resolved:PredictionRecord[]; samples:number; meanAbsoluteError01:number; calibrationGap01:number; lastResolvedAt:number; bestKindError01:Record<string,number>; baselineKindError01:Record<string,number>; improvement01:Record<string,number>; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const fin=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:typeof v==='string'&&v.trim().length?Number(v):NaN;return Number.isFinite(n)?n:(Number.isFinite(f)?f:0);};
+const KINDS:readonly PredictionRecord['kind'][]=['reward','self','world'];
+const sanitizeKindMap=(v:unknown):Record<string,number>|null=>{if(!v||typeof v!=='object')return null;const o=v as Record<string,unknown>;const out:Record<string,number>={};for(const k of KINDS){if(k in o)out[k]=clamp(fin(o[k],.5));}return out;};
+const sanitizeRecord=(v:unknown):PredictionRecord|null=>{
+  if(!v||typeof v!=='object')return null;
+  const r=v as Record<string,unknown>;
+  if(typeof r.id!=='string'||!r.id)return null;
+  const rec:PredictionRecord={id:r.id.slice(0,80),at:Math.max(0,fin(r.at,0)),tick:Math.max(0,Math.floor(fin(r.tick,0))),kind:KINDS.includes(r.kind as PredictionRecord['kind'])?r.kind as PredictionRecord['kind']:'reward',action:typeof r.action==='string'?r.action.slice(0,120):'',predicted01:clamp(fin(r.predicted01??r.confidence01,.5)),confidence01:clamp(fin(r.confidence01,.5))};
+  if(r.context&&typeof r.context==='object')rec.context=r.context as Record<string,unknown>;
+  if(r.resolvedAt!==undefined)rec.resolvedAt=Math.max(0,fin(r.resolvedAt,0));
+  if(r.actual01!==undefined)rec.actual01=clamp(fin(r.actual01,.5));
+  if(r.error01!==undefined)rec.error01=clamp(fin(r.error01,0));
+  return rec;
+};
+const sanitizeList=(v:unknown,cap:number):PredictionRecord[]=>{if(!Array.isArray(v))return [];return v.map(sanitizeRecord).filter((x):x is PredictionRecord=>x!==null).slice(-cap);};
 const uid=(tick:number)=>`p46-${tick}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 export class PredictionLedger{
  private state:PredictionLedgerState;
  constructor(capacity=256){this.state=this.defaultState(capacity);}
- private defaultState(capacity:number):PredictionLedgerState{return {version:2,capacity:Math.max(32,Math.min(2048,Math.floor(capacity))),pending:[],resolved:[],samples:0,meanAbsoluteError01:.5,calibrationGap01:.5,lastResolvedAt:0,bestKindError01:{reward:.5,self:.5,world:.5},baselineKindError01:{reward:.5,self:.5,world:.5},improvement01:{reward:0,self:0,world:0}};}
- restore(raw?:Partial<PredictionLedgerState>|null){const base=this.defaultState(Number(raw?.capacity??256)); const resolved=Array.isArray(raw?.resolved)?raw!.resolved.slice(-base.capacity).map(p=>({...p,predicted01:clamp(Number((p as any).predicted01 ?? (p as any).confidence01 ?? .5))})):[]; this.state={...base,...(raw??{}),version:2,pending:Array.isArray(raw?.pending)?raw!.pending.slice(-base.capacity).map(p=>({...p,predicted01:clamp(Number((p as any).predicted01 ?? (p as any).confidence01 ?? .5))})):[],resolved,bestKindError01:{...base.bestKindError01,...(raw?.bestKindError01??{})},baselineKindError01:{...base.baselineKindError01,...(raw?.baselineKindError01??{})},improvement01:{...base.improvement01,...(raw?.improvement01??{})}};}
+ private defaultState(capacity:number):PredictionLedgerState{return {version:2,capacity:Math.max(32,Math.min(2048,Math.floor(Number.isFinite(capacity)?capacity:256))),pending:[],resolved:[],samples:0,meanAbsoluteError01:.5,calibrationGap01:.5,lastResolvedAt:0,bestKindError01:{reward:.5,self:.5,world:.5},baselineKindError01:{reward:.5,self:.5,world:.5},improvement01:{reward:0,self:0,world:0}};}
+ restore(raw?:Partial<PredictionLedgerState>|null){
+  const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};
+  const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+  const base=this.defaultState(fin(read('capacity'),256));
+  const pending=sanitizeList(read('pending'),base.capacity);
+  const resolved=sanitizeList(read('resolved'),base.capacity);
+  this.state={version:2,capacity:base.capacity,pending,resolved,samples:Math.max(0,Math.floor(fin(read('samples'),0))),meanAbsoluteError01:clamp(fin(read('meanAbsoluteError01'),.5)),calibrationGap01:clamp(fin(read('calibrationGap01'),.5)),lastResolvedAt:Math.max(0,fin(read('lastResolvedAt'),0)),bestKindError01:{...base.bestKindError01,...(sanitizeKindMap(read('bestKindError01'))??{})},baselineKindError01:{...base.baselineKindError01,...(sanitizeKindMap(read('baselineKindError01'))??{})},improvement01:{...base.improvement01,...(sanitizeKindMap(read('improvement01'))??{})}};
+ }
  snapshot():PredictionLedgerState{return structuredClone(this.state);}
  record(input:Omit<PredictionRecord,'id'|'resolvedAt'|'actual01'|'error01'>):string{const id=uid(input.tick);const p={...input,predicted01:clamp(input.predicted01),confidence01:clamp(input.confidence01),id};this.state.pending.push(p);if(this.state.pending.length>this.state.capacity)this.state.pending.splice(0,this.state.pending.length-this.state.capacity);return id;}
  resolve(id:string,actual01:number,at=Date.now()):PredictionRecord|null{

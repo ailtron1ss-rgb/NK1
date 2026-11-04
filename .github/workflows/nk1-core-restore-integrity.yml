@@ -31,6 +31,20 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/P29LearningGovernance.ts
       - runtime/neuro-kurisu/src/organism/learning/ScientificMethodEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/TemporalContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/LearnedResidualWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/world/PhoneBodyWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/system/WorldModelEnsembleController.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveSpineScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/B336ProjectCausalOwnershipGate.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SocialWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/developmental/DevelopmentalForks.ts
+      - runtime/neuro-kurisu/src/organism/developmental/CommitmentRepair.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RelationshipSelf.ts
+      - runtime/neuro-kurisu/src/organism/developmental/LongTermSocialMind.ts
+      - runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts
+      - runtime/neuro-kurisu/src/organism/developmental/ModelSwitchContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/TemporalMemoryCompressor.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -63,6 +77,20 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/P29LearningGovernance.ts
       - runtime/neuro-kurisu/src/organism/learning/ScientificMethodEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/TemporalContinuityEngine.ts
+      - runtime/neuro-kurisu/src/organism/world/LearnedResidualWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/world/PhoneBodyWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/system/WorldModelEnsembleController.ts
+      - runtime/neuro-kurisu/src/organism/system/CognitiveSpineScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/B336ProjectCausalOwnershipGate.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/SocialWorldModel.ts
+      - runtime/neuro-kurisu/src/organism/developmental/DevelopmentalForks.ts
+      - runtime/neuro-kurisu/src/organism/developmental/CommitmentRepair.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RelationshipSelf.ts
+      - runtime/neuro-kurisu/src/organism/developmental/LongTermSocialMind.ts
+      - runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts
+      - runtime/neuro-kurisu/src/organism/developmental/ModelSwitchContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/TemporalMemoryCompressor.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -123,6 +151,14 @@ jobs:
           node --experimental-strip-types tests/big-pass-39-cognitive-spine.mjs
           node --experimental-strip-types tests/big-pass-50-cognitive-execution.mjs
           node --experimental-strip-types tests/big-pass-89-cognitive-substrate.mjs
+      - name: Run developmental/social owner consumers
+        run: |
+          node --experimental-strip-types tests/big-pass-288-social-consolidation.mjs
+          node --experimental-strip-types tests/big-pass-336-project-causal-ownership.mjs
+          node --experimental-strip-types tests/big-pass-36-budget-evidence.mjs
+          node --experimental-strip-types tests/big-pass-37-spine.mjs
+          node --experimental-strip-types tests/p2898-correction-aware-capsules.mjs
+          node --experimental-strip-types tests/p46-prediction-ledger.mjs
       - name: Run decision/learning owner consumers
         run: |
           node --experimental-strip-types tests/big-pass-49-subsystem-extraction.mjs
