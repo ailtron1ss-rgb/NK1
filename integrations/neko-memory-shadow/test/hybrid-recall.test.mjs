@@ -82,3 +82,10 @@ test('proxy-backed records and sparse arrays are rejected before traps execute',
     channels: [{ name: 'bm25', candidates: sparseCandidates }],
   }), /dense data array/);
 });
+test('equal-score ID tie-breaking is locale-independent', () => {
+  const r = combineRankedMemoryChannels({ channels: [
+    { name: 'bm25', candidates: [{ id: 'ä' }] },
+    { name: 'vector', candidates: [{ id: 'z' }] },
+  ] });
+  assert.deepEqual(r.items.map(item => item.id), ['z', 'ä']);
+});
