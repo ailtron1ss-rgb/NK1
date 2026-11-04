@@ -1,0 +1,42 @@
+name: NeuroCore Completion Kit validation
+
+on:
+  pull_request:
+    branches: [workpass72-completion-mega-architecture, workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/completion-kit/**"
+      - ".github/workflows/completion-kit-validation.yml"
+  push:
+    branches:
+      - workpass72-completion-mega-architecture
+      - aspect/workpass72-completion-kit-*
+    paths:
+      - "runtime/neuro-kurisu/completion-kit/**"
+      - ".github/workflows/completion-kit-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: completion-kit-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  completion-kit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.16.0"
+          package-manager-cache: false
+      - name: Unit tests
+        run: npm --prefix runtime/neuro-kurisu/completion-kit test
+      - name: Canonical architecture audit
+        run: npm --prefix runtime/neuro-kurisu/completion-kit run audit
+      - name: Runtime import graph audit
+        run: npm --prefix runtime/neuro-kurisu/completion-kit run imports
+      - name: Gate command surface audit
+        run: npm --prefix runtime/neuro-kurisu/completion-kit run test-surface
