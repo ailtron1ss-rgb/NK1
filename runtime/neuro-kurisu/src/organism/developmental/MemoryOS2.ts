@@ -740,8 +740,17 @@ export class MemoryOS2{
    const fallbackItems=this.previewRetrieve(query,safeLimit,goalRelevance,identityRelevance,temporalOptions);
    const provider=this.embeddingProvider;
    const providerDiag=provider?.diagnostics();
+   const lexicalFallback=(diag:ReturnType<NonNullable<typeof provider>['diagnostics']>|undefined,corpusItems:number,indexedItems:number,coverage01:number,newlyIndexed:number,fallbackReason:string,rejectedSemanticCandidates=0,topSimilarity=0,topMargin=0):SemanticMemoryPreview=>({
+     items:fallbackItems,
+     semantic:{
+       enabled:false,provider:diag?.provider??'none',model:diag?.model??'',indexedItems,corpusItems,coverage01,newlyIndexed,
+       fallbackReason,cacheEntries:diag?.cacheEntries??0,requests:diag?.requests??0,failures:diag?.failures??0,lastLatencyMs:diag?.lastLatencyMs??0,
+       groundedCandidateCount:0,rejectedSemanticCandidates,topSimilarity,topMargin,
+       answerabilityGate:'lexical-only-fallback',rankingFusion:null,
+     },
+   });
    if(!provider||!String(query??'').trim()){
-     return {items:fallbackItems,semantic:{enabled:false,provider:providerDiag?.provider??'none',model:providerDiag?.model??'',indexedItems:0,corpusItems:this.state.items.length,coverage01:0,newlyIndexed:0,fallbackReason:!provider?'embedding-provider-disabled':'empty-query',cacheEntries:providerDiag?.cacheEntries??0,requests:providerDiag?.requests??0,failures:providerDiag?.failures??0,lastLatencyMs:providerDiag?.lastLatencyMs??0}};
+     return lexicalFallback(providerDiag,this.state.items.length,0,0,0,!provider?'embedding-provider-disabled':'empty-query');
    }
    const now=typeof temporalOptions.asOfAt==='number'&&Number.isFinite(temporalOptions.asOfAt)?temporalOptions.asOfAt:Date.now();
    const temporalMode=temporalOptions.temporalMode??'current';
@@ -754,11 +763,11 @@ export class MemoryOS2{
    }
    const lexicalPoolLimit=Math.max(8,Math.min(96,Math.floor(performanceOptions.maxLexicalPool??Math.max(24,Math.min(64,safeLimit*8)))));
    const lexicalPool=this.previewRetrieve(query,lexicalPoolLimit,goalRelevance,identityRelevance,temporalOptions).filter(eligible);
+   const lexicalRank=new Map(lexicalPool.map((item,index)=>[item.id,index]));
    const hasCurrentVector=(item:MemoryItem2)=>{const row=this.semanticEmbeddingIndex.get(item.id);return Boolean(row&&row.providerId===provider.providerId&&row.contentHash===memoContentHash(item.content)&&row.vector.length>0);};
    const missingSet=new Map<string,MemoryItem2>();
-   // Prioritize lexical/fuzzy candidates but reserve part of a cold-start batch for
-   // recent rows with different wording; otherwise the derived index can never discover
-   // vocabulary-distant memories on a small per-turn budget.
+   // Prioritize grounded lexical candidates but reserve part of a cold-start batch
+   // for recent rows with different wording, so the index can discover paraphrases.
    const backfillBudget=Math.max(1,Math.min(96,Math.floor(performanceOptions.maxIndexItems??96)));
    const lexicalBudget=Math.max(1,Math.min(backfillBudget,Math.ceil(backfillBudget*.7)));
    for(const item of lexicalPool){if(hasCurrentVector(item))continue;missingSet.set(item.id,item);if(missingSet.size>=lexicalBudget)break;}
@@ -768,9 +777,6 @@ export class MemoryOS2{
      missingSet.set(item.id,item);
    }
    const missing=[...missingSet.values()].slice(0,backfillBudget);
-   // Capture the exact text identity sent to the provider. Memory may be revised
-   // while embedBatch is pending; a late vector must never be labelled with a new
-   // content hash or be inserted for an evicted/invalidated record.
    const requestedMissing=missing.map(item=>({item,content:item.content,contentHash:memoContentHash(item.content)}));
    let newlyIndexed=0;
    try{
@@ -780,48 +786,101 @@ export class MemoryOS2{
      if(!queryVector)throw new Error('invalid-query-embedding-vector');
      for(let index=0;index<requestedMissing.length;index++){
        const requested=requestedMissing[index],vector=normalizeValidatedEmbeddingVector(vectors[index+1],queryVector.length);
-       // A malformed candidate must never enter the derived index. The valid lexical
-       // retrieval path remains available for this row and future requests.
        if(!vector)continue;
        const current=this.state.items.find(row=>row.id===requested.item.id);
        if(!current||!eligible(current)||memoContentHash(current.content)!==requested.contentHash)continue;
        this.semanticEmbeddingIndex.set(current.id,{contentHash:requested.contentHash,providerId:provider.providerId,vector,lastUsedAt:now});newlyIndexed++;
      }
-     // Keep one compact index for the canonical memory's maximum 1600 rows.
      while(this.semanticEmbeddingIndex.size>1600){
        let oldestId:string|undefined,oldestAt=Number.POSITIVE_INFINITY;
        for(const [id,row] of this.semanticEmbeddingIndex)if(row.lastUsedAt<oldestAt){oldestAt=row.lastUsedAt;oldestId=id;}
        if(!oldestId)break;this.semanticEmbeddingIndex.delete(oldestId);
      }
-     const lexicalRank=new Map(lexicalPool.map((item,index)=>[item.id,index]));
      const queryTokens=this.tokensFor(query);
      const queryEntities=extractEntities(query);
-     const semanticRows:Array<{item:MemoryItem2;score:number;similarity:number;lexicalRank:number}> = [];
+     const minSemanticSimilarity=Math.max(.70,Math.min(.99,Number.isFinite(performanceOptions.minSemanticSimilarity)?Number(performanceOptions.minSemanticSimilarity):.84));
+     const minSemanticMargin=Math.max(.01,Math.min(.30,Number.isFinite(performanceOptions.minSemanticMargin)?Number(performanceOptions.minSemanticMargin):.08));
+     const semanticCandidateLimit=Math.max(8,Math.min(160,Math.floor(performanceOptions.maxSemanticCandidates??96)));
+     const vectorRows:Array<{item:MemoryItem2;similarity:number;coverage:number;entity:number;temporalHint:number}>=[];
      for(const item of corpus){
        const cached=this.semanticEmbeddingIndex.get(item.id);
        if(!cached||cached.providerId!==provider.providerId||cached.contentHash!==memoContentHash(item.content)||cached.vector.length!==queryVector.length)continue;
-       let dot=0,normA=0,normB=0;for(let i=0;i<queryVector.length;i++){dot+=queryVector[i]*cached.vector[i];normA+=queryVector[i]*queryVector[i];normB+=cached.vector[i]*cached.vector[i];}
+       let dot=0,normA=0,normB=0;
+       for(let i=0;i<queryVector.length;i++){dot+=queryVector[i]*cached.vector[i];normA+=queryVector[i]*queryVector[i];normB+=cached.vector[i]*cached.vector[i];}
        const similarity=normA&&normB?Math.max(0,Math.min(1,dot/Math.sqrt(normA*normB))):0;
-       const rank=lexicalRank.get(item.id);const lexicalScore=rank===undefined?0:1-rank/Math.max(1,lexicalPool.length);
        const itemTokens=this.tokensFor(item.content);let covered=0;for(const token of queryTokens)if(itemTokens.has(token))covered++;
-       const coverage=queryTokens.size?covered/queryTokens.size:0;const entity=overlap(queryEntities,item.entities);
+       const coverage=queryTokens.size?covered/queryTokens.size:0;
+       const entity=overlap(queryEntities,item.entities);
        const temporalHint=this.signalFusion.temporalHint(query,item.validFromAt??item.createdAt,now);
-       const score=clamp(.68*similarity+.20*lexicalScore+.06*coverage+.03*entity+.02*temporalHint+.01*clamp(item.salience));
-       cached.lastUsedAt=now;semanticRows.push({item,score,similarity,lexicalRank:rank??Number.MAX_SAFE_INTEGER});
+       cached.lastUsedAt=now;
+       vectorRows.push({item,similarity,coverage,entity,temporalHint});
      }
-     semanticRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||a.lexicalRank-b.lexicalRank||a.item.id.localeCompare(b.item.id));
-     if(!semanticRows.length){
+     vectorRows.sort((a,b)=>b.similarity-a.similarity||a.item.id.localeCompare(b.item.id));
+     if(!vectorRows.length){
        const diag=provider.diagnostics();
-       return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:'no-valid-semantic-candidates',cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+       return lexicalFallback(diag,corpus.length,this.semanticEmbeddingIndex.size,corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,'no-valid-semantic-candidates');
      }
-     const items=semanticRows.slice(0,safeLimit).map(row=>structuredClone(row.item));
+     const topSimilarity=vectorRows[0]?.similarity??0;
+     const topMargin=Math.max(0,topSimilarity-(vectorRows[1]?.similarity??0));
+     const fusedRows:Array<{item:MemoryItem2;score:number;similarity:number;lexicalRank:number|null;semanticRank:number|null;margin:number}>=[];
+     const acceptedIds=new Set<string>();
+     let rejectedSemanticCandidates=0;
+     const vectorLimit=Math.min(vectorRows.length,semanticCandidateLimit);
+     for(let index=0;index<vectorLimit;index++){
+       const row=vectorRows[index],rank=lexicalRank.get(row.item.id);
+       const margin=Math.max(0,row.similarity-(vectorRows[index+1]?.similarity??0));
+       // previewRetrieve is the canonical lexical answerability gate. A candidate
+       // outside that grounded set needs both a calibrated similarity floor and
+       // either a clear top-rank margin or independent lexical/entity corroboration.
+       const semanticOnlyGrounded=queryTokens.size>=2
+         &&row.similarity>=minSemanticSimilarity
+         &&(margin>=minSemanticMargin||row.entity>=.4||row.coverage>=.2);
+       if(rank===undefined&&!semanticOnlyGrounded){rejectedSemanticCandidates++;continue;}
+       const lexicalContribution=rank===undefined?0:.45/(61+rank);
+       const semanticContribution=.55/(61+index);
+       const rrfNormalized=(lexicalContribution+semanticContribution)*61;
+       const feature=clamp(.45*row.coverage+.35*row.entity+.12*row.temporalHint+.08*clamp(row.item.salience));
+       const score=clamp(.9*rrfNormalized+.1*feature+(rank===0?.08:0));
+       fusedRows.push({item:row.item,score,similarity:row.similarity,lexicalRank:rank??null,semanticRank:index,margin});
+       acceptedIds.add(row.item.id);
+     }
+     // Keep grounded lexical rows whose vectors are not indexed yet. Their lexical
+     // rank remains valid evidence; absence of a vector is not a reason to drop them.
+     for(const item of lexicalPool){
+       if(acceptedIds.has(item.id))continue;
+       const rank=lexicalRank.get(item.id)??0;
+       const itemTokens=this.tokensFor(item.content);let covered=0;for(const token of queryTokens)if(itemTokens.has(token))covered++;
+       const coverage=queryTokens.size?covered/queryTokens.size:0;
+       const entity=overlap(queryEntities,item.entities);
+       const temporalHint=this.signalFusion.temporalHint(query,item.validFromAt??item.createdAt,now);
+       const feature=clamp(.45*coverage+.35*entity+.12*temporalHint+.08*clamp(item.salience));
+       const lexicalContribution=.45/(61+rank);
+       const score=clamp(.9*(lexicalContribution*61)+.1*feature+(rank===0?.08:0));
+       fusedRows.push({item,score,similarity:0,lexicalRank:rank,semanticRank:null,margin:0});
+       acceptedIds.add(item.id);
+     }
+     fusedRows.sort((a,b)=>b.score-a.score||b.similarity-a.similarity||(a.lexicalRank??Number.MAX_SAFE_INTEGER)-(b.lexicalRank??Number.MAX_SAFE_INTEGER)||a.item.id.localeCompare(b.item.id));
+     if(!fusedRows.length){
+       const diag=provider.diagnostics();
+       return lexicalFallback(diag,corpus.length,this.semanticEmbeddingIndex.size,corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,'semantic-candidates-failed-answerability-gate',rejectedSemanticCandidates,topSimilarity,topMargin);
+     }
      const diag=provider.diagnostics();
-     return {items,semantic:{enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+     return {
+       items:fusedRows.slice(0,safeLimit).map(row=>structuredClone(row.item)),
+       semantic:{
+         enabled:true,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,
+         coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed,fallbackReason:null,
+         cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs,
+         groundedCandidateCount:fusedRows.length,rejectedSemanticCandidates,topSimilarity,topMargin,
+         answerabilityGate:'lexical-or-calibrated-semantic-v1',rankingFusion:'weighted-rrf-v1',
+       },
+     };
    }catch(error){
      const diag=provider.diagnostics();
-     return {items:fallbackItems,semantic:{enabled:false,provider:diag.provider,model:diag.model,indexedItems:this.semanticEmbeddingIndex.size,corpusItems:corpus.length,coverage01:corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,newlyIndexed:0,fallbackReason:String(error instanceof Error?error.message:error).slice(0,200),cacheEntries:diag.cacheEntries,requests:diag.requests,failures:diag.failures,lastLatencyMs:diag.lastLatencyMs}};
+     return lexicalFallback(diag,corpus.length,this.semanticEmbeddingIndex.size,corpus.length?clamp(this.semanticEmbeddingIndex.size/corpus.length):0,0,String(error instanceof Error?error.message:error).slice(0,200));
    }
  }
+
  restore(s:MemoryOSState2|undefined){
   const sourceItems=Array.isArray(s?.items)?s!.items:[];
   const boundedItems=sourceItems.slice(0,1600);
