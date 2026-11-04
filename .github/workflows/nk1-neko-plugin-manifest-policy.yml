@@ -1,0 +1,49 @@
+name: NK1 N.E.K.O. plugin manifest policy
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoPluginManifestPolicyRegistry.ts"
+      - "runtime/neuro-kurisu/tests/neko-plugin-manifest-policy.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-plugin-manifest-policy.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoPluginManifestPolicyRegistry.ts"
+      - "runtime/neuro-kurisu/tests/neko-plugin-manifest-policy.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-plugin-manifest-policy.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-plugin-manifest-policy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manifest-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: N.E.K.O. manifest policy contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-plugin-manifest-policy
+      - name: Existing ActionGateway input contracts
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:tool-input-contracts-workpass624
+      - name: Runtime typecheck
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
