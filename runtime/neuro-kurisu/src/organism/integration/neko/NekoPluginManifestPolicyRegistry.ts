@@ -230,12 +230,31 @@ export class NekoPluginManifestPolicyRegistry {
   }
 
   restore(raw: unknown): number {
+    const rejectAll = (): number => {
+      this.manifests.clear();
+      return 0;
+    };
     const row = ownDataObject(raw, 4);
     const manifests = row?.version === 1 ? ownDenseArray(row.manifests, 256) : null;
+    if (!manifests) return rejectAll();
+
+    // Validate the complete snapshot off to the side. No valid prefix may become
+    // active while a later manifest is malformed, duplicated or gateway-incompatible.
+    const restored = new Map<string, NekoPluginAuthorizationManifest>();
+    try {
+      for (const rawManifest of manifests) {
+        const normalized = this.normalizeManifest(rawManifest);
+        if (!normalized.manifest || restored.has(normalized.manifest.id)) return rejectAll();
+        restored.set(normalized.manifest.id, deepFreeze(normalized.manifest));
+      }
+    } catch {
+      return rejectAll();
+    }
+
+    // Publish the new policy set only after every declaration has passed validation.
     this.manifests.clear();
-    if (!manifests) return 0;
-    for (const manifest of manifests) this.register(manifest);
-    return this.manifests.size;
+    for (const [pluginId, manifest] of restored) this.manifests.set(pluginId, manifest);
+    return restored.size;
   }
 
   /** Bind the registry instance for direct injection into PluginGatewayAdapter.authorize. */
