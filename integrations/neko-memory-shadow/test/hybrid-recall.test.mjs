@@ -68,3 +68,17 @@ test('accessor-backed input and candidate fields are rejected without invoking g
   }), /plain.*record|accessor|invalid/);
   assert.equal(candidateGetterCalled, false);
 });
+test('proxy-backed records and sparse arrays are rejected before traps execute', () => {
+  let trapCalled = false;
+  const proxyRecord = new Proxy({ channels: [] }, {
+    getPrototypeOf() { trapCalled = true; throw new Error('prototype trap executed'); },
+    get() { trapCalled = true; throw new Error('get trap executed'); },
+  });
+  assert.throws(() => combineRankedMemoryChannels(proxyRecord), /plain.*record/);
+  assert.equal(trapCalled, false);
+  const sparseCandidates = new Array(2);
+  sparseCandidates[1] = { id: 'late' };
+  assert.throws(() => combineRankedMemoryChannels({
+    channels: [{ name: 'bm25', candidates: sparseCandidates }],
+  }), /dense data array/);
+});
