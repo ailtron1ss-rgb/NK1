@@ -105,7 +105,7 @@ export function resolveDepthRigPoseFromMotorFrame(
   }
   const nodes = new Set(orderDepthRigNodes(rig).map((node) => node.id));
   const seenNodes = new Set<string>();
-  const deltas: Record<string, { rotation: number }> = {};
+  const deltas: Record<string, { rotation: number }> = Object.create(null);
   if (frame.goalId === null || frame.phase === "idle" || frame.phase === "rejected" || frame.phase === "expired") {
     return { rigId: rig.id, deltas };
   }

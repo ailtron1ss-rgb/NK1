@@ -1,6 +1,11 @@
 export type PhysicalReliabilityClass = 'unverified'|'actuation-receipt'|'artifact-verified'|'independently-observed';
 export type RecoveryMode = 'normal'|'probe'|'cooldown'|'degraded'|'blocked';
 
+import { countOr, enumOr, isPlainDataRecord, ownDataValue, stringOr, timestampOr, unitOr } from './RestoreSanitizers.ts';
+
+const RECOVERY_MODES:ReadonlySet<RecoveryMode>=new Set(['normal','probe','cooldown','degraded','blocked']);
+const RELIABILITY_CLASSES:ReadonlySet<PhysicalReliabilityClass>=new Set(['unverified','actuation-receipt','artifact-verified','independently-observed']);
+
 export interface EmbodiedRecoveryEpisode {
   tick:number; at:number; action:string; status:string; realityClass:string;
   verificationClass:PhysicalReliabilityClass; verified01:number; independent01:number;
@@ -40,6 +45,80 @@ export function defaultEmbodiedRecoveryState():EmbodiedRecoveryState {
   return {version:1,enabled:true,tick:0,totalEpisodes:0,verifiedEpisodes:0,rejectedEpisodes:0,recoveryEvents:0,sensorDropouts:0,consecutiveFailures:0,lastFailureClass:'none',lastRecoveryReason:'none',mode:'normal',nextRetryAt:0,globalReliability01:.5,actionStates:{},episodes:[]};
 }
 
+function sanitizeActionState(row:unknown):EmbodiedRecoveryActionState{
+  const d=emptyAction();
+  return {
+    attempts:countOr(ownDataValue(row,'attempts'),d.attempts),
+    successes:countOr(ownDataValue(row,'successes'),d.successes),
+    verified:countOr(ownDataValue(row,'verified'),d.verified),
+    failures:countOr(ownDataValue(row,'failures'),d.failures),
+    rejected:countOr(ownDataValue(row,'rejected'),d.rejected),
+    meanEffect01:unitOr(ownDataValue(row,'meanEffect01'),d.meanEffect01),
+    meanError01:unitOr(ownDataValue(row,'meanError01'),d.meanError01),
+    reliability01:unitOr(ownDataValue(row,'reliability01'),d.reliability01),
+    lastTick:countOr(ownDataValue(row,'lastTick'),d.lastTick),
+    failureStreak:countOr(ownDataValue(row,'failureStreak'),d.failureStreak),
+    cooldownUntil:timestampOr(ownDataValue(row,'cooldownUntil'),d.cooldownUntil),
+    retries:countOr(ownDataValue(row,'retries'),d.retries),
+  };
+}
+
+function sanitizeEpisode(row:unknown):EmbodiedRecoveryEpisode{
+  return {
+    tick:countOr(ownDataValue(row,'tick'),0),
+    at:timestampOr(ownDataValue(row,'at'),0),
+    action:stringOr(ownDataValue(row,'action'),'wait',96),
+    status:stringOr(ownDataValue(row,'status'),'unknown',64),
+    realityClass:stringOr(ownDataValue(row,'realityClass'),'unverified',64),
+    verificationClass:enumOr(ownDataValue(row,'verificationClass'),RELIABILITY_CLASSES,'unverified'),
+    verified01:unitOr(ownDataValue(row,'verified01'),0),
+    independent01:unitOr(ownDataValue(row,'independent01'),0),
+    effect01:unitOr(ownDataValue(row,'effect01'),0),
+    consequenceError01:unitOr(ownDataValue(row,'consequenceError01'),0),
+    source:stringOr(ownDataValue(row,'source'),'unknown',64),
+    failureStreak:countOr(ownDataValue(row,'failureStreak'),0),
+    retryIndex:countOr(ownDataValue(row,'retryIndex'),0),
+    recoveryMode:enumOr(ownDataValue(row,'recoveryMode'),RECOVERY_MODES,'normal'),
+  };
+}
+
+/** Rebuild persisted recovery state from validated primitives, dropping hostile
+ * rows and prototype-key action names. A corrupted snapshot must never inflate
+ * reliability or inject a non-finite counter into the action ledger. */
+export function sanitizeRecoveryState(value:unknown):EmbodiedRecoveryState{
+  const d=defaultEmbodiedRecoveryState();
+  if(!isPlainDataRecord(value) || ownDataValue(value,'version')!==1) return d;
+  const actionStates:Record<string,EmbodiedRecoveryActionState>={};
+  const rawActions=ownDataValue(value,'actionStates');
+  if(isPlainDataRecord(rawActions)){
+    for(const key of Object.keys(rawActions)){
+      if(key==='__proto__'||key==='constructor'||key==='prototype'||key.length>96) continue;
+      const row=ownDataValue(rawActions,key);
+      if(isPlainDataRecord(row)) actionStates[key]=sanitizeActionState(row);
+    }
+  }
+  const rawEpisodes=ownDataValue(value,'episodes');
+  const episodes=Array.isArray(rawEpisodes)?(rawEpisodes.filter((row)=>isPlainDataRecord(row)).slice(0,192).map(sanitizeEpisode) as unknown as EmbodiedRecoveryEpisode[]):[];
+  return {
+    version:1,
+    enabled:ownDataValue(value,'enabled')!==false,
+    tick:countOr(ownDataValue(value,'tick'),d.tick),
+    totalEpisodes:countOr(ownDataValue(value,'totalEpisodes'),d.totalEpisodes),
+    verifiedEpisodes:countOr(ownDataValue(value,'verifiedEpisodes'),d.verifiedEpisodes),
+    rejectedEpisodes:countOr(ownDataValue(value,'rejectedEpisodes'),d.rejectedEpisodes),
+    recoveryEvents:countOr(ownDataValue(value,'recoveryEvents'),d.recoveryEvents),
+    sensorDropouts:countOr(ownDataValue(value,'sensorDropouts'),d.sensorDropouts),
+    consecutiveFailures:countOr(ownDataValue(value,'consecutiveFailures'),d.consecutiveFailures),
+    lastFailureClass:stringOr(ownDataValue(value,'lastFailureClass'),d.lastFailureClass,96),
+    lastRecoveryReason:stringOr(ownDataValue(value,'lastRecoveryReason'),d.lastRecoveryReason,96),
+    mode:enumOr(ownDataValue(value,'mode'),RECOVERY_MODES,d.mode),
+    nextRetryAt:timestampOr(ownDataValue(value,'nextRetryAt'),d.nextRetryAt),
+    globalReliability01:unitOr(ownDataValue(value,'globalReliability01'),d.globalReliability01),
+    actionStates,
+    episodes,
+  };
+}
+
 export interface RecoveryInput {
   tick:number; at?:number; action:string; status:string; realityClass:string; source:string;
   verified01:number; independent01:number; effect01:number; consequenceError01:number;
@@ -54,8 +133,8 @@ export interface RecoveryInput {
  */
 export class EmbodiedRecoveryController {
   private state:EmbodiedRecoveryState;
-  constructor(initial?:EmbodiedRecoveryState){ this.state=structuredClone(initial && initial.version===1 ? initial : defaultEmbodiedRecoveryState()); }
-  restore(state?:EmbodiedRecoveryState){ this.state=structuredClone(state && state.version===1 ? state : defaultEmbodiedRecoveryState()); }
+  constructor(initial?:EmbodiedRecoveryState){ this.state=defaultEmbodiedRecoveryState(); if(initial!==undefined) this.restore(initial); }
+  restore(state?:EmbodiedRecoveryState){ this.state=sanitizeRecoveryState(state); }
   snapshot():EmbodiedRecoveryState{return structuredClone(this.state);}
 
   advise(action:string, now=Date.now()): {allowed:boolean;mode:RecoveryMode;retryBudget:number;reason:string;reliability01:number} {

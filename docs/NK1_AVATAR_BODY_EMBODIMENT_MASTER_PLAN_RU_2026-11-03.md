@@ -893,6 +893,10 @@ production-ready. Рисовать плейсхолдер и заявлять г
 
 Продолжение по плану §20, итеративное исправление дефектов того же класса, что и в §19.
 
+> Обновление 2026-11-04: базис `workpass70-source` ушёл вперёд (`a47dd0d` — более строгий
+> restore маршрутизации, сатурация счётчиков). Ветка смержена с базисом; файлы маршрутизации
+> взяты из базиса. Новые дефекты §21.4–§21.5 вынесены в PR #768 (CI 12/12 green).
+
 ### 21.1 Что исправлено (`IMPLEMENTED`, доказано регрессией)
 
 - **Счётчики маршрутизации восприятия обнулялись каждый тик.** `routePerception` возвращал
@@ -917,3 +921,118 @@ production-ready. Рисовать плейсхолдер и заявлять г
   корректно; класса «литерал вместо инкремента» больше не найдено в `runtime/.../body/`.
 - Следующий приоритет по §20: `B3` (2.5D рендер-путь, блокер — production-арт), `C3` (live-IK рук,
   `planarArmIK` пока только типизирован, не вызывается), `F3`/`G1` (визуальная E2E и soak).
+
+### 21.4 Дефект 2: 2.5D-поза терялась для id-узлов, совпадающих с ключами `Object.prototype`
+
+- `resolveDepthRigPose`, `resolveDepthRigWorldPose` и `resolveDepthRigPoseFromMotorFrame`
+  накапливали дельты в обычном `{}`. Легальный id узла вида `__proto__` или `constructor`
+  записывался в прототип, а не как собственный ключ: дельта исчезала и слой не двигался.
+- Исправление: аккумуляторы на `Object.create(null)`; чтение `pose.deltas[node.id]` и
+  `world.transforms[node.id]` теперь находит такие узлы.
+- Регрессия: `app/scripts/depth-rig.test.mjs` — узлы `__proto__`/`constructor` сохраняют позу,
+  мировой трансформ и поворот мотор-кадра. Fail-before: 19/20; pass-after: 20/20.
+
+### 21.5 Дефект 3: IK сообщал недостижимую цель как достигнутую
+
+- `solvePlanarArmIK` возвращал запрошенную `target` даже после того, как ограничения
+  плеча/локтя урезали углы: связанное (недостижимое) решение выглядело как полное.
+- Исправление: возвращаются `endEffector` (прямая кинематика по фактическим углам) и флаг
+  `limitsApplied`; `target` сохраняется как исходный запрос.
+- Регрессия: `app/scripts/planar-arm-ik.test.mjs` — без урезания `endEffector` совпадает с
+  целью и `limitsApplied=false`; при узком лимите `limitsApplied=true` и промах > 5 см.
+
+### 21.6 Прогоны после дефектов 2–3 (OBSERVED)
+
+- `node --test app/scripts/depth-rig.test.mjs` — 20/20 PASS.
+- `node --test app/scripts/planar-arm-ik.test.mjs` — 8/8 PASS; `vrm-humanoid-rig-adapter` — 11/11 PASS.
+- `npm --prefix app run test:body-systems` — 32/32; `test:embodiment-ui-bridge` — 16/16;
+  `test:scripts` — 468/468; `app typecheck` — PASS.
+- `runtime/neuro-kurisu` typecheck и routing/aspect10-наборы остаются зелёными (см. §21.2).
+
+## 22. Прогресс-проход 3 (2026-11-03, ветка `workpass71-body-systems`)
+
+> Тот же класс дефекта, что и §21.4 (утечка hostile-значений через аккумулятор/restore),
+> но теперь на границе **восстановления тела из персистентного снапшота** — путь,
+> который выполняется каждый старт и питает все метрики восприятия/грундинга.
+
+### 22.1 Что исправлено (`IMPLEMENTED`, доказано регрессией)
+
+| Дефект | Симптом до фикса | Исправление |
+| --- | --- | --- |
+| Restore не валидировал значения | `restore()` спредил сырой снапшот в живое состояние: `NaN`/строки/выход за диапазон протекали в метрики | новый общий владелец `body/RestoreSanitizers.ts` (чтение только через own data-дескрипторы, fail-closed) |
+| `MultimodalPerception.restore` | `modalities.text='corrupt'` → `NaN` при следующем `observe()`; `events='nan'`, `visionCaptures=-5` сохранялись | пересборка счётчиков/единичных значений через `countOr`/`unitOr`/`timestampOr` |
+| `MultimodalSituationModel.restore` | `modalityReliability.text=5` (вес фьюжна > 1), `last.features='no'` | валидация reliability в `[0,1]`, фильтр modalities/features, реконструкция `last` |
+| `PerceptualEvidenceCompiler.restore` | `metrics.grounding01='x'`, `conflict01=99`, `updates='bad'`, `scene=42` | каждое поле метрик/счётчик/сцена/activeQuery валидируется отдельно |
+| `DeviceEvidenceLedger.restore` | `verifiedProbes=-9`/строки → возможность ложно сертифицировать устройство | счётчики и `lastStatus` валидируются; сертификация остаётся `unavailable` |
+| `EmbodimentSubsystemRuntime.cameraEvidence.restore` | `captures='x'`, `cumulativeNovelty01=5`, `previousHash=7`, `last='nope'` | пересборка счётчиков/новизны/hash, `last` только как plain-record |
+| `P35SemanticWorldBodyEngine.restore` | `metrics.grounding01='x'`, `conflict01=99`, `body.energy01='bad'`, `spatialSelf.x=NaN`, `scene.label=5`, `affordances.respond=7` | полная реконструкция сущностей/отношений/утверждений, метрик, надёжностей модальностей, spatialSelf, body, scene, affordances, счётчиков и хеша |
+| `P37EmbodiedSensoriumEngine.restore` | `tick=-1`, `sensors.text='x'`, `affordance.respond=5`, `spatialSelf.x=NaN`, `entities[0].presenceStatus='TOTALLY_VISIBLE'`, `seenCount=-4` | реконструкция сущностей/событий/рёбер/запросов/сенсоров/affordance; координата при мусоре → `null` (не `NaN` и не `0`); `awake` fail-closed |
+| `EmbodiedRecoveryController.restore` | имя действия `constructor`/`__proto__` резолвилось в `Object.prototype` (чтение функции вместо строки леджера); `enabled='yes'`, `globalReliability01=5`, `mode='TOTALLY_BLOCKED'`, `episodes[0].verificationClass='bogus'` | полная реконструкция леджера действий/эпизодов/счётчиков; prototype-key имена действий отбрасываются; `enabled` fail-closed; конструктор делегирует в `restore` |
+
+### 22.2 Прогоны (OBSERVED)
+
+- `node --experimental-strip-types runtime/neuro-kurisu/tests/embodiment-restore-sanitization-integrity.mjs`
+  — **PASS** (fail-before подтверждён: без фикса падает на первой же проверке hostile-значений;
+  для P35/P37 fail-before подтверждён `git stash` их правок — падение на первой проверке `tick`).
+- `runtime/neuro-kurisu` typecheck — `TYPECHECK=PASS mode=tsc compiler=app-lock`.
+- Владельческие наборы P35/P37 остаются зелёными: `p35-semantic-world-body`, `p35-integration`,
+  `p35-migration`, `p35-performance`, `p37-integration`, `p37-cross-modal-agreement`,
+  `p37-episode-binding`, `p37-migration`, `aspect10-embodied-interaction`, `p14-embodied`.
+- Смежные наборы: `big-pass-57-persistence-coordinator`, `big-pass-48-subsystem-ports`,
+  `big-pass-2559-2566-embodied-sensorimotor-world`, `big-pass-2551-2558-embodied-causal-memory`,
+  `big-pass-379-embodied-recovery-causal`, `big-pass-379-embodied-recovery-performance`,
+  `big-pass-379-runtime-closed-loop`, `workpass68-speech-gateway-boundary`,
+  `embodiment-perception-routing-restore-integrity`, `aspect10-grounded-bridge` — PASS.
+- `npm --prefix runtime/neuro-kurisu run test:embodiment-restore-sanitization` — PASS (тот же шаг, что в CI).
+- CI-шаг `Embodiment restore sanitization integrity` добавлен в `.github/workflows/nk1-embodiment-restore-integrity.yml`.
+
+### 22.3 Остаточный аудит (`UNRESOLVED`)
+
+- `p17-embodied-multimodal-agent`, `big-pass-53-perceptual-grounding` и `big-pass-92-sensorium`
+  **падают на базовом коммите** (проверено stash-прогоном до правок) и не входят в активный NK1-CI —
+  вынесены в очередь, не трогались в этом проходе. `p35-server-smoke` требует живого сервера
+  (`127.0.0.1:3471`) и падает по `ECONNREFUSED` в изоляции — это smoke, а не unit.
+- Валидация hostile-снапшотов на уровне `StateMigrations` (p41/p42/p43) пока ограничена shape-проверками
+  (`Array.isArray`, spread дефолтов); строгая по-полю валидация — следующий кандидат.
+
+### 22.4 Интеграция с базой (OBSERVED)
+
+- База `workpass70-source` ушла вперёд (`d8902d7`), PR #768 стал `CONFLICTING`; влил базу в ветку
+  (merge `1cf99de`, конфликт только в `CHANGELOG.md` — оставлены обе записи). PR снова `MERGEABLE`.
+- После merge typecheck снова `TYPECHECK=PASS`; новые и смежные наборы (routing/aspect10/big-pass-48/57,
+  metacognitive-full-cycle) — PASS. Все проверки на head `1cf99de` — success (единственный «fail» — отменённый
+  concurrency-прогон, перекрытый более новым).
+
+## 23. Прогресс-проход 4 — exact-head фиксация (2026-11-04)
+
+> Продолжение §22: расширение того же класса (restore) на оставшиеся владельцы тела и
+> закрепление результата на точном head.
+
+### 23.1 Что добавлено в этом проходе (`IMPLEMENTED`, доказано регрессией)
+
+- `P35SemanticWorldBodyEngine.restore` и `P37EmbodiedSensoriumEngine.restore` переведены на
+  `RestoreSanitizers` (см. §22.1): `tick`, метрики, `body`, надёжности модальностей, `spatialSelf`,
+  `scene`, `affordances`, сущности/события/рёбра/запросы/сенсоры пересобираются из валидированных
+  примитивов; координата при мусоре → `null`; `awake` fail-closed; неизвестные affordance-ключи и
+  не-plain строки отбрасываются.
+- `EmbodiedRecoveryController.restore` — тот же класс + прототип-коллизия (`constructor`/`__proto__`
+  как имя действия резолвились в `Object.prototype`); конструктор теперь делегирует в `restore`.
+- Регрессия `embodiment-restore-sanitization-integrity.mjs` расширена hostile-снапшотами P35/P37/recovery
+  и точным round-trip валидных снапшотов; fail-before подтверждён `git stash` каждого источника.
+
+### 23.2 Прогоны (OBSERVED, exact-head)
+
+- `npm --prefix runtime/neuro-kurisu run typecheck` — `TYPECHECK=PASS mode=tsc compiler=app-lock`.
+- `npm --prefix runtime/neuro-kurisu run test:embodiment-restore-sanitization` — PASS.
+- Владельческие и смежные наборы P35/P37/recovery — PASS (полный список в §22.2).
+- Все **41** проверки на head `44306aa` (коммиты `dc7d08d`, `44306aa`) — success; PR #768 `OPEN`/`MERGEABLE`.
+
+### 23.3 Честная граница (`UNRESOLVED`)
+
+- Строгая по-полю валидация `StateMigrations` (p41/p42/p43) — следующий кандидат, не сделан.
+- `p17-embodied-multimodal-agent`, `big-pass-53-perceptual-grounding`, `big-pass-92-sensorium`
+  падают на базисе и вне активного CI (§22.3) — не трогались.
+- Оценка готовности тела/взаимодействия не меняется от этого прохода: это устойчивость и честность
+  персиста, а не новый рендер/моторика. Блокеры `B3`/`C3`/`F3`/`G1` (§21.3) остаются.
+
+

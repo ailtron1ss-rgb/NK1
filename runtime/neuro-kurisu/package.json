@@ -1854,6 +1854,7 @@
     "test:user-model-http-route": "node tests/user-model-http-route.mjs",
     "test:user-model-explicit-forget": "node --experimental-strip-types tests/user-model-explicit-forget.mjs",
     "test:embodiment-perception-routing-restore": "node --experimental-strip-types tests/embodiment-perception-routing-restore-integrity.mjs",
+    "test:embodiment-restore-sanitization": "node --experimental-strip-types tests/embodiment-restore-sanitization-integrity.mjs",
     "test:workpass667:causal-live-binding": "node --experimental-strip-types tests/workpass667-causal-live-binding.mjs",
     "test:b306:outcome-attribution": "node --experimental-strip-types tests/b306-outcome-attribution.mjs",
     "test:workpass642:metacognitive-memory-projection": "node --experimental-strip-types tests/workpass642-metacognitive-memory-projection.mjs && node --experimental-strip-types tests/metacognitive-full-cycle-runtime.mjs"

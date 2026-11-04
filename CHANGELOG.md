@@ -1,8 +1,20 @@
+## [NK1][Body] Sanitize persisted body-subsystem restores (2026-11-04)
+- `MultimodalPerception`, `MultimodalSituationModel`, `PerceptualEvidenceCompiler`, `DeviceEvidenceLedger`, the runtime `cameraEvidence` store, the `P35SemanticWorldBodyEngine`/`P37EmbodiedSensoriumEngine` world-model owners, and `EmbodiedRecoveryController` spread a raw persisted snapshot into live state, so a corrupted/truncated/hand-edited file leaked `NaN`, strings, out-of-range numbers and non-plain objects into every metric that later reads them.
+- Add `body/RestoreSanitizers.ts` as the shared coercion owner (`ownDataValue`, `isPlainDataRecord`, `finiteOr`/`unitOr`/`countOr`/`timestampOr`/`stringOr`/`enumOr`); each restore rebuilds state from validated primitives and reads persisted records through own data descriptors only, so a hostile getter or Proxy trap cannot execute.
+- A hostile snapshot can no longer inflate `verifiedProbes` to falsely certify a device, weight modality fusion above 1, seed a `NaN` event counter, drive a body coordinate to `NaN`, claim a non-visible entity as `visible`, or resolve a prototype-key action name (`constructor`/`__proto__`) into a function instead of a ledger row; a corrupted entity coordinate becomes `null`, never `NaN` or a false `0`.
+- Regression `embodiment-restore-sanitization-integrity.mjs` proves fail-before/pass-after (valid snapshots still round-trip exactly) and is wired into the NK1 embodiment restore-integrity workflow; runtime typecheck PASS.
+
+## [NK1][Body] Honest depth-rig node ids and planar-IK reach (2026-11-03)
+- Depth-rig pose/world accumulators used plain `{}`, so a legal node id that collides with an `Object.prototype` key (`__proto__`, `constructor`) was written through the prototype and its delta silently vanished. Use null-prototype accumulators in `resolveDepthRigPose`, `resolveDepthRigWorldPose` and `resolveDepthRigPoseFromMotorFrame`.
+- `solvePlanarArmIK` echoed the requested target even when shoulder/elbow limits clamped the angles, making a bound solution read as full reach. Return the forward-kinematic `endEffector` plus a `limitsApplied` flag; `target` stays the request.
+- Regressions: depth-rig 20/20 (was 19/20), planar-arm-ik 8/8; app `test:scripts` 468/468, `test:body-systems` 32/32, `test:embodiment-ui-bridge` 16/16, typecheck PASS.
+
 ## [NK1][Metacognition] Bind episodic self-monitoring to all eleven cognitive stages (2026-11-04)
 - The existing metacognitive CEF event previously linked only observation/prediction/action/outcome/learning, leaving appraisal, attention, memory, goal, plan and self-update outside the episode's direct causal parent set.
 - Record the episode only after the self-update node exists; verify the complete eleven-stage CEF lineage and attach all eleven stage IDs in canonical order.
 - Preserve the full causal parent set in the canonical MemoryOS2 episodic projection; reject duplicate parent IDs and refuse to label an incomplete cycle as a complete metacognitive episode.
 - Reuse the existing CEF + MemoryOS2 projection path; no second episode store or dependency added.
+
 
 ## [NK1][Body] Harden perception-routing restore against accessors and counter overflow (2026-11-04)
 - Validate persisted routing state as a plain record with own data properties; reject inherited/accessor-backed values and contain hostile or revoked Proxy reflection failures without invoking getters.

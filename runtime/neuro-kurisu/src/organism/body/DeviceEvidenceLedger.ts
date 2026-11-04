@@ -1,13 +1,34 @@
 /** B202 — physical-device evidence provenance ledger. */
 import type { AndroidTelemetrySample, TermuxCapabilities } from './AndroidEmbodimentBridge.ts';
+import { countOr, enumOr, isPlainDataRecord, ownDataValue } from './RestoreSanitizers.ts';
 export interface DeviceEvidenceRecord { id:string; at:number; status:'REAL_DEVICE_VERIFIED'|'HOST_PROBE'|'UNAVAILABLE'; capabilityDigest:string; telemetryFresh:boolean; commandSuccessRate01:number; source:string; }
 export interface DeviceEvidenceState { version:1; probes:number; verifiedProbes:number; hostProbes:number; unavailableProbes:number; lastStatus:DeviceEvidenceRecord['status']; records:DeviceEvidenceRecord[]; }
 const dState=():DeviceEvidenceState=>({version:1,probes:0,verifiedProbes:0,hostProbes:0,unavailableProbes:0,lastStatus:'UNAVAILABLE',records:[]});
+const STATUSES:ReadonlySet<DeviceEvidenceRecord['status']>=new Set(['REAL_DEVICE_VERIFIED','HOST_PROBE','UNAVAILABLE']);
 export const defaultDeviceEvidence=dState;
 function stableCaps(c:TermuxCapabilities){return ['battery','sensors','tts','stt','camera','wifi'].map(k=>`${k}:${c[k as keyof TermuxCapabilities]?'1':'0'}`).join('|');}
 export class DeviceEvidenceLedger {
   private state=dState();
-  restore(raw?:Partial<DeviceEvidenceState>|null){const d=dState(),r=raw??{};this.state={...d,...r,records:Array.isArray(r.records)?r.records.slice(0,64):[]};}
+  /**
+   * Rebuild persisted ledger state from validated primitives. The certification
+   * gate counts REAL_DEVICE_VERIFIED probes, so a corrupted counter or an unknown
+   * lastStatus must not be spread into live state: a hand-edited snapshot could
+   * otherwise inflate verifiedProbes and falsely certify a physical device.
+   */
+  restore(raw?:Partial<DeviceEvidenceState>|null){
+    const d=dState();
+    const r=isPlainDataRecord(raw)?raw:{};
+    const rawRecords=ownDataValue(r,'records');
+    this.state={
+      version:1,
+      probes:countOr(ownDataValue(r,'probes'),d.probes),
+      verifiedProbes:countOr(ownDataValue(r,'verifiedProbes'),d.verifiedProbes),
+      hostProbes:countOr(ownDataValue(r,'hostProbes'),d.hostProbes),
+      unavailableProbes:countOr(ownDataValue(r,'unavailableProbes'),d.unavailableProbes),
+      lastStatus:enumOr(ownDataValue(r,'lastStatus'),STATUSES,d.lastStatus),
+      records:Array.isArray(rawRecords)?rawRecords.filter((row)=>isPlainDataRecord(row)).slice(0,64) as unknown as DeviceEvidenceRecord[]:[],
+    };
+  }
   snapshot(){return structuredClone(this.state);}
   record(input:{at:number;status:DeviceEvidenceRecord['status'];capabilities:TermuxCapabilities;telemetry:AndroidTelemetrySample|null}){
     const diag=input.telemetry?.diagnostics; const successes=Number(diag?.commandsSucceeded??0), attempted=Number(diag?.commandsAttempted??0); const rec={id:`device-evidence-${input.at}-${this.state.probes}`,at:input.at,status:input.status,capabilityDigest:stableCaps(input.capabilities),telemetryFresh:Boolean(input.telemetry?.telemetry.source==='android-termux'&&input.telemetry?.telemetry.staleMs===0),commandSuccessRate01:attempted?Math.max(0,Math.min(1,successes/attempted)):0,source:String(input.telemetry?.telemetry.source??'none')};

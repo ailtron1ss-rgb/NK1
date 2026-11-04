@@ -7,7 +7,7 @@ export interface PlanarArmKinematicsInput {
   minConfidence01?:number; reachMarginM?:number;
 }
 export type PlanarArmKinematicsResult =
- | {accepted:true; shoulderAngle:number; elbowFlexion:number; target:Vec2; clampedDistance:number; reachRatio:number; frameId:string}
+ | {accepted:true; shoulderAngle:number; elbowFlexion:number; target:Vec2; endEffector:Vec2; limitsApplied:boolean; clampedDistance:number; reachRatio:number; frameId:string}
  | {accepted:false; reason:string};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const finite=(n:unknown):n is number=>typeof n==="number"&&Number.isFinite(n);
@@ -34,8 +34,17 @@ export function solvePlanarArmIK(input:PlanarArmKinematicsInput):PlanarArmKinema
  const cosShoulder=clamp((l1*l1+distance*distance-l2*l2)/(2*l1*distance),-1,1);
  const cosElbow=clamp((l1*l1+l2*l2-distance*distance)/(2*l1*l2),-1,1);
  const direction=Math.atan2(dy,dx);
- const shoulderAngle=limit(direction-Math.acos(cosShoulder),input.shoulderLimit??{min:-2.2,max:2.2});
- const elbowFlexion=limit(Math.PI-Math.acos(cosElbow),input.elbowLimit??{min:0,max:2.65});
+ const shoulderLimit=input.shoulderLimit??{min:-2.2,max:2.2};
+ const elbowLimit=input.elbowLimit??{min:0,max:2.65};
+ const rawShoulder=direction-Math.acos(cosShoulder);
+ const rawElbow=Math.PI-Math.acos(cosElbow);
+ const shoulderAngle=limit(rawShoulder,shoulderLimit);
+ const elbowFlexion=limit(rawElbow,elbowLimit);
  if(!finite(shoulderAngle)||!finite(elbowFlexion))return {accepted:false,reason:"ik-solution-non-finite"};
- return {accepted:true,shoulderAngle,elbowFlexion,target:{...target},clampedDistance:distance,reachRatio:clamp(rawDistance/(l1+l2),0,1),frameId:input.frameId};
+ // Report where the hand actually lands after joint limits, not the requested
+ // point: a clamped joint cannot reach the requested target, and callers must
+ // not treat a bound solution as a full-reach solution.
+ const endEffector={x:shoulder.x+l1*Math.cos(shoulderAngle)+l2*Math.cos(shoulderAngle+elbowFlexion),y:shoulder.y+l1*Math.sin(shoulderAngle)+l2*Math.sin(shoulderAngle+elbowFlexion)};
+ const limitsApplied=Math.abs(shoulderAngle-rawShoulder)>1e-9||Math.abs(elbowFlexion-rawElbow)>1e-9;
+ return {accepted:true,shoulderAngle,elbowFlexion,target:{...target},endEffector,limitsApplied,clampedDistance:distance,reachRatio:clamp(rawDistance/(l1+l2),0,1),frameId:input.frameId};
 }
