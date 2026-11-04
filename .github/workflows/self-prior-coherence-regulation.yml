@@ -1,17 +1,17 @@
-name: NK1 intrinsic motivation to endogenous goal coupling
+name: NK1 self-prior coherence regulation
 on:
   pull_request:
     paths:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/SelfPriorDensityModel.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
-      - "runtime/neuro-kurisu/tests/self-prior-homeostatic-drive.mjs"
+      - "runtime/neuro-kurisu/tests/self-prior-coherence-regulation.mjs"
       - "runtime/neuro-kurisu/src/organism/core/types.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/src/organism/core/CognitiveRuntimeCluster.ts"
       - "runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs"
-      - ".github/workflows/intrinsic-motivation-goal-coupling.yml"
+      - ".github/workflows/self-prior-coherence-regulation.yml"
   push:
     branches:
       - "aspect/intrinsic-drive-goal-coupling-20261103"
@@ -21,12 +21,12 @@ on:
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationGoalCoupling.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/SelfPriorDensityModel.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/IntrinsicMotivationEngine.ts"
-      - "runtime/neuro-kurisu/tests/self-prior-homeostatic-drive.mjs"
+      - "runtime/neuro-kurisu/tests/self-prior-coherence-regulation.mjs"
       - "runtime/neuro-kurisu/src/organism/core/types.ts"
       - "runtime/neuro-kurisu/src/organism/cognition/B272EndogenousGoalGenesis.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismCore.ts"
       - "runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs"
-      - ".github/workflows/intrinsic-motivation-goal-coupling.yml"
+      - ".github/workflows/self-prior-coherence-regulation.yml"
 permissions:
   contents: read
 jobs:
@@ -38,8 +38,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           package-manager-cache: false
-      - name: Run intrinsic motivation and endogenous goal coupling regressions
-        run: node --experimental-strip-types runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/self-prior-homeostatic-drive.mjs
+      - name: Run self-prior drift, calibration and coherence regressions
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/intrinsic-motivation-goal-coupling.mjs && node --experimental-strip-types runtime/neuro-kurisu/tests/self-prior-coherence-regulation.mjs
       - name: Typecheck runtime
         working-directory: runtime/neuro-kurisu
         run: node scripts/typecheck-runtime.mjs
