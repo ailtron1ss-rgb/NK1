@@ -23,10 +23,7 @@ test('concurrent writes preserve invocation order and flush waits for completion
 
 test('warning, error and critical lifecycle events are fsynced while ordinary ticks are not', async () => {
   await withTempDirectory(async directory => {
-    const journal = new OperationalJournal(join(directory, 'runtime.jsonl'), {
-      syncLevels: ['warn', 'error'],
-      syncEvents: ['runtime.stop.durable'],
-    });
+    const journal = new OperationalJournal(join(directory, 'runtime.jsonl'));
     await journal.write('info', 'runtime.step', { tick: 1 });
     await journal.write('info', 'runtime.stop.durable', { tick: 1 });
     await journal.write('warn', 'runtime.degraded', { tick: 2 });
