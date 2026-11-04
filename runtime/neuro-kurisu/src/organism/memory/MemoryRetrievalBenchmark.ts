@@ -470,7 +470,11 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
       const response=options.candidateRetriever!(query,limit,now,boundedSnapshotForBenchmark);
       if(Array.isArray(response))return {items:response.slice(0,limit),latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:0};
       if(!response||!Array.isArray(response.items))throw new Error('neko-shadow-candidate-result-invalid');
-      return {items:response.items.slice(0,limit),latencyMs:Number.isFinite(response.latencyMs)?Math.max(0,response.latencyMs):Math.max(0,performance.now()-started),isolationSetupMs:Number.isFinite(response.isolationSetupMs)?Math.max(0,response.isolationSetupMs):0};
+      const latencyMs=typeof response.latencyMs==='number'&&Number.isFinite(response.latencyMs)
+        ?Math.max(0,response.latencyMs):Math.max(0,performance.now()-started);
+      const isolationSetupMs=typeof response.isolationSetupMs==='number'&&Number.isFinite(response.isolationSetupMs)
+        ?Math.max(0,response.isolationSetupMs):0;
+      return {items:response.items.slice(0,limit),latencyMs,isolationSetupMs};
     }
     const setupStarted=performance.now();
     const isolated=new MemoryOS2({metadataRecallEnabled:options.metadataRecallEnabled===true});
