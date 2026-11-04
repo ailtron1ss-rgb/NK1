@@ -47,6 +47,9 @@ jobs:
       - name: Embodiment ASR provider wiring
         working-directory: runtime/neuro-kurisu
         run: npm run test:neko-asr-embodiment-wiring
+      - name: ASR metadata to cognitive evidence regression
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-asr-voice-input-evidence.mjs
       - name: Existing voice/cognitive context regression
         working-directory: runtime/neuro-kurisu
         run: npm run test:embodiment-voice-cognitive-context
