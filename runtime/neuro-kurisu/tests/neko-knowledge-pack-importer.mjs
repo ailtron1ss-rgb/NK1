@@ -54,6 +54,36 @@ test('preview is read-only and reports upstream source and license metadata', ()
   assert.equal(memory.memoryOS.size(), before);
 });
 
+test('a preview decision cannot authorize replacement package bytes', () => {
+  const memory = new MemorySubsystemRuntime();
+  const importer = new NekoKnowledgePackImporter(memory.fabric);
+  const reviewedBytes = bytes(validPack());
+  const reviewedPreview = importer.preview(reviewedBytes);
+  assert.equal(reviewedPreview.packDigest.length, 64);
+
+  const replacement = validPack({
+    pack_id: 'unreviewed-replacement-v1',
+    entries: [{
+      title: 'Unreviewed replacement',
+      terms: { alias: [], recognition: [] },
+      tags: ['external'],
+      summary: 'This payload was not shown in the preview.',
+      content: 'Different bytes must not inherit the prior operator decision.',
+    }],
+  });
+  const replacementBytes = bytes(replacement);
+  const before = memory.memoryOS.size();
+
+  // This is the old approval shape issued after previewing reviewedBytes.
+  // The importer must no longer allow it to authorize replacementBytes.
+  assert.throws(() => importer.import(replacementBytes, {
+    approved: true,
+    licenseAccepted: true,
+    entryIndices: [0],
+  }), /approval-pack-digest-required/);
+  assert.equal(memory.memoryOS.size(), before, 'rejected replacement must not write into canonical memory');
+});
+
 test('import requires explicit operator approval and an accepted non-empty license', () => {
   const importer = new NekoKnowledgePackImporter(new MemorySubsystemRuntime().fabric);
   const pack = bytes(validPack());
