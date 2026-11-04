@@ -4,6 +4,16 @@ import type { DevelopmentalExecutiveState } from './DevelopmentalExecutiveEngine
 import type { SelfDevelopmentState } from './P36AutonomousSelfDevelopment.ts';
 
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const c01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const clean=(x:unknown,n=180)=>typeof x==='string'?x.trim().replace(/\s+/g,' ').slice(0,n):'';
+const strList=(v:unknown,cap:number,n=180):string[]=>Array.isArray(v)?Array.from(new Set((v as unknown[]).map(x=>clean(x,n)).filter(Boolean))).slice(0,cap):[];
+const MSTATUS=['candidate','promoted','blocked'];
+const sanStrategy=(x:unknown):MetaStrategy|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=clean(r.id,120);if(!id)return null;return {id,abstraction:clean(r.abstraction,240),components:strList(r.components,6),goalFamilies:strList(r.goalFamilies,8),triggerWords:strList(r.triggerWords,32),preferredActions:Array.isArray(r.preferredActions)?(r.preferredActions as unknown[]).filter((a):a is ActionKind=>ACTIONS.includes(a as ActionKind)).slice(0,4):[],occurrences:cnt(r.occurrences,0),successes:cnt(r.successes,0),verified:cnt(r.verified,0),contexts:cnt(r.contexts,0),contextKeys:strList(r.contextKeys,24),holdoutTrials:cnt(r.holdoutTrials,0),holdoutSuccesses:cnt(r.holdoutSuccesses,0),retention01:c01(r.retention01,0),transfer01:c01(r.transfer01,0),confidence01:c01(r.confidence01,0),utility01:c01(r.utility01,0),status:MSTATUS.includes(r.status as string)?r.status as MetaStrategy['status']:'candidate',failureStreak:cnt(r.failureStreak,0),applications:cnt(r.applications,0),lastOutcome01:c01(r.lastOutcome01,.5),createdAt:cnt(r.createdAt,0),lastAt:cnt(r.lastAt,0)};};
+const sanAgenda=(x:unknown):LearningAgendaItem|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const goalId=clean(r.goalId,120);if(!goalId)return null;return {goalId,score01:c01(r.score01,0),expectedLearning01:c01(r.expectedLearning01,0),transferPotential01:c01(r.transferPotential01,0),novelty01:c01(r.novelty01,0),uncertainty01:c01(r.uncertainty01,0),identityFit01:c01(r.identityFit01,0),resourceFit01:c01(r.resourceFit01,0),reason:clean(r.reason,240)};};
+const idOrNull=(v:unknown):string|null=>{const x=clean(v,120);return x?x:null;};
+const actOrNull=(v:unknown):ActionKind|null=>ACTIONS.includes(v as ActionKind)?v as ActionKind:null;
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
 const hash=(s:string)=>{let h=2166136261>>>0;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619)>>>0;return h.toString(16)};
 const words=(s:string)=>new Set((String(s).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu)??[]));
@@ -75,17 +85,13 @@ export class MetaDevelopmentalStrategyEngine {
   private state=defaultMetaDevelopmental();
 
   restore(raw?:Partial<MetaDevelopmentalState>|null){
-    const d=defaultMetaDevelopmental(),r=raw??{};
-    this.state={...d,...r,version:1,
-      strategies:Array.isArray(r.strategies)?r.strategies.slice(-96).map((s:any)=>({...s,
-        components:Array.isArray(s.components)?s.components.slice(0,6):[],goalFamilies:Array.isArray(s.goalFamilies)?s.goalFamilies.slice(0,8):[],
-        triggerWords:Array.isArray(s.triggerWords)?s.triggerWords.slice(0,32):[],preferredActions:Array.isArray(s.preferredActions)?s.preferredActions.filter((a:any)=>ACTIONS.includes(a)).slice(0,4):[],
-        contextKeys:Array.isArray(s.contextKeys)?Array.from(new Set(s.contextKeys.map((x:any)=>String(x).slice(0,180)))).slice(0,24):[],
-        status:['candidate','promoted','blocked'].includes(s.status)?s.status:'candidate'
-      })):[],
-      agenda:Array.isArray(r.agenda)?r.agenda.slice(0,12):[]
-    };
+    const d=defaultMetaDevelopmental();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const strategiesRaw=read('strategies');const agendaRaw=read('agenda');
+    const strategies=Array.isArray(strategiesRaw)?strategiesRaw.slice(-96).map(sanStrategy).filter((x):x is MetaStrategy=>x!==null):[];
+    const agenda=Array.isArray(agendaRaw)?agendaRaw.slice(0,12).map(sanAgenda).filter((x):x is LearningAgendaItem=>x!==null):[];
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),strategies,agenda,focusGoalId:idOrNull(read('focusGoalId')),focusAction:actOrNull(read('focusAction')),focusReason:clean(read('focusReason'),240)||d.focusReason,applications:cnt(read('applications'),d.applications),promotions:cnt(read('promotions'),d.promotions),blocks:cnt(read('blocks'),d.blocks),rollbackSignals:cnt(read('rollbackSignals'),d.rollbackSignals),metaLearning01:c01(read('metaLearning01'),d.metaLearning01),strategyTransfer01:c01(read('strategyTransfer01'),d.strategyTransfer01),learningAllocation01:c01(read('learningAllocation01'),d.learningAllocation01),abstraction01:c01(read('abstraction01'),d.abstraction01),lastAt:cnt(read('lastAt'),d.lastAt)};
   }
+
   snapshot(){return structuredClone(this.state);}
 
   beginCycle(){

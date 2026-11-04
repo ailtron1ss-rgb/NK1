@@ -8,11 +8,15 @@
 export interface SubjectTransferSession { id:string; taskFamily:string; continuity01:number; identity01:number; agency01:number; prediction01:number; outcome01:number; evidence01:number; }
 export interface SubjectTransferState { version:1; sessions:number; restarts:number; transferTrials:number; meanRetention01:number; meanTransfer01:number; meanIdentityDelta01:number; regressions:number; sessionsData:SubjectTransferSession[]; }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const clean=(x:unknown,n=160)=>typeof x==='string'?x.slice(0,n):'';
+const sanSession=(x:unknown):SubjectTransferSession|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=clean(r.id,120);if(!id)return null;return {id,taskFamily:clean(r.taskFamily,120),continuity01:clamp(finN(r.continuity01,0)),identity01:clamp(finN(r.identity01,0)),agency01:clamp(finN(r.agency01,0)),prediction01:clamp(finN(r.prediction01,0)),outcome01:clamp(finN(r.outcome01,0)),evidence01:clamp(finN(r.evidence01,0))};};
 const dState=():SubjectTransferState=>({version:1,sessions:0,restarts:0,transferTrials:0,meanRetention01:.5,meanTransfer01:.5,meanIdentityDelta01:0,regressions:0,sessionsData:[]});
 export const defaultLongitudinalSubjectTransfer= dState;
 export class LongitudinalSubjectTransferBattery {
   private state=dState();
-  restore(raw?:Partial<SubjectTransferState>|null){const d=dState(),r=raw??{};this.state={...d,...r,sessionsData:Array.isArray(r.sessionsData)?r.sessionsData.slice(0,256):[]};}
+  restore(raw?:Partial<SubjectTransferState>|null){const d=dState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const sdRaw=read('sessionsData');this.state={version:1,sessions:cnt(read('sessions'),d.sessions),restarts:cnt(read('restarts'),d.restarts),transferTrials:cnt(read('transferTrials'),d.transferTrials),meanRetention01:clamp(finN(read('meanRetention01'),d.meanRetention01)),meanTransfer01:clamp(finN(read('meanTransfer01'),d.meanTransfer01)),meanIdentityDelta01:clamp(finN(read('meanIdentityDelta01'),d.meanIdentityDelta01)),regressions:cnt(read('regressions'),d.regressions),sessionsData:Array.isArray(sdRaw)?sdRaw.slice(0,256).map(sanSession).filter((x):x is SubjectTransferSession=>x!==null):[]};}
   snapshot(){return structuredClone(this.state);}
   recordSession(input:SubjectTransferSession){
     const continuity=clamp(input.continuity01), identity=clamp(input.identity01), agency=clamp(input.agency01), prediction=clamp(input.prediction01), outcome=clamp(input.outcome01), evidence=clamp(input.evidence01);

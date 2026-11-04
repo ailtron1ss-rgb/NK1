@@ -150,6 +150,12 @@ on:
       - runtime/neuro-kurisu/src/organism/world/P52CounterfactualDevelopmentMind.ts
       - runtime/neuro-kurisu/src/organism/world/P83PersistentRealityModel.ts
       - runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts
+      - runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalPortfolioEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/MetaDevelopmentalStrategyEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
+      - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -301,6 +307,12 @@ on:
       - runtime/neuro-kurisu/src/organism/world/P52CounterfactualDevelopmentMind.ts
       - runtime/neuro-kurisu/src/organism/world/P83PersistentRealityModel.ts
       - runtime/neuro-kurisu/src/organism/world/GroundedWorldState.ts
+      - runtime/neuro-kurisu/src/organism/learning/ParametricPolicyLearner.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalCurriculumEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalPortfolioEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/MetaDevelopmentalStrategyEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
+      - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -421,6 +433,11 @@ jobs:
           node --experimental-strip-types tests/temporal-object-tracker.mjs
           node --experimental-strip-types tests/world-perception-grounded-identity-provenance.mjs
           node --experimental-strip-types tests/p2841-postcondition-grounded-world.mjs
+          node --experimental-strip-types tests/big-pass-121-meta-developmental.mjs
+          node --experimental-strip-types tests/big-pass-121-core-meta-developmental.mjs
+          node --experimental-strip-types tests/big-pass-122-personal-curriculum.mjs
+          node --experimental-strip-types tests/big-pass-122-core-personal-curriculum.mjs
+          node --experimental-strip-types tests/big-pass-123-developmental-portfolio.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
