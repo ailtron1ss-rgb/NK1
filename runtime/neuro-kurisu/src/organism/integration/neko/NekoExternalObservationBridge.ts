@@ -2,12 +2,10 @@ import { types as nodeUtilTypes } from 'node:util';
 import { sha256Stable } from '../../core/StableSerialization.ts';
 import type {
   ExternalObserverFabric,
-  ExternalObserverState,
   ExternalObservation,
 } from '../../system/ExternalObserverFabric.ts';
 import type {
   CognitiveEventFabric,
-  CognitiveEventFabricSnapshot,
   CognitiveEventNode,
 } from '../../system/CognitiveEventFabric.ts';
 
@@ -62,6 +60,7 @@ export type NekoExternalObservationBridgeResult =
         | 'event-id-conflict'
         | 'event-history-incomplete'
         | 'invalid-context'
+        | 'source-disabled'
         | 'observation-ingress-failed';
     };
 
@@ -319,13 +318,16 @@ export class NekoExternalObservationBridge {
     try {
       const sourceId = `neko-plugin.${pluginId}`;
       const independenceKey = `neko-plugin-source:${pluginId}`;
+      const existingSource = this.observers.snapshot().sources.find(source => source.id === sourceId);
+      if (existingSource && !existingSource.enabled) return { accepted: false, error: 'source-disabled' };
       this.observers.registerSource({
         id: sourceId,
         sourceClass: 'unknown',
         channel: 'tool',
         independenceKey,
         reliability01: PLUGIN_CONFIDENCE01,
-        enabled: true,
+        // Never undo an explicit host disable during registration.
+        enabled: existingSource?.enabled ?? true,
       });
       const observation: ExternalObservation = this.observers.observe({
         sourceId,
