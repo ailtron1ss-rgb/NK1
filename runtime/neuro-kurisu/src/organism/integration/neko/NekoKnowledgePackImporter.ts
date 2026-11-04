@@ -148,8 +148,9 @@ function parsePack(rawBytes: Uint8Array): NormalizedPack {
   if (!isRecord(json)) return fail('invalid-pack');
   assertExactKeys(json, ['schema_version', 'pack_id', 'material_type', 'source', 'entries'], 'unknown-pack-field');
   if (json.schema_version !== 1) return fail('unsupported-schema-version');
-  const packId = cleanText(json.pack_id, 'invalid-pack-id', 64);
-  if (!/^[a-z0-9][a-z0-9._-]{1,63}$/u.test(packId)) return fail('invalid-pack-id');
+  const packId = json.pack_id;
+  if (typeof packId !== 'string' || packId.length < 2 || packId.length > 64 ||
+      packId !== packId.trim() || !/^[a-z0-9][a-z0-9._-]{1,63}$/u.test(packId)) return fail('invalid-pack-id');
   if (json.material_type !== 'knowledge' && json.material_type !== 'corpus') return fail('invalid-material-type');
   if (!isRecord(json.source)) return fail('source-required');
   assertExactKeys(json.source, ['name', 'homepage', 'license'], 'unknown-source-field');
@@ -258,9 +259,9 @@ function toMemoryInput(pack: NormalizedPack, entry: NormalizedEntry, entryIndex:
       'neko-knowledge-pack',
       `material-${pack.materialType}`,
       `pack-${pack.packId}`,
-      ...entry.tags.map(tag => `source-tag:${tag}`),
-      ...entry.terms.alias.map(term => `alias:${term}`),
-      ...entry.terms.recognition.map(term => `recognition:${term}`),
+      ...entry.tags.map(tag => `source-tag:${tag.slice(0, 90)}`),
+      ...entry.terms.alias.map(term => `alias:${term.slice(0, 90)}`),
+      ...entry.terms.recognition.map(term => `recognition:${term.slice(0, 90)}`),
     ])].slice(0, 32),
     context: {
       packId: pack.packId,
