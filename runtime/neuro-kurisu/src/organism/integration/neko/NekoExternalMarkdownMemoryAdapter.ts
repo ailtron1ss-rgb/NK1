@@ -291,7 +291,7 @@ function splitMarkdownEntries(text: string, hermesDelimiter: boolean): Array<{ s
       flush();
       const level = heading[1].length;
       headings.splice(level - 1);
-      headings.push(cleanFragment(heading[2]).replace(/\\s+/gu, ' '));
+      headings.push(cleanFragment(heading[2]).replace(/\s+/gu, ' '));
       continue;
     }
     const item = LIST_ITEM.exec(line);
