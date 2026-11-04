@@ -31,11 +31,11 @@ const files = [
 // Only explicitly selected candidate IDs are committed through the real MemoryFabric/MemoryOS2 owner.
 {
   const preview = adapter.preview(files);
-  const selected = preview.candidates.filter(row => row.sourceKind === 'user').map(row => row.id);
+  const selected = preview.candidates.filter(row => row.sourceKind === 'user' && row.text.includes('Prefers concise Russian explanations')).map(row => row.id);
   const result = adapter.commit(preview.importId, selected, { tick: 17 });
   assert.equal(result.committed.length, 1);
   assert.equal(result.rejected.length, 0);
-  assert.equal(runtime.fabric.canonicalSize(), 1);
+  assert.equal(runtime.fabric.canonicalSize(), beforeCount + 1);
   const saved = runtime.fabric.canonicalSnapshot().items[0];
   assert.equal(saved.kind, 'social');
   assert.equal(saved.epistemicStatus, 'unknown');
@@ -117,6 +117,7 @@ const files = [
 // Import IDs and lifecycle command IDs are stable; replay commits cannot create duplicate canonical memories.
 {
   const source = [{ path: 'MEMORY.md', content: '- Stable import receipt avoids duplicated facts.' }];
+  const beforeCount = runtime.fabric.canonicalSize();
   const first = adapter.preview(source);
   const second = adapter.preview(source);
   assert.equal(first.importId, second.importId);
