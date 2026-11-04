@@ -1,35 +1,35 @@
-# N.E.K.O. plugin gateway adapter — NK1
+# Адаптер шлюза плагинов N.E.K.O. для NK1
 
-Status: isolated adapter implementation; host transport and the live plugin registry are intentionally not wired by this change.
+Статус: изолированный адаптер реализован. Транспорт хоста и live-реестр плагинов этим изменением намеренно не подключаются.
 
-## Ownership
+## Граница владения
 
-N.E.K.O.'s gateway pipeline is adapted as a boundary pattern:
+Из N.E.K.O. адаптируется последовательность границ:
 
 `transport -> normalize -> policy -> route -> ActionGateway -> serialize`
 
-NK1 remains authoritative for tool registration, input contracts, approval, idempotency receipts, execution, postcondition verification and audit. This adapter does not instantiate a second executor, persist a second receipt ledger, or let plugin code call registered executors directly.
+NK1 остаётся единственным владельцем регистрации инструментов, контрактов входных данных, approval, idempotency receipts, исполнения, проверки постусловий и аудита. Адаптер не создаёт второй исполнитель, отдельный журнал receipts и не позволяет плагинам вызывать executor напрямую.
 
-## Request boundary
+## Граница запроса
 
-- Host explicitly supplies enabled protocols and an `authorize(request, tool)` policy. Construction fails when either is missing.
-- Only own-data plain objects containing inert JSON values are accepted. Proxies, accessors, symbols, cycles, exotic prototypes, sparse arrays, prototype-pollution keys, excessive depth/property count and oversized payloads fail closed.
-- `toolId` must be inside the caller's `pluginId.` namespace.
-- `resource_read` requires a non-destructive tool and a capability ending in `.read` or `:read`.
-- `event_push` is rejected until a host-owned event-bus adapter exists. It is never disguised as a tool call.
-- External `autonomous` and `decisionId` claims are ignored. The host adapter calls NK1 with `autonomous: false`; the tool still passes through ActionGateway's current policy, approval and durable-receipt gates.
-- Caller-provided `idempotencyKey` and one-shot `approvalId` are forwarded to ActionGateway; this adapter does not fabricate approval.
+- Хост явно задаёт разрешённые протоколы и функцию `authorize(request, tool)`. Без этих настроек конструктор завершает создание ошибкой.
+- Принимаются только plain objects с собственными data-свойствами и инертными JSON-значениями. Proxy, getters/setters, символы, циклы, экзотические прототипы, разреженные массивы, ключи загрязнения прототипа, чрезмерная глубина/число свойств и payload сверх лимита отклоняются.
+- `toolId` обязан принадлежать namespace вызывающего `pluginId.`.
+- `resource_read` разрешён лишь для неразрушающего инструмента с capability, оканчивающимся на `.read` или `:read`.
+- `event_push` отклоняется до появления host-owned адаптера шины событий; он не маскируется под tool call.
+- Внешние утверждения `autonomous` и `decisionId` игнорируются. В NK1 передаётся `autonomous: false`; дальше запрос проходит обычные проверки ActionGateway, включая approval и durable receipt для соответствующих инструментов.
+- `idempotencyKey` и одноразовый `approvalId` могут быть переданы в ActionGateway. Адаптер не создаёт фиктивное пользовательское разрешение.
 
-## Response boundary
+## Граница ответа
 
-The adapter returns only the safe tool result plus verification and outcome classification. Internal execution IDs, audit structures, approval snapshots and provider receipts are not exposed. Unsafe or oversized results are omitted while preserving the gateway's actual success/verification state.
+Возвращается только безопасный результат инструмента и минимальные поля verification/outcome. Внутренние execution ID, audit-объекты, снимки approval и provider receipts не выдаются плагину. Небезопасный или чрезмерно большой результат опускается без искажения реального статуса исполнения/верификации.
 
-## Not yet integrated
+## Что ещё не подключено
 
-A host must still supply protocol transport, plugin-to-tool binding, capability policy, lifecycle/disable controls and an event-bus adapter. Enabling a protocol or installing a plugin is a separate host decision. No generic network listener or automatic plugin discovery is added here.
+Хост должен отдельно предоставить транспорт протокола, связь plugin-to-tool, политику capability, lifecycle/disable controls и адаптер event bus. Включение протокола и установка плагина остаются явным решением хоста. Универсальный сетевой listener и автоматическое обнаружение плагинов не добавляются.
 
-## Verification
+## Проверки
 
-- `tests/neko-plugin-gateway-adapter.mjs`: adapter contract, policy denial, namespace isolation, read-only route, event-push rejection, hostile inputs, bounds and safe result serialization.
-- `tests/neko-plugin-gateway-real-action-gateway.mjs`: the same adapter path exercised against the actual NK1 `ActionGateway`.
-- Dedicated CI runs both tests and runtime typecheck.
+- `tests/neko-plugin-gateway-adapter.mjs`: контракт адаптера, отказ политики, изоляция namespace, read-only маршрут, запрет event push, hostile inputs, лимиты и безопасная сериализация результата.
+- `tests/neko-plugin-gateway-real-action-gateway.mjs`: тот же путь проверяется против настоящего NK1 `ActionGateway`.
+- Выделенный CI запускает обе проверки, существующий regression тест контрактов инструментов и runtime typecheck.
