@@ -63,6 +63,15 @@ on:
       - runtime/neuro-kurisu/src/organism/system/PredictionDebt.ts
       - runtime/neuro-kurisu/src/organism/system/SelfPredictionBenchmark.ts
       - runtime/neuro-kurisu/src/organism/world/ActiveInferenceEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2506NeuralBottleneckEscalator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2507ConsolidationScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2508AdaptiveNeuralComputeGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B265IndependentPolicyEvaluator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B266HiddenTaskGeneralization.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoundedRecurrentStateSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P74IntegratedOrganismKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ValuePlasticity.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -127,6 +136,15 @@ on:
       - runtime/neuro-kurisu/src/organism/system/PredictionDebt.ts
       - runtime/neuro-kurisu/src/organism/system/SelfPredictionBenchmark.ts
       - runtime/neuro-kurisu/src/organism/world/ActiveInferenceEngine.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalPerception.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2506NeuralBottleneckEscalator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2507ConsolidationScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2508AdaptiveNeuralComputeGovernor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B265IndependentPolicyEvaluator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B266HiddenTaskGeneralization.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoundedRecurrentStateSubstrate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P74IntegratedOrganismKernel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ValuePlasticity.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -185,6 +203,10 @@ jobs:
         run: |
           node --experimental-strip-types tests/big-pass-174-function-reality-and-world-tickets.mjs
           node --experimental-strip-types tests/big-pass-39-cognitive-spine.mjs
+          node --experimental-strip-types tests/big-pass-2504-2508-neural-stack.mjs
+          node --experimental-strip-types tests/big-pass-265-independent-evaluator.mjs
+          node --experimental-strip-types tests/big-pass-266-hidden-generalization.mjs
+          node --experimental-strip-types tests/p2906-bounded-recurrent-ablation.mjs
           node --experimental-strip-types tests/big-pass-50-cognitive-execution.mjs
           node --experimental-strip-types tests/big-pass-89-cognitive-substrate.mjs
       - name: Run developmental/social owner consumers

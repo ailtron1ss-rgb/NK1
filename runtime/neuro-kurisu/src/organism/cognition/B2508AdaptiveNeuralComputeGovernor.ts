@@ -51,7 +51,27 @@ export class B2508AdaptiveNeuralComputeGovernor {
   readonly systemName = 'cognition:b2508-adaptive-neural-compute-governor' as const;
   private state = defaultB2508State();
   snapshot() { return structuredClone(this.state); }
-  restore(raw?: Partial<B2508State> | null) { this.state = { ...defaultB2508State(), ...structuredClone(raw ?? {}), version: 1 }; }
+  restore(raw?: Partial<B2508State> | null) {
+    const d = defaultB2508State();
+    const src: Record<string, unknown> = (raw && typeof raw === 'object') ? raw as unknown as Record<string, unknown> : {};
+    const read = (k: string): unknown => { try { return src[k]; } catch { return undefined; } };
+    const mode = read('mode');
+    const horizon = Number(read('horizon'));
+    this.state = {
+      version: 1,
+      enabled: Boolean(read('enabled') ?? d.enabled),
+      tick: Math.max(0, Math.floor(Number(read('tick')) || 0)),
+      cycles: Math.max(0, Math.floor(Number(read('cycles')) || 0)),
+      mode: mode === 'mobile' || mode === 'balanced' || mode === 'quality' ? mode : d.mode,
+      computeBudget01: clamp(Number(read('computeBudget01'))),
+      horizon: (horizon === 1 || horizon === 2 || horizon === 3 || horizon === 4) ? horizon as 1 | 2 | 3 | 4 : d.horizon,
+      skipFactor: clamp(Number(read('skipFactor'))),
+      thermalGuard01: clamp(Number(read('thermalGuard01'))),
+      energyGuard01: clamp(Number(read('energyGuard01'))),
+      uncertaintyDemand01: clamp(Number(read('uncertaintyDemand01'))),
+      predictionDemand01: clamp(Number(read('predictionDemand01'))),
+    };
+  }
   setEnabled(x: boolean) { this.state.enabled = !!x; }
 
   beforeDecision(i: B2508Input): B2508Output {
