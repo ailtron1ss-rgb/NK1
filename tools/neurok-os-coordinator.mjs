@@ -193,10 +193,15 @@ export async function verifyClaimFreshness(taskId, agentId, options = {}) {
     const claim = claims.find(item => item.taskId === taskId);
     if (!claim) throw new Error('task claim not found or expired');
     if (claim.agentId !== agentId) throw new Error('only the owning agent may verify this claim');
+    const root = path.resolve(options.root ?? ROOT);
+    const currentSha = (options.currentSha ?? execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()).toLowerCase();
+    if (claim.baseSha !== currentSha) {
+      return { fresh: false, stalePaths: [], missingPaths: [], reason: 'base SHA changed; reacquire the claim' };
+    }
     if (!Array.isArray(claim.readSet) || claim.readSet.length === 0) {
       return { fresh: false, stalePaths: [], missingPaths: [], reason: 'claim has no read-set; context freshness is unverified' };
     }
-    return inspectReadSet(claim.readSet, { root: options.root });
+    return inspectReadSet(claim.readSet, { root });
   });
 }
 
