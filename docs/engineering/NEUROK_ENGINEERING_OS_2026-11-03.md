@@ -63,13 +63,14 @@ This manifest catalogs requested tools and their intended roles. It deliberately
 - Machine-readable tool/capability registry with explicit unverified defaults.
 - Offline CLI to validate the registry and print workstream plans.
 - Lease-based single-writer task coordinator with base-SHA binding, current-checkout verification, path traversal rejection, parent/child conflict detection, expiry, idempotent renewal and owner-only release.
+- STORM-style read-set freshness: agents bind SHA-256 snapshots of up to 200 context files at claim time and must run owner-only `verify` before writing; stale/missing dependencies and symlink escapes fail closed. Claims without a read-set remain explicitly unverified.
 - Unified-diff preflight parser with SHA-256 digest, file status, hunk/changed-line ranges, binary/traversal rejection and human-approval/deny policy classification.
 - Node test suite for registry safety, concurrent claims and patch-policy invariants.
 - Research intake translating STORM, Co-Coder, CooperBench and OpenCollab into concrete coordination design decisions.
 
 ### Coordinator scope boundary
 
-The initial patch sandbox is a read-only preflight: it parses and classifies a patch but does not apply it. Patch application must run in a separate disposable worktree/container with resource limits and rollback receipts. The initial claim store is a local filesystem lease store. Multiple agents can coordinate only when they share the same `NEUROK_OS_STATE_DIR`; independent devices/worktrees do not share state automatically. It is advisory: it does not intercept arbitrary filesystem writes or replace Git review. A later authenticated shared backend must use transactional compare-and-swap and be contract-tested before cross-device claims are enabled.
+The initial patch sandbox is a read-only preflight: it parses and classifies a patch but does not apply it. Patch application must run in a separate disposable worktree/container with resource limits and rollback receipts. The initial claim store is a local filesystem lease store. Read-set snapshots bind the exact file bytes an agent based its work on; the `verify` operation re-hashes them immediately before a write/patch step. This narrows stale-context races but does not intercept arbitrary filesystem writes: agents must follow the verify gate and patch preflight, and a later isolated patch executor must enforce the gate itself. Multiple agents can coordinate only when they share the same `NEUROK_OS_STATE_DIR`; independent devices/worktrees do not share state automatically. It is advisory: it does not intercept arbitrary filesystem writes or replace Git review. A later authenticated shared backend must use transactional compare-and-swap and be contract-tested before cross-device claims are enabled.
 
 ### Evidence ledger scope boundary
 
@@ -82,7 +83,7 @@ No external service has been connected by this change. No API keys or database s
 ## Next engineering passes
 
 1. Add TypeScript AST/TypeChecker graph extraction and confidence/provenance classes.
-2. Implement durable coordinator claims with leases and conflict detection.
+2. Add a shared authenticated coordinator backend with transactional leases and read-set compare-and-swap; local filesystem coordination is single-machine only.
 3. Build the patch sandbox against the existing self-modification substrate, not as a parallel authority.
 4. Bind evidence receipts to CI run IDs, artifact hashes and independent holdout manifests.
 5. Integrate one external provider at a time behind a contract-tested adapter; begin with GitHub + local CLI, then research connectors, then optional storage.
