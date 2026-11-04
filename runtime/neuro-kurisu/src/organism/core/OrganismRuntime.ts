@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
+import type { NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { externalGoalForRuntimeInput, normalizeRuntimeExternalPluginSource, shouldInvokeLanguageForRuntimeStep, type RuntimeExternalGoalPolicy, type RuntimeExternalPluginSource } from './RuntimeInputPolicy.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
@@ -116,6 +117,8 @@ export interface RuntimeConfig extends OrganismConfig {
   mem0CognitiveRecall?: boolean;
   /** Explicitly injected, consent-gated observer for final user ASR transcripts; absent by default. */
   nekoPluginVoiceTranscriptBridge?: Pick<NekoPluginVoiceTranscriptBridge, 'publishFinal'>;
+  /** Optional host-owned ASR provider. No sidecar or transport is started implicitly. */
+  nekoAsrProvider?: NekoAsrProviderPort;
   /** Host-selected session key so the consent store can bind approval to this voice session. */
   voiceTranscriptObserverSessionId?: string;
   /** Character label sent with explicitly consented voice observations. */
@@ -249,6 +252,7 @@ export class OrganismRuntime {
 
   constructor(config: RuntimeConfig) {
     this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
+    this.embodiment.setNekoAsrProvider(config.nekoAsrProvider ?? null);
     this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
     this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
     this.nekoPluginVoiceTranscriptBridge = config.nekoPluginVoiceTranscriptBridge ?? null;
@@ -367,7 +371,7 @@ export class OrganismRuntime {
         sessionId: this.voiceTranscriptObserverSessionId,
         turnId: 'asr-' + randomUUID(),
         characterName: this.voiceTranscriptCharacterName,
-        provider: 'termux-speech-to-text',
+        provider: this.embodiment.speechInputProviderId,
         speakerRole: 'user',
         final: true,
         transcript,
@@ -1562,7 +1566,7 @@ export class OrganismRuntime {
         this.embodiment.userActivity();
         const clean=text.trim().slice(0,4000);
         this.publishNekoPluginVoiceTranscriptFinal(clean);
-        this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.68,evidence:['termux-speech-to-text'],content:clean});
+        this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.68,evidence:[this.embodiment.speechInputProviderId],content:clean});
       }
       return text;
     });
@@ -1577,7 +1581,7 @@ export class OrganismRuntime {
       this.embodiment.userActivity();
       const clean=text.trim().slice(0,4000);
       this.publishNekoPluginVoiceTranscriptFinal(clean);
-      this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.74,evidence:['termux-speech-to-text','voice-turn'],content:clean});
+      this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.74,evidence:[this.embodiment.speechInputProviderId,'voice-turn'],content:clean});
       await this.core.beginBatch();
       try {
         const step=await this.stepInternal(clean,{deliberate:Boolean(options.deliberate)});
