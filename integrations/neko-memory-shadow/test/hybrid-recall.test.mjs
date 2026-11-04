@@ -109,3 +109,14 @@ test('zero-weight channels are disabled without introducing zero-score candidate
   assert.deepEqual(r.items.map(item => item.id), ['kept']);
   assert.equal(r.diagnostics.candidatesSeen, 2);
 });
+
+test('channel input permutation cannot change fused floating-point scores', () => {
+  const channels = Array.from({ length: 8 }, (_, index) => ({
+    name: `channel-${index}`,
+    weight: (index + 1) / 10,
+    candidates: [{ id: 'shared' }, { id: `only-${index}` }],
+  }));
+  const forward = combineRankedMemoryChannels({ channels, limit: 64 });
+  const reverse = combineRankedMemoryChannels({ channels: [...channels].reverse(), limit: 64 });
+  assert.deepEqual(forward, reverse);
+});
