@@ -84,18 +84,19 @@ commit with a fail-before/pass-after regression wired into
 | 12 | `3583d3f` | `P65EpistemicLedger`, `P67AutonomousGoalGenesis`, `MicroDreamEngine`, `AutonomousLearningMemoryGovernor` | `workpass72-epistemic-goalgen-dream-learningmem-restore-integrity` |
 | 13 | (this commit) | `P56IntegratedDevelopmentalMind`, `P63DevelopmentalOperatingSystem`, `IntegratedLifeTrajectoryEngine`, `VerifiedAutonomousLifeEngine` | `workpass72-developmental-control-lifetrajectory-autolife-restore-integrity` |
 | 14 | (this commit) | `DeviceEvidenceLedger`, `PerceptualEvidenceCompiler`, `P37EmbodiedSensoriumEngine` | `workpass72-device-perceptual-embodied-restore-integrity` |
+| 15 | (this commit) | `P69ConstitutionalArbiter`, `P61IntegratedMindKernel`, `P58CognitiveKernel`, `PerceptualEpistemicGraph`, `NeuroSymbolicConceptCompiler`, `B2518PersistentSelfWorldModel`, `NeuromodulationSystem` | `workpass72-cognition-kernels-epistemic-concept-selfworld-neuromod-restore-integrity` |
 
 Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
 `finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
 snapshot drops malformed records, floors counters, clamps unit-interval ratios
 and whitelists enums instead of injecting `NaN`, out-of-range values or unknown
-members into live state. `test:workpass72:core-integrity` runs all twenty-two
+members into live state. `test:workpass72:core-integrity` runs all twenty-three
 workpass72 suites in one step (exit 0, 21× `=PASS`).
 
 ## Evidence
 
 - Batch series (5–13) re-verified after batch 13: `npm run
-  test:workpass72:core-integrity` → exit 0, 22 suites `=PASS`; `npm run
+  test:workpass72:core-integrity` → exit 0, 23 suites `=PASS`; `npm run
   typecheck` → `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
 - Consumer regressions for the batch 10/11 owners re-run green:
   `big-pass-37-spine`, `big-pass-38-autonomous-spine`,

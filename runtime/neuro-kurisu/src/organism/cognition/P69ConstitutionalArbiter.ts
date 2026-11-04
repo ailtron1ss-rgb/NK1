@@ -7,6 +7,11 @@
  * becomes the organism's chosen intent.
  */
 const clamp = (x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const P69_MODES:readonly P69Mode[]=['protect','respond','explore','verify','reflect','rest','observe'];
+const strList=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,120)).slice(0,cap):[];
+const modeCounts=(v:unknown,d:Record<P69Mode,number>):Record<P69Mode,number>=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const m of P69_MODES)if(m in r)out[m]=cnt(r[m],d[m]);return out;};
 export type P69Mode='protect'|'respond'|'explore'|'verify'|'reflect'|'rest'|'observe';
 export interface P69State {
   version:1; cycles:number; vetoes:number; cautions:number; modeChanges:number; forcedDiversions:number;
@@ -22,7 +27,7 @@ export interface P69Input {
 }
 export class P69ConstitutionalArbiter {
   private state=defaultP69();
-  restore(raw?:Partial<P69State>|null){const d=defaultP69(),r=raw??{};this.state={...d,...r,modeCounts:{...d.modeCounts,...(r.modeCounts??{})},recentActions:Array.isArray(r.recentActions)?r.recentActions.slice(0,24):[]};}
+  restore(raw?:Partial<P69State>|null){const d=defaultP69();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const lm=read('lastMode');const lc=read('lastChosen');this.state={version:1,cycles:cnt(read('cycles'),d.cycles),vetoes:cnt(read('vetoes'),d.vetoes),cautions:cnt(read('cautions'),d.cautions),modeChanges:cnt(read('modeChanges'),d.modeChanges),forcedDiversions:cnt(read('forcedDiversions'),d.forcedDiversions),modeCounts:modeCounts(read('modeCounts'),d.modeCounts),meanConfidence01:clamp(finN(read('meanConfidence01'),d.meanConfidence01)),meanConstraintSlack01:clamp(finN(read('meanConstraintSlack01'),d.meanConstraintSlack01)),lastMode:P69_MODES.includes(lm as P69Mode)?lm as P69Mode:'observe',modeStreak:cnt(read('modeStreak'),d.modeStreak),recentActions:strList(read('recentActions'),24),lastChosen:typeof lc==='string'&&lc?lc.slice(0,120):null};}
   snapshot(){return structuredClone(this.state);}
   arbitrate(input:P69Input){
     const e=clamp(input.energy01),th=clamp(input.thermal01),cap=clamp(input.capacity01),id=clamp(input.identity01),rg=clamp(input.realityGap01),u=clamp(input.uncertainty01),n=clamp(input.novelty01),sn=clamp(input.socialNeed01),att=clamp(input.attention01),hp=clamp(input.homeostaticPressure01);
