@@ -177,6 +177,31 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
   assert.equal(registry.register(manifest({ tools: new Array(1) })).registered, false);
 }
 
+// Bind a real NK1 ActionGateway descriptor, including its inferred permission metadata.
+{
+  const { ActionGateway } = await import('../src/organism/system/ActionGateway.ts');
+  const gateway = new ActionGateway();
+  gateway.registerTool({
+    id: 'notes.search',
+    capability: 'notes.read',
+    destructive: false,
+    execute: async input => ({ echoed: input.query }),
+  });
+  const registry = new NekoPluginManifestPolicyRegistry(gateway);
+  const realManifest = manifest({
+    tools: [manifest().tools[0]],
+  });
+  assert.deepEqual(registry.register(realManifest), { registered: true, pluginId: 'notes', toolCount: 1 });
+  const descriptor = gateway.listTools().find(tool => tool.id === 'notes.search');
+  assert.ok(descriptor);
+  assert.equal(descriptor.permissionClass, 'none');
+  assert.equal(descriptor.requiresApproval, false);
+  assert.equal(await registry.authorize(context(), descriptor), true);
+  const execution = await gateway.executeTool('notes.search', { query: 'integration' }, 'manifest-policy-integration');
+  assert.equal(execution.ok, true);
+  assert.deepEqual(execution.result, { echoed: 'integration' });
+}
+
 // Live gateway failures deny registration and runtime authorization.
 {
   const registry = makeRegistry({ throwList: true });
@@ -188,4 +213,4 @@ const makeRegistry = (options = {}) => new NekoPluginManifestPolicyRegistry(make
   assert.equal(await unavailable.authorize(context(), registeredTools[0]), false);
 }
 
-console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=10');
+console.log('NEKO_PLUGIN_MANIFEST_POLICY=PASS cases=11');
