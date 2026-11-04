@@ -5,6 +5,8 @@ const ACTIONS: ActionKind[]=['respond','explore','verify','rest','reflect','wait
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
 
 const deep=<T>(x:T):T=>structuredClone(x);
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
 
 export interface TaskAgnosticTransferRouterState {
   version:1;
@@ -34,7 +36,7 @@ const defaultState=():TaskAgnosticTransferRouterState=>({version:1,tick:0,evalua
 export class TaskAgnosticTransferRouter {
   private state=defaultState();
   snapshot(){return deep(this.state);}
-  restore(raw?:Partial<TaskAgnosticTransferRouterState>|null){const d=defaultState(),r:any=raw??{};this.state={...d,...deep(r),version:1,meanUtility01:clamp(Number(r.meanUtility01??d.meanUtility01)),calibration01:clamp(Number(r.calibration01??d.calibration01)),coverage01:clamp(Number(r.coverage01??0)),transfer01:clamp(Number(r.transfer01??0)),negativeTransfer01:clamp(Number(r.negativeTransfer01??0)),abstractionUtility01:clamp(Number(r.abstractionUtility01??.5)),selectedConfidence01:clamp(Number(r.selectedConfidence01??0)),lastUtility01:clamp(Number(r.lastUtility01??.5)),lastSpecificity01:clamp(Number(r.lastSpecificity01??0)),lastAbstractness01:clamp(Number(r.lastAbstractness01??0)),lastTaskFreeScore01:clamp(Number(r.lastTaskFreeScore01??0))};}
+  restore(raw?:Partial<TaskAgnosticTransferRouterState>|null){const d=defaultState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const ss=read('selectedSkillId');const sa=read('selectedAction');this.state={version:1,tick:cnt(read('tick'),d.tick),evaluations:cnt(read('evaluations'),d.evaluations),successfulTransfers:cnt(read('successfulTransfers'),d.successfulTransfers),harmfulTransfers:cnt(read('harmfulTransfers'),d.harmfulTransfers),abstentions:cnt(read('abstentions'),d.abstentions),utilitySamples:cnt(read('utilitySamples'),d.utilitySamples),meanUtility01:clamp(finN(read('meanUtility01'),d.meanUtility01)),calibration01:clamp(finN(read('calibration01'),d.calibration01)),coverage01:clamp(finN(read('coverage01'),d.coverage01)),transfer01:clamp(finN(read('transfer01'),d.transfer01)),negativeTransfer01:clamp(finN(read('negativeTransfer01'),d.negativeTransfer01)),abstractionUtility01:clamp(finN(read('abstractionUtility01'),d.abstractionUtility01)),selectedSkillId:typeof ss==='string'&&ss?ss.slice(0,160):null,selectedAction:ACTIONS.includes(sa as ActionKind)?sa as ActionKind:null,selectedConfidence01:clamp(finN(read('selectedConfidence01'),d.selectedConfidence01)),lastUtility01:clamp(finN(read('lastUtility01'),d.lastUtility01)),lastSpecificity01:clamp(finN(read('lastSpecificity01'),d.lastSpecificity01)),lastAbstractness01:clamp(finN(read('lastAbstractness01'),d.lastAbstractness01)),lastTaskFreeScore01:clamp(finN(read('lastTaskFreeScore01'),d.lastTaskFreeScore01))};}
 
   private scoreSkill(skill:TransferableSkill,context:number[],goalSignal01:number):{utility:number;specificity:number;abstractness:number;taskFree:number}{
     const ctx=clamp((cosine(skill.contextPrototype,context)+1)*.5),delta=skill.deltaPrototype.length?clamp((cosine(skill.deltaPrototype,context.slice(0,skill.deltaPrototype.length))+1)*.5):.5;

@@ -138,6 +138,12 @@ on:
       - runtime/neuro-kurisu/src/organism/system/LongHorizonAutonomyController.ts
       - runtime/neuro-kurisu/src/organism/developmental/P49TemporalLifeEngine.ts
       - runtime/neuro-kurisu/src/organism/developmental/P55DevelopmentalForkUniverse.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B286SelfConflictContinuityCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralSubjectDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/GoalIdentitySkillModulator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/TaskAgnosticTransferRouter.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousPersonhoodKernel.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousValueFormationEngine.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -277,6 +283,12 @@ on:
       - runtime/neuro-kurisu/src/organism/system/LongHorizonAutonomyController.ts
       - runtime/neuro-kurisu/src/organism/developmental/P49TemporalLifeEngine.ts
       - runtime/neuro-kurisu/src/organism/developmental/P55DevelopmentalForkUniverse.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B286SelfConflictContinuityCore.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CentralSubjectDynamics.ts
+      - runtime/neuro-kurisu/src/organism/cognition/GoalIdentitySkillModulator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/TaskAgnosticTransferRouter.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousPersonhoodKernel.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousValueFormationEngine.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -386,6 +398,10 @@ jobs:
           node --experimental-strip-types tests/big-pass-222-long-horizon-autonomy.mjs
           node --experimental-strip-types tests/p49-temporal-life.mjs
           node --experimental-strip-types tests/p55-developmental-fork-universe.mjs
+          node --experimental-strip-types tests/big-pass-286-self-conflict-continuity.mjs
+          node --experimental-strip-types tests/big-pass-200-central-subject-dynamics.mjs
+          node --experimental-strip-types tests/big-pass-229-233-open-ended-personhood.mjs
+          node --experimental-strip-types tests/big-pass-2613-2626-taskfree-recovery-personality-device.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
