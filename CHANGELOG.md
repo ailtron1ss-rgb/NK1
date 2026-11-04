@@ -1,3 +1,9 @@
+## [NK1][Autonomy] Balance proactive topic sources from delivered history (2026-11-04)
+- Adapt N.E.K.O.'s round-robin source fairness to the existing AutonomousSocialInitiativeEngine.
+- Within the existing near-top score window, prefer the least-used source among the last eight host-acknowledged deliveries; keep novelty selection within that source lane.
+- Only executed/delivered initiatives count. Planned, deferred, failed, stale and future entries do not affect rotation.
+- No new persistent state, scheduler or initiative owner is introduced; a materially weaker or sole available source is never suppressed.
+
 ## [NK1][Hexis] Harden adaptation snapshot restore (2026-11-04)
 
 - Treat Hexis persisted state as bounded, inert plain data before reading any field; hostile getters, proxies, cycles and oversized snapshots reset the adapter to safe defaults without crashing restore.
