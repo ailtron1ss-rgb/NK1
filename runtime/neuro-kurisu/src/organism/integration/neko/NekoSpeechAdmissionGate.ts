@@ -68,6 +68,7 @@ interface MutableCandidate {
   decision: 'pending' | 'admit' | 'reject';
   reason: NekoSpeechAdmissionSnapshotV1['reason'];
   terminalAudioEndSample: number | null;
+  snapshot: NekoSpeechAdmissionSnapshotV1 | null;
 }
 
 const WINDOW_KEYS = new Set(['sampleRateHz', 'startSample', 'endSample', 'probability01']);
@@ -158,7 +159,7 @@ export class NekoSpeechAdmissionGate {
   }
 
   get snapshot(): NekoSpeechAdmissionSnapshotV1 | null {
-    return this.active ? this.toSnapshot(this.active) : null;
+    return this.active?.snapshot ?? null;
   }
 
   observe(input: unknown): NekoSpeechAdmissionSnapshotV1 | null {
@@ -194,6 +195,7 @@ export class NekoSpeechAdmissionGate {
         decision: 'pending',
         reason: 'collecting',
         terminalAudioEndSample: null,
+        snapshot: null,
       };
     }
 
@@ -258,7 +260,9 @@ export class NekoSpeechAdmissionGate {
     if (previousDecision === 'pending' && candidate.decision !== 'pending') {
       candidate.terminalAudioEndSample = window.endSample;
     }
-    return this.toSnapshot(candidate);
+    const snapshot = this.toSnapshot(candidate);
+    candidate.snapshot = snapshot;
+    return snapshot;
   }
 
   /** Seal this candidate at the owner's boundary without resetting stream time. */
@@ -291,7 +295,7 @@ export class NekoSpeechAdmissionGate {
       observedAudioMs: candidate.observedSamples / 16,
       voicedAudioMs: candidate.voicedSamples / 16,
       probabilityMean01: candidate.observedSamples
-        ? candidate.probabilityWeightedSum / candidate.observedSamples
+        ? Number((candidate.probabilityWeightedSum / candidate.observedSamples).toFixed(6))
         : 0,
       probabilityPeak01: candidate.probabilityPeak01,
       longestSpeechRunSamples: candidate.longestSpeechRunSamples,
