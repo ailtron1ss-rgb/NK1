@@ -10,7 +10,8 @@ Adapt N.E.K.O.'s hybrid ranking idea without importing its Python memory owner, 
 - Added weighted Reciprocal Rank Fusion (RRF), deterministic tie-breaking and a privacy-reduced rank-list overlap comparator.
 - Applies subject scoping before rank contribution; missing ownership metadata is excluded during scoped recall.
 - Bounds channel count, candidates per channel, output count, identifier length, RRF k and channel weight.
-- Rejects malformed records, inherited-prototype records, duplicate channel names and invalid IDs.
+- Rejects malformed records, inherited-prototype records, accessor-backed records, proxies, sparse arrays, duplicate channel names and invalid IDs.
+- Equal-score ordering uses locale-independent UTF-16 code-unit ordering.
 - Emits no memory text and performs no persistence or model inference.
 
 ## Mathematical contract
@@ -24,4 +25,4 @@ Time complexity is O(C*N + U log U), where C is channel count, N is the per-chan
 
 ## Verification and promotion boundary
 
-Local implementation tests are being run independently. A passing unit suite proves the adapter's deterministic mechanics only; it does not prove NK1 retrieval uplift. Next gates: map canonical NK1 ranked IDs, run immutable bilingual RU/EN source/session-clustered holdouts across at least five paired seeds, report Recall@K/MRR/nDCG/false-positive retrieval/subject leakage/latency, and promote only if the established recallDelta > 0 gate is met with acceptable confidence bounds.
+The adapter's isolated Node suite checks rank math, subject filtering, duplicates, bounds, malformed/accessor/proxy/sparse inputs, locale-independent tie-breaking and overlap metrics. A passing unit suite proves deterministic mechanics only; it does not prove NK1 retrieval uplift. Next gates: map canonical NK1 ranked IDs, run immutable bilingual RU/EN source/session-clustered holdouts across at least five paired seeds, report Recall@K/MRR/nDCG/false-positive retrieval/subject leakage/latency, and promote only if the established recallDelta > 0 gate is met with acceptable confidence bounds.
