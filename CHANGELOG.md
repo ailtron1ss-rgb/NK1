@@ -1,3 +1,9 @@
+## [NK1][EngineeringOS] Report evidence-backed progress percentages (2026-11-04)
+
+- Add separate implementation-recorded and evidence-verified percentages for the 75-aspect tracker.
+- Compute both metrics per group and wave with zero-safe, one-decimal arithmetic.
+- Print both measurements in JSON status and Markdown reports; state explicitly that these percentages are not release readiness and never count `IMPLEMENTED` as verified.
+
 ## [NK1][Aspects] Add executable 75-aspect execution registry and weekly tracker (2026-11-04)
 
 - Add `engineering-os/aspects.v1.json`: 75 development aspects across 10 domains and 6 waves, each with an owner path, owner status, dependencies, verification gate, status and evidence.

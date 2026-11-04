@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { validateRegistry, computeProgress, nextActionable } from './neurok-aspects.mjs';
+import { validateRegistry, computeProgress, nextActionable, renderReport } from './neurok-aspects.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const doc = JSON.parse(await readFile(path.join(root, 'engineering-os/aspects.v1.json'), 'utf8'));
@@ -110,6 +110,34 @@ test('progress accounting counts only verified statuses as verified', () => {
   assert.equal(progress.verified, doc.aspects.filter(a => doc.verifiedStatuses.includes(a.status)).length);
   assert.ok(progress.implemented > 0);
   assert.equal(progress.verified + progress.implemented + progress.planned + progress.blocked, 75);
+});
+
+test('progress percentages separate implementation status from evidence-backed verification', () => {
+  const progress = computeProgress(doc);
+  const verified = new Set(doc.verifiedStatuses);
+  const implementationRecorded = doc.aspects.filter(a => a.status === 'IMPLEMENTED' || verified.has(a.status)).length;
+  const pct = (count, total) => total === 0 ? 0 : Math.round((count / total) * 1000) / 10;
+  assert.equal(progress.implementationRecorded, implementationRecorded);
+  assert.equal(progress.implementationPercent, pct(implementationRecorded, doc.aspects.length));
+  assert.equal(progress.verifiedPercent, pct(progress.verified, doc.aspects.length));
+
+  for (const group of doc.groups) {
+    const rows = doc.aspects.filter(a => a.group === group.id);
+    const actual = progress.groups[group.id];
+    assert.equal(actual.implementationPercent, pct(rows.filter(a => a.status === 'IMPLEMENTED' || verified.has(a.status)).length, rows.length));
+    assert.equal(actual.verifiedPercent, pct(rows.filter(a => verified.has(a.status)).length, rows.length));
+  }
+  for (const wave of doc.waves) {
+    const rows = doc.aspects.filter(a => a.wave === wave.id);
+    const actual = progress.waves[wave.id];
+    assert.equal(actual.implementationPercent, pct(rows.filter(a => a.status === 'IMPLEMENTED' || verified.has(a.status)).length, rows.length));
+    assert.equal(actual.verifiedPercent, pct(rows.filter(a => verified.has(a.status)).length, rows.length));
+  }
+
+  const report = renderReport(doc);
+  assert.ok(report.includes(`Implementation recorded: ${implementationRecorded}/${doc.aspects.length} (${pct(implementationRecorded, doc.aspects.length).toFixed(1)}%)`));
+  assert.ok(report.includes(`Evidence verified: ${progress.verified}/${progress.total} (${pct(progress.verified, progress.total).toFixed(1)}%)`));
+  assert.match(report, /Implementation % \| Verified %/);
 });
 
 test('next actionable aspect has only verified dependencies and is not blocked', () => {
