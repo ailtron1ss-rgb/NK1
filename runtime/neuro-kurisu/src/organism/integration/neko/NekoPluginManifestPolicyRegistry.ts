@@ -252,7 +252,8 @@ export class NekoPluginManifestPolicyRegistry {
     suppliedTool: NekoPluginRegisteredTool,
   ): Promise<boolean> {
     const rawRequest = ownDataObject(request, 12);
-    const rawTool = ownDataObject(suppliedTool, 12);
+    // ActionGateway.listTools() includes bounded governance metadata beyond identity fields.
+    const rawTool = ownDataObject(suppliedTool, 24);
     if (!rawRequest || !rawTool ||
         Object.keys(rawRequest).some(key => !['protocol', 'connectionId', 'requestId', 'action', 'pluginId', 'toolId', 'params', 'idempotencyKey', 'approvalId'].includes(key))) return false;
     const pluginId = boundedString(rawRequest.pluginId, 48)?.toLowerCase();
