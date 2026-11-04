@@ -24,10 +24,10 @@ export interface IntrinsicMotivationGoalStepResult {
 }
 
 /**
- * Couples intrinsic drives, a learned self-state familiarity prior and B272 goal
+ * Couples intrinsic drives, a learned self-state predictive prior and B272 goal
  * valuation without introducing another goal owner. The prior is scored before
- * update, and its bounded mismatch contributes only to the homeostatic channel.
- * A rejected cognitive tick rolls all three stateful components back together.
+ * update; bounded self-surprise contributes to coherence/model reconciliation,
+ * never to an energy-restoration drive. A rejected tick rolls all three owners back.
  */
 export class IntrinsicMotivationGoalCoupling {
   readonly motivation: IntrinsicMotivationEngine;
