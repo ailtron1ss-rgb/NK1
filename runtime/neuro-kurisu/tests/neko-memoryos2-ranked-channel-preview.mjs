@@ -33,6 +33,7 @@ assert.deepEqual(JSON.stringify(memory.snapshot()), before,
 assert.ok(preview.itemIds.includes(astronomy.id), 'baseline recall should include the directly grounded astronomy memory');
 assert.ok(preview.rankedChannels.bm25.includes(astronomy.id), 'BM25 rank IDs should be exported');
 assert.ok(preview.rankedChannels.coverage.includes(astronomy.id), 'coverage rank IDs should be exported');
+assert.equal(preview.maxPerChannel, 64, 'preview must expose the cap used for its ranked ID lists');
 assert.deepEqual(Object.keys(preview.rankedChannels).sort(),
   ['bm25', 'coverage', 'entity', 'fuzzy', 'metadata', 'relationship']);
 assert.ok(!JSON.stringify(preview).includes('telescope'),
