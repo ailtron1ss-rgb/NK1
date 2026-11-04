@@ -1,0 +1,61 @@
+name: NK1 N.E.K.O. external observation bridge
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalObservationBridge.ts"
+      - "runtime/neuro-kurisu/tests/neko-external-observation-bridge.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-external-observation-bridge.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalObservationBridge.ts"
+      - "runtime/neuro-kurisu/tests/neko-external-observation-bridge.mjs"
+      - "runtime/neuro-kurisu/src/organism/system/ExternalObserverFabric.ts"
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveEventFabric.ts"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-external-observation-bridge.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-external-observation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  observation-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: N.E.K.O. observation ingress contract
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-external-observation-bridge
+      - name: Existing external observer regression
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/big-pass-64-external-observer.mjs
+          node --experimental-strip-types tests/big-pass-122-external-observer-contradictions.mjs
+          node --experimental-strip-types tests/external-observer-hash-hardening-workpass39.mjs
+      - name: Existing cognitive causal ledger regression
+        working-directory: runtime/neuro-kurisu
+        run: |
+          node --experimental-strip-types tests/big-pass-161-cognitive-event-fabric.mjs
+          node --experimental-strip-types tests/workpass641-cognitive-event-fabric-restore-integrity.mjs
+      - name: Runtime typecheck
+        if: always()
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
