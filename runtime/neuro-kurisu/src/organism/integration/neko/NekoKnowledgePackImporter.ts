@@ -196,32 +196,28 @@ function parsePack(rawBytes: Uint8Array): NormalizedPack {
   };
 }
 function copyApprovalData(value: unknown): PlainRecord {
-  try {
-    if (value === null || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) {
-      return fail('invalid-approval');
-    }
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) return fail('invalid-approval');
-    const descriptors = Object.getOwnPropertyDescriptors(value);
-    const keys = Reflect.ownKeys(descriptors);
-    if (keys.length > 4) return fail('invalid-approval');
-    const result: PlainRecord = Object.create(null);
-    for (const key of keys) {
-      if (typeof key !== 'string' || key === '__proto__' || key === 'prototype' || key === 'constructor') {
-        return fail('invalid-approval-field');
-      }
-      if (!Object.prototype.hasOwnProperty.call(descriptors, key)) return fail('invalid-approval-field');
-      const descriptor = descriptors[key];
-      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-        return fail('approval-accessor-rejected');
-      }
-      if (!descriptor.enumerable) return fail('invalid-approval-field');
-      result[key] = descriptor.value;
-    }
-    return result;
-  } catch {
+  if (value === null || typeof value !== 'object' || Array.isArray(value) || nodeUtilTypes.isProxy(value)) {
     return fail('invalid-approval');
   }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return fail('invalid-approval');
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  const keys = Reflect.ownKeys(descriptors);
+  if (keys.length > 4) return fail('invalid-approval');
+  const result: PlainRecord = Object.create(null);
+  for (const key of keys) {
+    if (typeof key !== 'string' || key === '__proto__' || key === 'prototype' || key === 'constructor') {
+      return fail('invalid-approval-field');
+    }
+    if (!Object.prototype.hasOwnProperty.call(descriptors, key)) return fail('invalid-approval-field');
+    const descriptor = descriptors[key];
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+      return fail('approval-accessor-rejected');
+    }
+    if (!descriptor.enumerable) return fail('invalid-approval-field');
+    result[key] = descriptor.value;
+  }
+  return result;
 }
 
 /** Copies a small ordinary dense array without executing indexed accessors or Proxy traps. */
