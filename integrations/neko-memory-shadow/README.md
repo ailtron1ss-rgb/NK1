@@ -25,3 +25,22 @@ The adapter returns IDs/ranks/scores only. It does not persist memory, change pr
 Run tests from this directory with `npm test`.
 
 Keep this feature shadow-only until independent bilingual source/session-clustered holdout evaluation proves positive recallDelta over at least five paired seeds, with no subject leakage, material unsupported-retrieval increase or latency-budget regression.
+
+## Existing bilingual holdout harness
+
+The offline runner can select this evaluator as the candidate arm of the existing `MemoryRetrievalBenchmark`; it does not create a second metrics/scoring framework. The existing Inspect evidence export then records the shadow arm in `candidateRankedMemory`, and the established Python scorer evaluates recall, MRR, precision, unsupported retrieval, abstention and safety flags.
+
+Example (use the same snapshot, labels, provenance, `--now`, `--k` and seeds for both canonical and shadow reports):
+
+```bash
+node --experimental-strip-types scripts/run-memory-retrieval-experiment.mjs \
+  --snapshot memory-state.json --labels bilingual-holdout.jsonl \
+  --provenance provenance.json --out shadow-report.json \
+  --seeds 11,29,47,71,101 --k 5 --inspect-evidence true \
+  --candidate-strategy neko-shadow-rrf --candidate-rrf-profile equal \
+  --shadow-vector true
+```
+
+Run again with `--candidate-strategy memoryos2-canonical` for the current NK1 candidate arm. Choose `--candidate-rrf-profile memoryos2` to replay NK1's existing six channel weights; `equal` tests equal-weight fusion. `--shadow-vector true` is an explicit opt-in to the configured semantic provider. The report records whether the provider actually enabled, fallback reasons, vector coverage and preview latency. The candidate strategy/profile/vector flag are included in the retrieval configuration fingerprint.
+
+The runner uses an isolated snapshot and injects only the shadow-ranked `MemoryItem2` results into the existing benchmark candidate seam. It does not mutate live memory or auto-promote. The five seeds in `MemoryRetrievalExperiment` are paired-bootstrap resampling seeds; they do not randomize or train the retrieval algorithm. A synthetic CI fixture validates the bridge but is not retrieval-uplift evidence.
