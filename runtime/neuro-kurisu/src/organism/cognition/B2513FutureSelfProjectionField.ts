@@ -2,6 +2,10 @@ import type { ActionKind } from '../core/types.ts';
 import { cosineSimilarity01 as cosine01 } from '../core/NumericPrimitives.ts';
 const ACTIONS:ActionKind[]=['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number,a=0,b=1)=>Math.max(a,Math.min(b,Number.isFinite(x)?x:(a+b)/2));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const vec=(v:unknown,n:number,fill=0):number[]=>Array.isArray(v)?v.slice(0,n).map(x=>clamp(finN(x,fill))).concat(new Array(Math.max(0,n-v.length)).fill(fill)):new Array(n).fill(fill);
+const utility=(v:unknown,d:Record<ActionKind,number>):Record<ActionKind,number>=>{const out={...d};if(!v||typeof v!=='object')return out;const r=v as Record<string,unknown>;for(const a of ACTIONS)if(a in r)out[a]=clamp(finN(r[a],d[a]));return out;};
 
 export interface B2513State{version:1;enabled:boolean;tick:number;cycles:number;rollouts:number;learningUpdates:number;horizon:number;identityContinuity01:number;goalConsistency01:number;futureCoherence01:number;predictionError01:number;actionUtility:Record<ActionKind,number>;projectionLatent:number[];counterfactualDiversity01:number;verifiedProjection01:number;lesionFraction01:number;}
 export interface B2513Input{tick:number;identityLatent:number[];semanticLatent:number[];selfLatent:number[];worldLatent:number[];goalVector:number[];actionValues?:Partial<Record<ActionKind,number>>;uncertainty01:number;predictionError01:number;autonomy01:number;horizon?:number;}
@@ -10,7 +14,7 @@ export class B2513FutureSelfProjectionField{
   readonly systemName='cognition:b2513-future-self-projection-field' as const;
   private state=defaultB2513State();
   snapshot(){return structuredClone(this.state);}
-  restore(raw?:Partial<B2513State>|null){const d=defaultB2513State(),r:any=raw??{};this.state={...d,...structuredClone(r),version:1,actionUtility:{...d.actionUtility,...(r.actionUtility??{})},projectionLatent:Array.isArray(r.projectionLatent)?r.projectionLatent.slice(0,24):d.projectionLatent};}
+  restore(raw?:Partial<B2513State>|null){const d=defaultB2513State();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),cycles:cnt(read('cycles'),d.cycles),rollouts:cnt(read('rollouts'),d.rollouts),learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),horizon:Math.max(1,Math.min(6,Math.round(finN(read('horizon'),d.horizon)))),identityContinuity01:clamp(finN(read('identityContinuity01'),d.identityContinuity01)),goalConsistency01:clamp(finN(read('goalConsistency01'),d.goalConsistency01)),futureCoherence01:clamp(finN(read('futureCoherence01'),d.futureCoherence01)),predictionError01:clamp(finN(read('predictionError01'),d.predictionError01)),actionUtility:utility(read('actionUtility'),d.actionUtility),projectionLatent:vec(read('projectionLatent'),24),counterfactualDiversity01:clamp(finN(read('counterfactualDiversity01'),d.counterfactualDiversity01)),verifiedProjection01:clamp(finN(read('verifiedProjection01'),d.verifiedProjection01)),lesionFraction01:clamp(finN(read('lesionFraction01'),d.lesionFraction01))};}
   setEnabled(x:boolean){this.state.enabled=!!x;}
   beforeDecision(i:B2513Input){
     if(!this.state.enabled)return {actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,predictionError01:this.state.predictionError01,identityContinuity01:this.state.identityContinuity01,goalConsistency01:this.state.goalConsistency01,futureCoherence01:this.state.futureCoherence01,selectedAction:'wait' as ActionKind};

@@ -102,6 +102,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/NeuroSymbolicConceptCompiler.ts
       - runtime/neuro-kurisu/src/organism/cognition/B2518PersistentSelfWorldModel.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuromodulationSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2513FutureSelfProjectionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2514MemoryNeedPrioritizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2517SelfAuthoredRuleCompiler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2519LongHorizonCounterfactualPlanner.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2520SensorimotorImagination.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2521LearnedGenerativeOrganismLoop.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -205,6 +211,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/NeuroSymbolicConceptCompiler.ts
       - runtime/neuro-kurisu/src/organism/cognition/B2518PersistentSelfWorldModel.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuromodulationSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2513FutureSelfProjectionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2514MemoryNeedPrioritizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2517SelfAuthoredRuleCompiler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2519LongHorizonCounterfactualPlanner.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2520SensorimotorImagination.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2521LearnedGenerativeOrganismLoop.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -293,6 +305,9 @@ jobs:
           node --experimental-strip-types tests/big-pass-2518-2520-unified-self-world.mjs
           node --experimental-strip-types tests/big-pass-207-brain-atlas-gate.mjs
           node --experimental-strip-types tests/p41-perceptual-integrity-deep-pass.mjs
+          node --experimental-strip-types tests/b2515-b2517-holdout.mjs
+          node --experimental-strip-types tests/b2521-learned-generative-loop.mjs
+          node --experimental-strip-types tests/big-pass-2512-2514-memory-self-stack.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
