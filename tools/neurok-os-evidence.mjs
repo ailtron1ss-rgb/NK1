@@ -49,6 +49,8 @@ export function validateEvidenceReceipt(receipt, expectedSha) {
   }
   if (onlyKeys(receipt.result, new Set(['exitCode','durationMs']), 'result', errors)) {
     if (!Number.isInteger(receipt.result.exitCode)) errors.push('result.exitCode must be an integer');
+    if (receipt.status === 'PASS' && receipt.result.exitCode !== 0) errors.push('PASS status requires exitCode 0');
+    if (receipt.status === 'FAIL' && receipt.result.exitCode === 0) errors.push('FAIL status requires a non-zero exitCode');
     if (!Number.isFinite(receipt.result.durationMs) || receipt.result.durationMs < 0) errors.push('result.durationMs must be a finite non-negative number');
   }
   if (receipt.artifacts !== undefined) {
