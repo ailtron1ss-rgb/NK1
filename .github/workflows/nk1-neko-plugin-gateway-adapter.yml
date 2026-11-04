@@ -8,8 +8,13 @@ on:
       - "runtime/neuro-kurisu/tests/neko-plugin-gateway-*.mjs"
       - "runtime/neuro-kurisu/package.json"
       - ".github/workflows/nk1-neko-plugin-gateway-adapter.yml"
+  # This workflow is introduced by a feature PR, so it is not discoverable for
+  # pull_request events until the workflow exists on the base branch. Run it on
+  # the feature-branch push as well, so the adapter is tested before merge.
   push:
-    branches: [workpass70-source]
+    branches:
+      - workpass70-source
+      - "aspect/**"
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/PluginGatewayAdapter.ts"
       - "runtime/neuro-kurisu/tests/neko-plugin-gateway-*.mjs"
