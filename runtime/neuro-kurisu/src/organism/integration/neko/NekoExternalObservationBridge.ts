@@ -135,6 +135,27 @@ function boundedText(value: unknown, max: number): string | null {
   return normalized.length > 0 && normalized.length <= max ? normalized : null;
 }
 
+function ownArrayValues(value: unknown, maxLength: number): unknown[] | null {
+  try {
+    if (!Array.isArray(value) || nodeUtilTypes.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value) as Record<string, PropertyDescriptor>;
+    const length = descriptors.length?.value;
+    if (!Number.isSafeInteger(length) || length < 0 || length > maxLength) return null;
+    const keys = Reflect.ownKeys(descriptors);
+    if (keys.length !== length + 1) return null;
+    const result: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptors[String(index)];
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+          descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) return null;
+      result.push(descriptor.value);
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 function cleanRestoreReceipt(value: unknown): NekoExternalObservationReceipt | null {
   const row = ownDataObject(value, 8);
   if (!row) return null;
@@ -197,13 +218,14 @@ export class NekoExternalObservationBridge {
 
   restore(raw: unknown): void {
     const row = ownDataObject(raw, 8);
-    if (!row || row.version !== 1 || !Array.isArray(row.receipts)) {
+    const rawReceipts = row ? ownArrayValues(row.receipts, 4096) : null;
+    if (!row || row.version !== 1 || !rawReceipts) {
       this.state = defaultNekoExternalObservationBridgeState();
       return;
     }
     const receipts: NekoExternalObservationReceipt[] = [];
     const byKey = new Map<string, NekoExternalObservationReceipt>();
-    for (const item of row.receipts.slice(-this.maxReceipts)) {
+    for (const item of rawReceipts.slice(-this.maxReceipts)) {
       const receipt = cleanRestoreReceipt(item);
       if (!receipt) continue;
       const prior = byKey.get(receipt.eventKey);
