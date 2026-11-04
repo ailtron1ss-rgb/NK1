@@ -170,4 +170,4 @@ const makeBridge = (options = {}) => {
   }), /invalid-receipt-capacity/);
 }
 
-console.log('NEKO_EXTERNAL_OBSERVATION_BRIDGE=PASS cases=7');
+console.log('NEKO_EXTERNAL_OBSERVATION_BRIDGE=PASS cases=8');
