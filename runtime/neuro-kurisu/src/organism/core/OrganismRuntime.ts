@@ -1,4 +1,5 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import type { NekoPluginVoiceTranscriptBridge } from '../integration/neko/NekoPluginVoiceTranscriptBridge.ts';
 import { assertCognitiveCycleBoundaryInput } from './CognitiveCycleBoundary.ts';
 import { normalizeWorldContext } from './WorldContextNormalizer.ts';
 import { FileStateStore } from '../persistence/FileStateStore.ts';
@@ -112,6 +113,12 @@ export interface RuntimeConfig extends OrganismConfig {
   mem0Adapter?: Mem0PlatformAdapter;
   /** Separate explicit opt-in before remote recall is allowed into live language context. */
   mem0CognitiveRecall?: boolean;
+  /** Explicitly injected, consent-gated observer for final user ASR transcripts; absent by default. */
+  nekoPluginVoiceTranscriptBridge?: Pick<NekoPluginVoiceTranscriptBridge, 'publishFinal'>;
+  /** Host-selected session key so the consent store can bind approval to this voice session. */
+  voiceTranscriptObserverSessionId?: string;
+  /** Character label sent with explicitly consented voice observations. */
+  voiceTranscriptCharacterName?: string;
   /** P2836: how real device outcomes compete with the predictive simulator. */
   realityMode?: RealityGroundingMode;
 }
@@ -154,6 +161,9 @@ export class OrganismRuntime {
   private readonly temporalObjectTracker = new TemporalObjectTracker();
   private readonly mem0Adapter: Mem0PlatformAdapter;
   private readonly mem0CognitiveRecallEnabled: boolean;
+  private readonly nekoPluginVoiceTranscriptBridge: Pick<NekoPluginVoiceTranscriptBridge, 'publishFinal'> | null;
+  private readonly voiceTranscriptObserverSessionId: string;
+  private readonly voiceTranscriptCharacterName: string;
   private stepsSinceConsolidation = 0;
   private readonly worldStore: JsonStateStore<PersistedWorld>;
   private readonly journal: { write(level: 'info'|'warn'|'error', event: string, data?: Record<string, unknown>): Promise<void> };
@@ -228,6 +238,14 @@ export class OrganismRuntime {
     this.config = { intervalMs: 30_000, enableLanguage: false, autoRun: false, ...config };
     this.mem0Adapter = config.mem0Adapter ?? Mem0PlatformAdapter.fromEnvironment();
     this.mem0CognitiveRecallEnabled = config.mem0CognitiveRecall === true;
+    this.nekoPluginVoiceTranscriptBridge = config.nekoPluginVoiceTranscriptBridge ?? null;
+    const suppliedVoiceSessionId = config.voiceTranscriptObserverSessionId;
+    if (suppliedVoiceSessionId !== undefined &&
+        (typeof suppliedVoiceSessionId !== 'string' || !/^[a-z0-9][a-z0-9._:-]{0,127}$/i.test(suppliedVoiceSessionId.trim()))) {
+      throw new Error('invalid-neko-plugin-voice-session-id');
+    }
+    this.voiceTranscriptObserverSessionId = suppliedVoiceSessionId?.trim() || randomUUID();
+    this.voiceTranscriptCharacterName = String(config.voiceTranscriptCharacterName ?? 'Kurisu').trim().slice(0, 80) || 'Kurisu';
     const defaultSensorCadenceMs = config.performanceProfile === 'mobile' ? 60_000 : 60_000;
     const inheritedSensorCadenceMs = config.intervalMs == null ? defaultSensorCadenceMs : Math.max(30_000, Number(config.intervalMs) * 2);
     this.sensorIntervalMs = Math.max(10_000, Number(config.sensorIntervalMs ?? inheritedSensorCadenceMs));
@@ -320,6 +338,30 @@ export class OrganismRuntime {
     const run = this.queue.then(work, work);
     this.queue = run.then(() => undefined, () => undefined);
     return run;
+  }
+
+  /**
+   * Best-effort fan-out after successful ASR finalization. This is deliberately
+   * synchronous and isolated: plugin transport failures cannot delay or steer the
+   * current cognitive turn, and no plugin action result is consumed here.
+   */
+  private publishNekoPluginVoiceTranscriptFinal(text: string): void {
+    const bridge = this.nekoPluginVoiceTranscriptBridge;
+    const transcript = typeof text === 'string' ? text.trim().slice(0, 4000) : '';
+    if (!bridge || !transcript) return;
+    try {
+      bridge.publishFinal({
+        sessionId: this.voiceTranscriptObserverSessionId,
+        turnId: 'asr-' + randomUUID(),
+        characterName: this.voiceTranscriptCharacterName,
+        provider: 'termux-speech-to-text',
+        speakerRole: 'user',
+        final: true,
+        transcript,
+      });
+    } catch {
+      // External observers are strictly non-authoritative and never fail ASR delivery.
+    }
   }
 
   async init(): Promise<void> {
@@ -1504,6 +1546,7 @@ export class OrganismRuntime {
       if(text){
         this.embodiment.userActivity();
         const clean=text.trim().slice(0,4000);
+        this.publishNekoPluginVoiceTranscriptFinal(clean);
         this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.68,evidence:['termux-speech-to-text'],content:clean});
       }
       return text;
@@ -1518,6 +1561,7 @@ export class OrganismRuntime {
       if(!text) return {text:null,step:null,spoken:false,voice:this.embodiment.voiceSnapshot()};
       this.embodiment.userActivity();
       const clean=text.trim().slice(0,4000);
+      this.publishNekoPluginVoiceTranscriptFinal(clean);
       this.core.recordMultimodalObservation({modality:'speech',summary:clean.slice(0,220),confidence:.86,salience:.74,evidence:['termux-speech-to-text','voice-turn'],content:clean});
       await this.core.beginBatch();
       try {
