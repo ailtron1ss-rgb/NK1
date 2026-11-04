@@ -1,3 +1,5 @@
+import { types as nodeUtilTypes } from 'node:util';
+
 export type RuntimeExternalGoalPolicy = 'user-command' | 'evidence-only';
 
 export interface RuntimeExternalPluginSource {
@@ -27,7 +29,6 @@ export function shouldInvokeLanguageForRuntimeStep(input:{
 }
 
 /** Only the authenticated adapter should supply this origin; malformed metadata fails closed. */
-import { types as nodeUtilTypes } from 'node:util';
 
 export function normalizeRuntimeExternalPluginSource(value:unknown):RuntimeExternalPluginSource|undefined {
   try {
