@@ -775,7 +775,8 @@ export class OrganismRuntime {
       ? this.core.autonomousSocialInitiativeForGeneration()
       : null;
     const languageBudgetAllows = currentBudgetAllowsLanguage(this.core.cognitiveBudgetOperationalSnapshot()?.mode);
-    if (shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:Boolean(this.config.languageInvoker), languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
+    const languageInvoker = this.config.languageInvoker;
+    if (languageInvoker && shouldInvokeLanguageForRuntimeStep({ enabled:this.config.enableLanguage, hasInvoker:true, languageBudgetAllows, hasExternalText:Boolean(externalText), hasAutonomousAgenda:Boolean(autonomousAgenda), suppressResponse:options.suppressResponse })) {
       const mem0Query = externalText || autonomousAgenda?.topic || '';
       const externalMem0Memories = await this.retrieveMem0Context(mem0Query);
       const request = externalText
@@ -784,7 +785,7 @@ export class OrganismRuntime {
       if(options.signal) request.signal=options.signal;
       this.lastContextBudgetLedger = request.contextLedger ?? null;
       try {
-        language = await this.config.languageInvoker(request);
+        language = await languageInvoker(request);
         if (!externalText && autonomousAgenda && !this.core.stageAutonomousSocialInitiativeMessage(autonomousAgenda.id, language?.text ?? '', Date.now())) {
           this.evidenceBus.publish({ tick: cycle.state.tick, kind: 'model', source: 'autonomous-dialogue-stage', confidence01: .25, payload: { initiativeId: autonomousAgenda.id, staged: false, reason: 'empty-or-stale-initiative' } });
         }
