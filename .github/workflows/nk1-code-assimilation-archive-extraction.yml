@@ -4,16 +4,21 @@ on:
   pull_request:
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveExtraction.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveWorkspace.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchivePreflight.ts'
       - 'runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-workpass659.mjs'
       - '.github/workflows/nk1-code-assimilation-archive-extraction.yml'
   push:
     branches:
       - 'aspect/code-assimilation-archive-extraction-20261104'
+      - 'aspect/code-assimilation-sandbox-materialization-20261104'
     paths:
       - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveExtraction.ts'
+      - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchiveWorkspace.ts'
       - 'runtime/neuro-kurisu/src/organism/learning/CodeAssimilationArchivePreflight.ts'
       - 'runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs'
+      - 'runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-workpass659.mjs'
       - '.github/workflows/nk1-code-assimilation-archive-extraction.yml'
 
 permissions:
@@ -39,3 +44,5 @@ jobs:
         run: npm run typecheck
       - name: Test bounded quarantine ZIP extraction
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs
+      - name: Test sandbox workspace materialization
+        run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-workspace-workpass659.mjs

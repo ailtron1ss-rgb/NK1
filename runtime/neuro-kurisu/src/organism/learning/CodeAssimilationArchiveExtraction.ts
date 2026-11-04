@@ -46,6 +46,8 @@ const LIMIT_KEYS = Object.keys(LIMITS) as Array<keyof CodeAssimilationArchivePre
 const EOCD = 0x06054b50, CENTRAL = 0x02014b50, LOCAL = 0x04034b50;
 const DESCRIPTOR = 0x08074b50, ZIP64 = 0x0001, UTF8 = 0x0800, DESCRIPTOR_FLAG = 0x0008;
 const ALLOWED_FLAGS = 0x080e;
+const authenticatedExtractionResults = new WeakSet<object>();
+
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let n = 0; n < 256; n += 1) {
@@ -350,7 +352,7 @@ export function extractCodeAssimilationArchive(
   const filePaths = Object.freeze(immutableFiles.map(file => file.path));
   const extractionFingerprint = sha256(`${preflight.reportFingerprint}\n${canonicalJson(immutableFiles)}`);
   const stored: ReadonlyMap<string, Buffer> = payloads;
-  return Object.freeze({
+  const result = Object.freeze({
     schemaVersion: 1 as const, accepted: true as const, preflight,
     filePaths, files: immutableFiles, extractionFingerprint,
     readFile(path: string): Uint8Array | null {
@@ -359,4 +361,14 @@ export function extractCodeAssimilationArchive(
       return bytes ? Uint8Array.from(bytes) : null;
     },
   });
+  authenticatedExtractionResults.add(result);
+  return result;
+}
+
+/** Restored or reconstructed objects are not authenticated extraction outputs. */
+export function isAuthenticatedCodeAssimilationArchiveExtractionResult(
+  raw: unknown,
+): raw is CodeAssimilationArchiveExtractionResult {
+  if (raw === null || typeof raw !== 'object' || nodeUtilTypes.isProxy(raw)) return false;
+  return authenticatedExtractionResults.has(raw);
 }
