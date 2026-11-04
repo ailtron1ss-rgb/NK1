@@ -5,6 +5,8 @@ import type { MemoryFabric, MemoryLifecycleEncodeInput } from '../../memory/Memo
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
 const MAX_FILES = 2_048;
+const MAX_PATH_CHARS = 1_024;
+const MAX_PATH_SEGMENTS = 32;
 const MAX_ENTRIES = 1_000;
 const MAX_ENTRY_CHARS = 8_000;
 const MAX_SECTION_CHARS = 500;
@@ -163,7 +165,7 @@ function normalizePath(raw: string): string {
     return fail('Unsafe path in Markdown import');
   }
   const parts = path.split('/').filter(part => part !== '' && part !== '.');
-  if (!parts.length || parts.some(part => part === '..')) return fail('Unsafe path in Markdown import');
+  if (!parts.length || parts.length > MAX_PATH_SEGMENTS || parts.some(part => part === '..')) return fail('Unsafe path in Markdown import');
   return parts.join('/');
 }
 
