@@ -34,5 +34,8 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+      - name: Typecheck runtime source boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
       - name: Test bounded quarantine ZIP extraction
         run: node --experimental-strip-types runtime/neuro-kurisu/tests/code-assimilation-archive-extraction-workpass658.mjs
