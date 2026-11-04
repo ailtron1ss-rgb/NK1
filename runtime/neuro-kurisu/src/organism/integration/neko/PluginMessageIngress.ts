@@ -63,6 +63,19 @@ export interface PluginMessageIngressResult {
   replayed?: boolean;
 }
 
+export interface PluginMessageIngressReceipt {
+  pluginId: string;
+  messageId: string;
+  fingerprint: string;
+  result: PluginMessageIngressResult;
+}
+
+export interface PluginMessageIngressSnapshot {
+  version: 1;
+  /** Ordered oldest-to-newest; only completed attempts are included. */
+  receipts: PluginMessageIngressReceipt[];
+}
+
 type NormalizedMessage = {
   pluginId: string;
   messageId: string;
@@ -176,6 +189,35 @@ const reject = (errorCode: string): PluginMessageIngressResult => ({
   replayed: false,
 });
 
+function restoreIngressResult(value: unknown): PluginMessageIngressResult | null {
+  if (!isRecord(value) || typeof value.accepted !== 'boolean') return null;
+  const allowed = new Set(['accepted', 'errorCode', 'aiBehavior', 'visibility', 'cognitiveProcessed', 'presented', 'replayed']);
+  if (Object.keys(value).some(key => !allowed.has(key))) return null;
+  const errorCode = value.errorCode;
+  const aiBehavior = value.aiBehavior;
+  const rawVisibility = value.visibility;
+  const cognitiveProcessed = value.cognitiveProcessed;
+  const presented = value.presented;
+  const replayed = value.replayed;
+  if (errorCode !== undefined && (typeof errorCode !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/i.test(errorCode))) return null;
+  if (aiBehavior !== undefined && aiBehavior !== 'respond' && aiBehavior !== 'read' && aiBehavior !== 'blind') return null;
+  if (rawVisibility !== undefined && (!Array.isArray(rawVisibility) || rawVisibility.length > 2 ||
+      rawVisibility.some(item => item !== 'chat' && item !== 'hud') || new Set(rawVisibility).size !== rawVisibility.length)) return null;
+  if (cognitiveProcessed !== undefined && typeof cognitiveProcessed !== 'boolean') return null;
+  if (presented !== undefined && typeof presented !== 'boolean') return null;
+  if (replayed !== undefined && typeof replayed !== 'boolean') return null;
+  if ((value.accepted && errorCode !== undefined) || (!value.accepted && errorCode === undefined)) return null;
+  return {
+    accepted: value.accepted,
+    ...(errorCode === undefined ? {} : { errorCode }),
+    ...(aiBehavior === undefined ? {} : { aiBehavior }),
+    ...(rawVisibility === undefined ? {} : { visibility: [...rawVisibility] as NekoMessageVisibility[] }),
+    ...(cognitiveProcessed === undefined ? {} : { cognitiveProcessed }),
+    ...(presented === undefined ? {} : { presented }),
+    ...(replayed === undefined ? {} : { replayed }),
+  };
+}
+
 export class PluginMessageIngress {
   private readonly allowedPlugins: ReadonlySet<string>;
   private readonly authorize: PluginMessageIngressOptions['authorize'];
@@ -202,6 +244,61 @@ export class PluginMessageIngress {
     this.maxTextBytes = boundedOption(options.maxTextBytes, 16_384, 256, 65_536);
     this.maxMetadataBytes = boundedOption(options.maxMetadataBytes, 8_192, 256, 32_768);
     this.maxRememberedMessages = boundedOption(options.maxRememberedMessages, 256, 1, 4_096);
+  }
+
+  /** Export bounded completed receipts for the host's existing durable state store. */
+  snapshot(): PluginMessageIngressSnapshot {
+    return {
+      version: 1,
+      receipts: [...this.completed.entries()].map(([key, entry]) => {
+        const separator = key.indexOf(':');
+        return {
+          pluginId: key.slice(0, separator),
+          messageId: key.slice(separator + 1),
+          fingerprint: entry.fingerprint,
+          result: {
+            ...entry.result,
+            ...(entry.result.visibility === undefined ? {} : { visibility: [...entry.result.visibility] }),
+          },
+        };
+      }),
+    };
+  }
+
+  /**
+   * Restore a host checkpoint before serving messages. Invalid snapshots clear the completed
+   * cache and return zero. In-flight work is never serialized or replaced.
+   */
+  restore(raw: unknown): number {
+    if (this.inFlight.size > 0) return 0;
+    this.completed.clear();
+    const cloned = cloneInertJson(raw, 8, 65_536);
+    if (!cloned.ok || !isRecord(cloned.value) || Object.keys(cloned.value).length !== 2 ||
+        cloned.value.version !== 1 || !Array.isArray(cloned.value.receipts) ||
+        cloned.value.receipts.length > 4_096) return 0;
+
+    const restored = new Map<string, CachedResult>();
+    const conflicted = new Set<string>();
+    for (const item of cloned.value.receipts) {
+      if (!isRecord(item) || Object.keys(item).length !== 4 ||
+          typeof item.pluginId !== 'string' || !isSafeId(item.pluginId) ||
+          typeof item.messageId !== 'string' || !isSafeId(item.messageId) ||
+          typeof item.fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(item.fingerprint)) return 0;
+      if (!this.allowedPlugins.has(item.pluginId)) continue;
+      const result = restoreIngressResult(item.result);
+      if (!result) return 0;
+      const key = `${item.pluginId}:${item.messageId}`;
+      const prior = restored.get(key);
+      if (prior && prior.fingerprint !== item.fingerprint) {
+        restored.delete(key);
+        conflicted.add(key);
+        continue;
+      }
+      if (!conflicted.has(key)) restored.set(key, { fingerprint: item.fingerprint, result });
+    }
+    const retained = [...restored.entries()].slice(-this.maxRememberedMessages);
+    for (const [key, entry] of retained) this.completed.set(key, entry);
+    return this.completed.size;
   }
 
   async handle(rawRequest: unknown): Promise<PluginMessageIngressResult> {
