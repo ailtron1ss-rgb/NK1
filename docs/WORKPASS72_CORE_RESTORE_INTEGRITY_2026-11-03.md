@@ -88,18 +88,19 @@ commit with a fail-before/pass-after regression wired into
 | 16 | (this commit) | `B2513FutureSelfProjectionField`, `B2514MemoryNeedPrioritizer`, `B2517SelfAuthoredRuleCompiler`, `B2519LongHorizonCounterfactualPlanner`, `B2520SensorimotorImagination`, `B2521LearnedGenerativeOrganismLoop` | `workpass72-selfworld-projection-memoryneed-rules-planner-imagination-generative-restore-integrity` |
 | 17 | (this commit) | `B2524NonparametricWorldExperienceMemory`, `B2526MultiscaleCausalRegimeGraph`, `B2527FactorialAblationHarness`, `B2529PolicyInformationGainController`, `B2530AutonomousExperimentScheduler`, `B268CausalSelfExperimentLab` | `workpass72-experiencemem-causalregime-ablation-policyinfo-experimentsched-b268-restore-integrity` |
 | 18 | (this commit) | `DeviceAwareNeuralScheduler`, `CrossLayerAdaptiveArbiter`, `ClosedLoopEvidenceLedger`, `P2703GlobalWorkspaceConvergence`, `ActiveInformationGainController`, `HippocampalFormationCircuit` | `workpass72-devicesched-arbiter-evidence-workspace-aigc-hippocampal-restore-integrity` |
+| 19 | (this commit) | `B2503ActionablePredictiveField`, `B275NeuralCompositionalPolicy`, `B276LatentActionProgramSynthesizer`, `B281PredictiveInterAreaMessaging`, `B282PredictiveGlobalWorkspace`, `B283CompetingPredictiveHypotheses` | `workpass72-predictivefield-compositionalprogram-interarea-workspace-competinghyp-restore-integrity` |
 
 Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
 `finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
 snapshot drops malformed records, floors counters, clamps unit-interval ratios
 and whitelists enums instead of injecting `NaN`, out-of-range values or unknown
-members into live state. `test:workpass72:core-integrity` runs all twenty-six
+members into live state. `test:workpass72:core-integrity` runs all twenty-seven
 workpass72 suites in one step (exit 0, 21× `=PASS`).
 
 ## Evidence
 
 - Batch series (5–13) re-verified after batch 13: `npm run
-  test:workpass72:core-integrity` → exit 0, 26 suites `=PASS`; `npm run
+  test:workpass72:core-integrity` → exit 0, 27 suites `=PASS`; `npm run
   typecheck` → `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
 - Consumer regressions for the batch 10/11 owners re-run green:
   `big-pass-37-spine`, `big-pass-38-autonomous-spine`,

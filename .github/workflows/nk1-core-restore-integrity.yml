@@ -120,6 +120,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/P2703GlobalWorkspaceConvergence.ts
       - runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts
       - runtime/neuro-kurisu/src/organism/memory/HippocampalFormationCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2503ActionablePredictiveField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B275NeuralCompositionalPolicy.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B276LatentActionProgramSynthesizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B281PredictiveInterAreaMessaging.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B282PredictiveGlobalWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B283CompetingPredictiveHypotheses.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -241,6 +247,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/P2703GlobalWorkspaceConvergence.ts
       - runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts
       - runtime/neuro-kurisu/src/organism/memory/HippocampalFormationCircuit.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2503ActionablePredictiveField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B275NeuralCompositionalPolicy.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B276LatentActionProgramSynthesizer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B281PredictiveInterAreaMessaging.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B282PredictiveGlobalWorkspace.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B283CompetingPredictiveHypotheses.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -338,6 +350,10 @@ jobs:
           node --experimental-strip-types tests/big-pass-215-hippocampal-formation.mjs
           node --experimental-strip-types tests/p2659-cross-layer-adaptive-arbiter.mjs
           node --experimental-strip-types tests/big-pass-2613-2626-taskfree-recovery-personality-device.mjs
+          node --experimental-strip-types tests/big-pass-2503-actionable-predictive.mjs
+          node --experimental-strip-types tests/big-pass-275-neural-compositional-policy.mjs
+          node --experimental-strip-types tests/big-pass-282-predictive-global-workspace.mjs
+          node --experimental-strip-types tests/big-pass-283-competing-hypotheses.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
