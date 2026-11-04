@@ -7,6 +7,15 @@ import type { AndroidSamplingPlan } from './AndroidEmbodimentBridge.ts';
 import { nativeSpeechEventChannel, type NativeSpeechProviderEventV1 } from './NativeSpeechEventChannel.ts';
 import { NekoAsrTranscriptAdapter, type NekoAsrProviderPort } from '../integration/neko/NekoAsrTranscriptAdapter.ts';
 
+export interface VoiceInputResult {
+  readonly text: string;
+  readonly providerId: string;
+  readonly confidence01?: number;
+  readonly language?: string;
+  readonly eventId?: string;
+  readonly turnId?: string;
+}
+
 type OrganismNeedsLike = { energy:number; cognitiveLoad:number; uncertainty:number; socialNeed:number; novelty:number; identityCoherence:number; goalPressure:number; };
 export interface VoiceCognitiveContextOverrides {
   continuity01?:number;
@@ -222,25 +231,43 @@ export class EmbodimentRuntime {
       return false;
     }
   }
-  async listen(): Promise<string | null> {
+  async listenDetailed(): Promise<VoiceInputResult | null> {
     if(!this.body.sttAvailable) { this.voice.lastError='stt-unavailable'; this.voice.lastAt=Date.now(); return null; }
     this.voice.listening=true; this.voice.listenCount+=1; this.voice.lastAt=Date.now(); this.voice.lastError=null;
     try {
       if(this.nekoAsrAdapter){
         const result=await this.nekoAsrAdapter.captureFinal();
-        if(result.status==='accepted') return result.transcript;
+        if(result.status==='accepted') {
+          return {
+            text: result.transcript,
+            providerId: result.provider,
+            ...(result.confidence01 !== undefined ? { confidence01: result.confidence01 } : {}),
+            ...(result.language ? { language: result.language } : {}),
+            eventId: result.eventId,
+            turnId: result.turnId,
+          };
+        }
         this.voice.lastError=result.status==='rejected'?`asr-${result.reason}`:result.status==='replayed'?'asr-replayed-final':result.status==='error'?`asr-provider-error:${result.reason}`:'asr-capture-cancelled';
         return null;
       }
       const text=await synthesizeSpeechInput();
-      if(!text) this.voice.lastError='stt-empty-or-failed';
-      return text;
+      if(!text) {
+        this.voice.lastError='stt-empty-or-failed';
+        return null;
+      }
+      return { text, providerId: 'termux-speech-to-text' };
     } catch(error) {
-      this.voice.lastError=`stt-failed:${String((error as Error)?.message??error).replace(/[\r\n\t]+/g,' ').slice(0,100)}`;
+      this.voice.lastError=`stt-failed:${String((error as Error)?.message??error).replace(/[\\r\\n\\t]+/g,' ').slice(0,100)}`;
       return null;
     } finally {
       this.voice.listening=false; this.voice.lastAt=Date.now();
     }
+  }
+
+  /** Backward-compatible transcript-only API; detailed consumers use listenDetailed(). */
+  async listen(): Promise<string | null> {
+    const result = await this.listenDetailed();
+    return result?.text ?? null;
   }
 
   async markVoiceInterruption(reason='manual'): Promise<boolean> {
