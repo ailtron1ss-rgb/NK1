@@ -51,3 +51,11 @@ test('rejects binary patches and malformed hunk counts', () => {
 test('rejects malformed unified diff line content', () => {
   assert.throws(() => inspectUnifiedDiff(patch.replace(' const a = 1;', '?const a = 1;')), /invalid hunk line/);
 });
+
+test('denies nested environment files, private-key material and nested git metadata', () => {
+  for (const target of ['config/.env.production', 'runtime/.npmrc', 'keys/id_rsa', 'nested/.git/config', 'secrets/token.pem']) {
+    const result = evaluatePatchPolicy(inspectUnifiedDiff(patch.replaceAll('src/core.ts', target)), policy);
+    assert.equal(result.decision, 'deny', target);
+    assert.deepEqual(result.denied, [target]);
+  }
+});
