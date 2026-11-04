@@ -64,7 +64,7 @@ This manifest catalogs requested tools and their intended roles. It deliberately
 - Offline CLI to validate the registry and print workstream plans.
 - Lease-based single-writer task coordinator with base-SHA binding, current-checkout verification, path traversal rejection, parent/child conflict detection, expiry, idempotent renewal and owner-only release.
 - STORM-style read-set freshness: agents can generate SHA-256 snapshots for up to 200 context files with `neurok-os:snapshot`, bind them to a task claim, and run owner-only `verify` before writing; stale/missing dependencies, moved base SHAs and symlink escapes fail closed. Claims without a read-set remain explicitly unverified.
-- Unified-diff preflight parser with SHA-256 digest, file status, hunk/changed-line ranges, binary/traversal rejection and human-approval/deny policy classification.
+- Unified-diff preflight parser with SHA-256 digest, file status, hunk/changed-line ranges, binary/traversal rejection and human-approval/deny policy classification, including nested environment, npm, SSH/Git metadata and private-key paths.
 - Node test suite for registry safety, concurrent claims and patch-policy invariants.
 - Research intake translating STORM, Co-Coder, CooperBench and OpenCollab into concrete coordination design decisions.
 
