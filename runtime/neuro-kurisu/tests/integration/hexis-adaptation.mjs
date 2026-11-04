@@ -175,5 +175,77 @@ assert.throws(
   /windowMs must be a safe integer/,
 );
 
+
+// Untrusted snapshots must be inspected without invoking accessors. A hostile
+// envelope resets to the canonical defaults instead of crashing initialization.
+{
+  const hostile = {};
+  let getterCalls = 0;
+  Object.defineProperty(hostile, 'beliefs', {
+    enumerable: true,
+    get() { getterCalls += 1; throw new Error('snapshot getter must stay inert'); },
+  });
+  const restored = new HexisAdaptationFabric();
+  assert.doesNotThrow(() => restored.restore(hostile));
+  assert.equal(getterCalls, 0, 'restore must inspect own data descriptors, never invoke a snapshot getter');
+  assert.deepEqual(restored.snapshot(), defaultHexisAdaptationState(),
+    'an uninspectable root snapshot must reset the adapter to safe defaults');
+}
+
+// Nested accessors are equally untrusted: a valid-looking outbox row must not
+// smuggle an executable getter into a future delivery or snapshot operation.
+{
+  let nestedGetterCalls = 0;
+  const payload = {};
+  Object.defineProperty(payload, 'text', {
+    enumerable: true,
+    get() { nestedGetterCalls += 1; throw new Error('nested getter must stay inert'); },
+  });
+  const hostile = {
+    outbox: [{
+      id: 'out-1', idempotencyKey: 'key-1', kind: 'notify', channel: 'test',
+      payload, status: 'pending', attempts: 0, createdAt: 1, updatedAt: 1,
+    }],
+  };
+  const restored = new HexisAdaptationFabric();
+  assert.doesNotThrow(() => restored.restore(hostile));
+  assert.equal(nestedGetterCalls, 0, 'nested snapshot getters must not execute during restore');
+  assert.deepEqual(restored.snapshot(), defaultHexisAdaptationState(),
+    'a snapshot containing an uninspectable nested object must fail closed');
+}
+
+// Structurally corrupt rows must not survive merely because their container is
+// an array. Valid rows in the same collection remain restorable.
+{
+  const validBelief = {
+    memoryId: 'memory-valid', confidence01: 0.6, trust01: 0.5,
+    sourceKeys: ['source-a'], contradictingSourceKeys: [], updatedAt: 100,
+  };
+  const invalidBelief = {
+    memoryId: 'memory-invalid', confidence01: Number.POSITIVE_INFINITY, trust01: 0.5,
+    sourceKeys: [], contradictingSourceKeys: [], updatedAt: 100,
+  };
+  const restored = new HexisAdaptationFabric();
+  restored.restore({ beliefs: [validBelief, null, invalidBelief] });
+  assert.deepEqual(restored.snapshot().beliefs, [validBelief],
+    'restore must filter malformed belief rows without discarding valid peers');
+}
+
+// Outbox recovery must not retain malformed rows or ambiguous duplicate keys;
+// idempotency lookup depends on these identities remaining unique.
+{
+  const validOutbox = {
+    id: 'out-valid', idempotencyKey: 'key-valid', kind: 'notify', channel: 'test',
+    payload: { text: 'safe' }, status: 'pending', attempts: 0, createdAt: 100, updatedAt: 100,
+  };
+  const duplicateA = { ...validOutbox, id: 'out-duplicate-a', idempotencyKey: 'key-ambiguous' };
+  const duplicateB = { ...validOutbox, id: 'out-duplicate-b', idempotencyKey: 'key-ambiguous' };
+  const invalidOutbox = { ...validOutbox, id: 'out-invalid', attempts: -1 };
+  const restored = new HexisAdaptationFabric();
+  restored.restore({ outbox: [validOutbox, duplicateA, duplicateB, invalidOutbox] });
+  assert.deepEqual(restored.snapshot().outbox, [validOutbox],
+    'restore must drop malformed rows and every row sharing an ambiguous idempotency key');
+}
+
 console.log('HEXIS_ADAPTATION_PASS');
 console.log(JSON.stringify({diagnostics:fabric.diagnostics(),defaultState:defaultHexisAdaptationState().version},null,2));
