@@ -73,16 +73,41 @@ function assertExactKeys(value: PlainRecord, allowed: readonly string[], code: s
   const allowedSet = new Set(allowed);
   for (const key of Object.keys(value)) if (!allowedSet.has(key)) fail(code);
 }
+const INVISIBLE_CHARS_RE = /[\u0080-\u009F\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180F\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\u{1D173}-\u{1D17A}\u{E0000}-\u{E0FFF}]/gu;
+const CHAT_CONTROL_RE = /<\|\s*(?:im_start|im_end|im_sep|endoftext|system|user|assistant|start_header_id|end_header_id|eot_id|begin_of_text)\s*\|>/giu;
+const ROLE_LINE_RE = /^[ \t]*(?:system|developer|assistant|user|human)[ \t]*[:：]/gimu;
+
+function dropOrphanMarks(text: string): string {
+  return text.split('\n').map(line => {
+    let start = 0;
+    while (start < line.length && (/\p{M}/u.test(line[start]!) || line[start] === ' ' || line[start] === '\t')) start += 1;
+    if (start > 0 && [...line.slice(0, start)].some(char => /\p{M}/u.test(char))) return line.slice(start);
+    return line;
+  }).join('\n');
+}
+function stripExternalPromptMarkup(value: string): string {
+  let text = value.replace(/[\u0085\u2028\u2029]/gu, '\n').replace(INVISIBLE_CHARS_RE, '');
+  for (let pass = 0; pass < 16; pass += 1) {
+    let cleaned = text.replace(CHAT_CONTROL_RE, '');
+    cleaned = dropOrphanMarks(cleaned).replace(ROLE_LINE_RE, '');
+    if (cleaned === text) return cleaned;
+    text = cleaned;
+  }
+  // Bounded fallback for deliberately nested control syntax: defuse delimiters
+  // instead of rescanning indefinitely or allowing a new role marker to emerge.
+  return text.replace(/[<>]/gu, char => char === '<' ? '‹' : '›')
+    .replace(ROLE_LINE_RE, match => match.slice(0, -1) + '∶');
+}
 function cleanText(value: unknown, code: string, maxLength: number, options: { multiline?: boolean; optional?: boolean } = {}): string {
   if (value === undefined && options.optional) return '';
   if (typeof value !== 'string') return fail(code);
-  const cleaned = value
-    .normalize('NFC')
+  const cleaned = stripExternalPromptMarkup(value.normalize('NFC'))
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/gu, '')
     .replace(/\r\n?/gu, '\n')
-    .replace(options.multiline ? /[\t ]+/gu : /[\s\u00A0]+/gu, ' ')
+    .replace(options.multiline ? /[ \t]+/gu : /[\s\u00A0]+/gu, ' ')
     .replace(options.multiline ? /\n[ \t]+/gu : /$^/gu, options.multiline ? '\n' : '')
     .replace(options.multiline ? /\n{3,}/gu : /$^/gu, options.multiline ? '\n\n' : '')
+    .replace(/={3,}/gu, '==')
     .trim();
   if (cleaned.length > maxLength) fail(code);
   return cleaned;
@@ -96,14 +121,14 @@ function parseTerms(value: unknown): Record<TermRole, string[]> {
   assertExactKeys(value, ['alias', 'recognition'], 'unknown-term-role');
   const parseRole = (role: TermRole): string[] => {
     const raw = value[role];
-    if (raw === undefined) return [];
+    if (raw === undefined || raw === null) return [];
     if (!Array.isArray(raw) || raw.length > 64) return fail('invalid-term-list');
-    return raw.map(term => cleanText(term, 'invalid-term', 300)).filter(Boolean);
+    return [...new Set(raw.map(term => cleanText(term, 'invalid-term', 300)).filter(Boolean))];
   };
   return { alias: parseRole('alias'), recognition: parseRole('recognition') };
 }
 function parseTags(value: unknown): string[] {
-  if (value === undefined) return [];
+  if (value === undefined || value === null) return [];
   if (!Array.isArray(value) || value.length > 32) return fail('invalid-tags');
   return [...new Set(value.map(tag => cleanText(tag, 'invalid-tag', 100)).filter(Boolean))];
 }
@@ -129,9 +154,9 @@ function parsePack(rawBytes: Uint8Array): NormalizedPack {
   if (!isRecord(json.source)) return fail('source-required');
   assertExactKeys(json.source, ['name', 'homepage', 'license'], 'unknown-source-field');
   const source: NekoKnowledgePackSource = {
-    name: cleanText(json.source.name, 'source-name-required', 200),
+    name: cleanText(json.source.name, 'source-name-required', 500),
     ...(json.source.homepage !== undefined ? { homepage: cleanText(json.source.homepage, 'invalid-source-homepage', 500) } : {}),
-    ...(json.source.license !== undefined ? { license: cleanText(json.source.license, 'invalid-source-license', 200) } : {}),
+    ...(json.source.license !== undefined ? { license: cleanText(json.source.license, 'invalid-source-license', 500) } : {}),
   };
   if (!source.name) return fail('source-name-required');
   if (source.homepage) {
