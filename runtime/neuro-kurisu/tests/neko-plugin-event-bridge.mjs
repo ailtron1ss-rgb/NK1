@@ -21,9 +21,9 @@ const baseRequest = (overrides = {}) => ({
   ...overrides,
 });
 
-function makeRig({ authorize = async () => true } = {}) {
+function makeRig({ authorize = async () => true, capacity = 512 } = {}) {
   const observer = new ExternalObserverFabric();
-  const eventFabric = new CognitiveEventFabric(512);
+  const eventFabric = new CognitiveEventFabric(capacity);
   let tick = 41;
   let now = 1_800_000_000_000;
   let listToolsCalls = 0;
@@ -158,6 +158,59 @@ function makeRig({ authorize = async () => true } = {}) {
   assert.equal(rig.calls.authorizationCalls, 2, 'host policy is rechecked on every delivery attempt');
 }
 
+// Exact CEF lookup keeps idempotency safe beyond the short recent-event window.
+{
+  const rig = makeRig();
+  const request = baseRequest();
+  await rig.adapter.handle(request);
+  for (let index = 0; index < 270; index += 1) {
+    rig.eventFabric.append({
+      id: `unrelated-event-${index}`,
+      tick: index,
+      stage: 'external-evidence',
+      source: 'test-noise',
+      external: true,
+      confidence01: 0.1,
+      payload: { index },
+    });
+  }
+  const before = rig.eventFabric.snapshot().total;
+  rig.setClock(120, 1_800_000_120_000);
+  const replay = await rig.adapter.handle(request);
+  assert.equal(replay.success, true);
+  assert.equal(replay.metadata?.replayed, true);
+  assert.equal(rig.eventFabric.snapshot().total, before);
+  assert.equal(rig.observer.snapshot().observations.length, 1);
+}
+
+// If the causal event is aged out first, the retained observer receipt remains an idempotency anchor.
+{
+  const rig = makeRig({ capacity: 128 });
+  const request = baseRequest();
+  await rig.adapter.handle(request);
+  const receivedId = rig.eventFabric.recent(2).find(event => event.payload.phase === 'received')?.id;
+  assert.ok(receivedId);
+  for (let index = 0; index < 130; index += 1) {
+    rig.eventFabric.append({
+      id: `evicting-event-${index}`,
+      tick: index,
+      stage: 'external-evidence',
+      source: 'test-noise',
+      external: true,
+      confidence01: 0.1,
+      payload: { index },
+    });
+  }
+  assert.equal(rig.eventFabric.findById(receivedId), undefined, 'the causal buffer has evicted the first receipt');
+  const before = rig.eventFabric.snapshot().total;
+  rig.setClock(121, 1_800_000_121_000);
+  const replay = await rig.adapter.handle(request);
+  assert.equal(replay.success, true);
+  assert.equal(replay.metadata?.replayed, true);
+  assert.equal(rig.eventFabric.snapshot().total, before);
+  assert.equal(rig.observer.snapshot().observations.length, 1);
+}
+
 // Reusing an event ID for different contents is a conflict, never a silent overwrite.
 {
   const rig = makeRig();
@@ -184,6 +237,30 @@ function makeRig({ authorize = async () => true } = {}) {
   assert.equal(denied.errorCode, 'event-policy-denied');
   assert.equal(rig.observer.snapshot().observations.length, 0);
   assert.equal(rig.eventFabric.snapshot().total, 0);
+}
+
+// A persisted disabled source remains disabled; ingress cannot reactivate it or append a receipt.
+{
+  const rig = makeRig();
+  await rig.adapter.handle(baseRequest());
+  const existing = rig.observer.snapshot().sources[0];
+  rig.observer.registerSource({
+    id: existing.id,
+    sourceClass: existing.sourceClass,
+    channel: existing.channel,
+    independenceKey: existing.independenceKey,
+    reliability01: existing.reliability01,
+    enabled: false,
+  });
+  const beforeTotal = rig.eventFabric.snapshot().total;
+  const denied = await rig.adapter.handle(baseRequest({
+    eventId: 'disabled-source-event',
+    idempotencyKey: 'avatar:conn-1:disabled-source-event',
+  }));
+  assert.equal(denied.success, false);
+  assert.equal(denied.errorCode, 'event-source-disabled');
+  assert.equal(rig.eventFabric.snapshot().total, beforeTotal);
+  assert.equal(rig.observer.snapshot().observations.length, 1);
 }
 
 // The event type is an exact host allowlist; unknown events do not reach either store.
@@ -282,4 +359,4 @@ function makeRig({ authorize = async () => true } = {}) {
   assert.equal(rig.observer.snapshot().observations.length, 0);
 }
 
-console.log('NEKO_PLUGIN_EVENT_BRIDGE=PASS cases=10');
+console.log('NEKO_PLUGIN_EVENT_BRIDGE=PASS cases=13');

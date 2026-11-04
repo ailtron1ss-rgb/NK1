@@ -685,6 +685,13 @@ export class CognitiveEventFabric {
 
   recent(limit=64):CognitiveEventNode[]{return structuredClone(this.events.slice(0,Math.max(1,Math.min(256,Math.floor(limit)))));}
 
+  /** Exact, bounded-by-fabric-capacity lookup for idempotent external projections. */
+  findById(id:string):CognitiveEventNode|undefined{
+    if(typeof id!=='string'||!id)return undefined;
+    const event=this.events.find(candidate=>candidate.id===id);
+    return event?structuredClone(event):undefined;
+  }
+
   snapshot():CognitiveEventFabricSnapshot{
     const known=new Set(this.events.map(e=>e.id));
     let linked=0,dangling=0;

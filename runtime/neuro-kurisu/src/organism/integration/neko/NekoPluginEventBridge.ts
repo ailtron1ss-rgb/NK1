@@ -50,7 +50,7 @@ export interface NekoPluginEventBridgePort {
 
 export interface NekoPluginEventBridgeOptions {
   observer: Pick<ExternalObserverFabric, 'registerSource' | 'observe' | 'snapshot'>;
-  eventFabric: Pick<CognitiveEventFabric, 'append' | 'recent'>;
+  eventFabric: Pick<CognitiveEventFabric, 'append' | 'findById'>;
   /** Exact event names enabled by the host. No wildcard or default event policy exists. */
   allowedEvents: Readonly<Record<string, NekoPluginEventPolicy>>;
   /** Host-owned policy is mandatory and runs before either evidence store is mutated. */
@@ -177,7 +177,7 @@ export class NekoPluginEventBridge implements NekoPluginEventBridgePort {
       throw new Error('neko-plugin-event-observer-required');
     }
     if (!options.eventFabric || typeof options.eventFabric.append !== 'function' ||
-        typeof options.eventFabric.recent !== 'function') throw new Error('neko-plugin-event-fabric-required');
+        typeof options.eventFabric.findById !== 'function') throw new Error('neko-plugin-event-fabric-required');
     if (typeof options.authorize !== 'function') throw new Error('neko-plugin-event-host-policy-required');
     if (typeof options.getTick !== 'function') throw new Error('neko-plugin-event-host-tick-required');
     const entries = ownDataRecord(options.allowedEvents, 128);
@@ -246,7 +246,10 @@ export class NekoPluginEventBridge implements NekoPluginEventBridgePort {
     if (!allowed) return rejected('event-policy-denied');
 
     try {
-      const priorReceived = this.eventFabric.recent(256).find(event => event.id === receivedEventId);
+      const observerSnapshot = this.observer.snapshot();
+      const priorSource = observerSnapshot.sources.find(sourceRecord => sourceRecord.id === sourceId);
+      if (priorSource && !priorSource.enabled) return rejected('event-source-disabled');
+      const priorReceived = this.eventFabric.findById(receivedEventId);
       let tick: number;
       let observedAt: number;
       let replayed = false;
@@ -259,6 +262,14 @@ export class NekoPluginEventBridge implements NekoPluginEventBridgePort {
         observedAt = priorReceived.at;
         replayed = true;
       } else {
+        const retainedObservation = observerSnapshot.observations.find(observation =>
+          observation.metadata?.transport === 'neko-plugin' && observation.metadata?.eventDigest === eventDigest,
+        );
+        if (retainedObservation) {
+          if (retainedObservation.payloadHash !== payloadHash || retainedObservation.sourceId !== sourceId ||
+              retainedObservation.claimKey !== claimKey) return rejected('event-idempotency-conflict');
+          return { accepted: true, replayed: true, observationId: retainedObservation.id };
+        }
         const currentTick = this.getTick();
         const currentTime = this.now();
         if (!Number.isSafeInteger(currentTick) || currentTick < 0 ||
@@ -283,11 +294,11 @@ export class NekoPluginEventBridge implements NekoPluginEventBridgePort {
         confidence01: policy.confidenceCap01, observedAt, tick,
         independenceKey: `neko-plugin:${pluginId}`,
         tool: `neko-plugin:${eventType}`,
-        metadata: { transport: 'neko-plugin', eventType, payloadHash, externallySupplied: true, verified: false },
+        metadata: { transport: 'neko-plugin', eventType, eventDigest, payloadHash, externallySupplied: true, verified: false },
         payload: normalized.payload,
       });
 
-      const priorObservation = this.eventFabric.recent(256).find(event => event.id === observationEventId);
+      const priorObservation = this.eventFabric.findById(observationEventId);
       if (priorObservation) {
         if (priorObservation.stage !== 'external-evidence' || priorObservation.source !== source ||
             priorObservation.payload.payloadHash !== payloadHash ||
