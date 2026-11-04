@@ -98,6 +98,34 @@ test('allows only one active provider capture at a time', async () => {
   assert.equal((await pending).status, 'accepted');
 });
 
+test('reserves the capture slot before awaiting provider availability', async () => {
+  let makeAvailable;
+  const releaseCaptures = [];
+  const availability = new Promise(resolve => { makeAvailable = resolve; });
+  let captureCalls = 0;
+  const port = {
+    providerId: 'faster-whisper-local',
+    isAvailable: () => availability,
+    async captureFinal(input) {
+      captureCalls += 1;
+      const eventId = 'evt-race-' + captureCalls;
+      return new Promise(resolve => releaseCaptures.push(() => resolve(transcript({ sessionId: input.sessionId, eventId }))));
+    },
+  };
+  const adapter = new NekoAsrTranscriptAdapter(port);
+  const first = adapter.captureFinal();
+  const second = adapter.captureFinal();
+  makeAvailable(true);
+  while (releaseCaptures.length < 1) await new Promise(resolve => setImmediate(resolve));
+  await new Promise(resolve => setImmediate(resolve));
+  for (const release of releaseCaptures) release();
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.equal(firstResult.status, 'accepted');
+  assert.equal(secondResult.status, 'rejected');
+  assert.equal(secondResult.reason, 'session-already-active');
+  assert.equal(captureCalls, 1);
+});
+
 test('reports cancellation only when the provider confirms the capture stopped', async () => {
   let release;
   const { port, calls } = provider(() => new Promise(resolve => { release = resolve; }), {
