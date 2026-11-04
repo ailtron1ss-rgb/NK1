@@ -136,29 +136,32 @@ function ownDataRecord(value: unknown, allowedKeys: readonly string[]): Record<s
 
 function safeFileArray(input: unknown): unknown[] {
   if (!Array.isArray(input) || nodeUtilTypes.isProxy(input)) return fail('Unsafe file records: expected a plain array');
+  let prototype: object | null;
+  let descriptors: Record<string, PropertyDescriptor>;
+  let length: number;
   try {
-    if (Object.getPrototypeOf(input) !== Array.prototype) return fail('Unsafe file records: expected a plain array');
-    const descriptors = Object.getOwnPropertyDescriptors(input) as Record<string, PropertyDescriptor>;
-    const length = descriptors.length?.value;
-    if (!Number.isSafeInteger(length) || length < 0 || length > MAX_FILES ||
-        Reflect.ownKeys(descriptors).length !== length + 1) {
-      return fail(length > MAX_FILES ? 'Too many files in Markdown import' : 'Unsafe file records: sparse or malformed array');
-    }
-    const output: unknown[] = [];
-    for (let index = 0; index < length; index += 1) {
-      const descriptor = descriptors[String(index)];
-      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
-          descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) {
-        return fail('Unsafe file record: accessor or sparse entry');
-      }
-      output.push(descriptor.value);
-    }
-    return output;
+    prototype = Object.getPrototypeOf(input);
+    descriptors = Object.getOwnPropertyDescriptors(input) as Record<string, PropertyDescriptor>;
+    length = descriptors.length?.value;
   } catch {
     return fail('Unsafe file records: invalid array');
   }
-}
+  if (prototype !== Array.prototype) return fail('Unsafe file records: expected a plain array');
+  if (!Number.isSafeInteger(length) || length < 0) return fail('Unsafe file records: invalid array length');
+  if (length > MAX_FILES) return fail('Too many files in Markdown import');
+  if (Reflect.ownKeys(descriptors).length !== length + 1) return fail('Unsafe file records: sparse or malformed array');
 
+  const output: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+        descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable) {
+      return fail('Unsafe file record: accessor or sparse entry');
+    }
+    output.push(descriptor.value);
+  }
+  return output;
+}
 function normalizePath(raw: string): string {
   const path = raw.replace(/\\/g, '/').trim();
   if (!path || path.startsWith('/') || /^[a-z]:\//i.test(path) || CONTROL.test(path)) {
