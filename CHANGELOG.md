@@ -3,6 +3,11 @@
 - `solvePlanarArmIK` echoed the requested target even when shoulder/elbow limits clamped the angles, making a bound solution read as full reach. Return the forward-kinematic `endEffector` plus a `limitsApplied` flag; `target` stays the request.
 - Regressions: depth-rig 20/20 (was 19/20), planar-arm-ik 8/8; app `test:scripts` 468/468, `test:body-systems` 32/32, `test:embodiment-ui-bridge` 16/16, typecheck PASS.
 
+## [NK1][Body] Harden perception-routing restore against accessors and counter overflow (2026-11-04)
+- Validate persisted routing state as a plain record with own data properties; reject inherited/accessor-backed values and contain hostile or revoked Proxy reflection failures without invoking getters.
+- Saturate routed/dropped counters at Number.MAX_SAFE_INTEGER to preserve the persisted non-negative-safe-integer invariant in long-running processes.
+- Regression covers accessor non-execution, Proxy get/descriptor traps, revoked proxies, null-prototype records, inherited values and counter saturation.
+
 ## [NK1][Body] Accumulate perception-routing counters instead of resetting them each tick (2026-11-03)
 - `routePerception` returned literal `routedCount:1`/`droppedCount:1`, but the result is persisted to `facets.embodiment.perceptionRouting` every tick, so the durable cumulative counters were destroyed on the next event and the restore path was meaningless.
 - Fold each event into the sanitized previous state (`previous`), and pass the embodiment subsystem's live routing state as the prior.
