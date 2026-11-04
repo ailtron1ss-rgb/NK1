@@ -127,8 +127,8 @@ export function evaluateMemoryOS2ShadowPreview(preview, options = {}) {
 
 /**
  * Optional N.E.K.O.-style lexical + cosine preview over the existing MemoryOS2 owner.
- * The semantic provider is called only when explicitly enabled and only after the
- * canonical answerability preview has produced grounded evidence.
+ * The semantic provider is called only when explicitly enabled. Vector-only candidates
+ * for a canonically abstained query remain exploratory IDs and never enter shadow fusion.
  */
 export async function previewNekoHybridMemoryRanking(memory, query, options = {}) {
   if (!memory || typeof memory.previewRetrieveWithRankedChannels !== 'function' ||
@@ -148,10 +148,11 @@ export async function previewNekoHybridMemoryRanking(memory, query, options = {}
   const temporalOptions = settings.temporalOptions ?? {};
   const baseline = memory.previewRetrieveWithRankedChannels(query, limit, goalRelevance, identityRelevance, temporalOptions, maxPerChannel);
   let rankedChannels = baseline.rankedChannels;
-  let semantic = { enabled: false, provider: 'none', model: '', fallbackReason: baseline.diagnostics?.abstained === true ? 'canonical-answerability-abstained' : (settings.includeSemanticEmbeddingChannel === true ? 'not-requested-or-unavailable' : 'not-requested'), coverage01: 0, indexedItems: 0, corpusItems: 0 };
+  let semantic = { enabled: false, provider: 'none', model: '', fallbackReason: settings.includeSemanticEmbeddingChannel === true ? 'not-requested-or-unavailable' : 'not-requested', coverage01: 0, indexedItems: 0, corpusItems: 0 };
+  let exploratorySemanticIds = [];
   let channelWeights = settings.channelWeights;
 
-  if (settings.includeSemanticEmbeddingChannel === true && baseline.diagnostics?.abstained !== true) {
+  if (settings.includeSemanticEmbeddingChannel === true) {
     const semanticLimit = Math.max(1, Math.min(32, Math.floor(maxPerChannel)));
     const semanticPreview = await memory.previewRetrieveWithEmbeddings(query, semanticLimit, goalRelevance, identityRelevance, temporalOptions, {
       maxLexicalPool: Math.max(8, Math.min(96, semanticLimit * 2)),
@@ -168,10 +169,12 @@ export async function previewNekoHybridMemoryRanking(memory, query, options = {}
       corpusItems: semanticPreview.semantic.corpusItems,
     };
     if (semanticPreview.semantic.enabled) {
-      rankedChannels = {
-        ...baseline.rankedChannels,
-        vector: semanticPreview.items.map(item => item.id),
-      };
+      const semanticIds = semanticPreview.items.map(item => item.id);
+      if (baseline.diagnostics?.abstained === true) {
+        exploratorySemanticIds = semanticIds;
+      } else {
+        rankedChannels = { ...baseline.rankedChannels, vector: semanticIds };
+      }
       if (channelWeights === undefined && settings.semanticWeight !== undefined) {
         channelWeights = { vector: settings.semanticWeight };
       } else if (channelWeights !== undefined && settings.semanticWeight !== undefined) {
@@ -194,5 +197,12 @@ export async function previewNekoHybridMemoryRanking(memory, query, options = {}
     maxCandidatesPerChannel: maxPerChannel,
     channelWeights,
   });
-  return { ...result, semantic };
+  return {
+    ...result,
+    semantic,
+    exploratorySemanticIds,
+    semanticIncludedInShadowFusion: semantic.enabled && baseline.diagnostics?.abstained !== true,
+    semanticExploratoryOnly: semantic.enabled && baseline.diagnostics?.abstained === true,
+    userFacingEligible: false,
+  };
 }
