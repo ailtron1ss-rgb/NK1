@@ -30,6 +30,9 @@ on:
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/src/components/avatar/motionArbitration.ts"
       - "app/src/components/avatar/motionLibrary.ts"
+      - "app/src/components/avatar/semanticGestureIntent.ts"
+      - "app/scripts/semantic-gesture-intent.test.mjs"
+      - "app/scripts/motion-arbitration.test.mjs"
       - "app/src/components/avatar/rendererCapabilityManifest.ts"
       - "app/src/components/avatar/rendererRegistryDefaults.ts"
       - "app/src/components/avatar/originalStageChannels.ts"
@@ -70,6 +73,9 @@ on:
       - "app/scripts/embodiment-switch.test.mjs"
       - "app/src/components/avatar/motionArbitration.ts"
       - "app/src/components/avatar/motionLibrary.ts"
+      - "app/src/components/avatar/semanticGestureIntent.ts"
+      - "app/scripts/semantic-gesture-intent.test.mjs"
+      - "app/scripts/motion-arbitration.test.mjs"
       - "app/src/components/avatar/rendererCapabilityManifest.ts"
       - "app/src/components/avatar/rendererRegistryDefaults.ts"
       - "app/src/components/avatar/originalStageChannels.ts"
@@ -103,6 +109,8 @@ jobs:
         run: npm --prefix app run test:embodiment-switch
       - name: Test cognitive motion arbitration and renderer capability contracts
         run: npm --prefix app run test:body-systems
+      - name: Test N.E.K.O.-derived semantic gesture cards and NK1 motion programs
+        run: npm --prefix app run test:semantic-gesture-intent
       - name: Test shared grapheme-to-viseme articulation
         run: npm --prefix app run test:embodiment-timeline
       - name: Test body-switch UI integration bridge
