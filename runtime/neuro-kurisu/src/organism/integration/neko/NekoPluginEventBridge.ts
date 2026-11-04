@@ -266,7 +266,7 @@ export class NekoPluginEventBridge implements NekoPluginEventBridgePort {
           observation.metadata?.transport === 'neko-plugin' && observation.metadata?.eventDigest === eventDigest,
         );
         if (retainedObservation) {
-          if (retainedObservation.payloadHash !== payloadHash || retainedObservation.sourceId !== sourceId ||
+          if (retainedObservation.metadata?.payloadHash !== payloadHash || retainedObservation.sourceId !== sourceId ||
               retainedObservation.claimKey !== claimKey) return rejected('event-idempotency-conflict');
           return { accepted: true, replayed: true, observationId: retainedObservation.id };
         }
