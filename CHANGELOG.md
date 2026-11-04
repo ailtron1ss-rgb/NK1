@@ -1,3 +1,9 @@
+## [NK1][Metacognition] Bind episodic self-monitoring to all eleven cognitive stages (2026-11-04)
+- The existing metacognitive CEF event previously linked only observation/prediction/action/outcome/learning, leaving appraisal, attention, memory, goal, plan and self-update outside the episode's direct causal parent set.
+- Record the episode only after the self-update node exists; verify the complete eleven-stage CEF lineage and attach all eleven stage IDs in canonical order.
+- Preserve the full causal parent set in the canonical MemoryOS2 episodic projection; reject duplicate parent IDs and refuse to label an incomplete cycle as a complete metacognitive episode.
+- Reuse the existing CEF + MemoryOS2 projection path; no second episode store or dependency added.
+
 ## [NK1][Body] Harden perception-routing restore against accessors and counter overflow (2026-11-04)
 - Validate persisted routing state as a plain record with own data properties; reject inherited/accessor-backed values and contain hostile or revoked Proxy reflection failures without invoking getters.
 - Saturate routed/dropped counters at Number.MAX_SAFE_INTEGER to preserve the persisted non-negative-safe-integer invariant in long-running processes.
