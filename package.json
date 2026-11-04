@@ -190,7 +190,15 @@
     "test:aspect10:interaction": "npm --prefix runtime/neuro-kurisu run test:aspect10:interaction",
     "test:aspect10:ik": "npm --prefix app run test:planar-arm-ik",
     "test:body-systems": "npm --prefix app run test:body-systems",
-    "test:workpass71": "npm run test:body-systems && npm --prefix app run test:embodiment-ui-bridge && npm --prefix app run test:embodiment-switch && npm --prefix app run test:motor-frame-mapper && npm --prefix app run test:planar-arm-ik && npm --prefix app run test:vrm-humanoid-rig && npm --prefix runtime/neuro-kurisu run test:aspect10:interaction"
+    "test:workpass71": "npm run test:body-systems && npm --prefix app run test:embodiment-ui-bridge && npm --prefix app run test:embodiment-switch && npm --prefix app run test:motor-frame-mapper && npm --prefix app run test:planar-arm-ik && npm --prefix app run test:vrm-humanoid-rig && npm --prefix runtime/neuro-kurisu run test:aspect10:interaction",
+    "neurok-os": "node tools/neurok-os.mjs status",
+    "neurok-os:validate": "node tools/neurok-os.mjs validate",
+    "neurok-os:plan": "node tools/neurok-os.mjs plan",
+    "neurok-os:test": "node --test tools/neurok-os*.test.mjs",
+    "neurok-os:claims": "node tools/neurok-os-coordinator.mjs",
+    "neurok-os:patch": "node tools/neurok-os-patch.mjs",
+    "neurok-os:evidence": "node tools/neurok-os-evidence.mjs",
+    "neurok-os:snapshot": "node tools/neurok-os-coordinator.mjs snapshot"
   },
   "version": "35.0.0-super-workpass70",
   "packageManager": "npm@10.9.2",

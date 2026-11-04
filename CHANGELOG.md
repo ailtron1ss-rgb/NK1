@@ -1,3 +1,29 @@
+## [NK1][EngineeringOS] Close nested secret-path preflight bypasses (2026-11-04)
+
+- Extend fail-closed diff policy to inspect path segments and basenames, not only repository-root exact paths.
+- Deny nested environment files, npm credential files, SSH/Git metadata, common service-account files and private-key/certificate extensions.
+- Add a red-green regression covering nested environment, npmrc, id_rsa, git/config and PEM paths.
+
+## [NK1][EngineeringOS] Add agent context snapshot generator (2026-11-04)
+
+- Add a read-only CLI to generate bounded SHA-256 read-set manifests from repository files, with path normalization and symlink-root confinement.
+- Make generated manifests directly consumable by task claims; use exclusive file creation to avoid overwriting prior snapshots.
+- Add a regression proving captured bytes match the claimed context; freshness verification now also blocks a moved base commit.
+
+## [NK1][EngineeringOS] Exclude Vibelets from active provider catalog (2026-11-04)
+
+- Remove Vibelets from the active integration catalog at the user's explicit request.
+- Add a regression ensuring the excluded provider cannot silently reappear in the active catalog.
+- No Vibelets connector, app or runtime code is invoked.
+
+## [NK1][EngineeringOS] Bind agent claims to context read-set freshness (2026-11-04)
+
+- Extend task claims with bounded, normalized SHA-256 snapshots of source/context dependencies; verify the snapshots against repository bytes at claim time.
+- Add owner-only freshness verification before writes; report changed and missing dependencies separately, and reject symlink escapes outside the repository root.
+- Keep claims without a read-set explicitly unverified rather than silently fresh; expose CLI `verify` and optional `--readSetFile`.
+- Add regressions for changed dependencies, malformed/traversal snapshots, symlink escape and no-read-set behavior.
+- This is a local advisory coordination gate; it does not yet intercept arbitrary writes or provide a shared remote CAS backend.
+
 ## [NK1][Metacognition] Bind episodic self-monitoring to all eleven cognitive stages (2026-11-04)
 - The existing metacognitive CEF event previously linked only observation/prediction/action/outcome/learning, leaving appraisal, attention, memory, goal, plan and self-update outside the episode's direct causal parent set.
 - Record the episode only after the self-update node exists; verify the complete eleven-stage CEF lineage and attach all eleven stage IDs in canonical order.
