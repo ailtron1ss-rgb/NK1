@@ -1,55 +1,127 @@
 const DEFAULT_RRF_K = 60;
 const MAX_CHANNELS = 8;
 const MAX_ID_LENGTH = 256;
-function isRecord(v) {
-  if (v === null || typeof v !== 'object' || Array.isArray(v)) return false;
-  const p = Object.getPrototypeOf(v);
-  return p === Object.prototype || p === null;
+
+function isPlainRecord(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+  } catch {
+    return false;
+  }
 }
-function integer(v, name, min, max) {
-  if (!Number.isSafeInteger(v) || v < min || v > max) throw new TypeError(name + ' out of bounds');
+
+function readOwnData(record, key) {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor) return { valid: true, value: undefined };
+    if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) return { valid: false, value: undefined };
+    return { valid: true, value: descriptor.value };
+  } catch {
+    return { valid: false, value: undefined };
+  }
 }
-function id(v, name) {
-  if (typeof v !== 'string' || !v.length || v.length > MAX_ID_LENGTH || v.trim() !== v) throw new TypeError(name + ' invalid');
+
+function readFields(record, keys) {
+  if (!isPlainRecord(record)) return null;
+  const result = Object.create(null);
+  for (const key of keys) {
+    const field = readOwnData(record, key);
+    if (!field.valid) return null;
+    result[key] = field.value;
+  }
+  return result;
+}
+
+function readDensePrefix(value, maximum) {
+  try {
+    if (!Array.isArray(value)) return null;
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, 'length');
+    const length = lengthDescriptor && Object.prototype.hasOwnProperty.call(lengthDescriptor, 'value')
+      ? lengthDescriptor.value : Number.NaN;
+    if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0) return null;
+    const count = Math.min(length, maximum);
+    const items = [];
+    for (let index = 0; index < count; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) return null;
+      items.push(descriptor.value);
+    }
+    return { items, length };
+  } catch {
+    return null;
+  }
+}
+
+function requireInteger(value, name, min, max) {
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    throw new TypeError(name + ' out of bounds');
+  }
+}
+
+function validateId(value, name) {
+  if (typeof value !== 'string' || !value.length || value.length > MAX_ID_LENGTH || value.trim() !== value) {
+    throw new TypeError(name + ' invalid');
+  }
 }
 
 /** Candidate-only shadow fusion. Never reads or persists memory text. */
 export function combineRankedMemoryChannels(input) {
-  if (!isRecord(input)) throw new TypeError('input must be a plain record');
-  const { channels, subjectId = null, limit = 8, rrfK = DEFAULT_RRF_K, maxCandidatesPerChannel = 64 } = input;
-  if (!Array.isArray(channels) || channels.length < 1 || channels.length > MAX_CHANNELS) throw new TypeError('channels out of bounds');
-  if (subjectId !== null) id(subjectId, 'subjectId');
-  integer(limit, 'limit', 1, 64);
-  integer(rrfK, 'rrfK', 1, 1000);
-  integer(maxCandidatesPerChannel, 'maxCandidatesPerChannel', 1, 512);
-  const names = new Set(), aggregate = new Map();
-  const diagnostics = { channels: channels.length, candidatesSeen: 0, candidatesScopedOut: 0, duplicateRefs: 0, uniqueCandidates: 0 };
-  for (const channel of channels) {
-    if (!isRecord(channel)) throw new TypeError('channel must be a plain record');
-    const { name, candidates, weight = 1 } = channel;
+  const fields = readFields(input, ['channels', 'subjectId', 'limit', 'rrfK', 'maxCandidatesPerChannel']);
+  if (!fields) throw new TypeError('input must be a plain record with own data properties');
+  const channelRows = readDensePrefix(fields.channels, MAX_CHANNELS);
+  if (!channelRows || channelRows.length < 1 || channelRows.length > MAX_CHANNELS || channelRows.items.length !== channelRows.length) {
+    throw new TypeError('channels out of bounds or malformed');
+  }
+  const subjectId = fields.subjectId ?? null;
+  const limit = fields.limit ?? 8;
+  const rrfK = fields.rrfK ?? DEFAULT_RRF_K;
+  const maxCandidatesPerChannel = fields.maxCandidatesPerChannel ?? 64;
+  if (subjectId !== null) validateId(subjectId, 'subjectId');
+  requireInteger(limit, 'limit', 1, 64);
+  requireInteger(rrfK, 'rrfK', 1, 1000);
+  requireInteger(maxCandidatesPerChannel, 'maxCandidatesPerChannel', 1, 512);
+
+  const names = new Set();
+  const aggregate = new Map();
+  const diagnostics = {
+    channels: channelRows.length,
+    candidatesSeen: 0,
+    candidatesScopedOut: 0,
+    duplicateRefs: 0,
+    uniqueCandidates: 0,
+  };
+
+  for (const channelValue of channelRows.items) {
+    const channel = readFields(channelValue, ['name', 'candidates', 'weight']);
+    if (!channel) throw new TypeError('channel must be a plain data record');
+    const { name, candidates } = channel;
+    const weight = channel.weight ?? 1;
     if (typeof name !== 'string' || !/^[a-z][a-z0-9_-]{0,31}$/i.test(name)) throw new TypeError('invalid channel name');
     if (names.has(name)) throw new TypeError('duplicate channel name');
     names.add(name);
     if (!Number.isFinite(weight) || weight <= 0 || weight > 4) throw new TypeError('channel weight out of bounds');
-    if (!Array.isArray(candidates)) throw new TypeError('candidates must be an array');
-    const seen = new Set(), count = Math.min(candidates.length, maxCandidatesPerChannel);
-    for (let i = 0; i < count; i++) {
-      const candidate = candidates[i];
-      diagnostics.candidatesSeen++;
-      if (!isRecord(candidate)) throw new TypeError('candidate must be a plain record');
-      id(candidate.id, 'candidate id');
-      if (candidate.subjectId !== undefined) id(candidate.subjectId, 'candidate subjectId');
-      // Apply ownership filtering before any rank can affect the score.
+
+    const candidateRows = readDensePrefix(candidates, maxCandidatesPerChannel);
+    if (!candidateRows) throw new TypeError('candidates must be a dense data array');
+    const seen = new Set();
+    for (let index = 0; index < candidateRows.items.length; index += 1) {
+      const candidate = readFields(candidateRows.items[index], ['id', 'subjectId']);
+      diagnostics.candidatesSeen += 1;
+      if (!candidate) throw new TypeError('candidate must be a plain data record');
+      validateId(candidate.id, 'candidate id');
+      if (candidate.subjectId !== undefined) validateId(candidate.subjectId, 'candidate subjectId');
       if (subjectId !== null && candidate.subjectId !== subjectId) {
-        diagnostics.candidatesScopedOut++;
+        diagnostics.candidatesScopedOut += 1;
         continue;
       }
       if (seen.has(candidate.id)) {
-        diagnostics.duplicateRefs++;
+        diagnostics.duplicateRefs += 1;
         continue;
       }
       seen.add(candidate.id);
-      const rank = i + 1;
+      const rank = index + 1;
       let row = aggregate.get(candidate.id);
       if (!row) {
         row = { id: candidate.id, score: 0, bestRank: rank, ranks: [] };
@@ -60,21 +132,39 @@ export function combineRankedMemoryChannels(input) {
       row.ranks.push({ channel: name, rank });
     }
   }
+
   const items = [...aggregate.values()]
     .sort((a, b) => b.score - a.score || a.bestRank - b.bestRank || a.id.localeCompare(b.id))
     .slice(0, limit)
-    .map(row => ({ ...row, ranks: row.ranks.sort((a, b) => a.channel.localeCompare(b.channel)) }));
+    .map(row => ({
+      id: row.id,
+      score: row.score,
+      bestRank: row.bestRank,
+      ranks: row.ranks.sort((a, b) => a.channel.localeCompare(b.channel)),
+    }));
   diagnostics.uniqueCandidates = aggregate.size;
   return { items, diagnostics };
 }
 
 /** Privacy-reduced overlap comparator for offline ranking evaluation. */
 export function compareRankedLists(left, right, k = 5) {
-  if (!Array.isArray(left) || !Array.isArray(right)) throw new TypeError('ranked lists must be arrays');
-  integer(k, 'k', 1, 1000);
-  const a = new Set(left.slice(0, k).map(x => x?.id).filter(x => typeof x === 'string'));
-  const b = new Set(right.slice(0, k).map(x => x?.id).filter(x => typeof x === 'string'));
-  const overlap = [...a].filter(x => b.has(x)).length;
+  requireInteger(k, 'k', 1, 1000);
+  const leftRows = readDensePrefix(left, k);
+  const rightRows = readDensePrefix(right, k);
+  if (!leftRows || !rightRows) throw new TypeError('ranked lists must be dense arrays');
+  const collectIds = rows => rows.items.map(row => {
+    const fields = readFields(row, ['id']);
+    if (!fields) throw new TypeError('ranked item must be a plain data record');
+    return fields.id;
+  }).filter(value => typeof value === 'string');
+  const a = new Set(collectIds(leftRows));
+  const b = new Set(collectIds(rightRows));
+  const overlap = [...a].filter(value => b.has(value)).length;
   const union = new Set([...a, ...b]).size;
-  return { leftCount: a.size, rightCount: b.size, overlapAtK: overlap, jaccardAtK: union ? overlap / union : 1 };
+  return {
+    leftCount: a.size,
+    rightCount: b.size,
+    overlapAtK: overlap,
+    jaccardAtK: union ? overlap / union : 1,
+  };
 }
