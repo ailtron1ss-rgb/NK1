@@ -258,6 +258,18 @@ export class AutonomousSocialInitiativeEngine {
 
   snapshot(): SocialInitiativeState { return structuredClone(this.state); }
 
+  private expirePending(at: number): void {
+    if (!Number.isFinite(at) || at < 0) return;
+    for (const item of this.state.initiatives) {
+      if ((item.status === 'planned' || item.status === 'ready')
+        && at >= item.createdAt && at - item.createdAt > INITIATIVE_PENDING_TTL_MS) {
+        item.status = 'deferred';
+        item.resolvedAt = at;
+        this.state.deferred = Math.min(MAX_SOCIAL_COUNTER, this.state.deferred + 1);
+      }
+    }
+  }
+
   /**
    * Match one incoming user turn to the latest delivered proactive thought. Silence is
    * never negative evidence; only an explicit stop/negative cue or a topic-linked reply
@@ -299,17 +311,11 @@ export class AutonomousSocialInitiativeEngine {
     cooldownMs?: number;
     startupGraceMs?: number;
   }): { shouldInitiate: boolean; initiative: SocialInitiative | null } {
-    const at = Math.max(0, Number(input.at) || Date.now());
+    const at = safeTime(input.at) ?? Date.now();
     this.state.cycles++;
     if (!this.state.startedAt) this.state.startedAt = at;
     if (input.externalInput) this.state.lastExternalInputAt = at;
-
-    // An old unresolved plan cannot permanently block initiative after a provider failure.
-    for (const item of this.state.initiatives) {
-      if ((item.status === 'planned' || item.status === 'ready') && at - item.createdAt > 20 * 60_000) {
-        item.status = 'deferred'; item.resolvedAt = at; this.state.deferred++;
-      }
-    }
+    this.expirePending(at);
     const hasPending = this.state.initiatives.some(item => item.status === 'planned' || item.status === 'ready');
     const quietPeriodMs = Math.max(0, input.quietPeriodMs ?? 180_000);
     const cooldownMs = Math.max(0, input.cooldownMs ?? 300_000);
@@ -428,47 +434,70 @@ export class AutonomousSocialInitiativeEngine {
   }
 
   latestPlanned(now = Date.now()): SocialInitiative | null {
-    const item = this.state.initiatives.find(i => i.status === 'planned' && now - i.createdAt <= 20 * 60_000);
+    const at = safeTime(now) ?? Date.now();
+    this.expirePending(at);
+    const item = this.state.initiatives.find(i => i.status === 'planned'
+      && at >= i.createdAt && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
     return item ? structuredClone(item) : null;
   }
 
   stageMessage(id: string, message: string, at = Date.now()): boolean {
     const item = this.state.initiatives.find(i => i.id === id);
-    if (!item || item.status !== 'planned') return false;
+    const stagedAt = safeTime(at);
+    if (!item || item.status !== 'planned' || stagedAt === undefined || stagedAt < item.createdAt) return false;
+    if (stagedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) {
+      this.defer(id, stagedAt);
+      return false;
+    }
     const clean = sanitizeAutonomousDialogueMessage(message);
     if (!clean) {
       // A rejected generation must not remain as a hot pending item and spin on every cycle.
-      item.status = 'deferred';
-      item.resolvedAt = at;
-      this.state.deferred++;
+      this.defer(id, stagedAt);
       return false;
     }
     item.message = clean;
-    item.stagedAt = at;
+    item.stagedAt = stagedAt;
     item.status = 'ready';
     return true;
   }
 
-  latestReady(): SocialInitiative | null {
-    const item = this.state.initiatives.find(i => i.status === 'ready' && Boolean(i.message?.trim()));
+  latestReady(now = Date.now()): SocialInitiative | null {
+    const at = safeTime(now) ?? Date.now();
+    this.expirePending(at);
+    const item = this.state.initiatives.find(i => i.status === 'ready'
+      && Boolean(i.message?.trim())
+      && typeof i.stagedAt === 'number'
+      && i.stagedAt >= i.createdAt
+      && i.stagedAt <= at
+      && at >= i.createdAt
+      && at - i.createdAt <= INITIATIVE_PENDING_TTL_MS);
     return item ? structuredClone(item) : null;
   }
 
   acknowledge(id: string, at = Date.now()): boolean {
+    const acknowledgedAt = safeTime(at);
+    if (acknowledgedAt === undefined) return false;
+    this.expirePending(acknowledgedAt);
     const item = this.state.initiatives.find(i => i.id === id);
-    if (!item || item.status !== 'ready') return false;
+    if (!item || item.status !== 'ready' || typeof item.stagedAt !== 'number'
+      || acknowledgedAt < item.stagedAt || acknowledgedAt < item.createdAt
+      || acknowledgedAt - item.createdAt > INITIATIVE_PENDING_TTL_MS) return false;
     item.status = 'executed';
-    item.resolvedAt = at;
-    this.state.executed++;
+    item.resolvedAt = acknowledgedAt;
+    this.state.executed = Math.min(MAX_SOCIAL_COUNTER, this.state.executed + 1);
     // Delivery proves only that the UI received a message. It is not evidence of
     // reciprocity or a positive social outcome, so relationship learning stays unchanged.
     return true;
   }
 
   defer(id: string, at = Date.now()): boolean {
+    const deferredAt = safeTime(at);
+    if (deferredAt === undefined) return false;
     const item = this.state.initiatives.find(i => i.id === id);
-    if (!item || item.status === 'executed' || item.status === 'deferred') return false;
-    item.status = 'deferred'; item.resolvedAt = at; this.state.deferred++;
+    if (!item || item.status === 'executed' || item.status === 'deferred' || deferredAt < item.createdAt) return false;
+    item.status = 'deferred';
+    item.resolvedAt = deferredAt;
+    this.state.deferred = Math.min(MAX_SOCIAL_COUNTER, this.state.deferred + 1);
     return true;
   }
 
