@@ -1,22 +1,35 @@
-# Portable Completion Kit — локальный протокол проверки (2026-11-04)
+# Portable Completion Kit v0.2.0 — локальный протокол проверки (2026-11-04)
 
-## Артефакт
-- Файл: `NeuroCore_Completion_Kit_v0.1.0-portable.zip`
-- SHA-256: `b1b3b5a8db38b112ef187ba89fab2b59cb197dd7c8588fd6de639ce4783e4433`
-- Размер: 54,068 bytes
-- ZIP: 45 entries; CRC verification passed
-- Node.js: v22.16.0
+## Результат unit tests
+- Node.js: v22.16.0.
+- Чисто распакованный portable-пакет: **31 passed, 0 failed**.
+- Покрытие: architecture audit, static import graph, CEF lineage, promotion policy, paired statistics, dataset SHA/path-traversal, Git provenance, exact-SHA receipt adapter и tree generation.
+- Production promotion CLI использует канонический NK1 `src/organism/learning/PairedSeedConfidence.ts`; policy tests внедряют детерминированный test estimator и проверяют fail-closed отсутствие canonical dependency.
 
-## Результат
-- Completion Kit portable unit suite: **24 passed, 0 failed**.
-- Проверка выполнена в чистом staging-каталоге после распаковки ZIP.
-- Один тест promotion-gate использовал интерфейсно-совместимую изолированную фикстуру NK1 bootstrap-контракта, так как полный checkout NK1 runtime не подключался к staging-каталогу.
+## Проверка Engineering OS adapter
+- На временном Git checkout gate runner записал PASS receipt с full commit SHA и SHA-256 отчёта.
+- Намеренно падающая gate-команда создала FAIL receipt с ненулевым exitCode.
+- Dirty-worktree negative control не создал evidence receipt и заблокировал PASS.
+- Для этих трёх сценариев использовался fixture с совместимым CLI-контрактом `neurok-os:evidence`. Это **не** запуск настоящего NK1 evidence CLI на полном checkout.
+- Реальная интеграция должна быть повторена после установки ZIP в актуальный NK1; root package scripts и schema были сверены с upstream.
 
-## Что этот результат НЕ доказывает
-- Не означает, что `npm run audit`, `npm run imports`, `npm run test-surface` прошли на полном checkout NK1.
-- Не означает, что runtime TypeScript gates, GitHub Actions или production build прошли.
-- Не подтверждает RU/EN memory holdout uplift, transfer/generalization, useful long-horizon self-initiative, browser/WebGL E2E, Android audio/device soak, power-loss recovery, privacy deletion propagation либо human license review.
-- Не доказывает сознание, AGI или прирост интеллекта.
+## Что не доказано
+- Полный runtime audit / import graph / test-surface pass на реальном checkout.
+- Все TypeScript gates, production build и все GitHub Actions на exact v0.2.0 source tree.
+- RU/EN memory holdout uplift, transfer/generalization, useful long-horizon self-initiative.
+- Browser/WebGL E2E, Android audio/device soak, power-loss recovery, privacy deletion propagation и human license review.
+- Сознание, AGI или прирост интеллекта.
 
 ## Повторение
-См. `COMPLETION_KIT_INSTALL_RU.md` в корне PR и команды в README пакета. Сначала распаковать ZIP в `runtime/neuro-kurisu/`, затем запустить `npm test` из `runtime/neuro-kurisu/completion-kit/`.
+Распаковать архив в `runtime/neuro-kurisu/`, затем выполнить из `runtime/neuro-kurisu/completion-kit/`:
+
+```bash
+npm test
+npm run gate -- foundation
+npm run audit
+npm run imports
+npm run test-surface
+npm run report
+```
+
+Gate runner требует clean Git checkout, GitHub origin и доступную корневую команду `npm run neurok-os:evidence`.
