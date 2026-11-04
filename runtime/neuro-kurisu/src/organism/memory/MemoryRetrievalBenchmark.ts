@@ -88,6 +88,14 @@ export interface MemoryRetrievalBenchmarkOptions {
   metadataRecallEnabled?: boolean;
   /** Offline experiments may raise this bounded limit; the HTTP API leaves it at 64. */
   maxExamples?: number;
+  /** Explicit retrieval arm; defaults to the canonical MemoryOS2 candidate. */
+  candidateStrategy?: 'memoryos2-canonical' | 'neko-shadow-rrf';
+  /** Weight profile recorded in the retrieval configuration fingerprint. */
+  candidateRrfProfile?: 'equal' | 'memoryos2';
+  /** Whether the N.E.K.O. shadow arm was asked to include the existing semantic vector preview. */
+  candidateVectorEnabled?: boolean;
+  /** Offline-only synchronous candidate injection; report/export still uses canonical safety checks. */
+  candidateRetriever?: (query: string, limit: number, now: number, snapshot: MemoryOSState2) => BenchmarkRetrievalResult;
 }
 
 export interface RetrievalBenchmarkMetrics {
@@ -154,7 +162,7 @@ const canonicalJsonValue=(value:unknown):unknown=>{
   return value;
 };
 const corpusFingerprint=(rows:MemoryItem2[])=>createHash('sha256').update(JSON.stringify([...rows].sort((a,b)=>a.id.localeCompare(b.id)).map(row=>canonicalJsonValue(row)))).digest('hex');
-const retrievalConfigurationFingerprint=(snapshot:MemoryOSState2,options:MemoryRetrievalBenchmarkOptions={})=>createHash('sha256').update(JSON.stringify(canonicalJsonValue({algorithm:RETRIEVAL_ALGORITHM_VERSION,tokenization:'NFKC Unicode words plus standalone single-digit numbers',candidateMetadataRecallEnabled:options.metadataRecallEnabled===true,version:snapshot?.version??null,adaptiveMemoryPolicy:snapshot?.adaptiveMemoryPolicy??null,linkUpdates:snapshot?.linkUpdates??0,semanticQueries:snapshot?.semanticQueries??0}))).digest('hex');
+const retrievalConfigurationFingerprint=(snapshot:MemoryOSState2,options:MemoryRetrievalBenchmarkOptions={})=>createHash('sha256').update(JSON.stringify(canonicalJsonValue({algorithm:RETRIEVAL_ALGORITHM_VERSION,tokenization:'NFKC Unicode words plus standalone single-digit numbers',candidateMetadataRecallEnabled:options.metadataRecallEnabled===true,candidateStrategy:options.candidateStrategy??'memoryos2-canonical',candidateRrfProfile:options.candidateRrfProfile??'equal',candidateVectorEnabled:options.candidateVectorEnabled===true,version:snapshot?.version??null,adaptiveMemoryPolicy:snapshot?.adaptiveMemoryPolicy??null,linkUpdates:snapshot?.linkUpdates??0,semanticQueries:snapshot?.semanticQueries??0}))).digest('hex');
 const isCurrent=(m:MemoryItem2,now:number)=>!m.dormant&&m.epistemicStatus!=='quarantined'&&(m.supersededById==null||m.validUntilAt!=null)&&(m.validFromAt==null||Number(m.validFromAt)<=now)&&(m.validUntilAt==null||Number(m.validUntilAt)>now);
 function p95(values:number[]){if(!values.length)return 0;const a=[...values].sort((x,y)=>x-y);return a[Math.min(a.length-1,Math.ceil(a.length*.95)-1)]??0;}
 function textField(value:unknown,max=200){return typeof value==='string'?value.trim().slice(0,max):'';}
@@ -452,7 +460,26 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   // when sourceItems exceeds the limit, but candidate retrieval must not secretly inspect
   // rows that the baseline was forbidden to index.
   const boundedSnapshotForBenchmark = { ...structuredClone(snapshot), items: structuredClone(corpus) } as MemoryOSState2;
-  const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{const setupStarted=performance.now();const isolated=new MemoryOS2({metadataRecallEnabled:options.metadataRecallEnabled===true});isolated.restore(structuredClone(boundedSnapshotForBenchmark));const setupMs=performance.now()-setupStarted;const started=performance.now();const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};};
+  const candidateStrategy=options.candidateStrategy??'memoryos2-canonical';
+  if(candidateStrategy!=='memoryos2-canonical'&&candidateStrategy!=='neko-shadow-rrf')throw new Error('memory-retrieval-candidate-strategy-invalid');
+  if(candidateStrategy==='neko-shadow-rrf'&&typeof options.candidateRetriever!=='function')throw new Error('neko-shadow-candidate-retriever-required');
+  if(options.candidateRrfProfile!==undefined&&options.candidateRrfProfile!=='equal'&&options.candidateRrfProfile!=='memoryos2')throw new Error('memory-retrieval-rrf-profile-invalid');
+  const candidate=(query:string,limit:number):BenchmarkRetrievalResult=>{
+    if(candidateStrategy==='neko-shadow-rrf'){
+      const started=performance.now();
+      const response=options.candidateRetriever!(query,limit,now,boundedSnapshotForBenchmark);
+      if(Array.isArray(response))return {items:response.slice(0,limit),latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:0};
+      if(!response||!Array.isArray(response.items))throw new Error('neko-shadow-candidate-result-invalid');
+      return {items:response.items.slice(0,limit),latencyMs:Number.isFinite(response.latencyMs)?Math.max(0,response.latencyMs):Math.max(0,performance.now()-started),isolationSetupMs:Number.isFinite(response.isolationSetupMs)?Math.max(0,response.isolationSetupMs):0};
+    }
+    const setupStarted=performance.now();
+    const isolated=new MemoryOS2({metadataRecallEnabled:options.metadataRecallEnabled===true});
+    isolated.restore(structuredClone(boundedSnapshotForBenchmark));
+    const setupMs=performance.now()-setupStarted;
+    const started=performance.now();
+    const items=isolated.retrieve(query,limit,0,0,{temporalMode:'at',asOfAt:now},true) as MemoryItem2[];
+    return {items,latencyMs:Math.max(0,performance.now()-started),isolationSetupMs:setupMs};
+  };
 
   const includeQueryEvidence=options.includeQueryEvidence===true;
   const evidenceHashSalt = includeQueryEvidence
@@ -637,10 +664,10 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const promotionAllowed=Object.values(promotionGates).every(Boolean);
   const reason=!seedInputValid?'invalid-bootstrap-seed':!corpusIntegrity.validForPromotion?'corpus-integrity-failed':!dataIntegrity.validForPromotion?'dataset-integrity-failed':!provenanceComplete?'dataset-provenance-incomplete':!enoughEvidence?'insufficient-labelled-holdout-or-corpus':!enoughUnanswerableEvidence?'insufficient-unanswerable-holdout':!quarantineSafe?'candidate-returned-quarantined-memory':!staleSafe?'candidate-returned-out-of-window-memory':!dormantSafe?'candidate-returned-dormant-memory':!epistemicStatusSafe?'candidate-returned-invalid-epistemic-status':!validRateSafe?'candidate-result-integrity-regression':!abstentionSafe?'unsupported-retrieval-rate-regression':!abstentionConfidenceNonInferioritySupported?'unsupported-retrieval-regression-not-confidence-bounded':recallDelta<minUplift?'recall-uplift-below-threshold':!confidenceSupported?'recall-uplift-not-confidence-supported':!mrrNonInferioritySupported?'mrr-regression-not-confidence-bounded':mrrDelta < -mrrTolerance?'mrr-regression-exceeds-tolerance':!languageStratifiedQualityEligible?languageStratificationReason:'holdout-gates-passed';
   return {
-    schemaVersion:6 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
+    schemaVersion:6 as const,benchmark:'memoryos2-retrieval-vs-bm25-baseline',retrievalAlgorithmVersion:RETRIEVAL_ALGORITHM_VERSION,candidateStrategy,candidateRrfProfile:options.candidateRrfProfile??'equal',candidateVectorEnabled:options.candidateVectorEnabled===true,mode:'offline-clone; no-live-state-mutation' as const,latencyDefinition:'p95 measures retrieval only; isolationSetupP95Ms is reported separately',
     now,k,corpusSize:corpus.length,trainQueries:train.length,holdoutQueries:holdout.length,datasetFingerprint,corpusFingerprint:corpusHash,retrievalConfigurationFingerprint:retrievalConfigHash,corpusIntegrity,
     datasetIntegrity:{...dataIntegrity,validForPromotion:dataIntegrity.validForPromotion&&provenanceComplete,provenanceComplete},
-    experimentConfiguration:{seedInputValid,requestedSeed:seedWasProvided?(Number.isFinite(requestedSeed)?requestedSeed:String(options.seed)):'auto-derived',effectiveSeed:seed,candidateMetadataRecallEnabled:options.metadataRecallEnabled===true,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance},
+    experimentConfiguration:{seedInputValid,requestedSeed:seedWasProvided?(Number.isFinite(requestedSeed)?requestedSeed:String(options.seed)):'auto-derived',effectiveSeed:seed,candidateMetadataRecallEnabled:options.metadataRecallEnabled===true,candidateStrategy,candidateRrfProfile:options.candidateRrfProfile??'equal',candidateVectorEnabled:options.candidateVectorEnabled===true,maximumMrrRegression01:mrrTolerance,maximumUnsupportedRetrievalRegression01:unsupportedRetrievalTolerance},
     datasetProvenance:{...provenance,contentHashValid},
     baselineConfiguration,baselineConfigurationFingerprint,
     metrics:{baseline:baselineMetrics,candidate:candidateMetrics,train:{baseline:trainBaseline.metrics,candidate:trainCandidate.metrics}},
