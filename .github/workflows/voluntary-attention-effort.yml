@@ -1,0 +1,36 @@
+name: NK1 voluntary attention effort
+on:
+  pull_request:
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveResourceEconomy.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/voluntary-attention-effort.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - "runtime/neuro-kurisu/scripts/typecheck-runtime.mjs"
+      - ".github/workflows/voluntary-attention-effort.yml"
+  push:
+    branches:
+      - "aspect/attention-effort-runtime-wiring-20261104"
+    paths:
+      - "runtime/neuro-kurisu/src/organism/system/CognitiveResourceEconomy.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/voluntary-attention-effort.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/voluntary-attention-effort.yml"
+permissions:
+  contents: read
+jobs:
+  attention-effort:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Record exact tested commit
+        run: echo "TESTED_COMMIT=$(git rev-parse HEAD)"
+      - name: Run voluntary attention effort regressions
+        run: npm run test:voluntary-attention-effort --prefix runtime/neuro-kurisu
+      - name: Run runtime typecheck
+        run: npm run typecheck --prefix runtime/neuro-kurisu
