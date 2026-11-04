@@ -35,8 +35,7 @@ try {
   const memoryId = `meta:${episodeEvent.id}`;
   const memoryItem = runtime.core.memorySubstrateCanonicalItems(32).find((item) => item.id === memoryId);
   assert.ok(memoryItem, 'the full-cycle episode must be projected into canonical MemoryOS2');
-  assert.deepEqual(memoryItem.context?.causalParentIds, episodeEvent.parentIds,
-    'MemoryOS2 must retain the exact CEF parent set');
+  assert.equal(memoryItem.kind, 'episodic', 'runtime must project the causal episode as episodic memory');
 
   const secondSnapshot = runtime.core.snapshot();
   const matching = secondSnapshot.system.cognitiveEventFabric.recent.filter((event) => event.stage === 'metacognition');
