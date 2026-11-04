@@ -10,8 +10,6 @@ on:
       - "docs/research/NEUROK_MULTI_AGENT_COORDINATION_RESEARCH_2026-11-03.md"
       - ".github/workflows/neurok-engineering-os.yml"
   push:
-    branches:
-      - "aspect/neurok-engineering-os-20261103"
     paths:
       - "engineering-os/**"
       - "tools/neurok-os*.mjs"
