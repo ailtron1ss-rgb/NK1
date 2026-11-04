@@ -1003,4 +1003,36 @@ production-ready. Рисовать плейсхолдер и заявлять г
   metacognitive-full-cycle) — PASS. Все проверки на head `1cf99de` — success (единственный «fail» — отменённый
   concurrency-прогон, перекрытый более новым).
 
+## 23. Прогресс-проход 4 — exact-head фиксация (2026-11-04)
+
+> Продолжение §22: расширение того же класса (restore) на оставшиеся владельцы тела и
+> закрепление результата на точном head.
+
+### 23.1 Что добавлено в этом проходе (`IMPLEMENTED`, доказано регрессией)
+
+- `P35SemanticWorldBodyEngine.restore` и `P37EmbodiedSensoriumEngine.restore` переведены на
+  `RestoreSanitizers` (см. §22.1): `tick`, метрики, `body`, надёжности модальностей, `spatialSelf`,
+  `scene`, `affordances`, сущности/события/рёбра/запросы/сенсоры пересобираются из валидированных
+  примитивов; координата при мусоре → `null`; `awake` fail-closed; неизвестные affordance-ключи и
+  не-plain строки отбрасываются.
+- `EmbodiedRecoveryController.restore` — тот же класс + прототип-коллизия (`constructor`/`__proto__`
+  как имя действия резолвились в `Object.prototype`); конструктор теперь делегирует в `restore`.
+- Регрессия `embodiment-restore-sanitization-integrity.mjs` расширена hostile-снапшотами P35/P37/recovery
+  и точным round-trip валидных снапшотов; fail-before подтверждён `git stash` каждого источника.
+
+### 23.2 Прогоны (OBSERVED, exact-head)
+
+- `npm --prefix runtime/neuro-kurisu run typecheck` — `TYPECHECK=PASS mode=tsc compiler=app-lock`.
+- `npm --prefix runtime/neuro-kurisu run test:embodiment-restore-sanitization` — PASS.
+- Владельческие и смежные наборы P35/P37/recovery — PASS (полный список в §22.2).
+- Все **41** проверки на head `44306aa` (коммиты `dc7d08d`, `44306aa`) — success; PR #768 `OPEN`/`MERGEABLE`.
+
+### 23.3 Честная граница (`UNRESOLVED`)
+
+- Строгая по-полю валидация `StateMigrations` (p41/p42/p43) — следующий кандидат, не сделан.
+- `p17-embodied-multimodal-agent`, `big-pass-53-perceptual-grounding`, `big-pass-92-sensorium`
+  падают на базисе и вне активного CI (§22.3) — не трогались.
+- Оценка готовности тела/взаимодействия не меняется от этого прохода: это устойчивость и честность
+  персиста, а не новый рендер/моторика. Блокеры `B3`/`C3`/`F3`/`G1` (§21.3) остаются.
+
 
