@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { claimTask, listClaims, normalizeClaimPath, releaseTask } from './neurok-os-coordinator.mjs';
@@ -72,4 +72,21 @@ test('rejects a claim based on a stale checkout SHA', async () => fixture(async 
     /does not match the current checkout HEAD/
   );
   assert.equal((await listClaims({ stateDir })).length, 0);
+}));
+
+test('does not reclaim an old lock while owner liveness is unknown', async () => fixture(async stateDir => {
+  const lockDir = path.join(stateDir, '.claims.lock');
+  await mkdir(lockDir);
+  await writeFile(path.join(lockDir, 'owner.json'), JSON.stringify({
+    pid: process.pid,
+    createdAt: 1,
+    token: 'live-owner-token'
+  }));
+  await utimes(lockDir, new Date(0), new Date(0));
+
+  await assert.rejects(
+    () => claimTask(request('TASK-NEW', 'agent-b', ['src/a.ts']), { stateDir }),
+    /automatic reclamation is disabled/
+  );
+  assert.equal((await stat(lockDir)).isDirectory(), true);
 }));

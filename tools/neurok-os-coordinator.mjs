@@ -59,20 +59,38 @@ async function readState(stateDir) {
 async function withLock(stateDir, action) {
   await mkdir(stateDir, { recursive: true });
   const lockPath = path.join(stateDir, LOCK_DIR);
+  const lockToken = randomUUID();
   let acquired = false;
   for (let attempt = 0; attempt < LOCK_RETRIES; attempt += 1) {
     try {
       await mkdir(lockPath);
-      await writeFile(path.join(lockPath, 'owner.json'), JSON.stringify({ pid: process.pid, createdAt: Date.now() }));
+      try {
+        await writeFile(
+          path.join(lockPath, 'owner.json'),
+          JSON.stringify({ pid: process.pid, createdAt: Date.now(), token: lockToken }),
+          { flag: 'wx' }
+        );
+      } catch (error) {
+        await rm(lockPath, { recursive: true, force: true });
+        throw error;
+      }
       acquired = true;
       break;
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
+      let lockAgeMs = 0;
       try {
         const info = await stat(lockPath);
-        if (Date.now() - info.mtimeMs > LOCK_STALE_MS) await rm(lockPath, { recursive: true, force: true });
+        lockAgeMs = Math.max(0, Date.now() - info.mtimeMs);
       } catch (statError) {
         if (statError.code !== 'ENOENT') throw statError;
+      }
+      if (lockAgeMs > LOCK_STALE_MS) {
+        throw new Error(
+          'claim store lock exceeded the safety window; automatic reclamation is disabled ' +
+          'to avoid stealing a long-running owner lock. Inspect .claims.lock/owner.json and ' +
+          'verify the owner process is stopped before manual recovery.'
+        );
       }
       await new Promise(resolve => setTimeout(resolve, LOCK_RETRY_MS));
     }
@@ -81,6 +99,15 @@ async function withLock(stateDir, action) {
   try {
     return await action();
   } finally {
+    let owner;
+    try {
+      owner = JSON.parse(await readFile(path.join(lockPath, 'owner.json'), 'utf8'));
+    } catch {
+      throw new Error('claim lock ownership could not be verified during release');
+    }
+    if (owner.token !== lockToken || owner.pid !== process.pid) {
+      throw new Error('claim lock ownership changed during operation; refusing to remove another owner lock');
+    }
     await rm(lockPath, { recursive: true, force: true });
   }
 }
