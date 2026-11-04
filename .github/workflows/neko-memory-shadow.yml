@@ -7,6 +7,7 @@ on:
       - 'integrations/neko-memory-shadow/**'
       - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
       - 'runtime/neuro-kurisu/tests/neko-memoryos2-ranked-channel-preview.mjs'
+      - 'docs/NEKO_NK1_MEMORY_SHADOW_WORKPASS_2026-11-04.md'
       - '.github/workflows/neko-memory-shadow.yml'
   push:
     branches:
@@ -15,6 +16,7 @@ on:
       - 'integrations/neko-memory-shadow/**'
       - 'runtime/neuro-kurisu/src/organism/developmental/MemoryOS2.ts'
       - 'runtime/neuro-kurisu/tests/neko-memoryos2-ranked-channel-preview.mjs'
+      - 'docs/NEKO_NK1_MEMORY_SHADOW_WORKPASS_2026-11-04.md'
       - '.github/workflows/neko-memory-shadow.yml'
 permissions:
   contents: read
