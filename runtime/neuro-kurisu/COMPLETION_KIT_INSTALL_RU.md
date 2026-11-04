@@ -1,30 +1,34 @@
-# NeuroCore Completion Kit v0.1.0 — установка в NK1
+# NeuroCore Completion Kit v0.2.0 — установка в NK1
 
-Полный переносимый архив содержит папку `completion-kit/` со скриптами, исходниками, архитектурной картой, схемами, шаблонами и тестами.
+Полный переносимый архив содержит папку `completion-kit/` со скриптами, исходниками, архитектурным деревом, схемами, шаблонами и тестами.
 
 ## Проверка архива
 
-Ожидаемый SHA-256:
+Файл: `NeuroCore_Completion_Kit_v0.2.0-portable.zip`
+
+SHA-256:
 
 ```text
-b1b3b5a8db38b112ef187ba89fab2b59cb197dd7c8588fd6de639ce4783e4433
+6a2aca594f6c97dc4f4ac5dd82f057daa9a3e9766d5b8fabe33b818ff801668a
 ```
+
+Размер: 65,090 bytes. ZIP содержит 50 записей; CRC-проверка пройдена.
 
 PowerShell:
 
 ```powershell
-Get-FileHash .\NeuroCore_Completion_Kit_v0.1.0-portable.zip -Algorithm SHA256
+Get-FileHash .\NeuroCore_Completion_Kit_v0.2.0-portable.zip -Algorithm SHA256
 ```
 
 Linux/macOS:
 
 ```bash
-sha256sum NeuroCore_Completion_Kit_v0.1.0-portable.zip
+sha256sum NeuroCore_Completion_Kit_v0.2.0-portable.zip
 ```
 
 ## Установка
 
-Распакуйте ZIP из корня репозитория NK1 в каталог `runtime/neuro-kurisu/`. В результате должен появиться путь:
+Распакуйте ZIP из корня репозитория NK1 в каталог `runtime/neuro-kurisu/`. Должен появиться путь:
 
 ```text
 runtime/neuro-kurisu/completion-kit/
@@ -33,33 +37,35 @@ runtime/neuro-kurisu/completion-kit/
 Windows PowerShell:
 
 ```powershell
-Expand-Archive -LiteralPath .\NeuroCore_Completion_Kit_v0.1.0-portable.zip -DestinationPath .\runtime\neuro-kurisu -Force
+Expand-Archive -LiteralPath .\NeuroCore_Completion_Kit_v0.2.0-portable.zip -DestinationPath .\runtime\neuro-kurisu -Force
 ```
 
 Linux/macOS:
 
 ```bash
-unzip -o NeuroCore_Completion_Kit_v0.1.0-portable.zip -d runtime/neuro-kurisu
+unzip -o NeuroCore_Completion_Kit_v0.2.0-portable.zip -d runtime/neuro-kurisu
 ```
 
 ## Проверки
 
-Требуется Node.js 22.12+. Перейдите в `runtime/neuro-kurisu/completion-kit`:
+Требуется Node.js 22.12+. Из `runtime/neuro-kurisu/completion-kit`:
 
 ```bash
 npm test
+npm run gate -- foundation
 npm run audit
 npm run imports
 npm run test-surface
 npm run report
-npm run tree
 npm run verify
 ```
 
-`npm test` проверяет автономную тестовую поверхность Completion Kit. Команды `audit`, `imports` и `test-surface` анализируют соседний исходный код NK1, поэтому их результат имеет смысл только после распаковки внутри полного репозитория.
+Gate runner использует clean Git worktree, exact branch/SHA и корневой `npm run neurok-os:evidence` для записи canonical PASS/FAIL receipt. Dirty worktree или stale SHA блокируют PASS/evidence receipt.
 
 ## Статус доказательств
 
-Локально в чистом staging-каталоге portable suite завершился **24/24 PASS** на Node.js 22.16.0. Для одного теста promotion gate использовалась совместимая изолированная фикстура существующего NK1 bootstrap-контракта, поскольку полный runtime checkout не был подключён к staging-каталогу. Это не означает, что проверки полного NK1 runtime, CI, внешние holdout-наборы, Android/browser E2E или физические soak-тесты прошли.
+Portable suite: **31/31 PASS** на Node.js 22.16.0. Локальный integration fixture проверил PASS receipt, FAIL receipt и блокировку receipt для dirty worktree. Fixture не является запуском настоящего NK1 CLI на полном checkout; это отдельно отмечено в `completion-kit/reports/PORTABLE_TEST_RESULTS_2026-11-04_RU.md`.
 
-Completion Kit не создаёт второй memory/identity/goal owner, не изменяет production state и не продвигает навыки автоматически. Внешние проекты и датасеты остаются reference-only до проверки точного commit/tag, лицензии, безопасности, совместимости, ablation и rollback.
+Проверка upstream `runtime/neuro-kurisu/package.json` версии `35.90.0` подтвердила, что все команды из Completion Kit gate matrix существуют: **0 missing scripts**.
+
+Completion Kit не создаёт второго memory/identity/goal owner, не изменяет production state и не продвигает навыки автоматически. Внешние проекты и datasets остаются reference-only до проверки exact commit/tag, лицензии, безопасности, совместимости, ablation и rollback.
