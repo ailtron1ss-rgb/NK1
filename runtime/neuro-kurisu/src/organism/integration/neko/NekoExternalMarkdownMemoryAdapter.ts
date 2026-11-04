@@ -478,7 +478,7 @@ export class NekoExternalMarkdownMemoryAdapter {
     }
     const allowSuspicious = new Set(overrideIds);
     const tick = optionRecord.tick === undefined ? 0 : optionRecord.tick;
-    if (!Number.isSafeInteger(tick) || tick < 0) return fail('Invalid memory lifecycle tick');
+    if (typeof tick !== 'number' || !Number.isSafeInteger(tick) || tick < 0) return fail('Invalid memory lifecycle tick');
 
     const committed: NekoMarkdownImportCommitResult['committed'] = [];
     const rejected: NekoMarkdownImportRejection[] = [];
