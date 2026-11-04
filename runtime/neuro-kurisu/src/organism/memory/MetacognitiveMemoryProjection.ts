@@ -197,7 +197,7 @@ export function persistMetacognitiveEpisode(
       topic: 'metacognitive-episode',
       category: 'self-monitoring',
       sourceEventId: episode.id,
-      causalParentIds: episode.parentIds,
+      causalParentIds: JSON.stringify(episode.parentIds),
       cycleIdHash: episode.cycleIdHash,
       actionEventId: episode.actionEventId,
       observationId: episode.observationEventId ?? '',
