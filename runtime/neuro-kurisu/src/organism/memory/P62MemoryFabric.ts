@@ -7,6 +7,11 @@
  * bounded recall packet for the current cognitive moment.
  */
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)).slice(0,cap):[];
+const sanitizeHit=(v:unknown):P62Hit|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,120),content:typeof r.content==='string'?r.content.slice(0,2000):'',kind:typeof r.kind==='string'?r.kind.slice(0,80):'',source:typeof r.source==='string'?r.source.slice(0,120):'',confidence01:clamp(finN(r.confidence01,0)),relevance01:clamp(finN(r.relevance01,0)),support01:clamp(finN(r.support01,0)),conflict01:clamp(finN(r.conflict01,0)),provenance:strArr(r.provenance,16)};};
+const sanitizeFrame=(v:unknown):P62Frame|null=>{if(!v||typeof v!=='object')return null;const r=v as Record<string,unknown>;const hits: P62Hit[] = Array.isArray(r.hits)?(r.hits.map(sanitizeHit).filter((x):x is P62Hit=>x!==null)).slice(0,64):[];return {query:typeof r.query==='string'?r.query.slice(0,500):'',hits,sourcesUsed:strArr(r.sourcesUsed,16),sourceDiversity01:clamp(finN(r.sourceDiversity01,0)),semanticCoverage01:clamp(finN(r.semanticCoverage01,0)),conflictPressure01:clamp(finN(r.conflictPressure01,0)),redundancy01:clamp(finN(r.redundancy01,0)),retrievalQuality01:clamp(finN(r.retrievalQuality01,0)),at:Math.max(0,finN(r.at,0))};};
 export interface P62SourceItem {id:string;content:string;kind:string;confidence01:number;salience01:number;source:string;status?:string;}
 export interface P62BeliefItem {id:string;claim:string;confidence:number;status:string;evidence:string[];contradictions:string[];}
 export interface P62Input {query:string;memoryOS:P62SourceItem[];multiTimescale:P62SourceItem[];semanticNodes:Array<{id:string;label:string;type:string;salience:number}>;beliefs:P62BeliefItem[];maxItems?:number;}
@@ -18,7 +23,7 @@ const tokenise=(s:string)=>new Set((s.toLowerCase().normalize('NFKC').match(/[\p
 function sim(a:Set<string>,b:Set<string>){if(!a.size||!b.size)return 0;let h=0;for(const x of b)if(a.has(x))h++;return h/Math.max(1,new Set([...a,...b]).size);}
 export class P62MemoryFabric{
  private state=defaultP62();
- restore(raw?:Partial<P62State>|null){const d=defaultP62(),r=raw??{};this.state={...d,...r,history:Array.isArray(r.history)?r.history.slice(-16):[]};}
+ restore(raw?:Partial<P62State>|null){const d=defaultP62();const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};let history:P62Frame[]=[];try{const h=read('history');if(Array.isArray(h))history=h.map(sanitizeFrame).filter((x):x is P62Frame=>x!==null).slice(-16);}catch{history=[];}let lastFrame:P62Frame|null=null;try{lastFrame=sanitizeFrame(read('lastFrame'));}catch{lastFrame=null;}this.state={version:1,queries:cnt(read('queries'),d.queries),hits:cnt(read('hits'),d.hits),conflictEvents:cnt(read('conflictEvents'),d.conflictEvents),meanQuality01:clamp(finN(read('meanQuality01'),d.meanQuality01)),meanCoverage01:clamp(finN(read('meanCoverage01'),d.meanCoverage01)),meanConflict01:clamp(finN(read('meanConflict01'),d.meanConflict01)),lastFrame,history};}
  snapshot(){return structuredClone(this.state);}
  persistenceSnapshot(){
   return {

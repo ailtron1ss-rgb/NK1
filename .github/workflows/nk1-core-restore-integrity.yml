@@ -80,6 +80,10 @@ on:
       - runtime/neuro-kurisu/src/organism/system/LongHorizonPredictionBenchmark.ts
       - runtime/neuro-kurisu/src/organism/system/P77RealityExperimentOS.ts
       - runtime/neuro-kurisu/src/organism/system/P82RealityProgressController.ts
+      - runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P54LongHorizonEvidence.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P59MemoryOperatingSystem.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -161,6 +165,10 @@ on:
       - runtime/neuro-kurisu/src/organism/system/LongHorizonPredictionBenchmark.ts
       - runtime/neuro-kurisu/src/organism/system/P77RealityExperimentOS.ts
       - runtime/neuro-kurisu/src/organism/system/P82RealityProgressController.ts
+      - runtime/neuro-kurisu/src/organism/memory/P62MemoryFabric.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P54LongHorizonEvidence.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P59MemoryOperatingSystem.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -236,6 +244,10 @@ jobs:
           node --experimental-strip-types tests/big-pass-36-budget-evidence.mjs
           node --experimental-strip-types tests/big-pass-37-spine.mjs
           node --experimental-strip-types tests/p2898-correction-aware-capsules.mjs
+          node --experimental-strip-types tests/p54-long-horizon-evidence.mjs
+          node --experimental-strip-types tests/p58-p60-integrated-kernel.mjs
+          node --experimental-strip-types tests/p66-p68-integration.mjs
+          node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
           node --experimental-strip-types tests/p2870-verified-synthetic-trajectory-gate.mjs
           node --experimental-strip-types tests/big-pass-46-multi-project-models.mjs
