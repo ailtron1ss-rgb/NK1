@@ -200,7 +200,8 @@ const legacyCycleStageIds = {
   learning: legacyStages.learning,
   'self-update': legacyStages.selfUpdate,
 };
-const { cycleStageIds: _newOnlyStageMap, ...legacyBaseInput } = input;
+const legacyBaseInput = { ...input };
+delete legacyBaseInput.cycleStageIds;
 const legacyInput = {
   ...legacyBaseInput,
   tick: 44,
