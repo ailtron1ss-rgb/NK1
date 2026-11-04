@@ -62,3 +62,10 @@ test('does not record stale receipts',async()=>{
   await assert.rejects(()=>recordEvidence(receipt(),{expectedSha:'d'.repeat(40),directory}),/exact SHA/);
  } finally { await rm(directory,{recursive:true,force:true}); }
 });
+
+test('rejects contradictory PASS and FAIL exit-code evidence',()=>{
+ const falsePass=receipt(); falsePass.result.exitCode=1;
+ assert.ok(validateEvidenceReceipt(falsePass,sha).errors.some(error=>error.includes('PASS status requires exitCode 0')));
+ const falseFail=receipt(); falseFail.status='FAIL';
+ assert.ok(validateEvidenceReceipt(falseFail,sha).errors.some(error=>error.includes('FAIL status requires a non-zero exitCode')));
+});
