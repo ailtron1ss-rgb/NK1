@@ -23,6 +23,12 @@ export interface P49State {
 }
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=240):string=>typeof v==='string'?v.slice(0,cap):'';
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)).slice(0,cap):[];
+const sanEpisode=(x:unknown):P49Episode|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,160),startAt:cnt(r.startAt,0),endAt:cnt(r.endAt,0),eventIds:strArr(r.eventIds,512),summary:str(r.summary,2000),salience:clamp(finN(r.salience,0)),confidence:clamp(finN(r.confidence,0)),sources:strArr(r.sources,32)};};
+const sanBelief=(x:unknown):P49Belief|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,160),proposition:str(r.proposition,2000),confidence:clamp(finN(r.confidence,0)),evidenceIds:strArr(r.evidenceIds,512),contradictionIds:strArr(r.contradictionIds,512),updates:cnt(r.updates,0),lastAt:cnt(r.lastAt,0)};};
 const norm=(s:string)=>s.toLowerCase().replace(/[^a-zа-яё0-9 ]/gi,' ').replace(/\s+/g,' ').trim();
 const toks=(s:string)=>new Set(norm(s).split(' ').filter(Boolean));
 const overlapSets=(A:Set<string>,B:Set<string>)=>{if(!A.size||!B.size)return 0;let n=0;for(const x of A)if(B.has(x))n++;return n/Math.max(1,Math.min(A.size,B.size));};
@@ -38,9 +44,7 @@ export class P49TemporalLifeEngine {
   private state=P49State();
   private seenEventIndex = new Set<string>();
   private episodeTokens = new Map<string, Set<string>>();
-  restore(raw?:Partial<P49State>|null){ const b=defaultP49(); const r=raw??{}; this.state={...b,...r,
-    seenEventIds:Array.isArray(r.seenEventIds)?r.seenEventIds.slice(-2048):[],
-    episodes:Array.isArray(r.episodes)?r.episodes.slice(0,160):[], beliefs:Array.isArray(r.beliefs)?r.beliefs.slice(0,160):[]};
+  restore(raw?:Partial<P49State>|null){ const b=defaultP49(); const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{}; const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}}; const jh=read('journalHash'); const seenRaw=read('seenEventIds'); const seen=Array.isArray(seenRaw)?seenRaw.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,160)).slice(-2048):[]; this.state={version:1,eventCursor:cnt(read('eventCursor'),b.eventCursor),seenEventIds:seen,journalHash:typeof jh==='string'&&jh?jh.slice(0,256):b.journalHash,eventsIndexed:cnt(read('eventsIndexed'),b.eventsIndexed),episodesCreated:cnt(read('episodesCreated'),b.episodesCreated),episodesCompressed:cnt(read('episodesCompressed'),b.episodesCompressed),beliefsReconciled:cnt(read('beliefsReconciled'),b.beliefsReconciled),contradictionsOpen:cnt(read('contradictionsOpen'),b.contradictionsOpen),sleepConsolidations:cnt(read('sleepConsolidations'),b.sleepConsolidations),lastSleepAt:cnt(read('lastSleepAt'),b.lastSleepAt),memoryPressure01:clamp(finN(read('memoryPressure01'),b.memoryPressure01)),continuityHealth01:clamp(finN(read('continuityHealth01'),b.continuityHealth01)),drift01:clamp(finN(read('drift01'),b.drift01)),episodes:Array.isArray(read('episodes'))?(read('episodes') as unknown[]).slice(0,160).map(sanEpisode).filter((x):x is P49Episode=>x!==null):[],beliefs:Array.isArray(read('beliefs'))?(read('beliefs') as unknown[]).slice(0,160).map(sanBelief).filter((x):x is P49Belief=>x!==null):[]};
     this.seenEventIndex = new Set(this.state.seenEventIds);
     this.rebuildEpisodeTokenCache();
   }

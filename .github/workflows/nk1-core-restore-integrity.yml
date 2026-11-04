@@ -132,6 +132,12 @@ on:
       - runtime/neuro-kurisu/src/organism/system/InteroceptiveStateEstimator.ts
       - runtime/neuro-kurisu/src/organism/learning/AdvancedResilienceEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/CausalDevelopmentLoop.ts
+      - runtime/neuro-kurisu/src/organism/system/BrainstemArousalSleepScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/DualTimescaleMemoryBridge.ts
+      - runtime/neuro-kurisu/src/organism/system/DreamCounterfactualLaboratory.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonAutonomyController.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P49TemporalLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P55DevelopmentalForkUniverse.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -265,6 +271,12 @@ on:
       - runtime/neuro-kurisu/src/organism/system/InteroceptiveStateEstimator.ts
       - runtime/neuro-kurisu/src/organism/learning/AdvancedResilienceEngine.ts
       - runtime/neuro-kurisu/src/organism/learning/CausalDevelopmentLoop.ts
+      - runtime/neuro-kurisu/src/organism/system/BrainstemArousalSleepScheduler.ts
+      - runtime/neuro-kurisu/src/organism/system/DualTimescaleMemoryBridge.ts
+      - runtime/neuro-kurisu/src/organism/system/DreamCounterfactualLaboratory.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonAutonomyController.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P49TemporalLifeEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P55DevelopmentalForkUniverse.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -370,6 +382,10 @@ jobs:
           node --experimental-strip-types tests/big-pass-221-interoception-autonomy.mjs
           node --experimental-strip-types tests/big-pass-209-cerebellum-sparse.mjs
           node --experimental-strip-types tests/interoceptive-precision-allocation.mjs
+          node --experimental-strip-types tests/big-pass-219-brainstem-arousal-sleep-scheduler.mjs
+          node --experimental-strip-types tests/big-pass-222-long-horizon-autonomy.mjs
+          node --experimental-strip-types tests/p49-temporal-life.mjs
+          node --experimental-strip-types tests/p55-developmental-fork-universe.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
