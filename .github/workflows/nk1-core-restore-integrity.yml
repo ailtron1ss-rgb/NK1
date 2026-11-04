@@ -114,6 +114,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/B2529PolicyInformationGainController.ts
       - runtime/neuro-kurisu/src/organism/cognition/B2530AutonomousExperimentScheduler.ts
       - runtime/neuro-kurisu/src/organism/cognition/B268CausalSelfExperimentLab.ts
+      - runtime/neuro-kurisu/src/organism/cognition/DeviceAwareNeuralScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CrossLayerAdaptiveArbiter.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ClosedLoopEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2703GlobalWorkspaceConvergence.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalFormationCircuit.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -229,6 +235,12 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/B2529PolicyInformationGainController.ts
       - runtime/neuro-kurisu/src/organism/cognition/B2530AutonomousExperimentScheduler.ts
       - runtime/neuro-kurisu/src/organism/cognition/B268CausalSelfExperimentLab.ts
+      - runtime/neuro-kurisu/src/organism/cognition/DeviceAwareNeuralScheduler.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CrossLayerAdaptiveArbiter.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ClosedLoopEvidenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2703GlobalWorkspaceConvergence.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ActiveInformationGainController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalFormationCircuit.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -323,6 +335,9 @@ jobs:
           node --experimental-strip-types tests/big-pass-268-self-experiment.mjs
           node --experimental-strip-types tests/p2678-nonparametric-world-memory.mjs
           node --experimental-strip-types tests/p2680-multiscale-causal-regime-fabric.mjs
+          node --experimental-strip-types tests/big-pass-215-hippocampal-formation.mjs
+          node --experimental-strip-types tests/p2659-cross-layer-adaptive-arbiter.mjs
+          node --experimental-strip-types tests/big-pass-2613-2626-taskfree-recovery-personality-device.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
