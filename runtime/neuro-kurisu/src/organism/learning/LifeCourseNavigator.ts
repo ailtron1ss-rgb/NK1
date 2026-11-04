@@ -37,9 +37,21 @@ function overlap(a:string,b:string){const A=tokenSet(a),B=tokenSet(b);let n=0;fo
 
 export const defaultLifeCourseNavigator=():LifeCourseNavigatorState=>({version:1,cycles:0,projections:[],conflicts:[],focusGoalId:null,focusHorizon:'none',immediate01:0.3,near01:0.3,long01:0.3,identity01:0.3,social01:0.2,learning01:0.3,continuityDebt01:0.2,resourceFriction01:0.2,revisionPressure01:0.15,lastReason:'initial',lastAt:0});
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const str=(v:unknown,f:string,n=200):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const sanProjection=(x:unknown):LifeCourseGoalProjection|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const gid=str(r.goalId,'');if(!gid)return null;return {goalId:gid,horizon:horizons.includes(r.horizon as LifeHorizon)?r.horizon as LifeHorizon:'near',value01:C01(r.value01,0),friction01:C01(r.friction01,0),continuity01:C01(r.continuity01,0),socialImpact01:C01(r.socialImpact01,0),learningReturn01:C01(r.learningReturn01,0),resourceCost01:C01(r.resourceCost01,0),score01:C01(r.score01,0)};};
+const sanConflict=(x:unknown):LifeCourseConflict|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {a:str(r.a,''),b:str(r.b,''),conflict01:C01(r.conflict01,0),reason:str(r.reason,'')};};
 export class LifeCourseNavigator{
   private state=defaultLifeCourseNavigator();
-  restore(raw?:Partial<LifeCourseNavigatorState>|null){const d=defaultLifeCourseNavigator(),r=raw??{};this.state={...d,...r,version:1,projections:Array.isArray(r.projections)?r.projections.slice(0,96):[],conflicts:Array.isArray(r.conflicts)?r.conflicts.slice(0,64):[]};}
+  restore(raw?:Partial<LifeCourseNavigatorState>|null){const d=defaultLifeCourseNavigator();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const pRaw=read('projections'),cRaw=read('conflicts');
+    const projections=Array.isArray(pRaw)?pRaw.slice(0,96).map(sanProjection).filter((x):x is LifeCourseGoalProjection=>x!==null):[];
+    const conflicts=Array.isArray(cRaw)?cRaw.slice(0,64).map(sanConflict).filter((x):x is LifeCourseConflict=>x!==null):[];
+    const fh=read('focusHorizon');
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),projections,conflicts,focusGoalId:strOrNull(read('focusGoalId')),focusHorizon:(horizons as readonly string[]).includes(fh as string)?fh as LifeHorizon:'none',immediate01:C01(read('immediate01'),d.immediate01),near01:C01(read('near01'),d.near01),long01:C01(read('long01'),d.long01),identity01:C01(read('identity01'),d.identity01),social01:C01(read('social01'),d.social01),learning01:C01(read('learning01'),d.learning01),continuityDebt01:C01(read('continuityDebt01'),d.continuityDebt01),resourceFriction01:C01(read('resourceFriction01'),d.resourceFriction01),revisionPressure01:C01(read('revisionPressure01'),d.revisionPressure01),lastReason:str(read('lastReason'),d.lastReason),lastAt:cnt(read('lastAt'),d.lastAt)};}
   snapshot(){return structuredClone(this.state);}
   beginCycle(at=Date.now()){
     this.state.cycles++;

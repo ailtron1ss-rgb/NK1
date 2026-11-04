@@ -90,6 +90,17 @@ const defaultState=():P38ResearchState=>({
   metrics:{hypothesisQuality01:.4,replicationRate01:0,causalEvidence01:0,researchEfficiency01:.4,autonomousResearchRate01:0},
 });
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const AREAS:readonly ResearchArea[]=['perception','world-model','policy','self-model','agency','resource','memory'];
+const STATUSES:readonly ResearchStatus[]=['proposed','running','replicated','rejected','rolled-back'];
+const EVIDENCE_LEVELS=['sandboxed-observed','sandboxed-replicated','external-observed','external-replicated'] as const;
+const str=(v:unknown,f:string,n=240):string=>typeof v==='string'&&v?v.slice(0,n):f;
+const strOrNull=(v:unknown,n=160):string|null=>typeof v==='string'&&v?v.slice(0,n):null;
+const sanHyp=(x:unknown):P38Hypothesis|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,area:AREAS.includes(r.area as ResearchArea)?r.area as ResearchArea:'policy',title:str(r.title,'',240),hypothesis:str(r.hypothesis,'',400),evidence:Array.isArray(r.evidence)?r.evidence.filter((e):e is string=>typeof e==='string').slice(0,32):[],priority01:C01(r.priority01,0),expectedGain01:C01(r.expectedGain01,0),estimatedCost01:C01(r.estimatedCost01,0),status:STATUSES.includes(r.status as ResearchStatus)?r.status as ResearchStatus:'proposed',createdAt:cnt(r.createdAt,0),lastRunAt:cnt(r.lastRunAt,0),result01:r.result01===null||r.result01===undefined?null:C01(r.result01,0)};};
+const sanTrial=(x:unknown):P38Trial|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,hypothesisId:str(r.hypothesisId,'',120),intervention:str(r.intervention,'',240),control01:C01(r.control01,0),treatment01:C01(r.treatment01,0),delta01:finN(r.delta01,0),independent:Boolean(r.independent),sandboxed:Boolean(r.sandboxed),replicated:Boolean(r.replicated),replicationConsistency01:C01(r.replicationConsistency01,0),replicaDeltas:Array.isArray(r.replicaDeltas)?r.replicaDeltas.map(d=>finN(d,0)).slice(0,32):[],runs:cnt(r.runs,0),metric:str(r.metric,'',120),at:cnt(r.at,0)};};
+const sanEv=(x:unknown):P38Evidence|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const id=str(r.id,'',120);if(!id)return null;return {id,hypothesisId:str(r.hypothesisId,'',120),level:(EVIDENCE_LEVELS as readonly string[]).includes(r.level as string)?r.level as P38Evidence['level']:'sandboxed-observed',summary:str(r.summary,'',400),trialIds:Array.isArray(r.trialIds)?r.trialIds.filter((t):t is string=>typeof t==='string').slice(0,32):[],at:cnt(r.at,0)};};
 function chooseArea(i:P38ProposalInput):ResearchArea{
   const scores:Record<ResearchArea,number>={
     perception:i.p37Conflict01*.55+i.needs.uncertainty*.18,
@@ -110,15 +121,17 @@ function actionForArea(area:ResearchArea):ActionKind{
 export class P38AutonomousCausalResearchEngine{
   private state=defaultState();
   restore(raw?:Partial<P38ResearchState>|null){
-    const d=defaultState();const r=raw??{};
-    this.state={...d,...r,
-      hypotheses:Array.isArray(r.hypotheses)?r.hypotheses.slice(-96):[],
-      trials:Array.isArray(r.trials)?r.trials.slice(-192):[],
-      evidence:Array.isArray(r.evidence)?r.evidence.slice(-192):[],
-      actionBias:{...d.actionBias,...(r.actionBias??{})},
-      metrics:{...d.metrics,...(r.metrics??{})},
-    };
+    const d=defaultState();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const hRaw=read('hypotheses'),tRaw=read('trials'),eRaw=read('evidence');
+    const hypotheses=Array.isArray(hRaw)?hRaw.slice(-96).map(sanHyp).filter((x):x is P38Hypothesis=>x!==null):[];
+    const trials=Array.isArray(tRaw)?tRaw.slice(-192).map(sanTrial).filter((x):x is P38Trial=>x!==null):[];
+    const evidence=Array.isArray(eRaw)?eRaw.slice(-192).map(sanEv).filter((x):x is P38Evidence=>x!==null):[];
+    const bRaw=(read('actionBias')&&typeof read('actionBias')==='object')?read('actionBias') as Record<string,unknown>:{};
+    const actionBias={...d.actionBias};for(const a of ACTIONS)actionBias[a]=Math.max(-.5,Math.min(.5,finN(bRaw[a],0)));
+    const mRaw=(read('metrics')&&typeof read('metrics')==='object')?read('metrics') as Record<string,unknown>:{};
+    this.state={version:1,cycles:cnt(read('cycles'),d.cycles),lastCycleAt:cnt(read('lastCycleAt'),d.lastCycleAt),currentHypothesisId:strOrNull(read('currentHypothesisId')),hypotheses,trials,evidence,budget01:C01(read('budget01'),d.budget01),spentBudget01:C01(read('spentBudget01'),d.spentBudget01),acceptedUpdates:cnt(read('acceptedUpdates'),d.acceptedUpdates),rejectedUpdates:cnt(read('rejectedUpdates'),d.rejectedUpdates),rollbackCount:cnt(read('rollbackCount'),d.rollbackCount),actionBias,metrics:{hypothesisQuality01:C01(mRaw.hypothesisQuality01,d.metrics.hypothesisQuality01),replicationRate01:C01(mRaw.replicationRate01,d.metrics.replicationRate01),causalEvidence01:C01(mRaw.causalEvidence01,d.metrics.causalEvidence01),researchEfficiency01:C01(mRaw.researchEfficiency01,d.metrics.researchEfficiency01),autonomousResearchRate01:C01(mRaw.autonomousResearchRate01,d.metrics.autonomousResearchRate01)}};
   }
+
   snapshot(){return structuredClone(this.state);}
   beginCycle(){
     this.state.cycles++;

@@ -169,6 +169,12 @@ on:
       - runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts
       - runtime/neuro-kurisu/src/organism/system/ActionOwnershipGraph.ts
       - runtime/neuro-kurisu/src/organism/system/SelfDirectedLifeOrchestrator.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifeCourseNavigator.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalWorldlineEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalExecutiveEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/P39ContinuousArtificialLife.ts
+      - runtime/neuro-kurisu/src/organism/learning/P38AutonomousCausalResearch.ts
+      - runtime/neuro-kurisu/src/organism/learning/ResearchGradeOrganismEngine.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -344,6 +350,12 @@ on:
       - runtime/neuro-kurisu/src/organism/system/AdaptiveReplayGovernor.ts
       - runtime/neuro-kurisu/src/organism/system/ActionOwnershipGraph.ts
       - runtime/neuro-kurisu/src/organism/system/SelfDirectedLifeOrchestrator.ts
+      - runtime/neuro-kurisu/src/organism/learning/LifeCourseNavigator.ts
+      - runtime/neuro-kurisu/src/organism/learning/PersonalWorldlineEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/DevelopmentalExecutiveEngine.ts
+      - runtime/neuro-kurisu/src/organism/learning/P39ContinuousArtificialLife.ts
+      - runtime/neuro-kurisu/src/organism/learning/P38AutonomousCausalResearch.ts
+      - runtime/neuro-kurisu/src/organism/learning/ResearchGradeOrganismEngine.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -494,6 +506,13 @@ jobs:
           node --experimental-strip-types tests/unified-cognitive-substrate.mjs
           node --experimental-strip-types tests/p2687-adaptive-replay-governor.mjs
           node --experimental-strip-types tests/big-pass-225-228-autonomous-personhood-expansion.mjs
+          node --experimental-strip-types tests/big-pass-124-life-course.mjs
+          node --experimental-strip-types tests/big-pass-125-personal-worldline.mjs
+          node --experimental-strip-types tests/big-pass-120-developmental-executive.mjs
+          node --experimental-strip-types tests/p39-continuous-life.mjs
+          node --experimental-strip-types tests/p38-autonomous-causal-research.mjs
+          node --experimental-strip-types tests/research-grade-organism.mjs
+          node --experimental-strip-types tests/research-grade-organism-restart.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
