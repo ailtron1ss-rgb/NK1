@@ -12,7 +12,10 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { CodeAssimilationArchiveExtractionResult } from './CodeAssimilationArchiveExtraction.ts';
+import {
+  isAuthenticatedCodeAssimilationArchiveExtractionResult,
+  type CodeAssimilationArchiveExtractionResult,
+} from './CodeAssimilationArchiveExtraction.ts';
 
 export interface CodeAssimilationMaterializedFile {
   readonly path: string;
@@ -153,6 +156,9 @@ export function materializeCodeAssimilationArchive(
 ): CodeAssimilationMaterializedWorkspace {
   let root: string | null = null;
   try {
+    if (!isAuthenticatedCodeAssimilationArchiveExtractionResult(extraction)) {
+      fail('extraction-not-authenticated');
+    }
     const prepared = prepareFiles(extraction);
     root = mkdtempSync(path.join(tmpdir(), 'nk1-code-assimilation-'));
     assertDirectory(root);
