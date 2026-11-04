@@ -16,6 +16,17 @@ export interface P51State {
   causalReadiness01:number; groundingQuality01:number; selfWorldAlignment01:number; lastAt:number; lastFocus:string;
 }
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const EVIDENCE_KINDS:P51EvidenceKind[]=['observation','prediction','action','outcome','counterfactual','intervention'];
+const CONCEPT_KINDS:P51Concept['kind'][]=['entity','event','state','goal','concept'];
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=240):string=>typeof v==='string'?v.slice(0,cap):'';
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)).slice(0,cap):[];
+const sanConcept=(x:unknown):P51Concept|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const kd=r.kind;return {id:r.id.slice(0,200),label:str(r.label,160),kind:CONCEPT_KINDS.includes(kd as P51Concept['kind'])?kd as P51Concept['kind']:'concept',confidence01:clamp(finN(r.confidence01,0)),mentions:cnt(r.mentions,0),lastAt:cnt(r.lastAt,0),sources:strArr(r.sources,32)};};
+const sanHyp=(x:unknown):P51Hypothesis|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;return {id:r.id.slice(0,200),cause:str(r.cause,160),effect:str(r.effect,160),confidence01:clamp(finN(r.confidence01,0)),support:cnt(r.support,0),contradiction:cnt(r.contradiction,0),lastAt:cnt(r.lastAt,0)};};
+const sanBranch=(x:unknown):P51Branch|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const ac=r.actual01;return {id:r.id.slice(0,200),action:str(r.action,160),expected01:clamp(finN(r.expected01,0)),actual01:ac===null||ac===undefined?null:clamp(finN(ac,0)),regret01:clamp(finN(r.regret01,0)),horizon:Math.max(0,Math.round(finN(r.horizon,0))),at:cnt(r.at,0)};};
+const sanEv=(x:unknown):P51Evidence|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const kd=r.kind;return {id:r.id.slice(0,200),kind:EVIDENCE_KINDS.includes(kd as P51EvidenceKind)?kd as P51EvidenceKind:'observation',subject:str(r.subject,160),value01:clamp(finN(r.value01,0)),confidence01:clamp(finN(r.confidence01,0)),at:cnt(r.at,0)};};
+const rows=<T>(v:unknown,cap:number,fn:(x:unknown)=>T|null):T[]=>Array.isArray(v)?v.slice(-cap).map(fn).filter((x):x is T=>x!==null):[];
 const tokenize=(text:string)=>Array.from(new Set((text.toLowerCase().match(/[\p{L}\p{N}_-]{3,}/gu)??[]))).slice(0,24);
 const hid=(s:string)=>{let h=2166136261>>>0; for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619)>>>0; return h.toString(16)};
 export const defaultP51=():P51State=>({version:1,cycles:0,broadcasts:0,concepts:[],hypotheses:[],branches:[],evidence:[],unresolved:0,semanticCoverage01:0,causalReadiness01:0.2,groundingQuality01:0.2,selfWorldAlignment01:0.5,lastAt:0,lastFocus:''});
@@ -23,7 +34,7 @@ export class P51GroundedCausalWorkspace {
   private state=defaultP51();
   private conceptIndex = new Map<string, P51Concept>();
   private hypothesisIndex = new Map<string, P51Hypothesis>();
-  restore(raw?:Partial<P51State>|null){const b=defaultP51(),r=raw??{};this.state={...b,...r,concepts:Array.isArray(r.concepts)?r.concepts.slice(-128):[],hypotheses:Array.isArray(r.hypotheses)?r.hypotheses.slice(-128):[],branches:Array.isArray(r.branches)?r.branches.slice(-96):[],evidence:Array.isArray(r.evidence)?r.evidence.slice(-256):[]};this.rebuildIndexes();}
+  restore(raw?:Partial<P51State>|null){const b=defaultP51();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};this.state={version:1,cycles:cnt(read('cycles'),b.cycles),broadcasts:cnt(read('broadcasts'),b.broadcasts),concepts:rows(read('concepts'),128,sanConcept),hypotheses:rows(read('hypotheses'),128,sanHyp),branches:rows(read('branches'),96,sanBranch),evidence:rows(read('evidence'),256,sanEv),unresolved:cnt(read('unresolved'),b.unresolved),semanticCoverage01:clamp(finN(read('semanticCoverage01'),b.semanticCoverage01)),causalReadiness01:clamp(finN(read('causalReadiness01'),b.causalReadiness01)),groundingQuality01:clamp(finN(read('groundingQuality01'),b.groundingQuality01)),selfWorldAlignment01:clamp(finN(read('selfWorldAlignment01'),b.selfWorldAlignment01)),lastAt:cnt(read('lastAt'),b.lastAt),lastFocus:str(read('lastFocus'),240)};this.rebuildIndexes();}
   private rebuildIndexes(){
     this.conceptIndex=new Map(this.state.concepts.map(c=>[c.id,c]));
     this.hypothesisIndex=new Map(this.state.hypotheses.map(h=>[h.id,h]));

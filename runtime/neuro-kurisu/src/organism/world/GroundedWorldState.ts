@@ -9,6 +9,15 @@ const cleanIdentity=(value:unknown)=>{
   if(typeof value!=='string')return '';
   return value.normalize('NFKC').replace(/[\r\n\t]+/g,' ').trim().slice(0,120);
 };
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const str=(v:unknown,cap=240):string=>typeof v==='string'?v.slice(0,cap):'';
+const strList=(v:unknown,cap:number):string[]=>Array.isArray(v)?Array.from(new Set(v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,240)))).slice(-cap):[];
+const PRESENCE:Array<GroundedEntity['presenceStatus']>=['visible','fading','unknown'];
+const EVIDENCE_KINDS=['observed','model-output','derived','conflict','unresolved'] as const;
+const sanEvKinds=(v:unknown):GroundedEntity['modalityEvidenceKinds']=>{if(!v||typeof v!=='object')return {};const out:Record<string,typeof EVIDENCE_KINDS[number]>={};for(const [k,val] of Object.entries(v as Record<string,unknown>).slice(0,32)){if(EVIDENCE_KINDS.includes(val as any))out[String(k).slice(0,64)]=val as typeof EVIDENCE_KINDS[number];}return out;};
+const sanRelation=(x:unknown):GroundedRelation|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const fe=r.fromEntityId,te=r.toEntityId;return {id:r.id.slice(0,160),from:str(r.from,160),relation:str(r.relation,120),to:str(r.to,160),fromEntityId:typeof fe==='string'&&fe?fe.slice(0,160):undefined,toEntityId:typeof te==='string'&&te?te.slice(0,160):undefined,confidence01:clamp(finN(r.confidence01,0)),at:cnt(r.at,0)};};
+const sanEvent=(x:unknown):GroundedEvent|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;if(typeof r.id!=='string'||!r.id)return null;const ek=r.evidenceKind;return {id:r.id.slice(0,160),label:str(r.label,240),confidence01:clamp(finN(r.confidence01,0)),lastAt:cnt(r.lastAt,0),persistence01:clamp(finN(r.persistence01,0)),evidenceKind:EVIDENCE_KINDS.includes(ek as any)?ek as GroundedEvent['evidenceKind']:undefined,modalityEvidenceKinds:sanEvKinds(r.modalityEvidenceKinds)};};
 const stableHash=(s:string)=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
 const normalizeImageBox=(value:unknown)=>{
   if(!value||typeof value!=='object')return undefined;
@@ -72,34 +81,40 @@ export const defaultGroundedWorldState=():GroundedWorldStateSnapshot=>({version:
 export class GroundedWorldState {
   private state=defaultGroundedWorldState();
   restore(raw?:Partial<GroundedWorldStateSnapshot>|null){
-    const d=defaultGroundedWorldState(); const r=raw??{};
-    this.state={...d,...r,
-      entities:Array.isArray(r.entities)?r.entities.slice(0,128).map((e:any)=>{
+    const d=defaultGroundedWorldState(); const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const r=src as Partial<GroundedWorldStateSnapshot>;const lastAt=cnt(read('lastAt'),d.lastAt);
+    this.state={version:1,revision:cnt(read('revision'),d.revision),lastAt,location:str(read('location'),240)||d.location,uncertainty01:clamp(finN(read('uncertainty01'),d.uncertainty01)),confidence01:clamp(finN(read('confidence01'),d.confidence01)),lastHash:str(read('lastHash'),128),
+      entities:Array.isArray(read('entities'))?(read('entities') as any[]).slice(0,128).filter((e:any)=>e&&typeof e==='object'&&typeof e.id==='string'&&e.id).map((e:any)=>{
         const imageBox=normalizeImageBox(e?.imageBox);
         const imageBoxCameraId=Number.isSafeInteger(e?.imageBoxCameraId)&&Number(e.imageBoxCameraId)>=0?Number(e.imageBoxCameraId):undefined;
-        const imageBoxAt=Number.isFinite(e?.imageBoxAt)&&Number(e.imageBoxAt)>=0&&Number(e.imageBoxAt)<=Number(r.lastAt??0)?Number(e.imageBoxAt):undefined;
+        const imageBoxAt=Number.isFinite(e?.imageBoxAt)&&Number(e.imageBoxAt)>=0&&Number(e.imageBoxAt)<=lastAt?Number(e.imageBoxAt):undefined;
         const imageBoxConfidence01=Number.isFinite(e?.imageBoxConfidence01)&&Number(e.imageBoxConfidence01)>=.42&&Number(e.imageBoxConfidence01)<=1?Number(e.imageBoxConfidence01):undefined;
         const validImageEvidence=Boolean(imageBox&&imageBoxCameraId!==undefined&&imageBoxAt!==undefined&&imageBoxConfidence01!==undefined);
+        const hasImageKey='imageBox' in e||'imageBoxCameraId' in e||'imageBoxAt' in e||'imageBoxConfidence01' in e;
         return {
           ...e,
           modalities:Array.isArray(e?.modalities)?[...new Set(e.modalities.filter((x:any)=>typeof x==='string'))]:[],
           trackAliases:Array.isArray(e?.trackAliases)?[...new Set(e.trackAliases.filter((x:any)=>typeof x==='string'))].slice(-16):[],
           sourceIds:Array.isArray(e?.sourceIds)?[...new Set(e.sourceIds.filter((x:any)=>typeof x==='string'))].slice(-16):[],
           modalityEvidenceKinds:e?.modalityEvidenceKinds&&typeof e.modalityEvidenceKinds==='object'?{...e.modalityEvidenceKinds}:{},
-          ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}),
-          presenceStatus:['visible','fading','unknown'].includes(e?.presenceStatus)?e.presenceStatus:'unknown',
-          persistence01:clamp(Number(e?.persistence01??0)),
-          absenceEvidence01:clamp(Number(e?.absenceEvidence01??0)),
-          observationCount:Math.max(1,Math.floor(Number(e?.observationCount??1))),
+          ...(validImageEvidence?{imageBox,imageBoxCameraId,imageBoxAt,imageBoxConfidence01}:(hasImageKey?{imageBox:undefined,imageBoxCameraId:undefined,imageBoxAt:undefined,imageBoxConfidence01:undefined}:{})),
+          presenceStatus:PRESENCE.includes(e?.presenceStatus)?e.presenceStatus:'unknown',
+          confidence01:clamp(finN(e?.confidence01,0)),
+          present01:clamp(finN(e?.present01,0)),
+          firstSeenAt:cnt(e?.firstSeenAt,0),
+          lastSeenAt:cnt(e?.lastSeenAt,0),
+          persistence01:clamp(finN(e?.persistence01,0)),
+          absenceEvidence01:clamp(finN(e?.absenceEvidence01,0)),
+          observationCount:Math.max(1,Math.floor(finN(e?.observationCount,1))),
+          value:Number.isFinite(finN(e?.value,NaN))?finN(e?.value,0):undefined,
           valueKnown:e?.valueKnown===true,
           visibilityKnown:e?.visibilityKnown===true,
           collectionKnown:e?.collectionKnown===true,
         };
       }):[],
-      relations:Array.isArray(r.relations)?r.relations.slice(0,256):[],
-      events:Array.isArray(r.events)?r.events.slice(0,96):[],
-      facts:Array.isArray(r.facts)?r.facts.slice(0,192):[],
-      provenanceIds:Array.isArray(r.provenanceIds)?r.provenanceIds.slice(0,128):[],
+      relations:Array.isArray(read('relations'))?(read('relations') as any[]).slice(0,256).map(sanRelation).filter((x):x is GroundedRelation=>x!==null):[],
+      events:Array.isArray(read('events'))?(read('events') as any[]).slice(0,96).map(sanEvent).filter((x):x is GroundedEvent=>x!==null):[],
+      facts:strList(read('facts'),192),
+      provenanceIds:strList(read('provenanceIds'),128),
     };
   }
   snapshot(){return structuredClone(this.state);}

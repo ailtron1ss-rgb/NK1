@@ -27,13 +27,17 @@ updates:number};
 }
 export const defaultP44=():P44State=>({version:1,samples:0,lastAction:'none',lastPrediction:Array(24).fill(.5),lastActual:Array(24).fill(.5),meanError01:.5,horizon:5,rollouts:[],actionBias:Object.fromEntries(ACTIONS.map(a=>[a,0])) as Record<ActionKind,number>,weights:ACTIONS.map(()=>Array(24).fill(0)),bias:Array(24).fill(0),metrics:{oneStepAccuracy01:.15,multiStepAccuracy01:.1,selfPrediction01:.1,updates:0}});
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const vSigned=(v:unknown,n:number,fb:number[]):number[]=>Array.isArray(v)?Array.from({length:n},(_,i)=>signed(finN((v as unknown[])[i],fb[i]??0))):fb.slice();
+const sanRollout=(x:unknown):P44State['rollouts'][number]|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {actions:Array.isArray(r.actions)?r.actions.filter((a):a is ActionKind=>ACTIONS.includes(a as ActionKind)).slice(0,8):[],values:Array.isArray(r.values)?r.values.slice(0,8).map(v=>clamp(finN(v,.5))):[],confidence01:clamp(finN(r.confidence01,0)),at:cnt(r.at,0)};};
 function ai(a:ActionKind){return ACTIONS.indexOf(a);
 }
 export class P44EmbodiedPredictiveSelfWorld{
  private state=defaultP44();
 
- restore(raw?:Partial<P44State>|null){const d=defaultP44(),r=raw??{};
-this.state={...d,...r,lastPrediction:Array.isArray(r.lastPrediction)?r.lastPrediction.slice(0,24):d.lastPrediction,lastActual:Array.isArray(r.lastActual)?r.lastActual.slice(0,24):d.lastActual,horizon:Math.max(1,Math.min(5,Number(r.horizon??d.horizon))),rollouts:Array.isArray(r.rollouts)?r.rollouts.slice(-64):[],actionBias:{...d.actionBias,...(r.actionBias??{})},weights:Array.isArray(r.weights)?r.weights.slice(0,7).map((row:any)=>Array.isArray(row)?row.slice(0,24):Array(24).fill(0)):d.weights,bias:Array.isArray(r.bias)?r.bias.slice(0,24):d.bias,metrics:{...d.metrics,...(r.metrics??{})}};
+ restore(raw?:Partial<P44State>|null){const d=defaultP44();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const ab=read('actionBias');const abObj=(ab&&typeof ab==='object')?ab as Record<string,unknown>:{};const actionBias={} as Record<ActionKind,number>;for(const a of ACTIONS)actionBias[a]=signed(finN(abObj[a],0));const mRaw=read('metrics');const mObj=(mRaw&&typeof mRaw==='object')?mRaw as Record<string,unknown>:{};const wRaw=read('weights');const la=read('lastAction');
+this.state={version:1,samples:cnt(read('samples'),d.samples),lastAction:(typeof la==='string'&&(la==='none'||ACTIONS.includes(la as ActionKind)))?la as ActionKind|'none':'none',lastPrediction:vSigned(read('lastPrediction'),24,d.lastPrediction),lastActual:vSigned(read('lastActual'),24,d.lastActual),meanError01:clamp(finN(read('meanError01'),d.meanError01)),horizon:Math.max(1,Math.min(5,Math.round(finN(read('horizon'),d.horizon)))),rollouts:Array.isArray(read('rollouts'))?(read('rollouts') as unknown[]).slice(-64).map(sanRollout).filter((x):x is P44State['rollouts'][number]=>x!==null):[],actionBias,weights:Array.from({length:ACTIONS.length},(_,i)=>{const row=Array.isArray(wRaw)?(wRaw as unknown[])[i]:null;return row?Array.from({length:24},(_,j)=>signed(finN((row as unknown[])[j],0))):d.weights[i]!.slice();}),bias:vSigned(read('bias'),24,d.bias),metrics:{oneStepAccuracy01:clamp(finN(mObj.oneStepAccuracy01,d.metrics.oneStepAccuracy01)),multiStepAccuracy01:clamp(finN(mObj.multiStepAccuracy01,d.metrics.multiStepAccuracy01)),selfPrediction01:clamp(finN(mObj.selfPrediction01,d.metrics.selfPrediction01)),updates:cnt(mObj.updates,d.metrics.updates)}};
 }
  snapshot(){return structuredClone(this.state);
 }
