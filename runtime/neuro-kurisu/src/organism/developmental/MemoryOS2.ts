@@ -663,6 +663,7 @@ export class MemoryOS2{
    const items=isolated.retrieve(query,boundedResultLimit,goalRelevance,identityRelevance,temporalOptions,true) as MemoryItem2[];
    return {
     itemIds:items.map(item=>item.id),
+    maxPerChannel:boundedChannelLimit,
     rankedChannels:Object.fromEntries(Object.entries(isolated.lastRankedChannelIds).map(([name,ids])=>[name,ids.slice()])),
     currentRrfK:60,
     currentRrfWeights:{bm25:1,coverage:.90,fuzzy:.60,metadata:(isolated.metadataRecallEnabled ? 0.28 : 0),entity:.42,relationship:.32},
