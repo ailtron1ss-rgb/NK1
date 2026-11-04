@@ -67,12 +67,13 @@ function readEpisode(raw: unknown): EpisodeProjection | null {
 
   const parentIds: string[] = [];
   const parentLength = ownData(parents, 'length');
-  if (!Number.isSafeInteger(parentLength) || (parentLength as number) > 8) return null;
+  if (!Number.isSafeInteger(parentLength) || (parentLength as number) > 11) return null;
   for (let index = 0; index < (parentLength as number); index += 1) {
     const parent = ownData(parents, String(index));
     if (typeof parent !== 'string' || !parent.trim() || parent.length > 180) return null;
     parentIds.push(parent);
   }
+  if (new Set(parentIds).size !== parentIds.length) return null;
 
   const fields = {
     cycleIdHash: ownData(payload, 'cycleIdHash'),
@@ -196,6 +197,7 @@ export function persistMetacognitiveEpisode(
       topic: 'metacognitive-episode',
       category: 'self-monitoring',
       sourceEventId: episode.id,
+      causalParentIds: episode.parentIds,
       cycleIdHash: episode.cycleIdHash,
       actionEventId: episode.actionEventId,
       observationId: episode.observationEventId ?? '',
