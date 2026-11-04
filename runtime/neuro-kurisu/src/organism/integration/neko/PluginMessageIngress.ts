@@ -210,6 +210,7 @@ export class PluginMessageIngress {
     const request = requestClone.value;
     if (Object.keys(request).some(key => key !== 'identity' && key !== 'payload')) return reject('invalid-request');
     if (!isRecord(request.identity) || !isRecord(request.payload)) return reject('invalid-request');
+    if (Object.keys(request.identity).some(key => key !== 'pluginId' && key !== 'messageId')) return reject('invalid-transport-identity');
 
     const identity = request.identity;
     const pluginId = identity.pluginId;
