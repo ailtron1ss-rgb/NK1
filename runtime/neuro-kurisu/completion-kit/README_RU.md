@@ -1,74 +1,57 @@
-# NK1 Completion Kit — надстройка завершения NeuroCore
+# NK1 Completion Kit — evidence-first надстройка NeuroCore
 
-**Назначение:** связать уже существующие подсистемы NK1 в проверяемую систему завершения проекта. Это не альтернативное ядро, не новый владелец памяти и не набор пустых модулей.
+**Назначение:** связать существующие подсистемы NK1 в проверяемую систему аудита, экспериментов и завершения проекта. Это не альтернативное ядро, не второй владелец памяти и не набор пустых модулей.
 
-## Главные правила
+## Главные архитектурные инварианты
 
-1. Канонический проект остаётся `runtime/neuro-kurisu/src/organism`.
-2. Семь владельцев из `OrganismSystemFabric` остаются единственными физическими владельцами подсистем: `self`, `governance`, `memory`, `world`, `embodiment`, `agency`, `research`.
-3. `MemoryOS2` / `MemoryFabric`, `CognitiveEventFabric`, `UnifiedCognitiveCycle`, P23 и текущие persistence-контракты не заменяются этим пакетом.
-4. Любая новая функция проходит цепочку `implemented → wired → tested → independently measured → released`.
-5. Синтетическая фикстура, unit-тест или красивый telemetry counter не считаются независимым приростом интеллекта.
-6. Promotion навыка запрещён без совпадающего frozen holdout, парных seeds, независимого evaluator и безопасного rollback.
-7. Не добавлять ничего, что создаёт второй источник истины, фиктивную автономность или неиспользуемый интерфейс.
+1. Канонический код остаётся в `runtime/neuro-kurisu/src/organism`.
+2. Семь владельцев из `OrganismSystemFabric` остаются единственными владельцами подсистем: `self`, `governance`, `memory`, `world`, `embodiment`, `agency`, `research`.
+3. `MemoryOS2` / `MemoryFabric`, `CognitiveEventFabric`, `UnifiedCognitiveCycle`, P23 и persistence-контракты не заменяются этим пакетом.
+4. Строгий cognitive cycle — 11 этапов: observation, prediction, appraisal, attention, memory, goal, plan, action, outcome, learning, self-update.
+5. Любая новая функция проходит `implemented → wired → tested → independently measured → released`.
+6. Наличие файлов, синтетическая фикстура или telemetry counter не считаются приростом интеллекта.
+7. Promotion навыка запрещён без frozen holdout, парных seeds, независимого evaluator и безопасного rollback.
 
 ## Установка и запуск
 
-Пакет использует только Node.js и существующий runtime NK1. Он не добавляет npm-зависимостей.
+ZIP содержит верхнюю папку `completion-kit/`. Распакуйте его из корня репозитория NK1 в `runtime/neuro-kurisu/`, чтобы получился путь `runtime/neuro-kurisu/completion-kit/`.
+
+До распаковки проверьте SHA-256 архива по инструкции `COMPLETION_KIT_INSTALL_RU.md`.
+
+Требуется Node.js 22.12+. В каталоге `runtime/neuro-kurisu/completion-kit`:
 
 ```bash
-cd runtime/neuro-kurisu/completion-kit
 npm test
 npm run audit
 npm run imports
 npm run test-surface
 npm run report
 npm run tree
-npm run cef-check -- <cef-snapshot.json>
+npm run cef-check -- ./evidence/cef-snapshot.json
 npm run verify
 ```
 
-На Windows PowerShell команды те же. Требуется Node.js 22.12+.
-
-Независимая проверка готового CEF snapshot (формат: `events` + массив `cycles` с `tick` и `stageIds`):
-
-```bash
-npm run cef-check -- ./evidence/cef-snapshot.json
-```
-
-Запуск существующих project-gates (только когда runtime установлен вместе с зависимостями):
-
-```bash
-node scripts/run-gate.mjs foundation
-node scripts/run-gate.mjs memory
-node scripts/run-gate.mjs learning
-node scripts/run-gate.mjs motivation
-node scripts/run-gate.mjs all
-```
-
-`run-gate` вызывает только команды, уже объявленные в `runtime/neuro-kurisu/package.json`. Он не подменяет тесты Completion Kit и не сообщает об успехе, если subprocess вернул ненулевой код.
+Completion Kit не добавляет npm dependencies. Скрипты `audit`, `imports` и `test-surface` читают соседнее дерево исходников NK1 и поэтому запускаются после установки полного репозитория.
 
 ## Что входит
 
-- `ARCHITECTURE_MEGA_TREE_RU.md` — большое дерево конечной конструкции с привязкой к реальным файлам и явными незакрытыми направлениями.
-- `architecture/owners.json` — канонические владельцы семи физических подсистем и границы записи.
-- `architecture/module-map.json` — реестр фактических модулей и пробелов; пути проверяются скриптом.
-- `architecture/gates.json` — строгие критерии завершения и команды проекта.
-- `architecture/research-ledger.json` — источники и конкретные направления адаптации.
-- `contracts/` — машинно-читаемые схемы цикла, эксперимента и promotion.
-- `src/` — чистые функции для проверки CEF lineage, анализа экспериментов и promotion gate.
-- `scripts/` — аудит реальных файлов, статический граф импортов, проверка поверхности тестов, независимая проверка CEF snapshot, dataset hash verifier, генератор source tree, отчёт и запуск gate.
-- `tests/` — regression-тесты самого Completion Kit.
+- `ARCHITECTURE_MEGA_TREE_RU.md` — целевое архитектурное дерево с привязкой к существующим компонентам и открытым пробелам.
+- `architecture/owners.json` — семь canonical subsystem owners и границы записи.
+- `architecture/module-map.json` — реестр модулей и gaps.
+- `architecture/gates.json` — критерии и команды проверки.
+- `architecture/research-ledger.json` — источники и направления адаптации.
+- `architecture/benchmark-matrix.json` — измеримые направления оценки.
+- `contracts/` — JSON Schema для cognitive cycle, evaluation run и skill promotion.
+- `src/` — CEF lineage audit, статистика экспериментов и консервативный promotion gate.
+- `scripts/` — аудит владельцев, import graph, поверхности тестов, CEF snapshot, dataset hashes, дерево, отчёты и запуск существующих NK1 gates.
+- `tests/` — регрессионные проверки Completion Kit.
 
-## Чего пакет НЕ делает
+## Границы действия
 
-- Не запускает обучение по расписанию автоматически.
-- Не трогает production memory / persisted state.
-- Не меняет `OrganismCore`, `OrganismRuntime`, `MemoryOS2` или P23.
-- Не сливает исходники N.E.K.O., AIRI, Hermes, Letta, Hindsight или Mem0.
-- Не объявляет сознание, AGI, автономность или улучшение модели доказанными.
-- Не создаёт release ZIP и не снимает лицензионные запреты.
+- Пакет не запускает непрерывное обучение и не меняет production memory/persisted state.
+- Promotion evaluator формирует отчёт, но не записывает навыки в production skill store.
+- N.E.K.O., AIRI, Hermes, Letta, Hindsight и Mem0 перечислены как reference projects; код, веса и данные из них не импортированы.
+- Пакет не доказывает сознание, AGI, автономность или улучшение качества модели.
+- Незакрытые RU/EN holdout, transfer, длительная self-initiative, browser/WebGL E2E, Android soak, power-loss recovery и human license review остаются `GAP`/`UNKNOWN`.
 
-## Статус
-
-Это инженерная надстройка для аудита и управления завершением. Она может доказать наличие файлов, целостность тестовой поверхности, корректность входной структуры причинной цепочки и соблюдение формальных экспериментальных ворот. Она не может сама доказать, что весь runtime интеллектуально эффективен: это требует реальных запусков, независимого evaluator, замороженных holdout-наборов и испытаний на целевых устройствах.
+Completion Kit — проверяемый управляющий слой над текущим NK1, а не новая когнитивная система параллельно ему.
