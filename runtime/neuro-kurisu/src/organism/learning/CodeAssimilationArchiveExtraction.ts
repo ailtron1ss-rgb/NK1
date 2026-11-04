@@ -96,7 +96,9 @@ function readInput(raw: unknown): {
   limits: CodeAssimilationArchivePreflightLimits;
 } {
   try {
-    if (!isRecord(raw) || nodeUtilTypes.isProxy(raw)) fail('input-invalid');
+    if (raw === null || typeof raw !== 'object' || nodeUtilTypes.isProxy(raw) || Array.isArray(raw)) {
+      fail('input-invalid');
+    }
     const proto = Object.getPrototypeOf(raw);
     if (proto !== Object.prototype && proto !== null) fail('input-prototype-invalid');
     const descriptors = Object.getOwnPropertyDescriptors(raw);
@@ -112,7 +114,8 @@ function readInput(raw: unknown): {
     if (descriptors.limits && (!Object.prototype.hasOwnProperty.call(descriptors.limits, 'value') ||
         !descriptors.limits.enumerable)) fail('input-limits-invalid');
     const value = descriptors.archiveBytes!.value;
-    if (!(value instanceof Uint8Array) || nodeUtilTypes.isProxy(value) ||
+    if (nodeUtilTypes.isProxy(value)) fail('archive-bytes-invalid');
+    if (!(value instanceof Uint8Array) ||
         (!Buffer.isBuffer(value) && Object.getPrototypeOf(value) !== Uint8Array.prototype)) {
       fail('archive-bytes-invalid');
     }
