@@ -143,7 +143,7 @@ test('external prompt structure is neutralized before entering canonical memory'
   const item = memory.memoryOS.get(result.memoryIds[0]);
   assert.ok(item);
   assert.doesNotMatch(item.content, /<\|im_(?:start|sep|end)\|>/iu);
-  assert.doesNotMatch(item.content, /(?:^|\n)\\s*(?:assistant|user|system|developer):/iu);
+  assert.doesNotMatch(item.content, /(?:^|\n)\s*(?:assistant|user|system|developer):/iu);
   assert.doesNotMatch(item.content, /={3,}/u);
 });
 
