@@ -34,8 +34,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.history.length, 1, 'p62 drops non-object frame');
   assert.equal(st.history[0].retrievalQuality01, 0, 'p62 negative retrieval quality -> 0');
   assert.doesNotThrow(() => p.restore(hostile('history')));
-  p.restore(defaultP62());
-  assert.deepEqual(p.snapshot(), defaultP62(), 'p62 default round-trips');
+  const pDefault = defaultP62();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p62 default round-trips');
 }
 
 // --- P68GoalEcology ---------------------------------------------------------
@@ -57,8 +59,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.history[0].staleness01, 0, 'p68 negative view staleness -> 0');
   assert.equal(st.history[0].conflict01, 0, 'p68 NaN view conflict -> 0');
   assert.doesNotThrow(() => p.restore(hostile('history')));
-  p.restore(defaultP68());
-  assert.deepEqual(p.snapshot(), defaultP68(), 'p68 default round-trips');
+  const pDefault = defaultP68();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p68 default round-trips');
 }
 
 // --- P54LongHorizonEvidence -------------------------------------------------
@@ -80,8 +84,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.drift01, 1, 'p54 over-1 drift -> 1');
   assert.equal(st.lastAt, 0, 'p54 negative lastAt -> 0');
   assert.doesNotThrow(() => p.restore(hostile('windows')));
-  p.restore(defaultP54());
-  assert.deepEqual(p.snapshot(), defaultP54(), 'p54 default round-trips');
+  const pDefault = defaultP54();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p54 default round-trips');
 }
 
 // --- P59MemoryOperatingSystem -----------------------------------------------
@@ -103,8 +109,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.history[0].health01, 1, 'p59 over-1 history health -> 1');
   assert.equal(st.history[0].retention01, 0, 'p59 negative history retention -> 0');
   assert.doesNotThrow(() => p.restore(hostile('history')));
-  p.restore(defaultP59());
-  assert.deepEqual(p.snapshot(), defaultP59(), 'p59 default round-trips');
+  const pDefault = defaultP59();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p59 default round-trips');
 }
 
 console.log('WORKPASS72_FABRIC_GOAL_EVIDENCE_MEMOS_RESTORE_INTEGRITY=PASS');

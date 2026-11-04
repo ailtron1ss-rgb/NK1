@@ -46,8 +46,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastInsight, '', 'lifelong non-string insight -> default');
   assert.equal(st.lastInsightConfidence, 1, 'lifelong over-1 insight confidence -> 1');
   assert.doesNotThrow(() => l.restore(hostile('skills')));
-  l.restore(defaultLifelongDevelopment());
-  assert.deepEqual(l.snapshot(), defaultLifelongDevelopment(), 'lifelong default round-trips');
+  const lDefault = defaultLifelongDevelopment();
+
+  l.restore(lDefault);
+  assert.deepEqual(l.snapshot(), lDefault, 'lifelong default round-trips');
 }
 
 // --- AutobiographicalNarrativeEngine ---------------------------------------
@@ -65,8 +67,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastUpdatedAt, 0, 'narrative negative lastUpdatedAt -> 0');
   assert.equal(st.lastEvidenceKey, '', 'narrative non-string key -> default');
   assert.doesNotThrow(() => n.restore(hostile('chapters')));
-  n.restore(defaultNarrative());
-  assert.deepEqual(n.snapshot(), defaultNarrative(), 'narrative default round-trips');
+  const nDefault = defaultNarrative();
+
+  n.restore(nDefault);
+  assert.deepEqual(n.snapshot(), nDefault, 'narrative default round-trips');
 }
 
 // --- ValueEvolutionEngine ---------------------------------------------------
@@ -91,8 +95,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastRevisionAt, 0, 'value-evolution negative lastRevisionAt -> 0');
   finite(st.protectedFloor.truth, 'value-evolution floor');
   assert.doesNotThrow(() => v.restore(hostile('revisions')));
-  v.restore(defaultValueEvolution());
-  assert.deepEqual(v.snapshot(), defaultValueEvolution(), 'value-evolution default round-trips');
+  const vDefault = defaultValueEvolution();
+
+  v.restore(vDefault);
+  assert.deepEqual(v.snapshot(), vDefault, 'value-evolution default round-trips');
 }
 
 // --- BehavioralInfluenceLedger ----------------------------------------------

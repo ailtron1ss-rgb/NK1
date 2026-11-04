@@ -37,8 +37,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.deepEqual(st.recent[0].evidence, ['e'], 'perception drops non-string evidence');
   assert.equal(st.speechTurns, 0, 'perception NaN speechTurns -> 0');
   assert.doesNotThrow(() => m.restore(hostile('modalities')));
-  m.restore(defaultMultimodalState());
-  assert.deepEqual(m.snapshot(), defaultMultimodalState(), 'perception default round-trips');
+  const mDefault = defaultMultimodalState();
+
+  m.restore(mDefault);
+  assert.deepEqual(m.snapshot(), mDefault, 'perception default round-trips');
 }
 
 // --- B2506NeuralBottleneckEscalator -----------------------------------------
@@ -60,8 +62,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastSelectedAction, 'wait', 'b2506 unknown action -> default');
   assert.equal(st.mode, 'guarded', 'b2506 unknown mode -> default');
   assert.doesNotThrow(() => b.restore(hostile('lastComposite')));
-  b.restore(defaultB2506State());
-  assert.deepEqual(b.snapshot(), defaultB2506State(), 'b2506 default round-trips');
+  const bDefault = defaultB2506State();
+
+  b.restore(bDefault);
+  assert.deepEqual(b.snapshot(), bDefault, 'b2506 default round-trips');
 }
 
 // --- B2507ConsolidationScheduler --------------------------------------------
@@ -79,8 +83,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.consolidationPressure01, 0, 'b2507 negative pressure -> 0');
   assert.equal(st.lastReason, 'startup', 'b2507 non-string reason -> default');
   assert.doesNotThrow(() => b.restore(hostile('budget')));
-  b.restore(defaultB2507State());
-  assert.deepEqual(b.snapshot(), defaultB2507State(), 'b2507 default round-trips');
+  const bDefault = defaultB2507State();
+
+  b.restore(bDefault);
+  assert.deepEqual(b.snapshot(), bDefault, 'b2507 default round-trips');
 }
 
 // --- B2508AdaptiveNeuralComputeGovernor -------------------------------------
@@ -98,8 +104,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.energyGuard01, 1, 'b2508 over-1 energy guard -> 1');
   assert.equal(st.uncertaintyDemand01, 0, 'b2508 negative demand -> 0');
   assert.doesNotThrow(() => b.restore(hostile('horizon')));
-  b.restore(defaultB2508State());
-  assert.deepEqual(b.snapshot(), defaultB2508State(), 'b2508 default round-trips');
+  const bDefault = defaultB2508State();
+
+  b.restore(bDefault);
+  assert.deepEqual(b.snapshot(), bDefault, 'b2508 default round-trips');
 }
 
 // --- B265IndependentPolicyEvaluator -----------------------------------------
@@ -123,8 +131,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastTaskId, null, 'b265 non-string lastTaskId -> null');
   assert.equal(st.lastTick, 0, 'b265 negative lastTick -> 0');
   assert.doesNotThrow(() => b.restore(hostile('episodes')));
-  b.restore(defaultB265IndependentPolicyEvaluator());
-  assert.deepEqual(b.snapshot(), defaultB265IndependentPolicyEvaluator(), 'b265 default round-trips');
+  const bDefault = defaultB265IndependentPolicyEvaluator();
+
+  b.restore(bDefault);
+  assert.deepEqual(b.snapshot(), bDefault, 'b265 default round-trips');
 }
 
 // --- B266HiddenTaskGeneralization -------------------------------------------
@@ -147,8 +157,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.hiddenFamilyGain01, 0, 'b266 NaN gain -> default');
   assert.equal(st.lastFamilyId, null, 'b266 non-string lastFamilyId -> null');
   assert.doesNotThrow(() => b.restore(hostile('families')));
-  b.restore(defaultB266HiddenTaskGeneralization());
-  assert.deepEqual(b.snapshot(), defaultB266HiddenTaskGeneralization(), 'b266 default round-trips');
+  const bDefault = defaultB266HiddenTaskGeneralization();
+
+  b.restore(bDefault);
+  assert.deepEqual(b.snapshot(), bDefault, 'b266 default round-trips');
 }
 
 // --- BoundedRecurrentStateSubstrate -----------------------------------------
@@ -188,8 +200,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.deepEqual(st.lastReasons, ['r'], 'p74 drops non-string reason');
   assert.equal(st.lastAt, 0, 'p74 negative lastAt -> 0');
   assert.doesNotThrow(() => p.restore(hostile('modeCounts')));
-  p.restore(defaultP74());
-  assert.deepEqual(p.snapshot(), defaultP74(), 'p74 default round-trips');
+  const pDefault = defaultP74();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p74 default round-trips');
 }
 
 // --- ValuePlasticity --------------------------------------------------------

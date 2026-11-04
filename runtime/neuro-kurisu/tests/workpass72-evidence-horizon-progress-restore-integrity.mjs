@@ -32,8 +32,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.records[0].evidenceIds.length, 1, 'evidence drops non-string/oversize ids');
   finite(st.meanTrust01, 'evidence meanTrust');
   assert.doesNotThrow(() => e.restore(hostile('records')));
-  e.restore(defaultExternalEvidenceTrust());
-  assert.deepEqual(e.snapshot(), defaultExternalEvidenceTrust(), 'evidence default round-trips');
+  const eDefault = defaultExternalEvidenceTrust();
+
+  e.restore(eDefault);
+  assert.deepEqual(e.snapshot(), eDefault, 'evidence default round-trips');
 }
 
 // --- LongHorizonPredictionBenchmark -----------------------------------------
@@ -59,8 +61,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.recent[0].predicted01, 0, 'horizon NaN prediction -> 0');
   assert.equal(st.lastAt, 0, 'horizon negative lastAt -> 0');
   assert.doesNotThrow(() => l.restore(hostile('pending')));
-  l.restore(defaultLongHorizonPrediction());
-  assert.deepEqual(l.snapshot(), defaultLongHorizonPrediction(), 'horizon default round-trips');
+  const lDefault = defaultLongHorizonPrediction();
+
+  l.restore(lDefault);
+  assert.deepEqual(l.snapshot(), lDefault, 'horizon default round-trips');
 }
 
 // --- P77RealityExperimentOS -------------------------------------------------
@@ -80,8 +84,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.history[0].evidence, 'none', 'p77 unknown evidence -> none');
   assert.equal(st.history[1].delta01, -1, 'p77 negative delta preserved to -1');
   assert.doesNotThrow(() => p.restore(hostile('history')));
-  p.restore(defaultP77());
-  assert.deepEqual(p.snapshot(), defaultP77(), 'p77 default round-trips');
+  const pDefault = defaultP77();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p77 default round-trips');
 }
 
 // --- P82RealityProgressController -------------------------------------------
@@ -100,8 +106,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastExternalTick, 0, 'p82 negative lastExternalTick -> 0');
   assert.deepEqual(st.recentProgress, [1, 0, 0, .5], 'p82 clamps progress history');
   assert.doesNotThrow(() => p.restore(hostile('recentProgress')));
-  p.restore(defaultP82());
-  assert.deepEqual(p.snapshot(), defaultP82(), 'p82 default round-trips');
+  const pDefault = defaultP82();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p82 default round-trips');
 }
 
 console.log('WORKPASS72_EVIDENCE_HORIZON_PROGRESS_RESTORE_INTEGRITY=PASS');

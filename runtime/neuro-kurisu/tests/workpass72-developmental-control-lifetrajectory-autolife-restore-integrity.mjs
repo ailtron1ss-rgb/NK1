@@ -33,8 +33,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.history[0].mode, 'observe', 'p56 unknown history mode -> observe');
   assert.equal(st.history[0].priority01, 1, 'p56 over-1 history priority -> 1');
   assert.doesNotThrow(() => p.restore(hostile('history')));
-  p.restore(defaultP56());
-  assert.deepEqual(p.snapshot(), defaultP56(), 'p56 default round-trips');
+  const pDefault = defaultP56();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p56 default round-trips');
 }
 
 // --- P63DevelopmentalOperatingSystem ----------------------------------------
@@ -57,8 +59,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.history.length, 1, 'p63 drops non-object history row');
   assert.equal(st.history[0].mode, 'observe', 'p63 unknown history mode -> observe');
   assert.doesNotThrow(() => p.restore(hostile('history')));
-  p.restore(defaultP63());
-  assert.deepEqual(p.snapshot(), defaultP63(), 'p63 default round-trips');
+  const pDefault = defaultP63();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p63 default round-trips');
 }
 
 // --- IntegratedLifeTrajectoryEngine -----------------------------------------
@@ -87,8 +91,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastReason, '', 'ilt non-string lastReason -> empty');
   assert.equal(st.lastAt, 0, 'ilt negative lastAt -> 0');
   assert.doesNotThrow(() => e.restore(hostile('forecasts')));
-  e.restore(defaultIntegratedLifeTrajectory());
-  assert.deepEqual(e.snapshot(), defaultIntegratedLifeTrajectory(), 'ilt default round-trips');
+  const eDefault = defaultIntegratedLifeTrajectory();
+
+  e.restore(eDefault);
+  assert.deepEqual(e.snapshot(), eDefault, 'ilt default round-trips');
 }
 
 // --- VerifiedAutonomousLifeEngine -------------------------------------------
@@ -128,8 +134,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastOutcomeAt, 0, 'val negative lastOutcomeAt -> 0');
   assert.equal(st.lastDigest, '', 'val non-string lastDigest -> empty');
   assert.doesNotThrow(() => e.restore(hostile('decisions')));
-  e.restore(defaultVerifiedAutonomousLife());
-  assert.deepEqual(e.snapshot(), defaultVerifiedAutonomousLife(), 'val default round-trips');
+  const eDefault = defaultVerifiedAutonomousLife();
+
+  e.restore(eDefault);
+  assert.deepEqual(e.snapshot(), eDefault, 'val default round-trips');
 }
 
 console.log('WORKPASS72_DEVELOPMENTAL_CONTROL_LIFETRAJECTORY_AUTOLIFE_RESTORE_INTEGRITY=PASS');

@@ -30,8 +30,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastReason, 'initial', 'boredom non-string reason -> default');
   assert.equal(st.version, 1, 'boredom version pinned');
   assert.doesNotThrow(() => b.restore(hostile('boredom01')));
-  b.restore(defaultBoredom());
-  assert.deepEqual(b.snapshot(), defaultBoredom(), 'boredom default round-trips');
+  const bDefault = defaultBoredom();
+
+  b.restore(bDefault);
+  assert.deepEqual(b.snapshot(), bDefault, 'boredom default round-trips');
 }
 
 // --- ContradictionReservoir -------------------------------------------------
@@ -48,8 +50,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.claims[0].updatedAt, 0, 'contradiction NaN updatedAt -> 0');
   assert.equal(st.unresolvedCount, 1, 'contradiction recount from status, not stored');
   assert.doesNotThrow(() => cr.restore(hostile('claims')));
-  cr.restore(defaultContradictionReservoir());
-  assert.deepEqual(cr.snapshot(), defaultContradictionReservoir(), 'contradiction default round-trips');
+  const crDefault = defaultContradictionReservoir();
+
+  cr.restore(crDefault);
+  assert.deepEqual(cr.snapshot(), crDefault, 'contradiction default round-trips');
 }
 
 // --- CognitiveBudgetManager -------------------------------------------------
@@ -105,8 +109,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(step.confidence01, 1, 'vstg over-1 confidence -> 1');
   assert.equal(step.priority01, 0, 'vstg negative priority -> 0');
   assert.doesNotThrow(() => g.restore(hostile('pending')));
-  g.restore(defaultVerifiedSyntheticTrajectoryGate());
-  assert.deepEqual(g.snapshot(), defaultVerifiedSyntheticTrajectoryGate(), 'vstg default round-trips');
+  const gDefault = defaultVerifiedSyntheticTrajectoryGate();
+
+  g.restore(gDefault);
+  assert.deepEqual(g.snapshot(), gDefault, 'vstg default round-trips');
 }
 
 // --- ModelSwitchBenchmark ---------------------------------------------------
@@ -129,8 +135,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(h.qualityB01, 0, 'switch negative quality -> 0');
   assert.equal(h.at, 0, 'switch negative at -> 0');
   assert.doesNotThrow(() => mb.restore(hostile('history')));
-  mb.restore(defaultModelSwitchBenchmark());
-  assert.deepEqual(mb.snapshot(), defaultModelSwitchBenchmark(), 'switch default round-trips');
+  const mbDefault = defaultModelSwitchBenchmark();
+
+  mb.restore(mbDefault);
+  assert.deepEqual(mb.snapshot(), mbDefault, 'switch default round-trips');
 }
 
 // --- ModelOlympics ----------------------------------------------------------
@@ -149,8 +157,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(s.accuracy01, 0, 'olympics negative accuracy -> 0');
   finite(mo.calibrate('m1', .7), 'olympics calibrate stays finite');
   assert.doesNotThrow(() => mo.restore(hostile('scores')));
-  mo.restore(defaultModelOlympics());
-  assert.deepEqual(mo.snapshot(), defaultModelOlympics(), 'olympics default round-trips');
+  const moDefault = defaultModelOlympics();
+
+  mo.restore(moDefault);
+  assert.deepEqual(mo.snapshot(), moDefault, 'olympics default round-trips');
 }
 
 // --- DerivedWorldPreviewCache ----------------------------------------------
@@ -174,8 +184,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.futurePreview.expectedReward, 0, 'preview NaN expectedReward -> 0');
   assert.equal(st.futurePreview.horizon, 0, 'preview negative horizon -> 0');
   assert.doesNotThrow(() => dc.restore(hostile('worldPreview')));
-  dc.restore(defaultDerivedWorldPreviewCache());
-  assert.deepEqual(dc.snapshot(), defaultDerivedWorldPreviewCache(), 'preview default round-trips');
+  const dcDefault = defaultDerivedWorldPreviewCache();
+
+  dc.restore(dcDefault);
+  assert.deepEqual(dc.snapshot(), dcDefault, 'preview default round-trips');
 }
 
 // --- CognitiveFieldEngine ---------------------------------------------------
@@ -199,8 +211,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(p.decayRate, 0, 'field negative decay -> 0');
   assert.deepEqual(p.sourceIds, ['s'], 'field drops non-string sourceIds');
   assert.doesNotThrow(() => cf.restore(hostile('pressures')));
-  cf.restore(defaultCognitiveField());
-  assert.deepEqual(cf.snapshot(), defaultCognitiveField(), 'field default round-trips');
+  const cfDefault = defaultCognitiveField();
+
+  cf.restore(cfDefault);
+  assert.deepEqual(cf.snapshot(), cfDefault, 'field default round-trips');
 }
 
 console.log('WORKPASS72_COGNITION_CORE_RESTORE_INTEGRITY=PASS');

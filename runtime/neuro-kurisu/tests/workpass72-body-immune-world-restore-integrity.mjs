@@ -38,8 +38,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.last.uncertainty01, 0, 'situation negative uncertainty -> 0');
   assert.equal(st.last.summary, '', 'situation non-string summary -> empty');
   assert.doesNotThrow(() => m.restore(hostile('last')));
-  m.restore(defaultMultimodalSituation());
-  assert.deepEqual(m.snapshot(), defaultMultimodalSituation(), 'situation default round-trips');
+  const mDefault = defaultMultimodalSituation();
+
+  m.restore(mDefault);
+  assert.deepEqual(m.snapshot(), mDefault, 'situation default round-trips');
 }
 
 // --- CognitiveImmuneSystem --------------------------------------------------
@@ -61,8 +63,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.reviewQueue[0].confidence01, 1, 'immune over-1 confidence -> 1');
   assert.equal(st.reviewQueue[0].evidence01, 0, 'immune negative evidence -> 0');
   assert.doesNotThrow(() => ci.restore(hostile('trustedSources')));
-  ci.restore(defaultCognitiveImmune());
-  assert.deepEqual(ci.snapshot(), defaultCognitiveImmune(), 'immune default round-trips');
+  const ciDefault = defaultCognitiveImmune();
+
+  ci.restore(ciDefault);
+  assert.deepEqual(ci.snapshot(), ciDefault, 'immune default round-trips');
 }
 
 // --- RegretEngine -----------------------------------------------------------
@@ -80,8 +84,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.lastAt, 0, 'regret NaN lastAt -> 0');
   assert.equal(st.version, 1, 'regret version pinned');
   assert.doesNotThrow(() => r.restore(hostile('records')));
-  r.restore(defaultRegretState());
-  assert.deepEqual(r.snapshot(), defaultRegretState(), 'regret default round-trips');
+  const rDefault = defaultRegretState();
+
+  r.restore(rDefault);
+  assert.deepEqual(r.snapshot(), rDefault, 'regret default round-trips');
 }
 
 // --- SemanticScarEngine -----------------------------------------------------
@@ -96,8 +102,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.scars[0].uses, 0, 'scar negative uses -> 0');
   assert.equal(st.version, 1, 'scar version pinned');
   assert.doesNotThrow(() => s.restore(hostile('scars')));
-  s.restore(defaultSemanticScarState());
-  assert.deepEqual(s.snapshot(), defaultSemanticScarState(), 'scar default round-trips');
+  const sDefault = defaultSemanticScarState();
+
+  s.restore(sDefault);
+  assert.deepEqual(s.snapshot(), sDefault, 'scar default round-trips');
 }
 
 // --- PredictionDebtEngine ---------------------------------------------------
@@ -118,8 +126,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   finite(st.meanPriority01, 'debt mean priority');
   assert.equal(st.lastAt, 0, 'debt NaN lastAt -> 0');
   assert.doesNotThrow(() => pd.restore(hostile('records')));
-  pd.restore(defaultPredictionDebt());
-  assert.deepEqual(pd.snapshot(), defaultPredictionDebt(), 'debt default round-trips');
+  const pdDefault = defaultPredictionDebt();
+
+  pd.restore(pdDefault);
+  assert.deepEqual(pd.snapshot(), pdDefault, 'debt default round-trips');
 }
 
 // --- MetaCognitiveMonitor ---------------------------------------------------
@@ -135,8 +145,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.updatedAt, 0, 'metacog NaN updatedAt -> 0');
   finite(mc.snapshot().confidenceOfConfidence, 'metacog c-of-c');
   assert.doesNotThrow(() => mc.restore(hostile('samples')));
-  mc.restore(defaultMetaCognitiveState());
-  assert.deepEqual(mc.snapshot(), defaultMetaCognitiveState(), 'metacog default round-trips');
+  const mcDefault = defaultMetaCognitiveState();
+
+  mc.restore(mcDefault);
+  assert.deepEqual(mc.snapshot(), mcDefault, 'metacog default round-trips');
 }
 
 // --- P81PredictiveAttention -------------------------------------------------
@@ -152,8 +164,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.exploration01, 0, 'p81 negative exploration -> 0');
   assert.deepEqual(st.recentFocus, ['a'], 'p81 drops non-string focus entries');
   assert.doesNotThrow(() => p.restore(hostile('cycles')));
-  p.restore(defaultP81());
-  assert.deepEqual(p.snapshot(), defaultP81(), 'p81 default round-trips');
+  const pDefault = defaultP81();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p81 default round-trips');
 }
 
 // --- ActiveInferenceEngine --------------------------------------------------
@@ -167,8 +181,9 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.pragmaticWeight, 0, 'active-inference negative weight -> 0');
   assert.equal(st.updatedAt, 0, 'active-inference negative updatedAt -> 0');
   assert.doesNotThrow(() => a.restore(hostile('epistemicWeight')));
-  a.restore(defaultActiveInferenceState());
-  assert.deepEqual(a.snapshot(), defaultActiveInferenceState(), 'active-inference default round-trips');
+  const aiDefault = defaultActiveInferenceState();
+  a.restore(aiDefault);
+  assert.deepEqual(a.snapshot(), aiDefault, 'active-inference default round-trips');
 }
 
 // --- IdentityContinuityEngine ----------------------------------------------
@@ -187,8 +202,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.deepEqual(st.anchorGoals, ['a'], 'identity drops non-string/empty goals');
   assert.deepEqual(st.anchorMemories, ['m'], 'identity drops non-string memories');
   assert.doesNotThrow(() => ic.restore(hostile('anchorValues')));
-  ic.restore(defaultIdentityContinuity());
-  assert.deepEqual(ic.snapshot(), defaultIdentityContinuity(), 'identity default round-trips');
+  const icDefault = defaultIdentityContinuity();
+
+  ic.restore(icDefault);
+  assert.deepEqual(ic.snapshot(), icDefault, 'identity default round-trips');
 }
 
 // --- SelfPredictionBenchmark ------------------------------------------------
@@ -211,8 +228,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.pending[0].confidence01, 1, 'self-pred over-1 confidence -> 1');
   assert.equal(st.pending[0].horizon, '1', 'self-pred non-string horizon -> default');
   assert.doesNotThrow(() => sp.restore(hostile('pending')));
-  sp.restore(defaultSelfPredictionBenchmark());
-  assert.deepEqual(sp.snapshot(), defaultSelfPredictionBenchmark(), 'self-pred default round-trips');
+  const spDefault = defaultSelfPredictionBenchmark();
+
+  sp.restore(spDefault);
+  assert.deepEqual(sp.snapshot(), spDefault, 'self-pred default round-trips');
 }
 
 console.log('WORKPASS72_BODY_IMMUNE_WORLD_RESTORE_INTEGRITY=PASS');

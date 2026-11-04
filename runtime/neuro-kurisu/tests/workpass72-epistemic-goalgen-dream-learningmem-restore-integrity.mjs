@@ -37,8 +37,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.meanPredictionError01, 0, 'p65 negative mean error -> 0');
   assert.equal(st.beliefHalfLifeMs, 1, 'p65 non-positive half life -> 1');
   assert.doesNotThrow(() => p.restore(hostile('claimsData')));
-  p.restore(defaultP65());
-  assert.deepEqual(p.snapshot(), defaultP65(), 'p65 default round-trips');
+  const pDefault = defaultP65();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p65 default round-trips');
 }
 
 // --- P67AutonomousGoalGenesis -----------------------------------------------
@@ -59,8 +61,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.history[0].valueFocus, undefined, 'p67 drops non-string valueFocus');
   assert.equal(st.history[0].valueAlignment01, 1, 'p67 over-1 value alignment -> 1');
   assert.doesNotThrow(() => p.restore(hostile('history')));
-  p.restore(defaultP67());
-  assert.deepEqual(p.snapshot(), defaultP67(), 'p67 default round-trips');
+  const pDefault = defaultP67();
+
+  p.restore(pDefault);
+  assert.deepEqual(p.snapshot(), pDefault, 'p67 default round-trips');
 }
 
 // --- MicroDreamEngine -------------------------------------------------------
@@ -81,8 +85,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.deduplicatedAssociations, 0, 'dream NaN dedup -> 0');
   assert.equal(st.lastAssociativeSweepAt, 0, 'dream negative sweep -> 0');
   assert.doesNotThrow(() => m.restore(hostile('dreams')));
-  m.restore(defaultMicroDream());
-  assert.deepEqual(m.snapshot(), defaultMicroDream(), 'dream default round-trips');
+  const mDefault = defaultMicroDream();
+
+  m.restore(mDefault);
+  assert.deepEqual(m.snapshot(), mDefault, 'dream default round-trips');
 }
 
 // --- AutonomousLearningMemoryGovernor ---------------------------------------
@@ -104,8 +110,10 @@ const hostile = (k) => ({ get [k]() { throw new Error('hostile'); } });
   assert.equal(st.items[0].uses, 0, 'almg negative uses -> 0');
   assert.equal(st.items[0].source, '', 'almg non-string source -> empty');
   assert.doesNotThrow(() => g.restore(hostile('items')));
-  g.restore(defaultAutonomousLearningMemory());
-  assert.deepEqual(g.snapshot(), defaultAutonomousLearningMemory(), 'almg default round-trips');
+  const gDefault = defaultAutonomousLearningMemory();
+
+  g.restore(gDefault);
+  assert.deepEqual(g.snapshot(), gDefault, 'almg default round-trips');
 }
 
 console.log('WORKPASS72_EPISTEMIC_GOALGEN_DREAM_LEARNINGMEM_RESTORE_INTEGRITY=PASS');

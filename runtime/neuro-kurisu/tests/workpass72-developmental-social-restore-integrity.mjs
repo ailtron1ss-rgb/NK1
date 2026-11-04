@@ -34,8 +34,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.equal(st.reason, 'insufficient-evidence', 'b336 non-string reason -> default');
   finite(st.meanProjectContribution01, 'b336 mean');
   assert.doesNotThrow(() => g.restore(hostile));
-  g.restore(defaultB336State());
-  assert.deepEqual(g.snapshot(), defaultB336State(), 'b336 default round-trips');
+  const gDefault = defaultB336State();
+
+  g.restore(gDefault);
+  assert.deepEqual(g.snapshot(), gDefault, 'b336 default round-trips');
 }
 
 // --- DevelopmentalForks -----------------------------------------------------
@@ -50,8 +52,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.equal(st.forks[0].label, '', 'forks non-string label -> empty');
   assert.equal(st.forks[1].at, 0, 'forks negative at -> 0');
   assert.doesNotThrow(() => f.restore({ get forks() { throw new Error('hostile'); } }));
-  f.restore(defaultDevelopmentalForks());
-  assert.deepEqual(f.snapshot(), defaultDevelopmentalForks(), 'forks default round-trips');
+  const fDefault = defaultDevelopmentalForks();
+
+  f.restore(fDefault);
+  assert.deepEqual(f.snapshot(), fDefault, 'forks default round-trips');
 }
 
 // --- CommitmentRepair -------------------------------------------------------
@@ -65,8 +69,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.equal(st.records[0].reason, '', 'repair non-string reason -> empty');
   assert.equal(st.records[1].stage, 'revise', 'repair valid stage preserved');
   assert.doesNotThrow(() => r.restore({ get records() { throw new Error('hostile'); } }));
-  r.restore(defaultCommitmentRepair());
-  assert.deepEqual(r.snapshot(), defaultCommitmentRepair(), 'repair default round-trips');
+  const rDefault = defaultCommitmentRepair();
+
+  r.restore(rDefault);
+  assert.deepEqual(r.snapshot(), rDefault, 'repair default round-trips');
 }
 
 // --- RelationshipSelf -------------------------------------------------------
@@ -85,8 +91,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.deepEqual(m.openCommitments, [], 'relationship non-array commitments -> []');
   assert.equal(m.updatedAt, 0, 'relationship negative updatedAt -> 0');
   assert.doesNotThrow(() => rs.restore({ get models() { throw new Error('hostile'); } }));
-  rs.restore(defaultRelationshipSelf());
-  assert.deepEqual(rs.snapshot(), defaultRelationshipSelf(), 'relationship default round-trips');
+  const rsDefault = defaultRelationshipSelf();
+
+  rs.restore(rsDefault);
+  assert.deepEqual(rs.snapshot(), rsDefault, 'relationship default round-trips');
 }
 
 // --- LongTermSocialMind -----------------------------------------------------
@@ -104,8 +112,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.deepEqual(st.sharedProjects.p, ['a'], 'social dedups shared projects');
   assert.deepEqual(st.openCommitments, {}, 'social drops non-array commitments');
   assert.doesNotThrow(() => s.restore({ get predictions() { throw new Error('hostile'); } }));
-  s.restore(defaultLongTermSocialMind());
-  assert.deepEqual(s.snapshot(), defaultLongTermSocialMind(), 'social default round-trips');
+  const sDefault = defaultLongTermSocialMind();
+
+  s.restore(sDefault);
+  assert.deepEqual(s.snapshot(), sDefault, 'social default round-trips');
 }
 
 // --- SocialWorldModel -------------------------------------------------------
@@ -132,8 +142,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.equal(st.last[0].reward, 0, 'simulator NaN reward -> 0');
   assert.equal(st.last[1].action, '', 'simulator missing action -> empty');
   assert.doesNotThrow(() => fs.restore({ get last() { throw new Error('hostile'); } }));
-  fs.restore(defaultFutureSimulator());
-  assert.deepEqual(fs.snapshot(), defaultFutureSimulator(), 'simulator default round-trips');
+  const fsDefault = defaultFutureSimulator();
+
+  fs.restore(fsDefault);
+  assert.deepEqual(fs.snapshot(), fsDefault, 'simulator default round-trips');
 }
 
 // --- ModelSwitchContinuity --------------------------------------------------
@@ -147,8 +159,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.equal(st.lastAt, 0, 'switch NaN lastAt -> 0');
   assert.deepEqual(st.history, ['a'], 'switch drops non-string history');
   assert.doesNotThrow(() => mc.restore({ get history() { throw new Error('hostile'); } }));
-  mc.restore(defaultModelSwitchContinuity());
-  assert.deepEqual(mc.snapshot(), defaultModelSwitchContinuity(), 'switch default round-trips');
+  const mcDefault = defaultModelSwitchContinuity();
+
+  mc.restore(mcDefault);
+  assert.deepEqual(mc.snapshot(), mcDefault, 'switch default round-trips');
 }
 
 // --- TemporalMemoryCompressor ----------------------------------------------
@@ -172,8 +186,10 @@ const hostile = { get x() { throw new Error('hostile'); } };
   assert.equal(cap.sourceDiversity01, 1, 'compress over-1 diversity -> 1');
   assert.equal(cap.startedAt, 0, 'compress negative startedAt -> 0');
   assert.doesNotThrow(() => tc.restore({ get capsules() { throw new Error('hostile'); } }));
-  tc.restore(defaultTemporalMemoryCompression());
-  assert.deepEqual(tc.snapshot(), defaultTemporalMemoryCompression(), 'compress default round-trips');
+  const tcDefault = defaultTemporalMemoryCompression();
+
+  tc.restore(tcDefault);
+  assert.deepEqual(tc.snapshot(), tcDefault, 'compress default round-trips');
 }
 
 // --- PredictionLedger -------------------------------------------------------
