@@ -170,7 +170,7 @@ function harness(options = {}) {
   const accessor = await ingress.handle({
     identity: { pluginId: 'notes', messageId: 'hostile-1' }, payload,
   });
-  assert.equal(accessor.errorCode, 'invalid-envelope');
+  assert.equal(accessor.errorCode, 'invalid-request');
   assert.equal(getterCalls, 0);
   const proxy = new Proxy(base({ message_id: 'hostile-2' }), {
     getPrototypeOf() { throw new Error('must-not-run'); },
@@ -178,7 +178,7 @@ function harness(options = {}) {
   const proxied = await ingress.handle({
     identity: { pluginId: 'notes', messageId: 'hostile-2' }, payload: proxy,
   });
-  assert.equal(proxied.errorCode, 'invalid-envelope');
+  assert.equal(proxied.errorCode, 'invalid-request');
   assert.equal(calls.steps.length, 0);
 }
 
