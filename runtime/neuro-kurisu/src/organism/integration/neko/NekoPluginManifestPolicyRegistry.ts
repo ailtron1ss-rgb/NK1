@@ -59,20 +59,19 @@ export interface NekoPluginManifestPolicySnapshot {
   manifests: NekoPluginAuthorizationManifest[];
 }
 
+export type NekoPluginManifestRegistrationError =
+  | 'invalid-manifest'
+  | 'duplicate-plugin'
+  | 'plugin-tool-namespace-mismatch'
+  | 'registered-tool-not-found'
+  | 'registered-tool-contract-mismatch'
+  | 'invalid-resource-read-declaration'
+  | 'invalid-approval-declaration'
+  | 'gateway-unavailable';
+
 export type NekoPluginManifestRegistrationResult =
   | { registered: true; pluginId: string; toolCount: number }
-  | {
-      registered: false;
-      reason:
-        | 'invalid-manifest'
-        | 'duplicate-plugin'
-        | 'plugin-tool-namespace-mismatch'
-        | 'registered-tool-not-found'
-        | 'registered-tool-contract-mismatch'
-        | 'invalid-resource-read-declaration'
-        | 'invalid-approval-declaration'
-        | 'gateway-unavailable';
-    };
+  | { registered: false; reason: NekoPluginManifestRegistrationError };
 
 const MANIFEST_KEYS = new Set(['schemaVersion', 'id', 'name', 'version', 'enabled', 'protocols', 'tools']);
 const TOOL_KEYS = new Set(['id', 'capability', 'destructive', 'permissionClass', 'requiresHostApproval', 'actions']);
@@ -144,7 +143,7 @@ function deepFreeze<T>(value: T): T {
 function normalizeTool(
   raw: unknown,
   pluginId: string,
-): { tool: NekoPluginManifestTool } | { reason: NekoPluginManifestRegistrationResult extends infer _T ? string : never } {
+): { tool: NekoPluginManifestTool } | { reason: NekoPluginManifestRegistrationError } {
   const row = ownDataObject(raw, 12);
   if (!row || Object.keys(row).some(key => !TOOL_KEYS.has(key))) return { reason: 'invalid-manifest' };
   const id = boundedString(row.id, 128);
@@ -244,17 +243,22 @@ export class NekoPluginManifestPolicyRegistry {
     request: NekoPluginManifestPolicyContext,
     suppliedTool: NekoPluginRegisteredTool,
   ): Promise<boolean> {
-    if (!request || !suppliedTool || typeof request !== 'object') return false;
-    const pluginId = boundedString(request.pluginId, 48)?.toLowerCase();
-    const protocol = boundedString(request.protocol, 32)?.toLowerCase();
-    const toolId = boundedString(request.toolId, 128);
-    if (!pluginId || !protocol || !toolId || !ACTIONS.has(request.action)) return false;
+    const rawRequest = ownDataObject(request, 12);
+    const rawTool = ownDataObject(suppliedTool, 12);
+    if (!rawRequest || !rawTool ||
+        Object.keys(rawRequest).some(key => !['protocol', 'connectionId', 'requestId', 'action', 'pluginId', 'toolId', 'params', 'idempotencyKey', 'approvalId'].includes(key))) return false;
+    const pluginId = boundedString(rawRequest.pluginId, 48)?.toLowerCase();
+    const protocol = boundedString(rawRequest.protocol, 32)?.toLowerCase();
+    const toolId = boundedString(rawRequest.toolId, 128);
+    if (!pluginId || !protocol || !toolId ||
+        typeof rawRequest.action !== 'string' || !ACTIONS.has(rawRequest.action as NekoPluginPolicyAction)) return false;
+    const action = rawRequest.action as NekoPluginPolicyAction;
     const manifest = this.manifests.get(pluginId);
     if (!manifest?.enabled || !manifest.protocols.includes(protocol)) return false;
     if (!toolId.startsWith(`${pluginId}.`) || toolId !== suppliedTool.id) return false;
     const declared = manifest.tools.find(tool => tool.id === toolId);
-    if (!declared || !declared.actions.includes(request.action)) return false;
-    if (request.action === 'resource_read' &&
+    if (!declared || !declared.actions.includes(action)) return false;
+    if (action === 'resource_read' &&
         (declared.destructive || !/(?:\.read|:read)$/i.test(declared.capability))) return false;
 
     let liveTool: NekoPluginRegisteredTool | undefined;
@@ -263,7 +267,7 @@ export class NekoPluginManifestPolicyRegistry {
     } catch {
       return false;
     }
-    if (!liveTool || !this.toolMatches(declared, liveTool) || !this.toolMatches(declared, suppliedTool)) return false;
+    if (!liveTool || !this.toolMatches(declared, liveTool) || !this.toolMatches(declared, rawTool as unknown as NekoPluginRegisteredTool)) return false;
     return true;
   }
 
@@ -279,7 +283,7 @@ export class NekoPluginManifestPolicyRegistry {
 
   private normalizeManifest(
     raw: unknown,
-  ): { manifest: NekoPluginAuthorizationManifest } | { manifest: null; reason: NekoPluginManifestRegistrationResult extends infer _T ? string : never } {
+  ): { manifest: NekoPluginAuthorizationManifest } | { manifest: null; reason: NekoPluginManifestRegistrationError } {
     const row = ownDataObject(raw, 16);
     if (!row || Object.keys(row).some(key => !MANIFEST_KEYS.has(key)) ||
         row.schemaVersion !== 1 || typeof row.enabled !== 'boolean') {
@@ -305,8 +309,7 @@ export class NekoPluginManifestPolicyRegistry {
     for (const rowTool of toolRows) {
       const result = normalizeTool(rowTool, id);
       if (!('tool' in result)) {
-        const reason = result.reason as NekoPluginManifestRegistrationResult & string;
-        return { manifest: null, reason: reason as NekoPluginManifestRegistrationResult extends infer _T ? string : never };
+        return { manifest: null, reason: result.reason };
       }
       if (seen.has(result.tool.id)) return { manifest: null, reason: 'invalid-manifest' };
       seen.add(result.tool.id);
