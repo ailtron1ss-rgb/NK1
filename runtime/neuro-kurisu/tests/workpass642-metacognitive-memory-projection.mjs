@@ -170,6 +170,62 @@ assert.equal(incompleteResult.reason, 'cycle-lineage-incomplete');
 assert.equal(incompleteFabric.recent(32).some(row => row.stage === 'metacognition'), false,
   'incomplete cycle evidence must not be recorded as a complete metacognitive episode');
 
+// Existing snapshots without the full-cycle field remain replayable after upgrade.
+// The old episode is not rewritten or duplicated; only newly created episodes receive all eleven parents.
+const legacyFabric = new CognitiveEventFabric(128);
+const legacyStages = legacyFabric.recordOperationalCycle({
+  tick: 44,
+  observation: { source: 'legacy-observation' },
+  prediction: { source: 'legacy-prediction' },
+  appraisal: { source: 'legacy-appraisal' },
+  attention: { source: 'legacy-attention' },
+  memory: { source: 'legacy-memory' },
+  goal: { source: 'legacy-goal' },
+  plan: { source: 'legacy-plan' },
+  action: { source: 'legacy-action' },
+  outcome: { source: 'legacy-outcome' },
+  learning: { source: 'legacy-learning' },
+  selfUpdate: { source: 'legacy-self-update' },
+});
+const legacyCycleStageIds = {
+  observation: legacyStages.observation,
+  prediction: legacyStages.prediction,
+  appraisal: legacyStages.appraisal,
+  attention: legacyStages.attention,
+  memory: legacyStages.memory,
+  goal: legacyStages.goal,
+  plan: legacyStages.plan,
+  action: legacyStages.action,
+  outcome: legacyStages.outcome,
+  learning: legacyStages.learning,
+  'self-update': legacyStages.selfUpdate,
+};
+const { cycleStageIds: _newOnlyStageMap, ...legacyBaseInput } = input;
+const legacyInput = {
+  ...legacyBaseInput,
+  tick: 44,
+  cycleId: 'legacy-cycle-44',
+  actionEventId: legacyStages.action,
+  observationEventId: legacyStages.observation,
+  predictionEventId: legacyStages.prediction,
+  outcomeEventId: legacyStages.outcome,
+  learningEventId: legacyStages.learning,
+};
+const legacyRecorded = legacyFabric.recordMetacognitiveEpisode(legacyInput);
+assert.equal(legacyRecorded.resolved, true);
+const legacyEvent = legacyFabric.recent(16).find(row => row.id === legacyRecorded.eventId);
+assert.ok(legacyEvent);
+assert.equal(legacyEvent.parentIds.length, 4);
+const legacyUpgradeReplay = legacyFabric.recordMetacognitiveEpisode({
+  ...legacyInput,
+  cycleStageIds: legacyCycleStageIds,
+});
+assert.equal(legacyUpgradeReplay.resolved, true);
+assert.equal(legacyUpgradeReplay.replayed, true,
+  'a pre-full-cycle event with the same canonical identity must remain an idempotent replay');
+assert.equal(legacyFabric.recent(16).filter(row => row.stage === 'metacognition').length, 1,
+  'upgrade replay must not duplicate or rewrite a legacy episode');
+
 // Non-episode and malformed inputs do not mutate either canonical owner.
 const beforeMemory = memory.snapshot();
 const beforeConsolidation = consolidation.snapshot();
