@@ -214,7 +214,6 @@ function toMemoryInput(pack: NormalizedPack, entry: NormalizedEntry, entryIndex:
     semanticLinks: [],
     temporalLinks: [],
     causalLinks: [],
-    revisionHistory: [],
     provenanceClass: 'external',
     sourceAuthority01: 0.2,
     independenceKey: `neko-source:${stableSourceIdentity(pack.source)}`,
@@ -250,8 +249,11 @@ function toMemoryInput(pack: NormalizedPack, entry: NormalizedEntry, entryIndex:
  * pack-supplied embeddings/chunks, and never promotes an imported row to fact.
  */
 export class NekoKnowledgePackImporter {
-  constructor(private readonly memory: MemoryFabric) {
+  private readonly memory: MemoryFabric;
+
+  constructor(memory: MemoryFabric) {
     if (!memory) throw new Error('canonical-memory-fabric-required');
+    this.memory = memory;
   }
 
   preview(rawBytes: Uint8Array): NekoKnowledgePackPreview {
