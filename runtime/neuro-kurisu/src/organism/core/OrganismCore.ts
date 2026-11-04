@@ -130,6 +130,7 @@ import { captureCameraPhotoWithReceipt, lookupCameraCaptureReceipt, CameraCaptur
 import { defaultSelfAuthorship } from '../cognition/SelfAuthorship.ts';
 import { SensorimotorLoop, defaultSensorimotorState } from '../cognition/SensorimotorLoop.ts';
 import { IntrinsicMotivationEngine, defaultIntrinsicDriveState } from '../cognition/IntrinsicMotivationEngine.ts';
+import { defaultSelfPriorDensityState } from '../cognition/SelfPriorDensityModel.ts';
 import { ActiveInferenceEngine, defaultActiveInferenceState, type ActiveInferenceScore } from '../world/ActiveInferenceEngine.ts';
 import { defaultIdentityContinuity } from '../cognition/IdentityContinuity.ts';
 import { MetaCognitiveMonitor, defaultMetaCognitiveState } from '../cognition/MetaCognitiveMonitor.ts';
@@ -805,7 +806,7 @@ function defaultLearningFacet(): import('./types.ts').LearningFacet {
         integratedLifeTrajectory: defaultIntegratedLifeTrajectory(), cognitiveOrganismContinuity: defaultCognitiveOrganismContinuity(), autonomousCognitiveLife: defaultAutonomousCognitiveLife(), verifiedAutonomousLife: defaultVerifiedAutonomousLife(), researchGradeOrganism: defaultResearchGradeOrganism(), autonomousScientificBrain: new AutonomousScientificBrainSubstrate().snapshot(),
     };
 }
-function defaultConsciousnessFacet(): import('./types.ts').ConsciousnessFacet { return { intrinsic: defaultIntrinsicDriveState(), activeInference: defaultActiveInferenceState(), identityContinuity: defaultIdentityContinuity(), metacognition: defaultMetaCognitiveState(), workspaceIgnition: defaultWorkspaceIgnition(), consciousnessEvidence: defaultConsciousnessEvidence(), p31: defaultP31Consciousness(), p32: defaultP32CausalSelfModel(), p33: defaultP33Personhood(), p34: defaultP34CausalPersonhood(), causalExperiments: [], researchQuestionsCompleted: [] }; }
+function defaultConsciousnessFacet(): import('./types.ts').ConsciousnessFacet { return { intrinsic: defaultIntrinsicDriveState(), selfPrior: defaultSelfPriorDensityState(), activeInference: defaultActiveInferenceState(), identityContinuity: defaultIdentityContinuity(), metacognition: defaultMetaCognitiveState(), workspaceIgnition: defaultWorkspaceIgnition(), consciousnessEvidence: defaultConsciousnessEvidence(), p31: defaultP31Consciousness(), p32: defaultP32CausalSelfModel(), p33: defaultP33Personhood(), p34: defaultP34CausalPersonhood(), causalExperiments: [], researchQuestionsCompleted: [] }; }
 function defaultCognitionFacet(): import('./types.ts').DevelopmentalCognitionFacet {
     return { perception: defaultPerceptionState(), cognitiveField: defaultCognitiveField(), contradictions: defaultContradictionReservoir(), budget: defaultCognitiveBudget(), immune: defaultCognitiveImmune(), sources: defaultSourceMonitor(), skills: defaultSkillLibrary(), scientific: defaultScientificMethod(), residualWorld: defaultLearnedResidual(), contextualWorld: defaultContextualWorld(), p27: defaultP27NeuralWorld(), centralBrain: undefined, socialPredictiveNeural: undefined, centralSubjectDynamics: defaultCentralSubjectDynamics() };
 }
@@ -1574,6 +1575,7 @@ export class OrganismCore {
         this.evidenceResearchSubsystem.restoreFromPersisted(this.persisted.system, this.persisted.facets.learning, this.persisted.facets.advanced);
         this.persisted.system.externalObserver = this.evidenceResearchSubsystem.externalObserver.snapshot();
         this.cognitiveRuntime.intrinsicMotivation.restore(this.persisted.facets.consciousness.intrinsic);
+        this.cognitiveRuntime.intrinsicMotivationGoalCoupling.selfPrior.restore(this.persisted.facets.consciousness.selfPrior);
         this.cognitiveRuntime.metacognition.restore(this.persisted.facets.consciousness.metacognition);
         this.cognitiveRuntime.evidenceLedger.restore(this.persisted.facets.consciousness.consciousnessEvidence);
         this.organismSystems.self.p39Life.restore((this.persisted.facets.learning as any).p39);
@@ -5230,10 +5232,13 @@ export class OrganismCore {
                 worldEvidenceQuality,
             },
             driveConfidence01: this.config.enableIntrinsicMotivation ? intrinsicDriveConfidence01 : 0,
+            selfObservation: b270PostGerminalState.selfLatent,
+            at: state.at,
         });
         const b272Goal = intrinsicCoupling.goal;
         const intrinsicState = intrinsicCoupling.driveState;
         this.persisted.facets.consciousness.intrinsic = intrinsicState;
+        this.persisted.facets.consciousness.selfPrior = this.cognitiveRuntime.intrinsicMotivationGoalCoupling.selfPrior.snapshot();
         this.persisted.system.endogenousGoalGenesisB272 = this.developmentalNeural.endogenousGoalGenesisB272.snapshot();
         // Stage the freshly generated endogenous goal only after the canonical self-agency gate.
         // Rejected authorship is represented as an unknown source and cannot enter B365 ownership.
