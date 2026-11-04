@@ -86,18 +86,19 @@ commit with a fail-before/pass-after regression wired into
 | 14 | (this commit) | `DeviceEvidenceLedger`, `PerceptualEvidenceCompiler`, `P37EmbodiedSensoriumEngine` | `workpass72-device-perceptual-embodied-restore-integrity` |
 | 15 | (this commit) | `P69ConstitutionalArbiter`, `P61IntegratedMindKernel`, `P58CognitiveKernel`, `PerceptualEpistemicGraph`, `NeuroSymbolicConceptCompiler`, `B2518PersistentSelfWorldModel`, `NeuromodulationSystem` | `workpass72-cognition-kernels-epistemic-concept-selfworld-neuromod-restore-integrity` |
 | 16 | (this commit) | `B2513FutureSelfProjectionField`, `B2514MemoryNeedPrioritizer`, `B2517SelfAuthoredRuleCompiler`, `B2519LongHorizonCounterfactualPlanner`, `B2520SensorimotorImagination`, `B2521LearnedGenerativeOrganismLoop` | `workpass72-selfworld-projection-memoryneed-rules-planner-imagination-generative-restore-integrity` |
+| 17 | (this commit) | `B2524NonparametricWorldExperienceMemory`, `B2526MultiscaleCausalRegimeGraph`, `B2527FactorialAblationHarness`, `B2529PolicyInformationGainController`, `B2530AutonomousExperimentScheduler`, `B268CausalSelfExperimentLab` | `workpass72-experiencemem-causalregime-ablation-policyinfo-experimentsched-b268-restore-integrity` |
 
 Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
 `finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
 snapshot drops malformed records, floors counters, clamps unit-interval ratios
 and whitelists enums instead of injecting `NaN`, out-of-range values or unknown
-members into live state. `test:workpass72:core-integrity` runs all twenty-four
+members into live state. `test:workpass72:core-integrity` runs all twenty-five
 workpass72 suites in one step (exit 0, 21× `=PASS`).
 
 ## Evidence
 
 - Batch series (5–13) re-verified after batch 13: `npm run
-  test:workpass72:core-integrity` → exit 0, 24 suites `=PASS`; `npm run
+  test:workpass72:core-integrity` → exit 0, 25 suites `=PASS`; `npm run
   typecheck` → `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
 - Consumer regressions for the batch 10/11 owners re-run green:
   `big-pass-37-spine`, `big-pass-38-autonomous-spine`,
