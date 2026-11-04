@@ -38,6 +38,7 @@ SHA-256 полного архива:
 
 ## Стратегический мастер-план и трекер прогресса
 
+- **Масштабный мастер-план интеграции и завершения проекта (30 фаз, 300 шагов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-28_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-28_RU.md)
 - **Мастер-план (10 жизненно важных этапов):** [docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md](docs/NK1_FINAL_MASTER_PLAN_2026-10-30_RU.md)
 - **Реестр статусов и отслеживание прогресса:** [docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md](docs/PROJECT_PROGRESS_TRACKER_2026-10-30_RU.md)
 - **Протокол продвижения статусов:** `PLANNED` → `IMPLEMENTED` → `TESTED` → `INTEGRATED` → `MEASURED` → `RELEASED`
