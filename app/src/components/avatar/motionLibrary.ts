@@ -16,7 +16,10 @@ import type { BodyChannel } from "./embodimentSwitch.ts";
 /** Motion programs available to the body. Extend by adding a program, not a branch. */
 export type MotionProgramId =
   | "idle" | "listen" | "think" | "explain" | "comfort" | "surprised"
-  | "concern" | "respond" | "walk" | "turn" | "sit" | "stand" | "reach" | "point" | "wave" | "hold";
+  | "concern" | "respond" | "walk" | "turn" | "sit" | "stand" | "reach" | "point" | "wave" | "hold"
+  | "nod" | "shake" | "clap" | "bow";
+
+export type SemanticGestureProgramId = "nod" | "shake" | "wave" | "clap" | "bow";
 
 export interface MotionKeyframe {
   /** Normalized time within the program, 0..1 inclusive and strictly increasing. */
@@ -248,5 +251,23 @@ export const MOTION_PROGRAMS: Readonly<Record<MotionProgramId, MotionProgram>> =
   hold: {
     id: "hold", durationMs: 2000, loop: true,
     keyframes: [kf(0, { rightShoulder: -0.3, rightElbow: 0.6, rightHand: 0.3 }), kf(0.5, { rightShoulder: -0.32, rightElbow: 0.62, rightHand: 0.32 }), kf(1, { rightShoulder: -0.3, rightElbow: 0.6, rightHand: 0.3 })],
+  },
+  // One-shot semantic gestures adapted from N.E.K.O. action-card categories.
+  // Every one-shot returns to neutral so expired stage directions leave no pose residue.
+  nod: {
+    id: "nod", durationMs: 760, loop: false,
+    keyframes: [kf(0, { headPitch: 0 }), kf(0.24, { headPitch: -0.13 }), kf(0.58, { headPitch: 0.055 }), kf(1, { headPitch: 0 })],
+  },
+  shake: {
+    id: "shake", durationMs: 920, loop: false,
+    keyframes: [kf(0, { headYaw: 0 }), kf(0.22, { headYaw: -0.13 }), kf(0.5, { headYaw: 0.13 }), kf(0.78, { headYaw: -0.055 }), kf(1, { headYaw: 0 })],
+  },
+  clap: {
+    id: "clap", durationMs: 1080, loop: false,
+    keyframes: [kf(0, { leftShoulder: 0, rightShoulder: 0, leftElbow: 0, rightElbow: 0 }), kf(0.26, { leftShoulder: -0.34, rightShoulder: -0.34, leftElbow: 0.62, rightElbow: 0.62 }), kf(0.52, { leftShoulder: -0.22, rightShoulder: -0.22, leftElbow: 0.42, rightElbow: 0.42 }), kf(0.76, { leftShoulder: -0.34, rightShoulder: -0.34, leftElbow: 0.62, rightElbow: 0.62 }), kf(1, { leftShoulder: 0, rightShoulder: 0, leftElbow: 0, rightElbow: 0 })],
+  },
+  bow: {
+    id: "bow", durationMs: 1320, loop: false,
+    keyframes: [kf(0, { torsoPitch: 0, headPitch: 0 }), kf(0.4, { torsoPitch: 0.18, headPitch: 0.08 }), kf(0.68, { torsoPitch: 0.14, headPitch: 0.06 }), kf(1, { torsoPitch: 0, headPitch: 0 })],
   },
 });
