@@ -53,6 +53,16 @@ on:
       - runtime/neuro-kurisu/src/organism/system/ModelSwitchBenchmark.ts
       - runtime/neuro-kurisu/src/organism/system/ModelOlympics.ts
       - runtime/neuro-kurisu/src/organism/system/DerivedWorldPreviewCache.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalSituationModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P81PredictiveAttention.ts
+      - runtime/neuro-kurisu/src/organism/cognition/IdentityContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RegretEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/SemanticScarEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionDebt.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/world/ActiveInferenceEngine.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -107,6 +117,16 @@ on:
       - runtime/neuro-kurisu/src/organism/system/ModelSwitchBenchmark.ts
       - runtime/neuro-kurisu/src/organism/system/ModelOlympics.ts
       - runtime/neuro-kurisu/src/organism/system/DerivedWorldPreviewCache.ts
+      - runtime/neuro-kurisu/src/organism/body/MultimodalSituationModel.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveImmuneSystem.ts
+      - runtime/neuro-kurisu/src/organism/cognition/MetaCognitiveMonitor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P81PredictiveAttention.ts
+      - runtime/neuro-kurisu/src/organism/cognition/IdentityContinuity.ts
+      - runtime/neuro-kurisu/src/organism/developmental/RegretEngine.ts
+      - runtime/neuro-kurisu/src/organism/developmental/SemanticScarEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/PredictionDebt.ts
+      - runtime/neuro-kurisu/src/organism/system/SelfPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/world/ActiveInferenceEngine.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -178,6 +198,10 @@ jobs:
           node --experimental-strip-types tests/p2870-verified-synthetic-trajectory-gate.mjs
           node --experimental-strip-types tests/big-pass-46-multi-project-models.mjs
           node --experimental-strip-types tests/big-pass-40-cognitive-spine.mjs
+          node --experimental-strip-types tests/big-pass-38-autonomous-spine.mjs
+          node --experimental-strip-types tests/big-pass-179-consciousness-battery.mjs
+          node --experimental-strip-types tests/big-pass-178-compound-adversarial.mjs
+          node --experimental-strip-types tests/cognitive-integrity-gate.mjs
       - name: Run decision/learning owner consumers
         run: |
           node --experimental-strip-types tests/big-pass-49-subsystem-extraction.mjs
