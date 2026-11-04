@@ -114,7 +114,8 @@ function readInput(raw: unknown): {
     if (descriptors.limits && (!Object.prototype.hasOwnProperty.call(descriptors.limits, 'value') ||
         !descriptors.limits.enumerable)) fail('input-limits-invalid');
     const value = descriptors.archiveBytes!.value;
-    if (!(value instanceof Uint8Array) || nodeUtilTypes.isProxy(value) ||
+    if (nodeUtilTypes.isProxy(value)) fail('archive-bytes-invalid');
+    if (!(value instanceof Uint8Array) ||
         (!Buffer.isBuffer(value) && Object.getPrototypeOf(value) !== Uint8Array.prototype)) {
       fail('archive-bytes-invalid');
     }
