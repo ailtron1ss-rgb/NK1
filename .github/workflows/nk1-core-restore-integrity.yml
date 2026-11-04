@@ -76,6 +76,10 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/evolution/AutobiographicalNarrative.ts
       - runtime/neuro-kurisu/src/organism/cognition/evolution/ValueEvolutionEngine.ts
       - runtime/neuro-kurisu/src/organism/system/BehavioralInfluenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/P77RealityExperimentOS.ts
+      - runtime/neuro-kurisu/src/organism/system/P82RealityProgressController.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -153,6 +157,10 @@ on:
       - runtime/neuro-kurisu/src/organism/cognition/evolution/AutobiographicalNarrative.ts
       - runtime/neuro-kurisu/src/organism/cognition/evolution/ValueEvolutionEngine.ts
       - runtime/neuro-kurisu/src/organism/system/BehavioralInfluenceLedger.ts
+      - runtime/neuro-kurisu/src/organism/system/ExternalEvidenceTrust.ts
+      - runtime/neuro-kurisu/src/organism/system/LongHorizonPredictionBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/P77RealityExperimentOS.ts
+      - runtime/neuro-kurisu/src/organism/system/P82RealityProgressController.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -232,6 +240,8 @@ jobs:
           node --experimental-strip-types tests/p2870-verified-synthetic-trajectory-gate.mjs
           node --experimental-strip-types tests/big-pass-46-multi-project-models.mjs
           node --experimental-strip-types tests/big-pass-40-cognitive-spine.mjs
+          node --experimental-strip-types tests/big-pass-380-evidence-and-retired-receipts.mjs
+          node --experimental-strip-types tests/evidence-hash-unification-workpass39.mjs
           node --experimental-strip-types tests/big-pass-38-autonomous-spine.mjs
           node --experimental-strip-types tests/big-pass-179-consciousness-battery.mjs
           node --experimental-strip-types tests/big-pass-178-compound-adversarial.mjs
