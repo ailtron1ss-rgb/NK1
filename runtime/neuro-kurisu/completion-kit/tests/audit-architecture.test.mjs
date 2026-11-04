@@ -20,7 +20,8 @@ async function makeRuntimeFixture({ omit = [] } = {}) {
     owners.runtimeEntrypoint,
     owners.cognitiveOwner,
     owners.subsystemRegistry,
-    ...owners.owners.map(owner => owner.ownerFile)
+    ...owners.owners.map(owner => owner.ownerFile),
+    ...moduleMap.modules.filter(module => module.status === 'EXISTS').map(module => module.path)
   ]);
   for (const relative of required) {
     if (omit.includes(relative)) continue;
