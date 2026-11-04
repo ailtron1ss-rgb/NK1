@@ -138,7 +138,7 @@ export async function previewNekoHybridMemoryRanking(memory, query, options = {}
   if (typeof query !== 'string' || !query.trim()) throw new TypeError('query must be a non-empty string');
   const settings = readFields(options, [
     'limit', 'maxPerChannel', 'goalRelevance', 'identityRelevance', 'temporalOptions',
-    'includeSemanticEmbeddingChannel', 'semanticWeight', 'semanticProviderTimeoutMs', 'rrfK', 'channelWeights',
+    'includeSemanticEmbeddingChannel', 'semanticWeight', 'semanticProviderTimeoutMs', 'rrfK', 'channelWeights', 'useCanonicalWeights',
   ]);
   if (!settings) throw new TypeError('hybrid preview options must be a plain data record');
   const limit = settings.limit ?? 8;
@@ -150,7 +150,8 @@ export async function previewNekoHybridMemoryRanking(memory, query, options = {}
   let rankedChannels = baseline.rankedChannels;
   let semantic = { enabled: false, provider: 'none', model: '', fallbackReason: settings.includeSemanticEmbeddingChannel === true ? 'not-requested-or-unavailable' : 'not-requested', coverage01: 0, indexedItems: 0, corpusItems: 0 };
   let exploratorySemanticIds = [];
-  let channelWeights = settings.channelWeights;
+  if (settings.useCanonicalWeights !== undefined && typeof settings.useCanonicalWeights !== 'boolean') throw new TypeError('useCanonicalWeights must be boolean');
+  let channelWeights = settings.channelWeights ?? (settings.useCanonicalWeights === true ? baseline.currentRrfWeights : undefined);
 
   if (settings.includeSemanticEmbeddingChannel === true) {
     const semanticLimit = Math.max(1, Math.min(32, Math.floor(maxPerChannel)));
