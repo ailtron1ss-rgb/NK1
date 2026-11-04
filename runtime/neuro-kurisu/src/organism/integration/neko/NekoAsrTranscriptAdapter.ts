@@ -154,7 +154,7 @@ export class NekoAsrTranscriptAdapter {
   private active: ActiveCapture | null = null;
 
   constructor(provider: NekoAsrProviderPort, options: { minConfidence01?: number; replayCapacity?: number } = {}) {
-    if (!provider || !safeId(provider.providerId, 80) || typeof provider.isAvailable !== 'function' || typeof provider.captureFinal !== 'function') {
+    if (!provider || !safeId(provider.providerId, 64) || typeof provider.isAvailable !== 'function' || typeof provider.captureFinal !== 'function') {
       throw new TypeError('neko-asr-provider-port-required');
     }
     const minimum = options.minConfidence01 ?? 0;
@@ -178,6 +178,9 @@ export class NekoAsrTranscriptAdapter {
   async captureFinal(): Promise<NekoAsrCaptureResult> {
     if (this.active) return { status: 'rejected', reason: 'session-already-active' };
     if (!(await this.isAvailable())) return { status: 'rejected', reason: 'provider-unavailable' };
+    // Availability may be asynchronous. Recheck after the await so concurrent callers
+    // cannot both pass the initial idle check and start parallel microphone sessions.
+    if (this.active) return { status: 'rejected', reason: 'session-already-active' };
     const active: ActiveCapture = {
       sessionId: 'nk1-asr-' + randomUUID(),
       controller: new AbortController(),
