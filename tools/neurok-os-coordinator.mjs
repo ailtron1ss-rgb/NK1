@@ -59,6 +59,21 @@ async function readRepositoryFile(root, relativePath) {
   return readFile(targetReal);
 }
 
+export async function createReadSetSnapshot(paths, options = {}) {
+  if (!Array.isArray(paths) || paths.length === 0 || paths.length > 200) {
+    throw new Error('snapshot paths must contain 1-200 repository-relative files');
+  }
+  const normalized = paths.map(normalizeClaimPath);
+  if (new Set(normalized).size !== normalized.length) throw new Error('duplicate read-set snapshot paths are not allowed');
+  const root = path.resolve(options.root ?? ROOT);
+  const snapshot = [];
+  for (const filePath of normalized) {
+    const bytes = await readRepositoryFile(root, filePath);
+    snapshot.push({ path: filePath, sha256: createHash('sha256').update(bytes).digest('hex') });
+  }
+  return snapshot;
+}
+
 async function inspectReadSet(readSet, options = {}) {
   const root = path.resolve(options.root ?? ROOT);
   const stalePaths = [];
@@ -241,6 +256,16 @@ function argsOf(argv) {
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const args = argsOf(rest);
+  if (command === 'snapshot') {
+    if (!args.out) throw new Error('snapshot requires --out FILE');
+    const paths = (args.paths ?? '').split(',').filter(Boolean);
+    const snapshot = await createReadSetSnapshot(paths);
+    const target = path.resolve(args.out);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, `${JSON.stringify(snapshot, null, 2)}\\n`, { flag: 'wx', mode: 0o600 });
+    console.log(JSON.stringify({ path: target, files: snapshot.length }, null, 2));
+    return;
+  }
   if (command === 'claim') {
     const currentSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
     const result = await claimTask({
@@ -268,7 +293,7 @@ async function main() {
     console.log(JSON.stringify(await listClaims(), null, 2));
     return;
   }
-  console.error('Usage: node tools/neurok-os-coordinator.mjs [claim|verify|release|list] --task ID --agent ID --sha FULL_SHA --paths a.ts,b.ts [--readSetFile FILE] [--ttlMs 3600000]');
+  console.error('Usage: node tools/neurok-os-coordinator.mjs [snapshot|claim|verify|release|list] --task ID --agent ID --sha FULL_SHA --paths a.ts,b.ts [--readSetFile FILE] [--ttlMs 3600000]');
   process.exitCode = 2;
 }
 
