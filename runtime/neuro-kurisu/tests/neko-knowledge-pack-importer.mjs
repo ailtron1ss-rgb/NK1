@@ -101,6 +101,10 @@ test('approval and selection reject Proxy and accessor-backed data without execu
   assert.throws(() => importer.import(pack, proxyApproval), /invalid-approval/);
   assert.equal(approvalTrapCalls, 0);
 
+  const revokedApproval = Proxy.revocable({ ...approval }, {});
+  revokedApproval.revoke();
+  assert.throws(() => importer.import(pack, revokedApproval.proxy), /invalid-approval/);
+
   let indexTrapCalls = 0;
   const proxyIndices = new Proxy([0], {
     getPrototypeOf() { indexTrapCalls += 1; throw new Error('indices-proxy-trap'); },
@@ -108,6 +112,10 @@ test('approval and selection reject Proxy and accessor-backed data without execu
   });
   assert.throws(() => importer.import(pack, { ...approval, entryIndices: proxyIndices }), /invalid-entry-selection/);
   assert.equal(indexTrapCalls, 0);
+
+  const revokedIndices = Proxy.revocable([0], {});
+  revokedIndices.revoke();
+  assert.throws(() => importer.import(pack, { ...approval, entryIndices: revokedIndices.proxy }), /invalid-entry-selection/);
 
   let indexGetterCalls = 0;
   const accessorIndices = [0];
