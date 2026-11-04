@@ -74,3 +74,21 @@ test('strict directory fsync is performed for a durable record', async () => {
     assert.equal(journal.metrics().directoryFsyncs, 1);
   });
 });
+
+test('multi-segment rotation keeps the newest bounded history in order', async () => {
+  await withTempDirectory(async directory => {
+    const path = join(directory, 'runtime.jsonl');
+    const journal = new OperationalJournal(path, { maxBytes: 180, maxRotations: 2 });
+    for (let index = 1; index <= 4; index += 1) {
+      await journal.write('info', `event.${index}`, { text: String(index).repeat(45) });
+    }
+    await journal.flush();
+    const current = await readFile(path, 'utf8');
+    const rotated1 = await readFile(`${path}.1`, 'utf8');
+    const rotated2 = await readFile(`${path}.2`, 'utf8');
+    assert.match(current, /event\.4/);
+    assert.match(rotated1, /event\.3/);
+    assert.match(rotated2, /event\.2/);
+    assert.equal(journal.metrics().rotations, 3);
+  });
+});
