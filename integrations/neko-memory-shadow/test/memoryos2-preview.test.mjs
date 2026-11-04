@@ -10,6 +10,7 @@ const preview = {
     metadata: [],
   },
   currentRrfK: 60,
+  maxPerChannel: 64,
   currentRrfWeights: { bm25: 1, vector: 0.5, metadata: 0 },
   diagnostics: { abstained: false, answerabilityGate: 'direct-evidence-or-typed-recall-v1', rankedBeforeGate: 4, groundedAfterGate: 3 },
 };
@@ -30,6 +31,14 @@ test('canonical channel weights can be replayed without mutating the preview', (
   const result = evaluateMemoryOS2ShadowPreview(preview, { channelWeights: preview.currentRrfWeights });
   assert.deepEqual(result.shadowItems[0].ranks.map(row => row.channel), ['bm25', 'vector']);
   assert.equal(JSON.stringify(preview), before);
+});
+
+test('rank export cap is carried through when evaluator options are omitted', () => {
+  const ids = Array.from({ length: 65 }, (_, index) => `id-${index}`);
+  const extended = { ...preview, maxPerChannel: 65, rankedChannels: { bm25: ids, vector: ids } };
+  const result = evaluateMemoryOS2ShadowPreview(extended);
+  assert.equal(result.diagnostics.candidatesSeen, 130);
+  assert.equal(result.shadowIds.length, 8);
 });
 
 test('answerability abstention cannot be bypassed by shadow-ranked candidates', () => {
