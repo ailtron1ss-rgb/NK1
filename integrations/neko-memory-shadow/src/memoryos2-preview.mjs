@@ -68,13 +68,13 @@ function readDenseStrings(value, maximum, fieldName) {
 
 /** Evaluate an isolated MemoryOS2 ranked-channel preview with alternate RRF weights. */
 export function evaluateMemoryOS2ShadowPreview(preview, options = {}) {
-  const fields = readFields(preview, ['itemIds', 'rankedChannels', 'currentRrfK', 'currentRrfWeights', 'diagnostics']);
+  const fields = readFields(preview, ['itemIds', 'rankedChannels', 'currentRrfK', 'currentRrfWeights', 'diagnostics', 'maxPerChannel']);
   if (!fields) throw new TypeError('memoryOS2 preview must be a plain data record');
   const settings = readFields(options, ['limit', 'rrfK', 'maxCandidatesPerChannel', 'channelWeights']);
   if (!settings) throw new TypeError('shadow evaluation options must be a plain data record');
   const limit = settings.limit ?? 8;
   const rrfK = settings.rrfK ?? fields.currentRrfK ?? 60;
-  const maxCandidatesPerChannel = settings.maxCandidatesPerChannel ?? 64;
+  const maxCandidatesPerChannel = settings.maxCandidatesPerChannel ?? fields.maxPerChannel ?? 64;
   const baselineIds = readDenseStrings(fields.itemIds, 64, 'itemIds');
   const rankedChannels = fields.rankedChannels;
   if (!isPlainRecord(rankedChannels)) throw new TypeError('rankedChannels must be a plain data record');
