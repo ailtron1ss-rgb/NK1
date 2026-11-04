@@ -1,3 +1,9 @@
+## [NK1][Evaluation] Require source-independent memory holdout evidence (2026-11-04)
+- Add external source-group-aware Inspect AI scoring with whole-group bootstrap intervals, minimum independent-group gates and train/holdout source-leakage rejection.
+- Require explicit `independenceGroupId` for every confirmatory query-evidence row; per-query ID fallback is not accepted as evidence of independence.
+- Version the query-evidence contract to schema v2 and reject legacy v1 evidence for confirmatory scoring.
+- Keep synthetic CI fixtures structurally valid but permanently ineligible for external promotion.
+
 ## [NK1][Metacognition] Bind episodic self-monitoring to all eleven cognitive stages (2026-11-04)
 - The existing metacognitive CEF event previously linked only observation/prediction/action/outcome/learning, leaving appraisal, attention, memory, goal, plan and self-update outside the episode's direct causal parent set.
 - Record the episode only after the self-update node exists; verify the complete eleven-stage CEF lineage and attach all eleven stage IDs in canonical order.
