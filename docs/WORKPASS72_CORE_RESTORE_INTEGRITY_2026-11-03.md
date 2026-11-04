@@ -64,9 +64,45 @@ producer would mean inventing a patch pipeline, which the project rules forbid;
 the guard therefore sits at the correct maximal boundary rather than in a
 placeholder module.
 
+## Batch series — restore-integrity sweep (WorkPass72)
+
+The five-owner fix above was extended into a batch sweep that closes the same
+failure mode across every remaining owner whose `restore()` merged a persisted
+snapshot with a bare spread or `structuredClone`. Each batch is a standalone
+commit with a fail-before/pass-after regression wired into
+`test:workpass72:core-integrity` and the CI trigger paths.
+
+| Batch | Commit | Owners | Test |
+|---|---|---|---|
+| 5 | `63f8667` | 10 owners (developmental + social + system) | `workpass72-developmental-social-restore-integrity` |
+| 6 | `e7713b5` | 8 owners (cognition core + prediction caches) | `workpass72-cognition-core-restore-integrity` |
+| 7 | `f9669ef` | 10 owners (body/immune/developmental/world) | `workpass72-body-immune-world-restore-integrity` |
+| 8 | `2a3200ad` | `MultimodalPerception`, `B2506NeuralBottleneckEscalator`, `B2507ConsolidationScheduler`, `B2508AdaptiveNeuralComputeGovernor`, `B265IndependentPolicyEvaluator`, `B266HiddenTaskGeneralization`, `BoundedRecurrentStateSubstrate`, `P74IntegratedOrganismKernel`, `ValuePlasticity` | `workpass72-perception-neural-value-restore-integrity` |
+| 9 | `467b2dd` | `LifelongDevelopmentSystem`, `AutobiographicalNarrativeEngine`, `ValueEvolutionEngine`, `BehavioralInfluenceLedger` | `workpass72-lifelong-narrative-value-restore-integrity` |
+| 10 | `870ba62` | `ExternalEvidenceTrustEngine`, `LongHorizonPredictionBenchmark`, `P77RealityExperimentOS`, `P82RealityProgressController` | `workpass72-evidence-horizon-progress-restore-integrity` |
+| 11 | `7733e92` | `P62MemoryFabric`, `P68GoalEcology`, `P54LongHorizonEvidence`, `P59MemoryOperatingSystem` | `workpass72-fabric-goal-evidence-memos-restore-integrity` |
+
+Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
+`finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
+snapshot drops malformed records, floors counters, clamps unit-interval ratios
+and whitelists enums instead of injecting `NaN`, out-of-range values or unknown
+members into live state. `test:workpass72:core-integrity` runs all nineteen
+workpass72 suites in one step (exit 0, 19× `=PASS`).
 
 ## Evidence
 
+- Batch series (5–11) re-verified after batch 11: `npm run
+  test:workpass72:core-integrity` → exit 0, 19 suites `=PASS`; `npm run
+  typecheck` → `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
+- Consumer regressions for the batch 10/11 owners re-run green:
+  `big-pass-37-spine`, `big-pass-38-autonomous-spine`,
+  `big-pass-380-evidence-and-retired-receipts`, `big-pass-40-cognitive-spine`,
+  `big-pass-49-subsystem-extraction`, `evidence-hash-unification-workpass39`,
+  `big-pass-180-lifecycle-function-closure`, `big-pass-52-memory-fabric`,
+  `p54-long-horizon-evidence`, `p58-p60-integrated-kernel`,
+  `p66-p68-integration`, `memory-*-workpass*` retrieval suites.
+- Every new batch test was confirmed fail-before / pass-after by stashing the
+  edited source files and re-running the same test.
 - `npm run typecheck` → `TYPECHECK=PASS mode=node-strip-syntax-only files=658`.
 - New regressions (fail before the fix, pass after — verified by stashing
   `runtime/neuro-kurisu/src`):
