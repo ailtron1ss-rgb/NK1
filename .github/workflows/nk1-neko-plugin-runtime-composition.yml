@@ -1,0 +1,47 @@
+name: N.E.K.O. plugin runtime composition
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nk1-neko-plugin-runtime-composition.yml'
+      - 'runtime/neuro-kurisu/src/organism/integration/neko/**'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-runtime-composition.mjs'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-gateway-adapter.mjs'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-gateway-real-action-gateway.mjs'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-manifest-policy.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+  push:
+    branches:
+      - 'aspect/neko-plugin-runtime-composition-20261104'
+    paths:
+      - '.github/workflows/nk1-neko-plugin-runtime-composition.yml'
+      - 'runtime/neuro-kurisu/src/organism/integration/neko/**'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-runtime-composition.mjs'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-gateway-adapter.mjs'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-gateway-real-action-gateway.mjs'
+      - 'runtime/neuro-kurisu/tests/neko-plugin-manifest-policy.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+permissions:
+  contents: read
+jobs:
+  plugin-runtime-composition:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Gateway contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-plugin-gateway-adapter.mjs
+      - name: Manifest policy contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-plugin-manifest-policy.mjs
+      - name: Real ActionGateway boundary
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-plugin-gateway-real-action-gateway.mjs
+      - name: Composed runtime contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-plugin-runtime-composition.mjs
+      - name: Organism runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
