@@ -71,7 +71,7 @@ const files = [
     { path: 'MEMORY.md', content: '#  NK1   Project  \n\n- Canonical memory owner is MemoryOS2.\n- canonical   memory owner is memoryos2. ' },
   ]);
   assert.equal(preview.candidates.length, 1);
-  assert.ok(preview.candidates[0].text.includes('NK1 Project'));
+  assert.ok(preview.candidates[0].sourceSection.includes('NK1 Project'));
   assert.ok(preview.candidates[0].text.length <= 8_000);
 }
 
