@@ -22,7 +22,7 @@ concurrency:
 jobs:
   durability:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -32,3 +32,6 @@ jobs:
       - name: Run operational journal durability regressions
         working-directory: runtime/neuro-kurisu
         run: node --experimental-strip-types tests/operational-journal-durability.mjs
+      - name: Typecheck organism runtime
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
