@@ -50,6 +50,30 @@ test('rotation accounts for the incoming record and retains a bounded prior segm
     assert.match(current, /event\.three/);
     assert.match(rotated, /event\.two/);
     assert.ok((await stat(path)).size <= 180);
-    assert.equal(journal.metrics().rotations, 1);
+    assert.equal(journal.metrics().rotations, 2);
+  });
+});
+
+test('a failed serialization does not poison later queued writes', async () => {
+  await withTempDirectory(async directory => {
+    const path = join(directory, 'runtime.jsonl');
+    const journal = new OperationalJournal(path);
+    await assert.rejects(journal.write('info', 'event.bad', { unsupported: 1n }));
+    await journal.write('info', 'event.good', { ok: true });
+    await journal.flush();
+    const rows = (await readFile(path, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    assert.deepEqual(rows.map(row => row.event), ['event.good']);
+  });
+});
+
+test('strict directory fsync is performed for a durable record', async () => {
+  await withTempDirectory(async directory => {
+    const journal = new OperationalJournal(join(directory, 'runtime.jsonl'), {
+      syncLevels: ['info'], strictDirectoryFsync: true,
+    });
+    await journal.write('info', 'runtime.stop.durable', { tick: 4 });
+    await journal.flush();
+    assert.equal(journal.metrics().fsyncs, 1);
+    assert.equal(journal.metrics().directoryFsyncs, 1);
   });
 });
