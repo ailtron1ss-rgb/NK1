@@ -4,7 +4,7 @@ Status: provider contract and runtime seam implemented; no N.E.K.O. ASR sidecar,
 
 ## Ownership
 
-NK1 remains the single owner of cognitive turns, memory, identity and external action policy. A host may inject one ASR provider through `RuntimeConfig.nekoAsrProvider`; `EmbodimentRuntime` adapts its final transcript into the existing `listen()` / `voiceTurn()` path. When no provider is supplied, the existing Termux `termux-speech-to-text` path remains unchanged.
+NK1 remains the single owner of cognitive turns, memory, identity and external action policy. A host may inject one ASR provider through `RuntimeConfig.nekoAsrProvider`; `EmbodimentRuntime.listenDetailed()` returns the transcript together with provider ID, ASR confidence, language, event ID and turn ID; `OrganismRuntime.listen()` and `voiceTurn()` carry these values into the existing multimodal speech evidence. Confidence is preserved as supplied (including `0`); only providers that do not expose confidence use the legacy `0.86` fallback. The transcript-only `listen(): Promise<string | null>` API remains backward-compatible. When no provider is supplied, the existing Termux `termux-speech-to-text` path remains unchanged.
 
 ## Provider contract
 
@@ -34,6 +34,7 @@ This is a boundary and wiring pass, not a claim of complete voice integration. I
 ## Verification
 
 - `tests/neko-asr-transcript-adapter.mjs`: final-user admission, session binding, malformed/accessor objects, size/confidence limits, replay conflicts, single-capture lock and verified/unverified cancellation.
-- `tests/neko-asr-embodiment-wiring.mjs`: provider routing into `EmbodimentRuntime.listen()`, provider provenance and truthful interruption state.
+- `tests/neko-asr-embodiment-wiring.mjs`: provider routing, detailed metadata retention, backward-compatible `listen()` and truthful interruption state.
+- `tests/neko-asr-voice-input-evidence.mjs`: ASR confidence, event/turn/language provenance through `OrganismRuntime.listen()` and `voiceTurn()`, plus legacy fallback behavior.
 - `tests/embodiment-voice-cognitive-context.mjs`: existing voice-to-cognition regression.
 - Dedicated Node 24 workflow runs the focused tests and runtime typecheck.
