@@ -195,8 +195,49 @@ for (const path of ['../escape.ts', '/absolute.ts', 'C:/drive.ts', 'src\\\\escap
   assert.throws(() => extract(zip.bytes), /entry-count-limit/);
 }
 
+// Revoked proxies are rejected before reflection can throw an implementation-specific error.
+{
+  let traps = 0;
+  const revocable = Proxy.revocable({}, {
+    getPrototypeOf() { traps += 1; throw new Error('unexpected raw proxy trap'); },
+  });
+  revocable.revoke();
+  assert.throws(
+    () => extractCodeAssimilationArchive(revocable.proxy),
+    /code-assimilation-extraction-input-invalid/,
+  );
+  assert.equal(traps, 0);
+}
+{
+  const zip = makeZip([{ path: 'source.ts', data: 'safe', method: 0 }]);
+  const revocable = Proxy.revocable(new Uint8Array(zip.bytes), {
+    getPrototypeOf() { throw new Error('unexpected byte proxy trap'); },
+  });
+  revocable.revoke();
+  assert.throws(
+    () => extractCodeAssimilationArchive({
+      candidate: candidateFor(zip.bytes),
+      archiveBytes: revocable.proxy,
+      parserId: 'nk1-zip',
+      parserVersion: '1.0.0',
+    }),
+    /code-assimilation-extraction-archive-bytes-invalid/,
+  );
+}
+
+// Extraction defaults must not silently inherit the looser standalone preflight defaults.
+{
+  const entries = Array.from({ length: 4_097 }, (_, index) => ({
+    path: `files/${String(index).padStart(4, '0')}.txt`,
+    data: '',
+    method: 0,
+  }));
+  const zip = makeZip(entries);
+  assert.throws(() => extract(zip.bytes), /entry-count-limit/);
+}
+
 console.log(JSON.stringify({
   ok: true,
   suite: 'code-assimilation-archive-extraction-workpass658',
-  cases: 8,
+  cases: 10,
 }));
