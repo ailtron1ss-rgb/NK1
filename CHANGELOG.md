@@ -1,3 +1,9 @@
+## [NK1][EngineeringOS] Close nested secret-path preflight bypasses (2026-11-04)
+
+- Extend fail-closed diff policy to inspect path segments and basenames, not only repository-root exact paths.
+- Deny nested environment files, npm credential files, SSH/Git metadata, common service-account files and private-key/certificate extensions.
+- Add a red-green regression covering nested environment, npmrc, id_rsa, git/config and PEM paths.
+
 ## [NK1][EngineeringOS] Add agent context snapshot generator (2026-11-04)
 
 - Add a read-only CLI to generate bounded SHA-256 read-set manifests from repository files, with path normalization and symlink-root confinement.
