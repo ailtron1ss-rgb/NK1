@@ -1,0 +1,55 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { OperationalJournal } from '../src/organism/persistence/OperationalJournal.ts';
+
+async function withTempDirectory(run) {
+  const directory = await mkdtemp(join(tmpdir(), 'nk1-operational-journal-'));
+  try { await run(directory); } finally { await rm(directory, { recursive: true, force: true }); }
+}
+
+test('concurrent writes preserve invocation order and flush waits for completion', async () => {
+  await withTempDirectory(async directory => {
+    const path = join(directory, 'nested', 'runtime.jsonl');
+    const journal = new OperationalJournal(path);
+    await Promise.all(Array.from({ length: 40 }, (_, index) => journal.write('info', `tick.${index}`, { index })));
+    await journal.flush();
+    const rows = (await readFile(path, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    assert.deepEqual(rows.map(row => row.data.index), Array.from({ length: 40 }, (_, index) => index));
+  });
+});
+
+test('warning, error and critical lifecycle events are fsynced while ordinary ticks are not', async () => {
+  await withTempDirectory(async directory => {
+    const journal = new OperationalJournal(join(directory, 'runtime.jsonl'), {
+      syncLevels: ['warn', 'error'],
+      syncEvents: ['runtime.stop.durable'],
+    });
+    await journal.write('info', 'runtime.step', { tick: 1 });
+    await journal.write('info', 'runtime.stop.durable', { tick: 1 });
+    await journal.write('warn', 'runtime.degraded', { tick: 2 });
+    await journal.write('error', 'runtime.failed', { tick: 3 });
+    await journal.flush();
+    assert.equal(journal.metrics().fsyncs, 3);
+    assert.equal(journal.metrics().writes, 4);
+  });
+});
+
+test('rotation accounts for the incoming record and retains a bounded prior segment', async () => {
+  await withTempDirectory(async directory => {
+    const path = join(directory, 'runtime.jsonl');
+    const journal = new OperationalJournal(path, { maxBytes: 180, maxRotations: 1 });
+    await journal.write('info', 'event.one', { text: 'x'.repeat(45) });
+    await journal.write('info', 'event.two', { text: 'y'.repeat(45) });
+    await journal.write('info', 'event.three', { text: 'z'.repeat(45) });
+    await journal.flush();
+    const current = await readFile(path, 'utf8');
+    const rotated = await readFile(`${path}.1`, 'utf8');
+    assert.match(current, /event\.three/);
+    assert.match(rotated, /event\.two/);
+    assert.ok((await stat(path)).size <= 180);
+    assert.equal(journal.metrics().rotations, 1);
+  });
+});
