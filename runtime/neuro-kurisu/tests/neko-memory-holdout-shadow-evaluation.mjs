@@ -77,12 +77,12 @@ const report = runMemoryOS2RetrievalExperiment(snapshot, examples, {
   candidateRetriever: (query, limit) => { injectedCandidateCalls++; return (shadowByQuery.get(query) ?? []).slice(0, limit); },
 });
 
-assert.ok(report.metrics.baseline.recallAtK01 > .5, 'BM25 baseline should retrieve every exact bilingual fixture');
-assert.ok(report.metrics.candidate.recallAtK01 > .5,
+assert.ok(report.runs[0].baselineHoldout.recallAtK01 > .5, 'BM25 baseline should retrieve every exact bilingual fixture');
+assert.ok(report.runs[0].candidateHoldout.recallAtK01 > .5,
   'the actual MemoryOS2 shadow RRF arm must preserve bilingual exact-match recall');
-assert.equal(report.metrics.candidate.unsupportedRetrievalRate01, 0,
+assert.equal(report.runs[0].candidateHoldout.unsupportedRetrievalRate01, 0,
   'unanswerable holdout queries must remain abstentions');
-assert.ok(report.metrics.candidate.falseAbstentionRate01 < .1);
+assert.ok(report.runs[0].candidateHoldout.falseAbstentionRate01 < .1);
 assert.ok(injectedCandidateCalls >= examples.length * 5, 'paired benchmark must invoke the injected shadow candidate arm for every example and seed');
 assert.equal(report.candidateStrategy, 'neko-shadow-rrf');
 assert.ok(report.queryEvidence.holdout.filter(row => row.answerable).every(row => row.candidateRankedMemory.length > 0),
