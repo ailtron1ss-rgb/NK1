@@ -652,9 +652,10 @@ export class MemoryOS2{
   * fusion weights leave the preview. No memory text or live state is returned.
   */
  previewRetrieveWithRankedChannels(query:string,limit=8,goalRelevance=0,identityRelevance=0,temporalOptions:MemoryTemporalQueryOptions={},maxPerChannel=64){
-   const boundedChannelLimit=Number.isFinite(maxPerChannel)?Math.floor(maxPerChannel):64;
-   if(boundedChannelLimit<1||boundedChannelLimit>192)throw new RangeError('memory-ranked-channel-preview-limit-invalid');
-   const boundedResultLimit=Number.isFinite(limit)?Math.max(1,Math.min(64,Math.floor(limit))):8;
+   if(!Number.isSafeInteger(maxPerChannel)||maxPerChannel<1||maxPerChannel>192)throw new RangeError('memory-ranked-channel-preview-limit-invalid');
+   if(!Number.isSafeInteger(limit)||limit<1||limit>64)throw new RangeError('memory-ranked-channel-preview-result-limit-invalid');
+   const boundedChannelLimit=maxPerChannel;
+   const boundedResultLimit=limit;
    const isolated=new MemoryOS2({signalFusionProfile:this.signalFusionProfile,metadataRecallEnabled:this.metadataRecallEnabled,embeddingProvider:null});
    isolated.restore(this.snapshot());
    isolated.captureRankedChannelIds=true;
@@ -664,7 +665,7 @@ export class MemoryOS2{
     itemIds:items.map(item=>item.id),
     rankedChannels:Object.fromEntries(Object.entries(isolated.lastRankedChannelIds).map(([name,ids])=>[name,ids.slice()])),
     currentRrfK:60,
-    currentRrfWeights:{bm25:1,coverage:.90,fuzzy:.60,metadata:(isolated.metadataRecallEnabled?.28:0),entity:.42,relationship:.32},
+    currentRrfWeights:{bm25:1,coverage:.90,fuzzy:.60,metadata:(isolated.metadataRecallEnabled ? 0.28 : 0),entity:.42,relationship:.32},
     diagnostics:isolated.retrievalDiagnostics(),
    };
  }
