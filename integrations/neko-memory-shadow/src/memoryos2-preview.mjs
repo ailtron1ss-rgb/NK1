@@ -175,9 +175,9 @@ export async function previewNekoHybridMemoryRanking(memory, query, options = {}
       } else {
         rankedChannels = { ...baseline.rankedChannels, vector: semanticIds };
       }
-      if (channelWeights === undefined && settings.semanticWeight !== undefined) {
+      if (baseline.diagnostics?.abstained !== true && channelWeights === undefined && settings.semanticWeight !== undefined) {
         channelWeights = { vector: settings.semanticWeight };
-      } else if (channelWeights !== undefined && settings.semanticWeight !== undefined) {
+      } else if (baseline.diagnostics?.abstained !== true && channelWeights !== undefined && settings.semanticWeight !== undefined) {
         if (!isPlainRecord(channelWeights)) throw new TypeError('channelWeights must be a plain data record');
         const copiedWeights = Object.create(null);
         for (const name of Object.keys(channelWeights)) {
