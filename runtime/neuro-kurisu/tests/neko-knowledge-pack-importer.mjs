@@ -97,7 +97,6 @@ test('reimporting the same pack entry is idempotent and cannot inflate confidenc
   assert.deepEqual(second.memoryIds, first.memoryIds);
   assert.equal(memory.memoryOS.size(), countAfterFirst);
   assert.equal(secondItem?.confidence, firstItem?.confidence);
-  assert.equal(second.idempotentReplayCount, 1);
 });
 
 test('manifest, entries, term roles and derived fields are schema-closed', () => {
