@@ -1,4 +1,4 @@
-# NK1 Completion Kit — evidence-first надстройка NeuroCore
+# NK1 Completion Kit v0.2.0 — evidence-first надстройка NeuroCore
 
 **Назначение:** связать существующие подсистемы NK1 в проверяемую систему аудита, экспериментов и завершения проекта. Это не альтернативное ядро, не второй владелец памяти и не набор пустых модулей.
 
@@ -14,11 +14,9 @@
 
 ## Установка и запуск
 
-ZIP содержит верхнюю папку `completion-kit/`. Распакуйте его из корня репозитория NK1 в `runtime/neuro-kurisu/`, чтобы получился путь `runtime/neuro-kurisu/completion-kit/`.
+Полный ZIP содержит верхнюю папку `completion-kit/`. Распакуйте его из корня NK1 в `runtime/neuro-kurisu/`, чтобы появился `runtime/neuro-kurisu/completion-kit/`. Перед распаковкой проверьте SHA-256 по `COMPLETION_KIT_INSTALL_RU.md`.
 
-До распаковки проверьте SHA-256 архива по инструкции `COMPLETION_KIT_INSTALL_RU.md`.
-
-Требуется Node.js 22.12+. В каталоге `runtime/neuro-kurisu/completion-kit`:
+Требуется Node.js 22.12+. Из `runtime/neuro-kurisu/completion-kit`:
 
 ```bash
 npm test
@@ -28,23 +26,39 @@ npm run test-surface
 npm run report
 npm run tree
 npm run cef-check -- ./evidence/cef-snapshot.json
+npm run gate -- foundation
 npm run verify
 ```
 
-Completion Kit не добавляет npm dependencies. Скрипты `audit`, `imports` и `test-surface` читают соседнее дерево исходников NK1 и поэтому запускаются после установки полного репозитория.
+Скрипты аудита читают соседнее дерево исходников NK1; production promotion CLI использует существующий канонический `../src/organism/learning/PairedSeedConfidence.ts`, не копируя bootstrap-алгоритм.
+
+## Интеграция с NeuroK Engineering OS
+
+Completion Kit **не создаёт второй** координатор агентов, patch sandbox, capability registry или evidence ledger. Эти функции принадлежат корневому NeuroK Engineering OS. Completion Kit отвечает за runtime-специфичные проверки: canonical owners, import graph, test surface, strict CEF snapshots, paired-seed policy и skill-promotion gate.
+
+Из корня NK1 доступны существующие команды:
+
+```bash
+npm run neurok-os:validate
+npm run neurok-os:test
+npm run neurok-os:claims -- list
+npm run neurok-os:snapshot -- --paths src/a.ts,src/b.ts --out .neurok-os/read-set.json
+npm run neurok-os:claims -- verify --task TASK_ID --agent AGENT_ID
+```
+
+Gate runner привязывает каждый gate report к текущим Git branch и полному commit SHA. При отсутствующей provenance, изменённом рабочем дереве или устаревшем SHA статус PASS блокируется. PASS и FAIL receipts передаются в корневую команду `neurok-os:evidence` и сохраняются существующим canonical evidence ledger. Повторная запись отчёта: `npm run record-evidence -- reports/gate-<id>-<timestamp>.json`.
+
+Локальный каталог `.neurok-os/` содержит claims и receipts и должен оставаться вне Git. Это локальная evidence-запись, а не production deployment и не доказательство когнитивного улучшения.
 
 ## Что входит
 
 - `ARCHITECTURE_MEGA_TREE_RU.md` — целевое архитектурное дерево с привязкой к существующим компонентам и открытым пробелам.
-- `architecture/owners.json` — семь canonical subsystem owners и границы записи.
-- `architecture/module-map.json` — реестр модулей и gaps.
-- `architecture/gates.json` — критерии и команды проверки.
-- `architecture/research-ledger.json` — источники и направления адаптации.
-- `architecture/benchmark-matrix.json` — измеримые направления оценки.
+- `architecture/` — owners, module map, gates, research ledger и benchmark matrix.
 - `contracts/` — JSON Schema для cognitive cycle, evaluation run и skill promotion.
-- `src/` — CEF lineage audit, статистика экспериментов и консервативный promotion gate.
-- `scripts/` — аудит владельцев, import graph, поверхности тестов, CEF snapshot, dataset hashes, дерево, отчёты и запуск существующих NK1 gates.
-- `tests/` — регрессионные проверки Completion Kit.
+- `src/` — CEF lineage audit, статистика экспериментов, promotion policy, Git provenance и адаптер exact-SHA receipts.
+- `scripts/` — аудит владельцев, import graph, test surface, CEF snapshot, dataset hashes, дерево, gate runner и evidence adapter.
+- `tests/` — регрессионные проверки Completion Kit, provenance и fail-closed exact-SHA evidence adapter.
+- `reports/` — исходный checkpoint и локальные отчёты; generated gate reports игнорируются Git.
 
 ## Границы действия
 
@@ -52,6 +66,6 @@ Completion Kit не добавляет npm dependencies. Скрипты `audit`,
 - Promotion evaluator формирует отчёт, но не записывает навыки в production skill store.
 - N.E.K.O., AIRI, Hermes, Letta, Hindsight и Mem0 перечислены как reference projects; код, веса и данные из них не импортированы.
 - Пакет не доказывает сознание, AGI, автономность или улучшение качества модели.
-- Незакрытые RU/EN holdout, transfer, длительная self-initiative, browser/WebGL E2E, Android soak, power-loss recovery и human license review остаются `GAP`/`UNKNOWN`.
+- Незакрытые RU/EN holdout, transfer, длительная self-initiative, browser/WebGL E2E, Android soak, power-loss recovery и human license review остаются GAP/UNKNOWN.
 
-Completion Kit — проверяемый управляющий слой над текущим NK1, а не новая когнитивная система параллельно ему.
+Completion Kit — runtime-specific audit and evaluation plane над NK1 и использует существующий Engineering OS как единый repository-level control plane.
