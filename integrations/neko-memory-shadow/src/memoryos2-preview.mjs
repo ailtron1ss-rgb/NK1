@@ -26,6 +26,25 @@ function readFields(record, keys) {
   return result;
 }
 
+function compareCodeUnits(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function copyWeightRecord(value) {
+  if (value === null || value === undefined) return null;
+  if (!isPlainRecord(value)) throw new TypeError('currentRrfWeights must be a plain data record');
+  const result = Object.create(null);
+  for (const name of Object.keys(value).sort(compareCodeUnits)) {
+    const fields = readFields(value, [name]);
+    const weight = fields?.[name];
+    if (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0 || weight > 4) {
+      throw new TypeError(`currentRrfWeights.${name} is invalid`);
+    }
+    result[name] = weight;
+  }
+  return result;
+}
+
 function readDenseStrings(value, maximum, fieldName) {
   try {
     if (nodeTypes.isProxy(value) || !Array.isArray(value)) throw new TypeError(`${fieldName} must be a dense string array`);
@@ -59,7 +78,7 @@ export function evaluateMemoryOS2ShadowPreview(preview, options = {}) {
   const baselineIds = readDenseStrings(fields.itemIds, 64, 'itemIds');
   const rankedChannels = fields.rankedChannels;
   if (!isPlainRecord(rankedChannels)) throw new TypeError('rankedChannels must be a plain data record');
-  const channelNames = Object.keys(rankedChannels);
+  const channelNames = Object.keys(rankedChannels).sort(compareCodeUnits);
   if (channelNames.length < 1 || channelNames.length > 8) throw new TypeError('ranked channel count out of bounds');
   const weights = settings.channelWeights;
   if (weights !== undefined && !isPlainRecord(weights)) throw new TypeError('channelWeights must be a plain data record');
@@ -95,7 +114,7 @@ export function evaluateMemoryOS2ShadowPreview(preview, options = {}) {
     overlapAtK: comparison.overlapAtK,
     jaccardAtK: comparison.jaccardAtK,
     currentRrfK: fields.currentRrfK ?? null,
-    currentRrfWeights: fields.currentRrfWeights ?? null,
+    currentRrfWeights: copyWeightRecord(fields.currentRrfWeights),
     diagnostics: {
       ...fused.diagnostics,
       answerabilityGate: diagnosticFields.answerabilityGate ?? null,
@@ -104,4 +123,76 @@ export function evaluateMemoryOS2ShadowPreview(preview, options = {}) {
       abstained: diagnosticFields.abstained,
     },
   };
+}
+
+/**
+ * Optional N.E.K.O.-style lexical + cosine preview over the existing MemoryOS2 owner.
+ * The semantic provider is called only when explicitly enabled and only after the
+ * canonical answerability preview has produced grounded evidence.
+ */
+export async function previewNekoHybridMemoryRanking(memory, query, options = {}) {
+  if (!memory || typeof memory.previewRetrieveWithRankedChannels !== 'function' ||
+      typeof memory.previewRetrieveWithEmbeddings !== 'function') {
+    throw new TypeError('memoryOS2 preview methods are required');
+  }
+  if (typeof query !== 'string' || !query.trim()) throw new TypeError('query must be a non-empty string');
+  const settings = readFields(options, [
+    'limit', 'maxPerChannel', 'goalRelevance', 'identityRelevance', 'temporalOptions',
+    'includeSemanticEmbeddingChannel', 'semanticWeight', 'semanticProviderTimeoutMs', 'rrfK', 'channelWeights',
+  ]);
+  if (!settings) throw new TypeError('hybrid preview options must be a plain data record');
+  const limit = settings.limit ?? 8;
+  const maxPerChannel = settings.maxPerChannel ?? 64;
+  const goalRelevance = settings.goalRelevance ?? 0;
+  const identityRelevance = settings.identityRelevance ?? 0;
+  const temporalOptions = settings.temporalOptions ?? {};
+  const baseline = memory.previewRetrieveWithRankedChannels(query, limit, goalRelevance, identityRelevance, temporalOptions, maxPerChannel);
+  let rankedChannels = baseline.rankedChannels;
+  let semantic = { enabled: false, provider: 'none', model: '', fallbackReason: baseline.diagnostics?.abstained === true ? 'canonical-answerability-abstained' : (settings.includeSemanticEmbeddingChannel === true ? 'not-requested-or-unavailable' : 'not-requested'), coverage01: 0, indexedItems: 0, corpusItems: 0 };
+  let channelWeights = settings.channelWeights;
+
+  if (settings.includeSemanticEmbeddingChannel === true && baseline.diagnostics?.abstained !== true) {
+    const semanticLimit = Math.max(1, Math.min(32, Math.floor(maxPerChannel)));
+    const semanticPreview = await memory.previewRetrieveWithEmbeddings(query, semanticLimit, goalRelevance, identityRelevance, temporalOptions, {
+      maxLexicalPool: Math.max(8, Math.min(96, semanticLimit * 2)),
+      maxIndexItems: Math.max(1, Math.min(96, semanticLimit * 2)),
+      ...(Number.isFinite(settings.semanticProviderTimeoutMs) ? { providerTimeoutMs: settings.semanticProviderTimeoutMs } : {}),
+    });
+    semantic = {
+      enabled: semanticPreview.semantic.enabled,
+      provider: semanticPreview.semantic.provider,
+      model: semanticPreview.semantic.model,
+      fallbackReason: semanticPreview.semantic.fallbackReason,
+      coverage01: semanticPreview.semantic.coverage01,
+      indexedItems: semanticPreview.semantic.indexedItems,
+      corpusItems: semanticPreview.semantic.corpusItems,
+    };
+    if (semanticPreview.semantic.enabled) {
+      rankedChannels = {
+        ...baseline.rankedChannels,
+        vector: semanticPreview.items.map(item => item.id),
+      };
+      if (channelWeights === undefined && settings.semanticWeight !== undefined) {
+        channelWeights = { vector: settings.semanticWeight };
+      } else if (channelWeights !== undefined && settings.semanticWeight !== undefined) {
+        if (!isPlainRecord(channelWeights)) throw new TypeError('channelWeights must be a plain data record');
+        const copiedWeights = Object.create(null);
+        for (const name of Object.keys(channelWeights)) {
+          const existing = readFields(channelWeights, [name]);
+          if (!existing) throw new TypeError(`channel weight ${name} must be own data`);
+          copiedWeights[name] = existing[name];
+        }
+        copiedWeights.vector = copiedWeights.vector ?? settings.semanticWeight;
+        channelWeights = copiedWeights;
+      }
+    }
+  }
+
+  const result = evaluateMemoryOS2ShadowPreview({ ...baseline, rankedChannels }, {
+    limit,
+    rrfK: settings.rrfK,
+    maxCandidatesPerChannel: maxPerChannel,
+    channelWeights,
+  });
+  return { ...result, semantic };
 }
