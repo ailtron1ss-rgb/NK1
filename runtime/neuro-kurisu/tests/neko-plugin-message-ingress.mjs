@@ -277,4 +277,22 @@ function harness(options = {}) {
   assert.equal(second.calls.steps.length, 1);
 }
 
-console.log('NEKO_PLUGIN_MESSAGE_INGRESS=PASS cases=12');
+// Checkpoints reject terminal results without an error code and non-canonical fingerprints.
+{
+  const original = harness();
+  await original.ingress.handle({
+    identity: { pluginId: 'notes', messageId: 'malformed-receipt' },
+    payload: base({ message_id: 'malformed-receipt', visibility: [] }),
+  });
+  const snapshot = original.ingress.snapshot();
+  const restored = harness();
+  const missingError = structuredClone(snapshot);
+  missingError.receipts[0].result = { accepted: false };
+  assert.equal(restored.ingress.restore(missingError), 0);
+
+  const uppercaseFingerprint = structuredClone(snapshot);
+  uppercaseFingerprint.receipts[0].fingerprint = uppercaseFingerprint.receipts[0].fingerprint.toUpperCase();
+  assert.equal(restored.ingress.restore(uppercaseFingerprint), 0);
+}
+
+console.log('NEKO_PLUGIN_MESSAGE_INGRESS=PASS cases=13');
