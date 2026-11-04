@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "runtimeRoot": "..",
+  "requiredFiles": [
+    "src/organism/core/OrganismCore.ts",
+    "src/organism/core/OrganismRuntime.ts",
+    "src/organism/core/OrganismSystemFabric.ts",
+    "src/organism/core/CognitiveSubsystemRegistry.ts",
+    "src/organism/core/MemorySubsystemRuntime.ts",
+    "src/organism/system/CognitiveEventFabric.ts",
+    "src/organism/system/CycleCompletenessPolicy.ts",
+    "src/organism/system/UnifiedCognitiveCycle.ts",
+    "src/organism/developmental/MemoryOS2.ts",
+    "src/organism/memory/MemoryFabric.ts",
+    "src/organism/learning/P23LearningEngine.ts",
+    "src/organism/learning/ProceduralSkillLibrary.ts",
+    "src/organism/learning/IndependentSkillCandidateEvaluator.ts",
+    "src/organism/learning/PairedSeedConfidence.ts",
+    "src/organism/cognition/IntrinsicMotivationEngine.ts",
+    "src/organism/cognition/IntrinsicMotivationGoalCoupling.ts",
+    "src/organism/body/EmbodimentRuntime.ts",
+    "src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts"
+  ],
+  "entrypoints": [
+    { "name": "runtime", "path": "src/organism/core/OrganismRuntime.ts" },
+    { "name": "composition", "path": "src/organism/core/OrganismSystemFabric.ts" },
+    { "name": "causalLedger", "path": "src/organism/system/CognitiveEventFabric.ts" }
+  ],
+  "modules": [
+    { "id": "composition", "domain": "architecture", "path": "src/organism/core/OrganismSystemFabric.ts", "status": "EXISTS", "claim": "Seven physical subsystems are constructed in one composition root." },
+    { "id": "runtime", "domain": "architecture", "path": "src/organism/core/OrganismRuntime.ts", "status": "EXISTS", "claim": "Runtime loop, scheduler, persistence and cognitive integration." },
+    { "id": "cognitive-core", "domain": "cognition", "path": "src/organism/core/OrganismCore.ts", "status": "EXISTS", "claim": "Central cognitive state and orchestration owner." },
+    { "id": "subsystem-registry", "domain": "architecture", "path": "src/organism/core/CognitiveSubsystemRegistry.ts", "status": "EXISTS", "claim": "Read-only ports, health and ownership diagnostics." },
+    { "id": "memory-os", "domain": "memory", "path": "src/organism/developmental/MemoryOS2.ts", "status": "EXISTS", "claim": "Canonical writable memory record owner." },
+    { "id": "memory-fabric", "domain": "memory", "path": "src/organism/memory/MemoryFabric.ts", "status": "EXISTS", "claim": "Canonical memory lifecycle command boundary." },
+    { "id": "cef", "domain": "causal-evidence", "path": "src/organism/system/CognitiveEventFabric.ts", "status": "EXISTS", "claim": "Causal cycle events and explicit parent-edge verification." },
+    { "id": "cycle-policy", "domain": "causal-evidence", "path": "src/organism/system/CycleCompletenessPolicy.ts", "status": "EXISTS", "claim": "Strict 11-stage full-cycle acceptance." },
+    { "id": "unified-cycle", "domain": "causal-evidence", "path": "src/organism/system/UnifiedCognitiveCycle.ts", "status": "EXISTS", "claim": "Full-cycle counters; legacy six-stage metrics are not promoted." },
+    { "id": "metacognition", "domain": "metacognition", "path": "src/organism/cognition/MetaCognitiveMonitor.ts", "status": "EXISTS", "claim": "Confidence, uncertainty and revision-readiness estimates." },
+    { "id": "metacognitive-memory-projection", "domain": "metacognitive", "path": "src/organism/memory/MetacognitiveMemoryProjection.ts", "status": "EXISTS", "claim": "Privacy-minimised CEF episodes projected into canonical MemoryOS2." },
+    { "id": "p23-learning", "domain": "learning", "path": "src/organism/learning/P23LearningEngine.ts", "status": "EXISTS", "claim": "Experience replay, candidate lifecycle and guarded promotion." },
+    { "id": "skill-library", "domain": "learning", "path": "src/organism/learning/ProceduralSkillLibrary.ts", "status": "EXISTS", "claim": "Versioned procedural and compound skills." },
+    { "id": "independent-evaluator", "domain": "learning", "path": "src/organism/learning/IndependentSkillCandidateEvaluator.ts", "status": "EXISTS", "claim": "Separate executor, verifier and safety scanner contracts." },
+    { "id": "intrinsic-motivation", "domain": "agency", "path": "src/organism/cognition/IntrinsicMotivationGoalCoupling.ts", "status": "EXISTS", "claim": "Couples calibrated intrinsic drive to canonical goal genesis." },
+    { "id": "embodiment-runtime", "domain": "embodiment", "path": "src/organism/body/EmbodimentRuntime.ts", "status": "EXISTS", "claim": "Body, device telemetry, voice and action gateway boundary." },
+    { "id": "local-model-provider", "domain": "model", "path": "src/organism/integration/local/OpenAICompatibleLocalChatProvider.ts", "status": "EXISTS", "claim": "Local OpenAI-compatible model transport; not a trained NK1 model." },
+    { "id": "ru-en-independent-memory-holdout", "domain": "evaluation", "path": "tests/memory-retrieval-experiment.mjs", "status": "GAP", "claim": "Independent bilingual holdout uplift is not yet proven." },
+    { "id": "browser-live2d-device-e2e", "domain": "embodiment", "path": "tests/browser-live2d-e2e.mjs", "status": "GAP", "claim": "Real browser/renderer visual assertions and device soak remain open." },
+    { "id": "android-audio-soak", "domain": "embodiment", "path": "tests/android-audio-soak.mjs", "status": "GAP", "claim": "Real-phone audio clock/interruption/thermal soak remains open." },
+    { "id": "licensed-production-avatar", "domain": "release", "path": "assets/licensed-avatar/NOTICE.md", "status": "GAP", "claim": "Separately licensed production 3D/avatar asset and human license review." },
+    { "id": "completion-kit", "domain": "evaluation", "path": "completion-kit/README_RU.md", "status": "NEW", "claim": "Read-only audits, external proof re-checks and completion gates." }
+  ]
+}
