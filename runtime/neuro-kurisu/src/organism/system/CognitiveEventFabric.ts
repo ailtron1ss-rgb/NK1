@@ -524,14 +524,25 @@ export class CognitiveEventFabric {
       predictedOutcomeHash:input.predictedOutcomeHash.toLowerCase(),observedOutcomeHash:input.observedOutcomeHash.toLowerCase(),
       decisionRationaleHash:input.decisionRationaleHash.toLowerCase(),predictionError01:input.predictionError01,
       confidence01:input.confidence01,reflectionKind:input.reflectionKind,correctionDisposition:input.correctionDisposition,
-      cycleParentIds,
+      ...(cycleParentIds?{cycleParentIds}:{}),
     };
     const projectionHash=sha256Stable(normalized);
     const eventId='cef:metacognitive:'+sha256Stable({cycleIdHash:normalized.cycleIdHash,tick:input.tick,action:action.id}).slice(0,48);
     const prior=byId.get(eventId);
     if(prior){
-      if(prior.stage!=='metacognition'||prior.payload.projectionHash!==projectionHash)throw new Error('metacognitive-episode-id-conflict');
-      return{resolved:true,replayed:true,eventId,projectionHash};
+      if(prior.stage!=='metacognition')throw new Error('metacognitive-episode-id-conflict');
+      if(prior.payload.projectionHash===projectionHash)return{resolved:true,replayed:true,eventId,projectionHash};
+      // Pre-full-cycle snapshots used the same deterministic episode ID but did not
+      // include cycleParentIds. Preserve replay compatibility without rewriting history.
+      if(!Array.isArray(prior.payload.cycleParentIds)){
+        const legacyNormalized={...normalized};
+        delete (legacyNormalized as {cycleParentIds?:string[]}).cycleParentIds;
+        const legacyProjectionHash=sha256Stable(legacyNormalized);
+        if(prior.payload.projectionHash===legacyProjectionHash){
+          return{resolved:true,replayed:true,eventId,projectionHash:legacyProjectionHash};
+        }
+      }
+      throw new Error('metacognitive-episode-id-conflict');
     }
     const at=Number.isFinite(input.at)?Number(input.at):Date.now();
     const event=this.append({id:eventId,tick:input.tick,stage:'metacognition',source:'metacognitive-episode-ledger',parentIds:cycleParentIds??[learning.id,outcome.id,...(prediction?[prediction.id]:[]),...(observation?[observation.id]:[])],external:false,confidence01:input.confidence01,at,payload:{...normalized,projectionHash}});
