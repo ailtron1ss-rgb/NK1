@@ -8,6 +8,7 @@ import type { SourceGraph } from './SourceGraph.ts';
 import { evaluateModification, type GuardResult } from './SelfModificationGuard.ts';
 import { evaluateProxyDivergence, type DivergenceResult, type PairedObservation } from './ProxyDivergenceGuard.ts';
 import { assessDanger, isWithinDangerEnvelope, DEFAULT_DANGER_THRESHOLDS, type DangerAssessment, type DangerThresholds } from './DangerModel.ts';
+import { verifyPatchReceipt, type PatchReceipt } from './PatchReceiptGuard.ts';
 
 export interface EvolveBlock { file: string; startLine: number; endLine: number; }
 export interface SelfImprovementCandidate {
@@ -182,6 +183,33 @@ export class SelfImprovementCandidatePool {
     this.rejected.push({ candidateId, reason });
     if (this.rejected.length > MAX_REJECTIONS) this.rejected.shift();
     return { accepted: false, candidateId, reason };
+  }
+
+  /**
+   * Cryptographically verified admission path for executable candidates.
+   * submit() remains a metrics-only in-memory ranking API; it does not authorize
+   * staging or executing a patch.
+   */
+  submitVerified(input: unknown, graph: SourceGraph, proof: unknown): AdmissionResult {
+    const normalized = normalizeCandidate(input);
+    if (!normalized.candidate) return this.reject(normalized.candidateId, normalized.reason ?? 'malformed-candidate');
+    if (!isPlainRecord(proof)) return this.reject(normalized.candidate.candidateId, 'patch-receipt:proof-malformed');
+    const patchText = ownData(proof, 'patchText');
+    const expectedBaseSha = ownData(proof, 'expectedBaseSha');
+    const receipt = ownData(proof, 'receipt') as PatchReceipt | undefined;
+    const trustedPublicKeys = ownData(proof, 'trustedPublicKeys');
+    if (typeof patchText !== 'string' || typeof expectedBaseSha !== 'string' || !receipt || !isPlainRecord(trustedPublicKeys)) {
+      return this.reject(normalized.candidate.candidateId, 'patch-receipt:proof-malformed');
+    }
+    const verification = verifyPatchReceipt(receipt, {
+      patchText,
+      expectedBaseSha,
+      expectedTargetFiles: normalized.candidate.targetFiles,
+      evolveBlocks: normalized.candidate.evolveBlocks,
+      trustedPublicKeys: trustedPublicKeys as Record<string, string>,
+    });
+    if (!verification.ok) return this.reject(normalized.candidate.candidateId, 'patch-receipt:' + verification.reason);
+    return this.submit(input, graph);
   }
 
   submit(input: unknown, graph: SourceGraph): AdmissionResult {
