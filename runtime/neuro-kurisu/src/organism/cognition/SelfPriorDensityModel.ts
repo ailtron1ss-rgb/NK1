@@ -83,7 +83,7 @@ export class SelfPriorDensityModel{
     const prediction=this.predict(vector),baseAlpha=Math.min(.2,2/(this.state.effectiveSamples+2));
     const highMismatch=prediction.confidence01>=.5&&prediction.mismatch01>=.35;
     const nextMismatchStreak=highMismatch?Math.min(32,this.state.highMismatchStreak+1):0;
-    const surpriseAdjustedAlpha=baseAlpha*(1-.65*prediction.mismatch01*prediction.confidence01);
+    const surpriseAdjustedAlpha=baseAlpha*(1-.85*prediction.mismatch01*prediction.confidence01);
     // Isolated surprise is resisted; persistent coherent mismatch is treated as
     // a regime shift so legitimate self-development is not permanently penalized.
     const alpha=nextMismatchStreak>=5?Math.max(surpriseAdjustedAlpha,Math.min(.12,baseAlpha*3)):surpriseAdjustedAlpha;
