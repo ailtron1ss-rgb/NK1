@@ -78,7 +78,7 @@ Evidence receipts are immutable local files. They are not yet automatically uplo
 
 ## Not included / not claimed
 
-No external service has been connected by this change. No API keys or database schemas were created. No remote agent is running continuously. No self-modification pipeline, sandbox isolation, independent verifier, production dashboard or Release ZIP integration is claimed. Those are separate implementation gates.
+Vibelets is intentionally excluded from the active capability catalog per user instruction. No external service has been connected by this change. No API keys or database schemas were created. No remote agent is running continuously. No self-modification pipeline, sandbox isolation, independent verifier, production dashboard or Release ZIP integration is claimed. Those are separate implementation gates.
 
 ## Next engineering passes
 
