@@ -170,7 +170,7 @@ export interface MemoryRetrievalArmEvidenceV1 {
   dormant:boolean;
   invalidEpistemicStatus:boolean;
 }
-export interface MemoryRetrievalQueryEvidenceV1 {
+export interface MemoryRetrievalQueryEvidenceV2 {
   exampleIdDigest:string;
   independenceGroupDigest:string;
   queryDigest:string;
@@ -180,13 +180,13 @@ export interface MemoryRetrievalQueryEvidenceV1 {
   relevantMemoryIdDigests:string[];
   rankedMemory:MemoryRetrievalArmEvidenceV1[];
 }
-type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[];unsupportedRetrievalOutcomes:BootstrapValueOutcome[];queryEvidence:MemoryRetrievalQueryEvidenceV1[]};
+type Evaluation={metrics:RetrievalBenchmarkMetrics;outcomes:QueryOutcome[];unsupportedRetrievalOutcomes:BootstrapValueOutcome[];queryEvidence:MemoryRetrievalQueryEvidenceV2[]};
 
 function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:string,k:number)=>BenchmarkRetrievalResult, k:number, now:number, includeQueryEvidence=false, digestEvidence?:(value:string)=>string):Evaluation {
   let recall=0,mrr=0,precision=0,covered=0,quarantined=0,stale=0,future=0,dormant=0,invalidEpistemic=0,duplicates=0,invalid=0;
   let answerableQueries=0,unanswerableQueries=0,unsupportedRetrievalCount=0,falseAbstentionCount=0;
   const latency:number[]=[]; const setupLatency:number[]=[]; const outcomes:QueryOutcome[]=[]; const unsupportedRetrievalOutcomes:BootstrapValueOutcome[]=[];
-  const queryEvidence:MemoryRetrievalQueryEvidenceV1[]=[];
+  const queryEvidence:MemoryRetrievalQueryEvidenceV2[]=[];
   for(const ex of examples){
     const start=performance.now();
     let results:MemoryItem2[]=[];
@@ -199,7 +199,9 @@ function evaluate(examples:MemoryRetrievalBenchmarkExample[], retrieve:(query:st
     for(const row of results){if(!row?.id){invalid++;continue;} if(ids.has(row.id)){duplicates++;dup=true;} ids.add(row.id); if(row.epistemicStatus==='quarantined')quarantined++;if((row.validUntilAt!=null&&Number(row.validUntilAt)<=now)||(row.supersededById!=null&&row.validUntilAt==null))stale++;if(row.validFromAt!=null&&Number(row.validFromAt)>now)future++;if(row.dormant)dormant++;if(!['fact','belief','hypothesis','unknown','quarantined'].includes(String(row.epistemicStatus)))invalidEpistemic++;}
     const relevant=new Set(ex.relevantIds);
     const answerable=ex.answerable!==false;
-    const independenceGroupId=textField(ex.independenceGroupId,120)||ex.id;
+    const explicitIndependenceGroupId=textField(ex.independenceGroupId,120);
+    if(includeQueryEvidence&&!explicitIndependenceGroupId)throw new Error('memory-query-evidence-independence-group-required');
+    const independenceGroupId=explicitIndependenceGroupId||ex.id;
     const hits=results.filter(row=>row?.id&&relevant.has(row.id));
     if(includeQueryEvidence){
       if(typeof digestEvidence!=='function')throw new Error('memory-query-evidence-hash-key-required');
@@ -577,7 +579,7 @@ export function runMemoryOS2RetrievalBenchmark(snapshot: MemoryOSState2, rawExam
   const enoughEvidence=labelledHoldoutQueries>=minHoldout&&dataIntegrity.uniqueTrainQueries>=4&&corpus.length>=12;
   const enoughUnanswerableEvidence=unanswerableHoldoutQueries>=minUnanswerableHoldout;
   const queryEvidence=includeQueryEvidence?{
-    schemaVersion:1 as const,
+    schemaVersion:2 as const,
     digestAlgorithm:'hmac-sha256-ephemeral-per-experiment' as const,
     queryNormalization:'NFKC-lower-punctuation-symbol-and-whitespace-normalization' as const,
     k,
