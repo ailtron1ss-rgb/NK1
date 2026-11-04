@@ -2319,6 +2319,23 @@ export class OrganismCore {
     derivedWorldPreviewSnapshot() { return this.organismSystems.world.derivedWorldPreviewCache.snapshot(); }
     cognitiveKernelSnapshot() { return this.cognitiveRuntime.cognitiveKernelCoordinator.snapshot(); }
     async flush(): Promise<void> { await this.checkpoint(true); }
+    previewNekoKnowledgePack(rawBytes: Uint8Array) {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        return this.memorySubsystem.nekoKnowledgePackImporter.preview(new Uint8Array(rawBytes));
+    }
+    async importNekoKnowledgePack(rawBytes: Uint8Array, approval: import('../integration/neko/NekoKnowledgePackImporter.ts').NekoKnowledgePackImportApproval) {
+        if (!this.ready)
+            throw new Error('OrganismCore.init() must be called first');
+        const safeApproval = approval && typeof approval === 'object'
+            ? { approved: approval.approved, licenseAccepted: approval.licenseAccepted, entryIndices: Array.isArray(approval.entryIndices) ? [...approval.entryIndices] : undefined }
+            : approval;
+        const result = this.memorySubsystem.nekoKnowledgePackImporter.import(new Uint8Array(rawBytes), safeApproval, { tick: this.persisted.state.tick });
+        this.persisted.facets.advanced.memoryFabric = this.memorySubsystem.fabric.snapshot();
+        this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot({ clone: false });
+        await this.checkpoint(true);
+        return result;
+    }
     forgetMemoryById(id: string, reason = 'memory-knockout'): boolean { const removed = this.memorySubsystem.fabric.forgetById(String(id), reason); if (removed) {
         this.persisted.facets.advanced.memoryOS = this.memorySubsystem.memoryOS.snapshot();
         this.persisted.facets.memory.autobiographicalMemories = this.memorySubsystem.memorySubstrate.projectCompatibilityRecords(this.memorySubsystem.memoryOS.snapshot({ clone: false }), 48);
