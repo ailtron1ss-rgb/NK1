@@ -107,11 +107,11 @@ export function combineRankedMemoryChannels(input) {
     if (typeof name !== 'string' || !/^[a-z][a-z0-9_-]{0,31}$/i.test(name)) throw new TypeError('invalid channel name');
     if (names.has(name)) throw new TypeError('duplicate channel name');
     names.add(name);
-    if (!Number.isFinite(weight) || weight <= 0 || weight > 4) throw new TypeError('channel weight out of bounds');
+    if (!Number.isFinite(weight) || weight < 0 || weight > 4) throw new TypeError('channel weight out of bounds');
 
     const candidateRows = readDensePrefix(candidates, maxCandidatesPerChannel);
     if (!candidateRows) throw new TypeError('candidates must be a dense data array');
-    const seen = new Set();
+    if (weight === 0) {\n      diagnostics.candidatesSeen += candidateRows.items.length;\n      continue;\n    }\n    const seen = new Set();
     for (let index = 0; index < candidateRows.items.length; index += 1) {
       const candidate = readFields(candidateRows.items[index], ['id', 'subjectId']);
       diagnostics.candidatesSeen += 1;
