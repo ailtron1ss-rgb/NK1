@@ -7,6 +7,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/integration/neko/PluginMessageIngress.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/neko-plugin-message-ingress.mjs"
+      - "runtime/neuro-kurisu/docs/NEKO_PLUGIN_MESSAGE_INGRESS_RU.md"
       - ".github/workflows/nk1-neko-plugin-message-ingress.yml"
   push:
     branches: [workpass70-source, "aspect/**"]
@@ -14,6 +15,7 @@ on:
       - "runtime/neuro-kurisu/src/organism/integration/neko/PluginMessageIngress.ts"
       - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
       - "runtime/neuro-kurisu/tests/neko-plugin-message-ingress.mjs"
+      - "runtime/neuro-kurisu/docs/NEKO_PLUGIN_MESSAGE_INGRESS_RU.md"
       - ".github/workflows/nk1-neko-plugin-message-ingress.yml"
 
 permissions:
