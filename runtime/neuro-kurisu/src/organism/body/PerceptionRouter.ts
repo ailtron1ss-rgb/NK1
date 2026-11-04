@@ -36,15 +36,26 @@ export function sanitizePerceptionRoutingState(raw: unknown): PerceptionRoutingS
   return { version:1, lastRoutedAt, routedCount, droppedCount, lastRoute: r.lastRoute as PerceptionRoutingState['lastRoute'] };
 }
 
-export function routePerception(event: PerceptionEvent, body?: OrganismBodyState): PerceptionRoutingState {
+/**
+ * Route one perception event and fold it into the running counters.
+ *
+ * The persisted state is written every tick, so the counters must accumulate from
+ * the previous state: returning a fixed `1` resets the durable totals on the very
+ * next tick and makes the restore path meaningless. `previous` is sanitized first,
+ * so a malformed prior state restarts from zero rather than propagating garbage.
+ */
+export function routePerception(event: PerceptionEvent, body?: OrganismBodyState, previous?: unknown): PerceptionRoutingState {
+  const prior = sanitizePerceptionRoutingState(previous);
+  const routedCount = prior.routedCount;
+  const droppedCount = prior.droppedCount;
   if (!event) {
-    return { ...defaultPerceptionRoutingState(), lastRoutedAt:Date.now(), droppedCount:1, lastRoute:'none' };
+    return { version:1, lastRoutedAt:Date.now(), routedCount, droppedCount:droppedCount + 1, lastRoute:'none' };
   }
   if (body && body.awake === false && event.salience < 0.55) {
-    return { ...defaultPerceptionRoutingState(), lastRoutedAt:Date.now(), droppedCount:1, lastRoute:'none' };
+    return { version:1, lastRoutedAt:Date.now(), routedCount, droppedCount:droppedCount + 1, lastRoute:'none' };
   }
   const route: PerceptionRoutingState['lastRoute'] = event.kind === 'resource' ? 'homeostasis' : event.kind === 'motion' || event.kind === 'proximity' ? 'attention' : event.kind === 'text-input' || event.kind === 'world-surprise' ? 'workspace' : event.kind === 'quiet' ? 'none' : 'memory';
-  return { version:1, lastRoutedAt:Date.now(), routedCount:1, droppedCount:0, lastRoute:route };
+  return { version:1, lastRoutedAt:Date.now(), routedCount:routedCount + 1, droppedCount, lastRoute:route };
 }
 
 export function eventToExternalDetail(event: PerceptionEvent): OrganismBodyEvent {

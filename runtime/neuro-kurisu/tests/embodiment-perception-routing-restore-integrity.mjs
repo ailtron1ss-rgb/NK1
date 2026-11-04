@@ -9,6 +9,14 @@ const source = new EmbodimentSubsystemRuntime();
 source.routePerception({ kind: 'text-input', at: 1, detail: 'hello', salience: 0.9 });
 assert.equal(source.perceptionRoutingSnapshot().routedCount, 1);
 
+// Counters must accumulate across ticks. The state is persisted every tick, so a
+// literal `routedCount: 1` would reset the durable total on the next event and make
+// the restore below meaningless. Two events must yield routedCount 2, not 1.
+source.routePerception({ kind: 'motion', at: 2, detail: 'walk', salience: 0.9 });
+assert.equal(source.perceptionRoutingSnapshot().routedCount, 2, 'routed counters must accumulate across ticks');
+source.routePerception({ kind: 'quiet', at: 3, detail: 'idle', salience: 0.1 }, { awake: false });
+assert.equal(source.perceptionRoutingSnapshot().droppedCount, 1, 'dropped counters must accumulate while asleep');
+
 const persistedFacet = { version: 1, lastRoutedAt: 4242, routedCount: 7, droppedCount: 3, lastRoute: 'workspace' };
 const restored = new EmbodimentSubsystemRuntime();
 restored.restoreFromPersisted({ embodiment: { perceptionRouting: persistedFacet } });

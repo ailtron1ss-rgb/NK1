@@ -72,7 +72,7 @@ export class EmbodimentSubsystemRuntime {
     this.perceptionRouting = sanitizePerceptionRoutingState(embodiment.perceptionRouting);
   }
 
-  routePerception(event: PerceptionEvent, body?: OrganismBodyState) { this.perceptionRouting = routePerception(event, body); return this.perceptionRouting; }
+  routePerception(event: PerceptionEvent, body?: OrganismBodyState) { this.perceptionRouting = routePerception(event, body, this.perceptionRouting); return this.perceptionRouting; }
   perceptionRoutingSnapshot(){ return { ...this.perceptionRouting }; }
 
   snapshot() { return {
