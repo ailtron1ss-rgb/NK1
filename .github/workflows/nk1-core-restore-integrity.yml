@@ -157,6 +157,12 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
       - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
       - runtime/neuro-kurisu/src/organism/cognition/B267AdaptiveRegimeController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2511ActiveEpistemicExperimentController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2512EpistemicSemanticAutobiographicalConsolidator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2509EmbodiedHomeostaticActionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2853SlowMemoryConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalMemorySubstrate.ts
+      - runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -320,6 +326,12 @@ on:
       - runtime/neuro-kurisu/src/organism/learning/LongitudinalSubjectTransferBattery.ts
       - runtime/neuro-kurisu/src/organism/learning/CognitiveOrganismContinuityEngine.ts
       - runtime/neuro-kurisu/src/organism/cognition/B267AdaptiveRegimeController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2511ActiveEpistemicExperimentController.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2512EpistemicSemanticAutobiographicalConsolidator.ts
+      - runtime/neuro-kurisu/src/organism/cognition/B2509EmbodiedHomeostaticActionField.ts
+      - runtime/neuro-kurisu/src/organism/cognition/P2853SlowMemoryConsolidationController.ts
+      - runtime/neuro-kurisu/src/organism/memory/HippocampalMemorySubstrate.ts
+      - runtime/neuro-kurisu/src/organism/memory/ExperienceContinuumFabric.ts
       - runtime/neuro-kurisu/src/organism/cognition/P2734SelfOptimizingContinualController.ts
       - runtime/neuro-kurisu/src/organism/cognition/SelfOptimizingAutobiographicalMemory.ts
       - runtime/neuro-kurisu/src/organism/cognition/NeuralTemporalSubstrate.ts
@@ -456,6 +468,15 @@ jobs:
           node --experimental-strip-types tests/p2774-model-time-replay.mjs
           node --experimental-strip-types tests/big-pass-2627-2640-ablation.mjs
           node --experimental-strip-types tests/big-pass-267-migration-roundtrip.mjs
+          node --experimental-strip-types tests/big-pass-74-experience-continuum.mjs
+          node --experimental-strip-types tests/p2687-experience-continuum-integration.mjs
+          node --experimental-strip-types tests/p2687-snapshot-benchmark.mjs
+          node --experimental-strip-types tests/big-pass-74-cold-compression.mjs
+          node --experimental-strip-types tests/big-pass-103-memory-transfer.mjs
+          node --experimental-strip-types tests/big-pass-185-hippocampal-memory.mjs
+          node --experimental-strip-types tests/big-pass-2511-active-epistemic.mjs
+          node --experimental-strip-types tests/big-pass-2512-holdout.mjs
+          node --experimental-strip-types tests/big-pass-2509-2510-embodiment-personality.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs

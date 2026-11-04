@@ -7,6 +7,12 @@ const norm=(v:number[])=>Math.sqrt(Math.max(1e-9,dot(v,v)));
 const cosine01=(a:number[],b:number[])=>clamp(.5+.5*dot(a,b)/(norm(a)*norm(b)));
 const hash=(xs:number[])=>{let h=2166136261>>>0;for(const x of xs){const q=Math.round(clamp(x,-1,1)*1000)|0;h^=q;h=Math.imul(h,16777619);}return (h>>>0).toString(16).padStart(8,'0');};
 
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const C01=(v:unknown,f:number):number=>Math.max(0,Math.min(1,finN(v,f)));
+const vec24=(v:unknown):number[]=>Array.isArray(v)?Array.from({length:24},(_,i)=>Math.max(-1,Math.min(1,finN((v as unknown[])[i],0)))):new Array(24).fill(0);
+const actOr=(v:unknown,f:ActionKind):ActionKind=>ACTIONS.includes(v as ActionKind)?v as ActionKind:f;
+const strList=(v:unknown,n:number):string[]=>Array.isArray(v)?(v as unknown[]).filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,160)).slice(0,n):[];
 export interface B2512Episode{
   id:string;tick:number;action:ActionKind;reward01:number;predictionError01:number;verified01:number;autonomous01:number;informationGain01:number;novelty01:number;uncertainty01:number;salience01:number;source:string;selfLatent:number[];worldLatent:number[];goalLatent:number[];memoryLatent:number[];traitVector:number[];
 }
@@ -23,6 +29,8 @@ export interface B2512Output{
   semanticBias:Record<ActionKind,number>;semanticLatent:number[];semanticConfidence01:number;memoryIntegrity01:number;identityFirewall01:number;informationPriority01:number;consolidate01:number;factCount:number;
 }
 
+const sanFact=(key:string,x:unknown):B2512SemanticFact|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {key:(typeof r.key==='string'&&r.key?r.key.slice(0,160):key).slice(0,160),value01:C01(r.value01,.5),confidence01:C01(r.confidence01,.2),support01:C01(r.support01,0),contradiction01:C01(r.contradiction01,0),count:cnt(r.count,0),verifiedCount:cnt(r.verifiedCount,0),lastTick:cnt(r.lastTick,0),provenance:strList(r.provenance,8)};};
+const sanEpisode=(x:unknown):B2512Episode|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;const tick=cnt(r.tick,0);const id=typeof r.id==='string'&&r.id?r.id.slice(0,160):`ep:${tick}`;return {id,tick,action:actOr(r.action,'wait'),reward01:C01(r.reward01,.5),predictionError01:C01(r.predictionError01,.5),verified01:C01(r.verified01,0),autonomous01:C01(r.autonomous01,0),informationGain01:C01(r.informationGain01,0),novelty01:C01(r.novelty01,.5),uncertainty01:C01(r.uncertainty01,.5),salience01:C01(r.salience01,.5),source:typeof r.source==='string'?r.source.slice(0,160):'',selfLatent:vec24(r.selfLatent),worldLatent:vec24(r.worldLatent),goalLatent:vec24(r.goalLatent),memoryLatent:vec24(r.memoryLatent),traitVector:vec24(r.traitVector)};};
 export const defaultB2512State=():B2512State=>({version:1,enabled:true,tick:0,episodes:0,learningUpdates:0,consolidationCycles:0,facts:{},semanticLatent:new Array(24).fill(0),semanticConfidence01:.2,memoryIntegrity01:1,identityFirewall01:1,semanticUtility01:0,gatedRate01:.5,contradictions01:0,rawRetentionCount:0,lastConsolidationTick:0,maxEpisodes:192,maxFacts:64,identityRevisionAtStart:0,identityRevisionObserved:0,rawEpisodes:[]});
 
 export class B2512EpistemicSemanticAutobiographicalConsolidator{
@@ -30,7 +38,15 @@ export class B2512EpistemicSemanticAutobiographicalConsolidator{
   private state=defaultB2512State();
   private last:B2512Output|null=null;
   snapshot(){return structuredClone(this.state);}
-  restore(raw?:any){const d=defaultB2512State(),r=raw??{};this.state={...d,...structuredClone(r),version:1,facts:{...d.facts,...(r.facts??{})},semanticLatent:Array.isArray(r.semanticLatent)?r.semanticLatent.slice(0,24):d.semanticLatent};this.state.rawEpisodes=Array.isArray(r.rawEpisodes)?r.rawEpisodes.slice(-d.maxEpisodes):[];this.state.episodes=this.state.rawEpisodes.length;this.state.rawRetentionCount=this.state.rawEpisodes.length;}
+  restore(raw?:any){
+    const d=defaultB2512State();const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const factsRaw=read('facts');const facts:Record<string,B2512SemanticFact>={};
+    if(factsRaw&&typeof factsRaw==='object'&&!Array.isArray(factsRaw)){const entries=Object.entries(factsRaw as Record<string,unknown>).slice(0,64);for(const [k,v] of entries){const f=sanFact(k,v);if(f)facts[k.slice(0,160)]=f;}}
+    const epRaw=read('rawEpisodes');
+    const rawEpisodes=Array.isArray(epRaw)?epRaw.slice(-d.maxEpisodes).map(sanEpisode).filter((x):x is B2512Episode=>x!==null):[];
+    this.state={version:1,enabled:read('enabled')!==false,tick:cnt(read('tick'),d.tick),episodes:rawEpisodes.length,learningUpdates:cnt(read('learningUpdates'),d.learningUpdates),consolidationCycles:cnt(read('consolidationCycles'),d.consolidationCycles),facts,semanticLatent:vec24(read('semanticLatent')),semanticConfidence01:C01(read('semanticConfidence01'),d.semanticConfidence01),memoryIntegrity01:C01(read('memoryIntegrity01'),d.memoryIntegrity01),identityFirewall01:C01(read('identityFirewall01'),d.identityFirewall01),semanticUtility01:C01(read('semanticUtility01'),d.semanticUtility01),gatedRate01:C01(read('gatedRate01'),d.gatedRate01),contradictions01:C01(read('contradictions01'),d.contradictions01),rawRetentionCount:rawEpisodes.length,lastConsolidationTick:cnt(read('lastConsolidationTick'),d.lastConsolidationTick),maxEpisodes:d.maxEpisodes,maxFacts:d.maxFacts,identityRevisionAtStart:cnt(read('identityRevisionAtStart'),d.identityRevisionAtStart),identityRevisionObserved:cnt(read('identityRevisionObserved'),d.identityRevisionObserved),rawEpisodes};
+  }
+
   setEnabled(x:boolean){this.state.enabled=!!x;}
   beforeDecision(i:{tick:number;uncertainty01:number;novelty01:number;predictionError01:number;goalPressure01:number;actionLatent?:Record<ActionKind,number>;}):B2512Output{
     const latent=this.state.semanticLatent.slice();
