@@ -41,7 +41,7 @@ N.E.K.O. source patterns
 
 NK1 canonical owners
 ├── MemoryOS2 + MemoryFabric
-│   └── N.E.K.O. hybrid ranking → PR #774 (isolated shadow adapter)
+│   └── six-channel rank export + optional cosine preview → PR #774 (isolated shadow evaluator)
 ├── FileStateStore / RuntimeEvidenceBus / OperationalJournal
 │   └── critical-event fsync and bounded rotation → PR #775
 ├── ActionGateway
@@ -61,7 +61,7 @@ NK1 canonical owners
 
 | Stage | N.E.K.O. mechanism | NK1 adaptation / decision | State |
 |---|---|---|---|
-| 01 — retrieval | BM25 + vector + Reciprocal Rank Fusion | Combine already-ranked canonical MemoryOS2 IDs only; no second store, embeddings or prompt path | Implemented as shadow primitive in PR #774; not live-wired |
+| 01 — retrieval | BM25 + vector + Reciprocal Rank Fusion | Expose six existing MemoryOS2 rank channels from an isolated snapshot after the answerability gate; optionally add a cosine/vector preview; return IDs only and never change live ranking | Implemented in PR #774; shadow-only, not user-facing |
 | 02 — journal durability | append + fsync + bounded rotation | Serialize diagnostic writes; fsync warnings/errors and selected critical lifecycle records; leave ordinary info ticks unsynced | Implemented in PR #775; exact focused CI and typecheck passed |
 | 03 — Outbox | pending/done/attempt and dead-letter handling | Do not add another queue: NK1 ActionGateway already has durable idempotency, pending receipts and provider reconciliation. Review any gap against its canonical ledger first | Existing owner; no duplicate implementation |
 | 04 — plugin governance | plugin.toml, SDK, runtime flags and UI permission requests | Manifest UI permissions are not runtime tool capabilities. Any future importer must require host-owned capability grants, explicit permission class, bounded input/output contracts and idempotency policy | Adaptation contract only; no automatic plugin execution |
@@ -89,7 +89,7 @@ NK1 canonical owners
 - Syncs the parent directory after rotation and, for critical writes, after file fsync.
 - Uses incoming-byte-aware rotation with 1..5 bounded rotated segments.
 - Preserves the existing constructor call shape; no schema migration or new dependency.
-- Exact-head CI passed 5/5 focused tests, existing OPERATIONAL_HARDENING, and full organism runtime TYPECHECK.
+- Exact-head CI #15 passed 6/6 focused tests, existing OPERATIONAL_HARDENING, and full organism runtime TYPECHECK. WorkPass79, NeuroCore, Unified organism runtime and Action Gateway governance also passed on that head.
 - This remains a diagnostic journal, not a replayable event store or memory owner.
 
 ## 5. Security and promotion boundaries
