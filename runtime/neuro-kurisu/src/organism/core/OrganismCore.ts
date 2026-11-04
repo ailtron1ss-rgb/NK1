@@ -8367,13 +8367,13 @@ export class OrganismCore {
         const currentCycleRetrievedMemoryIds = advancedRetrieved.map(memory => String(memory.id)).slice(0, 12);
         const memoryEnabled = cognitiveExecutionPlan.run.memory === true;
         const memoryStatus = !memoryEnabled ? 'skipped' as const : currentCycleRetrievedMemoryIds.length > 0 ? 'completed' as const : 'completed_empty' as const;
-        const memoryQueryDigest = createHash('sha256').update(memoryQuery, 'utf8').digest('hex');
+        const memoryQueryDigest = createHash('sha256').update(memoryQuery).digest('hex');
         const memoryEvidence = {
             enabled: memoryEnabled,
             queryKind: memoryQueryKind,
             queryDigest: memoryQueryDigest,
             status: memoryStatus,
-            currentCycleRetrievedMemoryIds,
+            retrievedMemoryIds: currentCycleRetrievedMemoryIds,
             retrievedCount: currentCycleRetrievedMemoryIds.length,
             requestedLimit: 4,
             meanConfidence01: currentCycleRetrievedMemoryIds.length
