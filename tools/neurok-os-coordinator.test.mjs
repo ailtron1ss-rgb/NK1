@@ -90,12 +90,15 @@ test('read-set freshness detects changed context before an agent writes', async 
     }), { stateDir, root });
     assert.equal(claim.readSet.length, 1);
     const { verifyClaimFreshness } = await import('./neurok-os-coordinator.mjs');
-    assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root }), {
+    assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root, currentSha: sha }), {
       fresh: true, stalePaths: [], missingPaths: []
     });
     await writeFile(target, 'export const version = 2;\n');
-    assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root }), {
+    assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root, currentSha: sha }), {
       fresh: false, stalePaths: ['src/dependency.ts'], missingPaths: []
+    });
+    assert.deepEqual(await verifyClaimFreshness('TASK-READSET', 'agent-a', { stateDir, root, currentSha: 'b'.repeat(40) }), {
+      fresh: false, stalePaths: [], missingPaths: [], reason: 'base SHA changed; reacquire the claim'
     });
   } finally { await rm(root, { recursive: true, force: true }); }
 }));
