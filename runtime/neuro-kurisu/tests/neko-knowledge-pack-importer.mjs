@@ -124,7 +124,7 @@ test('manifest, entries, term roles and derived fields are schema-closed', () =>
     entries: [validPack().entries[0], { ...validPack().entries[0], title: '  predictive   PROCESSING  ' }],
   }))), /duplicate-entry-title/);
   assert.throws(() => importer.preview(bytes(validPack({ schema_version: 2 }))), /unsupported-schema-version/);
-  assert.throws(() => importer.preview(bytes(validPack({ pack_id: 'kurisu-basics-v1\\n' }))), /invalid-pack-id/);
+  assert.throws(() => importer.preview(bytes(validPack({ pack_id: 'kurisu-basics-v1\n' }))), /invalid-pack-id/);
   assert.throws(() => importer.preview(bytes(validPack({ entries: [] }))), /entries-required/);
 });
 
