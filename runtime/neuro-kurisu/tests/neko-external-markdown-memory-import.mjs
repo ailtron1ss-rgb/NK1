@@ -20,7 +20,8 @@ const files = [
   assert.equal(runtime.fabric.canonicalSize(), before, 'preview must not write canonical memories');
   const byKind = Object.fromEntries(preview.candidates.map(row => [row.sourceKind, row]));
   assert.equal(byKind.user.memoryKind, 'social');
-  assert.equal(byKind.soul.memoryKind, 'identity');
+  assert.equal(byKind.soul.memoryKind, 'semantic');
+  assert.equal(byKind.soul.target, 'persona', 'SOUL is retained as an external proposal, not canonical identity');
   assert.equal(byKind.memory.memoryKind, 'semantic');
   assert.equal(byKind.daily.memoryKind, 'episodic');
   assert.equal(byKind.daily.eventDate, '2026-10-31');
