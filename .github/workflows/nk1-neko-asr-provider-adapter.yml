@@ -1,0 +1,55 @@
+name: NK1 N.E.K.O. ASR provider adapter
+
+on:
+  pull_request:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-asr-provider-adapter.yml"
+  push:
+    branches: [workpass70-source]
+    paths:
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoAsrTranscriptAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/body/EmbodimentRuntime.ts"
+      - "runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts"
+      - "runtime/neuro-kurisu/tests/neko-asr-*.mjs"
+      - "runtime/neuro-kurisu/package.json"
+      - ".github/workflows/nk1-neko-asr-provider-adapter.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nk1-neko-asr-provider-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: runtime/neuro-kurisu/package-lock.json
+      - name: Install locked runtime dependencies
+        working-directory: runtime/neuro-kurisu
+        run: npm ci
+      - name: ASR transcript boundary
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-transcript-adapter
+      - name: Embodiment ASR provider wiring
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:neko-asr-embodiment-wiring
+      - name: Existing voice/cognitive context regression
+        working-directory: runtime/neuro-kurisu
+        run: npm run test:embodiment-voice-cognitive-context
+      - name: Runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck
