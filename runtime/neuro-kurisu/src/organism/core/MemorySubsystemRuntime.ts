@@ -19,6 +19,7 @@ import { HexisCanonicalEvidenceBridge } from '../integration/hexis/HexisCanonica
 import { P70MemoryLifecycleGovernor } from '../developmental/P70MemoryLifecycleGovernor.ts';
 import { P75MemoryContinuumOS } from '../developmental/P75MemoryContinuumOS.ts';
 import { MemoryFabric } from '../memory/MemoryFabric.ts';
+import { NekoKnowledgePackImporter } from '../integration/neko/NekoKnowledgePackImporter.ts';
 import { ExperienceContinuumFabric } from '../memory/ExperienceContinuumFabric.ts';
 import { HippocampalMemorySubstrate } from '../memory/HippocampalMemorySubstrate.ts';
 import { HippocampalFormationCircuit } from '../memory/HippocampalFormationCircuit.ts';
@@ -55,6 +56,8 @@ export class MemorySubsystemRuntime {
   readonly p70MemoryLifecycleGovernor = new P70MemoryLifecycleGovernor();
   readonly p75MemoryContinuumOS = new P75MemoryContinuumOS();
   readonly fabric = new MemoryFabric(this.memoryOS,this.events,this.memories,this.memorySubstrate,this.unifiedMemory,this.p62MemoryFabric,this.semanticMemory);
+  /** Bounded N.E.K.O. schema-v1 importer; MemoryFabric remains the sole write owner. */
+  readonly nekoKnowledgePackImporter = new NekoKnowledgePackImporter(this.fabric);
   /** One-way OMEGA/Hexis provenance bridge; MemoryFabric remains the canonical write boundary. */
   readonly hexisCanonicalEvidenceBridge = new HexisCanonicalEvidenceBridge(this.fabric, this.sourceMonitor, this.p65EpistemicLedger);
   readonly experienceContinuum = new ExperienceContinuumFabric();

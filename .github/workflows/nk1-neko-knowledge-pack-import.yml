@@ -1,0 +1,40 @@
+name: N.E.K.O. Knowledge Pack import
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nk1-neko-knowledge-pack-import.yml'
+      - 'runtime/neuro-kurisu/src/organism/integration/neko/**'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/neko-knowledge-pack-importer.mjs'
+      - 'runtime/neuro-kurisu/docs/NEKO_KNOWLEDGE_PACK_IMPORT_RU.md'
+      - 'runtime/neuro-kurisu/package.json'
+  push:
+    branches:
+      - 'aspect/neko-knowledge-pack-ingest-20261104'
+    paths:
+      - '.github/workflows/nk1-neko-knowledge-pack-import.yml'
+      - 'runtime/neuro-kurisu/src/organism/integration/neko/**'
+      - 'runtime/neuro-kurisu/src/organism/core/MemorySubsystemRuntime.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismCore.ts'
+      - 'runtime/neuro-kurisu/src/organism/core/OrganismRuntime.ts'
+      - 'runtime/neuro-kurisu/tests/neko-knowledge-pack-importer.mjs'
+      - 'runtime/neuro-kurisu/package.json'
+permissions:
+  contents: read
+jobs:
+  knowledge-pack-import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Knowledge Pack importer contract
+        working-directory: runtime/neuro-kurisu
+        run: node --experimental-strip-types tests/neko-knowledge-pack-importer.mjs
+      - name: Organism runtime typecheck
+        working-directory: runtime/neuro-kurisu
+        run: npm run typecheck

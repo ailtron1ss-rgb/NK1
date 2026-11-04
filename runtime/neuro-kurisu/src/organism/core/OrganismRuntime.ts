@@ -1871,6 +1871,19 @@ export class OrganismRuntime {
     });
   }
 
+  previewNekoKnowledgePack(rawBytes: Uint8Array) {
+    const ownedBytes = new Uint8Array(rawBytes);
+    return this.enqueue(async () => this.core.previewNekoKnowledgePack(ownedBytes));
+  }
+
+  importNekoKnowledgePack(
+    rawBytes: Uint8Array,
+    approval: import('../integration/neko/NekoKnowledgePackImporter.ts').NekoKnowledgePackImportApproval,
+  ) {
+    const ownedBytes = new Uint8Array(rawBytes);
+    return this.enqueue(() => this.core.importNekoKnowledgePack(ownedBytes, approval));
+  }
+
   async flush(): Promise<void> {
     return this.enqueue(async () => {
       await this.core.flush();
