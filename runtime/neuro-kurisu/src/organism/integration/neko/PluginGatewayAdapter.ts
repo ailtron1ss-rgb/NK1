@@ -1,3 +1,4 @@
+import type { NekoPluginEventBridgePort, NekoPluginEventBridgeResult } from './NekoPluginEventBridge.ts';
 import { types as nodeUtilTypes } from 'node:util';
 
 export type NekoPluginAction = 'tool_call' | 'resource_read' | 'event_push';
@@ -53,6 +54,8 @@ export interface PluginGatewayAdapterOptions {
   maxResultBytes?: number;
   maxDepth?: number;
   maxProperties?: number;
+  /** Optional host-owned observer/event-fabric bridge. Missing bridge keeps event_push disabled. */
+  eventBridge?: NekoPluginEventBridgePort;
 }
 
 export interface PluginGatewayAdapterResponse {
@@ -64,6 +67,7 @@ export interface PluginGatewayAdapterResponse {
     verified: boolean;
     outcomeClass: string;
     resultOmitted?: boolean;
+    replayed?: boolean;
   };
 }
 
@@ -73,7 +77,7 @@ const SAFE_ID = /^[a-z0-9][a-z0-9._-]{0,79}$/i;
 const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
 const REQUEST_KEYS = new Set([
   'protocol', 'connectionId', 'requestId', 'action', 'pluginId', 'toolId', 'params',
-  'idempotencyKey', 'approvalId',
+  'idempotencyKey', 'approvalId', 'eventId',
   // Explicitly ignored compatibility fields; neither can confer host authority.
   'decisionId', 'autonomous',
 ]);
@@ -190,6 +194,7 @@ export class PluginGatewayAdapter {
   private readonly maxResultBytes: number;
   private readonly maxDepth: number;
   private readonly maxProperties: number;
+  private readonly eventBridge?: NekoPluginEventBridgePort;
 
   constructor(options: PluginGatewayAdapterOptions) {
     if (!options || !options.gateway || typeof options.gateway.listTools !== 'function' ||
@@ -201,6 +206,7 @@ export class PluginGatewayAdapter {
     }
     this.gateway = options.gateway;
     this.authorize = options.authorize;
+    this.eventBridge = options.eventBridge;
     this.allowedProtocols = new Set(options.allowedProtocols.map(protocol => protocol.toLowerCase()));
     this.maxPayloadBytes = this.boundedOption(options.maxPayloadBytes, 65_536, 64, 2_097_152);
     this.maxResultBytes = this.boundedOption(options.maxResultBytes, 65_536, 64, 2_097_152);
@@ -229,7 +235,6 @@ export class PluginGatewayAdapter {
       return error('invalid-request', 'request-fields-invalid');
     }
     const action = raw.action as NekoPluginAction;
-    if (action === 'event_push') return error('unsupported-action', 'event-push-requires-a-host-event-bus-adapter');
     if (!raw.toolId.startsWith(`${raw.pluginId}.`)) return error('tool-not-available', 'tool-outside-plugin-namespace');
 
     const params = cloneSafeJson(raw.params, this.maxDepth, this.maxProperties);
@@ -245,7 +250,42 @@ export class PluginGatewayAdapter {
       (isBoundedString(raw.idempotencyKey, 160) ? raw.idempotencyKey : null);
     const approvalId = raw.approvalId === undefined ? undefined :
       (isBoundedString(raw.approvalId, 200) ? raw.approvalId : null);
-    if (idempotencyKey === null || approvalId === null) return error('invalid-request', 'request-credential-invalid');
+    const eventId = raw.eventId === undefined ? undefined :
+      (isBoundedString(raw.eventId, 160) ? raw.eventId : null);
+    if (idempotencyKey === null || approvalId === null || eventId === null) return error('invalid-request', 'request-credential-invalid');
+
+    if (action === 'event_push') {
+      if (!this.eventBridge) return error('unsupported-action', 'event-push-requires-a-host-event-bus-adapter');
+      if (approvalId) return error('invalid-request', 'event-push-does-not-accept-tool-approval-credentials');
+      let published: NekoPluginEventBridgeResult;
+      try {
+        published = await this.eventBridge.handle({
+          protocol,
+          connectionId: raw.connectionId,
+          requestId: raw.requestId,
+          pluginId: raw.pluginId,
+          eventType: raw.toolId.slice(raw.pluginId.length + 1),
+          eventId: eventId ?? idempotencyKey ?? raw.requestId,
+          payload: params.value as Record<string, unknown>,
+        });
+      } catch {
+        return error('event-bridge-unavailable', 'host-event-bridge-failed');
+      }
+      if (!published?.accepted) {
+        const code = typeof published?.errorCode === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(published.errorCode)
+          ? published.errorCode
+          : 'event-rejected';
+        return error(code, 'host-event-bridge-rejected-plugin-event');
+      }
+      return {
+        success: true,
+        metadata: {
+          verified: false,
+          outcomeClass: 'external-evidence-recorded',
+          ...(published.replayed ? { replayed: true } : {}),
+        },
+      };
+    }
 
     let tools: NekoPluginToolDescriptor[];
     try { tools = this.gateway.listTools(); } catch { return error('gateway-unavailable', 'action-gateway-tool-list-failed'); }

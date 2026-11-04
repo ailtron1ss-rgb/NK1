@@ -5,6 +5,7 @@ on:
     branches: [workpass70-source, aspect/neko-plugin-gateway-adapter-20261104]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/PluginGatewayAdapter.ts"
+      - "runtime/neuro-kurisu/src/organism/integration/neko/NekoPluginEventBridge.ts"
       - "runtime/neuro-kurisu/tests/neko-plugin-event-bridge.mjs"
       - "runtime/neuro-kurisu/tests/neko-plugin-gateway-*.mjs"
       - "runtime/neuro-kurisu/package.json"
