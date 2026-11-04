@@ -66,6 +66,7 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
     corpus_fingerprint = digest("corpus-fingerprint")
     return {
         "kind": "memory-holdout-bilingual",
+        "evidenceSchemaVersion": 2,
         "dataset": {
             "fingerprint": dataset_fingerprint,
             "provenance": {
@@ -110,6 +111,14 @@ def make_record(source_ref: str = "https://datasets.example.org/nk1-memory-v1") 
 
 
 class MemoryHoldoutScoringTests(unittest.TestCase):
+    def test_legacy_evidence_schema_is_not_accepted_for_independent_source_gates(self):
+        record = make_record()
+        record["evidenceSchemaVersion"] = 1
+        result = score_memory_holdout(record)
+        self.assertFalse(result["valid"])
+        self.assertFalse(result["promotionEligible"])
+        self.assertEqual(result["reason"], "memory-evidence-schema-version-unsupported")
+
     def test_bootstrap_resamples_whole_independence_groups(self):
         values = [0.0, 0.0, 1.0, 1.0]
         groups = [digest("source-a"), digest("source-a"), digest("source-b"), digest("source-b")]
@@ -245,7 +254,7 @@ class MemoryHoldoutScoringTests(unittest.TestCase):
             "bootstrapSamplesPerSeed": record["experiment"]["bootstrapSamplesPerSeed"],
             "sensitivity": {"maximumMrrRegression01": 0.01},
             "queryEvidence": {
-                "schemaVersion": 1,
+                "schemaVersion": 2,
                 "digestAlgorithm": "hmac-sha256-ephemeral-per-experiment",
                 "queryNormalization": "NFKC-lower-punctuation-symbol-and-whitespace-normalization",
                 "datasetFingerprint": record["dataset"]["fingerprint"],
