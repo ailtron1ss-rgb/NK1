@@ -59,6 +59,10 @@ test('import requires explicit operator approval and an accepted non-empty licen
   const pack = bytes(validPack());
   assert.throws(() => importer.import(pack, { approved: false, licenseAccepted: true }), /explicit-approval-required/);
   assert.throws(() => importer.import(pack, { approved: true, licenseAccepted: false }), /license-acceptance-required/);
+  assert.throws(() => importer.import(pack, { ...approved([0]), bypassPolicy: true }), /unknown-approval-field/);
+  const accessorApproval = { licenseAccepted: true, entryIndices: [0] };
+  Object.defineProperty(accessorApproval, 'approved', { enumerable: true, get: () => true });
+  assert.throws(() => importer.import(pack, accessorApproval), /approval-accessor-rejected/);
   assert.throws(
     () => importer.import(bytes(validPack({ source: { name: 'Unlicensed source' } })), approved()),
     /source-license-required/,
