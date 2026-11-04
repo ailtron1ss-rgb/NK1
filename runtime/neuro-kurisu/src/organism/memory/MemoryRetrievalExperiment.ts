@@ -113,6 +113,7 @@ export function runMemoryOS2RetrievalExperiment(
     mrrDelta01: run.deltas.mrr01,
     recallConfidence: run.confidence.recallAtK01,
     mrrConfidence: run.confidence.mrr01,
+    baselineHoldout: run.metrics.baseline,
     candidateHoldout: run.metrics.candidate,
     languageStratification: run.languageStratification,
     singleRunPromotionStatus: run.promotion.status,
