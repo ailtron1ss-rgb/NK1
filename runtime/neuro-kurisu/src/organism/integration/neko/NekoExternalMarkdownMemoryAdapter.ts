@@ -162,6 +162,36 @@ function safeFileArray(input: unknown): unknown[] {
   }
   return output;
 }
+
+function safeStringArray(input: unknown, maximum: number, label: string): string[] {
+  if (!Array.isArray(input) || nodeUtilTypes.isProxy(input)) return fail(`Invalid ${label}`);
+  let prototype: object | null;
+  let descriptors: Record<string, PropertyDescriptor>;
+  let length: number;
+  try {
+    prototype = Object.getPrototypeOf(input);
+    descriptors = Object.getOwnPropertyDescriptors(input) as Record<string, PropertyDescriptor>;
+    length = descriptors.length?.value;
+  } catch {
+    return fail(`Invalid ${label}`);
+  }
+  if (prototype !== Array.prototype || !Number.isSafeInteger(length) || length < 0 ||
+      length > maximum || Reflect.ownKeys(descriptors).length !== length + 1) {
+    return fail(`Invalid ${label}`);
+  }
+  const values: string[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = descriptors[String(index)];
+    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value') ||
+        descriptor.get !== undefined || descriptor.set !== undefined || !descriptor.enumerable ||
+        typeof descriptor.value !== 'string') {
+      return fail(`Invalid ${label}`);
+    }
+    values.push(descriptor.value);
+  }
+  return values;
+}
+
 function normalizePath(raw: string): string {
   const path = raw.replace(/\\/g, '/').trim();
   if (!path || path.startsWith('/') || /^[a-z]:\//i.test(path) || CONTROL.test(path)) {
@@ -436,20 +466,24 @@ export class NekoExternalMarkdownMemoryAdapter {
       this.previews.delete(importId);
       return fail('Markdown import preview not found or expired');
     }
-    if (!Array.isArray(approvedCandidateIds) || approvedCandidateIds.length > MAX_ENTRIES) {
-      return fail('Invalid approved candidate selection');
-    }
-    const allowSuspicious = new Set(options.allowSuspiciousIds ?? []);
-    if (allowSuspicious.size > MAX_ENTRIES || [...allowSuspicious].some(id => typeof id !== 'string' || !/^[a-f0-9]{64}$/.test(id))) {
+    const selectedIds = safeStringArray(approvedCandidateIds, MAX_ENTRIES, 'approved candidate selection');
+    const optionRecord = ownDataRecord(options, ['tick', 'allowSuspiciousIds']);
+    if (!optionRecord) return fail('Invalid Markdown import commit options');
+    const rawOverrides = optionRecord.allowSuspiciousIds;
+    const overrideIds = rawOverrides === undefined
+      ? []
+      : safeStringArray(rawOverrides, MAX_ENTRIES, 'suspicious-candidate override list');
+    if (overrideIds.some(id => !/^[a-f0-9]{64}$/.test(id))) {
       return fail('Invalid suspicious-candidate override list');
     }
-    const tick = options.tick === undefined ? 0 : options.tick;
+    const allowSuspicious = new Set(overrideIds);
+    const tick = optionRecord.tick === undefined ? 0 : optionRecord.tick;
     if (!Number.isSafeInteger(tick) || tick < 0) return fail('Invalid memory lifecycle tick');
 
     const committed: NekoMarkdownImportCommitResult['committed'] = [];
     const rejected: NekoMarkdownImportRejection[] = [];
     const seen = new Set<string>();
-    for (const id of approvedCandidateIds) {
+    for (const id of selectedIds) {
       if (typeof id !== 'string' || !/^[a-f0-9]{64}$/.test(id) || !stored.candidates.has(id)) {
         rejected.push({ candidateId: String(id).slice(0, 80), code: 'candidate-not-in-preview' });
         continue;
