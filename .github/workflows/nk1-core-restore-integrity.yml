@@ -84,6 +84,10 @@ on:
       - runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts
       - runtime/neuro-kurisu/src/organism/developmental/P54LongHorizonEvidence.ts
       - runtime/neuro-kurisu/src/organism/developmental/P59MemoryOperatingSystem.ts
+      - runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts
+      - runtime/neuro-kurisu/src/organism/developmental/MicroDreamEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousLearningMemoryGovernor.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -169,6 +173,10 @@ on:
       - runtime/neuro-kurisu/src/organism/developmental/P68GoalEcology.ts
       - runtime/neuro-kurisu/src/organism/developmental/P54LongHorizonEvidence.ts
       - runtime/neuro-kurisu/src/organism/developmental/P59MemoryOperatingSystem.ts
+      - runtime/neuro-kurisu/src/organism/memory/P65EpistemicLedger.ts
+      - runtime/neuro-kurisu/src/organism/developmental/P67AutonomousGoalGenesis.ts
+      - runtime/neuro-kurisu/src/organism/developmental/MicroDreamEngine.ts
+      - runtime/neuro-kurisu/src/organism/system/AutonomousLearningMemoryGovernor.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -245,6 +253,9 @@ jobs:
           node --experimental-strip-types tests/big-pass-37-spine.mjs
           node --experimental-strip-types tests/p2898-correction-aware-capsules.mjs
           node --experimental-strip-types tests/p54-long-horizon-evidence.mjs
+          node --experimental-strip-types tests/p67-attractor-synergy.mjs
+          node --experimental-strip-types tests/p67-value-self-change-loop.mjs
+          node --experimental-strip-types tests/micro-dream-associations-workpass317.mjs
           node --experimental-strip-types tests/p58-p60-integrated-kernel.mjs
           node --experimental-strip-types tests/p66-p68-integration.mjs
           node --experimental-strip-types tests/big-pass-52-memory-fabric.mjs

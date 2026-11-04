@@ -81,18 +81,19 @@ commit with a fail-before/pass-after regression wired into
 | 9 | `467b2dd` | `LifelongDevelopmentSystem`, `AutobiographicalNarrativeEngine`, `ValueEvolutionEngine`, `BehavioralInfluenceLedger` | `workpass72-lifelong-narrative-value-restore-integrity` |
 | 10 | `870ba62` | `ExternalEvidenceTrustEngine`, `LongHorizonPredictionBenchmark`, `P77RealityExperimentOS`, `P82RealityProgressController` | `workpass72-evidence-horizon-progress-restore-integrity` |
 | 11 | `7733e92` | `P62MemoryFabric`, `P68GoalEcology`, `P54LongHorizonEvidence`, `P59MemoryOperatingSystem` | `workpass72-fabric-goal-evidence-memos-restore-integrity` |
+| 12 | (this commit) | `P65EpistemicLedger`, `P67AutonomousGoalGenesis`, `MicroDreamEngine`, `AutonomousLearningMemoryGovernor` | `workpass72-epistemic-goalgen-dream-learningmem-restore-integrity` |
 
 Every batch uses the same idiom — a descriptor-safe `read(k)` accessor plus
 `finN`/`cnt`/`clamp` helpers and per-owner `sanitize*` builders — so a corrupt
 snapshot drops malformed records, floors counters, clamps unit-interval ratios
 and whitelists enums instead of injecting `NaN`, out-of-range values or unknown
-members into live state. `test:workpass72:core-integrity` runs all nineteen
-workpass72 suites in one step (exit 0, 19× `=PASS`).
+members into live state. `test:workpass72:core-integrity` runs all twenty
+workpass72 suites in one step (exit 0, 20× `=PASS`).
 
 ## Evidence
 
-- Batch series (5–11) re-verified after batch 11: `npm run
-  test:workpass72:core-integrity` → exit 0, 19 suites `=PASS`; `npm run
+- Batch series (5–12) re-verified after batch 12: `npm run
+  test:workpass72:core-integrity` → exit 0, 20 suites `=PASS`; `npm run
   typecheck` → `TYPECHECK=PASS mode=tsc compiler=runtime-lock`.
 - Consumer regressions for the batch 10/11 owners re-run green:
   `big-pass-37-spine`, `big-pass-38-autonomous-spine`,
