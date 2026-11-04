@@ -2,6 +2,8 @@
  * Canonical owner for proactive conversational intent. B288 consumes this state as an
  * adapter; this engine does not contact other people or external services.
  */
+import { scoreSocialRepetition, socialRepetitionPenalty01 } from './SocialRepetitionPolicy.ts';
+
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 
 export type SocialInitiativeKind = 'check-in' | 'help' | 'collaborate' | 'follow-up' | 'share-thought' | 'start-topic' | 'ask-question' | 'continue-interest';
@@ -256,6 +258,18 @@ export class AutonomousSocialInitiativeEngine {
     const recentTopics = this.state.initiatives
       .filter(item => item.createdAt > 0 && at >= item.createdAt && at - item.createdAt <= recentWindowMs)
       .slice(0, 32).map(item => item.topic);
+    // Only successful, host-acknowledged deliveries enter repetition evidence.
+    // History reuses the canonical bounded initiative state; no second corpus/store is created.
+    const repetitionDocuments = this.state.initiatives
+      .filter(item => item.status === 'executed'
+        && typeof item.resolvedAt === 'number'
+        && Number.isFinite(item.resolvedAt)
+        && item.resolvedAt > 0
+        && item.resolvedAt <= at
+        && at - item.resolvedAt <= recentWindowMs)
+      .sort((left, right) => Number(left.resolvedAt ?? 0) - Number(right.resolvedAt ?? 0))
+      .slice(-64)
+      .map(item => ({ text: item.message?.trim() ? item.message : item.topic, at: item.resolvedAt! }));
     const candidates: SocialTopicCandidate[] = [];
     for (const raw of (input.topics ?? []).slice(0, 48)) {
       const topic = sanitizeAutonomousTopicText(raw?.topic, 360) ?? '';
@@ -299,13 +313,17 @@ export class AutonomousSocialInitiativeEngine {
       const responseBias = !feedback ? 0 : feedback.item.feedbackSignal === 'positive'
         ? .11 * feedback.similarity * clamp(Number(feedback.item.feedbackRelevance01 ?? .5))
         : feedback.item.feedbackSignal === 'engaged' ? .045 * feedback.similarity : -.12 * feedback.similarity;
+      const repetition = scoreSocialRepetition(candidate.topic, repetitionDocuments, at);
+      // Strong recent repetition lowers priority, but never globally bans a topic.
+      const repetitionPenalty = socialRepetitionPenalty01(repetition.total) * .30;
       return {
         candidate,
         score: clamp(Number(candidate.salience01 ?? .5)) * .45
           + clamp(Number(candidate.freshness01 ?? .5)) * .14
           + clamp(Number(candidate.interestFit01 ?? .5)) * .19
           + clamp(Number(candidate.affectFit01 ?? .5)) * .14
-          + sourceWeight[validSource(candidate.source)] + responseBias,
+          + sourceWeight[validSource(candidate.source)] + responseBias
+          - repetitionPenalty,
       };
     }).sort((a, b) => b.score - a.score || a.candidate.topic.localeCompare(b.candidate.topic));
     const topScore = ranked[0]!.score;
