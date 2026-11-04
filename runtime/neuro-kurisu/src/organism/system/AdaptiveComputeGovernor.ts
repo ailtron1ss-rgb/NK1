@@ -10,12 +10,16 @@ export interface ComputeGovernorPlan { budget01:number; sparsity01:number; works
 export interface AdaptiveComputeState { version:1; cycles:number; lowBudgetCycles:number; highBudgetCycles:number; estimatedWorkSaved01:number; meanBudget01:number; meanSparsity01:number; lastPlan:ComputeGovernorPlan|null; }
 
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const strArr=(v:unknown,cap:number):string[]=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'&&x.length>0).map(x=>x.slice(0,160)).slice(0,cap):[];
+const sanPlan=(x:unknown):ComputeGovernorPlan|null=>{if(!x||typeof x!=='object')return null;const r=x as Record<string,unknown>;return {budget01:clamp(finN(r.budget01,0)),sparsity01:clamp(finN(r.sparsity01,0)),workspaceScale01:clamp(finN(r.workspaceScale01,0)),maxCandidates:Math.max(2,Math.min(12,Math.round(finN(r.maxCandidates,2)))),reason:strArr(r.reason,16),estimatedWorkSaved01:clamp(finN(r.estimatedWorkSaved01,0))};};
 
 export const defaultAdaptiveComputeState=():AdaptiveComputeState=>({version:1,cycles:0,lowBudgetCycles:0,highBudgetCycles:0,estimatedWorkSaved01:0,meanBudget01:.72,meanSparsity01:.28,lastPlan:null});
 
 export class AdaptiveComputeGovernor {
   private state=defaultAdaptiveComputeState();
-  restore(raw?:Partial<AdaptiveComputeState>|null){ const d=defaultAdaptiveComputeState(),r=raw??{}; this.state={...d,...r,lastPlan:r.lastPlan?structuredClone(r.lastPlan):null,version:1}; }
+  restore(raw?:Partial<AdaptiveComputeState>|null){ const d=defaultAdaptiveComputeState(); const src=(raw&&typeof raw==='object')?raw as Record<string,unknown>:{}; const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}}; this.state={version:1,cycles:cnt(read('cycles'),d.cycles),lowBudgetCycles:cnt(read('lowBudgetCycles'),d.lowBudgetCycles),highBudgetCycles:cnt(read('highBudgetCycles'),d.highBudgetCycles),estimatedWorkSaved01:clamp(finN(read('estimatedWorkSaved01'),d.estimatedWorkSaved01)),meanBudget01:clamp(finN(read('meanBudget01'),d.meanBudget01)),meanSparsity01:clamp(finN(read('meanSparsity01'),d.meanSparsity01)),lastPlan:sanPlan(read('lastPlan'))}; }
   snapshot(){return structuredClone(this.state);}
 
   plan(input:ComputeGovernorInput):ComputeGovernorPlan{
