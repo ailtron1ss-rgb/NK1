@@ -29,6 +29,15 @@ export interface CognitiveFieldState {
 }
 
 const clamp = (x: number) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const PRESSURE_TYPES:readonly PressureType[]=['attention-debt','contradiction','commitment','prediction-error','social','goal','curiosity'];
+const sanitizePressure=(v:unknown):CognitivePressure|null=>{
+  if(!v||typeof v!=='object')return null;
+  const r=v as Record<string,unknown>;
+  if(typeof r.id!=='string'||!r.id)return null;
+  return {id:r.id.slice(0,80),type:PRESSURE_TYPES.includes(r.type as PressureType)?r.type as PressureType:'curiosity',description:typeof r.description==='string'?r.description.slice(0,240):'',level:clamp(finN(r.level,0)),decayRate:clamp(finN(r.decayRate,0)),createdAt:Math.max(0,finN(r.createdAt,0)),lastActivatedAt:Math.max(0,finN(r.lastActivatedAt,0)),sourceIds:Array.isArray(r.sourceIds)?r.sourceIds.filter((x):x is string=>typeof x==='string').map(x=>x.slice(0,120)).slice(0,16):[]};
+};
 
 export const defaultCognitiveField = (): CognitiveFieldState => ({
   arousal01: 0.42, valence01: 0.58, uncertainty01: 0.35, salience01: 0.25, conflict01: 0.08,
@@ -40,10 +49,12 @@ export class CognitiveFieldEngine {
   private state = defaultCognitiveField();
 
   restore(state: CognitiveFieldState | undefined): void {
-    this.state = {
-      ...defaultCognitiveField(), ...(state ?? {}),
-      pressures: Array.isArray(state?.pressures) ? state!.pressures.slice(0, 96).map((p) => ({ ...p, sourceIds: Array.isArray(p.sourceIds) ? p.sourceIds.slice(0, 16) : [] })) : [],
-    };
+    const d=defaultCognitiveField();
+    const src:Record<string,unknown>=(state&&typeof state==='object')?state as unknown as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    let pressures:CognitivePressure[]=[];
+    try{const raw=read('pressures');if(Array.isArray(raw))pressures=raw.map(sanitizePressure).filter((x):x is CognitivePressure=>x!==null).slice(0,96);}catch{pressures=[];}
+    this.state={arousal01:clamp(finN(read('arousal01'),d.arousal01)),valence01:clamp(finN(read('valence01'),d.valence01)),uncertainty01:clamp(finN(read('uncertainty01'),d.uncertainty01)),salience01:clamp(finN(read('salience01'),d.salience01)),conflict01:clamp(finN(read('conflict01'),d.conflict01)),socialPressure01:clamp(finN(read('socialPressure01'),d.socialPressure01)),taskPressure01:clamp(finN(read('taskPressure01'),d.taskPressure01)),fatigue01:clamp(finN(read('fatigue01'),d.fatigue01)),coherence01:clamp(finN(read('coherence01'),d.coherence01)),attentionDebt01:clamp(finN(read('attentionDebt01'),d.attentionDebt01)),unresolvedCount:cnt(read('unresolvedCount'),d.unresolvedCount),pressures};
   }
 
   update(input: {

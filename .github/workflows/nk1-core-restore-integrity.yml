@@ -45,6 +45,14 @@ on:
       - runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts
       - runtime/neuro-kurisu/src/organism/developmental/ModelSwitchContinuity.ts
       - runtime/neuro-kurisu/src/organism/developmental/TemporalMemoryCompressor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoredomExplorer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ContradictionReservoir.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveBudgetManager.ts
+      - runtime/neuro-kurisu/src/organism/cognition/VerifiedSyntheticTrajectoryGate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveField.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelSwitchBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelOlympics.ts
+      - runtime/neuro-kurisu/src/organism/system/DerivedWorldPreviewCache.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -91,6 +99,14 @@ on:
       - runtime/neuro-kurisu/src/organism/developmental/FutureSimulator.ts
       - runtime/neuro-kurisu/src/organism/developmental/ModelSwitchContinuity.ts
       - runtime/neuro-kurisu/src/organism/developmental/TemporalMemoryCompressor.ts
+      - runtime/neuro-kurisu/src/organism/cognition/BoredomExplorer.ts
+      - runtime/neuro-kurisu/src/organism/cognition/ContradictionReservoir.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveBudgetManager.ts
+      - runtime/neuro-kurisu/src/organism/cognition/VerifiedSyntheticTrajectoryGate.ts
+      - runtime/neuro-kurisu/src/organism/cognition/CognitiveField.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelSwitchBenchmark.ts
+      - runtime/neuro-kurisu/src/organism/system/ModelOlympics.ts
+      - runtime/neuro-kurisu/src/organism/system/DerivedWorldPreviewCache.ts
       - runtime/neuro-kurisu/tests/workpass72-*.mjs
       - runtime/neuro-kurisu/package.json
       - runtime/neuro-kurisu/package-lock.json
@@ -159,6 +175,9 @@ jobs:
           node --experimental-strip-types tests/big-pass-37-spine.mjs
           node --experimental-strip-types tests/p2898-correction-aware-capsules.mjs
           node --experimental-strip-types tests/p46-prediction-ledger.mjs
+          node --experimental-strip-types tests/p2870-verified-synthetic-trajectory-gate.mjs
+          node --experimental-strip-types tests/big-pass-46-multi-project-models.mjs
+          node --experimental-strip-types tests/big-pass-40-cognitive-spine.mjs
       - name: Run decision/learning owner consumers
         run: |
           node --experimental-strip-types tests/big-pass-49-subsystem-extraction.mjs

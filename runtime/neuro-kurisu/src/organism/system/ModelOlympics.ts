@@ -5,10 +5,13 @@
 export interface ModelScore{correct:number;total:number;brierSum:number;meanBrier01:number;accuracy01:number;}
 export interface ModelOlympicsState{version:1;scores:Record<string,ModelScore>;rounds:number;winner:string|null;lastAt:number;}
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
+const sanitizeScore=(v:unknown):ModelScore=>{const d={correct:0,total:0,brierSum:0,meanBrier01:.5,accuracy01:0};if(!v||typeof v!=='object')return d;const r=v as Record<string,unknown>;return {correct:cnt(r.correct,0),total:cnt(r.total,0),brierSum:Math.max(0,finN(r.brierSum,0)),meanBrier01:clamp(finN(r.meanBrier01,.5)),accuracy01:clamp(finN(r.accuracy01,0))};};
 export const defaultModelOlympics=():ModelOlympicsState=>({version:1,scores:{},rounds:0,winner:null,lastAt:0});
 export class ModelOlympics{
  private state=defaultModelOlympics();
- restore(raw?:Partial<ModelOlympicsState>|null){this.state={...defaultModelOlympics(),...(raw??{}),scores:{...(raw?.scores??{})}};}
+ restore(raw?:Partial<ModelOlympicsState>|null){const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};const scores:Record<string,ModelScore>={};const rawScores=read('scores');if(rawScores&&typeof rawScores==='object')for(const [k,v] of Object.entries(rawScores as Record<string,unknown>))scores[k.slice(0,120)]=sanitizeScore(v);this.state={version:1,scores,rounds:cnt(read('rounds'),0),winner:typeof read('winner')==='string'?(read('winner') as string).slice(0,120):null,lastAt:Math.max(0,finN(read('lastAt'),0))};}
  snapshot(){return structuredClone(this.state);}
  calibrate(id:string,predicted01:number):number{
    const raw=clamp(predicted01); const score=this.state.scores[id];

@@ -2,6 +2,8 @@ import type { ActionKind } from '../core/types.ts';
 
 const ACTIONS: ActionKind[] = ['respond','explore','verify','rest','reflect','wait','defer'];
 const clamp=(x:number)=>Math.max(0,Math.min(1,Number.isFinite(x)?x:0));
+const finN=(v:unknown,f:number):number=>{const n=typeof v==='number'?v:Number(v);return Number.isFinite(n)?n:f;};
+const cnt=(v:unknown,f:number):number=>Math.max(0,Math.floor(finN(v,f)));
 const distance=(a:number[],b:number[])=>{
   const n=Math.min(8,Math.max(a.length,b.length));
   if(n<=0)return 0;
@@ -66,18 +68,25 @@ export class VerifiedSyntheticTrajectoryGate{
   snapshot(){return structuredClone(this.state);}
   restore(raw?:Partial<VerifiedSyntheticTrajectoryGateState>|null){
     const d=defaultVerifiedSyntheticTrajectoryGate();
-    const pending=Array.isArray(raw?.pending)?raw!.pending.slice(-8).map((x:any)=>({
-      id:String(x?.id??''),stagedTick:Number(x?.stagedTick??0),contextId:Number(x?.contextId??0),
+    const src:Record<string,unknown>=(raw&&typeof raw==='object')?raw as unknown as Record<string,unknown>:{};
+    const read=(k:string):unknown=>{try{return src[k];}catch{return undefined;}};
+    const numArr=(v:unknown):number[]=>Array.isArray(v)?v.map(x=>Number(x)).map(x=>Number.isFinite(x)?x:0).slice(0,8):[];
+    const pendingRaw=read('pending');
+    const pending=Array.isArray(pendingRaw)?pendingRaw.slice(-8).map((x:any)=>({
+      id:typeof x?.id==='string'?x.id.slice(0,80):'',
+      stagedTick:Math.max(0,Math.floor(Number.isFinite(Number(x?.stagedTick))?Number(x.stagedTick):0)),
+      contextId:Math.max(0,Math.floor(Number.isFinite(Number(x?.contextId))?Number(x.contextId):0)),
       steps:Array.isArray(x?.steps)?x.steps.slice(0,3).map((s:any)=>({
-        actionIndex:Math.max(0,Math.min(ACTIONS.length-1,Math.floor(Number(s?.actionIndex??0)))),
-        latent:Array.isArray(s?.latent)?s.latent.slice(0,8):[],predictedNext:Array.isArray(s?.predictedNext)?s.predictedNext.slice(0,8):[],
+        actionIndex:Math.max(0,Math.min(ACTIONS.length-1,Math.floor(Number.isFinite(Number(s?.actionIndex))?Number(s.actionIndex):0))),
+        latent:numArr(s?.latent),predictedNext:numArr(s?.predictedNext),
         reward01:clamp(Number(s?.reward01??.5)),confidence01:clamp(Number(s?.confidence01??0)),priority01:clamp(Number(s?.priority01??0))
       })):[],
-      confirmations:Number(x?.confirmations??0),verifiedConfirmations:Number(x?.verifiedConfirmations??0),holdoutConfirmations:Number(x?.holdoutConfirmations??0),
-      mismatches:Number(x?.mismatches??0),lastObservedTick:Number(x?.lastObservedTick??0),
+      confirmations:cnt(x?.confirmations,0),verifiedConfirmations:cnt(x?.verifiedConfirmations,0),holdoutConfirmations:cnt(x?.holdoutConfirmations,0),
+      mismatches:cnt(x?.mismatches,0),lastObservedTick:Math.max(0,Math.floor(finN(x?.lastObservedTick,0))),
       status:['pending','promoted','rejected','expired'].includes(x?.status)?x.status:'pending'
     })).filter(x=>x.id&&x.steps.length):[];
-    this.state={...d,...(raw??{}),version:1,pending};
+    const lastPromotionId=typeof read('lastPromotionId')==='string'?(read('lastPromotionId') as string).slice(0,80):null;
+    this.state={version:1,staged:cnt(read('staged'),d.staged),confirmations:cnt(read('confirmations'),d.confirmations),promotions:cnt(read('promotions'),d.promotions),rejections:cnt(read('rejections'),d.rejections),expirations:cnt(read('expirations'),d.expirations),pending,lastPromotionId,lastReason:typeof read('lastReason')==='string'?(read('lastReason') as string).slice(0,240):d.lastReason};
   }
 
   stage(input:{tick:number;contextId:number;steps:VerifiedSyntheticTrajectoryStep[];priority01:number;confidence01:number}):string|null{
