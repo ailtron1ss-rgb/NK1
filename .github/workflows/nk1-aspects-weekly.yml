@@ -1,5 +1,12 @@
 name: NK1 75-aspect weekly tracker
 
+# NOTE: GitHub only fires scheduled workflows from the repository default branch
+# (here: main). This repo keeps source work on workpass70-source and reserves main
+# for release/metadata, so the cron schedule below will not run until this file is
+# present on the default branch. Until then use "Run workflow" (workflow_dispatch)
+# or the OpenHands weekly tracker automation. The push trigger keeps validation on
+# workpass70-source current.
+
 on:
   schedule:
     # Every Monday at 06:00 UTC.

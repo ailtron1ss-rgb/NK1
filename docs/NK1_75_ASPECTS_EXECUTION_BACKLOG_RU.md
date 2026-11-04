@@ -218,6 +218,12 @@
 7. Every improvement needs measurable evidence and must reach a verified Release ZIP.
 8. Do not declare an aspect done before its corresponding gate passes.
 
+## Еженедельное отслеживание
+
+- `.github/workflows/nk1-aspects-registry.yml` проверяет реестр на каждом push/PR, затрагивающем реестр/инструменты.
+- `.github/workflows/nk1-aspects-weekly.yml` формирует недельный отчёт и предупреждает, если `observedSourceHead` реестра разошёлся с живым head.
+- Важно: GitHub запускает `schedule:` только с **default-ветки** (`main`). Проект держит исходники на `workpass70-source`, а `main` — release/metadata, поэтому cron не сработает, пока workflow не окажется в `main`. До этого используйте ручной `workflow_dispatch` или недельную автоматизацию OpenHands. `push`-триггер держит валидацию на `workpass70-source` актуальной.
+
 ## Что дальше
 
 Этот реестр превращает 75 аспектов в исполняемый backlog. Следующие шаги:
