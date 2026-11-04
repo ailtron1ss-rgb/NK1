@@ -342,7 +342,7 @@ function sourceFormat(files: ParsedFile[]): 'openclaw' | 'hermes' {
 
 function memoryKind(sourceKind: NekoMarkdownSourceKind): NekoMarkdownMemoryKind {
   if (sourceKind === 'user') return 'social';
-  if (sourceKind === 'soul') return 'identity';
+  if (sourceKind === 'soul') return 'semantic';
   if (sourceKind === 'daily') return 'episodic';
   return 'semantic';
 }
