@@ -1297,17 +1297,6 @@ export class MemoryOS2{
    // The hashed token vector is intentionally not a ranking channel: it is not
    // a semantic embedding and was largely duplicating the lexical projection.
    const metadataRank=rankBy(row=>row.metadata);
-   if(this.captureRankedChannelIds){
-    const take=(ranked:Map<string,number>)=>[...ranked.keys()].slice(0,this.rankedChannelCaptureLimit);
-    this.lastRankedChannelIds={
-     bm25:take(bm25Rank),
-     coverage:take(coverageRank),
-     fuzzy:take(fuzzyRank),
-     metadata:take(metadataRank),
-     entity:take(entityRank),
-     relationship:take(relationshipRank),
-    };
-   }
    const rrfWeights={bm25:1,coverage:.90,fuzzy:.60,metadata:(this.metadataRecallEnabled ? .28 : 0),entity:.42,relationship:.32};
    const maxRrf=Object.values(rrfWeights).reduce((sum,weight)=>sum+weight/(rrfK+1),0);
    const maxBm25=Math.max(0,...rawRows.map(x=>x.bm25));
@@ -1387,6 +1376,20 @@ export class MemoryOS2{
      return lexicalEvidence||causalConceptEvidence||typedRecall;
    });
    rows.push(...groundedRows);
+   // Export only IDs that survived the same answerability gate as canonical recall.
+   // This prevents the shadow evaluator from resurrecting ungrounded lexical candidates.
+   if(this.captureRankedChannelIds){
+    const groundedIds=new Set(groundedRows.map(row=>row.m.id));
+    const take=(ranked:Map<string,number>)=>[...ranked.keys()].filter(id=>groundedIds.has(id)).slice(0,this.rankedChannelCaptureLimit);
+    this.lastRankedChannelIds={
+     bm25:take(bm25Rank),
+     coverage:take(coverageRank),
+     fuzzy:take(fuzzyRank),
+     metadata:take(metadataRank),
+     entity:take(entityRank),
+     relationship:take(relationshipRank),
+    };
+   }
    this.lastHybridDiagnostics={...this.lastHybridDiagnostics,spatialRequested,spatialInvalidQuery:spatialRequested&&!spatialQuery,spatialFrameId:spatialQuery?.frameId??null,spatialCandidateCount:spatialHits.length,bm25Enabled:true,bm25CandidateCount:rawRows.filter(x=>x.bm25>0).length,bm25Max:maxBm25,rrfEnabled:true,identifierBias,temporalMode,asOfAt:now,queryIntentMode,maxQueryIntentBoost01:Math.max(0,...groundedRows.map(x=>x.intentBoost01)),candidateSelection:this.metadataRecallEnabled?'idf-coverage-fuzzy-concept-metadata-rrf-stable-id':'idf-coverage-fuzzy-concept-rrf-stable-id',candidateSelectionLimit:192,fuzzyEnabled:true,fuzzyCandidateCount:fuzzyCandidateIds.size,semanticVectorUsedForRanking:false,semanticEmbeddingProvider:'none',rrfSignals:this.metadataRecallEnabled?['bm25','token-coverage','character-fuzzy','metadata-tags-entities-topic','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit']:['bm25','token-coverage','character-fuzzy','bilingual-concept-bridge','entity','graph-temporal','intent-kind-fit'],answerabilityGate:'direct-evidence-or-typed-recall-v1',rankedBeforeGate:topRows.length,groundedAfterGate:groundedRows.length,abstained:groundedRows.length===0,abstentionReason:groundedRows.length===0?'no-grounded-evidence':null};
    // semanticHits is retained only for persisted-state compatibility. It is not
    // incremented by retrieval: the legacy hashed token projection is not a semantic
