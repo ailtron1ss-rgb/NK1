@@ -7,12 +7,14 @@ on:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalMarkdownMemoryAdapter.ts"
       - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
       - ".github/workflows/nk1-neko-external-markdown-memory-import.yml"
+      - "runtime/neuro-kurisu/docs/NEKO_EXTERNAL_MARKDOWN_MEMORY_IMPORT_RU.md"
   push:
     branches: [aspect/neko-external-memory-import-20261104]
     paths:
       - "runtime/neuro-kurisu/src/organism/integration/neko/NekoExternalMarkdownMemoryAdapter.ts"
       - "runtime/neuro-kurisu/tests/neko-external-markdown-memory-import.mjs"
       - ".github/workflows/nk1-neko-external-markdown-memory-import.yml"
+      - "runtime/neuro-kurisu/docs/NEKO_EXTERNAL_MARKDOWN_MEMORY_IMPORT_RU.md"
 
 permissions:
   contents: read
