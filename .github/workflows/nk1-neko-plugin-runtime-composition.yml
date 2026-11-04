@@ -11,7 +11,7 @@ on:
       - 'runtime/neuro-kurisu/package.json'
   push:
     branches:
-      - 'aspect/neko-plugin-runtime-composition-20261104'
+      - 'aspect/neko-plugin-runtime-composition-*'
     paths:
       - '.github/workflows/nk1-neko-plugin-runtime-composition.yml'
       - 'runtime/neuro-kurisu/src/organism/integration/neko/**'
