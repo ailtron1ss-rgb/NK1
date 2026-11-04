@@ -67,7 +67,7 @@ node --experimental-strip-types runtime/neuro-kurisu/tests/workpass72-independen
 
 ### Сформировать отчёт из реального внешнего holdout
 
-Для экспериментальной оценки нужен локальный экспорт MemoryOS2 snapshot, JSONL с независимо размеченными запросами и provenance JSON. Минимумы по умолчанию для Inspect-экспорта: 4 train, 20 answerable holdout и 8 unanswerable holdout запросов на каждый язык (RU и EN). Независимая перепроверка теперь отдельно требует не менее 20 различных source-group на answerable holdout и 8 различных source-group на unanswerable holdout для каждого языка. Несколько запросов из одного документа/эпизода считаются одной группой, а не несколькими независимыми образцами.
+Для экспериментальной оценки нужен локальный экспорт MemoryOS2 snapshot, JSONL с независимо размеченными запросами и provenance JSON. Для `--inspect-evidence true` каждая строка labels JSONL обязана содержать явный `independenceGroupId` исходного документа/эпизода; отсутствие значения не заменяется ID запроса. Evidence schema v2 отвергает старые query-evidence без независимой группы. Минимумы по умолчанию для Inspect-экспорта: 4 train, 20 answerable holdout и 8 unanswerable holdout запросов на каждый язык (RU и EN). Независимая перепроверка теперь отдельно требует не менее 20 различных source-group на answerable holdout и 8 различных source-group на unanswerable holdout для каждого языка. Несколько запросов из одного документа/эпизода считаются одной группой, а не несколькими независимыми образцами.
 
     node --experimental-strip-types runtime/neuro-kurisu/scripts/run-memory-retrieval-experiment.mjs \
       --snapshot /path/to/memoryos2-snapshot.json \
@@ -90,7 +90,7 @@ dataset-provenance.json должен содержать datasetId, datasetVersio
 
 - HMAC-SHA256 псевдоним ID примера, нормализованного запроса и memory ID; случайный HMAC-ключ общий для paired-seed повторов, но не сохраняется в отчёте.
 - Язык, split, answerability и релевантные memory-ID псевдонимы.
-- HMAC-псевдоним source episode/document (`independenceGroupDigest)), общий для запросов из одного источника; scorer проверяет его формат и отсутствие пересечения train/holdout по источникам.
+- HMAC-псевдоним source episode/document (`independenceGroupDigest`), общий для запросов из одного источника; scorer проверяет его формат и отсутствие пересечения train/holdout по источникам. Отсутствующий `independenceGroupId` запрещён в evidence mode (fallback к example ID запрещён).
 - Порядок top-K baseline BM25 и candidate MemoryOS2 с ограниченными флагами безопасности.
 - Fingerprints dataset/corpus/retrieval config, seeds и параметры эксперимента.
 
