@@ -146,7 +146,10 @@ const tempWorkspaceNames = () => readdirSync(os.tmpdir())
     readFile: extraction.readFile,
   });
   const before = tempWorkspaceNames();
-  assert.throws(() => materializeCodeAssimilationArchive(forged), /extraction-not-authenticated/);
+  assert.throws(() => {
+    const unintended = materializeCodeAssimilationArchive(forged);
+    unintended.cleanup();
+  }, /extraction-not-authenticated/);
   assert.deepEqual(tempWorkspaceNames(), before);
 }
 
