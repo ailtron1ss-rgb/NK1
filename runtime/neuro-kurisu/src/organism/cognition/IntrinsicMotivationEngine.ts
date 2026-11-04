@@ -74,12 +74,14 @@ export class IntrinsicMotivationEngine {
     const epistemic = clamp(uncertainty*0.62 + predictionError*0.38);
     const novelty = clamp(noveltyInput*0.74 + uncertainty*0.26);
     const competence = clamp(lastSuccess*0.72 + predictionError*0.18 + (1-goalPressure)*0.10);
-    const coherence = clamp(predictionError*0.42 + (1-worldEvidenceQuality)*0.30 + (1-energy)*0.08 + goalPressure*0.20);
-    const social = clamp(socialNeed*0.88 + (1-energy)*0.05);
     const selfPriorMismatch01=finiteInput(input.selfPriorMismatch01);
     const selfPriorConfidence01=finiteInput(input.selfPriorConfidence01);
-    const intrinsicFamiliarityPressure=selfPriorMismatch01*selfPriorConfidence01;
-    const homeostatic = clamp((1-energy)*0.72 + goalPressure*0.28 + intrinsicFamiliarityPressure*0.24);
+    const selfModelPredictionError=selfPriorMismatch01*selfPriorConfidence01;
+    // A surprising self-state should invite model reconciliation, not push the
+    // organism to restore an old identity state as if it were an energy deficit.
+    const coherence = clamp(predictionError*0.42 + (1-worldEvidenceQuality)*0.30 + (1-energy)*0.08 + goalPressure*0.20 + selfModelPredictionError*0.24);
+    const social = clamp(socialNeed*0.88 + (1-energy)*0.05);
+    const homeostatic = clamp((1-energy)*0.72 + goalPressure*0.28);
     const entries:Record<DriveName,number> = { epistemic, novelty, competence, coherence, social, homeostatic };
     const dominant = DRIVE_NAMES.reduce<DriveName>((best,name)=>entries[name]>entries[best]?name:best,'epistemic');
     this.state = { ...entries, overall:clamp(Math.max(...Object.values(entries))), dominant, updatedAt:Date.now() };
