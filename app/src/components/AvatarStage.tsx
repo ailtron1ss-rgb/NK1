@@ -20,6 +20,7 @@ import {
   defaultMotionArbitrationState,
   type MotionArbitrationState,
 } from "./avatar/motionArbitration";
+import { resolveSemanticGestureIntent } from "./avatar/semanticGestureIntent";
 import type { SwitchPlan } from "./avatar/embodimentSwitch";
 import { cn } from "@/lib/utils";
 import { LegacySpriteDeck } from "@/legacy/avatar/LegacySpriteDeck";
@@ -229,6 +230,15 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
     const deltaMs = now - (motionLastAtRef.current ?? now);
     motionLastAtRef.current = now;
     try {
+      const assistantTurnAgeMs = lastTurn?.role === "kurisu"
+        ? Date.now() - Number(lastTurn.at ?? 0)
+        : Number.POSITIVE_INFINITY;
+      // Gesture cards are accepted only from a fresh assistant turn and its
+      // explicitly closed parenthesized stage directions, never ordinary dialogue.
+      const semanticGesture = Number.isFinite(assistantTurnAgeMs)
+        && assistantTurnAgeMs >= 0 && assistantTurnAgeMs <= 5_000
+        ? resolveSemanticGestureIntent(lastTurn?.role === "kurisu" ? lastTurn.text : "")
+        : null;
       const result = arbitrateMotion(motionStateRef.current, {
         action: snap.lastOption,
         emotion: snap.emotion.label,
@@ -236,6 +246,7 @@ export function AvatarStage({ snap, thinking = false }: { snap: OrganismSnapshot
         thinking,
         awake: snap.awake,
         energy01: snap.needs.energy,
+        gestureProgram: semanticGesture?.programId,
       }, deltaMs);
       motionStateRef.current = result.state;
       motionChannelsRef.current = result.channels as Record<string, number>;
