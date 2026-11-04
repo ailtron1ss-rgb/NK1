@@ -79,7 +79,8 @@ function makeRuntime(options = {}) {
   const result = await runtime.handle(request());
   assert.equal(result.success, true);
   assert.deepEqual(result.data, { echoed: 'NK1 integration' });
-  assert.equal(result.metadata.verified, true);
+  assert.equal(result.metadata.verified, false, 'the adapter must not upgrade unverified ActionGateway outcomes');
+  assert.equal(result.metadata.outcomeClass, 'executed-unverified');
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0], { query: 'NK1 integration' });
 }
