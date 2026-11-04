@@ -983,3 +983,12 @@ production-ready. Рисовать плейсхолдер и заявлять г
 - Валидация hostile-снапшотов на уровне `StateMigrations` (p35/p37/p41/p42/p43) пока ограничена shape-проверками
   (`Array.isArray`, spread дефолтов); строгая по-полю валидация — следующий кандидат.
 
+### 22.4 Интеграция с базой (OBSERVED)
+
+- База `workpass70-source` ушла вперёд (`d8902d7`), PR #768 стал `CONFLICTING`; влил базу в ветку
+  (merge `1cf99de`, конфликт только в `CHANGELOG.md` — оставлены обе записи). PR снова `MERGEABLE`.
+- После merge typecheck снова `TYPECHECK=PASS`; новые и смежные наборы (routing/aspect10/big-pass-48/57,
+  metacognitive-full-cycle) — PASS. Все проверки на head `1cf99de` — success (единственный «fail» — отменённый
+  concurrency-прогон, перекрытый более новым).
+
+
