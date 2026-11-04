@@ -178,7 +178,7 @@ const migrationSource = await readFile(new URL('../src/organism/persistence/Stat
 assert.match(coreSource, /selfObservation:\s*b270PostGerminalState\.selfLatent/);
 assert.match(coreSource, /selfPrior\.restore\(this\.persisted\.facets\.consciousness\.selfPrior\)/);
 assert.match(coreSource, /facets\.consciousness\.selfPrior\s*=\s*this\.cognitiveRuntime\.intrinsicMotivationGoalCoupling\.selfPrior\.snapshot\(\)/);
-assert.match(typesSource, /selfPrior:\s*SelfPriorDensityState/);
+assert.match(typesSource, /selfPrior:\s*(?:import\([^)]*\)\.)?SelfPriorDensityState/);
 assert.match(migrationSource, /selfPrior:\s*defaultSelfPriorDensityState\(\)/);
 
 console.log('SELF_PRIOR_COHERENCE_REGULATION=PASS');
